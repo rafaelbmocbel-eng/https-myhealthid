@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, parse } from 'date-fns';
@@ -283,7 +283,8 @@ export default function PatientIntegratedDashboard({
     ];
   };
 
-  const powerZones = getPowerZones(scores);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const powerZones = useMemo(() => getPowerZones(scores), [JSON.stringify(scores)]);
 
   // ── Lógica de Missões e Insights ───────────────────────────────────────────
   const getInsights = (sc: any) => {
@@ -318,7 +319,8 @@ export default function PatientIntegratedDashboard({
     };
   };
 
-  const insights = getInsights(scores);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const insights = useMemo(() => getInsights(scores), [JSON.stringify(scores)]);
 
   // Compute MyID-100 from component scores using loss table (same logic as calculator)
   const computeMyID100FromScores = (sc: typeof scores): number => {
@@ -468,6 +470,7 @@ export default function PatientIntegratedDashboard({
                   <MyIDFingerprint
                     rings={rings}
                     myidScore={myidScore}
+                    compact={isProfessional}
                     highlightedKey={isProfessional ? (drillDownKey || hoveredScoreKey) : hoveredScoreKey}
                     onRingHover={setHoveredScoreKey}
                     onRingClick={isProfessional ? (r) => setDrillDownKey(prev => prev === r.scoreKey ? null : r.scoreKey) : undefined}
@@ -479,19 +482,21 @@ export default function PatientIntegratedDashboard({
                     </p>
                   )}
 
-                  {/* Microlegenda: como ler os anéis */}
-                  <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-sky-500/80" />
-                      Anéis de dentro = <span className="font-semibold text-foreground/80">o que te sustenta</span>
-                      <span className="text-muted-foreground/80">· quanto maior, melhor</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-red-500/80" />
-                      Anéis de fora = <span className="font-semibold text-foreground/80">o que está pesando</span>
-                      <span className="text-muted-foreground/80">· quanto maior, pior</span>
-                    </span>
-                  </div>
+                  {/* Microlegenda: apenas para paciente — o profissional tem a lista interativa abaixo */}
+                  {!isProfessional && (
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-sky-500/80" />
+                        Anéis de dentro = <span className="font-semibold text-foreground/80">o que te sustenta</span>
+                        <span className="text-muted-foreground/80">· quanto maior, melhor</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-red-500/80" />
+                        Anéis de fora = <span className="font-semibold text-foreground/80">o que está pesando</span>
+                        <span className="text-muted-foreground/80">· quanto maior, pior</span>
+                      </span>
+                    </div>
+                  )}
 
                   {/* Listas compactas: anéis internos e externos (apenas profissional) */}
                   {isProfessional && rings.length > 0 && (() => {
@@ -557,8 +562,8 @@ export default function PatientIntegratedDashboard({
                   )}
 
 
-                  {/* Resumo humano de 2 linhas */}
-                  {insights && (
+                  {/* Resumo humano de 2 linhas — só para paciente; profissional tem os 3 cards abaixo */}
+                  {insights && !isProfessional && (
                     <p className="mt-5 text-center text-sm text-foreground/80 leading-relaxed max-w-md mx-auto">
                       Sua maior oportunidade agora é <span className="font-semibold text-emerald-700 dark:text-emerald-400">{insights.opportunity.label.toLowerCase()}</span>.
                       O ponto que mais merece atenção é <span className="font-semibold text-amber-700 dark:text-amber-400">{insights.limitation.label.toLowerCase()}</span>.
@@ -589,8 +594,8 @@ export default function PatientIntegratedDashboard({
                     );
                   })()}
 
-                  {/* Resumo explicativo — clique para abrir */}
-                  <details className="mt-5 group rounded-xl border border-border/40 bg-muted/20 open:bg-muted/30 transition-colors">
+                  {/* Resumo explicativo — aberto por padrão para o profissional */}
+                  <details open={isProfessional} className="mt-5 group rounded-xl border border-border/40 bg-muted/20 open:bg-muted/30 transition-colors">
                     <summary className="flex items-center justify-between gap-2 cursor-pointer select-none px-4 py-3 list-none [&::-webkit-details-marker]:hidden">
                       <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Sparkles className="icon-sm text-primary" />
@@ -703,19 +708,31 @@ export default function PatientIntegratedDashboard({
                   <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400">Oportunidade</span>
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400">Maior oportunidade</span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">{insights.opportunity.label}</p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{insights.opportunity.mission}</p>
+                    {isProfessional && insights.opportunity.potential > 0 ? (
+                      <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                        Recupera até +{insights.opportunity.potential} pts no MyID
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{insights.opportunity.mission}</p>
+                    )}
                   </div>
 
                   <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="h-2 w-2 rounded-full bg-amber-500" />
-                      <span className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-400">Atenção</span>
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-400">Ponto de atenção</span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">{insights.limitation.label}</p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Vamos cuidar disso com calma, no seu ritmo.</p>
+                    {isProfessional && insights.limitation.potential > 0 ? (
+                      <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1">
+                        Responsável por −{insights.limitation.potential} pts no MyID
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Vamos cuidar disso com calma, no seu ritmo.</p>
+                    )}
                   </div>
 
                   <div className={cn(
@@ -727,9 +744,15 @@ export default function PatientIntegratedDashboard({
                       <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Resumo de hoje</span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">{labelDisplay}</p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      {redFlagsDetected ? 'Alguns pontos merecem atenção — vale conversar com seu profissional.' : 'Continue com seu plano de cuidado.'}
-                    </p>
+                    {isProfessional ? (
+                      <p className="text-[11px] font-bold text-muted-foreground mt-1">
+                        Score: {Math.round(myidScore)}/100 · {redFlagsDetected ? '⚠ Red flags presentes' : 'Sem red flags'}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        {redFlagsDetected ? 'Alguns pontos merecem atenção — vale conversar com seu profissional.' : 'Continue com seu plano de cuidado.'}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -784,72 +807,40 @@ export default function PatientIntegratedDashboard({
                     <Award className="icon-sm text-primary" />
                     <h4 className="h-card">Suas conquistas</h4>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {scores && (
-                      <>
-                        <Badge variant="secondary" className={cn(
-                          "rounded-full px-3 py-1 gap-2 transition-opacity",
-                          scores.HID > 7 ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" : "opacity-30"
-                        )}>
-                          💧 Hidratado
-                        </Badge>
-                        <Badge variant="secondary" className={cn(
-                          "rounded-full px-3 py-1 gap-2 transition-opacity",
-                          scores.R > 7 ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" : "opacity-30"
-                        )}>
-                          🌙 Sono em dia
-                        </Badge>
-                        <Badge variant="secondary" className={cn(
-                          "rounded-full px-3 py-1 gap-2 transition-opacity",
-                          scores.AF > 6 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "opacity-30"
-                        )}>
-                          🏃 Ativo
-                        </Badge>
-                        <Badge variant="secondary" className={cn(
-                          "rounded-full px-3 py-1 gap-2 transition-opacity",
-                          scores.P < 4 ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300" : "opacity-30"
-                        )}>
-                          🧘 Equilíbrio
-                        </Badge>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Cuide dos seus hábitos pra desbloquear mais.
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Áreas da sua saúde */}
-              <Card className="rounded-xl border-border/40 shadow-xs">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-                    <div>
-                      <h4 className="h-card">Áreas da sua saúde</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">Como cada parte da sua vida está hoje</p>
-                    </div>
-                    <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Forte</span>
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />OK</span>
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500" />Atenção</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {powerZones.map((zone) => (
-                      <div key={zone.id} className="rounded-lg border border-border/40 p-3 bg-card">
-                        <div className="flex items-center gap-2 mb-2">
-                          <zone.icon className={cn("icon-sm", zone.color)} />
-                          <span className={cn("text-sm font-bold", zone.color)}>{zone.level.toFixed(0)}%</span>
-                        </div>
-                        <h5 className="font-semibold text-xs leading-tight mb-2 text-foreground">{zone.title}</h5>
-                        <Progress value={zone.level} className="h-1 mb-2" />
-                        <p className="text-[10px] text-muted-foreground leading-relaxed">{zone.description}</p>
+                  {(() => {
+                    const badges = scores ? [
+                      { condition: scores.HID > 7, label: '💧 Hidratado',  cls: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' },
+                      { condition: scores.R   > 7, label: '🌙 Sono em dia', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300' },
+                      { condition: scores.AF  > 6, label: '🏃 Ativo',       cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' },
+                      { condition: scores.P   < 4, label: '🧘 Equilíbrio',  cls: 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300' },
+                    ].filter(b => b.condition) : [];
+                    return badges.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {badges.map((b, i) => (
+                          <Badge key={i} variant="secondary" className={cn("rounded-full px-3 py-1 gap-2", b.cls)}>
+                            {b.label}
+                          </Badge>
+                        ))}
+                        <p className="w-full text-xs text-muted-foreground mt-1">Continue cuidando dos seus hábitos para desbloquear mais.</p>
                       </div>
-                    ))}
-                  </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-2">
+                        Nenhuma conquista desbloqueada ainda. Melhore hidratação, sono, movimento ou equilíbrio emocional para ganhar badges.
+                      </p>
+                    );
+                  })()}
                 </CardContent>
               </Card>
+
+              {/* Dimensões por status — substituiu os cards abstratos Corpo/Hábitos/Mente/Proteção */}
+              {scores && (
+                <Card className="rounded-xl border-border/40 shadow-xs">
+                  <CardContent className="p-5">
+                    <h4 className="h-card mb-4">Como cada dimensão está hoje</h4>
+                    <PatientHealthAreas scores={scores} />
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </>

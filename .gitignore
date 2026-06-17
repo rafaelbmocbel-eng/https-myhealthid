@@ -14,9 +14,6 @@ dist-paciente
 *.local
 *.tsbuildinfo
 
-# Claude Code local config
-.claude/
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -35,3 +32,6 @@ dist-paciente
 
 # Supabase temp files
 supabase/.temp/
+
+# Claude Code internal (worktrees, session state)
+.claude/

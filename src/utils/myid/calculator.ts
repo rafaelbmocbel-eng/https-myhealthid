@@ -6,7 +6,7 @@ import {
 import { getMyIDInterpretation } from '@/utils/myidCalculations';
 import {
     TABELA_PERDAS, calcularPerdaDimensao, calcularPerdaMedicamentos,
-    classificarMyID100, identificarDriver, PerdaCalculada, MyID100Result,
+    classificarMyID100, identificarDriver, identificarCoDrivers, PerdaCalculada, MyID100Result,
     DriverPrimario, DIMENSION_LABELS, DIMENSION_COLORS, TEMPLATES_INTERPRETACAO,
 } from './lossTable';
 
@@ -39,9 +39,21 @@ export class MyIDCalculator {
     // ==================== BLOCO 1: INÉRCIA (I) ====================
     calculateInertia(): number {
         const b1 = this.responses.bloco1;
-        const changes = this.responses.bloco_1_changes || b1?.mudancas_recentes || b1?.mudancasRecentes || [];
-        const mudancasReais = changes.filter((m: string) => m !== 'Nenhuma mudança que eu note' && m !== 'none');
-        const iPoints = mudancasReais.length * 2;
+        const changes: string[] = this.responses.bloco_1_changes || b1?.mudancas_recentes || b1?.mudancasRecentes || [];
+        const PESOS_MUDANCA: Record<string, number> = {
+            scare: 3,     // susto físico / quase-lesão — maior risco
+            load: 2,      // aumento de carga
+            posture: 1.5, // mudança postural / contexto
+            equipment: 1, // novo equipamento
+            // mudanças legado (texto completo) — manter compatibilidade
+            'Susto físico (Movimento em falso, quase escorregão, "travada")': 3,
+            'Aumento de carga (Mais treino, nova atividade, competição)': 2,
+            'Mudança de postura (Mais tempo sentado, home office, viagem longa)': 1.5,
+            'Novo equipamento (Tênis, colchão, travesseiro, cadeira de trabalho)': 1,
+        };
+        const iPoints = changes
+            .filter(m => m !== 'none' && m !== 'Nenhuma mudança que eu note')
+            .reduce((sum, m) => sum + (PESOS_MUDANCA[m] ?? 1.5), 0);
         const iNormalized = Math.min(iPoints, 10);
         this.scores['I'] = iNormalized;
         return iNormalized;
@@ -66,7 +78,24 @@ export class MyIDCalculator {
             { atual: 0, max: 0 }
         );
         const d = (somas.atual + somas.max) / (2 * regioes.length);
-        this.scores['D'] = Math.min(10, Math.round(d * 10) / 10);
+
+        // Fator de múltiplas regiões: cada região adicional adiciona 8% de peso (máx 40%)
+        const nRegioes = regioes.length;
+        const fatorMultiRegiao = 1 + Math.min((nRegioes - 1) * 0.08, 0.40);
+
+        // Variabilidade da dor: quanto maior a diferença melhorDia vs máxima, melhor o prognóstico
+        // Paciente que fica bem ocasionalmente tem dor mais mecânica (bom sinal)
+        const regiaoMaisGrave = regioes.reduce((prev, curr) =>
+            curr.intensidadeAtual > prev.intensidadeAtual ? curr : prev
+        );
+        const variabilidade = regiaoMaisGrave.intensidadeMaxima > 0
+            ? (regiaoMaisGrave.intensidadeMaxima - (regiaoMaisGrave.intensidadeMelhorDia ?? regiaoMaisGrave.intensidadeAtual)) / regiaoMaisGrave.intensidadeMaxima
+            : 0;
+        // Alta variabilidade = dor mecânica = redução de até 10% no score D
+        const bonusVariabilidade = variabilidade * 0.10;
+
+        const dAjustado = Math.min(10, d * fatorMultiRegiao * (1 - bonusVariabilidade));
+        this.scores['D'] = Math.min(10, Math.round(dAjustado * 10) / 10);
         return this.scores['D'];
     }
 
@@ -104,7 +133,10 @@ export class MyIDCalculator {
             this.responses.bloco_3_independence ?? this.responses.bloco3?.independencia ?? 0,
             this.responses.bloco_3_social ?? this.responses.bloco3?.vidaSocial ?? 0,
         ];
-        const efi = efiValues.reduce((a, b) => a + b, 0) / efiValues.length;
+        // Pior item domina porque EFI é bem-estar: menor = pior
+        const min = Math.min(...efiValues);
+        const avg = efiValues.reduce((a, b) => a + b, 0) / efiValues.length;
+        const efi = min * 0.6 + avg * 0.4;
         this.scores['EFI'] = Math.round(efi * 10) / 10;
         return this.scores['EFI'];
     }
@@ -121,7 +153,14 @@ export class MyIDCalculator {
         const avoidNormalized = ((avoidance - 1) / 3) * 10;
         const selfEfficacyInverted = 10 - selfEfficacy;
 
-        const p = (fearNormalized + beliefNormalized + avoidNormalized + selfEfficacyInverted) / 4;
+        const expectation = this.responses.bloco_4_expectation ?? this.responses.bloco4?.bloco_4_expectation ?? 5;
+        const expectationInverted = 10 - expectation; // expectativa baixa = pior prognóstico
+
+        // Pior item domina porque P é perda: maior = pior
+        const items = [fearNormalized, beliefNormalized, avoidNormalized, selfEfficacyInverted, expectationInverted];
+        const maxItem = Math.max(...items);
+        const avg = items.reduce((a, b) => a + b, 0) / items.length;
+        const p = maxItem * 0.6 + avg * 0.4;
         this.scores['P'] = Math.min(10, Math.max(0, Math.round(p * 10) / 10));
         return this.scores['P'];
     }
@@ -137,11 +176,11 @@ export class MyIDCalculator {
         const disorderPenalty = disorders.length * 1.5;
         const rSleep = Math.max(0, ((sleepQuality + sleepHoursNormalized + sleepAwake) / 3) - disorderPenalty);
 
-        // Fatigue is derived from tired_awake answer (no separate question exists)
         const tirednessMapping: Record<string, number> = { never: 10, nunca: 10, sometimes: 6, as_vezes: 6, frequently: 3, always: 0 };
         const wakingTired = tirednessMapping[this.responses.bloco_5b_tired_awake || this.responses.bloco5?.exaustoAoAcordar || 'sometimes'] ?? 5;
-        // Use wakingTired as the sole energy metric (fadiga field was never collected)
-        const rEnergy = wakingTired;
+        // R2: combina fadiga crônica + estado ao acordar
+        const fadiga = this.responses.bloco_5b_fatigue ?? this.responses.bloco5?.fadiga ?? 5;
+        const rEnergy = (wakingTired + (10 - fadiga)) / 2;
 
         const stress = this.responses.bloco_5c_stress ?? this.responses.bloco5?.estresse ?? 5;
         const anxiety = this.responses.bloco_5c_anxiety ?? this.responses.bloco5?.ansiedade ?? 5;
@@ -180,7 +219,8 @@ export class MyIDCalculator {
     // ==================== BLOCO 5F: HIDRATAÇÃO (HID) ====================
     calculateHydration(): number {
         const water = this.responses.bloco_5f_water_liters ?? this.responses.bloco5?.bloco_5f_water_liters ?? 2;
-        const waterScore = Math.min((water / 3) * 10, 10);
+        // 2.5L = ótimo (score 10), escala linear abaixo
+        const waterScore = Math.min((water / 2.5) * 10, 10);
         const colorMap: Record<string, number> = { very_dark: 0, dark: 4, yellow_clear: 8, clear: 10 };
         const colorScore = colorMap[this.responses.bloco_5f_urine_color || this.responses.bloco5?.bloco_5f_urine_color || 'yellow_clear'] ?? 5;
         const symptoms = this.responses.bloco_5f_dehydration_symptoms || this.responses.bloco5?.bloco_5f_dehydration_symptoms || {};
@@ -194,9 +234,23 @@ export class MyIDCalculator {
     calculateNutrition(): number {
         const qualityMap: Record<string, number> = { very_poor: 0, poor: 3, acceptable: 6, good: 8, excellent: 10 };
         const qualityVal = qualityMap[this.responses.bloco_5g_quality || this.responses.bloco5?.bloco_5g_quality || 'acceptable'] ?? 5;
+
         const proteinMap: Record<string, number> = { rarely: 0, sometimes: 5, almost_all: 8, all: 10 };
         const proteinVal = proteinMap[this.responses.bloco_5g_protein || this.responses.bloco5?.bloco_5g_protein || 'sometimes'] ?? 5;
-        const nut = (qualityVal + proteinVal) / 2;
+
+        // Alimentos inflamatórios penalizam
+        const inflammatoryMap: Record<string, number> = { daily: -3, several_week: -2, '1_2_week': -1, rarely: 0, never: 1 };
+        const inflammatoryAdj = inflammatoryMap[this.responses.bloco_5g_inflammatory || this.responses.bloco5?.bloco_5g_inflammatory || ''] ?? 0;
+
+        // Frutas/vegetais (0-5 porções → bônus proporcional)
+        const fruitsPortions = this.responses.bloco_5g_fruits_portions ?? this.responses.bloco5?.bloco_5g_fruits_portions ?? 2;
+        const fruitsBonus = Math.min((fruitsPortions / 5) * 2, 2); // máx +2 pts
+
+        // Deficiências nutricionais penalizam
+        const deficiencyMap: Record<string, number> = { multiple: -3, one_significant: -2, possible: -1, none: 0 };
+        const deficiencyAdj = deficiencyMap[this.responses.bloco_5g_deficiency || this.responses.bloco5?.bloco_5g_deficiency || ''] ?? 0;
+
+        const nut = Math.max(0, Math.min(10, (qualityVal + proteinVal) / 2 + inflammatoryAdj + fruitsBonus + deficiencyAdj));
         this.scores['NUT'] = Math.round(nut * 10) / 10;
         return this.scores['NUT'];
     }
@@ -207,7 +261,20 @@ export class MyIDCalculator {
         const spaceVal = spaceMap[this.responses.bloco_5h_workspace || this.responses.bloco5?.bloco_5h_workspace || 'acceptable'] ?? 5;
         const habitsPenalty = (this.responses.bloco_5h_bad_habits || this.responses.bloco5?.bloco_5h_bad_habits || []).length * 1.5;
         const erg = Math.max(0, spaceVal - habitsPenalty);
-        this.scores['ERG'] = Math.round(erg * 10) / 10;
+
+        // Posição de sono contribui para ERG noturna
+        const sleepPosMap: Record<string, number> = {
+            back: 1.5, side: 1, back_side: 0.5, stomach: -1, variable: 0,
+            costas: 1.5, lado: 1, barriga: -1, variavel: 0,
+        };
+        const mattressMap: Record<string, number> = {
+            excellent: 1.5, good: 0.5, acceptable: 0, poor: -1, very_poor: -2,
+            otimo: 1.5, bom: 0.5, aceitavel: 0, ruim: -1, muito_ruim: -2,
+        };
+        const sleepBonus = sleepPosMap[this.responses.bloco_5h_sleep_position || this.responses.bloco5?.bloco_5h_sleep_position || ''] ?? 0;
+        const mattressBonus = mattressMap[this.responses.bloco_5h_mattress || this.responses.bloco5?.bloco_5h_mattress || ''] ?? 0;
+        const ergFinal = Math.max(0, Math.min(10, erg + sleepBonus + mattressBonus));
+        this.scores['ERG'] = Math.round(ergFinal * 10) / 10;
         return this.scores['ERG'];
     }
 
@@ -220,16 +287,44 @@ export class MyIDCalculator {
         const signs = this.responses.bloco_6_visceral_issues || this.responses.bloco6?.sinaisAutonomicos || [];
         const signPoints = signs.filter((s: string) => s !== 'Nenhum desses' && s !== 'none').length * 1.5;
         nPoints += signPoints;
-        if (this.responses.bloco_6_endometriosis || this.responses.bloco6?.bloco_6_endometriosis) nPoints += 3;
-        if (this.responses.bloco_6_pcos || this.responses.bloco6?.bloco_6_pcos) nPoints += 2;
+        const temEndo = !!(this.responses.bloco_6_endometriosis || this.responses.bloco6?.bloco_6_endometriosis);
+        const temPcos = !!(this.responses.bloco_6_pcos || this.responses.bloco6?.bloco_6_pcos);
+        if (temEndo && temPcos) nPoints += 4; // equivalente a 'ambas'
+        else if (temEndo) nPoints += 3;
+        else if (temPcos) nPoints += 2;
         const n = Math.min(nPoints, 10);
         this.scores['N'] = Math.round(n * 10) / 10;
         return this.scores['N'];
     }
 
+    // ==================== BLOCO 6: HORMÔNIOS ====================
     calculateHormones(): number {
-        this.result.hormonal_impact = 0;
-        return 0;
+        const b6 = this.responses.bloco6;
+        let hormonalNoise = 0;
+
+        const cycleRegularity = this.responses.bloco_6_cycle_regularity ?? b6?.bloco_6_cycle_regularity;
+        if (cycleRegularity === 'irregular') hormonalNoise += 1.5;
+
+        const cycleAffectsPain = this.responses.bloco_6_cycle_affects_pain ?? b6?.bloco_6_cycle_affects_pain;
+        if (cycleAffectsPain) {
+            const phases: string[] = this.responses.bloco_6_cycle_pain_phase ?? b6?.bloco_6_cycle_pain_phase ?? [];
+            hormonalNoise += phases.length * 1.0;
+        }
+
+        // Se hormonal não melhorou a dor, sugere componente hormonal ativo
+        const hormonalUse = this.responses.bloco_6_hormonal_use ?? b6?.bloco_6_hormonal_use;
+        const hormonalImproved = this.responses.bloco_6_hormonal_improved ?? b6?.bloco_6_hormonal_improved;
+        if (hormonalUse && hormonalUse !== 'none' && hormonalImproved === false) {
+            hormonalNoise += 1.5;
+        }
+
+        if (hormonalNoise > 0) {
+            const currentN = this.scores['N'] || 0;
+            this.scores['N'] = Math.min(10, Math.round((currentN + hormonalNoise) * 10) / 10);
+        }
+
+        this.result.hormonal_impact = hormonalNoise;
+        return hormonalNoise;
     }
 
     // ==================== MEDICAÇÕES (MED) ====================
@@ -238,6 +333,7 @@ export class MyIDCalculator {
         const medResult = calcularPerdaMedicamentos({
             daily_nsaid: this.responses.bloco_6_daily_nsaid ?? b6?.bloco_6_daily_nsaid,
             antidepressant: this.responses.bloco_6_antidepressant ?? b6?.bloco_6_antidepressant,
+            antidepressant_type: this.responses.bloco_6_antidepressant_type ?? b6?.bloco_6_antidepressant_type,
             muscle_relaxant: this.responses.bloco_6_muscle_relaxant ?? b6?.bloco_6_muscle_relaxant,
             corticoid: this.responses.bloco_6_corticoid ?? b6?.bloco_6_corticoid,
             supplementation: this.responses.bloco_6_supplementation ?? b6?.bloco_6_supplementation,
@@ -249,11 +345,34 @@ export class MyIDCalculator {
     }
 
     getHealingPrognosis(): string {
-        const b1 = this.responses.bloco1;
-        const changes = b1?.mudancasRecentes || [];
-        if (changes.length > 2) return 'Possível instabilidade sistêmica';
-        if (changes.includes('Nenhuma mudança que eu note')) return 'Estável';
-        return 'Moderado';
+        const d = this.scores['D'] || 0;
+        const efi = this.scores['EFI'] || 0;
+        const p = this.scores['P'] || 0;
+        const myid = this.result.MyID ?? 50;
+        const gatilhos = this.result.gatilhos_criticos || [];
+
+        if (myid >= 75 && d < 4 && p < 4) return 'Favorável — padrão mecânico adaptativo';
+        if (myid >= 55 && efi >= 5 && gatilhos.length === 0) return 'Moderado — bom potencial com adesão ao tratamento';
+        if (p >= 6 || gatilhos.length >= 2) return 'Cauteloso — componente central/psicológico elevado, abordagem multifatorial necessária';
+        if (d >= 7 || efi <= 3) return 'Reservado — alta carga de dor e baixa funcionalidade';
+        return 'Moderado — monitorar resposta ao tratamento';
+    }
+
+    private getCronicidadeMultiplier(dataInicio?: string): number {
+        if (!dataInicio) return 1.0;
+        try {
+            const inicio = new Date(dataInicio);
+            if (isNaN(inicio.getTime())) return 1.0;
+            const diffMs = Date.now() - inicio.getTime();
+            const diffDias = diffMs / (1000 * 60 * 60 * 24);
+            if (diffDias < 42) return 1.0;      // < 6 semanas: aguda
+            if (diffDias < 84) return 1.1;      // 6-12 semanas: subaguda
+            if (diffDias < 365) return 1.2;     // 3-12 meses: crônica inicial
+            return 1.3;                          // > 12 meses: crônica estabelecida
+        } catch {
+            // data inválida — retornar neutro
+            return 1.0;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -305,6 +424,14 @@ export class MyIDCalculator {
         this.perdas['NUT'] = calcularPerdaDimensao('NUT', 10 - NUT);
         this.perdas['ERG'] = calcularPerdaDimensao('ERG', 10 - ERG);
 
+        const dataInicio = this.responses.bloco_1_date || this.responses.bloco1?.data_inicio_dor || this.responses.bloco1?.dataInicioDor;
+        const cronicMult = this.getCronicidadeMultiplier(dataInicio);
+        if (cronicMult > 1 && this.perdas['D'].perda_pontos > 0) {
+            const perdaDAjustada = Math.min(TABELA_PERDAS.D.peso_maximo, this.perdas['D'].perda_pontos * cronicMult);
+            this.perdas['D'] = { ...this.perdas['D'], perda_pontos: perdaDAjustada };
+        }
+        this.result.cronicidade_multiplier = cronicMult;
+
         // Sum all losses
         let totalPerdas = 0;
         for (const [dim, perda] of Object.entries(this.perdas)) {
@@ -314,6 +441,19 @@ export class MyIDCalculator {
         // Add medication penalty (negative = more loss, positive = bonus)
         const medPenalty = this.result.med_penalty || 0;
         totalPerdas -= medPenalty; // med_penalty: negative values add loss, positive subtract
+
+        const rfData = this.responses.bloco_2_red_flags || this.responses.bloco2?.redFlags || {};
+        const activeRF = [
+            !!(rfData.weight_loss || rfData.perdaPeso),
+            !!(rfData.fever || rfData.febreCalafrios),
+            !!(rfData.night_pain || rfData.dorNoturnaImpedeSono),
+            !!(rfData.incontinence || rfData.alteracaoEsfincteriana),
+            !!(rfData.progressive || rfData.dorPioraConsistente),
+            !!(rfData.neuropathy || rfData.dormenciaProgressiva),
+        ].filter(Boolean).length;
+        const redFlagPenalty = Math.min(activeRF * 3, 15);
+        totalPerdas += redFlagPenalty;
+        this.result.red_flag_penalty = redFlagPenalty;
 
         // MyID-100 score
         const myid100 = Math.max(0, Math.min(100, 100 - totalPerdas));
@@ -415,6 +555,7 @@ export class MyIDCalculator {
                 emoji: classificacao.emoji,
                 gatilhos_criticos_ativados: this.result.gatilhos_criticos || [],
                 driver_primario: this.result.driver_primario || null,
+                co_drivers: identificarCoDrivers(this.perdas),
             },
 
             status: classificacao.nome,

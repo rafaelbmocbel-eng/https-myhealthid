@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Share2, Loader2, Fingerprint } from 'lucide-react';
+import { Download, Share2, Loader2 } from 'lucide-react';
 // gerarPDFRespostaCompleta carregado dinamicamente no clique
 import { getBaseUrl } from '@/utils/linkUrls';
 import { format, parseISO } from 'date-fns';
@@ -95,40 +95,29 @@ export default function IdentidadePortavelActions({ pacienteId, pacienteNome, te
   const hasMyID = !!ultimaMyID?.resultado_processado;
 
   return (
-    <div className="mt-3 pt-3 border-t border-border/40">
-      <div className="flex items-center gap-1.5 mb-2">
-        <Fingerprint className="h-3 w-3 text-primary" />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Identidade portátil
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 gap-1.5"
-          onClick={handleExportarPDF}
-          disabled={exportando || !hasMyID}
-        >
-          {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          <span className="text-xs font-semibold">Exportar PDF</span>
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 gap-1.5"
-          onClick={handleCompartilharLink}
-          disabled={!hasMyID}
-        >
-          <Share2 className="h-4 w-4" />
-          <span className="text-xs font-semibold">Compartilhar MyID</span>
-        </Button>
-      </div>
-      {!hasMyID && (
-        <p className="text-[10px] text-muted-foreground mt-1.5">
-          Disponível após o paciente concluir o primeiro MyID.
-        </p>
-      )}
+    <div className="flex flex-wrap gap-1.5 items-center">
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8 gap-1.5"
+        onClick={handleExportarPDF}
+        disabled={exportando || !hasMyID}
+        title={!hasMyID ? 'Disponível após o primeiro MyID concluído' : 'Exportar PDF da Identidade'}
+      >
+        {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        <span className="text-xs font-semibold">Exportar PDF</span>
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8 gap-1.5"
+        onClick={handleCompartilharLink}
+        disabled={!hasMyID}
+        title={!hasMyID ? 'Disponível após o primeiro MyID concluído' : 'Copiar link de visualização do MyID'}
+      >
+        <Share2 className="h-4 w-4" />
+        <span className="text-xs font-semibold">Compartilhar MyID</span>
+      </Button>
     </div>
   );
 }

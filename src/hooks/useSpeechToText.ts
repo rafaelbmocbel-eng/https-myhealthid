@@ -7,26 +7,48 @@ interface UseSpeechToTextReturn {
   isSupported: boolean;
 }
 
+interface SpeechRecognitionAlternative {
+  transcript: string;
+}
+
+interface SpeechRecognitionResultLike {
+  0: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionEventLike {
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface SpeechRecognitionLike extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((e: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
 export function useSpeechToText(): UseSpeechToTextReturn {
   const [isListening, setIsListening] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
-  const isSupported = typeof window !== 'undefined' && 
+  const isSupported = typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
   const startListening = useCallback((onResult: (text: string) => void) => {
     if (!isSupported) return;
-    
-    const SpeechRecognitionCtor = (window as unknown as Record<string, new () => EventTarget & { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: SpeechRecognitionEvent) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void }>).SpeechRecognition || (window as unknown as Record<string, new () => EventTarget & { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: SpeechRecognitionEvent) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void }>).webkitSpeechRecognition;
+
+    const SpeechRecognitionCtor = (window as unknown as Record<string, new () => SpeechRecognitionLike>).SpeechRecognition || (window as unknown as Record<string, new () => SpeechRecognitionLike>).webkitSpeechRecognition;
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = 'pt-BR';
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       const transcript = Array.from(event.results)
-        .map((result: SpeechRecognitionResult) => result[0].transcript)
+        .map((result: SpeechRecognitionResultLike) => result[0].transcript)
         .join(' ');
       onResult(transcript);
     };

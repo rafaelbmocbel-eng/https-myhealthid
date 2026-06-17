@@ -14,12 +14,8 @@ interface Props {
   compact?: boolean;
 }
 
-function scoreStatusLabel(score: number): string {
-  return classificarMyID100(score).nome;
-}
-function scoreStatusColor(score: number): string {
-  return classificarMyID100(score).cor;
-}
+function scoreStatusLabel(score: number) { return classificarMyID100(score).nome; }
+function scoreStatusColor(score: number) { return classificarMyID100(score).cor; }
 
 const SHORT_LABELS: Record<string, string> = {
   D: 'D', EFI: 'EFI', P: 'P', I: 'I', R: 'R', C: 'C',
@@ -27,362 +23,420 @@ const SHORT_LABELS: Record<string, string> = {
 };
 
 const FULL_LABELS: Record<string, string> = {
-  D: 'Dor',
-  EFI: 'Suas atividades do dia',
-  P: 'Cabeça e emoções',
-  I: 'Mudanças recentes',
-  R: 'Sono e energia',
-  C: 'Vida pessoal',
-  AF: 'Movimento',
-  HID: 'Hidratação',
-  NUT: 'Alimentação',
-  ERG: 'Postura no dia',
-  N: 'Sinais do corpo',
-  MED: 'Medicação',
+  D: 'Dor', EFI: 'Atividades', P: 'Emoções', I: 'Mudanças',
+  R: 'Sono/Energia', C: 'Vida pessoal', AF: 'Movimento',
+  HID: 'Hidratação', NUT: 'Alimentação', ERG: 'Postura',
+  N: 'Sinais corpo', MED: 'Medicação',
 };
 
 const RING_DESCRIPTIONS: Record<string, { title: string; summary: string; components: string[] }> = {
-  D:   { title: 'Dor (D)', summary: 'Intensidade e características da dor relatada.', components: ['Intensidade atual', 'Pior intensidade', 'Melhor dia', 'Tipo de dor (pontada, queimação, peso…)', 'Regiões afetadas'] },
+  D:   { title: 'Dor (D)', summary: 'Intensidade e características da dor relatada.', components: ['Intensidade atual', 'Pior intensidade', 'Melhor dia', 'Tipo de dor', 'Regiões afetadas'] },
   EFI: { title: 'Atividades do dia (EFI)', summary: 'Impacto funcional nas tarefas diárias.', components: ['Trabalho', 'Tarefas domésticas', 'Exercício', 'Independência', 'Vida social'] },
   P:   { title: 'Cabeça e emoções (P)', summary: 'Crenças e respostas psicológicas frente à dor.', components: ['Medo de movimento', 'Catastrofização', 'Evitação', 'Autoeficácia', 'Expectativa de recuperação'] },
   I:   { title: 'Mudanças recentes (I)', summary: 'Gatilhos e mudanças que antecederam o quadro.', components: ['Novos equipamentos', 'Aumento de carga', 'Mudança de postura', 'Sustos físicos', 'Data de início'] },
-  R:   { title: 'Sono e energia (R)', summary: 'Regulação neurovegetativa: descanso e recuperação.', components: ['Qualidade do sono', 'Horas de sono', 'Despertar por dor', 'Fadiga', 'Exaustão ao acordar', 'Estresse e ansiedade'] },
+  R:   { title: 'Sono e energia (R)', summary: 'Regulação neurovegetativa: descanso e recuperação.', components: ['Qualidade do sono', 'Horas de sono', 'Despertar por dor', 'Fadiga', 'Estresse e ansiedade'] },
   C:   { title: 'Vida pessoal (C)', summary: 'Contexto social, familiar e financeiro.', components: ['Trabalho estressante', 'Conflitos familiares', 'Preocupação financeira'] },
   AF:  { title: 'Movimento (AF)', summary: 'Nível de atividade física no dia a dia.', components: ['Horas sentado', 'Estilo de vida', 'Tipos de exercício', 'Intensidade'] },
   HID: { title: 'Hidratação (HID)', summary: 'Estado de hidratação corporal.', components: ['Litros de água/dia', 'Cor da urina', 'Frequência miccional', 'Sintomas de desidratação'] },
-  NUT: { title: 'Alimentação (NUT)', summary: 'Qualidade nutricional e padrão alimentar.', components: ['Qualidade da dieta', 'Frutas e vegetais', 'Proteína', 'Alimentos inflamatórios', 'Deficiências'] },
-  ERG: { title: 'Postura no dia (ERG)', summary: 'Ergonomia e hábitos posturais.', components: ['Workspace', 'Tempo sentado contínuo', 'Posição de dormir', 'Colchão', 'Hábitos posturais ruins'] },
-  N:   { title: 'Sinais do corpo (N)', summary: 'Ruído sistêmico: sinais viscerais e autonômicos.', components: ['Trauma axial', 'Cicatrizes abdominais', 'Sintomas viscerais', 'Sinais autonômicos', 'Saúde hormonal'] },
-  MED: { title: 'Medicação (MED)', summary: 'Uso de medicações relevantes para o quadro.', components: ['AINE diário', 'Antidepressivo', 'Relaxante muscular', 'Suplementação', 'Corticoide'] },
+  NUT: { title: 'Alimentação (NUT)', summary: 'Qualidade nutricional e padrão alimentar.', components: ['Qualidade da dieta', 'Frutas e vegetais', 'Proteína', 'Alimentos inflamatórios'] },
+  ERG: { title: 'Postura no dia (ERG)', summary: 'Ergonomia e hábitos posturais.', components: ['Workspace', 'Tempo sentado contínuo', 'Posição de dormir', 'Hábitos posturais ruins'] },
+  N:   { title: 'Sinais do corpo (N)', summary: 'Ruído sistêmico: sinais viscerais e autonômicos.', components: ['Trauma axial', 'Cicatrizes abdominais', 'Sintomas viscerais', 'Saúde hormonal'] },
+  MED: { title: 'Medicação (MED)', summary: 'Uso de medicações relevantes para o quadro.', components: ['AINE diário', 'Antidepressivo', 'Relaxante muscular', 'Corticoide'] },
 };
+
+// ── Geometry ─────────────────────────────────────────────────────────────────
+const VW = 1000;
+const VH = 1000;
+const CX = 500;
+const CY = 490;
+
+const BASE_R = 68;
+const MAX_R  = 448;
+const STROKE = 22;
+
+// Each ring's arc is nearly a complete circle.
+// The tiny gap (12°) is rotated 30° per ring, spreading the 12 openings evenly
+// around the full 360° — no two adjacent rings open at the same angle.
+// Result: no "vinco" (notch) is visible from any direction.
+const GAP_DEG      = 12;              // tiny gap per ring
+const AVAIL_SWEEP  = 360 - GAP_DEG;  // 348° — nearly full circle
 
 export default function MyIDFingerprint({
   rings, myidScore, className = '', onRingClick, onRingHover,
   highlightedKey, hasRedFlags = false, compact = false,
 }: Props) {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [revealed, setRevealed] = useState(false);
+  const [hoveredIdx, setHoveredIdx]         = useState<number | null>(null);
+  const [selectedIdx, setSelectedIdx]       = useState<number | null>(null);
+  const [revealed, setRevealed]             = useState(false);
   const [revealProgress, setRevealProgress] = useState(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => setRevealed(true), 100);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setRevealed(true), 120);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
     if (!revealed) return;
     let frame = 0;
     const total = rings.length;
-    const interval = setInterval(() => {
+    const iv = setInterval(() => {
       frame++;
       setRevealProgress(frame);
-      if (frame >= total) clearInterval(interval);
-    }, 80);
-    return () => clearInterval(interval);
+      if (frame >= total) clearInterval(iv);
+    }, 70);
+    return () => clearInterval(iv);
   }, [revealed, rings.length]);
 
-  const innerRings = rings.filter(r => r.type === 'inner');
-  const outerRings = rings.filter(r => r.type === 'outer');
-  const allRings = [...innerRings, ...outerRings];
+  const innerRings = useMemo(() => rings.filter(r => r.type === 'inner'), [rings]);
+  const outerRings = useMemo(() => rings.filter(r => r.type === 'outer'), [rings]);
+  const allRings   = useMemo(() => [...innerRings, ...outerRings], [innerRings, outerRings]);
+  const totalRings = allRings.length || 1;
 
-  // HD viewBox for maximum sharpness and detail
-  const vw = 1200;
-  const vh = 1200;
-  const cx = vw / 2;
-  const cy = vh / 2;
+  const spacing = Math.min(32, (MAX_R - BASE_R) / totalRings);
 
-  const ridgeData = useMemo(() => {
-    const baseR = 90;
-    const maxRadius = 560;
-    const totalRings = allRings.length || 1;
-    const spacing = Math.min(42, (maxRadius - baseR) / totalRings);
-
-    return allRings.map((ring, i) => {
-      const r = baseR + i * spacing;
-      const rx = r;
-      const ry = r;
-      const valuePct = Math.max(ring.value / 10, 0.08);
-      const color = ring.color || getThermalColor(ring.value);
-      const opacity = 0.55 + (ring.value / 10) * 0.45;
-      const openingAngle = Math.max(16 - i * 0.7, 3);
-      const gapCenterAngle = 98 + ((i % 6) - 2.5) * 7;
-      const startAngle = gapCenterAngle + openingAngle;
-      const availableSweep = 360 - openingAngle * 2;
-      const filledSweep = availableSweep * Math.max(valuePct, 0.20);
-
-      return {
-        ...ring, rx, ry, startAngle, availableSweep, filledSweep,
-        gapPositions: i < 3 ? [] : [0.3, 0.7],
-        gapSize: 4, isInner: ring.type === 'inner', index: i,
-        strokeWidth: Math.max(34 - i * 1, 18),
-        computedColor: color, computedOpacity: opacity,
-      };
-    });
-  }, [allRings]);
-
-  const arcPath = useCallback((rx: number, ry: number, startDeg: number, sweepDeg: number) => {
+  // ── Arc path — all rings share the same center (CX, CY) ───────────────────
+  const arcPath = useCallback((r: number, startDeg: number, sweepDeg: number): string => {
     if (sweepDeg < 0.5) return '';
     const toRad = (d: number) => (d * Math.PI) / 180;
-    const s = toRad(startDeg);
-    const e = toRad(startDeg + sweepDeg);
-    const x1 = cx + rx * Math.cos(s);
-    const y1 = cy + ry * Math.sin(s);
-    const x2 = cx + rx * Math.cos(e);
-    const y2 = cy + ry * Math.sin(e);
-    const largeArc = sweepDeg > 180 ? 1 : 0;
-    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${rx.toFixed(2)} ${ry.toFixed(2)} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
-  }, [cx, cy]);
+    const s  = toRad(startDeg);
+    const e  = toRad(startDeg + sweepDeg);
+    const x1 = CX + r * Math.cos(s);
+    const y1 = CY + r * Math.sin(s);
+    const x2 = CX + r * Math.cos(e);
+    const y2 = CY + r * Math.sin(e);
+    const large = sweepDeg > 180 ? 1 : 0;
+    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+  }, []);
+
+  // ── Ridge data ───────────────────────────────────────────────────────────────
+  const ridgeData = useMemo(() => {
+    // Spread the 12 gaps evenly: ring i has its opening at (i * 30°) around the circle.
+    // This means no ring starts or ends at the same angle as its neighbor.
+    const gapStep = 360 / totalRings;
+
+    return allRings.map((ring, i) => {
+      const r = BASE_R + i * spacing;
+
+      // Gap center for this ring — rotated 30° from the previous ring
+      const gapCenter = (i * gapStep + 270) % 360; // start offset at top-ish for ring 0
+      const startDeg  = (gapCenter + GAP_DEG / 2 + 360) % 360;
+
+      // Value → arc fill (min 8% so even zero-score rings show a tiny arc)
+      const fillFraction = Math.max(ring.value / 10, 0.08);
+      const filledSweep  = AVAIL_SWEEP * fillFraction;
+
+      const color = ring.color || getThermalColor(ring.value);
+      // Severity drives brightness:
+      // capacity: low value = alarming (brighter)
+      // demand:   high value = alarming (brighter)
+      const opacity = ring.type === 'inner'
+        ? 0.42 + (1 - ring.value / 10) * 0.53
+        : 0.42 + (ring.value / 10) * 0.53;
+
+      return { ...ring, r, startDeg, gapCenter, filledSweep, color, opacity, index: i };
+    });
+  }, [allRings, spacing, totalRings]);
 
   const centerColor = scoreStatusColor(myidScore);
-  const label = scoreStatusLabel(myidScore);
+  const label       = scoreStatusLabel(myidScore);
 
-  const handleRidgeClick = (ridge: any, idx: number) => {
+  const handleClick = (ridge: typeof ridgeData[0], idx: number) => {
     setSelectedIdx(selectedIdx === idx ? null : idx);
     if (onRingClick) onRingClick(ridge);
   };
 
   const highlightedIdx = highlightedKey
-    ? ridgeData.findIndex(r => r.scoreKey === highlightedKey) : null;
+    ? ridgeData.findIndex(r => r.scoreKey === highlightedKey) : -1;
 
-  const activeIdx = highlightedIdx !== null && highlightedIdx >= 0
-    ? highlightedIdx : selectedIdx !== null ? selectedIdx : hoveredIdx;
-
-  // progress values now computed inline in SVG with r=84
+  const activeIdx = highlightedIdx >= 0 ? highlightedIdx
+    : selectedIdx !== null ? selectedIdx
+    : hoveredIdx;
 
   return (
-    <div className={`relative w-full ${className}`} role="img" aria-label={`Impressão digital MyID com score ${Math.round(myidScore)} de 100 - ${label}`}>
+    <div
+      className={`relative w-full ${className}`}
+      role="img"
+      aria-label={`Impressão digital MyID — score ${Math.round(myidScore)}/100 — ${label}`}
+    >
       <svg
-        viewBox={`0 0 ${vw} ${vh}`}
+        viewBox={`0 0 ${VW} ${VH}`}
         className="w-full mx-auto"
-        style={{
-          filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.08))',
-        }}
+        style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.09))' }}
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
-          <filter id="fp-glow-hi" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          <filter id="fp-glow-hi" x="-25%" y="-25%" width="150%" height="150%">
+            <feGaussianBlur stdDeviation="5" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-          <filter id="fp-glow-med" x="-10%" y="-10%" width="120%" height="120%">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          <filter id="fp-glow-med" x="-12%" y="-12%" width="124%" height="124%">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-          <filter id="fp-core-glow">
-            <feGaussianBlur stdDeviation="18" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          <filter id="fp-core-glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="20" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-          <filter id="fp-highlight-glow">
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          <filter id="fp-pulse-glow" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
           <radialGradient id="fp-center-g" cx="50%" cy="50%">
-            <stop offset="0%" stopColor={centerColor} stopOpacity="0.25" />
-            <stop offset="100%" stopColor={centerColor} stopOpacity="0" />
+            <stop offset="0%"   stopColor={centerColor} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={centerColor} stopOpacity="0"    />
           </radialGradient>
-          <radialGradient id="fp-bg-g" cx="50%" cy="44%" r="50%">
-            <stop offset="0%" stopColor="hsl(220, 20%, 50%)" stopOpacity="0.04" />
-            <stop offset="100%" stopColor="hsl(220, 20%, 50%)" stopOpacity="0" />
-          </radialGradient>
-          <filter id="fp-pulse-glow">
-            <feGaussianBlur stdDeviation="10" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-          <filter id="fp-label-shadow">
-            <feDropShadow dx="0" dy="1" stdDeviation="3" floodOpacity="0.2" />
-          </filter>
+          <linearGradient id="fp-legend-g" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor="hsl(270,60%,72%)" />
+            <stop offset="25%"  stopColor="hsl(230,70%,60%)" />
+            <stop offset="50%"  stopColor="hsl(35,85%,55%)"  />
+            <stop offset="75%"  stopColor="hsl(15,90%,50%)"  />
+            <stop offset="100%" stopColor="hsl(0,85%,50%)"   />
+          </linearGradient>
         </defs>
 
-        <ellipse cx={cx} cy={cy} rx={580} ry={580} fill="url(#fp-bg-g)" />
+        {/* Ambient glow */}
+        <circle cx={CX} cy={CY} r={MAX_R + 40} fill="url(#fp-center-g)" opacity="0.30" />
 
-        {/* ── Center: progress ring + score + status ── */}
-        <circle cx={cx} cy={cy} r={100} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
-
-        {/* Background track */}
-        <circle cx={cx} cy={cy} r={84} fill="none" stroke={centerColor} strokeWidth="5" opacity="0.1"
-          transform={`rotate(-90, ${cx}, ${cy})`} />
-        {/* Progress arc */}
-        <circle cx={cx} cy={cy} r={84} fill="none" stroke={centerColor} strokeWidth="7"
-          strokeDasharray={2 * Math.PI * 84} strokeDashoffset={(2 * Math.PI * 84) - (2 * Math.PI * 84 * Math.min(myidScore, 100)) / 100}
-          strokeLinecap="round" opacity="0.65"
-          transform={`rotate(-90, ${cx}, ${cy})`}
-          style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1)' }} />
-
-        <text x={cx} y={cy - 20} textAnchor="middle" fontSize="66" fontWeight="900" fill={centerColor} dominantBaseline="central"
-          style={{ transition: 'fill 0.3s ease' }}>
-          {Math.round(myidScore)}
-        </text>
-        <text x={cx} y={cy + 24} textAnchor="middle" fontSize="20" fontWeight="700" fill={centerColor} opacity="0.5">
-          /100
-        </text>
-        <text x={cx} y={cy + 56} textAnchor="middle" fontSize="19" fontWeight="800" fill={centerColor} opacity="0.85"
-          letterSpacing="2">
-          {label.toUpperCase()}
-        </text>
-
-        {/* ── Ridges (arcs only) ── */}
+        {/* ── Rings ── */}
         {ridgeData.map((ridge, ridgeIdx) => {
-          const segments: { start: number; sweep: number }[] = [];
-          const gaps = [...ridge.gapPositions].sort();
-          if (gaps.length === 0) {
-            segments.push({ start: ridge.startAngle, sweep: ridge.availableSweep });
-          } else {
-            let lastEnd = 0;
-            gaps.forEach((gapPos) => {
-              const segEnd = gapPos * ridge.availableSweep;
-              const segSweep = segEnd - lastEnd;
-              if (segSweep > 2) segments.push({ start: ridge.startAngle + lastEnd, sweep: segSweep - ridge.gapSize / 2 });
-              lastEnd = segEnd + ridge.gapSize / 2;
-            });
-            const lastSweep = ridge.availableSweep - lastEnd;
-            if (lastSweep > 2) segments.push({ start: ridge.startAngle + lastEnd, sweep: lastSweep });
-          }
-
-          const isActive = activeIdx === ridgeIdx;
+          const isActive   = activeIdx === ridgeIdx;
           const isRevealed = revealProgress > ridgeIdx;
+          const sw         = isActive ? STROKE + 8 : STROKE;
+
+          // Background: full 360° circle (no gap) — very faint reference track
+          const fillPath = arcPath(ridge.r, ridge.startDeg, Math.min(ridge.filledSweep, AVAIL_SWEEP));
+
+          // Short label at the midpoint of the filled arc
+          const labelAngleDeg = ridge.startDeg + ridge.filledSweep / 2;
+          const labelAngleRad = (labelAngleDeg * Math.PI) / 180;
+          const lx = CX + ridge.r * Math.cos(labelAngleRad);
+          const ly = CY + ridge.r * Math.sin(labelAngleRad);
+          // Flip text in the upper-left / upper-right quadrants to avoid upside-down rendering
+          const rawRot = labelAngleDeg + 90;
+          const rot    = (labelAngleDeg % 360 > 90 && labelAngleDeg % 360 < 270)
+            ? rawRot + 180 : rawRot;
+
+          const sigla  = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
+          const arcLen = (Math.min(ridge.filledSweep, AVAIL_SWEEP) * Math.PI * ridge.r) / 180;
+          const showSig = arcLen > 42;
 
           return (
-            <g key={ridge.scoreKey}
+            <g
+              key={ridge.scoreKey}
               role="button"
               aria-label={`${ridge.label}: ${ridge.value.toFixed(1)} de 10`}
               onMouseEnter={() => { setHoveredIdx(ridgeIdx); onRingHover?.(ridge.scoreKey); }}
               onMouseLeave={() => { setHoveredIdx(null); onRingHover?.(null); }}
-              onClick={() => handleRidgeClick(ridge, ridgeIdx)}
+              onClick={() => handleClick(ridge, ridgeIdx)}
               style={{
                 cursor: 'pointer',
                 opacity: isRevealed ? 1 : 0,
-                transform: isRevealed ? 'none' : 'scale(0.97)',
-                transition: `opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${ridgeIdx * 60}ms, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${ridgeIdx * 60}ms`,
+                transition: `opacity 0.55s ease ${ridgeIdx * 65}ms`,
               }}
             >
-              {/* Background track */}
-              {segments.map((seg, si) => {
-                const path = arcPath(ridge.rx, ridge.ry, seg.start, seg.sweep);
-                if (!path) return null;
-                return <path key={`bg-${si}`} d={path} fill="none" stroke={ridge.computedColor}
-                  strokeWidth={ridge.strokeWidth} strokeLinecap="butt"
-                  opacity={0.09} style={{ transition: 'opacity 0.3s ease' }} />;
-              })}
+              {/* Full-circle background track (360°, no gap) */}
+              <circle
+                cx={CX} cy={CY} r={ridge.r}
+                fill="none"
+                stroke={ridge.color}
+                strokeWidth={STROKE}
+                opacity={0.08}
+              />
 
-              {/* Filled arc */}
-              {(() => {
-                const path = arcPath(ridge.rx, ridge.ry, ridge.startAngle, Math.min(ridge.filledSweep, ridge.availableSweep));
-                if (!path) return null;
-                return <path d={path} fill="none" stroke={ridge.computedColor}
-                  strokeWidth={isActive ? ridge.strokeWidth + 6 : ridge.strokeWidth}
+              {/* Value arc — starts at this ring's unique angle */}
+              {fillPath && (
+                <path
+                  d={fillPath}
+                  fill="none"
+                  stroke={ridge.color}
+                  strokeWidth={sw}
                   strokeLinecap="round"
-                  opacity={isActive ? 1 : ridge.computedOpacity}
-                  filter={isActive ? 'url(#fp-highlight-glow)' : ridge.value >= 7 ? 'url(#fp-glow-hi)' : ridge.value >= 4 ? 'url(#fp-glow-med)' : undefined}
-                  style={{ transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} />;
-              })()}
+                  opacity={isActive ? 1 : ridge.opacity}
+                  filter={
+                    isActive           ? 'url(#fp-glow-hi)'  :
+                    ridge.value >= 7   ? 'url(#fp-glow-hi)'  :
+                    ridge.value >= 4.5 ? 'url(#fp-glow-med)' : undefined
+                  }
+                  style={{ transition: 'stroke-width 0.2s ease, opacity 0.2s ease' }}
+                />
+              )}
+
+              {/* Sigla centralizada no arco — nome completo na legenda abaixo */}
+              {showSig && isRevealed && fillPath && (
+                <text
+                  x={lx} y={ly}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={13}
+                  fontWeight="900"
+                  fill="white"
+                  stroke={ridge.color}
+                  strokeWidth="1.2"
+                  paintOrder="stroke"
+                  letterSpacing="0.5"
+                  opacity={isActive ? 1 : 0.92}
+                  transform={`rotate(${rot}, ${lx}, ${ly})`}
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {sigla}
+                </text>
+              )}
             </g>
           );
         })}
 
-        {/* ── Siglas INSIDE rings (rotated along tangent) ── */}
-        {ridgeData.map((ridge, ridgeIdx) => {
-          const isActive = activeIdx === ridgeIdx;
-          const isRevealed = revealProgress > ridgeIdx;
-          if (!isRevealed) return null;
+        {/* Outer labels removed — sigla + nome ficam juntos dentro de cada arco */}
 
-          const sigla = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
-          // Need enough arc length to fit the sigla
-          const arcLen = (Math.min(ridge.filledSweep, ridge.availableSweep) * Math.PI * ridge.rx) / 180;
-          const fontSize = Math.max(Math.min(ridge.strokeWidth * 0.55, 18), 10);
-          const needed = sigla.length * fontSize * 0.62;
-          if (arcLen < needed + 6) return null;
+        {/* ── Center core ── */}
+        <circle cx={CX} cy={CY} r={BASE_R - 12} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
 
-          const labelAngleDeg = ridge.startAngle + ridge.filledSweep / 2;
-          const labelRad = (labelAngleDeg * Math.PI) / 180;
-          const lx = cx + ridge.rx * Math.cos(labelRad);
-          const ly = cy + ridge.rx * Math.sin(labelRad);
-          const rot = labelAngleDeg + 90;
+        {/* Progress ring */}
+        <circle cx={CX} cy={CY} r={50} fill="none" stroke={centerColor} strokeWidth={5} opacity="0.12"
+          transform={`rotate(-90, ${CX}, ${CY})`}
+        />
+        <circle cx={CX} cy={CY} r={50} fill="none" stroke={centerColor} strokeWidth={6}
+          strokeLinecap="round" opacity="0.72"
+          strokeDasharray={`${2 * Math.PI * 50}`}
+          strokeDashoffset={`${2 * Math.PI * 50 * (1 - Math.min(myidScore, 100) / 100)}`}
+          transform={`rotate(-90, ${CX}, ${CY})`}
+          style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1)' }}
+        />
 
-          return (
-            <text
-              key={`sig-${ridge.scoreKey}`}
-              x={lx} y={ly}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={fontSize}
-              fontWeight="900"
-              fill="white"
-              stroke={ridge.computedColor}
-              strokeWidth="0.8"
-              paintOrder="stroke"
-              letterSpacing="0.5"
-              opacity={isActive ? 1 : 0.95}
-              transform={`rotate(${rot}, ${lx}, ${ly})`}
-              style={{ pointerEvents: 'none', transition: 'opacity 0.3s ease' }}
-            >
-              {sigla}
-            </text>
-          );
-        })}
+        {/* Score text */}
+        <text x={CX} y={CY - 14} textAnchor="middle" dominantBaseline="central"
+          fontSize="50" fontWeight="900" fill={centerColor}
+          style={{ transition: 'fill 0.3s ease' }}>
+          {Math.round(myidScore)}
+        </text>
+        <text x={CX} y={CY + 20} textAnchor="middle"
+          fontSize="14" fontWeight="600" fill={centerColor} opacity="0.55">
+          /100
+        </text>
+        <text x={CX} y={CY + 42} textAnchor="middle"
+          fontSize="13" fontWeight="800" fill={centerColor} opacity="0.88"
+          letterSpacing="2.5">
+          {label.toUpperCase()}
+        </text>
 
-
+        {/* Dashed separator between capacity (inner) and demand (outer) rings */}
+        {innerRings.length > 0 && outerRings.length > 0 && (
+          <circle
+            cx={CX} cy={CY}
+            r={BASE_R + innerRings.length * spacing}
+            fill="none"
+            stroke="hsl(var(--border))"
+            strokeWidth={1.5}
+            opacity={0.28}
+            strokeDasharray="6 5"
+          />
+        )}
 
         {/* Red flags pulse */}
         {hasRedFlags && (
-          <g style={{ animation: 'fpPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
-            <circle cx={cx} cy={cy} r={500} fill="none" stroke="hsl(0, 72%, 51%)" strokeWidth="2.5" strokeDasharray="5 10" opacity="0.5" />
-            <circle cx={cx} cy={cy} r={510} fill="none" stroke="hsl(0, 72%, 51%)" strokeWidth="8" opacity="0.12" filter="url(#fp-pulse-glow)" />
-            <text x={cx} y={cy - 530} textAnchor="middle" fill="hsl(0, 72%, 51%)" fontSize="16" fontWeight="900" letterSpacing="2.5">
-              SINAIS DE ALERTA DETECTADOS
+          <g style={{ animation: 'fpPulse 1.8s ease-in-out infinite' }}>
+            <circle cx={CX} cy={CY} r={MAX_R + 18} fill="none"
+              stroke="hsl(0,72%,51%)" strokeWidth={2} strokeDasharray="6 9" opacity={0.55}
+            />
+            <circle cx={CX} cy={CY} r={MAX_R + 24} fill="none"
+              stroke="hsl(0,72%,51%)" strokeWidth={7} opacity={0.10}
+              filter="url(#fp-pulse-glow)"
+            />
+            <text x={CX} y={CY - MAX_R - 42} textAnchor="middle"
+              fill="hsl(0,72%,51%)" fontSize="14" fontWeight="900" letterSpacing="2.5">
+              ⚠ SINAIS DE ALERTA DETECTADOS
             </text>
           </g>
         )}
 
-        <style>{`@keyframes fpPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.9; } }`}</style>
+        {/* Legend */}
+        {(() => {
+          const lx0 = 90, ly0 = VH - 52, barW = 820, barH = 14;
+          return (
+            <g>
+              <text x={lx0} y={ly0 - 10} fontSize="13" fontWeight="700"
+                fill="hsl(var(--muted-foreground))" letterSpacing="1.8" opacity={0.55}>
+                ESCALA DE COMPROMETIMENTO
+              </text>
+              <rect x={lx0} y={ly0} width={barW} height={barH} rx={barH / 2}
+                fill="url(#fp-legend-g)" opacity={0.85}
+              />
+              <text x={lx0}          y={ly0 + barH + 18} textAnchor="middle"
+                fontSize="13" fontWeight="700" fill="hsl(270,60%,65%)" opacity={0.80}>
+                Ótimo
+              </text>
+              <text x={lx0 + barW}   y={ly0 + barH + 18} textAnchor="middle"
+                fontSize="13" fontWeight="700" fill="hsl(0,75%,55%)" opacity={0.80}>
+                Crítico
+              </text>
+            </g>
+          );
+        })()}
 
-        {/* ── Legend bar ── */}
-        <g transform={`translate(80, ${vh - 55})`}>
-          <text x={0} y={14} fontSize="16" fontWeight="700" fill="hsl(var(--foreground))" letterSpacing="2" opacity="0.6">ESCALA:</text>
-          {[
-            { color: 'hsl(270, 60%, 75%)', x: 110 },
-            { color: 'hsl(230, 70%, 60%)', x: 140 },
-            { color: 'hsl(210, 75%, 55%)', x: 170 },
-            { color: 'hsl(35, 85%, 55%)', x: 200 },
-            { color: 'hsl(0, 85%, 50%)', x: 230 },
-          ].map((c, i) => <rect key={i} x={c.x} y={0} width={26} height={18} rx={4} fill={c.color} opacity={0.8} />)}
-          <text x={110} y={38} fontSize="13" fill="hsl(var(--muted-foreground))" fontWeight="600">Ótimo</text>
-          <text x={235} y={38} fontSize="13" fill="hsl(var(--muted-foreground))" fontWeight="600">Crítico</text>
-
-        </g>
+        <style>{`
+          @keyframes fpPulse {
+            0%, 100% { opacity: 0.25; }
+            50%       { opacity: 0.85; }
+          }
+        `}</style>
       </svg>
 
-      {/* ── Painel explicativo do anel ativo ── */}
+      {/* Detail panel */}
       {!compact && (() => {
-        const idx = activeIdx;
-        const ridge = idx !== null && idx >= 0 && idx < ridgeData.length ? ridgeData[idx] : null;
-        const info = ridge ? RING_DESCRIPTIONS[ridge.scoreKey] : null;
+        const ridge = activeIdx !== null && activeIdx >= 0 && activeIdx < ridgeData.length
+          ? ridgeData[activeIdx] : null;
+        const info  = ridge ? RING_DESCRIPTIONS[ridge.scoreKey] : null;
+
         return (
-          <div className="mt-3 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm p-4 sm:p-5 shadow-xs min-h-[140px] transition-all">
+          <div className="mt-3 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm p-4 shadow-xs min-h-[130px] transition-all duration-200">
             {ridge && info ? (
               <>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: ridge.computedColor }} />
-                  <h4 className="text-sm font-bold tracking-wide" style={{ color: ridge.computedColor }}>
+                  <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ background: ridge.color }} />
+                  <h4 className="text-sm font-bold tracking-wide" style={{ color: ridge.color }}>
                     {info.title}
                   </h4>
-                  <span className="ml-auto text-xs font-semibold text-muted-foreground">
-                    {ridge.value.toFixed(1)} / 10
+                  <span className="ml-auto text-xs font-bold tabular-nums" style={{ color: ridge.color }}>
+                    {ridge.value.toFixed(1)}<span className="text-muted-foreground font-normal">/10</span>
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{info.summary}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {info.components.map((c) => (
-                    <span key={c} className="text-[11px] px-2 py-1 rounded-md bg-muted/60 text-foreground/80 border border-border/30">
+                    <span key={c}
+                      className="text-[11px] px-2 py-0.5 rounded-md bg-muted/60 text-foreground/75 border border-border/30">
                       {c}
                     </span>
                   ))}
                 </div>
               </>
             ) : (
-              <p className="text-xs text-muted-foreground text-center py-6">
-                Toque ou passe o mouse sobre um anel para ver o que ele representa e quais fatores o compõem.
-              </p>
+              /* Legenda sempre visível — mapeia sigla ↔ dimensão */
+              <div>
+                <p className="text-[11px] text-muted-foreground mb-2 font-semibold tracking-wide uppercase">
+                  Legenda das dimensões
+                </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {ridgeData.map((r) => (
+                    <button
+                      key={r.scoreKey}
+                      className="flex items-center gap-1.5 text-left hover:opacity-80 transition-opacity"
+                      onClick={() => handleClick(r, r.index)}
+                    >
+                      <span className="shrink-0 w-2 h-2 rounded-full" style={{ background: r.color }} />
+                      <span className="text-[11px] font-black tabular-nums" style={{ color: r.color }}>
+                        {r.scoreKey}
+                      </span>
+                      <span className="text-[11px] text-foreground/70 truncate">
+                        {FULL_LABELS[r.scoreKey] || r.label}
+                      </span>
+                      <span className="ml-auto text-[10px] text-muted-foreground tabular-nums shrink-0">
+                        {r.value.toFixed(1)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         );

@@ -39,68 +39,21 @@ interface MyIDInput {
   textoRelato?: string; // pain_location, queixa, observações
 }
 
-// Cada regra: se o score atinge o limiar, marca essas regiões.
-// O multiplicador determina como o score vira intensidade no avatar.
-const REGRAS_MYID: Array<{
-  dimensao: keyof MyIDScores;
-  limiar: number;
-  regioes: string[];
-  sistema: SistemaCorporal;
-  motivo: string;
-}> = [
-  // EFI alto = limitação funcional → articulações de carga
-  {
-    dimensao: 'EFI',
-    limiar: 6,
-    regioes: ['joelho_d', 'joelho_e', 'lombar', 'ombro_d', 'ombro_e'],
-    sistema: 'musculoesqueletico',
-    motivo: 'Limitação funcional alta — articulações de carga sob sobrecarga',
-  },
-  // AF alto = inatividade → sedentarismo concentra dor lombar/glútea
-  {
-    dimensao: 'AF',
-    limiar: 6,
-    regioes: ['lombar', 'gluteos', 'coxa_d', 'coxa_e'],
-    sistema: 'musculoesqueletico',
-    motivo: 'Inatividade física — encurtamentos e desuso de cadeia posterior',
-  },
-  // R alto = regulação ruim (sono/estresse) → somatização em cabeça
-  {
-    dimensao: 'R',
-    limiar: 7,
-    regioes: ['cabeca', 'cervical'],
-    sistema: 'nervoso',
-    motivo: 'Desregulação (sono/estresse) — manifestação cervical e cefaleia',
-  },
-  // C alto = contexto adverso → tensão muscular psicossomática
-  {
-    dimensao: 'C',
-    limiar: 6,
-    regioes: ['trapezio_d', 'trapezio_e', 'cervical'],
-    sistema: 'musculoesqueletico',
-    motivo: 'Contexto adverso — tensão psicossomática em cintura escapular',
-  },
-  // ERG alto = ergonomia ruim (postura) → cadeia postural completa
-  {
-    dimensao: 'ERG',
-    limiar: 6,
-    regioes: ['cervical', 'lombar', 'trapezio_d', 'trapezio_e', 'dorsal'],
-    sistema: 'musculoesqueletico',
-    motivo: 'Ergonomia inadequada — sobrecarga postural axial',
-  },
-  // P alto = kinesiofobia → afeta movimento global, marcador na lombar (mais comum)
-  {
-    dimensao: 'P',
-    limiar: 5,
-    regioes: ['lombar'],
-    sistema: 'nervoso',
-    motivo: 'Kinesiofobia — evitação de movimento amplifica dor central',
-  },
-];
+/**
+ * NOTA — Princípio anti-nocebo (revisão clínica multidisciplinar):
+ * Scores dimensionais (EFI, AF, R, C, ERG, P, I, N, HID) são indicadores indiretos
+ * e NUNCA devem acender regiões no mapa corporal por inferência estatística pura —
+ * isso gerava ruído clínico (ex.: EFI alto acendia 5 articulações sem o paciente
+ * jamais ter relatado dor nelas). Essas dimensões agora alimentam o componente
+ * `RadarDeAvaliacao` (sugestões textuais de investigação, sem alarme visual).
+ *
+ * Esta função permanece focada exclusivamente em regiões EXPLICITAMENTE
+ * mencionadas pelo paciente em texto livre (queixa, observações, etc.) —
+ * a única fonte legítima para destacar uma região anatômica a partir do MyID.
+ */
 
 /**
- * Calcula intensidade no avatar (0-10) a partir do score MyID.
- * Quanto maior o score, mais intenso o achado visual.
+ * Calcula intensidade no avatar (0-10) a partir do score de dor (D).
  */
 function scoreParaIntensidade(score: number): number {
   // score 0-10 → intensidade 3-10 (mínimo 3 pra aparecer no avatar)
@@ -109,34 +62,13 @@ function scoreParaIntensidade(score: number): number {
 
 /**
  * Motor principal: recebe scores + texto do MyID e produz achados pro avatar.
+ * Só gera achados a partir de menções explícitas de região no relato do paciente —
+ * nunca a partir de scores dimensionais isolados (ver nota acima).
  */
 export function inferirAchadosDoMyID(input: MyIDInput): AchadoAvatar[] {
   const achadosPorRegiao = new Map<string, AchadoAvatar>();
 
-  // 1) Aplicar regras baseadas nos scores
-  REGRAS_MYID.forEach(regra => {
-    const score = input.scores[regra.dimensao];
-    if (score == null || score < regra.limiar) return;
-
-    const intensidade = scoreParaIntensidade(score);
-
-    regra.regioes.forEach(regiao_id => {
-      const existente = achadosPorRegiao.get(regiao_id);
-      if (!existente || existente.intensidade < intensidade) {
-        achadosPorRegiao.set(regiao_id, {
-          regiao_id,
-          intensidade,
-          fontes: ['myid'],
-          sistema: regra.sistema,
-          myid_dimensao_origem: regra.dimensao,
-          myid_score_origem: score,
-          motivo: regra.motivo,
-        });
-      }
-    });
-  });
-
-  // 2) Extrair regiões mencionadas no texto livre do MyID (ex: pain_location)
+  // Extrair regiões mencionadas no texto livre do MyID (ex: pain_location)
   if (input.textoRelato && input.textoRelato.trim().length > 0) {
     const sintomas = encontrarSintomasEmTexto(input.textoRelato);
     const scoreDor = input.scores.D ?? 0;

@@ -37,16 +37,23 @@ export async function requireUser(req: Request): Promise<{ userId: string; token
 /**
  * Returns true when the request was issued by a trusted internal caller
  * (pg_cron job or another edge function using the service role key).
- * Accepts either Authorization: Bearer <SERVICE_ROLE_KEY> or x-cron-secret header.
+ * Accepts:
+ *   - Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+ *   - x-cron-secret: <SUPABASE_SERVICE_ROLE_KEY>
+ *   - Authorization: Bearer <CRON_SECRET>  (custom secret for pg_cron jobs)
+ *   - x-cron-secret: <CRON_SECRET>
  */
 export function isInternalCall(req: Request): boolean {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const cronSecret = Deno.env.get("CRON_SECRET");
   if (!serviceKey) return false;
   const auth = (req.headers.get("Authorization") || req.headers.get("authorization") || "")
     .replace("Bearer ", "")
     .trim();
   const cronHeader = (req.headers.get("x-cron-secret") || "").trim();
-  return auth === serviceKey || cronHeader === serviceKey;
+  return auth === serviceKey
+    || cronHeader === serviceKey
+    || (!!cronSecret && (auth === cronSecret || cronHeader === cronSecret));
 }
 
 /** Reject the request unless it comes from an internal caller. */

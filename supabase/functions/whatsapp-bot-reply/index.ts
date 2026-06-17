@@ -110,6 +110,14 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "registrar_chegada",
+      description: "Registra que o paciente chegou à clínica (check-in na sala de espera). Use quando o paciente disser CHEGUEI, ESTOU AQUI, CHEGUEL, JÁ CHEGUEI, ESTOU NA RECEPÇÃO ou similar.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "escalar_para_humano",
       description: "Pausa o bot e marca a conversa como precisa de atenção do profissional. Use SEMPRE em red flags, urgência clínica, conteúdo sensível ou quando não souber responder com segurança.",
       parameters: {
@@ -182,6 +190,34 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
         metadata: { agendamento_id: data.id, paciente_id: ctx.paciente.id },
       });
       return { ok: true, data_confirmada: data_inicio.toLocaleString("pt-BR") };
+    }
+
+    if (name === "registrar_chegada") {
+      const hoje = new Date();
+      const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString();
+      const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59).toISOString();
+      const { data: agHoje } = await admin.from("agendamentos")
+        .select("id, data_inicio")
+        .eq("terapeuta_id", terapeuta_id)
+        .eq("paciente_id", ctx.paciente.id)
+        .in("status", ["confirmado", "pendente"])
+        .gte("data_inicio", inicioDia)
+        .lte("data_inicio", fimDia)
+        .order("data_inicio", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (!agHoje) return { ok: false, erro: "Nenhuma sessão encontrada para hoje." };
+      await admin.from("agendamentos")
+        .update({ checked_in_em: new Date().toISOString() })
+        .eq("id", agHoje.id);
+      await admin.from("notificacoes").insert({
+        terapeuta_id, tipo: "checkin_sala_espera",
+        titulo: "🟢 Paciente chegou",
+        descricao: `${ctx.paciente.nome} fez check-in — está na sala de espera.`,
+        rota: `/agenda`,
+        metadata: { agendamento_id: agHoje.id },
+      });
+      return { ok: true, mensagem_ao_paciente: `Perfeito! Sua chegada foi registrada. 😊 Por favor, aguarde na recepção — em breve você será chamado(a).` };
     }
 
     if (name === "confirmar_proxima_sessao") {
@@ -261,7 +297,7 @@ async function chamarLLM(messages: any[], systemPrompt: string, allowTools = tru
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-2.0-flash",
       messages: [{ role: "system", content: systemPrompt }, ...messages],
       ...(allowTools ? { tools, tool_choice: "auto" } : {}),
     }),

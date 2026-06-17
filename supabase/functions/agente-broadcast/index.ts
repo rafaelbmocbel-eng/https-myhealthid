@@ -1,6 +1,6 @@
 // Agente broadcast — dispara campanha de mensagens em massa personalizadas pela IA
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { requireInternal } from "../_shared/auth.ts";
+import { isInternalCall, requireUser } from "../_shared/auth.ts";
 import { montarContextoClinico, buildSystemPrompt } from "../_shared/agente-contexto.ts";
 
 const corsHeaders = {
@@ -15,7 +15,7 @@ async function gerarMensagem(systemPrompt: string, intencao: string): Promise<st
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-2.0-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Gere uma mensagem WhatsApp PERSONALIZADA para este paciente comunicando: "${intencao}". A mensagem deve ser curta (2-4 linhas), pessoal, e adaptada ao contexto clínico do paciente quando relevante. Não invente fatos. Apenas a mensagem final.` },
@@ -41,7 +41,20 @@ async function enviarWhatsapp(admin: any, terapeuta_id: string, phone: string, m
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  try { requireInternal(req); } catch (r) { return r as Response; }
+
+  // Aceita chamadas internas (cron/scheduler) ou de terapeuta autenticado
+  let callerTerapeutaId: string | null = null;
+  if (!isInternalCall(req)) {
+    try {
+      const { userId } = await requireUser(req);
+      callerTerapeutaId = userId;
+    } catch {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   try {
     const { broadcast_id } = await req.json();
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -49,6 +62,13 @@ Deno.serve(async (req) => {
     const { data: bc, error } = await admin.from("agente_broadcasts")
       .select("*").eq("id", broadcast_id).maybeSingle();
     if (error || !bc) throw new Error("broadcast não encontrado");
+
+    // Garante que o terapeuta autenticado é dono do broadcast
+    if (callerTerapeutaId && bc.terapeuta_id !== callerTerapeutaId) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (bc.status === "executando" || bc.status === "concluido") {
       return new Response(JSON.stringify({ ok: false, error: "já em execução ou concluído" }), { headers: corsHeaders });
     }

@@ -35,12 +35,13 @@ import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import ResumoConsultaPresencial from '@/components/presencial/ResumoConsultaPresencial';
-import AvaliacoesVozHistorico from '@/components/voice/AvaliacoesVozHistorico';
+import HistoricoAvaliacoesTab from '@/components/paciente/HistoricoAvaliacoesTab';
 import AvaliacaoVozAtual from '@/components/voice/AvaliacaoVozAtual';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import PortalControleTab from '@/components/paciente/PortalControleTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
 import { TimelineUnificada } from '@/components/paciente/TimelineUnificada';
+import TimelineVidaCompleta from '@/components/paciente/TimelineVidaCompleta';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
 import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
@@ -721,61 +722,18 @@ export default function PacientePerfil() {
               </div>
             </div>
 
-            {/* Links toolbar — labeled and prominent */}
+            {/* Acesso & ações rápidas — uma única linha */}
             <div className="mt-4 pt-3 border-t border-border/40">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Links de acesso do paciente
-                </span>
-              </div>
-              <LinkActionsBar
-                items={(() => {
-                  const items: LinkActionItem[] = [];
-                  items.push({
-                    key: 'myid',
-                    label: 'MyID',
-                    active: !!linkMyIDAtivo,
-                    loading: gerandoMyIDLink,
-                    color: 'emerald',
-                    isWhatsApp: !!linkMyIDAtivo && !!paciente.telefone,
-                    onAction: () =>
-                      linkMyIDAtivo &&
-                      (paciente.telefone
-                        ? shareAvaliacaoLink(
-                            `${paciente.nome} ${paciente.sobrenome}`,
-                            paciente.telefone,
-                            `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`,
-                          )
-                        : (() => {
-                            navigator.clipboard.writeText(
-                              `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`,
-                            );
-                            toast({ title: 'Link MyID copiado! 📋' });
-                          })()),
-                    onGenerate: gerarLinkMyID,
-                  });
-                  items.push({
-                    key: 'agenda',
-                    label: 'Agenda',
-                    active: !!linkAgendaAtivo,
-                    loading: gerandoAgenda,
-                    color: 'blue',
-                    isWhatsApp: !!linkAgendaAtivo && !!paciente.telefone,
-                    onAction: () =>
-                      linkAgendaAtivo &&
-                      (paciente.telefone
-                        ? shareAgendaLink(
-                            `${paciente.nome} ${paciente.sobrenome}`,
-                            paciente.telefone,
-                            getAgendaUrl(linkAgendaAtivo.token),
-                          )
-                        : copiarAgendaLink(linkAgendaAtivo.token)),
-                    onGenerate: gerarLinkAgenda,
-                  });
-                  if (paciente.portal_token) {
-                    items.push({
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+                Acesso &amp; ações
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Portal — único link de acesso direto ao paciente */}
+                {paciente.portal_token && (
+                  <LinkActionsBar
+                    items={[{
                       key: 'portal',
-                      label: 'Portal',
+                      label: 'Portal do paciente',
                       active: true,
                       color: 'violet',
                       isWhatsApp: !!paciente.telefone,
@@ -793,17 +751,16 @@ export default function PacientePerfil() {
                               navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!));
                               toast({ title: 'Link do Portal copiado! 🔗' });
                             })(),
-                    });
-                  }
-                  return items;
-                })()}
-              />
-              <IdentidadePortavelActions
-                pacienteId={paciente.id}
-                pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
-                terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
-              />
-              <div className="mt-2 flex flex-wrap gap-1.5">
+                    }]}
+                  />
+                )}
+                {/* Identidade portátil: PDF + link MyID */}
+                <IdentidadePortavelActions
+                  pacienteId={paciente.id}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                  terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
+                />
+                {/* Resumo em 30s */}
                 <ResumoRapido30s
                   pacienteId={paciente.id}
                   pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
@@ -1063,9 +1020,6 @@ export default function PacientePerfil() {
             <TabsTrigger value="presencial" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Avaliação Clínica (Voz/Áudio/Escrita + IA baseada em PubMed)">
               <Activity className="h-4 w-4 shrink-0" /> <span>Avaliação</span>
             </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Histórico de Avaliações">
-              <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
-            </TabsTrigger>
             <TabsTrigger value="diretrizes" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Diretrizes e Tratamentos">
               <Target className="h-4 w-4 shrink-0" /> <span>Diretrizes</span>
             </TabsTrigger>
@@ -1074,6 +1028,9 @@ export default function PacientePerfil() {
             </TabsTrigger>
             <TabsTrigger value="portal" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Controle do Portal do Paciente">
               <Smartphone className="h-4 w-4 shrink-0" /> <span>Portal</span>
+            </TabsTrigger>
+            <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Histórico de Avaliações">
+              <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1104,10 +1061,25 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'escalas_psicologia') && id && <EscalasPsicologiaCard pacienteId={id} />}
             {id && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <AvatarClinicoCard pacienteId={id} />
-                <RelatorioCorrelacaoCard pacienteId={id} />
-              </div>
+              <Tabs defaultValue="corpo" className="w-full">
+                <TabsList className="grid grid-cols-2 w-full max-w-sm mb-3 h-9">
+                  <TabsTrigger value="corpo" className="gap-1.5 text-xs">
+                    <Stethoscope className="h-3.5 w-3.5" /> Corpo
+                  </TabsTrigger>
+                  <TabsTrigger value="historia" className="gap-1.5 text-xs">
+                    <Clock className="h-3.5 w-3.5" /> Linha do Tempo
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="corpo" className="space-y-4 mt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <AvatarClinicoCard pacienteId={id} />
+                    <RelatorioCorrelacaoCard pacienteId={id} />
+                  </div>
+                </TabsContent>
+                <TabsContent value="historia" className="mt-0">
+                  <TimelineVidaCompleta pacienteId={id} />
+                </TabsContent>
+              </Tabs>
             )}
             <AvaliacaoVozAtual
               pacienteId={id!}
@@ -1127,19 +1099,8 @@ export default function PacientePerfil() {
           </TabsContent>
 
           {/* TAB: HISTÓRICO DE AVALIAÇÕES */}
-          <TabsContent value="historico" className="mt-4 space-y-6">
-            <AvaliacoesVozHistorico
-              pacienteId={id!}
-              patientName={`${paciente.nome} ${paciente.sobrenome}`}
-              serviceType="identidade"
-            />
-            <Suspense fallback={LazyFallback}>
-              <PacienteDashboardIdentidade
-                paciente={paciente as any}
-                onBack={() => navigate('/pacientes')}
-                subTab="historico"
-              />
-            </Suspense>
+          <TabsContent value="historico" className="mt-4">
+            <HistoricoAvaliacoesTab pacienteId={id!} />
           </TabsContent>
 
           {/* TAB: DIRETRIZES E TRATAMENTOS */}

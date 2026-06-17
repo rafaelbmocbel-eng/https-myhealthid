@@ -9,22 +9,131 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye, TrendingUp } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye, TrendingUp, Clock, History, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
 import { cn } from '@/lib/utils';
 import {
   useEventosAnatomicos, useSaveEventoAnatomico, useDeleteEventoAnatomico,
-  corEvento, type EventoAnatomico, type SistemaCorporal, type StatusEvento, type OrigemAchado,
+  corEvento, type EventoAnatomico, type SistemaCorporal, type StatusEvento, type OrigemAchado, type TipoDiagnostico,
 } from '@/hooks/useEventosAnatomicos';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
+import { inferirAchadosDoMyID } from '@/utils/anatomia/myidToAvatar';
+import { PainelContexto } from './PainelContexto';
+import { RadarDeAvaliacao } from './RadarDeAvaliacao';
+import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 
 
 const FRONT_OUTLINE =
-  'M120 18 C 138 18 152 34 152 54 C 152 70 144 84 132 90 L 134 104 C 156 110 178 118 184 132 L 192 168 L 200 230 L 204 280 L 196 308 L 188 308 L 184 282 L 176 232 L 168 178 L 160 168 L 158 220 L 156 280 L 162 360 L 158 430 L 152 500 L 138 506 L 134 500 L 132 430 L 128 360 L 124 280 L 116 280 L 112 360 L 108 430 L 106 500 L 102 506 L 88 500 L 82 430 L 78 360 L 84 280 L 82 220 L 80 168 L 72 178 L 64 232 L 56 282 L 52 308 L 44 308 L 36 280 L 40 230 L 48 168 L 56 132 C 62 118 84 110 106 104 L 108 90 C 96 84 88 70 88 54 C 88 34 102 18 120 18 Z';
+  'M120 18 C 136 18 150 30 152 48 C 154 64 146 78 136 88 C 133 90 130 92 128 94 ' +
+  'L 130 100 C 142 104 158 110 168 118 C 178 126 184 136 186 148 ' +
+  'L 194 178 L 198 220 L 202 268 L 198 300 L 192 308 L 186 308 ' +
+  'L 182 276 L 174 224 L 166 172 C 164 168 162 166 160 166 ' +
+  'L 158 212 L 156 272 L 162 356 L 158 428 L 152 496 L 140 504 ' +
+  'L 136 496 L 134 428 L 128 356 L 124 276 ' +
+  'L 116 276 L 112 356 L 106 428 L 104 496 ' +
+  'L 100 504 L 88 496 L 82 428 L 78 356 L 84 272 ' +
+  'L 82 212 L 80 166 C 78 166 76 168 74 172 ' +
+  'L 66 224 L 58 276 L 54 308 L 48 308 L 42 300 ' +
+  'L 38 268 L 42 220 L 46 178 ' +
+  'C 56 136 62 126 72 118 C 82 110 98 104 110 100 ' +
+  'L 112 94 C 110 92 107 90 104 88 C 94 78 86 64 88 48 ' +
+  'C 90 30 104 18 120 18 Z';
+
+const ORGAN_RESTING_COLORS: Record<string, string> = {
+  // Nervous — blue-lavender
+  cerebro:               'rgba(130,145,210,0.70)',
+  cerebelo:              'rgba(120,138,205,0.62)',
+  cerebro_p:             'rgba(130,145,210,0.68)',
+  cerebelo_p:            'rgba(120,138,205,0.60)',
+  tronco_encefalico:     'rgba(130,145,210,0.55)',
+  // Circulatory — red
+  coracao:               'rgba(210,45,45,0.74)',
+  // Respiratory — pink-rose
+  traqueia:              'rgba(180,130,180,0.50)',
+  pulmao_d:              'rgba(195,128,150,0.68)',
+  pulmao_e:              'rgba(195,128,150,0.68)',
+  pulmao_d_p:            'rgba(195,128,150,0.62)',
+  pulmao_e_p:            'rgba(195,128,150,0.62)',
+  // Digestive — warm ochre/brown tones
+  esofago:               'rgba(180,130,180,0.38)',
+  figado:                'rgba(148,72,32,0.68)',
+  estomago:              'rgba(210,138,118,0.62)',
+  vesicula_biliar:       'rgba(195,185,55,0.65)',
+  pancreas_corpo:        'rgba(215,168,95,0.55)',
+  duodeno:               'rgba(208,158,118,0.55)',
+  baco_frente:           'rgba(155,95,115,0.60)',
+  intestino_delgado:     'rgba(208,158,118,0.50)',
+  colon_ascendente:      'rgba(185,135,95,0.56)',
+  colon_transverso:      'rgba(185,135,95,0.56)',
+  colon_descendente:     'rgba(185,135,95,0.56)',
+  colon_sigmoide:        'rgba(185,135,95,0.56)',
+  apendice:              'rgba(185,135,95,0.60)',
+  reto:                  'rgba(185,135,95,0.52)',
+  // Endocrine — golden yellow
+  hipofise:              'rgba(208,178,58,0.65)',
+  tireoide:              'rgba(208,178,58,0.65)',
+  adrenal_d:             'rgba(208,178,58,0.58)',
+  adrenal_e:             'rgba(208,178,58,0.58)',
+  adrenal_d_p:           'rgba(208,178,58,0.55)',
+  adrenal_e_p:           'rgba(208,178,58,0.55)',
+  ilhotas_langerhans:    'rgba(215,168,95,0.52)',
+  // Urinary — indigo-blue
+  bexiga:                'rgba(95,138,218,0.62)',
+  ureteres:              'rgba(95,138,218,0.38)',
+  // Lymphatic — lime-green
+  timo:                  'rgba(115,195,95,0.54)',
+  linfonodos_cervicais:  'rgba(115,195,95,0.60)',
+  linfonodos_axilares_d: 'rgba(115,195,95,0.54)',
+  linfonodos_axilares_e: 'rgba(115,195,95,0.54)',
+  linfonodos_inguinais:  'rgba(115,195,95,0.54)',
+  cisterna_chyli:        'rgba(115,195,95,0.50)',
+  // Reproductive — pink
+  utero:                 'rgba(238,98,158,0.56)',
+  ovarios:               'rgba(238,98,158,0.52)',
+  testiculos:            'rgba(198,98,118,0.52)',
+  prostata:              'rgba(198,98,118,0.50)',
+  // Back view
+  rim_d:                 'rgba(175,88,48,0.65)',
+  rim_e:                 'rgba(175,88,48,0.65)',
+  gluteos_musculares:    'rgba(168,85,247,0.42)',
+  gluteos_p:             'rgba(168,85,247,0.42)',
+};
+
+const SYSTEM_RESTING: Record<string, string> = {
+  nervoso:       'rgba(130,145,210,0.58)',
+  circulatorio:  'rgba(210,45,45,0.62)',
+  respiratorio:  'rgba(195,128,150,0.60)',
+  digestorio:    'rgba(200,120,78,0.54)',
+  urinario:      'rgba(95,138,218,0.56)',
+  endocrino:     'rgba(208,178,58,0.56)',
+  linfatico:     'rgba(115,195,95,0.50)',
+  reprodutor:    'rgba(238,98,158,0.48)',
+  musculoesqueletico: 'rgba(168,85,247,0.40)',
+};
+
+const SYSTEM_HOVER: Record<string, string> = {
+  nervoso:       'rgba(14,165,233,0.78)',
+  circulatorio:  'rgba(239,68,68,0.82)',
+  respiratorio:  'rgba(6,182,212,0.78)',
+  digestorio:    'rgba(249,115,22,0.78)',
+  urinario:      'rgba(99,102,241,0.78)',
+  endocrino:     'rgba(234,179,8,0.78)',
+  linfatico:     'rgba(132,204,22,0.78)',
+  reprodutor:    'rgba(236,72,153,0.78)',
+  musculoesqueletico: 'rgba(168,85,247,0.78)',
+};
+
+const VESSEL_COLOR: Record<string, string> = {
+  circulatorio:  'rgba(200,40,40,0.72)',
+  respiratorio:  'rgba(100,180,212,0.68)',
+  nervoso:       'rgba(14,165,233,0.60)',
+  urinario:      'rgba(95,138,218,0.60)',
+  linfatico:     'rgba(115,195,95,0.58)',
+};
 
 const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'musculoesqueletico', 'nervoso', 'digestorio', 'circulatorio',
@@ -32,18 +141,16 @@ const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
 const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
-const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string }> = {
-  musculoesqueletico: { label: 'Musculoesquelético', icon: Zap, color: 'purple' },
-  nervoso: { label: 'Nervoso', icon: Brain, color: 'blue' },
-  digestorio: { label: 'Digestório', icon: Stethoscope, color: 'orange' },
-  circulatorio: { label: 'Circulatório', icon: Heart, color: 'red' },
-  respiratorio: { label: 'Respiratório', icon: Wind, color: 'cyan' },
-  endocrino: { label: 'Endócrino', icon: Dna, color: 'yellow' },
-  urinario: { label: 'Urinário', icon: Droplets, color: 'indigo' },
-  reprodutor: { label: 'Reprodutor', icon: Heart, color: 'pink' },
-  tegumentar: { label: 'Tegumentar', icon: Shield, color: 'stone' },
-  linfatico: { label: 'Linfático', icon: Waves, color: 'lime' },
-  sensorial: { label: 'Sensorial', icon: Eye, color: 'emerald' },
+
+// Lente de especialidade: quais sistemas são prioritários pra cada profissão.
+// Usado para destacar (não esconder) os sistemas mais relevantes daquele profissional.
+const SISTEMAS_POR_ESPECIALIDADE: Record<PerfilProfissional, SistemaCorporal[]> = {
+  fisioterapeuta: ['musculoesqueletico', 'nervoso'],
+  medico: [...SISTEMAS_ORDEM],
+  psicologo: ['nervoso'],
+  nutricionista: ['digestorio', 'endocrino'],
+  educador_fisico: ['musculoesqueletico'],
+  terapeuta_ocupacional: ['musculoesqueletico', 'nervoso', 'sensorial'],
 };
 
 const SISTEMA_CHART_COLOR: Record<SistemaCorporal, string> = {
@@ -58,6 +165,75 @@ const SISTEMA_CHART_COLOR: Record<SistemaCorporal, string> = {
   tegumentar: '#78716c',
   linfatico: '#84cc16',
   sensorial: '#10b981',
+};
+
+const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string; resumo: string }> = {
+  musculoesqueletico: { 
+    label: 'Musculoesquelético', 
+    icon: Zap, 
+    color: 'purple',
+    resumo: 'Sistema de suporte e alavanca mecânica, integrando ossos, articulações, músculos e fáscias sob controle neural para postura e movimento.'
+  },
+  nervoso: { 
+    label: 'Nervoso', 
+    icon: Brain, 
+    color: 'blue',
+    resumo: 'Rede eletroquímica central e periférica que processa estímulos, coordena respostas reflexas e voluntárias e mantém a homeostase sistêmica.'
+  },
+  digestorio: { 
+    label: 'Digestório', 
+    icon: Stethoscope, 
+    color: 'orange',
+    resumo: 'Trato gastrointestinal e glândulas anexas responsáveis pela quebra mecânico-química, absorção de nutrientes e barreira imunológica entérica.'
+  },
+  circulatorio: { 
+    label: 'Circulatório', 
+    icon: Heart, 
+    color: 'red',
+    resumo: 'Sistema hemodinâmico de transporte de gases, nutrientes e sinalizadores hormonais através de uma rede contínua de vasos e bomba cardíaca.'
+  },
+  respiratorio: { 
+    label: 'Respiratório', 
+    icon: Wind, 
+    color: 'cyan',
+    resumo: 'Interface de hematose entre o ambiente e o sangue, abrangendo vias condutoras e unidades alveolares para troca de oxigênio e CO2.'
+  },
+  endocrino: { 
+    label: 'Endócrino', 
+    icon: Dna, 
+    color: 'yellow',
+    resumo: 'Eixo de controle humoral composto por glândulas que secretam mensageiros químicos (hormônios) para regulação metabólica de longo prazo.'
+  },
+  urinario: { 
+    label: 'Urinário', 
+    icon: Droplets, 
+    color: 'indigo',
+    resumo: 'Complexo de filtração renal e vias excretoras essencial para o equilíbrio hidroeletrolítico, controle pressórico e depuração de catabólitos.'
+  },
+  reprodutor: { 
+    label: 'Reprodutor', 
+    icon: Heart, 
+    color: 'pink',
+    resumo: 'Órgãos e gônadas responsáveis pela perpetuação da espécie e produção de esteroides sexuais que influenciam múltiplos sistemas.'
+  },
+  tegumentar: { 
+    label: 'Tegumentar', 
+    icon: Shield, 
+    color: 'stone',
+    resumo: 'Interface de proteção externa, termorregulação e vasta rede de exterocepção sensorial através da pele e seus anexos epidérmicos.'
+  },
+  linfatico: { 
+    label: 'Linfático', 
+    icon: Waves, 
+    color: 'lime',
+    resumo: 'Sistema de drenagem intersticial e vigilância imunológica, integrando linfonodos e vasos para transporte de lipídios e defesa celular.'
+  },
+  sensorial: { 
+    label: 'Sensorial', 
+    icon: Eye, 
+    color: 'emerald',
+    resumo: 'Complexo de transdutores biológicos (visão, audição, olfato, paladar, tato) que convertem estímulos ambientais em impulsos neurais.'
+  },
 };
 
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = Object.fromEntries(
@@ -83,8 +259,6 @@ const ORIGEM_LABEL: Record<OrigemAchado, string> = {
 // até ser confirmado como achado clínico (ver fluxo de confirmação no painel).
 const PESO_SEVERIDADE: Record<number, number> = { 1: 1, 2: 2.5, 3: 5 };
 const PESO_STATUS: Record<StatusEvento, number> = { ativo: 1, cronico: 0.8, em_tratamento: 0.6, resolvido: 0 };
-const PESO_SINAL_MYID = 0.5; // relato subjetivo ainda não correlacionado a achado clínico
-const CARGA_MAXIMA_POR_SISTEMA = 20; // evita que um único sistema domine o índice global
 
 function pesoConfirmacao(e: EventoAnatomico): number {
   return e.tipo_diagnostico === 'relato_paciente' ? 0.5 : 1;
@@ -93,6 +267,26 @@ function pesoConfirmacao(e: EventoAnatomico): number {
 function cargaEvento(e: EventoAnatomico): number {
   return (PESO_SEVERIDADE[e.severidade] ?? 1) * (PESO_STATUS[e.status] ?? 0) * pesoConfirmacao(e);
 }
+
+const TIPO_DIAG_BADGE: Record<string, string> = {
+  relato_paciente: 'Relato',
+  historico_relatado: 'Histórico ⏳',
+  achado_clinico: 'Achado',
+  diagnostico_medico: 'Dx Med.',
+  diagnostico_fisioterapia: 'Dx Fisio',
+  diagnostico_psicologia: 'Dx Psico',
+  diagnostico_nutricao: 'Dx Nutri',
+  diagnostico_fonoaudiologia: 'Dx Fono',
+  diagnostico_outro: 'Dx Esp.',
+};
+
+// Peso do tipo para determinar qual evento domina visualmente em regiões sobrepostas
+const tipoPeso = (td: string | undefined): number => {
+  if (!td) return 2;
+  if (td.startsWith('diagnostico_')) return 3; // confirmado por profissional
+  if (td === 'achado_clinico') return 2; // achado presencial
+  return 1; // relato ou histórico não confirmado
+};
 
 interface Props {
   pacienteId: string;
@@ -112,6 +306,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number }[] | null>(null);
+  // Anti-nocebo: relatos MyID (autorelato) ficam OCULTOS do mapa corporal por padrão.
+  // O clínico decide ativamente se quer sobrepor esses sinais ao mapa.
+  const [mostrarMyIDNoMapa, setMostrarMyIDNoMapa] = useState(false);
+
+  const { data: lente } = useLenteAtiva();
+
+  // Dados crus do paciente (alergias/medicamentos) pro Painel de Contexto — sem passar pelo mineirador de texto
+  const { data: pacienteInfoRaw } = useQuery({
+    queryKey: ['paciente-info-raw-avatar', pacienteId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('pacientes')
+        .select('alergias, medicamentos_uso')
+        .eq('id', pacienteId)
+        .maybeSingle();
+      return data || {};
+    },
+    enabled: !!pacienteId,
+  });
 
   const { data: lastMyIDData } = useQuery({
     queryKey: ['last-myid-data-full', pacienteId],
@@ -125,49 +338,149 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      
+
       const dados = data.dados_avaliacao as any;
-      const painMap = dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
-      const painRegions = painMap ? Object.entries(painMap)
-        .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
-        .filter(i => i.intensidade > 0) : [];
+      const painMapSalvo = dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
+
+      let painRegions: { regiao_id: string; intensidade: number }[] = painMapSalvo
+        ? Object.entries(painMapSalvo)
+            .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
+            .filter(i => i.intensidade > 0)
+        : [];
 
       const respostas = dados || {};
       const analysis = data.myid_analysis as any;
       const componentScores = analysis?.componentScores || analysis?.component_scores || {};
-      
-      // Nova abordagem: Extração exaustiva de texto de toda a avaliação + análise
+
+      // Se não há painMap mas há scores dimensionais, infere regiões para o botão de sync aparecer
+      if (painRegions.length === 0) {
+        const scoresObj = {
+          D:   Number(data.score_d   || 0),
+          EFI: Number(data.score_efi || 0),
+          P:   Number(data.score_p   || 0),
+          I:   Number(data.score_i   || 0),
+          R:   Number(data.score_r   || 0),
+          C:   Number(data.score_c   || 0),
+          N:   Number(data.score_n   || 0),
+          AF:  Number((data as any).score_af  || 0),
+          ERG: Number((data as any).score_erg || 0),
+          HID: Number((data as any).score_hid || 0),
+        };
+        const temScores = Object.values(scoresObj).some(v => v > 0);
+        if (temScores) {
+          const achados = inferirAchadosDoMyID({
+            scores: scoresObj,
+            textoRelato: extrairTextoDeObjeto(dados) + ' ' + extrairTextoDeObjeto(analysis),
+          });
+          painRegions = achados.map(a => ({ regiao_id: a.regiao_id, intensidade: a.intensidade }));
+        }
+      }
+
       const textoCompleto = extrairTextoDeObjeto(dados) + " " + extrairTextoDeObjeto(analysis);
       const sintomasDetectados = encontrarSintomasEmTexto(textoCompleto);
 
-      
-      const sinalRegions: { regiao_id: string; sinal: string; sistema: string }[] = [];
-      
+      const sinalRegions: { regiao_id: string; sinal: string; sistema: string; fonte: string }[] = [];
       sintomasDetectados.forEach(s => {
         if (!sinalRegions.some(sr => sr.regiao_id === s.regiao_id && sr.sistema === s.sistema)) {
-          sinalRegions.push({ 
-            regiao_id: s.regiao_id, 
-            sinal: `Detectado: ${s.termo}`,
-            sistema: s.sistema
+          sinalRegions.push({
+            regiao_id: s.regiao_id,
+            sinal: `Sintoma: ${s.termo}`,
+            sistema: s.sistema,
+            fonte: 'myid',
           });
         }
       });
 
-      return { 
-        painRegions, 
-        sinalRegions, 
+      return {
+        painRegions,
+        sinalRegions,
         scores: componentScores,
         raw: data,
         respostas,
-        textoCompleto
       };
+    },
+    enabled: !!pacienteId,
+  });
 
+  // Histórico do paciente: queixa principal, condições, medicamentos, alergias
+  const { data: pacienteHistorico } = useQuery({
+    queryKey: ['paciente-historico-avatar', pacienteId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('pacientes')
+        .select('queixa_principal, condicoes_preexistentes, medicamentos_uso, alergias, observacoes')
+        .eq('id', pacienteId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return [];
+      const textoHistorico = [
+        data.queixa_principal,
+        data.condicoes_preexistentes,
+        data.medicamentos_uso,
+        data.alergias,
+        data.observacoes,
+      ].filter(Boolean).join(' ');
+      const sintomasDetectados = encontrarSintomasEmTexto(textoHistorico);
+      const regioes: { regiao_id: string; sinal: string; sistema: string; fonte: string }[] = [];
+      sintomasDetectados.forEach(s => {
+        if (!regioes.some(r => r.regiao_id === s.regiao_id && r.sistema === s.sistema)) {
+          regioes.push({
+            regiao_id: s.regiao_id,
+            sinal: `Histórico: ${s.termo}`,
+            sistema: s.sistema,
+            fonte: 'historico_paciente',
+          });
+        }
+      });
+      return regioes;
+    },
+    enabled: !!pacienteId,
+  });
+
+  // Histórico de vida: traumas, cirurgias, doenças, diagnósticos históricos
+  const { data: historiaVida = [] } = useQuery({
+    queryKey: ['historia-vida-avatar', pacienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('historia_vida_paciente')
+        .select('id, data_evento, tipo, titulo, descricao, sistema_corporal, severidade, resolvido')
+        .eq('paciente_id', pacienteId)
+        .order('data_evento', { ascending: false });
+      return data || [];
+    },
+    enabled: !!pacienteId,
+  });
+
+  // Diagnósticos CID confirmados pelo profissional
+  const { data: diagnosticosCID = [] } = useQuery({
+    queryKey: ['diagnosticos-avatar', pacienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('diagnosticos_paciente')
+        .select('id, data_diagnostico, cid_codigo, cid_descricao, ativo')
+        .eq('paciente_id', pacienteId)
+        .order('data_diagnostico', { ascending: false, nullsFirst: false });
+      return data || [];
     },
     enabled: !!pacienteId,
   });
 
   const painRegions = lastMyIDData?.painRegions || [];
-  const sinalRegions = lastMyIDData?.sinalRegions || [];
+  // Mescla sinalRegions de todas as fontes, sem duplicar por termo + sistema
+  const sinalRegions = useMemo(() => {
+    const fontes = [
+      ...(lastMyIDData?.sinalRegions || []),
+      ...(pacienteHistorico || []),
+    ];
+    const seen = new Set<string>();
+    return fontes.filter(s => {
+      // Deduplica por termo + sistema (evita duplicar frente/costas/esquerda/direita)
+      const key = `${s.sistema}|${s.sinal.toLowerCase().slice(0, 40)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [lastMyIDData?.sinalRegions, pacienteHistorico]);
   const myidScores = lastMyIDData?.scores || {};
 
   const eventosFiltrados = useMemo(
@@ -221,63 +534,95 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     return { data, sistemasComCarga };
   }, [eventosFiltrados, modoSimplificado]);
 
-  // dominante por região = maior severidade (e não-resolvido prioritário)
+  // Regiões com achado ATIVO no Avatar Clínico — usado para não reoferecer no
+  // "Sincronizar MyID" um achado que já foi confirmado anteriormente.
+  const regioesAtivasExistentes = useMemo(
+    () => new Set(eventos.filter(e => e.status !== 'resolvido').map(e => e.regiao_id)),
+    [eventos],
+  );
+  const painRegionsParaSincronizar = useMemo(
+    () => painRegions.filter(p => !regioesAtivasExistentes.has(p.regiao_id)),
+    [painRegions, regioesAtivasExistentes],
+  );
+  const sinalRegionsParaSincronizar = useMemo(
+    () => sinalRegions.filter(s => !regioesAtivasExistentes.has(s.regiao_id)),
+    [sinalRegions, regioesAtivasExistentes],
+  );
+
+  // dominante por região: tipo confirmado > achado > relato; dentro do mesmo tipo, maior severidade
   const corPorRegiao = useMemo(() => {
     const map: Record<string, string> = {};
     const peso = (e: EventoAnatomico) =>
       (e.status === 'resolvido' ? 0 : 10) + e.severidade;
-    
-    // Primeiro, aplica cores dos achados clínicos (objetivo)
+
     eventosFiltrados.forEach(ev => {
-      const prev = map[ev.regiao_id + '__peso'];
-      if (!prev || (peso(ev) > Number(prev))) {
+      const td = (ev as any).tipo_diagnostico as string | undefined;
+      const evTP = tipoPeso(td);
+      const evP = peso(ev);
+      const prevTP = Number(map[ev.regiao_id + '__tipopeso'] || 0);
+      const prevP = Number(map[ev.regiao_id + '__peso'] || -1);
+      const shouldReplace = !map[ev.regiao_id] ||
+        evTP > prevTP ||
+        (evTP === prevTP && evP > prevP);
+      if (shouldReplace) {
         map[ev.regiao_id] = corEvento(ev);
-        map[ev.regiao_id + '__peso'] = String(peso(ev));
+        map[ev.regiao_id + '__peso'] = String(evP);
+        map[ev.regiao_id + '__tipo'] = td || 'achado_clinico';
+        map[ev.regiao_id + '__tipopeso'] = String(evTP);
       }
     });
 
     // Depois, sobrepõe indicação de dor do MyID se não houver achado clínico ainda
-    // APENAS se o sistema musculoesquelético estiver ativo
-    if (sistemasAtivos.includes('musculoesqueletico')) {
+    // Anti-nocebo: autorelato (MyID) só aparece no mapa se o clínico ativar explicitamente
+    // o toggle "Mostrar MyID no mapa" — e mesmo assim com teto de opacidade baixo.
+    if (mostrarMyIDNoMapa && sistemasAtivos.includes('musculoesqueletico')) {
       painRegions.forEach(item => {
         const regId = item.regiao_id;
         if (!map[regId]) {
           const intensity = item.intensidade;
-          const alpha = 0.2 + (intensity / 10) * 0.4;
-          map[regId] = `rgba(168, 85, 247, ${alpha})`; 
+          const alpha = Math.min(0.30, 0.12 + (intensity / 10) * 0.18);
+          map[regId] = `rgba(168, 85, 247, ${alpha})`;
           map[regId + '__is_myid'] = 'true';
         }
       });
     }
 
-    // Sincroniza Sinais do Corpo (Nervoso/Visceral) do MyID
-    // Filtra pelos sistemas ativos
+    // Sinais de TODAS as fontes: MyID, histórico do paciente e notas clínicas
+    // A opacidade varia por fonte: notas_clinicas > historico_paciente > myid
+    const FONTE_ALPHA: Record<string, number> = {
+      notas_clinicas: 0.52,
+      historico_paciente: 0.44,
+      myid: 0.22, // anti-nocebo: relato isolado nunca compete visualmente com achado documentado
+    };
+    const SISTEMA_COR: Record<string, string> = {
+      nervoso:            '14, 165, 233',
+      digestorio:         '249, 115, 22',
+      musculoesqueletico: '168, 85, 247',
+      circulatorio:       '239, 68, 68',
+      respiratorio:       '6, 182, 212',
+      endocrino:          '234, 179, 8',
+      urinario:           '99, 102, 241',
+      reprodutor:         '236, 72, 153',
+      linfatico:          '132, 204, 22',
+      tegumentar:         '120, 113, 108',
+      sensorial:          '16, 185, 129',
+    };
     sinalRegions.forEach(item => {
-      // Determina se o sinal pertence a um sistema que está ATIVO no momento
       const isSystemActive = sistemasAtivos.includes(item.sistema as any);
-      
-      if (isSystemActive && !map[item.regiao_id]) {
-        // Define a cor baseada no sistema
-        switch (item.sistema) {
-          case 'nervoso':
-            map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)'; // Azul
-            break;
-          case 'digestorio':
-            map[item.regiao_id] = 'rgba(249, 115, 22, 0.4)'; // Laranja
-            break;
-          case 'musculoesqueletico':
-            map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; // Roxo
-            break;
-          case 'circulatorio':
-            map[item.regiao_id] = 'rgba(239, 68, 68, 0.4)'; // Vermelho
-            break;
-          case 'respiratorio':
-            map[item.regiao_id] = 'rgba(6, 182, 212, 0.4)'; // Ciano
-            break;
-          default:
-            map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
-        }
-        map[item.regiao_id + '__is_sinal'] = 'true';
+      if (!isSystemActive) return;
+      const fonte = (item as any).fonte || 'myid';
+      // Anti-nocebo: sinal vindo só do MyID (autorelato) fica oculto do mapa por padrão
+      if (fonte === 'myid' && !mostrarMyIDNoMapa) return;
+      const alpha = FONTE_ALPHA[fonte] ?? 0.38;
+      const cor = SISTEMA_COR[item.sistema] || '14, 165, 233';
+      // Só sobrescreve se não houver achado clínico (que tem prioridade)
+      if (!map[item.regiao_id]) {
+        map[item.regiao_id] = `rgba(${cor}, ${alpha})`;
+        map[item.regiao_id + '__is_sinal'] = fonte;
+      } else if (map[item.regiao_id + '__is_sinal'] && fonte === 'notas_clinicas') {
+        // notas clínicas sobrescrevem sinais de fontes menos confiáveis
+        map[item.regiao_id] = `rgba(${cor}, ${alpha})`;
+        map[item.regiao_id + '__is_sinal'] = fonte;
       }
     });
 
@@ -289,13 +634,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     }
 
     return map;
-  }, [eventosFiltrados, painRegions, sinalRegions, lastMyIDData]);
+  }, [eventosFiltrados, painRegions, sinalRegions, lastMyIDData, mostrarMyIDNoMapa, sistemasAtivos]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
-  const regioesViscerais = VISCERAL_REGIONS.filter(r => 
+  const regioesViscerais = VISCERAL_REGIONS.filter(r =>
     r.view === view && (
       r.sistemas.some(s => sistemasAtivos.includes(s as any)) ||
-      sinalRegions.some(sr => sr.regiao_id === r.id)
+      sinalRegions.some(sr => sr.regiao_id === r.id && ((sr as any).fonte !== 'myid' || mostrarMyIDNoMapa))
     )
   );
 
@@ -322,6 +667,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       sistema: (regVisceral?.sistemas[0] as any) || 'musculoesqueletico',
       origem: 'exame_clinico',
       tipo_achado: '',
+      tipo_diagnostico: 'achado_clinico' as TipoDiagnostico,
       severidade: 1,
       status: 'ativo',
       visivel_paciente: false,
@@ -345,7 +691,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       regiao_id: item.regiao_id,
       sistema: (item.sistema as any) || 'musculoesqueletico',
       origem: 'subjetivo_myid',
-      tipo_achado: item.sinal || `Relato MyID: Dor/Desconforto (${item.intensidade}/10)`,
+      tipo_achado: item.sinal || `Sintoma: Dor/Desconforto (intensidade ${item.intensidade}/10)`,
       severidade: item.intensidade >= 7 ? 3 : item.intensidade >= 4 ? 2 : 1,
       status: 'ativo',
       visivel_paciente: true,
@@ -363,12 +709,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <Stethoscope className="icon-sm shrink-0" />
           Avatar Clínico Anatômico
           <div className="ml-auto flex items-center gap-1.5">
-            {(painRegions.length > 0 || sinalRegions.length > 0) && (
-              <Button 
-                variant="outline" 
-                size="sm" 
+            {(painRegionsParaSincronizar.length > 0 || sinalRegionsParaSincronizar.length > 0) && (
+              <Button
+                variant="outline"
+                size="sm"
                 className="h-7 text-[10px] gap-1 px-2 border-primary/30 text-primary hover:bg-primary/5"
-                onClick={() => setSyncData([...painRegions, ...sinalRegions.map(s => ({ regiao_id: s.regiao_id, intensidade: 5, sinal: s.sinal, sistema: s.sistema }))])}
+                onClick={() => setSyncData([...painRegionsParaSincronizar, ...sinalRegionsParaSincronizar.map(s => ({ regiao_id: s.regiao_id, intensidade: 5, sinal: s.sinal, sistema: s.sistema }))])}
               >
                 <RefreshCcw className="h-3 w-3" />
                 Sincronizar MyID
@@ -378,15 +724,40 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             <Badge variant="outline" className="text-[10px]">Sprint F1+ (Visceral)</Badge>
           </div>
         </CardTitle>
-        <div className="flex justify-between items-center mt-1">
+        <div className="flex flex-wrap justify-between items-center gap-2 mt-1">
           <p className="text-xs text-muted-foreground">
             Mapa de achados clínicos georreferenciados.
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {!modoSimplificado && lente && (
+              <button
+                type="button"
+                className="text-[9px] border border-border rounded-full px-2 py-0.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title={`Destacar sistemas relevantes para ${lente.nome_exibicao}`}
+                onClick={() => setSistemasAtivos(SISTEMAS_POR_ESPECIALIDADE[lente.id] || SISTEMAS_ORDEM)}
+              >
+                Lente: {lente.nome_exibicao}
+              </button>
+            )}
+            {!modoSimplificado && (painRegions.length > 0 || sinalRegions.some(s => (s as any).fonte === 'myid')) && (
+              <button
+                type="button"
+                className={cn(
+                  'text-[9px] border rounded-full px-2 py-0.5 transition-colors',
+                  mostrarMyIDNoMapa
+                    ? 'bg-primary/10 text-primary border-primary/30'
+                    : 'text-muted-foreground border-border hover:bg-accent',
+                )}
+                title="Por padrão, autorelato MyID não é exibido no mapa corporal (evita ruído/nocebo). Ative para sobrepor."
+                onClick={() => setMostrarMyIDNoMapa(v => !v)}
+              >
+                {mostrarMyIDNoMapa ? 'Autorelato MyID: visível' : 'Autorelato MyID: oculto'}
+              </button>
+            )}
             <Label htmlFor="modo-view" className="text-[10px] cursor-pointer">
               {modoSimplificado ? "Visão Paciente" : "Visão Profissional"}
             </Label>
-            <Switch 
+            <Switch
               id="modo-view"
               checked={!modoSimplificado} 
               onCheckedChange={(v) => setModoSimplificado(!v)}
@@ -433,45 +804,35 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             {useMemo(() => {
               const systemScores = SISTEMAS_ORDEM.map(s => {
                 const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
-                let score = evsDoSistema.reduce((acc, curr) => acc + cargaEvento(curr), 0);
+                // Anti-nocebo: o score que determina cor/homeostase reflete só evidência DOCUMENTADA
+                // por profissional (achados, histórico de vida, CID). Autorelato MyID nunca entra aqui —
+                // ele é informativo (badge "nSintomas"), não um fator de alarme.
+                let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
 
-                // Mapeamento preciso de Sinais MyID para Scores de Sistema
-                const myidSinaisDoSistema = sinalRegions.filter(sr => {
-                  const isNervous = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(sr.sinal);
-                  const isDigestive = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea'].some(term => sr.sinal.toLowerCase().includes(term));
-                  const isResp = ['falta_ar', 'shortness_breath', 'tosse'].some(term => sr.sinal.toLowerCase().includes(term));
-                  const isCirc = ['palpitacao', 'palpitations', 'taquicardia'].some(term => sr.sinal.toLowerCase().includes(term));
-                  const isUrin = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].some(term => sr.sinal.toLowerCase().includes(term));
-                  
-                  if (s === 'nervoso') return isNervous;
-                  if (s === 'digestorio') return isDigestive;
-                  if (s === 'respiratorio') return isResp;
-                  if (s === 'circulatorio') return isCirc;
-                  if (s === 'urinario') return isUrin;
-                  
-                  // Fallback regional para MyID
-                  const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
-                  return regVisceral?.sistemas.includes(s);
-                });
+                const sinaisSistema = sinalRegions.filter(sr => sr.sistema === s);
+                const sinaisClinicos = sinaisSistema.filter(sr => (sr as any).fonte !== 'myid');
+                const nDorMuscular = s === 'musculoesqueletico' ? painRegions.length : 0;
+                const historiaAtiva = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido);
+                const diagSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === s && d.ativo);
 
-                if (s === 'musculoesqueletico') {
-                  // Pondera pela intensidade relatada (0-10) em vez de só contar regiões
-                  score += painRegions.reduce((acc, p) => acc + (Number(p.intensidade || 0) / 10) * PESO_SINAL_MYID * 2, 0);
-                  const queixasTexto = sinalRegions.filter(sr => sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal');
-                  score += queixasTexto.length * PESO_SINAL_MYID * 2;
-                }
+                score += sinaisClinicos.length * 1.2;
+                score += historiaAtiva.reduce((acc: number, h: any) => acc + ((h.severidade || 1) * 0.6), 0);
+                score += diagSistema.length * 0.8;
 
-                score += myidSinaisDoSistema.length * PESO_SINAL_MYID;
-
-                return { sistema: s, score, count: evsDoSistema.length + myidSinaisDoSistema.length };
+                return {
+                  sistema: s,
+                  score,
+                  count: evsDoSistema.length + sinaisSistema.length + nDorMuscular + historiaAtiva.length + diagSistema.length,
+                  nSintomas: sinaisSistema.length + nDorMuscular,
+                  nAchados: evsDoSistema.length,
+                  nHistoria: historiaAtiva.length,
+                  nDiags: diagSistema.length,
+                };
               }).sort((a, b) => b.score - a.score);
 
-              // Índice de Homeostase: soma a carga clínica de cada sistema (capada para
-              // que um único sistema não domine o índice) e subtrai de 100. A carga de
-              // cada sistema já reflete severidade, status e confirmação clínica — ver
-              // cargaEvento() acima.
-              const totalScore = systemScores.reduce((acc, curr) => acc + Math.min(curr.score, CARGA_MAXIMA_POR_SISTEMA), 0);
-              const homeostase = Math.max(0, Math.min(100, 100 - totalScore));
+              // Homeostase via decaimento logarítmico: 0 sinais=100%, score alto→ gradual queda
+              const totalScore = systemScores.reduce((acc, curr) => acc + curr.score, 0);
+              const homeostase = Math.max(0, Math.min(100, Math.round(100 - Math.log1p(totalScore) * 18)));
 
               return (
                 <div className="w-full space-y-4">
@@ -481,7 +842,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         Índice de Homeostase
                         <Info
                           className="h-3 w-3 text-muted-foreground/70 cursor-help"
-                          title="Calculado a partir da carga clínica de cada sistema (achados ativos ponderados por severidade, status e confirmação profissional), capada por sistema para evitar distorção. Não substitui o MyID-100."
+                          title="Calculado a partir da carga clínica de cada sistema (achados confirmados, histórico de vida e diagnósticos CID — autorrelato MyID não entra no cálculo), com decaimento logarítmico. Não substitui o MyID-100."
                         />
                       </p>
                       <div className="flex items-center gap-2">
@@ -623,14 +984,22 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             const config = SISTEMA_CONFIG[sysToShow];
                             const Icon = config.icon;
                             
-                            // Busca achados específicos do sistema (Clínicos + MyID)
                             const achadosClinicos = eventos.filter(e => e.sistema === sysToShow && e.status !== 'resolvido');
-                            
-                            // Sinais do MyID para este sistema
-                            const achadosMyID = sinalRegions.filter(sr => sr.sistema === sysToShow);
+                            const sinaisMyID = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'myid');
+                            const sinaisHistorico = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'historico_paciente');
+                            const historiaDoSistema = historiaVida.filter(h => h.sistema_corporal === sysToShow);
+                            const diagsDoSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === sysToShow);
 
+                            // Grupos de achados por tipo_diagnostico
+                            const relatosPaciente = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'relato_paciente');
+                            const diagsMedicos = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_medico');
+                            const diagsFisio = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_fisioterapia');
+                            const diagsPsico = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_psicologia');
+                            const diagsNutri = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_nutricao');
+                            const diagsFono = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_fonoaudiologia');
+                            const diagsOutro = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_outro');
+                            const achadosGenericos = achadosClinicos.filter(e => !(e as any).tipo_diagnostico || (e as any).tipo_diagnostico === 'achado_clinico');
 
-                            // Flags específicas do sistema
                             const flagsSistema: string[] = [];
                             if (sysToShow === 'musculoesqueletico') {
                               if (lastMyIDData?.respostas?.bloco_6_axial_trauma) flagsSistema.push('Histórico de Trauma Axial');
@@ -644,18 +1013,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             if (sysToShow === 'nervoso') {
                               if (lastMyIDData?.respostas?.bloco_6_antidepressant) flagsSistema.push('Uso de Antidepressivo');
                             }
-                            
-                            // Dores do MyID para o sistema musculoesquelético
-                            const doresMyID = sysToShow === 'musculoesqueletico' 
-                              ? painRegions.map(p => ({ ...p, sinal: `Dor em ${REGIONS.find(r => r.id === p.regiao_id)?.label || p.regiao_id} (Intensidade: ${p.intensidade}/10)` }))
+
+                            const doresMyID = sysToShow === 'musculoesqueletico'
+                              ? painRegions.map(p => ({ sinal: `Dor em ${REGIONS.find(r => r.id === p.regiao_id)?.label || p.regiao_id} (${p.intensidade}/10)` }))
                               : [];
-                            
-                            const todosRelatosMyID = [
-                              ...achadosMyID.map(a => a.sinal),
-                              ...doresMyID.map(d => d.sinal),
-                              ...flagsSistema
-                            ];
-                            
+
+                            const todosMyID = [...sinaisMyID.map(a => a.sinal), ...doresMyID.map(d => d.sinal), ...flagsSistema];
+
                             return (
                               <div className="space-y-3">
                                 <div className="flex gap-3 items-center border-b border-primary/10 pb-2">
@@ -666,48 +1030,136 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                 </div>
 
                                 <div className="space-y-3">
-                                  {/* MyID Findings - Relatos Subjetivos */}
+                                  {/* Histórico do paciente (queixa, condições, medicamentos) */}
+                                  {sinaisHistorico.length > 0 && (
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] font-bold text-emerald-600 uppercase flex items-center gap-1">
+                                        <ClipboardList className="w-3 h-3" /> Histórico / Ficha do Paciente:
+                                      </p>
+                                      <div className="space-y-1 pl-4">
+                                        {sinaisHistorico.map((s, idx) => (
+                                          <div key={`hist-${idx}`} className="flex items-start gap-2">
+                                            <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-emerald-400" />
+                                            <p className="text-[11px] leading-tight text-emerald-800">{s.sinal}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Relatos do MyID (avaliação subjetiva) */}
                                   <div className="space-y-1">
                                     <p className="text-[10px] font-bold text-sky-600 uppercase flex items-center gap-1">
                                       <User className="w-3 h-3" /> Relatos do Paciente (MyID):
                                     </p>
-                                    {todosRelatosMyID.length === 0 ? (
+                                    {todosMyID.length === 0 ? (
                                       <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum relato subjetivo registrado.</p>
                                     ) : (
                                       <div className="space-y-1 pl-4">
-                                        {todosRelatosMyID.map((s, idx) => (
+                                        {todosMyID.map((s, idx) => (
                                           <div key={`myid-${idx}`} className="flex items-start gap-2">
                                             <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-sky-400" />
-                                            <p className="text-[11px] leading-tight text-sky-800">
-                                              {s}
-                                            </p>
+                                            <p className="text-[11px] leading-tight text-sky-800">{s}</p>
                                           </div>
                                         ))}
                                       </div>
                                     )}
                                   </div>
 
-                                  {/* Clinical Evaluation Findings - Avaliação Presencial */}
-                                  <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1">
-                                      <Stethoscope className="w-3 h-3" /> Achados da Avaliação Presencial:
-                                    </p>
-                                    {achadosClinicos.length === 0 ? (
-                                      <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum achado clínico registrado nesta avaliação.</p>
-                                    ) : (
+                                  {/* Achados agrupados por tipo_diagnostico */}
+                                  {(() => {
+                                    const renderGrupo = (
+                                      items: typeof achadosClinicos,
+                                      IconComp: React.ElementType,
+                                      colorClass: string,
+                                      titulo: string,
+                                      key: string,
+                                    ) => {
+                                      if (items.length === 0) return null;
+                                      return (
+                                        <div key={key} className="space-y-1">
+                                          <p className={`text-[10px] font-bold uppercase flex items-center gap-1 ${colorClass}`}>
+                                            <IconComp className="w-3 h-3" /> {titulo}:
+                                          </p>
+                                          <div className="space-y-1 pl-4">
+                                            {items.map((e, idx) => (
+                                              <div key={`${key}-${idx}`} className="flex items-start gap-2">
+                                                <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: corEvento(e) }} />
+                                                <div className="text-[11px] leading-tight">
+                                                  <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
+                                                  {e.notas_clinicas && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{e.notas_clinicas}"</p>}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    };
+
+                                    const allEmpty = achadosClinicos.length === 0;
+                                    if (allEmpty && sinaisHistorico.length === 0 && todosMyID.length === 0) {
+                                      return (
+                                        <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum achado clínico registrado nesta avaliação.</p>
+                                      );
+                                    }
+
+                                    return (
+                                      <>
+                                        {renderGrupo(relatosPaciente, User, 'text-sky-600', 'RELATO DO PACIENTE (não confirmado)', 'relato')}
+                                        {renderGrupo(diagsMedicos, Shield, 'text-red-600', 'DIAGNÓSTICO MÉDICO (nosológico)', 'med')}
+                                        {renderGrupo(diagsFisio, Activity, 'text-green-600', 'DIAGNÓSTICO CINÉTICO-FUNCIONAL (Fisio)', 'fisio')}
+                                        {renderGrupo(diagsPsico, Brain, 'text-violet-600', 'DIAGNÓSTICO PSICOLÓGICO', 'psico')}
+                                        {renderGrupo(diagsNutri, Droplets, 'text-emerald-600', 'DIAGNÓSTICO NUTRICIONAL', 'nutri')}
+                                        {renderGrupo(diagsFono, Waves, 'text-indigo-600', 'DIAGNÓSTICO FONOAUDIOLÓGICO', 'fono')}
+                                        {renderGrupo(diagsOutro, Stethoscope, 'text-amber-600', 'DIAGNÓSTICO (especialista)', 'outro')}
+                                        {renderGrupo(achadosGenericos, Stethoscope, 'text-amber-600', 'ACHADOS DA AVALIAÇÃO PRESENCIAL', 'achado')}
+                                      </>
+                                    );
+                                  })()}
+
+                                  {/* Histórico de Vida do Sistema */}
+                                  {historiaDoSistema.length > 0 && (
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] font-bold text-rose-600 uppercase flex items-center gap-1">
+                                        <Heart className="w-3 h-3" /> Histórico de Vida:
+                                      </p>
                                       <div className="space-y-1 pl-4">
-                                        {achadosClinicos.map((e, idx) => (
-                                          <div key={`clin-${idx}`} className="flex items-start gap-2">
-                                            <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: corEvento(e) }} />
+                                        {historiaDoSistema.map((h: any) => (
+                                          <div key={h.id} className="flex items-start gap-2">
+                                            <div className={cn(
+                                              "w-1 h-1 rounded-full mt-1.5 shrink-0",
+                                              h.resolvido ? 'bg-gray-400' : h.severidade >= 3 ? 'bg-red-500' : h.severidade >= 2 ? 'bg-orange-400' : 'bg-amber-400'
+                                            )} />
                                             <div className="text-[11px] leading-tight">
-                                              <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
-                                              {e.notas_clinicas && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{e.notas_clinicas}"</p>}
+                                              <span className="font-bold capitalize">{h.tipo.replace(/_/g, ' ')}:</span>{' '}
+                                              <span className={h.resolvido ? 'line-through text-muted-foreground' : ''}>{h.titulo}</span>
+                                              {h.descricao && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{h.descricao}"</p>}
                                             </div>
                                           </div>
                                         ))}
                                       </div>
-                                    )}
-                                  </div>
+                                    </div>
+                                  )}
+
+                                  {/* Diagnósticos CID do Sistema */}
+                                  {diagsDoSistema.length > 0 && (
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] font-bold text-red-600 uppercase flex items-center gap-1">
+                                        <Shield className="w-3 h-3" /> Diagnósticos Confirmados:
+                                      </p>
+                                      <div className="space-y-1 pl-4">
+                                        {diagsDoSistema.map((d: any) => (
+                                          <div key={d.id} className="flex items-start gap-2">
+                                            <div className={cn("w-1 h-1 rounded-full mt-1.5 shrink-0", !d.ativo ? 'bg-gray-400' : 'bg-red-500')} />
+                                            <div className="text-[11px] leading-tight">
+                                              {d.cid_codigo && <span className="font-black text-primary">[{d.cid_codigo}]</span>}{' '}
+                                              <span className={!d.ativo ? 'line-through text-muted-foreground' : 'font-medium'}>{d.cid_descricao}</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -718,14 +1170,20 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                               <p className="text-[9px] font-bold text-muted-foreground uppercase">Resumo de Achados ({sistemasAtivos.length} sistemas)</p>
                               <div className="grid grid-cols-1 gap-2">
                                 {sistemasAtivos.slice(0, 3).map(s => {
-                                  const count = eventos.filter(e => e.sistema === s && e.status !== 'resolvido').length;
+                                  const nAchados = eventos.filter(e => e.sistema === s && e.status !== 'resolvido').length;
+                                  const nSintomas = sinalRegions.filter(sr => sr.sistema === s).length + (s === 'musculoesqueletico' ? painRegions.length : 0);
+                                  const nHistoria = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido).length;
+                                  const partes: string[] = [];
+                                  if (nAchados > 0) partes.push(`${nAchados} achado${nAchados > 1 ? 's' : ''}`);
+                                  if (nSintomas > 0) partes.push(`${nSintomas} sint.`);
+                                  if (nHistoria > 0) partes.push(`${nHistoria} hist.`);
                                   return (
                                     <div key={s} className="flex items-center justify-between bg-background/50 p-1.5 rounded border border-border/30">
                                       <div className="flex items-center gap-2">
                                         <div className={cn("w-1.5 h-1.5 rounded-full", `bg-${SISTEMA_CONFIG[s].color}-500`)} />
                                         <span className="text-[10px] font-bold">{SISTEMA_CONFIG[s].label}</span>
                                       </div>
-                                      <span className="text-[9px] text-muted-foreground">{count} achados clínicos</span>
+                                      <span className="text-[9px] text-muted-foreground">{partes.length ? partes.join(' · ') : 'sem registros'}</span>
                                     </div>
                                   );
                                 })}
@@ -739,9 +1197,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   )}
                 </div>
               );
-            }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema])}
+            }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema, historiaVida, diagnosticosCID])}
           </div>
         </div>
+            {/* Painel de Contexto — sono, atividade, hidratação, nutrição, alergias, medicamentos.
+                Nunca aparecem como região acesa no corpo: são comportamento/contexto, não achado clínico. */}
+            {!modoSimplificado && (
+              <PainelContexto
+                scores={myidScores}
+                alergias={(pacienteInfoRaw as any)?.alergias}
+                medicamentos={(pacienteInfoRaw as any)?.medicamentos_uso}
+              />
+            )}
+
+            {/* Radar de Avaliação — sugestões textuais derivadas do MyID, sem nunca acender o mapa corporal */}
+            {!modoSimplificado && <RadarDeAvaliacao scores={myidScores} />}
           </TabsContent>
 
           <TabsContent value="mapa" className="pt-3">
@@ -762,143 +1232,402 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </div>
 
         {/* Silhueta */}
-        <div className="mx-auto" style={{ maxWidth: 260 }}>
-          <svg viewBox="0 0 240 520" className="w-full h-auto drop-shadow-2xl" style={{ maxHeight: 480 }}>
+        <div className="mx-auto relative" style={{ maxWidth: 260 }}>
+          {/* Glow de fundo do avatar */}
+          <div className="absolute inset-0 rounded-full opacity-20 blur-3xl pointer-events-none"
+            style={{ background: hoveredSistema ? (SYSTEM_HOVER[hoveredSistema] || 'hsl(var(--primary))') : 'hsl(var(--muted-foreground) / 0.3)', transform: 'scale(0.7) translateY(5%)' }}
+          />
+          <svg viewBox="0 0 240 520" className="w-full h-auto relative" style={{ maxHeight: 480, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))' }}>
             <defs>
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
               </clipPath>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+              {/* Warm anatomical skin gradient */}
+              <radialGradient id="avc-skin" cx="44%" cy="22%" r="72%">
+                <stop offset="0%"   stopColor="#f5d5b8" stopOpacity="0.96" />
+                <stop offset="55%"  stopColor="#eccaa8" stopOpacity="0.92" />
+                <stop offset="100%" stopColor="#d4a880" stopOpacity="0.88" />
+              </radialGradient>
+              {/* Organ volume highlight */}
+              <radialGradient id="organ-vol" cx="28%" cy="22%" r="72%">
+                <stop offset="0%" stopColor="white" stopOpacity="0.55" />
+                <stop offset="100%" stopColor="black" stopOpacity="0.12" />
+              </radialGradient>
+              <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
                 <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
-              <radialGradient id="organ-gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                <stop offset="0%" stopColor="white" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="black" stopOpacity="0.1" />
+              <filter id="glow-urgent" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="4.5" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+              {/* Gradiente de profundidade lateral — sombras nos flancos */}
+              <linearGradient id="body-depth-l" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%"   stopColor="#000" stopOpacity="0.18"/>
+                <stop offset="35%"  stopColor="#000" stopOpacity="0.04"/>
+                <stop offset="100%" stopColor="#000" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="body-depth-r" x1="100%" y1="0%" x2="0%" y2="0%">
+                <stop offset="0%"   stopColor="#000" stopOpacity="0.18"/>
+                <stop offset="35%"  stopColor="#000" stopOpacity="0.04"/>
+                <stop offset="100%" stopColor="#000" stopOpacity="0"/>
+              </linearGradient>
+              {/* Highlight central (reflexo de luz frontal) */}
+              <radialGradient id="body-highlight" cx="38%" cy="18%" r="52%">
+                <stop offset="0%"   stopColor="#fff" stopOpacity="0.22"/>
+                <stop offset="100%" stopColor="#fff" stopOpacity="0"/>
               </radialGradient>
             </defs>
             <style>
               {`
                 @keyframes pulse-organ {
-                  0% { transform: scale(1); opacity: 0.8; }
-                  50% { transform: scale(1.02); opacity: 1; }
-                  100% { transform: scale(1); opacity: 0.8; }
+                  0%,100% { opacity: 0.80; }
+                  50% { opacity: 1.0; }
                 }
-                .pulse-organ {
-                  animation: pulse-organ 2s infinite ease-in-out;
-                  transform-origin: center;
-                }
+                .pulse-organ { animation: pulse-organ 2.2s infinite ease-in-out; }
               `}
             </style>
+
+            {/* Drop shadow */}
+            <ellipse cx={120} cy={516} rx={50} ry={4.5} fill="black" opacity={0.09} />
+
+            {/* Halo de sistema ativo/hovered */}
+            {(hoveredSistema || sistemasAtivos.length === 1) && (() => {
+              const sys = hoveredSistema || sistemasAtivos[0];
+              const haloColor = SYSTEM_HOVER[sys] || 'rgba(99,102,241,0.30)';
+              return (
+                <ellipse
+                  cx={120} cy={260} rx={80} ry={260}
+                  fill={haloColor}
+                  opacity={0.18}
+                  filter="url(#glow)"
+                  pointerEvents="none"
+                />
+              );
+            })()}
+
             <g clipPath="url(#avc-clip)">
-              <path d={FRONT_OUTLINE} fill="hsl(var(--muted))" opacity={0.35} />
-              
-              {/* Camada Base (Musculoesquelético/Geral) */}
+              {/* Warm skin fill */}
+              <path d={FRONT_OUTLINE} fill="url(#avc-skin)" />
+              {/* Profundidade lateral esquerda */}
+              <path d={FRONT_OUTLINE} fill="url(#body-depth-l)" pointerEvents="none"/>
+              {/* Profundidade lateral direita */}
+              <path d={FRONT_OUTLINE} fill="url(#body-depth-r)" pointerEvents="none"/>
+              {/* Highlight de luz central */}
+              <path d={FRONT_OUTLINE} fill="url(#body-highlight)" pointerEvents="none"/>
+
+              {/* Contorno anatômico */}
+              <path d={FRONT_OUTLINE} fill="none" stroke="rgba(120,80,50,0.20)" strokeWidth={1.2} pointerEvents="none"/>
+
+              {/* Anatomical structure lines */}
+              {view === 'front' && (
+                <g fill="none" stroke="hsl(var(--foreground))" strokeWidth={0.55} opacity={0.30}>
+                  {/* Clavicles */}
+                  <path d="M120 108 Q108 112 96 120" strokeWidth={0.85} />
+                  <path d="M120 108 Q132 112 144 120" strokeWidth={0.85} />
+                  {/* Sternum */}
+                  <path d="M120 110 L120 196" strokeWidth={0.95} />
+                  {/* Ribs – right */}
+                  <path d="M120 126 Q105 124 94 133" />
+                  <path d="M120 140 Q102 138 90 149" />
+                  <path d="M120 154 Q101 152 88 163" />
+                  <path d="M120 168 Q101 166 88 178" />
+                  {/* Ribs – left */}
+                  <path d="M120 126 Q135 124 146 133" />
+                  <path d="M120 140 Q138 138 150 149" />
+                  <path d="M120 154 Q139 152 152 163" />
+                  <path d="M120 168 Q139 166 152 178" />
+                  {/* Costal arch */}
+                  <path d="M88 178 Q104 194 120 196 Q136 194 152 178" strokeWidth={1.0} />
+                  {/* Abdominal lines */}
+                  <path d="M110 200 L110 244 M130 200 L130 244" strokeWidth={0.45} />
+                  <path d="M108 216 L132 216 M108 228 L132 228 M108 240 L132 240" strokeWidth={0.40} />
+                  {/* Navel */}
+                  <circle cx={120} cy={250} r={3.5} strokeWidth={0.7} />
+                  {/* Iliac crests */}
+                  <path d="M88 282 Q102 276 120 278 Q138 276 152 282" strokeDasharray="3,2" strokeWidth={0.7} />
+                  {/* Kneecaps */}
+                  <ellipse cx={144} cy={382} rx={11} ry={7} />
+                  <ellipse cx={96}  cy={382} rx={11} ry={7} />
+                </g>
+              )}
+              {view === 'back' && (
+                <g fill="none" stroke="hsl(var(--foreground))" strokeWidth={0.55} opacity={0.30}>
+                  {/* Spine */}
+                  <path d="M120 110 L120 285" strokeDasharray="2.5,2" strokeWidth={1.0} />
+                  {/* Vertebrae */}
+                  {[126,140,154,168,182,196,210,224,240,256,272].map(y => (
+                    <line key={y} x1={115} y1={y} x2={125} y2={y} strokeWidth={0.9} />
+                  ))}
+                  {/* Scapulae */}
+                  <path d="M96 148 Q104 162 110 184" strokeWidth={0.85} />
+                  <path d="M144 148 Q136 162 130 184" strokeWidth={0.85} />
+                  <path d="M96 148 Q118 154 110 184" />
+                  <path d="M144 148 Q122 154 130 184" />
+                  {/* PSIS dimples */}
+                  <circle cx={111} cy={279} r={2.5} />
+                  <circle cx={129} cy={279} r={2.5} />
+                  {/* Gluteal crease */}
+                  <path d="M90 308 Q120 320 150 308" strokeWidth={0.8} />
+                </g>
+              )}
+
+              {/* Musculoskeletal regions — visual weight reflects tipo_diagnostico */}
               {sistemasAtivos.includes('musculoesqueletico') && regioesBase.map(r => {
                 const fill = corPorRegiao[r.id];
                 const isHoveredSystem = hoveredSistema === 'musculoesqueletico';
+                if (!fill && !isHoveredSystem) return null;
+                const tipo = corPorRegiao[r.id + '__tipo'] || 'achado_clinico';
+                const isRelato = tipo === 'relato_paciente';
+                const isHistorico = tipo === 'historico_relatado';
+                const isDiag = tipo.startsWith('diagnostico_');
+                const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
+                // Pesos visuais por nível de confirmação clínica
+                const fillOp = fill ? (isRelato || isHistorico ? 0.32 : isDiag ? 0.88 : 0.65) : 0.28;
+                const sw = fill ? (isRelato || isHistorico ? 0.6 : isDiag ? 1.8 : 1.1) : 0.5;
+                const dash = isRelato || isHistorico ? '4,3' : undefined;
+                const needsGlow = isDiag && severityScore >= 12;
                 return (
                   <path
                     key={r.id}
                     d={r.d}
-                    fill={fill || (isHoveredSystem ? 'rgba(168, 85, 247, 0.2)' : 'transparent')}
-                    fillOpacity={fill ? 0.7 : isHoveredSystem ? 0.5 : 0}
-                    stroke={isHoveredSystem ? 'purple' : "hsl(var(--border))"}
-                    strokeWidth={isHoveredSystem ? 1.2 : 0.6}
+                    fill={fill || 'rgba(168,85,247,0.24)'}
+                    fillOpacity={fillOp}
+                    stroke={fill ? (isDiag ? 'rgba(255,255,255,0.85)' : 'rgba(168,85,247,0.65)') : 'rgba(168,85,247,0.35)'}
+                    strokeWidth={sw}
+                    strokeDasharray={dash}
+                    filter={needsGlow ? 'url(#glow-urgent)' : severityScore >= 8 && isDiag ? 'url(#glow)' : undefined}
                     className="cursor-pointer hover:opacity-80 transition-all"
                     onClick={() => abrirSheet(r.id)}
                   />
                 );
               })}
 
-              {/* Camada Visceral e Outros Sistemas Individualizados */}
-              {regioesViscerais.map(r => {
+              {/* Organ / visceral regions — sorted by layer, rendered by type */}
+              {[...regioesViscerais]
+                .sort((a, b) => (a.layer ?? 5) - (b.layer ?? 5))
+                .map(r => {
                 const fill = corPorRegiao[r.id];
                 const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
                 const isHoveredSystem = r.sistemas.some(s => hoveredSistema === s);
-                
                 if (!belongsToActiveSystem && !isHoveredSystem) return null;
 
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
-                const isUrgent = severityScore >= 13; // status ativo (10) + severidade alta
+                const isUrgent = severityScore >= 13;
+                const sys0 = r.sistemas[0];
+
+                // STRUCTURAL (diaphragm, pericardium) — non-clickable dividers
+                if (r.type === 'structural') {
+                  if (!belongsToActiveSystem) return null;
+                  const isDialfragma = r.id.startsWith('diafragma');
+                  return (
+                    <path
+                      key={r.id}
+                      d={r.d}
+                      fill="none"
+                      stroke={isDialfragma ? 'rgba(80,80,80,0.50)' : 'rgba(120,120,120,0.25)'}
+                      strokeWidth={isDialfragma ? 1.4 : 0.8}
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  );
+                }
+
+                // VESSEL (arteries, veins, bronchi) — stroke only, colored
+                if (r.type === 'vessel') {
+                  const baseColor = fill || (isHoveredSystem
+                    ? SYSTEM_HOVER[sys0] || 'rgba(200,40,40,0.80)'
+                    : VESSEL_COLOR[sys0] || 'rgba(200,100,100,0.62)');
+                  return (
+                    <path
+                      key={r.id}
+                      d={r.d}
+                      fill="none"
+                      stroke={baseColor}
+                      strokeWidth={fill ? 2.2 : isHoveredSystem ? 2.0 : 1.3}
+                      strokeLinecap="round"
+                      filter={fill ? 'url(#glow)' : undefined}
+                      className="cursor-pointer"
+                      onClick={() => abrirSheet(r.id)}
+                    >
+                      <title>{r.label}</title>
+                    </path>
+                  );
+                }
+
+                // NERVE — thin dashed stroke
+                if (r.type === 'nerve') {
+                  const isSpine = r.id === 'medula_espinhal_v' || r.id === 'medula_p';
+                  const nerveColor = fill || (isHoveredSystem
+                    ? 'rgba(14,165,233,0.88)'
+                    : 'rgba(14,165,233,0.50)');
+                  return (
+                    <path
+                      key={r.id}
+                      d={r.d}
+                      fill="none"
+                      stroke={nerveColor}
+                      strokeWidth={fill ? 2.0 : isHoveredSystem ? 1.8 : (isSpine ? 1.4 : 0.9)}
+                      strokeDasharray={isSpine ? undefined : '3,2.5'}
+                      strokeLinecap="round"
+                      filter={fill ? 'url(#glow)' : undefined}
+                      className="cursor-pointer"
+                      onClick={() => abrirSheet(r.id)}
+                    >
+                      <title>{r.label}</title>
+                    </path>
+                  );
+                }
+
+                // GLAND + ORGAN — filled shapes, com peso visual por tipo_diagnostico
+                const orgTipo = corPorRegiao[r.id + '__tipo'] || 'achado_clinico';
+                const orgIsRelato = orgTipo === 'relato_paciente';
+                const orgIsHist = orgTipo === 'historico_relatado';
+                const orgIsDiag = orgTipo.startsWith('diagnostico_');
+                const restingColor = ORGAN_RESTING_COLORS[r.id] || SYSTEM_RESTING[sys0] || 'rgba(155,163,175,0.45)';
+                const effectiveFill    = fill || (isHoveredSystem ? (SYSTEM_HOVER[sys0] || 'rgba(14,165,233,0.78)') : restingColor);
+                const effectiveOpacity = fill
+                  ? (orgIsRelato || orgIsHist ? 0.62 : orgIsDiag ? 0.98 : 0.88)
+                  : (isHoveredSystem ? 0.90 : 0.86);
+                const effectiveStroke  = fill
+                  ? (orgIsDiag ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.70)')
+                  : (isHoveredSystem ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.38)');
+                const effectiveSW      = r.type === 'gland'
+                  ? (fill ? (orgIsDiag ? 1.2 : 0.7) : 0.3)
+                  : (fill ? (orgIsDiag ? 2.0 : orgIsRelato || orgIsHist ? 0.8 : 1.3) : isHoveredSystem ? 1.6 : 0.5);
+                const orgDash = (orgIsRelato || orgIsHist) && fill ? '4,3' : undefined;
 
                 return (
-                  <g key={r.id} className={cn(isUrgent && "pulse-organ")}>
+                  <g key={r.id} className={cn(isUrgent && 'pulse-organ')}>
                     <path
                       d={r.d}
-                      fill={fill || (isHoveredSystem ? 'rgba(14, 165, 233, 0.3)' : 'hsl(var(--background))')}
-                      fillOpacity={fill ? 0.9 : 0.4}
-                      stroke={isHoveredSystem ? 'var(--primary)' : fill ? 'white' : 'hsl(var(--muted-foreground))'}
-                      strokeWidth={isHoveredSystem ? 1.5 : 0.8}
-                      filter={fill ? "url(#glow)" : undefined}
+                      fill={effectiveFill}
+                      fillOpacity={effectiveOpacity}
+                      stroke={effectiveStroke}
+                      strokeWidth={effectiveSW}
+                      strokeDasharray={orgDash}
+                      filter={isUrgent ? 'url(#glow-urgent)' : (fill && orgIsDiag) ? 'url(#glow)' : undefined}
                       className="cursor-pointer hover:brightness-110 transition-all"
                       onClick={() => abrirSheet(r.id)}
                     >
                       <title>{r.label}</title>
                     </path>
-                    {/* Efeito de Volume/Gradiente nos Órgãos */}
-                    <path
-                      d={r.d}
-                      fill="url(#organ-gradient)"
-                      pointerEvents="none"
-                      opacity={0.5}
-                    />
+                    {r.type !== 'gland' && (
+                      <path d={r.d} fill="url(#organ-vol)" pointerEvents="none" opacity={0.48} />
+                    )}
                   </g>
                 );
               })}
             </g>
-            <path d={FRONT_OUTLINE} fill="none" stroke="hsl(var(--foreground))" strokeWidth={1.2} opacity={0.6} />
+
+            {/* Organ micro-labels for active systems */}
+            {view === 'front' && (
+              <g fontSize="6" fontFamily="system-ui,sans-serif" textAnchor="middle" pointerEvents="none" fontWeight="600">
+                {sistemasAtivos.includes('nervoso') && (
+                  <text x={120} y={50} fill="rgba(100,115,200,0.88)">Encéfalo</text>
+                )}
+                {sistemasAtivos.includes('circulatorio') && (
+                  <text x={119} y={166} fill="rgba(210,40,40,0.90)" fontSize="8">♥</text>
+                )}
+                {sistemasAtivos.includes('respiratorio') && (
+                  <>
+                    <text x={98}  y={186} fill="rgba(6,182,212,0.85)">P.Dir</text>
+                    <text x={142} y={186} fill="rgba(6,182,212,0.85)">P.Esq</text>
+                  </>
+                )}
+                {sistemasAtivos.includes('digestorio') && (
+                  <text x={100} y={206} fill="rgba(150,70,30,0.85)">Fígado</text>
+                )}
+                {sistemasAtivos.includes('urinario') && (
+                  <text x={120} y={288} fill="rgba(80,110,210,0.85)">Bexiga</text>
+                )}
+              </g>
+            )}
+
+            {/* Body outline on top */}
+            <path
+              d={FRONT_OUTLINE}
+              fill="none"
+              stroke="hsl(var(--foreground))"
+              strokeWidth={1.9}
+              strokeLinejoin="round"
+              opacity={0.62}
+              pointerEvents="none"
+            />
           </svg>
         </div>
 
-        {/* Legenda */}
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] justify-center text-muted-foreground">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#dc2626]" /> Ativo grave</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#fb923c]" /> Ativo leve</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#f97316]" /> Em tratamento</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#eab308]" /> Crônico</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#9ca3af]" /> Resolvido</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500/50" /> Queixa de Dor</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500/50" /> Sinais do Corpo</span>
+        {/* Legend — hierarquia de confirmação clínica */}
+        <div className="space-y-1 mt-2">
+          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider text-center">Hierarquia de Confirmação</p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] justify-center">
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#991b1b]" /> Diagnóstico grave</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#dc2626]" /> Diagnóstico confirmado</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#fb923c]" /> Achado clínico</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#ddd6fe]" /> Relato paciente</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#eab308]" /> Crônico</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#f97316]" /> Em tratamento</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#9ca3af]" /> Resolvido (histórico)</span>
+          </div>
         </div>
       </div>
           </TabsContent>
 
           <TabsContent value="achados" className="pt-3">
-        {/* Lista resumida */}
+        {/* Lista de achados ativos */}
         {isLoading ? (
           <p className="text-xs text-muted-foreground text-center py-2">Carregando…</p>
-        ) : (eventosFiltrados.filter(e => modoSimplificado ? e.visivel_paciente : true).length === 0) ? (
+        ) : (eventosFiltrados.filter(e => e.status !== 'resolvido' && (modoSimplificado ? e.visivel_paciente : true)).length === 0) ? (
           <p className="text-xs text-muted-foreground text-center py-2">
-            Nenhum achado {modoSimplificado ? 'visível' : 'registrado'} para este sistema.
+            Nenhum achado ativo {modoSimplificado ? 'visível' : 'registrado'} para este sistema.
           </p>
         ) : (
           <div className="space-y-1.5">
             {eventosFiltrados
-              .filter(e => modoSimplificado ? e.visivel_paciente : true)
+              .filter(e => e.status !== 'resolvido' && (modoSimplificado ? e.visivel_paciente : true))
               .slice(0, 6)
               .map(ev => {
               const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === ev.regiao_id);
+              const td = (ev as any).tipo_diagnostico as string | undefined;
+              const isRelato = td === 'relato_paciente';
+              const isDiag = td?.startsWith('diagnostico_');
               return (
                 <button
                   key={ev.id}
                   disabled={modoSimplificado}
                   onClick={() => abrirSheet(ev.regiao_id)}
-                  className={`w-full flex items-center gap-2 text-left p-2 rounded-lg transition ${
-                    modoSimplificado ? 'cursor-default' : 'hover:bg-muted/40'
-                  }`}
+                  className={`w-full flex items-center gap-2 text-left p-2 rounded-lg transition border ${
+                    isDiag
+                      ? 'border-red-200/60 bg-red-50/40 dark:bg-red-950/20 dark:border-red-900/40'
+                      : isRelato
+                        ? 'border-purple-200/40 bg-purple-50/20 dark:bg-purple-950/10 dark:border-purple-900/30'
+                        : 'border-border/30 hover:bg-muted/40'
+                  } ${modoSimplificado ? 'cursor-default' : ''}`}
                 >
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: corEvento(ev) }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">
-                      {ev.tipo_achado} <span className="text-muted-foreground">· {reg?.label || ev.regiao_id}</span>
+                    <p className="text-xs font-medium truncate flex items-center gap-1 flex-wrap">
+                      {isDiag && <CheckCircle2 className="h-3 w-3 text-red-600 shrink-0" />}
+                      {isRelato && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
+                      {ev.tipo_achado}
+                      <span className={cn(
+                        "text-[9px] px-1 py-0.5 rounded font-normal shrink-0",
+                        isDiag ? "bg-red-100 text-red-700" : isRelato ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"
+                      )}>
+                        {TIPO_DIAG_BADGE[td || 'achado_clinico'] || td}
+                      </span>
+                      <span className="text-muted-foreground font-normal">· {reg?.label || ev.regiao_id}</span>
                     </p>
                     {!modoSimplificado && (
                       <p className="text-[10px] text-muted-foreground">
-                        {STATUS_LABEL[ev.status]} · {SISTEMA_LABEL[ev.sistema]} · {ORIGEM_LABEL[ev.origem]}
+                        {STATUS_LABEL[ev.status]} · {SISTEMA_LABEL[ev.sistema]}
+                        {isRelato && <span className="text-amber-600 font-semibold"> · Aguarda confirmação</span>}
                       </p>
                     )}
                   </div>
@@ -907,6 +1636,42 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             })}
           </div>
         )}
+
+        {/* Histórico Clínico — achados resolvidos */}
+        {!modoSimplificado && (() => {
+          const historico = eventosFiltrados.filter(e => e.status === 'resolvido');
+          if (historico.length === 0) return null;
+          return (
+            <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                <History className="w-3 h-3" /> Histórico Clínico — Resolvidos ({historico.length})
+              </p>
+              <div className="space-y-0.5">
+                {historico.slice(0, 5).map(ev => {
+                  const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === ev.regiao_id);
+                  const td = (ev as any).tipo_diagnostico as string | undefined;
+                  return (
+                    <button
+                      key={ev.id}
+                      onClick={() => abrirSheet(ev.regiao_id)}
+                      className="w-full flex items-center gap-2 text-left py-1 px-2 rounded hover:bg-muted/30 transition"
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0 bg-gray-400" />
+                      <p className="text-[11px] text-muted-foreground line-through truncate flex-1">{ev.tipo_achado}</p>
+                      <span className="text-[9px] text-muted-foreground shrink-0">{reg?.label || ev.regiao_id}</span>
+                      {td && td !== 'achado_clinico' && (
+                        <span className="text-[9px] bg-muted px-1 rounded shrink-0">{TIPO_DIAG_BADGE[td] || td}</span>
+                      )}
+                    </button>
+                  );
+                })}
+                {historico.length > 5 && (
+                  <p className="text-[9px] text-muted-foreground text-center py-0.5">+{historico.length - 5} no histórico</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
           </TabsContent>
 
           <TabsContent value="evolucao" className="pt-3">
@@ -1009,45 +1774,163 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 </div>
               )}
 
-              {sheetRegiao && eventosDaRegiao(sheetRegiao).map(ev => (
-                <div key={ev.id} className="border border-border/50 rounded-lg p-3 space-y-2 hover:border-primary/30 transition-colors">
+              {sheetRegiao && eventosDaRegiao(sheetRegiao).map(ev => {
+                const td = (ev as any).tipo_diagnostico as string | undefined;
+                const isRelato = td === 'relato_paciente' || td === 'historico_relatado';
+                const isDiag = td?.startsWith('diagnostico_');
+                return (
+                <div key={ev.id} className={cn(
+                  "border rounded-lg p-3 space-y-2 transition-colors",
+                  isDiag ? "border-red-200 bg-red-50/30 dark:bg-red-950/10" :
+                  isRelato ? "border-amber-200/60 bg-amber-50/20 dark:bg-amber-950/10" :
+                  "border-border/50 hover:border-primary/30"
+                )}>
                   <div className="flex items-start gap-2">
                     <span className="w-3 h-3 rounded-full mt-1 shrink-0" style={{ background: corEvento(ev) }} />
                     <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                        <p className="text-sm font-semibold">{ev.tipo_achado}</p>
-                        <div className="flex gap-1">
+                      <div className="flex justify-between items-start gap-1">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold leading-tight">{ev.tipo_achado}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            <span className={cn(
+                              "px-1.5 py-0.5 rounded font-medium mr-1",
+                              isDiag ? "bg-red-100 text-red-700" : isRelato ? "bg-amber-100 text-amber-700" : "bg-muted"
+                            )}>
+                              {TIPO_DIAG_BADGE[td || 'achado_clinico']}
+                            </span>
+                            {STATUS_LABEL[ev.status]} · Sev {ev.severidade}/4 · {SISTEMA_LABEL[ev.sistema]}
+                            {ev.estrutura && <span className="text-primary font-medium"> · {ev.estrutura}</span>}
+                            {ev.diagnostico_cid && <span className="bg-primary/10 text-primary px-1 rounded ml-1">{ev.diagnostico_cid}</span>}
+                          </p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
                           {ev.visivel_paciente ? (
-                            <User className="h-3 w-3 text-green-500" />
+                            <User className="h-3 w-3 text-green-500 mt-0.5" />
                           ) : (
-                            <ShieldCheck className="h-3 w-3 text-muted-foreground" />
+                            <ShieldCheck className="h-3 w-3 text-muted-foreground mt-0.5" />
                           )}
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(ev)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteMut.mutate(ev.id)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
                         </div>
                       </div>
-                      <p className="text-[10px] text-muted-foreground flex flex-wrap gap-x-2 gap-y-1 mt-1">
-                        <span className="bg-muted px-1.5 py-0.5 rounded">{STATUS_LABEL[ev.status]}</span>
-                        <span>Sev: {ev.severidade}/4</span>
-                        <span>{SISTEMA_LABEL[ev.sistema]}</span>
-                        {ev.estrutura && <span className="text-primary font-medium">· {ev.estrutura}</span>}
-                        {ev.diagnostico_cid && <span className="bg-primary/10 text-primary px-1 rounded">{ev.diagnostico_cid}</span>}
-                      </p>
                       {ev.notas_clinicas && (
-                        <p className="text-[11px] text-muted-foreground mt-2 bg-muted/30 p-2 rounded italic">
+                        <p className="text-[11px] text-muted-foreground mt-1.5 bg-muted/30 p-2 rounded italic">
                           "{ev.notas_clinicas}"
                         </p>
                       )}
-                    </div>
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(ev)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteMut.mutate(ev.id)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                      {/* Ações rápidas por tipo */}
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {isRelato && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => setEditing({
+                              ...ev,
+                              tipo_diagnostico: 'achado_clinico',
+                              severidade: Math.max(ev.severidade, 2),
+                            } as any)}
+                          >
+                            <CheckCircle2 className="h-3 w-3" /> Confirmar como Achado
+                          </Button>
+                        )}
+                        {ev.status !== 'resolvido' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] gap-1 border-gray-300 text-gray-600 hover:bg-gray-50"
+                            onClick={() => saveMut.mutateAsync({
+                              ...ev,
+                              status: 'resolvido',
+                              data_resolucao: new Date().toISOString().slice(0, 10),
+                            } as any)}
+                            disabled={saveMut.isPending}
+                          >
+                            <History className="h-3 w-3" /> Mover para Histórico
+                          </Button>
+                        )}
+                        {ev.status === 'resolvido' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] gap-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                            onClick={() => saveMut.mutateAsync({
+                              ...ev,
+                              status: 'ativo',
+                              data_resolucao: null,
+                            } as any)}
+                            disabled={saveMut.isPending}
+                          >
+                            <ArrowRight className="h-3 w-3" /> Reativar
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
+              {/* Histórico de vida relacionado ao sistema da região */}
+              {sheetRegiao && (() => {
+                const regVis = VISCERAL_REGIONS.find(r => r.id === sheetRegiao);
+                // Regiões normais (REGIONS) são todas musculoesqueléticas
+                const sistemasRegiao: string[] = regVis?.sistemas || ['musculoesqueletico'];
+                const historiaRegiao = historiaVida.filter(h => sistemasRegiao.includes(h.sistema_corporal as string));
+                const diagsRegiao = diagnosticosCID.filter(d => sistemasRegiao.includes((d as any).sistema_corporal as string));
+                if (historiaRegiao.length === 0 && diagsRegiao.length === 0) return null;
+                return (
+                  <div className="mt-4 space-y-3">
+                    {historiaRegiao.length > 0 && (
+                      <div className="border border-rose-200 bg-rose-50/50 rounded-lg p-3 space-y-2">
+                        <p className="text-[10px] font-bold text-rose-700 uppercase flex items-center gap-1">
+                          <Heart className="w-3 h-3" /> Histórico de Vida deste Sistema
+                        </p>
+                        <div className="space-y-1.5">
+                          {historiaRegiao.map((h: any) => (
+                            <div key={h.id} className="flex items-start gap-2">
+                              <span className={cn(
+                                "w-2 h-2 rounded-full mt-1 shrink-0",
+                                h.resolvido ? 'bg-gray-400' : h.severidade >= 3 ? 'bg-red-500' : h.severidade >= 2 ? 'bg-orange-400' : 'bg-amber-400'
+                              )} />
+                              <div className="text-[11px] leading-tight">
+                                <span className="font-semibold capitalize text-rose-800">{h.tipo.replace(/_/g, ' ')}</span>
+                                {' — '}
+                                <span className={h.resolvido ? 'line-through text-muted-foreground' : ''}>{h.titulo}</span>
+                                {h.data_evento && <span className="text-[9px] text-muted-foreground ml-1">({h.data_evento})</span>}
+                                {h.descricao && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{h.descricao}"</p>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {diagsRegiao.length > 0 && (
+                      <div className="border border-red-200 bg-red-50/50 rounded-lg p-3 space-y-2">
+                        <p className="text-[10px] font-bold text-red-700 uppercase flex items-center gap-1">
+                          <Shield className="w-3 h-3" /> Diagnósticos Confirmados
+                        </p>
+                        <div className="space-y-1.5">
+                          {diagsRegiao.map((d: any) => (
+                            <div key={d.id} className="flex items-start gap-2">
+                              <span className={cn("w-2 h-2 rounded-full mt-1 shrink-0", !d.ativo ? 'bg-gray-400' : 'bg-red-600')} />
+                              <div className="text-[11px] leading-tight">
+                                {d.cid_codigo && <span className="font-black text-red-700 mr-1">[{d.cid_codigo}]</span>}
+                                <span className={!d.ativo ? 'line-through text-muted-foreground' : 'font-medium'}>{d.cid_descricao}</span>
+                                {!d.ativo && <span className="text-[9px] text-muted-foreground ml-1">· resolvido</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <Button onClick={novoAchado} className="w-full mt-4" size="sm">
                 <Plus className="icon-xs mr-1" /> Novo Achado Clínico
               </Button>
@@ -1126,8 +2009,53 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
           {editing && (
             <div className="mt-4 space-y-3">
+              {/* Classificação primeiro — define o peso clínico do registro */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Tipo de achado *</Label>
+                <Label className="text-xs font-bold">Classificação Diagnóstica *</Label>
+                <Select
+                  value={(editing as any).tipo_diagnostico || 'achado_clinico'}
+                  onValueChange={(value) => {
+                    const updates: any = { tipo_diagnostico: value };
+                    if (value === 'historico_relatado') {
+                      updates.status = 'resolvido';
+                      updates.severidade = 1;
+                      updates.data_resolucao = updates.data_resolucao || new Date().toISOString().slice(0, 10);
+                    } else if (value.startsWith('diagnostico_')) {
+                      if (!editing.severidade || editing.severidade < 2) updates.severidade = 2;
+                      if (editing.status === 'resolvido') updates.status = 'ativo';
+                    } else if (value === 'relato_paciente') {
+                      updates.severidade = 1;
+                    }
+                    setEditing(prev => ({ ...prev!, ...updates }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relato_paciente">🗣 Relato do Paciente — não confirmado</SelectItem>
+                    <SelectItem value="historico_relatado">📋 Tratamento/Histórico Relatado — aguarda confirmação</SelectItem>
+                    <SelectItem value="achado_clinico">🔍 Achado Clínico — avaliação presencial</SelectItem>
+                    <SelectItem value="diagnostico_medico">🏥 Diagnóstico Médico — confirmado (nosológico)</SelectItem>
+                    <SelectItem value="diagnostico_fisioterapia">⚡ Diagnóstico Fisioterapêutico — cinético-funcional</SelectItem>
+                    <SelectItem value="diagnostico_psicologia">🧠 Diagnóstico Psicológico — confirmado</SelectItem>
+                    <SelectItem value="diagnostico_nutricao">🥗 Diagnóstico Nutricional — confirmado</SelectItem>
+                    <SelectItem value="diagnostico_fonoaudiologia">🎙 Diagnóstico Fonoaudiológico — confirmado</SelectItem>
+                    <SelectItem value="diagnostico_outro">📌 Diagnóstico por Especialista — confirmado</SelectItem>
+                  </SelectContent>
+                </Select>
+                {((editing as any).tipo_diagnostico?.startsWith('diagnostico_')) && (
+                  <p className="text-[10px] text-red-600 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Diagnóstico confirmado — aparece com marcação forte no avatar
+                  </p>
+                )}
+                {(editing as any).tipo_diagnostico === 'historico_relatado' && (
+                  <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Status "Resolvido" definido automaticamente — vai para o histórico
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Descrição do achado *</Label>
                 <Input
                   placeholder="ex: Tendinopatia, Parestesia, Dor mecânica…"
                   value={editing.tipo_achado || ''}

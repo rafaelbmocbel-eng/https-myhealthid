@@ -32,6 +32,7 @@ import TreatmentReportPDF from '../reports/TreatmentReportPDF';
 import { StructuralAssessmentData, createDefaultAssessment, classifyScore, classifyScoreColor, UNIT_CONFIGS } from '@/types/structural';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
+import { reprocessarComplemento, invalidarCachesAvaliacaoVoz } from '@/utils/voiceAssessment/reprocessarComplemento';
 
 
 import ProntuarioTimeline from './ProntuarioTimeline';
@@ -327,7 +328,12 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
         const myidScoreRaw = result.myidScore ?? result.MyID_score ?? result.myid_100?.score ?? result.myid_100?.myid_score ?? 0;
         const classificacao = result.classificacao || result.myidStatus || result.myid_100?.classificacao || 'N/A';
         const redFlagsDetected = result.redFlagsDetected ?? result.red_flags_detected ?? false;
-        const redFlagsList = result.redFlagAlerts || result.red_flag_alerts || result.red_flags || [];
+        const _rawFlags = result.redFlagAlerts ?? result.red_flag_alerts ?? result.red_flags_details ?? result.red_flags;
+        const redFlagsList: string[] = Array.isArray(_rawFlags)
+          ? _rawFlags
+          : _rawFlags && typeof _rawFlags === 'object'
+            ? Object.entries(_rawFlags).filter(([, v]) => v === true).map(([k]) => k)
+            : [];
 
         const scoreD = Number(scores.D ?? scores.D_pain ?? 0).toFixed(1);
         const scoreEFI = Number(scores.EFI ?? scores.EFI_functionality ?? 0).toFixed(1);
@@ -436,68 +442,30 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
 
   // Save voice edit and reprocess with AI
   const handleSaveVoiceEdit = async (avId: string, extraAudioBase64?: string, extraAudioMimeType?: string, textOverride?: string) => {
+    if (!user) return;
     setSavingVoiceEdit(true);
     const transcriptToUse = textOverride !== undefined ? textOverride : editingVoiceText;
+    const av = voiceAvaliacoes.find((a: any) => a.id === avId);
     try {
-      // 1. Update transcription text
-      const { error } = await (supabase as any).from('avaliacoes_voz').update({ transcricao: transcriptToUse }).eq('id', avId);
-      if (error) throw error;
+      toast({ title: '🧠 Reprocessando avaliação...', description: 'A IA está reanalisando com os dados atualizados.' });
 
-      // 2. Reprocess with AI using correct parameter name
-      const av = voiceAvaliacoes.find((a: any) => a.id === avId);
-      if (av) {
-        const body: any = {
-          transcript: transcriptToUse,
-          serviceType: av.servico || 'identidade',
-          patientName: patientName,
-        };
-        // If new audio was captured, include it for richer analysis
-        if (extraAudioBase64) {
-          body.audioBase64 = extraAudioBase64;
-          body.audioMimeType = extraAudioMimeType || 'audio/webm';
-        }
+      await reprocessarComplemento({
+        avaliacaoId: avId,
+        pacienteId: paciente.id,
+        terapeutaId: user.id,
+        patientName,
+        serviceType: av?.servico || 'identidade',
+        finalTranscript: transcriptToUse,
+        audioBase64: extraAudioBase64,
+        audioMimeType: extraAudioMimeType,
+        prevResultado: av?.resultado,
+        prevQueixaPrincipal: av?.queixa_principal,
+        prevSeveridade: av?.classificacao_severidade,
+        notaProntuarioTitulo: `Avaliação por Voz atualizada — ${av?.classificacao_severidade || 'N/A'}`,
+        notaProntuarioDescricao: `📝 Avaliação complementada e reprocessada pela IA.\n\n${transcriptToUse.slice(0, 500)}`,
+      });
 
-        toast({ title: '🧠 Reprocessando avaliação...', description: 'A IA está reanalisando com os dados atualizados.' });
-
-        const { data, error: fnErr } = await supabase.functions.invoke('voice-assessment', { body });
-        if (fnErr) throw fnErr;
-        if (data?.error) throw new Error(data.error);
-
-        if (data?.assessment) {
-          const resultado = data.assessment;
-          const cleanResult = JSON.parse(JSON.stringify(resultado));
-          // Update transcription with AI-generated one if it returned more content
-          const finalTranscript = data.transcricao && data.transcricao.length > transcriptToUse.length
-            ? data.transcricao
-            : transcriptToUse;
-
-          await (supabase as any).from('avaliacoes_voz').update({
-            resultado: cleanResult,
-            transcricao: finalTranscript,
-            queixa_principal: resultado.queixa_principal || av.queixa_principal,
-            classificacao_severidade: resultado.classificacao_severidade || av.classificacao_severidade,
-          }).eq('id', avId);
-        }
-      }
-
-      // 3. Sync to prontuário
-      if (user && av) {
-        try {
-          await (supabase as any).from('notas_prontuario').insert({
-            paciente_id: paciente.id,
-            terapeuta_id: user.id,
-            tipo: 'avaliacao_voz',
-            titulo: `Avaliação por Voz atualizada — ${av.classificacao_severidade || 'N/A'}`,
-            descricao: `📝 Avaliação complementada e reprocessada pela IA.\n\n${transcriptToUse.slice(0, 500)}`,
-            dados_extras: { voice_assessment_id: avId },
-            referencia_id: avId,
-          });
-        } catch {}
-      }
-
-      qc.invalidateQueries({ queryKey: ['avaliacoes-voz-presencial'] });
-      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+      invalidarCachesAvaliacaoVoz(qc, paciente.id);
       setEditingVoiceId(null);
       toast({ title: 'Avaliação atualizada! ✅', description: 'Dados clínicos reprocessados pela IA com sucesso.' });
     } catch (e: any) {

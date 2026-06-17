@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Image as ImageIcon, Upload, X, UserMinus, Plus, Trash2 } from 'lucide-react';
+import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Image as ImageIcon, Upload, X, UserMinus, Plus, Trash2, Copy, ExternalLink, Zap } from 'lucide-react';
 import { useWhatsappBloqueados } from '@/hooks/useWhatsappBloqueados';
 
 
@@ -278,6 +278,9 @@ export default function ConfigClinica() {
         </div>
       </div>
 
+      {/* Guia de configuração WhatsApp Bot */}
+      <WhatsappSetupGuide zapiOk={!!(form.zapi_instance_id && form.zapi_token && form.zapi_ativo)} />
+
       {/* WhatsApp próprio (Z-API) */}
       <div className="clinical-card mb-4 sm:mb-5 border-2 border-emerald-500/20">
         <div className="flex items-center gap-2 mb-2">
@@ -335,6 +338,94 @@ export default function ConfigClinica() {
         </Button>
       </div>
     </>
+  );
+}
+
+const SUPABASE_FUNCTIONS_URL = 'https://mgdzlzpzjpnswpqdtylz.supabase.co/functions/v1';
+
+function WhatsappSetupGuide({ zapiOk }: { zapiOk: boolean }) {
+  const { toast } = useToast();
+  const webhookUrl = `${SUPABASE_FUNCTIONS_URL}/whatsapp-webhook`;
+
+  const copiar = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: `${label} copiado!` });
+  };
+
+  const steps = [
+    {
+      done: zapiOk,
+      title: 'Credenciais Z-API configuradas',
+      desc: zapiOk ? 'Instance ID, Token e Client Token salvos e ativos.' : 'Preencha os campos abaixo e ative o WhatsApp próprio.',
+    },
+    {
+      done: false,
+      title: 'Webhook configurado na Z-API',
+      desc: 'No painel Z-API → sua instância → Webhooks → "On Message", cole a URL abaixo.',
+      action: (
+        <div className="flex items-center gap-1.5 mt-2 p-2 rounded-lg bg-muted/60 border border-border/40">
+          <code className="text-[11px] flex-1 break-all text-foreground">{webhookUrl}</code>
+          <Button size="sm" variant="ghost" className="h-7 px-2 shrink-0" onClick={() => copiar(webhookUrl, 'URL do webhook')}>
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+    {
+      done: false,
+      title: 'LOVABLE_API_KEY configurada (bot IA)',
+      desc: 'Em Supabase → Edge Functions → Secrets, adicione LOVABLE_API_KEY com sua chave da Lovable.dev. Sem ela o bot funciona mas sem IA.',
+      action: (
+        <a
+          href="https://supabase.com/dashboard/project/mgdzlzpzjpnswpqdtylz/settings/functions"
+          target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[11px] text-primary underline mt-1"
+        >
+          Abrir Supabase Secrets <ExternalLink className="h-3 w-3" />
+        </a>
+      ),
+    },
+    {
+      done: false,
+      title: 'CRON_SECRET + agendadores ativos',
+      desc: 'Adicione CRON_SECRET (qualquer string secreta) em Supabase Secrets. Depois execute a migration fix_cron_jobs.sql no SQL Editor substituindo "SEU_CRON_SECRET_AQUI".',
+      action: (
+        <a
+          href="https://supabase.com/dashboard/project/mgdzlzpzjpnswpqdtylz/sql/new"
+          target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[11px] text-primary underline mt-1"
+        >
+          Abrir SQL Editor <ExternalLink className="h-3 w-3" />
+        </a>
+      ),
+    },
+  ];
+
+  const allDone = steps.every(s => s.done);
+
+  return (
+    <div className={`clinical-card mb-4 sm:mb-5 border-2 ${allDone ? 'border-emerald-500/30' : 'border-amber-500/20'}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <Zap className={`h-4 w-4 ${allDone ? 'text-emerald-600' : 'text-amber-600'}`} />
+        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Configuração WhatsApp Bot</h2>
+        {allDone && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold">COMPLETO</span>}
+      </div>
+      <div className="space-y-3">
+        {steps.map((s, i) => (
+          <div key={i} className="flex gap-3">
+            <div className={`mt-0.5 shrink-0 rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold
+              ${s.done ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground border border-border'}`}>
+              {s.done ? '✓' : i + 1}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-medium ${s.done ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{s.title}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{s.desc}</p>
+              {!s.done && s.action}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
