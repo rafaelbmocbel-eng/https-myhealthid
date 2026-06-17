@@ -324,6 +324,52 @@ const TOOL_SCHEMA = {
   },
 };
 
+// ──────────────────────────────────────────────────────────────────
+// RED FLAGS DETERMINÍSTICAS — rede de segurança independente do LLM.
+// Nunca remove o que o modelo já identificou; só adiciona o que faltar.
+// ──────────────────────────────────────────────────────────────────
+const RED_FLAG_KEYWORDS: { pattern: RegExp; flag: string }[] = [
+  { pattern: /perda de peso (inexplic|sem motivo|sem causa)/i, flag: "Perda de peso inexplicada relatada" },
+  { pattern: /dor noturna|dor (que )?piora (a )?(de )?noite|acorda (com|de) dor/i, flag: "Dor noturna progressiva relatada" },
+  { pattern: /febre/i, flag: "Febre relatada" },
+  { pattern: /c[âa]ncer|neoplasia|tumor|oncol[óo]gic/i, flag: "História oncológica relatada" },
+  { pattern: /incontin[êe]ncia (urin[áa]ria|fecal)|perda de controle (da )?(urina|fezes|esf[íi]ncter)/i, flag: "Incontinência esfincteriana relatada — possível síndrome de cauda equina" },
+  { pattern: /anestesia (em )?sela|dormência na regi[ãa]o genital|anestesia perineal/i, flag: "Anestesia em sela relatada — possível síndrome de cauda equina" },
+  { pattern: /perda de força s[úu]bita|fraqueza s[úu]bita|paralisia/i, flag: "Déficit motor súbito/progressivo relatado" },
+  { pattern: /trauma (significativo|grave|de alta energia)|acidente (de carro|grave)|queda de altura/i, flag: "Trauma significativo relatado" },
+  { pattern: /corticoide.*(prolongado|longo prazo|cr[ôo]nico)|imunossupress/i, flag: "Uso prolongado de corticoide ou imunossupressão relatado" },
+];
+
+function detectDeterministicRedFlags(text: string): string[] {
+  if (!text) return [];
+  return RED_FLAG_KEYWORDS.filter(({ pattern }) => pattern.test(text)).map(({ flag }) => flag);
+}
+
+// ──────────────────────────────────────────────────────────────────
+// VALIDAÇÃO DE CITAÇÕES — remove números [n] que não correspondem a
+// nenhuma evidência realmente injetada no prompt (evita alucinação).
+// ──────────────────────────────────────────────────────────────────
+function sanitizeCitations(text: string, maxRef: number): string {
+  return text.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (match, nums) => {
+    const valid = nums.split(",").map((n: string) => n.trim()).filter((n: string) => {
+      const num = parseInt(n, 10);
+      return num >= 1 && num <= maxRef;
+    });
+    return valid.length > 0 ? `[${valid.join(",")}]` : "";
+  });
+}
+
+function sanitizeCitationsDeep(value: any, maxRef: number): any {
+  if (typeof value === "string") return sanitizeCitations(value, maxRef);
+  if (Array.isArray(value)) return value.map((v) => sanitizeCitationsDeep(v, maxRef));
+  if (value && typeof value === "object") {
+    const out: any = {};
+    for (const k of Object.keys(value)) out[k] = sanitizeCitationsDeep(value[k], maxRef);
+    return out;
+  }
+  return value;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -571,6 +617,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        temperature: 0,
         messages: [
           { role: "system", content: activeSystemPrompt },
           { role: "user", content: userContent },
@@ -612,7 +659,20 @@ serve(async (req) => {
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("Resposta da IA sem dados estruturados");
 
-    const assessment = JSON.parse(toolCall.function.arguments);
+    let assessment = JSON.parse(toolCall.function.arguments);
+
+    // ── Sanitiza citações [n] que não correspondem a evidência real injetada ──
+    assessment = sanitizeCitationsDeep(assessment, evidencias.length);
+
+    // ── Reforça red flags com a rede de segurança determinística ──
+    const deterministicFlags = detectDeterministicRedFlags(faithfulTranscript);
+    if (deterministicFlags.length > 0) {
+      const existing: string[] = Array.isArray(assessment.red_flags) ? assessment.red_flags : [];
+      const missing = deterministicFlags.filter(
+        (flag) => !existing.some((e) => e.toLowerCase().includes(flag.toLowerCase().split(" ").slice(0, 3).join(" ")))
+      );
+      assessment.red_flags = [...existing, ...missing];
+    }
 
     // Prefer the faithful transcript (Pass 1 / user-provided) so that the
     // shown text doesn't shrink after structuring. Fallback to whatever the
