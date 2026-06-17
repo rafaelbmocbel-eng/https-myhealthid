@@ -114,6 +114,25 @@ const ORIGEM_LABEL: Record<OrigemAchado, string> = {
   outro: 'Outro',
 };
 
+// ── Pesos clínicos do Índice de Homeostase ──
+// A severidade pondera de forma não-linear (achado severo pesa ~5x um leve,
+// no mesmo espírito das bandas não-lineares do MyID-100), o peso é modulado
+// pelo status clínico (ativo > crônico > em tratamento) e por confirmação:
+// um relato do paciente ainda não validado pelo profissional pesa a metade
+// até ser confirmado como achado clínico (ver fluxo de confirmação no painel).
+const PESO_SEVERIDADE: Record<number, number> = { 1: 1, 2: 2.5, 3: 5 };
+const PESO_STATUS: Record<StatusEvento, number> = { ativo: 1, cronico: 0.8, em_tratamento: 0.6, resolvido: 0 };
+const PESO_SINAL_MYID = 0.5; // relato subjetivo ainda não correlacionado a achado clínico
+const CARGA_MAXIMA_POR_SISTEMA = 20; // evita que um único sistema domine o índice global
+
+function pesoConfirmacao(e: EventoAnatomico): number {
+  return e.tipo_diagnostico === 'relato_paciente' ? 0.5 : 1;
+}
+
+function cargaEvento(e: EventoAnatomico): number {
+  return (PESO_SEVERIDADE[e.severidade] ?? 1) * (PESO_STATUS[e.status] ?? 0) * pesoConfirmacao(e);
+}
+
 interface Props {
   pacienteId: string;
   isProfessional?: boolean;
@@ -398,8 +417,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             {useMemo(() => {
               const systemScores = SISTEMAS_ORDEM.map(s => {
                 const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
-                let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
-                
+                let score = evsDoSistema.reduce((acc, curr) => acc + cargaEvento(curr), 0);
+
                 // Mapeamento preciso de Sinais MyID para Scores de Sistema
                 const myidSinaisDoSistema = sinalRegions.filter(sr => {
                   const isNervous = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(sr.sinal);
@@ -420,25 +439,35 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 });
 
                 if (s === 'musculoesqueletico') {
-                  score += painRegions.length * 0.8;
+                  // Pondera pela intensidade relatada (0-10) em vez de só contar regiões
+                  score += painRegions.reduce((acc, p) => acc + (Number(p.intensidade || 0) / 10) * PESO_SINAL_MYID * 2, 0);
                   const queixasTexto = sinalRegions.filter(sr => sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal');
-                  score += queixasTexto.length * 2.0;
+                  score += queixasTexto.length * PESO_SINAL_MYID * 2;
                 }
-                
-                score += myidSinaisDoSistema.length * 1.5;
+
+                score += myidSinaisDoSistema.length * PESO_SINAL_MYID;
 
                 return { sistema: s, score, count: evsDoSistema.length + myidSinaisDoSistema.length };
               }).sort((a, b) => b.score - a.score);
 
-              // Cálculo de Homeostase (Inverso do score total normalizado)
-              const totalScore = systemScores.reduce((acc, curr) => acc + curr.score, 0);
-              const homeostase = Math.max(0, Math.min(100, 100 - (totalScore * 5)));
+              // Índice de Homeostase: soma a carga clínica de cada sistema (capada para
+              // que um único sistema não domine o índice) e subtrai de 100. A carga de
+              // cada sistema já reflete severidade, status e confirmação clínica — ver
+              // cargaEvento() acima.
+              const totalScore = systemScores.reduce((acc, curr) => acc + Math.min(curr.score, CARGA_MAXIMA_POR_SISTEMA), 0);
+              const homeostase = Math.max(0, Math.min(100, 100 - totalScore));
 
               return (
                 <div className="w-full space-y-4">
                   <div className="bg-muted/30 p-3 rounded-lg border border-border/50 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Índice de Homeostase</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                        Índice de Homeostase
+                        <Info
+                          className="h-3 w-3 text-muted-foreground/70 cursor-help"
+                          title="Calculado a partir da carga clínica de cada sistema (achados ativos ponderados por severidade, status e confirmação profissional), capada por sistema para evitar distorção. Não substitui o MyID-100."
+                        />
+                      </p>
                       <div className="flex items-center gap-2">
                         <span className={cn(
                           "text-xl font-black",
