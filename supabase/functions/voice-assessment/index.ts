@@ -426,7 +426,7 @@ serve(async (req) => {
             const lentePrompt = rows?.[0]?.prompt_sistema;
             if (lentePrompt && lentePrompt !== 'LENTE_FISIO') {
               // Mantém a definição estrutural do schema (SOAP, CIF, diretriz) mas troca o foco clínico.
-              activeSystemPrompt = `${lentePrompt}\n\nMantenha a estrutura SOAP, classifique severidade, sinalize red flags, e popule a função estruturada (campos não pertinentes à sua profissão podem ficar vazios ou genéricos, mas NUNCA invente dados).`;
+              activeSystemPrompt = `${lentePrompt}\n\nMantenha a estrutura SOAP, classifique severidade, sinalize red flags, e popule a função estruturada (campos não pertinentes à sua profissão podem ficar vazios ou genéricos, mas NUNCA invente dados, códigos CID-10/CIF ou referências bibliográficas/citações [n]).`;
               console.log(`[voice-assessment] Lente ativa: ${perfilProfissional}`);
             }
           }
@@ -613,6 +613,14 @@ serve(async (req) => {
       } catch (e) {
         console.warn("[voice-assessment] evidence search non-blocking error:", e);
       }
+    }
+
+    // Se a busca de evidência falhou ou não retornou nada, avisa o modelo
+    // explicitamente — sem isso, ele tende a citar [n] como se houvesse
+    // base científica injetada (essas citações seriam removidas depois,
+    // deixando o texto truncado).
+    if (evidencias.length === 0) {
+      evidenciaContext = "\n\nATENÇÃO: nenhuma evidência científica foi recuperada do banco interno para este caso. NÃO cite números entre colchetes (ex: [1], [3,7]) em nenhum campo — eles serão removidos automaticamente e quebrarão a leitura do texto. Se quiser referenciar literatura, cite autor e ano por extenso (ex: 'Cook 2018') em vez de números.";
     }
 
     // ───────────────────────────────────────────────────────────────
