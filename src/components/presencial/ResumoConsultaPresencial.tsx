@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 import MyIDResumoInline from './MyIDResumoInline';
+import SafetyBanner from './SafetyBanner';
+import FechamentoSessaoForm from './FechamentoSessaoForm';
 import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
 import type { SistemaCorporal } from '@/hooks/useEventosAnatomicos';
 import { Button } from '@/components/ui/button';
@@ -266,6 +268,7 @@ export default function ResumoConsultaPresencial({
 
   return (
     <div className="space-y-3">
+      <SafetyBanner pacienteId={pacienteId} />
       <MyIDResumoInline pacienteId={pacienteId} />
 
       {/* Indicador de processamento automático em background */}
@@ -346,6 +349,8 @@ export default function ResumoConsultaPresencial({
           Nova avaliação por voz
         </Button>
       ) : null}
+
+      <FechamentoSessaoForm pacienteId={pacienteId} onSuccess={onAssessmentComplete} />
     </div>
   );
 }
