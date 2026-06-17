@@ -31,73 +31,18 @@ const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
 const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
-const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string; resumo: string }> = {
-  musculoesqueletico: { 
-    label: 'Musculoesquelético', 
-    icon: Zap, 
-    color: 'purple',
-    resumo: 'Sistema de suporte e alavanca mecânica, integrando ossos, articulações, músculos e fáscias sob controle neural para postura e movimento.'
-  },
-  nervoso: { 
-    label: 'Nervoso', 
-    icon: Brain, 
-    color: 'blue',
-    resumo: 'Rede eletroquímica central e periférica que processa estímulos, coordena respostas reflexas e voluntárias e mantém a homeostase sistêmica.'
-  },
-  digestorio: { 
-    label: 'Digestório', 
-    icon: Stethoscope, 
-    color: 'orange',
-    resumo: 'Trato gastrointestinal e glândulas anexas responsáveis pela quebra mecânico-química, absorção de nutrientes e barreira imunológica entérica.'
-  },
-  circulatorio: { 
-    label: 'Circulatório', 
-    icon: Heart, 
-    color: 'red',
-    resumo: 'Sistema hemodinâmico de transporte de gases, nutrientes e sinalizadores hormonais através de uma rede contínua de vasos e bomba cardíaca.'
-  },
-  respiratorio: { 
-    label: 'Respiratório', 
-    icon: Wind, 
-    color: 'cyan',
-    resumo: 'Interface de hematose entre o ambiente e o sangue, abrangendo vias condutoras e unidades alveolares para troca de oxigênio e CO2.'
-  },
-  endocrino: { 
-    label: 'Endócrino', 
-    icon: Dna, 
-    color: 'yellow',
-    resumo: 'Eixo de controle humoral composto por glândulas que secretam mensageiros químicos (hormônios) para regulação metabólica de longo prazo.'
-  },
-  urinario: { 
-    label: 'Urinário', 
-    icon: Droplets, 
-    color: 'indigo',
-    resumo: 'Complexo de filtração renal e vias excretoras essencial para o equilíbrio hidroeletrolítico, controle pressórico e depuração de catabólitos.'
-  },
-  reprodutor: { 
-    label: 'Reprodutor', 
-    icon: Heart, 
-    color: 'pink',
-    resumo: 'Órgãos e gônadas responsáveis pela perpetuação da espécie e produção de esteroides sexuais que influenciam múltiplos sistemas.'
-  },
-  tegumentar: { 
-    label: 'Tegumentar', 
-    icon: Shield, 
-    color: 'stone',
-    resumo: 'Interface de proteção externa, termorregulação e vasta rede de exterocepção sensorial através da pele e seus anexos epidérmicos.'
-  },
-  linfatico: { 
-    label: 'Linfático', 
-    icon: Waves, 
-    color: 'lime',
-    resumo: 'Sistema de drenagem intersticial e vigilância imunológica, integrando linfonodos e vasos para transporte de lipídios e defesa celular.'
-  },
-  sensorial: { 
-    label: 'Sensorial', 
-    icon: Eye, 
-    color: 'emerald',
-    resumo: 'Complexo de transdutores biológicos (visão, audição, olfato, paladar, tato) que convertem estímulos ambientais em impulsos neurais.'
-  },
+const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string }> = {
+  musculoesqueletico: { label: 'Musculoesquelético', icon: Zap, color: 'purple' },
+  nervoso: { label: 'Nervoso', icon: Brain, color: 'blue' },
+  digestorio: { label: 'Digestório', icon: Stethoscope, color: 'orange' },
+  circulatorio: { label: 'Circulatório', icon: Heart, color: 'red' },
+  respiratorio: { label: 'Respiratório', icon: Wind, color: 'cyan' },
+  endocrino: { label: 'Endócrino', icon: Dna, color: 'yellow' },
+  urinario: { label: 'Urinário', icon: Droplets, color: 'indigo' },
+  reprodutor: { label: 'Reprodutor', icon: Heart, color: 'pink' },
+  tegumentar: { label: 'Tegumentar', icon: Shield, color: 'stone' },
+  linfatico: { label: 'Linfático', icon: Waves, color: 'lime' },
+  sensorial: { label: 'Sensorial', icon: Eye, color: 'emerald' },
 };
 
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = Object.fromEntries(

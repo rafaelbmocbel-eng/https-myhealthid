@@ -720,7 +720,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           ].join(' ');
           const regioesPorPalavraChave = encontrarSintomasEmTexto(textoBase);
           // Quando o chamador fornece onPainExtracted, ele já persiste as regiões de dor
-          // extraídas pela IA (ex.: AvaliacaoPresencial.tsx) — evita duplicar o mesmo achado.
+          // extraídas pela IA (ex.: ResumoConsultaPresencial.tsx) — evita duplicar o mesmo achado.
           const regioesPorDor = onPainExtracted ? [] : painFindings.map(f => ({
             regiao_id: f.region_id,
             sistema: 'musculoesqueletico' as const,

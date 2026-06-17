@@ -1172,7 +1172,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                 className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
                                 <UserPlus className="h-4 w-4 text-emerald-600" /><span>Pacientes</span>
                             </button>
-                            <button onClick={() => { setFabOpen(false); navigate('/metodo-identidade'); }}
+                            <button onClick={() => { setFabOpen(false); navigate('/pacientes'); }}
                                 className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
                                 <ClipboardList className="h-4 w-4 text-primary" /><span>Nova Avaliação</span>
                             </button>

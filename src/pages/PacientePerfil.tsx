@@ -34,7 +34,7 @@ const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashb
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
-import AvaliacaoPresencial from '@/components/presencial/AvaliacaoPresencial';
+import ResumoConsultaPresencial from '@/components/presencial/ResumoConsultaPresencial';
 import AvaliacoesVozHistorico from '@/components/voice/AvaliacoesVozHistorico';
 import AvaliacaoVozAtual from '@/components/voice/AvaliacaoVozAtual';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
@@ -1085,9 +1085,6 @@ export default function PacientePerfil() {
                 <PacienteDashboardIdentidade
                   paciente={paciente as any}
                   onBack={() => navigate('/pacientes')}
-                  onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                  onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                  onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
                   subTab="integrada"
                 />
               </Suspense>
@@ -1117,7 +1114,7 @@ export default function PacientePerfil() {
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"
             />
-            <AvaliacaoPresencial
+            <ResumoConsultaPresencial
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"
@@ -1140,9 +1137,6 @@ export default function PacientePerfil() {
               <PacienteDashboardIdentidade
                 paciente={paciente as any}
                 onBack={() => navigate('/pacientes')}
-                onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
                 subTab="historico"
               />
             </Suspense>

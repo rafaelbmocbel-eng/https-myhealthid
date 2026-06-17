@@ -27,7 +27,7 @@ import { MyIDResult } from '../myid/MyIDResult';
 import StructuralWizard from '../structural/StructuralWizard';
 import StructuralResultsSummary from '../structural/StructuralResultsSummary';
 import StructuralConnectionMap from '../structural/StructuralConnectionMap';
-import AvaliacaoPresencial from '../presencial/AvaliacaoPresencial';
+import ResumoConsultaPresencial from '../presencial/ResumoConsultaPresencial';
 import TreatmentReportPDF from '../reports/TreatmentReportPDF';
 import { StructuralAssessmentData, createDefaultAssessment, classifyScore, classifyScoreColor, UNIT_CONFIGS } from '@/types/structural';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
@@ -51,20 +51,9 @@ interface Paciente {
   portal_token?: string | null;
 }
 
-interface RespostasPrecarga {
-  bloco1?: any;
-  bloco2?: any;
-  bloco3?: any;
-  bloco4?: any;
-  bloco5?: any;
-}
-
 interface Props {
   paciente: Paciente;
   onBack: () => void;
-  onIniciarAvaliacao: (precarga?: RespostasPrecarga) => void;
-  onVerRelatorio: (avaliacao: any) => void;
-  onEditarAvaliacao?: (avaliacao: any) => void;
   /** Controla qual sub-aba é exibida. 'integrada' | 'historico' | 'myid' | 'avaliacoes'. Default: 'integrada' */
   subTab?: 'integrada' | 'historico' | 'myid' | 'avaliacoes';
 }
@@ -712,7 +701,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
 
 
             <TabsContent value="myid" className="mt-4">
-              <AvaliacaoPresencial
+              <ResumoConsultaPresencial
                 pacienteId={paciente.id}
                 patientName={`${paciente.nome} ${paciente.sobrenome}`}
                 serviceType="identidade"

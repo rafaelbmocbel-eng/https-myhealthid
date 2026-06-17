@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList, Sparkles, Stethoscope, Wand2, AlertCircle, Loader2, Mic } from 'lucide-react';
+import { Sparkles, Stethoscope, Wand2, AlertCircle, Loader2, Mic } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import { REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +28,7 @@ type RegiaoColetada = {
   tipoAchado: string;
 };
 
-export default function AvaliacaoPresencial({
+export default function ResumoConsultaPresencial({
   pacienteId,
   patientName,
   serviceType = 'identidade',
@@ -302,15 +302,8 @@ export default function AvaliacaoPresencial({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <button
-          onClick={() => navigate(`/metodo-identidade?paciente=${pacienteId}&iniciar=1`)}
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ClipboardList className="icon-xs shrink-0" />
-          <span>MyID Presencial</span>
-        </button>
-        {lente && (
+      {lente && (
+        <div className="flex items-center justify-end gap-2 flex-wrap">
           <button
             onClick={() => navigate('/configuracoes')}
             className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded-full border border-border/40 px-2 py-0.5"
@@ -319,8 +312,8 @@ export default function AvaliacaoPresencial({
             <Stethoscope className="icon-xs shrink-0" />
             <span>Lente: {lente.nome_exibicao}</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Gravador de nova avaliação por voz — oculto por padrão quando já existe uma avaliação,
           já que o card "Última avaliação" acima já oferece "Complementar com áudio ou texto".

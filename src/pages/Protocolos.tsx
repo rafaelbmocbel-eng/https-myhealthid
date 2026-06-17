@@ -271,7 +271,7 @@ export default function Protocolos() {
           }}
           onNewDiretriz={() => {
             setViewingId(null);
-            navigate('/metodo-identidade');
+            navigate('/pacientes');
           }}
         />
       </AppLayout>
@@ -304,7 +304,7 @@ export default function Protocolos() {
             </div>
           </div>
           <Button
-            onClick={() => navigate('/metodo-identidade')}
+            onClick={() => navigate('/pacientes')}
             className="rounded-xl gap-2"
           >
             <Plus className="h-4 w-4" />
@@ -384,7 +384,7 @@ export default function Protocolos() {
             <p className="text-muted-foreground mb-6">
               Conclua uma avaliação MyID para gerar uma diretriz automaticamente.
             </p>
-            <Button onClick={() => navigate('/metodo-identidade')} className="rounded-xl">
+            <Button onClick={() => navigate('/pacientes')} className="rounded-xl">
               <Plus className="h-4 w-4 mr-2" />
               Iniciar Avaliação
             </Button>
