@@ -370,6 +370,37 @@ function sanitizeCitationsDeep(value: any, maxRef: number): any {
   return value;
 }
 
+// ──────────────────────────────────────────────────────────────────
+// VALIDAÇÃO CID-10 / CIF — descarta códigos com formato inválido para
+// não exibir codificação clínica que pareça oficial mas é inventada.
+// ──────────────────────────────────────────────────────────────────
+const CID10_REGEX = /^[A-Z]\d{2}(\.\d{1,2})?$/;
+const CIF_REGEX: Record<string, RegExp> = {
+  b: /^b\d{3,6}$/i,
+  s: /^s\d{3,6}$/i,
+  d: /^d\d{3,6}$/i,
+  e: /^e\d{3,6}$/i,
+};
+
+function validarHipotesesDiagnosticas(hipoteses: any): any {
+  if (!Array.isArray(hipoteses)) return hipoteses;
+  return hipoteses.map((h) => {
+    const cid = typeof h?.cid_sugerido === "string" ? h.cid_sugerido.trim() : "";
+    if (cid && !CID10_REGEX.test(cid)) return { ...h, cid_sugerido: "" };
+    return h;
+  });
+}
+
+function validarCifCodes(cifCodes: any): any {
+  if (!Array.isArray(cifCodes)) return cifCodes;
+  return cifCodes.filter((c) => {
+    const codigo = String(c?.codigo ?? "").trim();
+    const categoria = String(c?.categoria ?? "").trim().toLowerCase();
+    const regex = CIF_REGEX[categoria];
+    return !!regex && regex.test(codigo);
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -663,6 +694,10 @@ serve(async (req) => {
 
     // ── Sanitiza citações [n] que não correspondem a evidência real injetada ──
     assessment = sanitizeCitationsDeep(assessment, evidencias.length);
+
+    // ── Descarta códigos CID-10/CIF com formato inválido (provável alucinação) ──
+    assessment.hipoteses_diagnosticas = validarHipotesesDiagnosticas(assessment.hipoteses_diagnosticas);
+    assessment.cif_codes = validarCifCodes(assessment.cif_codes);
 
     // ── Reforça red flags com a rede de segurança determinística ──
     const deterministicFlags = detectDeterministicRedFlags(faithfulTranscript);
