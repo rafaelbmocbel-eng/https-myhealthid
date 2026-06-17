@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus, BarChart3, Activity, Calendar, Target, Award, Download, Loader2, Eye, EyeOff } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, BarChart3, Activity, Calendar, Target, Award, Download, Loader2, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,6 +67,30 @@ function isDimensionImprovement(dimKey: string, delta: number): boolean {
   const cfg = DIMENSION_CONFIG.find(d => d.dbKey === dimKey || d.key === dimKey);
   if (!cfg) return delta < 0; // default: lower = better
   return cfg.type === 'capacity' ? delta > 0 : delta < 0;
+}
+
+/**
+ * MCID (diferença mínima clinicamente importante) adotada para o MyID-100.
+ * Variações menores que isto entre avaliações não devem ser lidas como melhora
+ * ou piora real — podem refletir apenas variabilidade da resposta do paciente.
+ */
+export const MCID_MYID = 8;
+
+export function classificarVariacao(delta: number): { significativa: boolean; direcao: 'melhora' | 'piora' | 'estavel' } {
+  if (Math.abs(delta) < MCID_MYID) return { significativa: false, direcao: 'estavel' };
+  return { significativa: true, direcao: delta > 0 ? 'melhora' : 'piora' };
+}
+
+/**
+ * Detecta platô terapêutico: as últimas `janela` avaliações não apresentaram
+ * variação clinicamente significativa frente à anterior, sinalizando que a
+ * conduta atual pode precisar de revisão.
+ */
+export function detectarEstagnacao(evolucoes: EvolucaoRecord[], janela = 3): boolean {
+  const sorted = [...evolucoes].sort((a, b) => a.numero_avaliacao - b.numero_avaliacao);
+  if (sorted.length < janela) return false;
+  const ultimas = sorted.slice(-janela);
+  return ultimas.every(ev => ev.delta_id_final != null && Math.abs(Number(ev.delta_id_final)) < MCID_MYID);
 }
 
 export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNome }: Props) {
@@ -166,6 +190,8 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
 
   // For MyID-100: higher score = better, so positive delta = improvement
   const isImprovement = deltaScore > 0;
+  const variacaoGlobal = classificarVariacao(deltaScore);
+  const estagnado = useMemo(() => detectarEstagnacao(sorted), [sorted]);
 
   return (
     <div className="space-y-4">
@@ -177,6 +203,17 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
           Exportar PDF
         </Button>
       </div>
+
+      {estagnado && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">Possível platô terapêutico.</span> As últimas avaliações não mostraram variação clinicamente significativa
+            (MCID ±{MCID_MYID} pts) no {scoreLabel}. Considere revisar a conduta terapêutica.
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard label="Avaliações" value={totalAvaliacoes} icon={<Activity className="h-4 w-4" />} accent="primary" />
         <SummaryCard label={`${scoreLabel} Atual`} value={`${Math.round(scoreAtual)}/${maxScore}`} icon={<Target className="h-4 w-4" />} accent="info" />
@@ -184,8 +221,9 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
         <SummaryCard
           label={`Variação ${scoreLabel}`}
           value={`${deltaScore > 0 ? '+' : ''}${deltaScore.toFixed(1)}`}
+          subtitle={variacaoGlobal.significativa ? undefined : 'dentro da margem (MCID)'}
           icon={isImprovement ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-          accent={isImprovement ? 'success' : 'danger'}
+          accent={!variacaoGlobal.significativa ? 'primary' : isImprovement ? 'success' : 'danger'}
         />
       </div>
 
@@ -374,8 +412,8 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
                   <div className="text-xs text-muted-foreground mt-0.5">
                     MyID-100: {Math.round(evScore)}/100
                     {ev.delta_id_final != null && ev.delta_id_final !== 0 && (
-                      <span className={ev.delta_id_final > 0 ? 'text-emerald-600' : 'text-red-500'}>
-                        {' '}({ev.delta_id_final > 0 ? '+' : ''}{Number(ev.delta_id_final).toFixed(1)})
+                      <span className={Math.abs(ev.delta_id_final) < MCID_MYID ? 'text-muted-foreground' : ev.delta_id_final > 0 ? 'text-emerald-600' : 'text-red-500'}>
+                        {' '}({ev.delta_id_final > 0 ? '+' : ''}{Number(ev.delta_id_final).toFixed(1)}{Math.abs(ev.delta_id_final) < MCID_MYID ? ', estável' : ''})
                       </span>
                     )}
                     {' · '}D:{Number(ev.score_d || 0).toFixed(1)} P:{Number(ev.score_p || 0).toFixed(1)} R:{Number(ev.score_r || 0).toFixed(1)} I:{Number(ev.score_i || 0).toFixed(1)} N:{Number(ev.score_n || 0).toFixed(1)}
@@ -390,11 +428,12 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
   );
 }
 
-function SummaryCard({ label, value, icon, accent }: {
+function SummaryCard({ label, value, icon, accent, subtitle }: {
   label: string;
   value: string | number;
   icon: React.ReactNode;
   accent: 'primary' | 'success' | 'info' | 'warning' | 'danger';
+  subtitle?: string;
 }) {
   const accentStyles: Record<string, string> = {
     primary: 'bg-primary/10 text-primary',
@@ -413,6 +452,7 @@ function SummaryCard({ label, value, icon, accent }: {
       </div>
       <div className="text-xl font-bold text-foreground">{value}</div>
       <div className="text-[11px] text-muted-foreground">{label}</div>
+      {subtitle && <div className="text-[10px] text-muted-foreground/70 mt-0.5">{subtitle}</div>}
     </div>
   );
 }

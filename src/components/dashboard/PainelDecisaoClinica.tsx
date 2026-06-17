@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle2, XCircle, TrendingUp, TrendingDown, Stethoscope } from 'lucide-react';
 import { useEventosAnatomicos, useSaveEventoAnatomico, type EventoAnatomico } from '@/hooks/useEventosAnatomicos';
+import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
+import { detectarEstagnacao, MCID_MYID } from '@/components/paciente/EvolucaoDashboard';
 
 interface PainelDecisaoClinicaProps {
   pacienteId: string;
@@ -22,6 +24,8 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
   const { data: eventos = [] } = useEventosAnatomicos(pacienteId);
   const saveEvento = useSaveEventoAnatomico();
   const qc = useQueryClient();
+  const { evolucoes } = useEvolucaoPaciente(pacienteId);
+  const estagnado = useMemo(() => detectarEstagnacao(evolucoes), [evolucoes]);
 
   const { data: myid = [] } = useQuery({
     queryKey: ['painel-decisao-myid', pacienteId],
@@ -98,7 +102,7 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
     );
   };
 
-  const semAlertas = redFlags.length === 0 && pendentes.length === 0;
+  const semAlertas = redFlags.length === 0 && pendentes.length === 0 && !estagnado;
 
   return (
     <Card className="border-primary/20">
@@ -111,6 +115,16 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
         {semAlertas && (
           <div className="flex items-center gap-2 text-sm text-emerald-700">
             <CheckCircle2 className="h-4 w-4" /> Nenhum alerta pendente para este paciente.
+          </div>
+        )}
+
+        {estagnado && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-800">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold">Possível platô terapêutico.</span> As últimas avaliações de evolução não mostraram variação clinicamente
+              significativa (MCID ±{MCID_MYID} pts). Considere revisar a conduta.
+            </div>
           </div>
         )}
 
