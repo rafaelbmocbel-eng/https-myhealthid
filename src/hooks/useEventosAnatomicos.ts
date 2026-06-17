@@ -14,6 +14,8 @@ export type OrigemAchado =
 
 export type StatusEvento = 'ativo' | 'em_tratamento' | 'resolvido' | 'cronico';
 
+export type TipoDiagnosticoEvento = 'achado_clinico' | 'historico_relatado' | 'relato_paciente' | 'diagnostico_fisioterapia';
+
 export interface EventoAnatomico {
   id: string;
   paciente_id: string;
@@ -22,6 +24,7 @@ export interface EventoAnatomico {
   sistema: SistemaCorporal;
   origem: OrigemAchado;
   tipo_achado: string;
+  tipo_diagnostico: TipoDiagnosticoEvento;
   estrutura: string | null;
   diagnostico_cid: string | null;
   severidade: number;
