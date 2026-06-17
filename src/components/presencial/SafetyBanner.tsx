@@ -26,9 +26,8 @@ export default function SafetyBanner({ pacienteId }: Props) {
     enabled: !!pacienteId,
   });
 
-  // Mesma queryKey usada em MyIDResumoInline — compartilha o cache, sem fetch duplicado.
   const { data: ultimaAval, isLoading: loadingMyID } = useQuery({
-    queryKey: ['avaliacao-presencial-myid', pacienteId],
+    queryKey: ['avaliacao-presencial-myid-safety', pacienteId],
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_identidade')

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Fingerprint, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Fingerprint, ChevronRight, AlertTriangle, ArrowDown, ArrowUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,8 +33,10 @@ function severityClass(v: number) {
 export default function MyIDResumoInline({ pacienteId }: Props) {
   const navigate = useNavigate();
 
-  const { data: ultima, isLoading } = useQuery({
-    queryKey: ['avaliacao-presencial-myid', pacienteId],
+  // Busca as 2 últimas avaliações com score para poder mostrar a evolução (antes/depois)
+  // direto na tela de atendimento, sem precisar abrir o dashboard de evolução em outra aba.
+  const { data: historico, isLoading } = useQuery({
+    queryKey: ['avaliacao-presencial-myid-hist', pacienteId],
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_identidade')
@@ -42,13 +44,15 @@ export default function MyIDResumoInline({ pacienteId }: Props) {
         .eq('paciente_id', pacienteId)
         .not('myid_score', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data;
+        .limit(2);
+      return data || [];
     },
   });
 
   if (isLoading) return null;
+
+  const ultima = historico?.[0];
+  const anterior = historico?.[1];
 
   // Sem MyID ainda — CTA para gerar/pedir
   if (!ultima) {
@@ -86,6 +90,9 @@ export default function MyIDResumoInline({ pacienteId }: Props) {
     ? format(parseISO(ultima.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })
     : '';
 
+  // Score MyID: maior = melhor. Dimensões (D/EFI/P/I/R/C/N): maior = mais perda/pior.
+  const deltaScore = anterior ? score - Number(anterior.myid_score ?? 0) : null;
+
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
       <CardContent className="p-3 sm:p-4 space-y-3">
@@ -99,10 +106,22 @@ export default function MyIDResumoInline({ pacienteId }: Props) {
               <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
                 MyID do paciente
               </p>
-              <p className="text-sm font-semibold text-foreground truncate">
+              <p className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
                 Score {score.toFixed(0)}/100 · {classificacao}
+                {deltaScore !== null && deltaScore !== 0 && (
+                  <span className={cn(
+                    'inline-flex items-center gap-0.5 text-[11px] font-bold',
+                    deltaScore > 0 ? 'text-emerald-600' : 'text-rose-600',
+                  )}>
+                    {deltaScore > 0 ? <ArrowUp className="icon-xs" /> : <ArrowDown className="icon-xs" />}
+                    {Math.abs(deltaScore).toFixed(0)}
+                  </span>
+                )}
               </p>
-              <p className="text-micro text-muted-foreground">Última resposta {when}</p>
+              <p className="text-micro text-muted-foreground">
+                Última resposta {when}
+                {anterior && ' · comparado com a avaliação anterior'}
+              </p>
             </div>
           </div>
           <button
@@ -128,10 +147,13 @@ export default function MyIDResumoInline({ pacienteId }: Props) {
           {DIMS.map(d => {
             const v = Number((ultima as any)[d.key] ?? 0);
             const isDriver = driver && (driver === d.label || String(driver).toUpperCase() === d.label);
+            const vAnterior = anterior ? Number((anterior as any)[d.key] ?? 0) : null;
+            const deltaDim = vAnterior !== null ? v - vAnterior : null;
+            // Dimensão é "perda" — diminuir é melhora.
             return (
               <div
                 key={d.key}
-                title={`${d.full}: ${v.toFixed(1)}/10`}
+                title={`${d.full}: ${v.toFixed(1)}/10${deltaDim !== null ? ` (era ${vAnterior!.toFixed(1)})` : ''}`}
                 className={cn(
                   'rounded-lg border px-1.5 py-1 flex flex-col items-center justify-center',
                   severityClass(v),
@@ -140,6 +162,15 @@ export default function MyIDResumoInline({ pacienteId }: Props) {
               >
                 <span className="text-[9px] font-bold uppercase opacity-70">{d.label}</span>
                 <span className="text-sm font-black leading-none mt-0.5">{v.toFixed(1)}</span>
+                {deltaDim !== null && Math.abs(deltaDim) >= 0.1 && (
+                  <span className={cn(
+                    'inline-flex items-center text-[9px] font-bold leading-none mt-0.5',
+                    deltaDim < 0 ? 'text-emerald-700' : 'text-rose-700',
+                  )}>
+                    {deltaDim < 0 ? <ArrowDown className="icon-xs" /> : <ArrowUp className="icon-xs" />}
+                    {Math.abs(deltaDim).toFixed(1)}
+                  </span>
+                )}
               </div>
             );
           })}
