@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ClipboardCheck, Loader2, ChevronUp } from 'lucide-react';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
+import { useProtocoloFaseAtual } from '@/hooks/useProtocoloFaseAtual';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,16 @@ export default function FechamentoSessaoForm({ pacienteId, onSuccess }: Props) {
   const [evolucaoDor, setEvolucaoDor] = useState<typeof EVOLUCAO_OPCOES[number] | ''>('');
   const [observacoes, setObservacoes] = useState('');
   const { adicionar, adicionando } = useNotasProntuario(pacienteId);
+  const { fase } = useProtocoloFaseAtual(pacienteId);
+  const exerciciosDaFase = fase?.exercicios.map(ex => ex.nome) || [];
+
+  const handleAdicionarExercicio = (nome: string) => {
+    setExerciciosFeitos(prev => {
+      const itens = prev.split(',').map(s => s.trim()).filter(Boolean);
+      if (itens.includes(nome)) return prev;
+      return itens.length > 0 ? `${itens.join(', ')}, ${nome}` : nome;
+    });
+  };
 
   const limpar = () => {
     setExerciciosFeitos('');
@@ -85,6 +96,20 @@ export default function FechamentoSessaoForm({ pacienteId, onSuccess }: Props) {
 
       <div>
         <Label className="text-xs">Exercícios/condutas realizados hoje</Label>
+        {exerciciosDaFase.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-1.5 mb-1.5">
+            {exerciciosDaFase.map(nome => (
+              <button
+                key={nome}
+                type="button"
+                onClick={() => handleAdicionarExercicio(nome)}
+                className="text-[11px] px-2 py-0.5 rounded-full border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+              >
+                + {nome}
+              </button>
+            ))}
+          </div>
+        )}
         <Textarea
           value={exerciciosFeitos}
           onChange={e => setExerciciosFeitos(e.target.value)}
