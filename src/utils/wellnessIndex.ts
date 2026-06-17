@@ -42,7 +42,7 @@ export interface WellnessAlert {
 export interface MyIDCorrelation {
   dimension: string;
   label: string;
-  correlation: number; // -1 to 1
+  correlation: number; // -1 to 1 — índice heurístico de consistência, NÃO é correlação estatística calculada
   insight: string;
 }
 
@@ -167,7 +167,12 @@ export function generateAlerts(logs: DailyLogEntry[], trend: WellnessTrend): Wel
 }
 
 // --- MyID Correlation ---
-
+// IMPORTANTE: isto NÃO é uma correlação estatística (ex: Pearson) entre as
+// séries reais de diário e MyID — os intervalos de avaliação MyID são
+// esparsos demais (geralmente mensais) para um cálculo estatisticamente
+// válido. É um índice heurístico de consistência: classifica a média
+// recente do diário em 3 faixas e sugere uma leitura qualitativa. Deve ser
+// apresentado ao usuário como estimativa, nunca como estatística calculada.
 export function estimateMyIDCorrelation(
   snapshots: WellnessSnapshot[],
   myidScores: { date: string; myid_score: number; score_d?: number; score_f?: number; score_p?: number }[]
@@ -230,14 +235,17 @@ export function getWellnessLevel(index: number): { label: string; color: string;
   return { label: 'Crítico', color: 'text-red-600', emoji: '🚨' };
 }
 
-// --- Projection ---
-
+// --- Estimativa (NÃO é previsão clínica) ---
+// Este NÃO é um modelo preditivo validado — é um ajuste heurístico simples
+// (cap de ±5 pontos) baseado na tendência recente do diário de bem-estar.
+// Deve sempre ser comunicado ao usuário como estimativa simplificada, com
+// "consistência" (baseada na sequência de registros) em vez de "confiança"
+// estatística, para não sugerir rigor que a fórmula não tem.
 export function projectNextMyID(
   currentMyID: number,
   trend: WellnessTrend,
   weeklyAvg: number
-): { projected: number; confidence: string; message: string } {
-  // Simple heuristic: if wellness is high and improving, project slight MyID improvement
+): { projected: number; consistencia: string; message: string; disclaimer: string } {
   let delta = 0;
   if (trend.direction === 'improving' && weeklyAvg >= 60) {
     delta = Math.min(5, trend.delta * 0.3);
@@ -246,12 +254,17 @@ export function projectNextMyID(
   }
 
   const projected = Math.max(0, Math.min(100, Math.round(currentMyID + delta)));
-  const confidence = trend.streak >= 7 ? 'Alta' : trend.streak >= 3 ? 'Média' : 'Baixa';
+  const consistencia = trend.streak >= 7 ? 'Alta' : trend.streak >= 3 ? 'Média' : 'Baixa';
 
   let message = '';
-  if (delta > 0) message = `Mantendo esses hábitos, projetamos melhora de ~${Math.round(delta)} pts no próximo MyID`;
-  else if (delta < 0) message = `Atenção: tendência atual pode impactar negativamente o próximo MyID`;
+  if (delta > 0) message = `Mantendo esses hábitos, a estimativa é de melhora de ~${Math.round(delta)} pts no próximo MyID`;
+  else if (delta < 0) message = 'Atenção: a tendência atual pode impactar negativamente o próximo MyID';
   else message = 'Mantenha a consistência para ver impacto no próximo MyID';
 
-  return { projected, confidence, message };
+  return {
+    projected,
+    consistencia,
+    message,
+    disclaimer: 'Estimativa simplificada com base no seu diário de bem-estar — não é uma previsão clínica nem substitui avaliação profissional.',
+  };
 }

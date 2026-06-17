@@ -270,10 +270,13 @@ export default function PacienteEvolucao() {
               {correlations.length > 0 && (
                 <Card>
                   <CardContent className="p-4">
-                    <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
                       <Brain className="h-4 w-4 text-primary" />
                       Conexão Diário → MyID
                     </h2>
+                    <p className="text-[10px] text-muted-foreground/70 mb-3 italic">
+                      Estimativa qualitativa baseada na média recente do seu diário — não é uma correlação estatística calculada.
+                    </p>
                     <div className="space-y-3">
                       {correlations.map(c => (
                         <div key={c.dimension} className="flex items-start gap-3">
@@ -316,7 +319,7 @@ export default function PacienteEvolucao() {
                   <CardContent className="p-4">
                     <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
                       <Zap className="h-4 w-4 text-primary" />
-                      Projeção MyID
+                      Estimativa MyID
                     </h2>
                     <div className="flex items-center gap-4">
                       <div className="text-center">
@@ -327,7 +330,7 @@ export default function PacienteEvolucao() {
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       <div className="text-center">
-                        <p className="text-[10px] text-muted-foreground">Projetado</p>
+                        <p className="text-[10px] text-muted-foreground">Estimado</p>
                         <span className={`text-2xl font-black ${
                           projection.projected > myidScores[myidScores.length - 1].myid_score
                             ? 'text-emerald-600' : 'text-foreground'
@@ -336,10 +339,11 @@ export default function PacienteEvolucao() {
                         </span>
                       </div>
                       <Badge variant="outline" className="text-[9px] ml-auto">
-                        Confiança: {projection.confidence}
+                        Consistência: {projection.consistencia}
                       </Badge>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-2 italic">{projection.message}</p>
+                    <p className="text-[9px] text-muted-foreground/60 mt-1">{projection.disclaimer}</p>
                   </CardContent>
                 </Card>
               )}

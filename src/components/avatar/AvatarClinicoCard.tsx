@@ -6,9 +6,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye, Clock, History, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye, TrendingUp, Clock, History, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
 import { cn } from '@/lib/utils';
@@ -150,6 +152,21 @@ const SISTEMAS_POR_ESPECIALIDADE: Record<PerfilProfissional, SistemaCorporal[]> 
   educador_fisico: ['musculoesqueletico'],
   terapeuta_ocupacional: ['musculoesqueletico', 'nervoso', 'sensorial'],
 };
+
+const SISTEMA_CHART_COLOR: Record<SistemaCorporal, string> = {
+  musculoesqueletico: '#a855f7',
+  nervoso: '#3b82f6',
+  digestorio: '#f97316',
+  circulatorio: '#ef4444',
+  respiratorio: '#06b6d4',
+  endocrino: '#eab308',
+  urinario: '#6366f1',
+  reprodutor: '#ec4899',
+  tegumentar: '#78716c',
+  linfatico: '#84cc16',
+  sensorial: '#10b981',
+};
+
 const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string; resumo: string }> = {
   musculoesqueletico: { 
     label: 'Musculoesquelético', 
@@ -233,6 +250,23 @@ const ORIGEM_LABEL: Record<OrigemAchado, string> = {
   autocadastro_paciente: 'Autocadastro',
   outro: 'Outro',
 };
+
+// ── Pesos clínicos do Índice de Homeostase ──
+// A severidade pondera de forma não-linear (achado severo pesa ~5x um leve,
+// no mesmo espírito das bandas não-lineares do MyID-100), o peso é modulado
+// pelo status clínico (ativo > crônico > em tratamento) e por confirmação:
+// um relato do paciente ainda não validado pelo profissional pesa a metade
+// até ser confirmado como achado clínico (ver fluxo de confirmação no painel).
+const PESO_SEVERIDADE: Record<number, number> = { 1: 1, 2: 2.5, 3: 5 };
+const PESO_STATUS: Record<StatusEvento, number> = { ativo: 1, cronico: 0.8, em_tratamento: 0.6, resolvido: 0 };
+
+function pesoConfirmacao(e: EventoAnatomico): number {
+  return e.tipo_diagnostico === 'relato_paciente' ? 0.5 : 1;
+}
+
+function cargaEvento(e: EventoAnatomico): number {
+  return (PESO_SEVERIDADE[e.severidade] ?? 1) * (PESO_STATUS[e.status] ?? 0) * pesoConfirmacao(e);
+}
 
 const TIPO_DIAG_BADGE: Record<string, string> = {
   relato_paciente: 'Relato',
@@ -453,6 +487,52 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     () => eventos.filter(e => sistemasAtivos.includes(e.sistema)),
     [eventos, sistemasAtivos],
   );
+
+  // Reconstrói a carga clínica de cada sistema mês a mês a partir do ciclo de vida
+  // dos achados (data_inicio/data_resolucao). Como o registro não guarda histórico de
+  // mudanças de severidade/status, usa o valor ATUAL como aproximação para os meses em
+  // que o achado esteve ativo — suficiente para mostrar tendência (subiu/desceu/estável),
+  // não um valor retroativo exato.
+  const evolucaoMensal = useMemo(() => {
+    const eventosBase = eventosFiltrados.filter(e => modoSimplificado ? e.visivel_paciente : true);
+    if (eventosBase.length === 0) return { data: [] as Record<string, any>[], sistemasComCarga: [] as SistemaCorporal[] };
+
+    const MESES = 6;
+    const hoje = new Date();
+    const cortes = Array.from({ length: MESES }, (_, idx) => {
+      const i = MESES - 1 - idx;
+      return i === 0 ? hoje : new Date(hoje.getFullYear(), hoje.getMonth() - i + 1, 0);
+    });
+
+    const data = cortes.map(dataCorte => {
+      const ponto: Record<string, any> = {
+        mes: dataCorte.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+      };
+      SISTEMAS_ORDEM.forEach(s => {
+        const carga = eventosBase
+          .filter(e => e.sistema === s)
+          .filter(e => {
+            const inicio = new Date(e.data_inicio);
+            if (inicio > dataCorte) return false;
+            if (e.status === 'resolvido' && e.data_resolucao) {
+              return new Date(e.data_resolucao) > dataCorte;
+            }
+            return true;
+          })
+          .reduce((acc, e) => acc + cargaEvento(e), 0);
+        ponto[SISTEMA_CONFIG[s].label] = Math.round(carga * 10) / 10;
+      });
+      return ponto;
+    });
+
+    const ultimoPonto = data[data.length - 1];
+    const sistemasComCarga = SISTEMAS_ORDEM
+      .filter(s => data.some(p => p[SISTEMA_CONFIG[s].label] > 0))
+      .sort((a, b) => (ultimoPonto[SISTEMA_CONFIG[b].label] || 0) - (ultimoPonto[SISTEMA_CONFIG[a].label] || 0))
+      .slice(0, 4);
+
+    return { data, sistemasComCarga };
+  }, [eventosFiltrados, modoSimplificado]);
 
   // Regiões com achado ATIVO no Avatar Clínico — usado para não reoferecer no
   // "Sincronizar MyID" um achado que já foi confirmado anteriormente.
@@ -687,10 +767,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <Tabs defaultValue="geral" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="geral" className="text-xs">Visão Geral</TabsTrigger>
+            <TabsTrigger value="mapa" className="text-xs">Mapa Corporal</TabsTrigger>
+            <TabsTrigger value="achados" className="text-xs">Achados</TabsTrigger>
+            <TabsTrigger value="evolucao" className="text-xs">Evolução</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="geral" className="space-y-3 pt-3">
         {/* Toggles de sistema - Ecossistema Dinâmico com Ranking de Acometimento */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ranking de Sistemas</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ranking de Sistemas</span>
             <div className="flex gap-2">
               <Button
                 variant="ghost"
@@ -749,7 +838,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 <div className="w-full space-y-4">
                   <div className="bg-muted/30 p-3 rounded-lg border border-border/50 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Índice de Homeostase</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                        Índice de Homeostase
+                        <Info
+                          className="h-3 w-3 text-muted-foreground/70 cursor-help"
+                          title="Calculado a partir da carga clínica de cada sistema (achados confirmados, histórico de vida e diagnósticos CID — autorrelato MyID não entra no cálculo), com decaimento logarítmico. Não substitui o MyID-100."
+                        />
+                      </p>
                       <div className="flex items-center gap-2">
                         <span className={cn(
                           "text-xl font-black",
@@ -773,6 +868,55 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       <span className="text-lg font-bold">{systemScores.filter(s => s.score > 0).length} Sistemas</span>
                     </div>
                   </div>
+
+                  {(() => {
+                    const pendentes = eventos.filter(
+                      (e) => e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido'
+                    );
+                    if (pendentes.length === 0) return null;
+                    return (
+                      <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase text-amber-800">
+                          <Badge variant="warning" size="sm">{pendentes.length}</Badge>
+                          Relatos do paciente aguardando confirmação
+                        </div>
+                        <div className="space-y-1.5">
+                          {pendentes.map((ev) => (
+                            <div key={ev.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5 text-sm">
+                              <span className="truncate">
+                                {ev.tipo_achado} <span className="text-xs text-muted-foreground">({ev.regiao_id})</span>
+                              </span>
+                              <div className="flex shrink-0 gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => saveMut.mutate({
+                                    id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
+                                    tipo_achado: ev.tipo_achado, tipo_diagnostico: 'achado_clinico',
+                                  })}
+                                >
+                                  <Check className="mr-1 h-3 w-3" /> Confirmar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => saveMut.mutate({
+                                    id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
+                                    tipo_achado: ev.tipo_achado, status: 'resolvido',
+                                    notas_clinicas: `${ev.notas_clinicas || ''}\nDescartado pelo profissional em ${new Date().toLocaleDateString('pt-BR')}.`,
+                                  })}
+                                >
+                                  Descartar
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex flex-wrap gap-2">
                     {systemScores.map(({ sistema: s, score, count }) => {
@@ -1056,20 +1200,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema, historiaVida, diagnosticosCID])}
           </div>
         </div>
+            {/* Painel de Contexto — sono, atividade, hidratação, nutrição, alergias, medicamentos.
+                Nunca aparecem como região acesa no corpo: são comportamento/contexto, não achado clínico. */}
+            {!modoSimplificado && (
+              <PainelContexto
+                scores={myidScores}
+                alergias={(pacienteInfoRaw as any)?.alergias}
+                medicamentos={(pacienteInfoRaw as any)?.medicamentos_uso}
+              />
+            )}
 
-        {/* Painel de Contexto — sono, atividade, hidratação, nutrição, alergias, medicamentos.
-            Nunca aparecem como região acesa no corpo: são comportamento/contexto, não achado clínico. */}
-        {!modoSimplificado && (
-          <PainelContexto
-            scores={myidScores}
-            alergias={(pacienteInfoRaw as any)?.alergias}
-            medicamentos={(pacienteInfoRaw as any)?.medicamentos_uso}
-          />
-        )}
+            {/* Radar de Avaliação — sugestões textuais derivadas do MyID, sem nunca acender o mapa corporal */}
+            {!modoSimplificado && <RadarDeAvaliacao scores={myidScores} />}
+          </TabsContent>
 
-        {/* Radar de Avaliação — sugestões textuais derivadas do MyID, sem nunca acender o mapa corporal */}
-        {!modoSimplificado && <RadarDeAvaliacao scores={myidScores} />}
-
+          <TabsContent value="mapa" className="pt-3">
         <div className="relative">
           {/* Toggle frente / costas */}
           <div className="flex gap-1 bg-muted/40 rounded-lg p-1 w-fit mx-auto mb-4">
@@ -1432,7 +1577,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </div>
         </div>
       </div>
+          </TabsContent>
 
+          <TabsContent value="achados" className="pt-3">
         {/* Lista de achados ativos */}
         {isLoading ? (
           <p className="text-xs text-muted-foreground text-center py-2">Carregando…</p>
@@ -1525,6 +1672,43 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </div>
           );
         })()}
+          </TabsContent>
+
+          <TabsContent value="evolucao" className="pt-3">
+            {evolucaoMensal.sistemasComCarga.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">
+                Ainda não há achados ativos suficientes para mostrar evolução por sistema.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 shrink-0" />
+                  Carga clínica dos sistemas mais afetados, últimos 6 meses (estimada a partir do início/fim de cada achado).
+                </p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={evolucaoMensal.data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} width={28} />
+                    <Tooltip contentStyle={{ fontSize: 11 }} />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    {evolucaoMensal.sistemasComCarga.map(s => (
+                      <Area
+                        key={s}
+                        type="monotone"
+                        dataKey={SISTEMA_CONFIG[s].label}
+                        stroke={SISTEMA_CHART_COLOR[s]}
+                        fill={SISTEMA_CHART_COLOR[s]}
+                        fillOpacity={0.15}
+                        strokeWidth={2}
+                      />
+                    ))}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
 
       {/* Sheet de região */}
@@ -2034,8 +2218,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
               {!isSyncing ? painRegions.map((item) => {
                 const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
-                const jaImportado = eventos.some(e => e.regiao_id === item.regiao_id && e.origem === 'subjetivo_myid' && e.status === 'ativo');
-                
+                const achadoExistente = eventos.find(e => e.regiao_id === item.regiao_id && e.status !== 'resolvido');
+                const jaImportado = !!achadoExistente;
+
                 return (
                   <div key={item.regiao_id} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
                     <div>
@@ -2043,8 +2228,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       <p className="text-[11px] text-muted-foreground italic">Intensidade: {item.intensidade}/10</p>
                     </div>
                     {jaImportado ? (
-                      <Badge variant="secondary" className="gap-1 text-[10px]">
-                        <Check className="h-3 w-3" /> Importado
+                      <Badge variant="secondary" className="gap-1 text-[10px]" title="Já existe achado ativo nesta região — importar criaria um registro duplicado.">
+                        <Check className="h-3 w-3" /> Já há achado ({ORIGEM_LABEL[achadoExistente.origem]})
                       </Badge>
                     ) : (
                       <Button size="sm" className="h-8 text-xs" onClick={() => handleSyncImport(item)} disabled={saveMut.isPending}>
@@ -2055,8 +2240,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 );
               }) : sinalRegions.map((item, idx) => {
                 const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
-                const jaImportado = eventos.some(e => e.regiao_id === item.regiao_id && e.tipo_achado.includes(item.sinal));
-                
+                // Diferente do mapa de dor, uma região pode ter vários sinais distintos (ex.: bruxismo
+                // e zumbido na mesma região "cabeça") — duplicata aqui é o MESMO sinal, não a região.
+                const achadoExistente = eventos.find(e => e.regiao_id === item.regiao_id && e.status !== 'resolvido' && e.tipo_achado.includes(item.sinal));
+                const jaImportado = !!achadoExistente;
+
                 return (
                   <div key={`${item.regiao_id}-${idx}`} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
                     <div>
@@ -2064,8 +2252,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       <p className="text-[11px] text-muted-foreground">{reg?.label || item.regiao_id}</p>
                     </div>
                     {jaImportado ? (
-                      <Badge variant="secondary" className="gap-1 text-[10px]">
-                        <Check className="h-3 w-3" /> Importado
+                      <Badge variant="secondary" className="gap-1 text-[10px]" title="Já existe achado ativo nesta região — importar criaria um registro duplicado.">
+                        <Check className="h-3 w-3" /> Já há achado ({ORIGEM_LABEL[achadoExistente.origem]})
                       </Badge>
                     ) : (
                       <Button size="sm" className="h-8 text-xs" onClick={async () => {

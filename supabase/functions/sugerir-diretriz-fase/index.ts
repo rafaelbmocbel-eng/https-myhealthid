@@ -8,6 +8,7 @@ interface Body {
   objetivo: string;
   queixa?: string;
   jaSelecionados?: string[];
+  driverMyID?: { label: string; key: string; score: number };
 }
 
 Deno.serve(async (req) => {
@@ -20,12 +21,14 @@ Deno.serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
     const alvo = body.tipo === 'exercicios' ? 'exercícios terapêuticos' : 'técnicas/condutas manuais e educativas';
-    const sys = `Você é um fisioterapeuta sênior. Sugira 5 ${alvo} BASEADOS EM EVIDÊNCIA para a fase clínica descrita. Use vocabulário clínico brasileiro. Cada item deve ter nível de evidência (A, B ou C) e justificativa curta.`;
+    const driver = body.driverMyID;
+    const sys = `Você é um fisioterapeuta sênior. Sugira 5 ${alvo} BASEADOS EM EVIDÊNCIA para a fase clínica descrita. Use vocabulário clínico brasileiro. Cada item deve ter nível de evidência (A, B ou C) e uma justificativa curta (motivo) que cite explicitamente a EVIDÊNCIA CLÍNICA do paciente que motivou a escolha — não uma justificativa genérica de manual.${driver ? ` O paciente tem o domínio MyID "${driver.label}" (${driver.key}) como driver primário de sobrecarga (score ${driver.score}/10); priorize itens que atuem diretamente sobre esse domínio e mencione isso no motivo (ex.: "Indicado por: MyID ${driver.key}=${driver.score} (${driver.label}) — driver primário").` : ''}`;
 
     const user = `Fase ${body.faseNumero} — ${body.faseTitulo}
 Objetivo: ${body.objetivo || 'não informado'}
 Queixa principal: ${body.queixa || 'não informada'}
 Já selecionados (não repetir): ${(body.jaSelecionados || []).join(', ') || 'nenhum'}
+${driver ? `Driver MyID do paciente: ${driver.label} (${driver.key}) — score ${driver.score}/10, principal fator de sobrecarga identificado na última avaliação.` : ''}
 
 Retorne ${body.tipo === 'exercicios' ? '5 exercícios' : '5 técnicas'} adequados a esta fase.`;
 
@@ -40,7 +43,7 @@ Retorne ${body.tipo === 'exercicios' ? '5 exercícios' : '5 técnicas'} adequado
             repeticoes: { type: 'string' },
             duracao: { type: 'string' },
             nivel_evidencia: { type: 'string', enum: ['A', 'B', 'C'] },
-            motivo: { type: 'string', description: 'Justificativa baseada em evidência (1-2 frases)' },
+            motivo: { type: 'string', description: 'Justificativa rastreável (1-2 frases). Se houver driver MyID, citar a dimensão e o score, ex.: "Indicado por: MyID D=4 (Dor) — driver primário".' },
           },
           required: ['nome', 'categoria', 'series', 'repeticoes', 'nivel_evidencia', 'motivo'],
         }
@@ -52,7 +55,7 @@ Retorne ${body.tipo === 'exercicios' ? '5 exercícios' : '5 técnicas'} adequado
             duracao: { type: 'string' },
             frequencia: { type: 'string' },
             nivel_evidencia: { type: 'string', enum: ['A', 'B', 'C'] },
-            motivo: { type: 'string' },
+            motivo: { type: 'string', description: 'Justificativa rastreável (1-2 frases). Se houver driver MyID, citar a dimensão e o score, ex.: "Indicado por: MyID R=8 (Regulação) — driver primário".' },
           },
           required: ['nome', 'categoria', 'nivel_evidencia', 'motivo'],
         };

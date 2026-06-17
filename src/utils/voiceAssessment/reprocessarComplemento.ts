@@ -23,7 +23,6 @@ export interface ReprocessarComplementoResult {
   transcricaoFinal: string;
   painFindingsCount: number;
 }
-
 /**
  * Retorna o conjunto de `regiao_id` com achado ATIVO (não resolvido) no Avatar Clínico
  * do paciente. Achados com status 'resolvido' não contam como duplicata — uma dor que

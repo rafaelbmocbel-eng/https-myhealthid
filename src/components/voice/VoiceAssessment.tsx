@@ -637,6 +637,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
       const generatedAssessment = data.assessment;
       const generatedTranscript = data.transcricao && text.length < 20 ? data.transcricao : text;
+      const aiAvatarEvents: Array<{
+        regiao_id: string; sistema: string; tipo_diagnostico: string;
+        tipo_achado: string; severidade: number; estrutura?: string;
+      }> = Array.isArray(data.avatar_events) ? data.avatar_events : [];
 
       setAssessment(generatedAssessment);
       setEditedTranscript(generatedTranscript);
@@ -701,6 +705,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
             'Integrada': 'achado_clinico',
           };
           const textoBase = [
+            generatedTranscript,                                           // raw speech — catches terms AI may omit from SOAP
             generatedAssessment.queixa_principal || '',
             generatedAssessment.mecanismo_lesao || '',
             generatedAssessment.tempo_evolucao || '',
@@ -715,13 +720,36 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           ].join(' ');
           const regioesPorPalavraChave = encontrarSintomasEmTexto(textoBase);
           // Quando o chamador fornece onPainExtracted, ele já persiste as regiões de dor
-          // extraídas pela IA (ex.: AvaliacaoPresencial.tsx) — evita duplicar o mesmo achado.
+          // extraídas pela IA (ex.: ResumoConsultaPresencial.tsx) — evita duplicar o mesmo achado.
           const regioesPorDor = onPainExtracted ? [] : painFindings.map(f => ({
             regiao_id: f.region_id,
             sistema: 'musculoesqueletico' as const,
             termo: f.structures?.join(', ') || 'dor relatada',
+            tipo_diagnostico: undefined as string | undefined,
+            severidade_override: undefined as number | undefined,
+            estrutura_override: undefined as string | undefined,
           }));
-          const regioesSemDuplicataLocal = [...regioesPorDor, ...regioesPorPalavraChave];
+          // Eventos diretos do AI (avatar_events) — mais precisos que keyword matching
+          const regioesPorAI = aiAvatarEvents
+            .filter(ev => !painFindings.some(f => f.region_id === ev.regiao_id)) // não duplicar com extract-pain
+            .map(ev => ({
+              regiao_id: ev.regiao_id,
+              sistema: ev.sistema as import('@/hooks/useEventosAnatomicos').SistemaCorporal,
+              termo: ev.tipo_achado,
+              tipo_diagnostico: ev.tipo_diagnostico,
+              severidade_override: ev.severidade,
+              estrutura_override: ev.estrutura,
+            }));
+          // Keyword path fills gaps not covered by AI events
+          const regioesPorPalavraChaveFiltered = regioesPorPalavraChave
+            .filter(kw => !aiAvatarEvents.some(ev => ev.regiao_id === kw.regiao_id))
+            .map(kw => ({
+              ...kw,
+              tipo_diagnostico: kw.tipo_diagnostico as string | undefined,
+              severidade_override: undefined as number | undefined,
+              estrutura_override: undefined as string | undefined,
+            }));
+          const regioesSemDuplicataLocal = [...regioesPorDor, ...regioesPorAI, ...regioesPorPalavraChaveFiltered];
           if (regioesSemDuplicataLocal.length === 0) return;
 
           // Filtra regiões que já têm achado ATIVO no Avatar Clínico (de uma avaliação
@@ -751,20 +779,23 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           const eventos = regioes
             .map(r => {
               const achadoDor = painFindings.find(f => f.region_id === r.regiao_id);
-              const severidade = achadoDor ? Math.min(5, Math.max(1, Math.round(achadoDor.intensity / 2))) : severidadeBase;
+              const severidade = r.severidade_override || (achadoDor ? Math.min(5, Math.max(1, Math.round(achadoDor.intensity / 2))) : severidadeBase);
+              const estruturaField = r.estrutura_override || (achadoDor?.structures?.join(', ') || null);
               return {
                 paciente_id: pacienteId,
                 terapeuta_id: user.id,
                 regiao_id: r.regiao_id,
                 sistema: r.sistema,
-                tipo_achado: tipoAchadoPtBr,
-                tipo_diagnostico: tipoDiag,
+                // AI events carry specific clinical descriptions; generic path uses the assessment queixa
+                tipo_achado: r.tipo_diagnostico ? r.termo : tipoAchadoPtBr,
+                tipo_diagnostico: r.tipo_diagnostico || tipoDiag,
                 severidade,
                 status: 'ativo',
                 origem: 'voz_ia',
                 data_inicio: hoje,
                 notas_clinicas: generatedAssessment.resumo_clinico || null,
                 visivel_paciente: false,
+                estrutura: estruturaField,
                 metadata: { hipoteses: generatedAssessment.hipoteses_diagnosticas?.slice(0, 3) || [], avaliacao_origem: 'voz_ia', termo: r.termo },
               };
             });
@@ -1389,14 +1420,31 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             </div>
           ) : assessment.red_flags?.length > 0 ? (
             <ul className="space-y-1">
-              {assessment.red_flags.map((rf: any, i: number) => (
-                <li key={i} className="text-sm text-destructive flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />{typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf))}
-                </li>
-              ))}
+              {assessment.red_flags.map((rf: any, i: number) => {
+                const texto = typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf));
+                const reforcada = (assessment.red_flags_reforcadas || []).some((r: string) => r === texto);
+                return (
+                  <li key={i} className="text-sm text-destructive flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>
+                      {texto}
+                      {reforcada && (
+                        <span className="ml-1.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive align-middle">
+                          detectada automaticamente
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="text-xs text-muted-foreground italic">Nenhuma red flag identificada</p>
+          )}
+          {assessment.red_flags_reforcadas?.length > 0 && (
+            <p className="mt-2 text-[10px] text-muted-foreground italic">
+              {assessment.red_flags_reforcadas.length} red flag(s) foram identificadas por verificação determinística de palavras-chave, complementando a análise da IA — revise com atenção.
+            </p>
           )}
         </SectionCard>
 

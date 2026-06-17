@@ -34,8 +34,7 @@ const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashb
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
-import AvaliacaoPresencial from '@/components/presencial/AvaliacaoPresencial';
-import AvaliacoesVozHistorico from '@/components/voice/AvaliacoesVozHistorico';
+import ResumoConsultaPresencial from '@/components/presencial/ResumoConsultaPresencial';
 import HistoricoAvaliacoesTab from '@/components/paciente/HistoricoAvaliacoesTab';
 import AvaliacaoVozAtual from '@/components/voice/AvaliacaoVozAtual';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
@@ -76,6 +75,7 @@ import PlanoAlimentarCard from '@/components/nutricao/PlanoAlimentarCard';
 import EscalasPsicologiaCard from '@/components/psicologia/EscalasPsicologiaCard';
 import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
 import RelatorioCorrelacaoCard from '@/components/avatar/RelatorioCorrelacaoCard';
+import PainelDecisaoClinica from '@/components/dashboard/PainelDecisaoClinica';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
@@ -1036,14 +1036,12 @@ export default function PacientePerfil() {
 
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
           {!activeTab && (
-            <div className="mb-4">
+            <div className="mb-4 space-y-4">
+              {id && <PainelDecisaoClinica pacienteId={id} />}
               <Suspense fallback={LazyFallback}>
                 <PacienteDashboardIdentidade
                   paciente={paciente as any}
                   onBack={() => navigate('/pacientes')}
-                  onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                  onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                  onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
                   subTab="integrada"
                 />
               </Suspense>
@@ -1088,7 +1086,7 @@ export default function PacientePerfil() {
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"
             />
-            <AvaliacaoPresencial
+            <ResumoConsultaPresencial
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"

@@ -16,6 +16,8 @@ export interface MapeamentoSintoma {
   keywords: string[];
   regioes: string[];
   sistema: SistemaCorporal;
+  // When set, overrides the caller's default tipo_diagnostico (e.g. surgical history → 'historico_relatado')
+  tipo_diagnostico?: 'achado_clinico' | 'historico_relatado' | 'relato_paciente';
 }
 
 export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
@@ -113,9 +115,10 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'circulatorio'
   },
   {
-    keywords: ['pressao alta', 'pressão alta', 'hipertensao', 'hipertensão', 'hipertenso', 'hipertensa'],
+    keywords: ['pressao alta', 'pressão alta', 'hipertensao', 'hipertensão', 'hipertenso', 'hipertensa', 'has', 'hipertensao arterial', 'hipertensão arterial'],
     regioes: ['coracao', 'aorta_arco'],
-    sistema: 'circulatorio'
+    sistema: 'circulatorio',
+    tipo_diagnostico: 'historico_relatado',
   },
   {
     keywords: ['pressao baixa', 'pressão baixa', 'hipotensao', 'hipotensão', 'hipotensivo'],
@@ -276,9 +279,10 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'digestorio'
   },
   {
-    keywords: ['bariátrica', 'bariatrica', 'cirurgia bariatrica', 'sleeve', 'bypass gastrico', 'bypass gástrico'],
+    keywords: ['bariátrica', 'bariatrica', 'cirurgia bariatrica', 'sleeve', 'bypass gastrico', 'bypass gástrico', 'gastroplastia'],
     regioes: ['estomago'],
-    sistema: 'digestorio'
+    sistema: 'digestorio',
+    tipo_diagnostico: 'historico_relatado',
   },
   {
     keywords: ['obesidade', 'sobrepeso', 'imc alto', 'excesso de peso', 'sedentario', 'sedentária', 'sedentarismo', 'falta de atividade fisica', 'inatividade fisica', 'inatividade física'],
@@ -368,9 +372,15 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
   // REPRODUTOR
   // ══════════════════════════════════════════════════════════════════
   {
-    keywords: ['utero', 'útero', 'endometriose', 'mioma', 'fibroide', 'adenomiose', 'dor pelvica', 'dor pélvica', 'histerectomia', 'histerectomia total', 'histerectomia parcial', 'retirada do utero', 'retirada do útero'],
+    keywords: ['utero', 'útero', 'endometriose', 'mioma', 'fibroide', 'adenomiose', 'dor pelvica', 'dor pélvica'],
     regioes: ['utero'],
     sistema: 'reprodutor'
+  },
+  {
+    keywords: ['histerectomia', 'histerectomia total', 'histerectomia parcial', 'retirada do utero', 'retirada do útero', 'histerectomia abdominal', 'histerectomia vaginal'],
+    regioes: ['utero'],
+    sistema: 'reprodutor',
+    tipo_diagnostico: 'historico_relatado',
   },
   {
     keywords: ['ovario', 'ovário', 'cisto ovariano', 'sindrome dos ovarios policisticos', 'sop', 'anovulacao'],
@@ -495,6 +505,12 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'musculoesqueletico'
   },
   {
+    keywords: ['supraespinhal', 'supraespinhoso', 'supraspinhoso', 'supraespinhais', 'cirurgia de ombro', 'reparo do manguito', 'reconstrucao do manguito', 'reconstrução do manguito', 'artroscopia de ombro', 'acromioplastia'],
+    regioes: ['ombro_d', 'ombro_e', 'trapezio_d', 'trapezio_e'],
+    sistema: 'musculoesqueletico',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
     keywords: ['cotovelo', 'epicondilite', 'tenista', 'golfista', 'olecrano'],
     regioes: ['cotovelo_d', 'cotovelo_e'],
     sistema: 'musculoesqueletico'
@@ -580,20 +596,27 @@ export function normalizarTexto(texto: string): string {
     .replace(/[̀-ͯ]/g, "");
 }
 
-export function encontrarSintomasEmTexto(texto: string): { regiao_id: string; sistema: SistemaCorporal; termo: string }[] {
+export function encontrarSintomasEmTexto(
+  texto: string,
+): { regiao_id: string; sistema: SistemaCorporal; termo: string; tipo_diagnostico?: string }[] {
   const textoNormalizado = normalizarTexto(texto);
-  const resultados: { regiao_id: string; sistema: SistemaCorporal; termo: string }[] = [];
+  const resultados: { regiao_id: string; sistema: SistemaCorporal; termo: string; tipo_diagnostico?: string }[] = [];
 
   MAPEAMENTO_SINTOMAS.forEach(mapeamento => {
     mapeamento.keywords.forEach(keyword => {
-      const keywordNormalizada = normalizarTexto(keyword);
-      if (textoNormalizado.includes(keywordNormalizada)) {
+      const kn = normalizarTexto(keyword.trim());
+      // Use word-boundary matching for short abbreviations (≤4 chars) to avoid false positives
+      const matched = kn.length <= 4
+        ? new RegExp(`(?<![a-z])${kn}(?![a-z])`).test(textoNormalizado)
+        : textoNormalizado.includes(kn);
+      if (matched) {
         mapeamento.regioes.forEach(regId => {
           if (!resultados.find(r => r.regiao_id === regId)) {
             resultados.push({
               regiao_id: regId,
               sistema: mapeamento.sistema,
-              termo: keyword
+              termo: keyword.trim(),
+              tipo_diagnostico: mapeamento.tipo_diagnostico,
             });
           }
         });
@@ -604,12 +627,12 @@ export function encontrarSintomasEmTexto(texto: string): { regiao_id: string; si
   return resultados;
 }
 
-export function extrairTextoDeObjeto(obj: any): string {
+export function extrairTextoDeObjeto(obj: unknown): string {
   let texto = '';
   if (typeof obj === 'string') return obj;
   if (typeof obj !== 'object' || obj === null) return '';
 
-  Object.entries(obj).forEach(([key, val]) => {
+  Object.entries(obj as Record<string, unknown>).forEach(([key, val]) => {
     if (key.startsWith('score_') && typeof val === 'number') {
       texto += ` ${key.replace('score_', '')}: ${val}/10.`;
     }

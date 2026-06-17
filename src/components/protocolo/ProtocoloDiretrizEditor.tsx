@@ -483,6 +483,7 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
           tipo={picker.tipo}
           fase={fases[picker.faseIdx]}
           queixa={queixa}
+          driverMyID={myidEnh?.driver ? { label: myidEnh.driver.label, key: myidEnh.driver.key, score: myidEnh.driver.score } : undefined}
           onSelectExercicio={(ex) => { addExercicio(picker.faseIdx, ex); }}
           onSelectTecnica={(t) => { addTecnica(picker.faseIdx, t); }}
         />
@@ -590,13 +591,14 @@ function ListaItens({
 /* ───────────────────── Picker dialog (catálogo + IA) ───────────────────── */
 
 function PickerDialog({
-  open, onClose, tipo, fase, queixa, onSelectExercicio, onSelectTecnica,
+  open, onClose, tipo, fase, queixa, driverMyID, onSelectExercicio, onSelectTecnica,
 }: {
   open: boolean;
   onClose: () => void;
   tipo: Tipo;
   fase: DiretrizSnapshotPhase;
   queixa?: string;
+  driverMyID?: { label: string; key: string; score: number };
   onSelectExercicio: (ex: DiretrizSnapshotExercise) => void;
   onSelectTecnica: (t: DiretrizSnapshotTechnique) => void;
 }) {
@@ -633,6 +635,7 @@ function PickerDialog({
           tipo, faseNumero: fase.numero, faseTitulo: fase.titulo,
           objetivo: fase.objetivo, queixa,
           jaSelecionados: (tipo === 'exercicios' ? fase.exercicios : fase.tecnicas).map((x: any) => x.nome),
+          driverMyID,
         },
       });
       if (error) throw error;

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, LayoutDashboard, Moon, Droplets, Scale, UtensilsCrossed, Activity, Watch } from 'lucide-react';
+import { Loader2, LayoutDashboard, Moon, Droplets, Scale, UtensilsCrossed, Activity, Watch, Mic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
@@ -13,7 +13,9 @@ import BodyCompositionForm from '@/components/saude/BodyCompositionForm';
 import MealLogForm from '@/components/saude/MealLogForm';
 import MetricsManualForm from '@/components/saude/MetricsManualForm';
 import HealthSyncCard from '@/components/paciente/HealthSyncCard';
+import PacienteRelatoVoz from '@/components/paciente/PacienteRelatoVoz';
 import { useHealthData } from '@/hooks/useHealthData';
+import type { HealthSyncResult } from '@/hooks/useHealthSync';
 
 export default function PacienteSaude() {
   const { user } = useAuth();
@@ -29,7 +31,7 @@ export default function PacienteSaude() {
 
   const health = useHealthData(paciente?.id || null, paciente?.terapeuta_id);
 
-  const handleSyncComplete = async (data: any) => {
+  const handleSyncComplete = async (data: HealthSyncResult) => {
     if (!paciente) return;
     await health.upsertMetrics({
       steps: data.steps,
@@ -45,7 +47,7 @@ export default function PacienteSaude() {
       heart_rate: data.heartRate ?? null,
       calories: data.calories ?? null,
       sleep_hours: data.sleepHours ?? null,
-      raw_data: data,
+      raw_data: data as unknown as import('@/integrations/supabase/types').Json,
     });
   };
 
@@ -61,6 +63,7 @@ export default function PacienteSaude() {
 
   const tabs = [
     { value: 'dashboard', label: 'Painel', icon: LayoutDashboard },
+    { value: 'sintomas', label: 'Sintomas', icon: Mic },
     { value: 'sleep', label: 'Sono', icon: Moon },
     { value: 'water', label: 'Água', icon: Droplets },
     { value: 'food', label: 'Alimentação', icon: UtensilsCrossed },
@@ -106,6 +109,10 @@ export default function PacienteSaude() {
                   onNavigate={(section) => setTab(section === 'heart' || section === 'spo2' ? 'manual' : section)}
                 />
               )}
+            </TabsContent>
+
+            <TabsContent value="sintomas" className="mt-3">
+              {paciente && <PacienteRelatoVoz pacienteId={paciente.id} />}
             </TabsContent>
 
             <TabsContent value="sleep" className="mt-3">

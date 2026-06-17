@@ -45,6 +45,12 @@ const TIPO_CONFIG: Record<string, { icon: React.ReactNode; gradient: string; lab
     label: 'Diretriz de Tratamento',
     order: 4,
   },
+  fechamento_sessao: {
+    icon: <ClipboardCheck className="h-4 w-4" />,
+    gradient: 'from-lime-500/15 to-lime-500/5 text-lime-700 border-lime-200',
+    label: 'Fechamento de Sessão',
+    order: 4.2,
+  },
   sessao_confirmada: {
     icon: <ClipboardCheck className="h-4 w-4" />,
     gradient: 'from-emerald-500/15 to-emerald-500/5 text-emerald-700 border-emerald-200',
