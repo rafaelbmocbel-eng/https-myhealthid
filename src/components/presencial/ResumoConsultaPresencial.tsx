@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 import MyIDResumoInline from './MyIDResumoInline';
 import SafetyBanner from './SafetyBanner';
+import ProtocoloAtivoResumo from './ProtocoloAtivoResumo';
 import FechamentoSessaoForm from './FechamentoSessaoForm';
 import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
 import type { SistemaCorporal } from '@/hooks/useEventosAnatomicos';
@@ -270,6 +271,7 @@ export default function ResumoConsultaPresencial({
     <div className="space-y-3">
       <SafetyBanner pacienteId={pacienteId} />
       <MyIDResumoInline pacienteId={pacienteId} />
+      <ProtocoloAtivoResumo pacienteId={pacienteId} />
 
       {/* Indicador de processamento automático em background */}
       {isAutoProcessing && (
