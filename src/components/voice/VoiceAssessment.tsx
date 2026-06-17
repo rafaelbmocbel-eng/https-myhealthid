@@ -1420,14 +1420,31 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             </div>
           ) : assessment.red_flags?.length > 0 ? (
             <ul className="space-y-1">
-              {assessment.red_flags.map((rf: any, i: number) => (
-                <li key={i} className="text-sm text-destructive flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />{typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf))}
-                </li>
-              ))}
+              {assessment.red_flags.map((rf: any, i: number) => {
+                const texto = typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf));
+                const reforcada = (assessment.red_flags_reforcadas || []).some((r: string) => r === texto);
+                return (
+                  <li key={i} className="text-sm text-destructive flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>
+                      {texto}
+                      {reforcada && (
+                        <span className="ml-1.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive align-middle">
+                          detectada automaticamente
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="text-xs text-muted-foreground italic">Nenhuma red flag identificada</p>
+          )}
+          {assessment.red_flags_reforcadas?.length > 0 && (
+            <p className="mt-2 text-[10px] text-muted-foreground italic">
+              {assessment.red_flags_reforcadas.length} red flag(s) foram identificadas por verificação determinística de palavras-chave, complementando a análise da IA — revise com atenção.
+            </p>
           )}
         </SectionCard>
 
