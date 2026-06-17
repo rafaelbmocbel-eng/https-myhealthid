@@ -9,7 +9,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye, TrendingUp } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,20 @@ const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color:
   tegumentar: { label: 'Tegumentar', icon: Shield, color: 'stone' },
   linfatico: { label: 'Linfático', icon: Waves, color: 'lime' },
   sensorial: { label: 'Sensorial', icon: Eye, color: 'emerald' },
+};
+
+const SISTEMA_CHART_COLOR: Record<SistemaCorporal, string> = {
+  musculoesqueletico: '#a855f7',
+  nervoso: '#3b82f6',
+  digestorio: '#f97316',
+  circulatorio: '#ef4444',
+  respiratorio: '#06b6d4',
+  endocrino: '#eab308',
+  urinario: '#6366f1',
+  reprodutor: '#ec4899',
+  tegumentar: '#78716c',
+  linfatico: '#84cc16',
+  sensorial: '#10b981',
 };
 
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = Object.fromEntries(
@@ -159,6 +174,52 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     () => eventos.filter(e => sistemasAtivos.includes(e.sistema)),
     [eventos, sistemasAtivos],
   );
+
+  // Reconstrói a carga clínica de cada sistema mês a mês a partir do ciclo de vida
+  // dos achados (data_inicio/data_resolucao). Como o registro não guarda histórico de
+  // mudanças de severidade/status, usa o valor ATUAL como aproximação para os meses em
+  // que o achado esteve ativo — suficiente para mostrar tendência (subiu/desceu/estável),
+  // não um valor retroativo exato.
+  const evolucaoMensal = useMemo(() => {
+    const eventosBase = eventosFiltrados.filter(e => modoSimplificado ? e.visivel_paciente : true);
+    if (eventosBase.length === 0) return { data: [] as Record<string, any>[], sistemasComCarga: [] as SistemaCorporal[] };
+
+    const MESES = 6;
+    const hoje = new Date();
+    const cortes = Array.from({ length: MESES }, (_, idx) => {
+      const i = MESES - 1 - idx;
+      return i === 0 ? hoje : new Date(hoje.getFullYear(), hoje.getMonth() - i + 1, 0);
+    });
+
+    const data = cortes.map(dataCorte => {
+      const ponto: Record<string, any> = {
+        mes: dataCorte.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+      };
+      SISTEMAS_ORDEM.forEach(s => {
+        const carga = eventosBase
+          .filter(e => e.sistema === s)
+          .filter(e => {
+            const inicio = new Date(e.data_inicio);
+            if (inicio > dataCorte) return false;
+            if (e.status === 'resolvido' && e.data_resolucao) {
+              return new Date(e.data_resolucao) > dataCorte;
+            }
+            return true;
+          })
+          .reduce((acc, e) => acc + cargaEvento(e), 0);
+        ponto[SISTEMA_CONFIG[s].label] = Math.round(carga * 10) / 10;
+      });
+      return ponto;
+    });
+
+    const ultimoPonto = data[data.length - 1];
+    const sistemasComCarga = SISTEMAS_ORDEM
+      .filter(s => data.some(p => p[SISTEMA_CONFIG[s].label] > 0))
+      .sort((a, b) => (ultimoPonto[SISTEMA_CONFIG[b].label] || 0) - (ultimoPonto[SISTEMA_CONFIG[a].label] || 0))
+      .slice(0, 4);
+
+    return { data, sistemasComCarga };
+  }, [eventosFiltrados, modoSimplificado]);
 
   // dominante por região = maior severidade (e não-resolvido prioritário)
   const corPorRegiao = useMemo(() => {
@@ -336,10 +397,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       </CardHeader>
       <CardContent className="space-y-3">
         <Tabs defaultValue="geral" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="geral" className="text-xs">Visão Geral</TabsTrigger>
             <TabsTrigger value="mapa" className="text-xs">Mapa Corporal</TabsTrigger>
             <TabsTrigger value="achados" className="text-xs">Achados</TabsTrigger>
+            <TabsTrigger value="evolucao" className="text-xs">Evolução</TabsTrigger>
           </TabsList>
 
           <TabsContent value="geral" className="space-y-3 pt-3">
@@ -845,6 +907,41 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             })}
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="evolucao" className="pt-3">
+            {evolucaoMensal.sistemasComCarga.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">
+                Ainda não há achados ativos suficientes para mostrar evolução por sistema.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 shrink-0" />
+                  Carga clínica dos sistemas mais afetados, últimos 6 meses (estimada a partir do início/fim de cada achado).
+                </p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={evolucaoMensal.data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} width={28} />
+                    <Tooltip contentStyle={{ fontSize: 11 }} />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    {evolucaoMensal.sistemasComCarga.map(s => (
+                      <Area
+                        key={s}
+                        type="monotone"
+                        dataKey={SISTEMA_CONFIG[s].label}
+                        stroke={SISTEMA_CHART_COLOR[s]}
+                        fill={SISTEMA_CHART_COLOR[s]}
+                        fillOpacity={0.15}
+                        strokeWidth={2}
+                      />
+                    ))}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>
