@@ -47,14 +47,34 @@ export default function ProtocoloAtivoResumo({ pacienteId }: Props) {
   });
 
   if (loadingProtocolo || loadingProgressao) return null;
-  if (!protocolo) return null;
 
-  const snapshot = getDiretrizSnapshotFromScores((protocolo as any).scores_avaliacao);
-  if (!snapshot) return null;
-
+  const snapshot = protocolo ? getDiretrizSnapshotFromScores((protocolo as any).scores_avaliacao) : null;
   const faseAtual = progressao?.fase_atual || 1;
-  const fase = snapshot.fases.find(f => f.numero === faseAtual) || snapshot.fases[0];
-  if (!fase) return null;
+  const fase = snapshot ? (snapshot.fases.find(f => f.numero === faseAtual) || snapshot.fases[0]) : null;
+
+  if (!protocolo || !snapshot || !fase) {
+    return (
+      <Card className="border-dashed border-violet-200/60 bg-violet-500/5">
+        <CardContent className="p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+            <ClipboardList className="icon-sm text-violet-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Sem diretriz confirmada</p>
+            <p className="text-micro text-muted-foreground">
+              Quando uma diretriz de tratamento for confirmada, a fase atual e os próximos exercícios aparecem aqui.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate(`/pacientes/${pacienteId}?tab=diretrizes`)}
+            className="text-[11px] font-semibold text-violet-600 inline-flex items-center gap-0.5 shrink-0"
+          >
+            Ver Diretrizes <ChevronRight className="icon-xs" />
+          </button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const proximosExercicios = fase.exercicios.slice(0, 3);
   const proximasTecnicas = fase.tecnicas.slice(0, 2);
