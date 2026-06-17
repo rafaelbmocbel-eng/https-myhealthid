@@ -672,6 +672,15 @@ serve(async (req) => {
         (flag) => !existing.some((e) => e.toLowerCase().includes(flag.toLowerCase().split(" ").slice(0, 3).join(" ")))
       );
       assessment.red_flags = [...existing, ...missing];
+      // Transparência: o profissional precisa saber quais flags vieram da
+      // varredura por palavras-chave (não do raciocínio do LLM).
+      if (missing.length > 0) assessment.red_flags_reforcadas = missing;
+    }
+
+    // ── Consistência severidade x red flags: nunca classificar como
+    // "Favorável" havendo qualquer red flag (LLM ou determinística) ──
+    if (Array.isArray(assessment.red_flags) && assessment.red_flags.length > 0 && assessment.classificacao_severidade === "Favorável") {
+      assessment.classificacao_severidade = "Atenção";
     }
 
     // Prefer the faithful transcript (Pass 1 / user-provided) so that the
