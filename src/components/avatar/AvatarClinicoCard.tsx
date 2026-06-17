@@ -1290,8 +1290,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
               {!isSyncing ? painRegions.map((item) => {
                 const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
-                const jaImportado = eventos.some(e => e.regiao_id === item.regiao_id && e.origem === 'subjetivo_myid' && e.status === 'ativo');
-                
+                const achadoExistente = eventos.find(e => e.regiao_id === item.regiao_id && e.status !== 'resolvido');
+                const jaImportado = !!achadoExistente;
+
                 return (
                   <div key={item.regiao_id} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
                     <div>
@@ -1299,8 +1300,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       <p className="text-[11px] text-muted-foreground italic">Intensidade: {item.intensidade}/10</p>
                     </div>
                     {jaImportado ? (
-                      <Badge variant="secondary" className="gap-1 text-[10px]">
-                        <Check className="h-3 w-3" /> Importado
+                      <Badge variant="secondary" className="gap-1 text-[10px]" title="Já existe achado ativo nesta região — importar criaria um registro duplicado.">
+                        <Check className="h-3 w-3" /> Já há achado ({ORIGEM_LABEL[achadoExistente.origem]})
                       </Badge>
                     ) : (
                       <Button size="sm" className="h-8 text-xs" onClick={() => handleSyncImport(item)} disabled={saveMut.isPending}>
@@ -1311,8 +1312,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 );
               }) : sinalRegions.map((item, idx) => {
                 const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
-                const jaImportado = eventos.some(e => e.regiao_id === item.regiao_id && e.tipo_achado.includes(item.sinal));
-                
+                // Diferente do mapa de dor, uma região pode ter vários sinais distintos (ex.: bruxismo
+                // e zumbido na mesma região "cabeça") — duplicata aqui é o MESMO sinal, não a região.
+                const achadoExistente = eventos.find(e => e.regiao_id === item.regiao_id && e.status !== 'resolvido' && e.tipo_achado.includes(item.sinal));
+                const jaImportado = !!achadoExistente;
+
                 return (
                   <div key={`${item.regiao_id}-${idx}`} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
                     <div>
@@ -1320,8 +1324,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       <p className="text-[11px] text-muted-foreground">{reg?.label || item.regiao_id}</p>
                     </div>
                     {jaImportado ? (
-                      <Badge variant="secondary" className="gap-1 text-[10px]">
-                        <Check className="h-3 w-3" /> Importado
+                      <Badge variant="secondary" className="gap-1 text-[10px]" title="Já existe achado ativo nesta região — importar criaria um registro duplicado.">
+                        <Check className="h-3 w-3" /> Já há achado ({ORIGEM_LABEL[achadoExistente.origem]})
                       </Badge>
                     ) : (
                       <Button size="sm" className="h-8 text-xs" onClick={async () => {
