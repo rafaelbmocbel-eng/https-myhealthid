@@ -871,7 +871,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
                   {(() => {
                     const pendentes = eventos.filter(
-                      (e) => e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido'
+                      (e) => (e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido')
+                        || (e.tipo_diagnostico === 'historico_relatado' && (e.metadata as any)?.revisado_profissional !== true)
                     );
                     if (pendentes.length === 0) return null;
                     return (
@@ -881,38 +882,63 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                           Relatos do paciente aguardando confirmação
                         </div>
                         <div className="space-y-1.5">
-                          {pendentes.map((ev) => (
-                            <div key={ev.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5 text-sm">
-                              <span className="truncate">
-                                {ev.tipo_achado} <span className="text-xs text-muted-foreground">({ev.regiao_id})</span>
-                              </span>
-                              <div className="flex shrink-0 gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => saveMut.mutate({
-                                    id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
-                                    tipo_achado: ev.tipo_achado, tipo_diagnostico: 'achado_clinico',
-                                  })}
-                                >
-                                  <Check className="mr-1 h-3 w-3" /> Confirmar
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => saveMut.mutate({
-                                    id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
-                                    tipo_achado: ev.tipo_achado, status: 'resolvido',
-                                    notas_clinicas: `${ev.notas_clinicas || ''}\nDescartado pelo profissional em ${new Date().toLocaleDateString('pt-BR')}.`,
-                                  })}
-                                >
-                                  Descartar
-                                </Button>
+                          {pendentes.map((ev) => {
+                            const isHistorico = ev.tipo_diagnostico === 'historico_relatado';
+                            return (
+                              <div key={ev.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5 text-sm">
+                                <span className="truncate">
+                                  {ev.tipo_achado} <span className="text-xs text-muted-foreground">({SISTEMA_LABEL[ev.sistema] || ev.sistema})</span>
+                                </span>
+                                <div className="flex shrink-0 gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => saveMut.mutate(isHistorico
+                                      ? {
+                                        id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
+                                        tipo_achado: ev.tipo_achado, tipo_diagnostico: 'achado_clinico', status: 'ativo',
+                                        metadata: { ...(ev.metadata as any), revisado_profissional: true },
+                                      }
+                                      : {
+                                        id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
+                                        tipo_achado: ev.tipo_achado, tipo_diagnostico: 'achado_clinico',
+                                      })}
+                                  >
+                                    <Check className="mr-1 h-3 w-3" /> Confirmar
+                                  </Button>
+                                  {isHistorico && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={() => { setEditing(ev); setSheetRegiao(ev.regiao_id); }}
+                                    >
+                                      <Pencil className="mr-1 h-3 w-3" /> Editar
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => saveMut.mutate(isHistorico
+                                      ? {
+                                        id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
+                                        tipo_achado: ev.tipo_achado,
+                                        metadata: { ...(ev.metadata as any), revisado_profissional: true },
+                                      }
+                                      : {
+                                        id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
+                                        tipo_achado: ev.tipo_achado, status: 'resolvido',
+                                        notas_clinicas: `${ev.notas_clinicas || ''}\nDescartado pelo profissional em ${new Date().toLocaleDateString('pt-BR')}.`,
+                                      })}
+                                  >
+                                    Descartar
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );

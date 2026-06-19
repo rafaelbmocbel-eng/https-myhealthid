@@ -59,7 +59,10 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
   });
 
   const pendentes = useMemo(
-    () => eventos.filter((e) => e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido'),
+    () => eventos.filter((e) =>
+      (e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido')
+      || (e.tipo_diagnostico === 'historico_relatado' && (e.metadata as any)?.revisado_profissional !== true)
+    ),
     [eventos],
   );
 
@@ -81,13 +84,29 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
   };
 
   const confirmar = (ev: EventoAnatomico) => {
+    const isHistorico = ev.tipo_diagnostico === 'historico_relatado';
     saveEvento.mutate(
-      { id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id, tipo_achado: ev.tipo_achado, tipo_diagnostico: 'achado_clinico' },
+      {
+        id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id, tipo_achado: ev.tipo_achado,
+        tipo_diagnostico: 'achado_clinico',
+        ...(isHistorico ? { status: 'ativo' as const, metadata: { ...(ev.metadata as any), revisado_profissional: true } } : {}),
+      },
       { onSuccess: invalidar },
     );
   };
 
   const descartar = (ev: EventoAnatomico) => {
+    const isHistorico = ev.tipo_diagnostico === 'historico_relatado';
+    if (isHistorico) {
+      saveEvento.mutate(
+        {
+          id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id, tipo_achado: ev.tipo_achado,
+          metadata: { ...(ev.metadata as any), revisado_profissional: true },
+        },
+        { onSuccess: invalidar },
+      );
+      return;
+    }
     const nota = `Descartado pelo profissional em ${new Date().toLocaleDateString('pt-BR')} (relato do paciente não confirmado clinicamente).`;
     saveEvento.mutate(
       {

@@ -424,6 +424,29 @@ export default function PacienteDashboard() {
             </V>
           )}
 
+          {/* CTA: histórico clínico (fraturas, cirurgias, traumas etc.) */}
+          {onboardingCompleto && (
+            <V i={5}>
+              <Card
+                className="border border-border/40 shadow-sm cursor-pointer"
+                onClick={() => navigate('/paciente/historico-clinico')}
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <ClipboardList className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-foreground">📋 Histórico Clínico</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Conte sobre fraturas, cirurgias e traumas — seu profissional revisa antes de qualquer coisa entrar no seu prontuário.
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </CardContent>
+              </Card>
+            </V>
+          )}
+
           {/* Prompt MyID — primeira vez ou reavaliação mensal */}
           {showMyIdPrompt && stats.pendentes === 0 && (
             <V i={6}>
