@@ -15,7 +15,6 @@ import {
   AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket, Stethoscope
 } from 'lucide-react';
 import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
-import RelatorioCorrelacaoCard from '@/components/avatar/RelatorioCorrelacaoCard';
 import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
@@ -782,14 +781,7 @@ export default function PatientIntegratedDashboard({
 
             {/* ─────────── ABA 1.1: MEU CORPO (Avatar Clínico) ─────────── */}
             <TabsContent value="corpo" className="mt-5 space-y-5 focus-visible:outline-none">
-              {isProfessional ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
-                  <RelatorioCorrelacaoCard pacienteId={pacienteId} />
-                </div>
-              ) : (
-                <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
-              )}
+              <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
 
               <Card className="rounded-xl border-border/40 bg-muted/20">
                 <CardContent className="p-4">
