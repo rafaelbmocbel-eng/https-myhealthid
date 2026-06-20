@@ -137,8 +137,6 @@ const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'respiratorio', 'endocrino', 'urinario',
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
-const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
-
 // Lente de especialidade: quais sistemas são prioritários pra cada profissão.
 // Usado para destacar (não esconder) os sistemas mais relevantes daquele profissional.
 const SISTEMAS_POR_ESPECIALIDADE: Record<PerfilProfissional, SistemaCorporal[]> = {
@@ -308,7 +306,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const deleteMut = useDeleteEventoAnatomico(pacienteId);
 
   const [modoSimplificado, setModoSimplificado] = useState(!isProfessional);
-  const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>(SISTEMAS_INICIAIS);
+  const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>([]);
   const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
@@ -399,13 +397,39 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     [eventos, sistemasAtivos],
   );
 
+  const systemScores = useMemo(() => SISTEMAS_ORDEM.map(s => {
+    const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
+    // Anti-nocebo: o score que determina cor/homeostase reflete só evidência DOCUMENTADA
+    // por profissional (achados, histórico de vida, CID). Autorelato MyID nunca entra aqui —
+    // ele é informativo (badge "nSintomas"), não um fator de alarme.
+    let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
+
+    const sinaisSistema = sinalRegions.filter(sr => sr.sistema === s);
+    const historiaAtiva = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido);
+    const diagSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === s && d.ativo);
+
+    score += sinaisSistema.length * 1.2;
+    score += historiaAtiva.reduce((acc: number, h: any) => acc + ((h.severidade || 1) * 0.6), 0);
+    score += diagSistema.length * 0.8;
+
+    return {
+      sistema: s,
+      score,
+      count: evsDoSistema.length + sinaisSistema.length + historiaAtiva.length + diagSistema.length,
+      nSintomas: sinaisSistema.length,
+      nAchados: evsDoSistema.length,
+      nHistoria: historiaAtiva.length,
+      nDiags: diagSistema.length,
+    };
+  }).sort((a, b) => b.score - a.score), [eventos, sinalRegions, historiaVida, diagnosticosCID]);
+
   // Reconstrói a carga clínica de cada sistema mês a mês a partir do ciclo de vida
   // dos achados (data_inicio/data_resolucao). Como o registro não guarda histórico de
   // mudanças de severidade/status, usa o valor ATUAL como aproximação para os meses em
   // que o achado esteve ativo — suficiente para mostrar tendência (subiu/desceu/estável),
   // não um valor retroativo exato.
   const evolucaoMensal = useMemo(() => {
-    const eventosBase = eventosFiltrados.filter(e => modoSimplificado ? e.visivel_paciente : true);
+    const eventosBase = eventos.filter(e => modoSimplificado ? e.visivel_paciente : true);
     if (eventosBase.length === 0) return { data: [] as Record<string, any>[], sistemasComCarga: [] as SistemaCorporal[] };
 
     const MESES = 6;
@@ -443,7 +467,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       .slice(0, 4);
 
     return { data, sistemasComCarga };
-  }, [eventosFiltrados, modoSimplificado]);
+  }, [eventos, modoSimplificado]);
 
   // Regiões com achado ATIVO no Avatar Clínico — usado para não reoferecer no
   // "Sincronizar MyID" um achado que já foi confirmado anteriormente.
@@ -527,7 +551,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     )
   );
 
-  const eventosDaRegiao = (rid: string) => eventosFiltrados.filter(e => e.regiao_id === rid);
+  const eventosDaRegiao = (rid: string) => eventos.filter(e => e.regiao_id === rid);
 
   const abrirSheet = (rid: string) => {
     if (modoSimplificado) return;
@@ -613,338 +637,46 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       <CardContent className="space-y-3">
         {/* Resumo sempre visível (não fica escondido em aba): homeostase + pendências de revisão */}
         <div className="space-y-3">
-        {/* Toggles de sistema - Ecossistema Dinâmico com Ranking de Acometimento */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ranking de Sistemas</span>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-[10px] px-2"
-                onClick={() => setSistemasAtivos(SISTEMAS_ORDEM)}
-              >
-                Ver Todos
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-[10px] px-2"
-                onClick={() => setSistemasAtivos([])}
-              >
-                Limpar
-              </Button>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-1.5">
-            {useMemo(() => {
-              const systemScores = SISTEMAS_ORDEM.map(s => {
-                const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
-                // Anti-nocebo: o score que determina cor/homeostase reflete só evidência DOCUMENTADA
-                // por profissional (achados, histórico de vida, CID). Autorelato MyID nunca entra aqui —
-                // ele é informativo (badge "nSintomas"), não um fator de alarme.
-                let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
-
-                const sinaisSistema = sinalRegions.filter(sr => sr.sistema === s);
-                const historiaAtiva = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido);
-                const diagSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === s && d.ativo);
-
-                score += sinaisSistema.length * 1.2;
-                score += historiaAtiva.reduce((acc: number, h: any) => acc + ((h.severidade || 1) * 0.6), 0);
-                score += diagSistema.length * 0.8;
-
-                return {
-                  sistema: s,
-                  score,
-                  count: evsDoSistema.length + sinaisSistema.length + historiaAtiva.length + diagSistema.length,
-                  nSintomas: sinaisSistema.length,
-                  nAchados: evsDoSistema.length,
-                  nHistoria: historiaAtiva.length,
-                  nDiags: diagSistema.length,
-                };
-              }).sort((a, b) => b.score - a.score);
-
-              // Homeostase via decaimento logarítmico: 0 sinais=100%, score alto→ gradual queda
-              const totalScore = systemScores.reduce((acc, curr) => acc + curr.score, 0);
-              const homeostase = Math.max(0, Math.min(100, Math.round(100 - Math.log1p(totalScore) * 18)));
-
-              return (
-                <div className="w-full space-y-4">
-                  <div className="bg-muted/30 p-3 rounded-lg border border-border/50 flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                        Índice de Homeostase
-                        <Info
-                          className="h-3 w-3 text-muted-foreground/70 cursor-help"
-                          title="Calculado a partir da carga clínica de cada sistema (achados confirmados, histórico de vida e diagnósticos CID — autorrelato MyID não entra no cálculo), com decaimento logarítmico. Não substitui o MyID-100."
-                        />
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-xl font-black",
-                          homeostase > 80 ? "text-emerald-600" : homeostase > 50 ? "text-amber-600" : "text-red-600"
-                        )}>
-                          {homeostase.toFixed(0)}%
-                        </span>
-                        <div className="h-1.5 w-24 bg-border rounded-full overflow-hidden">
-                          <div 
-                            className={cn(
-                              "h-full transition-all duration-1000",
-                              homeostase > 80 ? "bg-emerald-500" : homeostase > 50 ? "bg-amber-500" : "bg-red-500"
-                            )}
-                            style={{ width: `${homeostase}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Alertas Ativos</p>
-                      <span className="text-lg font-bold">{systemScores.filter(s => s.score > 0).length} Sistemas</span>
+        {/* Resumo de Homeostase (sempre visível, compacto) */}
+        <div className="bg-muted/30 p-3 rounded-lg border border-border/50 flex items-center justify-between">
+          {(() => {
+            const totalScore = systemScores.reduce((acc, curr) => acc + curr.score, 0);
+            const homeostase = Math.max(0, Math.min(100, Math.round(100 - Math.log1p(totalScore) * 18)));
+            return (
+              <>
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                    Índice de Homeostase
+                    <Info
+                      className="h-3 w-3 text-muted-foreground/70 cursor-help"
+                      title="Calculado a partir da carga clínica de cada sistema (achados confirmados, histórico de vida e diagnósticos CID — autorrelato MyID não entra no cálculo), com decaimento logarítmico. Não substitui o MyID-100."
+                    />
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "text-xl font-black",
+                      homeostase > 80 ? "text-emerald-600" : homeostase > 50 ? "text-amber-600" : "text-red-600"
+                    )}>
+                      {homeostase.toFixed(0)}%
+                    </span>
+                    <div className="h-1.5 w-24 bg-border rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full transition-all duration-1000",
+                          homeostase > 80 ? "bg-emerald-500" : homeostase > 50 ? "bg-amber-500" : "bg-red-500"
+                        )}
+                        style={{ width: `${homeostase}%` }}
+                      />
                     </div>
                   </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {systemScores.map(({ sistema: s, score, count }) => {
-                      const active = sistemasAtivos.includes(s);
-                      const config = SISTEMA_CONFIG[s];
-                      const Icon = config.icon;
-                      
-                      let statusClasses = "";
-                      let alertBadge = null;
-
-                      if (score >= 5) {
-                        statusClasses = `border-red-500 text-red-700 bg-red-50 ring-1 ring-red-200 animate-pulse-subtle`;
-                        alertBadge = <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white" />;
-                      } else if (score >= 2) {
-                        statusClasses = `border-amber-500 text-amber-700 bg-amber-50`;
-                        alertBadge = <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border border-white" />;
-                      } else if (score > 0) {
-                        statusClasses = `border-emerald-500 text-emerald-700 bg-emerald-50`;
-                      } else {
-                        statusClasses = `border-border/50 text-muted-foreground bg-background opacity-60`;
-                      }
-
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          onMouseEnter={() => setHoveredSistema(s)}
-                          onMouseLeave={() => setHoveredSistema(null)}
-                          onClick={() => {
-                            setSistemasAtivos(prev =>
-                              prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
-                            );
-                          }}
-                          className={cn(
-                            "relative text-[10px] px-3 py-2 rounded-lg border transition-all flex items-center gap-2 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
-                            active ? "ring-2 ring-primary ring-offset-1 shadow-md z-10 opacity-100 scale-105" : "opacity-90",
-                            hoveredSistema === s && "ring-2 ring-primary border-primary",
-                            statusClasses
-                          )}
-                        >
-                          {alertBadge}
-                          <Icon className={cn("w-3.5 h-3.5", active ? `text-${config.color}-600` : "")} />
-                          {config.label}
-                          {count > 0 && (
-                            <span className={cn(
-                              "ml-1 px-1.5 min-w-[18px] h-4 rounded-full flex items-center justify-center text-[9px] font-black shadow-sm",
-                              score >= 5 ? "bg-red-200 text-red-900 border border-red-300" : "bg-foreground/10"
-                            )}>
-                              {count}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Resumo Dinâmico dos Sistemas Selecionados/Hovered */}
-                  {(hoveredSistema || sistemasAtivos.length > 0) && (
-                    <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                      <div className="flex flex-col gap-2">
-                        {(() => {
-                          const sysToShow = hoveredSistema || (sistemasAtivos.length === 1 ? sistemasAtivos[0] : null);
-                          
-                          if (sysToShow) {
-                            const config = SISTEMA_CONFIG[sysToShow];
-                            const Icon = config.icon;
-                            
-                            const achadosClinicos = eventos.filter(e => e.sistema === sysToShow && e.status !== 'resolvido');
-                            const sinaisHistorico = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'historico_paciente');
-                            const historiaDoSistema = historiaVida.filter(h => h.sistema_corporal === sysToShow);
-                            const diagsDoSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === sysToShow);
-
-                            // Grupos de achados por tipo_diagnostico
-                            const relatosPaciente = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'relato_paciente');
-                            const diagsMedicos = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_medico');
-                            const diagsFisio = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_fisioterapia');
-                            const diagsPsico = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_psicologia');
-                            const diagsNutri = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_nutricao');
-                            const diagsFono = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_fonoaudiologia');
-                            const diagsOutro = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_outro');
-                            const achadosGenericos = achadosClinicos.filter(e => !(e as any).tipo_diagnostico || (e as any).tipo_diagnostico === 'achado_clinico');
-
-                            return (
-                              <div className="space-y-3">
-                                <div className="flex gap-3 items-center border-b border-primary/10 pb-2">
-                                  <div className={cn("p-1.5 rounded-lg bg-background border border-primary/10", `text-${config.color}-500`)}>
-                                    <Icon className="w-4 h-4" />
-                                  </div>
-                                  <p className="text-xs font-black uppercase tracking-wider">{config.label}</p>
-                                </div>
-
-                                <div className="space-y-3">
-                                  {/* Histórico do paciente (queixa, condições, medicamentos) */}
-                                  {sinaisHistorico.length > 0 && (
-                                    <div className="space-y-1">
-                                      <p className="text-[10px] font-bold text-emerald-600 uppercase flex items-center gap-1">
-                                        <ClipboardList className="w-3 h-3" /> Histórico / Ficha do Paciente:
-                                      </p>
-                                      <div className="space-y-1 pl-4">
-                                        {sinaisHistorico.map((s, idx) => (
-                                          <div key={`hist-${idx}`} className="flex items-start gap-2">
-                                            <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-emerald-400" />
-                                            <p className="text-[11px] leading-tight text-emerald-800">{s.sinal}</p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Achados agrupados por tipo_diagnostico */}
-                                  {(() => {
-                                    const renderGrupo = (
-                                      items: typeof achadosClinicos,
-                                      IconComp: React.ElementType,
-                                      colorClass: string,
-                                      titulo: string,
-                                      key: string,
-                                    ) => {
-                                      if (items.length === 0) return null;
-                                      return (
-                                        <div key={key} className="space-y-1">
-                                          <p className={`text-[10px] font-bold uppercase flex items-center gap-1 ${colorClass}`}>
-                                            <IconComp className="w-3 h-3" /> {titulo}:
-                                          </p>
-                                          <div className="space-y-1 pl-4">
-                                            {items.map((e, idx) => (
-                                              <div key={`${key}-${idx}`} className="flex items-start gap-2">
-                                                <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: corEvento(e) }} />
-                                                <div className="text-[11px] leading-tight">
-                                                  <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
-                                                  {e.notas_clinicas && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{e.notas_clinicas}"</p>}
-                                                </div>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      );
-                                    };
-
-                                    const allEmpty = achadosClinicos.length === 0;
-                                    if (allEmpty && sinaisHistorico.length === 0) {
-                                      return (
-                                        <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum achado clínico registrado nesta avaliação.</p>
-                                      );
-                                    }
-
-                                    return (
-                                      <>
-                                        {renderGrupo(relatosPaciente, User, 'text-sky-600', 'RELATO DO PACIENTE (não confirmado)', 'relato')}
-                                        {renderGrupo(diagsMedicos, Shield, 'text-red-600', 'DIAGNÓSTICO MÉDICO (nosológico)', 'med')}
-                                        {renderGrupo(diagsFisio, Activity, 'text-green-600', 'DIAGNÓSTICO CINÉTICO-FUNCIONAL (Fisio)', 'fisio')}
-                                        {renderGrupo(diagsPsico, Brain, 'text-violet-600', 'DIAGNÓSTICO PSICOLÓGICO', 'psico')}
-                                        {renderGrupo(diagsNutri, Droplets, 'text-emerald-600', 'DIAGNÓSTICO NUTRICIONAL', 'nutri')}
-                                        {renderGrupo(diagsFono, Waves, 'text-indigo-600', 'DIAGNÓSTICO FONOAUDIOLÓGICO', 'fono')}
-                                        {renderGrupo(diagsOutro, Stethoscope, 'text-amber-600', 'DIAGNÓSTICO (especialista)', 'outro')}
-                                        {renderGrupo(achadosGenericos, Stethoscope, 'text-amber-600', 'ACHADOS DA AVALIAÇÃO PRESENCIAL', 'achado')}
-                                      </>
-                                    );
-                                  })()}
-
-                                  {/* Histórico de Vida do Sistema */}
-                                  {historiaDoSistema.length > 0 && (
-                                    <div className="space-y-1">
-                                      <p className="text-[10px] font-bold text-rose-600 uppercase flex items-center gap-1">
-                                        <Heart className="w-3 h-3" /> Histórico de Vida:
-                                      </p>
-                                      <div className="space-y-1 pl-4">
-                                        {historiaDoSistema.map((h: any) => (
-                                          <div key={h.id} className="flex items-start gap-2">
-                                            <div className={cn(
-                                              "w-1 h-1 rounded-full mt-1.5 shrink-0",
-                                              h.resolvido ? 'bg-gray-400' : h.severidade >= 3 ? 'bg-red-500' : h.severidade >= 2 ? 'bg-orange-400' : 'bg-amber-400'
-                                            )} />
-                                            <div className="text-[11px] leading-tight">
-                                              <span className="font-bold capitalize">{h.tipo.replace(/_/g, ' ')}:</span>{' '}
-                                              <span className={h.resolvido ? 'line-through text-muted-foreground' : ''}>{h.titulo}</span>
-                                              {h.descricao && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{h.descricao}"</p>}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Diagnósticos CID do Sistema */}
-                                  {diagsDoSistema.length > 0 && (
-                                    <div className="space-y-1">
-                                      <p className="text-[10px] font-bold text-red-600 uppercase flex items-center gap-1">
-                                        <Shield className="w-3 h-3" /> Diagnósticos Confirmados:
-                                      </p>
-                                      <div className="space-y-1 pl-4">
-                                        {diagsDoSistema.map((d: any) => (
-                                          <div key={d.id} className="flex items-start gap-2">
-                                            <div className={cn("w-1 h-1 rounded-full mt-1.5 shrink-0", !d.ativo ? 'bg-gray-400' : 'bg-red-500')} />
-                                            <div className="text-[11px] leading-tight">
-                                              {d.cid_codigo && <span className="font-black text-primary">[{d.cid_codigo}]</span>}{' '}
-                                              <span className={!d.ativo ? 'line-through text-muted-foreground' : 'font-medium'}>{d.cid_descricao}</span>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div className="space-y-2">
-                              <p className="text-[9px] font-bold text-muted-foreground uppercase">Resumo de Achados ({sistemasAtivos.length} sistemas)</p>
-                              <div className="grid grid-cols-1 gap-2">
-                                {sistemasAtivos.slice(0, 3).map(s => {
-                                  const nAchados = eventos.filter(e => e.sistema === s && e.status !== 'resolvido').length;
-                                  const nSintomas = sinalRegions.filter(sr => sr.sistema === s).length;
-                                  const nHistoria = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido).length;
-                                  const partes: string[] = [];
-                                  if (nAchados > 0) partes.push(`${nAchados} achado${nAchados > 1 ? 's' : ''}`);
-                                  if (nSintomas > 0) partes.push(`${nSintomas} sint.`);
-                                  if (nHistoria > 0) partes.push(`${nHistoria} hist.`);
-                                  return (
-                                    <div key={s} className="flex items-center justify-between bg-background/50 p-1.5 rounded border border-border/30">
-                                      <div className="flex items-center gap-2">
-                                        <div className={cn("w-1.5 h-1.5 rounded-full", `bg-${SISTEMA_CONFIG[s].color}-500`)} />
-                                        <span className="text-[10px] font-bold">{SISTEMA_CONFIG[s].label}</span>
-                                      </div>
-                                      <span className="text-[9px] text-muted-foreground">{partes.length ? partes.join(' · ') : 'sem registros'}</span>
-                                    </div>
-                                  );
-                                })}
-                                {sistemasAtivos.length > 3 && <span className="text-[9px] text-muted-foreground text-center">...e mais {sistemasAtivos.length - 3} sistemas ativos</span>}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              );
-            }, [eventos, sistemasAtivos, sinalRegions, hoveredSistema, historiaVida, diagnosticosCID])}
-          </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Alertas Ativos</p>
+                  <span className="text-lg font-bold">{systemScores.filter(s => s.score > 0).length} Sistemas</span>
+                </div>
+              </>
+            );
+          })()}
         </div>
         </div>
 
@@ -972,6 +704,37 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </button>
           ))}
         </div>
+
+        <div className="flex items-start justify-center gap-1.5">
+          {/* Ícones laterais de sistema — clique para ver o sistema na íntegra com sua marcação clínica */}
+          <div className="flex flex-col gap-1 pt-6 shrink-0">
+            {systemScores.map(({ sistema: s, score }) => {
+              const active = sistemasAtivos.length === 1 && sistemasAtivos[0] === s;
+              const config = SISTEMA_CONFIG[s];
+              const Icon = config.icon;
+              let dotClass = "bg-border";
+              if (score >= 5) dotClass = "bg-red-500";
+              else if (score >= 2) dotClass = "bg-amber-500";
+              else if (score > 0) dotClass = "bg-emerald-500";
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  title={config.label}
+                  onMouseEnter={() => setHoveredSistema(s)}
+                  onMouseLeave={() => setHoveredSistema(null)}
+                  onClick={() => setSistemasAtivos(active ? [] : [s])}
+                  className={cn(
+                    "relative w-7 h-7 rounded-md border flex items-center justify-center transition-all hover:scale-110",
+                    active ? "border-primary bg-primary/10 ring-1 ring-primary shadow-sm" : "border-border/50 bg-background opacity-70 hover:opacity-100"
+                  )}
+                >
+                  <Icon className={cn("w-3.5 h-3.5", active && `text-${config.color}-600`)} />
+                  {score > 0 && <span className={cn("absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-background", dotClass)} />}
+                </button>
+              );
+            })}
+          </div>
 
         {/* Silhueta */}
         <div className="mx-auto relative" style={{ maxWidth: 260 }}>
@@ -1304,6 +1067,143 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             />
           </svg>
         </div>
+        </div>
+
+        {/* Detalhe do sistema selecionado/hovered — aparece na íntegra com sua marcação clínica */}
+        {(() => {
+          const sysToShow = hoveredSistema || (sistemasAtivos.length === 1 ? sistemasAtivos[0] : null);
+          if (!sysToShow) return null;
+          const config = SISTEMA_CONFIG[sysToShow];
+          const Icon = config.icon;
+
+          const achadosClinicos = eventos.filter(e => e.sistema === sysToShow && e.status !== 'resolvido');
+          const sinaisHistorico = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'historico_paciente');
+          const historiaDoSistema = historiaVida.filter(h => h.sistema_corporal === sysToShow);
+          const diagsDoSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === sysToShow);
+
+          const relatosPaciente = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'relato_paciente');
+          const diagsMedicos = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_medico');
+          const diagsFisio = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_fisioterapia');
+          const diagsPsico = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_psicologia');
+          const diagsNutri = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_nutricao');
+          const diagsFono = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_fonoaudiologia');
+          const diagsOutro = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_outro');
+          const achadosGenericos = achadosClinicos.filter(e => !(e as any).tipo_diagnostico || (e as any).tipo_diagnostico === 'achado_clinico');
+
+          const renderGrupo = (
+            items: typeof achadosClinicos,
+            IconComp: React.ElementType,
+            colorClass: string,
+            titulo: string,
+            key: string,
+          ) => {
+            if (items.length === 0) return null;
+            return (
+              <div key={key} className="space-y-1">
+                <p className={`text-[10px] font-bold uppercase flex items-center gap-1 ${colorClass}`}>
+                  <IconComp className="w-3 h-3" /> {titulo}:
+                </p>
+                <div className="space-y-1 pl-4">
+                  {items.map((e, idx) => (
+                    <div key={`${key}-${idx}`} className="flex items-start gap-2">
+                      <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: corEvento(e) }} />
+                      <div className="text-[11px] leading-tight">
+                        <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
+                        {e.notas_clinicas && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{e.notas_clinicas}"</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 mt-3 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex gap-3 items-center border-b border-primary/10 pb-2">
+                <div className={cn("p-1.5 rounded-lg bg-background border border-primary/10", `text-${config.color}-500`)}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <p className="text-xs font-black uppercase tracking-wider">{config.label}</p>
+              </div>
+
+              <div className="space-y-3">
+                {sinaisHistorico.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-emerald-600 uppercase flex items-center gap-1">
+                      <ClipboardList className="w-3 h-3" /> Histórico / Ficha do Paciente:
+                    </p>
+                    <div className="space-y-1 pl-4">
+                      {sinaisHistorico.map((s, idx) => (
+                        <div key={`hist-${idx}`} className="flex items-start gap-2">
+                          <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-emerald-400" />
+                          <p className="text-[11px] leading-tight text-emerald-800">{s.sinal}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {achadosClinicos.length === 0 && sinaisHistorico.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum achado clínico registrado nesta avaliação.</p>
+                ) : (
+                  <>
+                    {renderGrupo(relatosPaciente, User, 'text-sky-600', 'RELATO DO PACIENTE (não confirmado)', 'relato')}
+                    {renderGrupo(diagsMedicos, Shield, 'text-red-600', 'DIAGNÓSTICO MÉDICO (nosológico)', 'med')}
+                    {renderGrupo(diagsFisio, Activity, 'text-green-600', 'DIAGNÓSTICO CINÉTICO-FUNCIONAL (Fisio)', 'fisio')}
+                    {renderGrupo(diagsPsico, Brain, 'text-violet-600', 'DIAGNÓSTICO PSICOLÓGICO', 'psico')}
+                    {renderGrupo(diagsNutri, Droplets, 'text-emerald-600', 'DIAGNÓSTICO NUTRICIONAL', 'nutri')}
+                    {renderGrupo(diagsFono, Waves, 'text-indigo-600', 'DIAGNÓSTICO FONOAUDIOLÓGICO', 'fono')}
+                    {renderGrupo(diagsOutro, Stethoscope, 'text-amber-600', 'DIAGNÓSTICO (especialista)', 'outro')}
+                    {renderGrupo(achadosGenericos, Stethoscope, 'text-amber-600', 'ACHADOS DA AVALIAÇÃO PRESENCIAL', 'achado')}
+                  </>
+                )}
+
+                {historiaDoSistema.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-rose-600 uppercase flex items-center gap-1">
+                      <Heart className="w-3 h-3" /> Histórico de Vida:
+                    </p>
+                    <div className="space-y-1 pl-4">
+                      {historiaDoSistema.map((h: any) => (
+                        <div key={h.id} className="flex items-start gap-2">
+                          <div className={cn(
+                            "w-1 h-1 rounded-full mt-1.5 shrink-0",
+                            h.resolvido ? 'bg-gray-400' : h.severidade >= 3 ? 'bg-red-500' : h.severidade >= 2 ? 'bg-orange-400' : 'bg-amber-400'
+                          )} />
+                          <div className="text-[11px] leading-tight">
+                            <span className="font-bold capitalize">{h.tipo.replace(/_/g, ' ')}:</span>{' '}
+                            <span className={h.resolvido ? 'line-through text-muted-foreground' : ''}>{h.titulo}</span>
+                            {h.descricao && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{h.descricao}"</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {diagsDoSistema.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-red-600 uppercase flex items-center gap-1">
+                      <Shield className="w-3 h-3" /> Diagnósticos Confirmados:
+                    </p>
+                    <div className="space-y-1 pl-4">
+                      {diagsDoSistema.map((d: any) => (
+                        <div key={d.id} className="flex items-start gap-2">
+                          <div className={cn("w-1 h-1 rounded-full mt-1.5 shrink-0", !d.ativo ? 'bg-gray-400' : 'bg-red-500')} />
+                          <div className="text-[11px] leading-tight">
+                            {d.cid_codigo && <span className="font-black text-primary">[{d.cid_codigo}]</span>}{' '}
+                            <span className={!d.ativo ? 'line-through text-muted-foreground' : 'font-medium'}>{d.cid_descricao}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Legend — hierarquia de confirmação clínica */}
         <div className="space-y-1 mt-2">
@@ -1325,13 +1225,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         {/* Lista de achados ativos */}
         {isLoading ? (
           <p className="text-xs text-muted-foreground text-center py-2">Carregando…</p>
-        ) : (eventosFiltrados.filter(e => e.status !== 'resolvido' && (modoSimplificado ? e.visivel_paciente : true)).length === 0) ? (
+        ) : (eventos.filter(e => e.status !== 'resolvido' && (modoSimplificado ? e.visivel_paciente : true)).length === 0) ? (
           <p className="text-xs text-muted-foreground text-center py-2">
-            Nenhum achado ativo {modoSimplificado ? 'visível' : 'registrado'} para este sistema.
+            Nenhum achado ativo {modoSimplificado ? 'visível' : 'registrado'}.
           </p>
         ) : (
           <div className="space-y-1.5">
-            {eventosFiltrados
+            {eventos
               .filter(e => e.status !== 'resolvido' && (modoSimplificado ? e.visivel_paciente : true))
               .slice(0, 6)
               .map(ev => {
@@ -1381,7 +1281,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
         {/* Histórico Clínico — achados resolvidos */}
         {!modoSimplificado && (() => {
-          const historico = eventosFiltrados.filter(e => e.status === 'resolvido');
+          const historico = eventos.filter(e => e.status === 'resolvido');
           if (historico.length === 0) return null;
           return (
             <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
