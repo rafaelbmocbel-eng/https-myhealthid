@@ -4,15 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  CalendarDays, Heart, Dumbbell, Bell, ChevronRight,
-  AlertCircle, Clock, Flame
+  CalendarDays, Heart, Bell, ChevronRight,
 } from 'lucide-react';
-import { format, parseISO, differenceInHours, isToday, subDays } from 'date-fns';
+import { format, parseISO, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface Alerta {
   id: string;
-  tipo: 'consulta' | 'diario' | 'treino' | 'questionario';
+  tipo: 'consulta' | 'diario' | 'questionario';
   titulo: string;
   descricao: string;
   urgencia: 'alta' | 'media' | 'baixa';
@@ -78,42 +77,7 @@ export default function PacienteAlertasLembretes({ pacienteId }: Props) {
         });
       }
 
-      // 3. Treinos pendentes esta semana
-      const weekAgo = subDays(now, 7);
-      const [treinosRes, execucoesRes] = await Promise.all([
-        supabase.from('studio_treinos')
-          .select('id, titulo, frequencia')
-          .eq('paciente_id', pacienteId)
-          .eq('publicado', true)
-          .eq('ativo', true),
-        supabase.from('studio_execucoes')
-          .select('treino_id')
-          .eq('paciente_id', pacienteId)
-          .eq('completo', true)
-          .gte('data_execucao', weekAgo.toISOString()),
-      ]);
-
-      const treinos = treinosRes.data || [];
-      const execucoes = execucoesRes.data || [];
-
-      treinos.forEach(t => {
-        const meta = parseInt(t.frequencia?.match(/\d+/)?.[0] || '3');
-        const feitos = execucoes.filter(e => e.treino_id === t.id).length;
-        const faltam = meta - feitos;
-        if (faltam > 0) {
-          alerts.push({
-            id: `treino-${t.id}`,
-            tipo: 'treino',
-            titulo: `🏋️ ${t.titulo}`,
-            descricao: `Faltam ${faltam} sessão(es) esta semana (${feitos}/${meta})`,
-            urgencia: faltam >= meta ? 'alta' : 'media',
-            acao: 'Iniciar treino',
-            rota: '/paciente/exercicios',
-          });
-        }
-      });
-
-      // 4. Questionários pendentes
+      // 3. Questionários pendentes
       const { count: pendentes } = await supabase
         .from('myid_avaliacoes')
         .select('id', { count: 'exact', head: true })
@@ -148,7 +112,6 @@ export default function PacienteAlertasLembretes({ pacienteId }: Props) {
   const iconMap = {
     consulta: CalendarDays,
     diario: Heart,
-    treino: Dumbbell,
     questionario: Bell,
   };
 

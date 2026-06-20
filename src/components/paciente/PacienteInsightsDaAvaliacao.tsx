@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,6 +53,7 @@ interface Props {
 
 export default function PacienteInsightsDaAvaliacao({ pacienteId }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const storageKey = `desafio-${HOJE}-${pacienteId}`;
   const [desafioConcluido, setDesafioConcluido] = useState(() => {
     try { return localStorage.getItem(storageKey) === '1'; } catch { return false; }
@@ -114,7 +116,6 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId }: Props) {
   const meta = resultado?._meta || {};
   const queixa = aval?.queixa_principal || resultado?.queixa_principal || resultado?.soap?.subjetivo || '';
   const redFlags = Array.isArray(meta?.red_flag_alerts) ? meta.red_flag_alerts as string[] : [];
-  const severidade = aval?.classificacao_severidade as string | undefined;
 
   // Sistemas com achados ativos
   const sistemasAtivos = [...new Set(eventosAvatar.map(e => e.sistema))];
@@ -270,7 +271,7 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId }: Props) {
       {/* CTA MyID (se não fez ainda) */}
       {!myid?.myid_score && (
         <button
-          onClick={() => { /* navigate handled by parent */ }}
+          onClick={() => navigate('/paciente/questionarios')}
           className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-dashed border-primary/30 hover:bg-primary/5 transition-colors group"
         >
           <div className="flex items-center gap-2.5 min-w-0">

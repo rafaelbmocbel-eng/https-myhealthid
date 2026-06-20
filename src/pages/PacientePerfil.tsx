@@ -41,7 +41,6 @@ import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoCompr
 import PortalControleTab from '@/components/paciente/PortalControleTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
 import { TimelineUnificada } from '@/components/paciente/TimelineUnificada';
-import TimelineVidaCompleta from '@/components/paciente/TimelineVidaCompleta';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
 import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
@@ -1058,7 +1057,6 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'recordatorio') && id && <RecordatorioCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'escalas_psicologia') && id && <EscalasPsicologiaCard pacienteId={id} />}
-            {id && <TimelineVidaCompleta pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}

@@ -119,7 +119,7 @@ export default function PatientIntegratedDashboard({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('avaliacoes_identidade')
-        .select('*')
+        .select('id, created_at, data_avaliacao, myid_score, score_d, score_efi, score_p, score_i, score_r, score_c, score_n, myid_analysis, dados_avaliacao, red_flags, queixa_principal')
         .eq('paciente_id', pacienteId)
         .not('myid_score', 'is', null)
         .order('created_at', { ascending: false });
@@ -168,9 +168,6 @@ export default function PatientIntegratedDashboard({
       return [];
     },
   });
-
-  // Avaliação estrutural (Unidades ID) descontinuada no portal — mantida no perfil do profissional como histórico.
-  const structuralData = null as any;
 
   const lastServiceEntry = serviceData[0] as any;
 
