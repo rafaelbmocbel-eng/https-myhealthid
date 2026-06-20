@@ -690,9 +690,18 @@ export default function PatientIntegratedDashboard({
                       })()}
 
                       {redFlagsDetected && (
-                        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-[12.5px]">
-                          ⚠️ Foram detectados <span className="font-semibold">sinais de alerta clínico</span>. Converse com seu profissional antes de iniciar qualquer mudança no plano.
-                        </p>
+                        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-[12.5px] space-y-1">
+                          <p>
+                            ⚠️ Foram detectados <span className="font-semibold">sinais de alerta clínico</span>. Converse com seu profissional antes de iniciar qualquer mudança no plano.
+                          </p>
+                          {Array.isArray(rawRedFlags) && rawRedFlags.length > 0 && (
+                            <ul className="space-y-0.5 pl-1">
+                              {rawRedFlags.map((flag: string, idx: number) => (
+                                <li key={idx}>• {flag}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       )}
                       <p className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/40">
                         O MyID é um apoio à decisão clínica — ele não substitui a avaliação do seu profissional.

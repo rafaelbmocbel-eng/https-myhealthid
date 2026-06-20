@@ -10,6 +10,15 @@ import {
     DriverPrimario, DIMENSION_LABELS, DIMENSION_COLORS, TEMPLATES_INTERPRETACAO,
 } from './lossTable';
 
+const RED_FLAG_LABELS: Record<string, string> = {
+    weight_loss: 'Perda de peso inexplicada e rápida',
+    fever: 'Febre inexplicada, calafrios ou suores noturnos frequentes',
+    night_pain: 'Dor severa noturna que não melhora com mudança de posição',
+    incontinence: 'Perda recente do controle da urina/fezes ou dormência em sela',
+    progressive: 'Fraqueza grave progressiva nas pernas/braços',
+    neuropathy: 'Dormência/formigamento severo descendo por um braço ou perna inteira',
+};
+
 export interface MyIDResponses extends Record<string, any> {
     session_id?: string;
     bloco1?: MyIDBloco1Data;
@@ -111,6 +120,9 @@ export class MyIDCalculator {
         };
         this.result.red_flags_detected = Object.values(criticalFlags).some(v => v === true);
         this.result.red_flags = criticalFlags;
+        this.result.red_flag_alerts = Object.entries(criticalFlags)
+            .filter(([, active]) => active === true)
+            .map(([id]) => RED_FLAG_LABELS[id] || id);
         return this.result.red_flags_detected || false;
     }
 
@@ -599,6 +611,7 @@ export class MyIDCalculator {
             red_flags: this.result.red_flags_detected || false,
             red_flags_details: this.result.red_flags || {},
             red_flags_detected: this.result.red_flags_detected || false,
+            red_flag_alerts: this.result.red_flag_alerts || [],
             pain_pattern: this.result.pain_pattern || 'Unknown',
             dimension_alerts: this.result.gatilhos_criticos || [],
 

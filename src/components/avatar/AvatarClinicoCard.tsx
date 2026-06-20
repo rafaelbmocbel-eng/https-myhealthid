@@ -598,15 +598,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Tabs defaultValue="geral" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="geral" className="text-xs">Visão Geral</TabsTrigger>
-            <TabsTrigger value="mapa" className="text-xs">Mapa Corporal</TabsTrigger>
-            <TabsTrigger value="achados" className="text-xs">Achados</TabsTrigger>
-            <TabsTrigger value="evolucao" className="text-xs">Evolução</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="geral" className="space-y-3 pt-3">
+        {/* Resumo sempre visível (não fica escondido em aba): homeostase + pendências de revisão */}
+        <div className="space-y-3">
         {/* Toggles de sistema - Ecossistema Dinâmico com Ranking de Acometimento */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -1015,7 +1008,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             }, [eventos, sistemasAtivos, sinalRegions, hoveredSistema, historiaVida, diagnosticosCID])}
           </div>
         </div>
-          </TabsContent>
+        </div>
+
+        <Tabs defaultValue="mapa" className="w-full pt-2">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="mapa" className="text-xs">Mapa Corporal</TabsTrigger>
+            <TabsTrigger value="achados" className="text-xs">Achados</TabsTrigger>
+            <TabsTrigger value="evolucao" className="text-xs">Evolução</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="mapa" className="pt-3">
         <div className="relative">
