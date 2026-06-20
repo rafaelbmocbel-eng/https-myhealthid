@@ -182,7 +182,13 @@ export default function PacienteDashboard() {
 
   useEffect(() => {
     if (!paciente?.id || loading) return;
-    supabase.from('pacientes').update({ xp_total: xp }).eq('id', paciente.id).then(() => {});
+    // Não sobrescrever XP ganho em outras fontes (ex.: desafios diários) — só sobe, nunca desce.
+    supabase.from('pacientes').select('xp_total').eq('id', paciente.id).maybeSingle().then(({ data }) => {
+      const atual = (data as { xp_total: number } | null)?.xp_total || 0;
+      if (xp > atual) {
+        supabase.from('pacientes').update({ xp_total: xp }).eq('id', paciente.id).then(() => {});
+      }
+    });
   }, [paciente?.id, xp, loading]);
 
   const getGreeting = () => {
@@ -400,30 +406,6 @@ export default function PacienteDashboard() {
             </V>
           )}
 
-          {/* CTA: contar história (se ainda não contou e onboarding não completo) */}
-          {!historiaContada && onboardingCompleto === false && (
-            <V i={5}>
-              <Card
-                className="border-0 shadow-md overflow-hidden cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(213 55% 28%) 100%)' }}
-                onClick={() => navigate('/paciente/historia')}
-              >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                    <Mic className="h-5 w-5 text-primary-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-black text-primary-foreground">🎙️ Conte como você está</h3>
-                    <p className="text-[11px] text-primary-foreground/75 mt-0.5">
-                      Responda em voz algumas perguntas — adianta sua avaliação inicial.
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-primary-foreground/80 shrink-0" />
-                </CardContent>
-              </Card>
-            </V>
-          )}
-
           {/* CTA: histórico clínico (fraturas, cirurgias, traumas etc.) */}
           {onboardingCompleto && (
             <V i={5}>
@@ -447,8 +429,8 @@ export default function PacienteDashboard() {
             </V>
           )}
 
-          {/* Prompt MyID — primeira vez ou reavaliação mensal */}
-          {showMyIdPrompt && stats.pendentes === 0 && (
+          {/* Prompt MyID — reavaliação mensal (1ª vez já fica coberta pelo checklist de onboarding) */}
+          {showMyIdPrompt && stats.pendentes === 0 && (myIdPromptType === 'monthly' || onboardingCompleto) && (
             <V i={6}>
               <Card className="border-0 shadow-md overflow-hidden"
                 style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)' }}
