@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -10,18 +10,24 @@ import { Bloco5 } from './steps/Bloco5';
 import { Bloco6 } from './steps/Bloco6';
 import { MyIDCalculator, MyIDResponses } from '@/utils/myid/calculator';
 import { MyIDResult } from './MyIDResult';
+import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
+
+const DRAFT_VERSION = 1;
 
 interface MyIDWizardProps {
     onComplete?: (result: any, rawData: any) => void;
     onSaveProgress?: (data: any, step: number) => void;
     initialData?: any;
     initialStep?: number;
+    /** Quando informado, mantém um rascunho local (IndexedDB/localStorage) de cada resposta, mesmo dentro do mesmo bloco. */
+    draftKey?: string;
 }
 
-export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialStep }: MyIDWizardProps) {
+export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialStep, draftKey }: MyIDWizardProps) {
     const [step, setStep] = useState(initialStep || 0);
     const [data, setData] = useState<MyIDResponses>(initialData || {});
     const [result, setResult] = useState<any>(null);
+    const [draftLoaded, setDraftLoaded] = useState(!draftKey);
 
     const totalSteps = 7; // 0=Intro, 1-6=Blocks, 7=Result
     const progressPercent = (step / (totalSteps - 1)) * 100;
@@ -30,6 +36,27 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, [step]);
 
+    // Restaura rascunho local mais recente (cobre o caso de o celular travar/desligar no meio de um bloco).
+    useEffect(() => {
+        if (!draftKey) return;
+        let active = true;
+        (async () => {
+            const draft = await readDraft<{ data: MyIDResponses; step: number }>(draftKey, DRAFT_VERSION);
+            if (active && draft) {
+                setData((prev) => ({ ...prev, ...draft.data }));
+                setStep((prev) => Math.max(prev, draft.step));
+            }
+            if (active) setDraftLoaded(true);
+        })();
+        return () => { active = false; };
+    }, [draftKey]);
+
+    // Salva cada resposta no rascunho local, sem depender do save por bloco no servidor.
+    useEffect(() => {
+        if (!draftKey || !draftLoaded) return;
+        void writeDraft(draftKey, { data, step }, DRAFT_VERSION);
+    }, [draftKey, draftLoaded, data, step]);
+
     const handleNext = () => {
         if (step === 6) {
             // Calculate final result
@@ -37,6 +64,7 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
             const res = calculator.getFullResult();
             setResult(res);
             if (onComplete) onComplete(res, data);
+            if (draftKey) void clearDraft(draftKey);
         } else if (step >= 1 && step <= 5 && onSaveProgress) {
             // Auto-save progress after each block
             onSaveProgress(data, step);

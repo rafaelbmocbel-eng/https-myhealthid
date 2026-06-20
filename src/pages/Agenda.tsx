@@ -165,6 +165,23 @@ function MiniCalendar({
   );
 }
 
+// Lembra o último dia visualizado dentro da mesma aba/sessão (sessionStorage),
+// mas reabre em "hoje" sempre que a aba é uma sessão nova.
+const AGENDA_DATE_SESSION_KEY = 'agenda:lastDate';
+
+function getInitialAgendaDate(): Date {
+  try {
+    const saved = window.sessionStorage.getItem(AGENDA_DATE_SESSION_KEY);
+    if (saved) {
+      const parsed = new Date(saved);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+  } catch {
+    // sessionStorage indisponível (ex: modo privado) — segue com a data atual
+  }
+  return new Date();
+}
+
 export default function Agenda() {
   const { user, loading: authLoading } = useAuth();
   const { agendamentos, pacientes, config, loading, createAgendamento, createBatchAgendamentos, updateAgendamento, updateFutureAgendamentos, deleteAgendamento, deleteFutureAgendamentos, createPaciente, refresh } = useAgenda();
@@ -175,7 +192,7 @@ export default function Agenda() {
   const { toast } = useToast();
 
   const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 768 ? 'dia' : 'semana');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(getInitialAgendaDate);
   const [showBloqueioLote, setShowBloqueioLote] = useState(false);
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [showNewPaciente, setShowNewPaciente] = useState(false);
@@ -342,6 +359,15 @@ export default function Agenda() {
       gridRef.current.scrollTop = Math.max(0, top);
     }
   }, [viewMode]);
+
+  // Lembra o último dia visualizado nesta aba/sessão (ver getInitialAgendaDate)
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(AGENDA_DATE_SESSION_KEY, currentDate.toISOString());
+    } catch {
+      // sessionStorage indisponível — não é crítico
+    }
+  }, [currentDate]);
 
   // Extended range 5h-22h for early/late appointments
   const startHour = 5;

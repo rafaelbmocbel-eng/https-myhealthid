@@ -12,7 +12,8 @@ export function Bloco3({ data, updateData }: Bloco3Props) {
         {
             id: "bloco_3_work",
             label: "3.1 TRABALHO E ESTUDO",
-            desc: "O quanto a dor atrapalha seu trabalho, estudo ou obrigações financeiras?"
+            desc: "O quanto a dor atrapalha seu trabalho, estudo ou obrigações financeiras?",
+            allowNotApplicable: true,
         },
         {
             id: "bloco_3_home",
@@ -55,7 +56,7 @@ export function Bloco3({ data, updateData }: Bloco3Props) {
                         <RadioGroup
                             className="flex flex-wrap gap-2 sm:gap-4"
                             value={data[q.id]?.toString() || ''}
-                            onValueChange={(v) => updateData({ [q.id]: parseInt(v) })}
+                            onValueChange={(v) => updateData({ [q.id]: v === 'na' ? 'na' : parseInt(v) })}
                         >
                             {[0, 2, 5, 8, 10].map(val => (
                                 <div key={val} className="flex flex-col items-center space-y-1">
@@ -72,6 +73,17 @@ export function Bloco3({ data, updateData }: Bloco3Props) {
                                     </Label>
                                 </div>
                             ))}
+                            {q.allowNotApplicable && (
+                                <div className="flex flex-col items-center space-y-1">
+                                    <RadioGroupItem value="na" id={`${q.id}-na`} className="w-6 h-6" />
+                                    <Label
+                                        htmlFor={`${q.id}-na`}
+                                        className="text-xs font-medium cursor-pointer"
+                                    >
+                                        Não trabalho / não estudo
+                                    </Label>
+                                </div>
+                            )}
                         </RadioGroup>
                     </div>
                 ))}

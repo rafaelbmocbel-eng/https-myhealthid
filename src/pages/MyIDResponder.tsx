@@ -1,16 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MyIDPhasedFlow } from '@/components/myid/MyIDPhasedFlow';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { PublicTrackingPixels } from '@/components/tracking/PublicTrackingPixels';
+import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
+import type { MyIDResponses } from '@/utils/myid/calculator';
+
+const DRAFT_VERSION = 1;
+interface MyIDDraft {
+  data: MyIDResponses;
+  fase: number;
+  blocoIdxInPhase: number;
+}
 
 export default function MyIDResponder() {
   const { token } = useParams<{ token: string }>();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [evalData, setEvalData] = useState<any>(null);
+  const [draft, setDraft] = useState<MyIDDraft | null>(null);
+  const draftKeyRef = useRef<string>('');
 
   useEffect(() => {
     async function load() {
@@ -19,6 +30,7 @@ export default function MyIDResponder() {
         setLoading(false);
         return;
       }
+      draftKeyRef.current = `myid-responder:${token}`;
       try {
         // Try new RPC first (includes phase tracking)
         const { data, error } = await supabase.rpc('get_myid_em_andamento', { p_token: token });
@@ -28,6 +40,8 @@ export default function MyIDResponder() {
           toast({ title: 'Erro', description: 'Avaliação não encontrada.', variant: 'destructive' });
         } else {
           setEvalData(row);
+          const savedDraft = await readDraft<MyIDDraft>(draftKeyRef.current, DRAFT_VERSION);
+          setDraft(savedDraft);
         }
       } catch (e: any) {
         toast({ title: 'Erro', description: 'Erro ao carregar avaliação.', variant: 'destructive' });
@@ -36,6 +50,11 @@ export default function MyIDResponder() {
     }
     load();
   }, [token, toast]);
+
+  const handleDataChange = (snapshot: MyIDDraft) => {
+    if (!draftKeyRef.current) return;
+    void writeDraft(draftKeyRef.current, snapshot, DRAFT_VERSION);
+  };
 
   const handlePhaseSave = async (
     fase: number,
@@ -101,6 +120,7 @@ export default function MyIDResponder() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || 'Erro ao processar');
       }
+      if (draftKeyRef.current) void clearDraft(draftKeyRef.current);
       toast({ title: '🎉 MyID enviado!', description: 'Seu profissional já recebeu o resultado.' });
       return true;
     } catch (e: any) {
@@ -160,10 +180,13 @@ export default function MyIDResponder() {
       </header>
       <main className="pb-12 pt-2">
         <MyIDPhasedFlow
-          initialData={evalData.respostas_brutas || {}}
+          initialData={{ ...(evalData.respostas_brutas || {}), ...(draft?.data || {}) }}
+          initialPhase={draft?.fase as 1 | 2 | 3 | 4 | undefined}
+          initialBlocoIdxInPhase={draft?.blocoIdxInPhase}
           faseConcluida={evalData.fase_concluida || 0}
           onPhaseSave={handlePhaseSave}
           onComplete={handleComplete}
+          onDataChange={handleDataChange}
         />
       </main>
     </div>

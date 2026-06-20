@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
@@ -7,6 +7,14 @@ import { MyIDPhasedFlow } from '@/components/myid/MyIDPhasedFlow';
 import { MyIDCalculator, MyIDResponses } from '@/utils/myid/calculator';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
+import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
+
+const DRAFT_VERSION = 1;
+interface MyIDDraft {
+  data: MyIDResponses;
+  fase: number;
+  blocoIdxInPhase: number;
+}
 
 interface LinkInfo {
   id: string;
@@ -30,6 +38,8 @@ export default function AvaliacaoPublica() {
   const [erro, setErro] = useState<string | null>(null);
   const [concluido, setConcluido] = useState(false);
   const [resultadoFinal, setResultadoFinal] = useState<any>(null);
+  const [draft, setDraft] = useState<MyIDDraft | null>(null);
+  const draftKeyRef = useRef<string>('');
 
   useEffect(() => {
     if (!token) { setErro('Link inválido.'); setLoading(false); return; }
@@ -44,12 +54,20 @@ export default function AvaliacaoPublica() {
           return;
         }
         setLinkInfo(data as LinkInfo);
+        draftKeyRef.current = `myid-avaliacao-publica:${(data as LinkInfo).id}`;
+        const savedDraft = await readDraft<MyIDDraft>(draftKeyRef.current, DRAFT_VERSION);
+        setDraft(savedDraft);
       } catch {
         setErro('Erro ao validar o link. Tente novamente.');
       }
       setLoading(false);
     })();
   }, [token]);
+
+  const handleDataChange = (snapshot: MyIDDraft) => {
+    if (!draftKeyRef.current) return;
+    void writeDraft(draftKeyRef.current, snapshot, DRAFT_VERSION);
+  };
 
   const salvarBlocoNoBackend = async (blocoNum: number, dados: any) => {
     if (!linkInfo) return;
@@ -103,6 +121,7 @@ export default function AvaliacaoPublica() {
     } catch (e) {
       console.warn('Erro ao sincronizar resultado:', e);
     }
+    if (draftKeyRef.current) void clearDraft(draftKeyRef.current);
     setConcluido(true);
     return true;
   };
@@ -158,8 +177,12 @@ export default function AvaliacaoPublica() {
       </div>
 
       <MyIDPhasedFlow
+        initialData={draft?.data}
+        initialPhase={draft?.fase as 1 | 2 | 3 | 4 | undefined}
+        initialBlocoIdxInPhase={draft?.blocoIdxInPhase}
         onPhaseSave={handlePhaseSave}
         onComplete={handleComplete}
+        onDataChange={handleDataChange}
       />
     </div>
   );

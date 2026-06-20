@@ -179,6 +179,7 @@ export default function PacienteQuestionarios() {
               onSaveProgress={handleSaveProgress}
               initialData={item?.respostas_brutas || {}}
               initialStep={savedStep || 0}
+              draftKey={`myid-wizard:${activeId}`}
             />
             {submitting && (
               <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">

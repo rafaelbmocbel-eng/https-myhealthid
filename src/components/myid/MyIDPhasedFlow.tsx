@@ -30,6 +30,7 @@ const ALL_DIMENSIONS = ['D', 'I', 'EFI', 'P', 'R', 'C', 'N'] as const;
 interface Props {
   initialData?: MyIDResponses;
   initialPhase?: Fase;
+  initialBlocoIdxInPhase?: number;
   faseConcluida?: number; // 0-4 (last completed phase from server)
   pacienteNome?: string;
   onPhaseSave: (
@@ -40,8 +41,8 @@ interface Props {
     redFlags: boolean,
   ) => Promise<boolean>;
   onComplete: (data: MyIDResponses, fullResult: any) => Promise<boolean>;
-  /** Optional: notified on every data update (for parent draft autosave). */
-  onDataChange?: (data: MyIDResponses) => void;
+  /** Optional: notified on every data/posição update (for parent draft autosave). */
+  onDataChange?: (snapshot: { data: MyIDResponses; fase: Fase; blocoIdxInPhase: number }) => void;
 }
 
 function dimsForPhase(fase: number): string[] {
@@ -57,6 +58,7 @@ function dimsForPhase(fase: number): string[] {
 export function MyIDPhasedFlow({
   initialData,
   initialPhase,
+  initialBlocoIdxInPhase = 0,
   faseConcluida = 0,
   pacienteNome,
   onPhaseSave,
@@ -66,8 +68,10 @@ export function MyIDPhasedFlow({
   const { toast } = useToast();
   const [data, setData] = useState<MyIDResponses>(initialData || {});
   const [fase, setFase] = useState<Fase>((initialPhase || Math.min(4, (faseConcluida || 0) + 1) || 1) as Fase);
-  const [blocoIdxInPhase, setBlocoIdxInPhase] = useState(0);
-  const [screen, setScreen] = useState<ScreenMode>(faseConcluida > 0 ? 'fase' : 'inicio');
+  const [blocoIdxInPhase, setBlocoIdxInPhase] = useState(initialBlocoIdxInPhase);
+  const [screen, setScreen] = useState<ScreenMode>(
+    faseConcluida > 0 || initialBlocoIdxInPhase > 0 ? 'fase' : 'inicio',
+  );
   const [saving, setSaving] = useState(false);
 
   // Last partial score for showing on transition
@@ -75,14 +79,14 @@ export function MyIDPhasedFlow({
   const [lastDimensions, setLastDimensions] = useState<string[]>(dimsForPhase(faseConcluida));
   const [lastPartialScores, setLastPartialScores] = useState<Record<string, number> | undefined>();
 
-
   const updateData = useCallback((newData: Partial<MyIDResponses>) => {
-    setData((prev) => {
-      const next = { ...prev, ...newData };
-      onDataChange?.(next);
-      return next;
-    });
-  }, [onDataChange]);
+    setData((prev) => ({ ...prev, ...newData }));
+  }, []);
+
+  // Notifica o pai a cada mudança de resposta/posição (autosave de rascunho local).
+  useEffect(() => {
+    onDataChange?.({ data, fase, blocoIdxInPhase });
+  }, [data, fase, blocoIdxInPhase, onDataChange]);
 
   // Scroll to top on screen/phase changes
   useEffect(() => {

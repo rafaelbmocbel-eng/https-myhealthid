@@ -126,13 +126,14 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 3: FUNCIONALIDADE (EFI) ====================
     calculateFunctionality(): number {
+        const work = this.responses.bloco_3_work ?? this.responses.bloco3?.trabalho;
         const efiValues = [
-            this.responses.bloco_3_work ?? this.responses.bloco3?.trabalho ?? 0,
+            work === 'na' ? null : (work ?? 0),
             this.responses.bloco_3_home ?? this.responses.bloco3?.domesticas ?? 0,
             this.responses.bloco_3_exercise ?? this.responses.bloco3?.exercicio ?? 0,
             this.responses.bloco_3_independence ?? this.responses.bloco3?.independencia ?? 0,
             this.responses.bloco_3_social ?? this.responses.bloco3?.vidaSocial ?? 0,
-        ];
+        ].filter((v): v is number => v !== null);
         // Pior item domina porque EFI é bem-estar: menor = pior
         const min = Math.min(...efiValues);
         const avg = efiValues.reduce((a, b) => a + b, 0) / efiValues.length;
@@ -196,11 +197,16 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 5D: CONTEXTO (C) ====================
     calculateContext(): number {
-        const workStress = this.responses.bloco_5d_work_stress ?? this.responses.bloco5?.trabalhoEstressante ?? 5;
+        const workStress = this.responses.bloco_5d_work_stress ?? this.responses.bloco5?.trabalhoEstressante;
         const familyConflict = this.responses.bloco_5d_family_conflict ?? this.responses.bloco5?.conflitosFamiliares ?? 5;
         const financialWorry = this.responses.bloco_5d_financial_worry ?? this.responses.bloco5?.preocupacaoFinanceira ?? 5;
         // C is CAPACITY: high C = good support
-        const c = ((10 - workStress) + (10 - familyConflict) + (10 - financialWorry)) / 3;
+        const contextItems = [
+            workStress === 'na' ? null : (10 - (workStress ?? 5)),
+            10 - familyConflict,
+            10 - financialWorry,
+        ].filter((v): v is number => v !== null);
+        const c = contextItems.reduce((a, b) => a + b, 0) / contextItems.length;
         this.scores['C'] = Math.round(c * 10) / 10;
         return this.scores['C'];
     }
@@ -257,7 +263,7 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 5H: ERGONOMIA (ERG) ====================
     calculateErgonomics(): number {
-        const spaceMap: Record<string, number> = { none: 0, precarious: 3, acceptable: 6, good: 9, excellent: 10 };
+        const spaceMap: Record<string, number> = { no_office: 6, none: 0, precarious: 3, acceptable: 6, good: 9, excellent: 10 };
         const spaceVal = spaceMap[this.responses.bloco_5h_workspace || this.responses.bloco5?.bloco_5h_workspace || 'acceptable'] ?? 5;
         const habitsPenalty = (this.responses.bloco_5h_bad_habits || this.responses.bloco5?.bloco_5h_bad_habits || []).length * 1.5;
         const erg = Math.max(0, spaceVal - habitsPenalty);
