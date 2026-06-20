@@ -74,6 +74,7 @@ import RecordatorioCard from '@/components/nutricao/RecordatorioCard';
 import PlanoAlimentarCard from '@/components/nutricao/PlanoAlimentarCard';
 import EscalasPsicologiaCard from '@/components/psicologia/EscalasPsicologiaCard';
 import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
+import HistoricoClinicoRevisao from '@/components/avatar/HistoricoClinicoRevisao';
 import RelatorioCorrelacaoCard from '@/components/avatar/RelatorioCorrelacaoCard';
 import PainelDecisaoClinica from '@/components/dashboard/PainelDecisaoClinica';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
@@ -1075,6 +1076,7 @@ export default function PacientePerfil() {
                     <AvatarClinicoCard pacienteId={id} />
                     <RelatorioCorrelacaoCard pacienteId={id} />
                   </div>
+                  <HistoricoClinicoRevisao pacienteId={id} />
                 </TabsContent>
                 <TabsContent value="historia" className="mt-0">
                   <TimelineVidaCompleta pacienteId={id} />

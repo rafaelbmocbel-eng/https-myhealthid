@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2, Eye, RefreshCw, Save } from 'lucide-react';
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
 import { MyIDResult } from '@/components/myid/MyIDResult';
+import HistoricoClinicoCard from '@/components/paciente/HistoricoClinicoCard';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
@@ -178,6 +179,7 @@ export default function PacienteQuestionarios() {
               onSaveProgress={handleSaveProgress}
               initialData={item?.respostas_brutas || {}}
               initialStep={savedStep || 0}
+              draftKey={`myid-wizard:${activeId}`}
             />
             {submitting && (
               <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
@@ -375,6 +377,8 @@ export default function PacienteQuestionarios() {
               )}
             </>
           )}
+
+          <HistoricoClinicoCard />
         </div>
       </PacienteLayout>
     </ProtectedPatientRoute>

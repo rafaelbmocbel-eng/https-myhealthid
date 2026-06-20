@@ -22,48 +22,8 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Histórico de saúde</h2>
-                <p className="text-gray-500">Traumas, cicatrizes e disfunções viscerais invisíveis</p>
+                <p className="text-gray-500">Disfunções viscerais e hormonais invisíveis</p>
             </div>
-
-            {/* Traumas e Cirurgias */}
-            <section className="space-y-6">
-                <div className="space-y-4">
-                    <Label className="font-semibold text-base">Traumas axiais</Label>
-                    <p className="text-sm text-gray-500">Você JÁ SOFREU alguma QUEDA FORTE SENTADO? (Impacto direto no bumbum, cóccix ou base da coluna)</p>
-                    <RadioGroup
-                        value={data.bloco_6_axial_trauma === undefined ? '' : (data.bloco_6_axial_trauma ? 'yes' : 'no')}
-                        onValueChange={(v) => updateData({ bloco_6_axial_trauma: v === 'yes' })}
-                        className="space-y-2"
-                    >
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="no" id="ax-no" /><Label htmlFor="ax-no">NÃO, nunca sofri queda assim</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="ax-yes" /><Label htmlFor="ax-yes">SIM, sofri queda forte</Label></div>
-                    </RadioGroup>
-                </div>
-
-                <div className="space-y-4">
-                    <Label className="font-semibold text-base">Cicatrizes abdominais</Label>
-                    <p className="text-sm text-gray-500">Você POSSUI CICATRIZ de CIRURGIA ABDOMINAL? (Marque todas que se aplicam ou deixe em branco se não)</p>
-                    <div className="space-y-2 grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                        {[
-                            { id: 'cesarea', label: 'Cesárea (parto cirúrgico)' },
-                            { id: 'abdominoplastia', label: 'Abdominoplastia (cirurgia estética)' },
-                            { id: 'apendicectomia', label: 'Apendicectomia (remoção do apêndice)' },
-                            { id: 'colecistectomia', label: 'Colecistectomia (remoção da vesícula)' },
-                            { id: 'histerectomia', label: 'Histerectomia (remoção do útero)' },
-                            { id: 'hernia', label: 'Cirurgia de hérnia' }
-                        ].map(surg => (
-                            <div key={surg.id} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`surg-${surg.id}`}
-                                    checked={(data.bloco_6_abdominal_surgeries || []).includes(surg.id)}
-                                    onCheckedChange={(c) => handleCheckboxChange('bloco_6_abdominal_surgeries', surg.id, !!c)}
-                                />
-                                <Label htmlFor={`surg-${surg.id}`}>{surg.label}</Label>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
 
             {/* Saúde Visceral */}
             <section className="space-y-6">

@@ -184,20 +184,30 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Estresse no trabalho</Label>
                     <p className="text-sm text-gray-500">O quanto seu ambiente de trabalho é estressante?</p>
-                    <div className="px-2 pt-2">
-                        <Input
-                            type="range"
-                            min="0" max="10" step="1"
-                            value={data.bloco_5d_work_stress || 0}
-                            onChange={(e) => updateData({ bloco_5d_work_stress: parseInt(e.target.value) })}
-                            className="w-full"
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="work-stress-na"
+                            checked={data.bloco_5d_work_stress === 'na'}
+                            onCheckedChange={(c) => updateData({ bloco_5d_work_stress: c ? 'na' : 0 })}
                         />
-                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
-                            <span>0 (Nenhum estresse)</span>
-                            <span>10 (Estresse extremo)</span>
-                        </div>
-                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_work_stress || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                        <Label htmlFor="work-stress-na" className="font-normal text-sm">Não trabalho atualmente</Label>
                     </div>
+                    {data.bloco_5d_work_stress !== 'na' && (
+                        <div className="px-2 pt-2">
+                            <Input
+                                type="range"
+                                min="0" max="10" step="1"
+                                value={data.bloco_5d_work_stress || 0}
+                                onChange={(e) => updateData({ bloco_5d_work_stress: parseInt(e.target.value) })}
+                                className="w-full"
+                            />
+                            <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                                <span>0 (Nenhum estresse)</span>
+                                <span>10 (Estresse extremo)</span>
+                            </div>
+                            <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_work_stress || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
@@ -486,6 +496,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         onValueChange={(v) => updateData({ bloco_5h_workspace: v })}
                         className="space-y-2"
                     >
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="no_office" id="ws-no-office" /><Label htmlFor="ws-no-office">NÃO TRABALHO / não trabalho em escritório (ex: trabalho manual, ao ar livre, aposentado)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="none" id="ws-none" /><Label htmlFor="ws-none">SEM LUGAR ADEQUADO (cama, sofá, improvisado)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="precarious" id="ws-prec" /><Label htmlFor="ws-prec">PRECÁRIO (cadeira ruim, mesa baixa, sem suporte)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="acceptable" id="ws-acc" /><Label htmlFor="ws-acc">ACEITÁVEL (tem cadeira/mesa, pouco ajuste)</Label></div>

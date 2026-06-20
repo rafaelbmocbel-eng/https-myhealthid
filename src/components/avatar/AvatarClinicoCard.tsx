@@ -21,9 +21,6 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
-import { inferirAchadosDoMyID } from '@/utils/anatomia/myidToAvatar';
-import { PainelContexto } from './PainelContexto';
-import { RadarDeAvaliacao } from './RadarDeAvaliacao';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 
 
@@ -304,103 +301,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [view, setView] = useState<'front' | 'back'>('front');
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number }[] | null>(null);
-  // Anti-nocebo: relatos MyID (autorelato) ficam OCULTOS do mapa corporal por padrão.
-  // O clínico decide ativamente se quer sobrepor esses sinais ao mapa.
-  const [mostrarMyIDNoMapa, setMostrarMyIDNoMapa] = useState(false);
+  const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number; sinal: string; sistema: string }[] | null>(null);
 
   const { data: lente } = useLenteAtiva();
-
-  // Dados crus do paciente (alergias/medicamentos) pro Painel de Contexto — sem passar pelo mineirador de texto
-  const { data: pacienteInfoRaw } = useQuery({
-    queryKey: ['paciente-info-raw-avatar', pacienteId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('pacientes')
-        .select('alergias, medicamentos_uso')
-        .eq('id', pacienteId)
-        .maybeSingle();
-      return data || {};
-    },
-    enabled: !!pacienteId,
-  });
-
-  const { data: lastMyIDData } = useQuery({
-    queryKey: ['last-myid-data-full', pacienteId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('avaliacoes_identidade')
-        .select('*')
-        .eq('paciente_id', pacienteId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) return null;
-
-      const dados = data.dados_avaliacao as any;
-      const painMapSalvo = dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
-
-      let painRegions: { regiao_id: string; intensidade: number }[] = painMapSalvo
-        ? Object.entries(painMapSalvo)
-            .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
-            .filter(i => i.intensidade > 0)
-        : [];
-
-      const respostas = dados || {};
-      const analysis = data.myid_analysis as any;
-      const componentScores = analysis?.componentScores || analysis?.component_scores || {};
-
-      // Se não há painMap mas há scores dimensionais, infere regiões para o botão de sync aparecer
-      if (painRegions.length === 0) {
-        const scoresObj = {
-          D:   Number(data.score_d   || 0),
-          EFI: Number(data.score_efi || 0),
-          P:   Number(data.score_p   || 0),
-          I:   Number(data.score_i   || 0),
-          R:   Number(data.score_r   || 0),
-          C:   Number(data.score_c   || 0),
-          N:   Number(data.score_n   || 0),
-          AF:  Number((data as any).score_af  || 0),
-          ERG: Number((data as any).score_erg || 0),
-          HID: Number((data as any).score_hid || 0),
-        };
-        const temScores = Object.values(scoresObj).some(v => v > 0);
-        if (temScores) {
-          const achados = inferirAchadosDoMyID({
-            scores: scoresObj,
-            textoRelato: extrairTextoDeObjeto(dados) + ' ' + extrairTextoDeObjeto(analysis),
-          });
-          painRegions = achados.map(a => ({ regiao_id: a.regiao_id, intensidade: a.intensidade }));
-        }
-      }
-
-      const textoCompleto = extrairTextoDeObjeto(dados) + " " + extrairTextoDeObjeto(analysis);
-      const sintomasDetectados = encontrarSintomasEmTexto(textoCompleto);
-
-      const sinalRegions: { regiao_id: string; sinal: string; sistema: string; fonte: string }[] = [];
-      sintomasDetectados.forEach(s => {
-        if (!sinalRegions.some(sr => sr.regiao_id === s.regiao_id && sr.sistema === s.sistema)) {
-          sinalRegions.push({
-            regiao_id: s.regiao_id,
-            sinal: `Sintoma: ${s.termo}`,
-            sistema: s.sistema,
-            fonte: 'myid',
-          });
-        }
-      });
-
-      return {
-        painRegions,
-        sinalRegions,
-        scores: componentScores,
-        raw: data,
-        respostas,
-      };
-    },
-    enabled: !!pacienteId,
-  });
 
   // Histórico do paciente: queixa principal, condições, medicamentos, alergias
   const { data: pacienteHistorico } = useQuery({
@@ -465,13 +368,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     enabled: !!pacienteId,
   });
 
-  const painRegions = lastMyIDData?.painRegions || [];
-  // Mescla sinalRegions de todas as fontes, sem duplicar por termo + sistema
+  // Sinais não-confirmados, vindos do histórico/ficha do paciente (MyID nunca alimenta o avatar)
   const sinalRegions = useMemo(() => {
-    const fontes = [
-      ...(lastMyIDData?.sinalRegions || []),
-      ...(pacienteHistorico || []),
-    ];
+    const fontes = [...(pacienteHistorico || [])];
     const seen = new Set<string>();
     return fontes.filter(s => {
       // Deduplica por termo + sistema (evita duplicar frente/costas/esquerda/direita)
@@ -480,8 +379,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       seen.add(key);
       return true;
     });
-  }, [lastMyIDData?.sinalRegions, pacienteHistorico]);
-  const myidScores = lastMyIDData?.scores || {};
+  }, [pacienteHistorico]);
 
   const eventosFiltrados = useMemo(
     () => eventos.filter(e => sistemasAtivos.includes(e.sistema)),
@@ -540,10 +438,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     () => new Set(eventos.filter(e => e.status !== 'resolvido').map(e => e.regiao_id)),
     [eventos],
   );
-  const painRegionsParaSincronizar = useMemo(
-    () => painRegions.filter(p => !regioesAtivasExistentes.has(p.regiao_id)),
-    [painRegions, regioesAtivasExistentes],
-  );
   const sinalRegionsParaSincronizar = useMemo(
     () => sinalRegions.filter(s => !regioesAtivasExistentes.has(s.regiao_id)),
     [sinalRegions, regioesAtivasExistentes],
@@ -572,27 +466,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       }
     });
 
-    // Depois, sobrepõe indicação de dor do MyID se não houver achado clínico ainda
-    // Anti-nocebo: autorelato (MyID) só aparece no mapa se o clínico ativar explicitamente
-    // o toggle "Mostrar MyID no mapa" — e mesmo assim com teto de opacidade baixo.
-    if (mostrarMyIDNoMapa && sistemasAtivos.includes('musculoesqueletico')) {
-      painRegions.forEach(item => {
-        const regId = item.regiao_id;
-        if (!map[regId]) {
-          const intensity = item.intensidade;
-          const alpha = Math.min(0.30, 0.12 + (intensity / 10) * 0.18);
-          map[regId] = `rgba(168, 85, 247, ${alpha})`;
-          map[regId + '__is_myid'] = 'true';
-        }
-      });
-    }
-
-    // Sinais de TODAS as fontes: MyID, histórico do paciente e notas clínicas
-    // A opacidade varia por fonte: notas_clinicas > historico_paciente > myid
+    // Sinais não-confirmados (histórico do paciente, notas clínicas) — nunca competem
+    // visualmente com achado documentado, opacidade baixa.
     const FONTE_ALPHA: Record<string, number> = {
       notas_clinicas: 0.52,
       historico_paciente: 0.44,
-      myid: 0.22, // anti-nocebo: relato isolado nunca compete visualmente com achado documentado
     };
     const SISTEMA_COR: Record<string, string> = {
       nervoso:            '14, 165, 233',
@@ -610,9 +488,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     sinalRegions.forEach(item => {
       const isSystemActive = sistemasAtivos.includes(item.sistema as any);
       if (!isSystemActive) return;
-      const fonte = (item as any).fonte || 'myid';
-      // Anti-nocebo: sinal vindo só do MyID (autorelato) fica oculto do mapa por padrão
-      if (fonte === 'myid' && !mostrarMyIDNoMapa) return;
+      const fonte = (item as any).fonte || 'historico_paciente';
       const alpha = FONTE_ALPHA[fonte] ?? 0.38;
       const cor = SISTEMA_COR[item.sistema] || '14, 165, 233';
       // Só sobrescreve se não houver achado clínico (que tem prioridade)
@@ -627,20 +503,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     });
 
 
-    // Sincroniza Cirurgias (Vermelho Escuro/Trauma) - APENAS no digestório ou reprodutor
-    const cirurgias = lastMyIDData?.respostas?.bloco_6_abdominal_surgeries || [];
-    if (cirurgias.length > 0 && !map['pelve'] && (sistemasAtivos.includes('digestorio') || sistemasAtivos.includes('reprodutor'))) {
-       map['pelve'] = 'rgba(220, 38, 38, 0.2)'; 
-    }
-
     return map;
-  }, [eventosFiltrados, painRegions, sinalRegions, lastMyIDData, mostrarMyIDNoMapa, sistemasAtivos]);
+  }, [eventosFiltrados, sinalRegions, sistemasAtivos]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
   const regioesViscerais = VISCERAL_REGIONS.filter(r =>
     r.view === view && (
       r.sistemas.some(s => sistemasAtivos.includes(s as any)) ||
-      sinalRegions.some(sr => sr.regiao_id === r.id && ((sr as any).fonte !== 'myid' || mostrarMyIDNoMapa))
+      sinalRegions.some(sr => sr.regiao_id === r.id)
     )
   );
 
@@ -650,13 +520,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     if (modoSimplificado) return;
     setSheetRegiao(rid);
     setEditing(null);
-    // Identifica o sistema predominante da região para sugerir no formulário
-    const regVisceral = VISCERAL_REGIONS.find(v => v.id === rid);
-    if (regVisceral) {
-      setIsSyncing(true); // Aba de sinais se for visceral
-    } else {
-      setIsSyncing(false); // Aba de dor se for musculoesquelético
-    }
   };
 
   const novoAchado = () => {
@@ -685,23 +548,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     setEditing(null);
   };
 
-  const handleSyncImport = async (item: any) => {
-    await saveMut.mutateAsync({
-      paciente_id: pacienteId,
-      regiao_id: item.regiao_id,
-      sistema: (item.sistema as any) || 'musculoesqueletico',
-      origem: 'subjetivo_myid',
-      tipo_achado: item.sinal || `Sintoma: Dor/Desconforto (intensidade ${item.intensidade}/10)`,
-      severidade: item.intensidade >= 7 ? 3 : item.intensidade >= 4 ? 2 : 1,
-      status: 'ativo',
-      visivel_paciente: true,
-      data_inicio: new Date().toISOString().slice(0, 10),
-      notas_clinicas: `Importado automaticamente da Impressão Digital MyID. ${item.sinal ? `Sinal: ${item.sinal}` : `Intensidade: ${item.intensidade}/10`}`,
-    });
-    setSyncData(prev => prev ? prev.filter(i => i.regiao_id !== item.regiao_id) : null);
-  };
-
-
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -709,15 +555,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <Stethoscope className="icon-sm shrink-0" />
           Avatar Clínico Anatômico
           <div className="ml-auto flex items-center gap-1.5">
-            {(painRegionsParaSincronizar.length > 0 || sinalRegionsParaSincronizar.length > 0) && (
+            {sinalRegionsParaSincronizar.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 text-[10px] gap-1 px-2 border-primary/30 text-primary hover:bg-primary/5"
-                onClick={() => setSyncData([...painRegionsParaSincronizar, ...sinalRegionsParaSincronizar.map(s => ({ regiao_id: s.regiao_id, intensidade: 5, sinal: s.sinal, sistema: s.sistema }))])}
+                onClick={() => setSyncData(sinalRegionsParaSincronizar.map(s => ({ regiao_id: s.regiao_id, intensidade: 5, sinal: s.sinal, sistema: s.sistema })))}
               >
                 <RefreshCcw className="h-3 w-3" />
-                Sincronizar MyID
+                Sincronizar Histórico
               </Button>
             )}
 
@@ -737,21 +583,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 onClick={() => setSistemasAtivos(SISTEMAS_POR_ESPECIALIDADE[lente.id] || SISTEMAS_ORDEM)}
               >
                 Lente: {lente.nome_exibicao}
-              </button>
-            )}
-            {!modoSimplificado && (painRegions.length > 0 || sinalRegions.some(s => (s as any).fonte === 'myid')) && (
-              <button
-                type="button"
-                className={cn(
-                  'text-[9px] border rounded-full px-2 py-0.5 transition-colors',
-                  mostrarMyIDNoMapa
-                    ? 'bg-primary/10 text-primary border-primary/30'
-                    : 'text-muted-foreground border-border hover:bg-accent',
-                )}
-                title="Por padrão, autorelato MyID não é exibido no mapa corporal (evita ruído/nocebo). Ative para sobrepor."
-                onClick={() => setMostrarMyIDNoMapa(v => !v)}
-              >
-                {mostrarMyIDNoMapa ? 'Autorelato MyID: visível' : 'Autorelato MyID: oculto'}
               </button>
             )}
             <Label htmlFor="modo-view" className="text-[10px] cursor-pointer">
@@ -810,20 +641,18 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
 
                 const sinaisSistema = sinalRegions.filter(sr => sr.sistema === s);
-                const sinaisClinicos = sinaisSistema.filter(sr => (sr as any).fonte !== 'myid');
-                const nDorMuscular = s === 'musculoesqueletico' ? painRegions.length : 0;
                 const historiaAtiva = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido);
                 const diagSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === s && d.ativo);
 
-                score += sinaisClinicos.length * 1.2;
+                score += sinaisSistema.length * 1.2;
                 score += historiaAtiva.reduce((acc: number, h: any) => acc + ((h.severidade || 1) * 0.6), 0);
                 score += diagSistema.length * 0.8;
 
                 return {
                   sistema: s,
                   score,
-                  count: evsDoSistema.length + sinaisSistema.length + nDorMuscular + historiaAtiva.length + diagSistema.length,
-                  nSintomas: sinaisSistema.length + nDorMuscular,
+                  count: evsDoSistema.length + sinaisSistema.length + historiaAtiva.length + diagSistema.length,
+                  nSintomas: sinaisSistema.length,
                   nAchados: evsDoSistema.length,
                   nHistoria: historiaAtiva.length,
                   nDiags: diagSistema.length,
@@ -870,6 +699,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   </div>
 
                   {(() => {
+                    // Itens 'historico_relatado' são revisados em HistoricoClinicoRevisao, abaixo do Avatar — não duplicar aqui.
                     const pendentes = eventos.filter(
                       (e) => e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido'
                     );
@@ -985,7 +815,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             const Icon = config.icon;
                             
                             const achadosClinicos = eventos.filter(e => e.sistema === sysToShow && e.status !== 'resolvido');
-                            const sinaisMyID = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'myid');
                             const sinaisHistorico = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'historico_paciente');
                             const historiaDoSistema = historiaVida.filter(h => h.sistema_corporal === sysToShow);
                             const diagsDoSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === sysToShow);
@@ -999,26 +828,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             const diagsFono = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_fonoaudiologia');
                             const diagsOutro = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_outro');
                             const achadosGenericos = achadosClinicos.filter(e => !(e as any).tipo_diagnostico || (e as any).tipo_diagnostico === 'achado_clinico');
-
-                            const flagsSistema: string[] = [];
-                            if (sysToShow === 'musculoesqueletico') {
-                              if (lastMyIDData?.respostas?.bloco_6_axial_trauma) flagsSistema.push('Histórico de Trauma Axial');
-                              if (lastMyIDData?.respostas?.bloco_6_muscle_relaxant) flagsSistema.push('Uso de Relaxante Muscular');
-                            }
-                            if (sysToShow === 'digestorio') {
-                              if (lastMyIDData?.respostas?.bloco_6_abdominal_surgeries?.length > 0) {
-                                lastMyIDData.respostas.bloco_6_abdominal_surgeries.forEach((s: string) => flagsSistema.push(`Cirurgia Abdominal: ${s}`));
-                              }
-                            }
-                            if (sysToShow === 'nervoso') {
-                              if (lastMyIDData?.respostas?.bloco_6_antidepressant) flagsSistema.push('Uso de Antidepressivo');
-                            }
-
-                            const doresMyID = sysToShow === 'musculoesqueletico'
-                              ? painRegions.map(p => ({ sinal: `Dor em ${REGIONS.find(r => r.id === p.regiao_id)?.label || p.regiao_id} (${p.intensidade}/10)` }))
-                              : [];
-
-                            const todosMyID = [...sinaisMyID.map(a => a.sinal), ...doresMyID.map(d => d.sinal), ...flagsSistema];
 
                             return (
                               <div className="space-y-3">
@@ -1046,25 +855,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                       </div>
                                     </div>
                                   )}
-
-                                  {/* Relatos do MyID (avaliação subjetiva) */}
-                                  <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-sky-600 uppercase flex items-center gap-1">
-                                      <User className="w-3 h-3" /> Relatos do Paciente (MyID):
-                                    </p>
-                                    {todosMyID.length === 0 ? (
-                                      <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum relato subjetivo registrado.</p>
-                                    ) : (
-                                      <div className="space-y-1 pl-4">
-                                        {todosMyID.map((s, idx) => (
-                                          <div key={`myid-${idx}`} className="flex items-start gap-2">
-                                            <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-sky-400" />
-                                            <p className="text-[11px] leading-tight text-sky-800">{s}</p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
 
                                   {/* Achados agrupados por tipo_diagnostico */}
                                   {(() => {
@@ -1097,7 +887,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                     };
 
                                     const allEmpty = achadosClinicos.length === 0;
-                                    if (allEmpty && sinaisHistorico.length === 0 && todosMyID.length === 0) {
+                                    if (allEmpty && sinaisHistorico.length === 0) {
                                       return (
                                         <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum achado clínico registrado nesta avaliação.</p>
                                       );
@@ -1171,7 +961,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                               <div className="grid grid-cols-1 gap-2">
                                 {sistemasAtivos.slice(0, 3).map(s => {
                                   const nAchados = eventos.filter(e => e.sistema === s && e.status !== 'resolvido').length;
-                                  const nSintomas = sinalRegions.filter(sr => sr.sistema === s).length + (s === 'musculoesqueletico' ? painRegions.length : 0);
+                                  const nSintomas = sinalRegions.filter(sr => sr.sistema === s).length;
                                   const nHistoria = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido).length;
                                   const partes: string[] = [];
                                   if (nAchados > 0) partes.push(`${nAchados} achado${nAchados > 1 ? 's' : ''}`);
@@ -1197,22 +987,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   )}
                 </div>
               );
-            }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema, historiaVida, diagnosticosCID])}
+            }, [eventos, sistemasAtivos, sinalRegions, hoveredSistema, historiaVida, diagnosticosCID])}
           </div>
         </div>
-            {/* Painel de Contexto — sono, atividade, hidratação, nutrição, alergias, medicamentos.
-                Nunca aparecem como região acesa no corpo: são comportamento/contexto, não achado clínico. */}
-            {!modoSimplificado && (
-              <PainelContexto
-                scores={myidScores}
-                alergias={(pacienteInfoRaw as any)?.alergias}
-                medicamentos={(pacienteInfoRaw as any)?.medicamentos_uso}
-              />
-            )}
-
-            {/* Radar de Avaliação — sugestões textuais derivadas do MyID, sem nunca acender o mapa corporal */}
-            {!modoSimplificado && <RadarDeAvaliacao scores={myidScores} />}
           </TabsContent>
+
 
           <TabsContent value="mapa" className="pt-3">
         <div className="relative">
@@ -1725,22 +1504,22 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
           {!editing && (
             <div className="mt-4 space-y-4">
-              {/* Sinais Detectados pelo MyID */}
+              {/* Sinais detectados via histórico/ficha do paciente (autorelato, aguardando confirmação) */}
               {(() => {
                 const sinaisDaRegiao = sinalRegions.filter(sr => sr.regiao_id === sheetRegiao);
                 if (sinaisDaRegiao.length === 0) return null;
                 return (
                   <div className="bg-sky-50 border border-sky-100 rounded-lg p-3 space-y-2">
                     <p className="text-[10px] font-bold text-sky-600 uppercase flex items-center gap-1">
-                      <User className="w-3 h-3" /> Detectado via MyID:
+                      <User className="w-3 h-3" /> Detectado via Histórico do Paciente:
                     </p>
                     <div className="space-y-1">
                       {sinaisDaRegiao.map((s, idx) => (
                         <div key={`sinal-reg-${idx}`} className="flex items-center justify-between">
                           <p className="text-xs text-sky-800">{s.sinal}</p>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-6 w-6 text-sky-600 hover:bg-sky-200"
                             onClick={() => {
                               const regVisceral = VISCERAL_REGIONS.find(v => v.id === s.regiao_id);
@@ -1748,13 +1527,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                 paciente_id: pacienteId,
                                 regiao_id: s.regiao_id,
                                 sistema: (s.sistema as any) || (regVisceral?.sistemas[0] as any) || 'musculoesqueletico',
-                                origem: 'subjetivo_myid',
+                                origem: 'outro',
                                 tipo_achado: s.sinal,
                                 severidade: 2,
                                 status: 'ativo',
                                 visivel_paciente: true,
                                 data_inicio: new Date().toISOString().slice(0, 10),
-                                notas_clinicas: `Sinal detectado automaticamente via processamento MyID: ${s.sinal}`,
+                                notas_clinicas: `Sinal detectado automaticamente via histórico/ficha do paciente: ${s.sinal}`,
                               });
                             }}
                           >
@@ -1937,76 +1716,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </div>
           )}
 
-          {/* Painel Informativo MyID (Contexto e Características do Formulário) */}
-          {lastMyIDData && !editing && (
-            <div className="mt-4 p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4">
-              <div className="flex items-center gap-2 border-b border-primary/10 pb-2">
-                <ClipboardList className="h-4 w-4 text-primary" />
-                <h4 className="text-xs font-bold uppercase text-primary">Perfil MyID</h4>
-              </div>
-              
-              <div className="space-y-4">
-                {/* Queixa Principal */}
-                <div>
-                  <Label className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
-                    <Info className="h-3 w-3" /> Queixa Principal
-                  </Label>
-                  <p className="text-xs italic bg-background/50 p-2 rounded border border-border/50 mt-1">
-                    "{lastMyIDData.respostas.bloco_1_queixa || 'Não informada'}"
-                  </p>
-                </div>
-
-                {/* Métricas de Capacidade */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-background/40 p-2 rounded border border-border/30">
-                    <div className="flex items-center gap-1 mb-1">
-                      <Heart className="h-3 w-3 text-emerald-500" />
-                      <Label className="text-[9px] text-muted-foreground uppercase font-bold">Resiliência</Label>
-                    </div>
-                    <span className="text-xs font-bold">{Number(myidScores.R || 0).toFixed(1)}/10</span>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">{lastMyIDData.respostas.bloco_5a_hours}h sono · qlty {lastMyIDData.respostas.bloco_5a_quality}/10</p>
-                  </div>
-                  <div className="bg-background/40 p-2 rounded border border-border/30">
-                    <div className="flex items-center gap-1 mb-1">
-                      <Brain className="h-3 w-3 text-violet-500" />
-                      <Label className="text-[9px] text-muted-foreground uppercase font-bold">Psicológico</Label>
-                    </div>
-                    <span className="text-xs font-bold">{Number(myidScores.P || 0).toFixed(1)}/10</span>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">Stress {lastMyIDData.respostas.bloco_5c_stress}/10 · Anx {lastMyIDData.respostas.bloco_5c_anxiety}/10</p>
-                  </div>
-                </div>
-
-                {/* Sinais Sistêmicos e Traumas */}
-                <div className="space-y-2">
-                  <Label className="text-[10px] text-muted-foreground uppercase font-bold">Sinais do Corpo e Histórico</Label>
-                  <div className="flex flex-wrap gap-1">
-                    {lastMyIDData.respostas.bloco_6_axial_trauma && (
-                      <Badge variant="outline" className="text-[9px] border-amber-200 bg-amber-50 text-amber-700">Trauma Axial</Badge>
-                    )}
-                    {lastMyIDData.respostas.bloco_6_abdominal_surgeries?.map((s: string) => (
-                      <Badge key={s} variant="outline" className="text-[9px] border-red-200 bg-red-50 text-red-700">Cirurgia: {s}</Badge>
-                    ))}
-                    {lastMyIDData.respostas.bloco_6_visceral_issues?.map((s: string) => (
-                      <Badge key={s} variant="outline" className="text-[9px] border-blue-200 bg-blue-50 text-blue-700">{s}</Badge>
-                    ))}
-                    {lastMyIDData.respostas.bloco_6_antidepressant && (
-                      <Badge variant="outline" className="text-[9px] border-purple-200 bg-purple-50 text-purple-700">Uso Antidepressivo</Badge>
-                    )}
-                  </div>
-                </div>
-
-                {/* Comportamento e Estilo de Vida */}
-                <div className="bg-muted/30 p-2 rounded-lg">
-                  <Label className="text-[9px] text-muted-foreground uppercase font-bold block mb-1">Comportamento (Inércia {Number(myidScores.I || 0).toFixed(1)})</Label>
-                  <p className="text-[10px] text-foreground leading-tight">
-                    Vida {lastMyIDData.respostas.bloco_5e_lifestyle} · {lastMyIDData.respostas.bloco_5e_sitting_hours}h sentado · Fumo: {lastMyIDData.respostas.bloco_6_smoking ? 'Sim' : 'Não'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-
           {editing && (
             <div className="mt-4 space-y-3">
               {/* Classificação primeiro — define o peso clínico do registro */}
@@ -2179,69 +1888,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </SheetContent>
       </Sheet>
 
-      {/* Dialog de Sincronização MyID */}
+      {/* Dialog de Sincronização do Histórico do Paciente */}
       <Sheet open={!!syncData} onOpenChange={(o) => !o && setSyncData(null)}>
         <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <RefreshCcw className="h-5 w-5 text-primary" />
-              Sincronização Assistida MyID
+              Sincronização Assistida — Histórico do Paciente
             </SheetTitle>
           </SheetHeader>
           <div className="py-4 space-y-4">
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-muted-foreground">
-                Detectamos queixas e sinais no MyID do paciente. 
-                Selecione o que deseja importar para o Avatar Clínico.
-              </p>
-              
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={cn("h-8 text-xs", isSyncing ? "bg-primary/10" : "")}
-                  onClick={() => setIsSyncing(false)}
-                >
-                  <Shield className="h-3 w-3 mr-1" /> Mapa de Dor ({painRegions.length})
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={cn("h-8 text-xs", isSyncing ? "bg-primary/10" : "")}
-                  onClick={() => setIsSyncing(true)}
-                >
-                  <Activity className="h-3 w-3 mr-1" /> Sinais do Corpo ({sinalRegions.length})
-                </Button>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
-              {!isSyncing ? painRegions.map((item) => {
-                const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
-                const achadoExistente = eventos.find(e => e.regiao_id === item.regiao_id && e.status !== 'resolvido');
-                const jaImportado = !!achadoExistente;
+            <p className="text-sm text-muted-foreground">
+              Detectamos sinais na ficha/histórico do paciente.
+              Selecione o que deseja importar para o Avatar Clínico.
+            </p>
 
-                return (
-                  <div key={item.regiao_id} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
-                    <div>
-                      <p className="text-sm font-semibold">{reg?.label || item.regiao_id}</p>
-                      <p className="text-[11px] text-muted-foreground italic">Intensidade: {item.intensidade}/10</p>
-                    </div>
-                    {jaImportado ? (
-                      <Badge variant="secondary" className="gap-1 text-[10px]" title="Já existe achado ativo nesta região — importar criaria um registro duplicado.">
-                        <Check className="h-3 w-3" /> Já há achado ({ORIGEM_LABEL[achadoExistente.origem]})
-                      </Badge>
-                    ) : (
-                      <Button size="sm" className="h-8 text-xs" onClick={() => handleSyncImport(item)} disabled={saveMut.isPending}>
-                        Importar
-                      </Button>
-                    )}
-                  </div>
-                );
-              }) : sinalRegions.map((item, idx) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
+              {sinalRegions.map((item, idx) => {
                 const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
-                // Diferente do mapa de dor, uma região pode ter vários sinais distintos (ex.: bruxismo
-                // e zumbido na mesma região "cabeça") — duplicata aqui é o MESMO sinal, não a região.
+                // Uma região pode ter vários sinais distintos — duplicata aqui é o MESMO sinal, não a região.
                 const achadoExistente = eventos.find(e => e.regiao_id === item.regiao_id && e.status !== 'resolvido' && e.tipo_achado.includes(item.sinal));
                 const jaImportado = !!achadoExistente;
 
@@ -2261,8 +1926,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                           paciente_id: pacienteId,
                           regiao_id: item.regiao_id,
                           sistema: (VISCERAL_REGIONS.find(v => v.id === item.regiao_id)?.sistemas[0] as any) || 'digestorio',
-                          origem: 'subjetivo_myid',
-                          tipo_achado: `Relato MyID: ${item.sinal}`,
+                          origem: 'outro',
+                          tipo_achado: `Histórico: ${item.sinal}`,
                           severidade: 2,
                           status: 'ativo',
                           visivel_paciente: true,
@@ -2277,7 +1942,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               })}
             </div>
 
-            {(isSyncing ? sinalRegions.length : painRegions.length) === 0 && (
+            {sinalRegions.length === 0 && (
               <div className="text-center py-8">
                 <Check className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
                 <p className="text-sm font-medium">Sem itens pendentes nesta categoria.</p>
