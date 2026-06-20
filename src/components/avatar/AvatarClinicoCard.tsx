@@ -312,14 +312,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number; sinal: string; sistema: string }[] | null>(null);
-  const [novoHistorico, setNovoHistorico] = useState<{
-    sistema: SistemaCorporal | '';
-    regiao_id: string;
-    tipo_achado: string;
-    categoria: string;
-    natureza: 'condicao' | 'sintoma';
-    condicaoAssociada: string;
-  } | null>(null);
+  const [notaSistema, setNotaSistema] = useState<{ texto: string; natureza: 'condicao' | 'sintoma'; condicaoAssociada: string }>({
+    texto: '', natureza: 'condicao', condicaoAssociada: '',
+  });
 
   const { data: lente } = useLenteAtiva();
 
@@ -1128,6 +1123,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             );
           };
 
+          const selecionadoExplicitamente = sistemasAtivos.length === 1 && sistemasAtivos[0] === sysToShow;
+          const regiaoAuto = sysToShow === 'musculoesqueletico'
+            ? 'abdomen'
+            : (VISCERAL_REGIONS.find(r => r.sistemas.includes(sysToShow))?.id || 'abdomen');
+
           return (
             <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 mt-3 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex gap-3 items-center border-b border-primary/10 pb-2">
@@ -1136,6 +1136,67 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 </div>
                 <p className="text-xs font-black uppercase tracking-wider">{config.label}</p>
               </div>
+
+              {isProfessional && selecionadoExplicitamente && (
+                <div className="space-y-2 rounded-lg border border-primary/20 bg-background p-2.5">
+                  <Label className="text-[10px]">Adicionar nota sobre sintoma/problema neste sistema</Label>
+                  <Textarea
+                    className="text-xs min-h-[60px]"
+                    placeholder="Ex.: Refluxo gastroesofágico recorrente"
+                    value={notaSistema.texto}
+                    onChange={(e) => setNotaSistema({ ...notaSistema, texto: e.target.value })}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={notaSistema.natureza}
+                      onValueChange={(v) => setNotaSistema({ ...notaSistema, natureza: v as 'condicao' | 'sintoma' })}
+                    >
+                      <SelectTrigger className="h-7 text-[11px] flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="condicao" className="text-xs">É a condição em si</SelectItem>
+                        <SelectItem value="sintoma" className="text-xs">É sintoma de outra condição</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {notaSistema.natureza === 'sintoma' && (
+                      <Input
+                        className="h-7 text-[11px] flex-1"
+                        placeholder="Sintoma de qual condição?"
+                        value={notaSistema.condicaoAssociada}
+                        onChange={(e) => setNotaSistema({ ...notaSistema, condicaoAssociada: e.target.value })}
+                      />
+                    )}
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      className="h-7 px-3 text-xs"
+                      disabled={!notaSistema.texto.trim() || (notaSistema.natureza === 'sintoma' && !notaSistema.condicaoAssociada.trim())}
+                      onClick={() => {
+                        saveMut.mutate({
+                          paciente_id: pacienteId,
+                          regiao_id: regiaoAuto,
+                          sistema: sysToShow,
+                          tipo_achado: notaSistema.texto.trim(),
+                          tipo_diagnostico: 'achado_clinico',
+                          origem: 'exame_clinico',
+                          status: 'cronico',
+                          metadata: {
+                            natureza: notaSistema.natureza,
+                            condicao_associada: notaSistema.natureza === 'sintoma' ? notaSistema.condicaoAssociada.trim() : null,
+                            origem_manual: true,
+                            revisado_profissional: true,
+                          },
+                        } as any);
+                        setNotaSistema({ texto: '', natureza: 'condicao', condicaoAssociada: '' });
+                      }}
+                    >
+                      <Check className="mr-1 h-3 w-3" /> Salvar e marcar no avatar
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-3">
                 {sinaisHistorico.length > 0 && (
@@ -1372,150 +1433,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           );
           return (
             <div className="space-y-3 border-t border-border/40 pt-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Revisão de Histórico</p>
-                {isProfessional && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => setNovoHistorico({ sistema: '', regiao_id: '', tipo_achado: '', categoria: '', natureza: 'condicao', condicaoAssociada: '' })}
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar Histórico
-                  </Button>
-                )}
-              </div>
+              <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Revisão de Histórico</p>
 
-              {novoHistorico && (
-                <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">Sistema</Label>
-                      <Select
-                        value={novoHistorico.sistema}
-                        onValueChange={(v) => setNovoHistorico({ ...novoHistorico, sistema: v as SistemaCorporal, regiao_id: '' })}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Selecione o sistema" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SISTEMAS_ORDEM.map((s) => (
-                            <SelectItem key={s} value={s} className="text-xs">{SISTEMA_CONFIG[s].label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">Região</Label>
-                      <Select
-                        value={novoHistorico.regiao_id}
-                        onValueChange={(v) => setNovoHistorico({ ...novoHistorico, regiao_id: v })}
-                        disabled={!novoHistorico.sistema}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder={novoHistorico.sistema ? "Selecione a região" : "Escolha o sistema antes"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(novoHistorico.sistema === 'musculoesqueletico'
-                            ? REGIONS
-                            : VISCERAL_REGIONS.filter((r) => r.sistemas.includes(novoHistorico.sistema as string))
-                          ).map((r) => (
-                            <SelectItem key={r.id} value={r.id} className="text-xs">{r.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">Categoria</Label>
-                      <Select value={novoHistorico.categoria} onValueChange={(v) => setNovoHistorico({ ...novoHistorico, categoria: v })}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Selecione a categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(CATEGORIA_LABEL).map(([value, label]) => (
-                            <SelectItem key={value} value={value} className="text-xs">{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">Natureza</Label>
-                      <Select
-                        value={novoHistorico.natureza}
-                        onValueChange={(v) => setNovoHistorico({ ...novoHistorico, natureza: v as 'condicao' | 'sintoma' })}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="condicao" className="text-xs">Condição (doença em si)</SelectItem>
-                          <SelectItem value="sintoma" className="text-xs">Sintoma de outra condição</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  {novoHistorico.natureza === 'sintoma' && (
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">Sintoma de qual condição?</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="Ex.: Hérnia de hiato"
-                        value={novoHistorico.condicaoAssociada}
-                        onChange={(e) => setNovoHistorico({ ...novoHistorico, condicaoAssociada: e.target.value })}
-                      />
-                    </div>
-                  )}
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">Descrição do acontecimento</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      placeholder="Ex.: Refluxo gastroesofágico"
-                      value={novoHistorico.tipo_achado}
-                      onChange={(e) => setNovoHistorico({ ...novoHistorico, tipo_achado: e.target.value })}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setNovoHistorico(null)}>
-                      Cancelar
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      disabled={
-                        !novoHistorico.sistema ||
-                        !novoHistorico.regiao_id ||
-                        !novoHistorico.tipo_achado.trim() ||
-                        (novoHistorico.natureza === 'sintoma' && !novoHistorico.condicaoAssociada.trim())
-                      }
-                      onClick={() => {
-                        saveMut.mutate({
-                          paciente_id: pacienteId,
-                          regiao_id: novoHistorico.regiao_id,
-                          sistema: novoHistorico.sistema as any,
-                          tipo_achado: novoHistorico.tipo_achado.trim(),
-                          tipo_diagnostico: 'achado_clinico',
-                          origem: 'exame_clinico',
-                          status: 'cronico',
-                          metadata: {
-                            categoria: novoHistorico.categoria,
-                            natureza: novoHistorico.natureza,
-                            condicao_associada: novoHistorico.natureza === 'sintoma' ? novoHistorico.condicaoAssociada.trim() : null,
-                            origem_manual: true,
-                            revisado_profissional: true,
-                          },
-                        } as any);
-                        setNovoHistorico(null);
-                      }}
-                    >
-                      <Check className="mr-1 h-3 w-3" /> Salvar
-                    </Button>
-                  </div>
-                </div>
+              {isProfessional && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Para registrar um novo sintoma ou condição, clique no ícone do sistema ao lado do corpo e use o campo de nota que aparece abaixo do avatar.
+                </p>
               )}
 
-              {pendentes.length === 0 && pendentesHistorico.length === 0 && !novoHistorico && (
+              {pendentes.length === 0 && pendentesHistorico.length === 0 && (
                 <p className="text-xs text-muted-foreground italic">Nenhum histórico pendente de revisão.</p>
               )}
 
