@@ -58,8 +58,6 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
     },
   });
 
-  // Itens de tipo_diagnostico 'historico_relatado' (bateria de Histórico Clínico do portal)
-  // são revisados em HistoricoClinicoRevisao, abaixo do Avatar Clínico — não duplicar aqui.
   const pendentes = useMemo(
     () => eventos.filter((e) => e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido'),
     [eventos],

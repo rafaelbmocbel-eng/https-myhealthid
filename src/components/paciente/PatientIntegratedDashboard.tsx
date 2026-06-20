@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
 import RelatorioCorrelacaoCard from '@/components/avatar/RelatorioCorrelacaoCard';
-import HistoricoClinicoRevisao from '@/components/avatar/HistoricoClinicoRevisao';
 import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
@@ -791,7 +790,6 @@ export default function PatientIntegratedDashboard({
               ) : (
                 <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
               )}
-              {isProfessional && <HistoricoClinicoRevisao pacienteId={pacienteId} />}
 
               <Card className="rounded-xl border-border/40 bg-muted/20">
                 <CardContent className="p-4">
