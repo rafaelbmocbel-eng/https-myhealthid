@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2, Eye, RefreshCw, Save } from 'lucide-react';
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
 import { MyIDResult } from '@/components/myid/MyIDResult';
+import HistoricoClinicoCard from '@/components/paciente/HistoricoClinicoCard';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
@@ -375,6 +376,8 @@ export default function PacienteQuestionarios() {
               )}
             </>
           )}
+
+          <HistoricoClinicoCard />
         </div>
       </PacienteLayout>
     </ProtectedPatientRoute>

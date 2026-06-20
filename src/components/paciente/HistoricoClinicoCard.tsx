@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import PacienteLayout from '@/components/paciente/PacienteLayout';
-import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -22,14 +19,15 @@ const PERGUNTAS = [
   { id: 'malformacao', label: 'Tem alguma malformação ou condição congênita?', placeholder: 'Ex: escoliose congênita…' },
   { id: 'doenca_sistemica', label: 'Tem alguma doença sistêmica diagnosticada (diabetes, hipertensão, tireoide, autoimune, etc.)?', placeholder: 'Ex: diabetes tipo 2, diagnosticada em 2021…' },
   { id: 'tratamento_doenca', label: 'Está em tratamento ou já tratou alguma doença significativa?', placeholder: 'Ex: tratamento de câncer de mama, finalizado em 2022…' },
+  { id: 'medicamento', label: 'Toma alguma medicação regularmente?', placeholder: 'Ex: levotiroxina 50mcg, uso diário desde 2019…' },
 ] as const;
 
-export default function PacienteHistoricoClinico() {
-  const navigate = useNavigate();
+export default function HistoricoClinicoCard() {
   const { toast } = useToast();
   const [respostas, setRespostas] = useState<Record<string, boolean>>({});
   const [detalhes, setDetalhes] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [enviado, setEnviado] = useState(false);
 
   const toggle = (id: string, value: boolean) => {
     setRespostas(prev => ({ ...prev, [id]: value }));
@@ -67,11 +65,13 @@ export default function PacienteHistoricoClinico() {
         title: '✅ Histórico enviado',
         description: 'Seu profissional vai revisar e decidir o que entra no seu Avatar Clínico.',
       });
-      navigate('/paciente/dashboard');
-    } catch (e: any) {
+      setRespostas({});
+      setDetalhes({});
+      setEnviado(true);
+    } catch (e) {
       toast({
         title: 'Não foi possível enviar',
-        description: e?.message || 'Tente novamente em instantes.',
+        description: e instanceof Error ? e.message : 'Tente novamente em instantes.',
         variant: 'destructive',
       });
     } finally {
@@ -80,58 +80,59 @@ export default function PacienteHistoricoClinico() {
   };
 
   return (
-    <ProtectedPatientRoute>
-      <PacienteLayout>
-        <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-          <div>
-            <h1 className="h-page flex items-center gap-2">
-              <ClipboardList className="icon-md text-primary" /> Histórico Clínico
-            </h1>
-            <p className="text-caption mt-0.5">
-              Conte sobre fraturas, cirurgias, traumas e outras condições do seu passado de saúde.
-              Seu profissional revisa tudo antes de qualquer coisa entrar no seu prontuário.
-            </p>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ClipboardList className="h-4 w-4 text-primary" /> Histórico Clínico
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Conte sobre fraturas, cirurgias, traumas, doenças e medicações do seu passado de saúde.
+          Seu profissional revisa tudo antes de qualquer coisa entrar no seu Avatar Clínico.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {enviado && positivas.length === 0 && (
+          <div className="flex items-center gap-2 text-sm text-emerald-700">
+            <Check className="h-4 w-4" /> Respostas enviadas para revisão do seu profissional.
           </div>
+        )}
 
-          <div className="space-y-3">
-            {PERGUNTAS.map(p => {
-              const ativo = !!respostas[p.id];
-              const detalheFaltando = ativo && (detalhes[p.id] || '').trim().length < 3;
-              return (
-                <Card key={p.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <Label className="text-sm font-medium leading-snug">{p.label}</Label>
-                      <Switch checked={ativo} onCheckedChange={(v) => toggle(p.id, v)} />
-                    </div>
-                    {ativo && (
-                      <Textarea
-                        value={detalhes[p.id] || ''}
-                        onChange={e => setDetalhes(prev => ({ ...prev, [p.id]: e.target.value }))}
-                        placeholder={p.placeholder}
-                        rows={3}
-                        className={detalheFaltando ? 'border-destructive' : ''}
-                        style={{ fontSize: '16px' }}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+        {PERGUNTAS.map(p => {
+          const ativo = !!respostas[p.id];
+          const detalheFaltando = ativo && (detalhes[p.id] || '').trim().length < 3;
+          return (
+            <Card key={p.id} className="border-border/60">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <Label className="text-sm font-medium leading-snug">{p.label}</Label>
+                  <Switch checked={ativo} onCheckedChange={(v) => toggle(p.id, v)} />
+                </div>
+                {ativo && (
+                  <Textarea
+                    value={detalhes[p.id] || ''}
+                    onChange={e => setDetalhes(prev => ({ ...prev, [p.id]: e.target.value }))}
+                    placeholder={p.placeholder}
+                    rows={3}
+                    className={detalheFaltando ? 'border-destructive' : ''}
+                    style={{ fontSize: '16px' }}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
 
-          <p className="text-micro text-muted-foreground">
-            {positivas.length === 0
-              ? 'Marque "sim" nas opções que se aplicam ao seu caso e descreva brevemente.'
-              : `${positivas.length} item${positivas.length > 1 ? 's' : ''} marcado${positivas.length > 1 ? 's' : ''}${faltamDetalhe.length > 0 ? ' — descreva todos antes de enviar' : '.'}`}
-          </p>
+        <p className="text-xs text-muted-foreground">
+          {positivas.length === 0
+            ? 'Marque "sim" nas opções que se aplicam ao seu caso e descreva brevemente.'
+            : `${positivas.length} item${positivas.length > 1 ? 's' : ''} marcado${positivas.length > 1 ? 's' : ''}${faltamDetalhe.length > 0 ? ' — descreva todos antes de enviar' : '.'}`}
+        </p>
 
-          <Button onClick={enviar} disabled={!podeEnviar || submitting} className="w-full gap-2">
-            {submitting ? <Loader2 className="icon-sm animate-spin" /> : positivas.length > 0 ? <Send className="icon-sm" /> : <Check className="icon-sm" />}
-            {submitting ? 'Enviando…' : 'Enviar para meu profissional'}
-          </Button>
-        </div>
-      </PacienteLayout>
-    </ProtectedPatientRoute>
+        <Button onClick={enviar} disabled={!podeEnviar || submitting} className="w-full gap-2">
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          {submitting ? 'Enviando…' : 'Enviar para meu profissional'}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

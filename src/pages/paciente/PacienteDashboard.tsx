@@ -429,7 +429,7 @@ export default function PacienteDashboard() {
             <V i={5}>
               <Card
                 className="border border-border/40 shadow-sm cursor-pointer"
-                onClick={() => navigate('/paciente/historico-clinico')}
+                onClick={() => navigate('/paciente/questionarios')}
               >
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -438,7 +438,7 @@ export default function PacienteDashboard() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-foreground">📋 Histórico Clínico</h3>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Conte sobre fraturas, cirurgias e traumas — seu profissional revisa antes de qualquer coisa entrar no seu prontuário.
+                      Conte sobre fraturas, cirurgias, traumas e medicações — seu profissional revisa antes de qualquer coisa entrar no seu prontuário.
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
