@@ -20,7 +20,7 @@ import {
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints, CalendarPlus,
-  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope, DollarSign, Package, Target, LayoutDashboard, Smartphone,
+  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, DollarSign, Package, Target, LayoutDashboard, Smartphone,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -73,9 +73,6 @@ import PlanoTreinoCard from '@/components/educador/PlanoTreinoCard';
 import RecordatorioCard from '@/components/nutricao/RecordatorioCard';
 import PlanoAlimentarCard from '@/components/nutricao/PlanoAlimentarCard';
 import EscalasPsicologiaCard from '@/components/psicologia/EscalasPsicologiaCard';
-import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
-import HistoricoClinicoRevisao from '@/components/avatar/HistoricoClinicoRevisao';
-import RelatorioCorrelacaoCard from '@/components/avatar/RelatorioCorrelacaoCard';
 import PainelDecisaoClinica from '@/components/dashboard/PainelDecisaoClinica';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
@@ -1061,28 +1058,7 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'recordatorio') && id && <RecordatorioCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'escalas_psicologia') && id && <EscalasPsicologiaCard pacienteId={id} />}
-            {id && (
-              <Tabs defaultValue="corpo" className="w-full">
-                <TabsList className="grid grid-cols-2 w-full max-w-sm mb-3 h-9">
-                  <TabsTrigger value="corpo" className="gap-1.5 text-xs">
-                    <Stethoscope className="h-3.5 w-3.5" /> Corpo
-                  </TabsTrigger>
-                  <TabsTrigger value="historia" className="gap-1.5 text-xs">
-                    <Clock className="h-3.5 w-3.5" /> Linha do Tempo
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="corpo" className="space-y-4 mt-0">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <AvatarClinicoCard pacienteId={id} />
-                    <RelatorioCorrelacaoCard pacienteId={id} />
-                  </div>
-                  <HistoricoClinicoRevisao pacienteId={id} />
-                </TabsContent>
-                <TabsContent value="historia" className="mt-0">
-                  <TimelineVidaCompleta pacienteId={id} />
-                </TabsContent>
-              </Tabs>
-            )}
+            {id && <TimelineVidaCompleta pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
