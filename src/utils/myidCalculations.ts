@@ -123,8 +123,6 @@ export function calcularScoreR_MyID(bloco5: MyIDBloco5Data): { r: number; r1: nu
 // ── Score N ──
 export function calcularScoreN(bloco6: MyIDBloco6Data): number {
   let nTotal = 0;
-  if (bloco6.traumaAxial) nTotal += 2;
-  if (bloco6.cicatrizAbdominal) nTotal += 1.5;
   const sinaisReais = bloco6.sinaisAutonomicos.filter(s => s !== 'Nenhum desses');
   nTotal += sinaisReais.length * 1.5;
   if (bloco6.diagnosticoFeminino === 'endometriose') nTotal += 3;

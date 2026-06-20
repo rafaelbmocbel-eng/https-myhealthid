@@ -281,9 +281,6 @@ export class MyIDCalculator {
     // ==================== BLOCO 6: RUÍDO (N) ====================
     calculateNoise(): number {
         let nPoints = 0;
-        if (this.responses.bloco_6_axial_trauma ?? this.responses.bloco6?.bloco_6_axial_trauma ?? this.responses.bloco6?.traumaAxial) nPoints += 2;
-        const abdominalIssues = this.responses.bloco_6_abdominal_surgeries || this.responses.bloco6?.bloco_6_abdominal_surgeries || [];
-        if (abdominalIssues.length > 0 || this.responses.bloco6?.cicatrizAbdominal) nPoints += 2;
         const signs = this.responses.bloco_6_visceral_issues || this.responses.bloco6?.sinaisAutonomicos || [];
         const signPoints = signs.filter((s: string) => s !== 'Nenhum desses' && s !== 'none').length * 1.5;
         nPoints += signPoints;
