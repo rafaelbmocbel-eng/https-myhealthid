@@ -276,7 +276,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         className="space-y-2"
                     >
                         <div className="flex items-center space-x-2"><RadioGroupItem value="very_sedentary" id="ls-vs" /><Label htmlFor="ls-vs">Muito sedentário (apenas cama/sofá)</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="sedentary" id="ls-s" /><Label htmlFor="ls-s">Sedentário (passos em casa/trabalho apenas)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="sedentary" id="ls-s" /><Label htmlFor="ls-s">Sedentário (apenas passos do dia a dia, em casa ou fora)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="moderate" id="ls-m" /><Label htmlFor="ls-m">Moderado (alguma caminhada, tarefas ativas)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="active" id="ls-a" /><Label htmlFor="ls-a">Ativo (exercícios regulares 3+ vezes/semana)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="very_active" id="ls-va" /><Label htmlFor="ls-va">Muito ativo (treinos intensos quase diariamente)</Label></div>
