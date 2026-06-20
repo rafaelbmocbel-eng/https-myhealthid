@@ -239,7 +239,7 @@ serve(async (req) => {
     const cs = result.component_scores || result.componentScores || {};
     const myidScore = result.MyID_score ?? result.myidScore ?? 0;
     const classificacao = result.classification ?? result.classificacao ?? "N/A";
-    const redFlags = result.red_flags ?? result.redFlagsDetected ?? false;
+    const redFlags = result.red_flags_detected ?? result.redFlagsDetected ?? false;
     const redFlagAlerts = result.red_flag_alerts ?? result.redFlagAlerts ?? [];
 
     // 4. Insert into avaliacoes_identidade
