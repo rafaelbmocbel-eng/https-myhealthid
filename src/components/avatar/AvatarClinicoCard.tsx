@@ -314,6 +314,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number; sinal: string; sistema: string }[] | null>(null);
+  const [novoHistorico, setNovoHistorico] = useState<{ regiao_id: string; tipo_achado: string; categoria: string } | null>(null);
 
   const { data: lente } = useLenteAtiva();
 
@@ -1459,10 +1460,93 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           const pendentesHistorico = eventos.filter(
             (e) => e.tipo_diagnostico === 'historico_relatado' && (e as any).metadata?.revisado_profissional !== true
           );
-          if (pendentes.length === 0 && pendentesHistorico.length === 0) return null;
           return (
             <div className="space-y-3 border-t border-border/40 pt-3">
-              <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Revisão de Histórico</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Revisão de Histórico</p>
+                {isProfessional && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setNovoHistorico({ regiao_id: '', tipo_achado: '', categoria: '' })}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar Histórico
+                  </Button>
+                )}
+              </div>
+
+              {novoHistorico && (
+                <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Região</Label>
+                      <Select value={novoHistorico.regiao_id} onValueChange={(v) => setNovoHistorico({ ...novoHistorico, regiao_id: v })}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Selecione a região" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[...REGIONS, ...VISCERAL_REGIONS].map((r) => (
+                            <SelectItem key={r.id} value={r.id} className="text-xs">{r.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Categoria</Label>
+                      <Select value={novoHistorico.categoria} onValueChange={(v) => setNovoHistorico({ ...novoHistorico, categoria: v })}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(CATEGORIA_LABEL).map(([value, label]) => (
+                            <SelectItem key={value} value={value} className="text-xs">{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Descrição do acontecimento</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      placeholder="Ex.: Fratura de tíbia em 2019"
+                      value={novoHistorico.tipo_achado}
+                      onChange={(e) => setNovoHistorico({ ...novoHistorico, tipo_achado: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setNovoHistorico(null)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      disabled={!novoHistorico.regiao_id || !novoHistorico.tipo_achado.trim()}
+                      onClick={() => {
+                        const regVisceral = VISCERAL_REGIONS.find((v) => v.id === novoHistorico.regiao_id);
+                        saveMut.mutate({
+                          paciente_id: pacienteId,
+                          regiao_id: novoHistorico.regiao_id,
+                          sistema: (regVisceral?.sistemas[0] as any) || 'musculoesqueletico',
+                          tipo_achado: novoHistorico.tipo_achado.trim(),
+                          tipo_diagnostico: 'achado_clinico',
+                          origem: 'exame_clinico',
+                          status: 'cronico',
+                          metadata: { categoria: novoHistorico.categoria, origem_manual: true, revisado_profissional: true },
+                        } as any);
+                        setNovoHistorico(null);
+                      }}
+                    >
+                      <Check className="mr-1 h-3 w-3" /> Salvar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {pendentes.length === 0 && pendentesHistorico.length === 0 && !novoHistorico && (
+                <p className="text-xs text-muted-foreground italic">Nenhum histórico pendente de revisão.</p>
+              )}
 
               {pendentes.length > 0 && (
                 <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
