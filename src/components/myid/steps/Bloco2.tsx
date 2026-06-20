@@ -138,7 +138,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                     >
                         <div className="flex items-center space-x-3"><RadioGroupItem value="morning" id="wt-1" /><Label htmlFor="wt-1" className="cursor-pointer text-sm font-semibold">Manhã (Ao acordar ou logo nas primeiras horas)</Label></div>
                         <div className="flex items-center space-x-3"><RadioGroupItem value="afternoon" id="wt-2" /><Label htmlFor="wt-2" className="cursor-pointer text-sm font-semibold">Tarde (Durante as atividades do dia)</Label></div>
-                        <div className="flex items-center space-x-3"><RadioGroupItem value="night" id="wt-3" /><Label htmlFor="wt-3" className="cursor-pointer text-sm font-semibold">Noite (Fim do dia, após a jornada)</Label></div>
+                        <div className="flex items-center space-x-3"><RadioGroupItem value="night" id="wt-3" /><Label htmlFor="wt-3" className="cursor-pointer text-sm font-semibold">Noite (Fim do dia)</Label></div>
                         <div className="flex items-center space-x-3"><RadioGroupItem value="dawn" id="wt-4" /><Label htmlFor="wt-4" className="cursor-pointer text-sm font-semibold">Madrugada (Acorda por causa da dor)</Label></div>
                         <div className="flex items-center space-x-3"><RadioGroupItem value="random" id="wt-5" /><Label htmlFor="wt-5" className="cursor-pointer text-sm font-semibold">Aleatório (Não tem hora certa)</Label></div>
                     </RadioGroup>
