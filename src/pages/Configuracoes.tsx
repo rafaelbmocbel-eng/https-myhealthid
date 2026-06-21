@@ -26,6 +26,7 @@ import AusenciasManager from '@/components/configuracoes/AusenciasManager';
 import PerfilProfissionalCard from '@/components/configuracoes/PerfilProfissionalCard';
 import AtalhosHomeEditor from '@/components/configuracoes/AtalhosHomeEditor';
 import NotificacoesInteligentes from '@/components/configuracoes/NotificacoesInteligentes';
+import BackfillMyIdEfi from '@/components/configuracoes/BackfillMyIdEfi';
 import RecompensasManager from '@/components/configuracoes/RecompensasManager';
 
 type TabId = 'clinica' | 'home' | 'agenda' | 'equipe' | 'links' | 'notif' | 'myid' | 'recompensas' | 'ia';
@@ -209,6 +210,7 @@ export default function Configuracoes() {
           {/* MyID AUTO — Notificações Inteligentes */}
           <TabsContent value="myid" className="mt-0 space-y-4">
             <NotificacoesInteligentes />
+            <BackfillMyIdEfi />
           </TabsContent>
 
           {/* RECOMPENSAS */}
