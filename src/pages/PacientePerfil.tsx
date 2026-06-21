@@ -770,55 +770,61 @@ export default function PacientePerfil() {
         {/* ============ KPI CARDS — bigger, more readable ============ */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 mb-3">
           {/* Tempo de cadastro */}
-          <div className="rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
-              <Clock className="h-3 w-3" />
-              <span className="text-[10px] font-medium uppercase tracking-wider">Cliente há</span>
-            </div>
-            <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
-              {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">
-              desde {format(parseISO(paciente.created_at), 'dd/MM/yy')}
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Cliente há</div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm font-semibold tracking-tight text-foreground">
+                  {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
+                </span>
+                <span className="text-[10px] text-muted-foreground truncate">
+                  desde {format(parseISO(paciente.created_at), 'dd/MM/yy')}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Avaliações */}
-          <div className="rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
-              <Activity className="h-3 w-3" />
-              <span className="text-[10px] font-medium uppercase tracking-wider">Avaliações</span>
-            </div>
-            <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
-              {avaliacoesId.length + avaliacoesCob.length}
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">
-              {avaliacoesId.length} ID · {avaliacoesCob.length} COB°
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
+            <Activity className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Avaliações</div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm font-semibold tracking-tight text-foreground">
+                  {avaliacoesId.length + avaliacoesCob.length}
+                </span>
+                <span className="text-[10px] text-muted-foreground truncate">
+                  {avaliacoesId.length} ID · {avaliacoesCob.length} COB°
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Próxima sessão */}
-          <div className="rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
-              <CalendarDays className="h-3 w-3" />
-              <span className="text-[10px] font-medium uppercase tracking-wider">Próxima</span>
-            </div>
-            <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
-              {agendamentosFuturos[0]
-                ? (() => {
-                    const d = parseISO(agendamentosFuturos[0].data_inicio);
-                    const dias = differenceInDays(d, hoje);
-                    if (dias === 0) return 'Hoje';
-                    if (dias === 1) return 'Amanhã';
-                    if (dias < 7) return `${dias}d`;
-                    return format(d, 'dd/MM', { locale: ptBR });
-                  })()
-                : '—'}
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">
-              {agendamentosFuturos[0]
-                ? format(parseISO(agendamentosFuturos[0].data_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })
-                : 'sem agenda'}
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
+            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Próxima</div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm font-semibold tracking-tight text-foreground">
+                  {agendamentosFuturos[0]
+                    ? (() => {
+                        const d = parseISO(agendamentosFuturos[0].data_inicio);
+                        const dias = differenceInDays(d, hoje);
+                        if (dias === 0) return 'Hoje';
+                        if (dias === 1) return 'Amanhã';
+                        if (dias < 7) return `${dias}d`;
+                        return format(d, 'dd/MM', { locale: ptBR });
+                      })()
+                    : '—'}
+                </span>
+                <span className="text-[10px] text-muted-foreground truncate">
+                  {agendamentosFuturos[0]
+                    ? format(parseISO(agendamentosFuturos[0].data_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })
+                    : 'sem agenda'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -827,19 +833,23 @@ export default function PacientePerfil() {
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="rounded-xl border border-primary/30 bg-primary/5 p-2.5 text-left hover:bg-primary/10 hover:shadow-md hover:border-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 group"
+                className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-2.5 text-left hover:bg-primary/10 hover:shadow-md hover:border-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 group"
                 title="Abrir gestão de sessões e pacotes"
               >
-                <div className="flex items-center gap-1.5 text-primary mb-0.5">
-                  <Package className="h-3 w-3" />
-                  <span className="text-[10px] font-medium uppercase tracking-wider">Sessões</span>
-                  <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
-                  #{sessoesInfo.numeroAtual || 0}
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {sessoesInfo.totalRealizadas} realizadas
+                <Package className="h-3.5 w-3.5 text-primary shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-primary">
+                    Sessões
+                    <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm font-semibold tracking-tight text-foreground">
+                      #{sessoesInfo.numeroAtual || 0}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      {sessoesInfo.totalRealizadas} realizadas
+                    </span>
+                  </div>
                 </div>
               </button>
             </SheetTrigger>
@@ -904,19 +914,23 @@ export default function PacientePerfil() {
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="col-span-2 sm:col-span-1 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 text-left hover:bg-emerald-50 hover:shadow-md hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group"
+                className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 text-left hover:bg-emerald-50 hover:shadow-md hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group"
                 title="Abrir financeiro"
               >
-                <div className="flex items-center gap-1.5 text-emerald-700 mb-0.5">
-                  <DollarSign className="h-3 w-3" />
-                  <span className="text-[10px] font-medium uppercase tracking-wider">Financeiro</span>
-                  <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
-                  {finResumo.pago > 0 ? fmtBRL(finResumo.pago) : 'R$ 0'}
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {finResumo.pendente > 0 ? `${fmtBRL(finResumo.pendente)} pendente` : 'recibos & pagto'}
+                <DollarSign className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-emerald-700">
+                    Financeiro
+                    <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm font-semibold tracking-tight text-foreground">
+                      {finResumo.pago > 0 ? fmtBRL(finResumo.pago) : 'R$ 0'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      {finResumo.pendente > 0 ? `${fmtBRL(finResumo.pendente)} pendente` : 'recibos & pagto'}
+                    </span>
+                  </div>
                 </div>
               </button>
             </SheetTrigger>
