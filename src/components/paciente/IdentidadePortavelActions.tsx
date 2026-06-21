@@ -99,24 +99,24 @@ export default function IdentidadePortavelActions({ pacienteId, pacienteNome, te
       <Button
         size="sm"
         variant="outline"
-        className="h-8 gap-1.5"
+        className="h-8 w-8 p-0"
         onClick={handleExportarPDF}
         disabled={exportando || !hasMyID}
         title={!hasMyID ? 'Disponível após o primeiro MyID concluído' : 'Exportar PDF da Identidade'}
+        aria-label="Exportar PDF"
       >
         {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-        <span className="text-xs font-semibold">Exportar PDF</span>
       </Button>
       <Button
         size="sm"
         variant="outline"
-        className="h-8 gap-1.5"
+        className="h-8 w-8 p-0"
         onClick={handleCompartilharLink}
         disabled={!hasMyID}
         title={!hasMyID ? 'Disponível após o primeiro MyID concluído' : 'Copiar link de visualização do MyID'}
+        aria-label="Compartilhar MyID"
       >
         <Share2 className="h-4 w-4" />
-        <span className="text-xs font-semibold">Compartilhar MyID</span>
       </Button>
     </div>
   );

@@ -62,7 +62,7 @@ export default function ResumoRapido30s({ pacienteId, pacienteNome }: Props) {
         onClick={handleAbrir}
       >
         <Sparkles className="h-4 w-4 text-primary" />
-        <span className="text-xs font-semibold">Resumo em 30s</span>
+        <span className="text-xs font-semibold">Resumo</span>
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
