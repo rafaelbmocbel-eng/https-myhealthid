@@ -53,8 +53,7 @@ import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 const PacienteDashboardIdentidade = lazy(() => import('@/components/paciente/PacienteDashboardIdentidade'));
 import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
-import IdentidadePortavelActions from '@/components/paciente/IdentidadePortavelActions';
-import ResumoRapido30s from '@/components/paciente/ResumoRapido30s';
+import AcoesIdentidadeDropdown from '@/components/paciente/AcoesIdentidadeDropdown';
 import DocumentosModal from '@/components/documentos/DocumentosModal';
 import { PacienteSchema } from '@/lib/validations';
 import { useEquipe } from '@/hooks/useEquipe';
@@ -761,16 +760,11 @@ export default function PacientePerfil() {
                     }]}
                   />
                 )}
-                {/* Identidade portátil: PDF + link MyID */}
-                <IdentidadePortavelActions
+                {/* Identidade portátil (PDF + link MyID) e Resumo em 30s, agrupados */}
+                <AcoesIdentidadeDropdown
                   pacienteId={paciente.id}
                   pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
                   terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
-                />
-                {/* Resumo em 30s */}
-                <ResumoRapido30s
-                  pacienteId={paciente.id}
-                  pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
                 />
               </div>
             </div>
@@ -784,13 +778,11 @@ export default function PacientePerfil() {
             <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <div className="min-w-0">
               <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Cliente há</div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm font-semibold tracking-tight text-foreground">
-                  {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
-                </span>
-                <span className="text-[10px] text-muted-foreground truncate">
-                  {format(parseISO(paciente.created_at), 'dd/MM/yy')}
-                </span>
+              <div className="text-sm font-semibold tracking-tight text-foreground truncate">
+                {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                desde {format(parseISO(paciente.created_at), 'dd/MM/yy')}
               </div>
             </div>
           </div>

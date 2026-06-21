@@ -151,7 +151,30 @@ export default function AppLayout({ children }: AppLayoutProps) {
               }
             </button>
           )}
-          <GlobalSearch />
+          {isMobile ? (
+            breadcrumbs.length > 0 && (
+              <Breadcrumb className="min-w-0 overflow-hidden">
+                <BreadcrumbList className="flex-nowrap text-xs">
+                  {breadcrumbs.slice(-2).map((crumb, i, arr) => (
+                    <Fragment key={crumb.path ?? crumb.label}>
+                      {i > 0 && <BreadcrumbSeparator />}
+                      <BreadcrumbItem className={i === arr.length - 1 ? 'min-w-0 truncate' : 'shrink-0'}>
+                        {crumb.path ? (
+                          <BreadcrumbLink asChild>
+                            <Link to={crumb.path} className="truncate">{crumb.label}</Link>
+                          </BreadcrumbLink>
+                        ) : (
+                          <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
+                        )}
+                      </BreadcrumbItem>
+                    </Fragment>
+                  ))}
+                </BreadcrumbList>
+              </Breadcrumb>
+            )
+          ) : (
+            <GlobalSearch />
+          )}
           <div className="ml-auto flex items-center gap-1 md:gap-2">
             <NotificationCenter />
             <ThemeToggle />
@@ -169,7 +192,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           )}
           style={{ touchAction: 'pan-y' }}
         >
-          {breadcrumbs.length > 0 && (
+          {!isMobile && breadcrumbs.length > 0 && (
             <Breadcrumb className="mb-3">
               <BreadcrumbList>
                 {breadcrumbs.map((crumb, i) => (
