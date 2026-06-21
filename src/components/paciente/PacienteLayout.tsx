@@ -5,25 +5,26 @@ import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
   LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame,
   Dumbbell, Wallet, Watch, Ticket, MessageSquare, Mic, MoreHorizontal, X,
-  ChevronRight,
+  ChevronRight, Lock,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
 import { supabase } from '@/integrations/supabase/client';
+import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { path: '/paciente/dashboard', label: 'Início',                shortLabel: 'Início',   icon: LayoutDashboard, badgeKey: null },
-  { path: '/paciente/saude',     label: 'Saúde',                 shortLabel: 'Saúde',    icon: Watch,           badgeKey: null },
-  { path: '/paciente/diario',    label: 'Diário',                shortLabel: 'Diário',   icon: Heart,           badgeKey: 'diario' as const },
-  { path: '/paciente/evolucao',  label: 'Evolução e Prontuários',shortLabel: 'Evolução', icon: Flame,           badgeKey: null },
-  { path: '/paciente/exercicios',label: 'Treinos',               shortLabel: 'Treinos',  icon: Dumbbell,        badgeKey: null },
-  { path: '/paciente/agenda',    label: 'Agenda',                shortLabel: 'Agenda',   icon: CalendarDays,    badgeKey: 'agenda' as const },
-  { path: '/paciente/questionarios',label:'Questionários',       shortLabel: 'Quest.',   icon: ClipboardList,   badgeKey: 'questionarios' as const },
-  { path: '/paciente/pagamentos',label: 'Pagamentos',            shortLabel: 'Pagam.',   icon: Wallet,          badgeKey: 'pagamentos' as const },
-  { path: '/paciente/eventos',   label: 'Eventos',               shortLabel: 'Eventos',  icon: Ticket,          badgeKey: null },
-  { path: '/paciente/chat',      label: 'Mensagens',             shortLabel: 'Chat',     icon: MessageSquare,   badgeKey: null },
-  { path: '/paciente/perfil',    label: 'Perfil',                shortLabel: 'Perfil',   icon: User,            badgeKey: null },
+  { path: '/paciente/dashboard', label: 'Início',                shortLabel: 'Início',   icon: LayoutDashboard, badgeKey: null, premium: false },
+  { path: '/paciente/saude',     label: 'Saúde',                 shortLabel: 'Saúde',    icon: Watch,           badgeKey: null, premium: false },
+  { path: '/paciente/diario',    label: 'Diário',                shortLabel: 'Diário',   icon: Heart,           badgeKey: 'diario' as const, premium: false },
+  { path: '/paciente/evolucao',  label: 'Evolução e Prontuários',shortLabel: 'Evolução', icon: Flame,           badgeKey: null, premium: false },
+  { path: '/paciente/exercicios',label: 'Treinos',               shortLabel: 'Treinos',  icon: Dumbbell,        badgeKey: null, premium: false },
+  { path: '/paciente/agenda',    label: 'Agenda',                shortLabel: 'Agenda',   icon: CalendarDays,    badgeKey: 'agenda' as const, premium: false },
+  { path: '/paciente/questionarios',label:'Questionários',       shortLabel: 'Quest.',   icon: ClipboardList,   badgeKey: 'questionarios' as const, premium: false },
+  { path: '/paciente/pagamentos',label: 'Pagamentos',            shortLabel: 'Pagam.',   icon: Wallet,          badgeKey: 'pagamentos' as const, premium: false },
+  { path: '/paciente/eventos',   label: 'Eventos',               shortLabel: 'Eventos',  icon: Ticket,          badgeKey: null, premium: false },
+  { path: '/paciente/chat',      label: 'Mensagens',             shortLabel: 'Chat',     icon: MessageSquare,   badgeKey: null, premium: true },
+  { path: '/paciente/perfil',    label: 'Perfil',                shortLabel: 'Perfil',   icon: User,            badgeKey: null, premium: false },
 ];
 
 // Bottom nav: Início, Agenda, Treinos, Diário, +Mais
@@ -40,6 +41,7 @@ export default function PacienteLayout({ children }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const notifications = usePacienteNotifications(user?.id);
+  const { isFree } = useWellnessAccess();
   const [historiaRecente, setHistoriaRecente] = useState(false);
   const [maisOpen, setMaisOpen] = useState(false);
 
@@ -159,6 +161,9 @@ export default function PacienteLayout({ children }: Props) {
               >
                 <item.icon className="h-4 w-4 shrink-0" />
                 <span className="truncate flex-1">{item.label}</span>
+                {item.premium && isFree && (
+                  <Lock className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-primary-foreground/70' : 'text-muted-foreground/50')} />
+                )}
                 {badge > 0 && (
                   <span className={cn(
                     'min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold',
@@ -289,12 +294,15 @@ export default function PacienteLayout({ children }: Props) {
                   >
                     <item.icon className="h-5 w-5 shrink-0" />
                     <span className="flex-1 truncate text-sm">{item.label}</span>
+                    {item.premium && isFree && (
+                      <Lock className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                    )}
                     {badge > 0 && (
                       <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
                         {badge}
                       </span>
                     )}
-                    {!badge && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />}
+                    {!badge && !item.premium && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />}
                   </button>
                 );
               })}
