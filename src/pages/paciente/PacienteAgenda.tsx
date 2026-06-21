@@ -596,7 +596,7 @@ export default function PacienteAgenda() {
                                     ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                                     : slot.disponivel
                                     ? 'bg-card border-border hover:border-primary/40 text-foreground'
-                                    : 'bg-muted/50 border-transparent text-muted-foreground/40 cursor-not-allowed line-through'
+                                    : 'bg-muted/60 border-transparent text-muted-foreground cursor-not-allowed line-through'
                                 }`}
                               >
                                 <Clock className="h-3 w-3 inline mr-1" />
