@@ -45,19 +45,6 @@ export default function ResumoNarrativo({ pacienteId, notas }: Props) {
     },
   });
 
-  const { data: avaliacoesCob = [] } = useQuery({
-    queryKey: ['resumo-narrativo-cob', pacienteId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('avaliacoes_cob_zero')
-        .select('*')
-        .eq('paciente_id', pacienteId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
   const { data: protocolos = [] } = useQuery({
     queryKey: ['resumo-narrativo-protocolos', pacienteId],
     queryFn: async () => {
@@ -141,20 +128,6 @@ export default function ResumoNarrativo({ pacienteId, notas }: Props) {
       paragrafos.push(avalText);
     }
 
-    // --- 4. Avaliação Estrutural ---
-    if (avaliacoesCob.length > 0) {
-      const latest = avaliacoesCob[avaliacoesCob.length - 1];
-      let cobText = `Avaliação estrutural realizada em ${latest.data_avaliacao}.`;
-      if (latest.cobb_angle != null) cobText += ` Ângulo de Cobb: ${latest.cobb_angle}°.`;
-      if (latest.lenke_type) cobText += ` Classificação Lenke: Tipo ${latest.lenke_type}.`;
-      if (latest.risco_level) cobText += ` Nível de risco: ${latest.risco_level}.`;
-      if (latest.risco_percentage != null) cobText += ` Percentual de risco: ${latest.risco_percentage}%.`;
-      if (avaliacoesCob.length > 1) {
-        cobText += ` Total de ${avaliacoesCob.length} avaliações estruturais registradas.`;
-      }
-      paragrafos.push(cobText);
-    }
-
     // --- 5. AVALIAÇÕES POR VOZ ---
     const vozNotas = notas.filter(n => n.tipo === 'avaliacao_voz');
     if (vozNotas.length > 0) {
@@ -215,7 +188,7 @@ export default function ResumoNarrativo({ pacienteId, notas }: Props) {
     }
 
     return paragrafos.join('\n\n');
-  }, [paciente, notas, avaliacoesId, avaliacoesCob, protocolos]);
+  }, [paciente, notas, avaliacoesId, protocolos]);
 
   if (loadingPac) {
     return <Skeleton className="h-[200px] w-full rounded-xl" />;

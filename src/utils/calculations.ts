@@ -223,24 +223,6 @@ export function duracaoParaCronicidade(duracao: string): number {
   return map[duracao] ?? 3;
 }
 
-// CÁLCULO RISCO PROGRESSÃO COB° ZERO (Lonstein & Carlson)
-export function calcularRiscoProgressao(cobbAngle: number, sexo: 'M' | 'F', risser: number): { percentage: number; level: string } {
-  const sexoNum = sexo === 'F' ? 1 : 0;
-  let risk = 0.24 * cobbAngle + 0.41 * sexoNum - 3.93;
-  
-  // Ajuste Risser
-  if (risser <= 2) risk *= 1.5;
-  else if (risser === 3) risk *= 1.25;
-  else risk *= 0.5;
-
-  const percentage = Math.max(0, Math.min(100, Math.round(risk)));
-  let level = 'BAIXO';
-  if (percentage > 50) level = 'ALTO';
-  else if (percentage > 25) level = 'MODERADO';
-
-  return { percentage, level };
-}
-
 // CÁLCULO TERRENOS MODIFICÁVEIS vs NÃO-MODIFICÁVEIS
 export function calcularTerrenos(
   bloco1: Bloco1Data,
@@ -302,12 +284,4 @@ export function getSeverityColorHex(score: number): string {
   if (score <= 7) return '#f97316';
   if (score <= 9) return '#ef4444';
   return '#9333ea';
-}
-
-export function getCobbClassification(cobb: number): { label: string; color: string } {
-  if (cobb < 10) return { label: 'Normal', color: 'text-green-600 bg-green-50' };
-  if (cobb < 25) return { label: 'LEVE', color: 'text-green-600 bg-green-50' };
-  if (cobb < 40) return { label: 'MODERADO', color: 'text-amber-600 bg-amber-50' };
-  if (cobb < 50) return { label: 'SEVERO', color: 'text-orange-600 bg-orange-50' };
-  return { label: 'CRÍTICO', color: 'text-red-600 bg-red-50' };
 }

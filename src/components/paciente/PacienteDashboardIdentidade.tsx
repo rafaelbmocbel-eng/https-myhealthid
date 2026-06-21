@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { supabase } from '@/integrations/supabase/client';
-import { gerarNotaAvaliacaoProfissional } from '@/utils/prontuarioAutoNotes';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -198,20 +197,6 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
       return data || [];
     },
     enabled: linksAvPaciente.length > 0,
-  });
-
-  // Buscar dados de outros serviços para integração (COB e Studio)
-  const { data: ultimaCob } = useQuery({
-    queryKey: ['dashboard-ultima-cob', paciente.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('avaliacoes_cob_zero')
-        .select('*')
-        .eq('paciente_id', paciente.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      return data?.[0] || null;
-    },
   });
 
   const { data: ultimaMedidaStudio } = useQuery({

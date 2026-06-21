@@ -26,7 +26,6 @@ import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, fo
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
-import { useAvaliacoesIdentidade, useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { useToast } from '@/hooks/use-toast';
 import { useAgenda } from '@/hooks/useAgenda';
 const QuestionariosComparacao = lazy(() => import('@/components/paciente/QuestionariosComparacao'));
@@ -142,8 +141,19 @@ export default function PacientePerfil() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
-  const { avaliacoes: avaliacoesId, isLoading: loadingId } = useAvaliacoesIdentidade(id);
-  const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
+  const { data: myidCount = 0 } = useQuery({
+    queryKey: ['myid-count-paciente', id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('myid_avaliacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', id!)
+        .eq('status', 'concluido');
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!id,
+  });
   // Queries pesadas só quando a aba "Evolução / Prontuário" está aberta
   const evolucaoTabAtiva = activeTab === 'evolucao-prontuario';
   const { evolucoes: evolucoesId } = useEvolucaoPaciente(evolucaoTabAtiva ? id : undefined);
@@ -792,13 +802,10 @@ export default function PacientePerfil() {
               <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Avaliações</div>
               <div className="flex items-baseline gap-1">
                 <span className="text-sm font-semibold tracking-tight text-foreground">
-                  {avaliacoesId.length + avaliacoesCob.length}
+                  {myidCount}
                 </span>
                 <span className="text-[10px] text-muted-foreground truncate">
-                  {[
-                    avaliacoesId.length > 0 ? `${avaliacoesId.length} ID` : null,
-                    avaliacoesCob.length > 0 ? `${avaliacoesCob.length} COB°` : null,
-                  ].filter(Boolean).join(' · ') || 'nenhuma'}
+                  {myidCount > 0 ? 'MyID' : 'nenhuma'}
                 </span>
               </div>
             </div>
@@ -1138,7 +1145,7 @@ export default function PacientePerfil() {
               </div>
             )}
 
-            {avaliacoesId.length < 2 && respostasPaciente.length === 0 && notasProntuario.length === 0 && (
+            {myidCount < 2 && respostasPaciente.length === 0 && notasProntuario.length === 0 && (
               <EmptyState icon={<TrendingUp />} title="Sem dados para evolução" subtitle="Realize avaliações ou envie questionários remotos para acompanhar a evolução." />
             )}
           </TabsContent>

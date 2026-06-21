@@ -20,11 +20,9 @@ const Index = lazyWithRetry(() => import("./pages/Index"));
 const LandingPublica = lazyWithRetry(() => import("./pages/LandingPublica"));
 const DemoMyID = lazyWithRetry(() => import("./pages/DemoMyID"));
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
-const MetodoIdentidade = lazyWithRetry(() => import("./pages/MetodoIdentidade"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const MyIDResponder = lazyWithRetry(() => import("./pages/MyIDResponder"));
 const MyIDView = lazyWithRetry(() => import("./pages/MyIDView"));
-const CobZero = lazyWithRetry(() => import("./pages/CobZero"));
 const DashboardPreview = lazyWithRetry(() => import("./pages/DashboardPreview"));
 
 const Agenda = lazyWithRetry(() => import("./pages/Agenda"));
@@ -139,8 +137,6 @@ const App = () => (
                 <Route path="/inicio-app" element={<PatientGuard><Index /></PatientGuard>} />
                 <Route path="/index" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/inicio" element={<Navigate to="/inicio-app" replace />} />
-                <Route path="/metodo-identidade" element={<PatientGuard><MetodoIdentidade /></PatientGuard>} />
-                <Route path="/cob-zero" element={<PatientGuard><CobZero /></PatientGuard>} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                 <Route path="/nova-senha" element={<NovaSenha />} />

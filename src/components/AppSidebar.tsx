@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 
-type ServiceKey = 'identidade' | 'cob_zero' | 'eventos';
+type ServiceKey = 'eventos';
 
 const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; serviceKey?: ServiceKey; separatorAfter?: boolean }[] = [
   { label: 'Home', href: '/hoje', icon: Sun },

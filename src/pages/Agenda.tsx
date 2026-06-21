@@ -997,25 +997,13 @@ export default function Agenda() {
         .limit(1)
         .maybeSingle();
 
-      const { data: protCob } = await supabase
-        .from('protocolos_cob_zero')
-        .select('id, classificacao_lenke, cobb_angle')
-        .eq('paciente_id', ag.paciente_id)
-        .eq('status', 'ativo')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const diretrizTitulo = prot?.titulo
-        || (protCob ? `COB° ZERO — Lenke ${protCob.classificacao_lenke || '?'}` : null);
-
-      if (diretrizTitulo) {
+      if (prot?.titulo) {
         await gerarNotaConduta({
           pacienteId: ag.paciente_id,
           terapeutaId: user.id,
-          diretrizTitulo,
+          diretrizTitulo: prot.titulo,
           observacoes: 'Sessão confirmada. Diretriz vigente mantida no prontuário.',
-          protocoloId: prot?.id || protCob?.id,
+          protocoloId: prot.id,
         });
       }
 

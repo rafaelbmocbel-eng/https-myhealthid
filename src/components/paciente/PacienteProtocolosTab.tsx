@@ -31,7 +31,7 @@ import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 interface Props {
   pacienteId: string;
   pacienteNome: string;
-  tipo: 'identidade' | 'cob_zero' | 'studio';
+  tipo: 'identidade' | 'studio';
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -63,10 +63,8 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
   const { data: protocolos = [], isLoading } = useQuery({
     queryKey: ['protocolos-paciente', pacienteId, tipo],
     queryFn: async () => {
-      const table = (tipo === 'identidade' || tipo === 'studio') ? 'protocolos' : 'protocolos_cob_zero';
-
       const { data, error } = await supabase
-        .from(table as any)
+        .from('protocolos')
         .select('*')
         .eq('paciente_id', pacienteId)
         .eq('terapeuta_id', user!.id)
@@ -120,40 +118,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     enabled: !!user && tipo === 'identidade',
   });
 
-  // Avaliações CobZero sem protocolo
-  const { data: avaliacoesCobZeroSemProtocolo = [] } = useQuery({
-    queryKey: ['avaliacoes-cob-zero-sem-protocolo-paciente', pacienteId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('avaliacoes_cob_zero')
-        .select('*')
-        .eq('terapeuta_id', user!.id)
-        .eq('paciente_id', pacienteId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-
-      // Simplificação: por enquanto, mostrar todas as avaliações CobZero concluídas
-      // que ainda não tem um protocolo associado (baseado na data ou id se houver relação clara)
-      // Atualmente não há uma FK explícita em protocolos_cob_zero para a avaliação,
-      // mas podemos assumir que se houver um protocolo recente, não precisa de outro.
-      return data || [];
-    },
-    enabled: !!user && tipo === 'cob_zero',
-  });
-
   const handleNovaDiretrizManual = async () => {
-    if (tipo === 'cob_zero') {
-      const pendentes = avaliacoesCobZeroSemProtocolo;
-      if (pendentes.length === 0) {
-        toast({ title: "Nenhuma avaliação disponível", description: "Conclua uma avaliação COB° ZERO para gerar uma diretriz.", variant: "destructive" });
-        return;
-      }
-      if (pendentes.length === 1) { handleGerarDiretrizCobZero(pendentes[0]); return; }
-      const element = document.getElementById('secao-pendencias');
-      if (element) { element.scrollIntoView({ behavior: 'smooth' }); toast({ title: "Selecione uma avaliação" }); }
-      return;
-    }
-
     // Identidade/Studio: check avaliacoes, then structural, then voice
     if (avaliacoesSemProtocolo.length > 0) {
       if (avaliacoesSemProtocolo.length === 1) { setAnalisandoAvaliacao(avaliacoesSemProtocolo[0]); return; }
@@ -211,8 +176,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const table = tipo === 'identidade' ? 'protocolos' : 'protocolos_cob_zero';
-      const { error } = await supabase.from(table as any).delete().eq('id', id);
+      const { error } = await supabase.from('protocolos').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -286,58 +250,6 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
       toast({ title: 'Erro ao gerar PDF', variant: 'destructive' });
     } finally {
       setExportingId(null);
-    }
-  };
-
-  const handleGerarDiretrizCobZero = async (av: any) => {
-    try {
-      const { data: prot, error } = await (supabase as any)
-        .from('protocolos_cob_zero')
-        .insert({
-          paciente_id: pacienteId,
-          terapeuta_id: user!.id,
-          classificacao_lenke: av.lenke_type,
-          cobb_angle: av.cobb_angle,
-          risco_progressao: av.risco_percentage,
-          status: 'ativo',
-          dados_protocolo: av.dados_avaliacao
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-      if (prot?.id) {
-        const descricao = `🧠 DIRETRIZ COB° ZERO REGISTRADA
-
-📋 Classificação Lenke: ${av.lenke_type || 'N/A'}
-📐 Ângulo de Cobb: ${av.cobb_angle ?? 'N/A'}°
-📈 Risco de progressão: ${av.risco_percentage ?? 'N/A'}%
-
-Diretriz registrada automaticamente após avaliação COB° ZERO.`;
-
-        await (supabase as any).from('notas_prontuario').insert({
-          paciente_id: pacienteId,
-          terapeuta_id: user!.id,
-          tipo: 'conduta_diretriz',
-          titulo: `Diretriz COB° ZERO — Lenke ${av.lenke_type || 'N/A'}`,
-          descricao,
-          referencia_id: prot.id,
-          dados_extras: {
-            protocolo_id: prot.id,
-            cobb_angle: av.cobb_angle ?? null,
-            risco_progressao: av.risco_percentage ?? null,
-            lenke_type: av.lenke_type || null,
-          },
-        });
-      }
-      toast({ title: 'Diretriz CobZero gerada!' });
-      qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
-      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
-    } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao gerar diretriz', variant: 'destructive' });
     }
   };
 
@@ -591,7 +503,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
     );
   }
 
-  if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesCobZeroSemProtocolo.length === 0 && avaliacoesVozComDiretriz.length === 0) {
+  if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesVozComDiretriz.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center bg-muted/30 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
@@ -610,11 +522,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
         <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
           <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="font-medium">Nenhuma diretriz criada</p>
-          <p className="text-sm mt-1">
-            {tipo === 'studio'
-              ? 'Conclua uma avaliação para gerar uma diretriz.'
-              : 'Conclua uma avaliação COB° ZERO para gerar uma diretriz.'}
-          </p>
+          <p className="text-sm mt-1">Conclua uma avaliação para gerar uma diretriz.</p>
         </div>
       </div>
     );
@@ -671,15 +579,11 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
         </div>
       )}
 
-      {/* Avaliações prontas para protocolo (cob_zero) — DEPRECATED: serviço descontinuado, mantido apenas para histórico */}
-      {/* cob_zero section removed — service discontinued */}
-
       {/* Lista de protocolos */}
       <div className="space-y-2">
         {protocolos.map((protocolo: any) => {
           const statusInfo = STATUS_LABELS[protocolo.status] || STATUS_LABELS.ativo;
           const scores = protocolo.scores_avaliacao || {};
-          const isCobZero = tipo === 'cob_zero';
 
           return (
             <div key={protocolo.id} className="border rounded-xl p-3 hover:bg-accent/10 transition-all">
@@ -690,7 +594,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold truncate">
-                      {isCobZero ? `COB° ZERO — Lenke ${protocolo.classificacao_lenke || '?'}` : protocolo.titulo}
+                      {protocolo.titulo}
                     </span>
                     <Badge className={`${statusInfo.color} border-0 text-[10px] h-4`}>{statusInfo.label}</Badge>
                   </div>
@@ -699,11 +603,9 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                       <Calendar className="h-3 w-3" />
                       {format(new Date(protocolo.created_at), "dd/MM/yyyy", { locale: ptBR })}
                     </span>
-                    {!isCobZero && protocolo.duracao_total && <span>{protocolo.duracao_total}</span>}
-                    {isCobZero && protocolo.cobb_angle && <span>Cobb: {protocolo.cobb_angle}°</span>}
-                    {isCobZero && protocolo.risco_progressao != null && <span>Risco: {protocolo.risco_progressao}%</span>}
+                    {protocolo.duracao_total && <span>{protocolo.duracao_total}</span>}
                   </div>
-                  {!isCobZero && scores && Object.keys(scores).length > 0 && (
+                  {scores && Object.keys(scores).length > 0 && (
                     <div className="flex gap-3 mt-1 text-[10px]">
                       {['E', 'P', 'D', 'R'].map(k => (
                         scores[k] != null && (
@@ -719,25 +621,19 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-                  {!isCobZero && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setViewingId(protocolo.id)}>
-                      <Eye className="h-3 w-3" /> Ver
-                    </Button>
-                  )}
-                  {!isCobZero && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                      onClick={() => handleExportPDF(protocolo)} disabled={exportingId === protocolo.id}
-                      title="PDF clínico">
-                      {exportingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                    </Button>
-                  )}
-                  {!isCobZero && (
-                    <Button size="sm" className="h-7 text-xs gap-1 bg-primary/90 hover:bg-primary text-primary-foreground"
-                      onClick={() => handlePublicarExercicios(protocolo)} disabled={publishingId === protocolo.id}>
-                      {publishingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                      Publicar
-                    </Button>
-                  )}
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setViewingId(protocolo.id)}>
+                    <Eye className="h-3 w-3" /> Ver
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                    onClick={() => handleExportPDF(protocolo)} disabled={exportingId === protocolo.id}
+                    title="PDF clínico">
+                    {exportingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                  </Button>
+                  <Button size="sm" className="h-7 text-xs gap-1 bg-primary/90 hover:bg-primary text-primary-foreground"
+                    onClick={() => handlePublicarExercicios(protocolo)} disabled={publishingId === protocolo.id}>
+                    {publishingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                    Publicar
+                  </Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                     onClick={() => setDeletingProtocoloId(protocolo.id)}>
                     <Trash2 className="h-3 w-3" />
@@ -745,20 +641,18 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                 </div>
               </div>
 
-              {!isCobZero && (
-                <div className="mt-3 pt-3 border-t border-amber-200/60">
-                  <Button
-                    onClick={() => setPropostaProtocolo(protocolo)}
-                    className="w-full h-11 gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold shadow-sm"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Gerar Proposta Comercial (PDF)
-                  </Button>
-                  <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-                    Envie esta diretriz ao paciente como proposta de tratamento
-                  </p>
-                </div>
-              )}
+              <div className="mt-3 pt-3 border-t border-amber-200/60">
+                <Button
+                  onClick={() => setPropostaProtocolo(protocolo)}
+                  className="w-full h-11 gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold shadow-sm"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Gerar Proposta Comercial (PDF)
+                </Button>
+                <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                  Envie esta diretriz ao paciente como proposta de tratamento
+                </p>
+              </div>
             </div>
           );
         })}

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
-  Activity, Fingerprint, AlignCenter, Dumbbell,
+  Activity, Fingerprint, Dumbbell,
   TrendingUp, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
   AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket, Stethoscope
@@ -37,7 +37,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface PatientIntegratedDashboardProps {
   pacienteId: string;
-  serviceType: 'identidade' | 'cob_zero' | 'studio';
+  serviceType: 'identidade' | 'studio';
   isProfessional?: boolean;
 }
 
@@ -154,11 +154,7 @@ export default function PatientIntegratedDashboard({
   const { data: serviceData = [] } = useQuery({
     queryKey: ['integrated-service-data', pacienteId, serviceType],
     queryFn: async () => {
-      if (serviceType === 'cob_zero') {
-        const { data } = await supabase.from('avaliacoes_cob_zero').select('*')
-          .eq('paciente_id', pacienteId).order('created_at', { ascending: false });
-        return data || [];
-      } else if (serviceType === 'studio') {
+      if (serviceType === 'studio') {
         const { data } = await supabase.from('studio_medidas').select('*')
           .eq('paciente_id', pacienteId).order('data_medida', { ascending: false });
         return data || [];
@@ -402,11 +398,7 @@ export default function PatientIntegratedDashboard({
     }
     if (serviceMatch) {
       const sm = serviceMatch as any;
-      if (serviceType === 'cob_zero') {
-        point.cobb = Number(sm.cobb_angle) || null;
-        point.scoreE = Number(sm.score_e) || null;
-        point.risco = Number(sm.risco_percentage) || null;
-      } else if (serviceType === 'studio') {
+      if (serviceType === 'studio') {
         point.gordura = Number(sm.percentual_gordura) || null;
         point.peso = Number(sm.peso) || null;
       }
@@ -842,39 +834,7 @@ export default function PatientIntegratedDashboard({
       {lastServiceEntry && serviceType !== 'identidade' && (
         <Card className="shadow-sm overflow-hidden">
           <CardContent className="p-5">
-            {serviceType === 'cob_zero' ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30 shrink-0">
-                    <AlignCenter className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-lg text-foreground">Estrutural (legado)</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Avaliação Estrutural</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-3 text-center">
-                    <div className="text-3xl font-black text-blue-600">{Number(lastServiceEntry.cobb_angle || 0).toFixed(1)}°</div>
-                    <div className="text-[9px] font-bold text-blue-800/60 uppercase">Ângulo Cobb</div>
-                  </div>
-                  <div className="bg-muted/50 rounded-xl p-3 text-center">
-                    <div className="text-xl font-black">{Number(lastServiceEntry.score_e || 0).toFixed(1)}</div>
-                    <div className="text-[9px] font-bold text-muted-foreground uppercase">Score E</div>
-                  </div>
-                  <div className="bg-orange-50 dark:bg-orange-900/10 rounded-xl p-3 text-center">
-                    <div className="text-xl font-black text-orange-600">{Number(lastServiceEntry.risco_percentage || 0).toFixed(1)}%</div>
-                    <div className="text-[9px] font-bold text-orange-800/60 uppercase">Risco</div>
-                  </div>
-                </div>
-                {hasMyID && (
-                  <p className="text-[10px] text-muted-foreground border-t pt-2">
-                    <span className="font-bold">Conexão:</span> Score E estrutural ({Number(lastServiceEntry.score_e || 0).toFixed(1)}) complementa o MyID sistêmico ({myidScore.toFixed(1)}).
-                    {Number(lastServiceEntry.risco_percentage) > 50 && ' ⚠️ Risco elevado — monitorar evolução do Cobb com MyID.'}
-                  </p>
-                )}
-              </div>
-            ) : serviceType === 'studio' ? (
+            {serviceType === 'studio' ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30 shrink-0">
@@ -929,12 +889,6 @@ export default function PatientIntegratedDashboard({
                   <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', background: 'hsl(var(--card))' }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
                   <Line yAxisId="right" type="monotone" dataKey="myidScore" name="MyID" stroke="hsl(260, 65%, 65%)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls />
-                  {serviceType === 'cob_zero' && (
-                    <>
-                      <Bar yAxisId="left" dataKey="cobb" name="Cobb°" fill="hsl(230, 70%, 60%)" radius={[6, 6, 0, 0]} barSize={20} />
-                      <Line yAxisId="left" type="monotone" dataKey="risco" name="Risco%" stroke="hsl(15, 90%, 50%)" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                    </>
-                  )}
                   {serviceType === 'studio' && (
                     <>
                       <Bar yAxisId="left" dataKey="gordura" name="Gordura%" fill="hsl(210, 75%, 55%)" radius={[6, 6, 0, 0]} barSize={20} />

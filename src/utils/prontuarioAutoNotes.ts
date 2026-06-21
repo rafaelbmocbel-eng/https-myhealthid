@@ -126,52 +126,6 @@ ${notes ? `\n📝 Observações do paciente:\n"${notes}"` : ''}`;
 }
 
 /**
- * Gera nota de prontuário quando avaliação profissional é salva.
- */
-export async function gerarNotaAvaliacaoProfissional(params: {
-  pacienteId: string;
-  terapeutaId: string;
-  tipoAvaliacao: 'identidade' | 'cob_zero';
-  resumoScores: Record<string, number>;
-  classificacao?: string;
-  observacoes?: string;
-  avaliacaoId?: string;
-}) {
-  const { pacienteId, terapeutaId, tipoAvaliacao, resumoScores, classificacao, observacoes, avaliacaoId } = params;
-
-  const tipoLabel = tipoAvaliacao === 'identidade' ? 'Método Identidade' : 'COB° ZERO';
-
-  const scoresText = Object.entries(resumoScores)
-    .filter(([, v]) => v !== null && v !== undefined)
-    .map(([k, v]) => `• ${k}: ${Number(v).toFixed(1)}`)
-    .join('\n');
-
-  const descricao = `🩺 AVALIAÇÃO PROFISSIONAL — ${tipoLabel}
-
-📊 SCORES REGISTRADOS:
-${scoresText}
-
-${classificacao ? `🎯 Classificação: ${classificacao}` : ''}
-${observacoes ? `\n📝 Observações do profissional:\n${observacoes}` : ''}
-
-Avaliação realizada presencialmente pelo terapeuta.`;
-
-  try {
-    await (supabase as any).from('notas_prontuario').insert({
-      paciente_id: pacienteId,
-      terapeuta_id: terapeutaId,
-      tipo: 'avaliacao_profissional',
-      titulo: `Avaliação ${tipoLabel}${classificacao ? ` — ${classificacao}` : ''}`,
-      descricao,
-      dados_extras: { tipo: tipoAvaliacao, scores: resumoScores, classificacao },
-      referencia_id: avaliacaoId || null,
-    });
-  } catch (err) {
-    console.warn('Erro ao gerar nota de avaliação profissional:', err);
-  }
-}
-
-/**
  * Gera nota quando treino é executado pelo paciente.
  */
 export async function gerarNotaTreinoExecutado(params: {
