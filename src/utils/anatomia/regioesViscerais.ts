@@ -243,6 +243,28 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M122 128 C 124 118 125 110 125 104'
   },
 
+  // Veia cava inferior: parallel to aorta abdominal, slightly to patient's right
+  {
+    id: 'veia_cava_inf',
+    label: 'Veia Cava Inferior',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    type: 'vessel',
+    layer: 9,
+    d: 'M113 184 L113 260 L115 260 L115 184 Z'
+  },
+
+  // Vasos pulmonares: short trunks from heart base toward each lung hilum
+  {
+    id: 'vasos_pulmonares',
+    label: 'Vasos Pulmonares',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    type: 'vessel',
+    layer: 9,
+    d: 'M128 148 C 122 144 116 140 110 138 M128 152 C 134 148 140 144 146 142'
+  },
+
   // Femoral direita: right thigh artery
   {
     id: 'femoral_d',
@@ -528,6 +550,28 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M108 98 C 106 96 106 92 110 91 C 113 90 116 92 117 96 C 118 100 117 105 115 107 C 112 108 109 106 108 98 Z M132 98 C 134 96 134 92 130 91 C 127 90 124 92 123 96 C 122 100 123 105 125 107 C 128 108 131 106 132 98 Z M117 98 C 118 98 122 98 123 98 L122 100 C 121 100 119 100 118 100 Z'
   },
 
+  // Pineal: tiny gland between cerebrum and cerebellum
+  {
+    id: 'pineal',
+    label: 'Glândula Pineal',
+    view: 'front',
+    sistemas: ['endocrino'],
+    type: 'gland',
+    layer: 10,
+    d: 'M122 59 C 122 57.5 123 57 124 57.5 C 125 58 125 60 124 60.5 C 123 61 122 60.5 122 59 Z'
+  },
+
+  // Paratireoides: 4 tiny glands, 2 per thyroid lobe
+  {
+    id: 'paratireoides',
+    label: 'Paratireoides',
+    view: 'front',
+    sistemas: ['endocrino'],
+    type: 'gland',
+    layer: 9,
+    d: 'M106 93 C 105.5 92 106.5 91 107.5 92 C 108.5 93 107.5 94.5 106 93 Z M106 101 C 105.5 100 106.5 99 107.5 100 C 108.5 101 107.5 102.5 106 101 Z M132 93 C 131.5 92 132.5 91 133.5 92 C 134.5 93 133.5 94.5 132 93 Z M132 101 C 131.5 100 132.5 99 133.5 100 C 134.5 101 133.5 102.5 132 101 Z'
+  },
+
   // Adrenal direita (patient RIGHT = screen LEFT): small triangular gland atop right kidney projection
   {
     id: 'adrenal_d',
@@ -572,6 +616,17 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     type: 'organ',
     layer: 5,
     d: 'M116 282 C 112 278 108 274 108 284 C 108 294 110 300 114 304 C 116 306 118 308 120 308 C 122 308 124 306 126 304 C 130 300 132 294 132 284 C 132 274 128 278 124 282 C 122 280 118 280 116 282 Z'
+  },
+
+  // Uretra: continues from bladder neck toward perineum
+  {
+    id: 'uretra',
+    label: 'Uretra',
+    view: 'front',
+    sistemas: ['urinario'],
+    type: 'organ',
+    layer: 5,
+    d: 'M118 308 L118 320 L122 320 L122 308 Z'
   },
 
   // ── LYMPHATIC ────────────────────────────────
@@ -688,6 +743,17 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M106 290 C 105 288 106 285 108 285 C 110 285 111 288 110 290 C 110 293 108 294 106 292 C 105 292 106 291 106 290 Z M130 290 C 129 288 130 285 132 285 C 134 285 135 288 134 290 C 134 293 132 294 130 292 C 129 292 130 291 130 290 Z'
   },
 
+  // Trompas de Falópio: curved tubes connecting ovaries to uterine fundus
+  {
+    id: 'trompas_falopio',
+    label: 'Trompas de Falópio',
+    view: 'front',
+    sistemas: ['reprodutor'],
+    type: 'organ',
+    layer: 7,
+    d: 'M108 287 C 112 283 116 281 120 280 M132 287 C 128 283 124 281 120 280'
+  },
+
   // Testículos: two circles below pubis
   {
     id: 'testiculos',
@@ -708,6 +774,17 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     type: 'gland',
     layer: 6,
     d: 'M116 306 C 116 303 118 302 120 302 C 122 302 124 303 124 306 C 124 309 122 310 120 310 C 118 310 116 309 116 306 Z'
+  },
+
+  // Vesículas seminais: paired glands posterolateral to bladder base, above prostate
+  {
+    id: 'vesiculas_seminais',
+    label: 'Vesículas Seminais',
+    view: 'front',
+    sistemas: ['reprodutor'],
+    type: 'gland',
+    layer: 6,
+    d: 'M110 298 C 108 296 108 293 111 292 C 114 291 116 293 116 296 C 116 299 113 301 111 300 C 110 300 110 299 110 298 Z M130 298 C 132 296 132 293 129 292 C 126 291 124 293 124 296 C 124 299 127 301 129 300 C 130 300 130 299 130 298 Z'
   },
 
   // ─────────────────────────────────────────────
@@ -864,12 +941,12 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
     glandulas: ['Lobo direito', 'Lobo esquerdo', 'Istmo'],
     hormonios: ['T3 (Tri-iodotironina)', 'T4 (Tiroxina)', 'Calcitonina']
   },
-  paratireoides: { hormonios: ['PTH (Paratormônio)'], funcao: ['Controle do cálcio e fósforo'] },
   hipofise: {
     lobos: ['Adeno-hipófise (Anterior)', 'Neuro-hipófise (Posterior)'],
     hormonios: ['GH', 'TSH', 'ACTH', 'FSH', 'LH', 'Prolactina', 'ADH', 'Ocitocina']
   },
   pineal: { hormonios: ['Melatonina'], funcao: ['Ciclo circadiano'] },
+  paratireoides: { glandulas: ['Superior D', 'Inferior D', 'Superior E', 'Inferior E'], hormonios: ['PTH (Paratormônio)'], funcao: ['Controle do cálcio e fósforo sérico'] },
   timo: { funcao: ['Maturação de linfócitos T', 'Imunidade celular', 'Produção de timosina'] },
   adrenal_d: {
     partes: ['Córtex adrenal', 'Medula adrenal'],
@@ -934,6 +1011,8 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
     camadas: ['Íntima', 'Média', 'Adventícia']
   },
   veia_cava_sup: { afluentes: ['Veia braquiocefálica direita', 'Veia braquiocefálica esquerda', 'Veia ázigos'] },
+  veia_cava_inf: { afluentes: ['Veias renais', 'Veias hepáticas', 'Veias ilíacas comuns', 'Veias lombares'], trajeto: ['Retroperitoneal, à direita da aorta'] },
+  vasos_pulmonares: { partes: ['Tronco pulmonar', 'Artérias pulmonares D/E', 'Veias pulmonares (4)'], funcao: ['Circulação pulmonar (pequena circulação)', 'Troca gasosa'] },
   carotida_d: { segmentos: ['Carótida comum D', 'Carótida interna D', 'Carótida externa D', 'Bulbo carotídeo (barorreceptores/quimiorreceptores)'] },
   carotida_e: { segmentos: ['Carótida comum E', 'Carótida interna E', 'Carótida externa E', 'Bulbo carotídeo (barorreceptores/quimiorreceptores)'] },
   femoral_d: { segmentos: ['Artéria femoral comum D', 'Artéria femoral superficial D', 'Artéria femoral profunda D'] },
@@ -997,6 +1076,10 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
     partes: ['Vértice', 'Corpo', 'Fundo (Trígono vesical)', 'Colo vesical', 'Músculo detrusor', 'Mucosa (urotélio)'],
     capacidade: ['Fisiológica: 300-500 mL', 'Máxima: 600-1000 mL']
   },
+  uretra: {
+    segmentos: ['Uretra feminina (3-4 cm)', 'Uretra masculina: prostática, membranosa, esponjosa (18-20 cm)'],
+    esfincteres: ['Esfíncter uretral interno (involuntário)', 'Esfíncter uretral externo (voluntário)']
+  },
 
   // Lymphatic
   linfonodos_cervicais: {
@@ -1036,6 +1119,14 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
     partes: ['Córtex (folículos)', 'Medula (vasos)', 'Hilo ovariano'],
     ciclo: ['Folículo primordial → primário → secundário → de Graaf → ovulação → corpo lúteo → corpo albicante'],
     hormonios: ['Estrogênio', 'Progesterona', 'Androgênios (DHEA)']
+  },
+  trompas_falopio: {
+    partes: ['Infundíbulo (fímbrias)', 'Ampola', 'Istmo', 'Porção intramural'],
+    funcao: ['Captação do oócito', 'Local da fertilização', 'Transporte do embrião ao útero']
+  },
+  vesiculas_seminais: {
+    funcao: ['Produção de fluido seminal (60-70% do volume ejaculado)', 'Fonte de frutose para os espermatozoides'],
+    adjacentes: ['Bexiga (anterior)', 'Reto (posterior)', 'Ducto deferente']
   },
   testiculos: {
     partes: ['Epidídimo (cabeça/corpo/cauda)', 'Túbulos seminíferos', 'Células de Sertoli', 'Células de Leydig', 'Túnica albugínea', 'Túnica vaginal'],
