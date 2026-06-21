@@ -105,6 +105,121 @@ function determineClinicalPriority(driver: any) {
   return { clinical_priority: 'INVESTIGAR RUÍDO', focus_areas: ['Investigar fatores sistêmicos ocultos', 'Avaliação multidisciplinar'] };
 }
 
+// ── Réplica corrigida de buildMyIDEnhancements() (supabase/functions/complete-myid/index.ts) ──
+// Usada para recalcular protocolos.scores_avaliacao.myid_enhancements de diretrizes ativas
+// que foram enriquecidas antes da correção do bug de EFI.
+const TABELA_PERDAS_ENH: Record<string, { bandas: BandaPerda[]; critico?: number }> = {
+  D: { bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 3, perda: 3 }, { min: 3, max: 5, perda: 8 }, { min: 5, max: 7, perda: 14 }, { min: 7, max: 11, perda: 20 }] },
+  EFI: { bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 11, perda: 15 }] },
+  P: { bandas: [{ min: 0, max: 3, perda: 0 }, { min: 3, max: 5, perda: 2 }, { min: 5, max: 7, perda: 4 }, { min: 7, max: 11, perda: 5 }] },
+  I: { bandas: [{ min: 0, max: 0.5, perda: 0 }, { min: 0.5, max: 1.5, perda: 2 }, { min: 1.5, max: 2.5, perda: 4 }, { min: 2.5, max: 11, perda: 5 }] },
+  R: { bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 11, perda: 15 }], critico: 7 },
+  C: { bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4 }, { min: 4, max: 6, perda: 7 }, { min: 6, max: 11, perda: 10 }] },
+  N: { bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 2, perda: 2 }, { min: 2, max: 3, perda: 4 }, { min: 3, max: 11, perda: 5 }] },
+};
+
+const DIM_LABELS_ENH: Record<string, string> = {
+  D: "Dor", EFI: "Funcionalidade", P: "Psicológico", I: "Inércia", R: "Regulação", C: "Contexto", N: "Ruído Sistêmico",
+};
+
+const DRIVER_INTERVENCOES_ENH: Record<string, { intervencoes: string[]; encaminhamentos: string[] }> = {
+  D: { intervencoes: ["Educação em neurociência da dor", "Modulação (TENS/crioterapia/terapia manual)", "Amplitude sem carga", "Respiração diafragmática 3×/dia"], encaminhamentos: ["Avaliação médica se dor > 8/10 persistente"] },
+  EFI: { intervencoes: ["Amplitude sem carga", "Adaptações funcionais", "Retorno gradual às AVDs", "Fisioterapia 2–3×/sem"], encaminhamentos: ["Avaliação ocupacional se limitação severa"] },
+  P: { intervencoes: ["Educação em neurociência da dor (crenças)", "Exposição gradual ao movimento temido", "Diário de atividades sem dor", "Reestruturação cognitiva"], encaminhamentos: ["Psicoterapia cognitivo-comportamental"] },
+  R: { intervencoes: ["Higiene do sono: rotina fixa", "Desligar telas 1h antes de dormir", "Relaxamento pré-sono", "Cafeína só até 14h"], encaminhamentos: ["Avaliação médica se insônia crônica"] },
+  C: { intervencoes: ["Gerenciamento de estresse", "Mindfulness e relaxamento", "Reestruturação da rotina de trabalho", "Lazer e socialização programados"], encaminhamentos: ["Encaminhamento psicológico", "Apoio social estruturado"] },
+  I: { intervencoes: ["Estabilizar rotina antes de progredir carga", "Adaptar equipamento gradualmente", "Evitar múltiplas mudanças simultâneas"], encaminhamentos: [] },
+  N: { intervencoes: ["Investigar fatores viscerais/hormonais", "Monitorar ciclo menstrual (se aplicável)", "Atenção a sinais autonômicos"], encaminhamentos: ["Avaliação médica para fatores sistêmicos ocultos"] },
+};
+
+function perdaDeEnh(dim: string, score: number) {
+  const cfg = TABELA_PERDAS_ENH[dim];
+  if (!cfg) return { perda: 0, critico: false };
+  const banda = cfg.bandas.find(b => score >= b.min && score < b.max) || cfg.bandas[cfg.bandas.length - 1];
+  return { perda: banda.perda, critico: cfg.critico !== undefined && score >= cfg.critico };
+}
+
+function buildMyIDEnhancements(cs: any, myidScore: number, classificacao: string) {
+  const scores: Record<string, number> = {
+    D: Number(cs.D ?? cs.D_pain ?? 0),
+    EFI: Number(cs.EFI ?? cs.EFI_functionality ?? 0),
+    P: Number(cs.P ?? cs.P_psychological ?? 0),
+    I: Number(cs.I ?? cs.I_inertia ?? 0),
+    R: Number(cs.R ?? cs.R_regulation ?? 0),
+    C: Number(cs.C ?? cs.C_context ?? 0),
+    N: Number(cs.N ?? cs.N_noise ?? 0),
+  };
+  const perdas: Record<string, { perda: number; critico: boolean }> = {};
+  let driverKey = "D", maxPerda = 0;
+  for (const dim of Object.keys(scores)) {
+    // EFI é bem-estar/funcionalidade: menor valor = pior, por isso usa o déficit (10 - score), igual às capacidades.
+    const p = dim === "EFI" ? perdaDeEnh(dim, 10 - scores[dim]) : perdaDeEnh(dim, scores[dim]);
+    perdas[dim] = p;
+    const ajustada = p.perda * (p.critico ? 1.5 : 1);
+    if (ajustada > maxPerda) { maxPerda = ajustada; driverKey = dim; }
+  }
+  const di = DRIVER_INTERVENCOES_ENH[driverKey] || DRIVER_INTERVENCOES_ENH.D;
+  const driver = {
+    key: driverKey,
+    label: DIM_LABELS_ENH[driverKey] || driverKey,
+    perda: perdas[driverKey].perda,
+    score: scores[driverKey],
+    intervencoes: di.intervencoes,
+    encaminhamentos: di.encaminhamentos,
+  };
+
+  const reforcos_por_fase = [
+    {
+      numero: 1,
+      foco: `Reduzir sobrecarga em ${driver.label}`,
+      intervencoes: [
+        ...di.intervencoes.slice(0, 3),
+        ...(perdas.R.perda >= 10 && driverKey !== "R" ? ["Higiene do sono: rotina fixa"] : []),
+        ...(perdas.D.perda >= 14 && driverKey !== "D" ? ["Manejo concomitante da dor"] : []),
+      ],
+    },
+    {
+      numero: 2,
+      foco: "Capacidade física e funcional",
+      intervencoes: [
+        "Core e estabilização 3×/sem",
+        "Caminhada progressiva (10→30 min/dia)",
+        "Mobilidade articular sistêmica",
+        ...(perdas.EFI.perda >= 10 ? ["Retorno gradual às AVDs"] : []),
+        ...(perdas.C.perda >= 7 ? ["Reestruturação gradual do contexto social"] : []),
+      ],
+    },
+    {
+      numero: 3,
+      foco: "Prevenção e consolidação de hábitos",
+      intervencoes: [
+        "Programa domiciliar autônomo",
+        "Hidratação 2L/dia",
+        "Nutrição: 2 porções de vegetais/dia",
+        "Ergonomia: ajuste definitivo do workstation",
+        "Reavaliação MyID em 30 dias",
+      ],
+    },
+  ];
+
+  const missoes: { titulo: string; descricao: string; categoria: string; xp: number; dimensao: string }[] = [];
+  if (perdas.D.perda >= 8) missoes.push({ titulo: "Respiração Terapêutica", descricao: "5 min de respiração diafragmática (4-7-8) ao acordar e antes de dormir.", categoria: perdas.D.perda >= 14 ? "urgente" : "importante", xp: 15, dimensao: "D" });
+  if (perdas.R.perda >= 10) missoes.push({ titulo: "Ritual do Sono", descricao: "Desligar telas 1h antes de deitar e dormir 30 min mais cedo.", categoria: perdas.R.critico ? "urgente" : "importante", xp: 20, dimensao: "R" });
+  if (perdas.P.perda >= 4) missoes.push({ titulo: "Desafio da Coragem", descricao: "Fazer UMA atividade que evita por medo da dor — com calma.", categoria: "urgente", xp: 25, dimensao: "P" });
+  if (perdas.C.perda >= 7) missoes.push({ titulo: "Válvula de Escape", descricao: "Identificar UMA fonte de estresse controlável e definir ação para reduzi-la.", categoria: "importante", xp: 30, dimensao: "C" });
+  if (missoes.length < 3) missoes.push({ titulo: "Caminhada Progressiva", descricao: "10 min hoje, +5 min a cada 3 dias. Meta: 30 min/dia.", categoria: "oportunidade", xp: 15, dimensao: "AF" });
+
+  return {
+    generated_at: new Date().toISOString(),
+    myid_score: myidScore,
+    classificacao,
+    driver,
+    reforcos_por_fase,
+    missoes_prioritarias: missoes.slice(0, 4),
+    meta_final: `MyID ${Math.min(100, Math.round(myidScore + 20))} em 6 semanas`,
+  };
+}
+
 /** Recomputa um `resultado_processado` (formato do MyIDCalculator) corrigindo apenas a direção de EFI. */
 function recomputeResult(resultado: any): { changed: boolean; novo: any; oldScore: number; newScore: number } {
   const cs = resultado?.component_scores || resultado?.componentScores;
@@ -236,6 +351,52 @@ serve(async (req) => {
           myid_score: newScore,
           classificacao: novo.myid_100?.classificacao || av.classificacao,
         }).eq("id", av.id);
+      }
+    }
+
+    // ── 3. protocolos ativos enriquecidos com myid_enhancements (driver/missões calculados com o bug) ──
+    const { data: protocolosAtivos, error: errProtocolos } = await supabase
+      .from("protocolos")
+      .select("id, paciente_id, scores_avaliacao")
+      .eq("terapeuta_id", terapeutaId)
+      .eq("status", "ativo")
+      .not("scores_avaliacao", "is", null);
+
+    if (errProtocolos) throw errProtocolos;
+
+    for (const protocolo of protocolosAtivos || []) {
+      const enhancementsAntigo = protocolo.scores_avaliacao?.myid_enhancements;
+      if (!enhancementsAntigo || !protocolo.paciente_id) continue;
+      totalChecadas++;
+
+      const { data: ultimaAvaliacao } = await supabase
+        .from("avaliacoes_identidade")
+        .select("myid_analysis, myid_score, classificacao")
+        .eq("paciente_id", protocolo.paciente_id)
+        .eq("terapeuta_id", terapeutaId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const cs = ultimaAvaliacao?.myid_analysis?.component_scores || ultimaAvaliacao?.myid_analysis?.componentScores;
+      if (!cs) continue;
+
+      const enhancementsNovo = buildMyIDEnhancements(cs, ultimaAvaliacao!.myid_score, ultimaAvaliacao!.classificacao);
+      if (enhancementsNovo.driver.key === enhancementsAntigo.driver?.key && enhancementsNovo.driver.perda === enhancementsAntigo.driver?.perda) {
+        continue;
+      }
+
+      totalAlteradas++;
+      amostras.push({
+        tabela: "protocolos",
+        id: protocolo.id,
+        driverAntigo: enhancementsAntigo.driver?.key,
+        driverNovo: enhancementsNovo.driver.key,
+      });
+      if (!dryRun) {
+        await supabase.from("protocolos").update({
+          scores_avaliacao: { ...protocolo.scores_avaliacao, myid_enhancements: enhancementsNovo },
+        }).eq("id", protocolo.id);
       }
     }
 
