@@ -904,7 +904,7 @@ export default function PacientePerfil() {
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-left hover:bg-emerald-50 hover:shadow-md hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group"
+                className="col-span-2 sm:col-span-1 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-left hover:bg-emerald-50 hover:shadow-md hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group"
                 title="Abrir financeiro"
               >
                 <div className="flex items-center gap-1.5 text-emerald-700 mb-1">
