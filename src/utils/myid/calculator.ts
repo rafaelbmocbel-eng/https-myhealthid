@@ -410,23 +410,23 @@ export class MyIDCalculator {
         this.calculateHormones();
 
         const D = this.scores['D'] || 0;
-        const EFI = this.scores['EFI'] || 0;
         const P = this.scores['P'] || 0;
         const I = this.scores['I'] || 0;
         const N = this.scores['N'] || 0;
 
-        // For capacity dimensions (R, C, AF, HID, NUT, ERG):
+        // For capacity dimensions (R, C, AF, HID, NUT, ERG, EFI):
         // High value = good. Loss table uses DEFICIT (10 - value) as input.
+        // EFI é bem-estar/funcionalidade (igual às demais): menor valor = pior, por isso entra aqui, não em DEMANDA.
         const R = this.scores['R'] || 0;
         const C = this.scores['C'] || 0;
         const AF = this.scores['AF'] || 0;
         const HID = this.scores['HID'] || 0;
         const NUT = this.scores['NUT'] || 0;
         const ERG = this.scores['ERG'] || 0;
+        const EFI = this.scores['EFI'] || 0;
 
         // Calculate losses for DEMAND dimensions (raw score = how bad)
         this.perdas['D'] = calcularPerdaDimensao('D', D);
-        this.perdas['EFI'] = calcularPerdaDimensao('EFI', EFI);
         this.perdas['P'] = calcularPerdaDimensao('P', P);
         this.perdas['I'] = calcularPerdaDimensao('I', I);
         this.perdas['N'] = calcularPerdaDimensao('N', N);
@@ -438,6 +438,7 @@ export class MyIDCalculator {
         this.perdas['HID'] = calcularPerdaDimensao('HID', 10 - HID);
         this.perdas['NUT'] = calcularPerdaDimensao('NUT', 10 - NUT);
         this.perdas['ERG'] = calcularPerdaDimensao('ERG', 10 - ERG);
+        this.perdas['EFI'] = calcularPerdaDimensao('EFI', 10 - EFI);
 
         const dataInicio = this.responses.bloco_1_date || this.responses.bloco1?.data_inicio_dor || this.responses.bloco1?.dataInicioDor;
         const cronicMult = this.getCronicidadeMultiplier(dataInicio);
@@ -510,8 +511,8 @@ export class MyIDCalculator {
             return 'MANUTENÇÃO';
         }
 
-        const demandDims = ['D', 'EFI', 'P', 'I'];
-        const capacityDims = ['R', 'C', 'AF', 'HID', 'NUT', 'ERG'];
+        const demandDims = ['D', 'P', 'I'];
+        const capacityDims = ['R', 'C', 'AF', 'HID', 'NUT', 'ERG', 'EFI'];
 
         if (demandDims.includes(driver.dimensao)) {
             this.result.clinical_priority = 'REDUZIR DEMANDA';

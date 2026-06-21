@@ -126,14 +126,14 @@ export default function MyIDFingerprint({
       const filledSweep  = AVAIL_SWEEP * fillFraction;
 
       const color = ring.color || getThermalColor(ring.value);
-      // Severity drives brightness:
-      // capacity: low value = alarming (brighter)
-      // demand:   high value = alarming (brighter)
-      const opacity = ring.type === 'inner'
-        ? 0.42 + (1 - ring.value / 10) * 0.53
-        : 0.42 + (ring.value / 10) * 0.53;
+      // Severity drives brightness (0-10, maior = mais alarmante):
+      // capacity (inner): low value = alarming
+      // demand (outer): high value = alarming
+      // EFI é "outer" mas é bem-estar (menor = pior), por isso vem com severity explícito.
+      const severity = ring.severity ?? (ring.type === 'inner' ? 10 - ring.value : ring.value);
+      const opacity = 0.42 + (severity / 10) * 0.53;
 
-      return { ...ring, r, startDeg, gapCenter, filledSweep, color, opacity, index: i };
+      return { ...ring, r, startDeg, gapCenter, filledSweep, color, opacity, severity, index: i };
     });
   }, [allRings, spacing, totalRings]);
 
@@ -253,9 +253,9 @@ export default function MyIDFingerprint({
                   strokeLinecap="round"
                   opacity={isActive ? 1 : ridge.opacity}
                   filter={
-                    isActive           ? 'url(#fp-glow-hi)'  :
-                    ridge.value >= 7   ? 'url(#fp-glow-hi)'  :
-                    ridge.value >= 4.5 ? 'url(#fp-glow-med)' : undefined
+                    isActive             ? 'url(#fp-glow-hi)'  :
+                    ridge.severity >= 7   ? 'url(#fp-glow-hi)'  :
+                    ridge.severity >= 4.5 ? 'url(#fp-glow-med)' : undefined
                   }
                   style={{ transition: 'stroke-width 0.2s ease, opacity 0.2s ease' }}
                 />

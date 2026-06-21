@@ -202,6 +202,9 @@ export interface FingerprintRing {
   type: 'inner' | 'outer';
   color: string;
   scoreKey: string;
+  /** 0-10, quanto maior mais alarmante. Default: inner = 10 - value, outer = value.
+   *  Necessário para EFI, que é "outer" (anel externo) mas tem semântica de bem-estar (menor = pior). */
+  severity?: number;
 }
 
 // ── Defaults ──

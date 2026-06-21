@@ -229,10 +229,10 @@ export default function PatientIntegratedDashboard({
     const emoMaxLoss = 5 + 10;
     const emoLevel = Math.max(0, 100 - ((emoLossP + emoLossC) / emoMaxLoss) * 100);
 
-    // Sistêmica: N (demand), D (demand), EFI (demand)
+    // Sistêmica: N (demand), D (demand), EFI (capacity — bem-estar, menor = pior)
     const sistLossN = calcularPerdaDimensao('N', sc.N).perda_pontos;
     const sistLossD = calcularPerdaDimensao('D', sc.D).perda_pontos;
-    const sistLossEFI = calcularPerdaDimensao('EFI', sc.EFI).perda_pontos;
+    const sistLossEFI = calcularPerdaDimensao('EFI', 10 - sc.EFI).perda_pontos;
     const sistMaxLoss = 5 + 20 + 15;
     const sistLevel = Math.max(0, 100 - ((sistLossN + sistLossD + sistLossEFI) / sistMaxLoss) * 100);
 
@@ -321,17 +321,17 @@ export default function PatientIntegratedDashboard({
     let totalPerdas = 0;
     // Demand dimensions (raw score = how bad)
     totalPerdas += calcularPerdaDimensao('D', sc.D).perda_pontos;
-    totalPerdas += calcularPerdaDimensao('EFI', sc.EFI).perda_pontos;
     totalPerdas += calcularPerdaDimensao('P', sc.P).perda_pontos;
     totalPerdas += calcularPerdaDimensao('I', sc.I).perda_pontos;
     totalPerdas += calcularPerdaDimensao('N', sc.N).perda_pontos;
-    // Capacity dimensions (deficit = 10 - value)
+    // Capacity dimensions (deficit = 10 - value) — EFI é bem-estar: menor valor = pior, igual às capacidades.
     totalPerdas += calcularPerdaDimensao('R', 10 - sc.R).perda_pontos;
     totalPerdas += calcularPerdaDimensao('C', 10 - sc.C).perda_pontos;
     totalPerdas += calcularPerdaDimensao('AF', 10 - sc.AF).perda_pontos;
     totalPerdas += calcularPerdaDimensao('HID', 10 - sc.HID).perda_pontos;
     totalPerdas += calcularPerdaDimensao('NUT', 10 - sc.NUT).perda_pontos;
     totalPerdas += calcularPerdaDimensao('ERG', 10 - sc.ERG).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('EFI', 10 - sc.EFI).perda_pontos;
     return Math.max(0, Math.min(100, 100 - totalPerdas));
   };
 

@@ -59,7 +59,6 @@ export default function MyIDFormulaDisplay({
   const perdas = perdasProp || (() => {
     const p: Record<string, PerdaCalculada> = {};
     p['D'] = calcularPerdaDimensao('D', D);
-    p['EFI'] = calcularPerdaDimensao('EFI', EFI);
     p['P'] = calcularPerdaDimensao('P', P);
     p['I'] = calcularPerdaDimensao('I', I);
     p['N'] = calcularPerdaDimensao('N', N);
@@ -69,6 +68,8 @@ export default function MyIDFormulaDisplay({
     p['HID'] = calcularPerdaDimensao('HID', 10 - HID);
     p['NUT'] = calcularPerdaDimensao('NUT', 10 - NUT);
     p['ERG'] = calcularPerdaDimensao('ERG', 10 - ERG);
+    // EFI é bem-estar/funcionalidade: menor valor = pior, usa o déficit como as capacidades.
+    p['EFI'] = calcularPerdaDimensao('EFI', 10 - EFI);
     return p;
   })();
 

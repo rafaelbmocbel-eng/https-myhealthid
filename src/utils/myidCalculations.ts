@@ -188,6 +188,16 @@ export function getMyIDInterpretation(
       if (dimVal === undefined || dimVal === null) continue;
       const threshold = CRITICAL_THRESHOLDS[key];
 
+      // EFI é bem-estar/funcionalidade: menor valor = pior (oposto das demais dimensões de demanda aqui).
+      if (key === 'EFI') {
+        if (dimVal <= 3) {
+          dimensionAlerts.push({ dimension: key, label: DIMENSION_LABELS[key] || key, value: dimVal, severity: 'CRÍTICO' });
+        } else if (dimVal <= 5) {
+          dimensionAlerts.push({ dimension: key, label: DIMENSION_LABELS[key] || key, value: dimVal, severity: 'MODERADO' });
+        }
+        continue;
+      }
+
       if (threshold !== undefined && dimVal >= threshold) {
         dimensionAlerts.push({
           dimension: key,
@@ -226,7 +236,8 @@ export function calcularMyID(
 ): MyIDResult {
   // Calculate losses using the loss table
   const perdaD = calcularPerdaDimensao('D', d);
-  const perdaEFI = calcularPerdaDimensao('EFI', efi);
+  // EFI é bem-estar/funcionalidade: menor valor = pior, por isso usa o déficit (10 - efi), igual às capacidades.
+  const perdaEFI = calcularPerdaDimensao('EFI', 10 - efi);
   const perdaP = calcularPerdaDimensao('P', p);
   const perdaI = calcularPerdaDimensao('I', i);
   const perdaN = calcularPerdaDimensao('N', n);
@@ -282,7 +293,8 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
     { label: 'Alimentação', value: scores.NUT || 7, type: 'inner', color: getThermalColor(10 - (scores.NUT || 7)), scoreKey: 'NUT' },
     { label: 'Postura no dia', value: scores.ERG || 7, type: 'inner', color: getThermalColor(10 - (scores.ERG || 7)), scoreKey: 'ERG' },
     // ── DEMANDA (anéis externos) ──
-    { label: 'Suas atividades do dia', value: scores.EFI || 0, type: 'outer', color: getThermalColor(scores.EFI || 0), scoreKey: 'EFI' },
+    // EFI fica visualmente no grupo "externo", mas é bem-estar/funcionalidade: menor valor = pior.
+    { label: 'Suas atividades do dia', value: scores.EFI || 0, type: 'outer', color: getThermalColor(10 - (scores.EFI || 0)), scoreKey: 'EFI', severity: 10 - (scores.EFI || 0) },
     { label: 'Cabeça e emoções', value: scores.P || 0, type: 'outer', color: getThermalColor(scores.P || 0), scoreKey: 'P' },
     { label: 'Mudanças recentes', value: scores.I || 0, type: 'outer', color: getThermalColor(scores.I || 0), scoreKey: 'I' },
     { label: 'Sinais do corpo', value: scores.N || 0, type: 'outer', color: getThermalColor(scores.N || 0), scoreKey: 'N' },

@@ -326,11 +326,11 @@ export function gerarInsightsClinicosMyID(scores: {
   // Calculate all losses
   const perdas: Record<string, PerdaCalculada> = {};
   // Demand dimensions (high = bad)
-  for (const dim of ['D', 'EFI', 'P', 'I', 'N']) {
+  for (const dim of ['D', 'P', 'I', 'N']) {
     perdas[dim] = calcularPerdaDimensao(dim, scores[dim as keyof typeof scores] as number || 0);
   }
-  // Capacity dimensions (high = good, loss = 10 - value)
-  for (const dim of ['R', 'C', 'AF', 'HID', 'NUT', 'ERG']) {
+  // Capacity dimensions (high = good, loss = 10 - value) — EFI também é bem-estar: menor = pior.
+  for (const dim of ['R', 'C', 'AF', 'HID', 'NUT', 'ERG', 'EFI']) {
     const raw = scores[dim as keyof typeof scores] as number || 0;
     perdas[dim] = calcularPerdaDimensao(dim, 10 - raw);
   }
