@@ -418,7 +418,7 @@ export default function PacienteDashboard() {
                     <ClipboardList className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-foreground">📋 Histórico Clínico</h3>
+                    <h3 className="text-sm font-bold text-foreground">Histórico Clínico</h3>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       Conte sobre fraturas, cirurgias, traumas e medicações — seu profissional revisa antes de qualquer coisa entrar no seu prontuário.
                     </p>
@@ -442,7 +442,7 @@ export default function PacienteDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-black text-primary-foreground">
-                        {myIdPromptType === 'first' ? '🎯 Descubra seu MyID!' : '🔄 Hora de atualizar seu MyID!'}
+                        {myIdPromptType === 'first' ? 'Descubra seu MyID!' : 'Hora de atualizar seu MyID!'}
                       </h3>
                       <p className="text-[11px] text-primary-foreground/70 mt-0.5">
                         {myIdPromptType === 'first'
@@ -533,8 +533,8 @@ export default function PacienteDashboard() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-primary-foreground">
                       {isInTrial
-                        ? `🎁 Trial Premium ativo — ${trialDiasRestantes} ${trialDiasRestantes === 1 ? 'dia restante' : 'dias restantes'}`
-                        : '✨ Desbloqueie tudo com Wellness Premium'}
+                        ? `Trial Premium ativo — ${trialDiasRestantes} ${trialDiasRestantes === 1 ? 'dia restante' : 'dias restantes'}`
+                        : 'Desbloqueie tudo com Wellness Premium'}
                     </h3>
                     <p className="text-[11px] text-primary-foreground/75 mt-0.5">
                       {isInTrial

@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
+  Users, Plus, Search, Phone, Mail, Calendar, Edit, Trash2,
   Loader2, User, Activity, AlignCenter, CalendarDays, CalendarPlus, Link2, Copy, RefreshCw,
   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download, BarChart3,
   DollarSign, MessageSquare, MoreHorizontal, Bell,
@@ -945,7 +945,7 @@ export default function Pacientes() {
                             <CalendarPlus className="icon-sm mr-2" /> Agendar sessão
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(p)}>
-                            <Edit2 className="icon-sm mr-2" /> Editar dados
+                            <Edit className="icon-sm mr-2" /> Editar dados
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDelete(p)}

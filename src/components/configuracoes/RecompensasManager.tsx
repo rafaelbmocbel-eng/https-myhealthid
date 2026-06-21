@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Edit2, Trash2, Gift, Sparkles, Loader2, Check, Clock } from 'lucide-react';
+import { Plus, Edit, Trash2, Gift, Sparkles, Loader2, Check, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   useRecompensasCatalogoPro, useResgatesPro, NIVEIS_ORDEM, NIVEL_LABEL, NIVEL_COR,
@@ -113,7 +113,7 @@ export default function RecompensasManager() {
                     {r.estoque !== null && <span>Estoque: {r.estoque}</span>}
                   </div>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Edit2 className="w-4 h-4" /></Button>
+                <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Edit className="w-4 h-4" /></Button>
                 <Button size="icon" variant="ghost" onClick={() => handleRemove(r.id)}>
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
