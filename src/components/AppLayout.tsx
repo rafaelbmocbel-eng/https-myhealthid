@@ -1,5 +1,14 @@
-import { useState, useLayoutEffect, useCallback, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useState, useLayoutEffect, useCallback, useMemo, Fragment } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import { getProfessionalBreadcrumbs } from '@/lib/breadcrumbs';
 
 import {
   DropdownMenu,
@@ -37,6 +46,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const hideQuickActionsFab = location.pathname.startsWith('/pacientes');
   const isHomePage = useMemo(() => location.pathname === '/hoje', [location.pathname]);
+  const breadcrumbs = useMemo(() => getProfessionalBreadcrumbs(location.pathname), [location.pathname]);
 
   useLayoutEffect(() => {
     let rafId: number;
@@ -159,6 +169,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
           )}
           style={{ touchAction: 'pan-y' }}
         >
+          {breadcrumbs.length > 0 && (
+            <Breadcrumb className="mb-3">
+              <BreadcrumbList>
+                {breadcrumbs.map((crumb, i) => (
+                  <Fragment key={crumb.path ?? crumb.label}>
+                    {i > 0 && <BreadcrumbSeparator />}
+                    <BreadcrumbItem>
+                      {crumb.path ? (
+                        <BreadcrumbLink asChild>
+                          <Link to={crumb.path}>{crumb.label}</Link>
+                        </BreadcrumbLink>
+                      ) : (
+                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      )}
+                    </BreadcrumbItem>
+                  </Fragment>
+                ))}
+              </BreadcrumbList>
+            </Breadcrumb>
+          )}
           {children}
           <AppFooter />
         </main>

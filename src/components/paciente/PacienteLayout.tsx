@@ -1,5 +1,5 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
@@ -12,6 +12,15 @@ import PortalOfflineBanner from './PortalOfflineBanner';
 import { supabase } from '@/integrations/supabase/client';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 import { cn } from '@/lib/utils';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import { getPatientBreadcrumbs } from '@/lib/breadcrumbs';
 
 const navItems = [
   { path: '/paciente/dashboard', label: 'Início',                shortLabel: 'Início',   icon: LayoutDashboard, badgeKey: null, premium: false },
@@ -47,6 +56,7 @@ export default function PacienteLayout({ children }: Props) {
 
   const primaryItems = useMemo(() => MOBILE_PRIMARY.map(i => navItems[i]), []);
   const secondaryItems = useMemo(() => MOBILE_SECONDARY.map(i => navItems[i]), []);
+  const breadcrumbs = useMemo(() => getPatientBreadcrumbs(location.pathname), [location.pathname]);
 
   // Fecha o drawer ao navegar
   useEffect(() => { setMaisOpen(false); }, [location.pathname]);
@@ -190,6 +200,26 @@ export default function PacienteLayout({ children }: Props) {
           className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6"
           style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', scrollBehavior: 'auto', touchAction: 'pan-y' }}
         >
+          {breadcrumbs.length > 0 && (
+            <Breadcrumb className="px-4 pt-3">
+              <BreadcrumbList>
+                {breadcrumbs.map((crumb, i) => (
+                  <Fragment key={crumb.path ?? crumb.label}>
+                    {i > 0 && <BreadcrumbSeparator />}
+                    <BreadcrumbItem>
+                      {crumb.path ? (
+                        <BreadcrumbLink asChild>
+                          <Link to={crumb.path}>{crumb.label}</Link>
+                        </BreadcrumbLink>
+                      ) : (
+                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      )}
+                    </BreadcrumbItem>
+                  </Fragment>
+                ))}
+              </BreadcrumbList>
+            </Breadcrumb>
+          )}
           {children}
         </main>
       </div>
