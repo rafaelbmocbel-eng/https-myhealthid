@@ -787,6 +787,131 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M110 298 C 108 296 108 293 111 292 C 114 291 116 293 116 296 C 116 299 113 301 111 300 C 110 300 110 299 110 298 Z M130 298 C 132 296 132 293 129 292 C 126 291 124 293 124 296 C 124 299 127 301 129 300 C 130 300 130 299 130 298 Z'
   },
 
+  // ── SENSORY SYSTEM ───────────────────────────
+
+  // Olho direito: small ellipse over the right side of the face
+  {
+    id: 'olho_d',
+    label: 'Olho D',
+    view: 'front',
+    sistemas: ['sensorial'],
+    type: 'organ',
+    layer: 11,
+    d: 'M108 42 C 108 40 110 39 112 40 C 114 41 114 43 112 44 C 110 45 108 44 108 42 Z'
+  },
+
+  // Olho esquerdo: mirror of olho_d
+  {
+    id: 'olho_e',
+    label: 'Olho E',
+    view: 'front',
+    sistemas: ['sensorial'],
+    type: 'organ',
+    layer: 11,
+    d: 'M128 42 C 128 40 130 39 132 40 C 134 41 134 43 132 44 C 130 45 128 44 128 42 Z'
+  },
+
+  // Orelha direita: ear on right side of head
+  {
+    id: 'orelha_d',
+    label: 'Orelha D (Externa/Média/Interna)',
+    view: 'front',
+    sistemas: ['sensorial'],
+    type: 'organ',
+    layer: 11,
+    d: 'M90 44 C 87 45 86 50 88 54 C 90 57 94 56 94 51 C 94 47 93 44 90 44 Z'
+  },
+
+  // Orelha esquerda: mirror of orelha_d
+  {
+    id: 'orelha_e',
+    label: 'Orelha E (Externa/Média/Interna)',
+    view: 'front',
+    sistemas: ['sensorial'],
+    type: 'organ',
+    layer: 11,
+    d: 'M150 44 C 153 45 154 50 152 54 C 150 57 146 56 146 51 C 146 47 147 44 150 44 Z'
+  },
+
+  // Nariz / mucosa olfatória: midline nose
+  {
+    id: 'nariz_olfato',
+    label: 'Nariz / Mucosa Olfatória',
+    view: 'front',
+    sistemas: ['sensorial'],
+    type: 'organ',
+    layer: 11,
+    d: 'M118 50 C 117 54 116 58 117 60 C 118 62 122 62 123 60 C 124 58 123 54 122 50 C 121 49 119 49 118 50 Z'
+  },
+
+  // Língua / paladar: mouth area
+  {
+    id: 'lingua_paladar',
+    label: 'Língua / Paladar',
+    view: 'front',
+    sistemas: ['sensorial'],
+    type: 'organ',
+    layer: 11,
+    d: 'M114 64 C 114 62 126 62 126 64 C 126 67 122 69 120 69 C 118 69 114 67 114 64 Z'
+  },
+
+  // ── INTEGUMENTARY SYSTEM ─────────────────────
+
+  // Couro cabeludo: scalp arc at top of head
+  {
+    id: 'couro_cabeludo',
+    label: 'Couro Cabeludo',
+    view: 'front',
+    sistemas: ['tegumentar'],
+    type: 'structural',
+    layer: 11,
+    d: 'M96 27 C 100 19 140 19 144 27 L142 29 C 136 22 104 22 98 29 Z'
+  },
+
+  // Glândulas sebáceas: T-zone, symbolic
+  {
+    id: 'glandulas_sebaceas',
+    label: 'Glândulas Sebáceas',
+    view: 'front',
+    sistemas: ['tegumentar'],
+    type: 'gland',
+    layer: 11,
+    d: 'M116 46 C 115.5 45 116.5 44 117.5 45 C 118.5 46 117.5 47.5 116 46 Z M122 46 C 121.5 45 122.5 44 123.5 45 C 124.5 46 123.5 47.5 122 46 Z'
+  },
+
+  // Glândulas sudoríparas: palms, symbolic (hiperidrose palmar)
+  {
+    id: 'glandulas_sudoriparas',
+    label: 'Glândulas Sudoríparas (palmares)',
+    view: 'front',
+    sistemas: ['tegumentar'],
+    type: 'gland',
+    layer: 11,
+    d: 'M190 289 C 189.5 288 190.5 287 191.5 288 C 192.5 289 191.5 290.5 190 289 Z M46 289 C 45.5 288 46.5 287 47.5 288 C 48.5 289 47.5 290.5 46 289 Z'
+  },
+
+  // Unhas das mãos: bilateral, at hand tips
+  {
+    id: 'unhas_maos',
+    label: 'Unhas das Mãos',
+    view: 'front',
+    sistemas: ['tegumentar'],
+    type: 'structural',
+    layer: 11,
+    d: 'M190 298 C 190 296 192 295 194 296 C 196 297 196 299 194 300 C 192 301 190 300 190 298 Z M46 298 C 46 296 48 295 50 296 C 52 297 52 299 50 300 C 48 301 46 300 46 298 Z'
+  },
+
+  // Unhas dos pés: bilateral, at foot tips
+  {
+    id: 'unhas_pes',
+    label: 'Unhas dos Pés',
+    view: 'front',
+    sistemas: ['tegumentar'],
+    type: 'structural',
+    layer: 11,
+    d: 'M142 504 C 142 502 144 501 146 502 C 148 503 148 505 146 506 C 144 507 142 506 142 504 Z M94 504 C 94 502 96 501 98 502 C 100 503 100 505 98 506 C 96 507 94 506 94 504 Z'
+  },
+
   // ─────────────────────────────────────────────
   // BACK VIEW
   // ─────────────────────────────────────────────
@@ -1224,5 +1349,57 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
     trajeto: ['Forame isquiático maior E', 'Coxa posterior E', 'Divisão tibial/fibular'],
     inervacao: ['Motor: isquiotibiais, perna/pé E', 'Sensitivo: perna posterior E, pé E'],
     patologias: ['Ciatalgia', 'Síndrome do Piriforme', 'Compressão discal']
+  },
+
+  // Sensory System
+  olho_d: {
+    partes: ['Córnea', 'Cristalino', 'Retina', 'Nervo óptico (II par)', 'Músculos extraoculares'],
+    funcoes: ['Visão', 'Acomodação', 'Reflexo pupilar']
+  },
+  olho_e: {
+    partes: ['Córnea', 'Cristalino', 'Retina', 'Nervo óptico (II par)', 'Músculos extraoculares'],
+    funcoes: ['Visão', 'Acomodação', 'Reflexo pupilar']
+  },
+  orelha_d: {
+    partes: ['Orelha externa (pavilhão, canal auditivo)', 'Orelha média (martelo, bigorna, estribo)', 'Orelha interna (cóclea, labirinto vestibular)'],
+    nervo: ['Nervo vestibulococlear (VIII par)'],
+    funcoes: ['Audição', 'Equilíbrio']
+  },
+  orelha_e: {
+    partes: ['Orelha externa (pavilhão, canal auditivo)', 'Orelha média (martelo, bigorna, estribo)', 'Orelha interna (cóclea, labirinto vestibular)'],
+    nervo: ['Nervo vestibulococlear (VIII par)'],
+    funcoes: ['Audição', 'Equilíbrio']
+  },
+  nariz_olfato: {
+    partes: ['Mucosa olfatória', 'Bulbo olfatório', 'Conchas nasais'],
+    nervo: ['Nervo olfatório (I par)'],
+    funcoes: ['Olfato', 'Aquecimento e umidificação do ar']
+  },
+  lingua_paladar: {
+    partes: ['Papilas fungiformes', 'Papilas filiformes', 'Papilas circunvaladas', 'Papilas foliadas'],
+    nervo: ['Facial (VII par, 2/3 anteriores)', 'Glossofaríngeo (IX par, 1/3 posterior)'],
+    sabores: ['Doce', 'Salgado', 'Ácido', 'Amargo', 'Umami']
+  },
+
+  // Integumentary System
+  couro_cabeludo: {
+    partes: ['Epiderme', 'Derme', 'Folículos pilosos', 'Tecido subcutâneo'],
+    condicoes: ['Dermatite seborreica', 'Alopecia', 'Psoríase capilar']
+  },
+  glandulas_sebaceas: {
+    funcao: ['Produção de sebo (lubrificação cutânea)'],
+    condicoes: ['Acne', 'Seborreia', 'Cisto sebáceo']
+  },
+  glandulas_sudoriparas: {
+    tipos: ['Écrinas (termorregulação)', 'Apócrinas (axilas, região genital)'],
+    condicoes: ['Hiperidrose', 'Anidrose', 'Miliária']
+  },
+  unhas_maos: {
+    partes: ['Lâmina ungueal', 'Leito ungueal', 'Matriz', 'Cutícula', 'Lúnula'],
+    condicoes: ['Onicomicose', 'Psoríase ungueal', 'Baqueteamento digital', 'Coiloníquia']
+  },
+  unhas_pes: {
+    partes: ['Lâmina ungueal', 'Leito ungueal', 'Matriz', 'Cutícula'],
+    condicoes: ['Onicomicose', 'Onicocriptose (unha encravada)', 'Trauma ungueal']
   },
 };
