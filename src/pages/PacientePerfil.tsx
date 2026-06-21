@@ -768,10 +768,10 @@ export default function PacientePerfil() {
         </div>
 
         {/* ============ KPI CARDS — bigger, more readable ============ */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 mb-3">
           {/* Tempo de cadastro */}
-          <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+          <div className="rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
               <Clock className="h-3 w-3" />
               <span className="text-[10px] font-medium uppercase tracking-wider">Cliente há</span>
             </div>
@@ -784,8 +784,8 @@ export default function PacientePerfil() {
           </div>
 
           {/* Avaliações */}
-          <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+          <div className="rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
               <Activity className="h-3 w-3" />
               <span className="text-[10px] font-medium uppercase tracking-wider">Avaliações</span>
             </div>
@@ -798,8 +798,8 @@ export default function PacientePerfil() {
           </div>
 
           {/* Próxima sessão */}
-          <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+          <div className="rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
               <CalendarDays className="h-3 w-3" />
               <span className="text-[10px] font-medium uppercase tracking-wider">Próxima</span>
             </div>
@@ -827,10 +827,10 @@ export default function PacientePerfil() {
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-left hover:bg-primary/10 hover:shadow-md hover:border-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 group"
+                className="rounded-xl border border-primary/30 bg-primary/5 p-2.5 text-left hover:bg-primary/10 hover:shadow-md hover:border-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 group"
                 title="Abrir gestão de sessões e pacotes"
               >
-                <div className="flex items-center gap-1.5 text-primary mb-1">
+                <div className="flex items-center gap-1.5 text-primary mb-0.5">
                   <Package className="h-3 w-3" />
                   <span className="text-[10px] font-medium uppercase tracking-wider">Sessões</span>
                   <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -904,10 +904,10 @@ export default function PacientePerfil() {
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="col-span-2 sm:col-span-1 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-left hover:bg-emerald-50 hover:shadow-md hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group"
+                className="col-span-2 sm:col-span-1 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 text-left hover:bg-emerald-50 hover:shadow-md hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group"
                 title="Abrir financeiro"
               >
-                <div className="flex items-center gap-1.5 text-emerald-700 mb-1">
+                <div className="flex items-center gap-1.5 text-emerald-700 mb-0.5">
                   <DollarSign className="h-3 w-3" />
                   <span className="text-[10px] font-medium uppercase tracking-wider">Financeiro</span>
                   <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
