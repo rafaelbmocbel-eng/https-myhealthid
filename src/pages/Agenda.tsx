@@ -569,7 +569,12 @@ export default function Agenda() {
     prefillHandledRef.current = true;
     openNew(new Date());
     if (pacienteId) {
-      setForm(f => ({ ...f, paciente_id: pacienteId }));
+      const semConsultasAnteriores = !agendamentos.some(ag => ag.paciente_id === pacienteId);
+      setForm(f => ({
+        ...f,
+        paciente_id: pacienteId,
+        tipo_atendimento: semConsultasAnteriores ? 'primeira_consulta' : f.tipo_atendimento,
+      }));
     }
     // limpa params para não reabrir
     const next = new URLSearchParams(searchParams);
