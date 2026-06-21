@@ -305,7 +305,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const saveMut = useSaveEventoAnatomico();
   const deleteMut = useDeleteEventoAnatomico(pacienteId);
 
-  const [modoSimplificado, setModoSimplificado] = useState(!isProfessional);
+  const [modoSimplificadoState, setModoSimplificadoState] = useState(!isProfessional);
+  // Paciente nunca tem acesso de edição: força modo simplificado independente de estado local.
+  const modoSimplificado = !isProfessional || modoSimplificadoState;
+  const setModoSimplificado = setModoSimplificadoState;
   const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>([]);
   const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
@@ -556,7 +559,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const eventosDaRegiao = (rid: string) => eventos.filter(e => e.regiao_id === rid);
 
   const abrirSheet = (rid: string) => {
-    if (modoSimplificado) return;
+    if (!isProfessional || modoSimplificado) return;
     setSheetRegiao(rid);
     setEditing(null);
   };
@@ -624,15 +627,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 Lente: {lente.nome_exibicao}
               </button>
             )}
-            <Label htmlFor="modo-view" className="text-[10px] cursor-pointer">
-              {modoSimplificado ? "Visão Paciente" : "Visão Profissional"}
-            </Label>
-            <Switch
-              id="modo-view"
-              checked={!modoSimplificado} 
-              onCheckedChange={(v) => setModoSimplificado(!v)}
-              className="h-4 w-8"
-            />
+            {isProfessional && (
+              <>
+                <Label htmlFor="modo-view" className="text-[10px] cursor-pointer">
+                  {modoSimplificado ? "Visão Paciente" : "Visão Profissional"}
+                </Label>
+                <Switch
+                  id="modo-view"
+                  checked={!modoSimplificado}
+                  onCheckedChange={(v) => setModoSimplificado(!v)}
+                  className="h-4 w-8"
+                />
+              </>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -1435,8 +1442,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </TabsContent>
         </Tabs>
 
-        {/* Espaço de revisão abaixo do avatar: histórico vindo do portal do paciente ou adicionado pelo profissional. Não afeta o Índice de Homeostase até confirmação. */}
-        {(() => {
+        {/* Espaço de revisão abaixo do avatar: histórico vindo do portal do paciente ou adicionado pelo profissional. Não afeta o Índice de Homeostase até confirmação.
+            Exclusivo do profissional — o paciente não decide o que entra confirmado no próprio avatar clínico. */}
+        {isProfessional && (() => {
           const pendentes = eventos.filter(
             (e) => e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido'
           );
