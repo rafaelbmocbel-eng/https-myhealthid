@@ -276,17 +276,17 @@ function TodosOsLinks() {
                   <div className="flex items-center gap-1.5 ml-auto flex-wrap">
                     {avAtivo ? (
                       <>
-                        <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-[#25D366] hover:border-[#25D366]" title="WhatsApp" onClick={() => whatsApp(p.id, getLinkUrl(avAtivo.token), 'avaliacao')}>
-                          <MessageCircle className="h-3 w-3" />
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-[#25D366] hover:border-[#25D366]" title="WhatsApp" onClick={() => whatsApp(p.id, getLinkUrl(avAtivo.token), 'avaliacao')}>
+                          <MessageCircle className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-blue-500 hover:border-blue-400" title="Email" disabled={enviandoEmail === avAtivo.id} onClick={() => enviarEmail(avAtivo.id, p.id, getLinkUrl(avAtivo.token), 'avaliacao')}>
-                          {enviandoEmail === avAtivo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-blue-500 hover:border-blue-400" title="Email" disabled={enviandoEmail === avAtivo.id} onClick={() => enviarEmail(avAtivo.id, p.id, getLinkUrl(avAtivo.token), 'avaliacao')}>
+                          {enviandoEmail === avAtivo.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Abrir" onClick={() => window.open(getLinkUrl(avAtivo.token), '_blank')}>
-                          <ExternalLink className="h-3 w-3" />
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="Abrir" onClick={() => window.open(getLinkUrl(avAtivo.token), '_blank')}>
+                          <ExternalLink className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-red-400 hover:text-red-600" title="Cancelar" onClick={() => cancelarAvMutation.mutate(avAtivo.id)}>
-                          <Trash2 className="h-3 w-3" />
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-red-400 hover:text-red-600" title="Cancelar" onClick={() => cancelarAvMutation.mutate(avAtivo.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </>
                     ) : (
@@ -296,7 +296,7 @@ function TodosOsLinks() {
                         onClick={() => gerarLinkAvaliacao(p.id)}
                         disabled={gerando?.id === p.id && gerando?.tipo === 'av'}
                       >
-                        {gerando?.id === p.id && gerando?.tipo === 'av' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                        {gerando?.id === p.id && gerando?.tipo === 'av' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                         Gerar Link
                       </Button>
                     )}
@@ -323,17 +323,17 @@ function TodosOsLinks() {
                   <div className="flex items-center gap-1.5 ml-auto flex-wrap">
                     {agAtivo ? (
                       <>
-                        <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-[#25D366] hover:border-[#25D366]" title="WhatsApp" onClick={() => whatsApp(p.id, getAgendaUrl(agAtivo.token), 'agenda')}>
-                          <MessageCircle className="h-3 w-3" />
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-[#25D366] hover:border-[#25D366]" title="WhatsApp" onClick={() => whatsApp(p.id, getAgendaUrl(agAtivo.token), 'agenda')}>
+                          <MessageCircle className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-blue-500 hover:border-blue-400" title="Email" disabled={enviandoEmail === agAtivo.id} onClick={() => enviarEmail(agAtivo.id, p.id, getAgendaUrl(agAtivo.token), 'agenda')}>
-                          {enviandoEmail === agAtivo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-blue-500 hover:border-blue-400" title="Email" disabled={enviandoEmail === agAtivo.id} onClick={() => enviarEmail(agAtivo.id, p.id, getAgendaUrl(agAtivo.token), 'agenda')}>
+                          {enviandoEmail === agAtivo.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Abrir" onClick={() => window.open(getAgendaUrl(agAtivo.token), '_blank')}>
-                          <ExternalLink className="h-3 w-3" />
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="Abrir" onClick={() => window.open(getAgendaUrl(agAtivo.token), '_blank')}>
+                          <ExternalLink className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-red-400 hover:text-red-600" title="Cancelar" onClick={() => cancelarAgMutation.mutate(agAtivo.id)}>
-                          <Trash2 className="h-3 w-3" />
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-red-400 hover:text-red-600" title="Cancelar" onClick={() => cancelarAgMutation.mutate(agAtivo.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </>
                     ) : (
@@ -344,7 +344,7 @@ function TodosOsLinks() {
                         onClick={() => gerarLinkAgenda(p.id)}
                         disabled={gerando?.id === p.id && gerando?.tipo === 'ag'}
                       >
-                        {gerando?.id === p.id && gerando?.tipo === 'ag' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                        {gerando?.id === p.id && gerando?.tipo === 'ag' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                         Gerar Link
                       </Button>
                     )}
