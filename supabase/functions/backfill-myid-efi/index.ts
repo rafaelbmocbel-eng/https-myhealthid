@@ -339,9 +339,15 @@ serve(async (req) => {
 
     if (errIdentidade) throw errIdentidade;
 
+    // Mapa id → score/classificação corrigidos (mesmo para linhas sem alteração), usado no passo 4
+    // para recalcular os snapshots de evolução sem precisar reprocessar o resultado completo de novo.
+    const scoresCorrigidos = new Map<string, { myid_score: number; classificacao: string }>();
+
     for (const av of avaliacoesIdentidade || []) {
       totalChecadas++;
       const { changed, novo, oldScore, newScore } = recomputeResult(av.myid_analysis);
+      const classificacaoFinal = changed ? (novo.myid_100?.classificacao || av.classificacao) : av.classificacao;
+      scoresCorrigidos.set(av.id, { myid_score: newScore, classificacao: classificacaoFinal });
       if (!changed) continue;
       totalAlteradas++;
       amostras.push({ tabela: "avaliacoes_identidade", id: av.id, oldScore, newScore });
@@ -349,7 +355,7 @@ serve(async (req) => {
         await supabase.from("avaliacoes_identidade").update({
           myid_analysis: novo,
           myid_score: newScore,
-          classificacao: novo.myid_100?.classificacao || av.classificacao,
+          classificacao: classificacaoFinal,
         }).eq("id", av.id);
       }
     }
@@ -397,6 +403,44 @@ serve(async (req) => {
         await supabase.from("protocolos").update({
           scores_avaliacao: { ...protocolo.scores_avaliacao, myid_enhancements: enhancementsNovo },
         }).eq("id", protocolo.id);
+      }
+    }
+
+    // ── 4. evolucao_paciente (snapshots de myid_score/delta tirados no momento de cada avaliação) ──
+    // score_efi/delta_efi não mudam (são o valor bruto, nunca esteve errado).
+    // myid_score e delta_id_final precisam refletir o score já corrigido em avaliacoes_identidade.
+    const { data: evolucoes, error: errEvolucao } = await supabase
+      .from("evolucao_paciente")
+      .select("id, avaliacao_atual_id, avaliacao_anterior_id, myid_score, delta_id_final, classificacao")
+      .eq("terapeuta_id", terapeutaId);
+
+    if (errEvolucao) throw errEvolucao;
+
+    for (const ev of evolucoes || []) {
+      const atual = scoresCorrigidos.get(ev.avaliacao_atual_id);
+      if (!atual) continue;
+      totalChecadas++;
+
+      const anterior = ev.avaliacao_anterior_id ? scoresCorrigidos.get(ev.avaliacao_anterior_id) : null;
+      const novoDelta = anterior ? atual.myid_score - anterior.myid_score : 0;
+
+      if (atual.myid_score === ev.myid_score && novoDelta === ev.delta_id_final && atual.classificacao === ev.classificacao) {
+        continue;
+      }
+
+      totalAlteradas++;
+      amostras.push({
+        tabela: "evolucao_paciente",
+        id: ev.id,
+        oldScore: ev.myid_score,
+        newScore: atual.myid_score,
+      });
+      if (!dryRun) {
+        await supabase.from("evolucao_paciente").update({
+          myid_score: atual.myid_score,
+          delta_id_final: novoDelta,
+          classificacao: atual.classificacao,
+        }).eq("id", ev.id);
       }
     }
 
