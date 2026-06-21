@@ -5,22 +5,23 @@ import { Input } from '@/components/ui/input';
 import { Trash2, Plus, X } from 'lucide-react';
 
 // ---- Catálogo de estruturas por região ----
-type StructCat = 'musculos' | 'articulacoes' | 'ligamentos' | 'nervos';
+type StructCat = 'musculos' | 'articulacoes' | 'ligamentos' | 'nervos' | 'vertebras';
 const CAT_LABEL: Record<StructCat, string> = {
   musculos: 'Músculos',
   articulacoes: 'Articulações',
   ligamentos: 'Ligamentos',
   nervos: 'Nervos',
+  vertebras: 'Nível Vertebral',
 };
 const CAT_EMOJI: Record<StructCat, string> = {
-  musculos: '💪', articulacoes: '🦴', ligamentos: '🔗', nervos: '⚡',
+  musculos: '💪', articulacoes: '🦴', ligamentos: '🔗', nervos: '⚡', vertebras: '🦴',
 };
 
 type RegionStructures = Partial<Record<StructCat, string[]>>;
 export const STRUCTURES: Record<string, RegionStructures> = {
   cabeca: { musculos: ['Temporal', 'Masseter', 'Frontal'], articulacoes: ['ATM'], nervos: ['Trigêmeo', 'Occipital'] },
   pescoco: { musculos: ['ECOM', 'Escalenos', 'Suboccipitais'], articulacoes: ['C1-C7'], nervos: ['Plexo cervical'] },
-  cervical: { musculos: ['Suboccipitais', 'Esplênio', 'Semiespinhal'], articulacoes: ['Facetas C2-C7'], nervos: ['Raízes C5-C8'] },
+  cervical: { musculos: ['Suboccipitais', 'Esplênio', 'Semiespinhal'], articulacoes: ['Facetas C2-C7'], nervos: ['Raízes C5-C8'], vertebras: ['C2', 'C3', 'C4', 'C5', 'C6', 'C7'] },
   ombro_d: { musculos: ['Deltoide', 'Supraespinhal', 'Infraespinhal', 'Subescapular', 'Redondo menor'], articulacoes: ['Glenoumeral', 'AC', 'EC'], ligamentos: ['Coracoacromial', 'Glenoumerais'], nervos: ['Axilar', 'Supraescapular'] },
   ombro_e: { musculos: ['Deltoide', 'Supraespinhal', 'Infraespinhal', 'Subescapular', 'Redondo menor'], articulacoes: ['Glenoumeral', 'AC', 'EC'], ligamentos: ['Coracoacromial', 'Glenoumerais'], nervos: ['Axilar', 'Supraescapular'] },
   trapezio_d: { musculos: ['Trapézio sup.', 'Levantador da escápula', 'Romboide'], articulacoes: ['Escápulo-torácica'], nervos: ['Acessório', 'Dorsal da escápula'] },
@@ -28,8 +29,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
   peitoral: { musculos: ['Peitoral maior', 'Peitoral menor', 'Intercostais'], articulacoes: ['Costoesternais', 'Costocondrais'] },
   abdomen: { musculos: ['Reto abdominal', 'Oblíquos', 'Transverso'], nervos: ['Intercostais T7-T12'] },
   pelve: { musculos: ['Iliopsoas', 'Piriforme', 'Assoalho pélvico'], articulacoes: ['Sacroilíaca', 'Sínfise púbica'], ligamentos: ['Sacrotuberoso', 'Sacroespinhoso'] },
-  dorsal: { musculos: ['Latíssimo', 'Eretores da espinha', 'Romboides'], articulacoes: ['Facetas T1-T12'] },
-  lombar: { musculos: ['Multífidos', 'Quadrado lombar', 'Eretores'], articulacoes: ['Facetas L1-L5', 'L5-S1'], nervos: ['Raízes L1-L5'] },
+  dorsal: { musculos: ['Latíssimo', 'Eretores da espinha', 'Romboides'], articulacoes: ['Facetas T1-T12'], vertebras: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'] },
+  lombar: { musculos: ['Multífidos', 'Quadrado lombar', 'Eretores'], articulacoes: ['Facetas L1-L5', 'L5-S1'], nervos: ['Raízes L1-L5'], vertebras: ['L1', 'L2', 'L3', 'L4', 'L5', 'S1 (Sacro)', 'Cóccix'] },
   gluteos: { musculos: ['Glúteo máx.', 'Glúteo méd.', 'Glúteo mín.', 'Piriforme'], nervos: ['Ciático', 'Glúteo sup.'] },
   braco_d: { musculos: ['Bíceps', 'Braquial', 'Coracobraquial'], nervos: ['Musculocutâneo', 'Mediano'] },
   braco_e: { musculos: ['Bíceps', 'Braquial', 'Coracobraquial'], nervos: ['Musculocutâneo', 'Mediano'] },
