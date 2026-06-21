@@ -862,49 +862,94 @@ export default function Pacientes() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-sm">{p.nome} {p.sobrenome}</span>
-                        {pend && pend.count > 0 && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] h-5 bg-amber-50 text-amber-800 border-amber-300 gap-1 animate-pulse"
-                              >
-                                <Bell className="h-2.5 w-2.5" /> {pend.count} pendência{pend.count > 1 ? 's' : ''}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs">
-                              <div className="space-y-1">
-                                <p className="font-semibold text-xs">Pendências no perfil:</p>
-                                {pend.titulos.map((t, i) => (
-                                  <p key={i} className="text-xs">• {t}</p>
-                                ))}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        {linkAtivo && (
-                          <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
-                            <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
-                          </Badge>
-                        )}
-                        {(p as any).cadastro_status === 'pendente_paciente' && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] h-5 bg-amber-50 text-amber-800 border-amber-300 gap-1 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const url = `${getBaseUrl()}/portal/completar/${(p as any).portal_token}`;
-                              setShareModal({ open: true, nome: p.nome, telefone: p.telefone || undefined, url });
-                            }}
-                          >
-                            <Clock className="h-2.5 w-2.5" /> Aguardando dados
-                          </Badge>
-                        )}
-                        {tag === 'inadimplente' && (
-                          <Badge variant="outline" className={cn('text-[10px] h-5 border', tagCfg.bgColor, tagCfg.color)}>
-                            {tagCfg.emoji} {tagCfg.label}
-                          </Badge>
-                        )}
+                        {(() => {
+                          // Mostra só o badge de maior prioridade inline; o resto fica acessível via tooltip "+N".
+                          const candidatos: { key: string; node: React.ReactNode }[] = [];
+                          if (pend && pend.count > 0) {
+                            candidatos.push({
+                              key: 'pend',
+                              node: (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-5 bg-amber-50 text-amber-800 border-amber-300 gap-1 animate-pulse"
+                                >
+                                  <Bell className="h-2.5 w-2.5" /> {pend.count} pendência{pend.count > 1 ? 's' : ''}
+                                </Badge>
+                              ),
+                            });
+                          }
+                          if ((p as any).cadastro_status === 'pendente_paciente') {
+                            candidatos.push({
+                              key: 'aguardando',
+                              node: (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-5 bg-amber-50 text-amber-800 border-amber-300 gap-1 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const url = `${getBaseUrl()}/portal/completar/${(p as any).portal_token}`;
+                                    setShareModal({ open: true, nome: p.nome, telefone: p.telefone || undefined, url });
+                                  }}
+                                >
+                                  <Clock className="h-2.5 w-2.5" /> Aguardando dados
+                                </Badge>
+                              ),
+                            });
+                          }
+                          if (tag === 'inadimplente') {
+                            candidatos.push({
+                              key: 'tag',
+                              node: (
+                                <Badge variant="outline" className={cn('text-[10px] h-5 border', tagCfg.bgColor, tagCfg.color)}>
+                                  {tagCfg.emoji} {tagCfg.label}
+                                </Badge>
+                              ),
+                            });
+                          }
+                          if (linkAtivo) {
+                            candidatos.push({
+                              key: 'link',
+                              node: (
+                                <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
+                                  <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
+                                </Badge>
+                              ),
+                            });
+                          }
+                          if (candidatos.length === 0) return null;
+                          const [principal, ...resto] = candidatos;
+                          return (
+                            <>
+                              {pend && pend.count > 0 ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>{principal.node}</TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <div className="space-y-1">
+                                      <p className="font-semibold text-xs">Pendências no perfil:</p>
+                                      {pend.titulos.map((t, i) => (
+                                        <p key={i} className="text-xs">• {t}</p>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                principal.node
+                              )}
+                              {resto.length > 0 && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="text-[10px] h-5 text-muted-foreground cursor-default">
+                                      +{resto.length}
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="flex flex-col gap-1">
+                                    {resto.map(c => c.node)}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                       <div className="hidden sm:flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
                         {p.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telefone}</span>}
