@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -90,6 +91,10 @@ function CompletarCadastroPortalInner() {
       setLoading(false);
     })();
   }, [user, navigate, editMode]);
+
+  const camposPreenchiveis = Object.entries(form).filter(([k]) => k !== 'lgpd_aceite');
+  const camposPreenchidos = camposPreenchiveis.filter(([, v]) => v !== '' && v !== false).length;
+  const progressoPercent = Math.round((camposPreenchidos / camposPreenchiveis.length) * 100);
 
   const buscarCEP = async (cep: string) => {
     const digits = cep.replace(/\D/g, '');
@@ -183,6 +188,10 @@ function CompletarCadastroPortalInner() {
             Antes de começar sua avaliação <strong>MyID</strong>, complete seus dados pessoais.
             Leva menos de 3 minutos e nos ajuda a oferecer um atendimento mais seguro e personalizado.
           </p>
+          <div className="mt-3 space-y-1">
+            <Progress value={progressoPercent} className="h-1.5" />
+            <p className="text-[10px] text-muted-foreground text-right">{progressoPercent}% preenchido</p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
