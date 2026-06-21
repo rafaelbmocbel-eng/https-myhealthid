@@ -55,7 +55,8 @@ function buildMyIDEnhancements(cs: any, myidScore: number, classificacao: string
   const perdas: Record<string, { perda: number; critico: boolean }> = {};
   let driverKey = "D", maxPerda = 0;
   for (const dim of Object.keys(scores)) {
-    const p = perdaDe(dim, scores[dim]);
+    // EFI é bem-estar/funcionalidade: menor valor = pior, por isso usa o déficit (10 - score), igual às capacidades.
+    const p = dim === "EFI" ? perdaDe(dim, 10 - scores[dim]) : perdaDe(dim, scores[dim]);
     perdas[dim] = p;
     const ajustada = p.perda * (p.critico ? 1.5 : 1);
     if (ajustada > maxPerda) { maxPerda = ajustada; driverKey = dim; }
@@ -401,9 +402,10 @@ serve(async (req) => {
         : "EXCELENTE — O paciente apresenta boa capacidade de regulação com demandas controláveis. Manutenção e prevenção são o foco.";
 
       // Identify top concerns
+      // Funcionalidade (EFI) é bem-estar: menor valor = pior, por isso entra como déficit (10 - efiNum).
       const dimensions = [
         { name: "Dor", score: dNum, desc: "intensidade e frequência da dor reportada" },
-        { name: "Funcionalidade", score: efiNum, desc: "limitação funcional nas atividades diárias" },
+        { name: "Funcionalidade", score: 10 - efiNum, desc: "limitação funcional nas atividades diárias" },
         { name: "Psicológico", score: pNum, desc: "fatores emocionais como catastrofização, medo e ansiedade" },
         { name: "Demanda/Inércia", score: iNum, desc: "carga de demandas físicas e ocupacionais" },
         { name: "Ruído Sistêmico", score: nNum, desc: "fatores de estilo de vida como sono, estresse e hidratação" },
