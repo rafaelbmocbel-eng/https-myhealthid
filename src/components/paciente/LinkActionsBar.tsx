@@ -108,7 +108,7 @@ export default function LinkActionsBar({ items, className }: LinkActionsBarProps
                   >
                     <TypeIcon className="w-3 h-3 text-white" />
                   </span>
-                  <span className="hidden sm:inline">{item.label}</span>
+                  <span>{item.label}</span>
                   <span
                     className={cn(
                       'inline-flex items-center justify-center w-5 h-5 rounded-md shrink-0 ml-0.5',
@@ -148,7 +148,7 @@ export default function LinkActionsBar({ items, className }: LinkActionsBarProps
                 )}
               >
                 <TypeIcon className="icon-sm shrink-0" />
-                <span className="hidden sm:inline">{item.label}</span>
+                <span>{item.label}</span>
                 {item.loading ? (
                   <Loader2 className="w-3 h-3 animate-spin shrink-0" />
                 ) : (
