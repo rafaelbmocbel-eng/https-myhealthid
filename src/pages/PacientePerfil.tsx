@@ -779,7 +779,7 @@ export default function PacientePerfil() {
                   {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
                 </span>
                 <span className="text-[10px] text-muted-foreground truncate">
-                  desde {format(parseISO(paciente.created_at), 'dd/MM/yy')}
+                  {format(parseISO(paciente.created_at), 'dd/MM/yy')}
                 </span>
               </div>
             </div>
@@ -795,7 +795,10 @@ export default function PacientePerfil() {
                   {avaliacoesId.length + avaliacoesCob.length}
                 </span>
                 <span className="text-[10px] text-muted-foreground truncate">
-                  {avaliacoesId.length} ID · {avaliacoesCob.length} COB°
+                  {[
+                    avaliacoesId.length > 0 ? `${avaliacoesId.length} ID` : null,
+                    avaliacoesCob.length > 0 ? `${avaliacoesCob.length} COB°` : null,
+                  ].filter(Boolean).join(' · ') || 'nenhuma'}
                 </span>
               </div>
             </div>
