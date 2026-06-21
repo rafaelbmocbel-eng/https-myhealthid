@@ -13,6 +13,14 @@ export default function PortalGate() {
   const [searchParams] = useSearchParams();
   const [ready, setReady] = useState(false);
   const [PacienteLogin, setPacienteLogin] = useState<React.ComponentType | null>(null);
+  const [demorandoMuito, setDemorandoMuito] = useState(false);
+
+  // Se o carregamento inicial demorar demais, avisa o paciente em vez de deixar o spinner vago.
+  useEffect(() => {
+    if (ready) { setDemorandoMuito(false); return; }
+    const timer = setTimeout(() => setDemorandoMuito(true), 6000);
+    return () => clearTimeout(timer);
+  }, [ready]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,9 +59,22 @@ export default function PortalGate() {
 
   if (!ready || !PacienteLogin) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3 px-6 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Preparando portal...</p>
+        {demorandoMuito && (
+          <>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Isso está demorando mais que o normal. Verifique sua conexão com a internet.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-xs font-semibold text-primary underline"
+            >
+              Tentar novamente
+            </button>
+          </>
+        )}
       </div>
     );
   }

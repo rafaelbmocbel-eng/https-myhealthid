@@ -28,6 +28,14 @@ export default function PacienteLogin() {
   const [resetting, setResetting] = useState(false);
   const linkAttempted = useRef(false);
   const signOutAttempted = useRef(false);
+  const [demorandoMuito, setDemorandoMuito] = useState(false);
+
+  // Se o carregamento inicial demorar demais, avisa o paciente em vez de deixar o spinner vago.
+  useEffect(() => {
+    if (!authLoading && !linking) { setDemorandoMuito(false); return; }
+    const timer = setTimeout(() => setDemorandoMuito(true), 6000);
+    return () => clearTimeout(timer);
+  }, [authLoading, linking]);
 
   // If portal link (portal=1) and user is logged in as professional, sign them out first
   useEffect(() => {
@@ -266,9 +274,19 @@ export default function PacienteLogin() {
 
   if (authLoading || linking) {
     return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-3">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-3 px-6 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Conectando ao portal...</p>
+        {demorandoMuito && (
+          <>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Isso está demorando mais que o normal. Verifique sua conexão com a internet.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Tentar novamente
+            </Button>
+          </>
+        )}
       </div>
     );
   }
