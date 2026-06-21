@@ -7,7 +7,7 @@ import {
   Loader2,
   Fingerprint,
   CalendarDays,
-  LayoutDashboard,
+  Share2,
   Check,
   type LucideIcon,
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 const ICON_MAP: Record<string, LucideIcon> = {
   myid: Fingerprint,
   agenda: CalendarDays,
-  portal: LayoutDashboard,
+  portal: Share2,
 };
 
 export interface LinkActionItem {
@@ -83,7 +83,7 @@ export default function LinkActionsBar({ items, className }: LinkActionsBarProps
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
       {items.map((item) => {
         const colors = COLOR_MAP[item.color || 'primary'] || COLOR_MAP.primary;
-        const TypeIcon = ICON_MAP[item.key] || LayoutDashboard;
+        const TypeIcon = ICON_MAP[item.key] || Share2;
 
         if (item.active) {
           return (

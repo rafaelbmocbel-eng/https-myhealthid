@@ -730,7 +730,7 @@ export default function PacientePerfil() {
                   <LinkActionsBar
                     items={[{
                       key: 'portal',
-                      label: 'Portal do paciente',
+                      label: 'Portal',
                       active: true,
                       color: 'violet',
                       isWhatsApp: !!paciente.telefone,
