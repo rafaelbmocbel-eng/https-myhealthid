@@ -86,7 +86,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'nervoso'
   },
   {
-    keywords: ['bruxismo', 'ranger dentes', 'dor na mandibula', 'dor na mandíbula', 'atm', 'temporomandibular', 'dor na face'],
+    keywords: ['bruxismo', 'ranger dentes', 'dor na mandibula', 'dor na mandíbula', 'atm', 'dtm', 'temporomandibular', 'temporo mandibular', 'disfuncao temporomandibular', 'disfunção temporomandibular', 'disfuncao temporo mandibular', 'disfunção temporo mandibular', 'dor na face'],
     regioes: ['cabeca', 'pescoco'],
     sistema: 'musculoesqueletico'
   },

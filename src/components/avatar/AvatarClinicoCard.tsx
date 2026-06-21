@@ -1124,9 +1124,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           };
 
           const selecionadoExplicitamente = sistemasAtivos.length === 1 && sistemasAtivos[0] === sysToShow;
-          const regiaoAuto = sysToShow === 'musculoesqueletico'
+          const regiaoPadrao = sysToShow === 'musculoesqueletico'
             ? 'abdomen'
             : (VISCERAL_REGIONS.find(r => r.sistemas.includes(sysToShow))?.id || 'abdomen');
+          const regiaoDetectada = notaSistema.texto.trim()
+            ? encontrarSintomasEmTexto(notaSistema.texto).find(s => s.sistema === sysToShow)?.regiao_id
+            : undefined;
+          const regiaoAuto = regiaoDetectada || regiaoPadrao;
 
           return (
             <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 mt-3 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -1146,6 +1150,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     value={notaSistema.texto}
                     onChange={(e) => setNotaSistema({ ...notaSistema, texto: e.target.value })}
                   />
+                  {notaSistema.texto.trim() && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Será marcado no avatar em: <span className="font-bold text-foreground">
+                        {[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === regiaoAuto)?.label || regiaoAuto}
+                      </span>
+                      {!regiaoDetectada && ' (padrão — não identifiquei a região pelo texto)'}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2">
                     <Select
                       value={notaSistema.natureza}
