@@ -1888,6 +1888,7 @@ export type Database = {
           status: Database["public"]["Enums"]["status_evento_anatomico"]
           terapeuta_id: string
           tipo_achado: string
+          tipo_diagnostico: string
           updated_at: string
           visivel_paciente: boolean
         }
@@ -1909,6 +1910,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_evento_anatomico"]
           terapeuta_id: string
           tipo_achado: string
+          tipo_diagnostico?: string
           updated_at?: string
           visivel_paciente?: boolean
         }
@@ -1930,6 +1932,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_evento_anatomico"]
           terapeuta_id?: string
           tipo_achado?: string
+          tipo_diagnostico?: string
           updated_at?: string
           visivel_paciente?: boolean
         }
