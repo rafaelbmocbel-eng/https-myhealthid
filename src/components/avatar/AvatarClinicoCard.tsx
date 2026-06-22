@@ -22,6 +22,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
+import avatarAnatomicoFrente from '@/assets/avatar-anatomico-frente.png';
+
+
 
 
 const headPath =
@@ -927,18 +930,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            <g clipPath="url(#avc-clip)">
-              {/* Warm skin fill */}
-              <path d={FRONT_OUTLINE} fill="url(#avc-skin)" />
-              {/* Profundidade lateral esquerda */}
-              <path d={FRONT_OUTLINE} fill="url(#body-depth-l)" pointerEvents="none"/>
-              {/* Profundidade lateral direita */}
-              <path d={FRONT_OUTLINE} fill="url(#body-depth-r)" pointerEvents="none"/>
-              {/* Highlight de luz central */}
-              <path d={FRONT_OUTLINE} fill="url(#body-highlight)" pointerEvents="none"/>
+            {/* Ilustração anatômica realista como base do avatar */}
+            <image
+              href={avatarAnatomicoFrente}
+              x={0}
+              y={0}
+              width={240}
+              height={520}
+              preserveAspectRatio="xMidYMid meet"
+              pointerEvents="none"
+            />
 
-              {/* Contorno anatômico */}
-              <path d={FRONT_OUTLINE} fill="none" stroke="rgba(120,80,50,0.20)" strokeWidth={1.2} pointerEvents="none"/>
+            <g clipPath="url(#avc-clip)">
+
 
               {/* Anatomical structure lines */}
               {view === 'front' && (
