@@ -22,7 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
-import avatarSilhuetaPessoa from '@/assets/avatar-silhueta-pessoa.png';
+
 
 
 
@@ -930,18 +930,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            {/* Silhueta humana realista (front view) como base — opacidade baixa para não competir com marcações */}
+            {/* Silhueta humana vetorial como base — usa o MESMO path das regiões clicáveis,
+                garantindo alinhamento pixel-perfect entre silhueta e marcações de sistemas. */}
             {view === 'front' && (
-              <image
-                href={avatarSilhuetaPessoa}
-                x={20}
-                y={20}
-                width={200}
-                height={490}
-                preserveAspectRatio="xMidYMid meet"
-                opacity={0.35}
-                pointerEvents="none"
-              />
+              <g pointerEvents="none">
+                {/* Sombra suave para dar profundidade */}
+                <path d={FRONT_OUTLINE} fill="rgba(15,23,42,0.06)" transform="translate(1.5,2)" />
+                {/* Corpo: tom de pele neutro com leve gradiente */}
+                <path d={FRONT_OUTLINE} fill="hsl(28, 22%, 78%)" opacity={0.55} />
+                {/* Realce de volume */}
+                <path d={FRONT_OUTLINE} fill="url(#body-highlight)" />
+                {/* Contorno fino para definir a silhueta */}
+                <path d={FRONT_OUTLINE} fill="none" stroke="hsl(220, 15%, 40%)" strokeWidth={0.8} opacity={0.45} />
+              </g>
             )}
 
             <g clipPath="url(#avc-clip)">
