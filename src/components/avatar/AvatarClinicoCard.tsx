@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 import avatarHumanoFrente from '@/assets/avatar-humano-frente.png';
+import avatarHumanoCostas from '@/assets/avatar-humano-costas.png';
 
 
 
@@ -60,6 +61,13 @@ const AVATAR_IMAGE_FRAME = {
   y: -4.8,
   width: 363.6,
   height: 547.2,
+};
+
+const AVATAR_BACK_IMAGE_FRAME = {
+  x: -34.9,
+  y: -24.9,
+  width: 293.6,
+  height: 584.2,
 };
 
 const ORGAN_RESTING_COLORS: Record<string, string> = {
