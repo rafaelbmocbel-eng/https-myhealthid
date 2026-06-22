@@ -931,21 +931,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            {/* Silhueta humana realista (render 3D de manequim médico) calibrada para o viewBox 240x520.
-                Body bbox medido na imagem: head top y≈64/1536, feet bottom y≈1444/1536, x center ≈505/1024.
-                Posicionado para alinhar landmarks com FRONT_OUTLINE (head y=20, feet y=510).
-                Para back: espelhamos horizontalmente (manequim sem face fica neutro) + overlay anatômico. */}
+            {/* Silhueta humana realista calibrada bbox-a-bbox para o viewBox 240x520.
+                Body bbox medido na imagem (PIL): x 270→741, y 64→1443 (em 1024×1536).
+                Alvo FRONT_OUTLINE: x 48→192 (largura 144), y 20→520 (altura 500).
+                Usamos preserveAspectRatio="none" para ancorar landmarks anatômicos
+                (ombros, cintura, crista ilíaca, joelhos) nos pontos onde os órgãos
+                e regiões são desenhados — o leve squish horizontal (~14%) é aceitável
+                para a precisão clínica das marcações vs. silhueta humana. */}
             <g pointerEvents="none">
               <image
                 href={avatarHumanoFrente}
-                x={-59.3}
-                y={-3.4}
-                width={363.4}
-                height={544.9}
-                preserveAspectRatio="xMidYMid meet"
+                x={-34.5}
+                y={-3.2}
+                width={313.0}
+                height={556.9}
+                preserveAspectRatio="none"
                 opacity={0.95}
                 transform={view === 'back' ? 'translate(240,0) scale(-1,1)' : undefined}
               />
+
 
               {view === 'back' && (
                 /* Overlay anatômico das costas — coluna, escápulas, glúteos, Aquiles */
