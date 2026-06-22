@@ -938,10 +938,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             <g pointerEvents="none">
               <image
                 href={avatarHumanoFrente}
-                x={-66}
-                y={-7}
-                width={372}
-                height={557}
+                x={-59.3}
+                y={-3.4}
+                width={363.4}
+                height={544.9}
                 preserveAspectRatio="xMidYMid meet"
                 opacity={0.95}
                 transform={view === 'back' ? 'translate(240,0) scale(-1,1)' : undefined}
