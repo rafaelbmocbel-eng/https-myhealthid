@@ -318,103 +318,169 @@ function RegionShape({ id, cx, cy, r, fill, stroke, strokeWidth, opacity, classN
 }
 
 // ── Body silhouette outline ───────────────────────────────────────
-const FRONT_SILHOUETTE = `
-  M 150 18
-  C 170 18 178 30 178 45 C 178 58 170 68 162 72
-  L 165 75 C 168 78 170 82 170 85 L 170 92
-  C 180 95 195 100 205 108 C 215 116 220 122 222 128
-  L 235 168 C 238 178 240 190 242 200 L 248 260
-  C 250 272 248 282 244 288 L 240 285
-  C 238 278 235 268 232 258 L 222 200
-  C 220 192 218 185 215 180 L 205 150
-  C 200 140 198 135 196 130 L 192 120
-  C 188 118 185 120 183 125 L 180 140
-  C 178 148 176 155 175 162 L 173 180
-  C 172 195 172 210 172 225 L 172 250
-  C 172 265 174 280 178 295 C 182 310 185 320 186 330
-  L 186 340 C 185 348 182 355 180 365 L 178 395
-  C 176 410 175 425 175 435 L 176 460
-  C 176 475 177 490 178 500 L 180 530
-  C 181 540 182 548 184 555 C 186 562 190 566 192 570
-  L 192 572 C 190 576 185 578 178 578
-  C 172 578 170 575 168 570 L 168 555
-  C 167 548 166 540 166 530 L 164 500
-  C 163 490 162 475 162 460 L 162 435
-  C 162 425 161 410 160 400 L 157 370
-  C 155 358 153 348 152 340 L 150 330 L 148 340
-  C 147 348 145 358 143 370 L 140 400
-  C 139 410 138 425 138 435 L 138 460
-  C 138 475 137 490 136 500 L 134 530
-  C 134 540 133 548 132 555 L 132 570
-  C 130 575 128 578 122 578 C 115 578 110 576 108 572
-  L 108 570 C 110 566 114 562 116 555
-  C 118 548 119 540 120 530 L 122 500
-  C 123 490 124 475 124 460 L 124 435
-  C 125 425 124 410 122 395 L 120 365
-  C 118 355 115 348 114 340 L 114 330
-  C 115 320 118 310 122 295 C 126 280 128 265 128 250
-  L 128 225 C 128 210 128 195 127 180 L 125 162
-  C 124 155 122 148 120 140 L 117 125
-  C 115 120 112 118 108 120 L 104 130
-  C 102 135 100 140 95 150 L 85 180
-  C 82 185 80 192 78 200 L 68 258
-  C 65 268 62 278 60 285 L 56 288
-  C 52 282 50 272 52 260 L 58 200
-  C 60 190 62 178 65 168 L 78 128
-  C 80 122 85 116 95 108 C 105 100 120 95 130 92
-  L 130 85 C 130 82 132 78 135 75 L 138 72
-  C 130 68 122 58 122 45 C 122 30 130 18 150 18 Z
-`;
+// Composição modular (cabeça, pescoço, tronco, braços, pernas, mãos, pés)
+// — anatomicamente proporcional, simétrica e visualmente limpa.
 
 function BodyOutline({ side, uid }: { side: 'front' | 'back'; uid: string }) {
   const bodyColor = 'hsl(var(--muted-foreground))';
+  const skinFill = `url(#skin-${uid})`;
+  const strokeProps = {
+    fill: skinFill,
+    stroke: bodyColor,
+    strokeWidth: 1.4,
+    strokeLinejoin: 'round' as const,
+    strokeLinecap: 'round' as const,
+    opacity: 0.55,
+  };
+
+  // Torso: ombros largos → cintura → quadril (silhueta humana clássica)
+  // Anatomicamente: ombro y=92, peito y=130, cintura y=235, quadril y=300, virilha y=318
+  const torsoPath = `
+    M 108 92
+    C 96 96 86 106 82 122
+    L 76 168
+    C 75 175 80 180 86 178
+    C 92 176 94 170 95 162
+    L 100 132
+    L 100 245
+    C 100 268 104 285 110 300
+    L 116 318
+    L 184 318
+    L 190 300
+    C 196 285 200 268 200 245
+    L 200 132
+    L 205 162
+    C 206 170 208 176 214 178
+    C 220 180 225 175 224 168
+    L 218 122
+    C 214 106 204 96 192 92
+    C 178 88 164 86 150 86
+    C 136 86 122 88 108 92 Z
+  `.trim();
+
+  // Braço: ombro → bíceps → cotovelo → antebraço → punho (afinando)
+  const armLeft = `
+    M 82 122
+    C 70 145 64 175 62 210
+    C 60 245 60 275 58 300
+    C 57 310 56 318 60 322
+    C 64 324 70 322 72 316
+    C 76 300 80 275 84 245
+    C 88 215 92 180 96 145
+  `.trim();
+  const armRight = `
+    M 218 122
+    C 230 145 236 175 238 210
+    C 240 245 240 275 242 300
+    C 243 310 244 318 240 322
+    C 236 324 230 322 228 316
+    C 224 300 220 275 216 245
+    C 212 215 208 180 204 145
+  `.trim();
+
+  // Mão: oval suave no fim do braço
+  // Perna: quadril → coxa → joelho → panturrilha → tornozelo (afinando)
+  const legLeft = `
+    M 116 318
+    C 110 340 106 380 108 425
+    C 110 470 114 515 118 560
+    C 120 580 122 590 126 592
+    C 132 592 136 588 138 580
+    C 142 555 144 515 146 470
+    C 148 425 150 380 150 340
+    L 150 318 Z
+  `.trim();
+  const legRight = `
+    M 184 318
+    C 190 340 194 380 192 425
+    C 190 470 186 515 182 560
+    C 180 580 178 590 174 592
+    C 168 592 164 588 162 580
+    C 158 555 156 515 154 470
+    C 152 425 150 380 150 340
+    L 150 318 Z
+  `.trim();
+
   return (
     <g>
       <defs>
-        <radialGradient id={`skin-${uid}`} cx="50%" cy="30%" r="70%">
-          <stop offset="0%" stopColor={bodyColor} stopOpacity="0.05" />
-          <stop offset="100%" stopColor={bodyColor} stopOpacity="0.10" />
+        <radialGradient id={`skin-${uid}`} cx="50%" cy="25%" r="80%">
+          <stop offset="0%" stopColor={bodyColor} stopOpacity="0.04" />
+          <stop offset="100%" stopColor={bodyColor} stopOpacity="0.11" />
         </radialGradient>
-        <clipPath id={`body-clip-${uid}`}>
-          <path d={FRONT_SILHOUETTE} />
-        </clipPath>
         <filter id={`glow-${uid}`} x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>
 
-      {/* Body fill */}
-      <path d={FRONT_SILHOUETTE} fill={`url(#skin-${uid})`} stroke={bodyColor} strokeWidth="1.5" opacity="0.45" />
+      {/* Cabeça */}
+      <ellipse cx="150" cy="44" rx="26" ry="30" {...strokeProps} />
+      {/* Pescoço */}
+      <path d="M 138 68 L 138 88 Q 150 94 162 88 L 162 68 Z" {...strokeProps} />
+      {/* Tronco */}
+      <path d={torsoPath} {...strokeProps} />
+      {/* Braços */}
+      <path d={armLeft} {...strokeProps} fill="none" />
+      <path d={armRight} {...strokeProps} fill="none" />
+      {/* Mãos */}
+      <ellipse cx="62" cy="332" rx="11" ry="14" {...strokeProps} />
+      <ellipse cx="238" cy="332" rx="11" ry="14" {...strokeProps} />
+      {/* Pernas */}
+      <path d={legLeft} {...strokeProps} />
+      <path d={legRight} {...strokeProps} />
+      {/* Pés */}
+      {side === 'front' ? (
+        <>
+          <ellipse cx="128" cy="600" rx="14" ry="7" {...strokeProps} />
+          <ellipse cx="172" cy="600" rx="14" ry="7" {...strokeProps} />
+        </>
+      ) : (
+        <>
+          <ellipse cx="128" cy="600" rx="12" ry="8" {...strokeProps} />
+          <ellipse cx="172" cy="600" rx="12" ry="8" {...strokeProps} />
+        </>
+      )}
 
-      {/* Anatomical detail lines */}
+      {/* Detalhes anatômicos sutis */}
       {side === 'front' && (
         <g opacity="0.18" stroke={bodyColor} fill="none">
-          <path d="M 115 100 Q 135 94 150 97 Q 165 94 185 100" strokeWidth="0.8" />
-          <path d="M 150 104 L 150 118" strokeWidth="0.5" strokeDasharray="2,3" />
-          <line x1="150" y1="97" x2="150" y2="318" strokeWidth="0.4" strokeDasharray="2,6" />
-          <circle cx="150" cy="215" r="3.5" strokeWidth="0.7" />
-          <path d="M 118 238 Q 150 232 182 238" strokeWidth="0.5" strokeDasharray="3,4" />
-          <path d="M 116 289 Q 150 283 184 289" strokeWidth="0.5" strokeDasharray="3,4" />
-          <path d="M 118 295 Q 130 302 130 312 Q 130 322 128 332" strokeWidth="0.5" />
-          <path d="M 182 295 Q 170 302 170 312 Q 170 322 172 332" strokeWidth="0.5" />
-          <ellipse cx="128" cy="431" rx="9" ry="11" strokeWidth="0.6" />
-          <ellipse cx="172" cy="431" rx="9" ry="11" strokeWidth="0.6" />
+          {/* Clavículas */}
+          <path d="M 115 100 Q 135 94 150 98 Q 165 94 185 100" strokeWidth="0.8" />
+          {/* Esterno */}
+          <path d="M 150 108 L 150 130" strokeWidth="0.5" strokeDasharray="2,3" />
+          {/* Linea alba */}
+          <line x1="150" y1="135" x2="150" y2="295" strokeWidth="0.4" strokeDasharray="2,5" />
+          {/* Umbigo */}
+          <circle cx="150" cy="220" r="2.5" strokeWidth="0.7" />
+          {/* Linha peitoral */}
+          <path d="M 118 145 Q 150 138 182 145" strokeWidth="0.5" strokeDasharray="3,4" />
+          {/* Linha pélvica */}
+          <path d="M 118 290 Q 150 285 182 290" strokeWidth="0.5" strokeDasharray="3,4" />
+          {/* Joelhos */}
+          <ellipse cx="138" cy="432" rx="7" ry="9" strokeWidth="0.6" />
+          <ellipse cx="162" cy="432" rx="7" ry="9" strokeWidth="0.6" />
         </g>
       )}
       {side === 'back' && (
-        <g opacity="0.18" stroke={bodyColor} fill="none">
-          <line x1="150" y1="72" x2="150" y2="295" strokeWidth="0.9" strokeDasharray="3,3" />
-          {[90,105,120,135,150,165,180,195,210,225,245,265,280].map(y => (
-            <line key={y} x1="147" y1={y} x2="153" y2={y} strokeWidth="1" />
+        <g opacity="0.2" stroke={bodyColor} fill="none">
+          {/* Coluna vertebral */}
+          <line x1="150" y1="86" x2="150" y2="315" strokeWidth="0.9" strokeDasharray="3,3" />
+          {/* Vértebras */}
+          {[100,115,130,145,160,175,190,205,220,235,255,275,295].map(y => (
+            <line key={y} x1="146" y1={y} x2="154" y2={y} strokeWidth="1" />
           ))}
-          <path d="M 118 120 Q 112 130 115 148 Q 122 155 130 150 Q 136 142 132 128 Q 128 118 118 120" strokeWidth="0.8" />
-          <path d="M 182 120 Q 188 130 185 148 Q 178 155 170 150 Q 164 142 168 128 Q 172 118 182 120" strokeWidth="0.8" />
-          <path d="M 132 300 Q 150 313 168 300" strokeWidth="0.7" />
-          <circle cx="142" cy="274" r="2.5" strokeWidth="0.5" />
-          <circle cx="158" cy="274" r="2.5" strokeWidth="0.5" />
-          <line x1="126" y1="518" x2="124" y2="552" strokeWidth="0.6" />
-          <line x1="174" y1="518" x2="176" y2="552" strokeWidth="0.6" />
+          {/* Escápulas */}
+          <path d="M 120 130 Q 110 145 118 165 Q 132 168 138 152 Q 138 138 130 128 Q 124 126 120 130" strokeWidth="0.7" />
+          <path d="M 180 130 Q 190 145 182 165 Q 168 168 162 152 Q 162 138 170 128 Q 176 126 180 130" strokeWidth="0.7" />
+          {/* Sulco glúteo */}
+          <path d="M 130 320 Q 150 332 170 320" strokeWidth="0.7" />
+          {/* Fossas lombares */}
+          <circle cx="140" cy="285" r="2" strokeWidth="0.5" />
+          <circle cx="160" cy="285" r="2" strokeWidth="0.5" />
+          {/* Tendão de Aquiles */}
+          <line x1="128" y1="555" x2="128" y2="590" strokeWidth="0.6" />
+          <line x1="172" y1="555" x2="172" y2="590" strokeWidth="0.6" />
         </g>
       )}
     </g>
