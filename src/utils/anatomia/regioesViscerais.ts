@@ -1058,6 +1058,234 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     layer: 9,
     d: 'M100 290 C 96 308 92 330 92 354 C 92 378 94 400 96 424'
   },
+
+  // ─────────────────────────────────────────────
+  // NOVOS — Cobertura clínica adicional
+  // ─────────────────────────────────────────────
+
+  // ── NERVOSO — nervos periféricos e cranianos ──
+  {
+    id: 'nervos_cranianos', label: 'Nervos Cranianos (I–XII)', view: 'front',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M104 56 C 100 60 96 66 96 72 M116 58 C 112 64 108 70 106 76 M124 58 C 128 64 132 70 134 76 M136 56 C 140 60 144 66 144 72'
+  },
+  {
+    id: 'nervo_vago', label: 'Nervo Vago (X)', view: 'front',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M114 92 C 112 110 110 140 112 170 C 113 188 114 206 116 224 M126 92 C 128 110 130 140 128 170 C 127 188 126 206 124 224'
+  },
+  {
+    id: 'ganglio_estrelado', label: 'Gânglio Estrelado', view: 'front',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M110 106 C 108 106 108 110 110 110 C 112 110 112 106 110 106 Z M130 106 C 128 106 128 110 130 110 C 132 110 132 106 130 106 Z'
+  },
+  {
+    id: 'nervo_ulnar_d', label: 'Nervo Ulnar D', view: 'front',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M156 130 C 164 152 174 184 180 232 C 184 260 184 280 182 300'
+  },
+  {
+    id: 'nervo_ulnar_e', label: 'Nervo Ulnar E', view: 'front',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M84 130 C 76 152 66 184 60 232 C 56 260 56 280 58 300'
+  },
+  {
+    id: 'nervo_radial_d', label: 'Nervo Radial D', view: 'front',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M150 122 C 160 144 172 174 180 220 C 184 250 184 274 182 296'
+  },
+  {
+    id: 'nervo_radial_e', label: 'Nervo Radial E', view: 'front',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M90 122 C 80 144 68 174 60 220 C 56 250 56 274 58 296'
+  },
+  {
+    id: 'nervo_tibial_d', label: 'Nervo Tibial D', view: 'back',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M144 424 C 144 444 142 466 142 490'
+  },
+  {
+    id: 'nervo_tibial_e', label: 'Nervo Tibial E', view: 'back',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M96 424 C 96 444 98 466 98 490'
+  },
+  {
+    id: 'nervo_fibular_d', label: 'Nervo Fibular D', view: 'back',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M150 424 C 152 442 152 460 152 484'
+  },
+  {
+    id: 'nervo_fibular_e', label: 'Nervo Fibular E', view: 'back',
+    sistemas: ['nervoso'], type: 'nerve', layer: 9,
+    d: 'M90 424 C 88 442 88 460 88 484'
+  },
+
+  // ── CIRCULATÓRIO — vasos grandes adicionais ──
+  {
+    id: 'jugular_d', label: 'Veia Jugular D', view: 'front',
+    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    d: 'M108 92 L 110 110'
+  },
+  {
+    id: 'jugular_e', label: 'Veia Jugular E', view: 'front',
+    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    d: 'M132 92 L 130 110'
+  },
+  {
+    id: 'subclavia_d', label: 'Artéria/Veia Subclávia D', view: 'front',
+    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    d: 'M118 110 C 130 112 144 116 156 122'
+  },
+  {
+    id: 'subclavia_e', label: 'Artéria/Veia Subclávia E', view: 'front',
+    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    d: 'M122 110 C 110 112 96 116 84 122'
+  },
+  {
+    id: 'iliaca_d', label: 'Artéria Ilíaca D', view: 'front',
+    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    d: 'M119 282 C 124 290 134 296 144 300'
+  },
+  {
+    id: 'iliaca_e', label: 'Artéria Ilíaca E', view: 'front',
+    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    d: 'M121 282 C 116 290 106 296 96 300'
+  },
+  {
+    id: 'veia_porta', label: 'Veia Porta', view: 'front',
+    sistemas: ['circulatorio', 'digestorio'], type: 'vessel', layer: 8,
+    d: 'M108 218 C 114 224 120 228 124 232'
+  },
+
+  // ── RESPIRATÓRIO — vias aéreas superiores ──
+  {
+    id: 'seios_face', label: 'Seios da Face', view: 'front',
+    sistemas: ['respiratorio'], type: 'organ', layer: 7,
+    d: 'M108 54 C 104 54 102 60 106 64 C 110 64 112 60 108 54 Z M132 54 C 136 54 138 60 134 64 C 130 64 128 60 132 54 Z M114 70 C 112 70 112 76 116 76 C 120 76 122 72 120 70 Z M126 70 C 128 70 128 76 124 76 C 120 76 118 72 120 70 Z'
+  },
+  {
+    id: 'faringe', label: 'Faringe', view: 'front',
+    sistemas: ['respiratorio', 'digestorio'], type: 'organ', layer: 7,
+    d: 'M116 88 L 116 108 L 124 108 L 124 88 Z'
+  },
+  {
+    id: 'laringe', label: 'Laringe', view: 'front',
+    sistemas: ['respiratorio'], type: 'organ', layer: 7,
+    d: 'M114 104 L 114 118 L 126 118 L 126 104 Z'
+  },
+  {
+    id: 'bronquiolos_d', label: 'Bronquíolos D', view: 'front',
+    sistemas: ['respiratorio'], type: 'organ', layer: 6,
+    d: 'M150 156 C 156 162 160 170 162 180 M148 162 C 152 170 156 178 158 188 M154 168 C 160 174 164 182 168 192'
+  },
+  {
+    id: 'bronquiolos_e', label: 'Bronquíolos E', view: 'front',
+    sistemas: ['respiratorio'], type: 'organ', layer: 6,
+    d: 'M90 156 C 84 162 80 170 78 180 M92 162 C 88 170 84 178 82 188 M86 168 C 80 174 76 182 72 192'
+  },
+
+  // ── DIGESTÓRIO — boca/ducto/ânus ──
+  {
+    id: 'glandula_parotida_d', label: 'Parótida D', view: 'front',
+    sistemas: ['digestorio'], type: 'gland', layer: 8,
+    d: 'M148 74 C 144 74 142 82 146 86 C 152 86 154 80 152 76 C 151 74 150 74 148 74 Z'
+  },
+  {
+    id: 'glandula_parotida_e', label: 'Parótida E', view: 'front',
+    sistemas: ['digestorio'], type: 'gland', layer: 8,
+    d: 'M92 74 C 96 74 98 82 94 86 C 88 86 86 80 88 76 C 89 74 90 74 92 74 Z'
+  },
+  {
+    id: 'glandula_submandibular', label: 'Submandibulares', view: 'front',
+    sistemas: ['digestorio'], type: 'gland', layer: 8,
+    d: 'M112 88 C 108 88 108 94 112 94 C 116 94 116 88 112 88 Z M128 88 C 124 88 124 94 128 94 C 132 94 132 88 128 88 Z'
+  },
+  {
+    id: 'ducto_biliar', label: 'Ducto Biliar Comum', view: 'front',
+    sistemas: ['digestorio'], type: 'vessel', layer: 7,
+    d: 'M106 212 C 110 220 116 226 122 232'
+  },
+  {
+    id: 'anus', label: 'Ânus', view: 'front',
+    sistemas: ['digestorio'], type: 'organ', layer: 7,
+    d: 'M118 308 C 116 308 116 314 118 314 L 122 314 C 124 314 124 308 122 308 Z'
+  },
+
+  // ── URINÁRIO — pelve renal e néfrons ──
+  {
+    id: 'pelve_renal_d', label: 'Pelve Renal D', view: 'back',
+    sistemas: ['urinario'], type: 'organ', layer: 7,
+    d: 'M104 234 C 100 240 100 248 106 250 C 112 252 116 246 114 240 C 112 235 108 232 104 234 Z'
+  },
+  {
+    id: 'pelve_renal_e', label: 'Pelve Renal E', view: 'back',
+    sistemas: ['urinario'], type: 'organ', layer: 7,
+    d: 'M136 234 C 140 240 140 248 134 250 C 128 252 124 246 126 240 C 128 235 132 232 136 234 Z'
+  },
+
+  // ── LINFÁTICO — linfonodos profundos e MALT ──
+  {
+    id: 'amigdalas', label: 'Amígdalas', view: 'front',
+    sistemas: ['linfatico'], type: 'organ', layer: 8,
+    d: 'M114 86 C 112 86 112 92 114 92 C 116 92 116 86 114 86 Z M126 86 C 124 86 124 92 126 92 C 128 92 128 86 126 86 Z'
+  },
+  {
+    id: 'linfonodos_mediastinais', label: 'Linfonodos Mediastinais', view: 'front',
+    sistemas: ['linfatico'], type: 'organ', layer: 6,
+    d: 'M114 150 C 112 150 112 154 114 154 C 116 154 116 150 114 150 Z M126 150 C 124 150 124 154 126 154 C 128 154 128 150 126 150 Z M120 162 C 118 162 118 166 120 166 C 122 166 122 162 120 162 Z'
+  },
+  {
+    id: 'linfonodos_mesentericos', label: 'Linfonodos Mesentéricos', view: 'front',
+    sistemas: ['linfatico'], type: 'organ', layer: 6,
+    d: 'M108 248 C 106 248 106 252 108 252 C 110 252 110 248 108 248 Z M132 248 C 130 248 130 252 132 252 C 134 252 134 248 132 248 Z M120 258 C 118 258 118 262 120 262 C 122 262 122 258 120 258 Z'
+  },
+  {
+    id: 'linfonodos_popliteos_d', label: 'Linfonodos Poplíteos D', view: 'back',
+    sistemas: ['linfatico'], type: 'organ', layer: 7,
+    d: 'M144 416 C 142 416 142 422 144 422 C 146 422 146 416 144 416 Z'
+  },
+  {
+    id: 'linfonodos_popliteos_e', label: 'Linfonodos Poplíteos E', view: 'back',
+    sistemas: ['linfatico'], type: 'organ', layer: 7,
+    d: 'M96 416 C 94 416 94 422 96 422 C 98 422 98 416 96 416 Z'
+  },
+
+  // ── REPRODUTOR — completar genitália ──
+  {
+    id: 'mama_d', label: 'Mama D', view: 'front',
+    sistemas: ['reprodutor', 'endocrino'], type: 'organ', layer: 6,
+    d: 'M148 168 C 138 168 132 178 138 188 C 146 192 156 188 158 180 C 159 173 154 168 148 168 Z'
+  },
+  {
+    id: 'mama_e', label: 'Mama E', view: 'front',
+    sistemas: ['reprodutor', 'endocrino'], type: 'organ', layer: 6,
+    d: 'M92 168 C 102 168 108 178 102 188 C 94 192 84 188 82 180 C 81 173 86 168 92 168 Z'
+  },
+  {
+    id: 'vagina', label: 'Vagina', view: 'front',
+    sistemas: ['reprodutor'], type: 'organ', layer: 7,
+    d: 'M117 296 L 117 312 L 123 312 L 123 296 Z'
+  },
+  {
+    id: 'epididimo_d', label: 'Epidídimo D', view: 'front',
+    sistemas: ['reprodutor'], type: 'organ', layer: 8,
+    d: 'M132 310 C 130 310 130 318 132 318 C 134 318 134 310 132 310 Z'
+  },
+  {
+    id: 'epididimo_e', label: 'Epidídimo E', view: 'front',
+    sistemas: ['reprodutor'], type: 'organ', layer: 8,
+    d: 'M108 310 C 106 310 106 318 108 318 C 110 318 110 310 108 310 Z'
+  },
+  {
+    id: 'penis', label: 'Pênis', view: 'front',
+    sistemas: ['reprodutor'], type: 'organ', layer: 7,
+    d: 'M116 304 L 116 322 L 124 322 L 124 304 Z'
+  },
+  {
+    id: 'escroto', label: 'Escroto', view: 'front',
+    sistemas: ['reprodutor'], type: 'organ', layer: 6,
+    d: 'M104 314 C 100 320 104 326 120 326 C 136 326 140 320 136 314 C 130 312 110 312 104 314 Z'
+  },
 ];
 
 export const VISCERAL_STRUCTURES: Record<string, any> = {
