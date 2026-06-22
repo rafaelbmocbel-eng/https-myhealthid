@@ -930,16 +930,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            {/* Ilustração anatômica realista como base do avatar */}
-            <image
-              href={avatarAnatomicoFrente}
-              x={0}
-              y={0}
-              width={240}
-              height={520}
-              preserveAspectRatio="xMidYMid meet"
-              pointerEvents="none"
-            />
+            {/* Ilustração anatômica removida — usamos silhueta vetorial para alinhamento perfeito das zonas */}
 
             <g clipPath="url(#avc-clip)">
 
