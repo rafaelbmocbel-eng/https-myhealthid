@@ -931,84 +931,41 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            {/* Silhueta humana — vetorial, alinhada pixel-perfect com as regiões clicáveis.
-                Renderizada para front E back (mesmo contorno externo) com detalhes anatômicos
-                decorativos que dão aparência humana realista sem deslocar as marcações. */}
+            {/* Silhueta humana realista (render 3D de manequim médico) calibrada para o viewBox 240x520.
+                Body bbox medido na imagem: head top y≈64/1536, feet bottom y≈1444/1536, x center ≈505/1024.
+                Posicionado para alinhar landmarks com FRONT_OUTLINE (head y=20, feet y=510).
+                Para back: espelhamos horizontalmente (manequim sem face fica neutro) + overlay anatômico. */}
             <g pointerEvents="none">
-              {/* Sombra base */}
-              <path d={FRONT_OUTLINE} fill="rgba(15,23,42,0.08)" transform="translate(1.8,2.5)" />
-              {/* Corpo: gradiente de pele */}
-              <defs>
-                <linearGradient id="skin-grad" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%"   stopColor="hsl(28, 35%, 84%)" />
-                  <stop offset="50%"  stopColor="hsl(26, 28%, 76%)" />
-                  <stop offset="100%" stopColor="hsl(24, 22%, 68%)" />
-                </linearGradient>
-              </defs>
-              <path d={FRONT_OUTLINE} fill="url(#skin-grad)" opacity={0.78} />
-              {/* Realce especular suave */}
-              <path d={FRONT_OUTLINE} fill="url(#body-highlight)" />
+              <image
+                href={avatarHumanoFrente}
+                x={-66}
+                y={-7}
+                width={372}
+                height={557}
+                preserveAspectRatio="xMidYMid meet"
+                opacity={0.95}
+                transform={view === 'back' ? 'translate(240,0) scale(-1,1)' : undefined}
+              />
 
-              {view === 'front' ? (
-                /* Detalhes anatômicos da FRENTE: peitorais, abdômen, joelhos, deltoides */
-                <g fill="none" stroke="hsl(24, 25%, 42%)" opacity={0.28} strokeLinecap="round">
-                  {/* Linha do pescoço/clavícula */}
-                  <path d="M104 92 Q120 98 136 92" strokeWidth={0.7} />
-                  <path d="M100 96 Q120 104 140 96" strokeWidth={0.6} opacity={0.5} />
-                  {/* Peitorais */}
-                  <path d="M108 108 Q120 124 132 108" strokeWidth={0.7} />
-                  <path d="M118 110 Q120 122 122 110" strokeWidth={0.5} />
-                  {/* Esterno/linea alba */}
-                  <path d="M120 122 L120 220" strokeWidth={0.5} strokeDasharray="1,2" opacity={0.4} />
-                  {/* Linhas abdominais */}
-                  <path d="M110 160 Q120 164 130 160" strokeWidth={0.45} opacity={0.5} />
-                  <path d="M110 180 Q120 184 130 180" strokeWidth={0.45} opacity={0.5} />
-                  <path d="M110 200 Q120 204 130 200" strokeWidth={0.45} opacity={0.5} />
-                  {/* Umbigo */}
-                  <circle cx={120} cy={222} r={1.3} fill="hsl(24, 25%, 42%)" stroke="none" opacity={0.35} />
-                  {/* Deltoides */}
-                  <path d="M74 118 Q66 130 64 148" strokeWidth={0.55} />
-                  <path d="M166 118 Q174 130 176 148" strokeWidth={0.55} />
-                  {/* Joelhos */}
-                  <circle cx={108} cy={400} r={4} strokeWidth={0.55} />
-                  <circle cx={132} cy={400} r={4} strokeWidth={0.55} />
-                  {/* Linha da virilha */}
-                  <path d="M100 318 Q120 326 140 318" strokeWidth={0.55} />
-                </g>
-              ) : (
-                /* Detalhes anatômicos das COSTAS: coluna, escápulas, glúteos */
-                <g fill="none" stroke="hsl(24, 25%, 42%)" opacity={0.32} strokeLinecap="round">
-                  {/* Coluna */}
-                  <path d="M120 96 L120 300" strokeWidth={0.7} strokeDasharray="2,2" />
-                  {/* Vértebras */}
-                  {[110,124,138,152,166,180,194,208,222,236,250,264,278,292].map(y => (
-                    <line key={y} x1={116} y1={y} x2={124} y2={y} strokeWidth={0.55} />
+              {view === 'back' && (
+                /* Overlay anatômico das costas — coluna, escápulas, glúteos, Aquiles */
+                <g fill="none" stroke="hsl(24, 35%, 22%)" opacity={0.40} strokeLinecap="round">
+                  <path d="M120 100 L120 305" strokeWidth={0.9} strokeDasharray="2,2" />
+                  {[112,126,140,154,168,182,196,210,224,238,252,266,280,294].map(y => (
+                    <line key={y} x1={115} y1={y} x2={125} y2={y} strokeWidth={0.7} />
                   ))}
-                  {/* Escápulas */}
-                  <path d="M88 130 Q100 148 110 178 Q104 158 88 130 Z" strokeWidth={0.6} fill="hsl(24, 20%, 60%)" fillOpacity={0.15} />
-                  <path d="M152 130 Q140 148 130 178 Q136 158 152 130 Z" strokeWidth={0.6} fill="hsl(24, 20%, 60%)" fillOpacity={0.15} />
-                  {/* Trapézio */}
-                  <path d="M96 96 Q120 110 144 96" strokeWidth={0.55} />
-                  {/* Latíssimos */}
-                  <path d="M80 180 Q92 210 104 240" strokeWidth={0.5} opacity={0.6} />
-                  <path d="M160 180 Q148 210 136 240" strokeWidth={0.5} opacity={0.6} />
-                  {/* Cova lombar (PSIS) */}
-                  <circle cx={112} cy={282} r={1.6} fill="hsl(24, 25%, 35%)" stroke="none" opacity={0.45} />
-                  <circle cx={128} cy={282} r={1.6} fill="hsl(24, 25%, 35%)" stroke="none" opacity={0.45} />
-                  {/* Sulco glúteo */}
-                  <path d="M120 300 L120 322" strokeWidth={0.6} />
-                  <path d="M92 312 Q120 326 148 312" strokeWidth={0.55} />
-                  {/* Fossas poplíteas */}
-                  <path d="M104 398 Q108 404 112 398" strokeWidth={0.45} />
-                  <path d="M128 398 Q132 404 136 398" strokeWidth={0.45} />
-                  {/* Tendão de Aquiles */}
-                  <path d="M108 480 L108 500" strokeWidth={0.4} />
-                  <path d="M132 480 L132 500" strokeWidth={0.4} />
+                  <path d="M92 130 Q104 154 114 182" strokeWidth={0.75} />
+                  <path d="M148 130 Q136 154 126 182" strokeWidth={0.75} />
+                  <circle cx={112} cy={284} r={1.9} fill="hsl(24, 35%, 20%)" stroke="none" opacity={0.55} />
+                  <circle cx={128} cy={284} r={1.9} fill="hsl(24, 35%, 20%)" stroke="none" opacity={0.55} />
+                  <path d="M120 305 L120 330" strokeWidth={0.8} />
+                  <path d="M90 320 Q120 334 150 320" strokeWidth={0.7} />
+                  <path d="M104 398 Q108 405 112 398" strokeWidth={0.55} />
+                  <path d="M128 398 Q132 405 136 398" strokeWidth={0.55} />
+                  <path d="M108 478 L108 500" strokeWidth={0.5} />
+                  <path d="M132 478 L132 500" strokeWidth={0.5} />
                 </g>
               )}
-
-              {/* Contorno externo fino */}
-              <path d={FRONT_OUTLINE} fill="none" stroke="hsl(220, 18%, 32%)" strokeWidth={0.7} opacity={0.55} />
             </g>
 
             <g clipPath="url(#avc-clip)">
