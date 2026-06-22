@@ -24,21 +24,122 @@ import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 
 
-const FRONT_OUTLINE =
-  'M120 18 C 136 18 150 30 152 48 C 154 64 146 78 136 88 C 133 90 130 92 128 94 ' +
-  'L 130 100 C 142 104 158 110 168 118 C 178 126 184 136 186 148 ' +
-  'L 194 178 L 198 220 L 202 268 L 198 300 L 192 308 L 186 308 ' +
-  'L 182 276 L 174 224 L 166 172 C 164 168 162 166 160 166 ' +
-  'L 158 212 L 156 272 L 162 356 L 158 428 L 152 496 L 140 504 ' +
-  'L 136 496 L 134 428 L 128 356 L 124 276 ' +
-  'L 116 276 L 112 356 L 106 428 L 104 496 ' +
-  'L 100 504 L 88 496 L 82 428 L 78 356 L 84 272 ' +
-  'L 82 212 L 80 166 C 78 166 76 168 74 172 ' +
-  'L 66 224 L 58 276 L 54 308 L 48 308 L 42 300 ' +
-  'L 38 268 L 42 220 L 46 178 ' +
-  'C 56 136 62 126 72 118 C 82 110 98 104 110 100 ' +
-  'L 112 94 C 110 92 107 90 104 88 C 94 78 86 64 88 48 ' +
-  'C 90 30 104 18 120 18 Z';
+const headPath =
+  'M120 20 ' +
+  'C142 20 150 34 150 48 ' +
+  'C150 62 142 72 120 72 ' +
+  'C98 72 90 62 90 48 ' +
+  'C90 34 98 20 120 20 Z';
+
+const neckPath =
+  'M110 72 ' +
+  'L108 90 ' +
+  'Q120 96 132 90 ' +
+  'L130 72 Z';
+
+const torsoPath =
+  'M108 90 ' +
+  'C92 94 78 104 72 116 ' +
+  'C68 126 68 138 70 154 ' +
+  'L72 182 ' +
+  'C74 198 80 214 90 240 ' +
+  'C94 252 96 268 96 280 ' +
+  'L94 292 ' +
+  'C90 302 92 310 96 315 ' +
+  'C104 322 136 322 144 315 ' +
+  'C148 310 150 302 146 292 ' +
+  'L144 280 ' +
+  'C144 268 146 252 150 240 ' +
+  'C160 214 166 198 168 182 ' +
+  'L170 154 ' +
+  'C172 138 172 126 168 116 ' +
+  'C162 104 148 94 132 90 Z';
+
+const armLeftPath =
+  'M72 116 ' +
+  'C62 124 56 136 54 154 ' +
+  'L50 190 ' +
+  'C48 206 46 222 48 238 ' +
+  'C50 252 56 266 68 272 ' +
+  'L72 274 ' +
+  'C78 270 80 262 78 252 ' +
+  'C76 238 74 222 76 206 ' +
+  'L80 170 ' +
+  'C82 152 82 138 78 126 ' +
+  'L74 118 Z';
+
+const armRightPath =
+  'M168 116 ' +
+  'C178 124 184 136 186 154 ' +
+  'L190 190 ' +
+  'C192 206 194 222 192 238 ' +
+  'C190 252 184 266 172 272 ' +
+  'L168 274 ' +
+  'C162 270 160 262 162 252 ' +
+  'C164 238 166 222 164 206 ' +
+  'L160 170 ' +
+  'C158 152 158 138 162 126 ' +
+  'L166 118 Z';
+
+const handLeftPath =
+  'M68 272 ' +
+  'C62 278 58 286 58 294 ' +
+  'C58 302 62 306 70 306 ' +
+  'C78 306 82 300 82 292 ' +
+  'C82 284 76 276 72 274 Z';
+
+const handRightPath =
+  'M172 272 ' +
+  'C178 278 182 286 182 294 ' +
+  'C182 302 178 306 170 306 ' +
+  'C162 306 158 300 158 292 ' +
+  'C158 284 164 276 168 274 Z';
+
+const legLeftPath =
+  'M96 315 ' +
+  'C92 340 92 366 94 386 ' +
+  'C96 404 98 420 98 438 ' +
+  'L96 470 ' +
+  'C96 484 98 496 102 506 ' +
+  'L106 512 ' +
+  'L114 512 ' +
+  'C118 500 118 488 118 474 ' +
+  'L120 440 ' +
+  'C120 420 118 402 116 384 ' +
+  'C114 366 116 340 122 316 Z';
+
+const legRightPath =
+  'M144 315 ' +
+  'C148 340 148 366 146 386 ' +
+  'C144 404 142 420 142 438 ' +
+  'L144 470 ' +
+  'C144 484 142 496 138 506 ' +
+  'L134 512 ' +
+  'L126 512 ' +
+  'C122 500 122 488 122 474 ' +
+  'L120 440 ' +
+  'C120 420 122 402 124 384 ' +
+  'C126 366 124 340 118 316 Z';
+
+const footLeftPath =
+  'M102 506 ' +
+  'C98 510 96 516 98 520 ' +
+  'C104 522 112 522 116 518 ' +
+  'C118 514 116 510 114 512 Z';
+
+const footRightPath =
+  'M138 506 ' +
+  'C142 510 144 516 142 520 ' +
+  'C136 522 128 522 124 518 ' +
+  'C122 514 124 510 126 512 Z';
+
+const FRONT_OUTLINE = [
+  headPath, neckPath, torsoPath,
+  armLeftPath, armRightPath,
+  handLeftPath, handRightPath,
+  legLeftPath, legRightPath,
+  footLeftPath, footRightPath,
+].join(' ');
 
 const ORGAN_RESTING_COLORS: Record<string, string> = {
   // Nervous — blue-lavender
@@ -843,32 +944,34 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               {view === 'front' && (
                 <g fill="none" stroke="hsl(var(--foreground))" strokeWidth={0.55} opacity={0.30}>
                   {/* Clavicles */}
-                  <path d="M120 108 Q108 112 96 120" strokeWidth={0.85} />
-                  <path d="M120 108 Q132 112 144 120" strokeWidth={0.85} />
+                  <path d="M120 96 Q106 100 92 108" strokeWidth={0.85} />
+                  <path d="M120 96 Q134 100 148 108" strokeWidth={0.85} />
                   {/* Sternum */}
-                  <path d="M120 110 L120 196" strokeWidth={0.95} />
-                  {/* Ribs – right */}
-                  <path d="M120 126 Q105 124 94 133" />
-                  <path d="M120 140 Q102 138 90 149" />
-                  <path d="M120 154 Q101 152 88 163" />
-                  <path d="M120 168 Q101 166 88 178" />
-                  {/* Ribs – left */}
-                  <path d="M120 126 Q135 124 146 133" />
-                  <path d="M120 140 Q138 138 150 149" />
-                  <path d="M120 154 Q139 152 152 163" />
-                  <path d="M120 168 Q139 166 152 178" />
+                  <path d="M120 96 L120 178" strokeWidth={0.95} />
+                  {/* Ribs — right */}
+                  <path d="M120 110 Q104 108 92 118" />
+                  <path d="M120 124 Q100 122 88 134" />
+                  <path d="M120 138 Q99 136 86 149" />
+                  <path d="M120 152 Q98 150 85 164" />
+                  <path d="M120 166 Q97 164 84 178" />
+                  {/* Ribs — left */}
+                  <path d="M120 110 Q136 108 148 118" />
+                  <path d="M120 124 Q140 122 152 134" />
+                  <path d="M120 138 Q141 136 154 149" />
+                  <path d="M120 152 Q142 150 155 164" />
+                  <path d="M120 166 Q143 164 156 178" />
                   {/* Costal arch */}
-                  <path d="M88 178 Q104 194 120 196 Q136 194 152 178" strokeWidth={1.0} />
+                  <path d="M84 178 Q102 194 120 196 Q138 194 156 178" strokeWidth={1.0} />
                   {/* Abdominal lines */}
                   <path d="M110 200 L110 244 M130 200 L130 244" strokeWidth={0.45} />
                   <path d="M108 216 L132 216 M108 228 L132 228 M108 240 L132 240" strokeWidth={0.40} />
                   {/* Navel */}
-                  <circle cx={120} cy={250} r={3.5} strokeWidth={0.7} />
+                  <circle cx={120} cy={246} r={3.5} strokeWidth={0.7} />
                   {/* Iliac crests */}
-                  <path d="M88 282 Q102 276 120 278 Q138 276 152 282" strokeDasharray="3,2" strokeWidth={0.7} />
+                  <path d="M90 282 Q104 276 120 278 Q136 276 150 282" strokeDasharray="3,2" strokeWidth={0.7} />
                   {/* Kneecaps */}
-                  <ellipse cx={144} cy={382} rx={11} ry={7} />
-                  <ellipse cx={96}  cy={382} rx={11} ry={7} />
+                  <ellipse cx={148} cy={386} rx={11} ry={7} />
+                  <ellipse cx={92}  cy={386} rx={11} ry={7} />
                 </g>
               )}
               {view === 'back' && (
