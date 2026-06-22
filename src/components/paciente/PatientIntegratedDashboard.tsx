@@ -613,7 +613,7 @@ export default function PatientIntegratedDashboard({
                           ERG: { ok: 'postura no dia ok',       alerta: 'ergonomia precisa de ajuste',   critico: 'ergonomia crítica',                acao: 'pausa a cada 50 min, ajuste de tela/cadeira e revisão do colchão.' },
                         };
                         // Peso máximo por dimensão (do lossTable)
-                        const PESO_MAX: Record<string, number> = { D: 20, EFI: 15, R: 15, C: 10, AF: 8, HID: 6, NUT: 6, P: 5, I: 5, ERG: 5, N: 5 };
+                        const PESO_MAX: Record<string, number> = { D: 20, EFI: 15, R: 15, C: 10, AF: 8, HID: 6, NUT: 6, P: 10, I: 5, ERG: 5, N: 5 };
                         const ranked = rings
                           .filter(r => r.scoreKey !== 'MED')
                           .map(r => {
