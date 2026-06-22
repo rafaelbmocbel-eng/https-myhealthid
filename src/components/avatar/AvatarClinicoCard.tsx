@@ -792,7 +792,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               </mask>
               <mask id="avc-body-mask-back" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="520">
                 <rect x="0" y="0" width="240" height="520" fill="black" />
-                <image href={avatarHumanoFrente} {...AVATAR_IMAGE_FRAME} preserveAspectRatio="none" transform="translate(240,0) scale(-1,1)" />
+                <image href={avatarHumanoCostas} {...AVATAR_BACK_IMAGE_FRAME} preserveAspectRatio="none" />
               </mask>
               {/* Warm anatomical skin gradient */}
               <radialGradient id="avc-skin" cx="44%" cy="22%" r="72%">
@@ -864,19 +864,29 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            {/* Silhueta humana calibrada no mesmo sistema anatômico de REGIONS/VISCERAL_REGIONS:
-                bbox real da imagem x 269→742, y 64→1445; alvo no viewBox x 36→204, y 18→510. */}
+            {/* Silhueta humana calibrada no mesmo sistema anatômico de REGIONS/VISCERAL_REGIONS. */}
             <g pointerEvents="none">
-              <image
-                href={avatarHumanoFrente}
-                x={AVATAR_IMAGE_FRAME.x}
-                y={AVATAR_IMAGE_FRAME.y}
-                width={AVATAR_IMAGE_FRAME.width}
-                height={AVATAR_IMAGE_FRAME.height}
-                preserveAspectRatio="none"
-                opacity={0.95}
-                transform={view === 'back' ? 'translate(240,0) scale(-1,1)' : undefined}
-              />
+              {view === 'back' ? (
+                <image
+                  href={avatarHumanoCostas}
+                  x={AVATAR_BACK_IMAGE_FRAME.x}
+                  y={AVATAR_BACK_IMAGE_FRAME.y}
+                  width={AVATAR_BACK_IMAGE_FRAME.width}
+                  height={AVATAR_BACK_IMAGE_FRAME.height}
+                  preserveAspectRatio="none"
+                  opacity={0.95}
+                />
+              ) : (
+                <image
+                  href={avatarHumanoFrente}
+                  x={AVATAR_IMAGE_FRAME.x}
+                  y={AVATAR_IMAGE_FRAME.y}
+                  width={AVATAR_IMAGE_FRAME.width}
+                  height={AVATAR_IMAGE_FRAME.height}
+                  preserveAspectRatio="none"
+                  opacity={0.95}
+                />
+              )}
 
 
               {view === 'back' && (
