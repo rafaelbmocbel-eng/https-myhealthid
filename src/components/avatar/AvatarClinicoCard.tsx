@@ -778,6 +778,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
               </clipPath>
+              <mask id="avc-body-mask-front" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="520">
+                <rect x="0" y="0" width="240" height="520" fill="black" />
+                <image href={avatarHumanoFrente} {...AVATAR_IMAGE_FRAME} preserveAspectRatio="none" />
+              </mask>
+              <mask id="avc-body-mask-back" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="520">
+                <rect x="0" y="0" width="240" height="520" fill="black" />
+                <image href={avatarHumanoFrente} {...AVATAR_IMAGE_FRAME} preserveAspectRatio="none" transform="translate(240,0) scale(-1,1)" />
+              </mask>
               {/* Warm anatomical skin gradient */}
               <radialGradient id="avc-skin" cx="44%" cy="22%" r="72%">
                 <stop offset="0%"   stopColor="#f5d5b8" stopOpacity="0.96" />
@@ -884,7 +892,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               )}
             </g>
 
-            <g clipPath="url(#avc-clip)">
+            <g mask={view === 'back' ? 'url(#avc-body-mask-back)' : 'url(#avc-body-mask-front)'}>
 
 
               {/* Linhas anatômicas decorativas removidas — a ilustração base já mostra a anatomia.
