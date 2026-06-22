@@ -617,7 +617,7 @@ export default function PatientIntegratedDashboard({
                         const ranked = rings
                           .filter(r => r.scoreKey !== 'MED')
                           .map(r => {
-                            const deficit = r.type === 'inner' ? 10 - r.value : r.value;
+                            const deficit = r.severity ?? (r.type === 'inner' ? 10 - r.value : r.value);
                             const p = calcularPerdaDimensao(r.scoreKey, deficit);
                             return { ring: r, perda: p.perda_pontos, critico: p.gatilho_critico };
                           })
@@ -636,7 +636,7 @@ export default function PatientIntegratedDashboard({
                                 const isAlerta = !isCrit && perda >= limiarAlerta;
                                 const estado = isCrit ? a.critico : isAlerta ? a.alerta : a.ok;
                                 const tone = isCrit ? 'text-destructive' : isAlerta ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400';
-                                const direcao = ring.type === 'inner' ? 'maior = melhor' : 'maior = pior';
+                                const direcao = ring.severity !== undefined || ring.type === 'inner' ? 'maior = melhor' : 'maior = pior';
                                 return (
                                   <li key={ring.scoreKey} className="flex gap-2 text-[12.5px] leading-snug">
                                     <span className="text-muted-foreground tabular-nums shrink-0 w-5">{idx + 1}.</span>
