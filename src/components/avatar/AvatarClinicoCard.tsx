@@ -22,7 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
-import avatarAnatomicoFrente from '@/assets/avatar-anatomico-frente.png';
+import avatarSilhuetaPessoa from '@/assets/avatar-silhueta-pessoa.png';
 
 
 
@@ -930,7 +930,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            {/* Ilustração anatômica removida — usamos silhueta vetorial para alinhamento perfeito das zonas */}
+            {/* Silhueta humana realista (front view) como base — opacidade baixa para não competir com marcações */}
+            {view === 'front' && (
+              <image
+                href={avatarSilhuetaPessoa}
+                x={20}
+                y={20}
+                width={200}
+                height={490}
+                preserveAspectRatio="xMidYMid meet"
+                opacity={0.35}
+                pointerEvents="none"
+              />
+            )}
 
             <g clipPath="url(#avc-clip)">
 
