@@ -1211,6 +1211,29 @@ export default function Agenda() {
     }
   };
 
+  const handleAddWalkIn = async (pacienteId: string) => {
+    if (!user) return;
+    try {
+      const inicio = new Date();
+      const fim = new Date(inicio.getTime() + config.duracao_padrao * 60000);
+      const { data: novoAg, error } = await supabase.from('agendamentos').insert({
+        terapeuta_id: user.id,
+        paciente_id: pacienteId,
+        data_inicio: inicio.toISOString(),
+        data_fim: fim.toISOString(),
+        status: 'confirmado',
+        tipo_atendimento: 'outro',
+        observacoes: 'Atendimento sem agendamento prévio (encaixe).',
+      }).select().single();
+      if (error) throw error;
+
+      await handleSessaoStatus(novoAg as Agendamento, 'atendido');
+      await refresh();
+    } catch (error: any) {
+      toast({ title: 'Erro ao registrar atendimento', description: error.message, variant: 'destructive' });
+    }
+  };
+
   const statsToday = agendamentos.filter(ag => isToday(parseISO(ag.data_inicio)));
 
   if (loading) return (
@@ -1329,6 +1352,7 @@ export default function Agenda() {
             const ag = agendamentos.find(a => a.id === id);
             if (ag) handleSessaoStatus(ag, 'faltou');
           }}
+          onAddWalkIn={handleAddWalkIn}
         />
 
         <div className="flex flex-1 overflow-hidden">
