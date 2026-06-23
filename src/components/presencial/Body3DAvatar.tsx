@@ -127,11 +127,11 @@ export const REGIONS: Region[] = [
   // Neck
   { id: 'pescoco',      label: 'Pescoço',      view: 'front', cx: 120, cy: 100,
     d: 'M108 90 L132 90 L134 108 L106 108 Z' },
-  // Shoulders
-  { id: 'ombro_d',      label: 'Ombro D',      view: 'front', cx: 158, cy: 122,
-    d: 'M134 108 C 156 110 178 118 184 132 L 168 144 L 152 130 Z' },
-  { id: 'ombro_e',      label: 'Ombro E',      view: 'front', cx: 82,  cy: 122,
+  // Shoulders — front view: patient's RIGHT (D) renders on screen-LEFT (viewer faces patient)
+  { id: 'ombro_d',      label: 'Ombro D',      view: 'front', cx: 82,  cy: 122,
     d: 'M106 108 C 84 110 62 118 56 132 L 72 144 L 88 130 Z' },
+  { id: 'ombro_e',      label: 'Ombro E',      view: 'front', cx: 158, cy: 122,
+    d: 'M134 108 C 156 110 178 118 184 132 L 168 144 L 152 130 Z' },
   // Chest
   { id: 'peitoral',     label: 'Tórax',        view: 'front', cx: 120, cy: 152,
     d: 'M88 130 L152 130 L168 144 L160 184 L80 184 L72 144 Z' },
@@ -141,42 +141,42 @@ export const REGIONS: Region[] = [
   // Pelvis
   { id: 'pelve',        label: 'Pelve',        view: 'front', cx: 120, cy: 264,
     d: 'M78 240 L162 240 L156 290 L84 290 Z' },
-  // Right arm (anatomically — viewer's left)
-  { id: 'braco_d',      label: 'Braço D',      view: 'front', cx: 178, cy: 168,
-    d: 'M184 132 L192 168 L176 184 L168 144 Z' },
-  { id: 'cotovelo_d',   label: 'Cotovelo D',   view: 'front', cx: 184, cy: 200,
-    d: 'M192 168 L200 230 L182 224 L176 184 Z' },
-  { id: 'antebraco_d',  label: 'Antebraço D',  view: 'front', cx: 192, cy: 250,
-    d: 'M200 230 L204 280 L188 280 L182 224 Z' },
-  { id: 'mao_d',        label: 'Mão D',        view: 'front', cx: 192, cy: 296,
-    d: 'M204 280 L196 308 L184 308 L188 280 Z' },
-  // Left arm (viewer's right)
-  { id: 'braco_e',      label: 'Braço E',      view: 'front', cx: 62,  cy: 168,
+  // Right arm (anatomically — renders on viewer's left)
+  { id: 'braco_d',      label: 'Braço D',      view: 'front', cx: 62,  cy: 168,
     d: 'M56 132 L48 168 L64 184 L72 144 Z' },
-  { id: 'cotovelo_e',   label: 'Cotovelo E',   view: 'front', cx: 56,  cy: 200,
+  { id: 'cotovelo_d',   label: 'Cotovelo D',   view: 'front', cx: 56,  cy: 200,
     d: 'M48 168 L40 230 L58 224 L64 184 Z' },
-  { id: 'antebraco_e',  label: 'Antebraço E',  view: 'front', cx: 48,  cy: 250,
+  { id: 'antebraco_d',  label: 'Antebraço D',  view: 'front', cx: 48,  cy: 250,
     d: 'M40 230 L36 280 L52 280 L58 224 Z' },
-  { id: 'mao_e',        label: 'Mão E',        view: 'front', cx: 48,  cy: 296,
+  { id: 'mao_d',        label: 'Mão D',        view: 'front', cx: 48,  cy: 296,
     d: 'M36 280 L44 308 L56 308 L52 280 Z' },
-  // Right thigh (viewer's left)
-  { id: 'coxa_d',       label: 'Coxa D',       view: 'front', cx: 144, cy: 330,
-    d: 'M124 290 L156 290 L162 360 L128 360 Z' },
-  { id: 'joelho_d',     label: 'Joelho D',     view: 'front', cx: 144, cy: 380,
-    d: 'M128 360 L162 360 L160 400 L130 400 Z' },
-  { id: 'canela_d',     label: 'Canela D',     view: 'front', cx: 144, cy: 450,
-    d: 'M130 400 L160 400 L158 490 L134 490 Z' },
-  { id: 'pe_d',         label: 'Pé D',         view: 'front', cx: 144, cy: 502,
-    d: 'M134 490 L158 490 L152 510 L138 510 Z' },
-  // Left thigh
-  { id: 'coxa_e',       label: 'Coxa E',       view: 'front', cx: 96,  cy: 330,
+  // Left arm (renders on viewer's right)
+  { id: 'braco_e',      label: 'Braço E',      view: 'front', cx: 178, cy: 168,
+    d: 'M184 132 L192 168 L176 184 L168 144 Z' },
+  { id: 'cotovelo_e',   label: 'Cotovelo E',   view: 'front', cx: 184, cy: 200,
+    d: 'M192 168 L200 230 L182 224 L176 184 Z' },
+  { id: 'antebraco_e',  label: 'Antebraço E',  view: 'front', cx: 192, cy: 250,
+    d: 'M200 230 L204 280 L188 280 L182 224 Z' },
+  { id: 'mao_e',        label: 'Mão E',        view: 'front', cx: 192, cy: 296,
+    d: 'M204 280 L196 308 L184 308 L188 280 Z' },
+  // Right thigh (renders on viewer's left)
+  { id: 'coxa_d',       label: 'Coxa D',       view: 'front', cx: 96,  cy: 330,
     d: 'M84 290 L116 290 L112 360 L78 360 Z' },
-  { id: 'joelho_e',     label: 'Joelho E',     view: 'front', cx: 96,  cy: 380,
+  { id: 'joelho_d',     label: 'Joelho D',     view: 'front', cx: 96,  cy: 380,
     d: 'M78 360 L112 360 L110 400 L80 400 Z' },
-  { id: 'canela_e',     label: 'Canela E',     view: 'front', cx: 96,  cy: 450,
+  { id: 'canela_d',     label: 'Canela D',     view: 'front', cx: 96,  cy: 450,
     d: 'M80 400 L110 400 L106 490 L82 490 Z' },
-  { id: 'pe_e',         label: 'Pé E',         view: 'front', cx: 96,  cy: 502,
+  { id: 'pe_d',         label: 'Pé D',         view: 'front', cx: 96,  cy: 502,
     d: 'M82 490 L106 490 L102 510 L88 510 Z' },
+  // Left thigh (renders on viewer's right)
+  { id: 'coxa_e',       label: 'Coxa E',       view: 'front', cx: 144, cy: 330,
+    d: 'M124 290 L156 290 L162 360 L128 360 Z' },
+  { id: 'joelho_e',     label: 'Joelho E',     view: 'front', cx: 144, cy: 380,
+    d: 'M128 360 L162 360 L160 400 L130 400 Z' },
+  { id: 'canela_e',     label: 'Canela E',     view: 'front', cx: 144, cy: 450,
+    d: 'M130 400 L160 400 L158 490 L134 490 Z' },
+  { id: 'pe_e',         label: 'Pé E',         view: 'front', cx: 144, cy: 502,
+    d: 'M134 490 L158 490 L152 510 L138 510 Z' },
 
   // ===== BACK ===== (mirror anatomical labels)
   { id: 'occipital',    label: 'Nuca',         view: 'back', cx: 120, cy: 50,

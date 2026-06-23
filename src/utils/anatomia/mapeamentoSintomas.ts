@@ -555,8 +555,13 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'musculoesqueletico'
   },
   {
-    keywords: ['osteoporose', 'osteopenia', 'fratura', 'densitometria', 'calcio osseo', 'baixa densidade ossea', 'baixa densidade óssea', 'desgaste osseo', 'desgaste ósseo', 'degeneracao ossea', 'degeneração óssea', 'artrose', 'artrite', 'degenerativo', 'degeneração', 'degeneracao', 'protrusao discal', 'protrusão discal', 'espondilose'],
+    keywords: ['osteoporose', 'osteopenia', 'fratura de femur', 'fratura no femur', 'fratura de fêmur', 'fratura no fêmur', 'densitometria', 'calcio osseo', 'baixa densidade ossea', 'baixa densidade óssea', 'desgaste osseo', 'desgaste ósseo', 'degeneracao ossea', 'degeneração óssea', 'artrose', 'artrite', 'degenerativo', 'degeneração', 'degeneracao', 'protrusao discal', 'protrusão discal', 'espondilose'],
     regioes: ['lombar', 'coxa_d', 'coxa_e'],
+    sistema: 'musculoesqueletico'
+  },
+  {
+    keywords: ['coxa', 'femur', 'fêmur', 'isquiotibial', 'isquiotibiais'],
+    regioes: ['coxa_d', 'coxa_e', 'isquio_d', 'isquio_e'],
     sistema: 'musculoesqueletico'
   },
 
@@ -596,6 +601,22 @@ export function normalizarTexto(texto: string): string {
     .replace(/[̀-ͯ]/g, "");
 }
 
+// When a matched keyword maps to both sides of a paired region (e.g. mao_d + mao_e),
+// narrow the result down to the side(s) actually mentioned in the text. If both sides
+// are mentioned (or neither), bilateral involvement is assumed and both are kept.
+function filtrarLateralidade(regioes: string[], textoNormalizado: string): string[] {
+  const mencionaDireita = /\bdireit/.test(textoNormalizado);
+  const mencionaEsquerda = /\besquerd/.test(textoNormalizado);
+  if (mencionaDireita === mencionaEsquerda) return regioes;
+  const ladoExcluir = mencionaDireita ? '_e' : '_d';
+  const ladoIncluir = mencionaDireita ? '_d' : '_e';
+  return regioes.filter(regId => {
+    if (!regId.endsWith(ladoExcluir)) return true;
+    const irmao = regId.slice(0, -2) + ladoIncluir;
+    return !regioes.includes(irmao);
+  });
+}
+
 export function encontrarSintomasEmTexto(
   texto: string,
 ): { regiao_id: string; sistema: SistemaCorporal; termo: string; tipo_diagnostico?: string }[] {
@@ -610,7 +631,8 @@ export function encontrarSintomasEmTexto(
         ? new RegExp(`(?<![a-z])${kn}(?![a-z])`).test(textoNormalizado)
         : textoNormalizado.includes(kn);
       if (matched) {
-        mapeamento.regioes.forEach(regId => {
+        const regioesFiltradas = filtrarLateralidade(mapeamento.regioes, textoNormalizado);
+        regioesFiltradas.forEach(regId => {
           if (!resultados.find(r => r.regiao_id === regId)) {
             resultados.push({
               regiao_id: regId,
