@@ -367,7 +367,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 7,
-    d: 'M119 102 C 119 118 119 142 119 188 L121 188 C 121 142 121 118 121 102 Z'
+    d: 'M119 102 C 119 116 119 132 119 162 L121 162 C 121 132 121 116 121 102 Z'
   },
 
   // Fígado: large right-dominant wedge, right upper quadrant
