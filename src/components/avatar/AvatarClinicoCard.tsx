@@ -1054,6 +1054,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <path
                       key={r.id}
                       d={r.d}
+                      transform={groupTransform}
                       fill="none"
                       stroke={baseColor}
                       strokeWidth={fill ? 2.2 : isHoveredSystem ? 2.0 : 1.3}
