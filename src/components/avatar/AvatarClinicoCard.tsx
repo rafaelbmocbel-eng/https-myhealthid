@@ -1112,7 +1112,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const orgDash = (orgIsRelato || orgIsHist) && fill ? '4,3' : undefined;
 
                 return (
-                  <g key={r.id} className={cn(isUrgent && 'pulse-organ')}>
+                  <g key={r.id} transform={groupTransform} className={cn(isUrgent && 'pulse-organ')}>
                     <path
                       d={r.d}
                       fill={effectiveFill}
