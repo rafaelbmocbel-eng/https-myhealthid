@@ -297,7 +297,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 8,
-    d: 'M118 102 L118 133 C 114 138 106 142 104 148 L106 150 C 108 145 116 140 118 137 L120 140 L122 137 C 124 140 132 145 134 150 L136 148 C 134 142 126 138 122 133 L122 102 Z'
+    d: 'M118 102 L118 121 C 114 126 106 130 104 136 L106 138 C 108 133 116 128 118 125 L120 128 L122 125 C 124 128 132 133 134 138 L136 136 C 134 130 126 126 122 121 L122 102 Z'
   },
 
   // Brônquio direito: short right bronchus
@@ -308,7 +308,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'vessel',
     layer: 8,
-    d: 'M118 137 C 113 137 106 140 104 148'
+    d: 'M118 125 C 113 125 106 128 104 136'
   },
 
   // Brônquio esquerdo: short left bronchus
@@ -319,11 +319,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'vessel',
     layer: 8,
-    d: 'M122 137 C 127 137 134 140 136 148'
+    d: 'M122 125 C 127 125 134 128 136 136'
   },
 
   // Pulmão direito (patient RIGHT = screen LEFT): 3-lobed
-  // Medial border along sternum x≈116, lateral follows thoracic wall
+  // Raised by 12 units to reach upper thoracic limit (apex near clavicle)
   {
     id: 'pulmao_d',
     label: 'Pulmão Direito',
@@ -331,11 +331,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M116 133 C 110 132 100 134 92 140 C 84 146 80 158 80 170 C 80 182 82 192 86 200 C 90 206 96 210 104 210 C 110 210 116 208 116 206 L116 133 Z'
+    d: 'M116 121 C 110 120 100 122 92 128 C 84 134 80 146 80 158 C 80 170 82 180 86 188 C 90 194 96 198 104 198 C 110 198 116 196 116 194 L116 121 Z'
   },
 
   // Pulmão esquerdo (patient LEFT = screen RIGHT): 2-lobed, with cardiac notch
-  // Cardiac notch: concavity at inferomedial border x=122-130, y=155-178
+  // Raised by 12 units to reach upper thoracic limit (apex near clavicle)
   {
     id: 'pulmao_e',
     label: 'Pulmão Esquerdo',
@@ -343,10 +343,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M124 133 C 130 132 140 134 148 140 C 156 146 160 158 160 170 C 160 182 158 192 154 200 C 150 206 144 210 136 210 C 130 210 126 208 124 206 C 122 204 118 200 118 195 C 118 184 122 178 126 174 C 124 168 122 162 124 156 C 124 144 124 133 124 133 Z'
+    d: 'M124 121 C 130 120 140 122 148 128 C 156 134 160 146 160 158 C 160 170 158 180 154 188 C 150 194 144 198 136 198 C 130 198 126 196 124 194 C 122 192 118 188 118 183 C 118 172 122 166 126 162 C 124 156 122 150 124 144 C 124 132 124 121 124 121 Z'
   },
 
-  // Diafragma: dome-shaped arch, structural divider
+  // Diafragma: dome-shaped arch, raised to follow new lung base
   {
     id: 'diafragma',
     label: 'Diafragma',
@@ -354,7 +354,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'structural',
     layer: 10,
-    d: 'M82 210 C 88 204 96 198 104 194 C 110 191 115 190 120 190 C 125 190 130 191 136 194 C 144 198 152 204 158 210'
+    d: 'M82 198 C 88 192 96 186 104 182 C 110 179 115 178 120 178 C 125 178 130 179 136 182 C 144 186 152 192 158 198'
   },
 
   // ── DIGESTIVE ────────────────────────────────
