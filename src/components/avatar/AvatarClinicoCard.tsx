@@ -1007,6 +1007,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
                 const isUrgent = severityScore >= 13;
                 const sys0 = r.sistemas[0];
+                // Os paths viscerais foram desenhados em coords ligeiramente baixas em relação
+                // ao avatar humano renderizado. Em vez de re-desenhar 1600+ linhas de paths,
+                // aplicamos um shift vertical global para cada sistema, calibrado contra a
+                // anatomia visível do avatar. Sensorial (face) já está calibrado e fica em 0.
+                const SYSTEM_Y_SHIFT: Record<string, number> = {
+                  sensorial: 0,
+                  nervoso: -8,
+                  respiratorio: -52,
+                  circulatorio: -48,
+                  digestorio: -42,
+                  urinario: -58,
+                  reprodutor: -55,
+                  endocrino: -38,
+                  linfatico: -30,
+                  tegumentar: 0,
+                  musculoesqueletico: 0,
+                };
+                const yShift = SYSTEM_Y_SHIFT[sys0] ?? -35;
+                const groupTransform = yShift !== 0 ? `translate(0, ${yShift})` : undefined;
 
                 // STRUCTURAL (diaphragm, pericardium) — non-clickable dividers
                 if (r.type === 'structural') {
@@ -1016,6 +1035,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <path
                       key={r.id}
                       d={r.d}
+                      transform={groupTransform}
                       fill="none"
                       stroke={isDialfragma ? 'rgba(80,80,80,0.50)' : 'rgba(120,120,120,0.25)'}
                       strokeWidth={isDialfragma ? 1.4 : 0.8}
@@ -1034,6 +1054,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <path
                       key={r.id}
                       d={r.d}
+                      transform={groupTransform}
                       fill="none"
                       stroke={baseColor}
                       strokeWidth={fill ? 2.2 : isHoveredSystem ? 2.0 : 1.3}
@@ -1057,6 +1078,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <path
                       key={r.id}
                       d={r.d}
+                      transform={groupTransform}
                       fill="none"
                       stroke={nerveColor}
                       strokeWidth={fill ? 2.0 : isHoveredSystem ? 1.8 : (isSpine ? 1.4 : 0.9)}
@@ -1090,7 +1112,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const orgDash = (orgIsRelato || orgIsHist) && fill ? '4,3' : undefined;
 
                 return (
-                  <g key={r.id} className={cn(isUrgent && 'pulse-organ')}>
+                  <g key={r.id} transform={groupTransform} className={cn(isUrgent && 'pulse-organ')}>
                     <path
                       d={r.d}
                       fill={effectiveFill}
@@ -1116,22 +1138,22 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             {view === 'front' && (
               <g fontSize="6" fontFamily="system-ui,sans-serif" textAnchor="middle" pointerEvents="none" fontWeight="600">
                 {sistemasAtivos.includes('nervoso') && (
-                  <text x={120} y={50} fill="rgba(100,115,200,0.88)">Encéfalo</text>
+                  <text x={120} y={42} fill="rgba(100,115,200,0.88)">Encéfalo</text>
                 )}
                 {sistemasAtivos.includes('circulatorio') && (
-                  <text x={119} y={166} fill="rgba(210,40,40,0.90)" fontSize="8">♥</text>
+                  <text x={119} y={118} fill="rgba(210,40,40,0.90)" fontSize="8">♥</text>
                 )}
                 {sistemasAtivos.includes('respiratorio') && (
                   <>
-                    <text x={98}  y={186} fill="rgba(6,182,212,0.85)">P.Dir</text>
-                    <text x={142} y={186} fill="rgba(6,182,212,0.85)">P.Esq</text>
+                    <text x={98}  y={134} fill="rgba(6,182,212,0.85)">P.Dir</text>
+                    <text x={142} y={134} fill="rgba(6,182,212,0.85)">P.Esq</text>
                   </>
                 )}
                 {sistemasAtivos.includes('digestorio') && (
-                  <text x={100} y={206} fill="rgba(150,70,30,0.85)">Fígado</text>
+                  <text x={100} y={164} fill="rgba(150,70,30,0.85)">Fígado</text>
                 )}
                 {sistemasAtivos.includes('urinario') && (
-                  <text x={120} y={288} fill="rgba(80,110,210,0.85)">Bexiga</text>
+                  <text x={120} y={230} fill="rgba(80,110,210,0.85)">Bexiga</text>
                 )}
               </g>
             )}
