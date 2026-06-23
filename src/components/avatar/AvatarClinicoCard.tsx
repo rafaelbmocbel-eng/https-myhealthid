@@ -64,10 +64,10 @@ const AVATAR_IMAGE_FRAME = {
 };
 
 const AVATAR_BACK_IMAGE_FRAME = {
-  x: -34.9,
-  y: -24.9,
+  x: -30.5,
+  y: -24.7,
   width: 293.6,
-  height: 584.2,
+  height: 553.5,
 };
 
 const ORGAN_RESTING_COLORS: Record<string, string> = {
@@ -598,9 +598,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   // Avatar atual é masculino por padrão; se o paciente é feminino, esconde anatomia masculina e vice-versa.
   const FEMININE_ONLY_IDS = new Set(['mama_d', 'mama_e', 'utero', 'ovarios', 'trompas_falopio', 'vagina']);
   const MASCULINE_ONLY_IDS = new Set(['testiculos', 'prostata', 'penis', 'epididimo_d', 'epididimo_e', 'vesiculas_seminais']);
-  const generoNorm = (pacienteGenero || '').toLowerCase();
-  const isFeminino = generoNorm.startsWith('fem') || generoNorm === 'f';
-  const isMasculino = generoNorm.startsWith('masc') || generoNorm === 'm' || !generoNorm; // default masculino (imagem atual)
+  const generoNorm = (pacienteGenero || '').toLowerCase().trim();
+  const isFeminino = generoNorm.startsWith('fem') || generoNorm === 'f' || generoNorm.includes('mulher') || generoNorm.includes('female');
+  const isMasculino = generoNorm.startsWith('masc') || generoNorm === 'm' || generoNorm.includes('homem') || generoNorm.includes('male') || !generoNorm;
 
   const regioesViscerais = VISCERAL_REGIONS.filter(r =>
     r.view === view && (
