@@ -322,8 +322,8 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M122 125 C 127 125 134 128 136 136'
   },
 
-  // Pulmão direito (patient RIGHT = screen LEFT): 3-lobed
-  // Ápice ao nível do trapézio médio, base na 6ª costela torácica
+  // Pulmão direito (patient RIGHT = screen LEFT): preenche a caixa torácica
+  // do ombro até o gradil costal inferior, como referenciado no desenho
   {
     id: 'pulmao_d',
     label: 'Pulmão Direito',
@@ -331,11 +331,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M116 112.4 C 110 112 100 112.9 92 115.5 C 84 118.1 80 123.3 80 128.6 C 80 133.8 82 138.2 86 141.6 C 90 144.3 96 146 104 146 C 110 146 116 145.1 116 144.3 L116 112.4 Z'
+    d: 'M115.6 106.8 C 108.6 106 96.8 107.6 87.3 112.6 C 77.9 117.5 73.2 127.3 73.2 137.2 C 73.2 147 75.5 155.2 80.2 161.8 C 85 166.7 92 170 101.5 170 C 108.6 170 115.6 168.4 115.6 166.7 L115.6 106.8 Z'
   },
 
-  // Pulmão esquerdo (patient LEFT = screen RIGHT): 2-lobed, with cardiac notch
-  // Ápice ao nível do trapézio médio, base na 6ª costela torácica
+  // Pulmão esquerdo (patient LEFT = screen RIGHT): preenche a caixa torácica
+  // do ombro até o gradil costal inferior, como referenciado no desenho
   {
     id: 'pulmao_e',
     label: 'Pulmão Esquerdo',
@@ -343,7 +343,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M124 112.4 C 130 112 140 112.9 148 115.5 C 156 118.1 160 123.3 160 128.6 C 160 133.8 158 138.2 154 141.6 C 150 144.3 144 146 136 146 C 130 146 126 145.1 124 144.3 C 122 143.4 118 141.6 118 139.5 C 118 134.7 122 132.1 126 130.3 C 124 127.7 122 125.1 124 122.5 C 124 117.2 124 112.4 124 112.4 Z'
+    d: 'M124.4 106.8 C 131.4 106 143.2 107.6 152.7 112.6 C 162.1 117.5 166.8 127.3 166.8 137.2 C 166.8 147 164.5 155.2 159.8 161.8 C 155 166.7 148 170 138.5 170 C 131.4 170 126.7 168.4 124.4 166.7 C 122 165.1 117.3 161.8 117.3 157.7 C 117.3 148.7 122 143.7 126.7 140.5 C 124.4 135.5 122 130.6 124.4 125.7 C 124.4 115.8 124.4 106.8 124.4 106.8 Z'
   },
 
   // Diafragma: dome-shaped arch, raised to follow new lung base
@@ -974,7 +974,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
 
   // Pulmão direito posterior: right side (patient RIGHT = screen LEFT)
-  // Ápice ao nível do trapézio médio, base na 6ª costela torácica
+  // Preenche a caixa torácica do ombro até o gradil costal inferior
   {
     id: 'pulmao_d_p',
     label: 'Pulmão Direito (Posterior)',
@@ -982,11 +982,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M116 112.4 C 110 112 100 112.9 92 115.5 C 84 118.1 80 123.3 80 128.6 C 80 133.8 82 139 86 142.5 C 90 145.1 96 146 104 146 C 110 146 116 145.1 116 144.3 L116 112.4 Z'
+    d: 'M115.6 106.8 C 108.6 106 96.8 107.6 87.3 112.6 C 77.9 117.5 73.2 127.3 73.2 137.2 C 73.2 147 75.5 156.9 80.2 163.4 C 85 168.4 92 170 101.5 170 C 108.6 170 115.6 168.4 115.6 166.7 L115.6 106.8 Z'
   },
 
   // Pulmão esquerdo posterior: left side (patient LEFT = screen RIGHT)
-  // Ápice ao nível do trapézio médio, base na 6ª costela torácica
+  // Preenche a caixa torácica do ombro até o gradil costal inferior
   {
     id: 'pulmao_e_p',
     label: 'Pulmão Esquerdo (Posterior)',
@@ -994,7 +994,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M124 112.4 C 130 112 140 112.9 148 115.5 C 156 118.1 160 123.3 160 128.6 C 160 133.8 158 139 154 142.5 C 150 145.1 144 146 136 146 C 130 146 124 145.1 124 144.3 L124 112.4 Z'
+    d: 'M124.4 106.8 C 131.4 106 143.2 107.6 152.7 112.6 C 162.1 117.5 166.8 127.3 166.8 137.2 C 166.8 147 164.5 156.9 159.8 163.4 C 155 168.4 148 170 138.5 170 C 131.4 170 124.4 168.4 124.4 166.7 L124.4 106.8 Z'
   },
 
   // Diafragma posterior
