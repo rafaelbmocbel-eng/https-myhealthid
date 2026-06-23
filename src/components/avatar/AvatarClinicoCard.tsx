@@ -545,10 +545,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       // A descrição livre (tipo_achado) pode mencionar outras regiões/lados além
       // da região fixa selecionada no formulário (ex.: regiao_id = 'joelho_d' mas
       // o texto diz "fratura joelho direito e esquerdo") — detecta e marca também.
+      // Não restringe pelo sistema do achado: a região fixa (ex.: "Abdômen") pode
+      // ter sido salva sob um sistema diferente do que o texto livre menciona
+      // (ex.: achado em "Abdômen"/digestório cuja descrição fala de "coxa
+      // esquerda" — musculoesquelético). O texto é a fonte de verdade aqui.
       const regioesAfetadas = new Set([ev.regiao_id]);
       if (ev.tipo_achado) {
         encontrarSintomasEmTexto(ev.tipo_achado)
-          .filter(s => s.sistema === ev.sistema)
           .forEach(s => regioesAfetadas.add(s.regiao_id));
       }
 

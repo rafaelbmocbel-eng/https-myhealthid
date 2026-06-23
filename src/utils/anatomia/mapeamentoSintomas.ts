@@ -526,7 +526,15 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'musculoesqueletico'
   },
   {
-    keywords: ['punho', 'mao', 'mão', 'dedos', 'tunel do carpo', 'túnel do carpo', 'phalen', 'tinel', 'tenossinovite'],
+    // Mão/dedos ficam restritos à própria mão — não marcar o antebraço por uma
+    // fratura de dedo, por exemplo.
+    keywords: ['mao', 'mão', 'dedos'],
+    regioes: ['mao_d', 'mao_e'],
+    sistema: 'musculoesqueletico'
+  },
+  {
+    // Punho/túnel do carpo podem irradiar para o antebraço.
+    keywords: ['punho', 'tunel do carpo', 'túnel do carpo', 'phalen', 'tinel', 'tenossinovite'],
     regioes: ['mao_d', 'mao_e', 'antebraco_d', 'antebraco_e'],
     sistema: 'musculoesqueletico'
   },
