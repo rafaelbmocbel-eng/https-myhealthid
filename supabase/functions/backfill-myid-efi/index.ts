@@ -7,15 +7,21 @@ const corsHeaders = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// Backfill: corrige a inversão da dimensão EFI em avaliações MyID
-// já concluídas (calculadas antes da correção do bug).
+// Backfill: recalcula avaliações MyID já concluídas com as correções
+// aplicadas depois da submissão original. Hoje cobre duas mudanças:
 //
-// EFI (Atividades do dia) é bem-estar/funcionalidade — menor valor = pior —
-// mas a perda de pontos era calculada como se fosse demanda (maior = pior).
-// Aqui recomputamos apenas a contribuição de EFI na perda total e
-// re-derivamos driver_primario / classificação / prioridade clínica
-// a partir dos demais valores já armazenados (sem precisar das
-// respostas brutas, então funciona mesmo se respostas_brutas não existir).
+// 1) EFI (Atividades do dia) é bem-estar/funcionalidade — menor valor = pior —
+//    mas a perda de pontos era calculada como se fosse demanda (maior = pior).
+// 2) A perda por dimensão passou de "em degrau" (valor fixo dentro da faixa)
+//    para interpolação linear pelo ponto médio de cada faixa — elimina saltos
+//    abruptos entre faixas, mantendo os mesmos pesos/limiares de calibração.
+//
+// Recomputamos as 11 dimensões a partir de score_bruto + perda_pontos já
+// salvos em perdas_calculadas e re-derivamos driver_primario / classificação /
+// prioridade clínica (sem precisar das respostas brutas do questionário).
+// Para D (Dor), preserva proporcionalmente um eventual multiplicador de
+// cronicidade já aplicado, inferindo-o pela razão entre a perda salva e a
+// perda "em degrau" que a fórmula antiga teria dado pro mesmo score.
 // ═══════════════════════════════════════════════════════════
 
 interface BandaPerda { min: number; max: number; perda: number }
@@ -40,12 +46,41 @@ const DIMENSION_LABELS: Record<string, string> = {
   C: 'Contexto', AF: 'Atividade Física', HID: 'Hidratação', NUT: 'Nutrição', ERG: 'Ergonomia', N: 'Ruído Sistêmico', MED: 'Medicação',
 };
 
+/** Perda "em degrau" — comportamento antigo, usado só para inferir o multiplicador de cronicidade de D. */
+function calcularPerdaDegrau(dimensao: string, scoreBruto: number): number {
+  const config = TABELA_PERDAS[dimensao];
+  if (!config) return 0;
+  const banda = config.bandas.find(b => scoreBruto >= b.min && scoreBruto < b.max) || config.bandas[config.bandas.length - 1];
+  return banda.perda;
+}
+
+/** Perda suavizada — interpolação linear pelo ponto médio de cada faixa (mesma calibração, sem saltos). */
+function calcularPerdaSuave(dimensao: string, scoreBruto: number): number {
+  const config = TABELA_PERDAS[dimensao];
+  if (!config) return 0;
+  const SCORE_MAX = 10;
+  const ancoras = config.bandas.map(b => ({ x: (b.min + Math.min(b.max, SCORE_MAX)) / 2, y: b.perda }));
+  if (scoreBruto <= ancoras[0].x) return ancoras[0].y;
+  for (let i = 0; i < ancoras.length - 1; i++) {
+    const atual = ancoras[i];
+    const proxima = ancoras[i + 1];
+    if (scoreBruto <= proxima.x) {
+      const t = (scoreBruto - atual.x) / (proxima.x - atual.x);
+      return atual.y + t * (proxima.y - atual.y);
+    }
+  }
+  return ancoras[ancoras.length - 1].y;
+}
+
 function calcularPerdaDimensao(dimensao: string, scoreBruto: number) {
   const config = TABELA_PERDAS[dimensao];
   if (!config) return { score_bruto: scoreBruto, perda_pontos: 0, percentual_perda: 0, banda: '?', gatilho_critico: false };
   const banda = config.bandas.find(b => scoreBruto >= b.min && scoreBruto < b.max) || config.bandas[config.bandas.length - 1];
   const gatilhoCritico = config.gatilho_critico !== undefined && scoreBruto >= config.gatilho_critico;
-  return { score_bruto: scoreBruto, perda_pontos: banda.perda, percentual_perda: (banda.perda / 105) * 100, banda: `${banda.min}-${banda.max}`, gatilho_critico: gatilhoCritico };
+
+  const perdaPontos = Math.round(calcularPerdaSuave(dimensao, scoreBruto) * 10) / 10;
+
+  return { score_bruto: scoreBruto, perda_pontos: perdaPontos, percentual_perda: (perdaPontos / 105) * 100, banda: `${banda.min}-${banda.max}`, gatilho_critico: gatilhoCritico };
 }
 
 function classificarMyID100(score: number, temGatilhoCritico: boolean) {
@@ -220,29 +255,61 @@ function buildMyIDEnhancements(cs: any, myidScore: number, classificacao: string
   };
 }
 
-/** Recomputa um `resultado_processado` (formato do MyIDCalculator) corrigindo apenas a direção de EFI. */
+/** Recomputa um `resultado_processado` (formato do MyIDCalculator): corrige a direção de EFI
+ *  (se ainda não corrigida) e aplica a curva de perda suavizada nas 11 dimensões. */
 function recomputeResult(resultado: any): { changed: boolean; novo: any; oldScore: number; newScore: number } {
   const cs = resultado?.component_scores || resultado?.componentScores;
   const oldPerdas = resultado?.perdas_calculadas;
   const oldScore = Number(resultado?.MyID_score ?? resultado?.myid_100?.pontuacao_final ?? 0);
 
-  if (!cs || cs.EFI === undefined || !oldPerdas || !oldPerdas.EFI) {
+  if (!cs || !oldPerdas) {
     return { changed: false, novo: resultado, oldScore, newScore: oldScore };
   }
 
-  const efiRaw = Number(cs.EFI ?? cs.EFI_functionality ?? 0);
-  const oldPerdaEFI = Number(oldPerdas.EFI.perda_pontos ?? 0);
-  const novaPerdaEFI = calcularPerdaDimensao('EFI', 10 - efiRaw);
-
-  if (novaPerdaEFI.perda_pontos === oldPerdaEFI) {
+  const dimensoes = Object.keys(TABELA_PERDAS).filter(dim => oldPerdas[dim]);
+  if (dimensoes.length === 0) {
     return { changed: false, novo: resultado, oldScore, newScore: oldScore };
   }
 
-  const novosPerdas = { ...oldPerdas, EFI: novaPerdaEFI };
-  const deltaPerda = novaPerdaEFI.perda_pontos - oldPerdaEFI;
+  const novosPerdas: Record<string, any> = { ...oldPerdas };
+  let deltaPerdaTotal = 0;
+  let algumaAlteracao = false;
+
+  for (const dim of dimensoes) {
+    const oldPerdaDim = Number(oldPerdas[dim].perda_pontos ?? 0);
+
+    // EFI usa o déficit (10 - score) — mesma direção corrigida pelo bug original.
+    // As demais dimensões já têm score_bruto salvo já na direção correta (deficit quando aplicável).
+    const scoreBruto = dim === 'EFI'
+      ? 10 - Number(cs.EFI ?? cs.EFI_functionality ?? 0)
+      : Number(oldPerdas[dim].score_bruto ?? 0);
+
+    const novaPerdaDim = calcularPerdaDimensao(dim, scoreBruto);
+
+    if (dim === 'D') {
+      // Preserva proporcionalmente um eventual multiplicador de cronicidade já aplicado na
+      // submissão original: compara a perda em degrau que a fórmula antiga teria dado pro
+      // mesmo score_bruto (sem cronicidade) contra a perda realmente salva (com cronicidade).
+      const perdaDegrauSemCronicidade = calcularPerdaDegrau('D', scoreBruto);
+      const razaoCronicidade = perdaDegrauSemCronicidade > 0 ? oldPerdaDim / perdaDegrauSemCronicidade : 1;
+      novaPerdaDim.perda_pontos = Math.round(Math.min(TABELA_PERDAS.D.peso_maximo, novaPerdaDim.perda_pontos * razaoCronicidade) * 10) / 10;
+      novaPerdaDim.percentual_perda = (novaPerdaDim.perda_pontos / 105) * 100;
+    }
+
+    if (novaPerdaDim.perda_pontos === oldPerdaDim) continue;
+
+    algumaAlteracao = true;
+    deltaPerdaTotal += novaPerdaDim.perda_pontos - oldPerdaDim;
+    novosPerdas[dim] = novaPerdaDim;
+  }
+
+  if (!algumaAlteracao) {
+    return { changed: false, novo: resultado, oldScore, newScore: oldScore };
+  }
+
   const oldTotalPerdas = Number(resultado?.myid_100?.total_perdas ?? (100 - oldScore));
-  const novoTotalPerdas = oldTotalPerdas + deltaPerda;
-  const newScore = Math.max(0, Math.min(100, 100 - novoTotalPerdas));
+  const novoTotalPerdas = oldTotalPerdas + deltaPerdaTotal;
+  const newScore = Math.max(0, Math.min(100, Math.round((100 - novoTotalPerdas) * 10) / 10));
 
   const gatilhos = Object.entries(novosPerdas).filter(([, d]: [string, any]) => d.gatilho_critico).map(([k]) => k);
   const classificacao = classificarMyID100(newScore, gatilhos.length > 0);

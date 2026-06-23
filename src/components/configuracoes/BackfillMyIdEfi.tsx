@@ -48,12 +48,13 @@ export default function BackfillMyIdEfi() {
     <div className="clinical-card">
       <div className="flex items-center gap-2 mb-2">
         <ShieldAlert className="icon-sm text-amber-600" />
-        <h2 className="h-section">Correção de avaliações antigas (bug de EFI)</h2>
+        <h2 className="h-section">Correção de avaliações antigas (EFI + curva de perda)</h2>
       </div>
       <p className="text-caption mb-3">
-        Avaliações MyID concluídas antes da correção do dia de hoje podem ter o score, a classificação
-        e o driver primário calculados com a dimensão Funcionalidade (EFI) invertida. Esta ferramenta
-        recalcula os dados já salvos das suas avaliações, sem precisar refazer nenhum questionário.
+        Avaliações MyID concluídas antes das correções mais recentes podem ter o score, a classificação
+        e o driver primário calculados com a dimensão Funcionalidade (EFI) invertida e/ou com a curva de
+        perda antiga (em degraus, com saltos abruptos entre faixas). Esta ferramenta recalcula os dados
+        já salvos das suas avaliações com a fórmula atual, sem precisar refazer nenhum questionário.
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
