@@ -331,7 +331,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M116 133 C 110 132 100 134 92 140 C 84 146 80 158 80 170 C 80 184 82 196 86 206 C 90 214 96 220 104 222 C 110 224 116 222 116 222 L116 133 Z'
+    d: 'M116 133 C 110 132 100 134 92 140 C 84 146 80 158 80 170 C 80 182 82 192 86 200 C 90 206 96 210 104 210 C 110 210 116 208 116 206 L116 133 Z'
   },
 
   // Pulmão esquerdo (patient LEFT = screen RIGHT): 2-lobed, with cardiac notch
@@ -343,7 +343,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M124 133 C 130 132 140 134 148 140 C 156 146 160 158 160 170 C 160 184 158 196 154 206 C 150 214 144 220 136 222 C 130 224 126 222 124 220 C 122 218 118 210 118 200 C 118 188 122 180 126 174 C 124 168 122 162 124 156 C 124 144 124 133 124 133 Z'
+    d: 'M124 133 C 130 132 140 134 148 140 C 156 146 160 158 160 170 C 160 182 158 192 154 200 C 150 206 144 210 136 210 C 130 210 126 208 124 206 C 122 204 118 200 118 195 C 118 184 122 178 126 174 C 124 168 122 162 124 156 C 124 144 124 133 124 133 Z'
   },
 
   // Diafragma: dome-shaped arch, structural divider
@@ -413,7 +413,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio', 'linfatico'],
     type: 'organ',
     layer: 6,
-    d: 'M152 200 C 156 200 162 204 162 212 C 162 220 158 226 152 226 C 148 226 144 222 144 216 C 144 208 148 200 152 200 Z'
+    d: 'M152 178 C 156 178 162 182 162 190 C 162 198 158 204 152 204 C 148 204 144 200 144 194 C 144 186 148 178 152 178 Z'
   },
 
   // Pâncreas: retroperitoneal, behind stomach
@@ -596,6 +596,28 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
 
   // ── URINARY ──────────────────────────────────
 
+  // Rim direito (vista anterior): retroperitoneal, atrás do fígado/cólon — camada inferior
+  {
+    id: 'rim_d_frente',
+    label: 'Rim Direito',
+    view: 'front',
+    sistemas: ['urinario'],
+    type: 'organ',
+    layer: 1,
+    d: 'M92 204 C 88 208 86 216 86 226 C 86 236 88 244 92 248 C 96 252 102 252 108 250 C 114 248 117 244 118 236 C 119 232 117 228 115 226 C 117 224 119 220 118 214 C 117 206 113 202 107 200 C 101 198 96 200 92 204 Z'
+  },
+
+  // Rim esquerdo (vista anterior): retroperitoneal, atrás do estômago/cólon — camada inferior
+  {
+    id: 'rim_e_frente',
+    label: 'Rim Esquerdo',
+    view: 'front',
+    sistemas: ['urinario'],
+    type: 'organ',
+    layer: 1,
+    d: 'M148 204 C 152 208 154 216 154 226 C 154 236 152 244 148 248 C 144 252 138 252 132 250 C 126 248 123 244 122 236 C 121 232 123 228 125 226 C 123 224 121 220 122 214 C 123 206 127 202 133 200 C 139 198 144 200 148 204 Z'
+  },
+
   // Ureteres: two tubes from kidneys to bladder
   {
     id: 'ureteres',
@@ -683,7 +705,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     type: 'organ',
     layer: 6,
-    d: 'M152 200 C 156 200 162 204 162 212 C 162 220 158 226 152 226 C 148 226 144 222 144 216 C 144 208 148 200 152 200 Z'
+    d: 'M152 178 C 156 178 162 182 162 190 C 162 198 158 204 152 204 C 148 204 144 200 144 194 C 144 186 148 178 152 178 Z'
   },
 
   // Cisterna do quilo: near L2 level
@@ -957,7 +979,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M116 133 C 110 132 100 134 92 140 C 84 146 80 158 80 170 C 80 186 82 200 86 210 C 90 218 96 224 104 226 C 110 228 116 226 116 222 L116 133 Z'
+    d: 'M116 133 C 110 132 100 134 92 140 C 84 146 80 158 80 170 C 80 182 82 194 86 202 C 90 208 96 210 104 210 C 110 210 116 208 116 206 L116 133 Z'
   },
 
   // Pulmão esquerdo posterior: left side (patient LEFT = screen RIGHT)
@@ -968,7 +990,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M124 133 C 130 132 140 134 148 140 C 156 146 160 158 160 170 C 160 186 158 200 154 210 C 150 218 144 224 136 226 C 130 228 124 226 124 222 L124 133 Z'
+    d: 'M124 133 C 130 132 140 134 148 140 C 156 146 160 158 160 170 C 160 182 158 194 154 202 C 150 208 144 210 136 210 C 130 210 124 208 124 206 L124 133 Z'
   },
 
   // Diafragma posterior

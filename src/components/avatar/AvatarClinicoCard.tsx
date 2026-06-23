@@ -182,6 +182,8 @@ const ORGAN_RESTING_COLORS: Record<string, string> = {
   // Urinary — indigo-blue
   bexiga:                'rgba(95,138,218,0.62)',
   ureteres:              'rgba(95,138,218,0.38)',
+  rim_d_frente:          'rgba(175,88,48,0.58)',
+  rim_e_frente:          'rgba(175,88,48,0.58)',
   // Lymphatic — lime-green
   timo:                  'rgba(115,195,95,0.54)',
   linfonodos_cervicais:  'rgba(115,195,95,0.60)',
