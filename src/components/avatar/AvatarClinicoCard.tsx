@@ -1078,6 +1078,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <path
                       key={r.id}
                       d={r.d}
+                      transform={groupTransform}
                       fill="none"
                       stroke={nerveColor}
                       strokeWidth={fill ? 2.0 : isHoveredSystem ? 1.8 : (isSpine ? 1.4 : 0.9)}
