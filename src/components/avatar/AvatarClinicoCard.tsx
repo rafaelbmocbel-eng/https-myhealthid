@@ -22,124 +22,53 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
+import avatarHumanoFrente from '@/assets/avatar-humano-frente.png';
+import avatarHumanoCostas from '@/assets/avatar-humano-costas.png';
 
 
-const headPath =
-  'M120 20 ' +
-  'C142 20 150 34 150 48 ' +
-  'C150 62 142 72 120 72 ' +
-  'C98 72 90 62 90 48 ' +
-  'C90 34 98 20 120 20 Z';
 
-const neckPath =
-  'M110 72 ' +
-  'L108 90 ' +
-  'Q120 96 132 90 ' +
-  'L130 72 Z';
 
-const torsoPath =
-  'M108 90 ' +
-  'C92 94 78 104 72 116 ' +
-  'C68 126 68 138 70 154 ' +
-  'L72 182 ' +
-  'C74 198 80 214 90 240 ' +
-  'C94 252 96 268 96 280 ' +
-  'L94 292 ' +
-  'C90 302 92 310 96 315 ' +
-  'C104 322 136 322 144 315 ' +
-  'C148 310 150 302 146 292 ' +
-  'L144 280 ' +
-  'C144 268 146 252 150 240 ' +
-  'C160 214 166 198 168 182 ' +
-  'L170 154 ' +
-  'C172 138 172 126 168 116 ' +
-  'C162 104 148 94 132 90 Z';
 
-const armLeftPath =
-  'M72 116 ' +
-  'C62 124 56 136 54 154 ' +
-  'L50 190 ' +
-  'C48 206 46 222 48 238 ' +
-  'C50 252 56 266 68 272 ' +
-  'L72 274 ' +
-  'C78 270 80 262 78 252 ' +
-  'C76 238 74 222 76 206 ' +
-  'L80 170 ' +
-  'C82 152 82 138 78 126 ' +
-  'L74 118 Z';
+const FRONT_OUTLINE =
+  'M120 18 ' +
+  'C 138 18 152 34 152 54 ' +
+  'C 152 70 144 84 132 90 ' +
+  'L 134 104 ' +
+  'C 156 110 178 118 184 132 ' +
+  'L 192 168 ' +
+  'L 200 230 ' +
+  'L 204 280 ' +
+  'L 196 308 L 188 308 L 184 282 ' +
+  'L 176 232 L 168 178 ' +
+  'L 160 168 L 158 220 L 156 280 ' +
+  'L 162 360 L 158 430 L 152 500 ' +
+  'L 138 506 L 134 500 L 132 430 ' +
+  'L 128 360 L 124 280 ' +
+  'L 116 280 L 112 360 L 108 430 ' +
+  'L 106 500 L 102 506 L 88 500 ' +
+  'L 82 430 L 78 360 L 84 280 ' +
+  'L 82 220 L 80 168 L 72 178 ' +
+  'L 64 232 L 56 282 L 52 308 ' +
+  'L 44 308 L 36 280 L 40 230 ' +
+  'L 48 168 L 56 132 ' +
+  'C 62 118 84 110 106 104 ' +
+  'L 108 90 ' +
+  'C 96 84 88 70 88 54 ' +
+  'C 88 34 102 18 120 18 Z';
 
-const armRightPath =
-  'M168 116 ' +
-  'C178 124 184 136 186 154 ' +
-  'L190 190 ' +
-  'C192 206 194 222 192 238 ' +
-  'C190 252 184 266 172 272 ' +
-  'L168 274 ' +
-  'C162 270 160 262 162 252 ' +
-  'C164 238 166 222 164 206 ' +
-  'L160 170 ' +
-  'C158 152 158 138 162 126 ' +
-  'L166 118 Z';
+const AVATAR_IMAGE_FRAME = {
+  x: -59.5,
+  y: -4.8,
+  width: 363.6,
+  height: 547.2,
+};
 
-const handLeftPath =
-  'M68 272 ' +
-  'C62 278 58 286 58 294 ' +
-  'C58 302 62 306 70 306 ' +
-  'C78 306 82 300 82 292 ' +
-  'C82 284 76 276 72 274 Z';
-
-const handRightPath =
-  'M172 272 ' +
-  'C178 278 182 286 182 294 ' +
-  'C182 302 178 306 170 306 ' +
-  'C162 306 158 300 158 292 ' +
-  'C158 284 164 276 168 274 Z';
-
-const legLeftPath =
-  'M96 315 ' +
-  'C92 340 92 366 94 386 ' +
-  'C96 404 98 420 98 438 ' +
-  'L96 470 ' +
-  'C96 484 98 496 102 506 ' +
-  'L106 512 ' +
-  'L114 512 ' +
-  'C118 500 118 488 118 474 ' +
-  'L120 440 ' +
-  'C120 420 118 402 116 384 ' +
-  'C114 366 116 340 122 316 Z';
-
-const legRightPath =
-  'M144 315 ' +
-  'C148 340 148 366 146 386 ' +
-  'C144 404 142 420 142 438 ' +
-  'L144 470 ' +
-  'C144 484 142 496 138 506 ' +
-  'L134 512 ' +
-  'L126 512 ' +
-  'C122 500 122 488 122 474 ' +
-  'L120 440 ' +
-  'C120 420 122 402 124 384 ' +
-  'C126 366 124 340 118 316 Z';
-
-const footLeftPath =
-  'M102 506 ' +
-  'C98 510 96 516 98 520 ' +
-  'C104 522 112 522 116 518 ' +
-  'C118 514 116 510 114 512 Z';
-
-const footRightPath =
-  'M138 506 ' +
-  'C142 510 144 516 142 520 ' +
-  'C136 522 128 522 124 518 ' +
-  'C122 514 124 510 126 512 Z';
-
-const FRONT_OUTLINE = [
-  headPath, neckPath, torsoPath,
-  armLeftPath, armRightPath,
-  handLeftPath, handRightPath,
-  legLeftPath, legRightPath,
-  footLeftPath, footRightPath,
-].join(' ');
+const AVATAR_BACK_IMAGE_FRAME = {
+  x: -30.5,
+  y: -24.7,
+  width: 293.6,
+  height: 553.5,
+};
 
 const ORGAN_RESTING_COLORS: Record<string, string> = {
   // Nervous — blue-lavender
@@ -425,6 +354,20 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const { data: lente } = useLenteAtiva();
 
   // Histórico do paciente: queixa principal, condições, medicamentos, alergias
+  const { data: pacienteInfo } = useQuery({
+    queryKey: ['paciente-genero-avatar', pacienteId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('pacientes')
+        .select('genero')
+        .eq('id', pacienteId)
+        .maybeSingle();
+      return data as { genero?: string } | null;
+    },
+    enabled: !!pacienteId,
+  });
+  const pacienteGenero = pacienteInfo?.genero || '';
+
   const { data: pacienteHistorico } = useQuery({
     queryKey: ['paciente-historico-avatar', pacienteId],
     queryFn: async () => {
@@ -652,12 +595,23 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   }, [eventosFiltrados, sinalRegions, sistemasAtivos]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
+
+  // Órgãos exclusivos de cada sexo — ocultados quando incompatíveis com o gênero do paciente.
+  // Avatar atual é masculino por padrão; se o paciente é feminino, esconde anatomia masculina e vice-versa.
+  const FEMININE_ONLY_IDS = new Set(['mama_d', 'mama_e', 'utero', 'ovarios', 'trompas_falopio', 'vagina']);
+  const MASCULINE_ONLY_IDS = new Set(['testiculos', 'prostata', 'penis', 'epididimo_d', 'epididimo_e', 'vesiculas_seminais']);
+  const generoNorm = (pacienteGenero || '').toLowerCase().trim();
+  const isFeminino = generoNorm.startsWith('fem') || generoNorm === 'f' || generoNorm.includes('mulher') || generoNorm.includes('female');
+  const isMasculino = generoNorm.startsWith('masc') || generoNorm === 'm' || generoNorm.includes('homem') || generoNorm.includes('male') || !generoNorm;
+
   const regioesViscerais = VISCERAL_REGIONS.filter(r =>
     r.view === view && (
       r.sistemas.some(s => sistemasAtivos.includes(s as any)) ||
       sinalRegions.some(sr => sr.regiao_id === r.id)
-    )
+    ) && !(isFeminino && MASCULINE_ONLY_IDS.has(r.id))
+      && !(isMasculino && FEMININE_ONLY_IDS.has(r.id))
   );
+
 
   const eventosDaRegiao = (rid: string) => eventos.filter(e => e.regiao_id === rid);
 
@@ -859,6 +813,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
               </clipPath>
+              <mask id="avc-body-mask-front" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="520">
+                <rect x="0" y="0" width="240" height="520" fill="black" />
+                <image href={avatarHumanoFrente} {...AVATAR_IMAGE_FRAME} preserveAspectRatio="none" />
+              </mask>
+              <mask id="avc-body-mask-back" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="520">
+                <rect x="0" y="0" width="240" height="520" fill="black" />
+                <image href={avatarHumanoCostas} {...AVATAR_BACK_IMAGE_FRAME} preserveAspectRatio="none" />
+              </mask>
               {/* Warm anatomical skin gradient */}
               <radialGradient id="avc-skin" cx="44%" cy="22%" r="72%">
                 <stop offset="0%"   stopColor="#f5d5b8" stopOpacity="0.96" />
@@ -929,53 +891,58 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            <g clipPath="url(#avc-clip)">
-              {/* Warm skin fill */}
-              <path d={FRONT_OUTLINE} fill="url(#avc-skin)" />
-              {/* Profundidade lateral esquerda */}
-              <path d={FRONT_OUTLINE} fill="url(#body-depth-l)" pointerEvents="none"/>
-              {/* Profundidade lateral direita */}
-              <path d={FRONT_OUTLINE} fill="url(#body-depth-r)" pointerEvents="none"/>
-              {/* Highlight de luz central */}
-              <path d={FRONT_OUTLINE} fill="url(#body-highlight)" pointerEvents="none"/>
+            {/* Silhueta humana calibrada no mesmo sistema anatômico de REGIONS/VISCERAL_REGIONS. */}
+            <g pointerEvents="none">
+              {view === 'back' ? (
+                <image
+                  href={avatarHumanoCostas}
+                  x={AVATAR_BACK_IMAGE_FRAME.x}
+                  y={AVATAR_BACK_IMAGE_FRAME.y}
+                  width={AVATAR_BACK_IMAGE_FRAME.width}
+                  height={AVATAR_BACK_IMAGE_FRAME.height}
+                  preserveAspectRatio="none"
+                  opacity={0.95}
+                />
+              ) : (
+                <image
+                  href={avatarHumanoFrente}
+                  x={AVATAR_IMAGE_FRAME.x}
+                  y={AVATAR_IMAGE_FRAME.y}
+                  width={AVATAR_IMAGE_FRAME.width}
+                  height={AVATAR_IMAGE_FRAME.height}
+                  preserveAspectRatio="none"
+                  opacity={0.95}
+                />
+              )}
 
-              {/* Contorno anatômico */}
-              <path d={FRONT_OUTLINE} fill="none" stroke="rgba(120,80,50,0.20)" strokeWidth={1.2} pointerEvents="none"/>
 
-              {/* Anatomical structure lines */}
-              {view === 'front' && (
-                <g fill="none" stroke="hsl(var(--foreground))" strokeWidth={0.55} opacity={0.30}>
-                  {/* Clavicles */}
-                  <path d="M120 96 Q106 100 92 108" strokeWidth={0.85} />
-                  <path d="M120 96 Q134 100 148 108" strokeWidth={0.85} />
-                  {/* Sternum */}
-                  <path d="M120 96 L120 178" strokeWidth={0.95} />
-                  {/* Ribs — right */}
-                  <path d="M120 110 Q104 108 92 118" />
-                  <path d="M120 124 Q100 122 88 134" />
-                  <path d="M120 138 Q99 136 86 149" />
-                  <path d="M120 152 Q98 150 85 164" />
-                  <path d="M120 166 Q97 164 84 178" />
-                  {/* Ribs — left */}
-                  <path d="M120 110 Q136 108 148 118" />
-                  <path d="M120 124 Q140 122 152 134" />
-                  <path d="M120 138 Q141 136 154 149" />
-                  <path d="M120 152 Q142 150 155 164" />
-                  <path d="M120 166 Q143 164 156 178" />
-                  {/* Costal arch */}
-                  <path d="M84 178 Q102 194 120 196 Q138 194 156 178" strokeWidth={1.0} />
-                  {/* Abdominal lines */}
-                  <path d="M110 200 L110 244 M130 200 L130 244" strokeWidth={0.45} />
-                  <path d="M108 216 L132 216 M108 228 L132 228 M108 240 L132 240" strokeWidth={0.40} />
-                  {/* Navel */}
-                  <circle cx={120} cy={246} r={3.5} strokeWidth={0.7} />
-                  {/* Iliac crests */}
-                  <path d="M90 282 Q104 276 120 278 Q136 276 150 282" strokeDasharray="3,2" strokeWidth={0.7} />
-                  {/* Kneecaps */}
-                  <ellipse cx={148} cy={386} rx={11} ry={7} />
-                  <ellipse cx={92}  cy={386} rx={11} ry={7} />
+              {view === 'back' && (
+                /* Overlay anatômico das costas — coluna, escápulas, glúteos, Aquiles */
+                <g fill="none" stroke="hsl(24, 35%, 22%)" opacity={0.40} strokeLinecap="round">
+                  <path d="M120 100 L120 305" strokeWidth={0.9} strokeDasharray="2,2" />
+                  {[112,126,140,154,168,182,196,210,224,238,252,266,280,294].map(y => (
+                    <line key={y} x1={115} y1={y} x2={125} y2={y} strokeWidth={0.7} />
+                  ))}
+                  <path d="M92 130 Q104 154 114 182" strokeWidth={0.75} />
+                  <path d="M148 130 Q136 154 126 182" strokeWidth={0.75} />
+                  <circle cx={112} cy={284} r={1.9} fill="hsl(24, 35%, 20%)" stroke="none" opacity={0.55} />
+                  <circle cx={128} cy={284} r={1.9} fill="hsl(24, 35%, 20%)" stroke="none" opacity={0.55} />
+                  <path d="M120 305 L120 330" strokeWidth={0.8} />
+                  <path d="M90 320 Q120 334 150 320" strokeWidth={0.7} />
+                  <path d="M104 398 Q108 405 112 398" strokeWidth={0.55} />
+                  <path d="M128 398 Q132 405 136 398" strokeWidth={0.55} />
+                  <path d="M108 478 L108 500" strokeWidth={0.5} />
+                  <path d="M132 478 L132 500" strokeWidth={0.5} />
                 </g>
               )}
+            </g>
+
+            <g mask={view === 'back' ? 'url(#avc-body-mask-back)' : 'url(#avc-body-mask-front)'}>
+
+
+              {/* Linhas anatômicas decorativas removidas — a ilustração base já mostra a anatomia.
+                  Mantemos apenas o grupo posterior abaixo, pois a vista de trás ainda usa silhueta vetorial. */}
+
               {view === 'back' && (
                 <g fill="none" stroke="hsl(var(--foreground))" strokeWidth={0.55} opacity={0.30}>
                   {/* Spine */}
@@ -1169,16 +1136,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               </g>
             )}
 
-            {/* Body outline on top */}
-            <path
-              d={FRONT_OUTLINE}
-              fill="none"
-              stroke="hsl(var(--foreground))"
-              strokeWidth={1.9}
-              strokeLinejoin="round"
-              opacity={0.62}
-              pointerEvents="none"
-            />
+            {/* Contorno escuro do FRONT_OUTLINE removido — a ilustração anatômica fornece o contorno natural.
+                Mantemos apenas as zonas de marcação interativas. */}
+
           </svg>
         </div>
         </div>

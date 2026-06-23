@@ -810,8 +810,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
 
   // ── SENSORY SYSTEM ───────────────────────────
+  // Calibrado contra os landmarks reais da imagem do avatar (avatar-humano-frente.png):
+  // olhos ≈ y 50, orelhas ≈ y 53, nariz ≈ y 58-66, boca ≈ y 70-74.
 
-  // Olho direito: small ellipse over the right side of the face
+  // Olho direito (paciente) = lado esquerdo da tela
   {
     id: 'olho_d',
     label: 'Olho D',
@@ -819,10 +821,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['sensorial'],
     type: 'organ',
     layer: 11,
-    d: 'M108 42 C 108 40 110 39 112 40 C 114 41 114 43 112 44 C 110 45 108 44 108 42 Z'
+    d: 'M108 50 C 108 48 110 47 112 48 C 114 49 114 51 112 52 C 110 53 108 52 108 50 Z'
   },
 
-  // Olho esquerdo: mirror of olho_d
+  // Olho esquerdo (paciente) = lado direito da tela
   {
     id: 'olho_e',
     label: 'Olho E',
@@ -830,10 +832,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['sensorial'],
     type: 'organ',
     layer: 11,
-    d: 'M128 42 C 128 40 130 39 132 40 C 134 41 134 43 132 44 C 130 45 128 44 128 42 Z'
+    d: 'M128 50 C 128 48 130 47 132 48 C 134 49 134 51 132 52 C 130 53 128 52 128 50 Z'
   },
 
-  // Orelha direita: ear on right side of head
+  // Orelha direita: na lateral da cabeça, altura do canal auditivo
   {
     id: 'orelha_d',
     label: 'Orelha D (Externa/Média/Interna)',
@@ -841,10 +843,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['sensorial'],
     type: 'organ',
     layer: 11,
-    d: 'M90 44 C 87 45 86 50 88 54 C 90 57 94 56 94 51 C 94 47 93 44 90 44 Z'
+    d: 'M100 51 C 97 52 96 57 98 61 C 100 64 103 63 103 58 C 103 54 102 51 100 51 Z'
   },
 
-  // Orelha esquerda: mirror of orelha_d
+  // Orelha esquerda
   {
     id: 'orelha_e',
     label: 'Orelha E (Externa/Média/Interna)',
@@ -852,10 +854,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['sensorial'],
     type: 'organ',
     layer: 11,
-    d: 'M150 44 C 153 45 154 50 152 54 C 150 57 146 56 146 51 C 146 47 147 44 150 44 Z'
+    d: 'M140 51 C 143 52 144 57 142 61 C 140 64 137 63 137 58 C 137 54 138 51 140 51 Z'
   },
 
-  // Nariz / mucosa olfatória: midline nose
+  // Nariz / mucosa olfatória: linha média do rosto
   {
     id: 'nariz_olfato',
     label: 'Nariz / Mucosa Olfatória',
@@ -863,10 +865,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['sensorial'],
     type: 'organ',
     layer: 11,
-    d: 'M118 50 C 117 54 116 58 117 60 C 118 62 122 62 123 60 C 124 58 123 54 122 50 C 121 49 119 49 118 50 Z'
+    d: 'M118 58 C 117 62 116 65 117 67 C 118 69 122 69 123 67 C 124 65 123 62 122 58 C 121 57 119 57 118 58 Z'
   },
 
-  // Língua / paladar: mouth area
+  // Língua / paladar: linha da boca
   {
     id: 'lingua_paladar',
     label: 'Língua / Paladar',
@@ -874,7 +876,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['sensorial'],
     type: 'organ',
     layer: 11,
-    d: 'M114 64 C 114 62 126 62 126 64 C 126 67 122 69 120 69 C 118 69 114 67 114 64 Z'
+    d: 'M114 72 C 114 70 126 70 126 72 C 126 75 122 77 120 77 C 118 77 114 75 114 72 Z'
   },
 
   // ── INTEGUMENTARY SYSTEM ─────────────────────
