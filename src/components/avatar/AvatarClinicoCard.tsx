@@ -64,10 +64,10 @@ const AVATAR_IMAGE_FRAME = {
 };
 
 const AVATAR_BACK_IMAGE_FRAME = {
-  x: -30.5,
-  y: -24.7,
-  width: 293.6,
-  height: 553.5,
+  x: -33,
+  y: 6.7,
+  width: 304.2,
+  height: 520.1,
 };
 
 const ORGAN_RESTING_COLORS: Record<string, string> = {
