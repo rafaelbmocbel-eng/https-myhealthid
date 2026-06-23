@@ -352,6 +352,20 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const { data: lente } = useLenteAtiva();
 
   // Histórico do paciente: queixa principal, condições, medicamentos, alergias
+  const { data: pacienteInfo } = useQuery({
+    queryKey: ['paciente-genero-avatar', pacienteId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('pacientes')
+        .select('genero')
+        .eq('id', pacienteId)
+        .maybeSingle();
+      return data as { genero?: string } | null;
+    },
+    enabled: !!pacienteId,
+  });
+  const pacienteGenero = pacienteInfo?.genero || '';
+
   const { data: pacienteHistorico } = useQuery({
     queryKey: ['paciente-historico-avatar', pacienteId],
     queryFn: async () => {
