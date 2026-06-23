@@ -1007,6 +1007,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
                 const isUrgent = severityScore >= 13;
                 const sys0 = r.sistemas[0];
+                // Os paths viscerais foram desenhados em coords ligeiramente baixas em relação
+                // ao avatar humano renderizado. Em vez de re-desenhar 1600+ linhas de paths,
+                // aplicamos um shift vertical global para cada sistema, calibrado contra a
+                // anatomia visível do avatar. Sensorial (face) já está calibrado e fica em 0.
+                const SYSTEM_Y_SHIFT: Record<string, number> = {
+                  sensorial: 0,
+                  nervoso: -8,
+                  respiratorio: -52,
+                  circulatorio: -48,
+                  digestorio: -42,
+                  urinario: -58,
+                  reprodutor: -55,
+                  endocrino: -38,
+                  linfatico: -30,
+                  tegumentar: 0,
+                  musculoesqueletico: 0,
+                };
+                const yShift = SYSTEM_Y_SHIFT[sys0] ?? -35;
+                const groupTransform = yShift !== 0 ? `translate(0, ${yShift})` : undefined;
 
                 // STRUCTURAL (diaphragm, pericardium) — non-clickable dividers
                 if (r.type === 'structural') {
