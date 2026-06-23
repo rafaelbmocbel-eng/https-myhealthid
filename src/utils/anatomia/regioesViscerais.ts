@@ -289,7 +289,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
 
   // ── RESPIRATORY ─────────────────────────────
 
-  // Traqueia: vertical tube from neck to carina with bifurcation
+  // Traqueia: começa abaixo da laringe (y114) e desce até a carina/bifurcação
   {
     id: 'traqueia',
     label: 'Traqueia',
@@ -297,7 +297,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 8,
-    d: 'M118 102 L118 121 C 114 126 106 130 104 136 L106 138 C 108 133 116 128 118 125 L120 128 L122 125 C 124 128 132 133 134 138 L136 136 C 134 130 126 126 122 121 L122 102 Z'
+    d: 'M118 114 L118 133 C 114 138 106 142 104 148 L106 150 C 108 145 116 140 118 137 L120 140 L122 137 C 124 140 132 145 134 150 L136 148 C 134 142 126 138 122 133 L122 114 Z'
   },
 
   // Brônquio direito: short right bronchus
@@ -308,7 +308,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'vessel',
     layer: 8,
-    d: 'M118 125 C 113 125 106 128 104 136'
+    d: 'M118 137 C 113 137 106 140 104 148'
   },
 
   // Brônquio esquerdo: short left bronchus
@@ -319,7 +319,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'vessel',
     layer: 8,
-    d: 'M122 125 C 127 125 134 128 136 136'
+    d: 'M122 137 C 127 137 134 140 136 148'
   },
 
   // Pulmão direito (patient RIGHT = screen LEFT): preenche a caixa torácica
@@ -1194,12 +1194,12 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   {
     id: 'faringe', label: 'Faringe', view: 'front',
     sistemas: ['respiratorio', 'digestorio'], type: 'organ', layer: 7,
-    d: 'M116 88 L 116 108 L 124 108 L 124 88 Z'
+    d: 'M116 78 L 116 100 L 124 100 L 124 78 Z'
   },
   {
     id: 'laringe', label: 'Laringe', view: 'front',
     sistemas: ['respiratorio'], type: 'organ', layer: 7,
-    d: 'M114 104 L 114 118 L 126 118 L 126 104 Z'
+    d: 'M114 100 L 114 114 L 126 114 L 126 100 Z'
   },
   {
     id: 'bronquiolos_d', label: 'Bronquíolos D', view: 'front',
