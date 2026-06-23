@@ -82,10 +82,10 @@ export default function LandingPublica() {
           name="description"
           content="Plataforma multiprofissional com MyID, agenda, portal do paciente PWA, CRM com WhatsApp e prontuário. Teste grátis por 14 dias."
         />
-        <link rel="canonical" href="https://https-myhealthid.lovable.app/" />
+        <link rel="canonical" href="https://www.myhealthid.com.br/" />
         <meta property="og:title" content="MY HEALTH ID" />
         <meta property="og:description" content="Avaliação clínica com IA para profissionais de saúde. Teste grátis por 14 dias." />
-        <meta property="og:url" content="https://https-myhealthid.lovable.app/" />
+        <meta property="og:url" content="https://www.myhealthid.com.br/" />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="MY HEALTH ID" />

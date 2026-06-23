@@ -15,7 +15,7 @@
 //    KNOWN_ALIASES antes de trocar — assim links antigos continuam abrindo.
 // ============================================================================
 
-export const CANONICAL_DOMAIN = 'https-myhealthid.lovable.app';
+export const CANONICAL_DOMAIN = 'www.myhealthid.com.br';
 export const CANONICAL_URL = `https://${CANONICAL_DOMAIN}`;
 
 /**
@@ -26,9 +26,10 @@ export const CANONICAL_URL = `https://${CANONICAL_DOMAIN}`;
 export const KNOWN_PRODUCTION_DOMAINS: readonly string[] = [
   CANONICAL_DOMAIN,
   // Aliases / typos históricos — manter aqui para que o redirect funcione:
+  'myhealthid.com.br',
+  // Domínio antigo do Lovable, usado antes da migração para o domínio próprio:
+  'https-myhealthid.lovable.app',
   'myhealthid.lovable.app',
-  // Domínios customizados do cliente devem ser adicionados aqui quando
-  // forem conectados (ex.: 'app.myhealthid.com.br')
 ];
 
 /** Detecta se um origin é ambiente de dev/preview do Lovable (precisa de login). */
