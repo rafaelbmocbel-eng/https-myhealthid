@@ -135,12 +135,12 @@ export const REGIONS: Region[] = [
   // Chest — bottom edge curves with the rib cage instead of cutting straight
   { id: 'peitoral',     label: 'Tórax',        view: 'front', cx: 120, cy: 152,
     d: 'M88 130 L152 130 C 162 133 168 138 168 144 Q 165 165 160 184 Q 120 191 80 184 Q 75 165 72 144 C 72 138 78 133 88 130 Z' },
-  // Abdomen — sides curve inward at the waist
-  { id: 'abdomen',      label: 'Abdômen',      view: 'front', cx: 120, cy: 210,
-    d: 'M80 184 Q 120 191 160 184 C 163 200 163 215 162 240 Q 120 232 78 240 C 77 215 77 200 80 184 Z' },
-  // Pelvis — sides flare outward over the hips
-  { id: 'pelve',        label: 'Pelve',        view: 'front', cx: 120, cy: 264,
-    d: 'M78 240 Q 120 232 162 240 C 165 255 162 270 156 290 Q 120 298 84 290 C 78 270 75 255 78 240 Z' },
+  // Abdomen — sides curve inward at the waist (raised, more compact)
+  { id: 'abdomen',      label: 'Abdômen',      view: 'front', cx: 120, cy: 205,
+    d: 'M80 184 Q 120 191 160 184 C 163 198 163 210 162 226 Q 120 220 78 226 C 77 210 77 198 80 184 Z' },
+  // Pelvis — directly below abdomen, hip flare
+  { id: 'pelve',        label: 'Pelve',        view: 'front', cx: 120, cy: 248,
+    d: 'M78 226 Q 120 220 162 226 C 165 240 162 254 156 270 Q 120 278 84 270 C 78 254 75 240 78 226 Z' },
   // Right arm (anatomically — renders on viewer's left)
   { id: 'braco_d',      label: 'Braço D',      view: 'front', cx: 62,  cy: 168,
     d: 'M56 132 L48 168 L64 184 L72 144 Z' },
@@ -159,22 +159,22 @@ export const REGIONS: Region[] = [
     d: 'M200 230 L204 280 L188 280 L182 224 Z' },
   { id: 'mao_e',        label: 'Mão E',        view: 'front', cx: 192, cy: 296,
     d: 'M204 280 L196 308 L184 308 L188 280 Z' },
-  // Right thigh (renders on viewer's left)
-  { id: 'coxa_d',       label: 'Coxa D',       view: 'front', cx: 96,  cy: 330,
-    d: 'M84 290 L116 290 L112 360 L78 360 Z' },
-  { id: 'joelho_d',     label: 'Joelho D',     view: 'front', cx: 96,  cy: 380,
-    d: 'M79 380 A17 21 0 1 0 113 380 A17 21 0 1 0 79 380 Z' },
-  { id: 'canela_d',     label: 'Canela D',     view: 'front', cx: 96,  cy: 450,
-    d: 'M80 400 L110 400 L106 490 L82 490 Z' },
+  // Right thigh — long, runs from pelvis down to knee
+  { id: 'coxa_d',       label: 'Coxa D',       view: 'front', cx: 96,  cy: 318,
+    d: 'M84 270 L116 270 L114 368 L78 368 Z' },
+  { id: 'joelho_d',     label: 'Joelho D',     view: 'front', cx: 96,  cy: 383,
+    d: 'M79 383 A17 14 0 1 0 113 383 A17 14 0 1 0 79 383 Z' },
+  { id: 'canela_d',     label: 'Canela D',     view: 'front', cx: 96,  cy: 446,
+    d: 'M80 398 L110 398 L106 490 L82 490 Z' },
   { id: 'pe_d',         label: 'Pé D',         view: 'front', cx: 96,  cy: 502,
     d: 'M82 490 L106 490 L102 510 L88 510 Z' },
-  // Left thigh (renders on viewer's right)
-  { id: 'coxa_e',       label: 'Coxa E',       view: 'front', cx: 144, cy: 330,
-    d: 'M124 290 L156 290 L162 360 L128 360 Z' },
-  { id: 'joelho_e',     label: 'Joelho E',     view: 'front', cx: 144, cy: 380,
-    d: 'M127 380 A17 21 0 1 0 161 380 A17 21 0 1 0 127 380 Z' },
-  { id: 'canela_e',     label: 'Canela E',     view: 'front', cx: 144, cy: 450,
-    d: 'M130 400 L160 400 L158 490 L134 490 Z' },
+  // Left thigh — long, runs from pelvis down to knee
+  { id: 'coxa_e',       label: 'Coxa E',       view: 'front', cx: 144, cy: 318,
+    d: 'M124 270 L156 270 L162 368 L126 368 Z' },
+  { id: 'joelho_e',     label: 'Joelho E',     view: 'front', cx: 144, cy: 383,
+    d: 'M127 383 A17 14 0 1 0 161 383 A17 14 0 1 0 127 383 Z' },
+  { id: 'canela_e',     label: 'Canela E',     view: 'front', cx: 144, cy: 446,
+    d: 'M130 398 L160 398 L158 490 L134 490 Z' },
   { id: 'pe_e',         label: 'Pé E',         view: 'front', cx: 144, cy: 502,
     d: 'M134 490 L158 490 L152 510 L138 510 Z' },
 
