@@ -323,7 +323,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
 
   // Pulmão direito (patient RIGHT = screen LEFT): 3-lobed
-  // Raised by 12 units to reach upper thoracic limit (apex near clavicle)
+  // Ápice ao nível do trapézio médio, base na 6ª costela torácica
   {
     id: 'pulmao_d',
     label: 'Pulmão Direito',
@@ -331,11 +331,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M116 121 C 110 120 100 122 92 128 C 84 134 80 146 80 158 C 80 170 82 180 86 188 C 90 194 96 198 104 198 C 110 198 116 196 116 194 L116 121 Z'
+    d: 'M116 112.4 C 110 112 100 112.9 92 115.5 C 84 118.1 80 123.3 80 128.6 C 80 133.8 82 138.2 86 141.6 C 90 144.3 96 146 104 146 C 110 146 116 145.1 116 144.3 L116 112.4 Z'
   },
 
   // Pulmão esquerdo (patient LEFT = screen RIGHT): 2-lobed, with cardiac notch
-  // Raised by 12 units to reach upper thoracic limit (apex near clavicle)
+  // Ápice ao nível do trapézio médio, base na 6ª costela torácica
   {
     id: 'pulmao_e',
     label: 'Pulmão Esquerdo',
@@ -343,7 +343,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M124 121 C 130 120 140 122 148 128 C 156 134 160 146 160 158 C 160 170 158 180 154 188 C 150 194 144 198 136 198 C 130 198 126 196 124 194 C 122 192 118 188 118 183 C 118 172 122 166 126 162 C 124 156 122 150 124 144 C 124 132 124 121 124 121 Z'
+    d: 'M124 112.4 C 130 112 140 112.9 148 115.5 C 156 118.1 160 123.3 160 128.6 C 160 133.8 158 138.2 154 141.6 C 150 144.3 144 146 136 146 C 130 146 126 145.1 124 144.3 C 122 143.4 118 141.6 118 139.5 C 118 134.7 122 132.1 126 130.3 C 124 127.7 122 125.1 124 122.5 C 124 117.2 124 112.4 124 112.4 Z'
   },
 
   // Diafragma: dome-shaped arch, raised to follow new lung base
@@ -974,6 +974,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
 
   // Pulmão direito posterior: right side (patient RIGHT = screen LEFT)
+  // Ápice ao nível do trapézio médio, base na 6ª costela torácica
   {
     id: 'pulmao_d_p',
     label: 'Pulmão Direito (Posterior)',
@@ -981,10 +982,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M116 133 C 110 132 100 134 92 140 C 84 146 80 158 80 170 C 80 182 82 194 86 202 C 90 208 96 210 104 210 C 110 210 116 208 116 206 L116 133 Z'
+    d: 'M116 112.4 C 110 112 100 112.9 92 115.5 C 84 118.1 80 123.3 80 128.6 C 80 133.8 82 139 86 142.5 C 90 145.1 96 146 104 146 C 110 146 116 145.1 116 144.3 L116 112.4 Z'
   },
 
   // Pulmão esquerdo posterior: left side (patient LEFT = screen RIGHT)
+  // Ápice ao nível do trapézio médio, base na 6ª costela torácica
   {
     id: 'pulmao_e_p',
     label: 'Pulmão Esquerdo (Posterior)',
@@ -992,7 +994,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M124 133 C 130 132 140 134 148 140 C 156 146 160 158 160 170 C 160 182 158 194 154 202 C 150 208 144 210 136 210 C 130 210 124 208 124 206 L124 133 Z'
+    d: 'M124 112.4 C 130 112 140 112.9 148 115.5 C 156 118.1 160 123.3 160 128.6 C 160 133.8 158 139 154 142.5 C 150 145.1 144 146 136 146 C 130 146 124 145.1 124 144.3 L124 112.4 Z'
   },
 
   // Diafragma posterior
@@ -1007,6 +1009,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
 
   // Rim direito (patient RIGHT = screen LEFT): classic kidney bean shape, hilum medial
+  // Entre a 9ª e a 12ª costela; rebaixado em relação ao rim esquerdo por causa do fígado
   {
     id: 'rim_d',
     label: 'Rim Direito',
@@ -1014,10 +1017,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 6,
-    d: 'M90 206 C 86 210 84 218 84 228 C 84 238 86 246 90 250 C 94 254 100 254 106 252 C 112 250 116 246 117 238 C 118 234 116 230 114 228 C 116 226 118 222 117 216 C 116 208 112 204 106 202 C 100 200 94 202 90 206 Z'
+    d: 'M90 171.9 C 86 174.5 84 179.7 84 186.1 C 84 192.6 86 197.8 90 200.4 C 94 203 100 203 106 201.7 C 112 200.4 116 197.8 117 192.6 C 118 190 116 187.4 114 186.1 C 116 184.9 118 182.3 117 178.4 C 116 173.2 112 170.6 106 169.3 C 100 168 94 169.3 90 171.9 Z'
   },
 
   // Rim esquerdo (patient LEFT = screen RIGHT): kidney bean, hilum medial
+  // Entre a 9ª e a 12ª costela
   {
     id: 'rim_e',
     label: 'Rim Esquerdo',
@@ -1025,7 +1029,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 6,
-    d: 'M150 206 C 154 210 156 218 156 228 C 156 238 154 246 150 250 C 146 254 140 254 134 252 C 128 250 124 246 123 238 C 122 234 124 230 126 228 C 124 226 122 222 123 216 C 124 208 128 204 134 202 C 140 200 146 202 150 206 Z'
+    d: 'M150 164.8 C 154 167.3 156 172.3 156 178.6 C 156 184.9 154 190 150 192.5 C 146 195 140 195 134 193.7 C 128 192.5 124 190 123 184.9 C 122 182.4 124 179.9 126 178.6 C 124 177.4 122 174.9 123 171.1 C 124 166 128 163.5 134 162.3 C 140 161 146 162.3 150 164.8 Z'
   },
 
   // Adrenal direita posterior: atop right kidney
@@ -1036,7 +1040,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 7,
-    d: 'M92 200 C 94 196 100 194 104 196 C 108 198 108 202 106 206 C 104 208 100 208 97 206 C 94 204 91 202 92 200 Z'
+    d: 'M92 168 C 94 165.4 100 164.1 104 165.4 C 108 166.7 108 169.3 106 171.9 C 104 173.2 100 173.2 97 171.9 C 94 170.6 91 169.3 92 168 Z'
   },
 
   // Adrenal esquerda posterior: atop left kidney
@@ -1047,7 +1051,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 7,
-    d: 'M148 200 C 146 196 140 194 136 196 C 132 198 132 202 134 206 C 136 208 140 208 143 206 C 146 204 149 202 148 200 Z'
+    d: 'M148 161 C 146 158.5 140 157.2 136 158.5 C 132 159.7 132 162.3 134 164.8 C 136 166 140 166 143 164.8 C 146 163.5 149 162.3 148 161 Z'
   },
 
   // Glúteos: gluteal muscle group area
@@ -1239,12 +1243,12 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   {
     id: 'pelve_renal_d', label: 'Pelve Renal D', view: 'back',
     sistemas: ['urinario'], type: 'organ', layer: 7,
-    d: 'M104 234 C 100 240 100 248 106 250 C 112 252 116 246 114 240 C 112 235 108 232 104 234 Z'
+    d: 'M104 190 C 100 193.9 100 199.1 106 200.4 C 112 201.7 116 197.8 114 193.9 C 112 190.7 108 188.7 104 190 Z'
   },
   {
     id: 'pelve_renal_e', label: 'Pelve Renal E', view: 'back',
     sistemas: ['urinario'], type: 'organ', layer: 7,
-    d: 'M136 234 C 140 240 140 248 134 250 C 128 252 124 246 126 240 C 128 235 132 232 136 234 Z'
+    d: 'M136 182.4 C 140 186.2 140 191.2 134 192.5 C 128 193.7 124 190 126 186.2 C 128 183 132 181.1 136 182.4 Z'
   },
 
   // ── LINFÁTICO — linfonodos profundos e MALT ──
