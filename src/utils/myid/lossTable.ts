@@ -193,6 +193,32 @@ function getInterpretacao(dim: string, perda: number): string {
   return best;
 }
 
+// As bandas continuam sendo a fonte de calibração (mesmos pesos, mesmos limiares).
+// Em vez de aplicar a perda "em degrau" (valor fixo dentro da faixa), interpolamos
+// linearmente entre o ponto médio de cada faixa — isso elimina os saltos abruptos
+// entre faixas adjacentes sem alterar a calibração original: nos pontos médios das
+// faixas o valor interpolado é exatamente igual ao valor da tabela original.
+function interpolarPerda(config: DimensionLossConfig, scoreBruto: number): number {
+  const SCORE_MAX = 10;
+  const ancoras = config.bandas.map(b => ({
+    x: (b.min + Math.min(b.max, SCORE_MAX)) / 2,
+    y: b.perda,
+  }));
+
+  if (scoreBruto <= ancoras[0].x) return ancoras[0].y;
+
+  for (let i = 0; i < ancoras.length - 1; i++) {
+    const atual = ancoras[i];
+    const proxima = ancoras[i + 1];
+    if (scoreBruto <= proxima.x) {
+      const t = (scoreBruto - atual.x) / (proxima.x - atual.x);
+      return atual.y + t * (proxima.y - atual.y);
+    }
+  }
+
+  return ancoras[ancoras.length - 1].y;
+}
+
 /** Calculate the loss for a single dimension based on its raw score (0-10) */
 export function calcularPerdaDimensao(dimensao: string, scoreBruto: number): PerdaCalculada {
   const config = TABELA_PERDAS[dimensao];
@@ -203,14 +229,16 @@ export function calcularPerdaDimensao(dimensao: string, scoreBruto: number): Per
   const banda = config.bandas.find(b => scoreBruto >= b.min && scoreBruto < b.max)
     || config.bandas[config.bandas.length - 1];
 
+  const perdaInterpolada = Math.round(interpolarPerda(config, scoreBruto) * 10) / 10;
+
   const gatilhoCritico = config.gatilho_critico !== undefined && scoreBruto >= config.gatilho_critico;
 
   return {
     score_bruto: scoreBruto,
-    perda_pontos: banda.perda,
-    percentual_perda: (banda.perda / TOTAL_MAX_LOSS) * 100,
+    perda_pontos: perdaInterpolada,
+    percentual_perda: (perdaInterpolada / TOTAL_MAX_LOSS) * 100,
     banda: `${banda.min}-${banda.max}`,
-    interpretacao: getInterpretacao(dimensao, banda.perda),
+    interpretacao: getInterpretacao(dimensao, perdaInterpolada),
     gatilho_critico: gatilhoCritico,
   };
 }
