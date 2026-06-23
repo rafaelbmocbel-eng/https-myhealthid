@@ -352,6 +352,20 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const { data: lente } = useLenteAtiva();
 
   // Histórico do paciente: queixa principal, condições, medicamentos, alergias
+  const { data: pacienteInfo } = useQuery({
+    queryKey: ['paciente-genero-avatar', pacienteId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('pacientes')
+        .select('genero')
+        .eq('id', pacienteId)
+        .maybeSingle();
+      return data as { genero?: string } | null;
+    },
+    enabled: !!pacienteId,
+  });
+  const pacienteGenero = pacienteInfo?.genero || '';
+
   const { data: pacienteHistorico } = useQuery({
     queryKey: ['paciente-historico-avatar', pacienteId],
     queryFn: async () => {
@@ -579,12 +593,23 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   }, [eventosFiltrados, sinalRegions, sistemasAtivos]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
+
+  // Órgãos exclusivos de cada sexo — ocultados quando incompatíveis com o gênero do paciente.
+  // Avatar atual é masculino por padrão; se o paciente é feminino, esconde anatomia masculina e vice-versa.
+  const FEMININE_ONLY_IDS = new Set(['mama_d', 'mama_e', 'utero', 'ovarios', 'trompas_falopio', 'vagina']);
+  const MASCULINE_ONLY_IDS = new Set(['testiculos', 'prostata', 'penis', 'epididimo_d', 'epididimo_e', 'vesiculas_seminais']);
+  const generoNorm = (pacienteGenero || '').toLowerCase();
+  const isFeminino = generoNorm.startsWith('fem') || generoNorm === 'f';
+  const isMasculino = generoNorm.startsWith('masc') || generoNorm === 'm' || !generoNorm; // default masculino (imagem atual)
+
   const regioesViscerais = VISCERAL_REGIONS.filter(r =>
     r.view === view && (
       r.sistemas.some(s => sistemasAtivos.includes(s as any)) ||
       sinalRegions.some(sr => sr.regiao_id === r.id)
-    )
+    ) && !(isFeminino && MASCULINE_ONLY_IDS.has(r.id))
+      && !(isMasculino && FEMININE_ONLY_IDS.has(r.id))
   );
+
 
   const eventosDaRegiao = (rid: string) => eventos.filter(e => e.regiao_id === rid);
 
