@@ -541,17 +541,20 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
   },
   {
     keywords: ['joelho direito', 'menisco direito', 'lca direito'],
-    regioes: ['joelho_d'],
+    // cavo_d/cavo_e = poplíteo (parte posterior do joelho) — não existe região
+    // "joelho" dedicada na vista posterior, então o achado também marca o
+    // poplíteo correspondente para que o joelho apareça na vista de costas.
+    regioes: ['joelho_d', 'cavo_d'],
     sistema: 'musculoesqueletico'
   },
   {
     keywords: ['joelho esquerdo', 'menisco esquerdo', 'lca esquerdo'],
-    regioes: ['joelho_e'],
+    regioes: ['joelho_e', 'cavo_e'],
     sistema: 'musculoesqueletico'
   },
   {
     keywords: ['joelho', 'patela', 'condromalacia', 'menisco', 'ligamento cruzado', 'lca', 'lcp'],
-    regioes: ['joelho_d', 'joelho_e'],
+    regioes: ['joelho_d', 'joelho_e', 'cavo_d', 'cavo_e'],
     sistema: 'musculoesqueletico'
   },
   {

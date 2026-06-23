@@ -541,17 +541,30 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const td = (ev as any).tipo_diagnostico as string | undefined;
       const evTP = tipoPeso(td);
       const evP = peso(ev);
-      const prevTP = Number(map[ev.regiao_id + '__tipopeso'] || 0);
-      const prevP = Number(map[ev.regiao_id + '__peso'] || -1);
-      const shouldReplace = !map[ev.regiao_id] ||
-        evTP > prevTP ||
-        (evTP === prevTP && evP > prevP);
-      if (shouldReplace) {
-        map[ev.regiao_id] = corEvento(ev);
-        map[ev.regiao_id + '__peso'] = String(evP);
-        map[ev.regiao_id + '__tipo'] = td || 'achado_clinico';
-        map[ev.regiao_id + '__tipopeso'] = String(evTP);
+
+      // A descrição livre (tipo_achado) pode mencionar outras regiões/lados além
+      // da região fixa selecionada no formulário (ex.: regiao_id = 'joelho_d' mas
+      // o texto diz "fratura joelho direito e esquerdo") — detecta e marca também.
+      const regioesAfetadas = new Set([ev.regiao_id]);
+      if (ev.tipo_achado) {
+        encontrarSintomasEmTexto(ev.tipo_achado)
+          .filter(s => s.sistema === ev.sistema)
+          .forEach(s => regioesAfetadas.add(s.regiao_id));
       }
+
+      regioesAfetadas.forEach(regId => {
+        const prevTP = Number(map[regId + '__tipopeso'] || 0);
+        const prevP = Number(map[regId + '__peso'] || -1);
+        const shouldReplace = !map[regId] ||
+          evTP > prevTP ||
+          (evTP === prevTP && evP > prevP);
+        if (shouldReplace) {
+          map[regId] = corEvento(ev);
+          map[regId + '__peso'] = String(evP);
+          map[regId + '__tipo'] = td || 'achado_clinico';
+          map[regId + '__tipopeso'] = String(evTP);
+        }
+      });
     });
 
     // Sinais não-confirmados (histórico do paciente, notas clínicas) — nunca competem
