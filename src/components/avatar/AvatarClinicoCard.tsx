@@ -1138,22 +1138,22 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             {view === 'front' && (
               <g fontSize="6" fontFamily="system-ui,sans-serif" textAnchor="middle" pointerEvents="none" fontWeight="600">
                 {sistemasAtivos.includes('nervoso') && (
-                  <text x={120} y={50} fill="rgba(100,115,200,0.88)">Encéfalo</text>
+                  <text x={120} y={42} fill="rgba(100,115,200,0.88)">Encéfalo</text>
                 )}
                 {sistemasAtivos.includes('circulatorio') && (
-                  <text x={119} y={166} fill="rgba(210,40,40,0.90)" fontSize="8">♥</text>
+                  <text x={119} y={118} fill="rgba(210,40,40,0.90)" fontSize="8">♥</text>
                 )}
                 {sistemasAtivos.includes('respiratorio') && (
                   <>
-                    <text x={98}  y={186} fill="rgba(6,182,212,0.85)">P.Dir</text>
-                    <text x={142} y={186} fill="rgba(6,182,212,0.85)">P.Esq</text>
+                    <text x={98}  y={134} fill="rgba(6,182,212,0.85)">P.Dir</text>
+                    <text x={142} y={134} fill="rgba(6,182,212,0.85)">P.Esq</text>
                   </>
                 )}
                 {sistemasAtivos.includes('digestorio') && (
-                  <text x={100} y={206} fill="rgba(150,70,30,0.85)">Fígado</text>
+                  <text x={100} y={164} fill="rgba(150,70,30,0.85)">Fígado</text>
                 )}
                 {sistemasAtivos.includes('urinario') && (
-                  <text x={120} y={288} fill="rgba(80,110,210,0.85)">Bexiga</text>
+                  <text x={120} y={230} fill="rgba(80,110,210,0.85)">Bexiga</text>
                 )}
               </g>
             )}
