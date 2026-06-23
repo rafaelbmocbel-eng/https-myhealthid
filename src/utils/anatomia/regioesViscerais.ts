@@ -596,7 +596,8 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
 
   // ── URINARY ──────────────────────────────────
 
-  // Rim direito (vista anterior): retroperitoneal, atrás do fígado/cólon — camada inferior
+  // Rim direito (vista anterior): retroperitoneal, entre a 9ª e a 12ª costela,
+  // levemente mais baixo que o esquerdo por causa do fígado
   {
     id: 'rim_d_frente',
     label: 'Rim Direito',
@@ -604,10 +605,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 1,
-    d: 'M92 204 C 88 208 86 216 86 226 C 86 236 88 244 92 248 C 96 252 102 252 108 250 C 114 248 117 244 118 236 C 119 232 117 228 115 226 C 117 224 119 220 118 214 C 117 206 113 202 107 200 C 101 198 96 200 92 204 Z'
+    d: 'M92 171.9 C 88 174.5 86 179.7 86 186.1 C 86 192.6 88 197.8 92 200.4 C 96 203 102 203 108 201.7 C 114 200.4 117 197.8 118 192.6 C 119 190 117 187.4 115 186.1 C 117 184.9 119 182.3 118 178.4 C 117 173.2 113 170.6 107 169.3 C 101 168 96 169.3 92 171.9 Z'
   },
 
-  // Rim esquerdo (vista anterior): retroperitoneal, atrás do estômago/cólon — camada inferior
+  // Rim esquerdo (vista anterior): retroperitoneal, entre a 9ª e a 12ª costela
   {
     id: 'rim_e_frente',
     label: 'Rim Esquerdo',
@@ -615,7 +616,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 1,
-    d: 'M148 204 C 152 208 154 216 154 226 C 154 236 152 244 148 248 C 144 252 138 252 132 250 C 126 248 123 244 122 236 C 121 232 123 228 125 226 C 123 224 121 220 122 214 C 123 206 127 202 133 200 C 139 198 144 200 148 204 Z'
+    d: 'M148 164.8 C 152 167.3 154 172.3 154 178.6 C 154 184.9 152 190 148 192.5 C 144 195 138 195 132 193.7 C 126 192.5 123 190 122 184.9 C 121 182.4 123 179.9 125 178.6 C 123 177.4 121 174.9 122 171.1 C 123 166 127 163.5 133 162.3 C 139 162.3 144 162.3 148 164.8 Z'
   },
 
   // Ureteres: two tubes from kidneys to bladder
@@ -626,10 +627,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'vessel',
     layer: 6,
-    d: 'M110 228 C 110 240 110 256 112 272 C 113 278 114 282 116 284 M130 228 C 130 240 130 256 128 272 C 127 278 126 282 124 284'
+    d: 'M112 203 C 113 213 114 225 116 238 M128 195 C 127 209 126 224 124 238'
   },
 
-  // Bexiga: pear-shaped, rounded top, tapers below
+  // Bexiga: pear-shaped, rounded top, tapers below — dentro da pelve, acima da sínfise pubiana
   {
     id: 'bexiga',
     label: 'Bexiga Urinária',
@@ -637,7 +638,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 5,
-    d: 'M116 282 C 112 278 108 274 108 284 C 108 294 110 300 114 304 C 116 306 118 308 120 308 C 122 308 124 306 126 304 C 130 300 132 294 132 284 C 132 274 128 278 124 282 C 122 280 118 280 116 282 Z'
+    d: 'M116 238 C 112 234 108 230 108 240 C 108 250 110 256 114 260 C 116 262 118 264 120 264 C 122 264 124 262 126 260 C 130 256 132 250 132 240 C 132 230 128 234 124 238 C 122 236 118 236 116 238 Z'
   },
 
   // Uretra: continues from bladder neck toward perineum
@@ -1008,7 +1009,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M82 210 C 88 204 96 198 104 194 C 110 191 115 190 120 190 C 125 190 130 191 136 194 C 144 198 152 204 158 210'
   },
 
-  // Rim direito (patient RIGHT = screen LEFT): classic kidney bean shape, hilum medial
+  // Rim direito (patient RIGHT = screen RIGHT na vista posterior, sem espelhamento): classic kidney bean shape, hilum medial
   // Entre a 9ª e a 12ª costela; rebaixado em relação ao rim esquerdo por causa do fígado
   {
     id: 'rim_d',
@@ -1017,10 +1018,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 6,
-    d: 'M90 171.9 C 86 174.5 84 179.7 84 186.1 C 84 192.6 86 197.8 90 200.4 C 94 203 100 203 106 201.7 C 112 200.4 116 197.8 117 192.6 C 118 190 116 187.4 114 186.1 C 116 184.9 118 182.3 117 178.4 C 116 173.2 112 170.6 106 169.3 C 100 168 94 169.3 90 171.9 Z'
+    d: 'M150 171.9 C 154 174.5 156 179.7 156 186.1 C 156 192.6 154 197.8 150 200.4 C 146 203 140 203 134 201.7 C 128 200.4 124 197.8 123 192.6 C 122 190 124 187.4 126 186.1 C 124 184.9 122 182.3 123 178.4 C 124 173.2 128 170.6 134 169.3 C 140 168 146 169.3 150 171.9 Z'
   },
 
-  // Rim esquerdo (patient LEFT = screen RIGHT): kidney bean, hilum medial
+  // Rim esquerdo (patient LEFT = screen LEFT na vista posterior, sem espelhamento): kidney bean, hilum medial
   // Entre a 9ª e a 12ª costela
   {
     id: 'rim_e',
@@ -1029,10 +1030,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 6,
-    d: 'M150 164.8 C 154 167.3 156 172.3 156 178.6 C 156 184.9 154 190 150 192.5 C 146 195 140 195 134 193.7 C 128 192.5 124 190 123 184.9 C 122 182.4 124 179.9 126 178.6 C 124 177.4 122 174.9 123 171.1 C 124 166 128 163.5 134 162.3 C 140 161 146 162.3 150 164.8 Z'
+    d: 'M90 164.8 C 86 167.3 84 172.3 84 178.6 C 84 184.9 86 190 90 192.5 C 94 195 100 195 106 193.7 C 112 192.5 116 190 117 184.9 C 118 182.4 116 179.9 114 178.6 C 116 177.4 118 174.9 117 171.1 C 116 166 112 163.5 106 162.3 C 100 161 94 162.3 90 164.8 Z'
   },
 
-  // Adrenal direita posterior: atop right kidney
+  // Adrenal direita posterior: ovoide acima do polo superior do rim direito, sem sobreposição
   {
     id: 'adrenal_d_p',
     label: 'Glândula Suprarrenal D (Posterior)',
@@ -1040,10 +1041,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 7,
-    d: 'M92 168 C 94 165.4 100 164.1 104 165.4 C 108 166.7 108 169.3 106 171.9 C 104 173.2 100 173.2 97 171.9 C 94 170.6 91 169.3 92 168 Z'
+    d: 'M132 160 C 132 156.1 135.6 153 140 153 C 144.4 153 148 156.1 148 160 C 148 163.9 144.4 167 140 167 C 135.6 167 132 163.9 132 160 Z'
   },
 
-  // Adrenal esquerda posterior: atop left kidney
+  // Adrenal esquerda posterior: ovoide acima do polo superior do rim esquerdo, sem sobreposição
   {
     id: 'adrenal_e_p',
     label: 'Glândula Suprarrenal E (Posterior)',
@@ -1051,7 +1052,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 7,
-    d: 'M148 161 C 146 158.5 140 157.2 136 158.5 C 132 159.7 132 162.3 134 164.8 C 136 166 140 166 143 164.8 C 146 163.5 149 162.3 148 161 Z'
+    d: 'M93 153 C 93 149.1 96.6 146 101 146 C 105.4 146 109 149.1 109 153 C 109 156.9 105.4 160 101 160 C 96.6 160 93 156.9 93 153 Z'
   },
 
   // Glúteos: gluteal muscle group area
@@ -1240,15 +1241,17 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
 
   // ── URINÁRIO — pelve renal e néfrons ──
+  // Hilo medial do rim direito, na altura média do rim (não mais perto da base, evitando parecer uma "bolinha" solta)
   {
     id: 'pelve_renal_d', label: 'Pelve Renal D', view: 'back',
     sistemas: ['urinario'], type: 'organ', layer: 7,
-    d: 'M104 190 C 100 193.9 100 199.1 106 200.4 C 112 201.7 116 197.8 114 193.9 C 112 190.7 108 188.7 104 190 Z'
+    d: 'M124 185 C 124 180.6 126.7 177 130 177 C 133.3 177 136 180.6 136 185 C 136 189.4 133.3 193 130 193 C 126.7 193 124 189.4 124 185 Z'
   },
+  // Hilo medial do rim esquerdo, na altura média do rim
   {
     id: 'pelve_renal_e', label: 'Pelve Renal E', view: 'back',
     sistemas: ['urinario'], type: 'organ', layer: 7,
-    d: 'M136 182.4 C 140 186.2 140 191.2 134 192.5 C 128 193.7 124 190 126 186.2 C 128 183 132 181.1 136 182.4 Z'
+    d: 'M104 178 C 104 173.6 106.7 170 110 170 C 113.3 170 116 173.6 116 178 C 116 182.4 113.3 186 110 186 C 106.7 186 104 182.4 104 178 Z'
   },
 
   // ── LINFÁTICO — linfonodos profundos e MALT ──
