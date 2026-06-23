@@ -1035,6 +1035,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <path
                       key={r.id}
                       d={r.d}
+                      transform={groupTransform}
                       fill="none"
                       stroke={isDialfragma ? 'rgba(80,80,80,0.50)' : 'rgba(120,120,120,0.25)'}
                       strokeWidth={isDialfragma ? 1.4 : 0.8}
