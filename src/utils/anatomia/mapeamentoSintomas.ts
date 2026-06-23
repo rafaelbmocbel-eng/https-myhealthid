@@ -67,7 +67,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
   },
   {
     keywords: ['irradiacao para pe esquerdo', 'irradiação para pé esquerdo', 'dor no pe esquerdo', 'dor no pé esquerdo', 'lombociatalgia esquerda', 'ciatalgia esquerda'],
-    regioes: ['nervo_ciatico_e', 'pe_e', 'pe_e_p'],
+    regioes: ['nervo_ciatico_e', 'pe_e'],
     sistema: 'nervoso'
   },
   {
@@ -131,13 +131,23 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'circulatorio'
   },
   {
-    keywords: ['insuficiencia cardiaca', 'insuficiência cardíaca', 'edema nos pes', 'edema nos pés', 'ic'],
+    keywords: ['insuficiencia cardiaca', 'insuficiência cardíaca', 'ic'],
     regioes: ['coracao'],
     sistema: 'circulatorio'
   },
   {
-    keywords: ['trombose', 'tvp', 'coagulo', 'coágulo', 'embolia', 'tromboembolismo', 'varizes', 'insuficiencia venosa'],
+    keywords: ['edema nos pes', 'edema nos pés'],
+    regioes: ['coracao', 'pe_d', 'pe_e'],
+    sistema: 'circulatorio'
+  },
+  {
+    keywords: ['trombose', 'tvp', 'coagulo', 'coágulo', 'embolia', 'tromboembolismo'],
     regioes: ['coracao'],
+    sistema: 'circulatorio'
+  },
+  {
+    keywords: ['varizes', 'insuficiencia venosa', 'insuficiência venosa', 'tvp na perna', 'trombose na perna', 'trombose venosa profunda'],
+    regioes: ['coxa_d', 'coxa_e', 'canela_d', 'canela_e'],
     sistema: 'circulatorio'
   },
   {
@@ -156,7 +166,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
   },
   {
     keywords: ['asma', 'bronquite', 'bronquite', 'dpoc', 'epoc', 'broncoespasmo', 'sibilos', 'chiado no peito'],
-    regioes: ['pulmao_d', 'pulmao_e', 'bronquios'],
+    regioes: ['pulmao_d', 'pulmao_e', 'bronquio_d', 'bronquio_e'],
     sistema: 'respiratorio'
   },
   {
@@ -545,13 +555,19 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'musculoesqueletico'
   },
   {
-    keywords: ['tornozelo', 'entorse', 'pe', 'pé', 'fascite plantar', 'tendinite aquiles', 'aquiles', 'halux'],
+    keywords: ['tornozelo', 'entorse', 'pe', 'pé', 'fascite plantar', 'halux'],
     regioes: ['pe_d', 'pe_e', 'canela_d', 'canela_e'],
     sistema: 'musculoesqueletico'
   },
   {
+    // Tendão de Aquiles fica na parte posterior do tornozelo/panturrilha, não na canela (anterior)
+    keywords: ['tendinite aquiles', 'aquiles', 'tendao de aquiles', 'tendão de aquiles'],
+    regioes: ['calc_d', 'calc_e', 'panturr_d', 'panturr_e'],
+    sistema: 'musculoesqueletico'
+  },
+  {
     keywords: ['gluteo', 'glúteo', 'gluteos', 'glúteos', 'dor glutea', 'bursite trocanterica'],
-    regioes: ['gluteos', 'gluteos_musculares', 'gluteos_p'],
+    regioes: ['gluteos', 'gluteos_p'],
     sistema: 'musculoesqueletico'
   },
   {
