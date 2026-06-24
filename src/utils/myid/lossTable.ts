@@ -15,34 +15,39 @@ export interface DimensionLossConfig {
   gatilho_critico?: number;
 }
 
+// Pesos calibrados por evidência (Oswestry/BPI, fear-avoidance model de Vlaeyen & Linton,
+// STarT Back Tool, modelo biopsicossocial de Waddell): dor e fatores psicossociais
+// (cabeça e emoções, sono) pesam mais que dimensões de hábito/comportamento (alimentação,
+// hidratação), e "atividades do dia"/"sinais do corpo" pesam menos por serem mais
+// consequência/sinal de alerta do que fator de risco independente.
 export const TABELA_PERDAS: Record<string, DimensionLossConfig> = {
   D: {
-    peso_maximo: 20,
+    peso_maximo: 18,
     bandas: [
       { min: 0.0, max: 1.0, perda: 0 },
-      { min: 1.0, max: 3.0, perda: 3 },
-      { min: 3.0, max: 5.0, perda: 8 },
-      { min: 5.0, max: 7.0, perda: 14 },
-      { min: 7.0, max: 10.01, perda: 20 },
+      { min: 1.0, max: 3.0, perda: 2.7 },
+      { min: 3.0, max: 5.0, perda: 7.2 },
+      { min: 5.0, max: 7.0, perda: 12.6 },
+      { min: 7.0, max: 10.01, perda: 18 },
     ],
   },
   EFI: {
-    peso_maximo: 15,
+    peso_maximo: 8,
     bandas: [
       { min: 0.0, max: 2.0, perda: 0 },
-      { min: 2.0, max: 4.0, perda: 5 },
-      { min: 4.0, max: 6.0, perda: 10 },
-      { min: 6.0, max: 8.0, perda: 13 },
-      { min: 8.0, max: 10.01, perda: 15 },
+      { min: 2.0, max: 4.0, perda: 2.7 },
+      { min: 4.0, max: 6.0, perda: 5.3 },
+      { min: 6.0, max: 8.0, perda: 6.9 },
+      { min: 8.0, max: 10.01, perda: 8 },
     ],
   },
   P: {
-    peso_maximo: 10,
+    peso_maximo: 16,
     bandas: [
       { min: 0.0, max: 3.0, perda: 0 },
-      { min: 3.0, max: 5.0, perda: 3 },
-      { min: 5.0, max: 7.0, perda: 6 },
-      { min: 7.0, max: 10.01, perda: 10 },
+      { min: 3.0, max: 5.0, perda: 4.8 },
+      { min: 5.0, max: 7.0, perda: 9.6 },
+      { min: 7.0, max: 10.01, perda: 16 },
     ],
   },
   I: {
@@ -55,32 +60,32 @@ export const TABELA_PERDAS: Record<string, DimensionLossConfig> = {
     ],
   },
   R: {
-    peso_maximo: 15,
+    peso_maximo: 14,
     bandas: [
       { min: 0.0, max: 2.0, perda: 0 },
-      { min: 2.0, max: 4.0, perda: 5 },
-      { min: 4.0, max: 6.0, perda: 10 },
-      { min: 6.0, max: 8.0, perda: 13 },
-      { min: 8.0, max: 10.01, perda: 15 },
+      { min: 2.0, max: 4.0, perda: 4.7 },
+      { min: 4.0, max: 6.0, perda: 9.3 },
+      { min: 6.0, max: 8.0, perda: 12.1 },
+      { min: 8.0, max: 10.01, perda: 14 },
     ],
     gatilho_critico: 6.0,
   },
   C: {
-    peso_maximo: 10,
+    peso_maximo: 11,
     bandas: [
       { min: 0.0, max: 2.0, perda: 0 },
-      { min: 2.0, max: 4.0, perda: 4 },
-      { min: 4.0, max: 6.0, perda: 7 },
-      { min: 6.0, max: 10.01, perda: 10 },
+      { min: 2.0, max: 4.0, perda: 4.4 },
+      { min: 4.0, max: 6.0, perda: 7.7 },
+      { min: 6.0, max: 10.01, perda: 11 },
     ],
   },
   AF: {
-    peso_maximo: 8,
+    peso_maximo: 10,
     bandas: [
       { min: 0.0, max: 2.0, perda: 0 },
-      { min: 2.0, max: 4.0, perda: 3 },
-      { min: 4.0, max: 6.0, perda: 6 },
-      { min: 6.0, max: 10.01, perda: 8 },
+      { min: 2.0, max: 4.0, perda: 3.8 },
+      { min: 4.0, max: 6.0, perda: 7.5 },
+      { min: 6.0, max: 10.01, perda: 10 },
     ],
     gatilho_critico: 7.0,
   },
@@ -94,31 +99,31 @@ export const TABELA_PERDAS: Record<string, DimensionLossConfig> = {
     ],
   },
   NUT: {
-    peso_maximo: 6,
+    peso_maximo: 7,
     bandas: [
       { min: 0.0, max: 2.0, perda: 0 },
-      { min: 2.0, max: 4.0, perda: 2 },
-      { min: 4.0, max: 6.0, perda: 4 },
-      { min: 6.0, max: 10.01, perda: 6 },
+      { min: 2.0, max: 4.0, perda: 2.3 },
+      { min: 4.0, max: 6.0, perda: 4.7 },
+      { min: 6.0, max: 10.01, perda: 7 },
     ],
   },
   ERG: {
-    peso_maximo: 5,
+    peso_maximo: 8,
     bandas: [
       { min: 0.0, max: 2.0, perda: 0 },
-      { min: 2.0, max: 4.0, perda: 2 },
-      { min: 4.0, max: 6.0, perda: 4 },
-      { min: 6.0, max: 10.01, perda: 5 },
+      { min: 2.0, max: 4.0, perda: 3.2 },
+      { min: 4.0, max: 6.0, perda: 6.4 },
+      { min: 6.0, max: 10.01, perda: 8 },
     ],
     gatilho_critico: 8.0,
   },
   N: {
-    peso_maximo: 5,
+    peso_maximo: 2,
     bandas: [
       { min: 0.0, max: 1.0, perda: 0 },
-      { min: 1.0, max: 2.0, perda: 2 },
-      { min: 2.0, max: 3.0, perda: 4 },
-      { min: 3.0, max: 10.01, perda: 5 },
+      { min: 1.0, max: 2.0, perda: 0.8 },
+      { min: 2.0, max: 3.0, perda: 1.6 },
+      { min: 3.0, max: 10.01, perda: 2 },
     ],
     gatilho_critico: 6.0,
   },

@@ -8,37 +8,51 @@ const corsHeaders = {
 
 // ═══════════════════════════════════════════════════════════
 // Backfill: recalcula avaliações MyID já concluídas com as correções
-// aplicadas depois da submissão original. Hoje cobre duas mudanças:
+// aplicadas depois da submissão original. Hoje cobre três mudanças:
 //
 // 1) EFI (Atividades do dia) é bem-estar/funcionalidade — menor valor = pior —
 //    mas a perda de pontos era calculada como se fosse demanda (maior = pior).
 // 2) A perda por dimensão passou de "em degrau" (valor fixo dentro da faixa)
 //    para interpolação linear pelo ponto médio de cada faixa — elimina saltos
 //    abruptos entre faixas, mantendo os mesmos pesos/limiares de calibração.
+// 3) Pesos redistribuídos com base em evidência (Oswestry/BPI, fear-avoidance
+//    model, STarT Back Tool, modelo biopsicossocial): dor e fatores
+//    psicossociais (cabeça e emoções, sono) sobem; atividades do dia e sinais
+//    do corpo caem, por serem mais consequência/sinal de alerta do que fator
+//    de risco independente.
 //
 // Recomputamos as 11 dimensões a partir de score_bruto + perda_pontos já
 // salvos em perdas_calculadas e re-derivamos driver_primario / classificação /
 // prioridade clínica (sem precisar das respostas brutas do questionário).
 // Para D (Dor), preserva proporcionalmente um eventual multiplicador de
 // cronicidade já aplicado, inferindo-o pela razão entre a perda salva e a
-// perda "em degrau" que a fórmula antiga teria dado pro mesmo score.
+// perda "em degrau" que a tabela de pesos ORIGINAL (anterior a qualquer uma
+// dessas correções) teria dado pro mesmo score — por isso usa uma tabela de D
+// congelada (TABELA_PERDAS_D_ORIGINAL), independente dos pesos atuais.
 // ═══════════════════════════════════════════════════════════
 
 interface BandaPerda { min: number; max: number; perda: number }
 interface DimensionLossConfig { peso_maximo: number; bandas: BandaPerda[]; gatilho_critico?: number }
 
 const TABELA_PERDAS: Record<string, DimensionLossConfig> = {
-  D: { peso_maximo: 20, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 3, perda: 3 }, { min: 3, max: 5, perda: 8 }, { min: 5, max: 7, perda: 14 }, { min: 7, max: 10.01, perda: 20 }] },
-  EFI: { peso_maximo: 15, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 10.01, perda: 15 }] },
-  P: { peso_maximo: 10, bandas: [{ min: 0, max: 3, perda: 0 }, { min: 3, max: 5, perda: 3 }, { min: 5, max: 7, perda: 6 }, { min: 7, max: 10.01, perda: 10 }] },
+  D: { peso_maximo: 18, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 3, perda: 2.7 }, { min: 3, max: 5, perda: 7.2 }, { min: 5, max: 7, perda: 12.6 }, { min: 7, max: 10.01, perda: 18 }] },
+  EFI: { peso_maximo: 8, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 2.7 }, { min: 4, max: 6, perda: 5.3 }, { min: 6, max: 8, perda: 6.9 }, { min: 8, max: 10.01, perda: 8 }] },
+  P: { peso_maximo: 16, bandas: [{ min: 0, max: 3, perda: 0 }, { min: 3, max: 5, perda: 4.8 }, { min: 5, max: 7, perda: 9.6 }, { min: 7, max: 10.01, perda: 16 }] },
   I: { peso_maximo: 5, bandas: [{ min: 0, max: 0.5, perda: 0 }, { min: 0.5, max: 1.5, perda: 2 }, { min: 1.5, max: 2.5, perda: 4 }, { min: 2.5, max: 10.01, perda: 5 }] },
-  R: { peso_maximo: 15, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 10.01, perda: 15 }], gatilho_critico: 6.0 },
-  C: { peso_maximo: 10, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4 }, { min: 4, max: 6, perda: 7 }, { min: 6, max: 10.01, perda: 10 }] },
-  AF: { peso_maximo: 8, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 3 }, { min: 4, max: 6, perda: 6 }, { min: 6, max: 10.01, perda: 8 }], gatilho_critico: 7.0 },
+  R: { peso_maximo: 14, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4.7 }, { min: 4, max: 6, perda: 9.3 }, { min: 6, max: 8, perda: 12.1 }, { min: 8, max: 10.01, perda: 14 }], gatilho_critico: 6.0 },
+  C: { peso_maximo: 11, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4.4 }, { min: 4, max: 6, perda: 7.7 }, { min: 6, max: 10.01, perda: 11 }] },
+  AF: { peso_maximo: 10, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 3.8 }, { min: 4, max: 6, perda: 7.5 }, { min: 6, max: 10.01, perda: 10 }], gatilho_critico: 7.0 },
   HID: { peso_maximo: 6, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 2 }, { min: 4, max: 6, perda: 4 }, { min: 6, max: 10.01, perda: 6 }] },
-  NUT: { peso_maximo: 6, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 2 }, { min: 4, max: 6, perda: 4 }, { min: 6, max: 10.01, perda: 6 }] },
-  ERG: { peso_maximo: 5, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 2 }, { min: 4, max: 6, perda: 4 }, { min: 6, max: 10.01, perda: 5 }], gatilho_critico: 8.0 },
-  N: { peso_maximo: 5, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 2, perda: 2 }, { min: 2, max: 3, perda: 4 }, { min: 3, max: 10.01, perda: 5 }], gatilho_critico: 6.0 },
+  NUT: { peso_maximo: 7, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 2.3 }, { min: 4, max: 6, perda: 4.7 }, { min: 6, max: 10.01, perda: 7 }] },
+  ERG: { peso_maximo: 8, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 3.2 }, { min: 4, max: 6, perda: 6.4 }, { min: 6, max: 10.01, perda: 8 }], gatilho_critico: 8.0 },
+  N: { peso_maximo: 2, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 2, perda: 0.8 }, { min: 2, max: 3, perda: 1.6 }, { min: 3, max: 10.01, perda: 2 }], gatilho_critico: 6.0 },
+};
+
+// Tabela de D congelada com os pesos ORIGINAIS (pré-correção), usada só para inferir
+// o multiplicador de cronicidade já aplicado na submissão original — não deve acompanhar
+// mudanças de peso, senão a razão calculada fica errada.
+const TABELA_PERDAS_D_ORIGINAL: DimensionLossConfig = {
+  peso_maximo: 20, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 3, perda: 3 }, { min: 3, max: 5, perda: 8 }, { min: 5, max: 7, perda: 14 }, { min: 7, max: 10.01, perda: 20 }],
 };
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -46,9 +60,10 @@ const DIMENSION_LABELS: Record<string, string> = {
   C: 'Contexto', AF: 'Atividade Física', HID: 'Hidratação', NUT: 'Nutrição', ERG: 'Ergonomia', N: 'Ruído Sistêmico', MED: 'Medicação',
 };
 
-/** Perda "em degrau" — comportamento antigo, usado só para inferir o multiplicador de cronicidade de D. */
+/** Perda "em degrau" com os pesos ORIGINAIS — usado só para inferir o multiplicador de
+ *  cronicidade de D já aplicado na submissão original (ver TABELA_PERDAS_D_ORIGINAL acima). */
 function calcularPerdaDegrau(dimensao: string, scoreBruto: number): number {
-  const config = TABELA_PERDAS[dimensao];
+  const config = dimensao === 'D' ? TABELA_PERDAS_D_ORIGINAL : TABELA_PERDAS[dimensao];
   if (!config) return 0;
   const banda = config.bandas.find(b => scoreBruto >= b.min && scoreBruto < b.max) || config.bandas[config.bandas.length - 1];
   return banda.perda;
@@ -144,13 +159,13 @@ function determineClinicalPriority(driver: any) {
 // Usada para recalcular protocolos.scores_avaliacao.myid_enhancements de diretrizes ativas
 // que foram enriquecidas antes da correção do bug de EFI.
 const TABELA_PERDAS_ENH: Record<string, { bandas: BandaPerda[]; critico?: number }> = {
-  D: { bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 3, perda: 3 }, { min: 3, max: 5, perda: 8 }, { min: 5, max: 7, perda: 14 }, { min: 7, max: 11, perda: 20 }] },
-  EFI: { bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 11, perda: 15 }] },
-  P: { bandas: [{ min: 0, max: 3, perda: 0 }, { min: 3, max: 5, perda: 2 }, { min: 5, max: 7, perda: 4 }, { min: 7, max: 11, perda: 5 }] },
+  D: { bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 3, perda: 2.7 }, { min: 3, max: 5, perda: 7.2 }, { min: 5, max: 7, perda: 12.6 }, { min: 7, max: 11, perda: 18 }] },
+  EFI: { bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 2.7 }, { min: 4, max: 6, perda: 5.3 }, { min: 6, max: 8, perda: 6.9 }, { min: 8, max: 11, perda: 8 }] },
+  P: { bandas: [{ min: 0, max: 3, perda: 0 }, { min: 3, max: 5, perda: 4.8 }, { min: 5, max: 7, perda: 9.6 }, { min: 7, max: 11, perda: 16 }] },
   I: { bandas: [{ min: 0, max: 0.5, perda: 0 }, { min: 0.5, max: 1.5, perda: 2 }, { min: 1.5, max: 2.5, perda: 4 }, { min: 2.5, max: 11, perda: 5 }] },
-  R: { bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 11, perda: 15 }], critico: 7 },
-  C: { bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4 }, { min: 4, max: 6, perda: 7 }, { min: 6, max: 11, perda: 10 }] },
-  N: { bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 2, perda: 2 }, { min: 2, max: 3, perda: 4 }, { min: 3, max: 11, perda: 5 }] },
+  R: { bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4.7 }, { min: 4, max: 6, perda: 9.3 }, { min: 6, max: 8, perda: 12.1 }, { min: 8, max: 11, perda: 14 }], critico: 6 },
+  C: { bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4.4 }, { min: 4, max: 6, perda: 7.7 }, { min: 6, max: 11, perda: 11 }] },
+  N: { bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 2, perda: 0.8 }, { min: 2, max: 3, perda: 1.6 }, { min: 3, max: 11, perda: 2 }] },
 };
 
 const DIM_LABELS_ENH: Record<string, string> = {
