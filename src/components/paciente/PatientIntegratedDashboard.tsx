@@ -612,8 +612,8 @@ export default function PatientIntegratedDashboard({
                           NUT: { ok: 'alimentação equilibrada', alerta: 'qualidade alimentar baixa',     critico: 'déficit nutricional',              acao: 'aumentar proteína e frutas, reduzir ultraprocessados; avaliar com nutri.' },
                           ERG: { ok: 'postura no dia ok',       alerta: 'ergonomia precisa de ajuste',   critico: 'ergonomia crítica',                acao: 'pausa a cada 50 min, ajuste de tela/cadeira e revisão do colchão.' },
                         };
-                        // Peso máximo por dimensão (do lossTable)
-                        const PESO_MAX: Record<string, number> = { D: 20, EFI: 15, R: 15, C: 10, AF: 8, HID: 6, NUT: 6, P: 10, I: 5, ERG: 5, N: 5 };
+                        // Peso máximo por dimensão (do lossTable, calibrado por evidência)
+                        const PESO_MAX: Record<string, number> = { D: 18, EFI: 8, R: 14, C: 11, AF: 10, HID: 6, NUT: 7, P: 16, I: 5, ERG: 8, N: 2 };
                         const ranked = rings
                           .filter(r => r.scoreKey !== 'MED')
                           .map(r => {
@@ -630,8 +630,8 @@ export default function PatientIntegratedDashboard({
                                 const a = ACTION_MAP[ring.scoreKey];
                                 if (!a) return null;
                                 const pesoMax = PESO_MAX[ring.scoreKey] ?? 10;
-                                const limiarCrit = ring.scoreKey === 'D' ? 14 : ring.scoreKey === 'EFI' || ring.scoreKey === 'R' ? 10 : 6;
-                                const limiarAlerta = ring.scoreKey === 'D' ? 8 : ring.scoreKey === 'EFI' || ring.scoreKey === 'R' ? 5 : 3;
+                                const limiarCrit = Math.round(pesoMax * 0.7);
+                                const limiarAlerta = Math.round(pesoMax * 0.4);
                                 const isCrit = critico || perda >= limiarCrit;
                                 const isAlerta = !isCrit && perda >= limiarAlerta;
                                 const estado = isCrit ? a.critico : isAlerta ? a.alerta : a.ok;
