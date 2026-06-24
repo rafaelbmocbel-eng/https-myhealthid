@@ -13,7 +13,8 @@ serve(async (req) => {
     try { await requireUser(req); } catch (r) { return r as Response; }
     const { scores, redFlags, blocos, perdas, myid_100 } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const systemPrompt = `Você é o MOTOR DE ANÁLISE MyID-100 v2.0. Analise os scores e perdas do paciente.
 
@@ -92,7 +93,7 @@ Gere um JSON com:
     try {
       const SUPABASE_URL_E = Deno.env.get("SUPABASE_URL");
       const SERVICE_KEY_E = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (SUPABASE_URL_E && SERVICE_KEY_E) {
+      if (SUPABASE_URL_E && SERVICE_KEY_E && LOVABLE_API_KEY) {
         const driverName = (perdas && typeof perdas === "object")
           ? Object.entries(perdas as Record<string, number>)
               .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
@@ -148,18 +149,66 @@ Gere um JSON com:
       console.warn("[myid-analysis] evidence search non-blocking error:", e);
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const ANALYSIS_TOOL = {
+      name: "registrar_analise_myid",
+      description: "Registra a análise clínica estruturada do MyID-100 do paciente.",
+      input_schema: {
+        type: "object",
+        properties: {
+          clinical_priority: {
+            type: "object",
+            properties: {
+              focus_area: { type: "string" },
+              reason: { type: "string" },
+              recommendation: { type: "string" },
+            },
+            required: ["focus_area", "reason", "recommendation"],
+          },
+          treatment_phases: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                fase: { type: "number" },
+                titulo: { type: "string" },
+                duracao_semanas: { type: "number" },
+                meta_score: { type: "number" },
+                intervencoes: { type: "array", items: { type: "string" } },
+              },
+              required: ["fase", "titulo", "duracao_semanas", "meta_score", "intervencoes"],
+            },
+          },
+          integration_directives: {
+            type: "object",
+            properties: {
+              fisioterapia: { type: "string" },
+              studio_personal: { type: "string" },
+              orientacao_geral: { type: "string" },
+            },
+            required: ["fisioterapia", "studio_personal", "orientacao_geral"],
+          },
+          alert_level: { type: "string", enum: ["verde", "amarelo", "vermelho"] },
+          summary: { type: "string" },
+          insights_baseados_evidencia: { type: "array", items: { type: "string" } },
+        },
+        required: ["clinical_priority", "treatment_phases", "integration_directives", "alert_level", "summary", "insights_baseados_evidencia"],
+      },
+    };
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt + evidenciaContext },
-          { role: "user", content: userPrompt },
-        ],
+        model: "claude-sonnet-4-6",
+        max_tokens: 4096,
+        system: systemPrompt + evidenciaContext,
+        messages: [{ role: "user", content: userPrompt }],
+        tools: [ANALYSIS_TOOL],
+        tool_choice: { type: "tool", name: ANALYSIS_TOOL.name },
       }),
     });
 
@@ -167,18 +216,19 @@ Gere um JSON com:
       const status = response.status;
       if (status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (status === 402) return new Response(JSON.stringify({ error: "Credits exhausted" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error(`AI gateway error: ${status}`);
+      const errBody = await response.text();
+      throw new Error(`Anthropic API error: ${status} - ${errBody}`);
     }
 
     const aiData = await response.json();
-    const content = aiData.choices?.[0]?.message?.content || "{}";
-    
+    const toolUse = aiData.content?.find((block: any) => block.type === "tool_use");
+
     let analysis;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: content };
-    } catch {
-      analysis = { summary: content };
+    if (toolUse?.input) {
+      analysis = toolUse.input;
+    } else {
+      const textBlock = aiData.content?.find((block: any) => block.type === "text");
+      analysis = { summary: textBlock?.text || "" };
     }
 
     return new Response(JSON.stringify({ success: true, analysis }), {
