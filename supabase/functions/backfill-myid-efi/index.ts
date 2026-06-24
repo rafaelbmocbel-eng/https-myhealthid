@@ -372,6 +372,12 @@ serve(async (req) => {
     const amostras: any[] = [];
     let totalChecadas = 0;
     let totalAlteradas = 0;
+    const diag = {
+      myid_avaliacoes: { checadas: 0, alteradas: 0 },
+      avaliacoes_identidade: { checadas: 0, alteradas: 0 },
+      protocolos: { checadas: 0, alteradas: 0 },
+      evolucao_paciente: { checadas: 0, alteradas: 0 },
+    };
 
     // ── 1. myid_avaliacoes (concluídas via link de avaliação) ──
     const { data: avaliacoesMyid, error: errMyid } = await supabase
@@ -385,9 +391,11 @@ serve(async (req) => {
 
     for (const av of avaliacoesMyid || []) {
       totalChecadas++;
+      diag.myid_avaliacoes.checadas++;
       const { changed, novo, oldScore, newScore } = recomputeResult(av.resultado_processado);
       if (!changed) continue;
       totalAlteradas++;
+      diag.myid_avaliacoes.alteradas++;
       amostras.push({ tabela: "myid_avaliacoes", id: av.id, oldScore, newScore });
       if (!dryRun) {
         await supabase.from("myid_avaliacoes").update({
@@ -412,11 +420,13 @@ serve(async (req) => {
 
     for (const av of avaliacoesIdentidade || []) {
       totalChecadas++;
+      diag.avaliacoes_identidade.checadas++;
       const { changed, novo, oldScore, newScore } = recomputeResult(av.myid_analysis);
       const classificacaoFinal = changed ? (novo.myid_100?.classificacao || av.classificacao) : av.classificacao;
       scoresCorrigidos.set(av.id, { myid_score: newScore, classificacao: classificacaoFinal });
       if (!changed) continue;
       totalAlteradas++;
+      diag.avaliacoes_identidade.alteradas++;
       amostras.push({ tabela: "avaliacoes_identidade", id: av.id, oldScore, newScore });
       if (!dryRun) {
         await supabase.from("avaliacoes_identidade").update({
@@ -441,6 +451,7 @@ serve(async (req) => {
       const enhancementsAntigo = protocolo.scores_avaliacao?.myid_enhancements;
       if (!enhancementsAntigo || !protocolo.paciente_id) continue;
       totalChecadas++;
+      diag.protocolos.checadas++;
 
       const { data: ultimaAvaliacao } = await supabase
         .from("avaliacoes_identidade")
@@ -460,6 +471,7 @@ serve(async (req) => {
       }
 
       totalAlteradas++;
+      diag.protocolos.alteradas++;
       amostras.push({
         tabela: "protocolos",
         id: protocolo.id,
@@ -488,6 +500,7 @@ serve(async (req) => {
       if (!atual) continue;
       totalChecadas++;
 
+      diag.evolucao_paciente.checadas++;
       const anterior = ev.avaliacao_anterior_id ? scoresCorrigidos.get(ev.avaliacao_anterior_id) : null;
       const novoDelta = anterior ? atual.myid_score - anterior.myid_score : 0;
 
@@ -496,6 +509,7 @@ serve(async (req) => {
       }
 
       totalAlteradas++;
+      diag.evolucao_paciente.alteradas++;
       amostras.push({
         tabela: "evolucao_paciente",
         id: ev.id,
@@ -511,12 +525,20 @@ serve(async (req) => {
       }
     }
 
+    const resumoDiagnostico = Object.entries(diag).map(([tabela, d]) => ({
+      tabela: `🔎 ${tabela}`,
+      id: `${d.alteradas} alteradas / ${d.checadas} checadas`,
+      oldScore: d.checadas,
+      newScore: d.alteradas,
+    }));
+
     return new Response(JSON.stringify({
       ok: true,
       dryRun,
       total_checadas: totalChecadas,
       total_alteradas: totalAlteradas,
-      amostras: amostras.slice(0, 30),
+      diagnostico: diag,
+      amostras: [...resumoDiagnostico, ...amostras].slice(0, 30),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
