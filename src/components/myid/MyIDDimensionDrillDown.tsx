@@ -353,9 +353,32 @@ export default function MyIDDimensionDrillDown({
 
       {/* Insights IA */}
       <section className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-        <h4 className="text-xs font-bold flex items-center gap-1.5 mb-2">
-          <Lightbulb className="icon-xs text-primary" /> Insights de possibilidades
-        </h4>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h4 className="text-xs font-bold flex items-center gap-1.5">
+            <Lightbulb className="icon-xs text-primary" /> Insights de possibilidades
+          </h4>
+          {data && !isLoading && (
+            <button
+              type="button"
+              title="Forçar nova geração com IA (substitui o cache desta dimensão)"
+              onClick={async () => {
+                if (!user || !dimensao) return;
+                await (supabase as any)
+                  .from('myid_dimension_insights_cache')
+                  .delete()
+                  .eq('paciente_id', pacienteId)
+                  .eq('dimensao', dimensao);
+                refetch();
+              }}
+              disabled={isFetching}
+              className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1 disabled:opacity-50"
+            >
+              <RefreshCw className={cn('icon-xs', isFetching && 'animate-spin')} />
+              Regenerar
+            </button>
+          )}
+        </div>
+
 
         {isLoading && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
