@@ -50,6 +50,7 @@ const NovaSenha = lazyWithRetry(() => import("./pages/NovaSenha"));
 const BaseCientifica = lazyWithRetry(() => import("./pages/BaseCientifica"));
 const Hoje = lazyWithRetry(() => import("./pages/Hoje"));
 const Pendencias = lazyWithRetry(() => import("./pages/Pendencias"));
+const ExportarDados = lazyWithRetry(() => import("./pages/ExportarDados"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
