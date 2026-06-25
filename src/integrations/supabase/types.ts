@@ -218,6 +218,42 @@ export type Database = {
           },
         ]
       }
+      ai_response_cache: {
+        Row: {
+          created_at: string
+          function_name: string
+          hit_count: number
+          id: string
+          last_hit_at: string
+          model_used: string | null
+          prompt_hash: string
+          query_embedding: string | null
+          response_payload: Json
+        }
+        Insert: {
+          created_at?: string
+          function_name: string
+          hit_count?: number
+          id?: string
+          last_hit_at?: string
+          model_used?: string | null
+          prompt_hash: string
+          query_embedding?: string | null
+          response_payload: Json
+        }
+        Update: {
+          created_at?: string
+          function_name?: string
+          hit_count?: number
+          id?: string
+          last_hit_at?: string
+          model_used?: string | null
+          prompt_hash?: string
+          query_embedding?: string | null
+          response_payload?: Json
+        }
+        Relationships: []
+      }
       antropometria: {
         Row: {
           altura_cm: number | null
@@ -1991,6 +2027,7 @@ export type Database = {
       evidence_library: {
         Row: {
           abstract: string | null
+          aplicacao_pratica: string | null
           authors: string[] | null
           citation_count: number | null
           created_at: string
@@ -2005,6 +2042,9 @@ export type Database = {
           language: string | null
           mesh_terms: string[] | null
           pmid: string | null
+          resumo_clinico: string | null
+          resumo_gerado_em: string | null
+          resumo_modelo: string | null
           source: string
           study_type: string | null
           title: string
@@ -2014,6 +2054,7 @@ export type Database = {
         }
         Insert: {
           abstract?: string | null
+          aplicacao_pratica?: string | null
           authors?: string[] | null
           citation_count?: number | null
           created_at?: string
@@ -2028,6 +2069,9 @@ export type Database = {
           language?: string | null
           mesh_terms?: string[] | null
           pmid?: string | null
+          resumo_clinico?: string | null
+          resumo_gerado_em?: string | null
+          resumo_modelo?: string | null
           source?: string
           study_type?: string | null
           title: string
@@ -2037,6 +2081,7 @@ export type Database = {
         }
         Update: {
           abstract?: string | null
+          aplicacao_pratica?: string | null
           authors?: string[] | null
           citation_count?: number | null
           created_at?: string
@@ -2051,6 +2096,9 @@ export type Database = {
           language?: string | null
           mesh_terms?: string[] | null
           pmid?: string | null
+          resumo_clinico?: string | null
+          resumo_gerado_em?: string | null
+          resumo_modelo?: string | null
           source?: string
           study_type?: string | null
           title?: string
@@ -6639,6 +6687,18 @@ export type Database = {
       link_avaliacao_valido: { Args: { p_link_id: string }; Returns: boolean }
       link_patient_user_by_email: { Args: never; Returns: string }
       link_patient_user_by_token: { Args: { p_token: string }; Returns: string }
+      match_ai_cache: {
+        Args: {
+          p_function_name: string
+          p_min_similarity?: number
+          p_query_embedding: string
+        }
+        Returns: {
+          id: string
+          response_payload: Json
+          similarity: number
+        }[]
+      }
       match_evidence: {
         Args: {
           filter_areas?: string[]
