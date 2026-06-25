@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { getCachedDeterministic, saveCache, sha256Hex } from "../_shared/ai-cache.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,6 +71,23 @@ serve(async (req) => {
       ? Math.floor((Date.now() - new Date(paciente.data_nascimento).getTime()) / 31557600000)
       : null;
 
+    // Cache determinístico: mesmas entradas → resposta reutilizada
+    const inputsHash = await sha256Hex(JSON.stringify({
+      pid: pacienteId,
+      myid_at: myid?.updated_at ?? null,
+      score: myid?.myid_score_parcial ?? null,
+      rf: myid?.red_flags_detectadas ?? null,
+      notas_ids: (notas ?? []).map((n: any) => n.created_at),
+      sessoes_ids: (sessoes ?? []).map((s: any) => s.data_inicio + s.status),
+      queixa: paciente?.queixa_principal ?? null,
+    }));
+    const cached = await getCachedDeterministic(supabase, "resumo-30s", inputsHash);
+    if (cached) {
+      return new Response(JSON.stringify({ ...cached, cached: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const systemPrompt = `Você é um assistente clínico que produz briefings rápidos para fisioterapeutas antes do atendimento. Seja direto, clínico e útil — sem jargão decorativo. Português do Brasil.`;
 
     const userPrompt = `Gere um RESUMO DE 30 SEGUNDOS sobre este paciente, no formato exato:
@@ -128,20 +146,22 @@ Mantenha tudo em no máximo 8 linhas no total. Sem introdução, sem despedida.`
     const aiData = await aiResp.json();
     const resumo = aiData.choices?.[0]?.message?.content?.trim() || "Sem dados suficientes para gerar resumo.";
 
-    return new Response(
-      JSON.stringify({
-        resumo,
-        contexto: {
-          temMyID: !!myid,
-          score: myid?.myid_score_parcial ?? null,
-          redFlags: !!myid?.red_flags_detectadas,
-          dataMyID: myid?.updated_at ?? null,
-          totalNotas: notas?.length ?? 0,
-          totalSessoes: sessoes?.length ?? 0,
-        },
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const payload = {
+      resumo,
+      contexto: {
+        temMyID: !!myid,
+        score: myid?.myid_score_parcial ?? null,
+        redFlags: !!myid?.red_flags_detectadas,
+        dataMyID: myid?.updated_at ?? null,
+        totalNotas: notas?.length ?? 0,
+        totalSessoes: sessoes?.length ?? 0,
+      },
+    };
+    await saveCache(supabase, "resumo-30s", inputsHash, payload, "google/gemini-3.1-flash-lite");
+
+    return new Response(JSON.stringify(payload), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("resumo-30s error:", e);
     return new Response(
