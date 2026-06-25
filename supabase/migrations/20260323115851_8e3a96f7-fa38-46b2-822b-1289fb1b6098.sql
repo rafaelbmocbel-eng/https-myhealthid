@@ -64,28 +64,34 @@ ALTER TABLE public.evento_inscricoes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.evento_respostas ENABLE ROW LEVEL SECURITY;
 
 -- Eventos: terapeuta gerencia
+DROP POLICY IF EXISTS "Terapeutas gerenciam eventos" ON public.eventos;
 CREATE POLICY "Terapeutas gerenciam eventos" ON public.eventos FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
 -- Perguntas: terapeuta gerencia via evento
+DROP POLICY IF EXISTS "Terapeutas gerenciam perguntas" ON public.evento_perguntas;
 CREATE POLICY "Terapeutas gerenciam perguntas" ON public.evento_perguntas FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM public.eventos e WHERE e.id = evento_id AND e.terapeuta_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM public.eventos e WHERE e.id = evento_id AND e.terapeuta_id = auth.uid()));
 
 -- Perguntas: leitura pública para quem vai responder
+DROP POLICY IF EXISTS "Público lê perguntas de eventos ativos" ON public.evento_perguntas;
 CREATE POLICY "Público lê perguntas de eventos ativos" ON public.evento_perguntas FOR SELECT TO anon
   USING (EXISTS (SELECT 1 FROM public.eventos e WHERE e.id = evento_id AND e.ativo = true));
 
 -- Inscrições: terapeuta lê
+DROP POLICY IF EXISTS "Terapeutas gerenciam inscricoes" ON public.evento_inscricoes;
 CREATE POLICY "Terapeutas gerenciam inscricoes" ON public.evento_inscricoes FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM public.eventos e WHERE e.id = evento_id AND e.terapeuta_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM public.eventos e WHERE e.id = evento_id AND e.terapeuta_id = auth.uid()));
 
 -- Inscrições: público insere em eventos ativos
+DROP POLICY IF EXISTS "Público inscreve em eventos ativos" ON public.evento_inscricoes;
 CREATE POLICY "Público inscreve em eventos ativos" ON public.evento_inscricoes FOR INSERT TO anon
   WITH CHECK (EXISTS (SELECT 1 FROM public.eventos e WHERE e.id = evento_id AND e.ativo = true));
 
 -- Respostas: terapeuta lê
+DROP POLICY IF EXISTS "Terapeutas leem respostas" ON public.evento_respostas;
 CREATE POLICY "Terapeutas leem respostas" ON public.evento_respostas FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.evento_inscricoes ei
@@ -94,6 +100,7 @@ CREATE POLICY "Terapeutas leem respostas" ON public.evento_respostas FOR SELECT 
   ));
 
 -- Respostas: público insere
+DROP POLICY IF EXISTS "Público insere respostas" ON public.evento_respostas;
 CREATE POLICY "Público insere respostas" ON public.evento_respostas FOR INSERT TO anon
   WITH CHECK (EXISTS (
     SELECT 1 FROM public.evento_inscricoes ei
@@ -102,8 +109,8 @@ CREATE POLICY "Público insere respostas" ON public.evento_respostas FOR INSERT 
   ));
 
 -- Triggers updated_at
-CREATE TRIGGER update_eventos_updated_at BEFORE UPDATE ON public.eventos
+CREATE OR REPLACE TRIGGER update_eventos_updated_at BEFORE UPDATE ON public.eventos
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
-CREATE TRIGGER update_evento_inscricoes_updated_at BEFORE UPDATE ON public.evento_inscricoes
+CREATE OR REPLACE TRIGGER update_evento_inscricoes_updated_at BEFORE UPDATE ON public.evento_inscricoes
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();

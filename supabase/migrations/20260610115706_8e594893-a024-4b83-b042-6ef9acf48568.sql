@@ -71,6 +71,6 @@ CREATE INDEX IF NOT EXISTS idx_eca_regiao ON public.eventos_clinicos_anatomicos(
 CREATE INDEX IF NOT EXISTS idx_eca_status ON public.eventos_clinicos_anatomicos(paciente_id, status);
 CREATE INDEX IF NOT EXISTS idx_eca_sistema ON public.eventos_clinicos_anatomicos(paciente_id, sistema);
 
-CREATE TRIGGER trg_eca_updated_at
+CREATE OR REPLACE TRIGGER trg_eca_updated_at
   BEFORE UPDATE ON public.eventos_clinicos_anatomicos
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

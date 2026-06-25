@@ -39,8 +39,10 @@ CREATE INDEX IF NOT EXISTS idx_agente_disparos_dedup ON public.agente_disparos(g
 CREATE INDEX IF NOT EXISTS idx_agente_disparos_paciente ON public.agente_disparos(paciente_id, gatilho, created_at DESC);
 
 ALTER TABLE public.agente_disparos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "terapeuta ve seus disparos" ON public.agente_disparos;
 CREATE POLICY "terapeuta ve seus disparos" ON public.agente_disparos
   FOR SELECT USING (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "terapeuta atualiza seus disparos" ON public.agente_disparos;
 CREATE POLICY "terapeuta atualiza seus disparos" ON public.agente_disparos
   FOR UPDATE USING (auth.uid() = terapeuta_id);
 
@@ -64,10 +66,11 @@ CREATE TABLE IF NOT EXISTS public.agente_broadcasts (
 CREATE INDEX IF NOT EXISTS idx_agente_broadcasts_terapeuta ON public.agente_broadcasts(terapeuta_id, created_at DESC);
 
 ALTER TABLE public.agente_broadcasts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "terapeuta gerencia broadcasts" ON public.agente_broadcasts;
 CREATE POLICY "terapeuta gerencia broadcasts" ON public.agente_broadcasts
   FOR ALL USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE TRIGGER trg_agente_broadcasts_updated
+CREATE OR REPLACE TRIGGER trg_agente_broadcasts_updated
   BEFORE UPDATE ON public.agente_broadcasts
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

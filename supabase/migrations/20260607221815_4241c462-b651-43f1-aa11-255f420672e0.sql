@@ -27,8 +27,8 @@ GRANT ALL ON public.antropometria TO service_role;
 ALTER TABLE public.antropometria ENABLE ROW LEVEL SECURITY;
 CREATE POLICY antro_own ON public.antropometria FOR ALL TO authenticated
   USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
-CREATE INDEX antro_pac_idx ON public.antropometria (paciente_id, data_medicao DESC);
-CREATE TRIGGER trg_antro_updated BEFORE UPDATE ON public.antropometria FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+CREATE INDEX IF NOT EXISTS antro_pac_idx ON public.antropometria (paciente_id, data_medicao DESC);
+CREATE OR REPLACE TRIGGER trg_antro_updated BEFORE UPDATE ON public.antropometria FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- ===== Testes funcionais =====
 CREATE TABLE IF NOT EXISTS public.testes_funcionais_paciente (
@@ -49,8 +49,8 @@ GRANT ALL ON public.testes_funcionais_paciente TO service_role;
 ALTER TABLE public.testes_funcionais_paciente ENABLE ROW LEVEL SECURITY;
 CREATE POLICY testes_own ON public.testes_funcionais_paciente FOR ALL TO authenticated
   USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
-CREATE INDEX testes_pac_idx ON public.testes_funcionais_paciente (paciente_id, data_teste DESC);
-CREATE TRIGGER trg_testes_updated BEFORE UPDATE ON public.testes_funcionais_paciente FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+CREATE INDEX IF NOT EXISTS testes_pac_idx ON public.testes_funcionais_paciente (paciente_id, data_teste DESC);
+CREATE OR REPLACE TRIGGER trg_testes_updated BEFORE UPDATE ON public.testes_funcionais_paciente FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- ===== Planos de Treino =====
 CREATE TABLE IF NOT EXISTS public.planos_treino (
@@ -73,8 +73,8 @@ GRANT ALL ON public.planos_treino TO service_role;
 ALTER TABLE public.planos_treino ENABLE ROW LEVEL SECURITY;
 CREATE POLICY planos_treino_own ON public.planos_treino FOR ALL TO authenticated
   USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
-CREATE INDEX planos_treino_pac_idx ON public.planos_treino (paciente_id, created_at DESC);
-CREATE TRIGGER trg_planos_treino_updated BEFORE UPDATE ON public.planos_treino FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+CREATE INDEX IF NOT EXISTS planos_treino_pac_idx ON public.planos_treino (paciente_id, created_at DESC);
+CREATE OR REPLACE TRIGGER trg_planos_treino_updated BEFORE UPDATE ON public.planos_treino FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- ===== Blocos: garantir presença em educador_fisico e nutricionista =====
 UPDATE public.perfis_profissionais

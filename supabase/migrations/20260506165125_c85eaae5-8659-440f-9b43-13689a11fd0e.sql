@@ -32,6 +32,6 @@ TO authenticated
 USING (auth.uid() = terapeuta_id)
 WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE TRIGGER set_config_clinica_updated_at
+CREATE OR REPLACE TRIGGER set_config_clinica_updated_at
 BEFORE UPDATE ON public.config_clinica
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

@@ -29,9 +29,9 @@ CREATE POLICY "Acesso público select via token"
   USING (true);
 
 -- Trigger to update updated_at
-CREATE TRIGGER trg_myid_avaliacoes_updated_at
+CREATE OR REPLACE TRIGGER trg_myid_avaliacoes_updated_at
   BEFORE UPDATE ON public.myid_avaliacoes
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
-CREATE INDEX idx_myid_avaliacoes_paciente ON public.myid_avaliacoes(paciente_id);
-CREATE INDEX idx_myid_avaliacoes_token ON public.myid_avaliacoes(token_acesso);
+CREATE INDEX IF NOT EXISTS idx_myid_avaliacoes_paciente ON public.myid_avaliacoes(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_myid_avaliacoes_token ON public.myid_avaliacoes(token_acesso);

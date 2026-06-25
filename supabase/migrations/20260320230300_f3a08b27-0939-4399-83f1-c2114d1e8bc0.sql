@@ -22,17 +22,19 @@ CREATE TABLE public.sleep_logs (
 
 ALTER TABLE public.sleep_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Pacientes gerenciam proprio sono" ON public.sleep_logs;
 CREATE POLICY "Pacientes gerenciam proprio sono" ON public.sleep_logs FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = sleep_logs.paciente_id AND p.user_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = sleep_logs.paciente_id AND p.user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam sono" ON public.sleep_logs;
 CREATE POLICY "Terapeutas gerenciam sono" ON public.sleep_logs FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE INDEX idx_sleep_logs_paciente ON public.sleep_logs(paciente_id);
-CREATE INDEX idx_sleep_logs_date ON public.sleep_logs(paciente_id, date);
+CREATE INDEX IF NOT EXISTS idx_sleep_logs_paciente ON public.sleep_logs(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_sleep_logs_date ON public.sleep_logs(paciente_id, date);
 
-CREATE TRIGGER trg_sleep_logs_updated_at BEFORE UPDATE ON public.sleep_logs
+CREATE OR REPLACE TRIGGER trg_sleep_logs_updated_at BEFORE UPDATE ON public.sleep_logs
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Water intake table
@@ -51,17 +53,19 @@ CREATE TABLE public.water_logs (
 
 ALTER TABLE public.water_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Pacientes gerenciam propria agua" ON public.water_logs;
 CREATE POLICY "Pacientes gerenciam propria agua" ON public.water_logs FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = water_logs.paciente_id AND p.user_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = water_logs.paciente_id AND p.user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam agua" ON public.water_logs;
 CREATE POLICY "Terapeutas gerenciam agua" ON public.water_logs FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE INDEX idx_water_logs_paciente ON public.water_logs(paciente_id);
-CREATE INDEX idx_water_logs_date ON public.water_logs(paciente_id, date);
+CREATE INDEX IF NOT EXISTS idx_water_logs_paciente ON public.water_logs(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_water_logs_date ON public.water_logs(paciente_id, date);
 
-CREATE TRIGGER trg_water_logs_updated_at BEFORE UPDATE ON public.water_logs
+CREATE OR REPLACE TRIGGER trg_water_logs_updated_at BEFORE UPDATE ON public.water_logs
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Nutrition / meals table
@@ -84,17 +88,19 @@ CREATE TABLE public.meal_logs (
 
 ALTER TABLE public.meal_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Pacientes gerenciam proprias refeicoes" ON public.meal_logs;
 CREATE POLICY "Pacientes gerenciam proprias refeicoes" ON public.meal_logs FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = meal_logs.paciente_id AND p.user_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = meal_logs.paciente_id AND p.user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam refeicoes" ON public.meal_logs;
 CREATE POLICY "Terapeutas gerenciam refeicoes" ON public.meal_logs FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE INDEX idx_meal_logs_paciente ON public.meal_logs(paciente_id);
-CREATE INDEX idx_meal_logs_date ON public.meal_logs(paciente_id, date);
+CREATE INDEX IF NOT EXISTS idx_meal_logs_paciente ON public.meal_logs(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_meal_logs_date ON public.meal_logs(paciente_id, date);
 
-CREATE TRIGGER trg_meal_logs_updated_at BEFORE UPDATE ON public.meal_logs
+CREATE OR REPLACE TRIGGER trg_meal_logs_updated_at BEFORE UPDATE ON public.meal_logs
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Body composition table
@@ -122,17 +128,19 @@ CREATE TABLE public.body_composition (
 
 ALTER TABLE public.body_composition ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Pacientes gerenciam propria composicao" ON public.body_composition;
 CREATE POLICY "Pacientes gerenciam propria composicao" ON public.body_composition FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = body_composition.paciente_id AND p.user_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = body_composition.paciente_id AND p.user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam composicao" ON public.body_composition;
 CREATE POLICY "Terapeutas gerenciam composicao" ON public.body_composition FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE INDEX idx_body_composition_paciente ON public.body_composition(paciente_id);
-CREATE INDEX idx_body_composition_date ON public.body_composition(paciente_id, date);
+CREATE INDEX IF NOT EXISTS idx_body_composition_paciente ON public.body_composition(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_body_composition_date ON public.body_composition(paciente_id, date);
 
-CREATE TRIGGER trg_body_composition_updated_at BEFORE UPDATE ON public.body_composition
+CREATE OR REPLACE TRIGGER trg_body_composition_updated_at BEFORE UPDATE ON public.body_composition
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Health metrics (steps, heart rate, SpO2, stress from smartwatch)
@@ -162,15 +170,17 @@ CREATE TABLE public.health_metrics (
 
 ALTER TABLE public.health_metrics ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Pacientes gerenciam proprias metricas" ON public.health_metrics;
 CREATE POLICY "Pacientes gerenciam proprias metricas" ON public.health_metrics FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = health_metrics.paciente_id AND p.user_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = health_metrics.paciente_id AND p.user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam metricas" ON public.health_metrics;
 CREATE POLICY "Terapeutas gerenciam metricas" ON public.health_metrics FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE INDEX idx_health_metrics_paciente ON public.health_metrics(paciente_id);
-CREATE INDEX idx_health_metrics_date ON public.health_metrics(paciente_id, date);
+CREATE INDEX IF NOT EXISTS idx_health_metrics_paciente ON public.health_metrics(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_health_metrics_date ON public.health_metrics(paciente_id, date);
 
-CREATE TRIGGER trg_health_metrics_updated_at BEFORE UPDATE ON public.health_metrics
+CREATE OR REPLACE TRIGGER trg_health_metrics_updated_at BEFORE UPDATE ON public.health_metrics
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

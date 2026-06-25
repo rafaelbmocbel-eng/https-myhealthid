@@ -10,8 +10,8 @@ CREATE TABLE public.whatsapp_contatos_bloqueados (
   UNIQUE (terapeuta_id, telefone)
 );
 
-CREATE INDEX idx_wa_bloqueados_terapeuta ON public.whatsapp_contatos_bloqueados (terapeuta_id);
-CREATE INDEX idx_wa_bloqueados_tel ON public.whatsapp_contatos_bloqueados (terapeuta_id, telefone);
+CREATE INDEX IF NOT EXISTS idx_wa_bloqueados_terapeuta ON public.whatsapp_contatos_bloqueados (terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_wa_bloqueados_tel ON public.whatsapp_contatos_bloqueados (terapeuta_id, telefone);
 
 ALTER TABLE public.whatsapp_contatos_bloqueados ENABLE ROW LEVEL SECURITY;
 
@@ -31,6 +31,6 @@ CREATE POLICY "Dono remove contatos bloqueados"
 ON public.whatsapp_contatos_bloqueados FOR DELETE
 USING (auth.uid() = terapeuta_id);
 
-CREATE TRIGGER update_wa_bloqueados_updated_at
+CREATE OR REPLACE TRIGGER update_wa_bloqueados_updated_at
 BEFORE UPDATE ON public.whatsapp_contatos_bloqueados
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

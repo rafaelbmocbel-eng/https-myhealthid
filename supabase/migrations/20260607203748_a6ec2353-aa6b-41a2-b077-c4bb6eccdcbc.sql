@@ -122,9 +122,9 @@ BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $f$;
 
 DROP TRIGGER IF EXISTS trg_exames_updated ON public.exames_importados;
-CREATE TRIGGER trg_exames_updated BEFORE UPDATE ON public.exames_importados
+CREATE OR REPLACE TRIGGER trg_exames_updated BEFORE UPDATE ON public.exames_importados
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 DROP TRIGGER IF EXISTS trg_sv_updated ON public.sinais_vitais;
-CREATE TRIGGER trg_sv_updated BEFORE UPDATE ON public.sinais_vitais
+CREATE OR REPLACE TRIGGER trg_sv_updated BEFORE UPDATE ON public.sinais_vitais
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

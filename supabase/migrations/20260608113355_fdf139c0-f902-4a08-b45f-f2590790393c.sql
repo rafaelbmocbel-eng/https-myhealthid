@@ -15,6 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_rec24_paciente ON public.recordatorios_24h(pacien
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.recordatorios_24h TO authenticated;
 GRANT ALL ON public.recordatorios_24h TO service_role;
 ALTER TABLE public.recordatorios_24h ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "rec24_owner" ON public.recordatorios_24h;
 CREATE POLICY "rec24_owner" ON public.recordatorios_24h FOR ALL USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
 CREATE TABLE IF NOT EXISTS public.planos_alimentares (
@@ -35,6 +36,7 @@ CREATE INDEX IF NOT EXISTS idx_planoali_paciente ON public.planos_alimentares(pa
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.planos_alimentares TO authenticated;
 GRANT ALL ON public.planos_alimentares TO service_role;
 ALTER TABLE public.planos_alimentares ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "planoali_owner" ON public.planos_alimentares;
 CREATE POLICY "planoali_owner" ON public.planos_alimentares FOR ALL USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
 -- Trigger updated_at (reusa função existente se houver)
@@ -48,11 +50,11 @@ BEGIN
 END $$;
 
 DROP TRIGGER IF EXISTS trg_rec24_upd ON public.recordatorios_24h;
-CREATE TRIGGER trg_rec24_upd BEFORE UPDATE ON public.recordatorios_24h
+CREATE OR REPLACE TRIGGER trg_rec24_upd BEFORE UPDATE ON public.recordatorios_24h
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 DROP TRIGGER IF EXISTS trg_planoali_upd ON public.planos_alimentares;
-CREATE TRIGGER trg_planoali_upd BEFORE UPDATE ON public.planos_alimentares
+CREATE OR REPLACE TRIGGER trg_planoali_upd BEFORE UPDATE ON public.planos_alimentares
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Ativar blocos nutrição na lente nutricionista

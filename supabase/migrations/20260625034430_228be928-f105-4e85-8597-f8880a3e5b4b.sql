@@ -27,7 +27,7 @@ CREATE POLICY "Terapeuta gerencia historia de seus pacientes"
   USING (terapeuta_id = auth.uid())
   WITH CHECK (terapeuta_id = auth.uid());
 
-CREATE TRIGGER trg_historia_vida_updated
+CREATE OR REPLACE TRIGGER trg_historia_vida_updated
   BEFORE UPDATE ON public.historia_vida_paciente
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -62,7 +62,7 @@ CREATE POLICY "Terapeuta gerencia sua lista de espera"
   USING (terapeuta_id = auth.uid())
   WITH CHECK (terapeuta_id = auth.uid());
 
-CREATE TRIGGER trg_lista_espera_updated
+CREATE OR REPLACE TRIGGER trg_lista_espera_updated
   BEFORE UPDATE ON public.agenda_lista_espera
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

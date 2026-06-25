@@ -22,7 +22,7 @@ TO authenticated
 USING (terapeuta_id = auth.uid())
 WITH CHECK (terapeuta_id = auth.uid());
 
-CREATE TRIGGER trg_links_rastreaveis_updated_at
+CREATE OR REPLACE TRIGGER trg_links_rastreaveis_updated_at
 BEFORE UPDATE ON public.links_rastreaveis
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

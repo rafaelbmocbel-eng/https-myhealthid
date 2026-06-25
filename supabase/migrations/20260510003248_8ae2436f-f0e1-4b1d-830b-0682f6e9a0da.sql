@@ -16,8 +16,8 @@ CREATE TABLE public.paciente_missoes (
   UNIQUE (paciente_id, source_key)
 );
 
-CREATE INDEX idx_paciente_missoes_paciente ON public.paciente_missoes(paciente_id);
-CREATE INDEX idx_paciente_missoes_terapeuta ON public.paciente_missoes(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_paciente_missoes_paciente ON public.paciente_missoes(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_paciente_missoes_terapeuta ON public.paciente_missoes(terapeuta_id);
 
 ALTER TABLE public.paciente_missoes ENABLE ROW LEVEL SECURITY;
 
@@ -38,7 +38,7 @@ USING (EXISTS (
     AND p.user_id = auth.uid()
 ));
 
-CREATE TRIGGER paciente_missoes_updated_at
+CREATE OR REPLACE TRIGGER paciente_missoes_updated_at
 BEFORE UPDATE ON public.paciente_missoes
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

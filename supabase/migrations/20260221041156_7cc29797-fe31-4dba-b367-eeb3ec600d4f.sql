@@ -21,6 +21,7 @@ CREATE TABLE public.studio_periodizacoes (
 
 ALTER TABLE public.studio_periodizacoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeuta gerencia periodizacoes" ON public.studio_periodizacoes;
 CREATE POLICY "Terapeuta gerencia periodizacoes" ON public.studio_periodizacoes FOR ALL
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
@@ -44,6 +45,7 @@ CREATE TABLE public.studio_treinos (
 
 ALTER TABLE public.studio_treinos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeuta gerencia treinos" ON public.studio_treinos;
 CREATE POLICY "Terapeuta gerencia treinos" ON public.studio_treinos FOR ALL
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
@@ -69,6 +71,7 @@ CREATE TABLE public.studio_treino_exercicios (
 
 ALTER TABLE public.studio_treino_exercicios ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeuta gerencia exercicios treino" ON public.studio_treino_exercicios;
 CREATE POLICY "Terapeuta gerencia exercicios treino" ON public.studio_treino_exercicios FOR ALL
   USING (EXISTS (SELECT 1 FROM public.studio_treinos t WHERE t.id = studio_treino_exercicios.treino_id AND t.terapeuta_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM public.studio_treinos t WHERE t.id = studio_treino_exercicios.treino_id AND t.terapeuta_id = auth.uid()));
@@ -90,6 +93,7 @@ CREATE TABLE public.studio_execucoes (
 
 ALTER TABLE public.studio_execucoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeuta gerencia execucoes" ON public.studio_execucoes;
 CREATE POLICY "Terapeuta gerencia execucoes" ON public.studio_execucoes FOR ALL
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
@@ -108,6 +112,7 @@ CREATE TABLE public.studio_execucao_exercicios (
 
 ALTER TABLE public.studio_execucao_exercicios ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeuta gerencia exec exercicios" ON public.studio_execucao_exercicios;
 CREATE POLICY "Terapeuta gerencia exec exercicios" ON public.studio_execucao_exercicios FOR ALL
   USING (EXISTS (SELECT 1 FROM public.studio_execucoes e WHERE e.id = studio_execucao_exercicios.execucao_id AND e.terapeuta_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM public.studio_execucoes e WHERE e.id = studio_execucao_exercicios.execucao_id AND e.terapeuta_id = auth.uid()));
@@ -136,6 +141,7 @@ CREATE TABLE public.studio_medidas (
 
 ALTER TABLE public.studio_medidas ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeuta gerencia medidas" ON public.studio_medidas;
 CREATE POLICY "Terapeuta gerencia medidas" ON public.studio_medidas FOR ALL
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
@@ -151,17 +157,18 @@ CREATE TABLE public.studio_notas (
 
 ALTER TABLE public.studio_notas ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeuta gerencia notas" ON public.studio_notas;
 CREATE POLICY "Terapeuta gerencia notas" ON public.studio_notas FOR ALL
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
 -- Triggers for updated_at
-CREATE TRIGGER update_studio_periodizacoes_updated_at BEFORE UPDATE ON public.studio_periodizacoes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
-CREATE TRIGGER update_studio_treinos_updated_at BEFORE UPDATE ON public.studio_treinos FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
-CREATE TRIGGER update_studio_treino_exercicios_updated_at BEFORE UPDATE ON public.studio_treino_exercicios FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE OR REPLACE TRIGGER update_studio_periodizacoes_updated_at BEFORE UPDATE ON public.studio_periodizacoes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE OR REPLACE TRIGGER update_studio_treinos_updated_at BEFORE UPDATE ON public.studio_treinos FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE OR REPLACE TRIGGER update_studio_treino_exercicios_updated_at BEFORE UPDATE ON public.studio_treino_exercicios FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- Indexes
-CREATE INDEX idx_studio_treinos_paciente ON public.studio_treinos(paciente_id);
-CREATE INDEX idx_studio_execucoes_paciente ON public.studio_execucoes(paciente_id);
-CREATE INDEX idx_studio_execucoes_treino ON public.studio_execucoes(treino_id);
-CREATE INDEX idx_studio_medidas_paciente ON public.studio_medidas(paciente_id);
-CREATE INDEX idx_studio_notas_paciente ON public.studio_notas(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_studio_treinos_paciente ON public.studio_treinos(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_studio_execucoes_paciente ON public.studio_execucoes(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_studio_execucoes_treino ON public.studio_execucoes(treino_id);
+CREATE INDEX IF NOT EXISTS idx_studio_medidas_paciente ON public.studio_medidas(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_studio_notas_paciente ON public.studio_notas(paciente_id);

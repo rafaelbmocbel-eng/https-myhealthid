@@ -17,17 +17,20 @@ CREATE TABLE IF NOT EXISTS public.wearable_sync_log (
 
 ALTER TABLE public.wearable_sync_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Pacientes inserem proprio sync" ON public.wearable_sync_log;
 CREATE POLICY "Pacientes inserem proprio sync" ON public.wearable_sync_log FOR INSERT TO authenticated
   WITH CHECK (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = paciente_id AND p.user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Pacientes leem proprio sync" ON public.wearable_sync_log;
 CREATE POLICY "Pacientes leem proprio sync" ON public.wearable_sync_log FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = paciente_id AND p.user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam sync" ON public.wearable_sync_log;
 CREATE POLICY "Terapeutas gerenciam sync" ON public.wearable_sync_log FOR ALL TO authenticated
   USING (terapeuta_id = auth.uid())
   WITH CHECK (terapeuta_id = auth.uid());
 
-CREATE INDEX idx_wearable_sync_pac_date ON public.wearable_sync_log(paciente_id, sincronizado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_wearable_sync_pac_date ON public.wearable_sync_log(paciente_id, sincronizado_em DESC);
 
 -- Alertas detectados pelo monitor
 CREATE TABLE IF NOT EXISTS public.wearable_alertas (
@@ -47,14 +50,16 @@ CREATE TABLE IF NOT EXISTS public.wearable_alertas (
 
 ALTER TABLE public.wearable_alertas ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam alertas wearable" ON public.wearable_alertas;
 CREATE POLICY "Terapeutas gerenciam alertas wearable" ON public.wearable_alertas FOR ALL TO authenticated
   USING (terapeuta_id = auth.uid())
   WITH CHECK (terapeuta_id = auth.uid());
 
+DROP POLICY IF EXISTS "Pacientes leem proprios alertas wearable" ON public.wearable_alertas;
 CREATE POLICY "Pacientes leem proprios alertas wearable" ON public.wearable_alertas FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = paciente_id AND p.user_id = auth.uid()));
 
-CREATE INDEX idx_wearable_alertas_terap ON public.wearable_alertas(terapeuta_id, detectado_em DESC) WHERE lido = false;
+CREATE INDEX IF NOT EXISTS idx_wearable_alertas_terap ON public.wearable_alertas(terapeuta_id, detectado_em DESC) WHERE lido = false;
 
 -- View: métricas semanais agregadas (últimos 7 dias)
 CREATE OR REPLACE VIEW public.wearable_metricas_semanais AS

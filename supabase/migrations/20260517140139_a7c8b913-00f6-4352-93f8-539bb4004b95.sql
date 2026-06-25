@@ -18,8 +18,8 @@ CREATE TABLE public.whatsapp_conversas (
   UNIQUE (terapeuta_id, telefone)
 );
 
-CREATE INDEX idx_wa_conversas_terapeuta_data ON public.whatsapp_conversas (terapeuta_id, ultima_mensagem_em DESC);
-CREATE INDEX idx_wa_conversas_paciente ON public.whatsapp_conversas (paciente_id);
+CREATE INDEX IF NOT EXISTS idx_wa_conversas_terapeuta_data ON public.whatsapp_conversas (terapeuta_id, ultima_mensagem_em DESC);
+CREATE INDEX IF NOT EXISTS idx_wa_conversas_paciente ON public.whatsapp_conversas (paciente_id);
 
 ALTER TABLE public.whatsapp_conversas ENABLE ROW LEVEL SECURITY;
 
@@ -56,9 +56,9 @@ CREATE TABLE public.whatsapp_mensagens_inbox (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_wa_msgs_conversa_data ON public.whatsapp_mensagens_inbox (conversa_id, created_at DESC);
-CREATE INDEX idx_wa_msgs_terapeuta ON public.whatsapp_mensagens_inbox (terapeuta_id);
-CREATE INDEX idx_wa_msgs_zapi_id ON public.whatsapp_mensagens_inbox (zapi_message_id);
+CREATE INDEX IF NOT EXISTS idx_wa_msgs_conversa_data ON public.whatsapp_mensagens_inbox (conversa_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wa_msgs_terapeuta ON public.whatsapp_mensagens_inbox (terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_wa_msgs_zapi_id ON public.whatsapp_mensagens_inbox (zapi_message_id);
 
 ALTER TABLE public.whatsapp_mensagens_inbox ENABLE ROW LEVEL SECURITY;
 
@@ -93,11 +93,11 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trg_update_conversa_on_msg
+CREATE OR REPLACE TRIGGER trg_update_conversa_on_msg
 AFTER INSERT ON public.whatsapp_mensagens_inbox
 FOR EACH ROW EXECUTE FUNCTION public.update_conversa_on_msg();
 
-CREATE TRIGGER trg_wa_conversas_updated
+CREATE OR REPLACE TRIGGER trg_wa_conversas_updated
 BEFORE UPDATE ON public.whatsapp_conversas
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

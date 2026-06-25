@@ -12,6 +12,7 @@ CREATE TABLE public.equipe_membros (
 
 ALTER TABLE public.equipe_membros ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam equipe" ON public.equipe_membros;
 CREATE POLICY "Terapeutas gerenciam equipe" ON public.equipe_membros
   FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id)

@@ -111,10 +111,10 @@ ALTER TABLE public.pacientes ADD COLUMN IF NOT EXISTS endereco TEXT;
 ALTER TABLE public.pacientes ADD COLUMN IF NOT EXISTS genero VARCHAR(20);
 
 -- Triggers for updated_at
-CREATE TRIGGER update_avaliacoes_updated_at
+CREATE OR REPLACE TRIGGER update_avaliacoes_updated_at
 BEFORE UPDATE ON public.avaliacoes
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
-CREATE TRIGGER update_protocolos_updated_at
+CREATE OR REPLACE TRIGGER update_protocolos_updated_at
 BEFORE UPDATE ON public.protocolos_cob_zero
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();

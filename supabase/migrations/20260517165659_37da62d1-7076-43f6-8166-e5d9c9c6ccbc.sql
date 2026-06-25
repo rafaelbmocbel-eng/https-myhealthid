@@ -36,7 +36,7 @@ DO $$ BEGIN
 END $$;
 
 DROP TRIGGER IF EXISTS trg_sync_paciente_whatsapp ON public.pacientes;
-CREATE TRIGGER trg_sync_paciente_whatsapp
+CREATE OR REPLACE TRIGGER trg_sync_paciente_whatsapp
 AFTER INSERT OR UPDATE OF telefone, nome, sobrenome, ativo ON public.pacientes
 FOR EACH ROW EXECUTE FUNCTION public.sync_paciente_whatsapp_conversa();
 

@@ -52,7 +52,7 @@ CREATE POLICY "Pacientes leem ausências do seu terapeuta"
       AND p.ativo = true
   ));
 
-CREATE TRIGGER trg_ausencias_updated_at
+CREATE OR REPLACE TRIGGER trg_ausencias_updated_at
   BEFORE UPDATE ON public.ausencias_terapeuta
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

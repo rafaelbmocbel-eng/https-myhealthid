@@ -30,7 +30,7 @@ CREATE POLICY "terapeuta gerencia lista espera"
 CREATE INDEX IF NOT EXISTS idx_lista_espera_terapeuta
   ON public.agenda_lista_espera (terapeuta_id, status, created_at);
 
-CREATE TRIGGER trg_lista_espera_updated
+CREATE OR REPLACE TRIGGER trg_lista_espera_updated
   BEFORE UPDATE ON public.agenda_lista_espera
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

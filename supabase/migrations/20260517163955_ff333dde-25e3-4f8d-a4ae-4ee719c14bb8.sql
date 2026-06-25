@@ -26,9 +26,10 @@ CREATE TABLE IF NOT EXISTS public.whatsapp_hsm_templates (
 
 ALTER TABLE public.whatsapp_hsm_templates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "terapeuta gerencia HSM" ON public.whatsapp_hsm_templates;
 CREATE POLICY "terapeuta gerencia HSM" ON public.whatsapp_hsm_templates
   FOR ALL USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE TRIGGER trg_hsm_templates_updated
+CREATE OR REPLACE TRIGGER trg_hsm_templates_updated
   BEFORE UPDATE ON public.whatsapp_hsm_templates
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

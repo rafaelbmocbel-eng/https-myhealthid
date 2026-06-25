@@ -112,7 +112,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_atualizar_nivel_paciente ON public.pacientes;
-CREATE TRIGGER trg_atualizar_nivel_paciente
+CREATE OR REPLACE TRIGGER trg_atualizar_nivel_paciente
   BEFORE INSERT OR UPDATE OF xp_total ON public.pacientes
   FOR EACH ROW EXECUTE FUNCTION public.atualizar_nivel_paciente();
 
@@ -159,17 +159,17 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_processar_resgate ON public.recompensas_resgates;
-CREATE TRIGGER trg_processar_resgate
+CREATE OR REPLACE TRIGGER trg_processar_resgate
   BEFORE INSERT ON public.recompensas_resgates
   FOR EACH ROW EXECUTE FUNCTION public.processar_resgate_recompensa();
 
 -- updated_at triggers
 DROP TRIGGER IF EXISTS trg_recompensas_catalogo_updated ON public.recompensas_catalogo;
-CREATE TRIGGER trg_recompensas_catalogo_updated
+CREATE OR REPLACE TRIGGER trg_recompensas_catalogo_updated
   BEFORE UPDATE ON public.recompensas_catalogo
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 DROP TRIGGER IF EXISTS trg_recompensas_resgates_updated ON public.recompensas_resgates;
-CREATE TRIGGER trg_recompensas_resgates_updated
+CREATE OR REPLACE TRIGGER trg_recompensas_resgates_updated
   BEFORE UPDATE ON public.recompensas_resgates
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

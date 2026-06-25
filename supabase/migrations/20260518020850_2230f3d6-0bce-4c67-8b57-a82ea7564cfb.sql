@@ -41,7 +41,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS enforce_paciente_pagamento_update_trg ON public.pagamentos_paciente;
-CREATE TRIGGER enforce_paciente_pagamento_update_trg
+CREATE OR REPLACE TRIGGER enforce_paciente_pagamento_update_trg
 BEFORE UPDATE ON public.pagamentos_paciente
 FOR EACH ROW EXECUTE FUNCTION public.enforce_paciente_pagamento_update();
 

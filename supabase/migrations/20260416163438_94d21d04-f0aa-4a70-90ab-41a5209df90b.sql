@@ -12,9 +12,9 @@ CREATE TABLE public.chat_mensagens (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_chat_mensagens_terapeuta ON public.chat_mensagens(terapeuta_id);
-CREATE INDEX idx_chat_mensagens_paciente ON public.chat_mensagens(paciente_id);
-CREATE INDEX idx_chat_mensagens_created ON public.chat_mensagens(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_mensagens_terapeuta ON public.chat_mensagens(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_chat_mensagens_paciente ON public.chat_mensagens(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_chat_mensagens_created ON public.chat_mensagens(created_at DESC);
 
 ALTER TABLE public.chat_mensagens ENABLE ROW LEVEL SECURITY;
 

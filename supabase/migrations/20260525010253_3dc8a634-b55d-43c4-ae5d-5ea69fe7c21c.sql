@@ -21,7 +21,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_pacientes_validate_cadastro_status ON public.pacientes;
-CREATE TRIGGER trg_pacientes_validate_cadastro_status
+CREATE OR REPLACE TRIGGER trg_pacientes_validate_cadastro_status
   BEFORE INSERT OR UPDATE OF cadastro_status ON public.pacientes
   FOR EACH ROW EXECUTE FUNCTION public.pacientes_validate_cadastro_status();
 

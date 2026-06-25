@@ -19,8 +19,8 @@ CREATE TABLE public.myid_acoes_checklist (
   UNIQUE (avaliacao_id, action_key)
 );
 
-CREATE INDEX idx_myid_acoes_paciente ON public.myid_acoes_checklist(paciente_id);
-CREATE INDEX idx_myid_acoes_avaliacao ON public.myid_acoes_checklist(avaliacao_id);
+CREATE INDEX IF NOT EXISTS idx_myid_acoes_paciente ON public.myid_acoes_checklist(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_myid_acoes_avaliacao ON public.myid_acoes_checklist(avaliacao_id);
 
 ALTER TABLE public.myid_acoes_checklist ENABLE ROW LEVEL SECURITY;
 
@@ -42,6 +42,6 @@ ON public.myid_acoes_checklist FOR UPDATE TO authenticated
 USING (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = myid_acoes_checklist.paciente_id AND p.user_id = auth.uid()))
 WITH CHECK (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = myid_acoes_checklist.paciente_id AND p.user_id = auth.uid()));
 
-CREATE TRIGGER trg_myid_acoes_updated_at
+CREATE OR REPLACE TRIGGER trg_myid_acoes_updated_at
 BEFORE UPDATE ON public.myid_acoes_checklist
 FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();

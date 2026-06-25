@@ -22,6 +22,6 @@ CREATE POLICY "Public can read active tracking config"
   TO anon, authenticated
   USING (ativos = true);
 
-CREATE TRIGGER trg_tracking_config_updated_at
+CREATE OR REPLACE TRIGGER trg_tracking_config_updated_at
   BEFORE UPDATE ON public.tracking_config
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

@@ -27,7 +27,7 @@ CREATE POLICY "Autenticados leem catalogo"
   FOR SELECT TO authenticated USING (true);
 
 DROP TRIGGER IF EXISTS trg_perfis_profissionais_updated ON public.perfis_profissionais;
-CREATE TRIGGER trg_perfis_profissionais_updated
+CREATE OR REPLACE TRIGGER trg_perfis_profissionais_updated
   BEFORE UPDATE ON public.perfis_profissionais
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

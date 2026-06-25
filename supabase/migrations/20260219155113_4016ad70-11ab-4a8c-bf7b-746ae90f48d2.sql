@@ -39,7 +39,7 @@ CREATE POLICY "Terapeutas deletam suas avaliações identidade"
   USING (auth.uid() = terapeuta_id);
 
 -- Atualiza updated_at automaticamente
-CREATE TRIGGER update_avaliacoes_identidade_updated_at
+CREATE OR REPLACE TRIGGER update_avaliacoes_identidade_updated_at
   BEFORE UPDATE ON public.avaliacoes_identidade
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
@@ -78,6 +78,6 @@ CREATE POLICY "Terapeutas deletam suas avaliações cob zero"
   ON public.avaliacoes_cob_zero FOR DELETE
   USING (auth.uid() = terapeuta_id);
 
-CREATE TRIGGER update_avaliacoes_cob_zero_updated_at
+CREATE OR REPLACE TRIGGER update_avaliacoes_cob_zero_updated_at
   BEFORE UPDATE ON public.avaliacoes_cob_zero
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();

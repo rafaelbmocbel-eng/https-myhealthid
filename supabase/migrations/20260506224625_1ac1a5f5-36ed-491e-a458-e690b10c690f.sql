@@ -22,6 +22,6 @@ WITH CHECK (auth.uid() = terapeuta_id);
 
 CREATE INDEX IF NOT EXISTS idx_documentos_emitidos_paciente ON public.documentos_emitidos(paciente_id, data_emissao DESC);
 
-CREATE TRIGGER set_documentos_emitidos_updated_at
+CREATE OR REPLACE TRIGGER set_documentos_emitidos_updated_at
 BEFORE UPDATE ON public.documentos_emitidos
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

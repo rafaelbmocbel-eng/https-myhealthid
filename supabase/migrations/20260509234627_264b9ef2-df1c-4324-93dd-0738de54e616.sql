@@ -198,7 +198,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_notify_myid_fase ON public.avaliacoes_identidade;
-CREATE TRIGGER trg_notify_myid_fase
+CREATE OR REPLACE TRIGGER trg_notify_myid_fase
 AFTER INSERT OR UPDATE OF fase_concluida ON public.avaliacoes_identidade
 FOR EACH ROW
 EXECUTE FUNCTION public.notify_myid_fase_concluida();

@@ -41,7 +41,7 @@ CREATE POLICY "Usuario le proprio uso IA"
   TO authenticated
   USING (auth.uid() = user_id);
 
-CREATE TRIGGER set_updated_at_uso_ia_mensal
+CREATE OR REPLACE TRIGGER set_updated_at_uso_ia_mensal
   BEFORE UPDATE ON public.uso_ia_mensal
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

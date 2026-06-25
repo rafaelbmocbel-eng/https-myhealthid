@@ -20,16 +20,20 @@ CREATE TABLE public.whatsapp_automacoes (
 
 ALTER TABLE public.whatsapp_automacoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "terapeuta_select_automacoes" ON public.whatsapp_automacoes;
 CREATE POLICY "terapeuta_select_automacoes" ON public.whatsapp_automacoes
   FOR SELECT USING (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "terapeuta_insert_automacoes" ON public.whatsapp_automacoes;
 CREATE POLICY "terapeuta_insert_automacoes" ON public.whatsapp_automacoes
   FOR INSERT WITH CHECK (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "terapeuta_update_automacoes" ON public.whatsapp_automacoes;
 CREATE POLICY "terapeuta_update_automacoes" ON public.whatsapp_automacoes
   FOR UPDATE USING (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "terapeuta_delete_automacoes" ON public.whatsapp_automacoes;
 CREATE POLICY "terapeuta_delete_automacoes" ON public.whatsapp_automacoes
   FOR DELETE USING (auth.uid() = terapeuta_id);
 
-CREATE TRIGGER trg_automacoes_updated
+CREATE OR REPLACE TRIGGER trg_automacoes_updated
   BEFORE UPDATE ON public.whatsapp_automacoes
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -46,15 +50,18 @@ CREATE TABLE public.whatsapp_intencoes (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_intencoes_conversa ON public.whatsapp_intencoes(conversa_id, created_at DESC);
-CREATE INDEX idx_intencoes_terapeuta ON public.whatsapp_intencoes(terapeuta_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_intencoes_conversa ON public.whatsapp_intencoes(conversa_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_intencoes_terapeuta ON public.whatsapp_intencoes(terapeuta_id, created_at DESC);
 
 ALTER TABLE public.whatsapp_intencoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "terapeuta_select_intencoes" ON public.whatsapp_intencoes;
 CREATE POLICY "terapeuta_select_intencoes" ON public.whatsapp_intencoes
   FOR SELECT USING (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "terapeuta_insert_intencoes" ON public.whatsapp_intencoes;
 CREATE POLICY "terapeuta_insert_intencoes" ON public.whatsapp_intencoes
   FOR INSERT WITH CHECK (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "terapeuta_delete_intencoes" ON public.whatsapp_intencoes;
 CREATE POLICY "terapeuta_delete_intencoes" ON public.whatsapp_intencoes
   FOR DELETE USING (auth.uid() = terapeuta_id);
 

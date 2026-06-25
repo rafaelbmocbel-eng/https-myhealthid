@@ -55,12 +55,12 @@ CREATE POLICY "Terapeutas deletam evolução"
   USING (auth.uid() = terapeuta_id);
 
 -- Indexes
-CREATE INDEX idx_evolucao_paciente_id ON public.evolucao_paciente(paciente_id);
-CREATE INDEX idx_evolucao_terapeuta_id ON public.evolucao_paciente(terapeuta_id);
-CREATE INDEX idx_evolucao_data ON public.evolucao_paciente(data_registro DESC);
+CREATE INDEX IF NOT EXISTS idx_evolucao_paciente_id ON public.evolucao_paciente(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_evolucao_terapeuta_id ON public.evolucao_paciente(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_evolucao_data ON public.evolucao_paciente(data_registro DESC);
 
 -- Trigger para updated_at
-CREATE TRIGGER update_evolucao_paciente_updated_at
+CREATE OR REPLACE TRIGGER update_evolucao_paciente_updated_at
   BEFORE UPDATE ON public.evolucao_paciente
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at();

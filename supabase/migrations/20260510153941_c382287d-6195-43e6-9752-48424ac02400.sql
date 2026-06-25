@@ -33,7 +33,7 @@ USING (paciente_id IN (SELECT id FROM public.pacientes WHERE terapeuta_id = auth
 WITH CHECK (paciente_id IN (SELECT id FROM public.pacientes WHERE terapeuta_id = auth.uid()));
 
 DROP TRIGGER IF EXISTS trg_wellness_assin_updated_at ON public.wellness_assinaturas;
-CREATE TRIGGER trg_wellness_assin_updated_at
+CREATE OR REPLACE TRIGGER trg_wellness_assin_updated_at
 BEFORE UPDATE ON public.wellness_assinaturas
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

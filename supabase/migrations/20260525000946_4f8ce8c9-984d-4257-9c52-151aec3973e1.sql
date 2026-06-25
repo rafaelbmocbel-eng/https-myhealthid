@@ -85,7 +85,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_paciente_normalize_validate ON public.pacientes;
-CREATE TRIGGER trg_paciente_normalize_validate
+CREATE OR REPLACE TRIGGER trg_paciente_normalize_validate
 BEFORE INSERT OR UPDATE ON public.pacientes
 FOR EACH ROW EXECUTE FUNCTION public.paciente_normalize_validate();
 

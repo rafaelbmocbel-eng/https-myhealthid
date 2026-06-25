@@ -94,10 +94,10 @@ CREATE POLICY "Links de agenda ativos acessíveis publicamente"
   USING (status = 'ativo' AND data_expiracao > now());
 
 -- Trigger para updated_at
-CREATE TRIGGER update_links_avaliacao_updated_at
+CREATE OR REPLACE TRIGGER update_links_avaliacao_updated_at
   BEFORE UPDATE ON public.links_avaliacao
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
-CREATE TRIGGER update_links_agenda_updated_at
+CREATE OR REPLACE TRIGGER update_links_agenda_updated_at
   BEFORE UPDATE ON public.links_agenda_paciente
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();

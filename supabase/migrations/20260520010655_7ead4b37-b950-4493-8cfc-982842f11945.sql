@@ -35,7 +35,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_bloqueia_troca_perfil_profissional ON public.profiles;
-CREATE TRIGGER trg_bloqueia_troca_perfil_profissional
+CREATE OR REPLACE TRIGGER trg_bloqueia_troca_perfil_profissional
 BEFORE UPDATE OF perfil_profissional, perfil_profissional_confirmado ON public.profiles
 FOR EACH ROW
 EXECUTE FUNCTION public.bloqueia_troca_perfil_profissional();

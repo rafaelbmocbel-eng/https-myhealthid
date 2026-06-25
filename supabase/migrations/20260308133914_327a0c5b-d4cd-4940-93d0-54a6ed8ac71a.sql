@@ -1,5 +1,6 @@
 
 -- Allow public read of config_agenda via funil_config (for funnel page)
+DROP POLICY IF EXISTS "pub_config_agenda_via_funil" ON public.config_agenda;
 CREATE POLICY "pub_config_agenda_via_funil" ON public.config_agenda
   FOR SELECT TO anon, authenticated
   USING (
@@ -12,6 +13,7 @@ CREATE POLICY "pub_config_agenda_via_funil" ON public.config_agenda
   );
 
 -- Allow public read of agendamentos via funil (to check availability)
+DROP POLICY IF EXISTS "pub_agendamentos_read_via_funil" ON public.agendamentos;
 CREATE POLICY "pub_agendamentos_read_via_funil" ON public.agendamentos
   FOR SELECT TO anon, authenticated
   USING (
@@ -23,6 +25,7 @@ CREATE POLICY "pub_agendamentos_read_via_funil" ON public.agendamentos
   );
 
 -- Allow public insert of agendamentos via funil (status must be pendente)
+DROP POLICY IF EXISTS "pub_agendamentos_insert_via_funil" ON public.agendamentos;
 CREATE POLICY "pub_agendamentos_insert_via_funil" ON public.agendamentos
   FOR INSERT TO anon, authenticated
   WITH CHECK (

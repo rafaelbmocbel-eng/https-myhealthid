@@ -13,6 +13,7 @@ CREATE TABLE public.tecnicas_tratamento (
 
 -- RLS: leitura pública (referência)
 ALTER TABLE public.tecnicas_tratamento ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Todos leem técnicas" ON public.tecnicas_tratamento;
 CREATE POLICY "Todos leem técnicas" ON public.tecnicas_tratamento FOR SELECT USING (true);
 
 -- Seed de técnicas

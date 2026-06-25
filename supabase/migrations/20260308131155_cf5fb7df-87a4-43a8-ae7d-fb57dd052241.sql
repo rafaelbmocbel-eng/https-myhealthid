@@ -31,5 +31,5 @@ CREATE POLICY "Terapeutas deletam suas mensagens"
   USING (auth.uid() = terapeuta_id);
 
 -- Index para busca rápida por paciente
-CREATE INDEX idx_mensagens_whatsapp_paciente ON public.mensagens_whatsapp(paciente_id, created_at DESC);
-CREATE INDEX idx_mensagens_whatsapp_terapeuta ON public.mensagens_whatsapp(terapeuta_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mensagens_whatsapp_paciente ON public.mensagens_whatsapp(paciente_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mensagens_whatsapp_terapeuta ON public.mensagens_whatsapp(terapeuta_id, created_at DESC);

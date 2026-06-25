@@ -43,6 +43,6 @@ CREATE POLICY "Terapeutas atualizam pagamentos"
   TO authenticated
   USING (terapeuta_id = auth.uid());
 
-CREATE TRIGGER update_pagamentos_updated_at
+CREATE OR REPLACE TRIGGER update_pagamentos_updated_at
   BEFORE UPDATE ON public.pagamentos_paciente
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();

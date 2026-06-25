@@ -100,48 +100,55 @@ $$;
 
 -- 8) Triggers updated_at
 DROP TRIGGER IF EXISTS trg_clinicas_updated ON public.clinicas;
-CREATE TRIGGER trg_clinicas_updated BEFORE UPDATE ON public.clinicas
+CREATE OR REPLACE TRIGGER trg_clinicas_updated BEFORE UPDATE ON public.clinicas
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 DROP TRIGGER IF EXISTS trg_clinica_membros_updated ON public.clinica_membros;
-CREATE TRIGGER trg_clinica_membros_updated BEFORE UPDATE ON public.clinica_membros
+CREATE OR REPLACE TRIGGER trg_clinica_membros_updated BEFORE UPDATE ON public.clinica_membros
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 DROP TRIGGER IF EXISTS trg_clinica_convites_updated ON public.clinica_convites;
-CREATE TRIGGER trg_clinica_convites_updated BEFORE UPDATE ON public.clinica_convites
+CREATE OR REPLACE TRIGGER trg_clinica_convites_updated BEFORE UPDATE ON public.clinica_convites
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- 9) RLS — clinicas
+DROP POLICY IF EXISTS "Dono gerencia sua clinica" ON public.clinicas;
 CREATE POLICY "Dono gerencia sua clinica" ON public.clinicas
   FOR ALL TO authenticated
   USING (auth.uid() = dono_user_id)
   WITH CHECK (auth.uid() = dono_user_id);
 
+DROP POLICY IF EXISTS "Membros leem sua clinica" ON public.clinicas;
 CREATE POLICY "Membros leem sua clinica" ON public.clinicas
   FOR SELECT TO authenticated
   USING (public.has_clinica_role(auth.uid(), id, NULL));
 
 -- 10) RLS — clinica_membros
+DROP POLICY IF EXISTS "Dono gerencia membros" ON public.clinica_membros;
 CREATE POLICY "Dono gerencia membros" ON public.clinica_membros
   FOR ALL TO authenticated
   USING (public.is_clinica_dono(auth.uid(), clinica_id))
   WITH CHECK (public.is_clinica_dono(auth.uid(), clinica_id));
 
+DROP POLICY IF EXISTS "Membros leem equipe" ON public.clinica_membros;
 CREATE POLICY "Membros leem equipe" ON public.clinica_membros
   FOR SELECT TO authenticated
   USING (public.has_clinica_role(auth.uid(), clinica_id, NULL));
 
+DROP POLICY IF EXISTS "Usuario le proprio vinculo" ON public.clinica_membros;
 CREATE POLICY "Usuario le proprio vinculo" ON public.clinica_membros
   FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
 -- 11) RLS — clinica_convites
+DROP POLICY IF EXISTS "Dono gerencia convites" ON public.clinica_convites;
 CREATE POLICY "Dono gerencia convites" ON public.clinica_convites
   FOR ALL TO authenticated
   USING (public.is_clinica_dono(auth.uid(), clinica_id))
   WITH CHECK (public.is_clinica_dono(auth.uid(), clinica_id));
 
 -- 12) RLS — clinica_pacientes_lixeira
+DROP POLICY IF EXISTS "Dono gerencia lixeira" ON public.clinica_pacientes_lixeira;
 CREATE POLICY "Dono gerencia lixeira" ON public.clinica_pacientes_lixeira
   FOR ALL TO authenticated
   USING (public.is_clinica_dono(auth.uid(), clinica_id) OR auth.uid() = apagado_por)

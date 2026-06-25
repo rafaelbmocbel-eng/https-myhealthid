@@ -35,7 +35,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_pagamentos_paciente_restrict_update ON public.pagamentos_paciente;
-CREATE TRIGGER trg_pagamentos_paciente_restrict_update
+CREATE OR REPLACE TRIGGER trg_pagamentos_paciente_restrict_update
   BEFORE UPDATE ON public.pagamentos_paciente
   FOR EACH ROW EXECUTE FUNCTION public.pagamentos_paciente_restrict_update();
 

@@ -85,48 +85,63 @@ CREATE TABLE IF NOT EXISTS public.progresso_exercicios (
 );
 
 -- Triggers de updated_at
-CREATE TRIGGER update_protocolos_updated_at
+CREATE OR REPLACE TRIGGER update_protocolos_updated_at
   BEFORE UPDATE ON public.protocolos
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- RLS: exercicios_biblioteca (pública para leitura, só admin escreve – sem RLS restritiva)
 ALTER TABLE public.exercicios_biblioteca ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Todos leem exercícios" ON public.exercicios_biblioteca;
 CREATE POLICY "Todos leem exercícios" ON public.exercicios_biblioteca FOR SELECT USING (true);
 
 -- RLS: protocolos
 ALTER TABLE public.protocolos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Terapeutas veem seus protocolos" ON public.protocolos;
 CREATE POLICY "Terapeutas veem seus protocolos" ON public.protocolos FOR SELECT USING (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "Terapeutas inserem protocolos" ON public.protocolos;
 CREATE POLICY "Terapeutas inserem protocolos" ON public.protocolos FOR INSERT WITH CHECK (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "Terapeutas editam seus protocolos" ON public.protocolos;
 CREATE POLICY "Terapeutas editam seus protocolos" ON public.protocolos FOR UPDATE USING (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "Terapeutas deletam seus protocolos" ON public.protocolos;
 CREATE POLICY "Terapeutas deletam seus protocolos" ON public.protocolos FOR DELETE USING (auth.uid() = terapeuta_id);
 
 -- RLS: protocolo_fases
 ALTER TABLE public.protocolo_fases ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Terapeutas veem fases dos seus protocolos" ON public.protocolo_fases;
 CREATE POLICY "Terapeutas veem fases dos seus protocolos" ON public.protocolo_fases FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.protocolos p WHERE p.id = protocolo_id AND p.terapeuta_id = auth.uid()));
+DROP POLICY IF EXISTS "Terapeutas inserem fases" ON public.protocolo_fases;
 CREATE POLICY "Terapeutas inserem fases" ON public.protocolo_fases FOR INSERT
   WITH CHECK (EXISTS (SELECT 1 FROM public.protocolos p WHERE p.id = protocolo_id AND p.terapeuta_id = auth.uid()));
+DROP POLICY IF EXISTS "Terapeutas editam fases" ON public.protocolo_fases;
 CREATE POLICY "Terapeutas editam fases" ON public.protocolo_fases FOR UPDATE
   USING (EXISTS (SELECT 1 FROM public.protocolos p WHERE p.id = protocolo_id AND p.terapeuta_id = auth.uid()));
+DROP POLICY IF EXISTS "Terapeutas deletam fases" ON public.protocolo_fases;
 CREATE POLICY "Terapeutas deletam fases" ON public.protocolo_fases FOR DELETE
   USING (EXISTS (SELECT 1 FROM public.protocolos p WHERE p.id = protocolo_id AND p.terapeuta_id = auth.uid()));
 
 -- RLS: prescricoes_exercicios
 ALTER TABLE public.prescricoes_exercicios ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Terapeutas veem prescrições" ON public.prescricoes_exercicios;
 CREATE POLICY "Terapeutas veem prescrições" ON public.prescricoes_exercicios FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.protocolos p WHERE p.id = protocolo_id AND p.terapeuta_id = auth.uid()));
+DROP POLICY IF EXISTS "Terapeutas inserem prescrições" ON public.prescricoes_exercicios;
 CREATE POLICY "Terapeutas inserem prescrições" ON public.prescricoes_exercicios FOR INSERT
   WITH CHECK (EXISTS (SELECT 1 FROM public.protocolos p WHERE p.id = protocolo_id AND p.terapeuta_id = auth.uid()));
+DROP POLICY IF EXISTS "Terapeutas editam prescrições" ON public.prescricoes_exercicios;
 CREATE POLICY "Terapeutas editam prescrições" ON public.prescricoes_exercicios FOR UPDATE
   USING (EXISTS (SELECT 1 FROM public.protocolos p WHERE p.id = protocolo_id AND p.terapeuta_id = auth.uid()));
+DROP POLICY IF EXISTS "Terapeutas deletam prescrições" ON public.prescricoes_exercicios;
 CREATE POLICY "Terapeutas deletam prescrições" ON public.prescricoes_exercicios FOR DELETE
   USING (EXISTS (SELECT 1 FROM public.protocolos p WHERE p.id = protocolo_id AND p.terapeuta_id = auth.uid()));
 
 -- RLS: progresso_exercicios
 ALTER TABLE public.progresso_exercicios ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Terapeutas veem progresso" ON public.progresso_exercicios;
 CREATE POLICY "Terapeutas veem progresso" ON public.progresso_exercicios FOR SELECT USING (auth.uid() = paciente_id OR EXISTS (
   SELECT 1 FROM public.prescricoes_exercicios pe
   JOIN public.protocolos p ON p.id = pe.protocolo_id
   WHERE pe.id = prescricao_id AND p.terapeuta_id = auth.uid()
 ));
+DROP POLICY IF EXISTS "Todos inserem progresso" ON public.progresso_exercicios;
 CREATE POLICY "Todos inserem progresso" ON public.progresso_exercicios FOR INSERT WITH CHECK (true);

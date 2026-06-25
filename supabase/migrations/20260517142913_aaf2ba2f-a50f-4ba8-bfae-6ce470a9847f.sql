@@ -33,22 +33,25 @@ CREATE TABLE public.crm_cadencia_execucoes (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_cadencias_terapeuta ON public.crm_cadencias(terapeuta_id, ativo);
-CREATE INDEX idx_cadencia_passos_cad ON public.crm_cadencia_passos(cadencia_id, ordem);
-CREATE INDEX idx_cadencia_exec_pend ON public.crm_cadencia_execucoes(status, agendado_para) WHERE status = 'pendente';
-CREATE INDEX idx_cadencia_exec_conv ON public.crm_cadencia_execucoes(conversa_id);
+CREATE INDEX IF NOT EXISTS idx_cadencias_terapeuta ON public.crm_cadencias(terapeuta_id, ativo);
+CREATE INDEX IF NOT EXISTS idx_cadencia_passos_cad ON public.crm_cadencia_passos(cadencia_id, ordem);
+CREATE INDEX IF NOT EXISTS idx_cadencia_exec_pend ON public.crm_cadencia_execucoes(status, agendado_para) WHERE status = 'pendente';
+CREATE INDEX IF NOT EXISTS idx_cadencia_exec_conv ON public.crm_cadencia_execucoes(conversa_id);
 
 ALTER TABLE public.crm_cadencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crm_cadencia_passos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crm_cadencia_execucoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "cad_own_all" ON public.crm_cadencias;
 CREATE POLICY "cad_own_all" ON public.crm_cadencias FOR ALL USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
+DROP POLICY IF EXISTS "cad_passos_own" ON public.crm_cadencia_passos;
 CREATE POLICY "cad_passos_own" ON public.crm_cadencia_passos FOR ALL
   USING (EXISTS (SELECT 1 FROM public.crm_cadencias c WHERE c.id = cadencia_id AND c.terapeuta_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM public.crm_cadencias c WHERE c.id = cadencia_id AND c.terapeuta_id = auth.uid()));
+DROP POLICY IF EXISTS "cad_exec_own" ON public.crm_cadencia_execucoes;
 CREATE POLICY "cad_exec_own" ON public.crm_cadencia_execucoes FOR ALL USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
 
-CREATE TRIGGER trg_cadencias_updated BEFORE UPDATE ON public.crm_cadencias
+CREATE OR REPLACE TRIGGER trg_cadencias_updated BEFORE UPDATE ON public.crm_cadencias
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Trigger: quando pipeline_stage muda, agenda passos da cadência do novo estágio
@@ -91,6 +94,6 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trg_pipeline_cadencia
+CREATE OR REPLACE TRIGGER trg_pipeline_cadencia
   AFTER UPDATE OF pipeline_stage ON public.whatsapp_conversas
   FOR EACH ROW EXECUTE FUNCTION public.agendar_cadencia_on_stage_change();

@@ -12,22 +12,25 @@ CREATE TABLE public.pesquisas_nps (
 
 ALTER TABLE public.pesquisas_nps ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam NPS" ON public.pesquisas_nps;
 CREATE POLICY "Terapeutas gerenciam NPS" ON public.pesquisas_nps
   FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id)
   WITH CHECK (auth.uid() = terapeuta_id);
 
+DROP POLICY IF EXISTS "Pacientes inserem próprio NPS" ON public.pesquisas_nps;
 CREATE POLICY "Pacientes inserem próprio NPS" ON public.pesquisas_nps
   FOR INSERT TO authenticated
   WITH CHECK (EXISTS (
     SELECT 1 FROM pacientes p WHERE p.id = pesquisas_nps.paciente_id AND p.user_id = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "Pacientes leem próprio NPS" ON public.pesquisas_nps;
 CREATE POLICY "Pacientes leem próprio NPS" ON public.pesquisas_nps
   FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM pacientes p WHERE p.id = pesquisas_nps.paciente_id AND p.user_id = auth.uid()
   ));
 
-CREATE INDEX idx_pesquisas_nps_terapeuta ON public.pesquisas_nps(terapeuta_id);
-CREATE INDEX idx_pesquisas_nps_paciente ON public.pesquisas_nps(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_pesquisas_nps_terapeuta ON public.pesquisas_nps(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_pesquisas_nps_paciente ON public.pesquisas_nps(paciente_id);

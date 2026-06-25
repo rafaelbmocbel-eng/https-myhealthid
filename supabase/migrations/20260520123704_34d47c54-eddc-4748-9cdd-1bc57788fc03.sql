@@ -26,11 +26,11 @@ create table public.evidence_library (
   updated_at timestamptz not null default now()
 );
 
-create unique index evidence_library_external_id_uidx on public.evidence_library(external_id);
-create index evidence_library_year_idx on public.evidence_library(year desc);
-create index evidence_library_health_areas_idx on public.evidence_library using gin(health_areas);
-create index evidence_library_mesh_idx on public.evidence_library using gin(mesh_terms);
-create index evidence_library_embedding_idx on public.evidence_library
+CREATE unique INDEX IF NOT EXISTS evidence_library_external_id_uidx on public.evidence_library(external_id);
+CREATE INDEX IF NOT EXISTS evidence_library_year_idx on public.evidence_library(year desc);
+CREATE INDEX IF NOT EXISTS evidence_library_health_areas_idx on public.evidence_library using gin(health_areas);
+CREATE INDEX IF NOT EXISTS evidence_library_mesh_idx on public.evidence_library using gin(mesh_terms);
+CREATE INDEX IF NOT EXISTS evidence_library_embedding_idx on public.evidence_library
   using hnsw (embedding vector_cosine_ops);
 
 alter table public.evidence_library enable row level security;
@@ -65,7 +65,7 @@ create policy "Authenticated users can read ingestion log"
   using (true);
 
 -- Updated_at trigger
-create trigger evidence_library_updated_at
+CREATE OR REPLACE TRIGGER evidence_library_updated_at
   before update on public.evidence_library
   for each row execute function public.update_updated_at_column();
 

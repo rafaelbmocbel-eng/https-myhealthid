@@ -16,8 +16,8 @@ GRANT ALL ON public.prescricoes_paciente TO service_role;
 ALTER TABLE public.prescricoes_paciente ENABLE ROW LEVEL SECURITY;
 CREATE POLICY presc_owner_all ON public.prescricoes_paciente FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
-CREATE INDEX presc_pac_idx ON public.prescricoes_paciente(paciente_id, data_emissao DESC);
-CREATE TRIGGER trg_presc_updated BEFORE UPDATE ON public.prescricoes_paciente
+CREATE INDEX IF NOT EXISTS presc_pac_idx ON public.prescricoes_paciente(paciente_id, data_emissao DESC);
+CREATE OR REPLACE TRIGGER trg_presc_updated BEFORE UPDATE ON public.prescricoes_paciente
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Atestados médicos
@@ -39,8 +39,8 @@ GRANT ALL ON public.atestados_medicos TO service_role;
 ALTER TABLE public.atestados_medicos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY atest_owner_all ON public.atestados_medicos FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
-CREATE INDEX atest_pac_idx ON public.atestados_medicos(paciente_id, data_inicio DESC);
-CREATE TRIGGER trg_atest_updated BEFORE UPDATE ON public.atestados_medicos
+CREATE INDEX IF NOT EXISTS atest_pac_idx ON public.atestados_medicos(paciente_id, data_inicio DESC);
+CREATE OR REPLACE TRIGGER trg_atest_updated BEFORE UPDATE ON public.atestados_medicos
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Seed medicamentos catálogo (60 comuns)

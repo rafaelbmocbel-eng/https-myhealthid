@@ -19,6 +19,7 @@ GRANT ALL ON public.diagnosticos_paciente TO service_role;
 
 ALTER TABLE public.diagnosticos_paciente ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "diag_owner_all" ON public.diagnosticos_paciente;
 CREATE POLICY "diag_owner_all" ON public.diagnosticos_paciente
   FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id)
@@ -27,7 +28,7 @@ CREATE POLICY "diag_owner_all" ON public.diagnosticos_paciente
 CREATE INDEX IF NOT EXISTS diagnosticos_paciente_pac_idx
   ON public.diagnosticos_paciente(paciente_id, ativo);
 
-CREATE TRIGGER trg_diag_paciente_updated
+CREATE OR REPLACE TRIGGER trg_diag_paciente_updated
   BEFORE UPDATE ON public.diagnosticos_paciente
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

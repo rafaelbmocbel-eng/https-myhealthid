@@ -20,7 +20,7 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trg_incrementar_pacote_concluido
+CREATE OR REPLACE TRIGGER trg_incrementar_pacote_concluido
 AFTER UPDATE ON public.agendamentos
 FOR EACH ROW
 EXECUTE FUNCTION public.incrementar_pacote_ao_concluir();

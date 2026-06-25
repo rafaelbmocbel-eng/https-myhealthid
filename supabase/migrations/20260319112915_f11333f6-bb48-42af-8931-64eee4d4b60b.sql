@@ -43,6 +43,6 @@ USING (EXISTS (
 ));
 
 -- Timestamp trigger
-CREATE TRIGGER update_avaliacoes_voz_updated_at
+CREATE OR REPLACE TRIGGER update_avaliacoes_voz_updated_at
 BEFORE UPDATE ON public.avaliacoes_voz
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

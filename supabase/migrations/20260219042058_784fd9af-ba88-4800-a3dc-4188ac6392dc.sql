@@ -139,19 +139,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
-CREATE TRIGGER trg_profiles_updated_at
+CREATE OR REPLACE TRIGGER trg_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
-CREATE TRIGGER trg_pacientes_updated_at
+CREATE OR REPLACE TRIGGER trg_pacientes_updated_at
   BEFORE UPDATE ON public.pacientes
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
-CREATE TRIGGER trg_config_agenda_updated_at
+CREATE OR REPLACE TRIGGER trg_config_agenda_updated_at
   BEFORE UPDATE ON public.config_agenda
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
-CREATE TRIGGER trg_agendamentos_updated_at
+CREATE OR REPLACE TRIGGER trg_agendamentos_updated_at
   BEFORE UPDATE ON public.agendamentos
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
@@ -165,11 +165,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE TRIGGER on_auth_user_created
+CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- 7. Índices para performance
-CREATE INDEX idx_agendamentos_terapeuta ON public.agendamentos(terapeuta_id);
-CREATE INDEX idx_agendamentos_data ON public.agendamentos(data_inicio, data_fim);
-CREATE INDEX idx_pacientes_terapeuta ON public.pacientes(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_agendamentos_terapeuta ON public.agendamentos(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_agendamentos_data ON public.agendamentos(data_inicio, data_fim);
+CREATE INDEX IF NOT EXISTS idx_pacientes_terapeuta ON public.pacientes(terapeuta_id);

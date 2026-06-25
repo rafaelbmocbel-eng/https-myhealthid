@@ -60,7 +60,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_notify_diretriz_rascunho ON public.protocolos;
-CREATE TRIGGER trg_notify_diretriz_rascunho
+CREATE OR REPLACE TRIGGER trg_notify_diretriz_rascunho
 AFTER INSERT OR UPDATE OF status, origem ON public.protocolos
 FOR EACH ROW
 EXECUTE FUNCTION public.notify_diretriz_rascunho();

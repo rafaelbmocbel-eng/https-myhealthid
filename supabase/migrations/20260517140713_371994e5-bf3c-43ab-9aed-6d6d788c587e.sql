@@ -11,15 +11,19 @@ CREATE TABLE public.whatsapp_templates (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (terapeuta_id, atalho)
 );
-CREATE INDEX idx_wa_templates_terapeuta ON public.whatsapp_templates (terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_wa_templates_terapeuta ON public.whatsapp_templates (terapeuta_id);
 ALTER TABLE public.whatsapp_templates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeuta vê seus templates" ON public.whatsapp_templates;
 CREATE POLICY "Terapeuta vê seus templates" ON public.whatsapp_templates FOR SELECT USING (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "Terapeuta cria templates" ON public.whatsapp_templates;
 CREATE POLICY "Terapeuta cria templates" ON public.whatsapp_templates FOR INSERT WITH CHECK (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "Terapeuta atualiza templates" ON public.whatsapp_templates;
 CREATE POLICY "Terapeuta atualiza templates" ON public.whatsapp_templates FOR UPDATE USING (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "Terapeuta apaga templates" ON public.whatsapp_templates;
 CREATE POLICY "Terapeuta apaga templates" ON public.whatsapp_templates FOR DELETE USING (auth.uid() = terapeuta_id);
 
-CREATE TRIGGER trg_wa_templates_updated BEFORE UPDATE ON public.whatsapp_templates
+CREATE OR REPLACE TRIGGER trg_wa_templates_updated BEFORE UPDATE ON public.whatsapp_templates
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 CREATE TABLE public.whatsapp_notas (
@@ -29,11 +33,14 @@ CREATE TABLE public.whatsapp_notas (
   conteudo TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_wa_notas_conversa ON public.whatsapp_notas (conversa_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wa_notas_conversa ON public.whatsapp_notas (conversa_id, created_at DESC);
 ALTER TABLE public.whatsapp_notas ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeuta vê suas notas" ON public.whatsapp_notas;
 CREATE POLICY "Terapeuta vê suas notas" ON public.whatsapp_notas FOR SELECT USING (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "Terapeuta cria notas" ON public.whatsapp_notas;
 CREATE POLICY "Terapeuta cria notas" ON public.whatsapp_notas FOR INSERT WITH CHECK (auth.uid() = terapeuta_id);
+DROP POLICY IF EXISTS "Terapeuta apaga notas" ON public.whatsapp_notas;
 CREATE POLICY "Terapeuta apaga notas" ON public.whatsapp_notas FOR DELETE USING (auth.uid() = terapeuta_id);
 
 -- Seed templates padrão para terapeutas existentes

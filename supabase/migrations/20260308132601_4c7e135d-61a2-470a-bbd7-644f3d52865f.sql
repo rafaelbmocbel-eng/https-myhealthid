@@ -1,6 +1,7 @@
 
 -- Fix: scope anon insert to require funil_config_id referencing an active funil
 DROP POLICY "Público insere leads" ON public.funil_leads;
+DROP POLICY IF EXISTS "Público insere leads via funil ativo" ON public.funil_leads;
 CREATE POLICY "Público insere leads via funil ativo" ON public.funil_leads FOR INSERT TO anon
   WITH CHECK (
     EXISTS (
@@ -13,6 +14,7 @@ CREATE POLICY "Público insere leads via funil ativo" ON public.funil_leads FOR 
 
 -- Fix: scope anon update to only allow updating own lead via funil ativo
 DROP POLICY "Público atualiza leads em andamento" ON public.funil_leads;
+DROP POLICY IF EXISTS "Público atualiza leads em andamento" ON public.funil_leads;
 CREATE POLICY "Público atualiza leads em andamento" ON public.funil_leads FOR UPDATE TO anon
   USING (
     status = 'em_andamento' 
@@ -25,5 +27,6 @@ CREATE POLICY "Público atualiza leads em andamento" ON public.funil_leads FOR U
 
 -- Also allow anon to read funil_config for the public page
 -- (already have policy, and allow anon to read own lead)
+DROP POLICY IF EXISTS "Público lê seus leads" ON public.funil_leads;
 CREATE POLICY "Público lê seus leads" ON public.funil_leads FOR SELECT TO anon
   USING (status = 'em_andamento');

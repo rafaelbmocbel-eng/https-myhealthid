@@ -66,7 +66,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_funil_config_updated_at
+CREATE OR REPLACE TRIGGER update_funil_config_updated_at
 BEFORE UPDATE ON public.funil_config
 FOR EACH ROW
 EXECUTE PROCEDURE update_updated_at_column();

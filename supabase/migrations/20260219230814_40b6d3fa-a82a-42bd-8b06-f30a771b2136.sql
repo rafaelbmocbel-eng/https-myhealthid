@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.protocolo_templates (
 );
 
 ALTER TABLE public.protocolo_templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Todos leem templates" ON public.protocolo_templates;
 CREATE POLICY "Todos leem templates" ON public.protocolo_templates FOR SELECT USING (true);
 
 -- Tabela de progressão do paciente
@@ -40,14 +41,18 @@ CREATE TABLE IF NOT EXISTS public.protocolo_progressao (
 
 ALTER TABLE public.protocolo_progressao ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeutas veem progressao" ON public.protocolo_progressao;
 CREATE POLICY "Terapeutas veem progressao" ON public.protocolo_progressao FOR SELECT
 USING (EXISTS (SELECT 1 FROM protocolos p WHERE p.id = protocolo_progressao.protocolo_id AND p.terapeuta_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas inserem progressao" ON public.protocolo_progressao;
 CREATE POLICY "Terapeutas inserem progressao" ON public.protocolo_progressao FOR INSERT
 WITH CHECK (EXISTS (SELECT 1 FROM protocolos p WHERE p.id = protocolo_progressao.protocolo_id AND p.terapeuta_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas editam progressao" ON public.protocolo_progressao;
 CREATE POLICY "Terapeutas editam progressao" ON public.protocolo_progressao FOR UPDATE
 USING (EXISTS (SELECT 1 FROM protocolos p WHERE p.id = protocolo_progressao.protocolo_id AND p.terapeuta_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas deletam progressao" ON public.protocolo_progressao;
 CREATE POLICY "Terapeutas deletam progressao" ON public.protocolo_progressao FOR DELETE
 USING (EXISTS (SELECT 1 FROM protocolos p WHERE p.id = protocolo_progressao.protocolo_id AND p.terapeuta_id = auth.uid()));

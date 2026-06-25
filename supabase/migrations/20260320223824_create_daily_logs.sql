@@ -16,13 +16,15 @@ CREATE TABLE public.daily_logs (
 
 ALTER TABLE public.daily_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Pacientes gerenciam proprio daily log" ON public.daily_logs;
 CREATE POLICY "Pacientes gerenciam proprio daily log" ON public.daily_logs FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = daily_logs.paciente_id AND p.user_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM pacientes p WHERE p.id = daily_logs.paciente_id AND p.user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam daily logs" ON public.daily_logs;
 CREATE POLICY "Terapeutas gerenciam daily logs" ON public.daily_logs FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE INDEX idx_daily_logs_paciente ON public.daily_logs(paciente_id);
-CREATE INDEX idx_daily_logs_terapeuta ON public.daily_logs(terapeuta_id);
-CREATE INDEX idx_daily_logs_created ON public.daily_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_logs_paciente ON public.daily_logs(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_daily_logs_terapeuta ON public.daily_logs(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_daily_logs_created ON public.daily_logs(created_at DESC);

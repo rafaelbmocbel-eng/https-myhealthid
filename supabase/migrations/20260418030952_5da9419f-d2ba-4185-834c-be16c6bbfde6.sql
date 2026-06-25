@@ -27,11 +27,11 @@ CREATE POLICY "Terapeutas gerenciam suas vendas"
   USING (auth.uid() = terapeuta_id)
   WITH CHECK (auth.uid() = terapeuta_id);
 
-CREATE INDEX idx_vendas_terapeuta ON public.vendas(terapeuta_id);
-CREATE INDEX idx_vendas_paciente ON public.vendas(paciente_id);
-CREATE INDEX idx_vendas_data ON public.vendas(data_venda DESC);
+CREATE INDEX IF NOT EXISTS idx_vendas_terapeuta ON public.vendas(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_vendas_paciente ON public.vendas(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_vendas_data ON public.vendas(data_venda DESC);
 
-CREATE TRIGGER update_vendas_updated_at
+CREATE OR REPLACE TRIGGER update_vendas_updated_at
   BEFORE UPDATE ON public.vendas
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();

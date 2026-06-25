@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.whatsapp_filtros_salvos (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.whatsapp_filtros_salvos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "terapeuta gerencia filtros salvos" ON public.whatsapp_filtros_salvos;
 CREATE POLICY "terapeuta gerencia filtros salvos" ON public.whatsapp_filtros_salvos
   FOR ALL USING (auth.uid() = terapeuta_id) WITH CHECK (auth.uid() = terapeuta_id);
 
@@ -57,6 +58,6 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_sla_whatsapp ON public.whatsapp_mensagens_inbox;
-CREATE TRIGGER trg_sla_whatsapp
+CREATE OR REPLACE TRIGGER trg_sla_whatsapp
   AFTER INSERT ON public.whatsapp_mensagens_inbox
   FOR EACH ROW EXECUTE FUNCTION public.aplicar_sla_whatsapp();

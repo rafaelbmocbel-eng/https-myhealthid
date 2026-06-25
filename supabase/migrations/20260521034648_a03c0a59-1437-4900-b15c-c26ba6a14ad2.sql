@@ -12,11 +12,12 @@ CREATE TABLE public.convenios (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_convenios_terapeuta ON public.convenios(terapeuta_id) WHERE ativo;
+CREATE INDEX IF NOT EXISTS idx_convenios_terapeuta ON public.convenios(terapeuta_id) WHERE ativo;
 ALTER TABLE public.convenios ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Terapeuta gerencia seus convênios" ON public.convenios;
 CREATE POLICY "Terapeuta gerencia seus convênios" ON public.convenios
   FOR ALL TO authenticated USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
-CREATE TRIGGER trg_convenios_updated BEFORE UPDATE ON public.convenios
+CREATE OR REPLACE TRIGGER trg_convenios_updated BEFORE UPDATE ON public.convenios
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Configuração de repasse por profissional × convênio (NULL convenio_id = particular)
@@ -32,16 +33,18 @@ CREATE TABLE public.repasse_config (
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(terapeuta_id, profissional_user_id, convenio_id)
 );
-CREATE INDEX idx_repasse_lookup ON public.repasse_config(terapeuta_id, profissional_user_id) WHERE ativo;
+CREATE INDEX IF NOT EXISTS idx_repasse_lookup ON public.repasse_config(terapeuta_id, profissional_user_id) WHERE ativo;
 ALTER TABLE public.repasse_config ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Terapeuta gerencia repasses" ON public.repasse_config;
 CREATE POLICY "Terapeuta gerencia repasses" ON public.repasse_config
   FOR ALL TO authenticated USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
+DROP POLICY IF EXISTS "Profissional vê seu próprio repasse" ON public.repasse_config;
 CREATE POLICY "Profissional vê seu próprio repasse" ON public.repasse_config
   FOR SELECT TO authenticated USING (profissional_user_id = auth.uid());
-CREATE TRIGGER trg_repasse_updated BEFORE UPDATE ON public.repasse_config
+CREATE OR REPLACE TRIGGER trg_repasse_updated BEFORE UPDATE ON public.repasse_config
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Vincular sessão a um convênio cadastrado (mantém plano_nome como fallback histórico)
 ALTER TABLE public.controle_sessoes
   ADD COLUMN convenio_id uuid REFERENCES public.convenios(id) ON DELETE SET NULL;
-CREATE INDEX idx_controle_sessoes_convenio ON public.controle_sessoes(convenio_id) WHERE convenio_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_controle_sessoes_convenio ON public.controle_sessoes(convenio_id) WHERE convenio_id IS NOT NULL;

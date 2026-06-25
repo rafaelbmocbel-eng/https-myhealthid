@@ -16,23 +16,26 @@ CREATE TABLE public.termos_consentimento (
 
 ALTER TABLE public.termos_consentimento ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeutas gerenciam termos" ON public.termos_consentimento;
 CREATE POLICY "Terapeutas gerenciam termos" ON public.termos_consentimento
   FOR ALL TO authenticated
   USING (auth.uid() = terapeuta_id)
   WITH CHECK (auth.uid() = terapeuta_id);
 
+DROP POLICY IF EXISTS "Pacientes leem próprios termos" ON public.termos_consentimento;
 CREATE POLICY "Pacientes leem próprios termos" ON public.termos_consentimento
   FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM pacientes p WHERE p.id = termos_consentimento.paciente_id AND p.user_id = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "Pacientes aceitam próprios termos" ON public.termos_consentimento;
 CREATE POLICY "Pacientes aceitam próprios termos" ON public.termos_consentimento
   FOR UPDATE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM pacientes p WHERE p.id = termos_consentimento.paciente_id AND p.user_id = auth.uid()
   ));
 
-CREATE TRIGGER update_termos_consentimento_updated_at
+CREATE OR REPLACE TRIGGER update_termos_consentimento_updated_at
   BEFORE UPDATE ON public.termos_consentimento
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

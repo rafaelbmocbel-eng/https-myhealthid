@@ -28,22 +28,26 @@ CREATE TABLE public.controle_sessoes (
 
 ALTER TABLE public.controle_sessoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terapeutas veem suas sessões" ON public.controle_sessoes;
 CREATE POLICY "Terapeutas veem suas sessões" ON public.controle_sessoes
     FOR SELECT TO authenticated USING (auth.uid() = terapeuta_id);
 
+DROP POLICY IF EXISTS "Terapeutas criam sessões" ON public.controle_sessoes;
 CREATE POLICY "Terapeutas criam sessões" ON public.controle_sessoes
     FOR INSERT TO authenticated WITH CHECK (auth.uid() = terapeuta_id);
 
+DROP POLICY IF EXISTS "Terapeutas atualizam suas sessões" ON public.controle_sessoes;
 CREATE POLICY "Terapeutas atualizam suas sessões" ON public.controle_sessoes
     FOR UPDATE TO authenticated USING (auth.uid() = terapeuta_id);
 
+DROP POLICY IF EXISTS "Terapeutas deletam suas sessões" ON public.controle_sessoes;
 CREATE POLICY "Terapeutas deletam suas sessões" ON public.controle_sessoes
     FOR DELETE TO authenticated USING (auth.uid() = terapeuta_id);
 
-CREATE INDEX idx_controle_sessoes_paciente ON public.controle_sessoes(paciente_id);
-CREATE INDEX idx_controle_sessoes_terapeuta ON public.controle_sessoes(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_controle_sessoes_paciente ON public.controle_sessoes(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_controle_sessoes_terapeuta ON public.controle_sessoes(terapeuta_id);
 
-CREATE TRIGGER update_controle_sessoes_updated_at
+CREATE OR REPLACE TRIGGER update_controle_sessoes_updated_at
     BEFORE UPDATE ON public.controle_sessoes
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();

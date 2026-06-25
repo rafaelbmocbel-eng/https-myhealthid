@@ -49,7 +49,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_evento_inscricoes_rate_limit ON public.evento_inscricoes;
-CREATE TRIGGER trg_evento_inscricoes_rate_limit
+CREATE OR REPLACE TRIGGER trg_evento_inscricoes_rate_limit
   BEFORE INSERT ON public.evento_inscricoes
   FOR EACH ROW EXECUTE FUNCTION public.evento_inscricoes_rate_limit();
 

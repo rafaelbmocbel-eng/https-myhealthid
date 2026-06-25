@@ -6,4 +6,4 @@ ALTER TABLE public.repasse_config
   ADD CONSTRAINT repasse_config_unique UNIQUE (terapeuta_id, membro_equipe_id, convenio_id);
 DROP POLICY IF EXISTS "Profissional vê seu próprio repasse" ON public.repasse_config;
 DROP INDEX IF EXISTS idx_repasse_lookup;
-CREATE INDEX idx_repasse_lookup ON public.repasse_config(terapeuta_id, membro_equipe_id) WHERE ativo;
+CREATE INDEX IF NOT EXISTS idx_repasse_lookup ON public.repasse_config(terapeuta_id, membro_equipe_id) WHERE ativo;

@@ -31,11 +31,11 @@ CREATE POLICY "Pacientes leem proprios pacotes"
     WHERE p.id = pacotes_sessoes.paciente_id AND p.user_id = auth.uid()
   ));
 
-CREATE INDEX idx_pacotes_sessoes_paciente ON public.pacotes_sessoes(paciente_id);
-CREATE INDEX idx_pacotes_sessoes_terapeuta ON public.pacotes_sessoes(terapeuta_id);
-CREATE INDEX idx_pacotes_sessoes_status ON public.pacotes_sessoes(status);
+CREATE INDEX IF NOT EXISTS idx_pacotes_sessoes_paciente ON public.pacotes_sessoes(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_pacotes_sessoes_terapeuta ON public.pacotes_sessoes(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_pacotes_sessoes_status ON public.pacotes_sessoes(status);
 
-CREATE TRIGGER update_pacotes_sessoes_updated_at
+CREATE OR REPLACE TRIGGER update_pacotes_sessoes_updated_at
   BEFORE UPDATE ON public.pacotes_sessoes
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();

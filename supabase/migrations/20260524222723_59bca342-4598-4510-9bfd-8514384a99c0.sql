@@ -38,6 +38,6 @@ CREATE POLICY "Terapeutas deletam suas despesas"
   ON public.despesas FOR DELETE
   USING (auth.uid() = terapeuta_id);
 
-CREATE TRIGGER trg_despesas_updated_at
+CREATE OR REPLACE TRIGGER trg_despesas_updated_at
   BEFORE UPDATE ON public.despesas
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

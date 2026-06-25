@@ -38,6 +38,6 @@ CREATE INDEX IF NOT EXISTS idx_historia_vida_paciente
 CREATE INDEX IF NOT EXISTS idx_historia_vida_terapeuta
   ON public.historia_vida_paciente (terapeuta_id, paciente_id);
 
-CREATE TRIGGER trg_historia_vida_updated
+CREATE OR REPLACE TRIGGER trg_historia_vida_updated
   BEFORE UPDATE ON public.historia_vida_paciente
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

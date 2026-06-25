@@ -20,6 +20,7 @@ CREATE TABLE public.tiss_config (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.tiss_config TO authenticated;
 GRANT ALL ON public.tiss_config TO service_role;
 ALTER TABLE public.tiss_config ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "tiss_config own" ON public.tiss_config;
 CREATE POLICY "tiss_config own" ON public.tiss_config FOR ALL TO authenticated
   USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
 
@@ -53,10 +54,11 @@ CREATE TABLE public.tiss_guias (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.tiss_guias TO authenticated;
 GRANT ALL ON public.tiss_guias TO service_role;
 ALTER TABLE public.tiss_guias ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "tiss_guias own" ON public.tiss_guias;
 CREATE POLICY "tiss_guias own" ON public.tiss_guias FOR ALL TO authenticated
   USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
-CREATE INDEX idx_tiss_guias_terapeuta ON public.tiss_guias(terapeuta_id, status);
-CREATE INDEX idx_tiss_guias_lote ON public.tiss_guias(lote_id);
+CREATE INDEX IF NOT EXISTS idx_tiss_guias_terapeuta ON public.tiss_guias(terapeuta_id, status);
+CREATE INDEX IF NOT EXISTS idx_tiss_guias_lote ON public.tiss_guias(lote_id);
 
 CREATE TABLE public.tiss_guia_procedimentos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,6 +82,7 @@ CREATE TABLE public.tiss_guia_procedimentos (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.tiss_guia_procedimentos TO authenticated;
 GRANT ALL ON public.tiss_guia_procedimentos TO service_role;
 ALTER TABLE public.tiss_guia_procedimentos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "tiss_proc via guia" ON public.tiss_guia_procedimentos;
 CREATE POLICY "tiss_proc via guia" ON public.tiss_guia_procedimentos FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM public.tiss_guias g WHERE g.id = guia_id AND g.terapeuta_id = auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM public.tiss_guias g WHERE g.id = guia_id AND g.terapeuta_id = auth.uid()));
@@ -103,9 +106,10 @@ CREATE TABLE public.tiss_lotes (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.tiss_lotes TO authenticated;
 GRANT ALL ON public.tiss_lotes TO service_role;
 ALTER TABLE public.tiss_lotes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "tiss_lotes own" ON public.tiss_lotes;
 CREATE POLICY "tiss_lotes own" ON public.tiss_lotes FOR ALL TO authenticated
   USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
-CREATE INDEX idx_tiss_lotes_terapeuta ON public.tiss_lotes(terapeuta_id, competencia);
+CREATE INDEX IF NOT EXISTS idx_tiss_lotes_terapeuta ON public.tiss_lotes(terapeuta_id, competencia);
 
 CREATE TABLE public.tiss_tuss_codigos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -123,10 +127,11 @@ CREATE TABLE public.tiss_tuss_codigos (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.tiss_tuss_codigos TO authenticated;
 GRANT ALL ON public.tiss_tuss_codigos TO service_role;
 ALTER TABLE public.tiss_tuss_codigos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "tiss_tuss own" ON public.tiss_tuss_codigos;
 CREATE POLICY "tiss_tuss own" ON public.tiss_tuss_codigos FOR ALL TO authenticated
   USING (terapeuta_id = auth.uid()) WITH CHECK (terapeuta_id = auth.uid());
 
-CREATE TRIGGER tiss_config_updated BEFORE UPDATE ON public.tiss_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-CREATE TRIGGER tiss_guias_updated BEFORE UPDATE ON public.tiss_guias FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-CREATE TRIGGER tiss_lotes_updated BEFORE UPDATE ON public.tiss_lotes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-CREATE TRIGGER tiss_tuss_updated BEFORE UPDATE ON public.tiss_tuss_codigos FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE OR REPLACE TRIGGER tiss_config_updated BEFORE UPDATE ON public.tiss_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE OR REPLACE TRIGGER tiss_guias_updated BEFORE UPDATE ON public.tiss_guias FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE OR REPLACE TRIGGER tiss_lotes_updated BEFORE UPDATE ON public.tiss_lotes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE OR REPLACE TRIGGER tiss_tuss_updated BEFORE UPDATE ON public.tiss_tuss_codigos FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

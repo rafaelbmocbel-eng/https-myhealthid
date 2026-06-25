@@ -27,7 +27,7 @@ CREATE POLICY "Terapeuta gerencia suas escalas"
 CREATE INDEX IF NOT EXISTS idx_escalas_psi_paciente ON public.escalas_psicologia(paciente_id, data_aplicacao DESC);
 CREATE INDEX IF NOT EXISTS idx_escalas_psi_terapeuta ON public.escalas_psicologia(terapeuta_id);
 
-CREATE TRIGGER trg_escalas_psi_updated
+CREATE OR REPLACE TRIGGER trg_escalas_psi_updated
   BEFORE UPDATE ON public.escalas_psicologia
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 

@@ -44,6 +44,6 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_set_data_recebimento ON public.controle_sessoes;
-CREATE TRIGGER trg_set_data_recebimento
+CREATE OR REPLACE TRIGGER trg_set_data_recebimento
   BEFORE INSERT OR UPDATE OF status_pagamento ON public.controle_sessoes
   FOR EACH ROW EXECUTE FUNCTION public.set_data_recebimento_on_pago();

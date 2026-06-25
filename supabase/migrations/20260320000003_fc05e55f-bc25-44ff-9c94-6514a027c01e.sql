@@ -34,7 +34,7 @@ ON public.notificacoes FOR DELETE
 TO authenticated
 USING (auth.uid() = terapeuta_id);
 
-CREATE INDEX idx_notificacoes_terapeuta ON public.notificacoes(terapeuta_id, lida, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notificacoes_terapeuta ON public.notificacoes(terapeuta_id, lida, created_at DESC);
 
 -- Notification preferences table
 CREATE TABLE public.preferencias_notificacao (

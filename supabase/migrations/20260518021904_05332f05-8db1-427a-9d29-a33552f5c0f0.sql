@@ -91,6 +91,6 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS pagamentos_paciente_auditoria_trg ON public.pagamentos_paciente;
-CREATE TRIGGER pagamentos_paciente_auditoria_trg
+CREATE OR REPLACE TRIGGER pagamentos_paciente_auditoria_trg
 AFTER INSERT OR UPDATE OR DELETE ON public.pagamentos_paciente
 FOR EACH ROW EXECUTE FUNCTION public.log_pagamentos_paciente_auditoria();

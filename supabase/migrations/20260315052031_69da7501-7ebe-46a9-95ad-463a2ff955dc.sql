@@ -32,11 +32,13 @@ ALTER TABLE public.planos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assinaturas ENABLE ROW LEVEL SECURITY;
 
 -- Todos leem planos ativos
+DROP POLICY IF EXISTS "Todos leem planos ativos" ON public.planos;
 CREATE POLICY "Todos leem planos ativos" ON public.planos
   FOR SELECT TO public
   USING (ativo = true);
 
 -- Profissionais leem suas assinaturas
+DROP POLICY IF EXISTS "Usuarios leem suas assinaturas" ON public.assinaturas;
 CREATE POLICY "Usuarios leem suas assinaturas" ON public.assinaturas
   FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
@@ -61,10 +63,10 @@ AS $$
 $$;
 
 -- Trigger updated_at
-CREATE TRIGGER set_updated_at_planos BEFORE UPDATE ON public.planos
+CREATE OR REPLACE TRIGGER set_updated_at_planos BEFORE UPDATE ON public.planos
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TRIGGER set_updated_at_assinaturas BEFORE UPDATE ON public.assinaturas
+CREATE OR REPLACE TRIGGER set_updated_at_assinaturas BEFORE UPDATE ON public.assinaturas
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Seed: planos iniciais

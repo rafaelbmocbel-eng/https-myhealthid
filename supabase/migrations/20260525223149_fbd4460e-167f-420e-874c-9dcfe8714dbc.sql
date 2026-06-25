@@ -75,7 +75,7 @@ CREATE POLICY "Service role insere envios"
   WITH CHECK (true);
 
 -- Trigger updated_at
-CREATE TRIGGER trg_notif_regras_updated
+CREATE OR REPLACE TRIGGER trg_notif_regras_updated
   BEFORE UPDATE ON public.notificacao_regras
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -122,6 +122,6 @@ CREATE POLICY "Terapeuta gerencia config"
   USING (terapeuta_id = auth.uid())
   WITH CHECK (terapeuta_id = auth.uid());
 
-CREATE TRIGGER trg_notif_config_updated
+CREATE OR REPLACE TRIGGER trg_notif_config_updated
   BEFORE UPDATE ON public.notificacao_inteligente_config
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
