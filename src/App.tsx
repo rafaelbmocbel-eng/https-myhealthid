@@ -171,6 +171,7 @@ const App = () => (
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
                 <Route path="/portal/completar/:token" element={<CompletarCadastro />} />
                 <Route path="/configuracoes" element={<PatientGuard><Configuracoes /></PatientGuard>} />
+                <Route path="/configuracoes/exportar" element={<PatientGuard><ExportarDados /></PatientGuard>} />
                 <Route path="/financeiro" element={<Navigate to="/pacientes?tab=financeiro" replace />} />
                 <Route path="/base-cientifica" element={<PatientGuard><BaseCientifica /></PatientGuard>} />
 
