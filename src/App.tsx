@@ -50,6 +50,7 @@ const NovaSenha = lazyWithRetry(() => import("./pages/NovaSenha"));
 const BaseCientifica = lazyWithRetry(() => import("./pages/BaseCientifica"));
 const Hoje = lazyWithRetry(() => import("./pages/Hoje"));
 const Pendencias = lazyWithRetry(() => import("./pages/Pendencias"));
+const ExportarDados = lazyWithRetry(() => import("./pages/ExportarDados"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
@@ -170,6 +171,7 @@ const App = () => (
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
                 <Route path="/portal/completar/:token" element={<CompletarCadastro />} />
                 <Route path="/configuracoes" element={<PatientGuard><Configuracoes /></PatientGuard>} />
+                <Route path="/configuracoes/exportar" element={<PatientGuard><ExportarDados /></PatientGuard>} />
                 <Route path="/financeiro" element={<Navigate to="/pacientes?tab=financeiro" replace />} />
                 <Route path="/base-cientifica" element={<PatientGuard><BaseCientifica /></PatientGuard>} />
 

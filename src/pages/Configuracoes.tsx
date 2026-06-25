@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy,
   ExternalLink, RefreshCw, Plus, UserPlus, Building2, Bell, Sparkles,
-  Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid, Brain, Gift,
+  Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid, Brain, Gift, Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
@@ -47,6 +47,7 @@ const TABS: TabItem[] = [
   { id: 'myid', label: 'MyID Auto', icon: Brain, kind: 'panel' },
   { id: 'recompensas', label: 'Recompensas', icon: Gift, kind: 'panel' },
   { id: 'ia', label: 'IA', icon: Sparkles, kind: 'panel' },
+  { id: 'exportar', label: 'Exportar dados', icon: Download, kind: 'link', to: '/configuracoes/exportar' },
 ];
 
 export default function Configuracoes() {
