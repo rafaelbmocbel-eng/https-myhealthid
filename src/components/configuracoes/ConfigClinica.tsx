@@ -341,7 +341,7 @@ export default function ConfigClinica() {
   );
 }
 
-const SUPABASE_FUNCTIONS_URL = 'https://mgdzlzpzjpnswpqdtylz.supabase.co/functions/v1';
+const SUPABASE_FUNCTIONS_URL = 'https://rbzmojurvypksubeigbt.supabase.co/functions/v1';
 
 function WhatsappSetupGuide({ zapiOk }: { zapiOk: boolean }) {
   const { toast } = useToast();
@@ -377,7 +377,7 @@ function WhatsappSetupGuide({ zapiOk }: { zapiOk: boolean }) {
       desc: 'Em Supabase → Edge Functions → Secrets, adicione LOVABLE_API_KEY com sua chave da Lovable.dev. Sem ela o bot funciona mas sem IA.',
       action: (
         <a
-          href="https://supabase.com/dashboard/project/mgdzlzpzjpnswpqdtylz/settings/functions"
+          href="https://supabase.com/dashboard/project/rbzmojurvypksubeigbt/settings/functions"
           target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-[11px] text-primary underline mt-1"
         >
@@ -391,7 +391,7 @@ function WhatsappSetupGuide({ zapiOk }: { zapiOk: boolean }) {
       desc: 'Adicione CRON_SECRET (qualquer string secreta) em Supabase Secrets. Depois execute a migration fix_cron_jobs.sql no SQL Editor substituindo "SEU_CRON_SECRET_AQUI".',
       action: (
         <a
-          href="https://supabase.com/dashboard/project/mgdzlzpzjpnswpqdtylz/sql/new"
+          href="https://supabase.com/dashboard/project/rbzmojurvypksubeigbt/sql/new"
           target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-[11px] text-primary underline mt-1"
         >

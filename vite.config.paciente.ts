@@ -3,9 +3,9 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
-const FALLBACK_SUPABASE_URL = "https://mgdzlzpzjpnswpqdtylz.supabase.co";
+const FALLBACK_SUPABASE_URL = "https://rbzmojurvypksubeigbt.supabase.co";
 const FALLBACK_SUPABASE_PUBLISHABLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1nZHpsenB6anBuc3dwcWR0eWx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjM5MzIsImV4cCI6MjA4NzAzOTkzMn0.zAu_ZC8ne3X-Dj6cXEchbJdfKBRfnFTx2pqo5Cef_7c";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJiem1vanVydnlwa3N1YmVpZ2J0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTM5MjYsImV4cCI6MjA4NzI4OTkyNn0.Gs7sJSvokKkTtRzeYPQAnIGU3dIOxnbjFi7rUX0CUsY";
 
 export default defineConfig(() => ({
   server: {
@@ -28,7 +28,7 @@ export default defineConfig(() => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/mgdzlzpzjpnswpqdtylz\.supabase\.co\/.*/i,
+            urlPattern: /^https:\/\/rbzmojurvypksubeigbt\.supabase\.co\/.*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "supabase-api",
