@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     let message = `Erro ${resp.status}`;
     if (resp.status === 402) {
       status = "exhausted";
-      message = "Créditos do Lovable AI esgotados";
+      message = "Créditos da IA esgotados";
     } else if (resp.status === 429) {
       status = "rate_limited";
       message = "Limite de requisições atingido (rate limit)";
