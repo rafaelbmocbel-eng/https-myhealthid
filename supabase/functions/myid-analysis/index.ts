@@ -12,9 +12,8 @@ serve(async (req) => {
   try {
     try { await requireUser(req); } catch (r) { return r as Response; }
     const { scores, redFlags, blocos, perdas, myid_100 } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const systemPrompt = `Você é o MOTOR DE ANÁLISE MyID-100 v2.0. Analise os scores e perdas do paciente.
 
@@ -93,7 +92,7 @@ Gere um JSON com:
     try {
       const SUPABASE_URL_E = Deno.env.get("SUPABASE_URL");
       const SERVICE_KEY_E = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (SUPABASE_URL_E && SERVICE_KEY_E && LOVABLE_API_KEY) {
+      if (SUPABASE_URL_E && SERVICE_KEY_E && GEMINI_API_KEY) {
         const driverName = (perdas && typeof perdas === "object")
           ? Object.entries(perdas as Record<string, number>)
               .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
@@ -104,11 +103,11 @@ Gere um JSON com:
         const blocosResumo = typeof blocos === "object" ? JSON.stringify(blocos).slice(0, 2000) : "";
         const query = `Perfil MyID-100: dimensões mais comprometidas: ${driverName}. Red flags: ${JSON.stringify(redFlags)}. Contexto clínico: ${blocosResumo}`;
 
-        const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+        const embRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/embeddings", {
           method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-embedding-001",
+            model: "gemini-embedding-001",
             input: query.slice(0, 6000),
             dimensions: 1536,
           }),
@@ -165,86 +164,38 @@ Gere um JSON com:
       console.warn("[myid-analysis] evidence search non-blocking error:", e);
     }
 
-    const ANALYSIS_TOOL = {
-      name: "registrar_analise_myid",
-      description: "Registra a análise clínica estruturada do MyID-100 do paciente.",
-      input_schema: {
-        type: "object",
-        properties: {
-          clinical_priority: {
-            type: "object",
-            properties: {
-              focus_area: { type: "string" },
-              reason: { type: "string" },
-              recommendation: { type: "string" },
-            },
-            required: ["focus_area", "reason", "recommendation"],
-          },
-          treatment_phases: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                fase: { type: "number" },
-                titulo: { type: "string" },
-                duracao_semanas: { type: "number" },
-                meta_score: { type: "number" },
-                intervencoes: { type: "array", items: { type: "string" } },
-              },
-              required: ["fase", "titulo", "duracao_semanas", "meta_score", "intervencoes"],
-            },
-          },
-          integration_directives: {
-            type: "object",
-            properties: {
-              fisioterapia: { type: "string" },
-              studio_personal: { type: "string" },
-              orientacao_geral: { type: "string" },
-            },
-            required: ["fisioterapia", "studio_personal", "orientacao_geral"],
-          },
-          alert_level: { type: "string", enum: ["verde", "amarelo", "vermelho"] },
-          summary: { type: "string" },
-          insights_baseados_evidencia: { type: "array", items: { type: "string" } },
-        },
-        required: ["clinical_priority", "treatment_phases", "integration_directives", "alert_level", "summary", "insights_baseados_evidencia"],
-      },
-    };
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4096,
-        system: systemPrompt + evidenciaContext,
-        messages: [{ role: "user", content: userPrompt }],
-        tools: [ANALYSIS_TOOL],
-        tool_choice: { type: "tool", name: ANALYSIS_TOOL.name },
+        model: "gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt + evidenciaContext },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
       }),
     });
 
     if (!response.ok) {
       const status = response.status;
       if (status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (status === 402) return new Response(JSON.stringify({ error: "Credits exhausted" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const errBody = await response.text();
-      throw new Error(`Anthropic API error: ${status} - ${errBody}`);
+      throw new Error(`Gemini API error: ${status} - ${errBody}`);
     }
 
     const aiData = await response.json();
-    const toolUse = aiData.content?.find((block: any) => block.type === "tool_use");
+    const content = aiData.choices?.[0]?.message?.content || "{}";
 
-    let analysis;
-    if (toolUse?.input) {
-      analysis = toolUse.input;
-    } else {
-      const textBlock = aiData.content?.find((block: any) => block.type === "text");
-      analysis = { summary: textBlock?.text || "" };
+    let analysis: any = {};
+    try {
+      analysis = JSON.parse(content);
+    } catch {
+      const m = content.match(/\{[\s\S]*\}/);
+      analysis = m ? JSON.parse(m[0]) : { summary: content };
     }
 
     return new Response(JSON.stringify({ success: true, analysis }), {

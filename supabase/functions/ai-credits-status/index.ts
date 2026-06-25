@@ -1,4 +1,4 @@
-// Edge function: pings Lovable AI Gateway with a tiny request to detect
+// Edge function: pings Google Gemini API with a tiny request to detect
 // whether credits are available. Returns a normalized status payload.
 // Designed to be called periodically from the client (cached ~5 min).
 
@@ -15,27 +15,27 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const checkedAt = new Date().toISOString();
 
-  if (!LOVABLE_API_KEY) {
+  if (!GEMINI_API_KEY) {
     return json({
       status: "unconfigured" as Status,
       httpStatus: 0,
-      message: "LOVABLE_API_KEY não configurada",
+      message: "GEMINI_API_KEY não configurada",
       checkedAt,
     });
   }
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "gemini-2.5-flash-lite",
         messages: [{ role: "user", content: "ping" }],
         max_tokens: 1,
       }),

@@ -9,13 +9,13 @@ const corsHeaders = {
 };
 
 async function gerarMensagem(systemPrompt: string, intencao: string): Promise<string> {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) return intencao;
-  const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.0-flash",
+      model: "gemini-2.0-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Gere uma mensagem WhatsApp PERSONALIZADA para este paciente comunicando: "${intencao}". A mensagem deve ser curta (2-4 linhas), pessoal, e adaptada ao contexto clínico do paciente quando relevante. Não invente fatos. Apenas a mensagem final.` },

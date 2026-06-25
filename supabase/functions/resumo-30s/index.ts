@@ -14,7 +14,7 @@ serve(async (req) => {
     const { pacienteId } = await req.json();
     if (!pacienteId) throw new Error("pacienteId obrigatório");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -119,14 +119,14 @@ Resultado: ${JSON.stringify(myid?.resultado_processado ?? {}).slice(0, 2500)}
 
 Mantenha tudo em no máximo 8 linhas no total. Sem introdução, sem despedida.`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.1-flash-lite",
+        model: "gemini-3.1-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -140,7 +140,7 @@ Mantenha tudo em no máximo 8 linhas no total. Sem introdução, sem despedida.`
         return new Response(JSON.stringify({ error: "Limite de requisições. Tente em alguns segundos." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (status === 402)
         return new Response(JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos no workspace." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error(`AI gateway error: ${status}`);
+      throw new Error(`Gemini API error: ${status}`);
     }
 
     const aiData = await aiResp.json();
@@ -157,7 +157,7 @@ Mantenha tudo em no máximo 8 linhas no total. Sem introdução, sem despedida.`
         totalSessoes: sessoes?.length ?? 0,
       },
     };
-    await saveCache(supabase, "resumo-30s", inputsHash, payload, "google/gemini-3.1-flash-lite");
+    await saveCache(supabase, "resumo-30s", inputsHash, payload, "gemini-3.1-flash-lite");
 
     return new Response(JSON.stringify(payload), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

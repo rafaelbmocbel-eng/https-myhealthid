@@ -1,7 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -114,9 +114,9 @@ function filterRespostas(respostas: Record<string, any>, dimensao: string): Reco
 
 async function embed(text: string): Promise<number[] | null> {
   try {
-    const r = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/embeddings', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-embedding-001',
         input: text.slice(0, 8000),
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY não configurada');
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY não configurada');
 
     const body = await req.json();
     const { dimensao, scoreValor, respostasBrutas, pacienteNome, queixaPrincipal } = body;
@@ -229,9 +229,9 @@ Retorne JSON estrito (sem markdown, sem \`\`\`):
   "integracao_diretriz": "string (1-2 frases)"
 }`;
 
-    const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [

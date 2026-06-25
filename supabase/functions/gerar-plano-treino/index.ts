@@ -1,4 +1,4 @@
-// Gera plano de treino periodizado via Lovable AI Gateway.
+// Gera plano de treino periodizado via Google Gemini API.
 import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const userPrompt = `
 Paciente: ${idade ? idade + ' anos' : 'idade não informada'}, sexo ${sexo || 'não informado'}.
@@ -61,11 +61,11 @@ Restrições/lesões: ${restricoes || 'nenhuma'}
 
 Gere o plano periodizado completo em JSON.`.trim();
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: userPrompt },
@@ -77,7 +77,7 @@ Gere o plano periodizado completo em JSON.`.trim();
       const txt = await aiRes.text();
       if (aiRes.status === 429) return new Response(JSON.stringify({ error: "Limite de uso atingido. Tente novamente em instantes." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (aiRes.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error(`AI gateway: ${aiRes.status} ${txt.slice(0, 200)}`);
+      throw new Error(`Gemini API: ${aiRes.status} ${txt.slice(0, 200)}`);
     }
     const aiJson = await aiRes.json();
     const content = aiJson.choices?.[0]?.message?.content || "{}";

@@ -9,13 +9,13 @@ const corsHeaders = {
 };
 
 async function gerarMensagem(systemPrompt: string, instrucao: string): Promise<string> {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) throw new Error("LOVABLE_API_KEY ausente");
-  const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) throw new Error("GEMINI_API_KEY ausente");
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-3.1-flash-lite",
+      model: "gemini-3.1-flash-lite",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: instrucao },

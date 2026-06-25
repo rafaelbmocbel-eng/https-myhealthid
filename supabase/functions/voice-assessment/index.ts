@@ -407,8 +407,8 @@ serve(async (req) => {
   try {
     try { await requireUser(req); } catch (r) { return r as Response; }
     const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     // ── Carrega lente profissional (se fornecida) para trocar o system prompt ──
     let activeSystemPrompt = MULTIDISCIPLINARY_SYSTEM_PROMPT;
@@ -505,11 +505,11 @@ serve(async (req) => {
 
     if (hasAudio && !hasText) {
       try {
-        const transcribeRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const transcribeRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "gemini-2.5-flash",
             messages: [
               {
                 role: "system",
@@ -554,11 +554,11 @@ serve(async (req) => {
         const SUPABASE_URL_E = Deno.env.get("SUPABASE_URL");
         const SERVICE_KEY_E = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
         if (SUPABASE_URL_E && SERVICE_KEY_E) {
-          const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+          const embRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/embeddings", {
             method: "POST",
-            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "google/gemini-embedding-001",
+              model: "gemini-embedding-001",
               input: faithfulTranscript.slice(0, 6000),
               dimensions: 1536,
             }),
@@ -648,14 +648,14 @@ serve(async (req) => {
       });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         temperature: 0,
         messages: [
           { role: "system", content: activeSystemPrompt },
@@ -678,7 +678,7 @@ serve(async (req) => {
         });
       }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error("Gemini API error:", response.status, t);
 
       // Surface a useful error to the client — common causes:
       // - 413: payload too large (audio muito longo)

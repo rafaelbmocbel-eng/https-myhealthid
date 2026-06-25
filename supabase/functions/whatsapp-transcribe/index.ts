@@ -50,14 +50,14 @@ Deno.serve(async (req) => {
     const base64 = btoa(b64);
     const mime = audioRes.headers.get("content-type") || "audio/ogg";
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
+        Authorization: `Bearer ${Deno.env.get("GEMINI_API_KEY")}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um transcritor de áudio em PT-BR. Retorne SOMENTE o texto transcrito, sem comentários." },
           { role: "user", content: [
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
 
     if (!aiRes.ok) {
       const t = await aiRes.text();
-      throw new Error(`AI gateway: ${aiRes.status} ${t.slice(0, 200)}`);
+      throw new Error(`Gemini API: ${aiRes.status} ${t.slice(0, 200)}`);
     }
     const aiJson = await aiRes.json();
     const transcricao = aiJson.choices?.[0]?.message?.content?.trim() || "";

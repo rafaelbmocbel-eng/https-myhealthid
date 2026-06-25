@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -31,11 +31,11 @@ Deno.serve(async (req) => {
     const minYear: number | null = body.minYear ? parseInt(body.minYear) : null;
 
     // 1) Embed the query
-    const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+    const embRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/embeddings", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-embedding-001",
+        model: "gemini-embedding-001",
         input: query.slice(0, 8000),
         dimensions: 1536,
       }),

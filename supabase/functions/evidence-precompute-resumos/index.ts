@@ -4,7 +4,7 @@
 //
 // Uso:
 //   POST /functions/v1/evidence-precompute-resumos
-//   body opcional: { "batch_size": 20, "model": "google/gemini-3.1-flash-lite" }
+//   body opcional: { "batch_size": 20, "model": "gemini-3.1-flash-lite" }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -13,17 +13,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL_DEFAULT = "google/gemini-3.1-flash-lite";
+const MODEL_DEFAULT = "gemini-3.1-flash-lite";
 const BATCH_DEFAULT = 20;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!LOVABLE_API_KEY || !SUPABASE_URL || !SERVICE_KEY) {
+    if (!GEMINI_API_KEY || !SUPABASE_URL || !SERVICE_KEY) {
       return json({ error: "Missing env" }, 500);
     }
 
@@ -63,9 +63,9 @@ Autores: ${(art.authors ?? []).slice(0, 3).join(", ")}
 Abstract:
 ${(art.abstract ?? "").slice(0, 4000)}`;
 
-        const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model,
             messages: [

@@ -291,20 +291,20 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
 }
 
 async function chamarLLM(messages: any[], systemPrompt: string, allowTools = true) {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) throw new Error("LOVABLE_API_KEY ausente");
-  const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) throw new Error("GEMINI_API_KEY ausente");
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-3.1-flash-lite",
+      model: "gemini-3.1-flash-lite",
       messages: [{ role: "system", content: systemPrompt }, ...messages],
       ...(allowTools ? { tools, tool_choice: "auto" } : {}),
     }),
   });
   if (!r.ok) {
     const t = await r.text();
-    throw new Error(`AI gateway ${r.status}: ${t.slice(0, 200)}`);
+    throw new Error(`Gemini API ${r.status}: ${t.slice(0, 200)}`);
   }
   const j = await r.json();
   return j.choices?.[0]?.message;

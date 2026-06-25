@@ -17,8 +17,8 @@ Deno.serve(async (req) => {
 
   try {
     const body = (await req.json()) as Body;
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
 
     const alvo = body.tipo === 'exercicios' ? 'exercícios terapêuticos' : 'técnicas/condutas manuais e educativas';
     const driver = body.driverMyID;
@@ -31,10 +31,10 @@ Deno.serve(async (req) => {
       const SERVICE_KEY_E = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
       if (SUPABASE_URL_E && SERVICE_KEY_E) {
         const query = `Fase ${body.faseNumero} de tratamento (${body.faseTitulo}). Objetivo: ${body.objetivo || ""}. Queixa: ${body.queixa || ""}. Driver MyID: ${driver?.label ?? ""}. Tipo de busca: ${alvo}.`;
-        const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+        const embRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/embeddings", {
           method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ model: "google/gemini-embedding-001", input: query.slice(0, 4000), dimensions: 1536 }),
+          headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "gemini-embedding-001", input: query.slice(0, 4000), dimensions: 1536 }),
         });
         if (embRes.ok) {
           const embJson = await embRes.json();
@@ -106,9 +106,9 @@ Retorne ${body.tipo === 'exercicios' ? '5 exercícios' : '5 técnicas'} adequado
           required: ['nome', 'categoria', 'nivel_evidencia', 'motivo'],
         };
 
-    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-3-flash-preview',
         messages: [
