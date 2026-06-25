@@ -729,10 +729,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
                     Índice de Homeostase
-                    <Info
-                      className="h-3 w-3 text-muted-foreground/70 cursor-help"
-                      title="Calculado a partir da carga clínica de cada sistema (achados confirmados, histórico de vida e diagnósticos CID — autorrelato MyID não entra no cálculo), com decaimento logarítmico. Não substitui o MyID-100."
-                    />
+                    <span title="Calculado a partir da carga clínica de cada sistema (achados confirmados, histórico de vida e diagnósticos CID — autorrelato MyID não entra no cálculo), com decaimento logarítmico. Não substitui o MyID-100.">
+                      <Info className="h-3 w-3 text-muted-foreground/70 cursor-help" />
+                    </span>
                   </p>
                   <div className="flex items-center gap-2">
                     <span className={cn(

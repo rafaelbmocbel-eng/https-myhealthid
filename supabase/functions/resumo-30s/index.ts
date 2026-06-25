@@ -108,7 +108,7 @@ Mantenha tudo em no máximo 8 linhas no total. Sem introdução, sem despedida.`
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-3.1-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
