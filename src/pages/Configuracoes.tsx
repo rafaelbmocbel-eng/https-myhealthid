@@ -47,6 +47,7 @@ const TABS: TabItem[] = [
   { id: 'myid', label: 'MyID Auto', icon: Brain, kind: 'panel' },
   { id: 'recompensas', label: 'Recompensas', icon: Gift, kind: 'panel' },
   { id: 'ia', label: 'IA', icon: Sparkles, kind: 'panel' },
+  { id: 'exportar', label: 'Exportar dados', icon: Download, kind: 'link', to: '/configuracoes/exportar' },
 ];
 
 export default function Configuracoes() {
