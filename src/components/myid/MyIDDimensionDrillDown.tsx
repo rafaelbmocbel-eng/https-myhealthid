@@ -149,16 +149,17 @@ export default function MyIDDimensionDrillDown({
   const [aplicando, setAplicando] = useState(false);
   const [respostasOpen, setRespostasOpen] = useState(false);
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['myid-dim-insights', pacienteId, dimensao],
-    enabled: !!dimensao,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('myid-dimension-insights', {
-        body: { dimensao, scoreValor, respostasBrutas, pacienteNome, queixaPrincipal },
-      });
-      if (error) throw error;
-      return data as {
+  const inputsHash = hashInputs({ scoreValor, respostasBrutas, queixaPrincipal });
+
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ['myid-dim-insights', pacienteId, dimensao, inputsHash],
+    enabled: !!dimensao && !!user,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    queryFn: async ({ meta }) => {
+      type Payload = {
         interpretacao?: string;
         achados?: string[];
         insights?: Insight[];
@@ -166,6 +167,46 @@ export default function MyIDDimensionDrillDown({
         respostas?: Record<string, any>;
         referencias?: Reference[];
       };
+
+      const force = (meta as any)?.force === true;
+
+      // 1) Tenta cache persistido (gera uma única vez por dimensão por paciente).
+      if (!force && dimensao && user) {
+        const { data: cached } = await (supabase as any)
+          .from('myid_dimension_insights_cache')
+          .select('payload, inputs_hash')
+          .eq('paciente_id', pacienteId)
+          .eq('dimensao', dimensao)
+          .maybeSingle();
+        if (cached?.payload && cached.inputs_hash === inputsHash) {
+          return cached.payload as Payload;
+        }
+      }
+
+      // 2) Sem cache válido → chama a IA.
+      const { data: aiData, error: aiErr } = await supabase.functions.invoke('myid-dimension-insights', {
+        body: { dimensao, scoreValor, respostasBrutas, pacienteNome, queixaPrincipal },
+      });
+      if (aiErr) throw aiErr;
+      const payload = aiData as Payload;
+
+      // 3) Persiste para próximas aberturas (upsert por paciente+dimensão).
+      if (user && dimensao) {
+        await (supabase as any)
+          .from('myid_dimension_insights_cache')
+          .upsert(
+            {
+              paciente_id: pacienteId,
+              terapeuta_id: user.id,
+              dimensao,
+              inputs_hash: inputsHash,
+              score_valor: scoreValor ?? null,
+              payload,
+            },
+            { onConflict: 'paciente_id,dimensao' },
+          );
+      }
+      return payload;
     },
   });
 
