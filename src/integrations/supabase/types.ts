@@ -2892,6 +2892,42 @@ export type Database = {
           },
         ]
       }
+      myid_dimension_insights_cache: {
+        Row: {
+          created_at: string
+          dimensao: string
+          id: string
+          inputs_hash: string
+          paciente_id: string
+          payload: Json
+          score_valor: number | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dimensao: string
+          id?: string
+          inputs_hash: string
+          paciente_id: string
+          payload: Json
+          score_valor?: number | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dimensao?: string
+          id?: string
+          inputs_hash?: string
+          paciente_id?: string
+          payload?: Json
+          score_valor?: number | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notas_prontuario: {
         Row: {
           created_at: string

@@ -5,12 +5,20 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Loader2, Sparkles, FileText, CheckCircle2, AlertTriangle, Lightbulb,
-  ChevronDown, X, Users, Stethoscope, Brain, Apple, Dumbbell, Activity,
+  ChevronDown, X, Users, Stethoscope, Brain, Apple, Dumbbell, Activity, RefreshCw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+
+// Hash não-criptográfico estável p/ detectar se inputs mudaram desde o último cache.
+function hashInputs(obj: unknown): string {
+  const s = JSON.stringify(obj ?? null);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+  return (h >>> 0).toString(36);
+}
 
 const FULL_LABELS: Record<string, string> = {
   D: 'Dor', EFI: 'Atividades do dia', P: 'Cabeça e emoções', I: 'Mudanças recentes',
@@ -141,16 +149,17 @@ export default function MyIDDimensionDrillDown({
   const [aplicando, setAplicando] = useState(false);
   const [respostasOpen, setRespostasOpen] = useState(false);
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['myid-dim-insights', pacienteId, dimensao],
-    enabled: !!dimensao,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('myid-dimension-insights', {
-        body: { dimensao, scoreValor, respostasBrutas, pacienteNome, queixaPrincipal },
-      });
-      if (error) throw error;
-      return data as {
+  const inputsHash = hashInputs({ scoreValor, respostasBrutas, queixaPrincipal });
+
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ['myid-dim-insights', pacienteId, dimensao, inputsHash],
+    enabled: !!dimensao && !!user,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    queryFn: async ({ meta }) => {
+      type Payload = {
         interpretacao?: string;
         achados?: string[];
         insights?: Insight[];
@@ -158,6 +167,46 @@ export default function MyIDDimensionDrillDown({
         respostas?: Record<string, any>;
         referencias?: Reference[];
       };
+
+      const force = (meta as any)?.force === true;
+
+      // 1) Tenta cache persistido (gera uma única vez por dimensão por paciente).
+      if (!force && dimensao && user) {
+        const { data: cached } = await (supabase as any)
+          .from('myid_dimension_insights_cache')
+          .select('payload, inputs_hash')
+          .eq('paciente_id', pacienteId)
+          .eq('dimensao', dimensao)
+          .maybeSingle();
+        if (cached?.payload && cached.inputs_hash === inputsHash) {
+          return cached.payload as Payload;
+        }
+      }
+
+      // 2) Sem cache válido → chama a IA.
+      const { data: aiData, error: aiErr } = await supabase.functions.invoke('myid-dimension-insights', {
+        body: { dimensao, scoreValor, respostasBrutas, pacienteNome, queixaPrincipal },
+      });
+      if (aiErr) throw aiErr;
+      const payload = aiData as Payload;
+
+      // 3) Persiste para próximas aberturas (upsert por paciente+dimensão).
+      if (user && dimensao) {
+        await (supabase as any)
+          .from('myid_dimension_insights_cache')
+          .upsert(
+            {
+              paciente_id: pacienteId,
+              terapeuta_id: user.id,
+              dimensao,
+              inputs_hash: inputsHash,
+              score_valor: scoreValor ?? null,
+              payload,
+            },
+            { onConflict: 'paciente_id,dimensao' },
+          );
+      }
+      return payload;
     },
   });
 
@@ -304,9 +353,32 @@ export default function MyIDDimensionDrillDown({
 
       {/* Insights IA */}
       <section className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-        <h4 className="text-xs font-bold flex items-center gap-1.5 mb-2">
-          <Lightbulb className="icon-xs text-primary" /> Insights de possibilidades
-        </h4>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h4 className="text-xs font-bold flex items-center gap-1.5">
+            <Lightbulb className="icon-xs text-primary" /> Insights de possibilidades
+          </h4>
+          {data && !isLoading && (
+            <button
+              type="button"
+              title="Forçar nova geração com IA (substitui o cache desta dimensão)"
+              onClick={async () => {
+                if (!user || !dimensao) return;
+                await (supabase as any)
+                  .from('myid_dimension_insights_cache')
+                  .delete()
+                  .eq('paciente_id', pacienteId)
+                  .eq('dimensao', dimensao);
+                refetch();
+              }}
+              disabled={isFetching}
+              className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1 disabled:opacity-50"
+            >
+              <RefreshCw className={cn('icon-xs', isFetching && 'animate-spin')} />
+              Regenerar
+            </button>
+          )}
+        </div>
+
 
         {isLoading && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
