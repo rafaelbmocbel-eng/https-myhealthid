@@ -5,12 +5,20 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Loader2, Sparkles, FileText, CheckCircle2, AlertTriangle, Lightbulb,
-  ChevronDown, X, Users, Stethoscope, Brain, Apple, Dumbbell, Activity,
+  ChevronDown, X, Users, Stethoscope, Brain, Apple, Dumbbell, Activity, RefreshCw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+
+// Hash não-criptográfico estável p/ detectar se inputs mudaram desde o último cache.
+function hashInputs(obj: unknown): string {
+  const s = JSON.stringify(obj ?? null);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+  return (h >>> 0).toString(36);
+}
 
 const FULL_LABELS: Record<string, string> = {
   D: 'Dor', EFI: 'Atividades do dia', P: 'Cabeça e emoções', I: 'Mudanças recentes',
