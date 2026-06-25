@@ -24,11 +24,57 @@ Deno.serve(async (req) => {
     const driver = body.driverMyID;
     const sys = `Você é um fisioterapeuta sênior. Sugira 5 ${alvo} BASEADOS EM EVIDÊNCIA para a fase clínica descrita. Use vocabulário clínico brasileiro. Cada item deve ter nível de evidência (A, B ou C) e uma justificativa curta (motivo) que cite explicitamente a EVIDÊNCIA CLÍNICA do paciente que motivou a escolha — não uma justificativa genérica de manual.${driver ? ` O paciente tem o domínio MyID "${driver.label}" (${driver.key}) como driver primário de sobrecarga (score ${driver.score}/10); priorize itens que atuem diretamente sobre esse domínio e mencione isso no motivo (ex.: "Indicado por: MyID ${driver.key}=${driver.score} (${driver.label}) — driver primário").` : ''}`;
 
+    // Buscar top-5 evidências (usa resumos pré-computados para economizar tokens)
+    let evidenciaContext = "";
+    try {
+      const SUPABASE_URL_E = Deno.env.get("SUPABASE_URL");
+      const SERVICE_KEY_E = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (SUPABASE_URL_E && SERVICE_KEY_E) {
+        const query = `Fase ${body.faseNumero} de tratamento (${body.faseTitulo}). Objetivo: ${body.objetivo || ""}. Queixa: ${body.queixa || ""}. Driver MyID: ${driver?.label ?? ""}. Tipo de busca: ${alvo}.`;
+        const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "google/gemini-embedding-001", input: query.slice(0, 4000), dimensions: 1536 }),
+        });
+        if (embRes.ok) {
+          const embJson = await embRes.json();
+          const queryEmb = embJson.data?.[0]?.embedding;
+          const rpcRes = await fetch(`${SUPABASE_URL_E}/rest/v1/rpc/match_evidence`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: SERVICE_KEY_E, Authorization: `Bearer ${SERVICE_KEY_E}` },
+            body: JSON.stringify({ query_embedding: queryEmb, match_count: 5, filter_areas: null, min_year: new Date().getFullYear() - 15 }),
+          });
+          if (rpcRes.ok) {
+            const evidencias = await rpcRes.json();
+            if (Array.isArray(evidencias) && evidencias.length > 0) {
+              const ids = evidencias.map((e: any) => e.id);
+              const resumosRes = await fetch(`${SUPABASE_URL_E}/rest/v1/evidence_library?id=in.(${ids.join(",")})&select=id,resumo_clinico,aplicacao_pratica`, {
+                headers: { apikey: SERVICE_KEY_E, Authorization: `Bearer ${SERVICE_KEY_E}` },
+              });
+              const resumos: Record<string, any> = {};
+              if (resumosRes.ok) for (const r of await resumosRes.json()) resumos[r.id] = r;
+              evidenciaContext = `\n\nEVIDÊNCIA CIENTÍFICA (cite no campo "motivo" quando aplicável, Autor (ano)):\n` +
+                evidencias.map((e: any, i: number) => {
+                  const c = resumos[e.id] ?? {};
+                  const corpo = c.resumo_clinico ? `${c.resumo_clinico}${c.aplicacao_pratica ? " | " + c.aplicacao_pratica : ""}` : (e.abstract?.slice(0, 300) ?? "");
+                  return `[${i + 1}] ${(e.authors ?? []).slice(0, 2).join(", ")}${(e.authors ?? []).length > 2 ? " et al." : ""} (${e.year ?? "—"}) — Nível ${e.evidence_level ?? "—"}: ${corpo}`;
+                }).join("\n");
+              fetch(`${SUPABASE_URL_E}/rest/v1/rpc/increment_evidence_citation`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey: SERVICE_KEY_E, Authorization: `Bearer ${SERVICE_KEY_E}` },
+                body: JSON.stringify({ p_ids: ids }),
+              }).catch(() => {});
+            }
+          }
+        }
+      }
+    } catch (e) { console.warn("[sugerir-diretriz] evidence opcional:", e); }
+
     const user = `Fase ${body.faseNumero} — ${body.faseTitulo}
 Objetivo: ${body.objetivo || 'não informado'}
 Queixa principal: ${body.queixa || 'não informada'}
 Já selecionados (não repetir): ${(body.jaSelecionados || []).join(', ') || 'nenhum'}
-${driver ? `Driver MyID do paciente: ${driver.label} (${driver.key}) — score ${driver.score}/10, principal fator de sobrecarga identificado na última avaliação.` : ''}
+${driver ? `Driver MyID do paciente: ${driver.label} (${driver.key}) — score ${driver.score}/10, principal fator de sobrecarga identificado na última avaliação.` : ''}${evidenciaContext}
 
 Retorne ${body.tipo === 'exercicios' ? '5 exercícios' : '5 técnicas'} adequados a esta fase.`;
 
