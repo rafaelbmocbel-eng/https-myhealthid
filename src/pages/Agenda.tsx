@@ -2195,6 +2195,67 @@ export default function Agenda() {
                     </p>
                   ) : (
                     <>
+                      {/* Plano semanal — atalho 1x/2x/3x/4x na semana baseado na data de início */}
+                      {(() => {
+                        const startStr = form.data_inicio;
+                        if (!startStr) return null;
+                        const startDate = new Date(startStr);
+                        if (isNaN(startDate.getTime())) return null;
+                        const d0 = startDate.getDay();
+                        const patterns: Record<number, number[]> = {
+                          1: [d0],
+                          2: [d0, (d0 + 3) % 7],
+                          3: [d0, (d0 + 2) % 7, (d0 + 4) % 7],
+                          4: [d0, (d0 + 1) % 7, (d0 + 3) % 7, (d0 + 4) % 7],
+                        };
+                        const sorted = (arr: number[]) => [...arr].sort((a, b) => a - b);
+                        const currentSig = sorted(form.recorrencia_dias).join(',');
+                        const aplicar = (n: number) => {
+                          const dias = sorted(patterns[n]);
+                          setForm(f => ({
+                            ...f,
+                            recorrencia: 'dias_semana',
+                            recorrencia_dias: dias,
+                            recorrencia_semanas: f.recorrencia_semanas && f.recorrencia_semanas > 0 ? f.recorrencia_semanas : 4,
+                          }));
+                        };
+                        return (
+                          <div>
+                            <Label className="text-xs font-bold">Plano semanal</Label>
+                            <p className="text-[10px] text-muted-foreground mb-1.5">
+                              Gere automaticamente os dias da semana a partir da data de início.
+                            </p>
+                            <div className="flex gap-1.5 flex-wrap">
+                              {[1, 2, 3, 4].map(n => {
+                                const sig = sorted(patterns[n]).join(',');
+                                const active = form.recorrencia === 'dias_semana' && currentSig === sig;
+                                const recommended = n === 3;
+                                return (
+                                  <button
+                                    key={n}
+                                    type="button"
+                                    onClick={() => aplicar(n)}
+                                    className={cn(
+                                      'h-9 px-3 rounded-lg text-xs font-bold border transition relative',
+                                      active
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-background text-foreground border-border hover:border-primary/50',
+                                    )}
+                                  >
+                                    {n}x / semana
+                                    {recommended && !active && (
+                                      <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] px-1 rounded-full">
+                                        padrão
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       <Select value={form.recorrencia} onValueChange={v => setForm(f => ({ ...f, recorrencia: v as any }))}>
                         <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
