@@ -15,7 +15,7 @@ async function gerarMensagem(systemPrompt: string, intencao: string): Promise<st
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gemini-2.0-flash",
+      model: "gemini-3.1-flash-lite",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Gere uma mensagem WhatsApp PERSONALIZADA para este paciente comunicando: "${intencao}". A mensagem deve ser curta (2-4 linhas), pessoal, e adaptada ao contexto clínico do paciente quando relevante. Não invente fatos. Apenas a mensagem final.` },
