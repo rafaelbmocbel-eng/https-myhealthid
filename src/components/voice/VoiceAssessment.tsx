@@ -624,7 +624,6 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         // supabase-js wraps non-2xx as FunctionsHttpError — try to read the JSON body for the real message
         let serverMessage = error.message;
         try {
-          // @ts-ignore - context is present on FunctionsHttpError
           const ctx = (error as any).context;
           if (ctx && typeof ctx.json === 'function') {
             const errBody = await ctx.json();

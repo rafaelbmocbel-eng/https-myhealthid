@@ -365,7 +365,7 @@ export default function PacientePerfil() {
     let checks: Record<string, string> = {};
     try {
       checks = JSON.parse(localStorage.getItem('checks-all') || '{}');
-    } catch { }
+    } catch { /* localStorage corrompido — segue sem checks */ }
 
     const atendidas = agendamentos.filter((ag: any) => checks[ag.id] === 'atendido').length;
     const faltas = agendamentos.filter((ag: any) => checks[ag.id] === 'faltou').length;

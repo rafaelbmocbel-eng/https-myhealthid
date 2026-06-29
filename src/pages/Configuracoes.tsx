@@ -88,7 +88,7 @@ export default function Configuracoes() {
     <AppLayout>
       <div className="container py-4 sm:py-6 max-w-2xl pb-32">
         {/* Header */}
-        <div className="mb-4 sm:mb-5">
+        <div className="mb-5 sm:mb-7">
           <div className="eyebrow-accent mb-1.5">Ajustes</div>
           <h1 className="h-page">Configurações</h1>
           <p className="text-caption mt-1">Clínica, agenda, equipe, links e avisos</p>

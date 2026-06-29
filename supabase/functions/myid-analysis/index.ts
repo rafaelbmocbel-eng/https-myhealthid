@@ -128,7 +128,7 @@ Gere um JSON com:
           if (rpcRes.ok) {
             const evidencias = await rpcRes.json();
             // Buscar resumos pré-computados (economia ~70% de tokens) — fallback p/ abstract
-            let resumosMap: Record<string, { resumo_clinico?: string | null; aplicacao_pratica?: string | null }> = {};
+            const resumosMap: Record<string, { resumo_clinico?: string | null; aplicacao_pratica?: string | null }> = {};
             if (Array.isArray(evidencias) && evidencias.length > 0) {
               const ids = evidencias.map((e: any) => e.id);
               const resumosRes = await fetch(`${SUPABASE_URL_E}/rest/v1/evidence_library?id=in.(${ids.join(",")})&select=id,resumo_clinico,aplicacao_pratica`, {

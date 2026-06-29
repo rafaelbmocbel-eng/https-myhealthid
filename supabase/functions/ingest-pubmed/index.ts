@@ -288,7 +288,7 @@ Deno.serve(async (req) => {
   const logId = logRow?.id;
 
   // Run in background to avoid 150s edge timeout
-  // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+  // @ts-expect-error -- EdgeRuntime is available in Supabase Edge Functions but not in the Deno type defs
   EdgeRuntime.waitUntil(
     runIngestion({ mode, maxPerQuery, dryRun, activeQueries, mindate, logId }).catch((e) => {
       console.error("ingest-pubmed background error:", e);

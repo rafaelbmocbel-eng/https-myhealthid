@@ -397,8 +397,8 @@ export async function gerarLaudoCinetico(input: BaseInput & { dados: DocLaudoCin
       doc.text('PERDAS POR DIMENSÃO (0 = ideal · 10 = pior)', 22, y);
       y += 4;
       const colW = 83;
-      let col = 0;
-      let yStart = y;
+      const col = 0;
+      const yStart = y;
       input.dados.myidDimensoes.forEach((d) => {
         const x = 22 + col * colW;
         const yy = yStart + Math.floor(col === 0 ? 0 : 0); // simple two-col flow

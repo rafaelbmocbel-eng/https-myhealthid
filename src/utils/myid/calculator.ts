@@ -184,7 +184,7 @@ export class MyIDCalculator {
         const sleepHours = this.responses.bloco_5a_hours ?? this.responses.bloco5?.horasSono ?? 7;
         const sleepHoursNormalized = this.normalizeTo10(sleepHours, 9);
         const awakeMapping: Record<string, number> = { never: 10, nunca: 10, rarely: 7, rarely_v2: 7, moderately: 5, frequently: 3, always: 0 };
-        let sleepAwake = awakeMapping[this.responses.bloco_5a_awake || this.responses.bloco5?.acordaPorDor || 'rarely'] ?? 5;
+        const sleepAwake = awakeMapping[this.responses.bloco_5a_awake || this.responses.bloco5?.acordaPorDor || 'rarely'] ?? 5;
         const disorders = this.responses.bloco_5a_disorders || this.responses.bloco5?.bloco_5a_disorders || [];
         const disorderPenalty = disorders.length * 1.5;
         const rSleep = Math.max(0, ((sleepQuality + sleepHoursNormalized + sleepAwake) / 3) - disorderPenalty);

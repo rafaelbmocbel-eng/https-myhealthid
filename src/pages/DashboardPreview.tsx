@@ -99,7 +99,7 @@ export default function DashboardPreview() {
         </div>
 
         {/* Today's schedule */}
-        <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
+        <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-4 sm:mb-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="h-section">Agenda de hoje</h2>
             <Button asChild variant="ghost" size="sm" className="text-primary h-8">
@@ -128,7 +128,7 @@ export default function DashboardPreview() {
         </section>
 
         {/* Alertas clínicos */}
-        <section className="rounded-xl border border-destructive/20 bg-destructive/[0.02] p-4 sm:p-5 mb-6">
+        <section className="rounded-xl border border-destructive/20 bg-destructive/[0.02] p-4 sm:p-5 mb-4 sm:mb-5">
           <div className="flex items-center gap-2.5 mb-4">
             <Shield className="icon-sm text-destructive" />
             <div className="min-w-0">
@@ -152,7 +152,7 @@ export default function DashboardPreview() {
         </section>
 
         {/* Últimas atividades */}
-        <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
+        <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-4 sm:mb-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="h-section">Últimas atividades</h2>
           </div>
@@ -178,7 +178,7 @@ export default function DashboardPreview() {
         </section>
 
         {/* Estatísticas gerais */}
-        <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
+        <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-4 sm:mb-5">
           <div className="mb-5">
             <h2 className="h-section">Estatísticas gerais</h2>
             <p className="text-caption mt-0.5">Visão consolidada dos últimos 30 dias</p>

@@ -65,7 +65,7 @@ serve(async (req: any) => {
       const r = await fetch(`${baseUrl}/status`, { headers })
       const txt = await r.text()
       let parsed: any = {}
-      try { parsed = JSON.parse(txt) } catch {}
+      try { parsed = JSON.parse(txt) } catch { /* resposta não-JSON — segue com parsed vazio */ }
       const connected = r.ok && (parsed.connected === true || parsed.smartphoneConnected === true)
       return new Response(
         JSON.stringify({ connected, status: parsed, raw: connected ? undefined : txt }),

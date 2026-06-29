@@ -278,7 +278,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
     const today = new Date().toISOString().split('T')[0];
     const stored = localStorage.getItem(`missoes_${pacienteId}_${today}`);
     if (stored) {
-      try { setCompletedMissions(new Set(JSON.parse(stored))); } catch {}
+      try { setCompletedMissions(new Set(JSON.parse(stored))); } catch { /* localStorage corrompido — segue sem missões */ }
     }
   }, [pacienteId]);
 

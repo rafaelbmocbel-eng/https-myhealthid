@@ -235,7 +235,7 @@ export default function Index() {
               tecidosTotal.count++;
             });
           }
-        } catch { }
+        } catch { /* dados de bloco6 malformados — ignora avaliação */ }
       });
 
       const toRanked = (rec: Record<string, number>, max = 8) =>

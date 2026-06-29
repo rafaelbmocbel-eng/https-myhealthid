@@ -455,7 +455,7 @@ Deno.serve(async (req) => {
       if (ai.tool_calls?.length) {
         for (const tc of ai.tool_calls) {
           let args: any = {};
-          try { args = JSON.parse(tc.function.arguments || "{}"); } catch {}
+          try { args = JSON.parse(tc.function.arguments || "{}"); } catch { /* argumentos malformados — segue com objeto vazio */ }
           const result = await executarTool(admin, tc.function.name, args, ctx, conv.terapeuta_id, conversa_id);
           messages.push({
             role: "tool",

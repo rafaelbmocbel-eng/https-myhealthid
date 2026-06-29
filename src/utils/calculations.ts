@@ -34,7 +34,7 @@ export function calcularScoreD(bloco2: Bloco2Data): number {
 
   bloco2.regioes.forEach(regiao => {
     // Base: intensidade normalizada (0-1)
-    let dBase = regiao.intensidade / 10;
+    const dBase = regiao.intensidade / 10;
 
     // Peso do tipo de dor: pegar o maior peso entre os tipos selecionados
     let pesotTipo = 1.0;

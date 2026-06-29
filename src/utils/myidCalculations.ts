@@ -175,8 +175,8 @@ export function getMyIDInterpretation(
 
   // Use classificarMyID100 as single source of truth
   const classif = classificarMyID100(val);
-  let classificacao = classif.nome;
-  let cor = classif.cor;
+  const classificacao = classif.nome;
+  const cor = classif.cor;
 
   // Alertas críticos/moderados ficam separados da classificação principal.
   // A classificação visual principal deve depender apenas do score total.
