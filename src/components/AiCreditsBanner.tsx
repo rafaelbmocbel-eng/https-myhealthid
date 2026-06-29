@@ -4,9 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useAiCreditsStatus, type AiCreditsStatus } from '@/hooks/useAiCreditsStatus';
 import { cn } from '@/lib/utils';
 
-// Top-up de créditos da Lovable Cloud & AI (mesma página de Settings → Workspace → Cloud & AI balance)
-const TOPUP_URL = 'https://lovable.dev/settings/workspace';
-const PLANS_URL = 'https://lovable.dev/settings/plans';
+// Gerenciamento de chave/cota da IA: Google AI Studio (mesmo lugar onde a GEMINI_API_KEY foi criada)
+const AI_STUDIO_URL = 'https://aistudio.google.com/';
 const DISMISS_KEY = 'ai_credits_banner_dismissed_until';
 
 interface StatusVisual {
@@ -114,12 +113,12 @@ export default function AiCreditsBanner() {
         </div>
       </div>
 
-      {/* Aviso sobre saldo + ações */}
+      {/* Aviso sobre cota + ação */}
       <div className="flex items-start gap-2 pt-2 border-t border-current/15">
         <Info className="icon-sm shrink-0 mt-0.5 opacity-70" />
         <p className="text-[11px] opacity-80 flex-1">
-          O saldo exato em USD não é exposto pela API da Lovable AI. Para ver o valor restante e adicionar
-          créditos, abra <span className="font-medium">Settings → Workspace → Cloud &amp; AI balance</span>.
+          A IA usa sua própria chave da API do Google Gemini. Para ver cota, uso e faturamento, abra o
+          Google AI Studio ou o Google Cloud Console do projeto vinculado à chave.
         </p>
       </div>
 
@@ -130,20 +129,9 @@ export default function AiCreditsBanner() {
           className="h-9 text-xs gap-1.5 bg-background hover:bg-background/80 text-foreground border border-current/30"
           variant="outline"
         >
-          <a href={TOPUP_URL} target="_blank" rel="noopener noreferrer">
+          <a href={AI_STUDIO_URL} target="_blank" rel="noopener noreferrer">
             <Wallet className="icon-sm" />
-            Adicionar créditos
-            <ExternalLink className="h-3 w-3 opacity-60" />
-          </a>
-        </Button>
-        <Button
-          asChild
-          size="sm"
-          variant="ghost"
-          className="h-9 text-xs gap-1.5 hover:bg-background/60"
-        >
-          <a href={PLANS_URL} target="_blank" rel="noopener noreferrer">
-            Ver planos
+            Abrir Google AI Studio
             <ExternalLink className="h-3 w-3 opacity-60" />
           </a>
         </Button>

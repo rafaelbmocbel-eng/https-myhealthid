@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
         pay_to_email: profileData.merchant_profile?.email || undefined,
         merchant_code: merchantCode,
         description: description || 'Pagamento',
-        redirect_url: redirect_url || 'https://myhealthid.lovable.app',
+        redirect_url: redirect_url || 'https://www.myhealthid.com.br',
         ...(customer_email && { customer_email }),
         ...(customer_name && { customer_name }),
       }),

@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     const origemLabel = origem === 'ia_voz' ? 'Voz'
       : origem === 'ia_escrita' ? 'Escrita'
       : origem === 'ia_myid' ? 'MyID' : 'IA';
-    const link = `https://myhealthid.lovable.app/pacientes/${paciente_id}?tab=diretrizes&protocolo=${protocolo_id}`;
+    const link = `https://www.myhealthid.com.br/pacientes/${paciente_id}?tab=diretrizes&protocolo=${protocolo_id}`;
 
     const html = `<!DOCTYPE html><html lang="pt-BR"><body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,Helvetica,Arial,sans-serif;">
       <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0;background:#f4f4f5;"><tr><td align="center">
