@@ -26,8 +26,8 @@ Use null quando não houver dado. Não inclua nada além do JSON.`;
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    let user;
-    try { user = await requireUser(req); } catch (r) { return r as Response; }
+    let userId: string;
+    try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
 
     const { paciente_id, file_base64, mime, file_name } = await req.json();
     if (!paciente_id || !file_base64 || !mime) {
@@ -74,8 +74,21 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const { data: paciente, error: pacienteError } = await supa
+      .from("pacientes")
+      .select("id")
+      .eq("id", paciente_id)
+      .eq("terapeuta_id", userId)
+      .maybeSingle();
+    if (pacienteError) throw pacienteError;
+    if (!paciente) {
+      return new Response(JSON.stringify({ error: "Paciente não encontrado" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: row, error } = await supa.from("exames_importados").insert({
-      terapeuta_id: user.id,
+      terapeuta_id: userId,
       paciente_id,
       tipo: dados.tipo || null,
       data_exame: dados.data_exame || null,
@@ -89,7 +102,7 @@ Deno.serve(async (req) => {
     const hasVitais = Object.values(v).some((x: any) => x !== null && x !== undefined && x !== "");
     if (hasVitais) {
       await supa.from("sinais_vitais").insert({
-        terapeuta_id: user.id,
+        terapeuta_id: userId,
         paciente_id,
         pa_sistolica: v.pa_sistolica ?? null,
         pa_diastolica: v.pa_diastolica ?? null,

@@ -12,17 +12,11 @@ Deno.serve(async (req) => {
 
     try {
         const body = await req.json();
-        const { link_id, paciente_id, bloco_numero, dados_respostas } = body;
+        const { link_id, bloco_numero, dados_respostas } = body;
 
         // Validate input types and formats
         if (!link_id || typeof link_id !== 'string' || !/^[0-9a-f-]{36}$/.test(link_id)) {
             return new Response(JSON.stringify({ error: 'link_id inválido.' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-        }
-        if (paciente_id && (typeof paciente_id !== 'string' || !/^[0-9a-f-]{36}$/.test(paciente_id))) {
-            return new Response(JSON.stringify({ error: 'paciente_id inválido.' }), {
                 status: 400,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
@@ -49,7 +43,7 @@ Deno.serve(async (req) => {
         // Verificar se o link existe e está ativo
         const { data: link, error: linkError } = await supabase
             .from('links_avaliacao')
-            .select('id, status, data_expiracao')
+            .select('id, paciente_id, status, data_expiracao')
             .eq('id', link_id)
             .single();
 
@@ -91,7 +85,7 @@ Deno.serve(async (req) => {
             .from('respostas_avaliacao_paciente')
             .insert({
                 link_id,
-                paciente_id,
+                paciente_id: link.paciente_id,
                 bloco_numero,
                 dados_respostas,
                 numero_tentativa: tentativa,

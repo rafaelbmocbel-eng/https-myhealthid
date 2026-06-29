@@ -9,11 +9,12 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-  try { requireInternal(req); } catch (r) { return r as Response; }
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    try { requireInternal(req); } catch (r) { return r as Response; }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);

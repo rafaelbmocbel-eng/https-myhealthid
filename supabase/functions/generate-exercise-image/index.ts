@@ -11,7 +11,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    try { await requireUser(req); } catch (r) { return r as Response; }
+    let userId: string;
+    try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
@@ -24,6 +25,21 @@ serve(async (req) => {
     if (!exerciseName || !exerciseId) {
       return new Response(JSON.stringify({ error: "exerciseName and exerciseId required" }), {
         status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: treinoExercicio, error: ownershipError } = await supabase
+      .from("studio_treino_exercicios")
+      .select("id, treino_id, studio_treinos!inner(terapeuta_id)")
+      .eq("id", exerciseId)
+      .eq("studio_treinos.terapeuta_id", userId)
+      .maybeSingle();
+
+    if (ownershipError) throw ownershipError;
+    if (!treinoExercicio) {
+      return new Response(JSON.stringify({ error: "Exercício não encontrado." }), {
+        status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
