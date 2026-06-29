@@ -83,9 +83,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true, transcricao }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error("[whatsapp-transcribe] erro:", e);
-    return new Response(JSON.stringify({ ok: false, error: e.message }), {
+    const message = e instanceof Error ? e.message : String(e);
+    return new Response(JSON.stringify({ ok: false, error: message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

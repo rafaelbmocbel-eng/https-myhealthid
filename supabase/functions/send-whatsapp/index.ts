@@ -6,7 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-function normalizeZapiCreds(instanceId: string, token: string, clientToken?: string) {
+interface ZapiCreds {
+  instanceId: string
+  token: string
+  clientToken: string
+}
+
+interface SendWhatsappBody {
+  test?: boolean
+  instanceId?: string
+  token?: string
+  clientToken?: string
+  phone?: string
+  message?: string
+  mediaUrl?: string
+  mediaType?: 'image' | 'document'
+  caption?: string
+  fileName?: string
+}
+
+function normalizeZapiCreds(instanceId: string, token: string, clientToken?: string): ZapiCreds {
   const rawInstance = String(instanceId || '').trim()
   const rawToken = String(token || '').trim()
   const rawClientToken = String(clientToken || '').trim()
@@ -20,7 +39,7 @@ function normalizeZapiCreds(instanceId: string, token: string, clientToken?: str
   }
 }
 
-async function getZapiCreds(req: Request, body: any) {
+async function getZapiCreds(req: Request, body: SendWhatsappBody): Promise<ZapiCreds> {
   // Always require an authenticated therapist
   const authHeader = req.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) throw new Error('unauthorized')
@@ -49,11 +68,11 @@ async function getZapiCreds(req: Request, body: any) {
   throw new Error('Credenciais Z-API do terapeuta não configuradas')
 }
 
-serve(async (req: any) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const body = await req.json()
+    const body: SendWhatsappBody = await req.json()
     const { instanceId, token, clientToken } = await getZapiCreds(req, body)
 
     const baseUrl = `https://api.z-api.io/instances/${instanceId}/token/${token}`
@@ -64,7 +83,7 @@ serve(async (req: any) => {
     if (body.test) {
       const r = await fetch(`${baseUrl}/status`, { headers })
       const txt = await r.text()
-      let parsed: any = {}
+      let parsed: Record<string, unknown> = {}
       try { parsed = JSON.parse(txt) } catch { /* resposta não-JSON — segue com parsed vazio */ }
       const connected = r.ok && (parsed.connected === true || parsed.smartphoneConnected === true)
       return new Response(
@@ -79,7 +98,7 @@ serve(async (req: any) => {
     const cleanPhone = String(phone).replace(/\D/g, '')
 
     let endpoint = 'send-text'
-    let payload: any = { phone: cleanPhone, message }
+    let payload: Record<string, unknown> = { phone: cleanPhone, message }
 
     if (mediaUrl && mediaType === 'image') {
       endpoint = 'send-image'
@@ -107,10 +126,11 @@ serve(async (req: any) => {
       JSON.stringify({ success: true, result }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
     )
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro Z-API:', error)
+    const message = error instanceof Error ? error.message : 'Internal error'
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal error', connected: false }),
+      JSON.stringify({ error: message, connected: false }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
     )
   }

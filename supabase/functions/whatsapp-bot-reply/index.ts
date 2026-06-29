@@ -1,16 +1,55 @@
 // Agente IA conversacional do WhatsApp — responde, agenda, escala, com contexto clínico
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
-import { montarContextoClinico, buildSystemPrompt } from "../_shared/agente-contexto.ts";
+import { montarContextoClinico, buildSystemPrompt, type ContextoClinico } from "../_shared/agente-contexto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type AdminClient = ReturnType<typeof createClient>;
+
+interface ConfigAutomacao {
+  bot_ativo?: boolean;
+  max_turnos_bot?: number;
+  palavras_escalonamento?: string[];
+  mensagem_fora_horario?: string | null;
+  delay_resposta_segundos?: number;
+  horario_inicio?: string | null;
+  horario_fim?: string | null;
+  dias_semana?: string[] | null;
+}
+
+interface ConfigAgenda {
+  horario_inicio?: string | null;
+  horario_fim?: string | null;
+  duracao_padrao?: number | null;
+  dias_semana?: string[] | null;
+}
+
+interface AgendamentoSlot {
+  data_inicio: string;
+  data_fim: string;
+}
+
+type ToolArgs = Record<string, unknown>;
+
+interface ChatToolCall {
+  id: string;
+  function: { name: string; arguments: string };
+}
+
+interface ChatMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  content?: string | null;
+  tool_call_id?: string;
+  tool_calls?: ChatToolCall[];
+}
+
 const DIA_KEY = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
 
-function dentroDoHorario(cfg: any): boolean {
+function dentroDoHorario(cfg: ConfigAutomacao): boolean {
   if (!cfg.horario_inicio || !cfg.horario_fim) return true;
   const now = new Date();
   const dia = DIA_KEY[now.getDay()];
@@ -31,7 +70,7 @@ function detectRedFlag(texto: string, palavras: string[]): string | null {
   return null;
 }
 
-async function enviarWhatsapp(admin: any, terapeuta_id: string, phone: string, message: string) {
+async function enviarWhatsapp(admin: AdminClient, terapeuta_id: string, phone: string, message: string) {
   const { data: cfg } = await admin
     .from("config_clinica")
     .select("zapi_instance_id, zapi_token, zapi_client_token")
@@ -129,26 +168,29 @@ const tools = [
   },
 ];
 
-async function executarTool(admin: any, name: string, args: any, ctx: any, terapeuta_id: string, conversa_id: string) {
+async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ctx: ContextoClinico, terapeuta_id: string, conversa_id: string) {
   try {
     if (name === "consultar_horarios_disponiveis") {
-      const dias = Math.min(14, Math.max(1, args.dias_a_frente || 7));
+      const diasArg = typeof args.dias_a_frente === "number" ? args.dias_a_frente : 7;
+      const dias = Math.min(14, Math.max(1, diasArg));
       const inicio = new Date();
       const fim = new Date(Date.now() + dias * 86400000);
       const { data: cfg } = await admin.from("config_agenda")
         .select("horario_inicio, horario_fim, duracao_padrao, dias_semana")
         .eq("terapeuta_id", terapeuta_id).maybeSingle();
-      const { data: ocupados } = await admin.from("agendamentos")
+      const cfgAgenda = cfg as ConfigAgenda | null;
+      const { data: ocupadosData } = await admin.from("agendamentos")
         .select("data_inicio, data_fim")
         .eq("terapeuta_id", terapeuta_id)
         .gte("data_inicio", inicio.toISOString())
         .lte("data_inicio", fim.toISOString())
         .neq("status", "cancelado");
+      const ocupados = (ocupadosData as AgendamentoSlot[] | null) || [];
       const slots: string[] = [];
-      const dur = (cfg as any)?.duracao_padrao || 60;
-      const hi = String((cfg as any)?.horario_inicio || "08:00").split(":").map(Number);
-      const hf = String((cfg as any)?.horario_fim || "18:00").split(":").map(Number);
-      const diasOk: string[] = (cfg as any)?.dias_semana || ["seg","ter","qua","qui","sex"];
+      const dur = cfgAgenda?.duracao_padrao || 60;
+      const hi = String(cfgAgenda?.horario_inicio || "08:00").split(":").map(Number);
+      const hf = String(cfgAgenda?.horario_fim || "18:00").split(":").map(Number);
+      const diasOk: string[] = cfgAgenda?.dias_semana || ["seg","ter","qua","qui","sex"];
       for (let d = 0; d < dias; d++) {
         const dia = new Date(inicio.getTime() + d * 86400000);
         if (!diasOk.includes(DIA_KEY[dia.getDay()])) continue;
@@ -156,7 +198,7 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
           const slot = new Date(dia);
           slot.setHours(Math.floor(m / 60), m % 60, 0, 0);
           if (slot < new Date(Date.now() + 2 * 3600000)) continue;
-          const ocupado = (ocupados || []).some((o: any) =>
+          const ocupado = ocupados.some((o) =>
             new Date(o.data_inicio) <= slot && new Date(o.data_fim) > slot
           );
           if (!ocupado) slots.push(slot.toISOString());
@@ -169,7 +211,8 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
 
     if (name === "agendar_sessao") {
       if (!ctx.paciente.id) return { ok: false, erro: "Paciente não vinculado. Escale para humano." };
-      const data_iso = args.data_iso;
+      const data_iso = typeof args.data_iso === "string" ? args.data_iso : "";
+      const observacao = typeof args.observacao === "string" ? args.observacao : "Agendado via assistente IA";
       const data_inicio = new Date(data_iso);
       const data_fim = new Date(data_inicio.getTime() + 60 * 60000);
       const { data, error } = await admin.from("agendamentos").insert({
@@ -177,7 +220,7 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
         data_inicio: data_inicio.toISOString(),
         data_fim: data_fim.toISOString(),
         status: "confirmacao_pendente",
-        observacao: args.observacao || "Agendado via assistente IA",
+        observacao,
         origem: "bot_whatsapp",
       }).select("id").single();
       if (error) return { ok: false, erro: error.message };
@@ -238,9 +281,10 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
 
     if (name === "reagendar_proxima_sessao") {
       if (!ctx.proxima_sessao) return { ok: false, erro: "Nenhuma sessão futura para reagendar." };
+      const motivoReagendamento = typeof args.motivo === "string" ? args.motivo : "—";
       await admin.from("agendamentos").update({
         status: "cancelado",
-        observacao: `Reagendamento solicitado via bot: ${args.motivo || "—"}`,
+        observacao: `Reagendamento solicitado via bot: ${motivoReagendamento}`,
       }).eq("id", ctx.proxima_sessao.id);
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "reagendamento_solicitado",
@@ -254,14 +298,15 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
 
     if (name === "cancelar_proxima_sessao") {
       if (!ctx.proxima_sessao) return { ok: false, erro: "Nenhuma sessão futura encontrada." };
+      const motivoCancelamento = typeof args.motivo === "string" ? args.motivo : "—";
       await admin.from("agendamentos").update({
         status: "cancelado",
-        observacao: `Cancelado via bot: ${args.motivo}`,
+        observacao: `Cancelado via bot: ${motivoCancelamento}`,
       }).eq("id", ctx.proxima_sessao.id);
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "cancelamento_bot",
         titulo: "⚠️ Cancelamento via bot",
-        descricao: `${ctx.paciente.nome} cancelou sessão ${new Date(ctx.proxima_sessao.data).toLocaleString("pt-BR")}. Motivo: ${args.motivo}`,
+        descricao: `${ctx.paciente.nome} cancelou sessão ${new Date(ctx.proxima_sessao.data).toLocaleString("pt-BR")}. Motivo: ${motivoCancelamento}`,
         rota: `/agenda`,
         metadata: { agendamento_id: ctx.proxima_sessao.id },
       });
@@ -269,15 +314,16 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
     }
 
     if (name === "escalar_para_humano") {
+      const motivoEscalonamento = typeof args.motivo === "string" ? args.motivo : "Motivo não especificado";
       await admin.from("whatsapp_conversas").update({
         bot_ativo: false,
         requer_atencao: true,
-        motivo_escalonamento: args.motivo,
+        motivo_escalonamento: motivoEscalonamento,
       }).eq("id", conversa_id);
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "whatsapp_escalonamento",
         titulo: "🚨 Conversa precisa de atenção",
-        descricao: `${ctx.paciente.nome || ctx.paciente.primeiro_nome}: ${args.motivo}`,
+        descricao: `${ctx.paciente.nome || ctx.paciente.primeiro_nome}: ${motivoEscalonamento}`,
         rota: `/crm?tab=inbox&c=${conversa_id}`,
         metadata: { conversa_id },
       });
@@ -285,12 +331,16 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
     }
 
     return { ok: false, erro: "Tool desconhecida" };
-  } catch (e: any) {
-    return { ok: false, erro: e.message };
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : String(e) };
   }
 }
 
-async function chamarLLM(messages: any[], systemPrompt: string, allowTools = true) {
+interface GeminiChatResponse {
+  choices?: { message: ChatMessage }[];
+}
+
+async function chamarLLM(messages: ChatMessage[], systemPrompt: string, allowTools = true): Promise<ChatMessage | undefined> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("GEMINI_API_KEY ausente");
   const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
@@ -306,7 +356,7 @@ async function chamarLLM(messages: any[], systemPrompt: string, allowTools = tru
     const t = await r.text();
     throw new Error(`Gemini API ${r.status}: ${t.slice(0, 200)}`);
   }
-  const j = await r.json();
+  const j: GeminiChatResponse = await r.json();
   return j.choices?.[0]?.message;
 }
 
@@ -378,14 +428,15 @@ Deno.serve(async (req) => {
     }
 
     // Já há resposta humana recente?
-    const { data: ultSaida } = await admin
+    const { data: ultSaidaData } = await admin
       .from("whatsapp_mensagens_inbox")
       .select("created_at, metadata")
       .eq("conversa_id", conversa_id)
       .eq("direcao", "saida")
       .order("created_at", { ascending: false })
       .limit(1).maybeSingle();
-    if (ultSaida && !(ultSaida.metadata as any)?.bot) {
+    const ultSaida = ultSaidaData as { created_at: string; metadata: Record<string, unknown> | null } | null;
+    if (ultSaida && !ultSaida.metadata?.bot) {
       const diff = Date.now() - new Date(ultSaida.created_at).getTime();
       if (diff < 30 * 60 * 1000) {
         return new Response(JSON.stringify({ ok: true, skip: "humano respondeu" }), { headers: corsHeaders });
@@ -434,13 +485,14 @@ Deno.serve(async (req) => {
     const systemPrompt = buildSystemPrompt(ctx);
 
     // Histórico recente (últimas 10 mensagens)
-    const { data: hist } = await admin
+    const { data: histData } = await admin
       .from("whatsapp_mensagens_inbox")
       .select("direcao, conteudo, transcricao")
       .eq("conversa_id", conversa_id)
       .order("created_at", { ascending: false })
       .limit(10);
-    const messages: any[] = ((hist || []).reverse()).map((m: any) => ({
+    const hist = (histData as { direcao: string; conteudo: string | null; transcricao: string | null }[] | null) || [];
+    const messages: ChatMessage[] = hist.reverse().map((m) => ({
       role: m.direcao === "entrada" ? "user" : "assistant",
       content: m.conteudo || m.transcricao || "[mídia]",
     }));
@@ -454,7 +506,7 @@ Deno.serve(async (req) => {
 
       if (ai.tool_calls?.length) {
         for (const tc of ai.tool_calls) {
-          let args: any = {};
+          let args: ToolArgs = {};
           try { args = JSON.parse(tc.function.arguments || "{}"); } catch { /* argumentos malformados — segue com objeto vazio */ }
           const result = await executarTool(admin, tc.function.name, args, ctx, conv.terapeuta_id, conversa_id);
           messages.push({
@@ -492,9 +544,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true, enviado }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error("[bot-reply] erro:", e);
-    return new Response(JSON.stringify({ ok: false, error: e.message }), {
+    const message = e instanceof Error ? e.message : String(e);
+    return new Response(JSON.stringify({ ok: false, error: message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

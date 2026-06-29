@@ -8,7 +8,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function enviarWhatsapp(supa: any, terapeuta_id: string, phone: string, message: string) {
+type AdminClient = ReturnType<typeof createClient>;
+
+interface WhatsappAutomacaoConfig {
+  auto_confirmacao_24h?: boolean;
+  mensagem_confirmacao?: string | null;
+  mensagem_lembrete_2h?: string | null;
+  mensagem_pos_sessao?: string | null;
+  mensagem_no_show?: string | null;
+  gatilhos_ativos?: {
+    confirmacao_24h?: boolean;
+    lembrete_2h?: boolean;
+    pos_sessao?: boolean;
+    no_show_automatico?: boolean;
+  } | null;
+  no_show_perdoar_primeira?: boolean;
+  no_show_so_com_pacote?: boolean;
+}
+
+interface PacienteInfo {
+  pac: { nome: string | null; telefone: string };
+  nome: string;
+  hora: string;
+  data: string;
+}
+
+interface AgendamentoBase {
+  id: string;
+  terapeuta_id: string;
+  paciente_id: string;
+  data_inicio: string;
+}
+
+async function enviarWhatsapp(supa: AdminClient, terapeuta_id: string, phone: string, message: string) {
   const { data: cfg } = await supa
     .from("config_clinica")
     .select("zapi_instance_id, zapi_token, zapi_client_token")
@@ -33,7 +65,7 @@ function aplicar(template: string, nome: string, hora: string, data: string) {
     .replaceAll("{data}", data);
 }
 
-async function registrarEnvio(admin: any, terapeuta_id: string, paciente_id: string | null, telefone: string, mensagem: string) {
+async function registrarEnvio(admin: AdminClient, terapeuta_id: string, paciente_id: string | null, telefone: string, mensagem: string) {
   // Tenta linkar com conversa existente para aparecer no histórico
   const tail = telefone.replace(/\D/g, "");
   const { data: conv } = await admin.from("whatsapp_conversas")
@@ -59,17 +91,18 @@ Deno.serve(async (req) => {
     let enviados24 = 0, enviados2h = 0, enviadosPos = 0, noShows = 0;
 
     // Cache de configurações por terapeuta
-    const cfgCache = new Map<string, any>();
-    async function getCfg(tid: string) {
-      if (cfgCache.has(tid)) return cfgCache.get(tid);
+    const cfgCache = new Map<string, WhatsappAutomacaoConfig | null>();
+    async function getCfg(tid: string): Promise<WhatsappAutomacaoConfig | null> {
+      if (cfgCache.has(tid)) return cfgCache.get(tid) ?? null;
       const { data } = await admin.from("whatsapp_automacoes")
         .select("auto_confirmacao_24h, mensagem_confirmacao, mensagem_lembrete_2h, mensagem_pos_sessao, mensagem_no_show, gatilhos_ativos, no_show_perdoar_primeira, no_show_so_com_pacote")
         .eq("terapeuta_id", tid).maybeSingle();
-      cfgCache.set(tid, data);
-      return data;
+      const cfg = data as WhatsappAutomacaoConfig | null;
+      cfgCache.set(tid, cfg);
+      return cfg;
     }
 
-    async function processarPaciente(ag: any) {
+    async function processarPaciente(ag: AgendamentoBase): Promise<PacienteInfo | null> {
       const { data: pac } = await admin
         .from("pacientes")
         .select("nome, telefone")
@@ -240,9 +273,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true, enviados24, enviados2h, enviadosPos, noShows }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error("[auto-confirm] erro:", e);
-    return new Response(JSON.stringify({ ok: false, error: e.message }), {
+    const message = e instanceof Error ? e.message : String(e);
+    return new Response(JSON.stringify({ ok: false, error: message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
