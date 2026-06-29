@@ -14,20 +14,16 @@ function cleanPhone(p: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Validação opcional de segredo (modo gradual):
-  // Se WHATSAPP_WEBHOOK_SECRET estiver definido, exige ?secret=... ou header x-webhook-secret correspondente.
-  // Se não estiver definido, o webhook segue aberto (compatibilidade) — defina o env var após atualizar a URL na Z-API.
+  // Exige ?secret=... ou header x-webhook-secret correspondente ao WHATSAPP_WEBHOOK_SECRET
+  // configurado nas secrets do projeto. Configure a mesma URL com ?secret=... no painel Z-API.
   const expectedSecret = Deno.env.get("WHATSAPP_WEBHOOK_SECRET");
-  if (expectedSecret) {
-    const url = new URL(req.url);
-    const provided = url.searchParams.get("secret") || req.headers.get("x-webhook-secret");
-    if (provided !== expectedSecret) {
-      console.warn("[whatsapp-webhook] unauthorized: secret mismatch");
-      return new Response(JSON.stringify({ error: "unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const provided = new URL(req.url).searchParams.get("secret") || req.headers.get("x-webhook-secret");
+  if (!expectedSecret || provided !== expectedSecret) {
+    console.warn("[whatsapp-webhook] unauthorized: secret mismatch");
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
