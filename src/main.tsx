@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
+import RootErrorBoundary from "./RootErrorBoundary";
 import { installSupabaseLockPatch } from "./lib/navigatorLockPatch";
 import "./index.css";
 
@@ -106,7 +107,9 @@ if (isSafeForSW) {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <HelmetProvider>
-    <App />
-  </HelmetProvider>
+  <RootErrorBoundary>
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
+  </RootErrorBoundary>
 );
