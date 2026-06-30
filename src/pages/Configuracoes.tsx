@@ -57,6 +57,8 @@ export default function Configuracoes() {
   const [form, setForm] = useState<ConfigAgenda>(config);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savingVagas, setSavingVagas] = useState(false);
+  const [savedVagas, setSavedVagas] = useState(false);
   const [tab, setTab] = useState<TabId>('clinica');
 
   useEffect(() => { setForm(config); }, [config]);
