@@ -146,13 +146,27 @@ Deno.serve(async (req) => {
     // Lookup do id da mensagem recém-inserida (para transcrição e bot)
     let novaMsgId: string | null = null;
     try {
-      const { data: novaMsg } = await admin
-        .from("whatsapp_mensagens_inbox")
-        .select("id")
-        .eq("conversa_id", conversaId)
-        .eq("zapi_message_id", messageId)
-        .maybeSingle();
-      novaMsgId = novaMsg?.id ?? null;
+      if (messageId) {
+        const { data: novaMsg } = await admin
+          .from("whatsapp_mensagens_inbox")
+          .select("id")
+          .eq("conversa_id", conversaId)
+          .eq("zapi_message_id", messageId)
+          .maybeSingle();
+        novaMsgId = novaMsg?.id ?? null;
+      }
+      // Fallback: pega a mais recente desta conversa/direção (cobre casos sem messageId)
+      if (!novaMsgId) {
+        const { data: novaMsg } = await admin
+          .from("whatsapp_mensagens_inbox")
+          .select("id")
+          .eq("conversa_id", conversaId)
+          .eq("direcao", fromMe ? "saida" : "entrada")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        novaMsgId = novaMsg?.id ?? null;
+      }
     } catch (e) { console.warn("lookup nova msg falhou:", e); }
 
     const internalHeaders = {
