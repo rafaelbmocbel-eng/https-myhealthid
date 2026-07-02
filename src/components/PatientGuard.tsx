@@ -48,7 +48,7 @@ export default function PatientGuard({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading || !authReady) return;
     if (!user) {
-      setRole('professional');
+      setRole(null);
       return;
     }
     let active = true;
@@ -62,6 +62,10 @@ export default function PatientGuard({ children }: { children: ReactNode }) {
   }, [user, loading, authReady]);
 
   if (loading || !authReady || role === null) {
+    if (!loading && authReady && !user) {
+      return <Navigate to="/auth" replace state={{ from: location.pathname }} />;
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
