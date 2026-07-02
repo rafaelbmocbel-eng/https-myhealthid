@@ -36,20 +36,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authReady, setAuthReady] = useState(false);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const ensureProfessionalProfile = useCallback(async (currentUser: User) => {
+    const { data: paciente, error: pacienteError } = await withAuthLockRetry(async () =>
+      await supabase
+        .from('pacientes')
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .maybeSingle()
+    );
+
+    if (pacienteError) throw pacienteError;
+    if (paciente) return null;
+
+    const { data: existingProfile, error: profileError } = await withAuthLockRetry(async () =>
+      await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .maybeSingle()
+    );
+
+    if (profileError) throw profileError;
+    if (existingProfile) return existingProfile;
+
+    const rawName =
+      typeof currentUser.user_metadata?.nome === 'string'
+        ? currentUser.user_metadata.nome
+        : typeof currentUser.user_metadata?.name === 'string'
+          ? currentUser.user_metadata.name
+          : currentUser.email?.split('@')[0] ?? 'Profissional';
+    const [nome, ...sobrenomeParts] = rawName.trim().split(/\s+/).filter(Boolean);
+
+    const { data: createdProfile, error: insertError } = await withAuthLockRetry(async () =>
+      await supabase
+        .from('profiles')
+        .insert({
+          user_id: currentUser.id,
+          nome: nome || 'Profissional',
+          sobrenome: sobrenomeParts.join(' '),
+          email: currentUser.email ?? '',
+        })
+        .select('*')
+        .single()
+    );
+
+    if (insertError) throw insertError;
+    return createdProfile;
+  }, []);
+
+  const fetchProfile = useCallback(async (currentUser: User) => {
     try {
-      const { data, error } = await withAuthLockRetry(async () =>
-        await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle()
-      );
-
-      if (error) {
-        throw error;
-      }
-
+      const data = await ensureProfessionalProfile(currentUser);
       setProfile(data);
     } catch (error) {
       console.error('[Auth] Falha ao buscar perfil:', error);
@@ -57,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ensureProfessionalProfile]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -69,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (nextSession?.user) {
           setLoading(true);
           setTimeout(() => {
-            void fetchProfile(nextSession.user.id);
+            void fetchProfile(nextSession.user);
           }, 0);
         } else {
           setProfile(null);
@@ -90,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthReady(true);
 
         if (currentSession?.user) {
-          await fetchProfile(currentSession.user.id);
+          await fetchProfile(currentSession.user);
         } else {
           setLoading(false);
         }
@@ -127,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         supabase.auth.signUp({
           email,
           password,
-          options: { data: { nome } },
+          options: { data: { nome, account_type: 'professional' } },
         })
       );
       return { error };
