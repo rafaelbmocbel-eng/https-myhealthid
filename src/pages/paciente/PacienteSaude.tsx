@@ -13,6 +13,7 @@ import BodyCompositionForm from '@/components/saude/BodyCompositionForm';
 import MealLogForm from '@/components/saude/MealLogForm';
 import MetricsManualForm from '@/components/saude/MetricsManualForm';
 import HealthSyncCard from '@/components/paciente/HealthSyncCard';
+import WearablePhotoCard from '@/components/paciente/WearablePhotoCard';
 import PacienteRelatoVoz from '@/components/paciente/PacienteRelatoVoz';
 import { useHealthData } from '@/hooks/useHealthData';
 import type { HealthSyncResult } from '@/hooks/useHealthSync';
@@ -85,6 +86,9 @@ export default function PacienteSaude() {
 
           {/* Smartwatch sync */}
           <HealthSyncCard onSyncComplete={handleSyncComplete} />
+
+          {/* Foto/print do smartwatch com OCR via IA */}
+          {paciente && <WearablePhotoCard pacienteId={paciente.id} onSaved={health.refresh} />}
 
           <Tabs value={tab} onValueChange={setTab}>
            <TabsList className="w-full overflow-x-auto flex-nowrap justify-start gap-0 h-9 bg-muted/50 p-0.5 scrollbar-none">
