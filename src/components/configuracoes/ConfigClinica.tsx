@@ -341,11 +341,11 @@ export default function ConfigClinica() {
   );
 }
 
-const SUPABASE_FUNCTIONS_URL = 'https://rbzmojurvypksubeigbt.supabase.co/functions/v1';
+const BACKEND_FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
 function WhatsappSetupGuide({ zapiOk }: { zapiOk: boolean }) {
   const { toast } = useToast();
-  const webhookUrl = `${SUPABASE_FUNCTIONS_URL}/whatsapp-webhook`;
+  const webhookUrl = `${BACKEND_FUNCTIONS_URL}/whatsapp-webhook`;
 
   const copiar = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -374,30 +374,12 @@ function WhatsappSetupGuide({ zapiOk }: { zapiOk: boolean }) {
     {
       done: false,
       title: 'LOVABLE_API_KEY configurada (bot IA)',
-      desc: 'Em Supabase → Edge Functions → Secrets, adicione LOVABLE_API_KEY com sua chave da Lovable.dev. Sem ela o bot funciona mas sem IA.',
-      action: (
-        <a
-          href="https://supabase.com/dashboard/project/rbzmojurvypksubeigbt/settings/functions"
-          target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] text-primary underline mt-1"
-        >
-          Abrir Supabase Secrets <ExternalLink className="h-3 w-3" />
-        </a>
-      ),
+      desc: 'Em Backend → Functions/Secrets, adicione LOVABLE_API_KEY com sua chave. Sem ela o bot funciona, mas sem IA.',
     },
     {
       done: false,
       title: 'CRON_SECRET + agendadores ativos',
-      desc: 'Adicione CRON_SECRET (qualquer string secreta) em Supabase Secrets. Depois execute a migration fix_cron_jobs.sql no SQL Editor substituindo "SEU_CRON_SECRET_AQUI".',
-      action: (
-        <a
-          href="https://supabase.com/dashboard/project/rbzmojurvypksubeigbt/sql/new"
-          target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] text-primary underline mt-1"
-        >
-          Abrir SQL Editor <ExternalLink className="h-3 w-3" />
-        </a>
-      ),
+      desc: 'Adicione CRON_SECRET (qualquer string secreta) em Backend → Functions/Secrets. Depois aplique a migration dos agendadores pelo fluxo de backend.',
     },
   ];
 
