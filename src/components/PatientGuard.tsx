@@ -15,7 +15,7 @@ type RoleResult = 'patient' | 'professional' | 'unknown';
 const roleCache = new Map<string, RoleResult>();
 const inflight = new Map<string, Promise<RoleResult>>();
 
-async function resolveRole(userId: string): Promise<RoleResult> {
+async function resolveRole(userId: string, userEmail?: string, userName?: string): Promise<RoleResult> {
   const cached = roleCache.get(userId);
   if (cached && cached !== 'unknown') return cached;
   const existing = inflight.get(userId);
@@ -29,7 +29,14 @@ async function resolveRole(userId: string): Promise<RoleResult> {
     let role: RoleResult;
     if (profissional) role = 'professional';
     else if (paciente) role = 'patient';
-    else role = 'unknown'; // FIX: no profile and no paciente — do NOT default to professional
+    else {
+      // Profile missing — trigger may have failed. Auto-create it so the therapist can proceed.
+      const { error } = await supabase.from('profiles').upsert(
+        { user_id: userId, email: userEmail ?? '', nome: userName ?? '' },
+        { onConflict: 'user_id', ignoreDuplicates: true }
+      );
+      role = error ? 'unknown' : 'professional';
+    }
     roleCache.set(userId, role);
     inflight.delete(userId);
     return role;
@@ -52,7 +59,7 @@ export default function PatientGuard({ children }: { children: ReactNode }) {
       return;
     }
     let active = true;
-    resolveRole(user.id).then((r) => {
+    resolveRole(user.id, user.email, user.user_metadata?.nome as string | undefined).then((r) => {
       if (active) setRole(r);
     }).catch((err) => {
       console.error('[PatientGuard] role lookup failed:', err);
@@ -77,11 +84,8 @@ export default function PatientGuard({ children }: { children: ReactNode }) {
     return <Navigate to="/paciente/dashboard" replace />;
   }
 
-  // FIX: Users with no profile AND no paciente record (e.g., signed up via portal
-  // link but linking failed) MUST NOT see the professional app. Send them to the
-  // patient login so the linking RPC can be retried.
   if (role === 'unknown') {
-    return <Navigate to="/paciente/login" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   return (
