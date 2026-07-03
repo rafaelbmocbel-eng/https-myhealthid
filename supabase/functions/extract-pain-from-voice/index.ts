@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const regionList = regions
       .map((r) => `- ${r.id} → ${r.label}`)
@@ -104,14 +104,14 @@ ${catalogText}`;
       },
     };
 
-    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-3.1-flash-lite",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Transcrição:\n\n${transcript}` },
