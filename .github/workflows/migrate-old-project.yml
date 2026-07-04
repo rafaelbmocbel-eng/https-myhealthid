@@ -90,11 +90,13 @@ jobs:
             echo ""
             echo "=== Migrando: $TABLE ==="
 
+            # Buscar TODOS os registros (sem filtro de terapeuta_id)
+            # para garantir que nenhum paciente referenciado em FK fique faltando
             BODY=$(curl -s \
               -H "apikey: $OLD_KEY" \
               -H "Authorization: Bearer $OLD_KEY" \
               -H "Accept: application/json" \
-              "$OLD_URL/rest/v1/$TABLE?terapeuta_id=eq.$OLD_TID&select=*&limit=5000")
+              "$OLD_URL/rest/v1/$TABLE?select=*&limit=5000")
 
             COUNT=$(echo "$BODY" | jq 'length')
             echo "  📦 $COUNT registros encontrados"
