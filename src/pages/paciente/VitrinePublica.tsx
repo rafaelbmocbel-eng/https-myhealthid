@@ -176,9 +176,10 @@ export default function VitrinePublica() {
 
   const categoriaAtiva = searchParams.get('categoria') || 'Todos';
 
-  const { data: terapeutas = [], isLoading } = useQuery({
+  const { data: terapeutas = [], isLoading, isError } = useQuery({
     queryKey: ['vitrine-terapeutas'],
     staleTime: 60_000,
+    retry: 1,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('vitrine_terapeutas')
@@ -336,6 +337,14 @@ export default function VitrinePublica() {
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Carregando profissionais...</p>
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+            <div className="text-5xl">⚙️</div>
+            <p className="font-semibold text-foreground">Vitrine em configuração</p>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              A vitrine está sendo preparada. Em breve você poderá encontrar profissionais de saúde aqui.
+            </p>
           </div>
         ) : filtrados.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
