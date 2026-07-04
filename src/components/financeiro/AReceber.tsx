@@ -100,7 +100,8 @@ export default function AReceber() {
           forma_recebimento: forma,
           observacao_pagamento: obs || null,
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('terapeuta_id', user!.id);
       if (error) throw error;
     },
     onSuccess: () => {

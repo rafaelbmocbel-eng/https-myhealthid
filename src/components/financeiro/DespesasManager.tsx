@@ -121,7 +121,8 @@ export default function DespesasManager() {
             forma_pagamento: payload.forma_pagamento,
             observacao: payload.observacao,
           })
-          .eq('id', editing.id);
+          .eq('id', editing.id)
+          .eq('terapeuta_id', user!.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from('despesas').insert({
@@ -150,7 +151,7 @@ export default function DespesasManager() {
 
   const mutDelete = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('despesas').delete().eq('id', id);
+      const { error } = await supabase.from('despesas').delete().eq('id', id).eq('terapeuta_id', user!.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -241,7 +242,7 @@ export default function DespesasManager() {
                   step="0.01"
                   min="0"
                   value={form.valor || ''}
-                  onChange={(e) => setForm({ ...form, valor: e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0) })}
+                  onChange={(e) => setForm({ ...form, valor: e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value) || 0) })}
                 />
               </div>
               <div>

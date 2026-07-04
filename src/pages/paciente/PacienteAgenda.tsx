@@ -113,9 +113,10 @@ export default function PacienteAgenda() {
       const from = startOfDay(selectedDate);
       const to = endOfDay(selectedDate);
 
+      // Só busca dados necessários para calcular slots — sem expor informações de outros pacientes
       const { data } = await supabase
         .from('agendamentos')
-        .select('id, data_inicio, data_fim, status, titulo, tipo_atendimento, paciente_id')
+        .select('id, data_inicio, data_fim, status')
         .eq('terapeuta_id', paciente.terapeuta_id)
         .gte('data_inicio', from.toISOString())
         .lte('data_inicio', to.toISOString());
@@ -277,7 +278,8 @@ export default function PacienteAgenda() {
         data_fim: selectedSlot.dataFim.toISOString(),
         status: 'pendente',
       })
-      .eq('id', editingAgendamento.id);
+      .eq('id', editingAgendamento.id)
+      .eq('paciente_id', paciente.id);
 
     if (error) {
       toast({ title: 'Erro ao editar agendamento', description: error.message, variant: 'destructive' });
@@ -310,19 +312,21 @@ export default function PacienteAgenda() {
   };
 
   const handleCancelar = async (agId: string) => {
+    if (!paciente) return;
     const { error } = await supabase
       .from('agendamentos')
       .update({ status: 'cancelado' })
-      .eq('id', agId);
+      .eq('id', agId)
+      .eq('paciente_id', paciente.id);
 
     if (error) {
       toast({ title: 'Erro ao cancelar', description: error.message, variant: 'destructive' });
     } else {
-      // Update controle_sessoes to cancelled
       await supabase
         .from('controle_sessoes')
         .update({ status: 'cancelada' })
-        .eq('agendamento_id', agId);
+        .eq('agendamento_id', agId)
+        .eq('paciente_id', paciente.id);
 
       // Notify therapist about cancellation
       await supabase.from('notificacoes').insert({

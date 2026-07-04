@@ -99,7 +99,7 @@ export default function TissManager() {
                     </div>
                     <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={async () => {
                       if (!confirm('Excluir guia?')) return;
-                      await TABLE('tiss_guias').delete().eq('id', g.id);
+                      await TABLE('tiss_guias').delete().eq('id', g.id).eq('terapeuta_id', user!.id);
                       qc.invalidateQueries({ queryKey: ['tiss-guias'] });
                     }}><Trash2 className="icon-xs" /></Button>
                   </div>
@@ -417,7 +417,7 @@ function NovoLoteDialog({ convenios, guias, config, onCreated }: any) {
     }).select().single();
     if (error || !lote) return toast({ title: 'Erro', description: error?.message, variant: 'destructive' });
 
-    await TABLE('tiss_guias').update({ status: 'em_lote', lote_id: (lote as any).id }).in('id', guiasDoConvenio.map((g: any) => g.id));
+    await TABLE('tiss_guias').update({ status: 'em_lote', lote_id: (lote as any).id }).in('id', guiasDoConvenio.map((g: any) => g.id)).eq('terapeuta_id', user!.id);
     downloadXml(`tiss-lote-${numero_lote}.xml`, xml);
     toast({ title: 'Lote gerado e XML baixado' });
     setOpen(false);

@@ -91,7 +91,8 @@ Deno.serve(async (req) => {
     const stats: Record<string, { enviados: number; erros: number }> = {};
     variantes.forEach(v => stats[v.key] = { enviados: 0, erros: 0 });
 
-    (async () => {
+    // @ts-expect-error -- EdgeRuntime disponível em Supabase Edge Functions
+    EdgeRuntime.waitUntil((async () => {
       let enviados = 0, erros = 0;
       for (const paciente_id of bc.paciente_ids || []) {
         try {
@@ -122,7 +123,7 @@ Deno.serve(async (req) => {
         status: "concluido", concluido_em: new Date().toISOString(),
         enviados, erros, resultado_variantes: stats,
       }).eq("id", broadcast_id);
-    })();
+    })().catch((e) => console.error("agente-broadcast background error:", e)));
 
     return new Response(JSON.stringify({ ok: true, total: (bc.paciente_ids || []).length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

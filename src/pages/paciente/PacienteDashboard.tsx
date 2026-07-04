@@ -86,95 +86,97 @@ export default function PacienteDashboard() {
     if (!user) return;
 
     const fetchData = async () => {
-      const { data: pac } = await supabase
-        .from('pacientes')
-        .select('id, nome, sobrenome, terapeuta_id, cadastro_status')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!pac) { setLoading(false); return; }
-
-      if ((pac as any).cadastro_status === 'pendente_paciente') {
-        navigate('/paciente/completar-cadastro', { replace: true });
-        return;
-      }
-
-      setPaciente(pac);
-
-      if (pac.terapeuta_id) {
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('nome, sobrenome, telefone')
-          .eq('user_id', pac.terapeuta_id)
+      try {
+        const { data: pac, error: pacError } = await supabase
+          .from('pacientes')
+          .select('id, nome, sobrenome, terapeuta_id, cadastro_status')
+          .eq('user_id', user.id)
           .maybeSingle();
-        if (prof) setProfissional({ nome: [prof.nome, prof.sobrenome].filter(Boolean).join(' '), whatsapp: prof.telefone ?? undefined });
-      }
+        if (pacError) throw pacError;
 
-      const now = new Date().toISOString();
+        if (!pac) { return; }
 
-      const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, historiaRes] = await Promise.all([
-        supabase.from('agendamentos')
-          .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
-          .eq('paciente_id', pac.id)
-          .gte('data_inicio', now)
-          .in('status', ['confirmado', 'pendente'])
-          .order('data_inicio', { ascending: true })
-          .limit(3),
-        supabase.from('avaliacoes_identidade')
-          .select('id', { count: 'exact', head: true })
-          .eq('paciente_id', pac.id),
-        supabase.from('controle_sessoes')
-          .select('id', { count: 'exact', head: true })
-          .eq('paciente_id', pac.id)
-          .eq('status', 'realizada'),
-        supabase.from('daily_logs')
-          .select('id', { count: 'exact', head: true })
-          .eq('paciente_id', pac.id),
-        supabase.from('myid_avaliacoes')
-          .select('id', { count: 'exact', head: true })
-          .eq('paciente_id', pac.id)
-          .neq('status', 'concluido'),
-        supabase.from('myid_avaliacoes')
-          .select('id, updated_at')
-          .eq('paciente_id', pac.id)
-          .eq('status', 'concluido')
-          .order('updated_at', { ascending: false })
-          .limit(1),
-        supabase.from('avaliacoes_voz')
-          .select('id', { count: 'exact', head: true })
-          .eq('paciente_id', pac.id),
-      ]);
-
-      setProximasConsultas(agendaRes.data || []);
-      setStats({
-        avaliacoes: avalRes.count || 0,
-        consultas: sessaoRes.count || 0,
-        diarios: diarioRes.count || 0,
-        pendentes: pendentesRes.count || 0,
-        vocais: (historiaRes as any).count || 0,
-      });
-      setHistoriaContada((historiaRes.count || 0) > 0);
-
-      const completedMyIds = lastMyIdRes.data || [];
-      const jaContou = (historiaRes.count || 0) > 0;
-      if (!jaContou) {
-        setShowMyIdPrompt(false);
-      } else if (completedMyIds.length === 0) {
-        setShowMyIdPrompt(true);
-        setMyIdPromptType('first');
-      } else {
-        const daysSince = differenceInDays(new Date(), new Date(completedMyIds[0].updated_at));
-        if (daysSince >= 30) {
-          setShowMyIdPrompt(true);
-          setMyIdPromptType('monthly');
+        if ((pac as any).cadastro_status === 'pendente_paciente') {
+          navigate('/paciente/completar-cadastro', { replace: true });
+          return;
         }
-      }
 
-      setLoading(false);
+        setPaciente(pac);
+
+        if (pac.terapeuta_id) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('nome, sobrenome, telefone')
+            .eq('user_id', pac.terapeuta_id)
+            .maybeSingle();
+          if (prof) setProfissional({ nome: [prof.nome, prof.sobrenome].filter(Boolean).join(' '), whatsapp: prof.telefone ?? undefined });
+        }
+
+        const now = new Date().toISOString();
+
+        const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, avalVozRes] = await Promise.all([
+          supabase.from('agendamentos')
+            .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
+            .eq('paciente_id', pac.id)
+            .gte('data_inicio', now)
+            .in('status', ['confirmado', 'pendente'])
+            .order('data_inicio', { ascending: true })
+            .limit(3),
+          supabase.from('avaliacoes_identidade')
+            .select('id', { count: 'exact', head: true })
+            .eq('paciente_id', pac.id),
+          supabase.from('controle_sessoes')
+            .select('id', { count: 'exact', head: true })
+            .eq('paciente_id', pac.id)
+            .eq('status', 'realizada'),
+          supabase.from('daily_logs')
+            .select('id', { count: 'exact', head: true })
+            .eq('paciente_id', pac.id),
+          supabase.from('myid_avaliacoes')
+            .select('id', { count: 'exact', head: true })
+            .eq('paciente_id', pac.id)
+            .neq('status', 'concluido'),
+          supabase.from('myid_avaliacoes')
+            .select('id, updated_at')
+            .eq('paciente_id', pac.id)
+            .eq('status', 'concluido')
+            .order('updated_at', { ascending: false })
+            .limit(1),
+          supabase.from('avaliacoes_voz')
+            .select('id', { count: 'exact', head: true })
+            .eq('paciente_id', pac.id),
+        ]);
+
+        setProximasConsultas(agendaRes.data || []);
+        setStats({
+          avaliacoes: avalRes.count || 0,
+          consultas: sessaoRes.count || 0,
+          diarios: diarioRes.count || 0,
+          pendentes: pendentesRes.count || 0,
+          vocais: avalVozRes.count || 0,
+        });
+
+        const completedMyIds = lastMyIdRes.data || [];
+        // Mostra prompt do MyID independentemente de avaliação de voz
+        if (completedMyIds.length === 0) {
+          setShowMyIdPrompt(true);
+          setMyIdPromptType('first');
+        } else {
+          const daysSince = differenceInDays(new Date(), new Date(completedMyIds[0].updated_at));
+          if (daysSince >= 30) {
+            setShowMyIdPrompt(true);
+            setMyIdPromptType('monthly');
+          }
+        }
+      } catch (e) {
+        console.error('[PacienteDashboard] fetchData error:', e);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();
-  }, [user]);
+  }, [user, navigate]);
 
   const xp = calcXP(stats);
   const level = getLevel(xp);
