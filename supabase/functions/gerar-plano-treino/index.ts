@@ -61,8 +61,11 @@ Restrições/lesões: ${restricoes || 'nenhuma'}
 
 Gere o plano periodizado completo em JSON.`.trim();
 
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 45_000);
     const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
+      signal: ctrl.signal,
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gemini-2.5-flash",

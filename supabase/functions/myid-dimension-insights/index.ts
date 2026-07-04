@@ -114,8 +114,11 @@ function filterRespostas(respostas: Record<string, any>, dimensao: string): Reco
 
 async function embed(text: string): Promise<number[] | null> {
   try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 30_000);
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/embeddings', {
       method: 'POST',
+      signal: ctrl.signal,
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-embedding-001',
@@ -231,8 +234,11 @@ Retorne JSON estrito (sem markdown, sem \`\`\`):
   "integracao_diretriz": "string (1-2 frases)"
 }`;
 
+    const aiCtrl = new AbortController();
+    setTimeout(() => aiCtrl.abort(), 45_000);
     const aiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
       method: 'POST',
+      signal: aiCtrl.signal,
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',

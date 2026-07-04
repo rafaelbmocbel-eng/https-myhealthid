@@ -2,11 +2,7 @@
 // whether credits are available. Returns a normalized status payload.
 // Designed to be called periodically from the client (cached ~5 min).
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { corsHeaders, requireUser } from "../_shared/auth.ts";
 
 type Status = "active" | "exhausted" | "rate_limited" | "unconfigured" | "error";
 
@@ -14,6 +10,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  try { await requireUser(req); } catch (r) { return r as Response; }
 
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const checkedAt = new Date().toISOString();

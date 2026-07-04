@@ -11,8 +11,11 @@ const corsHeaders = {
 async function gerarMensagem(systemPrompt: string, instrucao: string): Promise<string> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("GEMINI_API_KEY ausente");
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), 45_000);
   const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
+    signal: ctrl.signal,
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "gemini-3.1-flash-lite",

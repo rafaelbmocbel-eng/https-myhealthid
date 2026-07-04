@@ -1,14 +1,12 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { corsHeaders, requireUser } from "../_shared/auth.ts";
 import { getCachedDeterministic, saveCache, sha256Hex } from "../_shared/ai-cache.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  let userId: string;
+  try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
 
   try {
     const { pacienteId } = await req.json();
@@ -20,13 +18,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Validar usuário
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Não autenticado");
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData } = await supabase.auth.getUser(token);
-    if (!userData?.user) throw new Error("Não autenticado");
-
     // Paciente — valida ownership (terapeuta dono OU o próprio paciente)
     const { data: paciente } = await supabase
       .from("pacientes")
@@ -34,7 +25,7 @@ serve(async (req) => {
       .eq("id", pacienteId)
       .maybeSingle();
 
-    if (!paciente || (paciente.terapeuta_id !== userData.user.id && paciente.user_id !== userData.user.id)) {
+    if (!paciente || (paciente.terapeuta_id !== userId && paciente.user_id !== userId)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -119,8 +110,11 @@ Resultado: ${JSON.stringify(myid?.resultado_processado ?? {}).slice(0, 2500)}
 
 Mantenha tudo em no máximo 8 linhas no total. Sem introdução, sem despedida.`;
 
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 45_000);
     const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
+      signal: ctrl.signal,
       headers: {
         Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",

@@ -193,7 +193,7 @@ export default function PacienteLogin() {
       }
     } else {
       try {
-        const { error } = await withAuthLockRetry(() =>
+        const { data: signUpData, error } = await withAuthLockRetry(() =>
           supabase.auth.signUp({
             email: form.email,
             password: form.password,
@@ -256,6 +256,13 @@ export default function PacienteLogin() {
             return;
           }
           toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
+          setSubmitting(false);
+        } else if (!signUpData?.session) {
+          // Email confirmation required — user won't be logged in automatically
+          toast({
+            title: 'Verifique seu e-mail',
+            description: 'Clique no link que enviamos para ativar sua conta e depois faça login.',
+          });
           setSubmitting(false);
         } else {
           toast({ title: 'Conta criada!', description: 'Conectando ao portal...' });
