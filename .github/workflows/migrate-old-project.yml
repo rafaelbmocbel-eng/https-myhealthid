@@ -75,6 +75,47 @@ jobs:
             -H "Authorization: Bearer $OLD_KEY" \
             "$OLD_URL/rest/v1/" | jq -r '.definitions | keys[]' | sort
 
+      - name: Migrar equipe_membros primeiro (necessário para FK de pacientes e agendamentos)
+        env:
+          OLD_URL: "https://rbzmojurvypksubeigbt.supabase.co"
+          NEW_URL: "https://zxulglbcxehqplxainmz.supabase.co"
+          OLD_KEY: ${{ secrets.SUPABASE_OLD_SERVICE_ROLE_KEY }}
+          NEW_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OLD_TID: "808647e5-1d3b-4e3a-8886-d835b1117e2c"
+          NEW_TID: "44266838-326c-452d-bebf-e617ac0f3470"
+        run: |
+          set +e
+          echo "=== Migrando: equipe_membros ==="
+          BODY=$(curl -s \
+            -H "apikey: $OLD_KEY" \
+            -H "Authorization: Bearer $OLD_KEY" \
+            -H "Accept: application/json" \
+            "$OLD_URL/rest/v1/equipe_membros?terapeuta_id=eq.$OLD_TID&select=*&limit=1000")
+          COUNT=$(echo "$BODY" | jq 'length')
+          echo "  📦 $COUNT registros encontrados"
+          if [ "$COUNT" = "0" ] || [ -z "$COUNT" ]; then
+            echo "  ⏭️  Nenhum registro — pulando"
+          else
+            PAYLOAD_FILE=$(mktemp /tmp/payload_XXXXXX.json)
+            echo "$BODY" | jq --arg new "$NEW_TID" '[.[] | .terapeuta_id = $new]' > "$PAYLOAD_FILE"
+            RESULT=$(curl -s -o /tmp/curl_out.txt -w "%{http_code}" \
+              -X POST \
+              -H "apikey: $NEW_KEY" \
+              -H "Authorization: Bearer $NEW_KEY" \
+              -H "Content-Type: application/json" \
+              -H "Prefer: resolution=merge-duplicates,return=minimal" \
+              "$NEW_URL/rest/v1/equipe_membros" \
+              --data @"$PAYLOAD_FILE")
+            rm -f "$PAYLOAD_FILE"
+            if [ "$RESULT" = "200" ] || [ "$RESULT" = "201" ] || [ "$RESULT" = "204" ]; then
+              echo "  ✅ equipe_membros: $COUNT registros sincronizados (HTTP $RESULT)"
+            else
+              echo "  ❌ equipe_membros: erro (HTTP $RESULT)"
+              cat /tmp/curl_out.txt | head -c 800
+              echo ""
+            fi
+          fi
+
       - name: Migrar pacientes e agendamentos primeiro
         env:
           OLD_URL: "https://rbzmojurvypksubeigbt.supabase.co"
@@ -412,7 +453,7 @@ jobs:
           echo "======================================="
 
           # Tabelas com terapeuta_id
-          for TABLE in pacientes agendamentos controle_sessoes notas_prontuario avaliacoes avaliacoes_identidade avaliacoes_voz pagamentos_paciente; do
+          for TABLE in equipe_membros pacientes agendamentos controle_sessoes notas_prontuario avaliacoes avaliacoes_identidade avaliacoes_voz pagamentos_paciente; do
             COUNT=$(curl -s \
               -H "apikey: $NEW_KEY" \
               -H "Authorization: Bearer $NEW_KEY" \
