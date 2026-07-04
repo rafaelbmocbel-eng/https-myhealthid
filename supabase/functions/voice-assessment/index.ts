@@ -1,3 +1,4 @@
+// deploy trigger 2026-07-04
 import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
