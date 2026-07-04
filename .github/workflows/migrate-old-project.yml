@@ -12,6 +12,18 @@ jobs:
       - name: Instalar postgresql-client
         run: sudo apt-get install -y postgresql-client -q
 
+      - name: Testar conexão com banco antigo
+        env:
+          OLD_DB: ${{ secrets.SUPABASE_OLD_DB_URL }}
+        run: |
+          if [ -z "$OLD_DB" ]; then
+            echo "❌ ERRO: Secret SUPABASE_OLD_DB_URL não está configurado!"
+            exit 1
+          fi
+          echo "Testando conexão com banco antigo..."
+          psql "$OLD_DB" -c "SELECT version();" -t 2>&1 | head -3
+          echo "✅ Conexão OK"
+
       - name: Migrar tabelas com terapeuta_id
         env:
           OLD_DB: ${{ secrets.SUPABASE_OLD_DB_URL }}
@@ -19,6 +31,7 @@ jobs:
           OLD_TID: "808647e5-1d3b-4e3a-8886-d835b1117e2c"
           NEW_TID: "44266838-326c-452d-bebf-e617ac0f3470"
         run: |
+          set +e
           echo "=== Descobrindo tabelas com terapeuta_id ==="
           TABLES=$(psql "$OLD_DB" -t -A -c "
             SELECT table_name
@@ -36,15 +49,12 @@ jobs:
             echo ""
             echo "=== Migrando: $TABLE ==="
 
-            # Conta registros no banco antigo
             OLD_COUNT=$(psql "$OLD_DB" -t -A -c \
               "SELECT COUNT(*) FROM public.\"$TABLE\" WHERE terapeuta_id = '$OLD_TID';" 2>/dev/null || echo "?")
             echo "  Registros no banco antigo: $OLD_COUNT"
 
-            # Desabilita RLS no banco novo
-            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" DISABLE ROW LEVEL SECURITY;" 2>/dev/null || true
+            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" DISABLE ROW LEVEL SECURITY;" 2>/dev/null
 
-            # Extrai, transforma e importa
             pg_dump "$OLD_DB" \
               --data-only \
               --inserts \
@@ -55,13 +65,10 @@ jobs:
               grep "^INSERT INTO" | \
               sed "s/$OLD_TID/$NEW_TID/g" | \
               awk '{sub(/;$/, " ON CONFLICT DO NOTHING;"); print}' | \
-              psql "$NEW_DB" --set ON_ERROR_STOP=0 2>&1 | \
-              grep -v "^$" | grep -v "^INSERT" | head -10 || true
+              psql "$NEW_DB" 2>&1 | grep -v "^INSERT" | grep -v "^$" | head -10
 
-            # Reabilita RLS
-            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" ENABLE ROW LEVEL SECURITY;" 2>/dev/null || true
+            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" ENABLE ROW LEVEL SECURITY;" 2>/dev/null
 
-            # Conta registros importados
             NEW_COUNT=$(psql "$NEW_DB" -t -A -c \
               "SELECT COUNT(*) FROM public.\"$TABLE\" WHERE terapeuta_id = '$NEW_TID';" 2>/dev/null || echo "?")
             echo "  ✅ $TABLE: $NEW_COUNT registros importados"
@@ -72,12 +79,10 @@ jobs:
           OLD_DB: ${{ secrets.SUPABASE_OLD_DB_URL }}
           NEW_DB: ${{ secrets.SUPABASE_DB_URL }}
           OLD_TID: "808647e5-1d3b-4e3a-8886-d835b1117e2c"
-          NEW_TID: "44266838-326c-452d-bebf-e617ac0f3470"
         run: |
-          echo ""
+          set +e
           echo "=== Tabelas com paciente_id mas sem terapeuta_id ==="
 
-          # Tabelas que têm paciente_id mas não terapeuta_id (dados clínicos por paciente)
           TABLES=$(psql "$OLD_DB" -t -A -c "
             SELECT c1.table_name
             FROM information_schema.columns c1
@@ -94,7 +99,6 @@ jobs:
           echo "Tabelas encontradas:"
           echo "$TABLES"
 
-          # Lista de paciente_ids migrados (para filtrar só os dados relevantes)
           for TABLE in $TABLES; do
             echo ""
             echo "=== Migrando: $TABLE ==="
@@ -105,7 +109,7 @@ jobs:
                WHERE p.terapeuta_id = '$OLD_TID';" 2>/dev/null || echo "?")
             echo "  Registros no banco antigo: $OLD_COUNT"
 
-            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" DISABLE ROW LEVEL SECURITY;" 2>/dev/null || true
+            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" DISABLE ROW LEVEL SECURITY;" 2>/dev/null
 
             pg_dump "$OLD_DB" \
               --data-only \
@@ -116,10 +120,9 @@ jobs:
               2>/dev/null | \
               grep "^INSERT INTO" | \
               awk '{sub(/;$/, " ON CONFLICT DO NOTHING;"); print}' | \
-              psql "$NEW_DB" --set ON_ERROR_STOP=0 2>&1 | \
-              grep -v "^$" | grep -v "^INSERT" | head -10 || true
+              psql "$NEW_DB" 2>&1 | grep -v "^INSERT" | grep -v "^$" | head -10
 
-            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" ENABLE ROW LEVEL SECURITY;" 2>/dev/null || true
+            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" ENABLE ROW LEVEL SECURITY;" 2>/dev/null
 
             NEW_COUNT=$(psql "$NEW_DB" -t -A -c \
               "SELECT COUNT(*) FROM public.\"$TABLE\";" 2>/dev/null || echo "?")
@@ -127,21 +130,12 @@ jobs:
           done
 
       - name: Resumo da migração
+        if: always()
         env:
           NEW_DB: ${{ secrets.SUPABASE_DB_URL }}
           NEW_TID: "44266838-326c-452d-bebf-e617ac0f3470"
         run: |
           echo ""
           echo "=== RESUMO FINAL ==="
-          psql "$NEW_DB" -c "
-            SELECT table_name,
-                   (SELECT COUNT(*) FROM public.pacientes WHERE terapeuta_id = '$NEW_TID') AS pacientes,
-                   (SELECT COUNT(*) FROM public.agendamentos WHERE terapeuta_id = '$NEW_TID') AS agendamentos
-            FROM information_schema.tables
-            WHERE table_schema = 'public'
-            LIMIT 1;
-          " 2>/dev/null || true
-
-          echo ""
-          echo "Pacientes: $(psql "$NEW_DB" -t -A -c "SELECT COUNT(*) FROM public.pacientes WHERE terapeuta_id = '$NEW_TID';")"
-          echo "Agendamentos: $(psql "$NEW_DB" -t -A -c "SELECT COUNT(*) FROM public.agendamentos WHERE terapeuta_id = '$NEW_TID';")"
+          echo "Pacientes:    $(psql "$NEW_DB" -t -A -c "SELECT COUNT(*) FROM public.pacientes WHERE terapeuta_id = '$NEW_TID';" 2>/dev/null)"
+          echo "Agendamentos: $(psql "$NEW_DB" -t -A -c "SELECT COUNT(*) FROM public.agendamentos WHERE terapeuta_id = '$NEW_TID';" 2>/dev/null)"
