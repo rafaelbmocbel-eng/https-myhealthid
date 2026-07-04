@@ -2,7 +2,7 @@
 // Generates embeddings via Lovable AI and stores in evidence_library.
 // Can be called manually or via pg_cron weekly.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { requireInternal } from "../_shared/auth.ts";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -266,7 +266,7 @@ async function runIngestion(opts: {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  try { requireInternal(req); } catch (r) { return r as Response; }
+  try { await requireUser(req); } catch (r) { return r as Response; }
 
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
