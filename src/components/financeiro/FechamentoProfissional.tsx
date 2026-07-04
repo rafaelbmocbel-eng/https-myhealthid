@@ -81,7 +81,7 @@ export default function FechamentoProfissional() {
       }
       return {
         id: s.id,
-        data: new Date(s.data_sessao),
+        data: new Date(s.data_sessao + 'T12:00:00'),
         paciente: `${s.pacientes?.nome || ''} ${s.pacientes?.sobrenome || ''}`.trim() || '—',
         tipo: tipo(s),
         convenio: convNome(s),
@@ -118,7 +118,7 @@ export default function FechamentoProfissional() {
       profissional: profissionalNome,
       periodo: label,
       linhas: linhas.map((l) => ({
-        data: format(l.data, 'dd/MM HH:mm'),
+        data: format(l.data, 'dd/MM'),
         paciente: l.paciente,
         tipo: l.tipo,
         convenio: l.convenio,

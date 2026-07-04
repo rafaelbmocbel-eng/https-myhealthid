@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AppErrorBoundary from './AppErrorBoundary';
 
 /**
- * Wraps therapist-only routes. If the logged-in user is a patient, they are
+ * Wraps professional-only routes. If the logged-in user is a patient, they are
  * redirected to /paciente/dashboard. The role lookup is cached per user-id in
  * memory so navigation between professional routes does not re-query the DB.
  */
@@ -46,7 +46,7 @@ async function resolveRole(userId: string, userEmail?: string, userName?: string
   return promise;
 }
 
-export default function PatientGuard({ children }: { children: ReactNode }) {
+export default function ProfessionalGuard({ children }: { children: ReactNode }) {
   const { user, loading, authReady } = useAuth();
   const location = useLocation();
   const initial = user ? roleCache.get(user.id) ?? null : null;

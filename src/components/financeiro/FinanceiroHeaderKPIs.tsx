@@ -117,7 +117,7 @@ export default function FinanceiroHeaderKPIs() {
     {
       label: 'Faturado',
       value: fmt(atual.faturado),
-      sub: `${atual.sessoes} ${atual.sessoes === 1 ? 'sessão' : 'sessões'}`,
+      sub: `${atual.sessoes} ${atual.sessoes === 1 ? 'sessão' : 'sessões'}${atual.aFaturar ? ` · ${atual.aFaturar} sem valor` : ''}`,
       delta: delta(atual.faturado, anterior.faturado),
       icon: DollarSign,
       tone: 'emerald',

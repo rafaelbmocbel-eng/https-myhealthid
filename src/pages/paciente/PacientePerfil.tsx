@@ -20,7 +20,7 @@ export default function PacientePerfil() {
     if (!user) return;
     supabase
       .from('pacientes')
-      .select('*')
+      .select('id, nome, sobrenome, email, telefone, data_nascimento, avatar_url')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }) => setPaciente(data));

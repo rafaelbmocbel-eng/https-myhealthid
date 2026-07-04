@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Suspense } from "react";
-import PatientGuard from "./components/PatientGuard";
+import ProfessionalGuard from "./components/PatientGuard";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import PortalErrorBoundary from "./components/paciente/PortalErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
@@ -129,7 +129,7 @@ const App = () => (
             <Suspense fallback={<LazyFallback />}>
               <Routes>
                 <Route path="/" element={<LandingPublica />} />
-                <Route path="/inicio-app" element={<PatientGuard><Index /></PatientGuard>} />
+                <Route path="/inicio-app" element={<ProfessionalGuard><Index /></ProfessionalGuard>} />
                 <Route path="/index" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/inicio" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/auth" element={<Auth />} />
@@ -139,11 +139,11 @@ const App = () => (
                 <Route path="/demo" element={<DemoMyID />} />
                 <Route path="/avaliacoes" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/studio-personal-id" element={<Navigate to="/pacientes" replace />} />
-                <Route path="/agenda" element={<PatientGuard><Agenda /></PatientGuard>} />
-                <Route path="/hoje" element={<PatientGuard><Hoje /></PatientGuard>} />
-                <Route path="/pacientes" element={<PatientGuard><Pacientes /></PatientGuard>} />
-                <Route path="/pendencias" element={<PatientGuard><Pendencias /></PatientGuard>} />
-                <Route path="/pacientes/:id" element={<PatientGuard><PacientePerfil /></PatientGuard>} />
+                <Route path="/agenda" element={<ProfessionalGuard><Agenda /></ProfessionalGuard>} />
+                <Route path="/hoje" element={<ProfessionalGuard><Hoje /></ProfessionalGuard>} />
+                <Route path="/pacientes" element={<ProfessionalGuard><Pacientes /></ProfessionalGuard>} />
+                <Route path="/pendencias" element={<ProfessionalGuard><Pendencias /></ProfessionalGuard>} />
+                <Route path="/pacientes/:id" element={<ProfessionalGuard><PacientePerfil /></ProfessionalGuard>} />
                 <Route path="/protocolos" element={<Navigate to="/pacientes" replace />} />
 
                 <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
@@ -153,21 +153,21 @@ const App = () => (
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 
-                <Route path="/crm" element={<PatientGuard><CrmHub /></PatientGuard>} />
+                <Route path="/crm" element={<ProfessionalGuard><CrmHub /></ProfessionalGuard>} />
                 <Route path="/crm/inbox" element={<Navigate to="/crm?tab=inbox" replace />} />
                 <Route path="/crm/automacoes" element={<Navigate to="/crm?tab=automacoes" replace />} />
                 <Route path="/crm/pipeline" element={<Navigate to="/crm?tab=pipeline" replace />} />
                 <Route path="/crm/cadencias" element={<Navigate to="/crm?tab=cadencias" replace />} />
                 <Route path="/crm/metricas" element={<Navigate to="/crm?tab=metricas" replace />} />
                 <Route path="/crm/trafego" element={<Navigate to="/crm?tab=trafego" replace />} />
-                <Route path="/eventos" element={<PatientGuard><Eventos /></PatientGuard>} />
+                <Route path="/eventos" element={<ProfessionalGuard><Eventos /></ProfessionalGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
                 <Route path="/portal/completar/:token" element={<CompletarCadastro />} />
-                <Route path="/configuracoes" element={<PatientGuard><Configuracoes /></PatientGuard>} />
-                <Route path="/configuracoes/exportar" element={<PatientGuard><ExportarDados /></PatientGuard>} />
+                <Route path="/configuracoes" element={<ProfessionalGuard><Configuracoes /></ProfessionalGuard>} />
+                <Route path="/configuracoes/exportar" element={<ProfessionalGuard><ExportarDados /></ProfessionalGuard>} />
                 <Route path="/financeiro" element={<Navigate to="/pacientes?tab=financeiro" replace />} />
-                <Route path="/base-cientifica" element={<PatientGuard><BaseCientifica /></PatientGuard>} />
+                <Route path="/base-cientifica" element={<ProfessionalGuard><BaseCientifica /></ProfessionalGuard>} />
 
                 {/* Patient Portal */}
                 <Route path="/paciente/login" element={<PortalErrorBoundary><PacienteLogin /></PortalErrorBoundary>} />

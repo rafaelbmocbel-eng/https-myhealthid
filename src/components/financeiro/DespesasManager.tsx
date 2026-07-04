@@ -79,7 +79,7 @@ export default function DespesasManager() {
     };
   }, [mesOffset]);
 
-  const { data: despesas = [], isLoading } = useQuery({
+  const { data: despesas = [], isLoading, isError } = useQuery({
     queryKey: ['despesas', user?.id, periodo.ini],
     enabled: !!user,
     queryFn: async () => {
@@ -313,6 +313,8 @@ export default function DespesasManager() {
       {/* Lista */}
       {isLoading ? (
         <SkeletonList rows={3} avatar={false} />
+      ) : isError ? (
+        <p className="text-sm text-destructive py-6 text-center">Erro ao carregar despesas. Tente recarregar a página.</p>
       ) : despesas.length === 0 ? (
         <EmptyState
           illustration="inbox"

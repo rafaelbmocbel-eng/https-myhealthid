@@ -57,7 +57,7 @@ export default function AReceber() {
   const [formaRecebimento, setFormaRecebimento] = useState('pix');
   const [observacao, setObservacao] = useState('');
 
-  const { data: sessoes = [], isLoading } = useQuery({
+  const { data: sessoes = [], isLoading, isError } = useQuery({
     queryKey: ['a-receber', user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -130,6 +130,10 @@ export default function AReceber() {
 
   if (isLoading) {
     return <SkeletonList rows={4} avatar={false} />;
+  }
+
+  if (isError) {
+    return <p className="text-sm text-destructive py-6 text-center">Erro ao carregar pendências. Tente recarregar a página.</p>;
   }
 
   if (sessoes.length === 0) {
