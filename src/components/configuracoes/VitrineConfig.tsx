@@ -10,8 +10,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Store, Eye, EyeOff, X, Plus, Loader2, ExternalLink, CheckCircle2, Clock, XCircle } from 'lucide-react';
-import { useQueryClient as useQC } from '@tanstack/react-query';
+import { Store, Eye, X, Plus, Loader2, ExternalLink, CheckCircle2, XCircle, Monitor, Building2, Globe } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -24,6 +24,7 @@ type VitrineData = {
   vitrine_cidade: string;
   vitrine_valor_sessao: string;
   vitrine_foto_url: string;
+  vitrine_modalidade: 'presencial' | 'online' | 'ambos';
 };
 
 type Solicitacao = {
@@ -53,6 +54,7 @@ export default function VitrineConfig() {
     vitrine_cidade: '',
     vitrine_valor_sessao: '',
     vitrine_foto_url: '',
+    vitrine_modalidade: 'presencial',
   });
   const [novaEspecialidade, setNovaEspecialidade] = useState('');
   const [novoConvenio, setNovoConvenio] = useState('');
@@ -96,6 +98,7 @@ export default function VitrineConfig() {
       vitrine_cidade: config.vitrine_cidade || config.cidade || '',
       vitrine_valor_sessao: config.vitrine_valor_sessao?.toString() || '',
       vitrine_foto_url: config.vitrine_foto_url || '',
+      vitrine_modalidade: (config as any).vitrine_modalidade || 'presencial',
     });
   }, [config]);
 
@@ -110,6 +113,7 @@ export default function VitrineConfig() {
         vitrine_cidade: data.vitrine_cidade || null,
         vitrine_valor_sessao: data.vitrine_valor_sessao ? parseFloat(data.vitrine_valor_sessao) : null,
         vitrine_foto_url: data.vitrine_foto_url || null,
+        vitrine_modalidade: data.vitrine_modalidade,
       };
       const { error } = await supabase
         .from('config_clinica')
@@ -221,6 +225,29 @@ export default function VitrineConfig() {
             onChange={(e) => setForm((f) => ({ ...f, vitrine_valor_sessao: e.target.value }))}
             placeholder="Ex: 150"
           />
+        </div>
+
+        <div>
+          <Label>Modalidade de atendimento</Label>
+          <Select
+            value={form.vitrine_modalidade}
+            onValueChange={(v) => setForm((f) => ({ ...f, vitrine_modalidade: v as VitrineData['vitrine_modalidade'] }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="presencial">
+                <span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> Presencial</span>
+              </SelectItem>
+              <SelectItem value="online">
+                <span className="flex items-center gap-2"><Monitor className="h-3.5 w-3.5" /> Online</span>
+              </SelectItem>
+              <SelectItem value="ambos">
+                <span className="flex items-center gap-2"><Globe className="h-3.5 w-3.5" /> Presencial + Online</span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="sm:col-span-2">
