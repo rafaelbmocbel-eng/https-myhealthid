@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
@@ -10,7 +10,6 @@ import { Loader2 } from 'lucide-react';
  */
 export default function PortalGate() {
   const { token } = useParams();
-  const [searchParams] = useSearchParams();
   const [ready, setReady] = useState(false);
   const [PacienteLogin, setPacienteLogin] = useState<React.ComponentType | null>(null);
   const [demorandoMuito, setDemorandoMuito] = useState(false);

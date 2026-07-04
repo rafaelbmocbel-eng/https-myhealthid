@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { Suspense, forwardRef } from "react";
+import { Suspense } from "react";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import PortalErrorBoundary from "./components/paciente/PortalErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
@@ -69,12 +69,13 @@ const queryClient = new QueryClient({
   },
 });
 
-const LazyFallback = forwardRef<HTMLDivElement>((_props, ref) => (
-  <div ref={ref} className="min-h-screen flex items-center justify-center bg-background">
-    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-  </div>
-));
-LazyFallback.displayName = "LazyFallback";
+function LazyFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+    </div>
+  );
+}
 
 // Prefetch em idle das rotas mais usadas pelo paciente
 if (typeof window !== "undefined") {

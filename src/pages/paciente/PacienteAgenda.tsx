@@ -50,6 +50,7 @@ function buildGoogleCalendarUrl(titulo: string, dataInicio: string | Date, dataF
     text: titulo,
     dates: `${toGoogleDate(dataInicio)}/${toGoogleDate(dataFim)}`,
     details: 'Sessão agendada via MyHealth ID',
+    ctz: 'America/Sao_Paulo',
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
