@@ -24,7 +24,7 @@ export default function PacienteChat() {
       .eq('user_id', user.id)
       .eq('ativo', true)
       .limit(1)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         setPaciente(data);
         setLoading(false);

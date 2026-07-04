@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { lazy, Suspense, forwardRef } from "react";
+import { Suspense, forwardRef } from "react";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import PortalErrorBoundary from "./components/paciente/PortalErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
@@ -14,18 +14,18 @@ import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
 
 // Páginas públicas (links compartilhados pelo profissional que o paciente recebe)
-const AvaliacaoPublica = lazy(() => import("./pages/AvaliacaoPublica"));
-const AgendaPublica = lazy(() => import("./pages/AgendaPublica"));
-const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
-const MyIDView = lazy(() => import("./pages/MyIDView"));
-const FunilPublico = lazy(() => import("./pages/FunilPublico"));
-const EventoPublico = lazy(() => import("./pages/EventoPublico"));
-const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
-const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
-const RecuperarSenha = lazy(() => import("./pages/RecuperarSenha"));
-const NovaSenha = lazy(() => import("./pages/NovaSenha"));
-const WellnessCadastro = lazy(() => import("./pages/WellnessCadastro"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+const AvaliacaoPublica = lazyWithRetry(() => import("./pages/AvaliacaoPublica"));
+const AgendaPublica = lazyWithRetry(() => import("./pages/AgendaPublica"));
+const MyIDResponder = lazyWithRetry(() => import("./pages/MyIDResponder"));
+const MyIDView = lazyWithRetry(() => import("./pages/MyIDView"));
+const FunilPublico = lazyWithRetry(() => import("./pages/FunilPublico"));
+const EventoPublico = lazyWithRetry(() => import("./pages/EventoPublico"));
+const CadastroCliente = lazyWithRetry(() => import("./pages/CadastroCliente"));
+const CompletarCadastro = lazyWithRetry(() => import("./pages/CompletarCadastro"));
+const RecuperarSenha = lazyWithRetry(() => import("./pages/RecuperarSenha"));
+const NovaSenha = lazyWithRetry(() => import("./pages/NovaSenha"));
+const WellnessCadastro = lazyWithRetry(() => import("./pages/WellnessCadastro"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 // Portal do paciente
 const PacienteLogin = lazyWithRetry(() => import("./pages/paciente/PacienteLogin"));
@@ -57,7 +57,7 @@ const queryClient = new QueryClient({
       },
       retryDelay: (attemptIndex, error) => {
         if (isAuthLockTimeoutError(error)) return Math.min(500 * 2 ** (attemptIndex - 1), 5000);
-        return Math.min(1000 * attemptIndex, 3000);
+        return Math.min(1000 * (attemptIndex + 1), 3000);
       },
       refetchOnWindowFocus: false,
       refetchOnReconnect: 'always',

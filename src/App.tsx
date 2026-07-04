@@ -30,15 +30,8 @@ const Pacientes = lazyWithRetry(() => import("./pages/Pacientes"));
 const PacientePerfil = lazyWithRetry(() => import("./pages/PacientePerfil"));
 const AvaliacaoPublica = lazyWithRetry(() => import("./pages/AvaliacaoPublica"));
 const AgendaPublica = lazyWithRetry(() => import("./pages/AgendaPublica"));
-const GestaoVendas = lazyWithRetry(() => import("./pages/GestaoVendas"));
 const Configuracoes = lazyWithRetry(() => import("./pages/Configuracoes"));
-const Financeiro = lazyWithRetry(() => import("./pages/Financeiro"));
 const CrmHub = lazyWithRetry(() => import("./pages/CrmHub"));
-const CrmInbox = lazyWithRetry(() => import("./pages/CrmInbox"));
-const WhatsappAutomacoes = lazyWithRetry(() => import("./pages/WhatsappAutomacoes"));
-const CrmPipeline = lazyWithRetry(() => import("./pages/CrmPipeline"));
-const CrmCadencias = lazyWithRetry(() => import("./pages/CrmCadencias"));
-const CrmMetricas = lazyWithRetry(() => import("./pages/CrmMetricas"));
 const FunilPublico = lazyWithRetry(() => import("./pages/FunilPublico"));
 const Eventos = lazyWithRetry(() => import("./pages/Eventos"));
 const EventoPublico = lazyWithRetry(() => import("./pages/EventoPublico"));
@@ -89,7 +82,7 @@ const queryClient = new QueryClient({
         if (isAuthLockTimeoutError(error)) {
           return Math.min(500 * 2 ** (attemptIndex - 1), 5000);
         }
-        return Math.min(1000 * attemptIndex, 3000);
+        return Math.min(1000 * (attemptIndex + 1), 3000);
       },
       refetchOnWindowFocus: false,
       refetchOnReconnect: 'always',
