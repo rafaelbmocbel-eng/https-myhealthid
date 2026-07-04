@@ -1,5 +1,4 @@
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { requireUser } from '../_shared/auth.ts';
+import { corsHeaders, requireUser } from '../_shared/auth.ts';
 
 interface Body {
   tipo: 'exercicios' | 'tecnicas';

@@ -1,6 +1,5 @@
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { requireUser } from '../_shared/auth.ts';
+import { corsHeaders, requireUser } from '../_shared/auth.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;

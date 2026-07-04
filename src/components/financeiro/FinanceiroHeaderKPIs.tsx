@@ -81,8 +81,7 @@ export default function FinanceiroHeaderKPIs() {
     const anterior = empty();
 
     (data?.sessoes || []).forEach((s: any) => {
-      const d = new Date(s.data_sessao).toISOString();
-      const bucket = d >= periodos.atualIni ? atual : anterior;
+      const bucket = s.data_sessao >= periodos.atualIni.slice(0, 10) ? atual : anterior;
       const valor = Number(s.valor_cobrado) || 0;
       bucket.sessoes += 1;
       if (valor <= 0) bucket.aFaturar += 1;

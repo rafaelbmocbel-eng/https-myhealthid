@@ -504,7 +504,7 @@ Avaliação via MyID-100 v2.0. Dados completos no dashboard.`;
 
   } catch (err: any) {
     console.error("complete-myid error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: "Erro interno ao processar avaliação" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

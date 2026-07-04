@@ -45,44 +45,47 @@ export default function PacienteEvolucao() {
   const [myidScores, setMyidScores] = useState<MyIDScore[]>([]);
   const [notas, setNotas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pacienteId, setPacienteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: pac } = await supabase
-        .from('pacientes')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      try {
+        const { data: pac } = await supabase
+          .from('pacientes')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (!pac) { setLoading(false); return; }
-      setPacienteId(pac.id);
+        if (!pac) return;
 
-      const [logsRes, evolRes, notasRes] = await Promise.all([
-        supabase.from('daily_logs').select('*').eq('paciente_id', pac.id)
-          .order('created_at', { ascending: true }).limit(90),
-        supabase.from('evolucao_paciente').select('*').eq('paciente_id', pac.id)
-          .order('data_registro', { ascending: true }),
-        (supabase as any).from('notas_prontuario').select('*').eq('paciente_id', pac.id)
-          .order('created_at', { ascending: false }).limit(50),
-      ]);
+        const [logsRes, evolRes, notasRes] = await Promise.all([
+          supabase.from('daily_logs').select('*').eq('paciente_id', pac.id)
+            .order('created_at', { ascending: true }).limit(90),
+          supabase.from('evolucao_paciente').select('*').eq('paciente_id', pac.id)
+            .order('data_registro', { ascending: true }),
+          (supabase as any).from('notas_prontuario').select('*').eq('paciente_id', pac.id)
+            .order('created_at', { ascending: false }).limit(50),
+        ]);
 
-      setLogs((logsRes.data as DailyLogEntry[]) || []);
-      setMyidScores(
-        (evolRes.data || []).map((e: any) => ({
-          date: e.data_registro,
-          myid_score: e.myid_score ?? e.id_final ?? 0,
-          score_d: e.score_d,
-          score_f: e.score_f,
-          score_p: e.score_p,
-          score_e: e.score_e,
-          score_efi: e.score_efi,
-          id_final: e.id_final,
-        }))
-      );
-      setNotas(notasRes.data || []);
-      setLoading(false);
+        setLogs((logsRes.data as DailyLogEntry[]) || []);
+        setMyidScores(
+          (evolRes.data || []).map((e: any) => ({
+            date: e.data_registro,
+            myid_score: e.myid_score ?? e.id_final ?? 0,
+            score_d: e.score_d,
+            score_f: e.score_f,
+            score_p: e.score_p,
+            score_e: e.score_e,
+            score_efi: e.score_efi,
+            id_final: e.id_final,
+          }))
+        );
+        setNotas(notasRes.data || []);
+      } catch (e) {
+        console.error('[PacienteEvolucao] fetchData error:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
 

@@ -26,6 +26,10 @@ export default function RepasseConfigManager() {
     const k = key(membroId, convenioId);
     const raw = draft[k];
     if (raw === undefined) return;
+    if (raw.trim() === '') {
+      setDraft((d) => { const n = { ...d }; delete n[k]; return n; });
+      return;
+    }
     const num = Math.max(0, Math.min(100, Number(raw.replace(',', '.')) || 0));
     await setRepasse.mutateAsync({ membro_equipe_id: membroId, convenio_id: convenioId, percentual: num });
     setDraft((d) => { const n = { ...d }; delete n[k]; return n; });

@@ -78,28 +78,33 @@ export default function PacienteAgenda() {
 
   const fetchPatientAndConfig = useCallback(async () => {
     if (!user) return;
-    const { data: pac } = await supabase
-      .from('pacientes')
-      .select('id, terapeuta_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    try {
+      const { data: pac } = await supabase
+        .from('pacientes')
+        .select('id, terapeuta_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    if (!pac) { setLoading(false); return; }
-    setPaciente(pac);
+      if (!pac) return;
+      setPaciente(pac);
 
-    const { data: cfg } = await supabase
-      .from('config_agenda')
-      .select('horario_inicio, horario_fim, duracao_padrao, dias_semana, vagas_por_horario')
-      .eq('terapeuta_id', pac.terapeuta_id)
-      .maybeSingle();
+      const { data: cfg } = await supabase
+        .from('config_agenda')
+        .select('horario_inicio, horario_fim, duracao_padrao, dias_semana, vagas_por_horario')
+        .eq('terapeuta_id', pac.terapeuta_id)
+        .maybeSingle();
 
-    if (cfg) {
-      const dias = typeof cfg.dias_semana === 'object' && !Array.isArray(cfg.dias_semana)
-        ? (cfg.dias_semana as Record<string, boolean>)
-        : { seg: true, ter: true, qua: true, qui: true, sex: true, sab: false, dom: false };
-      setConfig({ ...cfg, dias_semana: dias } as ConfigAgenda);
+      if (cfg) {
+        const dias = typeof cfg.dias_semana === 'object' && !Array.isArray(cfg.dias_semana)
+          ? (cfg.dias_semana as Record<string, boolean>)
+          : { seg: true, ter: true, qua: true, qui: true, sex: true, sab: false, dom: false };
+        setConfig({ ...cfg, dias_semana: dias } as ConfigAgenda);
+      }
+    } catch (e) {
+      console.error('[PacienteAgenda] fetchPatientAndConfig error:', e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [user]);
 
   useEffect(() => {
