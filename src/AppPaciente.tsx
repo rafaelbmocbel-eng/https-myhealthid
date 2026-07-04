@@ -115,12 +115,12 @@ const AppPaciente = () => (
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
-                <Route path="/portal/completar/:token" element={<CompletarCadastro />} />
+                <Route path="/portaldocliente/completar/:token" element={<CompletarCadastro />} />
                 <Route path="/wellness/cadastro" element={<WellnessCadastro />} />
 
                 {/* Portal do paciente */}
                 <Route path="/paciente/login" element={<PortalErrorBoundary><PacienteLogin /></PortalErrorBoundary>} />
-                <Route path="/portal/:token" element={<PortalErrorBoundary><PortalGate /></PortalErrorBoundary>} />
+                <Route path="/portaldocliente/:token" element={<PortalErrorBoundary><PortalGate /></PortalErrorBoundary>} />
                 <Route path="/paciente/completar-cadastro" element={<PortalErrorBoundary><CompletarCadastroPortal /></PortalErrorBoundary>} />
                 <Route path="/paciente/dashboard" element={<ProtectedPatientRoute><PacienteDashboard /></ProtectedPatientRoute>} />
                 <Route path="/paciente/diario" element={<ProtectedPatientRoute><PacienteDiario /></ProtectedPatientRoute>} />

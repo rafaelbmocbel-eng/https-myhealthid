@@ -9,7 +9,7 @@ const PATIENT_KEY = 'myhealthid.last-route.patient';
 // Rotas públicas / transitórias que nunca devem ser salvas como "última tela".
 const PUBLIC_PREFIXES = [
   '/auth', '/avaliacao/', '/agenda/', '/myid/responder/', '/myid/ver/',
-  '/funil/', '/evento/', '/cadastro/', '/portal/',
+  '/funil/', '/evento/', '/cadastro/', '/portal/', '/portaldocliente/',
   '/recuperar-senha', '/nova-senha', '/precos', '/demo',
   '/wellness/', '/preview/',
 ];

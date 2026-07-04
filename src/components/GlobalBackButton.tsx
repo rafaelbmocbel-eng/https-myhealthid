@@ -20,7 +20,7 @@ const TOP_LEVEL = new Set<string>([
 
 // Prefixos de rotas onde NÃO mostrar o botão flutuante (portal já tem nav inferior + topo dedicado)
 const HIDDEN_PREFIXES = [
-  '/portal/',
+  '/portaldocliente/',
   '/avaliacao/',
   '/myid/responder/',
   '/funil/',

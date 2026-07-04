@@ -64,7 +64,7 @@ export function getBaseUrl(): string {
 }
 
 export function getPortalUrl(token: string) {
-  return `${getBaseUrl()}/portal/${token}`;
+  return `${getBaseUrl()}/portaldocliente/${token}`;
 }
 
 export function getAvaliacaoUrl(token: string) {

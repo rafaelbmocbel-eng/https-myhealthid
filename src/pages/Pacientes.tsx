@@ -481,7 +481,7 @@ export default function Pacientes() {
         });
       } catch {/* nb */}
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
-      const url = `${getBaseUrl()}/portal/completar/${data.portal_token}`;
+      const url = `${getBaseUrl()}/portaldocliente/completar/${data.portal_token}`;
       setQuickModal(false);
       setShareModal({ open: true, nome: data.nome, telefone: data.telefone || undefined, url });
     } catch (e: any) {
@@ -887,7 +887,7 @@ export default function Pacientes() {
                                   className="text-[10px] h-5 bg-amber-50 text-amber-800 border-amber-300 gap-1 cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const url = `${getBaseUrl()}/portal/completar/${(p as any).portal_token}`;
+                                    const url = `${getBaseUrl()}/portaldocliente/completar/${(p as any).portal_token}`;
                                     setShareModal({ open: true, nome: p.nome, telefone: p.telefone || undefined, url });
                                   }}
                                 >

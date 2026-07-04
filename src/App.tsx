@@ -163,7 +163,7 @@ const App = () => (
                 <Route path="/eventos" element={<ProfessionalGuard><Eventos /></ProfessionalGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
-                <Route path="/portal/completar/:token" element={<CompletarCadastro />} />
+                <Route path="/portaldocliente/completar/:token" element={<CompletarCadastro />} />
                 <Route path="/configuracoes" element={<ProfessionalGuard><Configuracoes /></ProfessionalGuard>} />
                 <Route path="/configuracoes/exportar" element={<ProfessionalGuard><ExportarDados /></ProfessionalGuard>} />
                 <Route path="/financeiro" element={<Navigate to="/pacientes?tab=financeiro" replace />} />
@@ -171,7 +171,7 @@ const App = () => (
 
                 {/* Patient Portal */}
                 <Route path="/paciente/login" element={<PortalErrorBoundary><PacienteLogin /></PortalErrorBoundary>} />
-                <Route path="/portal/:token" element={<PortalErrorBoundary><PortalGate /></PortalErrorBoundary>} />
+                <Route path="/portaldocliente/:token" element={<PortalErrorBoundary><PortalGate /></PortalErrorBoundary>} />
                 <Route path="/paciente/completar-cadastro" element={<PortalErrorBoundary><CompletarCadastroPortal /></PortalErrorBoundary>} />
                 <Route path="/paciente/dashboard" element={<ProtectedPatientRoute><PacienteDashboard /></ProtectedPatientRoute>} />
                 <Route path="/paciente/diario" element={<ProtectedPatientRoute><PacienteDiario /></ProtectedPatientRoute>} />

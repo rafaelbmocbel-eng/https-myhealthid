@@ -170,7 +170,7 @@ export default function CompletarCadastro() {
         </p>
         <Button
           className="h-12 px-6 rounded-xl font-bold mt-2"
-          onClick={() => navigate(`/portal/${token}`, { replace: true })}
+          onClick={() => navigate(`/portaldocliente/${token}`, { replace: true })}
         >
           Acessar meu portal →
         </Button>

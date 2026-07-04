@@ -15,7 +15,7 @@ export function destinoToUrl(d: Destino): string {
     case 'cadastro': return `${getBaseUrl()}/cadastro/${d.slug}`;
     case 'evento': return `${getBaseUrl()}/evento/${d.slug}`;
     case 'myid': return `${getBaseUrl()}/myid/responder/${d.token}`;
-    case 'portal': return `${getBaseUrl()}/portal/${d.token}`;
+    case 'portal': return `${getBaseUrl()}/portaldocliente/${d.token}`;
     case 'agenda': return `${getBaseUrl()}/agenda/${d.token}`;
     case 'custom': return d.url;
   }
