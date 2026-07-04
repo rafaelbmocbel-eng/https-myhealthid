@@ -269,28 +269,27 @@ jobs:
 
           # Buscar IDs dos pacientes do terapeuta no banco antigo
           echo "Buscando IDs dos pacientes do terapeuta..."
-          PACIENTE_IDS=$(curl -s \
-            -H "apikey: $OLD_KEY" \
-            -H "Authorization: Bearer $OLD_KEY" \
-            "$OLD_URL/rest/v1/pacientes?terapeuta_id=eq.$OLD_TID&select=id&limit=5000" \
-            | jq -r '.[].id')
-
-          TOTAL_PACIENTES=$(echo "$PACIENTE_IDS" | wc -l)
-          echo "Pacientes encontrados: $TOTAL_PACIENTES"
-
-          if [ -z "$PACIENTE_IDS" ]; then
-            echo "Nenhum paciente encontrado — pulando migração de subtabelas"
-            exit 0
-          fi
-
-          # Buscar IDs dos pacientes como lista separada por vírgula para filtro eficiente
           PACIENTE_IDS_COMMA=$(curl -s \
             -H "apikey: $OLD_KEY" \
             -H "Authorization: Bearer $OLD_KEY" \
             "$OLD_URL/rest/v1/pacientes?terapeuta_id=eq.$OLD_TID&select=id&limit=5000" \
             | jq -r '[.[].id] | join(",")')
 
-          echo "IDs de pacientes: $(echo "$PACIENTE_IDS_COMMA" | tr ',' '\n' | wc -l) pacientes"
+          echo "IDs de pacientes no banco antigo: $(echo "$PACIENTE_IDS_COMMA" | tr ',' '\n' | wc -l)"
+
+          if [ -z "$PACIENTE_IDS_COMMA" ]; then
+            echo "Nenhum paciente encontrado — pulando migração de subtabelas"
+            exit 0
+          fi
+
+          # Buscar IDs de pacientes válidos no banco NOVO (para filtrar FK inválidas)
+          echo "Carregando IDs de pacientes válidos no banco novo..."
+          NEW_PIDS_JSON=$(curl -s \
+            -H "apikey: $NEW_KEY" \
+            -H "Authorization: Bearer $NEW_KEY" \
+            "$NEW_URL/rest/v1/pacientes?select=id&limit=10000" \
+            | jq '[.[].id]')
+          echo "  $(echo "$NEW_PIDS_JSON" | jq 'length') pacientes no banco novo"
 
           # Tabelas clínicas com paciente_id mas sem terapeuta_id
           TABLES="historia_vida_paciente diagnosticos_paciente evolucao_paciente sinais_vitais antropometria body_composition health_metrics meal_logs water_logs sleep_logs daily_logs wearable_metricas_semanais wearable_sync_log planos_alimentares planos_fino prescricoes_exercicios prescricoes_paciente progresso_exercicios studio_execucoes studio_execucao_exercicios studio_medidas studio_notas studio_treinos studio_periodizacoes testes_funcionais_paciente escalas_psicologia links_agenda_paciente links_avaliacao links_rastreavel protocolo_tratamentos protocolo_progressao documentos_emitidos termos_consentimento atestados_medicos exames_importados medicamentos_catalogo myid_dimension_insights_cache funil_leads pesquisas_nps notificacoes recordatorios_24h evento_inscricoes evento_respostas eventos_clinicos_anatomicos"
@@ -325,8 +324,23 @@ jobs:
 
             echo "  📦 $COUNT registros encontrados"
 
+            # Filtrar paciente_id inválidos (que não existem no banco novo)
+            PAYLOAD=$(echo "$BODY" | jq \
+              --argjson pids "$NEW_PIDS_JSON" \
+              '[.[] | select(.paciente_id == null or (.paciente_id as $p | $pids | any(. == $p)))]')
+            VALID=$(echo "$PAYLOAD" | jq 'length')
+            SKIPPED=$((COUNT - VALID))
+            [ "$SKIPPED" -gt 0 ] && echo "  ⚠️  $SKIPPED ignorados (paciente_id sem correspondência no banco novo)"
+
+            if [ "$VALID" = "0" ]; then
+              echo "  ⏭️  Nenhum registro válido após filtro — pulando"
+              continue
+            fi
+
+            echo "  📤 Importando $VALID registros válidos..."
+
             PAYLOAD_FILE=$(mktemp /tmp/payload_XXXXXX.json)
-            echo "$BODY" > "$PAYLOAD_FILE"
+            echo "$PAYLOAD" > "$PAYLOAD_FILE"
 
             RESULT=$(curl -s -o /tmp/curl_out.txt -w "%{http_code}" \
               -X POST \
@@ -340,7 +354,7 @@ jobs:
             rm -f "$PAYLOAD_FILE"
 
             if [ "$RESULT" = "200" ] || [ "$RESULT" = "201" ] || [ "$RESULT" = "204" ]; then
-              echo "  ✅ $TABLE: $COUNT registros importados (HTTP $RESULT)"
+              echo "  ✅ $TABLE: $VALID registros importados (HTTP $RESULT)"
             else
               echo "  ❌ $TABLE: erro (HTTP $RESULT)"
               cat /tmp/curl_out.txt | head -c 400
