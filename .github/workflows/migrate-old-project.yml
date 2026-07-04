@@ -9,173 +9,246 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Instalar postgresql-client
-        run: sudo apt-get install -y postgresql-client -q
-
       - name: Verificar secrets configurados
         env:
-          OLD_DB: ${{ secrets.SUPABASE_OLD_DB_URL }}
-          NEW_DB: ${{ secrets.SUPABASE_DB_URL }}
+          OLD_KEY: ${{ secrets.SUPABASE_OLD_SERVICE_ROLE_KEY }}
+          NEW_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          if [ -z "$OLD_DB" ]; then
-            echo "❌ ERRO: SUPABASE_OLD_DB_URL não configurado!"
-            exit 1
-          fi
-          if [ -z "$NEW_DB" ]; then
-            echo "❌ ERRO: SUPABASE_DB_URL não configurado!"
-            exit 1
-          fi
-          # Mostrar host/user sem expor a senha
-          echo "OLD_DB host: $(echo "$OLD_DB" | sed 's|.*@||' | cut -d'/' -f1)"
-          echo "OLD_DB user: $(echo "$OLD_DB" | sed 's|postgresql://||' | cut -d':' -f1)"
-          echo "✅ Ambos os secrets estão configurados"
-
-      - name: Testar conexão com banco antigo
-        env:
-          OLD_DB: ${{ secrets.SUPABASE_OLD_DB_URL }}
-        run: |
-          echo "Testando conexão com banco antigo..."
-          RESULT=$(psql "$OLD_DB" -c "SELECT version();" -t 2>&1)
-          EXIT_CODE=$?
-          echo "$RESULT"
-          if [ $EXIT_CODE -ne 0 ]; then
+          if [ -z "$OLD_KEY" ]; then
+            echo "❌ ERRO: SUPABASE_OLD_SERVICE_ROLE_KEY não configurado!"
             echo ""
-            echo "❌ FALHA na conexão (exit code: $EXIT_CODE)"
-            echo ""
-            echo "Diagnóstico:"
-            echo "  1. Verifique se a senha no secret SUPABASE_OLD_DB_URL está correta"
-            echo "  2. No Supabase antigo: Settings → Database → Reset password"
-            echo "  3. Atualize o secret com a nova senha e rode novamente"
+            echo "Como obter:"
+            echo "  1. Supabase → projeto ANTIGO → Settings → API"
+            echo "  2. Copie o valor de 'service_role' (em Project API keys)"
+            echo "  3. Adicione no GitHub como secret SUPABASE_OLD_SERVICE_ROLE_KEY"
             exit 1
           fi
-          echo "✅ Conexão OK"
+          if [ -z "$NEW_KEY" ]; then
+            echo "❌ ERRO: SUPABASE_SERVICE_ROLE_KEY não configurado!"
+            exit 1
+          fi
+          echo "✅ Ambos os secrets configurados"
 
-      - name: Testar conexão com banco novo
+      - name: Testar acesso ao projeto antigo
         env:
-          NEW_DB: ${{ secrets.SUPABASE_DB_URL }}
+          OLD_URL: "https://rbzmojurvypksubeigbt.supabase.co"
+          OLD_KEY: ${{ secrets.SUPABASE_OLD_SERVICE_ROLE_KEY }}
         run: |
-          echo "Testando conexão com banco novo..."
-          RESULT=$(psql "$NEW_DB" -c "SELECT version();" -t 2>&1)
-          EXIT_CODE=$?
-          echo "$RESULT"
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "❌ FALHA na conexão com banco novo (exit code: $EXIT_CODE)"
+          echo "Testando acesso ao projeto antigo..."
+          HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $OLD_KEY" \
+            -H "Authorization: Bearer $OLD_KEY" \
+            "$OLD_URL/rest/v1/pacientes?limit=1")
+          echo "HTTP status: $HTTP"
+          if [ "$HTTP" != "200" ] && [ "$HTTP" != "206" ]; then
+            echo "❌ Falha ao acessar projeto antigo (HTTP $HTTP)"
+            echo "Verifique se a chave service_role está correta"
             exit 1
           fi
-          echo "✅ Conexão OK"
+          echo "✅ Projeto antigo acessível"
+
+      - name: Testar acesso ao projeto novo
+        env:
+          NEW_URL: "https://zxulglbcxehqplxainmz.supabase.co"
+          NEW_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "Testando acesso ao projeto novo..."
+          HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $NEW_KEY" \
+            -H "Authorization: Bearer $NEW_KEY" \
+            "$NEW_URL/rest/v1/pacientes?limit=1")
+          echo "HTTP status: $HTTP"
+          if [ "$HTTP" != "200" ] && [ "$HTTP" != "206" ]; then
+            echo "❌ Falha ao acessar projeto novo (HTTP $HTTP)"
+            exit 1
+          fi
+          echo "✅ Projeto novo acessível"
+
+      - name: Descobrir tabelas disponíveis no projeto antigo
+        env:
+          OLD_URL: "https://rbzmojurvypksubeigbt.supabase.co"
+          OLD_KEY: ${{ secrets.SUPABASE_OLD_SERVICE_ROLE_KEY }}
+        run: |
+          echo "Tabelas disponíveis via API:"
+          curl -s \
+            -H "apikey: $OLD_KEY" \
+            -H "Authorization: Bearer $OLD_KEY" \
+            "$OLD_URL/rest/v1/" | jq -r '.definitions | keys[]' | sort
 
       - name: Migrar tabelas com terapeuta_id
         env:
-          OLD_DB: ${{ secrets.SUPABASE_OLD_DB_URL }}
-          NEW_DB: ${{ secrets.SUPABASE_DB_URL }}
+          OLD_URL: "https://rbzmojurvypksubeigbt.supabase.co"
+          NEW_URL: "https://zxulglbcxehqplxainmz.supabase.co"
+          OLD_KEY: ${{ secrets.SUPABASE_OLD_SERVICE_ROLE_KEY }}
+          NEW_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OLD_TID: "808647e5-1d3b-4e3a-8886-d835b1117e2c"
           NEW_TID: "44266838-326c-452d-bebf-e617ac0f3470"
         run: |
           set +e
-          echo "=== Descobrindo tabelas com terapeuta_id ==="
-          TABLES=$(psql "$OLD_DB" -t -A -c "
-            SELECT table_name
-            FROM information_schema.columns
-            WHERE column_name = 'terapeuta_id'
-              AND table_schema = 'public'
-              AND table_name NOT IN ('pacientes', 'agendamentos', 'profiles')
-            ORDER BY table_name;
-          ")
 
-          echo "Tabelas encontradas:"
-          echo "$TABLES"
+          # Tabelas que têm terapeuta_id (exceto as já migradas manualmente)
+          TABLES="controle_sessoes notas_prontuario avaliacoes pagamentos_paciente paciente_servicos documentos anamneses evolucoes prontuarios myid fichas_evolucao registros_clinicos"
 
           for TABLE in $TABLES; do
             echo ""
-            echo "=== Migrando: $TABLE ==="
+            echo "=== Verificando: $TABLE ==="
 
-            OLD_COUNT=$(psql "$OLD_DB" -t -A -c \
-              "SELECT COUNT(*) FROM public.\"$TABLE\" WHERE terapeuta_id = '$OLD_TID';" 2>/dev/null || echo "?")
-            echo "  Registros no banco antigo: $OLD_COUNT"
+            # Buscar registros do banco antigo filtrados por terapeuta_id
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -H "apikey: $OLD_KEY" \
+              -H "Authorization: Bearer $OLD_KEY" \
+              -H "Accept: application/json" \
+              -H "Prefer: count=exact" \
+              "$OLD_URL/rest/v1/$TABLE?terapeuta_id=eq.$OLD_TID&select=*&limit=5000")
 
-            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" DISABLE ROW LEVEL SECURITY;" 2>/dev/null
+            HTTP=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | head -n -1)
 
-            pg_dump "$OLD_DB" \
-              --data-only \
-              --inserts \
-              --table="public.$TABLE" \
-              --no-owner \
-              --no-privileges \
-              2>/dev/null | \
-              grep "^INSERT INTO" | \
-              sed "s/$OLD_TID/$NEW_TID/g" | \
-              awk '{sub(/;$/, " ON CONFLICT DO NOTHING;"); print}' | \
-              psql "$NEW_DB" 2>&1 | grep -v "^INSERT" | grep -v "^$" | head -10
+            if [ "$HTTP" = "404" ] || [ "$HTTP" = "400" ]; then
+              echo "  ⏭️  Tabela não existe ou sem coluna terapeuta_id — pulando"
+              continue
+            fi
 
-            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" ENABLE ROW LEVEL SECURITY;" 2>/dev/null
+            if [ "$HTTP" != "200" ] && [ "$HTTP" != "206" ]; then
+              echo "  ⚠️  Erro HTTP $HTTP — pulando"
+              continue
+            fi
 
-            NEW_COUNT=$(psql "$NEW_DB" -t -A -c \
-              "SELECT COUNT(*) FROM public.\"$TABLE\" WHERE terapeuta_id = '$NEW_TID';" 2>/dev/null || echo "?")
-            echo "  ✅ $TABLE: $NEW_COUNT registros importados"
+            COUNT=$(echo "$BODY" | jq 'length')
+            echo "  📦 $COUNT registros encontrados no banco antigo"
+
+            if [ "$COUNT" = "0" ] || [ -z "$COUNT" ]; then
+              echo "  ⏭️  Nenhum registro — pulando"
+              continue
+            fi
+
+            # Trocar terapeuta_id antigo pelo novo
+            RECORDS_NEW=$(echo "$BODY" | jq \
+              --arg old "$OLD_TID" \
+              --arg new "$NEW_TID" \
+              '[.[] | .terapeuta_id = if .terapeuta_id == $old then $new else .terapeuta_id end]')
+
+            # Inserir no banco novo com upsert (não duplica se já existir)
+            RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST \
+              -H "apikey: $NEW_KEY" \
+              -H "Authorization: Bearer $NEW_KEY" \
+              -H "Content-Type: application/json" \
+              -H "Prefer: resolution=merge-duplicates,return=minimal" \
+              "$NEW_URL/rest/v1/$TABLE" \
+              -d "$RECORDS_NEW")
+
+            if [ "$RESULT" = "200" ] || [ "$RESULT" = "201" ] || [ "$RESULT" = "204" ]; then
+              echo "  ✅ $TABLE: $COUNT registros importados (HTTP $RESULT)"
+            else
+              echo "  ❌ $TABLE: erro ao importar (HTTP $RESULT)"
+              # Mostrar detalhes do erro
+              curl -s \
+                -X POST \
+                -H "apikey: $NEW_KEY" \
+                -H "Authorization: Bearer $NEW_KEY" \
+                -H "Content-Type: application/json" \
+                -H "Prefer: resolution=merge-duplicates,return=minimal" \
+                "$NEW_URL/rest/v1/$TABLE" \
+                -d "$RECORDS_NEW" | head -c 500
+              echo ""
+            fi
           done
 
-      - name: Migrar tabelas com paciente_id sem terapeuta_id
+      - name: Migrar tabelas com paciente_id (sem terapeuta_id direto)
         env:
-          OLD_DB: ${{ secrets.SUPABASE_OLD_DB_URL }}
-          NEW_DB: ${{ secrets.SUPABASE_DB_URL }}
+          OLD_URL: "https://rbzmojurvypksubeigbt.supabase.co"
+          NEW_URL: "https://zxulglbcxehqplxainmz.supabase.co"
+          OLD_KEY: ${{ secrets.SUPABASE_OLD_SERVICE_ROLE_KEY }}
+          NEW_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OLD_TID: "808647e5-1d3b-4e3a-8886-d835b1117e2c"
         run: |
           set +e
-          echo "=== Tabelas com paciente_id mas sem terapeuta_id ==="
 
-          TABLES=$(psql "$OLD_DB" -t -A -c "
-            SELECT c1.table_name
-            FROM information_schema.columns c1
-            WHERE c1.column_name = 'paciente_id'
-              AND c1.table_schema = 'public'
-              AND c1.table_name NOT IN (
-                SELECT table_name FROM information_schema.columns
-                WHERE column_name = 'terapeuta_id' AND table_schema = 'public'
-              )
-              AND c1.table_name NOT IN ('pacientes', 'agendamentos')
-            ORDER BY c1.table_name;
-          ")
+          # Buscar IDs dos pacientes do terapeuta no banco antigo
+          echo "Buscando IDs dos pacientes do terapeuta..."
+          PACIENTE_IDS=$(curl -s \
+            -H "apikey: $OLD_KEY" \
+            -H "Authorization: Bearer $OLD_KEY" \
+            "$OLD_URL/rest/v1/pacientes?terapeuta_id=eq.$OLD_TID&select=id&limit=5000" \
+            | jq -r '.[].id')
 
-          echo "Tabelas encontradas:"
-          echo "$TABLES"
+          TOTAL_PACIENTES=$(echo "$PACIENTE_IDS" | wc -l)
+          echo "Pacientes encontrados: $TOTAL_PACIENTES"
+
+          if [ -z "$PACIENTE_IDS" ]; then
+            echo "Nenhum paciente encontrado — pulando migração de subtabelas"
+            exit 0
+          fi
+
+          # Tabelas que têm paciente_id mas não terapeuta_id
+          TABLES="sessoes_avulsas historico_clinico arquivos_paciente contatos_emergencia"
 
           for TABLE in $TABLES; do
             echo ""
-            echo "=== Migrando: $TABLE ==="
+            echo "=== Verificando: $TABLE ==="
 
-            OLD_COUNT=$(psql "$OLD_DB" -t -A -c \
-              "SELECT COUNT(*) FROM public.\"$TABLE\" t
-               JOIN public.pacientes p ON p.id = t.paciente_id
-               WHERE p.terapeuta_id = '$OLD_TID';" 2>/dev/null || echo "?")
-            echo "  Registros no banco antigo: $OLD_COUNT"
+            ALL_RECORDS="[]"
+            FOUND=0
 
-            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" DISABLE ROW LEVEL SECURITY;" 2>/dev/null
+            for PID in $PACIENTE_IDS; do
+              RESPONSE=$(curl -s -w "\n%{http_code}" \
+                -H "apikey: $OLD_KEY" \
+                -H "Authorization: Bearer $OLD_KEY" \
+                "$OLD_URL/rest/v1/$TABLE?paciente_id=eq.$PID&select=*&limit=1000")
 
-            pg_dump "$OLD_DB" \
-              --data-only \
-              --inserts \
-              --table="public.$TABLE" \
-              --no-owner \
-              --no-privileges \
-              2>/dev/null | \
-              grep "^INSERT INTO" | \
-              awk '{sub(/;$/, " ON CONFLICT DO NOTHING;"); print}' | \
-              psql "$NEW_DB" 2>&1 | grep -v "^INSERT" | grep -v "^$" | head -10
+              HTTP=$(echo "$RESPONSE" | tail -1)
+              BODY=$(echo "$RESPONSE" | head -n -1)
 
-            psql "$NEW_DB" -c "ALTER TABLE public.\"$TABLE\" ENABLE ROW LEVEL SECURITY;" 2>/dev/null
+              if [ "$HTTP" = "404" ] || [ "$HTTP" = "400" ]; then
+                echo "  ⏭️  Tabela não existe — pulando"
+                break
+              fi
 
-            NEW_COUNT=$(psql "$NEW_DB" -t -A -c \
-              "SELECT COUNT(*) FROM public.\"$TABLE\";" 2>/dev/null || echo "?")
-            echo "  ✅ $TABLE: $NEW_COUNT registros importados"
+              COUNT=$(echo "$BODY" | jq 'length' 2>/dev/null || echo "0")
+              if [ "$COUNT" != "0" ] && [ -n "$COUNT" ]; then
+                FOUND=$((FOUND + COUNT))
+                ALL_RECORDS=$(echo "$ALL_RECORDS $BODY" | jq -s 'add')
+              fi
+            done
+
+            if [ "$FOUND" = "0" ]; then
+              echo "  ⏭️  Nenhum registro — pulando"
+              continue
+            fi
+
+            echo "  📦 $FOUND registros encontrados"
+
+            RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST \
+              -H "apikey: $NEW_KEY" \
+              -H "Authorization: Bearer $NEW_KEY" \
+              -H "Content-Type: application/json" \
+              -H "Prefer: resolution=merge-duplicates,return=minimal" \
+              "$NEW_URL/rest/v1/$TABLE" \
+              -d "$ALL_RECORDS")
+
+            echo "  ✅ $TABLE: $FOUND registros importados (HTTP $RESULT)"
           done
 
-      - name: Resumo da migração
+      - name: Resumo final
         if: always()
         env:
-          NEW_DB: ${{ secrets.SUPABASE_DB_URL }}
+          NEW_URL: "https://zxulglbcxehqplxainmz.supabase.co"
+          NEW_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEW_TID: "44266838-326c-452d-bebf-e617ac0f3470"
         run: |
           echo ""
-          echo "=== RESUMO FINAL ==="
-          echo "Pacientes:    $(psql "$NEW_DB" -t -A -c "SELECT COUNT(*) FROM public.pacientes WHERE terapeuta_id = '$NEW_TID';" 2>/dev/null)"
-          echo "Agendamentos: $(psql "$NEW_DB" -t -A -c "SELECT COUNT(*) FROM public.agendamentos WHERE terapeuta_id = '$NEW_TID';" 2>/dev/null)"
+          echo "======================================="
+          echo "         RESUMO DA MIGRAÇÃO"
+          echo "======================================="
+
+          for TABLE in pacientes agendamentos controle_sessoes notas_prontuario avaliacoes pagamentos_paciente paciente_servicos; do
+            COUNT=$(curl -s \
+              -H "apikey: $NEW_KEY" \
+              -H "Authorization: Bearer $NEW_KEY" \
+              -H "Prefer: count=exact" \
+              -o /dev/null -w "%{response_header_content-range}" \
+              "$NEW_URL/rest/v1/$TABLE?terapeuta_id=eq.$NEW_TID&limit=1" 2>/dev/null || echo "?")
+            printf "  %-30s %s\n" "$TABLE:" "$COUNT"
+          done
