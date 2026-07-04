@@ -147,14 +147,21 @@ jobs:
         run: |
           set +e
 
-          # Buscar IDs de pacientes que existem no novo banco (para filtrar FK inválidas)
-          echo "Carregando pacientes válidos do banco novo..."
+          # Buscar IDs válidos no novo banco para filtrar FK inválidas
+          echo "Carregando IDs válidos do banco novo..."
           NEW_PIDS=$(curl -s \
             -H "apikey: $NEW_KEY" \
             -H "Authorization: Bearer $NEW_KEY" \
             "$NEW_URL/rest/v1/pacientes?select=id&limit=10000" \
             | jq '[.[].id]')
           echo "  $(echo "$NEW_PIDS" | jq 'length') pacientes no banco novo"
+
+          NEW_AIDS=$(curl -s \
+            -H "apikey: $NEW_KEY" \
+            -H "Authorization: Bearer $NEW_KEY" \
+            "$NEW_URL/rest/v1/agendamentos?select=id&limit=10000" \
+            | jq '[.[].id]')
+          echo "  $(echo "$NEW_AIDS" | jq 'length') agendamentos no banco novo"
 
           TABLES="controle_sessoes notas_prontuario avaliacoes avaliacoes_identidade avaliacoes_resposta respostas_avaliacao_paciente myid_avaliacoes myid_acoes_checklist pagamentos_paciente pagamentos_paciente_auditoria paciente_servicos paciente_missoes config_agenda config_sessoes convenios agenda_lista_espera ausencias_terapeuta protocolos protocolo_templates tecnicas_tratamento planos pacotes_sessoes vendas repasse_config tiss_config tiss_guias tiss_lotes tracking_config notificacao_inteligente_config notificacao_regras perfis_profissionais"
 
@@ -195,20 +202,37 @@ jobs:
               --arg new "$NEW_TID" \
               '[.[] | .terapeuta_id = if .terapeuta_id == $old then $new else .terapeuta_id end]')
 
-            # Se a tabela tem paciente_id, filtrar registros com FK inválida
+            PAYLOAD="$TRANSFORMED"
+
+            # Filtrar paciente_id inválidos
             HAS_PID=$(echo "$BODY" | jq 'if length > 0 then .[0] | has("paciente_id") else false end')
             if [ "$HAS_PID" = "true" ]; then
-              PAYLOAD=$(echo "$TRANSFORMED" | jq \
+              PAYLOAD=$(echo "$PAYLOAD" | jq \
                 --argjson pids "$NEW_PIDS" \
                 '[.[] | select(.paciente_id == null or (.paciente_id as $p | $pids | any(. == $p)))]')
               VALID=$(echo "$PAYLOAD" | jq 'length')
               SKIPPED=$((COUNT - VALID))
-              [ "$SKIPPED" -gt 0 ] && echo "  ⚠️  $SKIPPED registros ignorados (paciente_id sem correspondência)"
-              echo "  📤 Importando $VALID registros válidos..."
-            else
-              PAYLOAD="$TRANSFORMED"
-              echo "  📤 Importando $COUNT registros..."
+              [ "$SKIPPED" -gt 0 ] && echo "  ⚠️  $SKIPPED ignorados (paciente_id sem correspondência)"
             fi
+
+            # Filtrar agendamento_id inválidos
+            HAS_AID=$(echo "$BODY" | jq 'if length > 0 then .[0] | has("agendamento_id") else false end')
+            if [ "$HAS_AID" = "true" ]; then
+              BEFORE=$(echo "$PAYLOAD" | jq 'length')
+              PAYLOAD=$(echo "$PAYLOAD" | jq \
+                --argjson aids "$NEW_AIDS" \
+                '[.[] | select(.agendamento_id == null or (.agendamento_id as $a | $aids | any(. == $a)))]')
+              VALID=$(echo "$PAYLOAD" | jq 'length')
+              SKIPPED=$((BEFORE - VALID))
+              [ "$SKIPPED" -gt 0 ] && echo "  ⚠️  $SKIPPED ignorados (agendamento_id sem correspondência)"
+            fi
+
+            VALID=$(echo "$PAYLOAD" | jq 'length')
+            if [ "$VALID" = "0" ]; then
+              echo "  ⏭️  Nenhum registro válido após filtros — pulando"
+              continue
+            fi
+            echo "  📤 Importando $VALID registros válidos..."
 
             PAYLOAD_FILE=$(mktemp /tmp/payload_XXXXXX.json)
             echo "$PAYLOAD" > "$PAYLOAD_FILE"
