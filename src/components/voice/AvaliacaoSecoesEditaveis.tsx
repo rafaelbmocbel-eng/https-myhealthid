@@ -41,6 +41,9 @@ type SecaoKey =
 // Seções que NÃO podem ser confirmadas no prontuário (apoio à decisão, referência)
 const SECOES_SEM_PRONTUARIO: SecaoKey[] = ['insights', 'hipoteses'];
 
+// Seções agrupadas no mesmo card (renderizadas juntas, confirmadas juntas)
+const GRUPO_FUNC_PSI: SecaoKey[] = ['funcionalidade', 'psicossocial'];
+
 // Accent palette (Tailwind classes) per section — keeps a calm, identifiable color identity
 type Accent = {
   ring: string;       // top border/ribbon
@@ -665,31 +668,31 @@ function HipotesesPretty({ data }: { data: any }) {
 function CifPretty({ data }: { data: any }) {
   if (!Array.isArray(data) || data.length === 0) return null;
   const sevTone = (n?: number) => {
-    if (n == null) return 'bg-muted text-muted-foreground';
-    if (n >= 3) return 'bg-red-500/10 text-red-700';
-    if (n >= 2) return 'bg-amber-500/10 text-amber-700';
-    if (n >= 1) return 'bg-sky-500/10 text-sky-700';
-    return 'bg-emerald-500/10 text-emerald-700';
+    if (n == null) return '';
+    if (n >= 3) return 'text-red-600';
+    if (n >= 2) return 'text-amber-600';
+    if (n >= 1) return 'text-sky-600';
+    return 'text-emerald-600';
   };
   return (
-    <ul className="space-y-1.5">
+    <div className="flex flex-wrap gap-1.5">
       {data.map((x: any, i: number) => {
         const codigo = x.codigo || x.code || '';
         const desc = x.descricao || x.label || x.titulo || '';
         const sev = x.severidade;
         return (
-          <li key={i} className="flex items-start gap-2 rounded-lg border border-border/30 bg-indigo-500/[0.03] px-3 py-2">
-            <span className="inline-flex items-center rounded-md bg-indigo-500/10 text-indigo-700 px-1.5 py-0.5 text-[11px] font-mono font-bold shrink-0">{codigo}</span>
-            <span className="text-[13px] text-foreground/85 leading-snug flex-1">{desc}</span>
-            {sev != null && (
-              <span className={cn('shrink-0 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold', sevTone(Number(sev)))}>
-                sev {sev}
-              </span>
-            )}
-          </li>
+          <span
+            key={i}
+            title={desc}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/[0.06] px-2.5 py-1 text-[11px]"
+          >
+            <span className="font-mono font-bold text-indigo-700">{codigo}</span>
+            <span className="text-foreground/70 max-w-[120px] truncate">{desc}</span>
+            {sev != null && <span className={cn('font-semibold opacity-70', sevTone(Number(sev)))}>{sev}</span>}
+          </span>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
@@ -965,6 +968,18 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   const total = secoesDisponiveis.length;
   const progresso = total > 0 ? Math.round((confirmadas.size / total) * 100) : 0;
 
+  // Seções que podem ser confirmadas (excluindo as de apoio)
+  const secoesConfirmaveis = secoesDisponiveis.filter((s) => !SECOES_SEM_PRONTUARIO.includes(s.key));
+  const todasConfirmadas = secoesConfirmaveis.length > 0 && secoesConfirmaveis.every((s) => confirmadas.has(s.key));
+
+  const confirmarTodas = async () => {
+    const pendentes = secoesConfirmaveis.filter((s) => !confirmadas.has(s.key));
+    if (pendentes.length === 0) return;
+    for (const s of pendentes) {
+      await toggleConfirmacao(s.key);
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Header com progresso */}
@@ -977,162 +992,260 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
             <div>
               <h3 className="font-semibold text-base text-foreground leading-tight">Seções da Avaliação</h3>
               <p className="text-caption text-muted-foreground mt-0.5">
-                Edite cada parte e confirme as que vão para o prontuário.
+                Confirme as seções que vão para o prontuário.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold tabular-nums text-foreground">{confirmadas.size}</span>
-              <span className="text-sm text-muted-foreground">/ {total}</span>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold tabular-nums text-foreground">{confirmadas.size}</span>
+                <span className="text-sm text-muted-foreground">/ {total}</span>
+              </div>
+              <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${progresso}%` }}
+                />
+              </div>
             </div>
-            <div className="flex-1 sm:w-32 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
-                style={{ width: `${progresso}%` }}
-              />
-            </div>
+            {!todasConfirmadas && secoesConfirmaveis.length > 0 && (
+              <Button
+                size="sm"
+                onClick={confirmarTodas}
+                disabled={saving !== null}
+                className="gap-1.5 h-9 px-3 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+              >
+                {saving !== null ? <Loader2 className="icon-xs animate-spin" /> : <CheckCircle2 className="icon-xs" />}
+                Confirmar todos
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Grid de cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
-        {secoesDisponiveis.map((s) => {
-          const accent = ACCENTS[s.key];
-          const confirmada = confirmadas.has(s.key);
-          const editandoEsta = editando === s.key;
-          const savingEsta = saving === s.key;
-          const Icon = s.Icon;
-          const isDiretriz = s.key === 'diretriz';
-          const semProntuario = SECOES_SEM_PRONTUARIO.includes(s.key);
-          const diretrizPendenteEnvio = isDiretriz && confirmada && !resultado?._secoes?.diretriz_protocolo_id;
+        {(() => {
+          // Agrupa funcionalidade + psicossocial em um único card
+          const rendered = new Set<SecaoKey>();
+          const cards: React.ReactNode[] = [];
 
-          return (
-            <Card
-              key={s.key}
-              className={cn(
-                'relative rounded-2xl border bg-card shadow-xs transition-all duration-300 overflow-hidden',
-                confirmada ? 'border-emerald-500/30 ring-1 ring-emerald-500/10' : 'border-border/50 hover:border-border hover:shadow-md',
-                isDiretriz && 'lg:col-span-2'
-              )}
-            >
-              {/* Ribbon de cor no topo */}
-              <div className={cn('h-1 w-full bg-gradient-to-r', accent.ring)} />
+          secoesDisponiveis.forEach((s) => {
+            if (rendered.has(s.key)) return;
 
-              {/* Header compacto */}
-              <div className="px-3 sm:px-3.5 pt-2.5 pb-2 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', accent.iconBg, accent.iconText)}>
-                    <Icon className="icon-sm" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-medium text-[13px] text-foreground leading-tight">{s.titulo}</span>
-                      {semProntuario ? (
-                        <Badge variant="outline" className="text-[9px] gap-0.5 font-normal border-border/60 text-muted-foreground py- 0 px-1.5">
-                          Apoio
-                        </Badge>
-                      ) : confirmada && (
-                        <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-[9px] gap-0.5 hover:bg-emerald-500/10 font-normal py-0 px-1.5">
-                          <CheckCircle2 className="icon-xs" /> Prontuário
-                        </Badge>
+            // Card agrupado: Funcionalidade + Psicossocial
+            if (s.key === 'funcionalidade' || s.key === 'psicossocial') {
+              const sFunc = secoesDisponiveis.find((x) => x.key === 'funcionalidade');
+              const sPsi = secoesDisponiveis.find((x) => x.key === 'psicossocial');
+              if (!rendered.has('funcionalidade') && (sFunc || sPsi)) {
+                rendered.add('funcionalidade');
+                rendered.add('psicossocial');
+                const accentF = ACCENTS['funcionalidade'];
+                const confirmadaF = confirmadas.has('funcionalidade');
+                const confirmadaP = confirmadas.has('psicossocial');
+                const savingF = saving === 'funcionalidade' || saving === 'psicossocial';
+                cards.push(
+                  <Card
+                    key="func-psi"
+                    className={cn(
+                      'relative rounded-2xl border bg-card shadow-xs transition-all duration-300 overflow-hidden',
+                      (confirmadaF && confirmadaP) ? 'border-emerald-500/30 ring-1 ring-emerald-500/10' : 'border-border/50 hover:border-border hover:shadow-md',
+                    )}
+                  >
+                    <div className={cn('h-1 w-full bg-gradient-to-r', accentF.ring)} />
+                    <div className="px-3 sm:px-3.5 pt-2.5 pb-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', accentF.iconBg, accentF.iconText)}>
+                          <Activity className="icon-sm" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium text-[13px] text-foreground leading-tight">Estado Funcional</span>
+                            {(confirmadaF || confirmadaP) && (
+                              <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-[9px] gap-0.5 hover:bg-emerald-500/10 font-normal py-0 px-1.5">
+                                <CheckCircle2 className="icon-xs" /> Prontuário
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground leading-tight">
+                            {(confirmadaF || confirmadaP) ? 'Sincronizado' : 'Pendente'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant={(confirmadaF && confirmadaP) ? 'outline' : 'default'}
+                          className={cn(
+                            'h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium',
+                            (confirmadaF && confirmadaP) && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
+                          )}
+                          onClick={async () => {
+                            if (sFunc) await toggleConfirmacao('funcionalidade');
+                            if (sPsi) await toggleConfirmacao('psicossocial');
+                          }}
+                          disabled={savingF}
+                        >
+                          {savingF ? <Loader2 className="icon-xs animate-spin" /> : (confirmadaF && confirmadaP) ? <X className="icon-xs" /> : <Check className="icon-xs" />}
+                          {(confirmadaF && confirmadaP) ? 'Remover' : 'Confirmar'}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="px-3 sm:px-3.5 pb-3 sm:pb-3.5 space-y-3">
+                      {sFunc && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5">Funcionalidade</p>
+                          <div className={cn('rounded-lg border border-border/30 px-3 py-2.5', accentF.surface)}>
+                            <ObjPretty data={resultado?.funcionalidade} />
+                          </div>
+                        </div>
+                      )}
+                      {sPsi && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5">Fatores Psicossociais</p>
+                          <div className={cn('rounded-lg border border-border/30 px-3 py-2.5', ACCENTS['psicossocial'].surface)}>
+                            <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
+                          </div>
+                        </div>
                       )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground leading-tight">
-                      {semProntuario ? 'Não vai para o prontuário' : (diretrizPendenteEnvio ? 'Pendente na aba Diretrizes' : (confirmada ? 'Sincronizado' : 'Pendente'))}
-                    </p>
-                  </div>
-                </div>
+                  </Card>
+                );
+              }
+              return;
+            }
 
-                {!editandoEsta && (
-                  <div className="flex gap-1 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 w-7 p-0 rounded-md text-muted-foreground hover:text-foreground"
-                      onClick={() => iniciarEdicao(s.key)}
-                      disabled={savingEsta}
-                      title="Editar"
-                    >
-                      <Pencil className="icon-xs" />
-                    </Button>
-                    {!semProntuario && (
-                      <Button
-                        size="sm"
-                        variant={confirmada ? 'outline' : 'default'}
-                        className={cn(
-                          'h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium',
-                          confirmada && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
-                        )}
-                        onClick={() => toggleConfirmacao(s.key)}
-                        disabled={savingEsta}
-                      >
-                        {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : diretrizPendenteEnvio ? <Check className="icon-xs" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
-                        {diretrizPendenteEnvio ? 'Enviar' : confirmada ? 'Remover' : 'Confirmar'}
-                      </Button>
-                    )}
-                  </div>
+            // Card normal
+            const accent = ACCENTS[s.key];
+            const confirmada = confirmadas.has(s.key);
+            const editandoEsta = editando === s.key;
+            const savingEsta = saving === s.key;
+            const Icon = s.Icon;
+            const isDiretriz = s.key === 'diretriz';
+            const semProntuario = SECOES_SEM_PRONTUARIO.includes(s.key);
+            const diretrizPendenteEnvio = isDiretriz && confirmada && !resultado?._secoes?.diretriz_protocolo_id;
+            rendered.add(s.key);
+
+            cards.push(
+              <Card
+                key={s.key}
+                className={cn(
+                  'relative rounded-2xl border bg-card shadow-xs transition-all duration-300 overflow-hidden',
+                  confirmada ? 'border-emerald-500/30 ring-1 ring-emerald-500/10' : 'border-border/50 hover:border-border hover:shadow-md',
+                  isDiretriz && 'lg:col-span-2'
                 )}
-              </div>
-
-              {/* Content */}
-              <div className="px-3 sm:px-3.5 pb-3 sm:pb-3.5">
-
-                {editandoEsta ? (
-                  <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <Textarea
-                      value={rascunho}
-                      onChange={(e) => setRascunho(e.target.value)}
-                      rows={Math.min(24, Math.max(6, rascunho.split('\n').length + 2))}
-                      className="text-sm leading-relaxed resize-y min-h-[140px] rounded-xl border-border/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/10 bg-background"
-                      autoFocus
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={cancelarEdicao} disabled={savingEsta} className="rounded-lg h-8">
-                        <X className="icon-xs mr-1.5" /> Cancelar
-                      </Button>
-                      <Button size="sm" onClick={() => salvarEdicao(s.key)} disabled={savingEsta} className="rounded-lg h-8">
-                        {savingEsta ? <Loader2 className="icon-xs animate-spin mr-1.5" /> : <Check className="icon-xs mr-1.5" />}
-                        Salvar
-                      </Button>
+              >
+                <div className={cn('h-1 w-full bg-gradient-to-r', accent.ring)} />
+                <div className="px-3 sm:px-3.5 pt-2.5 pb-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', accent.iconBg, accent.iconText)}>
+                      <Icon className="icon-sm" />
                     </div>
-                  </div>
-                ) : (
-                  <SectionCollapse>
-                    {s.key === 'diretriz' ? (
-                      <DiretrizFases texto={textos[s.key]} />
-                    ) : s.key === 'soap' ? (
-                      <SoapPretty texto={textos[s.key]} />
-                    ) : (
-                      <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
-                        {s.key === 'dor' ? (
-                          <DorPretty data={resultado?.dor} />
-                        ) : s.key === 'funcionalidade' ? (
-                          <ObjPretty data={resultado?.funcionalidade} />
-                        ) : s.key === 'psicossocial' ? (
-                          <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
-                        ) : s.key === 'red_flags' ? (
-                          <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
-                        ) : s.key === 'hipoteses' ? (
-                          <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
-                        ) : s.key === 'cif' ? (
-                          <CifPretty data={resultado?.cif_codes} />
-                        ) : s.key === 'insights' ? (
-                          <InsightsPretty data={resultado?.insights_baseados_evidencia} />
-                        ) : s.key === 'resumo_clinico' ? (
-                          <ResumoPretty texto={textos[s.key]} />
-                        ) : (
-                          <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium text-[13px] text-foreground leading-tight">{s.titulo}</span>
+                        {semProntuario ? (
+                          <Badge variant="outline" className="text-[9px] gap-0.5 font-normal border-border/60 text-muted-foreground py-0 px-1.5">
+                            Apoio
+                          </Badge>
+                        ) : confirmada && (
+                          <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-[9px] gap-0.5 hover:bg-emerald-500/10 font-normal py-0 px-1.5">
+                            <CheckCircle2 className="icon-xs" /> Prontuário
+                          </Badge>
                         )}
                       </div>
-                    )}
-                  </SectionCollapse>
-                )}
-              </div>
-            </Card>
-          );
-        })}
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        {semProntuario ? 'Não vai para o prontuário' : (diretrizPendenteEnvio ? 'Pendente na aba Diretrizes' : (confirmada ? 'Sincronizado' : 'Pendente'))}
+                      </p>
+                    </div>
+                  </div>
+
+                  {!editandoEsta && (
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 rounded-md text-muted-foreground hover:text-foreground"
+                        onClick={() => iniciarEdicao(s.key)}
+                        disabled={savingEsta}
+                        title="Editar"
+                      >
+                        <Pencil className="icon-xs" />
+                      </Button>
+                      {!semProntuario && (
+                        <Button
+                          size="sm"
+                          variant={confirmada ? 'outline' : 'default'}
+                          className={cn(
+                            'h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium',
+                            confirmada && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
+                          )}
+                          onClick={() => toggleConfirmacao(s.key)}
+                          disabled={savingEsta}
+                        >
+                          {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : diretrizPendenteEnvio ? <Check className="icon-xs" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
+                          {diretrizPendenteEnvio ? 'Enviar' : confirmada ? 'Remover' : 'Confirmar'}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="px-3 sm:px-3.5 pb-3 sm:pb-3.5">
+                  {editandoEsta ? (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <Textarea
+                        value={rascunho}
+                        onChange={(e) => setRascunho(e.target.value)}
+                        rows={Math.min(24, Math.max(6, rascunho.split('\n').length + 2))}
+                        className="text-sm leading-relaxed resize-y min-h-[140px] rounded-xl border-border/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/10 bg-background"
+                        autoFocus
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={cancelarEdicao} disabled={savingEsta} className="rounded-lg h-8">
+                          <X className="icon-xs mr-1.5" /> Cancelar
+                        </Button>
+                        <Button size="sm" onClick={() => salvarEdicao(s.key)} disabled={savingEsta} className="rounded-lg h-8">
+                          {savingEsta ? <Loader2 className="icon-xs animate-spin mr-1.5" /> : <Check className="icon-xs mr-1.5" />}
+                          Salvar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <SectionCollapse>
+                      {s.key === 'diretriz' ? (
+                        <DiretrizFases texto={textos[s.key]} />
+                      ) : s.key === 'soap' ? (
+                        <SoapPretty texto={textos[s.key]} />
+                      ) : (
+                        <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
+                          {s.key === 'dor' ? (
+                            <DorPretty data={resultado?.dor} />
+                          ) : s.key === 'red_flags' ? (
+                            <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
+                          ) : s.key === 'hipoteses' ? (
+                            <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
+                          ) : s.key === 'cif' ? (
+                            <CifPretty data={resultado?.cif_codes} />
+                          ) : s.key === 'insights' ? (
+                            <InsightsPretty data={resultado?.insights_baseados_evidencia} />
+                          ) : s.key === 'resumo_clinico' ? (
+                            <ResumoPretty texto={textos[s.key]} />
+                          ) : (
+                            <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
+                          )}
+                        </div>
+                      )}
+                    </SectionCollapse>
+                  )}
+                </div>
+              </Card>
+            );
+          });
+
+          return cards;
+        })()}
       </div>
 
       {secoesDisponiveis.length === 0 && (
