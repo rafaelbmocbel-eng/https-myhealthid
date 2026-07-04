@@ -3,9 +3,9 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
-const FALLBACK_SUPABASE_URL = "https://mgdzlzpzjpnswpqdtylz.supabase.co";
+const FALLBACK_SUPABASE_URL = "https://zxulglbcxehqplxainmz.supabase.co";
 const FALLBACK_SUPABASE_PUBLISHABLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1nZHpsenB6anBuc3dwcWR0eWx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjM5MzIsImV4cCI6MjA4NzAzOTkzMn0.zAu_ZC8ne3X-Dj6cXEchbJdfKBRfnFTx2pqo5Cef_7c";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dWxnbGJjeGVocXBseGFpbm16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMzU5MDUsImV4cCI6MjA5ODYxMTkwNX0.F6QL6_gzGnUUF5VWloZFe1e29OQE9DTogZDPmTiWa4A";
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
