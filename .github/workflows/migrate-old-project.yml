@@ -107,11 +107,14 @@ jobs:
             fi
 
             PAYLOAD_FILE=$(mktemp /tmp/payload_XXXXXX.json)
+            # Forçar terapeuta_id = NEW_TID em todos os registros
+            # (pacientes com outro terapeuta_id causariam FK error no novo projeto)
             echo "$BODY" | jq \
-              --arg old "$OLD_TID" \
               --arg new "$NEW_TID" \
-              '[.[] | .terapeuta_id = if .terapeuta_id == $old then $new else .terapeuta_id end]' \
+              '[.[] | .terapeuta_id = $new]' \
               > "$PAYLOAD_FILE"
+
+            echo "  📤 Enviando $(wc -c < "$PAYLOAD_FILE") bytes..."
 
             RESULT=$(curl -s -o /tmp/curl_out.txt -w "%{http_code}" \
               -X POST \
@@ -128,7 +131,7 @@ jobs:
               echo "  ✅ $TABLE: $COUNT registros sincronizados (HTTP $RESULT)"
             else
               echo "  ❌ $TABLE: erro (HTTP $RESULT)"
-              cat /tmp/curl_out.txt | head -c 500
+              cat /tmp/curl_out.txt | head -c 800
               echo ""
             fi
           done
