@@ -12,16 +12,56 @@ jobs:
       - name: Instalar postgresql-client
         run: sudo apt-get install -y postgresql-client -q
 
+      - name: Verificar secrets configurados
+        env:
+          OLD_DB: ${{ secrets.SUPABASE_OLD_DB_URL }}
+          NEW_DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$OLD_DB" ]; then
+            echo "❌ ERRO: SUPABASE_OLD_DB_URL não configurado!"
+            exit 1
+          fi
+          if [ -z "$NEW_DB" ]; then
+            echo "❌ ERRO: SUPABASE_DB_URL não configurado!"
+            exit 1
+          fi
+          # Mostrar host/user sem expor a senha
+          echo "OLD_DB host: $(echo "$OLD_DB" | sed 's|.*@||' | cut -d'/' -f1)"
+          echo "OLD_DB user: $(echo "$OLD_DB" | sed 's|postgresql://||' | cut -d':' -f1)"
+          echo "✅ Ambos os secrets estão configurados"
+
       - name: Testar conexão com banco antigo
         env:
           OLD_DB: ${{ secrets.SUPABASE_OLD_DB_URL }}
         run: |
-          if [ -z "$OLD_DB" ]; then
-            echo "❌ ERRO: Secret SUPABASE_OLD_DB_URL não está configurado!"
+          echo "Testando conexão com banco antigo..."
+          RESULT=$(psql "$OLD_DB" -c "SELECT version();" -t 2>&1)
+          EXIT_CODE=$?
+          echo "$RESULT"
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo ""
+            echo "❌ FALHA na conexão (exit code: $EXIT_CODE)"
+            echo ""
+            echo "Diagnóstico:"
+            echo "  1. Verifique se a senha no secret SUPABASE_OLD_DB_URL está correta"
+            echo "  2. No Supabase antigo: Settings → Database → Reset password"
+            echo "  3. Atualize o secret com a nova senha e rode novamente"
             exit 1
           fi
-          echo "Testando conexão com banco antigo..."
-          psql "$OLD_DB" -c "SELECT version();" -t 2>&1 | head -3
+          echo "✅ Conexão OK"
+
+      - name: Testar conexão com banco novo
+        env:
+          NEW_DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          echo "Testando conexão com banco novo..."
+          RESULT=$(psql "$NEW_DB" -c "SELECT version();" -t 2>&1)
+          EXIT_CODE=$?
+          echo "$RESULT"
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FALHA na conexão com banco novo (exit code: $EXIT_CODE)"
+            exit 1
+          fi
           echo "✅ Conexão OK"
 
       - name: Migrar tabelas com terapeuta_id
