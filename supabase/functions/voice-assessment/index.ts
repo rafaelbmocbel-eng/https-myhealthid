@@ -9,48 +9,21 @@ const corsHeaders = {
 // ──────────────────────────────────────────────────────────────────
 // PERSONA CLÍNICA UNIFICADA — multidisciplinar baseada em evidência
 // ──────────────────────────────────────────────────────────────────
-const MULTIDISCIPLINARY_SYSTEM_PROMPT = `Você é o **MOTOR CLÍNICO MULTIDISCIPLINAR** do MY HEALTH ID — uma persona única que integra simultaneamente o raciocínio de:
+const MULTIDISCIPLINARY_SYSTEM_PROMPT = `Você é o motor clínico do MY HEALTH ID. Integra raciocínio de fisioterapia musculoesquelética, neurociência da dor (IASP 2020), reabilitação esportiva, osteopatia, posturologia e medicina baseada em evidência.
 
-1. **Fisioterapeuta musculoesquelético** (Magee, Sahrmann, McKenzie, Mulligan, Cook) — testes ortopédicos, padrões de movimento, controle motor.
-2. **Neurocientista da dor** (Butler & Moseley "Explain Pain", IASP 2020, Woolf) — sensibilização central/periférica, dor nociceptiva/neuropática/nociplástica, fatores psicossociais.
-3. **Especialista em reabilitação esportiva** (Cook, Dye, Comerford) — return-to-sport, carga progressiva, GTG (Glasgow Tendinopathy), critérios de alta funcional.
-4. **Osteopata** (Still, Greenman, DeStefano) — disfunção somática, restrições articulares/fasciais, modelo biomecânico/respiratório-circulatório/metabólico/neurológico/comportamental.
-5. **Quiropraxista** (Bergmann & Peterson, Gatterman) — análise vertebral subluxar, padrões compensatórios da cadeia cinética.
-6. **Especialista em técnicas posturais** (Souchard/RPG, Bricot, Janda, Kendall) — cadeias musculares, padrões cruzados (superior/inferior), análise estática/dinâmica.
-7. **Cientista clínico baseado em evidência** (PEDro, Cochrane, JOSPT) — sempre cite GRADE A/B/C, autores e ano quando possível.
+REGRAS CLÍNICAS:
+- Classifique dor: Nociceptiva (mecânica, EVA proporcional), Neuropática (queimação/choque/dermátomo), Nociplástica (difusa, desproporcional, central), ou Mista.
+- Psicossociais (yellow flags): catastrofização, medo-evitação, ansiedade/depressão, baixa autoeficácia.
+- Red flags obrigatórios: dor noturna progressiva, perda de peso inexplicada, déficit neurológico, trauma significativo, febre, incontinência esfincteriana.
 
-REGRA DE OURO — INTEGRAÇÃO:
-Você NÃO escolhe uma especialidade. Você **integra todas** num único raciocínio coerente. Cada hipótese e cada técnica recomendada deve ter clareza sobre **qual lente clínica** a sustenta.
+DIRETRIZ DE TRATAMENTO — 3 fases:
+1. Alívio/Proteção — modulação da dor, educação, mobilidade indolor.
+2. Carga Progressiva — força, controle motor, capacidade tecidual.
+3. Retorno Funcional — gestos específicos, critérios de alta.
+Cada técnica DEVE ter: dosagem clínica concreta (séries×reps, intensidade, frequência), nível de evidência (A/B/C), e citar [n] do BANCO DE EVIDÊNCIA injetado quando aplicável.
+Respeite janelas de cicatrização: muscular 3-8sem, tendão 6-26sem, ligamento 6-12sem.
 
-DIRETRIZ DE TRATAMENTO — REGRAS RÍGIDAS:
-- Sempre construa em **3 fases**: (1) Alívio/Proteção, (2) Carga Progressiva, (3) Retorno Funcional.
-- Cada fase DEVE conter: duração estimada (semanas), **objetivos mensuráveis**, **técnicas com dosagem clínica explícita** (séries × reps, tempo, intensidade, frequência) e **critérios objetivos de progressão** para a fase seguinte.
-- Cada técnica DEVE: nomear a intervenção concretamente (não genérico), justificar com mecanismo fisiológico/clínico, atribuir nível de evidência (A/B/C) e lente clínica responsável.
-- **SEMPRE cite as referências numeradas [n]** do BANCO DE EVIDÊNCIA injetado quando uma técnica/raciocínio for sustentado por ele (ex: "exercício excêntrico reduz dor em tendinopatia [3,7]"). Use o campo "referencias_chave" para listar as [n] usadas.
-- Respeite **janelas de cicatrização** (muscular 3-8 sem, tendinosa 6-26 sem, ligamentar 6-12 sem, óssea 6-12 sem) ao propor duração e progressão.
-- Se houver red flag, a diretriz deve refletir encaminhamento prioritário antes de carga.
-- Frequência/dosagem deve respeitar princípios de carga progressiva (Cook, ACSM 2018) e biopsicossocial (IASP 2020, Moseley/Butler).
-
-ESTRUTURA DE SAÍDA:
-1. **SOAP completo** (Subjetivo, Objetivo, Avaliação, Plano) — padrão do prontuário.
-2. **Resumo unificado** — síntese clínica curta integrando todas as visões.
-3. **Raciocínio multidisciplinar** — opinião curta de cada uma das 6 especialidades sobre o caso (o que CADA uma vê).
-4. **Hipóteses diagnósticas** — sempre com lente clínica + evidência citada.
-5. **Red Flags** — bandeiras vermelhas absolutas (dor noturna progressiva, perda de peso inexplicada, déficit neurológico progressivo, trauma significativo, febre, etc.).
-6. **CIF** — códigos sugeridos (b = funções; s = estruturas; d = atividades/participação; e = ambientais) com qualificador 0-4.
-7. **Diretriz de Tratamento** em 3 fases conforme regras acima.
-
-CLASSIFICAÇÃO DE DOR (IASP 2020):
-- **Nociceptiva**: dor mecânica, padrão claro, alívio com repouso, EVA proporcional ao estímulo.
-- **Neuropática**: queimação, formigamento, choque, distribuição dermatomérica/troncular.
-- **Nociplástica**: dor difusa desproporcional, hipersensibilidade central, fadiga, sono ruim, comorbidades (fibromialgia-like).
-- **Mista**: combinação clara.
-
-PSICOSSOCIAIS (yellow flags): catastrofização (PCS), medo-evitação (TSK/FABQ), depressão/ansiedade, baixa autoeficácia, expectativa negativa, conflito laboral.
-
-RESPONDA SEMPRE usando a função estruturada fornecida. Seja **conciso, clínico e prático** — não invente achados que não estejam na conversa; quando incerto, marque como "Inferido" ou deixe o campo vazio.
-
-IDIOMA OBRIGATÓRIO: TODOS os campos de texto da resposta DEVEM estar em **Português Brasileiro (PT-BR)**, incluindo diagnósticos, hipóteses, técnicas, queixa principal, resumos e notas. Termos técnicos devem ser traduzidos/adaptados (ex: "Radiculopatia cervical", não "Cervical Radiculopathy"; "Tendinopatia do manguito", não "Rotator cuff tendinopathy"). Apenas códigos padronizados internacionalmente (CID, CIF, b/s/d/e) permanecem no formato original.`;
+RESPONDA usando a função estruturada. Seja CONCISO e CLÍNICO — não invente achados; marque como "Inferido" quando incerto. Todos os campos em Português Brasileiro (PT-BR). Códigos CID-10/CIF permanecem no formato original.`;
 
 // ──────────────────────────────────────────────────────────────────
 // SCHEMA DE SAÍDA
@@ -59,7 +32,7 @@ const TOOL_SCHEMA = {
   type: "function",
   function: {
     name: "generate_clinical_assessment",
-    description: "Gera avaliação clínica multidisciplinar (SOAP + raciocínio por especialidade + CIF + diretriz)",
+    description: "Gera avaliação clínica multidisciplinar (SOAP + hipóteses diagnósticas + diretriz de tratamento em 3 fases)",
     parameters: {
       type: "object",
       properties: {
@@ -120,21 +93,6 @@ const TOOL_SCHEMA = {
         },
 
         red_flags: { type: "array", items: { type: "string" }, description: "Bandeiras vermelhas absolutas que exigem encaminhamento." },
-
-        // ─── RACIOCÍNIO MULTIDISCIPLINAR ───
-        raciocinio_multidisciplinar: {
-          type: "object",
-          description: "A visão de cada especialidade sobre este caso (curta, 2-3 frases por área).",
-          properties: {
-            fisioterapia_musculoesqueletica: { type: "string" },
-            neurociencia_da_dor: { type: "string" },
-            reabilitacao_esportiva: { type: "string" },
-            osteopatia: { type: "string" },
-            quiropraxia: { type: "string" },
-            posturologia: { type: "string" },
-          },
-          required: ["fisioterapia_musculoesqueletica", "neurociencia_da_dor", "osteopatia", "posturologia"],
-        },
 
         hipoteses_diagnosticas: {
           type: "array",
@@ -265,47 +223,10 @@ const TOOL_SCHEMA = {
             },
             referencias_chave: { type: "array", items: { type: "string" }, description: "Lista das referências [n] do banco injetado que sustentam esta diretriz (ex: '[3] Cook 2018 — tendinopathy loading')." },
           },
-          required: ["fase_1_alivio", "fase_2_carga", "fase_3_retorno", "prognostico", "manutencao"],
+          required: ["fase_1_alivio", "fase_2_carga", "fase_3_retorno", "prognostico"],
         },
 
 
-
-        // Mantido por compat. com prontuário legado:
-        plano_tratamento: {
-          type: "object",
-          properties: {
-            objetivos_curto_prazo: { type: "array", items: { type: "string" } },
-            objetivos_longo_prazo: { type: "array", items: { type: "string" } },
-            tecnicas_recomendadas: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  tecnica: { type: "string" },
-                  justificativa: { type: "string" },
-                  nivel_evidencia: { type: "string", enum: ["A", "B", "C"] },
-                },
-                required: ["tecnica", "justificativa", "nivel_evidencia"],
-              },
-            },
-            frequencia_sugerida: { type: "string" },
-            prognostico: { type: "string" },
-          },
-          required: ["objetivos_curto_prazo", "tecnicas_recomendadas", "prognostico"],
-        },
-
-        insights_baseados_evidencia: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              insight: { type: "string" },
-              referencia: { type: "string" },
-              relevancia_clinica: { type: "string", enum: ["Alta", "Moderada", "Informativa"] },
-            },
-            required: ["insight", "referencia", "relevancia_clinica"],
-          },
-        },
 
         classificacao_severidade: {
           type: "string",
@@ -315,9 +236,7 @@ const TOOL_SCHEMA = {
       required: [
         "transcricao", "soap", "resumo_clinico", "queixa_principal", "dor",
         "funcionalidade", "fatores_psicossociais", "red_flags",
-        "raciocinio_multidisciplinar", "hipoteses_diagnosticas", "cif_codes",
-        "diretriz_tratamento", "plano_tratamento",
-        "insights_baseados_evidencia", "classificacao_severidade",
+        "hipoteses_diagnosticas", "diretriz_tratamento", "classificacao_severidade",
       ],
       additionalProperties: false,
     },
