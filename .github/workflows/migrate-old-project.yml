@@ -156,7 +156,7 @@ jobs:
             | jq '[.[].id]')
           echo "  $(echo "$NEW_PIDS" | jq 'length') pacientes no banco novo"
 
-          TABLES="controle_sessoes notas_prontuario avaliacoes pagamentos_paciente paciente_servicos documentos anamneses evolucoes prontuarios myid fichas_evolucao registros_clinicos"
+          TABLES="controle_sessoes notas_prontuario avaliacoes avaliacoes_identidade avaliacoes_resposta respostas_avaliacao_paciente myid_avaliacoes myid_acoes_checklist pagamentos_paciente pagamentos_paciente_auditoria paciente_servicos paciente_missoes config_agenda config_sessoes convenios agenda_lista_espera ausencias_terapeuta protocolos protocolo_templates tecnicas_tratamento planos pacotes_sessoes vendas repasse_config tiss_config tiss_guias tiss_lotes tracking_config notificacao_inteligente_config notificacao_regras perfis_profissionais"
 
           for TABLE in $TABLES; do
             echo ""
@@ -259,46 +259,50 @@ jobs:
             exit 0
           fi
 
-          # Tabelas que têm paciente_id mas não terapeuta_id
-          TABLES="sessoes_avulsas historico_clinico arquivos_paciente contatos_emergencia"
+          # Buscar IDs dos pacientes como lista separada por vírgula para filtro eficiente
+          PACIENTE_IDS_COMMA=$(curl -s \
+            -H "apikey: $OLD_KEY" \
+            -H "Authorization: Bearer $OLD_KEY" \
+            "$OLD_URL/rest/v1/pacientes?terapeuta_id=eq.$OLD_TID&select=id&limit=5000" \
+            | jq -r '[.[].id] | join(",")')
+
+          echo "IDs de pacientes: $(echo "$PACIENTE_IDS_COMMA" | tr ',' '\n' | wc -l) pacientes"
+
+          # Tabelas clínicas com paciente_id mas sem terapeuta_id
+          TABLES="historia_vida_paciente diagnosticos_paciente evolucao_paciente sinais_vitais antropometria body_composition health_metrics meal_logs water_logs sleep_logs daily_logs wearable_metricas_semanais wearable_sync_log planos_alimentares planos_fino prescricoes_exercicios prescricoes_paciente progresso_exercicios studio_execucoes studio_execucao_exercicios studio_medidas studio_notas studio_treinos studio_periodizacoes testes_funcionais_paciente escalas_psicologia links_agenda_paciente links_avaliacao links_rastreavel protocolo_tratamentos protocolo_progressao documentos_emitidos termos_consentimento atestados_medicos exames_importados medicamentos_catalogo myid_dimension_insights_cache funil_leads pesquisas_nps notificacoes recordatorios_24h evento_inscricoes evento_respostas eventos_clinicos_anatomicos"
 
           for TABLE in $TABLES; do
             echo ""
             echo "=== Verificando: $TABLE ==="
 
-            ALL_RECORDS="[]"
-            FOUND=0
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -H "apikey: $OLD_KEY" \
+              -H "Authorization: Bearer $OLD_KEY" \
+              "$OLD_URL/rest/v1/$TABLE?paciente_id=in.($PACIENTE_IDS_COMMA)&select=*&limit=5000")
 
-            for PID in $PACIENTE_IDS; do
-              RESPONSE=$(curl -s -w "\n%{http_code}" \
-                -H "apikey: $OLD_KEY" \
-                -H "Authorization: Bearer $OLD_KEY" \
-                "$OLD_URL/rest/v1/$TABLE?paciente_id=eq.$PID&select=*&limit=1000")
+            HTTP=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | head -n -1)
 
-              HTTP=$(echo "$RESPONSE" | tail -1)
-              BODY=$(echo "$RESPONSE" | head -n -1)
+            if [ "$HTTP" = "404" ] || [ "$HTTP" = "400" ]; then
+              echo "  ⏭️  Tabela não existe ou sem coluna paciente_id — pulando"
+              continue
+            fi
 
-              if [ "$HTTP" = "404" ] || [ "$HTTP" = "400" ]; then
-                echo "  ⏭️  Tabela não existe — pulando"
-                break
-              fi
+            if [ "$HTTP" != "200" ] && [ "$HTTP" != "206" ]; then
+              echo "  ⚠️  Erro HTTP $HTTP — pulando"
+              continue
+            fi
 
-              COUNT=$(echo "$BODY" | jq 'length' 2>/dev/null || echo "0")
-              if [ "$COUNT" != "0" ] && [ -n "$COUNT" ]; then
-                FOUND=$((FOUND + COUNT))
-                ALL_RECORDS=$(echo "$ALL_RECORDS $BODY" | jq -s 'add')
-              fi
-            done
-
-            if [ "$FOUND" = "0" ]; then
+            COUNT=$(echo "$BODY" | jq 'length' 2>/dev/null || echo "0")
+            if [ "$COUNT" = "0" ] || [ -z "$COUNT" ]; then
               echo "  ⏭️  Nenhum registro — pulando"
               continue
             fi
 
-            echo "  📦 $FOUND registros encontrados"
+            echo "  📦 $COUNT registros encontrados"
 
             PAYLOAD_FILE=$(mktemp /tmp/payload_XXXXXX.json)
-            echo "$ALL_RECORDS" > "$PAYLOAD_FILE"
+            echo "$BODY" > "$PAYLOAD_FILE"
 
             RESULT=$(curl -s -o /tmp/curl_out.txt -w "%{http_code}" \
               -X POST \
@@ -312,10 +316,10 @@ jobs:
             rm -f "$PAYLOAD_FILE"
 
             if [ "$RESULT" = "200" ] || [ "$RESULT" = "201" ] || [ "$RESULT" = "204" ]; then
-              echo "  ✅ $TABLE: $FOUND registros importados (HTTP $RESULT)"
+              echo "  ✅ $TABLE: $COUNT registros importados (HTTP $RESULT)"
             else
-              echo "  ❌ $TABLE: erro ao importar (HTTP $RESULT)"
-              cat /tmp/curl_out.txt | head -c 500
+              echo "  ❌ $TABLE: erro (HTTP $RESULT)"
+              cat /tmp/curl_out.txt | head -c 400
               echo ""
             fi
           done
@@ -332,11 +336,22 @@ jobs:
           echo "         RESUMO DA MIGRAÇÃO"
           echo "======================================="
 
-          for TABLE in pacientes agendamentos controle_sessoes notas_prontuario avaliacoes pagamentos_paciente paciente_servicos; do
+          # Tabelas com terapeuta_id
+          for TABLE in pacientes agendamentos controle_sessoes notas_prontuario avaliacoes pagamentos_paciente; do
             COUNT=$(curl -s \
               -H "apikey: $NEW_KEY" \
               -H "Authorization: Bearer $NEW_KEY" \
               "$NEW_URL/rest/v1/$TABLE?terapeuta_id=eq.$NEW_TID&select=id&limit=10000" \
-              | jq 'length // "?" ' 2>/dev/null || echo "?")
-            printf "  %-30s %s registros\n" "$TABLE:" "$COUNT"
+              | jq 'length // "?"' 2>/dev/null || echo "?")
+            printf "  %-35s %s registros\n" "$TABLE:" "$COUNT"
+          done
+
+          # Tabelas com paciente_id (count geral)
+          for TABLE in historia_vida_paciente diagnosticos_paciente evolucao_paciente sinais_vitais planos_alimentares myid_avaliacoes myid_acoes_checklist respostas_avaliacao_paciente protocolo_tratamentos; do
+            COUNT=$(curl -s \
+              -H "apikey: $NEW_KEY" \
+              -H "Authorization: Bearer $NEW_KEY" \
+              "$NEW_URL/rest/v1/$TABLE?select=id&limit=10000" \
+              | jq 'length // "?"' 2>/dev/null || echo "?")
+            printf "  %-35s %s registros\n" "$TABLE:" "$COUNT"
           done
