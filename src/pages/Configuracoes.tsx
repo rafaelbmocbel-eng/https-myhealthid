@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy,
   ExternalLink, RefreshCw, Plus, UserPlus, Building2, Bell, Sparkles,
-  Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid, Brain, Gift, Download,
+  Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid, Brain, Gift, Download, Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
@@ -28,8 +28,9 @@ import AtalhosHomeEditor from '@/components/configuracoes/AtalhosHomeEditor';
 import NotificacoesInteligentes from '@/components/configuracoes/NotificacoesInteligentes';
 import BackfillMyIdEfi from '@/components/configuracoes/BackfillMyIdEfi';
 import RecompensasManager from '@/components/configuracoes/RecompensasManager';
+import VitrineConfig from '@/components/configuracoes/VitrineConfig';
 
-type TabId = 'clinica' | 'home' | 'agenda' | 'equipe' | 'links' | 'notif' | 'myid' | 'recompensas' | 'ia';
+type TabId = 'clinica' | 'home' | 'agenda' | 'equipe' | 'links' | 'notif' | 'myid' | 'recompensas' | 'ia' | 'vitrine';
 
 type TabItem =
   | { id: TabId; label: string; icon: React.ComponentType<any>; kind: 'panel' }
@@ -47,6 +48,7 @@ const TABS: TabItem[] = [
   { id: 'myid', label: 'MyID Auto', icon: Brain, kind: 'panel' },
   { id: 'recompensas', label: 'Recompensas', icon: Gift, kind: 'panel' },
   { id: 'ia', label: 'IA', icon: Sparkles, kind: 'panel' },
+  { id: 'vitrine', label: 'Vitrine', icon: Store, kind: 'panel' },
   { id: 'exportar', label: 'Exportar dados', icon: Download, kind: 'link', to: '/configuracoes/exportar' },
 ];
 
@@ -243,6 +245,13 @@ export default function Configuracoes() {
           </TabsContent>
 
 
+
+          {/* VITRINE */}
+          <TabsContent value="vitrine" className="mt-0">
+            <div className="clinical-card">
+              <VitrineConfig />
+            </div>
+          </TabsContent>
 
           {/* IA */}
           <TabsContent value="ia" className="mt-0 space-y-4">

@@ -48,6 +48,11 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
 
+// Vitrine pública do marketplace de terapeutas
+const PortalLanding = lazyWithRetry(() => import("./pages/paciente/PortalLanding"));
+const VitrinePublica = lazyWithRetry(() => import("./pages/paciente/VitrinePublica"));
+const PerfilPublicoTerapeuta = lazyWithRetry(() => import("./pages/paciente/PerfilPublicoTerapeuta"));
+
 // Patient portal (lazy + retry para tolerar chunk-load errors / deploys)
 const PacienteLogin = lazyWithRetry(() => import("./pages/paciente/PacienteLogin"));
 const PortalGate = lazyWithRetry(() => import("./pages/paciente/PortalGate"));
@@ -169,7 +174,12 @@ const App = () => (
                 <Route path="/financeiro" element={<Navigate to="/pacientes?tab=financeiro" replace />} />
                 <Route path="/base-cientifica" element={<ProfessionalGuard><BaseCientifica /></ProfessionalGuard>} />
 
-                {/* Patient Portal */}
+                {/* Portal do paciente — marketplace público */}
+                <Route path="/portaldocliente" element={<PortalLanding />} />
+                <Route path="/portaldocliente/vitrine" element={<VitrinePublica />} />
+                <Route path="/portaldocliente/terapeuta/:id" element={<PerfilPublicoTerapeuta />} />
+
+                {/* Portal do paciente — auth + app */}
                 <Route path="/paciente/login" element={<PortalErrorBoundary><PacienteLogin /></PortalErrorBoundary>} />
                 <Route path="/portaldocliente/:token" element={<PortalErrorBoundary><PortalGate /></PortalErrorBoundary>} />
                 <Route path="/paciente/completar-cadastro" element={<PortalErrorBoundary><CompletarCadastroPortal /></PortalErrorBoundary>} />

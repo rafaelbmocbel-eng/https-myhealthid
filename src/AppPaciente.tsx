@@ -28,6 +28,9 @@ const WellnessCadastro = lazyWithRetry(() => import("./pages/WellnessCadastro"))
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 // Portal do paciente
+const PortalLanding = lazyWithRetry(() => import("./pages/paciente/PortalLanding"));
+const VitrinePublica = lazyWithRetry(() => import("./pages/paciente/VitrinePublica"));
+const PerfilPublicoTerapeuta = lazyWithRetry(() => import("./pages/paciente/PerfilPublicoTerapeuta"));
 const PacienteLogin = lazyWithRetry(() => import("./pages/paciente/PacienteLogin"));
 const PortalGate = lazyWithRetry(() => import("./pages/paciente/PortalGate"));
 const PacienteDashboard = lazyWithRetry(() => import("./pages/paciente/PacienteDashboard"));
@@ -118,7 +121,12 @@ const AppPaciente = () => (
                 <Route path="/portaldocliente/completar/:token" element={<CompletarCadastro />} />
                 <Route path="/wellness/cadastro" element={<WellnessCadastro />} />
 
-                {/* Portal do paciente */}
+                {/* Portal do paciente — marketplace */}
+                <Route path="/portaldocliente" element={<PortalLanding />} />
+                <Route path="/portaldocliente/vitrine" element={<VitrinePublica />} />
+                <Route path="/portaldocliente/terapeuta/:id" element={<PerfilPublicoTerapeuta />} />
+
+                {/* Portal do paciente — auth + app */}
                 <Route path="/paciente/login" element={<PortalErrorBoundary><PacienteLogin /></PortalErrorBoundary>} />
                 <Route path="/portaldocliente/:token" element={<PortalErrorBoundary><PortalGate /></PortalErrorBoundary>} />
                 <Route path="/paciente/completar-cadastro" element={<PortalErrorBoundary><CompletarCadastroPortal /></PortalErrorBoundary>} />
