@@ -122,35 +122,33 @@ jobs:
               continue
             fi
 
-            # Trocar terapeuta_id antigo pelo novo
-            RECORDS_NEW=$(echo "$BODY" | jq \
+            # Trocar terapeuta_id antigo pelo novo e gravar em arquivo
+            PAYLOAD_FILE=$(mktemp /tmp/payload_XXXXXX.json)
+            echo "$BODY" | jq \
               --arg old "$OLD_TID" \
               --arg new "$NEW_TID" \
-              '[.[] | .terapeuta_id = if .terapeuta_id == $old then $new else .terapeuta_id end]')
+              '[.[] | .terapeuta_id = if .terapeuta_id == $old then $new else .terapeuta_id end]' \
+              > "$PAYLOAD_FILE"
 
-            # Inserir no banco novo com upsert (não duplica se já existir)
-            RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+            echo "  📤 Enviando $(wc -c < "$PAYLOAD_FILE") bytes..."
+
+            # Inserir no banco novo com upsert — usar @file para evitar "Argument list too long"
+            RESULT=$(curl -s -o /tmp/curl_out.txt -w "%{http_code}" \
               -X POST \
               -H "apikey: $NEW_KEY" \
               -H "Authorization: Bearer $NEW_KEY" \
               -H "Content-Type: application/json" \
               -H "Prefer: resolution=merge-duplicates,return=minimal" \
               "$NEW_URL/rest/v1/$TABLE" \
-              -d "$RECORDS_NEW")
+              --data @"$PAYLOAD_FILE")
+
+            rm -f "$PAYLOAD_FILE"
 
             if [ "$RESULT" = "200" ] || [ "$RESULT" = "201" ] || [ "$RESULT" = "204" ]; then
               echo "  ✅ $TABLE: $COUNT registros importados (HTTP $RESULT)"
             else
               echo "  ❌ $TABLE: erro ao importar (HTTP $RESULT)"
-              # Mostrar detalhes do erro
-              curl -s \
-                -X POST \
-                -H "apikey: $NEW_KEY" \
-                -H "Authorization: Bearer $NEW_KEY" \
-                -H "Content-Type: application/json" \
-                -H "Prefer: resolution=merge-duplicates,return=minimal" \
-                "$NEW_URL/rest/v1/$TABLE" \
-                -d "$RECORDS_NEW" | head -c 500
+              cat /tmp/curl_out.txt | head -c 500
               echo ""
             fi
           done
@@ -219,16 +217,27 @@ jobs:
 
             echo "  📦 $FOUND registros encontrados"
 
-            RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+            PAYLOAD_FILE=$(mktemp /tmp/payload_XXXXXX.json)
+            echo "$ALL_RECORDS" > "$PAYLOAD_FILE"
+
+            RESULT=$(curl -s -o /tmp/curl_out.txt -w "%{http_code}" \
               -X POST \
               -H "apikey: $NEW_KEY" \
               -H "Authorization: Bearer $NEW_KEY" \
               -H "Content-Type: application/json" \
               -H "Prefer: resolution=merge-duplicates,return=minimal" \
               "$NEW_URL/rest/v1/$TABLE" \
-              -d "$ALL_RECORDS")
+              --data @"$PAYLOAD_FILE")
 
-            echo "  ✅ $TABLE: $FOUND registros importados (HTTP $RESULT)"
+            rm -f "$PAYLOAD_FILE"
+
+            if [ "$RESULT" = "200" ] || [ "$RESULT" = "201" ] || [ "$RESULT" = "204" ]; then
+              echo "  ✅ $TABLE: $FOUND registros importados (HTTP $RESULT)"
+            else
+              echo "  ❌ $TABLE: erro ao importar (HTTP $RESULT)"
+              cat /tmp/curl_out.txt | head -c 500
+              echo ""
+            fi
           done
 
       - name: Resumo final
