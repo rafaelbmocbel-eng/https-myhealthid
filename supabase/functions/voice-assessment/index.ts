@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
@@ -401,7 +400,7 @@ function validarCifCodes(cifCodes: any): any {
   });
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -505,8 +504,11 @@ serve(async (req) => {
 
     if (hasAudio && !hasText) {
       try {
+        const pass1Ctrl = new AbortController();
+        const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 45_000);
         const transcribeRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
           method: "POST",
+          signal: pass1Ctrl.signal,
           headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: "gemini-2.5-flash",
@@ -525,6 +527,7 @@ serve(async (req) => {
             ],
           }),
         });
+        clearTimeout(pass1Timer);
 
         if (transcribeRes.ok) {
           const tData = await transcribeRes.json();
@@ -648,23 +651,37 @@ serve(async (req) => {
       });
     }
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gemini-2.5-flash",
-        temperature: 0,
-        messages: [
-          { role: "system", content: activeSystemPrompt },
-          { role: "user", content: userContent },
-        ],
-        tools: [TOOL_SCHEMA],
-        tool_choice: { type: "function", function: { name: "generate_clinical_assessment" } },
-      }),
-    });
+    const pass2Ctrl = new AbortController();
+    const pass2Timer = setTimeout(() => pass2Ctrl.abort(), 110_000);
+    let response: Response;
+    try {
+      response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        method: "POST",
+        signal: pass2Ctrl.signal,
+        headers: {
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gemini-2.5-flash",
+          temperature: 0,
+          messages: [
+            { role: "system", content: activeSystemPrompt },
+            { role: "user", content: userContent },
+          ],
+          tools: [TOOL_SCHEMA],
+          tool_choice: { type: "function", function: { name: "generate_clinical_assessment" } },
+        }),
+      });
+    } catch (fetchErr) {
+      clearTimeout(pass2Timer);
+      const isTimeout = fetchErr instanceof Error && fetchErr.name === "AbortError";
+      return new Response(JSON.stringify({ error: isTimeout
+        ? "A IA demorou demais para responder. Tente com um áudio mais curto ou cole a transcrição como texto."
+        : `Falha de rede ao chamar a IA: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`
+      }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    clearTimeout(pass2Timer);
 
     if (!response.ok) {
       if (response.status === 429) {
