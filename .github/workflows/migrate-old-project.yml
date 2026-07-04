@@ -163,7 +163,7 @@ jobs:
             | jq '[.[].id]')
           echo "  $(echo "$NEW_AIDS" | jq 'length') agendamentos no banco novo"
 
-          TABLES="controle_sessoes notas_prontuario avaliacoes avaliacoes_identidade avaliacoes_resposta respostas_avaliacao_paciente myid_avaliacoes myid_acoes_checklist pagamentos_paciente pagamentos_paciente_auditoria paciente_servicos paciente_missoes config_agenda config_sessoes convenios agenda_lista_espera ausencias_terapeuta protocolos protocolo_templates tecnicas_tratamento planos pacotes_sessoes vendas repasse_config tiss_config tiss_guias tiss_lotes tracking_config notificacao_inteligente_config notificacao_regras perfis_profissionais"
+          TABLES="controle_sessoes notas_prontuario avaliacoes avaliacoes_identidade avaliacoes_voz avaliacoes_resposta respostas_avaliacao_paciente myid_avaliacoes myid_acoes_checklist pagamentos_paciente pagamentos_paciente_auditoria paciente_servicos paciente_missoes config_agenda config_sessoes convenios agenda_lista_espera ausencias_terapeuta protocolos protocolo_templates tecnicas_tratamento planos pacotes_sessoes vendas repasse_config tiss_config tiss_guias tiss_lotes tracking_config notificacao_inteligente_config notificacao_regras perfis_profissionais"
 
           for TABLE in $TABLES; do
             echo ""
@@ -375,7 +375,7 @@ jobs:
           echo "======================================="
 
           # Tabelas com terapeuta_id
-          for TABLE in pacientes agendamentos controle_sessoes notas_prontuario avaliacoes pagamentos_paciente; do
+          for TABLE in pacientes agendamentos controle_sessoes notas_prontuario avaliacoes avaliacoes_identidade avaliacoes_voz pagamentos_paciente; do
             COUNT=$(curl -s \
               -H "apikey: $NEW_KEY" \
               -H "Authorization: Bearer $NEW_KEY" \
