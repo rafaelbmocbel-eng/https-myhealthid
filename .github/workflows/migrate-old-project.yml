@@ -86,55 +86,92 @@ jobs:
         run: |
           set +e
 
-          for TABLE in pacientes agendamentos; do
-            echo ""
-            echo "=== Migrando: $TABLE ==="
-
-            # Buscar TODOS os registros (sem filtro de terapeuta_id)
-            # para garantir que nenhum paciente referenciado em FK fique faltando
-            BODY=$(curl -s \
-              -H "apikey: $OLD_KEY" \
-              -H "Authorization: Bearer $OLD_KEY" \
-              -H "Accept: application/json" \
-              "$OLD_URL/rest/v1/$TABLE?select=*&limit=5000")
-
-            COUNT=$(echo "$BODY" | jq 'length')
-            echo "  📦 $COUNT registros encontrados"
-
-            if [ "$COUNT" = "0" ] || [ -z "$COUNT" ]; then
-              echo "  ⏭️  Nenhum registro — pulando"
-              continue
-            fi
-
+          # --- Pacientes: buscar TODOS (sem filtro de terapeuta) para não quebrar FKs ---
+          echo ""
+          echo "=== Migrando: pacientes ==="
+          BODY=$(curl -s \
+            -H "apikey: $OLD_KEY" \
+            -H "Authorization: Bearer $OLD_KEY" \
+            -H "Accept: application/json" \
+            "$OLD_URL/rest/v1/pacientes?select=*&limit=5000")
+          COUNT=$(echo "$BODY" | jq 'length')
+          echo "  📦 $COUNT registros encontrados"
+          if [ "$COUNT" != "0" ] && [ -n "$COUNT" ]; then
             PAYLOAD_FILE=$(mktemp /tmp/payload_XXXXXX.json)
-            # Forçar terapeuta_id = NEW_TID em todos os registros
-            # (pacientes com outro terapeuta_id causariam FK error no novo projeto)
-            echo "$BODY" | jq \
-              --arg new "$NEW_TID" \
-              '[.[] | .terapeuta_id = $new]' \
-              > "$PAYLOAD_FILE"
-
+            echo "$BODY" | jq --arg new "$NEW_TID" '[.[] | .terapeuta_id = $new]' > "$PAYLOAD_FILE"
             echo "  📤 Enviando $(wc -c < "$PAYLOAD_FILE") bytes..."
-
             RESULT=$(curl -s -o /tmp/curl_out.txt -w "%{http_code}" \
               -X POST \
               -H "apikey: $NEW_KEY" \
               -H "Authorization: Bearer $NEW_KEY" \
               -H "Content-Type: application/json" \
               -H "Prefer: resolution=merge-duplicates,return=minimal" \
-              "$NEW_URL/rest/v1/$TABLE" \
+              "$NEW_URL/rest/v1/pacientes" \
               --data @"$PAYLOAD_FILE")
-
             rm -f "$PAYLOAD_FILE"
-
             if [ "$RESULT" = "200" ] || [ "$RESULT" = "201" ] || [ "$RESULT" = "204" ]; then
-              echo "  ✅ $TABLE: $COUNT registros sincronizados (HTTP $RESULT)"
+              echo "  ✅ pacientes: $COUNT registros sincronizados (HTTP $RESULT)"
             else
-              echo "  ❌ $TABLE: erro (HTTP $RESULT)"
+              echo "  ❌ pacientes: erro (HTTP $RESULT)"
               cat /tmp/curl_out.txt | head -c 800
               echo ""
             fi
-          done
+          fi
+
+          # --- Agendamentos: filtrar por terapeuta_id E por paciente_id válido no novo projeto ---
+          echo ""
+          echo "=== Migrando: agendamentos ==="
+
+          # Buscar apenas agendamentos do terapeuta antigo
+          BODY=$(curl -s \
+            -H "apikey: $OLD_KEY" \
+            -H "Authorization: Bearer $OLD_KEY" \
+            -H "Accept: application/json" \
+            "$OLD_URL/rest/v1/agendamentos?terapeuta_id=eq.$OLD_TID&select=*&limit=5000")
+          COUNT=$(echo "$BODY" | jq 'length')
+          echo "  📦 $COUNT registros encontrados no banco antigo"
+
+          if [ "$COUNT" = "0" ] || [ -z "$COUNT" ]; then
+            echo "  ⏭️  Nenhum registro — pulando"
+          else
+            # Buscar IDs válidos de pacientes no banco novo
+            NEW_PIDS_AG=$(curl -s \
+              -H "apikey: $NEW_KEY" \
+              -H "Authorization: Bearer $NEW_KEY" \
+              "$NEW_URL/rest/v1/pacientes?select=id&limit=10000" \
+              | jq '[.[].id]')
+
+            # Trocar terapeuta_id e filtrar paciente_id inválidos
+            PAYLOAD=$(echo "$BODY" | jq \
+              --arg new "$NEW_TID" \
+              --argjson pids "$NEW_PIDS_AG" \
+              '[.[] | .terapeuta_id = $new | select(.paciente_id == null or (.paciente_id as $p | $pids | any(. == $p)))]')
+
+            VALID=$(echo "$PAYLOAD" | jq 'length')
+            SKIPPED=$((COUNT - VALID))
+            [ "$SKIPPED" -gt 0 ] && echo "  ⚠️  $SKIPPED ignorados (paciente_id sem correspondência no banco novo)"
+            echo "  📤 Importando $VALID registros válidos..."
+
+            PAYLOAD_FILE=$(mktemp /tmp/payload_XXXXXX.json)
+            echo "$PAYLOAD" > "$PAYLOAD_FILE"
+            RESULT=$(curl -s -o /tmp/curl_out.txt -w "%{http_code}" \
+              -X POST \
+              -H "apikey: $NEW_KEY" \
+              -H "Authorization: Bearer $NEW_KEY" \
+              -H "Content-Type: application/json" \
+              -H "Prefer: resolution=merge-duplicates,return=minimal" \
+              "$NEW_URL/rest/v1/agendamentos" \
+              --data @"$PAYLOAD_FILE")
+            rm -f "$PAYLOAD_FILE"
+
+            if [ "$RESULT" = "200" ] || [ "$RESULT" = "201" ] || [ "$RESULT" = "204" ]; then
+              echo "  ✅ agendamentos: $VALID registros importados (HTTP $RESULT)"
+            else
+              echo "  ❌ agendamentos: erro (HTTP $RESULT)"
+              cat /tmp/curl_out.txt | head -c 800
+              echo ""
+            fi
+          fi
 
       - name: Migrar tabelas com terapeuta_id
         env:
