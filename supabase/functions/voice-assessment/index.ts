@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
 
   try {
     try { await requireUser(req); } catch (r) { return r as Response; }
-    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional } = await req.json();
+    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional, patientContext } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
@@ -402,7 +402,7 @@ Deno.serve(async (req) => {
       serviceType === 'cobzero' ? 'COB° ZERO' :
       serviceType === 'studio' ? 'Studio Personal ID' : 'Avaliação Clínica';
 
-    const contextInfo = `SERVIÇO: ${serviceLabel}\nPACIENTE: ${patientName || 'Não informado'}, ${patientAge || '?'} anos, Sexo: ${patientSex || '?'}`;
+    const contextInfo = `SERVIÇO: ${serviceLabel}\nPACIENTE: ${patientName || 'Não informado'}, ${patientAge || '?'} anos, Sexo: ${patientSex || '?'}${patientContext ? `\n\n${patientContext}` : ''}`;
 
     // Normalize mime once (used by both passes)
     let audioFormat = "webm";
@@ -425,7 +425,7 @@ Deno.serve(async (req) => {
     if (hasAudio && !hasText) {
       try {
         const pass1Ctrl = new AbortController();
-        const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 45_000);
+        const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 180_000);
         const transcribeRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
           method: "POST",
           signal: pass1Ctrl.signal,

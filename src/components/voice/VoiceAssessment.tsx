@@ -593,8 +593,40 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     try {
       const body: any = { serviceType, patientName, patientAge, patientSex, perfilProfissional };
 
-      // Se há áudio grande (>3.5MB base64), faz upload para storage e passa signed URL
-      if (audioBase64 && audioBase64.length > 3.5 * 1024 * 1024) {
+      // Injeta contexto do paciente: últimas 3 avaliações + MyID score
+      if (pacienteId) {
+        try {
+          const [histRes, myidRes] = await Promise.all([
+            supabase
+              .from('avaliacoes_voz')
+              .select('created_at, queixa_principal, classificacao_severidade, resultado')
+              .eq('paciente_id', pacienteId)
+              .order('created_at', { ascending: false })
+              .limit(3),
+            supabase
+              .from('pacientes')
+              .select('myid_score')
+              .eq('id', pacienteId)
+              .maybeSingle(),
+          ]);
+          const historico = histRes.data ?? [];
+          const myidScore = myidRes.data?.myid_score;
+          if (historico.length > 0 || myidScore != null) {
+            const linhas: string[] = ['HISTÓRICO DO PACIENTE (use para comparação e evolução):'];
+            if (myidScore != null) linhas.push(`• MyID Score atual: ${myidScore}/100`);
+            historico.forEach((av: any, i: number) => {
+              const data = new Date(av.created_at).toLocaleDateString('pt-BR');
+              const eva = av.resultado?.dor?.intensidade_eva ?? av.resultado?.dor?.intensidade ?? '';
+              linhas.push(`• Sessão ${i + 1} (${data}): ${av.queixa_principal || '—'}, Severidade: ${av.classificacao_severidade || '—'}${eva ? `, EVA: ${eva}` : ''}`);
+            });
+            body.patientContext = linhas.join('\n');
+          }
+        } catch { /* contexto histórico é melhor-esforço */ }
+      }
+
+      // Áudio longo (>90s gravado OU >3.5MB base64) → signedUrl para evitar timeout
+      const isLongAudio = recordingTime > 90;
+      if (audioBase64 && (isLongAudio || audioBase64.length > 3.5 * 1024 * 1024)) {
         if (!audioBlob) {
           toast({
             title: 'Áudio não disponível',
@@ -604,7 +636,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           setIsProcessing(false);
           return;
         }
-        toast({ title: 'Enviando áudio...', description: 'O áudio está sendo carregado para processamento.' });
+        toast({
+          title: isLongAudio ? 'Enviando áudio longo...' : 'Enviando áudio...',
+          description: isLongAudio ? `Áudio de ${Math.round(recordingTime / 60)}min+ sendo carregado. Aguarde (~1-2 min).` : 'O áudio está sendo carregado para processamento.',
+        });
         const signedUrl = await uploadAudioToStorage(audioBlob);
         body.signedUrl = signedUrl;
         body.audioMimeType = audioMimeType;

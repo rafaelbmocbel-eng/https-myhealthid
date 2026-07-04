@@ -2,14 +2,20 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, Mic, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { FileText, Mic, Pencil, Trash2, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import VoiceAssessment from './VoiceAssessment';
+
+const SEVERITY_COLORS: Record<string, string> = {
+  'Favorável': '#22c55e', 'Atenção': '#eab308', 'Moderado': '#f97316',
+  'Severo': '#ef4444', 'Risco de Cronificação': '#a855f7',
+};
 
 interface Props {
   pacienteId: string;
@@ -74,8 +80,79 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
 
   if (!avaliacoes.length) return null;
 
+  // Monta dados para o gráfico de EVA — só avaliações com EVA registrada, em ordem crescente de data
+  const evaData = [...avaliacoes]
+    .reverse()
+    .map((a, i) => {
+      const eva = a.resultado?.dor?.intensidade_eva ?? a.resultado?.dor?.intensidade ?? null;
+      if (eva == null || isNaN(Number(eva))) return null;
+      return {
+        idx: i + 1,
+        data: format(new Date(a.created_at), 'dd/MM', { locale: ptBR }),
+        eva: Number(eva),
+        severidade: a.classificacao_severidade,
+      };
+    })
+    .filter(Boolean) as { idx: number; data: string; eva: number; severidade: string | null }[];
+
+  const temGrafico = evaData.length >= 2;
+  const ultimaEva = evaData.at(-1)?.eva;
+  const penultimaEva = evaData.at(-2)?.eva;
+  const tendencia = ultimaEva != null && penultimaEva != null
+    ? ultimaEva < penultimaEva ? 'melhora' : ultimaEva > penultimaEva ? 'piora' : 'estavel'
+    : null;
+
   return (
     <>
+      {temGrafico && (
+        <section className="rounded-2xl border border-border/40 bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[13px] font-semibold text-foreground flex items-center gap-1.5">
+              Evolução da Dor (EVA)
+            </h3>
+            {tendencia && (
+              <Badge variant="outline" className={`gap-1 text-[11px] ${tendencia === 'melhora' ? 'border-emerald-400 text-emerald-700' : tendencia === 'piora' ? 'border-red-400 text-red-700' : 'border-border text-muted-foreground'}`}>
+                {tendencia === 'melhora' ? <TrendingDown className="h-3 w-3" /> : tendencia === 'piora' ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                {tendencia === 'melhora' ? `EVA −${(penultimaEva! - ultimaEva!).toFixed(1)}` : tendencia === 'piora' ? `EVA +${(ultimaEva! - penultimaEva!).toFixed(1)}` : 'Estável'}
+              </Badge>
+            )}
+          </div>
+          <ResponsiveContainer width="100%" height={140}>
+            <LineChart data={evaData} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
+              <XAxis dataKey="data" tick={{ fontSize: 10 }} />
+              <YAxis domain={[0, 10]} ticks={[0, 2, 4, 6, 8, 10]} tick={{ fontSize: 10 }} />
+              <Tooltip
+                formatter={(v: number) => [`${v}/10`, 'EVA']}
+                labelStyle={{ fontSize: 11 }}
+                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+              />
+              <ReferenceLine y={7} stroke="#ef4444" strokeDasharray="4 2" strokeOpacity={0.5} label={{ value: 'Severo', position: 'right', fontSize: 9, fill: '#ef4444' }} />
+              <Line
+                type="monotone"
+                dataKey="eva"
+                stroke="hsl(var(--primary))"
+                strokeWidth={2}
+                dot={(props: any) => {
+                  const { cx, cy, payload } = props;
+                  const color = SEVERITY_COLORS[payload.severidade] || 'hsl(var(--primary))';
+                  return <circle key={payload.idx} cx={cx} cy={cy} r={5} fill={color} stroke="white" strokeWidth={1.5} />;
+                }}
+                activeDot={{ r: 7 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(SEVERITY_COLORS).map(([sev, color]) => (
+              <span key={sev} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                {sev}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="space-y-2">
         <h3 className="text-caption font-medium text-muted-foreground flex items-center gap-1.5">
           <FileText className="icon-xs" />

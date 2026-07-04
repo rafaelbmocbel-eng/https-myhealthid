@@ -6,10 +6,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Pencil, Check, X, CheckCircle2, Loader2,
   FileText, Brain, Activity, HeartPulse, AlertTriangle,
-  Target, Tags, ListChecks, Stethoscope, Sparkles,
+  Target, Tags, ListChecks, Stethoscope, Sparkles, MessageCircle,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +44,14 @@ const SECOES_SEM_PRONTUARIO: SecaoKey[] = ['insights', 'hipoteses'];
 
 // Seções agrupadas no mesmo card (renderizadas juntas, confirmadas juntas)
 const GRUPO_FUNC_PSI: SecaoKey[] = ['funcionalidade', 'psicossocial'];
+
+// Agrupamento em abas para navegação mobile-first
+const TABS_CONFIG = [
+  { id: 'clinico',      label: 'Clínico',    keys: ['soap', 'resumo_clinico'] as SecaoKey[] },
+  { id: 'quadro',       label: 'Quadro',     keys: ['dor', 'funcionalidade', 'psicossocial'] as SecaoKey[] },
+  { id: 'diagnostico',  label: 'Diagnóstico', keys: ['red_flags', 'hipoteses', 'cif'] as SecaoKey[] },
+  { id: 'tratamento',   label: 'Tratamento', keys: ['diretriz', 'insights'] as SecaoKey[] },
+];
 
 // Accent palette (Tailwind classes) per section — keeps a calm, identifiable color identity
 type Accent = {
@@ -781,6 +790,20 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     enabled: !!avaliacaoId && !!pacienteId,
   });
 
+  const { data: pacienteInfo } = useQuery({
+    queryKey: ['paciente-phone', pacienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('pacientes')
+        .select('nome, sobrenome, telefone')
+        .eq('id', pacienteId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!pacienteId,
+    staleTime: 60_000,
+  });
+
   const secoesDisponiveis = useMemo(
     () => SECOES.filter((s) => textos[s.key]?.trim().length > 0),
     [textos]
@@ -1020,18 +1043,43 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 Confirmar todos
               </Button>
             )}
+            {todasConfirmadas && pacienteInfo?.telefone && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 h-9 px-3 text-[12px] border-green-500 text-green-700 hover:bg-green-50 dark:border-green-600 dark:text-green-400 shrink-0"
+                onClick={() => {
+                  const nome = pacienteInfo.nome ?? '';
+                  const soap = textos.soap?.split('\n').slice(0, 3).join('\n') || '';
+                  const resumo = textos.resumo_clinico?.slice(0, 300) || '';
+                  const eva = resultado?.dor?.intensidade_eva ?? resultado?.dor?.intensidade ?? '';
+                  const diretriz = textos.diretriz?.slice(0, 400) || '';
+                  const linhas = [
+                    `Olá ${nome}! 👋 Aqui está o resumo da sua sessão de hoje:`,
+                    soap ? `\n📋 *SOAP:*\n${soap}` : '',
+                    resumo ? `\n📊 *Resumo Clínico:*\n${resumo}` : '',
+                    eva ? `\n🩺 *Dor (EVA):* ${eva}/10` : '',
+                    diretriz ? `\n🎯 *Diretriz:*\n${diretriz}` : '',
+                    '\nContinue firme! Até a próxima sessão. 💪',
+                  ].filter(Boolean).join('');
+                  const phone = pacienteInfo.telefone!.replace(/\D/g, '');
+                  const url = `https://wa.me/55${phone}?text=${encodeURIComponent(linhas)}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+              >
+                <MessageCircle className="icon-xs" /> WhatsApp
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Grid de cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
-        {(() => {
-          // Agrupa funcionalidade + psicossocial em um único card
+      {/* Abas de navegação + Grid de cards */}
+      {(() => {
+        const renderCards = (secoesParaRenderizar: SecaoDef[]) => {
           const rendered = new Set<SecaoKey>();
           const cards: React.ReactNode[] = [];
-
-          secoesDisponiveis.forEach((s) => {
+          secoesParaRenderizar.forEach((s) => {
             if (rendered.has(s.key)) return;
 
             // Card agrupado: Funcionalidade + Psicossocial
@@ -1244,17 +1292,53 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
             );
           });
 
-          return cards;
-        })()}
-      </div>
+            return cards;
+          };
 
-      {secoesDisponiveis.length === 0 && (
-        <Card className="rounded-2xl border-dashed border-border/50">
-          <CardContent className="p-6 text-center text-caption text-muted-foreground">
-            Nenhuma seção disponível nesta avaliação.
-          </CardContent>
-        </Card>
-      )}
+          if (secoesDisponiveis.length === 0) {
+            return (
+              <Card className="rounded-2xl border-dashed border-border/50">
+                <CardContent className="p-6 text-center text-caption text-muted-foreground">
+                  Nenhuma seção disponível nesta avaliação.
+                </CardContent>
+              </Card>
+            );
+          }
+
+          return (
+            <Tabs defaultValue="clinico" className="w-full">
+              <TabsList className="grid w-full grid-cols-4 h-9 mb-2.5">
+                {TABS_CONFIG.map(tab => {
+                  const count = secoesDisponiveis.filter(s => tab.keys.includes(s.key)).length;
+                  return (
+                    <TabsTrigger key={tab.id} value={tab.id} className="text-[11px] sm:text-xs gap-1 px-1 sm:px-2">
+                      {tab.label}
+                      {count > 0 && <span className="text-[9px] bg-primary/10 text-primary rounded-full px-1.5 py-0 tabular-nums">{count}</span>}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+              {TABS_CONFIG.map(tab => {
+                const secoesTab = secoesDisponiveis.filter(s => tab.keys.includes(s.key));
+                return (
+                  <TabsContent key={tab.id} value={tab.id} className="mt-0">
+                    {secoesTab.length === 0 ? (
+                      <Card className="rounded-2xl border-dashed border-border/50">
+                        <CardContent className="p-6 text-center text-caption text-muted-foreground">
+                          Nenhuma seção nesta aba.
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+                        {renderCards(secoesTab)}
+                      </div>
+                    )}
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
+          );
+        })()}
     </div>
   );
 }

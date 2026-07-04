@@ -9,7 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
   Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
-  Smartphone, CreditCard, Info, DollarSign, Repeat
+  Smartphone, CreditCard, Info, DollarSign, Repeat, Mic
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +48,7 @@ import BloqueioEmLote from '@/components/agenda/BloqueioEmLote';
 type ViewMode = 'dia' | 'semana' | 'mes' | 'controle';
 
 const ControleAtendimento = lazy(() => import('@/components/paciente/ControleAtendimento'));
+const VoiceAssessmentLazy = lazy(() => import('@/components/voice/VoiceAssessment'));
 
 // Slot duration in minutes
 const SLOT_MINUTES = 60;
@@ -204,6 +205,7 @@ export default function Agenda() {
   const [paymentModal, setPaymentModal] = useState<{ open: boolean; patientId: string; agendamentoId?: string; valor: string; data: string; sessaoId?: string }>({
     open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
   });
+  const [voiceSessionModal, setVoiceSessionModal] = useState<{ open: boolean; agendamento?: Agendamento }>({ open: false });
   const gridRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(52);
@@ -1972,6 +1974,14 @@ export default function Agenda() {
                     <DollarSign className="h-4 w-4" /> Pagar
                   </Button>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-10 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-400 gap-2 text-xs font-bold"
+                  onClick={() => { setVoiceSessionModal({ open: true, agendamento: modal.agendamento }); setModal({ open: false }); }}
+                >
+                  <Mic className="h-4 w-4" /> Registrar sessão (voz / SOAP)
+                </Button>
               </div>
             )}
 
@@ -2647,6 +2657,35 @@ export default function Agenda() {
               Criar Sessão de Turma
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== REGISTRAR SESSÃO — SOAP rápido por voz ===== */}
+      <Dialog open={voiceSessionModal.open} onOpenChange={(o) => setVoiceSessionModal(prev => ({ ...prev, open: o }))}>
+        <DialogContent className="max-w-3xl max-h-[92dvh] overflow-y-auto p-0">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b">
+            <DialogTitle className="flex items-center gap-2 text-violet-700 dark:text-violet-400">
+              <Mic className="h-5 w-5" />
+              Registrar sessão
+              {voiceSessionModal.agendamento && (() => {
+                const pac = pacientes.find(p => p.id === voiceSessionModal.agendamento!.paciente_id);
+                return pac ? <span className="text-foreground font-normal text-sm">— {pac.nome} {pac.sobrenome}</span> : null;
+              })()}
+            </DialogTitle>
+          </DialogHeader>
+          {voiceSessionModal.open && voiceSessionModal.agendamento && (
+            <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+              <VoiceAssessmentLazy
+                serviceType="identidade"
+                pacienteId={voiceSessionModal.agendamento.paciente_id}
+                patientName={(() => {
+                  const pac = pacientes.find(p => p.id === voiceSessionModal.agendamento!.paciente_id);
+                  return pac ? `${pac.nome} ${pac.sobrenome}` : voiceSessionModal.agendamento.titulo || undefined;
+                })()}
+                onAssessmentComplete={() => setVoiceSessionModal({ open: false })}
+              />
+            </Suspense>
+          )}
         </DialogContent>
       </Dialog>
     </AppLayout>
