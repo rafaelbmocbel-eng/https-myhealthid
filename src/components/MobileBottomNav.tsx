@@ -1,18 +1,19 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, Users, Settings, Zap, Wallet, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Settings, Zap, Wallet, Store, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
+import { useVitrineNotifications } from '@/hooks/useVitrineNotifications';
 import { useHaptics } from '@/hooks/useHaptics';
 
 type ServiceKey = 'eventos';
 
-const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
+const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey }[] = [
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Início', href: '/', icon: LayoutDashboard },
+  { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true },
   { label: 'Zap', href: '/crm/inbox', icon: Zap },
-  { label: 'Financeiro', href: '/financeiro', icon: Wallet },
   { label: 'Config', href: '/configuracoes', icon: Settings },
 ];
 
@@ -20,6 +21,7 @@ export default function MobileBottomNav() {
   const location = useLocation();
   const { pendingCount } = useAgendamentoNotifications();
   const { servicos } = useServicosAtivos();
+  const { pendingCount: vitrinePending } = useVitrineNotifications();
   const { vibrate } = useHaptics();
 
   const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
@@ -37,6 +39,7 @@ export default function MobileBottomNav() {
           const Icon = item.icon;
           const active = isActive(item.href);
           const showBadge = item.hasBadge && pendingCount > 0;
+          const showVitrineBadge = item.vitrineBadge && vitrinePending > 0;
 
           return (
             <li key={item.href} className="flex-1">
@@ -68,6 +71,11 @@ export default function MobileBottomNav() {
                   {showBadge && (
                     <span className="absolute -top-1.5 -right-2 flex items-center justify-center h-4 min-w-4 px-1 text-[9px] font-bold rounded-full bg-destructive text-destructive-foreground animate-pulse">
                       {pendingCount > 9 ? '9+' : pendingCount}
+                    </span>
+                  )}
+                  {showVitrineBadge && (
+                    <span className="absolute -top-1.5 -right-2 flex items-center justify-center h-4 min-w-4 px-1 text-[9px] font-bold rounded-full text-white animate-pulse" style={{ background: 'hsl(142 70% 40%)' }}>
+                      {vitrinePending > 9 ? '9+' : vitrinePending}
                     </span>
                   )}
                 </div>

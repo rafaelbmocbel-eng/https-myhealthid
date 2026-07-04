@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users,
   Settings, LogOut, User, MessageCircle,
-  Sun, Wallet, ListChecks, type LucideIcon,
+  Sun, Wallet, ListChecks, Store, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,17 +11,19 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
+import { useVitrineNotifications } from '@/hooks/useVitrineNotifications';
 
 type ServiceKey = 'eventos';
 
-const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; serviceKey?: ServiceKey; separatorAfter?: boolean }[] = [
+const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; separatorAfter?: boolean }[] = [
   { label: 'Home', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: Wallet },
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Pendências', href: '/pendencias', icon: ListChecks, separatorAfter: true },
+  { label: 'Pendências', href: '/pendencias', icon: ListChecks },
+  { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true, separatorAfter: true },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 
@@ -37,6 +39,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
   const { user, profile, signOut } = useAuth();
   const { pendingCount, clearCount } = useAgendamentoNotifications();
   const { servicos } = useServicosAtivos();
+  const { pendingCount: vitrinePending } = useVitrineNotifications();
 
   const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
 
@@ -86,6 +89,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
           const Icon = item.icon;
           const active = isActive(item.href);
           const showBadge = item.hasBadge && pendingCount > 0;
+          const showVitrineBadge = item.vitrineBadge && vitrinePending > 0;
           const needsSep = item.separatorAfter && idx < visibleItems.length - 1;
 
           const handleClick = () => {
@@ -126,6 +130,19 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
                   {pendingCount > 9 ? '9+' : pendingCount}
                 </span>
               )}
+              {showVitrineBadge && (
+                <span
+                  className={cn(
+                    'flex items-center justify-center text-[10px] font-bold rounded-full shrink-0 animate-pulse',
+                    collapsed
+                      ? 'absolute -top-0.5 -right-0.5 h-4 w-4 text-white'
+                      : 'ml-auto h-5 min-w-5 px-1 text-white',
+                  )}
+                  style={{ background: 'hsl(142 70% 40%)' }}
+                >
+                  {vitrinePending > 9 ? '9+' : vitrinePending}
+                </span>
+              )}
             </Link>
           );
 
@@ -135,6 +152,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
               <TooltipContent side="right" className="font-medium">
                 {item.label}
                 {showBadge && ` (${pendingCount} pendente${pendingCount > 1 ? 's' : ''})`}
+                {showVitrineBadge && ` (${vitrinePending} solicitaç${vitrinePending > 1 ? 'ões' : 'ão'})`}
               </TooltipContent>
             </Tooltip>
           ) : linkEl;
