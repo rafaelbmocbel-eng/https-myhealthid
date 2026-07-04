@@ -312,8 +312,7 @@ jobs:
             COUNT=$(curl -s \
               -H "apikey: $NEW_KEY" \
               -H "Authorization: Bearer $NEW_KEY" \
-              -H "Prefer: count=exact" \
-              -o /dev/null -w "%{response_header_content-range}" \
-              "$NEW_URL/rest/v1/$TABLE?terapeuta_id=eq.$NEW_TID&limit=1" 2>/dev/null || echo "?")
-            printf "  %-30s %s\n" "$TABLE:" "$COUNT"
+              "$NEW_URL/rest/v1/$TABLE?terapeuta_id=eq.$NEW_TID&select=id&limit=10000" \
+              | jq 'length // "?" ' 2>/dev/null || echo "?")
+            printf "  %-30s %s registros\n" "$TABLE:" "$COUNT"
           done
