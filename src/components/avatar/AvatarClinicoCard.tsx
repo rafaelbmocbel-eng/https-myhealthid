@@ -279,7 +279,7 @@ const ORIGEM_LABEL: Record<OrigemAchado, string> = {
 };
 const CATEGORIA_LABEL: Record<string, string> = {
   fratura: 'Fratura óssea',
-  cirurgia: 'Cirurgia de grande porte',
+  cirurgia: 'Cirurgia / internação',
   pequena_cirurgia: 'Pequeno procedimento',
   trauma_chicote: 'Trauma tipo chicote',
   traumatismo: 'Traumatismo',
@@ -288,6 +288,9 @@ const CATEGORIA_LABEL: Record<string, string> = {
   doenca_sistemica: 'Doença sistêmica',
   tratamento_doenca: 'Tratamento de doença',
   medicamento: 'Medicação de uso regular',
+  alergia: 'Alergia',
+  saude_mental: 'Saúde mental',
+  historico_familiar: 'Histórico familiar',
 };
 
 // ── Pesos clínicos do Índice de Homeostase ──
