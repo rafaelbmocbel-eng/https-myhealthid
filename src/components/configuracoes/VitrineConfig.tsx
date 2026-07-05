@@ -10,10 +10,11 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Store, Eye, X, Plus, Loader2, ExternalLink, CheckCircle2, XCircle, Monitor, Building2, Globe } from 'lucide-react';
+import { Store, Eye, X, Plus, Loader2, ExternalLink, CheckCircle2, XCircle, Monitor, Building2, Globe, AlertTriangle, ShieldCheck, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { usePlanoAtivo } from '@/hooks/usePlanoAtivo';
 
 type VitrineData = {
   vitrine_ativo: boolean;
@@ -44,6 +45,9 @@ const ESPECIALIDADES_SUGESTOES = [
 export default function VitrineConfig() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const { data: plano } = usePlanoAtivo();
+  const assinaturaAtiva = plano != null && ['ativa', 'trial'].includes(plano.status) && (plano.data_fim == null || new Date(plano.data_fim) > new Date());
+  const diasRestantes = plano?.data_fim ? differenceInDays(new Date(plano.data_fim), new Date()) : null;
 
   const [form, setForm] = useState<VitrineData>({
     vitrine_ativo: false,
@@ -183,15 +187,60 @@ export default function VitrineConfig() {
         </div>
       </div>
 
-      {form.vitrine_ativo && (
+      {/* Banner de status da assinatura */}
+      {!assinaturaAtiva && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Assinatura necessária</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 leading-snug mt-0.5">
+              Você precisa de uma assinatura ativa para aparecer no marketplace de pacientes.{' '}
+              <a href="/precos" className="font-semibold underline">Ver planos</a>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {assinaturaAtiva && plano?.status === 'trial' && diasRestantes !== null && diasRestantes <= 7 && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+          <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Trial expirando em {diasRestantes} dia{diasRestantes !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 leading-snug mt-0.5">
+              Após o período trial, você sairá do marketplace automaticamente.{' '}
+              <a href="/precos" className="font-semibold underline">Assinar agora</a>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {assinaturaAtiva && plano?.status === 'ativa' && (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
-          <Eye className="h-4 w-4 text-emerald-600 shrink-0" />
-          <p className="text-xs text-emerald-700 dark:text-emerald-400 flex-1 min-w-0 truncate">
+          <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+          <p className="text-xs text-emerald-700 dark:text-emerald-400">
+            Assinatura <strong>{plano.plano_nome}</strong> ativa — você pode aparecer no marketplace enquanto mantiver o plano.
+          </p>
+        </div>
+      )}
+
+      {form.vitrine_ativo && assinaturaAtiva && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+          <Eye className="h-4 w-4 text-blue-600 shrink-0" />
+          <p className="text-xs text-blue-700 dark:text-blue-400 flex-1 min-w-0 truncate">
             Seu perfil está visível em: <a href={vitrineUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">{vitrineUrl}</a>
           </p>
           <a href={vitrineUrl} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-3.5 w-3.5 text-emerald-600" />
+            <ExternalLink className="h-3.5 w-3.5 text-blue-600" />
           </a>
+        </div>
+      )}
+
+      {form.vitrine_ativo && !assinaturaAtiva && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-muted border border-border">
+          <Eye className="h-4 w-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Vitrine ativada, mas você só aparecerá no marketplace com uma assinatura ativa.
+          </p>
         </div>
       )}
 
