@@ -443,8 +443,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     });
   }, [pacienteHistorico]);
 
+  // relato_paciente não entra no mapa SVG nem na lista de achados — fica só
+  // no card de revisão até o profissional confirmar como achado_clinico.
   const eventosFiltrados = useMemo(
-    () => eventos.filter(e => sistemasAtivos.includes(e.sistema)),
+    () => eventos.filter(e => sistemasAtivos.includes(e.sistema) && (e as any).tipo_diagnostico !== 'relato_paciente'),
     [eventos, sistemasAtivos],
   );
 
@@ -1407,14 +1409,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         {/* Lista de achados ativos */}
         {isLoading ? (
           <p className="text-xs text-muted-foreground text-center py-2">Carregando…</p>
-        ) : (eventos.filter(e => e.status !== 'resolvido' && (modoSimplificado ? e.visivel_paciente : true)).length === 0) ? (
+        ) : (eventos.filter(e => e.status !== 'resolvido' && (e as any).tipo_diagnostico !== 'relato_paciente' && (modoSimplificado ? e.visivel_paciente : true)).length === 0) ? (
           <p className="text-xs text-muted-foreground text-center py-2">
             Nenhum achado ativo {modoSimplificado ? 'visível' : 'registrado'}.
           </p>
         ) : (
           <div className="space-y-1.5">
             {eventos
-              .filter(e => e.status !== 'resolvido' && (modoSimplificado ? e.visivel_paciente : true))
+              .filter(e => e.status !== 'resolvido' && (e as any).tipo_diagnostico !== 'relato_paciente' && (modoSimplificado ? e.visivel_paciente : true))
               .slice(0, 6)
               .map(ev => {
               const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === ev.regiao_id);
@@ -1558,44 +1560,71 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               )}
 
               {pendentes.length > 0 && (
-                <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase text-amber-800">
-                    <Badge variant="warning" size="sm">{pendentes.length}</Badge>
-                    Relatos do paciente aguardando confirmação
+                <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 p-3">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-amber-800 dark:text-amber-400">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    {pendentes.length} Relato{pendentes.length > 1 ? 's' : ''} do paciente — aguardando confirmação
                   </div>
-                  <div className="space-y-1.5">
-                    {pendentes.map((ev) => (
-                      <div key={ev.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5 text-sm">
-                        <span className="truncate">
-                          {ev.tipo_achado} <span className="text-xs text-muted-foreground">({ev.regiao_id})</span>
-                        </span>
-                        <div className="flex shrink-0 gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => saveMut.mutate({
-                              id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
-                              tipo_achado: ev.tipo_achado, tipo_diagnostico: 'achado_clinico',
-                            })}
-                          >
-                            <Check className="mr-1 h-3 w-3" /> Confirmar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => saveMut.mutate({
-                              id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
-                              tipo_achado: ev.tipo_achado, status: 'resolvido',
-                              notas_clinicas: `${ev.notas_clinicas || ''}\nDescartado pelo profissional em ${new Date().toLocaleDateString('pt-BR')}.`,
-                            })}
-                          >
-                            Descartar
-                          </Button>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-500">
+                    Leia o relato, ajuste o campo se necessário e confirme para registrar no avatar.
+                  </p>
+                  <div className="space-y-3">
+                    {pendentes.map((ev) => {
+                      const hda = (ev as any).metadata?.historia_estruturada as {
+                        queixa?: string; inicio?: string; fatores?: string; impacto?: string;
+                      } | undefined;
+                      const campos = hda
+                        ? [
+                            { label: 'Queixa principal', valor: hda.queixa },
+                            { label: 'Início', valor: hda.inicio },
+                            { label: 'Melhora / Piora', valor: hda.fatores },
+                            { label: 'Impacto na rotina', valor: hda.impacto },
+                          ].filter(c => c.valor)
+                        : [];
+                      return (
+                        <div key={ev.id} className="rounded-md bg-white/80 dark:bg-background/60 border border-amber-100 dark:border-amber-900/40 p-3 space-y-2.5">
+                          {campos.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {campos.map(c => (
+                                <div key={c.label}>
+                                  <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">{c.label}</p>
+                                  <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{c.valor}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{ev.tipo_achado}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-amber-100 dark:border-amber-900/30">
+                            <Button
+                              size="sm"
+                              className="h-7 px-3 text-xs gap-1"
+                              onClick={() => saveMut.mutate({
+                                id: ev.id,
+                                paciente_id: pacienteId,
+                                regiao_id: ev.regiao_id,
+                                tipo_achado: ev.tipo_achado,
+                                tipo_diagnostico: 'achado_clinico' as any,
+                                metadata: { ...(ev as any).metadata, revisado_profissional: true },
+                              })}
+                            >
+                              <Check className="h-3 w-3" /> Confirmar achado
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-3 text-xs"
+                              onClick={() => deleteMut.mutate(ev.id)}
+                            >
+                              Descartar
+                            </Button>
+                            <span className="text-[10px] text-muted-foreground ml-auto">
+                              {new Date(ev.data_inicio).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
