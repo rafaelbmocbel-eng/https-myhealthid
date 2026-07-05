@@ -178,7 +178,7 @@ const App = () => (
                 <Route path="/base-cientifica" element={<ProfessionalGuard><BaseCientifica /></ProfessionalGuard>} />
 
                 {/* Portal do paciente — marketplace público */}
-                <Route path="/portaldocliente" element={<PortalLanding />} />
+                <Route path="/portaldocliente" element={<Navigate to="/paciente/login" replace />} />
                 <Route path="/portaldocliente/vitrine" element={<VitrinePublica />} />
                 <Route path="/portaldocliente/terapeuta/:id" element={<PerfilPublicoTerapeuta />} />
 
