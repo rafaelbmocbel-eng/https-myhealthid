@@ -163,6 +163,28 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M98 316 C 96 334 94 354 95 374'
   },
 
+  // Plexo cervical direito: C1-C4, raízes do pescoço para ombro/pescoço lateral
+  {
+    id: 'plexo_cervical_d',
+    label: 'Plexo Cervical D',
+    view: 'front',
+    sistemas: ['nervoso'],
+    type: 'nerve',
+    layer: 9,
+    d: 'M118 92 C 113 94 107 98 101 104 M118 96 C 113 100 106 106 99 112 M118 100 C 112 107 105 113 97 118'
+  },
+
+  // Plexo cervical esquerdo: C1-C4, raízes do pescoço para ombro/pescoço lateral
+  {
+    id: 'plexo_cervical_e',
+    label: 'Plexo Cervical E',
+    view: 'front',
+    sistemas: ['nervoso'],
+    type: 'nerve',
+    layer: 9,
+    d: 'M122 92 C 127 94 133 98 139 104 M122 96 C 127 100 134 106 141 112 M122 100 C 128 107 135 113 143 118'
+  },
+
   // ── CIRCULATORY ─────────────────────────────
 
   // Coração: proper cardiac silhouette, slightly left of midline
@@ -399,6 +421,68 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
 
   // ── DIGESTIVE ────────────────────────────────
 
+  // Faringe: posterior oral cavity down to esophagus, midline, y=76-102
+  {
+    id: 'faringe',
+    label: 'Faringe',
+    view: 'front',
+    sistemas: ['digestorio'],
+    type: 'organ',
+    layer: 7,
+    d: 'M 116 76 C 115 79 115 88 116 94 L 124 94 C 125 88 125 79 124 76 Z'
+  },
+
+  // Glândulas parótidas: maiores glândulas salivares, frente do lobo da orelha
+  {
+    id: 'glandula_parotida_d',
+    label: 'Glândula Parótida D',
+    view: 'front',
+    sistemas: ['digestorio'],
+    type: 'gland',
+    layer: 8,
+    d: 'M 80 67 C 77 64 77 60 81 59 C 85 58 89 62 88 67 C 88 72 84 74 81 73 C 79 72 80 68 80 67 Z'
+  },
+  {
+    id: 'glandula_parotida_e',
+    label: 'Glândula Parótida E',
+    view: 'front',
+    sistemas: ['digestorio'],
+    type: 'gland',
+    layer: 8,
+    d: 'M 160 67 C 163 64 163 60 159 59 C 155 58 151 62 152 67 C 152 72 156 74 159 73 C 161 72 160 68 160 67 Z'
+  },
+
+  // Glândulas submandibulares: abaixo da mandíbula, bilateral
+  {
+    id: 'glandula_submandibular_d',
+    label: 'Glândula Submandibular D',
+    view: 'front',
+    sistemas: ['digestorio'],
+    type: 'gland',
+    layer: 8,
+    d: 'M 105 78 C 103 76 104 72 108 72 C 111 72 113 75 112 79 C 111 82 107 82 105 80 C 104 79 105 78 105 78 Z'
+  },
+  {
+    id: 'glandula_submandibular_e',
+    label: 'Glândula Submandibular E',
+    view: 'front',
+    sistemas: ['digestorio'],
+    type: 'gland',
+    layer: 8,
+    d: 'M 135 78 C 137 76 136 72 132 72 C 129 72 127 75 128 79 C 129 82 133 82 135 80 C 136 79 135 78 135 78 Z'
+  },
+
+  // Glândulas sublinguais: menores, abaixo da língua, próximas à linha média
+  {
+    id: 'glandula_sublingual',
+    label: 'Glândulas Sublinguais',
+    view: 'front',
+    sistemas: ['digestorio'],
+    type: 'gland',
+    layer: 8,
+    d: 'M 113 87 C 112 85 114 84 116 84 C 118 84 118 87 117 89 C 116 90 113 89 113 87 Z M 127 87 C 128 85 126 84 124 84 C 122 84 122 87 123 89 C 124 90 127 89 127 87 Z'
+  },
+
   // Esôfago: thin tube behind trachea
   {
     id: 'esofago',
@@ -568,6 +652,28 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     type: 'organ',
     layer: 5,
     d: 'M 116 280 C 116 276 118 272 120 272 C 122 272 124 276 124 280 L 124 296 C 124 298 122 300 120 300 C 118 300 116 298 116 296 Z'
+  },
+
+  // Ceco: pouch at beginning of large intestine, right iliac fossa
+  {
+    id: 'ceco',
+    label: 'Ceco',
+    view: 'front',
+    sistemas: ['digestorio'],
+    type: 'organ',
+    layer: 3,
+    d: 'M 90 288 C 87 284 88 280 92 279 C 96 278 100 282 100 288 C 100 294 97 298 93 298 C 89 298 88 293 90 288 Z'
+  },
+
+  // Canal anal: abaixo do reto, linha média, pelve inferior
+  {
+    id: 'canal_anal',
+    label: 'Canal Anal',
+    view: 'front',
+    sistemas: ['digestorio'],
+    type: 'organ',
+    layer: 5,
+    d: 'M 118 300 L 118 312 L 122 312 L 122 300 Z'
   },
 
   // ── ENDOCRINE ────────────────────────────────
@@ -781,12 +887,89 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   // Linfonodos inguinais: bilateral na região inguinal (y=242-248)
   {
     id: 'linfonodos_inguinais',
-    label: 'Linfonodos Inguinais',
+    label: 'Linfonodos Inguinais Superficiais',
     view: 'front',
     sistemas: ['linfatico'],
     type: 'gland',
     layer: 9,
     d: 'M100 246 C 99 244 100 242 102 242 C 104 242 105 244 104 246 C 104 248 102 248 100 246 Z M136 246 C 135 244 136 242 138 242 C 140 242 141 244 140 246 C 140 248 138 248 136 246 Z'
+  },
+
+  // Linfonodos submandibulares: bilateral abaixo da mandíbula
+  {
+    id: 'linfonodos_submandibulares',
+    label: 'Linfonodos Submandibulares',
+    view: 'front',
+    sistemas: ['linfatico'],
+    type: 'gland',
+    layer: 9,
+    d: 'M 108 82 C 107 80 108 78 110 78 C 112 78 113 80 112 82 C 112 84 110 84 108 82 Z M 132 82 C 131 80 132 78 130 78 C 128 78 127 80 128 82 C 128 84 130 84 132 82 Z'
+  },
+
+  // Linfonodos submentuais: abaixo do mento (queixo), linha média
+  {
+    id: 'linfonodos_submentuais',
+    label: 'Linfonodos Submentuais',
+    view: 'front',
+    sistemas: ['linfatico'],
+    type: 'gland',
+    layer: 9,
+    d: 'M 117 88 C 116 86 117 84 120 84 C 123 84 124 86 123 88 C 122 90 118 90 117 88 Z'
+  },
+
+  // Ducto linfático direito: curto, drena no ângulo venoso direito (y≈118-126)
+  {
+    id: 'ducto_linfatico_d',
+    label: 'Ducto Linfático Direito',
+    view: 'front',
+    sistemas: ['linfatico'],
+    type: 'vessel',
+    layer: 8,
+    d: 'M 106 118 C 108 116 112 116 113 120 C 114 124 112 126 110 126 C 108 126 106 124 106 118 Z'
+  },
+
+  // Linfonodos subclaviculares: abaixo da clavícula, bilateral
+  {
+    id: 'linfonodos_subclaviculares',
+    label: 'Linfonodos Subclaviculares',
+    view: 'front',
+    sistemas: ['linfatico'],
+    type: 'gland',
+    layer: 9,
+    d: 'M 97 120 C 96 118 97 116 99 116 C 101 116 102 118 101 120 C 101 122 99 122 97 120 Z M 143 120 C 142 118 143 116 141 116 C 139 116 138 118 139 120 C 139 122 141 122 143 120 Z'
+  },
+
+  // Linfonodos abdominais: nódulos no abdome, distintos dos mesentéricos
+  {
+    id: 'linfonodos_abdominais',
+    label: 'Linfonodos Abdominais',
+    view: 'front',
+    sistemas: ['linfatico'],
+    type: 'gland',
+    layer: 6,
+    d: 'M 104 264 C 103 262 104 260 106 260 C 108 260 109 262 108 264 C 108 266 106 266 104 264 Z M 136 264 C 135 262 136 260 134 260 C 132 260 131 262 132 264 C 132 266 134 266 136 264 Z M 120 270 C 119 268 120 266 122 266 C 124 266 125 268 124 270 C 124 272 122 272 120 270 Z'
+  },
+
+  // Linfonodos ilíacos: região ilíaca bilateral
+  {
+    id: 'linfonodos_iliacos',
+    label: 'Linfonodos Ilíacos',
+    view: 'front',
+    sistemas: ['linfatico'],
+    type: 'gland',
+    layer: 9,
+    d: 'M 107 292 C 106 290 107 288 109 288 C 111 288 112 290 111 292 C 111 294 109 294 107 292 Z M 133 292 C 132 290 133 288 131 288 C 129 288 128 290 129 292 C 129 294 131 294 133 292 Z'
+  },
+
+  // Placas de Peyer: tecido linfóide na mucosa do íleo (intestino delgado distal)
+  {
+    id: 'placas_peyer',
+    label: 'Placas de Peyer',
+    view: 'front',
+    sistemas: ['linfatico'],
+    type: 'gland',
+    layer: 6,
+    d: 'M 110 273 C 109 271 110 269 112 269 C 114 269 115 271 114 273 C 114 275 112 275 110 273 Z M 128 277 C 127 275 128 273 130 273 C 132 273 133 275 132 277 C 132 279 130 279 128 277 Z M 120 281 C 119 279 120 277 122 277 C 124 277 125 279 124 281 C 124 283 122 283 120 281 Z'
   },
 
   // ── REPRODUCTIVE ─────────────────────────────
