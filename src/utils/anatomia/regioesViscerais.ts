@@ -1296,44 +1296,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   { id: 'abdome_musculo',     label: 'Abdome',               view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
     d: 'M 88 196 L 84 282 L 116 282 L 124 282 L 156 282 L 152 196 C 140 202 130 204 120 204 C 110 204 100 202 88 196 Z' },
 
-  { id: 'braco_d',            label: 'Braço D',              view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 58 134 L 40 230 L 56 232 C 60 214 64 196 70 178 C 76 162 84 148 90 140 Z' },
-
-  { id: 'braco_e',            label: 'Braço E',              view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 182 134 L 200 230 L 184 232 C 180 214 176 196 170 178 C 164 162 156 148 150 140 Z' },
-
-  { id: 'antebraco_d',        label: 'Antebraço D',          view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 40 230 L 36 280 L 52 282 L 56 232 Z' },
-
-  { id: 'antebraco_e',        label: 'Antebraço E',          view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 200 230 L 184 232 L 188 282 L 204 280 Z' },
-
-  { id: 'mao_d',              label: 'Mão D',                view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 36 280 L 36 308 L 52 308 L 52 282 Z' },
-
-  { id: 'mao_e',              label: 'Mão E',                view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 188 282 L 188 308 L 204 308 L 204 280 Z' },
-
   { id: 'pelve_musculo',      label: 'Pelve',                view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
     d: 'M 84 282 C 88 294 98 306 112 312 L 128 312 C 142 306 152 294 156 282 L 124 282 L 116 282 Z' },
-
-  { id: 'coxa_d',             label: 'Coxa D',               view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 84 282 L 78 360 L 112 360 L 116 282 Z' },
-
-  { id: 'coxa_e',             label: 'Coxa E',               view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 124 282 L 128 360 L 162 360 L 156 282 Z' },
 
   { id: 'perna_d',            label: 'Perna D',              view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
     d: 'M 78 360 L 82 440 L 108 440 L 112 360 Z' },
 
   { id: 'perna_e',            label: 'Perna E',              view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
     d: 'M 128 360 L 132 440 L 158 440 L 162 360 Z' },
-
-  { id: 'pe_d',               label: 'Pé D',                 view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 82 440 L 86 504 L 106 500 L 108 440 Z' },
-
-  { id: 'pe_e',               label: 'Pé E',                 view: 'front', sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 132 440 L 134 500 L 154 504 L 158 440 Z' },
 
   // ── MÚSCULO-ESQUELÉTICO — vista posterior ────────────────────────────
 
@@ -1343,20 +1313,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   { id: 'pescoco_posterior',  label: 'Pescoço Posterior',    view: 'back',  sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
     d: 'M 108 90 L 110 108 L 130 108 L 132 90 Z' },
 
-  { id: 'trapezio_d',         label: 'Trapézio D',           view: 'back',  sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 106 108 L 60 132 C 52 144 52 160 60 168 C 70 174 82 172 90 164 C 100 154 106 138 108 124 L 108 108 Z' },
-
-  { id: 'trapezio_e',         label: 'Trapézio E',           view: 'back',  sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 134 108 L 180 132 C 188 144 188 160 180 168 C 170 174 158 172 150 164 C 140 154 134 138 132 124 L 132 108 Z' },
-
   { id: 'dorso_toracico_d',   label: 'Dorso Torácico D',     view: 'back',  sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
     d: 'M 60 168 L 78 238 L 112 238 L 112 124 C 100 136 86 152 60 168 Z' },
 
   { id: 'dorso_toracico_e',   label: 'Dorso Torácico E',     view: 'back',  sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
     d: 'M 180 168 L 162 238 L 128 238 L 128 124 C 140 136 154 152 180 168 Z' },
-
-  { id: 'lombar',             label: 'Região Lombar',        view: 'back',  sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
-    d: 'M 78 238 L 84 280 L 156 280 L 162 238 L 128 238 L 112 238 Z' },
 
   { id: 'braco_posterior_d',  label: 'Braço Posterior D',    view: 'back',  sistemas: ['musculoesqueletico'], type: 'organ', layer: 2,
     d: 'M 60 132 L 40 230 L 56 232 C 60 214 64 196 70 178 C 76 162 84 148 90 140 Z' },

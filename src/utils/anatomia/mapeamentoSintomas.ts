@@ -87,7 +87,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
   },
   {
     keywords: ['bruxismo', 'ranger dentes', 'dor na mandibula', 'dor na mandíbula', 'atm', 'dtm', 'temporomandibular', 'temporo mandibular', 'disfuncao temporomandibular', 'disfunção temporomandibular', 'disfuncao temporo mandibular', 'disfunção temporo mandibular', 'dor na face'],
-    regioes: ['cabeca', 'pescoco'],
+    regioes: ['cranio_face', 'pescoco_musculo'],
     sistema: 'musculoesqueletico'
   },
   {

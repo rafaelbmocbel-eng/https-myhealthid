@@ -1258,6 +1258,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   );
                 }
 
+                // Musculoskeletal regions in VISCERAL_REGIONS behave like base REGIONS:
+                // only render when there's an active event or hovering the system.
+                // Without this guard they'd permanently cover underlying organs.
+                if (r.sistemas.includes('musculoesqueletico') && !fill && !isHoveredSystem) return null;
+
                 // GLAND + ORGAN — filled shapes, com peso visual por tipo_diagnostico
                 const orgTipo = corPorRegiao[r.id + '__tipo'] || 'achado_clinico';
                 const orgIsRelato = orgTipo === 'relato_paciente';
@@ -1383,9 +1388,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           };
 
           const selecionadoExplicitamente = sistemasAtivos.length === 1 && sistemasAtivos[0] === sysToShow;
-          const regiaoPadrao = sysToShow === 'musculoesqueletico'
-            ? 'abdomen'
-            : (VISCERAL_REGIONS.find(r => r.sistemas.includes(sysToShow))?.id || 'abdomen');
+          const regiaoPadrao = VISCERAL_REGIONS.find(r => r.sistemas.includes(sysToShow) && r.view === view)?.id
+            || (REGIONS.find(r => r.view === view)?.id || 'abdomen');
           const regiaoDetectada = notaSistema.texto.trim()
             ? encontrarSintomasEmTexto(notaSistema.texto).find(s => s.sistema === sysToShow)?.regiao_id
             : undefined;
