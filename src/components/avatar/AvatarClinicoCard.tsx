@@ -129,8 +129,6 @@ const ORGAN_RESTING_COLORS: Record<string, string> = {
   // Back view
   rim_d:                 'rgba(175,88,48,0.65)',
   rim_e:                 'rgba(175,88,48,0.65)',
-  gluteos_musculares:    'rgba(168,85,247,0.42)',
-  gluteos_p:             'rgba(168,85,247,0.42)',
 };
 
 const SYSTEM_RESTING: Record<string, string> = {
@@ -1258,12 +1256,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   );
                 }
 
-                // Musculoskeletal regions in VISCERAL_REGIONS: only render when
-                // there is an active event (fill). REGIONS already handles the
-                // hover preview for this system — showing both creates two
-                // overlapping layers on the avatar.
-                if (r.sistemas.includes('musculoesqueletico') && !fill) return null;
-
                 // GLAND + ORGAN — filled shapes, com peso visual por tipo_diagnostico
                 const orgTipo = corPorRegiao[r.id + '__tipo'] || 'achado_clinico';
                 const orgIsRelato = orgTipo === 'relato_paciente';
@@ -1389,8 +1381,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           };
 
           const selecionadoExplicitamente = sistemasAtivos.length === 1 && sistemasAtivos[0] === sysToShow;
-          const regiaoPadrao = VISCERAL_REGIONS.find(r => r.sistemas.includes(sysToShow) && r.view === view)?.id
-            || (REGIONS.find(r => r.view === view)?.id || 'abdomen');
+          const regiaoPadrao = sysToShow === 'musculoesqueletico'
+            ? 'abdomen'
+            : (VISCERAL_REGIONS.find(r => r.sistemas.includes(sysToShow))?.id || 'abdomen');
           const regiaoDetectada = notaSistema.texto.trim()
             ? encontrarSintomasEmTexto(notaSistema.texto).find(s => s.sistema === sysToShow)?.regiao_id
             : undefined;
