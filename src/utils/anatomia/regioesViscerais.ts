@@ -421,16 +421,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
 
   // ── DIGESTIVE ────────────────────────────────
 
-  // Faringe: posterior oral cavity down to esophagus, midline, y=76-102
-  {
-    id: 'faringe',
-    label: 'Faringe',
-    view: 'front',
-    sistemas: ['digestorio'],
-    type: 'organ',
-    layer: 7,
-    d: 'M 116 76 C 115 79 115 88 116 94 L 124 94 C 125 88 125 79 124 76 Z'
-  },
+  // (Faringe definida na seção respiratório com sistemas: ['respiratorio','digestorio'])
 
   // Glândulas parótidas: maiores glândulas salivares, frente do lobo da orelha
   {
@@ -1401,16 +1392,6 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M122 110 C 110 112 96 116 84 122'
   },
   {
-    id: 'iliaca_d', label: 'Artéria Ilíaca D', view: 'front',
-    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
-    d: 'M119 282 C 124 290 134 296 144 300'
-  },
-  {
-    id: 'iliaca_e', label: 'Artéria Ilíaca E', view: 'front',
-    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
-    d: 'M121 282 C 116 290 106 296 96 300'
-  },
-  {
     id: 'veia_porta', label: 'Veia Porta', view: 'front',
     sistemas: ['circulatorio', 'digestorio'], type: 'vessel', layer: 8,
     d: 'M108 218 C 114 224 120 228 124 232'
@@ -1444,21 +1425,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
 
   // ── DIGESTÓRIO — boca/ducto/ânus ──
-  {
-    id: 'glandula_parotida_d', label: 'Parótida D', view: 'front',
-    sistemas: ['digestorio'], type: 'gland', layer: 8,
-    d: 'M148 74 C 144 74 142 82 146 86 C 152 86 154 80 152 76 C 151 74 150 74 148 74 Z'
-  },
-  {
-    id: 'glandula_parotida_e', label: 'Parótida E', view: 'front',
-    sistemas: ['digestorio'], type: 'gland', layer: 8,
-    d: 'M92 74 C 96 74 98 82 94 86 C 88 86 86 80 88 76 C 89 74 90 74 92 74 Z'
-  },
-  {
-    id: 'glandula_submandibular', label: 'Submandibulares', view: 'front',
-    sistemas: ['digestorio'], type: 'gland', layer: 8,
-    d: 'M112 88 C 108 88 108 94 112 94 C 116 94 116 88 112 88 Z M128 88 C 124 88 124 94 128 94 C 132 94 132 88 128 88 Z'
-  },
+  // (glandula_parotida_d/e e glandula_submandibular_d/e definidas no início da seção DIGESTIVE)
   {
     id: 'ducto_biliar', label: 'Ducto Biliar Comum', view: 'front',
     sistemas: ['digestorio'], type: 'vessel', layer: 7,
