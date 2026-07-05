@@ -170,6 +170,25 @@ const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'respiratorio', 'endocrino', 'urinario',
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
+
+// Shift vertical (px, espaço SVG 240×520) aplicado a cada sistema no avatar.
+// Positivo = desce, negativo = sobe. Referência: diafragma y=178–198 está correto.
+// Para calibrar: ative o modo de calibração na interface e arraste os sliders.
+const DEFAULT_SYS_Y_OFFSET: Partial<Record<string, number>> = {
+  sensorial:          0,
+  nervoso:            0,
+  musculoesqueletico: 0,
+  locomotor:          0,
+  circulatorio:       0,
+  respiratorio:       0,
+  digestorio:         0,
+  endocrino:          0,
+  urinario:           0,
+  reprodutor:         0,
+  imune:              0,
+  linfatico:          0,
+  tegumentar:         0,
+};
 // Lente de especialidade: quais sistemas são prioritários pra cada profissão.
 // Usado para destacar (não esconder) os sistemas mais relevantes daquele profissional.
 const SISTEMAS_POR_ESPECIALIDADE: Record<PerfilProfissional, SistemaCorporal[]> = {
@@ -393,6 +412,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>([]);
   const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
+  const [calibrando, setCalibrandoState] = useState(false);
+  const [offsetsCalib, setOffsetsCalib] = useState<Record<string, number>>(
+    Object.fromEntries(SISTEMAS_ORDEM.map(s => [s, 0]))
+  );
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number; sinal: string; sistema: string }[] | null>(null);
@@ -837,6 +860,54 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           ))}
         </div>
 
+        {/* Painel de calibração de posicionamento anatômico */}
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => setCalibrandoState(c => !c)}
+            className="text-[10px] text-muted-foreground/60 underline underline-offset-2 w-full text-center"
+          >
+            {calibrando ? '✕ Fechar calibração' : '⚙ Calibrar posição dos órgãos'}
+          </button>
+          {calibrando && (
+            <div className="mt-2 bg-muted/50 border border-border/40 rounded-xl p-3 space-y-1.5">
+              <p className="text-[10px] text-muted-foreground text-center mb-2">
+                Arraste o slider de cada sistema até os órgãos ficarem no lugar certo no avatar.
+                <br/>← negativo = sobe &nbsp;|&nbsp; positivo = desce →
+              </p>
+              {SISTEMAS_ORDEM.map(sys => {
+                const cfg = SISTEMA_CONFIG[sys];
+                const val = offsetsCalib[sys] ?? 0;
+                return (
+                  <div key={sys} className="flex items-center gap-2">
+                    <span className="text-[10px] w-28 shrink-0 text-foreground/80">{cfg.label}</span>
+                    <input
+                      type="range" min={-80} max={80} step={1}
+                      value={val}
+                      onChange={e => setOffsetsCalib(prev => ({ ...prev, [sys]: Number(e.target.value) }))}
+                      className="flex-1 h-1 accent-primary"
+                    />
+                    <span className="text-[10px] w-8 text-right font-mono text-primary">
+                      {val > 0 ? '+' : ''}{val}
+                    </span>
+                  </div>
+                );
+              })}
+              {Object.values(offsetsCalib).some(v => v !== 0) && (
+                <details className="mt-2">
+                  <summary className="text-[10px] text-muted-foreground cursor-pointer">Ver valores para enviar ao desenvolvedor</summary>
+                  <pre className="text-[9px] bg-background rounded p-2 mt-1 overflow-x-auto whitespace-pre-wrap">
+                    {JSON.stringify(
+                      Object.fromEntries(Object.entries(offsetsCalib).filter(([, v]) => v !== 0)),
+                      null, 2
+                    )}
+                  </pre>
+                </details>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex items-start justify-center gap-1.5">
           {/* Ícones laterais de sistema — clique para ver o sistema na íntegra com sua marcação clínica */}
           <div className="flex flex-col gap-1 pt-6 shrink-0">
@@ -1073,26 +1144,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
                 const isUrgent = severityScore >= 13;
                 const sys0 = r.sistemas[0];
-                // Shift vertical por sistema (em px no espaço SVG 240×520).
-                // Referência: diafragma y=178-198 está calibrado. Ajuste os valores abaixo
-                // se um sistema específico aparecer deslocado no avatar.
-                // Positivo = desce, negativo = sobe.
-                const SYS_Y_OFFSET: Record<string, number> = {
-                  sensorial:         0,
-                  nervoso:           0,
-                  musculoesqueletico: 0,
-                  locomotor:         0,
-                  circulatorio:      0,
-                  respiratorio:      0,
-                  digestorio:        0,
-                  endocrino:         0,
-                  urinario:          0,
-                  reprodutor:        0,
-                  imune:             0,
-                  linfatico:         0,
-                };
-                // Para órgãos multi-sistema usa o sistema que mais aparece na UI ou sys0.
-                const dy = SYS_Y_OFFSET[sys0] ?? 0;
+                // Shift vertical por sistema. Em modo calibração usa os valores
+                // dos sliders (offsetsCalib); em produção usa DEFAULT_SYS_Y_OFFSET.
+                const dy = calibrando
+                  ? (offsetsCalib[sys0] ?? 0)
+                  : (DEFAULT_SYS_Y_OFFSET[sys0] ?? 0);
                 const groupTransform = dy !== 0 ? `translate(0,${dy})` : undefined;
 
                 // STRUCTURAL (diaphragm, pericardium) — non-clickable dividers
