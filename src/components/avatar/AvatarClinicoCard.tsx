@@ -1258,10 +1258,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   );
                 }
 
-                // Musculoskeletal regions in VISCERAL_REGIONS behave like base REGIONS:
-                // only render when there's an active event or hovering the system.
-                // Without this guard they'd permanently cover underlying organs.
-                if (r.sistemas.includes('musculoesqueletico') && !fill && !isHoveredSystem) return null;
+                // Musculoskeletal regions in VISCERAL_REGIONS: only render when
+                // there is an active event (fill). REGIONS already handles the
+                // hover preview for this system — showing both creates two
+                // overlapping layers on the avatar.
+                if (r.sistemas.includes('musculoesqueletico') && !fill) return null;
 
                 // GLAND + ORGAN — filled shapes, com peso visual por tipo_diagnostico
                 const orgTipo = corPorRegiao[r.id + '__tipo'] || 'achado_clinico';
