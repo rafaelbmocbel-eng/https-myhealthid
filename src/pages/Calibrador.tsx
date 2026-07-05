@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { VISCERAL_REGIONS, type OrganRegion } from '@/utils/anatomia/regioesViscerais';
 import avatarHumanoFrente from '@/assets/avatar-humano-frente.png';
 import avatarHumanoCostas from '@/assets/avatar-humano-costas.png';
@@ -42,11 +42,19 @@ const BACK_FRAME  = { x: -33,   y:  6.7,  width: 304.2, height: 520.1 };
 
 type Offset = { dx: number; dy: number };
 
+const LS_KEY = 'organ-offsets-calibrado';
+
 export default function Calibrador() {
   const [view, setView]         = useState<'front' | 'back'>('front');
   const [sistema, setSistema]   = useState('todos');
-  const [offsets, setOffsets]   = useState<Record<string, Offset>>({});
+  const [offsets, setOffsets]   = useState<Record<string, Offset>>(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
   const [selected, setSelected] = useState<string | null>(null);
+  const [savedAt, setSavedAt]   = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragging = useRef<{
     id: string;
@@ -95,6 +103,24 @@ export default function Calibrador() {
 
   const onPointerUp = useCallback(() => {
     dragging.current = null;
+  }, []);
+
+  const saveOffsets = useCallback(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(offsets));
+      const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setSavedAt(now);
+    } catch {}
+  }, [offsets]);
+
+  // Sync: se outra aba salvar, reflita aqui também
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== LS_KEY) return;
+      try { if (e.newValue) setOffsets(JSON.parse(e.newValue)); } catch {}
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const nonZero = Object.entries(offsets).filter(([, v]) => v.dx !== 0 || v.dy !== 0);
@@ -243,6 +269,30 @@ export default function Calibrador() {
         >
           Resetar todos os offsets
         </button>
+
+        {/* ── SALVAR ──────────────────────────────── */}
+        <div>
+          <button
+            onClick={saveOffsets}
+            style={{
+              width: '100%', padding: '10px 0', borderRadius: 6, border: 'none',
+              cursor: 'pointer', background: '#2563eb', color: '#fff',
+              fontSize: 14, fontWeight: 600, letterSpacing: '0.01em',
+            }}
+          >
+            💾 Salvar posições
+          </button>
+          {savedAt && (
+            <div style={{ marginTop: 6, fontSize: 11, color: '#4ade80', textAlign: 'center' }}>
+              ✓ Salvo às {savedAt} — avatar atualizado automaticamente
+            </div>
+          )}
+          {!savedAt && nonZero.length > 0 && (
+            <div style={{ marginTop: 6, fontSize: 11, color: '#fbbf24', textAlign: 'center' }}>
+              ⚠ Você tem alterações não salvas
+            </div>
+          )}
+        </div>
 
         {/* Selected organ info */}
         {selected && (

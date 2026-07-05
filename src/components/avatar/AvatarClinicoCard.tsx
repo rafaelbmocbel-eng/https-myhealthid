@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -416,6 +416,23 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [offsetsCalib, setOffsetsCalib] = useState<Record<string, number>>(
     Object.fromEntries(SISTEMAS_ORDEM.map(s => [s, 0]))
   );
+
+  // Per-organ offsets saved by the /calibrar tool — persisted in localStorage,
+  // synced across tabs via the storage event.
+  const [savedOrganOffsets, setSavedOrganOffsets] = useState<Record<string, { dx: number; dy: number }>>(() => {
+    try {
+      const raw = localStorage.getItem('organ-offsets-calibrado');
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'organ-offsets-calibrado') return;
+      try { setSavedOrganOffsets(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number; sinal: string; sistema: string }[] | null>(null);
@@ -1146,10 +1163,16 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const sys0 = r.sistemas[0];
                 // Shift vertical por sistema. Em modo calibração usa os valores
                 // dos sliders (offsetsCalib); em produção usa DEFAULT_SYS_Y_OFFSET.
-                const dy = calibrando
+                const sysDy = calibrando
                   ? (offsetsCalib[sys0] ?? 0)
                   : (DEFAULT_SYS_Y_OFFSET[sys0] ?? 0);
-                const groupTransform = dy !== 0 ? `translate(0,${dy})` : undefined;
+                // Per-organ offset salvo pelo calibrador (/calibrar)
+                const organOff = savedOrganOffsets[r.id] ?? { dx: 0, dy: 0 };
+                const totalDx = organOff.dx;
+                const totalDy = sysDy + organOff.dy;
+                const groupTransform = (totalDx !== 0 || totalDy !== 0)
+                  ? `translate(${totalDx},${totalDy})`
+                  : undefined;
 
                 // STRUCTURAL (diaphragm, pericardium) — non-clickable dividers
                 if (r.type === 'structural') {
