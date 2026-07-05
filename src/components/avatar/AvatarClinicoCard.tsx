@@ -1140,15 +1140,20 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const isHistorico = tipo === 'historico_relatado';
                 const isDiag = tipo.startsWith('diagnostico_');
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
-                // Pesos visuais por nível de confirmação clínica
                 const fillOp = fill ? (isRelato || isHistorico ? 0.32 : isDiag ? 0.88 : 0.65) : 0.28;
                 const sw = fill ? (isRelato || isHistorico ? 0.6 : isDiag ? 1.8 : 1.1) : 0.5;
                 const dash = isRelato || isHistorico ? '4,3' : undefined;
                 const needsGlow = isDiag && severityScore >= 12;
+                // Apply calibrator offset (same mechanism as VISCERAL_REGIONS)
+                const rOff = savedOrganOffsets[r.id] ?? { dx: 0, dy: 0 };
+                const rTransform = (rOff.dx !== 0 || rOff.dy !== 0)
+                  ? `translate(${rOff.dx},${rOff.dy})`
+                  : undefined;
                 return (
                   <path
                     key={r.id}
                     d={r.d}
+                    transform={rTransform}
                     fill={fill || 'rgba(168,85,247,0.24)'}
                     fillOpacity={fillOp}
                     stroke={fill ? (isDiag ? 'rgba(255,255,255,0.85)' : 'rgba(168,85,247,0.65)') : 'rgba(168,85,247,0.35)'}

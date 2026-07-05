@@ -1,7 +1,19 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { VISCERAL_REGIONS, type OrganRegion } from '@/utils/anatomia/regioesViscerais';
+import { REGIONS } from '@/components/presencial/Body3DAvatar';
 import avatarHumanoFrente from '@/assets/avatar-humano-frente.png';
 import avatarHumanoCostas from '@/assets/avatar-humano-costas.png';
+
+// Wrap REGIONS into OrganRegion shape so the calibrator can handle them uniformly
+const MUSCULO_REGIONS: OrganRegion[] = REGIONS.map(r => ({
+  id: r.id,
+  label: r.label,
+  view: r.view,
+  sistemas: ['musculoesqueletico'],
+  d: r.d,
+  type: 'organ' as const,
+  layer: 1,
+}));
 
 function pathCentroid(d: string): { cx: number; cy: number } {
   const nums = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
@@ -75,7 +87,7 @@ export default function Calibrador() {
   };
 
   const organs: OrganRegion[] = useMemo(() =>
-    VISCERAL_REGIONS
+    [...VISCERAL_REGIONS, ...MUSCULO_REGIONS]
       .filter(r => r.view === view && (sistema === 'todos' || r.sistemas.includes(sistema)))
       .sort((a, b) => (a.layer ?? 5) - (b.layer ?? 5)),
     [view, sistema],
@@ -130,7 +142,11 @@ export default function Calibrador() {
   // Focus input when editing starts
   useEffect(() => { if (editingLabel) setTimeout(() => labelRef.current?.focus(), 50); }, [editingLabel]);
 
-  const selectedOrgan = selected ? organs.find(o => o.id === selected) ?? VISCERAL_REGIONS.find(o => o.id === selected) : null;
+  const selectedOrgan = selected
+    ? organs.find(o => o.id === selected)
+      ?? VISCERAL_REGIONS.find(o => o.id === selected)
+      ?? MUSCULO_REGIONS.find(o => o.id === selected)
+    : null;
   const getLabel = (organ: OrganRegion) => labels[organ.id] ?? organ.label;
 
   const confirmLabel = () => {
@@ -227,7 +243,7 @@ export default function Calibrador() {
       <div style={{ width: 300, display: 'flex', flexDirection: 'column', gap: 10, padding: 14,
         background: '#1a1a1a', overflowY: 'auto', borderLeft: '1px solid #333' }}>
 
-        <h2 style={{ margin: 0, fontSize: 15 }}>Calibrador de Órgãos</h2>
+        <h2 style={{ margin: 0, fontSize: 15 }}>Calibrador de Regiões</h2>
 
         {/* Vista */}
         <div>
