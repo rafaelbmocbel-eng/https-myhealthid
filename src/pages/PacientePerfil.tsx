@@ -576,100 +576,127 @@ export default function PacientePerfil() {
             style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.5), transparent 70%)' }}
           />
 
-          <div className="relative p-3 sm:p-5">
-            {/* Top row: back + actions */}
-            <div className="flex items-center justify-between mb-3">
+          <div className="relative p-3">
+            {/* ── Linha 1: navegação + todas as ações ───────────────────────── */}
+            <div className="flex items-center gap-1 mb-3">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 gap-1.5 -ml-2 text-muted-foreground hover:text-foreground"
+                className="h-7 gap-1 -ml-1.5 text-muted-foreground hover:text-foreground shrink-0 px-2"
                 onClick={() => navigate('/pacientes')}
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span className="text-xs font-medium hidden sm:inline">Pacientes</span>
               </Button>
-              <div className="flex items-center gap-1">
+
+              <div className="flex-1" />
+
+              {/* Agendar — ação primária */}
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1 px-2 bg-background/80 backdrop-blur text-xs"
+                    onClick={() => navigate(`/agenda?novo=1&paciente=${id}`)}
+                  >
+                    <CalendarPlus className="h-3.5 w-3.5 text-primary" />
+                    <span className="hidden xs:inline font-semibold">Agendar</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Novo agendamento</TooltipContent>
+              </Tooltip>
+
+              {/* Portal — enviar link ao paciente */}
+              {paciente.portal_token && (
                 <Tooltip delayDuration={0}>
                   <TooltipTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 gap-1.5 bg-background/80 backdrop-blur"
-                      onClick={() => navigate(`/agenda?novo=1&paciente=${id}`)}
+                      className="h-7 gap-1 px-2 bg-background/80 backdrop-blur text-xs"
+                      onClick={() =>
+                        paciente.telefone
+                          ? window.open(
+                              `https://wa.me/${paciente.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${getPortalUrl(paciente.portal_token!)}`,
+                              )}`,
+                              '_blank',
+                            )
+                          : (() => {
+                              navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!));
+                              toast({ title: 'Link do Portal copiado! 🔗' });
+                            })()
+                      }
                     >
-                      <CalendarPlus className="icon-sm text-primary" />
-                      <span className="text-xs font-semibold hidden sm:inline">Agendar</span>
+                      <Smartphone className="h-3.5 w-3.5 text-violet-600" />
+                      <span className="hidden sm:inline font-semibold">Portal</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-xs">
-                    Novo agendamento para este paciente
+                    {paciente.telefone ? 'Enviar link do portal via WhatsApp' : 'Copiar link do portal'}
                   </TooltipContent>
                 </Tooltip>
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 bg-background/80 backdrop-blur"
-                      onClick={() => setDocsModalOpen(true)}
-                    >
-                      <FileText className="icon-sm text-primary" />
-                      <span className="text-xs font-semibold hidden sm:inline">Documentos</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    Gerar atestado, recibo, declaração…
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
-                      onClick={openEdit}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    Editar cadastro
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                      onClick={handleDeletePaciente}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    Excluir definitivamente
-                  </TooltipContent>
-                </Tooltip>
-              </div>
+              )}
+
+              {/* Documentos */}
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1 px-2 bg-background/80 backdrop-blur text-xs"
+                    onClick={() => setDocsModalOpen(true)}
+                  >
+                    <FileText className="h-3.5 w-3.5 text-primary" />
+                    <span className="hidden sm:inline font-semibold">Docs</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Atestados, recibos, declarações</TooltipContent>
+              </Tooltip>
+
+              {/* Identidade portátil (PDF + MyID) */}
+              <AcoesIdentidadeDropdown
+                pacienteId={paciente.id}
+                pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
+              />
+
+              {/* Editar e excluir — secundários */}
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted" onClick={openEdit}>
+                    <Edit className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Editar cadastro</TooltipContent>
+              </Tooltip>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10" onClick={handleDeletePaciente}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Excluir paciente</TooltipContent>
+              </Tooltip>
             </div>
 
-            {/* Identity row */}
-            <div className="flex items-center gap-3 sm:gap-4">
+            {/* ── Linha 2: identidade do paciente ───────────────────────────── */}
+            <div className="flex items-center gap-3">
               <PacienteAvatarUpload
                 folderId={paciente.id}
                 pacienteId={paciente.id}
                 avatarUrl={(paciente as any).avatar_url}
                 nome={paciente.nome}
                 sobrenome={paciente.sobrenome}
-                size="lg"
+                size="md"
                 editable={true}
                 showLabel={false}
                 onUpdated={() => qc.invalidateQueries({ queryKey: ['paciente', id] })}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground leading-tight truncate">
+                  <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight truncate">
                     {paciente.nome} {paciente.sobrenome}
                   </h1>
                   {acessoClinico && (
@@ -679,93 +706,33 @@ export default function PacientePerfil() {
                     />
                   )}
                 </div>
-                {/* Contact line — inline, separated by dots */}
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[11px] text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[11px] text-muted-foreground">
                   {idade !== null && (
                     <span className="inline-flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {idade} anos
+                      <Calendar className="h-3 w-3" />{idade} anos
                     </span>
                   )}
                   {paciente.genero && (
-                    <>
-                      <span className="text-muted-foreground/40">·</span>
-                      <span className="inline-flex items-center gap-1 capitalize">
-                        <User className="h-3 w-3" />
-                        {paciente.genero}
-                      </span>
-                    </>
+                    <><span className="text-muted-foreground/40">·</span>
+                    <span className="capitalize">{paciente.genero}</span></>
                   )}
                   {paciente.telefone && (
-                    <>
-                      <span className="text-muted-foreground/40">·</span>
-                      <a
-                        href={`https://wa.me/${paciente.telefone.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-emerald-700 hover:underline"
-                        title="Abrir conversa no WhatsApp"
-                      >
-                        <Phone className="h-3 w-3" />
-                        {paciente.telefone}
-                      </a>
-                    </>
+                    <><span className="text-muted-foreground/40">·</span>
+                    <a
+                      href={`https://wa.me/${paciente.telefone.replace(/\D/g, '')}`}
+                      target="_blank" rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-emerald-700 hover:underline"
+                    >
+                      <Phone className="h-3 w-3" />{paciente.telefone}
+                    </a></>
                   )}
                   {paciente.email && (
-                    <>
-                      <span className="text-muted-foreground/40">·</span>
-                      <a
-                        href={`mailto:${paciente.email}`}
-                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors max-w-[200px] truncate"
-                        title={paciente.email}
-                      >
-                        <Mail className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{paciente.email}</span>
-                      </a>
-                    </>
+                    <><span className="text-muted-foreground/40">·</span>
+                    <a href={`mailto:${paciente.email}`} className="hover:text-foreground transition-colors max-w-[180px] truncate">
+                      {paciente.email}
+                    </a></>
                   )}
                 </div>
-              </div>
-            </div>
-
-            {/* Acesso & ações rápidas — uma única linha */}
-            <div className="mt-4 pt-3 border-t border-border/40">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-                Acesso &amp; ações
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Portal — único link de acesso direto ao paciente */}
-                {paciente.portal_token && (
-                  <LinkActionsBar
-                    items={[{
-                      key: 'portal',
-                      label: 'Portal',
-                      active: true,
-                      color: 'violet',
-                      isWhatsApp: !!paciente.telefone,
-                      onAction: () =>
-                        paciente.telefone
-                          ? (() => {
-                              const url = getPortalUrl(paciente.portal_token!);
-                              const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`;
-                              window.open(
-                                `https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`,
-                                '_blank',
-                              );
-                            })()
-                          : (() => {
-                              navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!));
-                              toast({ title: 'Link do Portal copiado! 🔗' });
-                            })(),
-                    }]}
-                  />
-                )}
-                {/* Identidade portátil (PDF + link MyID) e Resumo em 30s, agrupados */}
-                <AcoesIdentidadeDropdown
-                  pacienteId={paciente.id}
-                  pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
-                  terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
-                />
               </div>
             </div>
           </div>
