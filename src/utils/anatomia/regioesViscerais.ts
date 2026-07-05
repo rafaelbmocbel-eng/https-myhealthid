@@ -723,7 +723,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M106 92 C 105 90 106 88 108 88 C 110 88 111 90 110 92 C 110 94 108 94 106 92 Z M130 92 C 129 90 130 88 132 88 C 134 88 135 90 134 92 C 134 94 132 94 130 92 Z'
   },
 
-  // Linfonodos axilares direitos: near right axilla
+  // Linfonodos axilares direitos: dentro da axila direita (torso), não no braço
   {
     id: 'linfonodos_axilares_d',
     label: 'Linfonodos Axilares D',
@@ -731,10 +731,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     type: 'gland',
     layer: 9,
-    d: 'M160 130 C 159 128 160 126 162 126 C 164 126 165 128 164 130 C 164 132 162 132 160 130 Z M164 138 C 163 136 164 134 166 134 C 168 134 169 136 168 138 C 168 140 166 140 164 138 Z'
+    d: 'M146 130 C 145 128 146 126 148 126 C 150 126 151 128 150 130 C 150 132 148 132 146 130 Z M150 138 C 149 136 150 134 152 134 C 154 134 155 136 154 138 C 154 140 152 140 150 138 Z'
   },
 
-  // Linfonodos axilares esquerdos: near left axilla
+  // Linfonodos axilares esquerdos: dentro da axila esquerda (torso), não no braço
   {
     id: 'linfonodos_axilares_e',
     label: 'Linfonodos Axilares E',
@@ -742,7 +742,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     type: 'gland',
     layer: 9,
-    d: 'M80 130 C 79 128 80 126 82 126 C 84 126 85 128 84 130 C 84 132 82 132 80 130 Z M76 138 C 75 136 76 134 78 134 C 80 134 81 136 80 138 C 80 140 78 140 76 138 Z'
+    d: 'M90 130 C 89 128 90 126 92 126 C 94 126 95 128 94 130 C 94 132 92 132 90 130 Z M86 138 C 85 136 86 134 88 134 C 90 134 91 136 90 138 C 90 140 88 140 86 138 Z'
   },
 
   // Baço (linfático): mesma posição do baco_frente (9ª–11ª costela, hipocôndrio esquerdo, abaixo do diafragma)
@@ -1317,16 +1317,6 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'], type: 'organ', layer: 6,
     d: 'M108 248 C 106 248 106 252 108 252 C 110 252 110 248 108 248 Z M132 248 C 130 248 130 252 132 252 C 134 252 134 248 132 248 Z M120 258 C 118 258 118 262 120 262 C 122 262 122 258 120 258 Z'
   },
-  {
-    id: 'linfonodos_popliteos_d', label: 'Linfonodos Poplíteos D', view: 'back',
-    sistemas: ['linfatico'], type: 'organ', layer: 7,
-    d: 'M144 416 C 142 416 142 422 144 422 C 146 422 146 416 144 416 Z'
-  },
-  {
-    id: 'linfonodos_popliteos_e', label: 'Linfonodos Poplíteos E', view: 'back',
-    sistemas: ['linfatico'], type: 'organ', layer: 7,
-    d: 'M96 416 C 94 416 94 422 96 422 C 98 422 98 416 96 416 Z'
-  },
 
   // ── REPRODUTOR — completar genitália ──
   // sys0='endocrino' para não receber o offset do sistema reprodutor (que é -30px para órgãos pélvicos)
@@ -1334,12 +1324,12 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   {
     id: 'mama_d', label: 'Mama D', view: 'front',
     sistemas: ['endocrino', 'reprodutor'], type: 'organ', layer: 6,
-    d: 'M148 163 C 138 163 132 173 138 183 C 146 187 156 183 158 175 C 159 168 154 163 148 163 Z'
+    d: 'M148 148 C 138 148 132 158 138 168 C 146 172 156 168 158 160 C 159 153 154 148 148 148 Z'
   },
   {
     id: 'mama_e', label: 'Mama E', view: 'front',
     sistemas: ['endocrino', 'reprodutor'], type: 'organ', layer: 6,
-    d: 'M92 163 C 102 163 108 173 102 183 C 94 187 84 183 82 175 C 81 168 86 163 92 163 Z'
+    d: 'M92 148 C 102 148 108 158 102 168 C 94 172 84 168 82 160 C 81 153 86 148 92 148 Z'
   },
   {
     id: 'vagina', label: 'Vagina', view: 'front',
