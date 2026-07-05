@@ -1,13 +1,12 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, XCircle, TrendingUp, TrendingDown, Stethoscope } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useEventosAnatomicos, useSaveEventoAnatomico, type EventoAnatomico } from '@/hooks/useEventosAnatomicos';
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { detectarEstagnacao, MCID_MYID } from '@/components/paciente/EvolucaoDashboard';
+import { cn } from '@/lib/utils';
 
 interface PainelDecisaoClinicaProps {
   pacienteId: string;
@@ -18,6 +17,65 @@ interface MyidRow {
   red_flags: unknown;
   classificacao: string | null;
   created_at: string;
+}
+
+// ── Score helpers ──────────────────────────────────────────────────────────────
+function scoreColor(v: number | null): string {
+  if (v === null) return 'hsl(215 15% 60%)';
+  if (v < 30)    return '#dc2626';
+  if (v < 50)    return '#ea580c';
+  if (v < 70)    return '#d97706';
+  if (v < 85)    return '#65a30d';
+  return '#16a34a';
+}
+
+function scoreBand(v: number | null): 'critical' | 'severe' | 'moderate' | 'mild' | 'good' | 'none' {
+  if (v === null) return 'none';
+  if (v < 30)    return 'critical';
+  if (v < 50)    return 'severe';
+  if (v < 70)    return 'moderate';
+  if (v < 85)    return 'mild';
+  return 'good';
+}
+
+// Mini arc gauge — 240° sweep
+function ScoreGauge({ score, color }: { score: number; color: string }) {
+  const r = 26;
+  const cx = 34;
+  const cy = 36;
+  const sweep = 240;
+  const startDeg = -210;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const pt = (d: number) => ({
+    x: cx + r * Math.cos(toRad(d)),
+    y: cy + r * Math.sin(toRad(d)),
+  });
+  const s = pt(startDeg);
+  const e = pt(startDeg + sweep);
+  const pct = Math.max(0, Math.min(100, score)) / 100;
+  const fillDeg = startDeg + pct * sweep;
+  const f = pt(fillDeg);
+  const bigArc = pct * sweep > 180 ? 1 : 0;
+  return (
+    <svg width="68" height="68" viewBox="0 0 68 68" className="shrink-0">
+      <path
+        d={`M ${s.x} ${s.y} A ${r} ${r} 0 1 1 ${e.x} ${e.y}`}
+        fill="none" stroke={color} strokeWidth="5.5" strokeLinecap="round" opacity={0.14}
+      />
+      {pct > 0.01 && (
+        <path
+          d={`M ${s.x} ${s.y} A ${r} ${r} 0 ${bigArc} 1 ${f.x} ${f.y}`}
+          fill="none" stroke={color} strokeWidth="5.5" strokeLinecap="round"
+        />
+      )}
+      <text x={cx} y={cy + 2} textAnchor="middle" fontSize="13" fontWeight="700" fill={color}>
+        {Math.round(score)}
+      </text>
+      <text x={cx} y={cy + 13} textAnchor="middle" fontSize="6.5" fontWeight="600" fill="currentColor" opacity={0.45}>
+        /100
+      </text>
+    </svg>
+  );
 }
 
 export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinicaProps) {
@@ -65,37 +123,32 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
 
   const redFlags = useMemo(() => {
     const doMyid: string[] = Array.isArray(myid[0]?.red_flags) ? (myid[0]!.red_flags as string[]) : [];
-    const doVoz: string[] = Array.isArray(ultimaVoz?.resultado?.red_flags) ? ultimaVoz!.resultado.red_flags : [];
+    const doVoz: string[]  = Array.isArray(ultimaVoz?.resultado?.red_flags) ? ultimaVoz!.resultado.red_flags! : [];
     return Array.from(new Set([...doMyid, ...doVoz]));
   }, [myid, ultimaVoz]);
 
-  const myidAtual = myid[0];
+  const myidAtual    = myid[0];
   const myidAnterior = myid[1];
+  const rawScore = myidAtual?.myid_score != null ? Number(myidAtual.myid_score) : null;
   const delta =
-    myidAtual?.myid_score != null && myidAnterior?.myid_score != null
-      ? Number(myidAtual.myid_score) - Number(myidAnterior.myid_score)
+    rawScore != null && myidAnterior?.myid_score != null
+      ? rawScore - Number(myidAnterior.myid_score)
       : null;
 
-  const invalidar = () => {
-    qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
-  };
+  const invalidar = () => qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
 
-  const confirmar = (ev: EventoAnatomico) => {
+  const confirmar = (ev: EventoAnatomico) =>
     saveEvento.mutate(
       { id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id, tipo_achado: ev.tipo_achado, tipo_diagnostico: 'achado_clinico' },
       { onSuccess: invalidar },
     );
-  };
 
   const descartar = (ev: EventoAnatomico) => {
-    const nota = `Descartado pelo profissional em ${new Date().toLocaleDateString('pt-BR')} (relato do paciente não confirmado clinicamente).`;
+    const nota = `Descartado pelo profissional em ${new Date().toLocaleDateString('pt-BR')} (relato não confirmado clinicamente).`;
     saveEvento.mutate(
       {
-        id: ev.id,
-        paciente_id: pacienteId,
-        regiao_id: ev.regiao_id,
-        tipo_achado: ev.tipo_achado,
-        status: 'resolvido',
+        id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
+        tipo_achado: ev.tipo_achado, status: 'resolvido',
         notas_clinicas: ev.notas_clinicas ? `${ev.notas_clinicas}\n${nota}` : nota,
       },
       { onSuccess: invalidar },
@@ -103,99 +156,146 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
   };
 
   const semAlertas = redFlags.length === 0 && pendentes.length === 0 && !estagnado;
+  const band = scoreBand(rawScore);
+  const color = scoreColor(rawScore);
+  const totalAlerts = redFlags.length + pendentes.length + (estagnado ? 1 : 0);
+  const classificacao = myidAtual?.classificacao || null;
+
+  // Band-based styling tokens
+  const wrapperCls = cn(
+    'rounded-2xl border overflow-hidden',
+    band === 'critical' || band === 'severe'
+      ? 'border-red-200/70 bg-red-50/25 dark:border-red-800/30 dark:bg-red-950/10'
+      : band === 'moderate' || (estagnado && band === 'none')
+        ? 'border-amber-200/70 bg-amber-50/25 dark:border-amber-800/30 dark:bg-amber-950/10'
+        : band === 'good' || band === 'mild'
+          ? 'border-emerald-200/60 bg-emerald-50/20 dark:border-emerald-800/30 dark:bg-emerald-950/10'
+          : 'border-border/50 bg-card',
+  );
 
   return (
-    <Card className="border-primary/20">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Stethoscope className="h-4 w-4" /> Painel de Decisão Clínica
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {semAlertas && (
-          <div className="flex items-center gap-2 text-sm text-emerald-700">
-            <CheckCircle2 className="h-4 w-4" /> Nenhum alerta pendente para este paciente.
+    <div className={wrapperCls}>
+      {/* ── Score + header row ─────────────────────────────────────────────── */}
+      <div className="flex items-start gap-4 p-4 pb-3">
+        {rawScore !== null ? (
+          <ScoreGauge score={rawScore} color={color} />
+        ) : (
+          <div className="h-[68px] w-[68px] shrink-0 flex items-center justify-center rounded-full border-[3px] border-dashed border-muted text-muted-foreground">
+            <span className="text-[10px] font-bold text-center leading-tight px-1">Sem<br/>MyID</span>
           </div>
         )}
 
-        {estagnado && (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-800">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold">Possível platô terapêutico.</span> As últimas avaliações de evolução não mostraram variação clinicamente
-              significativa (MCID ±{MCID_MYID} pts). Considere revisar a conduta.
-            </div>
+        <div className="flex-1 min-w-0 pt-0.5">
+          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Decisão Clínica
+            </span>
+            {totalAlerts > 0 && (
+              <span className={cn(
+                'text-[10px] font-bold px-2 py-0.5 rounded-full',
+                band === 'critical' || band === 'severe'
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+              )}>
+                {totalAlerts} {totalAlerts === 1 ? 'alerta' : 'alertas'}
+              </span>
+            )}
           </div>
-        )}
 
-        {redFlags.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-red-700">
-              <AlertTriangle className="h-4 w-4" /> Red Flags Ativas ({redFlags.length})
+          {classificacao ? (
+            <p className="text-[15px] font-bold leading-tight" style={{ color }}>
+              {classificacao}
+            </p>
+          ) : rawScore !== null ? (
+            <p className="text-[15px] font-bold leading-tight" style={{ color }}>
+              {band === 'critical' ? 'Crítico Severo'
+                : band === 'severe' ? 'Crítico'
+                : band === 'moderate' ? 'Moderado'
+                : band === 'mild' ? 'Leve'
+                : 'Ótimo'}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sem avaliação MyID</p>
+          )}
+
+          {/* Delta */}
+          {delta !== null && (
+            <div className={cn(
+              'inline-flex items-center gap-1 text-[11px] font-semibold mt-0.5',
+              delta > 0 ? 'text-emerald-600 dark:text-emerald-400'
+                : delta < 0 ? 'text-red-600 dark:text-red-400'
+                : 'text-muted-foreground',
+            )}>
+              {delta > 0 ? <TrendingUp className="h-3 w-3" />
+                : delta < 0 ? <TrendingDown className="h-3 w-3" />
+                : <Minus className="h-3 w-3 opacity-50" />}
+              {delta >= 0 ? '+' : ''}{delta.toFixed(1)} pts vs avaliação anterior
             </div>
-            <ul className="space-y-0.5 pl-1 text-sm text-red-700/90">
+          )}
+
+          {semAlertas && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-emerald-700 dark:text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Nenhum alerta pendente
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Red flags + estagnação ────────────────────────────────────────── */}
+      {(redFlags.length > 0 || estagnado) && (
+        <div className="mx-4 mb-3 rounded-xl border border-red-200/60 bg-white/60 dark:bg-red-950/20 dark:border-red-800/40 px-3 py-2.5 space-y-2">
+          {estagnado && (
+            <div className="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
+              <span>
+                <strong>Platô terapêutico:</strong> sem variação ≥±{MCID_MYID} pts nas últimas avaliações.
+                Considere revisar a conduta.
+              </span>
+            </div>
+          )}
+          {redFlags.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Red Flags ({redFlags.length})
+              </p>
               {redFlags.map((f, i) => (
-                <li key={i}>• {f}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {pendentes.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Badge variant="warning" size="sm">{pendentes.length}</Badge>
-              Relatos do paciente aguardando confirmação
-            </div>
-            <div className="space-y-2">
-              {pendentes.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm"
-                >
-                  <span className="truncate">
-                    {ev.tipo_achado} <span className="text-muted-foreground">({ev.regiao_id})</span>
-                  </span>
-                  <div className="flex shrink-0 gap-1">
-                    <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => confirmar(ev)}>
-                      <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Confirmar
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => descartar(ev)}>
-                      <XCircle className="mr-1 h-3.5 w-3.5" /> Descartar
-                    </Button>
-                  </div>
-                </div>
+                <p key={i} className="text-xs text-red-800 dark:text-red-300 flex items-start gap-1.5">
+                  <span className="shrink-0 text-red-400 mt-0.5">•</span>{f}
+                </p>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {myidAtual && (
-          <div className="grid grid-cols-3 gap-3 border-t border-border/40 pt-3">
-            <div>
-              <div className="text-xs text-muted-foreground">MyID atual</div>
-              <div className="text-lg font-bold">
-                {myidAtual.myid_score != null ? `${Math.round(Number(myidAtual.myid_score))}/100` : '—'}
+      {/* ── Relatos pendentes ────────────────────────────────────────────── */}
+      {pendentes.length > 0 && (
+        <div className="mx-4 mb-4 space-y-1.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Relatos aguardando revisão ({pendentes.length})
+          </p>
+          {pendentes.map((ev) => (
+            <div
+              key={ev.id}
+              className="flex items-center gap-2 rounded-lg bg-background border border-amber-200/60 px-3 py-2"
+            >
+              <span className="text-xs flex-1 min-w-0 truncate">
+                {ev.tipo_achado}{' '}
+                <span className="text-muted-foreground text-[11px]">({ev.regiao_id})</span>
+              </span>
+              <div className="flex shrink-0 gap-1">
+                <Button size="sm" variant="outline" className="h-6 px-2 text-[11px] gap-1" onClick={() => confirmar(ev)}>
+                  <CheckCircle2 className="h-3 w-3" /> Confirmar
+                </Button>
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] gap-1 text-muted-foreground" onClick={() => descartar(ev)}>
+                  <XCircle className="h-3 w-3" /> Descartar
+                </Button>
               </div>
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Classificação</div>
-              <div className="text-sm font-medium">{myidAtual.classificacao || '—'}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Variação</div>
-              {delta !== null ? (
-                <div className={`flex items-center gap-1 text-sm font-semibold ${delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {delta >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                  {delta >= 0 ? '+' : ''}{delta.toFixed(1)}
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">—</div>
-              )}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

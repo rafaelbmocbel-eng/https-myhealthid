@@ -771,14 +771,16 @@ export default function PacientePerfil() {
           </div>
         </div>
 
-        {/* ============ KPI CARDS — bigger, more readable ============ */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 mb-3">
+        {/* ============ KPI STRIP — horizontal scroll on mobile ============ */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 mb-3 scrollbar-hide">
           {/* Tempo de cadastro */}
-          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
-            <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-2.5 rounded-xl border border-border/50 bg-card p-3 shrink-0 min-w-[148px] sm:flex-1 hover:shadow-sm transition-shadow">
+            <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+              <Clock className="h-3.5 w-3.5 text-slate-500" />
+            </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Cliente há</div>
-              <div className="text-sm font-semibold tracking-tight text-foreground truncate">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cliente há</div>
+              <div className="text-sm font-bold tracking-tight text-foreground">
                 {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
               </div>
               <div className="text-[10px] text-muted-foreground">
@@ -787,45 +789,43 @@ export default function PacientePerfil() {
             </div>
           </div>
 
-          {/* Avaliações */}
-          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
-            <Activity className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          {/* Avaliações MyID */}
+          <div className="flex items-center gap-2.5 rounded-xl border border-sky-200/70 bg-sky-50/50 dark:border-sky-800/40 dark:bg-sky-950/20 p-3 shrink-0 min-w-[132px] sm:flex-1 hover:shadow-sm transition-shadow">
+            <div className="h-7 w-7 rounded-lg bg-sky-100 dark:bg-sky-900/50 flex items-center justify-center shrink-0">
+              <Activity className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+            </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Avaliações</div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm font-semibold tracking-tight text-foreground">
-                  {myidCount}
-                </span>
-                <span className="text-[10px] text-muted-foreground truncate">
-                  {myidCount > 0 ? 'MyID' : 'nenhuma'}
-                </span>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">MyID</div>
+              <div className="text-sm font-bold tracking-tight text-foreground">
+                {myidCount > 0 ? `${myidCount} ${myidCount === 1 ? 'avaliação' : 'avaliações'}` : '—'}
               </div>
+              <div className="text-[10px] text-muted-foreground">{myidCount === 0 ? 'nenhuma ainda' : 'concluídas'}</div>
             </div>
           </div>
 
           {/* Próxima sessão */}
-          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card p-2.5 hover:shadow-md transition-shadow">
-            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-2.5 rounded-xl border border-violet-200/70 bg-violet-50/50 dark:border-violet-800/40 dark:bg-violet-950/20 p-3 shrink-0 min-w-[148px] sm:flex-1 hover:shadow-sm transition-shadow">
+            <div className="h-7 w-7 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center shrink-0">
+              <CalendarDays className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+            </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Próxima</div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm font-semibold tracking-tight text-foreground">
-                  {agendamentosFuturos[0]
-                    ? (() => {
-                        const d = parseISO(agendamentosFuturos[0].data_inicio);
-                        const dias = differenceInDays(d, hoje);
-                        if (dias === 0) return 'Hoje';
-                        if (dias === 1) return 'Amanhã';
-                        if (dias < 7) return `${dias}d`;
-                        return format(d, 'dd/MM', { locale: ptBR });
-                      })()
-                    : '—'}
-                </span>
-                <span className="text-[10px] text-muted-foreground truncate">
-                  {agendamentosFuturos[0]
-                    ? format(parseISO(agendamentosFuturos[0].data_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })
-                    : 'sem agenda'}
-                </span>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">Próxima</div>
+              <div className="text-sm font-bold tracking-tight text-foreground">
+                {agendamentosFuturos[0]
+                  ? (() => {
+                      const d = parseISO(agendamentosFuturos[0].data_inicio);
+                      const dias = differenceInDays(d, hoje);
+                      if (dias === 0) return 'Hoje';
+                      if (dias === 1) return 'Amanhã';
+                      if (dias < 7) return `em ${dias}d`;
+                      return format(d, 'dd/MM', { locale: ptBR });
+                    })()
+                  : 'Sem agenda'}
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate">
+                {agendamentosFuturos[0]
+                  ? format(parseISO(agendamentosFuturos[0].data_inicio), "HH:mm · dd/MM", { locale: ptBR })
+                  : 'agende agora'}
               </div>
             </div>
           </div>
@@ -835,22 +835,22 @@ export default function PacientePerfil() {
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-2.5 text-left hover:bg-primary/10 hover:shadow-md hover:border-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 group"
+                className="flex items-center gap-2.5 rounded-xl border border-primary/30 bg-primary/5 p-3 text-left hover:bg-primary/10 hover:shadow-sm hover:border-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 group shrink-0 min-w-[132px] sm:flex-1"
                 title="Abrir gestão de sessões e pacotes"
               >
-                <Package className="h-3.5 w-3.5 text-primary shrink-0" />
+                <div className="h-7 w-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                  <Package className="h-3.5 w-3.5 text-primary" />
+                </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-primary">
+                  <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
                     Sessões
-                    <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
                   </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-sm font-semibold tracking-tight text-foreground">
-                      #{sessoesInfo.numeroAtual || 0}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground truncate">
-                      {sessoesInfo.totalRealizadas} realizadas
-                    </span>
+                  <div className="text-sm font-bold tracking-tight text-foreground">
+                    #{sessoesInfo.numeroAtual || 0}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {sessoesInfo.totalRealizadas} realizadas
                   </div>
                 </div>
               </button>
@@ -916,22 +916,22 @@ export default function PacientePerfil() {
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 text-left hover:bg-emerald-50 hover:shadow-md hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group"
+                className="flex items-center gap-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/50 dark:border-emerald-800/40 dark:bg-emerald-950/20 p-3 text-left hover:bg-emerald-50 hover:shadow-sm hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group shrink-0 min-w-[148px] sm:flex-1"
                 title="Abrir financeiro"
               >
-                <DollarSign className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+                <div className="h-7 w-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
+                  <DollarSign className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
+                </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-emerald-700">
+                  <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                     Financeiro
-                    <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
                   </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-sm font-semibold tracking-tight text-foreground">
-                      {finResumo.pago > 0 ? fmtBRL(finResumo.pago) : 'R$ 0'}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground truncate">
-                      {finResumo.pendente > 0 ? `${fmtBRL(finResumo.pendente)} pendente` : 'recibos & pagto'}
-                    </span>
+                  <div className="text-sm font-bold tracking-tight text-foreground">
+                    {finResumo.pago > 0 ? fmtBRL(finResumo.pago) : 'R$ 0'}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground truncate">
+                    {finResumo.pendente > 0 ? `${fmtBRL(finResumo.pendente)} pendente` : 'em dia'}
                   </div>
                 </div>
               </button>
@@ -951,6 +951,8 @@ export default function PacientePerfil() {
             </SheetContent>
           </Sheet>
         </div>
+        {/* Scrollbar hidden for KPI strip on mobile */}
+        <style>{`.scrollbar-hide::-webkit-scrollbar{display:none}.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}`}</style>
 
         {/* Observações inline (se houver) */}
         {paciente.observacoes && (
@@ -1029,20 +1031,20 @@ export default function PacientePerfil() {
               <span>Voltar para Visão Integrada</span>
             </button>
           )}
-          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full mb-4">
-            <TabsTrigger value="presencial" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Avaliação Clínica (Voz/Áudio/Escrita + IA baseada em PubMed)">
+          <TabsList className="bg-muted/50 p-1 rounded-2xl grid grid-cols-5 h-auto gap-0.5 w-full mb-4 border border-border/30">
+            <TabsTrigger value="presencial" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground" title="Avaliação Clínica">
               <Activity className="h-4 w-4 shrink-0" /> <span>Avaliação</span>
             </TabsTrigger>
-            <TabsTrigger value="diretrizes" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Diretrizes e Tratamentos">
+            <TabsTrigger value="diretrizes" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground" title="Diretrizes e Tratamentos">
               <Target className="h-4 w-4 shrink-0" /> <span>Diretrizes</span>
             </TabsTrigger>
-            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]">
+            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground">
               <ClipboardList className="h-4 w-4 shrink-0" /> <span>Prontuário</span>
             </TabsTrigger>
-            <TabsTrigger value="portal" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Controle do Portal do Paciente">
+            <TabsTrigger value="portal" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground" title="Portal do Paciente">
               <Smartphone className="h-4 w-4 shrink-0" /> <span>Portal</span>
             </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Histórico de Avaliações">
+            <TabsTrigger value="historico" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground" title="Histórico de Avaliações">
               <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
             </TabsTrigger>
           </TabsList>
