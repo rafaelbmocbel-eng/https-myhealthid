@@ -45,6 +45,7 @@ const Hoje = lazyWithRetry(() => import("./pages/Hoje"));
 const Pendencias = lazyWithRetry(() => import("./pages/Pendencias"));
 const ExportarDados = lazyWithRetry(() => import("./pages/ExportarDados"));
 const Vitrine = lazyWithRetry(() => import("./pages/Vitrine"));
+const AuthConfirm = lazyWithRetry(() => import("./pages/AuthConfirm"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
@@ -140,6 +141,7 @@ const App = () => (
                 <Route path="/index" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/inicio" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/confirm" element={<AuthConfirm />} />
                 <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                 <Route path="/nova-senha" element={<NovaSenha />} />
                 <Route path="/precos" element={<Precos />} />
