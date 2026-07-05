@@ -181,7 +181,7 @@ const DEFAULT_SYS_Y_OFFSET: Partial<Record<string, number>> = {
   locomotor:          0,
   circulatorio:       0,
   respiratorio:       0,
-  digestorio:         0,
+  digestorio:       -40,  // calibrado: fígado label em y=164, órgão em y=200 → Δ=36
   endocrino:          0,
   urinario:           0,
   reprodutor:         0,
@@ -1274,7 +1274,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   </>
                 )}
                 {sistemasAtivos.includes('digestorio') && (
-                  <text x={100} y={164} fill="rgba(150,70,30,0.85)">Fígado</text>
+                  <text x={100} y={174} fill="rgba(150,70,30,0.85)">Fígado</text>
                 )}
                 {sistemasAtivos.includes('urinario') && (
                   <text x={120} y={230} fill="rgba(80,110,210,0.85)">Bexiga</text>
