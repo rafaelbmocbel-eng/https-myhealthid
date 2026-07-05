@@ -427,12 +427,26 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   });
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== 'organ-offsets-calibrado') return;
-      try { setSavedOrganOffsets(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
+      if (e.key === 'organ-offsets-calibrado') {
+        try { setSavedOrganOffsets(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
+      }
+      if (e.key === 'organ-labels-calibrado') {
+        try { setSavedOrganLabels(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
+      }
+      if (e.key === 'organ-hidden-calibrado') {
+        try { setSavedOrganHidden(new Set(e.newValue ? JSON.parse(e.newValue) : [])); } catch {}
+      }
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
+
+  const [savedOrganLabels, setSavedOrganLabels] = useState<Record<string, string>>(() => {
+    try { const r = localStorage.getItem('organ-labels-calibrado'); return r ? JSON.parse(r) : {}; } catch { return {}; }
+  });
+  const [savedOrganHidden, setSavedOrganHidden] = useState<Set<string>>(() => {
+    try { const r = localStorage.getItem('organ-hidden-calibrado'); return new Set(r ? JSON.parse(r) : []); } catch { return new Set(); }
+  });
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number; sinal: string; sistema: string }[] | null>(null);
@@ -1157,6 +1171,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
                 const isHoveredSystem = r.sistemas.some(s => hoveredSistema === s);
                 if (!belongsToActiveSystem && !isHoveredSystem) return null;
+                if (savedOrganHidden.has(r.id)) return null;
 
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
                 const isUrgent = severityScore >= 13;
@@ -1210,7 +1225,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       className="cursor-pointer"
                       onClick={() => abrirSheet(r.id)}
                     >
-                      <title>{r.label}</title>
+                      <title>{savedOrganLabels[r.id] ?? r.label}</title>
                     </path>
                   );
                 }
@@ -1235,7 +1250,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       className="cursor-pointer"
                       onClick={() => abrirSheet(r.id)}
                     >
-                      <title>{r.label}</title>
+                      <title>{savedOrganLabels[r.id] ?? r.label}</title>
                     </path>
                   );
                 }
@@ -1271,7 +1286,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       className="cursor-pointer hover:brightness-110 transition-all"
                       onClick={() => abrirSheet(r.id)}
                     >
-                      <title>{r.label}</title>
+                      <title>{savedOrganLabels[r.id] ?? r.label}</title>
                     </path>
                     {r.type !== 'gland' && (
                       <path d={r.d} fill="url(#organ-vol)" pointerEvents="none" opacity={0.48} />
