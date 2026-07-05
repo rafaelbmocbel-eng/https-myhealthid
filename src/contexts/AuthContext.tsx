@@ -48,6 +48,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (pacienteError) throw pacienteError;
     if (paciente) return null;
 
+    // Pacientes autônomos (cadastro pelo portal) não devem receber perfil de profissional.
+    // Checa tanto a flag de metadata quanto a tabela portal_pacientes.
+    if (currentUser.user_metadata?.is_patient === true) return null;
+    const { data: portalPaciente } = await supabase
+      .from('portal_pacientes')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+    if (portalPaciente) return null;
+
     const { data: existingProfile, error: profileError } = await withAuthLockRetry(async () =>
       await supabase
         .from('profiles')
