@@ -219,7 +219,10 @@ export default function PacienteLogin() {
           supabase.auth.signUp({
             email: form.email,
             password: form.password,
-            options: { data: { nome: form.nome, is_patient: true } },
+            options: {
+              data: { nome: form.nome, is_patient: true },
+              emailRedirectTo: `${window.location.origin}/paciente/login`,
+            },
           })
         );
 
