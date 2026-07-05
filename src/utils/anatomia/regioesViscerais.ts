@@ -287,6 +287,46 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M132 308 C 134 326 136 348 137 372 C 138 392 138 410 138 430'
   },
 
+  // Artérias subclávias: do arco aórtico para os ombros/braços
+  {
+    id: 'subclavias_d',
+    label: 'Artéria Subclávia D',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    type: 'vessel',
+    layer: 9,
+    d: 'M118 124 C 108 120 96 118 86 122 C 78 126 74 136 76 150'
+  },
+  {
+    id: 'subclavias_e',
+    label: 'Artéria Subclávia E',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    type: 'vessel',
+    layer: 9,
+    d: 'M122 124 C 132 120 144 118 154 122 C 162 126 166 136 164 150'
+  },
+
+  // Artérias ilíacas comuns: bifurcação da aorta abdominal (y=294) para as femorais (y=308)
+  {
+    id: 'iliaca_d',
+    label: 'Artéria Ilíaca D',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    type: 'vessel',
+    layer: 9,
+    d: 'M118 294 C 116 298 112 304 108 308'
+  },
+  {
+    id: 'iliaca_e',
+    label: 'Artéria Ilíaca E',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    type: 'vessel',
+    layer: 9,
+    d: 'M122 294 C 124 298 128 304 132 308'
+  },
+
   // ── RESPIRATORY ─────────────────────────────
 
   // Traqueia: começa abaixo da laringe (y114) e desce até a carina/bifurcação
@@ -418,8 +458,8 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M 154 200 C 158 197 164 200 167 208 C 170 216 168 224 163 228 C 159 231 154 229 151 223 C 148 217 150 206 154 200 Z'
   },
 
-  // Pâncreas: retroperitoneal, atrás do estômago
-  // y=218-232, x=100-158, abaixo do diafragma
+  // Pâncreas: retroperitoneal, atrás do estômago — deslocado para y=236-252
+  // para aparecer visível abaixo da borda inferior do fígado (y=244)
   {
     id: 'pancreas_corpo',
     label: 'Pâncreas',
@@ -427,10 +467,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 5,
-    d: 'M 102 222 C 108 218 118 216 130 216 C 142 216 152 218 157 224 C 159 226 158 230 155 232 C 149 234 138 234 128 232 C 118 232 108 232 102 230 C 100 228 100 224 102 222 Z'
+    d: 'M 102 240 C 108 236 118 234 130 234 C 142 234 152 236 157 242 C 159 244 158 248 155 250 C 149 252 138 252 128 250 C 118 250 108 250 102 248 C 100 246 100 242 102 240 Z'
   },
 
-  // Ilhotas de Langerhans (endócrino do pâncreas): same region
+  // Ilhotas de Langerhans (endócrino do pâncreas): mesma posição
   {
     id: 'ilhotas_langerhans',
     label: 'Ilhotas de Langerhans',
@@ -438,7 +478,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 5,
-    d: 'M 102 222 C 108 218 118 216 130 216 C 142 216 152 218 157 224 C 159 226 158 230 155 232 C 149 234 138 234 128 232 C 118 232 108 232 102 230 C 100 228 100 224 102 222 Z'
+    d: 'M 102 240 C 108 236 118 234 130 234 C 142 234 152 236 157 242 C 159 244 158 248 155 250 C 149 252 138 252 128 250 C 118 250 108 250 102 248 C 100 246 100 242 102 240 Z'
   },
 
   // Duodeno: alça em C contornando a cabeça do pâncreas, lado DIREITO do paciente (x<120)
@@ -1291,12 +1331,12 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   {
     id: 'mama_d', label: 'Mama D', view: 'front',
     sistemas: ['reprodutor', 'endocrino'], type: 'organ', layer: 6,
-    d: 'M148 168 C 138 168 132 178 138 188 C 146 192 156 188 158 180 C 159 173 154 168 148 168 Z'
+    d: 'M148 140 C 138 140 132 150 138 160 C 146 164 156 160 158 152 C 159 145 154 140 148 140 Z'
   },
   {
     id: 'mama_e', label: 'Mama E', view: 'front',
     sistemas: ['reprodutor', 'endocrino'], type: 'organ', layer: 6,
-    d: 'M92 168 C 102 168 108 178 102 188 C 94 192 84 188 82 180 C 81 173 86 168 92 168 Z'
+    d: 'M92 140 C 102 140 108 150 102 160 C 94 164 84 160 82 152 C 81 145 86 140 92 140 Z'
   },
   {
     id: 'vagina', label: 'Vagina', view: 'front',
