@@ -75,6 +75,7 @@ const PacienteHistoria = lazyWithRetry(() => import("./pages/paciente/PacienteHi
 const PacienteRecompensas = lazyWithRetry(() => import("./pages/paciente/PacienteRecompensas"));
 const PacienteProfissionais = lazyWithRetry(() => import("./pages/paciente/PacienteProfissionais"));
 const WellnessCadastro = lazyWithRetry(() => import("./pages/WellnessCadastro"));
+const Calibrador = lazyWithRetry(() => import("./pages/Calibrador"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -209,6 +210,9 @@ const App = () => (
 
                 {/* Preview público do dashboard (mock, sem auth) */}
                 <Route path="/preview/dashboard" element={<DashboardPreview />} />
+
+                {/* Calibrador visual de órgãos (sem auth) */}
+                <Route path="/calibrar" element={<Calibrador />} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
