@@ -114,7 +114,7 @@ export default function PacienteDashboard() {
 
         const now = new Date().toISOString();
 
-        const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, avalVozRes] = await Promise.all([
+        const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, avalVozRes, historiaRes] = await Promise.all([
           supabase.from('agendamentos')
             .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
             .eq('paciente_id', pac.id)
@@ -145,6 +145,11 @@ export default function PacienteDashboard() {
           supabase.from('avaliacoes_voz')
             .select('id', { count: 'exact', head: true })
             .eq('paciente_id', pac.id),
+          supabase.from('avaliacoes_voz')
+            .select('resultado')
+            .eq('paciente_id', pac.id)
+            .order('created_at', { ascending: false })
+            .limit(20),
         ]);
 
         setProximasConsultas(agendaRes.data || []);
@@ -155,6 +160,7 @@ export default function PacienteDashboard() {
           pendentes: pendentesRes.count || 0,
           vocais: avalVozRes.count || 0,
         });
+        setHistoriaContada((historiaRes.data || []).some((r: any) => r?.resultado?._meta?.origem === 'portal_paciente_historia'));
 
         const completedMyIds = lastMyIdRes.data || [];
         // Mostra prompt do MyID independentemente de avaliação de voz

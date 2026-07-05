@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Calendar, Clock, MapPin, Users, CheckCircle2, Loader2, Ticket, Video, Repeat } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
@@ -58,6 +58,7 @@ interface Pergunta {
 
 export default function PacienteEventos() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [paciente, setPaciente] = useState<{ id: string; nome: string; email: string | null; telefone: string | null; terapeuta_id: string } | null>(null);
@@ -143,7 +144,7 @@ export default function PacienteEventos() {
       const value = respostas[p.id];
       const isEmptyArray = Array.isArray(value) && value.length === 0;
       if (p.obrigatoria && (value === undefined || value === '' || value === null || isEmptyArray)) {
-        toast.error(`Responda: "${p.pergunta}"`);
+        toast({ title: `Responda: "${p.pergunta}"`, variant: 'destructive' });
         return;
       }
     }
@@ -163,11 +164,11 @@ export default function PacienteEventos() {
       if (resp.error) throw new Error(resp.error.message);
       if (resp.data?.error) throw new Error(resp.data.error);
 
-      toast.success('Inscrição confirmada!');
+      toast({ title: 'Inscrição confirmada!' });
       setInscricoes(prev => new Set([...prev, selectedEvento.id]));
       setSelectedEvento(null);
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao inscrever');
+      toast({ title: e.message || 'Erro ao inscrever', variant: 'destructive' });
     }
     setSubmitting(false);
   };
@@ -184,7 +185,7 @@ export default function PacienteEventos() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-          <h1 className="text-lg font-bold text-foreground">Eventos</h1>
+          <h1 className="h-page">Eventos</h1>
 
           {loading ? (
             <div className="flex justify-center py-12">

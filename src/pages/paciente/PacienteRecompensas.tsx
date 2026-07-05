@@ -49,7 +49,7 @@ export default function PacienteRecompensas() {
   return (
     <ProtectedPatientRoute>
       <PacienteLayout>
-        <div className="space-y-6 pb-24">
+        <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6 pb-4">
           <div>
             <h1 className="h-page">Recompensas</h1>
             <p className="text-caption mt-1">Troque seu XP por benefícios reais</p>

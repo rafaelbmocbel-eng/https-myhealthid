@@ -8,13 +8,14 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PacienteConsentimentoLGPD from '@/components/paciente/PacienteConsentimentoLGPD';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Phone, Calendar, Pencil } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Pencil, Loader2 } from 'lucide-react';
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 
 export default function PacientePerfil() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [paciente, setPaciente] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -23,7 +24,7 @@ export default function PacientePerfil() {
       .select('id, nome, sobrenome, email, telefone, data_nascimento, avatar_url')
       .eq('user_id', user.id)
       .maybeSingle()
-      .then(({ data }) => setPaciente(data));
+      .then(({ data }) => { setPaciente(data); setLoading(false); });
   }, [user]);
 
   const infoItems = paciente
@@ -35,12 +36,24 @@ export default function PacientePerfil() {
       ]
     : [];
 
+  if (loading) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
   return (
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h1 className="text-lg font-black text-foreground">Meu Perfil</h1>
+            <h1 className="h-page">Meu Perfil</h1>
             <Button
               size="sm"
               variant="outline"

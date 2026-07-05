@@ -149,7 +149,7 @@ export default function PacienteEvolucao() {
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
           <div>
-            <h1 className="text-lg font-black text-foreground flex items-center gap-2">
+            <h1 className="h-page flex items-center gap-2">
               <Flame className="h-5 w-5 text-primary" />
               Evolução e Prontuários
             </h1>
@@ -167,35 +167,37 @@ export default function PacienteEvolucao() {
             </TabsList>
 
             <TabsContent value="evolucao" className="mt-4 space-y-5">
-              {/* Main wellness gauge */}
-              <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Índice de Bem-Estar</p>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <span className="text-4xl font-black text-foreground">{trend.weekAvg}</span>
-                        <span className="text-lg text-muted-foreground">/100</span>
+              {/* Main wellness gauge — only shown when patient has enough data */}
+              {logs.length >= 3 && (
+                <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Índice de Bem-Estar</p>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          <span className="text-4xl font-black text-foreground">{trend.weekAvg}</span>
+                          <span className="text-lg text-muted-foreground">/100</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <TrendIcon className={`icon-sm ${trendColor}`} />
+                          <span className={`text-xs font-bold ${trendColor}`}>
+                            {trend.delta > 0 ? '+' : ''}{trend.delta} pts vs semana anterior
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <TrendIcon className={`icon-sm ${trendColor}`} />
-                        <span className={`text-xs font-bold ${trendColor}`}>
-                          {trend.delta > 0 ? '+' : ''}{trend.delta} pts vs semana anterior
-                        </span>
+                      <div className="text-center">
+                        <span className="text-4xl">{currentLevel.emoji}</span>
+                        <p className={`text-xs font-bold mt-1 ${currentLevel.color}`}>{currentLevel.label}</p>
+                        {trend.streak > 0 && (
+                          <Badge variant="outline" className="mt-1 text-[9px] gap-0.5 border-amber-200 text-amber-700 bg-amber-50">
+                            <Flame className="h-2.5 w-2.5" /> {trend.streak}d
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                    <div className="text-center">
-                      <span className="text-4xl">{currentLevel.emoji}</span>
-                      <p className={`text-xs font-bold mt-1 ${currentLevel.color}`}>{currentLevel.label}</p>
-                      {trend.streak > 0 && (
-                        <Badge variant="outline" className="mt-1 text-[9px] gap-0.5 border-amber-200 text-amber-700 bg-amber-50">
-                          <Flame className="h-2.5 w-2.5" /> {trend.streak}d
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Alerts */}
               {alerts.length > 0 && (

@@ -176,7 +176,7 @@ export default function PacienteDiario() {
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-black text-foreground">Diário de Saúde</h1>
+              <h1 className="h-page">Diário de Saúde</h1>
               <p className="text-xs text-muted-foreground">Registre como você está se sentindo hoje</p>
             </div>
             {todayLogged && (

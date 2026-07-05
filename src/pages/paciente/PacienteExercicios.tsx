@@ -171,7 +171,7 @@ export default function PacienteExercicios() {
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
           {/* Header */}
           <div>
-            <h1 className="text-lg font-black text-foreground flex items-center gap-2">
+            <h1 className="h-page flex items-center gap-2">
               <Dumbbell className="h-5 w-5 text-primary" />
               Meus Exercícios
             </h1>

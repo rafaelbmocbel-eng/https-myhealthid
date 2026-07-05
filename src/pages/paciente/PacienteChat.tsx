@@ -37,7 +37,7 @@ export default function PacienteChat() {
         <div className="flex flex-col h-[calc(100dvh-8rem)]">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
             <MessageSquare className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-bold">Mensagens</h1>
+            <h1 className="h-page">Mensagens</h1>
           </div>
 
           {loading ? (

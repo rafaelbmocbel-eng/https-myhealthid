@@ -240,7 +240,7 @@ export default function PacienteQuestionarios() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
-          <h1 className="text-lg font-black text-foreground">Questionários</h1>
+          <h1 className="h-page">Questionários</h1>
 
           {loading ? (
             <div className="flex justify-center py-12">
@@ -314,7 +314,7 @@ export default function PacienteQuestionarios() {
               {concluidos.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-bold text-foreground">Concluídos ({concluidos.length} sessão{concluidos.length !== 1 ? 'ões' : ''})</h2>
+                    <h2 className="text-sm font-bold text-foreground">Concluídos ({concluidos.length} avaliação{concluidos.length !== 1 ? 'ões' : ''})</h2>
                     {!hasPending && (
                       <Button
                         size="sm"

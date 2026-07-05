@@ -11,10 +11,11 @@ import {
 } from '@/components/ui/dialog';
 import {
   Search, MapPin, DollarSign, Loader2, Building2, Monitor, Globe,
-  ChevronRight, Star, CheckCircle2, Clock, XCircle,
+  ChevronRight, CheckCircle2, Clock, XCircle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
+import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 
 type Terapeuta = {
   terapeuta_id: string;
@@ -156,11 +157,12 @@ export default function PacienteProfissionais() {
   };
 
   return (
+    <ProtectedPatientRoute>
     <PacienteLayout>
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-5">
         {/* Header */}
         <div>
-          <h1 className="text-xl font-black text-foreground">Encontrar profissional</h1>
+          <h1 className="h-page">Encontrar profissional</h1>
           <p className="text-xs text-muted-foreground">Conecte-se com terapeutas, nutricionistas e mais</p>
         </div>
 
@@ -301,9 +303,6 @@ export default function PacienteProfissionais() {
                   <div className="p-3">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <p className="font-bold text-sm text-foreground leading-tight line-clamp-1">{t.nome_exibicao || 'Profissional'}</p>
-                      <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
-                        <Star className="h-3 w-3 fill-amber-400 stroke-amber-400" /> Novo
-                      </span>
                     </div>
                     {t.cidade && (
                       <p className="text-[11px] text-muted-foreground flex items-center gap-0.5 mb-2">
@@ -374,5 +373,6 @@ export default function PacienteProfissionais() {
         </DialogContent>
       </Dialog>
     </PacienteLayout>
+    </ProtectedPatientRoute>
   );
 }

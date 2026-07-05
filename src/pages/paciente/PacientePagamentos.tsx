@@ -186,7 +186,6 @@ export default function PacientePagamentos() {
     }
   };
 
-  const [sumupLoading] = useState(false);
   const [sumupUrl, setSumupUrl] = useState<string | null>(null);
 
   const handleSelectCartao = () => {
@@ -243,7 +242,7 @@ export default function PacientePagamentos() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
-          <h1 className="text-lg font-black text-foreground">Pagamentos</h1>
+          <h1 className="h-page">Pagamentos</h1>
 
           {/* Financial summary */}
           {pagamentos.length > 0 && <ResumoFinanceiro pagamentos={pagamentos} />}
@@ -383,11 +382,7 @@ export default function PacientePagamentos() {
                     </p>
                   )}
                 </div>
-                {sumupLoading ? (
-                  <Button disabled className="w-full gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Gerando link de pagamento...
-                  </Button>
-                ) : sumupUrl ? (
+                {sumupUrl ? (
                   <Button asChild className="w-full gap-2">
                     <a href={sumupUrl} target="_blank" rel="noreferrer">
                       <ExternalLink className="h-4 w-4" /> Pagar com Cartão
