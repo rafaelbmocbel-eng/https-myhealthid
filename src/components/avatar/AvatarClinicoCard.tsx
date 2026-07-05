@@ -874,7 +874,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <div className="absolute inset-0 rounded-full opacity-20 blur-3xl pointer-events-none"
             style={{ background: hoveredSistema ? (SYSTEM_HOVER[hoveredSistema] || 'hsl(var(--primary))') : 'hsl(var(--muted-foreground) / 0.3)', transform: 'scale(0.7) translateY(5%)' }}
           />
-          <svg viewBox="0 0 240 520" className="w-full h-auto relative" style={{ maxHeight: 480, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))' }}>
+          <svg viewBox="0 0 240 520" className="w-full h-auto relative" shapeRendering="geometricPrecision" style={{ maxHeight: 480, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))' }}>
             <defs>
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
@@ -1073,11 +1073,27 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
                 const isUrgent = severityScore >= 13;
                 const sys0 = r.sistemas[0];
-                // Os paths viscerais foram desenhados em coords ligeiramente baixas em relação
-                // ao avatar humano renderizado. Em vez de re-desenhar 1600+ linhas de paths,
-                // aplicamos um shift vertical global para cada sistema, calibrado contra a
-                // anatomia visível do avatar. Sensorial (face) já está calibrado e fica em 0.
-                const groupTransform = undefined;
+                // Shift vertical por sistema (em px no espaço SVG 240×520).
+                // Referência: diafragma y=178-198 está calibrado. Ajuste os valores abaixo
+                // se um sistema específico aparecer deslocado no avatar.
+                // Positivo = desce, negativo = sobe.
+                const SYS_Y_OFFSET: Record<string, number> = {
+                  sensorial:         0,
+                  nervoso:           0,
+                  musculoesqueletico: 0,
+                  locomotor:         0,
+                  circulatorio:      0,
+                  respiratorio:      0,
+                  digestorio:        0,
+                  endocrino:         0,
+                  urinario:          0,
+                  reprodutor:        0,
+                  imune:             0,
+                  linfatico:         0,
+                };
+                // Para órgãos multi-sistema usa o sistema que mais aparece na UI ou sys0.
+                const dy = SYS_Y_OFFSET[sys0] ?? 0;
+                const groupTransform = dy !== 0 ? `translate(0,${dy})` : undefined;
 
                 // STRUCTURAL (diaphragm, pericardium) — non-clickable dividers
                 if (r.type === 'structural') {

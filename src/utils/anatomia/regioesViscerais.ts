@@ -1331,12 +1331,12 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   {
     id: 'mama_d', label: 'Mama D', view: 'front',
     sistemas: ['reprodutor', 'endocrino'], type: 'organ', layer: 6,
-    d: 'M148 140 C 138 140 132 150 138 160 C 146 164 156 160 158 152 C 159 145 154 140 148 140 Z'
+    d: 'M148 155 C 138 155 132 165 138 175 C 146 179 156 175 158 167 C 159 160 154 155 148 155 Z'
   },
   {
     id: 'mama_e', label: 'Mama E', view: 'front',
     sistemas: ['reprodutor', 'endocrino'], type: 'organ', layer: 6,
-    d: 'M92 140 C 102 140 108 150 102 160 C 94 164 84 160 82 152 C 81 145 86 140 92 140 Z'
+    d: 'M92 155 C 102 155 108 165 102 175 C 94 179 84 175 82 167 C 81 160 86 155 92 155 Z'
   },
   {
     id: 'vagina', label: 'Vagina', view: 'front',
