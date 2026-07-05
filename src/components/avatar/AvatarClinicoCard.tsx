@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye, TrendingUp, Clock, History, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye, TrendingUp, Clock, History, AlertTriangle, CheckCircle2, ArrowRight, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
@@ -19,7 +19,8 @@ import {
   corEvento, type EventoAnatomico, type SistemaCorporal, type StatusEvento, type OrigemAchado, type TipoDiagnostico,
 } from '@/hooks/useEventosAnatomicos';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 import avatarHumanoFrente from '@/assets/avatar-humano-frente.png';
@@ -313,6 +314,7 @@ function cargaEvento(e: EventoAnatomico): number {
 const TIPO_DIAG_BADGE: Record<string, string> = {
   relato_paciente: 'Relato',
   historico_relatado: 'Histórico ⏳',
+  historico_confirmado: 'Hist. ✓',
   achado_clinico: 'Achado',
   diagnostico_medico: 'Dx Med.',
   diagnostico_fisioterapia: 'Dx Fisio',
@@ -325,7 +327,8 @@ const TIPO_DIAG_BADGE: Record<string, string> = {
 // Peso do tipo para determinar qual evento domina visualmente em regiões sobrepostas
 const tipoPeso = (td: string | undefined): number => {
   if (!td) return 2;
-  if (td.startsWith('diagnostico_')) return 3; // confirmado por profissional
+  if (td.startsWith('diagnostico_')) return 4; // diagnóstico formal — maior peso
+  if (td === 'historico_confirmado') return 3; // histórico confirmado pelo profissional
   if (td === 'achado_clinico') return 2; // achado presencial
   return 1; // relato ou histórico não confirmado
 };
@@ -339,6 +342,50 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const { data: eventos = [], isLoading } = useEventosAnatomicos(pacienteId);
   const saveMut = useSaveEventoAnatomico();
   const deleteMut = useDeleteEventoAnatomico(pacienteId);
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
+  const [editandoHistoricoId, setEditandoHistoricoId] = useState<string | null>(null);
+  const [textoEditadoHistorico, setTextoEditadoHistorico] = useState('');
+  const [rejeicaoLoading, setRejeicaoLoading] = useState<string | null>(null);
+  const [descartadosOpen, setDescartadosOpen] = useState(false);
+
+  const confirmarHistoricoItem = (ev: EventoAnatomico, textoFinal?: string) => {
+    saveMut.mutate({
+      id: ev.id,
+      paciente_id: pacienteId,
+      regiao_id: ev.regiao_id,
+      tipo_achado: textoFinal ?? ev.tipo_achado,
+      tipo_diagnostico: 'historico_confirmado' as any,
+      status: 'ativo',
+      visivel_paciente: true,
+      severidade: ev.severidade || 1,
+      metadata: {
+        ...(ev as any).metadata,
+        revisado_profissional: true,
+        revisado_por_ids: [...((ev as any).metadata?.revisado_por_ids || []), user?.id],
+      },
+    } as any);
+    setEditandoHistoricoId(null);
+    setTextoEditadoHistorico('');
+  };
+
+  const rejeitarHistoricoItem = async (ev: EventoAnatomico) => {
+    if (!user) return;
+    setRejeicaoLoading(ev.id);
+    try {
+      const meta = (ev as any).metadata || {};
+      const rejeicoes = [...(meta.rejeicoes || []), { terapeuta_id: user.id, data: new Date().toISOString() }];
+      const revisado_por_ids = [...(meta.revisado_por_ids || []), user.id];
+      await (supabase as any)
+        .from('eventos_clinicos_anatomicos')
+        .update({ metadata: { ...meta, rejeicoes, revisado_por_ids } })
+        .eq('id', ev.id);
+      qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
+    } finally {
+      setRejeicaoLoading(null);
+    }
+  };
 
   const [modoSimplificadoState, setModoSimplificadoState] = useState(!isProfessional);
   // Paciente nunca tem acesso de edição: força modo simplificado independente de estado local.
@@ -1546,7 +1593,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             (e) => e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido'
           );
           const pendentesHistorico = eventos.filter(
-            (e) => e.tipo_diagnostico === 'historico_relatado' && (e as any).metadata?.revisado_profissional !== true
+            (e) => e.tipo_diagnostico === 'historico_relatado' &&
+              !((e as any).metadata?.revisado_por_ids || []).includes(user?.id) &&
+              ((e as any).metadata?.rejeicoes?.length || 0) < 3
+          );
+          const descartadosConsenso = eventos.filter(
+            (e) => e.tipo_diagnostico === 'historico_relatado' &&
+              ((e as any).metadata?.rejeicoes?.length || 0) >= 3
           );
           return (
             <div className="space-y-3 border-t border-border/40 pt-3">
@@ -1558,7 +1611,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 </p>
               )}
 
-              {pendentes.length === 0 && pendentesHistorico.length === 0 && (
+              {pendentes.length === 0 && pendentesHistorico.length === 0 && descartadosConsenso.length === 0 && (
                 <p className="text-xs text-muted-foreground italic">Nenhum histórico pendente de revisão.</p>
               )}
 
@@ -1633,54 +1686,157 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               )}
 
               {pendentesHistorico.length > 0 && (
-                <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase text-amber-800">
+                <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 p-3">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase text-amber-800 dark:text-amber-400">
                     <ClipboardList className="h-3.5 w-3.5" />
                     <Badge variant="warning" size="sm">{pendentesHistorico.length}</Badge>
                     Histórico clínico relatado pelo paciente
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Selecione o que entra no Avatar Clínico. Itens não confirmados não afetam nenhum score.
+                  <p className="text-[11px] text-amber-700 dark:text-amber-500">
+                    Confirme o que entra no Avatar Clínico, ajuste o texto se necessário, ou rejeite.
+                    Itens rejeitados por 3 profissionais distintos são arquivados automaticamente.
                   </p>
-                  <div className="space-y-1.5">
-                    {pendentesHistorico.map((ev) => (
-                      <div key={ev.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5 text-sm">
-                        <div className="min-w-0">
-                          <span className="truncate font-medium">{ev.tipo_achado}</span>{' '}
-                          <span className="text-xs text-muted-foreground">({ev.regiao_id})</span>
-                          <div className="text-[10px] text-muted-foreground">
-                            {CATEGORIA_LABEL[(ev as any).metadata?.categoria] || (ev as any).metadata?.categoria}
+                  <div className="space-y-2">
+                    {pendentesHistorico.map((ev) => {
+                      const meta = (ev as any).metadata || {};
+                      const categoria = CATEGORIA_LABEL[meta.categoria] || meta.categoria;
+                      const numRejeicoes: number = meta.rejeicoes?.length || 0;
+                      const regiaoInfo = [...REGIONS, ...(VISCERAL_REGIONS as any[])].find((r: any) => r.id === ev.regiao_id);
+                      const isEditando = editandoHistoricoId === ev.id;
+                      const isRejeicaoLoading = rejeicaoLoading === ev.id;
+                      const linhasNota = (ev.notas_clinicas || '').split('\n').filter(Boolean);
+                      const textoOriginal = linhasNota.find((l: string) => l.startsWith('Resposta:'))?.replace('Resposta:', '').trim();
+
+                      return (
+                        <div key={ev.id} className="rounded-lg bg-white/80 dark:bg-background/60 border border-amber-100 dark:border-amber-900/30 p-3 space-y-2">
+                          {/* Header: categoria + região + data */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-wrap gap-1">
+                              {categoria && <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{categoria}</Badge>}
+                              {regiaoInfo && <Badge variant="outline" className="text-[10px] h-4 px-1.5">{regiaoInfo.label}</Badge>}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {new Date(ev.data_inicio).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+
+                          {/* Texto do achado (editável ou estático) */}
+                          {isEditando ? (
+                            <Input
+                              value={textoEditadoHistorico}
+                              onChange={(e) => setTextoEditadoHistorico(e.target.value)}
+                              className="text-sm h-8"
+                              autoFocus
+                            />
+                          ) : (
+                            <p className="text-sm font-medium text-foreground leading-snug">{ev.tipo_achado}</p>
+                          )}
+
+                          {/* Relato original do paciente */}
+                          {textoOriginal && !isEditando && (
+                            <p className="text-[11px] text-muted-foreground border-l-2 border-amber-200 dark:border-amber-700 pl-2 italic leading-relaxed">
+                              "{textoOriginal}"
+                            </p>
+                          )}
+
+                          {/* Indicador de rejeições anteriores */}
+                          {numRejeicoes > 0 && (
+                            <p className="text-[10px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3 shrink-0" />
+                              Rejeitado por {numRejeicoes} profissional{numRejeicoes > 1 ? 'is' : ''} até agora
+                            </p>
+                          )}
+
+                          {/* Ações */}
+                          <div className="flex flex-wrap gap-1.5 pt-1 border-t border-amber-100 dark:border-amber-900/30">
+                            {isEditando ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="h-7 px-3 text-xs gap-1"
+                                  onClick={() => confirmarHistoricoItem(ev, textoEditadoHistorico)}
+                                  disabled={!textoEditadoHistorico.trim()}
+                                >
+                                  <Check className="h-3 w-3" /> Salvar e confirmar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-3 text-xs"
+                                  onClick={() => { setEditandoHistoricoId(null); setTextoEditadoHistorico(''); }}
+                                >
+                                  <X className="h-3 w-3" /> Cancelar
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="h-7 px-3 text-xs gap-1"
+                                  onClick={() => confirmarHistoricoItem(ev)}
+                                >
+                                  <Check className="h-3 w-3" /> Confirmar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-3 text-xs gap-1"
+                                  onClick={() => { setEditandoHistoricoId(ev.id); setTextoEditadoHistorico(ev.tipo_achado); }}
+                                >
+                                  <Pencil className="h-3 w-3" /> Ajustar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-3 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  disabled={isRejeicaoLoading}
+                                  onClick={() => rejeitarHistoricoItem(ev)}
+                                >
+                                  {isRejeicaoLoading
+                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                    : 'Rejeitar'}
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
-                        <div className="flex shrink-0 gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => saveMut.mutate({
-                              id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
-                              tipo_achado: ev.tipo_achado, tipo_diagnostico: 'achado_clinico', status: 'ativo',
-                              metadata: { ...(ev as any).metadata, revisado_profissional: true },
-                            } as any)}
-                          >
-                            <Check className="mr-1 h-3 w-3" /> Confirmar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => saveMut.mutate({
-                              id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
-                              tipo_achado: ev.tipo_achado,
-                              metadata: { ...(ev as any).metadata, revisado_profissional: true },
-                            } as any)}
-                          >
-                            Descartar
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
+                </div>
+              )}
+
+              {/* Descartados por consenso (3+ rejeições) */}
+              {descartadosConsenso.length > 0 && (
+                <div className="rounded-lg border border-border/50 bg-muted/30 overflow-hidden">
+                  <button
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+                    onClick={() => setDescartadosOpen(o => !o)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <History className="h-3.5 w-3.5" />
+                      {descartadosConsenso.length} item{descartadosConsenso.length > 1 ? 'ns' : ''} arquivado{descartadosConsenso.length > 1 ? 's' : ''} por consenso
+                    </span>
+                    {descartadosOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </button>
+                  {descartadosOpen && (
+                    <div className="px-3 pb-3 space-y-1.5 border-t border-border/30 pt-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        Rejeitados por 3 ou mais profissionais. Ficam arquivados para auditoria.
+                        Se o paciente atualizar o histórico com informações equivalentes, novos itens serão criados com contagem zerada.
+                      </p>
+                      {descartadosConsenso.map(ev => {
+                        const meta = (ev as any).metadata || {};
+                        const categoria = CATEGORIA_LABEL[meta.categoria] || meta.categoria;
+                        return (
+                          <div key={ev.id} className="flex items-start gap-2 rounded-md bg-muted/50 px-2 py-1.5 text-xs">
+                            <span className="font-medium flex-1 line-through text-muted-foreground">{ev.tipo_achado}</span>
+                            {categoria && <Badge variant="outline" className="text-[9px] h-4 px-1 shrink-0">{categoria}</Badge>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

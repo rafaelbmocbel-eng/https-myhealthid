@@ -48,6 +48,7 @@ const PATIENT_ROUTES: { path: string; label: string }[] = [
   { path: '/paciente/plano', label: 'Plano' },
   { path: '/paciente/historia', label: 'Histórico' },
   { path: '/paciente/recompensas', label: 'Recompensas' },
+  { path: '/paciente/avatar', label: 'Meu Avatar Clínico' },
 ];
 
 /** Breadcrumbs do portal do paciente. Retorna [] no dashboard para não poluir a tela inicial. */

@@ -15,6 +15,7 @@ export type OrigemAchado =
 export type TipoDiagnostico =
   | 'relato_paciente'
   | 'historico_relatado'
+  | 'historico_confirmado'
   | 'achado_clinico'
   | 'diagnostico_medico'
   | 'diagnostico_fisioterapia'
@@ -125,6 +126,13 @@ export function corEvento(ev: EventoAnatomico): string {
   if (ev.status === 'cronico') return '#eab308'; // amarelo crônico
 
   const td = (ev as any).tipo_diagnostico as TipoDiagnostico | undefined;
+
+  // Histórico confirmado pelo profissional — verde-azulado distinto
+  if (td === 'historico_confirmado') {
+    if (ev.severidade >= 3) return '#0f766e'; // teal escuro
+    if (ev.severidade === 2) return '#0d9488'; // teal médio
+    return '#14b8a6'; // teal claro
+  }
 
   // Histórico relatado (não confirmado) — azul-cinza discreto
   if (td === 'historico_relatado') return '#94a3b8';
