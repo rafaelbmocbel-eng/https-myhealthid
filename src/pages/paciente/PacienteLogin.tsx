@@ -29,6 +29,7 @@ export default function PacienteLogin() {
   const linkAttempted = useRef(false);
   const signOutAttempted = useRef(false);
   const [demorandoMuito, setDemorandoMuito] = useState(false);
+  const [profissionalConflito, setProfissionalConflito] = useState(false);
 
   // Se o carregamento inicial demorar demais, avisa o paciente em vez de deixar o spinner vago.
   useEffect(() => {
@@ -106,8 +107,9 @@ export default function PacienteLogin() {
             description: 'Entre com a conta do paciente para continuar.',
           });
         } else {
-          // Profissional na tela de login do paciente — redireciona para o app
-          navigate('/inicio-app', { replace: true });
+          // Profissional acessando login do paciente — mostra tela de escolha
+          setLinking(false);
+          setProfissionalConflito(true);
         }
         return;
       }
@@ -323,6 +325,36 @@ export default function PacienteLogin() {
             </Button>
           </>
         )}
+      </div>
+    );
+  }
+
+  if (profissionalConflito) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-6 px-6 text-center">
+        <div className="bg-white/95 rounded-xl px-3 py-2 shadow-md mb-2">
+          <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-base font-bold text-foreground">Você está logado como profissional</p>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            Para acessar o portal do paciente, saia da conta atual.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <Button
+            onClick={async () => {
+              await signOut();
+              setProfissionalConflito(false);
+              linkAttempted.current = false;
+            }}
+          >
+            Sair e acessar como paciente
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/inicio-app', { replace: true })}>
+            Voltar ao app profissional
+          </Button>
+        </div>
       </div>
     );
   }
