@@ -64,7 +64,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M117 68 C 117 68 116 74 116 82 C 116 86 118 88 120 88 C 122 88 124 86 124 82 C 124 74 123 68 123 68 Z'
   },
 
-  // Medula espinhal (vista anterior): thin vertical strip down midline
+  // Medula espinhal (vista anterior): faixa vertical fina pela linha média
   {
     id: 'medula_espinhal_v',
     label: 'Medula Espinhal',
@@ -72,7 +72,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M119 88 L119 310 L121 310 L121 88 Z'
+    d: 'M119 88 L119 282 L121 282 L121 88 Z'
   },
 
   // Plexo braquial direito: fan of roots from right cervical to arm
@@ -119,7 +119,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M85 126 C 78 148 70 178 65 230 C 62 258 62 276 64 300'
   },
 
-  // Plexo lombossacro direito: nerve bundle lower right
+  // Plexo lombossacro direito: feixe nervoso lombar baixo direito
   {
     id: 'plexo_lombosacro_d',
     label: 'Plexo Lombossacro D',
@@ -127,7 +127,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M122 296 C 126 306 132 318 138 336 M122 302 C 128 314 136 326 144 344'
+    d: 'M122 268 C 126 278 132 290 138 308 M122 274 C 128 286 136 298 144 316'
   },
 
   // Plexo lombossacro esquerdo
@@ -138,10 +138,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M118 296 C 114 306 108 318 102 336 M118 302 C 112 314 104 326 96 344'
+    d: 'M118 268 C 114 278 108 290 102 308 M118 274 C 112 286 104 298 96 316'
   },
 
-  // Nervo femoral direito: thigh nerve right
+  // Nervo femoral direito: nervo da coxa direita
   {
     id: 'nervo_femoral_d',
     label: 'Nervo Femoral D',
@@ -149,10 +149,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M142 344 C 144 362 146 382 145 402'
+    d: 'M142 316 C 144 334 146 354 145 374'
   },
 
-  // Nervo femoral esquerdo: thigh nerve left
+  // Nervo femoral esquerdo: nervo da coxa esquerda
   {
     id: 'nervo_femoral_e',
     label: 'Nervo Femoral E',
@@ -160,7 +160,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M98 344 C 96 362 94 382 95 402'
+    d: 'M98 316 C 96 334 94 354 95 374'
   },
 
   // ── CIRCULATORY ─────────────────────────────
@@ -265,7 +265,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M128 148 C 122 144 116 140 110 138 M128 152 C 134 148 140 144 146 142'
   },
 
-  // Femoral direita: right thigh artery (from inguinal ligament)
+  // Femoral direita: artéria da coxa direita
   {
     id: 'femoral_d',
     label: 'Artéria Femoral D',
@@ -273,10 +273,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['circulatorio'],
     type: 'vessel',
     layer: 9,
-    d: 'M108 336 C 106 354 104 376 103 400 C 102 420 102 438 102 458'
+    d: 'M108 308 C 106 326 104 348 103 372 C 102 392 102 410 102 430'
   },
 
-  // Femoral esquerda: left thigh artery
+  // Femoral esquerda: artéria da coxa esquerda
   {
     id: 'femoral_e',
     label: 'Artéria Femoral E',
@@ -284,7 +284,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['circulatorio'],
     type: 'vessel',
     layer: 9,
-    d: 'M132 336 C 134 354 136 376 137 400 C 138 420 138 438 138 458'
+    d: 'M132 308 C 134 326 136 348 137 372 C 138 392 138 410 138 430'
   },
 
   // ── RESPIRATORY ─────────────────────────────
@@ -625,7 +625,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M148 164.8 C 152 167.3 154 172.3 154 178.6 C 154 184.9 152 190 148 192.5 C 144 195 138 195 132 193.7 C 126 192.5 123 190 122 184.9 C 121 182.4 123 179.9 125 178.6 C 123 177.4 121 174.9 122 171.1 C 123 166 127 163.5 133 162.3 C 139 162.3 144 162.3 148 164.8 Z'
   },
 
-  // Ureteres: dois tubos dos rins até a bexiga
+  // Ureteres: dos rins (y≈203/195) até o topo da bexiga (y=268)
   {
     id: 'ureteres',
     label: 'Ureteres',
@@ -633,7 +633,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'vessel',
     layer: 6,
-    d: 'M112 203 C 113 224 114 252 116 294 M128 195 C 127 218 126 252 124 294'
+    d: 'M112 203 C 113 220 114 244 116 268 M128 195 C 127 212 126 244 124 268'
   },
 
   // Bexiga: dentro da pelve, abaixo do umbigo, acima da sínfise pubiana
@@ -644,10 +644,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 5,
-    d: 'M116 294 C 112 290 108 290 108 300 C 108 308 110 314 114 318 C 116 320 118 322 120 322 C 122 322 124 320 126 318 C 130 314 132 308 132 300 C 132 290 128 290 124 294 C 122 292 118 292 116 294 Z'
+    d: 'M116 268 C 112 264 108 264 108 274 C 108 282 110 288 114 292 C 116 294 118 296 120 296 C 122 296 124 294 126 292 C 130 288 132 282 132 274 C 132 264 128 264 124 268 C 122 266 118 266 116 268 Z'
   },
 
-  // Uretra: continues from bladder neck toward perineum
+  // Uretra: continua do colo da bexiga até o períneo
   {
     id: 'uretra',
     label: 'Uretra',
@@ -655,7 +655,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 5,
-    d: 'M118 334 L118 346 L122 346 L122 334 Z'
+    d: 'M118 308 L118 320 L122 320 L122 308 Z'
   },
 
   // ── LYMPHATIC ────────────────────────────────
@@ -737,7 +737,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M120 252 C 121 236 122 218 122 200 C 122 182 120 164 118 148 C 118 140 118 134 118 128'
   },
 
-  // Linfonodos inguinais: bilateral at inguinal region (abaixo da bexiga)
+  // Linfonodos inguinais: bilateral na região inguinal
   {
     id: 'linfonodos_inguinais',
     label: 'Linfonodos Inguinais',
@@ -745,12 +745,12 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     type: 'gland',
     layer: 9,
-    d: 'M100 326 C 99 324 100 322 102 322 C 104 322 105 324 104 326 C 104 328 102 328 100 326 Z M136 326 C 135 324 136 322 138 322 C 140 322 141 324 140 326 C 140 328 138 328 136 326 Z'
+    d: 'M100 286 C 99 284 100 282 102 282 C 104 282 105 284 104 286 C 104 288 102 288 100 286 Z M136 286 C 135 284 136 282 138 282 C 140 282 141 284 140 286 C 140 288 138 288 136 286 Z'
   },
 
   // ── REPRODUCTIVE ─────────────────────────────
 
-  // Útero: pear-shaped in pelvis, posterior to bladder
+  // Útero: pera na pelve, posterior à bexiga
   {
     id: 'utero',
     label: 'Útero',
@@ -758,10 +758,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 6,
-    d: 'M114 316 C 112 312 112 308 116 306 C 118 304 122 304 124 306 C 128 308 128 312 126 316 C 124 320 122 324 120 326 C 118 324 116 320 114 316 Z'
+    d: 'M114 290 C 112 286 112 282 116 280 C 118 278 122 278 124 280 C 128 282 128 286 126 290 C 124 294 122 298 120 300 C 118 298 116 294 114 290 Z'
   },
 
-  // Ovários: two small ovals lateral to uterus
+  // Ovários: dois óvulos laterais ao útero
   {
     id: 'ovarios',
     label: 'Ovários',
@@ -769,10 +769,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 6,
-    d: 'M106 314 C 105 312 106 309 108 309 C 110 309 111 312 110 314 C 110 317 108 318 106 316 C 105 316 106 315 106 314 Z M130 314 C 129 312 130 309 132 309 C 134 309 135 312 134 314 C 134 317 132 318 130 316 C 129 316 130 315 130 314 Z'
+    d: 'M106 290 C 105 288 106 285 108 285 C 110 285 111 288 110 290 C 110 293 108 294 106 292 C 105 292 106 291 106 290 Z M130 290 C 129 288 130 285 132 285 C 134 285 135 288 134 290 C 134 293 132 294 130 292 C 129 292 130 291 130 290 Z'
   },
 
-  // Trompas de Falópio: curved tubes connecting ovaries to uterine fundus
+  // Trompas de Falópio: tubos curvos conectando ovários ao fundo uterino
   {
     id: 'trompas_falopio',
     label: 'Trompas de Falópio',
@@ -780,10 +780,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 7,
-    d: 'M108 311 C 112 307 116 305 120 304 M132 311 C 128 307 124 305 120 304'
+    d: 'M108 287 C 112 283 116 281 120 280 M132 287 C 128 283 124 281 120 280'
   },
 
-  // Testículos: two circles below pubis
+  // Testículos: abaixo da sínfise pubiana
   {
     id: 'testiculos',
     label: 'Testículos',
@@ -791,10 +791,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 6,
-    d: 'M112 342 C 111 339 112 336 115 336 C 118 336 119 339 118 342 C 118 345 116 347 114 346 C 112 345 112 344 112 342 Z M128 342 C 127 339 128 336 131 336 C 134 336 135 339 134 342 C 134 345 132 347 130 346 C 128 345 128 344 128 342 Z'
+    d: 'M112 310 C 111 307 112 304 115 304 C 118 304 119 307 118 310 C 118 313 116 315 114 314 C 112 313 112 312 112 310 Z M128 310 C 127 307 128 304 131 304 C 134 304 135 307 134 310 C 134 313 132 315 130 314 C 128 313 128 312 128 310 Z'
   },
 
-  // Próstata: small oval below bladder
+  // Próstata: abaixo da bexiga
   {
     id: 'prostata',
     label: 'Próstata',
@@ -802,10 +802,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'gland',
     layer: 6,
-    d: 'M116 332 C 116 329 118 328 120 328 C 122 328 124 329 124 332 C 124 335 122 336 120 336 C 118 336 116 335 116 332 Z'
+    d: 'M116 306 C 116 303 118 302 120 302 C 122 302 124 303 124 306 C 124 309 122 310 120 310 C 118 310 116 309 116 306 Z'
   },
 
-  // Vesículas seminais: paired glands posterolateral to bladder base, above prostate
+  // Vesículas seminais: posterolaterais à base da bexiga, acima da próstata
   {
     id: 'vesiculas_seminais',
     label: 'Vesículas Seminais',
@@ -813,7 +813,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'gland',
     layer: 6,
-    d: 'M110 324 C 108 322 108 319 111 318 C 114 317 116 319 116 322 C 116 325 113 327 111 326 C 110 326 110 325 110 324 Z M130 324 C 132 322 132 319 129 318 C 126 317 124 319 124 322 C 124 325 127 327 129 326 C 130 326 130 325 130 324 Z'
+    d: 'M110 298 C 108 296 108 293 111 292 C 114 291 116 293 116 296 C 116 299 113 301 111 300 C 110 300 110 299 110 298 Z M130 298 C 132 296 132 293 129 292 C 126 291 124 293 124 296 C 124 299 127 301 129 300 C 130 300 130 299 130 298 Z'
   },
 
   // ── SENSORY SYSTEM ───────────────────────────
@@ -977,7 +977,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M119 88 L119 310 L121 310 L121 88 Z'
+    d: 'M119 88 L119 282 L121 282 L121 88 Z'
   },
 
   // Pulmão direito posterior: right side (patient RIGHT = screen LEFT)
