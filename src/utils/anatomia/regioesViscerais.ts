@@ -625,7 +625,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M148 164.8 C 152 167.3 154 172.3 154 178.6 C 154 184.9 152 190 148 192.5 C 144 195 138 195 132 193.7 C 126 192.5 123 190 122 184.9 C 121 182.4 123 179.9 125 178.6 C 123 177.4 121 174.9 122 171.1 C 123 166 127 163.5 133 162.3 C 139 162.3 144 162.3 148 164.8 Z'
   },
 
-  // Ureteres: dos rins (y≈203/195) até o topo da bexiga (y=268)
+  // Ureteres: dos rins (y≈203/195) até o topo da bexiga (y=248)
   {
     id: 'ureteres',
     label: 'Ureteres',
@@ -633,10 +633,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'vessel',
     layer: 6,
-    d: 'M112 203 C 113 220 114 244 116 268 M128 195 C 127 212 126 244 124 268'
+    d: 'M112 203 C 113 216 114 232 116 248 M128 195 C 127 208 126 224 124 248'
   },
 
-  // Bexiga: dentro da pelve, abaixo do umbigo, acima da sínfise pubiana
+  // Bexiga: baixo abdome / pelve, acima da sínfise pubiana
   {
     id: 'bexiga',
     label: 'Bexiga Urinária',
@@ -644,7 +644,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 5,
-    d: 'M116 268 C 112 264 108 264 108 274 C 108 282 110 288 114 292 C 116 294 118 296 120 296 C 122 296 124 294 126 292 C 130 288 132 282 132 274 C 132 264 128 264 124 268 C 122 266 118 266 116 268 Z'
+    d: 'M116 248 C 112 244 108 244 108 254 C 108 262 110 268 114 272 C 116 274 118 276 120 276 C 122 276 124 274 126 272 C 130 268 132 262 132 254 C 132 244 128 244 124 248 C 122 246 118 246 116 248 Z'
   },
 
   // Uretra: continua do colo da bexiga até o períneo
@@ -655,7 +655,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 5,
-    d: 'M118 308 L118 320 L122 320 L122 308 Z'
+    d: 'M118 288 L118 300 L122 300 L122 288 Z'
   },
 
   // ── LYMPHATIC ────────────────────────────────
@@ -745,7 +745,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     type: 'gland',
     layer: 9,
-    d: 'M100 286 C 99 284 100 282 102 282 C 104 282 105 284 104 286 C 104 288 102 288 100 286 Z M136 286 C 135 284 136 282 138 282 C 140 282 141 284 140 286 C 140 288 138 288 136 286 Z'
+    d: 'M100 268 C 99 266 100 264 102 264 C 104 264 105 266 104 268 C 104 270 102 270 100 268 Z M136 268 C 135 266 136 264 138 264 C 140 264 141 266 140 268 C 140 270 138 270 136 268 Z'
   },
 
   // ── REPRODUCTIVE ─────────────────────────────
@@ -758,7 +758,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 6,
-    d: 'M114 290 C 112 286 112 282 116 280 C 118 278 122 278 124 280 C 128 282 128 286 126 290 C 124 294 122 298 120 300 C 118 298 116 294 114 290 Z'
+    d: 'M114 270 C 112 266 112 262 116 260 C 118 258 122 258 124 260 C 128 262 128 266 126 270 C 124 274 122 278 120 280 C 118 278 116 274 114 270 Z'
   },
 
   // Ovários: dois óvulos laterais ao útero
@@ -769,7 +769,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 6,
-    d: 'M106 290 C 105 288 106 285 108 285 C 110 285 111 288 110 290 C 110 293 108 294 106 292 C 105 292 106 291 106 290 Z M130 290 C 129 288 130 285 132 285 C 134 285 135 288 134 290 C 134 293 132 294 130 292 C 129 292 130 291 130 290 Z'
+    d: 'M106 268 C 105 266 106 263 108 263 C 110 263 111 266 110 268 C 110 271 108 272 106 270 C 105 270 106 269 106 268 Z M130 268 C 129 266 130 263 132 263 C 134 263 135 266 134 268 C 134 271 132 272 130 270 C 129 270 130 269 130 268 Z'
   },
 
   // Trompas de Falópio: tubos curvos conectando ovários ao fundo uterino
@@ -780,7 +780,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 7,
-    d: 'M108 287 C 112 283 116 281 120 280 M132 287 C 128 283 124 281 120 280'
+    d: 'M108 265 C 112 261 116 259 120 258 M132 265 C 128 261 124 259 120 258'
   },
 
   // Testículos: abaixo da sínfise pubiana
@@ -791,7 +791,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 6,
-    d: 'M112 310 C 111 307 112 304 115 304 C 118 304 119 307 118 310 C 118 313 116 315 114 314 C 112 313 112 312 112 310 Z M128 310 C 127 307 128 304 131 304 C 134 304 135 307 134 310 C 134 313 132 315 130 314 C 128 313 128 312 128 310 Z'
+    d: 'M112 288 C 111 285 112 282 115 282 C 118 282 119 285 118 288 C 118 291 116 293 114 292 C 112 291 112 290 112 288 Z M128 288 C 127 285 128 282 131 282 C 134 282 135 285 134 288 C 134 291 132 293 130 292 C 128 291 128 290 128 288 Z'
   },
 
   // Próstata: abaixo da bexiga
@@ -802,7 +802,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'gland',
     layer: 6,
-    d: 'M116 306 C 116 303 118 302 120 302 C 122 302 124 303 124 306 C 124 309 122 310 120 310 C 118 310 116 309 116 306 Z'
+    d: 'M116 282 C 116 279 118 278 120 278 C 122 278 124 279 124 282 C 124 285 122 286 120 286 C 118 286 116 285 116 282 Z'
   },
 
   // Vesículas seminais: posterolaterais à base da bexiga, acima da próstata
@@ -813,7 +813,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'gland',
     layer: 6,
-    d: 'M110 298 C 108 296 108 293 111 292 C 114 291 116 293 116 296 C 116 299 113 301 111 300 C 110 300 110 299 110 298 Z M130 298 C 132 296 132 293 129 292 C 126 291 124 293 124 296 C 124 299 127 301 129 300 C 130 300 130 299 130 298 Z'
+    d: 'M110 274 C 108 272 108 269 111 268 C 114 267 116 269 116 272 C 116 275 113 277 111 276 C 110 276 110 275 110 274 Z M130 274 C 132 272 132 269 129 268 C 126 267 124 269 124 272 C 124 275 127 277 129 276 C 130 276 130 275 130 274 Z'
   },
 
   // ── SENSORY SYSTEM ───────────────────────────
