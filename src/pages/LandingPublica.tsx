@@ -69,8 +69,11 @@ const depoimentos = [
 export default function LandingPublica() {
   const { user, authReady } = useAuth();
 
-  // Usuário logado vê o dashboard, não a landing
+  // Pacientes vão para o portal, profissionais para o app
   if (authReady && user) {
+    if (user.user_metadata?.is_patient === true) {
+      return <Navigate to="/paciente/dashboard" replace />;
+    }
     return <Navigate to="/inicio-app" replace />;
   }
 

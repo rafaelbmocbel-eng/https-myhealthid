@@ -19,7 +19,10 @@ export default function Auth() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
 
-  if (!loading && user) return <Navigate to="/hoje" replace />;
+  if (!loading && user) {
+    if (user.user_metadata?.is_patient === true) return <Navigate to="/paciente/dashboard" replace />;
+    return <Navigate to="/hoje" replace />;
+  }
 
 
 

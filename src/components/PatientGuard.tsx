@@ -15,7 +15,7 @@ type RoleResult = 'patient' | 'professional' | 'unknown';
 const roleCache = new Map<string, RoleResult>();
 const inflight = new Map<string, Promise<RoleResult>>();
 
-async function resolveRole(userId: string, userEmail?: string, userName?: string): Promise<RoleResult> {
+async function resolveRole(userId: string, userEmail?: string, userName?: string, isPatient?: boolean): Promise<RoleResult> {
   const cached = roleCache.get(userId);
   if (cached && cached !== 'unknown') return cached;
   const existing = inflight.get(userId);
@@ -30,12 +30,22 @@ async function resolveRole(userId: string, userEmail?: string, userName?: string
     if (profissional) role = 'professional';
     else if (paciente) role = 'patient';
     else {
-      // Profile missing — trigger may have failed. Auto-create it so the therapist can proceed.
-      const { error } = await supabase.from('profiles').upsert(
-        { user_id: userId, email: userEmail ?? '', nome: userName ?? '' },
-        { onConflict: 'user_id', ignoreDuplicates: true }
-      );
-      role = error ? 'unknown' : 'professional';
+      // Antes de criar perfil de profissional, garantir que não é um paciente autônomo
+      if (isPatient) {
+        role = 'patient';
+      } else {
+        const { data: portalPaciente } = await supabase
+          .from('portal_pacientes').select('id').eq('user_id', userId).maybeSingle();
+        if (portalPaciente) {
+          role = 'patient';
+        } else {
+          const { error } = await supabase.from('profiles').upsert(
+            { user_id: userId, email: userEmail ?? '', nome: userName ?? '' },
+            { onConflict: 'user_id', ignoreDuplicates: true }
+          );
+          role = error ? 'unknown' : 'professional';
+        }
+      }
     }
     roleCache.set(userId, role);
     inflight.delete(userId);
@@ -55,15 +65,20 @@ export default function ProfessionalGuard({ children }: { children: ReactNode })
   useEffect(() => {
     if (loading || !authReady) return;
     if (!user) {
+      // Limpa cache ao fazer logout para não vazar role entre sessões
+      roleCache.clear();
+      inflight.clear();
       setRole(null);
       return;
     }
     let active = true;
-    resolveRole(user.id, user.email, user.user_metadata?.nome as string | undefined).then((r) => {
+    const isPatient = user.user_metadata?.is_patient === true;
+    resolveRole(user.id, user.email, user.user_metadata?.nome as string | undefined, isPatient).then((r) => {
       if (active) setRole(r);
     }).catch((err) => {
       console.error('[PatientGuard] role lookup failed:', err);
-      if (active) setRole('professional');
+      // Fail-closed: em caso de erro, nega acesso ao invés de conceder
+      if (active) setRole('unknown');
     });
     return () => { active = false; };
   }, [user, loading, authReady]);

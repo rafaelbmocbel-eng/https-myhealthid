@@ -40,8 +40,8 @@ export default function PortalGate() {
             localStorage.removeItem(key);
           }
         }
-        // Prevent RouteRestorer from sending patient back to a professional route
-        sessionStorage.removeItem('myhealthid.last-route');
+        // Impede o RouteRestorer de restaurar rota de profissional após o signOut
+        sessionStorage.removeItem('myhealthid.route-restored');
       } catch (_) { /* ignore in SSR */ }
 
       // 3) Dynamically import PacienteLogin to avoid it reading stale session

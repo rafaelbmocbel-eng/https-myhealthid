@@ -86,16 +86,17 @@ export default function PacienteLogin() {
     setLinking(true);
 
     try {
-      if (isPortalLink) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
+      // Sempre verifica se é profissional primeiro — independente de isPortalLink
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-        if (profileError) console.warn('[Portal] Falha ao validar perfil antes do vínculo:', profileError);
+      if (profileError) console.warn('[Portal] Falha ao validar perfil antes do vínculo:', profileError);
 
-        if (profile) {
+      if (profile) {
+        if (isPortalLink) {
           await signOut();
           linkAttempted.current = false;
           setLinking(false);
@@ -104,8 +105,11 @@ export default function PacienteLogin() {
             title: 'Acesso exclusivo do portal',
             description: 'Entre com a conta do paciente para continuar.',
           });
-          return;
+        } else {
+          // Profissional na tela de login do paciente — redireciona para o app
+          navigate('/inicio-app', { replace: true });
         }
+        return;
       }
 
       if (portalToken) {

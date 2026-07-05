@@ -39,8 +39,9 @@ export default function AuthConfirm() {
         return;
       }
 
-      // signup / email — redireciona para next se válido, senão portal do paciente
-      const destino = next && next.startsWith('/') ? next : '/paciente/login';
+      // signup / email — redireciona para next se válido, senão app do profissional
+      // (pacientes sempre têm next explícito vindo do emailRedirectTo do cadastro)
+      const destino = next && next.startsWith('/') ? next : '/auth';
       navigate(destino, { replace: true });
     };
 

@@ -174,7 +174,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         supabase.auth.signUp({
           email,
           password,
-          options: { data: { nome, account_type: 'professional' } },
+          options: {
+            data: { nome, account_type: 'professional' },
+            emailRedirectTo: `${window.location.origin}/auth/confirm?next=/hoje`,
+          },
         })
       );
       return { error };
