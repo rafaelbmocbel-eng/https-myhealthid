@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -14,12 +14,27 @@ import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
 
 const DRAFT_VERSION = 1;
 
+// Informações de cada bloco: nome, emoji, fase (1-3) e tempo estimado em minutos
+const BLOCK_INFO = [
+  { name: 'Introdução',            emoji: '🔍', fase: 0, minutos: 0 },
+  { name: 'O que mudou',           emoji: '🔄', fase: 1, minutos: 2 },
+  { name: 'Sobre a sua dor',       emoji: '🩺', fase: 1, minutos: 2 },
+  { name: 'Impacto no dia a dia',  emoji: '🏃', fase: 2, minutos: 1 },
+  { name: 'Movimento e emoções',   emoji: '🧠', fase: 2, minutos: 2 },
+  { name: 'Estilo de vida',        emoji: '🌿', fase: 3, minutos: 3 },
+  { name: 'Histórico de saúde',    emoji: '📋', fase: 3, minutos: 2 },
+];
+
+const FASE_LABELS = ['', 'Fase 1 — Dor e contexto', 'Fase 2 — Impacto e movimento', 'Fase 3 — Estilo de vida'];
+
+// Passo final de cada fase (onde pode pausar)
+const FASE_CHECKPOINTS = new Set([2, 4]);
+
 interface MyIDWizardProps {
     onComplete?: (result: any, rawData: any) => void;
     onSaveProgress?: (data: any, step: number) => void;
     initialData?: any;
     initialStep?: number;
-    /** Quando informado, mantém um rascunho local (IndexedDB/localStorage) de cada resposta, mesmo dentro do mesmo bloco. */
     draftKey?: string;
 }
 
@@ -28,15 +43,23 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
     const [data, setData] = useState<MyIDResponses>(initialData || {});
     const [result, setResult] = useState<any>(null);
     const [draftLoaded, setDraftLoaded] = useState(!draftKey);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const [showPausePrompt, setShowPausePrompt] = useState(false);
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const totalSteps = 7; // 0=Intro, 1-6=Blocks, 7=Result
-    const progressPercent = (step / (totalSteps - 1)) * 100;
+    const totalSteps = 7;
+    // Progresso baseado apenas nos blocos respondidos (step 1–6)
+    const progressPercent = step >= 1 && step <= 6 ? ((step - 1) / 5) * 100 : 0;
+    const blockInfo = BLOCK_INFO[step] ?? BLOCK_INFO[0];
+    // Minutos restantes até terminar
+    const minutosRestantes = BLOCK_INFO.slice(step).reduce((acc, b) => acc + b.minutos, 0);
 
     React.useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, [step]);
 
-    // Restaura rascunho local mais recente (cobre o caso de o celular travar/desligar no meio de um bloco).
+    // Restaura rascunho local (cobre celular desligado no meio de um bloco)
     useEffect(() => {
         if (!draftKey) return;
         let active = true;
@@ -51,28 +74,49 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
         return () => { active = false; };
     }, [draftKey]);
 
-    // Salva cada resposta no rascunho local, sem depender do save por bloco no servidor.
+    // Save local a cada resposta (IndexedDB/localStorage)
     useEffect(() => {
         if (!draftKey || !draftLoaded) return;
         void writeDraft(draftKey, { data, step }, DRAFT_VERSION);
     }, [draftKey, draftLoaded, data, step]);
 
+    // Save no servidor com debounce de 2,5s após cada resposta
+    useEffect(() => {
+        if (!draftLoaded || step < 1 || step > 6 || !onSaveProgress) return;
+
+        setSaveStatus('saving');
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+
+        saveTimerRef.current = setTimeout(() => {
+            onSaveProgress(data, step);
+            setSaveStatus('saved');
+            savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2500);
+        }, 2500);
+
+        return () => {
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data]);
+
     const handleNext = () => {
         if (step === 6) {
-            // Calculate final result
+            if (onSaveProgress) onSaveProgress(data, step);
             const calculator = new MyIDCalculator(data);
             const res = calculator.getFullResult();
             setResult(res);
             if (onComplete) onComplete(res, data);
             if (draftKey) void clearDraft(draftKey);
         } else if (step >= 1 && step <= 5 && onSaveProgress) {
-            // Auto-save progress after each block
             onSaveProgress(data, step);
         }
+        setShowPausePrompt(false);
         setStep(s => Math.min(s + 1, totalSteps));
     };
 
     const handleBack = () => {
+        setShowPausePrompt(false);
         setStep(s => Math.max(s - 1, 0));
     };
 
@@ -80,16 +124,58 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
         setData(prev => ({ ...prev, ...newData }));
     };
 
+    // Indicador de save
+    const SaveIndicator = () => {
+        if (saveStatus === 'idle') return null;
+        return (
+            <span className={`text-[11px] flex items-center gap-1 transition-opacity ${saveStatus === 'saved' ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                {saveStatus === 'saving' ? (
+                    <><span className="animate-pulse">●</span> Salvando…</>
+                ) : (
+                    <><span>✓</span> Salvo</>
+                )}
+            </span>
+        );
+    };
+
     return (
         <div className="w-full max-w-4xl mx-auto py-8 px-4 sm:px-6">
 
+            {/* Barra de progresso com fase e nome do bloco */}
             {step > 0 && step < 7 && (
-                <div className="mb-8 space-y-2">
-                    <div className="flex justify-between text-sm font-medium text-gray-500">
-                        <span>Passo {step} de 6</span>
-                        <span>{Math.round(progressPercent)}% Concluído</span>
+                <div className="mb-6 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-base">{blockInfo.emoji}</span>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">
+                                    {FASE_LABELS[blockInfo.fase]}
+                                </p>
+                                <p className="text-sm font-bold text-foreground truncate">{blockInfo.name}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                            <SaveIndicator />
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {minutosRestantes > 0 ? `~${minutosRestantes} min restantes` : 'Última etapa'}
+                            </span>
+                        </div>
                     </div>
-                    <Progress value={progressPercent} className="h-2" />
+
+                    {/* Segmentos de progresso (6 blocos) */}
+                    <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5, 6].map((s) => (
+                            <div
+                                key={s}
+                                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                                    s < step ? 'bg-primary' : s === step ? 'bg-primary/50' : 'bg-muted'
+                                }`}
+                            />
+                        ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground text-right">
+                        Bloco {step} de 6 · {Math.round(progressPercent)}% concluído
+                    </p>
                 </div>
             )}
 
@@ -111,6 +197,30 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
                                 Olá! Você está iniciando uma jornada de autoconhecimento profundo. <br /><br />
                                 O MyID é uma <strong className="text-gray-900">FOTOGRAFIA COMPLETA</strong> de como seu corpo processa carga, dor e recuperação NESTE EXATO MOMENTO.
                             </p>
+
+                            {/* Fases */}
+                            <div className="bg-muted/30 p-5 rounded-xl text-left max-w-2xl mx-auto border border-muted">
+                                <h3 className="font-bold text-sm text-primary mb-3 uppercase tracking-wide">3 Fases — responda no seu ritmo</h3>
+                                <div className="space-y-3">
+                                    {[
+                                        { fase: '1', label: 'Dor e contexto', blocos: 'Blocos 1–2', tempo: '~4 min', emoji: '🩺' },
+                                        { fase: '2', label: 'Impacto e movimento', blocos: 'Blocos 3–4', tempo: '~3 min', emoji: '🧠' },
+                                        { fase: '3', label: 'Estilo de vida e histórico', blocos: 'Blocos 5–6', tempo: '~5 min', emoji: '🌿' },
+                                    ].map(f => (
+                                        <div key={f.fase} className="flex items-center gap-3">
+                                            <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">{f.fase}</div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold text-foreground">{f.emoji} {f.label}</p>
+                                                <p className="text-xs text-muted-foreground">{f.blocos} · {f.tempo}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-4 pt-3 border-t border-muted flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
+                                    <span>✓</span>
+                                    <span><strong>Salvo automaticamente.</strong> Se precisar sair, suas respostas ficam salvas. Pode continuar de onde parou.</span>
+                                </div>
+                            </div>
 
                             <div className="bg-muted/30 p-6 rounded-xl text-left max-w-2xl mx-auto space-y-6 shadow-sm border border-muted">
                                 <div>
@@ -134,8 +244,8 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
                                     <div className="flex items-center gap-3">
                                         <span className="text-2xl">⏱️</span>
                                         <div>
-                                            <span className="block font-bold">TEMPO:</span>
-                                            <span className="text-sm text-gray-600">10-12 minutos (completo e preciso)</span>
+                                            <span className="block font-bold">TEMPO TOTAL:</span>
+                                            <span className="text-sm text-gray-600">10–12 minutos · pode pausar entre as fases</span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -190,12 +300,36 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
                 </CardContent>
             </Card>
 
+            {/* Botões de navegação */}
             {step > 0 && step < 7 && (
-                <div className="flex justify-between items-center mt-8 px-4 sm:px-0">
-                    <Button variant="outline" onClick={handleBack} className="w-28">Voltar</Button>
-                    <Button onClick={handleNext} className="w-28">
-                        {step === 6 ? 'Finalizar' : 'Avançar'}
-                    </Button>
+                <div className="mt-8 px-4 sm:px-0 space-y-3">
+                    {/* Prompt de pausa nos checkpoints entre fases */}
+                    {FASE_CHECKPOINTS.has(step) && showPausePrompt && (
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
+                            <span className="text-lg">✅</span>
+                            <div>
+                                <p className="font-semibold">Fase {BLOCK_INFO[step].fase} concluída! Suas respostas estão salvas.</p>
+                                <p className="text-xs mt-0.5 text-emerald-700">Pode fechar o app e continuar depois. Ao voltar, retoma aqui.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center">
+                        <Button variant="outline" onClick={handleBack} className="w-28">Voltar</Button>
+                        <Button
+                            onClick={() => {
+                                if (FASE_CHECKPOINTS.has(step) && !showPausePrompt) {
+                                    setShowPausePrompt(true);
+                                    if (onSaveProgress) onSaveProgress(data, step);
+                                } else {
+                                    handleNext();
+                                }
+                            }}
+                            className="w-36"
+                        >
+                            {step === 6 ? 'Finalizar' : FASE_CHECKPOINTS.has(step) && !showPausePrompt ? 'Concluir fase' : 'Avançar'}
+                        </Button>
+                    </div>
                 </div>
             )}
         </div>
