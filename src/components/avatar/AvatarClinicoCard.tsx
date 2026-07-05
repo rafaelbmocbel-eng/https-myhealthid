@@ -1178,9 +1178,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const sys0 = r.sistemas[0];
                 // Shift vertical por sistema. Em modo calibração usa os valores
                 // dos sliders (offsetsCalib); em produção usa DEFAULT_SYS_Y_OFFSET.
-                const sysDy = calibrando
-                  ? (offsetsCalib[sys0] ?? 0)
-                  : (DEFAULT_SYS_Y_OFFSET[sys0] ?? 0);
+                // Órgãos com offset salvo pelo /calibrar já incorporam a correção
+                // completa — não aplicar o offset de sistema para evitar dupla soma.
+                const hasCalibrated = r.id in savedOrganOffsets;
+                const sysDy = hasCalibrated
+                  ? 0
+                  : (calibrando ? (offsetsCalib[sys0] ?? 0) : (DEFAULT_SYS_Y_OFFSET[sys0] ?? 0));
                 // Per-organ offset salvo pelo calibrador (/calibrar)
                 const organOff = savedOrganOffsets[r.id] ?? { dx: 0, dy: 0 };
                 const totalDx = organOff.dx;
