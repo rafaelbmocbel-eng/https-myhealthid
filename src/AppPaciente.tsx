@@ -48,6 +48,8 @@ const PacienteChat = lazyWithRetry(() => import("./pages/paciente/PacienteChat")
 const PacientePlano = lazyWithRetry(() => import("./pages/paciente/PacientePlano"));
 const PacienteHistoria = lazyWithRetry(() => import("./pages/paciente/PacienteHistoria"));
 const PacienteRecompensas = lazyWithRetry(() => import("./pages/paciente/PacienteRecompensas"));
+const PacienteProfissionais = lazyWithRetry(() => import("./pages/paciente/PacienteProfissionais"));
+const AuthConfirm = lazyWithRetry(() => import("./pages/AuthConfirm"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -107,6 +109,7 @@ const AppPaciente = () => (
                 <Route path="/" element={<Navigate to="/paciente/login" replace />} />
 
                 {/* Auth */}
+                <Route path="/auth/confirm" element={<AuthConfirm />} />
                 <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                 <Route path="/nova-senha" element={<NovaSenha />} />
 
@@ -122,7 +125,7 @@ const AppPaciente = () => (
                 <Route path="/wellness/cadastro" element={<WellnessCadastro />} />
 
                 {/* Portal do paciente — marketplace */}
-                <Route path="/portaldocliente" element={<PortalLanding />} />
+                <Route path="/portaldocliente" element={<Navigate to="/paciente/login" replace />} />
                 <Route path="/portaldocliente/vitrine" element={<VitrinePublica />} />
                 <Route path="/portaldocliente/terapeuta/:id" element={<PerfilPublicoTerapeuta />} />
 
@@ -144,6 +147,7 @@ const AppPaciente = () => (
                 <Route path="/paciente/plano" element={<ProtectedPatientRoute><PacientePlano /></ProtectedPatientRoute>} />
                 <Route path="/paciente/historia" element={<ProtectedPatientRoute><PacienteHistoria /></ProtectedPatientRoute>} />
                 <Route path="/paciente/recompensas" element={<ProtectedPatientRoute><PacienteRecompensas /></ProtectedPatientRoute>} />
+                <Route path="/paciente/profissionais" element={<ProtectedPatientRoute><PacienteProfissionais /></ProtectedPatientRoute>} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
