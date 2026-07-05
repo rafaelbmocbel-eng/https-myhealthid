@@ -151,6 +151,52 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Atualiza queixa_principal no perfil do paciente
+    const queixaPrincipal = assessment?.queixa_principal ||
+      filled.find((a: Answer) => a.pergunta.toLowerCase().includes("queixa"))?.resposta || null;
+    if (queixaPrincipal) {
+      await admin
+        .from("pacientes")
+        .update({ queixa_principal: queixaPrincipal })
+        .eq("id", paciente.id);
+    }
+
+    // Upsert relato_paciente no Avatar Clínico (apenas se houver terapeuta_id)
+    if (paciente.terapeuta_id) {
+      try {
+        const textoAvatar = filled
+          .map((a: Answer) => `${a.pergunta}\n${a.resposta}`)
+          .join("\n\n");
+        const { data: existingEvento } = await admin
+          .from("eventos_clinicos_anatomicos")
+          .select("id")
+          .eq("paciente_id", paciente.id)
+          .eq("tipo_diagnostico", "relato_paciente")
+          .eq("origem", "autocadastro_paciente")
+          .maybeSingle();
+        const eventoData = {
+          paciente_id: paciente.id,
+          terapeuta_id: paciente.terapeuta_id,
+          regiao_id: "coluna_lombar",
+          sistema: "musculoesqueletico",
+          tipo_diagnostico: "relato_paciente",
+          origem: "autocadastro_paciente",
+          tipo_achado: textoAvatar,
+          severidade: 1,
+          status: "ativo",
+          visivel_paciente: true,
+          metadata: { avaliacao_voz_id: inserted.id, respostas: filled },
+        };
+        if (existingEvento) {
+          await admin.from("eventos_clinicos_anatomicos").update(eventoData).eq("id", existingEvento.id);
+        } else {
+          await admin.from("eventos_clinicos_anatomicos").insert(eventoData);
+        }
+      } catch (e) {
+        console.warn("[historia-paciente] avatar upsert ignorado:", e);
+      }
+    }
+
     // Notifica o profissional
     await admin.from("notificacoes").insert({
       terapeuta_id: paciente.terapeuta_id,
