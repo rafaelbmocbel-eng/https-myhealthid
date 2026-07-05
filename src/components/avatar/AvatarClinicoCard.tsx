@@ -21,7 +21,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
+import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 import avatarHumanoFrente from '@/assets/avatar-humano-frente.png';
 import avatarHumanoCostas from '@/assets/avatar-humano-costas.png';
@@ -300,7 +300,7 @@ const CATEGORIA_LABEL: Record<string, string> = {
 // pelo status clínico (ativo > crônico > em tratamento) e por confirmação:
 // um relato do paciente ainda não validado pelo profissional pesa a metade
 // até ser confirmado como achado clínico (ver fluxo de confirmação no painel).
-const PESO_SEVERIDADE: Record<number, number> = { 1: 1, 2: 2.5, 3: 5 };
+const PESO_SEVERIDADE: Record<number, number> = { 0: 0, 1: 1, 2: 2.5, 3: 5, 4: 8 };
 const PESO_STATUS: Record<StatusEvento, number> = { ativo: 1, cronico: 0.8, em_tratamento: 0.6, resolvido: 0 };
 
 function pesoConfirmacao(e: EventoAnatomico): number {
@@ -357,7 +357,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       regiao_id: ev.regiao_id,
       tipo_achado: textoFinal ?? ev.tipo_achado,
       tipo_diagnostico: 'historico_confirmado' as any,
-      status: 'ativo',
+      status: ev.status === 'resolvido' ? 'resolvido' : 'cronico',
       visivel_paciente: true,
       severidade: ev.severidade || 1,
       metadata: {
@@ -390,7 +390,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [modoSimplificadoState, setModoSimplificadoState] = useState(!isProfessional);
   // Paciente nunca tem acesso de edição: força modo simplificado independente de estado local.
   const modoSimplificado = !isProfessional || modoSimplificadoState;
-  const setModoSimplificado = setModoSimplificadoState;
   const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>([]);
   const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
@@ -502,16 +501,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
   const systemScores = useMemo(() => SISTEMAS_ORDEM.map(s => {
     const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
-    // Anti-nocebo: o score que determina cor/homeostase reflete só evidência DOCUMENTADA
-    // por profissional (achados, histórico de vida, CID). Autorelato MyID nunca entra aqui —
-    // ele é informativo (badge "nSintomas"), não um fator de alarme.
-    let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
+    // Anti-nocebo: o score de homeostase reflete só evidência DOCUMENTADA por profissional
+    // (achados confirmados, histórico de vida, CID). sinalRegions são sugestões NLP não
+    // confirmadas — entram apenas no count informativo (nSintomas), nunca no score.
+    let score = evsDoSistema.reduce((acc, curr) => acc + cargaEvento(curr), 0);
 
     const sinaisSistema = sinalRegions.filter(sr => sr.sistema === s);
     const historiaAtiva = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido);
     const diagSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === s && d.ativo);
 
-    score += sinaisSistema.length * 1.2;
     score += historiaAtiva.reduce((acc: number, h: any) => acc + ((h.severidade || 1) * 0.6), 0);
     score += diagSistema.length * 0.8;
 
@@ -604,6 +602,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const regioesAfetadas = new Set([ev.regiao_id]);
       if (ev.tipo_achado) {
         encontrarSintomasEmTexto(ev.tipo_achado)
+          .filter(s => sistemasAtivos.includes(s.sistema as any))
           .forEach(s => regioesAfetadas.add(s.regiao_id));
       }
 
@@ -670,7 +669,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const MASCULINE_ONLY_IDS = new Set(['testiculos', 'prostata', 'penis', 'epididimo_d', 'epididimo_e', 'vesiculas_seminais']);
   const generoNorm = (pacienteGenero || '').toLowerCase().trim();
   const isFeminino = generoNorm.startsWith('fem') || generoNorm === 'f' || generoNorm.includes('mulher') || generoNorm.includes('female');
-  const isMasculino = generoNorm.startsWith('masc') || generoNorm === 'm' || generoNorm.includes('homem') || generoNorm.includes('male') || !generoNorm;
+  // Quando gênero não informado: não filtra nenhum lado (profissional vê tudo, evita omissão clínica)
+  const isMasculino = generoNorm.startsWith('masc') || generoNorm === 'm' || generoNorm.includes('homem') || generoNorm.includes('male');
 
   const regioesViscerais = VISCERAL_REGIONS.filter(r =>
     r.view === view && (
@@ -734,7 +734,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               </Button>
             )}
 
-            <Badge variant="outline" className="text-[10px]">Sprint F1+ (Visceral)</Badge>
           </div>
         </CardTitle>
         <div className="flex flex-wrap justify-between items-center gap-2 mt-1">
@@ -760,7 +759,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 <Switch
                   id="modo-view"
                   checked={!modoSimplificado}
-                  onCheckedChange={(v) => setModoSimplificado(!v)}
+                  onCheckedChange={(v) => setModoSimplificadoState(!v)}
                   className="h-4 w-8"
                 />
               </>
@@ -1078,11 +1077,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 // ao avatar humano renderizado. Em vez de re-desenhar 1600+ linhas de paths,
                 // aplicamos um shift vertical global para cada sistema, calibrado contra a
                 // anatomia visível do avatar. Sensorial (face) já está calibrado e fica em 0.
-                // Shift vertical desativado — estava deslocando órgãos para fora do corpo.
-                // Mantemos o hook caso seja necessário recalibrar sistema-a-sistema no futuro.
-                const SYSTEM_Y_SHIFT: Record<string, number> = {};
-                const yShift = SYSTEM_Y_SHIFT[sys0] ?? 0;
-                const groupTransform = yShift !== 0 ? `translate(0, ${yShift})` : undefined;
+                const groupTransform = undefined;
 
                 // STRUCTURAL (diaphragm, pericardium) — non-clickable dividers
                 if (r.type === 'structural') {
@@ -1463,55 +1458,62 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <p className="text-xs text-muted-foreground text-center py-2">
             Nenhum achado ativo {modoSimplificado ? 'visível' : 'registrado'}.
           </p>
-        ) : (
-          <div className="space-y-1.5">
-            {eventos
-              .filter(e => e.status !== 'resolvido' && (e as any).tipo_diagnostico !== 'relato_paciente' && (modoSimplificado ? e.visivel_paciente : true))
-              .slice(0, 6)
-              .map(ev => {
-              const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === ev.regiao_id);
-              const td = (ev as any).tipo_diagnostico as string | undefined;
-              const isRelato = td === 'relato_paciente';
-              const isDiag = td?.startsWith('diagnostico_');
-              return (
-                <button
-                  key={ev.id}
-                  disabled={modoSimplificado}
-                  onClick={() => abrirSheet(ev.regiao_id)}
-                  className={`w-full flex items-center gap-2 text-left p-2 rounded-lg transition border ${
-                    isDiag
-                      ? 'border-red-200/60 bg-red-50/40 dark:bg-red-950/20 dark:border-red-900/40'
-                      : isRelato
-                        ? 'border-purple-200/40 bg-purple-50/20 dark:bg-purple-950/10 dark:border-purple-900/30'
-                        : 'border-border/30 hover:bg-muted/40'
-                  } ${modoSimplificado ? 'cursor-default' : ''}`}
-                >
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: corEvento(ev) }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate flex items-center gap-1 flex-wrap">
-                      {isDiag && <CheckCircle2 className="h-3 w-3 text-red-600 shrink-0" />}
-                      {isRelato && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
-                      {ev.tipo_achado}
-                      <span className={cn(
-                        "text-[9px] px-1 py-0.5 rounded font-normal shrink-0",
-                        isDiag ? "bg-red-100 text-red-700" : isRelato ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"
-                      )}>
-                        {TIPO_DIAG_BADGE[td || 'achado_clinico'] || td}
-                      </span>
-                      <span className="text-muted-foreground font-normal">· {reg?.label || ev.regiao_id}</span>
-                    </p>
-                    {!modoSimplificado && (
-                      <p className="text-[10px] text-muted-foreground">
-                        {STATUS_LABEL[ev.status]} · {SISTEMA_LABEL[ev.sistema]}
-                        {isRelato && <span className="text-amber-600 font-semibold"> · Aguarda confirmação</span>}
+        ) : (() => {
+          const achados = eventos.filter(e => e.status !== 'resolvido' && (e as any).tipo_diagnostico !== 'relato_paciente' && (modoSimplificado ? e.visivel_paciente : true));
+          const visiveis = achados.slice(0, 6);
+          const extras = achados.length - visiveis.length;
+          return (
+            <div className="space-y-1.5">
+              {visiveis.map(ev => {
+                const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === ev.regiao_id);
+                const td = (ev as any).tipo_diagnostico as string | undefined;
+                const isRelato = td === 'relato_paciente';
+                const isDiag = td?.startsWith('diagnostico_');
+                return (
+                  <button
+                    key={ev.id}
+                    disabled={modoSimplificado}
+                    onClick={() => abrirSheet(ev.regiao_id)}
+                    className={`w-full flex items-center gap-2 text-left p-2 rounded-lg transition border ${
+                      isDiag
+                        ? 'border-red-200/60 bg-red-50/40 dark:bg-red-950/20 dark:border-red-900/40'
+                        : isRelato
+                          ? 'border-purple-200/40 bg-purple-50/20 dark:bg-purple-950/10 dark:border-purple-900/30'
+                          : 'border-border/30 hover:bg-muted/40'
+                    } ${modoSimplificado ? 'cursor-default' : ''}`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: corEvento(ev) }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate flex items-center gap-1 flex-wrap">
+                        {isDiag && <CheckCircle2 className="h-3 w-3 text-red-600 shrink-0" />}
+                        {isRelato && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
+                        {ev.tipo_achado}
+                        <span className={cn(
+                          "text-[9px] px-1 py-0.5 rounded font-normal shrink-0",
+                          isDiag ? "bg-red-100 text-red-700" : isRelato ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"
+                        )}>
+                          {TIPO_DIAG_BADGE[td || 'achado_clinico'] || td}
+                        </span>
+                        <span className="text-muted-foreground font-normal">· {reg?.label || ev.regiao_id}</span>
                       </p>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
+                      {!modoSimplificado && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {STATUS_LABEL[ev.status]} · {SISTEMA_LABEL[ev.sistema]}
+                          {isRelato && <span className="text-amber-600 font-semibold"> · Aguarda confirmação</span>}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+              {extras > 0 && (
+                <p className="text-[11px] text-muted-foreground text-center pt-1">
+                  +{extras} achado{extras !== 1 ? 's' : ''} — clique em uma região do mapa para ver todos
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Histórico Clínico — achados resolvidos */}
         {!modoSimplificado && (() => {
@@ -2258,45 +2260,43 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
-              {sinalRegions.map((item, idx) => {
+              {(syncData || []).map((item, idx) => {
                 const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
-                // Uma região pode ter vários sinais distintos — duplicata aqui é o MESMO sinal, não a região.
-                const achadoExistente = eventos.find(e => e.regiao_id === item.regiao_id && e.status !== 'resolvido' && e.tipo_achado.includes(item.sinal));
-                const jaImportado = !!achadoExistente;
-
                 return (
                   <div key={`${item.regiao_id}-${idx}`} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
                     <div>
                       <p className="text-sm font-semibold">{item.sinal}</p>
                       <p className="text-[11px] text-muted-foreground">{reg?.label || item.regiao_id}</p>
                     </div>
-                    {jaImportado ? (
-                      <Badge variant="secondary" className="gap-1 text-[10px]" title="Já existe achado ativo nesta região — importar criaria um registro duplicado.">
-                        <Check className="h-3 w-3" /> Já há achado ({ORIGEM_LABEL[achadoExistente.origem]})
-                      </Badge>
-                    ) : (
-                      <Button size="sm" className="h-8 text-xs" onClick={async () => {
-                        await saveMut.mutateAsync({
-                          paciente_id: pacienteId,
-                          regiao_id: item.regiao_id,
-                          sistema: (VISCERAL_REGIONS.find(v => v.id === item.regiao_id)?.sistemas[0] as any) || 'digestorio',
-                          origem: 'outro',
-                          tipo_achado: `Histórico: ${item.sinal}`,
-                          severidade: 2,
-                          status: 'ativo',
-                          visivel_paciente: true,
-                          data_inicio: new Date().toISOString().slice(0, 10),
-                        });
-                      }} disabled={saveMut.isPending}>
-                        Importar
-                      </Button>
-                    )}
+                    <Button size="sm" className="h-8 text-xs" onClick={async () => {
+                      const visceral = VISCERAL_REGIONS.find(v => v.id === item.regiao_id);
+                      const musculo = REGIONS.find(r => r.id === item.regiao_id);
+                      const sistema = visceral
+                        ? (visceral.sistemas[0] as any)
+                        : musculo
+                          ? 'musculoesqueletico'
+                          : (item.sistema || 'musculoesqueletico');
+                      await saveMut.mutateAsync({
+                        paciente_id: pacienteId,
+                        regiao_id: item.regiao_id,
+                        sistema,
+                        origem: 'outro',
+                        tipo_achado: `Histórico: ${item.sinal}`,
+                        severidade: 2,
+                        status: 'cronico',
+                        visivel_paciente: true,
+                        data_inicio: new Date().toISOString().slice(0, 10),
+                      });
+                      setSyncData(prev => prev ? prev.filter((_, i) => i !== idx) : null);
+                    }} disabled={saveMut.isPending}>
+                      Importar
+                    </Button>
                   </div>
                 );
               })}
             </div>
 
-            {sinalRegions.length === 0 && (
+            {(syncData?.length ?? 0) === 0 && (
               <div className="text-center py-8">
                 <Check className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
                 <p className="text-sm font-medium">Sem itens pendentes nesta categoria.</p>
