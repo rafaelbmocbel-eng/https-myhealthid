@@ -5,7 +5,7 @@ import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
   LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame,
   Dumbbell, Wallet, Watch, Ticket, MessageSquare, Mic, MoreHorizontal, X,
-  ChevronRight, Lock,
+  ChevronRight, Lock, Users,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
@@ -34,12 +34,13 @@ const navItems = [
   { path: '/paciente/eventos',   label: 'Eventos',               shortLabel: 'Eventos',  icon: Ticket,          badgeKey: null, premium: false },
   { path: '/paciente/chat',      label: 'Mensagens',             shortLabel: 'Chat',     icon: MessageSquare,   badgeKey: null, premium: true },
   { path: '/paciente/perfil',    label: 'Perfil',                shortLabel: 'Perfil',   icon: User,            badgeKey: null, premium: false },
+  { path: '/paciente/profissionais', label: 'Encontrar profissional', shortLabel: 'Profiss.', icon: Users,          badgeKey: null, premium: false },
 ];
 
 // Bottom nav: Início, Agenda, Treinos, Diário, +Mais
 const MOBILE_PRIMARY = [0, 5, 4, 2]; // indices in navItems
 // Items in "Mais" sheet (all others)
-const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10];
+const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11];
 
 interface Props {
   children: ReactNode;

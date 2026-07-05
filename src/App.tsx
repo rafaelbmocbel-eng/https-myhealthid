@@ -72,6 +72,7 @@ const PacienteChat = lazyWithRetry(() => import("./pages/paciente/PacienteChat")
 const PacientePlano = lazyWithRetry(() => import("./pages/paciente/PacientePlano"));
 const PacienteHistoria = lazyWithRetry(() => import("./pages/paciente/PacienteHistoria"));
 const PacienteRecompensas = lazyWithRetry(() => import("./pages/paciente/PacienteRecompensas"));
+const PacienteProfissionais = lazyWithRetry(() => import("./pages/paciente/PacienteProfissionais"));
 const WellnessCadastro = lazyWithRetry(() => import("./pages/WellnessCadastro"));
 
 const queryClient = new QueryClient({
@@ -199,6 +200,7 @@ const App = () => (
                 <Route path="/paciente/plano" element={<ProtectedPatientRoute><PacientePlano /></ProtectedPatientRoute>} />
                 <Route path="/paciente/historia" element={<ProtectedPatientRoute><PacienteHistoria /></ProtectedPatientRoute>} />
                 <Route path="/paciente/recompensas" element={<ProtectedPatientRoute><PacienteRecompensas /></ProtectedPatientRoute>} />
+                <Route path="/paciente/profissionais" element={<ProtectedPatientRoute><PacienteProfissionais /></ProtectedPatientRoute>} />
 
                 {/* Wellness public signup (freemium) */}
                 <Route path="/wellness/cadastro" element={<WellnessCadastro />} />

@@ -44,12 +44,22 @@ export default function ProtectedPatientRoute({ children }: Props) {
         } else if (profile) {
           setRole('professional');
         } else {
-          // Usuário sem role ainda (vinculação em andamento) — tenta de novo
-          if (retryCount < 3) {
+          // Check for standalone patient (self-registered)
+          const { data: portalPaciente } = await supabase
+            .from('portal_pacientes')
+            .select('id, cadastro_status')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (portalPaciente) {
+            setRole('patient');
+            setCadastroStatus('completo');
+          } else if (retryCount < 3) {
             setTimeout(() => setRetryCount(c => c + 1), 1500);
             return;
+          } else {
+            setRole('unknown');
           }
-          setRole('unknown');
         }
       } catch (err) {
         console.error('[ProtectedPatientRoute] Erro ao detectar role:', err);

@@ -133,14 +133,36 @@ export default function PacienteLogin() {
       if (paciente) {
         navigate('/paciente/dashboard', { replace: true });
       } else {
-        toast({
-          title: 'Conta não vinculada',
-          description: 'Seu e-mail não está vinculado a nenhum paciente. Verifique se usou o mesmo e-mail informado ao seu terapeuta.',
-          variant: 'destructive',
-        });
-        linkAttempted.current = false;
-        setLinking(false);
-        setSubmitting(false);
+        // Check if already a standalone patient
+        const { data: portalPaciente } = await supabase
+          .from('portal_pacientes')
+          .select('id')
+          .eq('user_id', user!.id)
+          .maybeSingle();
+
+        if (portalPaciente) {
+          navigate('/paciente/profissionais', { replace: true });
+          return;
+        }
+
+        // Create standalone patient record
+        const nome = user!.user_metadata?.nome || user!.email?.split('@')[0] || 'Paciente';
+        const { error: insertError } = await supabase
+          .from('portal_pacientes')
+          .insert({ user_id: user!.id, nome, email: user!.email });
+
+        if (!insertError) {
+          navigate('/paciente/profissionais', { replace: true });
+        } else {
+          toast({
+            title: 'Conta não vinculada',
+            description: 'Seu e-mail não está vinculado a nenhum paciente. Verifique se usou o mesmo e-mail informado ao seu terapeuta.',
+            variant: 'destructive',
+          });
+          linkAttempted.current = false;
+          setLinking(false);
+          setSubmitting(false);
+        }
       }
     } catch (err) {
       console.error('[Portal] Erro:', err);
