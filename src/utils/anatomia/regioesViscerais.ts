@@ -72,7 +72,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M119 88 L119 282 L121 282 L121 88 Z'
+    d: 'M119 88 L119 310 L121 310 L121 88 Z'
   },
 
   // Plexo braquial direito: fan of roots from right cervical to arm
@@ -127,7 +127,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M122 268 C 126 278 132 290 138 308 M122 274 C 128 286 136 298 144 316'
+    d: 'M122 296 C 126 306 132 318 138 336 M122 302 C 128 314 136 326 144 344'
   },
 
   // Plexo lombossacro esquerdo
@@ -138,7 +138,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M118 268 C 114 278 108 290 102 308 M118 274 C 112 286 104 298 96 316'
+    d: 'M118 296 C 114 306 108 318 102 336 M118 302 C 112 314 104 326 96 344'
   },
 
   // Nervo femoral direito: thigh nerve right
@@ -149,7 +149,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M142 316 C 144 334 146 354 145 374'
+    d: 'M142 344 C 144 362 146 382 145 402'
   },
 
   // Nervo femoral esquerdo: thigh nerve left
@@ -160,7 +160,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M98 316 C 96 334 94 354 95 374'
+    d: 'M98 344 C 96 362 94 382 95 402'
   },
 
   // ── CIRCULATORY ─────────────────────────────
@@ -199,7 +199,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M127 143 C 127 136 128 130 126 124 C 124 118 118 118 116 124 C 114 130 116 136 118 143'
   },
 
-  // Aorta abdominal: midline descending
+  // Aorta abdominal: midline descending, bifurcates into iliac arteries
   {
     id: 'aorta_abdominal',
     label: 'Aorta Abdominal',
@@ -207,7 +207,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['circulatorio'],
     type: 'vessel',
     layer: 9,
-    d: 'M118 182 L118 262 L122 262 L122 182 Z'
+    d: 'M118 182 L118 294 L122 294 L122 182 Z'
   },
 
   // Veia cava superior: right of aorta, shorter
@@ -243,7 +243,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M122 128 C 124 118 125 110 125 104'
   },
 
-  // Veia cava inferior: parallel to aorta abdominal, slightly to patient's right
+  // Veia cava inferior: parallel to aorta abdominal, slightly to patient's right (screen LEFT)
   {
     id: 'veia_cava_inf',
     label: 'Veia Cava Inferior',
@@ -251,7 +251,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['circulatorio'],
     type: 'vessel',
     layer: 9,
-    d: 'M113 184 L113 260 L115 260 L115 184 Z'
+    d: 'M113 184 L113 294 L115 294 L115 184 Z'
   },
 
   // Vasos pulmonares: short trunks from heart base toward each lung hilum
@@ -265,7 +265,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M128 148 C 122 144 116 140 110 138 M128 152 C 134 148 140 144 146 142'
   },
 
-  // Femoral direita: right thigh artery
+  // Femoral direita: right thigh artery (from inguinal ligament)
   {
     id: 'femoral_d',
     label: 'Artéria Femoral D',
@@ -273,7 +273,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['circulatorio'],
     type: 'vessel',
     layer: 9,
-    d: 'M108 308 C 106 326 104 348 103 372 C 102 392 102 410 102 430'
+    d: 'M108 336 C 106 354 104 376 103 400 C 102 420 102 438 102 458'
   },
 
   // Femoral esquerda: left thigh artery
@@ -284,7 +284,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['circulatorio'],
     type: 'vessel',
     layer: 9,
-    d: 'M132 308 C 134 326 136 348 137 372 C 138 392 138 410 138 430'
+    d: 'M132 336 C 134 354 136 376 137 400 C 138 420 138 438 138 458'
   },
 
   // ── RESPIRATORY ─────────────────────────────
@@ -331,7 +331,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M115.6 106.8 C 108.6 106 96.8 107.6 87.3 112.6 C 77.9 117.5 73.2 127.3 73.2 137.2 C 73.2 147 75.5 155.2 80.2 161.8 C 85 166.7 92 170 101.5 170 C 108.6 170 115.6 168.4 115.6 166.7 L115.6 106.8 Z'
+    d: 'M115 107 C 108 106 96 108 87 113 C 78 118 73 128 73 138 C 73 150 75 162 79 171 C 83 179 88 185 95 189 C 102 192 110 192 115 190 L115 107 Z'
   },
 
   // Pulmão esquerdo (patient LEFT = screen RIGHT): preenche a caixa torácica
@@ -343,7 +343,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M124.4 106.8 C 131.4 106 143.2 107.6 152.7 112.6 C 162.1 117.5 166.8 127.3 166.8 137.2 C 166.8 147 164.5 155.2 159.8 161.8 C 155 166.7 148 170 138.5 170 C 131.4 170 126.7 168.4 124.4 166.7 C 122 165.1 117.3 161.8 117.3 157.7 C 117.3 148.7 122 143.7 126.7 140.5 C 124.4 135.5 122 130.6 124.4 125.7 C 124.4 115.8 124.4 106.8 124.4 106.8 Z'
+    d: 'M125 107 C 132 106 143 108 152 113 C 161 118 167 128 167 138 C 167 150 165 162 161 172 C 157 180 151 186 143 190 C 136 193 130 192 125 190 C 125 184 124 177 121 171 C 119 165 119 157 122 151 C 124 145 125 140 125 133 L125 107 Z'
   },
 
   // Diafragma: dome-shaped arch, raised to follow new lung base
@@ -371,7 +371,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
 
   // Fígado: large right-dominant wedge, right upper quadrant
-  // Patient RIGHT = screen LEFT: x=80-145, y=188-228
+  // Patient RIGHT = screen LEFT: x=76-138, y=200-242 (below diaphragm)
   {
     id: 'figado',
     label: 'Fígado',
@@ -379,10 +379,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 6,
-    d: 'M 116 154 C 108 152 96 152 88 156 C 82 160 80 168 80 176 C 80 184 84 190 90 192 C 98 194 108 194 116 192 C 124 190 130 186 134 180 C 138 174 138 166 134 160 C 130 154 124 154 116 154 Z'
+    d: 'M 118 200 C 108 198 94 198 84 202 C 78 206 76 214 76 222 C 76 230 80 236 88 240 C 96 244 108 244 118 242 C 128 240 136 234 138 226 C 140 218 138 208 132 202 C 126 198 122 198 118 200 Z'
   },
 
   // Vesícula biliar: pear-shaped under liver right lobe
+  // Below liver inferior surface y≈242: x=108-119, y=232-248
   {
     id: 'vesicula_biliar',
     label: 'Vesícula Biliar',
@@ -390,11 +391,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 7,
-    d: 'M 112 182 C 110 178 110 174 113 172 C 116 170 119 171 120 174 C 121 178 121 184 119 188 C 117 192 113 192 112 188 C 111 186 112 184 112 182 Z'
+    d: 'M 110 232 C 108 227 109 220 112 218 C 115 216 118 218 119 222 C 120 226 119 232 117 237 C 115 241 110 241 109 237 C 108 235 109 233 110 232 Z'
   },
 
   // Estômago: J-shaped bag, patient LEFT (screen RIGHT)
-  // Fundus at top (x≈148,y≈196), body curves down, antrum turns medially
+  // Fundus at top (x≈140,y≈200), body curves down, antrum turns medially
   {
     id: 'estomago',
     label: 'Estômago',
@@ -402,7 +403,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 6,
-    d: 'M 136 160 C 142 158 152 160 156 168 C 160 176 158 190 154 202 C 150 212 144 216 138 214 C 132 212 128 206 126 198 C 124 190 124 180 126 174 C 128 168 130 162 136 160 Z'
+    d: 'M 140 200 C 148 197 160 201 163 212 C 166 224 165 239 161 251 C 157 259 151 263 145 261 C 139 259 135 253 134 245 C 133 235 134 223 137 213 C 138 207 139 202 140 200 Z'
   },
 
   // Baço (vista anterior, para digestório/linfático)
@@ -414,10 +415,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio', 'linfatico'],
     type: 'organ',
     layer: 6,
-    d: 'M 152 158 C 156 158 162 162 162 170 C 162 178 158 184 152 184 C 148 184 144 180 144 174 C 144 166 148 158 152 158 Z'
+    d: 'M 154 200 C 158 197 164 200 167 208 C 170 216 168 224 163 228 C 159 231 154 229 151 223 C 148 217 150 206 154 200 Z'
   },
 
-  // Pâncreas: retroperitoneal, behind stomach
+  // Pâncreas: retroperitoneal, atrás do estômago
+  // y=218-232, x=100-158, abaixo do diafragma
   {
     id: 'pancreas_corpo',
     label: 'Pâncreas',
@@ -425,7 +427,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 5,
-    d: 'M 100 184 C 106 180 116 178 128 178 C 138 178 146 180 150 184 C 152 186 152 190 150 192 C 146 194 136 194 126 192 C 116 192 106 192 100 190 C 98 188 98 186 100 184 Z'
+    d: 'M 102 222 C 108 218 118 216 130 216 C 142 216 152 218 157 224 C 159 226 158 230 155 232 C 149 234 138 234 128 232 C 118 232 108 232 102 230 C 100 228 100 224 102 222 Z'
   },
 
   // Ilhotas de Langerhans (endócrino do pâncreas): same region
@@ -436,10 +438,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 5,
-    d: 'M 100 184 C 106 180 116 178 128 178 C 138 178 146 180 150 184 C 152 186 152 190 150 192 C 146 194 136 194 126 192 C 116 192 106 192 100 190 C 98 188 98 186 100 184 Z'
+    d: 'M 102 222 C 108 218 118 216 130 216 C 142 216 152 218 157 224 C 159 226 158 230 155 232 C 149 234 138 234 128 232 C 118 232 108 232 102 230 C 100 228 100 224 102 222 Z'
   },
 
   // Duodeno: alça em C contornando a cabeça do pâncreas, lado DIREITO do paciente (x<120)
+  // y=238-272, abaixo do fígado/pâncreas
   {
     id: 'duodeno',
     label: 'Duodeno',
@@ -447,10 +450,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 7,
-    d: 'M 114 190 C 108 186 100 188 96 196 C 92 204 94 214 98 220 C 102 226 110 226 114 222 C 116 220 116 214 114 208 C 112 202 112 196 114 190 Z'
+    d: 'M 114 238 C 108 234 100 236 96 244 C 92 252 94 262 98 268 C 102 274 110 274 114 270 C 116 268 116 262 114 256 C 112 250 112 244 114 238 Z'
   },
 
-  // Intestino delgado: coiled central area, multiple loops
+  // Intestino delgado: alças centrais abaixo do fígado e estômago
   {
     id: 'intestino_delgado',
     label: 'Intestino Delgado',
@@ -458,10 +461,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 4,
-    d: 'M 100 196 C 106 192 118 190 130 192 C 138 194 144 198 144 204 C 144 210 138 214 130 216 C 122 218 112 218 104 216 C 96 214 92 208 94 202 C 96 198 100 196 100 196 M 102 220 C 110 218 122 218 132 220 C 140 222 144 228 142 234 C 140 238 134 240 126 240 C 116 240 106 238 100 234 C 96 230 98 222 102 220 Z'
+    d: 'M 100 246 C 106 242 118 240 130 242 C 138 244 144 248 144 254 C 144 260 138 264 130 266 C 122 268 112 268 104 266 C 96 264 92 258 94 252 C 96 248 100 246 100 246 M 102 270 C 110 268 122 268 132 270 C 140 272 144 278 142 284 C 140 288 134 290 126 290 C 116 290 106 288 100 284 C 96 280 98 272 102 270 Z'
   },
 
-  // Cólon ascendente: right side (screen LEFT), goes up
+  // Cólon ascendente: right side (screen LEFT), do flanco direito ao ângulo hepático
   {
     id: 'colon_ascendente',
     label: 'Cólon Ascendente',
@@ -469,10 +472,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 3,
-    d: 'M 88 244 C 86 230 86 218 88 206 C 90 200 94 198 98 200 C 100 202 100 208 100 216 C 100 228 98 242 96 250 C 94 254 90 250 88 244 Z'
+    d: 'M 88 282 C 86 268 86 256 88 246 C 90 240 94 238 98 240 C 100 242 100 248 100 256 C 100 268 98 280 96 288 C 94 292 90 288 88 282 Z'
   },
 
-  // Cólon transverso: horizontal across upper abdomen
+  // Cólon transverso: horizontal, abaixo do fígado e estômago
   {
     id: 'colon_transverso',
     label: 'Cólon Transverso',
@@ -480,10 +483,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 3,
-    d: 'M 96 200 C 104 196 112 194 120 196 C 128 194 136 196 144 200 C 148 202 150 206 148 208 C 146 212 138 212 128 210 C 120 210 112 210 104 212 C 98 212 94 208 96 200 Z'
+    d: 'M 96 244 C 104 240 112 238 120 240 C 128 238 136 240 144 244 C 148 246 150 250 148 252 C 146 256 138 256 128 254 C 120 254 112 254 104 256 C 98 256 94 252 96 244 Z'
   },
 
-  // Cólon descendente: left side (screen RIGHT), goes down
+  // Cólon descendente: left side (screen RIGHT), do ângulo esplênico ao sigmoide
   {
     id: 'colon_descendente',
     label: 'Cólon Descendente',
@@ -491,7 +494,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 3,
-    d: 'M 148 200 C 150 214 152 228 152 242 C 152 248 150 252 146 252 C 142 252 140 248 140 242 C 140 228 140 214 142 202 C 143 198 147 196 148 200 Z'
+    d: 'M 148 244 C 150 258 152 272 152 284 C 152 290 150 294 146 294 C 142 294 140 290 140 284 C 140 272 140 258 142 246 C 143 242 147 240 148 244 Z'
   },
 
   // Cólon sigmoide: S-shaped lower left
@@ -502,7 +505,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 3,
-    d: 'M 146 248 C 144 252 140 256 134 256 C 128 256 124 252 122 248 C 120 244 118 242 120 246 C 122 250 122 256 120 260 C 118 262 116 262 116 258 Z'
+    d: 'M 146 288 C 144 292 140 296 134 296 C 128 296 124 292 122 288 C 120 284 118 282 120 286 C 122 290 122 296 120 300 C 118 302 116 302 116 298 Z'
   },
 
   // Apêndice: small finger at cecum, lower right
@@ -513,7 +516,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 7,
-    d: 'M 94 248 C 96 248 98 250 100 254 C 102 258 102 262 100 264 C 98 266 96 264 94 260 C 92 256 92 248 94 248 Z'
+    d: 'M 94 286 C 96 286 98 288 100 292 C 102 296 102 300 100 302 C 98 304 96 302 94 298 C 92 294 92 286 94 286 Z'
   },
 
   // Reto: rectum midline, pelvis
@@ -524,7 +527,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['digestorio'],
     type: 'organ',
     layer: 5,
-    d: 'M 116 256 C 116 252 118 248 120 248 C 122 248 124 252 124 256 L 124 272 C 124 274 122 276 120 276 C 118 276 116 274 116 272 Z'
+    d: 'M 116 280 C 116 276 118 272 120 272 C 122 272 124 276 124 280 L 124 296 C 124 298 122 300 120 300 C 118 300 116 298 116 296 Z'
   },
 
   // ── ENDOCRINE ────────────────────────────────
@@ -573,7 +576,8 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M106 93 C 105.5 92 106.5 91 107.5 92 C 108.5 93 107.5 94.5 106 93 Z M106 101 C 105.5 100 106.5 99 107.5 100 C 108.5 101 107.5 102.5 106 101 Z M132 93 C 131.5 92 132.5 91 133.5 92 C 134.5 93 133.5 94.5 132 93 Z M132 101 C 131.5 100 132.5 99 133.5 100 C 134.5 101 133.5 102.5 132 101 Z'
   },
 
-  // Adrenal direita (patient RIGHT = screen LEFT): polo superior do rim direito (y≈169)
+  // Adrenal direita (patient RIGHT = screen LEFT): polo superior do rim direito (y≈172)
+  // Pequena glândula triangular assentada sobre o polo superior do rim D
   {
     id: 'adrenal_d',
     label: 'Glândula Suprarrenal D',
@@ -581,10 +585,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 7,
-    d: 'M104 160 C 108 156 114 156 116 160 C 118 164 116 168 113 170 C 110 171 106 169 104 166 C 103 164 103 162 104 160 Z'
+    d: 'M 105 164 C 109 160 114 160 116 164 C 118 168 116 173 113 175 C 110 176 106 174 104 170 C 103 168 103 166 105 164 Z'
   },
 
-  // Adrenal esquerda (patient LEFT = screen RIGHT): polo superior do rim esquerdo (y≈162)
+  // Adrenal esquerda (patient LEFT = screen RIGHT): polo superior do rim esquerdo (y≈164)
+  // Pequena glândula em meia-lua sobre o polo superior do rim E
   {
     id: 'adrenal_e',
     label: 'Glândula Suprarrenal E',
@@ -592,7 +597,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 7,
-    d: 'M124 152 C 128 148 134 148 136 152 C 138 156 136 160 133 162 C 130 163 126 161 124 158 C 123 156 123 154 124 152 Z'
+    d: 'M 125 157 C 129 153 134 153 136 157 C 138 161 136 166 133 168 C 130 169 126 167 124 164 C 123 162 123 159 125 157 Z'
   },
 
   // ── URINARY ──────────────────────────────────
@@ -620,7 +625,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M148 164.8 C 152 167.3 154 172.3 154 178.6 C 154 184.9 152 190 148 192.5 C 144 195 138 195 132 193.7 C 126 192.5 123 190 122 184.9 C 121 182.4 123 179.9 125 178.6 C 123 177.4 121 174.9 122 171.1 C 123 166 127 163.5 133 162.3 C 139 162.3 144 162.3 148 164.8 Z'
   },
 
-  // Ureteres: dois tubos dos rins até a bexiga (y=268 = topo da bexiga corrigida)
+  // Ureteres: dois tubos dos rins até a bexiga
   {
     id: 'ureteres',
     label: 'Ureteres',
@@ -628,10 +633,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'vessel',
     layer: 6,
-    d: 'M112 203 C 113 220 114 244 116 268 M128 195 C 127 212 126 244 124 268'
+    d: 'M112 203 C 113 224 114 252 116 294 M128 195 C 127 218 126 252 124 294'
   },
 
-  // Bexiga: dentro da pelve, abaixo do umbigo (y≈250), acima da sínfise pubiana
+  // Bexiga: dentro da pelve, abaixo do umbigo, acima da sínfise pubiana
   {
     id: 'bexiga',
     label: 'Bexiga Urinária',
@@ -639,7 +644,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 5,
-    d: 'M116 268 C 112 264 108 264 108 274 C 108 282 110 288 114 292 C 116 294 118 296 120 296 C 122 296 124 294 126 292 C 130 288 132 282 132 274 C 132 264 128 264 124 268 C 122 266 118 266 116 268 Z'
+    d: 'M116 294 C 112 290 108 290 108 300 C 108 308 110 314 114 318 C 116 320 118 322 120 322 C 122 322 124 320 126 318 C 130 314 132 308 132 300 C 132 290 128 290 124 294 C 122 292 118 292 116 294 Z'
   },
 
   // Uretra: continues from bladder neck toward perineum
@@ -650,7 +655,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario'],
     type: 'organ',
     layer: 5,
-    d: 'M118 308 L118 320 L122 320 L122 308 Z'
+    d: 'M118 334 L118 346 L122 346 L122 334 Z'
   },
 
   // ── LYMPHATIC ────────────────────────────────
@@ -699,7 +704,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M80 130 C 79 128 80 126 82 126 C 84 126 85 128 84 130 C 84 132 82 132 80 130 Z M76 138 C 75 136 76 134 78 134 C 80 134 81 136 80 138 C 80 140 78 140 76 138 Z'
   },
 
-  // Baço (linfático): mesma posição corrigida do baco_frente (9ª–11ª costela, hipocôndrio esquerdo)
+  // Baço (linfático): mesma posição do baco_frente (9ª–11ª costela, hipocôndrio esquerdo, abaixo do diafragma)
   {
     id: 'baco',
     label: 'Baço',
@@ -707,10 +712,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     type: 'organ',
     layer: 6,
-    d: 'M 152 158 C 156 158 162 162 162 170 C 162 178 158 184 152 184 C 148 184 144 180 144 174 C 144 166 148 158 152 158 Z'
+    d: 'M 154 200 C 158 197 164 200 167 208 C 170 216 168 224 163 228 C 159 231 154 229 151 223 C 148 217 150 206 154 200 Z'
   },
 
-  // Cisterna do quilo: near L2 level
+  // Cisterna do quilo: nível de L2, abaixo do fígado e intestinos (y≈252)
   {
     id: 'vasos_quiferos',
     label: 'Cisterna do Quilo',
@@ -718,10 +723,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     type: 'gland',
     layer: 8,
-    d: 'M118 226 C 118 223 119 222 120 222 C 121 222 122 223 122 226 C 122 229 121 230 120 230 C 119 230 118 229 118 226 Z'
+    d: 'M118 252 C 118 249 119 248 120 248 C 121 248 122 249 122 252 C 122 255 121 256 120 256 C 119 256 118 255 118 252 Z'
   },
 
-  // Ducto torácico: line from cistern up spine
+  // Ducto torácico: da cisterna (y=252) sobe pela coluna até o ângulo venoso (y=128)
   {
     id: 'ducto_toracico',
     label: 'Ducto Torácico',
@@ -729,10 +734,10 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     type: 'vessel',
     layer: 8,
-    d: 'M120 226 C 121 210 122 192 122 174 C 122 156 120 140 118 128'
+    d: 'M120 252 C 121 236 122 218 122 200 C 122 182 120 164 118 148 C 118 140 118 134 118 128'
   },
 
-  // Linfonodos inguinais: bilateral at inguinal region
+  // Linfonodos inguinais: bilateral at inguinal region (abaixo da bexiga)
   {
     id: 'linfonodos_inguinais',
     label: 'Linfonodos Inguinais',
@@ -740,12 +745,12 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     type: 'gland',
     layer: 9,
-    d: 'M100 286 C 99 284 100 282 102 282 C 104 282 105 284 104 286 C 104 288 102 288 100 286 Z M136 286 C 135 284 136 282 138 282 C 140 282 141 284 140 286 C 140 288 138 288 136 286 Z'
+    d: 'M100 326 C 99 324 100 322 102 322 C 104 322 105 324 104 326 C 104 328 102 328 100 326 Z M136 326 C 135 324 136 322 138 322 C 140 322 141 324 140 326 C 140 328 138 328 136 326 Z'
   },
 
   // ── REPRODUCTIVE ─────────────────────────────
 
-  // Útero: pear-shaped in pelvis
+  // Útero: pear-shaped in pelvis, posterior to bladder
   {
     id: 'utero',
     label: 'Útero',
@@ -753,7 +758,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 6,
-    d: 'M114 290 C 112 286 112 282 116 280 C 118 278 122 278 124 280 C 128 282 128 286 126 290 C 124 294 122 298 120 300 C 118 298 116 294 114 290 Z'
+    d: 'M114 316 C 112 312 112 308 116 306 C 118 304 122 304 124 306 C 128 308 128 312 126 316 C 124 320 122 324 120 326 C 118 324 116 320 114 316 Z'
   },
 
   // Ovários: two small ovals lateral to uterus
@@ -764,7 +769,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 6,
-    d: 'M106 290 C 105 288 106 285 108 285 C 110 285 111 288 110 290 C 110 293 108 294 106 292 C 105 292 106 291 106 290 Z M130 290 C 129 288 130 285 132 285 C 134 285 135 288 134 290 C 134 293 132 294 130 292 C 129 292 130 291 130 290 Z'
+    d: 'M106 314 C 105 312 106 309 108 309 C 110 309 111 312 110 314 C 110 317 108 318 106 316 C 105 316 106 315 106 314 Z M130 314 C 129 312 130 309 132 309 C 134 309 135 312 134 314 C 134 317 132 318 130 316 C 129 316 130 315 130 314 Z'
   },
 
   // Trompas de Falópio: curved tubes connecting ovaries to uterine fundus
@@ -775,7 +780,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 7,
-    d: 'M108 287 C 112 283 116 281 120 280 M132 287 C 128 283 124 281 120 280'
+    d: 'M108 311 C 112 307 116 305 120 304 M132 311 C 128 307 124 305 120 304'
   },
 
   // Testículos: two circles below pubis
@@ -786,7 +791,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'organ',
     layer: 6,
-    d: 'M112 310 C 111 307 112 304 115 304 C 118 304 119 307 118 310 C 118 313 116 315 114 314 C 112 313 112 312 112 310 Z M128 310 C 127 307 128 304 131 304 C 134 304 135 307 134 310 C 134 313 132 315 130 314 C 128 313 128 312 128 310 Z'
+    d: 'M112 342 C 111 339 112 336 115 336 C 118 336 119 339 118 342 C 118 345 116 347 114 346 C 112 345 112 344 112 342 Z M128 342 C 127 339 128 336 131 336 C 134 336 135 339 134 342 C 134 345 132 347 130 346 C 128 345 128 344 128 342 Z'
   },
 
   // Próstata: small oval below bladder
@@ -797,7 +802,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'gland',
     layer: 6,
-    d: 'M116 306 C 116 303 118 302 120 302 C 122 302 124 303 124 306 C 124 309 122 310 120 310 C 118 310 116 309 116 306 Z'
+    d: 'M116 332 C 116 329 118 328 120 328 C 122 328 124 329 124 332 C 124 335 122 336 120 336 C 118 336 116 335 116 332 Z'
   },
 
   // Vesículas seminais: paired glands posterolateral to bladder base, above prostate
@@ -808,7 +813,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['reprodutor'],
     type: 'gland',
     layer: 6,
-    d: 'M110 298 C 108 296 108 293 111 292 C 114 291 116 293 116 296 C 116 299 113 301 111 300 C 110 300 110 299 110 298 Z M130 298 C 132 296 132 293 129 292 C 126 291 124 293 124 296 C 124 299 127 301 129 300 C 130 300 130 299 130 298 Z'
+    d: 'M110 324 C 108 322 108 319 111 318 C 114 317 116 319 116 322 C 116 325 113 327 111 326 C 110 326 110 325 110 324 Z M130 324 C 132 322 132 319 129 318 C 126 317 124 319 124 322 C 124 325 127 327 129 326 C 130 326 130 325 130 324 Z'
   },
 
   // ── SENSORY SYSTEM ───────────────────────────
@@ -972,7 +977,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['nervoso'],
     type: 'nerve',
     layer: 9,
-    d: 'M119 88 L119 282 L121 282 L121 88 Z'
+    d: 'M119 88 L119 310 L121 310 L121 88 Z'
   },
 
   // Pulmão direito posterior: right side (patient RIGHT = screen LEFT)
@@ -984,11 +989,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M115.6 106.8 C 108.6 106 96.8 107.6 87.3 112.6 C 77.9 117.5 73.2 127.3 73.2 137.2 C 73.2 147 75.5 156.9 80.2 163.4 C 85 168.4 92 170 101.5 170 C 108.6 170 115.6 168.4 115.6 166.7 L115.6 106.8 Z'
+    d: 'M115 107 C 108 106 96 108 87 113 C 78 118 73 128 73 138 C 73 150 75 162 79 171 C 83 179 88 185 95 189 C 102 192 110 192 115 190 L115 107 Z'
   },
 
   // Pulmão esquerdo posterior: left side (patient LEFT = screen RIGHT)
-  // Preenche a caixa torácica do ombro até o gradil costal inferior
+  // Vista posterior não tem entalhe cardíaco; base estendida até o diafragma
   {
     id: 'pulmao_e_p',
     label: 'Pulmão Esquerdo (Posterior)',
@@ -996,7 +1001,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio'],
     type: 'organ',
     layer: 2,
-    d: 'M124.4 106.8 C 131.4 106 143.2 107.6 152.7 112.6 C 162.1 117.5 166.8 127.3 166.8 137.2 C 166.8 147 164.5 156.9 159.8 163.4 C 155 168.4 148 170 138.5 170 C 131.4 170 124.4 168.4 124.4 166.7 L124.4 106.8 Z'
+    d: 'M125 107 C 132 106 143 108 152 113 C 161 118 167 128 167 138 C 167 150 165 162 161 172 C 157 180 151 186 143 190 C 136 193 130 192 125 190 L125 107 Z'
   },
 
   // Diafragma posterior
