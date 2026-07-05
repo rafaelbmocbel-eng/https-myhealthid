@@ -618,6 +618,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
 
   // Adrenal direita (patient RIGHT = screen LEFT): polo superior do rim direito (y≈172)
   // Pequena glândula triangular assentada sobre o polo superior do rim D
+  // Subida 15px para aparecer claramente ACIMA do rim (rim_d_frente top y≈162)
   {
     id: 'adrenal_d',
     label: 'Glândula Suprarrenal D',
@@ -625,11 +626,11 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 7,
-    d: 'M 105 164 C 109 160 114 160 116 164 C 118 168 116 173 113 175 C 110 176 106 174 104 170 C 103 168 103 166 105 164 Z'
+    d: 'M 105 149 C 109 145 114 145 116 149 C 118 153 116 158 113 160 C 110 161 106 159 104 155 C 103 153 103 151 105 149 Z'
   },
 
-  // Adrenal esquerda (patient LEFT = screen RIGHT): polo superior do rim esquerdo (y≈164)
-  // Pequena glândula em meia-lua sobre o polo superior do rim E
+  // Adrenal esquerda (patient LEFT = screen RIGHT): polo superior do rim esquerdo
+  // Subida 15px para aparecer claramente ACIMA do rim (rim_e_frente top y≈162)
   {
     id: 'adrenal_e',
     label: 'Glândula Suprarrenal E',
@@ -637,7 +638,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['endocrino'],
     type: 'gland',
     layer: 7,
-    d: 'M 125 157 C 129 153 134 153 136 157 C 138 161 136 166 133 168 C 130 169 126 167 124 164 C 123 162 123 159 125 157 Z'
+    d: 'M 125 142 C 129 138 134 138 136 142 C 138 146 136 151 133 153 C 130 154 126 152 124 149 C 123 147 123 144 125 142 Z'
   },
 
   // ── URINARY ──────────────────────────────────
@@ -1328,15 +1329,17 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
 
   // ── REPRODUTOR — completar genitália ──
+  // sys0='endocrino' para não receber o offset do sistema reprodutor (que é -30px para órgãos pélvicos)
+  // y movido +8px para nível do mamilo (4º espaço intercostal, ~33% da altura)
   {
     id: 'mama_d', label: 'Mama D', view: 'front',
-    sistemas: ['reprodutor', 'endocrino'], type: 'organ', layer: 6,
-    d: 'M148 155 C 138 155 132 165 138 175 C 146 179 156 175 158 167 C 159 160 154 155 148 155 Z'
+    sistemas: ['endocrino', 'reprodutor'], type: 'organ', layer: 6,
+    d: 'M148 163 C 138 163 132 173 138 183 C 146 187 156 183 158 175 C 159 168 154 163 148 163 Z'
   },
   {
     id: 'mama_e', label: 'Mama E', view: 'front',
-    sistemas: ['reprodutor', 'endocrino'], type: 'organ', layer: 6,
-    d: 'M92 155 C 102 155 108 165 102 175 C 94 179 84 175 82 167 C 81 160 86 155 92 155 Z'
+    sistemas: ['endocrino', 'reprodutor'], type: 'organ', layer: 6,
+    d: 'M92 163 C 102 163 108 173 102 183 C 94 187 84 183 82 175 C 81 168 86 163 92 163 Z'
   },
   {
     id: 'vagina', label: 'Vagina', view: 'front',

@@ -181,10 +181,10 @@ const DEFAULT_SYS_Y_OFFSET: Partial<Record<string, number>> = {
   locomotor:          0,
   circulatorio:       0,
   respiratorio:       0,
-  digestorio:       -40,  // calibrado: fígado label em y=164, órgão em y=200 → Δ=36
+  digestorio:       -50,  // calibrado: Δ=36 base + margem extra para pâncreas
   endocrino:          0,
   urinario:           0,
-  reprodutor:         0,
+  reprodutor:       -30,  // sobe órgãos pélvicos; mamas excluídas (sys0=endocrino)
   imune:              0,
   linfatico:          0,
   tegumentar:         0,
