@@ -121,7 +121,7 @@ async function embed(text: string): Promise<number[] | null> {
       signal: ctrl.signal,
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-embedding-001',
+        model: 'gemini-embedding-001',
         input: text.slice(0, 8000),
         dimensions: 1536,
       }),
@@ -241,7 +241,7 @@ Retorne JSON estrito (sem markdown, sem \`\`\`):
       signal: aiCtrl.signal,
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gemini-2.5-flash',
         messages: [
           { role: 'system', content: 'Você é um(a) clínico(a) baseado em evidência. SEMPRE responda JSON válido, sem markdown. NUNCA invente referências — use apenas as fornecidas, citando por [n].' },
           { role: 'user', content: prompt },
