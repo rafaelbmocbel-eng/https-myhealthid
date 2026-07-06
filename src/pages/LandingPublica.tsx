@@ -121,48 +121,53 @@ function MyIDRingsVisual() {
 }
 
 // ── Body Avatar visual ────────────────────────────────────────────────────────
+const AVATAR_FINDINGS = [
+  { cx: 68,  cy: 95,  color: '#EF4444', label: 'Ombro D.',  tipo: 'Tendinopatia', status: 'Ativo' },
+  { cx: 100, cy: 155, color: '#F97316', label: 'Lombar',     tipo: 'Lombalgia',   status: 'Ativo' },
+  { cx: 100, cy: 72,  color: '#10B981', label: 'Cervical',   tipo: 'Contratura',  status: 'Resolvido' },
+  { cx: 120, cy: 188, color: '#A855F7', label: 'Quadril E.', tipo: 'Bursite',     status: 'Ativo' },
+];
+
 function BodyAvatarVisual() {
-  const dots = [
-    { cx: 65,  cy: 93,  r: 5, color: '#EF4444', delay: '0s',    label: 'Ombro' },
-    { cx: 100, cy: 75,  r: 4, color: '#10B981', delay: '0.6s',  label: 'Cervical' },
-    { cx: 100, cy: 153, r: 5, color: '#F97316', delay: '1.1s',  label: 'Lombar' },
-    { cx: 78,  cy: 270, r: 5, color: '#F59E0B', delay: '0.4s',  label: 'Joelho' },
-    { cx: 119, cy: 186, r: 5, color: '#A855F7', delay: '1.4s',  label: 'Quadril' },
-  ];
   return (
     <>
       <style>{`
         @keyframes avPing {
-          0%   { r: 5; opacity: 0.75; }
-          70%  { r: 14; opacity: 0; }
-          100% { r: 5; opacity: 0; }
+          0%   { transform: scale(1); opacity: 0.7; }
+          70%  { transform: scale(2.8); opacity: 0; }
+          100% { transform: scale(1); opacity: 0; }
         }
-        .av-ping { animation: avPing 2.8s ease-out infinite; }
-        @keyframes avBodyIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: none; } }
-        .av-body { animation: avBodyIn 0.7s ease both; }
+        .av-ping { animation: avPing 2.6s ease-out infinite; transform-box: fill-box; transform-origin: center; }
       `}</style>
-      <svg viewBox="0 0 200 370" width="170" height="310" fill="none" className="av-body" aria-label="Avatar Clínico">
-        {/* Silhouette */}
-        <ellipse cx="100" cy="38" rx="27" ry="30" stroke="currentColor" strokeWidth="1.8" opacity="0.22" />
-        <rect x="90" y="66" width="20" height="16" rx="4" fill="currentColor" opacity="0.10" />
-        <path d="M63 84 Q52 100 56 158 Q58 178 100 180 Q142 178 144 158 Q148 100 137 84 Z"
-          stroke="currentColor" strokeWidth="1.8" opacity="0.22" />
-        <path d="M63 90 Q40 108 36 168 Q35 178 42 180"
-          stroke="currentColor" strokeWidth="10" strokeLinecap="round" opacity="0.14" />
-        <path d="M137 90 Q160 108 164 168 Q165 178 158 180"
-          stroke="currentColor" strokeWidth="10" strokeLinecap="round" opacity="0.14" />
-        <path d="M82 180 Q77 238 74 296 Q72 326 78 338"
-          stroke="currentColor" strokeWidth="13" strokeLinecap="round" opacity="0.14" />
-        <path d="M118 180 Q123 238 126 296 Q128 326 122 338"
-          stroke="currentColor" strokeWidth="13" strokeLinecap="round" opacity="0.14" />
+      <svg viewBox="0 0 200 340" width="150" height="260" fill="none" aria-label="Avatar Clínico">
+        {/* ── Silhouette — clean minimal outline ── */}
+        {/* Head */}
+        <circle cx="100" cy="34" r="26" stroke="currentColor" strokeWidth="2" opacity="0.18" />
+        {/* Neck */}
+        <line x1="100" y1="60" x2="100" y2="72" stroke="currentColor" strokeWidth="6" strokeLinecap="round" opacity="0.12" />
+        {/* Shoulders bar */}
+        <line x1="62" y1="86" x2="138" y2="86" stroke="currentColor" strokeWidth="5" strokeLinecap="round" opacity="0.15" />
+        {/* Torso */}
+        <path d="M68 86 Q62 130 68 172 Q84 178 100 178 Q116 178 132 172 Q138 130 132 86"
+          stroke="currentColor" strokeWidth="2" opacity="0.18" fill="currentColor" fillOpacity="0.04" />
+        {/* Left arm */}
+        <path d="M68 90 Q44 120 42 168" stroke="currentColor" strokeWidth="8" strokeLinecap="round" opacity="0.13" />
+        {/* Right arm */}
+        <path d="M132 90 Q156 120 158 168" stroke="currentColor" strokeWidth="8" strokeLinecap="round" opacity="0.13" />
+        {/* Left leg */}
+        <path d="M84 176 Q80 228 80 278 Q80 298 84 310" stroke="currentColor" strokeWidth="11" strokeLinecap="round" opacity="0.13" />
+        {/* Right leg */}
+        <path d="M116 176 Q120 228 120 278 Q120 298 116 310" stroke="currentColor" strokeWidth="11" strokeLinecap="round" opacity="0.13" />
 
-        {/* Animated clinical dots */}
-        {dots.map((d) => (
+        {/* ── Clinical dots ── */}
+        {AVATAR_FINDINGS.map((d) => (
           <g key={d.label}>
-            <circle cx={d.cx} cy={d.cy} r={d.r} fill={d.color} opacity="0.9" />
-            <circle cx={d.cx} cy={d.cy} r={d.r} fill={d.color}
-              className="av-ping"
-              style={{ animationDelay: d.delay }} />
+            {/* Ping ring */}
+            <circle cx={d.cx} cy={d.cy} r="5" fill={d.color} className="av-ping" />
+            {/* Solid dot */}
+            <circle cx={d.cx} cy={d.cy} r="5.5" fill={d.color} />
+            {/* White inner */}
+            <circle cx={d.cx} cy={d.cy} r="2.5" fill="white" opacity="0.55" />
           </g>
         ))}
       </svg>
@@ -541,34 +546,35 @@ export default function LandingPublica() {
               </Link>
             </div>
 
-            {/* Body Avatar visual + interface mockup */}
-            <div className="flex flex-col items-center gap-6">
-              <div className="relative flex items-start gap-6">
+            {/* Body Avatar visual + finding cards */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-start gap-5">
                 {/* Body silhouette */}
-                <div className="text-foreground">
+                <div className="text-foreground shrink-0">
                   <BodyAvatarVisual />
                 </div>
 
-                {/* Finding cards */}
-                <div className="flex flex-col gap-2.5 pt-4 max-w-[180px]">
-                  {[
-                    { color: '#EF4444', bg: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900', label: 'Ombro D.', tipo: 'Tendinopatia', status: 'Ativo' },
-                    { color: '#F97316', bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900', label: 'Lombar',   tipo: 'Lombalgia', status: 'Ativo' },
-                    { color: '#10B981', bg: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900', label: 'Cervical', tipo: 'Contratura', status: 'Resolvido' },
-                    { color: '#A855F7', bg: 'bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-900', label: 'Quadril E.', tipo: 'Bursite', status: 'Ativo' },
-                  ].map(({ color, bg, label, tipo, status }) => (
-                    <div key={label} className={`rounded-lg border px-2.5 py-2 text-[11px] ${bg}`}>
-                      <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <span className="font-bold" style={{ color }}>{label}</span>
-                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${status === 'Resolvido' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'}`}>{status}</span>
+                {/* Finding cards — ordered to match body top→bottom */}
+                <div className="flex flex-col gap-2.5 pt-6 w-[170px]">
+                  {AVATAR_FINDINGS.map(({ color, label, tipo, status }) => (
+                    <div key={label}
+                      className="rounded-xl border bg-card px-3 py-2.5 shadow-sm"
+                      style={{ borderColor: `${color}30` }}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[12px] font-bold" style={{ color }}>{label}</span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                          status === 'Resolvido'
+                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300'
+                        }`}>{status}</span>
                       </div>
-                      <div className="text-muted-foreground">{tipo}</div>
+                      <div className="text-[11px] text-muted-foreground">{tipo}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <p className="text-[11px] text-muted-foreground text-center max-w-[32ch]">
+              <p className="text-[11px] text-muted-foreground text-center max-w-[34ch]">
                 O avatar é atualizado automaticamente a cada avaliação por voz ou presencial.
               </p>
             </div>
