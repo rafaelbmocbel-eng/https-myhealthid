@@ -37,9 +37,6 @@ export default function LembreteEncerramento({ agendamentos, pacientes, config, 
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  // Show reminder 30 min before end or after end
-  const shouldShow = nowMinutes >= fimMinutes - 30;
-
   // Today's appointments that need status confirmation
   const pendentesHoje = useMemo(() => {
     return agendamentos.filter(ag => {
@@ -53,6 +50,9 @@ export default function LembreteEncerramento({ agendamentos, pacientes, config, 
       return parseISO(ag.data_fim) <= now;
     });
   }, [agendamentos, now]);
+
+  // Show when there are pending past appointments OR within 30 min of end of workday
+  const shouldShow = pendentesHoje.length > 0 || nowMinutes >= fimMinutes - 30;
 
   if (dismissed || !shouldShow) return null;
   if (pendentesHoje.length === 0 && !showAddWalkIn) return null;
