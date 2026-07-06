@@ -55,18 +55,120 @@ const FRONT_OUTLINE =
   'C 96 84 88 70 88 54 ' +
   'C 88 34 102 18 120 18 Z';
 
-const AVATAR_IMAGE_FRAME = {
-  x: -59.5,
-  y: -4.8,
-  width: 363.6,
-  height: 547.2,
-};
-
-const AVATAR_BACK_IMAGE_FRAME = {
-  x: -33,
-  y: 6.7,
-  width: 304.2,
-  height: 520.1,
+// Posições dos pontos anatômicos no stick-figure (viewBox 240×520).
+// Frente/costas compartilham o mesmo mapa — o ponto indica a região, não a superfície.
+const PONTO_ANATOMICO: Record<string, { cx: number; cy: number }> = {
+  // ─ CABEÇA / PESCOÇO ────────────────────────────────────────
+  cabeca:               { cx: 120, cy: 32  },
+  occipital:            { cx: 120, cy: 32  },
+  // ─ PESCOÇO ─────────────────────────────────────────────────
+  pescoco:              { cx: 120, cy: 61  },
+  cervical:             { cx: 120, cy: 61  },
+  // ─ OMBROS ──────────────────────────────────────────────────
+  ombro_d:              { cx:  72, cy: 90  },
+  ombro_e:              { cx: 168, cy: 90  },
+  trapezio_d:           { cx:  82, cy: 99  },
+  trapezio_e:           { cx: 158, cy: 99  },
+  // ─ BRAÇO D (paciente direito = esquerda na tela) ────────────
+  braco_d:              { cx:  60, cy: 112 },
+  cotovelo_d:           { cx:  51, cy: 138 },
+  antebraco_d:          { cx:  50, cy: 152 },
+  punho_d:              { cx:  50, cy: 161 },
+  mao_d:                { cx:  50, cy: 164 },
+  // ─ BRAÇO E (paciente esquerdo = direita na tela) ────────────
+  braco_e:              { cx: 180, cy: 112 },
+  cotovelo_e:           { cx: 189, cy: 138 },
+  antebraco_e:          { cx: 190, cy: 152 },
+  punho_e:              { cx: 190, cy: 161 },
+  mao_e:                { cx: 190, cy: 164 },
+  // ─ TRONCO ──────────────────────────────────────────────────
+  peitoral:             { cx: 120, cy: 108 },
+  toracica:             { cx: 120, cy: 115 },
+  dorso:                { cx: 120, cy: 122 },
+  abdomen:              { cx: 120, cy: 145 },
+  lombar:               { cx: 120, cy: 148 },
+  pelve:                { cx: 120, cy: 168 },
+  sacral:               { cx: 120, cy: 166 },
+  // ─ QUADRIL ─────────────────────────────────────────────────
+  coxofemural_d:        { cx: 102, cy: 182 },
+  coxofemural_e:        { cx: 138, cy: 182 },
+  gluteo_d:             { cx: 100, cy: 182 },
+  gluteo_e:             { cx: 140, cy: 182 },
+  // ─ COXA ────────────────────────────────────────────────────
+  coxa_d:               { cx:  99, cy: 248 },
+  coxa_e:               { cx: 141, cy: 248 },
+  // ─ JOELHO ──────────────────────────────────────────────────
+  joelho_d:             { cx:  99, cy: 315 },
+  joelho_e:             { cx: 141, cy: 315 },
+  // ─ PERNA ───────────────────────────────────────────────────
+  canela_d:             { cx:  98, cy: 376 },
+  canela_e:             { cx: 142, cy: 376 },
+  // ─ TORNOZELO ───────────────────────────────────────────────
+  tornozelo_d:          { cx:  99, cy: 455 },
+  tornozelo_e:          { cx: 141, cy: 455 },
+  // ─ PÉ ──────────────────────────────────────────────────────
+  pe_d:                 { cx: 100, cy: 498 },
+  pe_e:                 { cx: 140, cy: 498 },
+  // ─ NERVOSO ─────────────────────────────────────────────────
+  cerebro:              { cx: 120, cy: 26  },
+  cerebelo:             { cx: 120, cy: 40  },
+  cerebro_p:            { cx: 120, cy: 26  },
+  cerebelo_p:           { cx: 120, cy: 40  },
+  tronco_encefalico:    { cx: 120, cy: 55  },
+  medula_espinhal_v:    { cx: 120, cy: 122 },
+  medula_p:             { cx: 120, cy: 122 },
+  // ─ CIRCULATÓRIO ────────────────────────────────────────────
+  coracao:              { cx: 112, cy: 108 },
+  aorta:                { cx: 120, cy: 115 },
+  vena_cava:            { cx: 122, cy: 118 },
+  // ─ RESPIRATÓRIO ────────────────────────────────────────────
+  traqueia:             { cx: 120, cy: 78  },
+  pulmao_d:             { cx: 104, cy: 112 },
+  pulmao_e:             { cx: 136, cy: 112 },
+  pulmao_d_p:           { cx: 104, cy: 112 },
+  pulmao_e_p:           { cx: 136, cy: 112 },
+  // ─ DIGESTÓRIO ──────────────────────────────────────────────
+  esofago:              { cx: 120, cy: 90  },
+  figado:               { cx: 109, cy: 130 },
+  estomago:             { cx: 114, cy: 138 },
+  vesicula_biliar:      { cx: 117, cy: 137 },
+  pancreas_corpo:       { cx: 120, cy: 142 },
+  duodeno:              { cx: 126, cy: 140 },
+  baco_frente:          { cx: 131, cy: 135 },
+  intestino_delgado:    { cx: 120, cy: 150 },
+  colon_ascendente:     { cx: 108, cy: 147 },
+  colon_transverso:     { cx: 120, cy: 143 },
+  colon_descendente:    { cx: 132, cy: 147 },
+  colon_sigmoide:       { cx: 128, cy: 158 },
+  apendice:             { cx: 110, cy: 153 },
+  reto:                 { cx: 120, cy: 163 },
+  // ─ ENDÓCRINO ───────────────────────────────────────────────
+  hipofise:             { cx: 120, cy: 28  },
+  tireoide:             { cx: 120, cy: 68  },
+  adrenal_d:            { cx: 108, cy: 133 },
+  adrenal_e:            { cx: 132, cy: 133 },
+  adrenal_d_p:          { cx: 108, cy: 133 },
+  adrenal_e_p:          { cx: 132, cy: 133 },
+  ilhotas_langerhans:   { cx: 120, cy: 142 },
+  // ─ URINÁRIO ────────────────────────────────────────────────
+  rim_d_frente:         { cx: 107, cy: 138 },
+  rim_e_frente:         { cx: 133, cy: 138 },
+  rim_d:                { cx: 107, cy: 138 },
+  rim_e:                { cx: 133, cy: 138 },
+  bexiga:               { cx: 120, cy: 163 },
+  ureteres:             { cx: 120, cy: 150 },
+  // ─ LINFÁTICO ───────────────────────────────────────────────
+  timo:                 { cx: 120, cy: 95  },
+  linfonodos_cervicais: { cx: 120, cy: 67  },
+  linfonodos_axilares_d:{ cx:  65, cy: 95  },
+  linfonodos_axilares_e:{ cx: 175, cy: 95  },
+  linfonodos_inguinais: { cx: 120, cy: 173 },
+  cisterna_chyli:       { cx: 120, cy: 133 },
+  // ─ REPRODUTOR ──────────────────────────────────────────────
+  utero:                { cx: 120, cy: 163 },
+  ovarios:              { cx: 120, cy: 162 },
+  testiculos:           { cx: 120, cy: 170 },
+  prostata:             { cx: 120, cy: 166 },
 };
 
 const ORGAN_RESTING_COLORS: Record<string, string> = {
@@ -409,6 +511,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
   const [calibrando, setCalibrandoState] = useState(false);
+  const [calibRegiaoId, setCalibRegiaoId] = useState<string>('');
   const [offsetsCalib, setOffsetsCalib] = useState<Record<string, number>>(
     Object.fromEntries(SISTEMAS_ORDEM.map(s => [s, 0]))
   );
@@ -897,40 +1000,59 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             {calibrando ? '✕ Fechar calibração' : '⚙ Calibrar posição dos órgãos'}
           </button>
           {calibrando && (
-            <div className="mt-2 bg-muted/50 border border-border/40 rounded-xl p-3 space-y-1.5">
-              <p className="text-[10px] text-muted-foreground text-center mb-2">
-                Arraste o slider de cada sistema até os órgãos ficarem no lugar certo no avatar.
-                <br/>← negativo = sobe &nbsp;|&nbsp; positivo = desce →
+            <div className="mt-2 bg-muted/50 border border-border/40 rounded-xl p-3 space-y-2">
+              <p className="text-[10px] text-muted-foreground text-center">
+                Pontos em laranja = todas as regiões. Selecione uma para ajustar a posição.
               </p>
-              {SISTEMAS_ORDEM.map(sys => {
-                const cfg = SISTEMA_CONFIG[sys];
-                const val = offsetsCalib[sys] ?? 0;
+              <div className="flex gap-2 items-center">
+                <span className="text-[10px] text-foreground/70 shrink-0">Região:</span>
+                <select
+                  value={calibRegiaoId}
+                  onChange={e => setCalibRegiaoId(e.target.value)}
+                  className="flex-1 text-[11px] bg-background border border-border rounded px-1.5 py-0.5"
+                >
+                  <option value="">— selecionar —</option>
+                  {Object.entries(PONTO_ANATOMICO).map(([id]) => (
+                    <option key={id} value={id}>{id.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+              </div>
+              {calibRegiaoId && (() => {
+                const base = PONTO_ANATOMICO[calibRegiaoId];
+                const curr = savedOrganOffsets[calibRegiaoId] ?? { dx: 0, dy: 0 };
+                const saveDot = (dx: number, dy: number) => {
+                  const next = { ...savedOrganOffsets, [calibRegiaoId]: { dx, dy } };
+                  setSavedOrganOffsets(next);
+                  localStorage.setItem('organ-offsets-calibrado', JSON.stringify(next));
+                };
                 return (
-                  <div key={sys} className="flex items-center gap-2">
-                    <span className="text-[10px] w-28 shrink-0 text-foreground/80">{cfg.label}</span>
-                    <input
-                      type="range" min={-80} max={80} step={1}
-                      value={val}
-                      onChange={e => setOffsetsCalib(prev => ({ ...prev, [sys]: Number(e.target.value) }))}
-                      className="flex-1 h-1 accent-primary"
-                    />
-                    <span className="text-[10px] w-8 text-right font-mono text-primary">
-                      {val > 0 ? '+' : ''}{val}
-                    </span>
+                  <div className="space-y-1.5 pt-1 border-t border-border/30">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] w-16 shrink-0">Horizontal</span>
+                      <input type="range" min={-50} max={50} step={1} value={curr.dx}
+                        onChange={e => saveDot(Number(e.target.value), curr.dy)}
+                        className="flex-1 h-1 accent-orange-500" />
+                      <span className="text-[10px] w-8 text-right font-mono">{curr.dx > 0 ? '+' : ''}{curr.dx}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] w-16 shrink-0">Vertical</span>
+                      <input type="range" min={-80} max={80} step={1} value={curr.dy}
+                        onChange={e => saveDot(curr.dx, Number(e.target.value))}
+                        className="flex-1 h-1 accent-orange-500" />
+                      <span className="text-[10px] w-8 text-right font-mono">{curr.dy > 0 ? '+' : ''}{curr.dy}</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground text-center">
+                      Base ({base.cx},{base.cy}) → Final ({base.cx + curr.dx},{base.cy + curr.dy})
+                    </p>
+                    {(curr.dx !== 0 || curr.dy !== 0) && (
+                      <button type="button" onClick={() => saveDot(0, 0)}
+                        className="text-[10px] text-red-500/70 underline w-full text-center">
+                        Resetar posição
+                      </button>
+                    )}
                   </div>
                 );
-              })}
-              {Object.values(offsetsCalib).some(v => v !== 0) && (
-                <details className="mt-2">
-                  <summary className="text-[10px] text-muted-foreground cursor-pointer">Ver valores para enviar ao desenvolvedor</summary>
-                  <pre className="text-[9px] bg-background rounded p-2 mt-1 overflow-x-auto whitespace-pre-wrap">
-                    {JSON.stringify(
-                      Object.fromEntries(Object.entries(offsetsCalib).filter(([, v]) => v !== 0)),
-                      null, 2
-                    )}
-                  </pre>
-                </details>
-              )}
+              })()}
             </div>
           )}
         </div>
@@ -1026,6 +1148,16 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   50% { opacity: 1.0; }
                 }
                 .pulse-organ { animation: pulse-organ 2.2s infinite ease-in-out; }
+                @keyframes avcDotPing {
+                  0%   { transform: scale(1);   opacity: 0.30; }
+                  60%  { transform: scale(3.0);  opacity: 0;    }
+                  100% { transform: scale(1);   opacity: 0;    }
+                }
+                .avc-dot-ping {
+                  animation: avcDotPing 2.5s ease-out infinite;
+                  transform-box: fill-box;
+                  transform-origin: center;
+                }
               `}
             </style>
 
@@ -1121,8 +1253,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 </g>
               )}
 
-              {/* Musculoskeletal regions — visual weight reflects tipo_diagnostico */}
-              {sistemasAtivos.includes('musculoesqueletico') && regioesBase.map(r => {
+              {/* Pontos anatômicos renderizados fora da máscara — ver abaixo */}
+              {false && regioesBase.map(r => {
                 const fill = corPorRegiao[r.id];
                 const isHoveredSystem = hoveredSistema === 'musculoesqueletico';
                 if (!fill && !isHoveredSystem) return null;
@@ -1157,8 +1289,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 );
               })}
 
-              {/* Organ / visceral regions — sorted by layer, rendered by type */}
-              {[...regioesViscerais]
+              {/* Órgãos viscerais: substituídos por pontos — ver abaixo */}
+              {false && [...regioesViscerais]
                 .sort((a, b) => (a.layer ?? 5) - (b.layer ?? 5))
                 .map(r => {
                 const fill = corPorRegiao[r.id];
@@ -1293,32 +1425,44 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               })}
             </g>
 
-            {/* Organ micro-labels for active systems */}
-            {view === 'front' && (
-              <g fontSize="6" fontFamily="system-ui,sans-serif" textAnchor="middle" pointerEvents="none" fontWeight="600">
-                {sistemasAtivos.includes('nervoso') && (
-                  <text x={120} y={42} fill="rgba(100,115,200,0.88)">Encéfalo</text>
-                )}
-                {sistemasAtivos.includes('circulatorio') && (
-                  <text x={119} y={118} fill="rgba(210,40,40,0.90)" fontSize="8">♥</text>
-                )}
-                {sistemasAtivos.includes('respiratorio') && (
-                  <>
-                    <text x={98}  y={134} fill="rgba(6,182,212,0.85)">P.Dir</text>
-                    <text x={142} y={134} fill="rgba(6,182,212,0.85)">P.Esq</text>
-                  </>
-                )}
-                {sistemasAtivos.includes('digestorio') && (
-                  <text x={100} y={174} fill="rgba(150,70,30,0.85)">Fígado</text>
-                )}
-                {sistemasAtivos.includes('urinario') && (
-                  <text x={120} y={230} fill="rgba(80,110,210,0.85)">Bexiga</text>
-                )}
-              </g>
-            )}
+            {/* ═══ Pontos anatômicos (fora da máscara, posições calibradas) ═══ */}
+            {Object.entries(PONTO_ANATOMICO)
+              .filter(([id]) => corPorRegiao[id])
+              .map(([id, pos], i) => {
+                const cor = corPorRegiao[id];
+                const off = savedOrganOffsets[id] ?? { dx: 0, dy: 0 };
+                const cx = pos.cx + off.dx;
+                const cy = pos.cy + off.dy;
+                return (
+                  <g key={id} style={{ cursor: 'pointer' }} onClick={() => abrirSheet(id)}>
+                    <circle cx={cx} cy={cy} r={9} fill={cor} opacity={0.25}
+                      className="avc-dot-ping"
+                      style={{ animationDelay: `${(i % 5) * 0.52}s` }} />
+                    <circle cx={cx} cy={cy} r={5} fill={cor} />
+                    <circle cx={cx} cy={cy} r={2} fill="white" opacity={0.75} />
+                  </g>
+                );
+              })
+            }
 
-            {/* Contorno escuro do FRONT_OUTLINE removido — a ilustração anatômica fornece o contorno natural.
-                Mantemos apenas as zonas de marcação interativas. */}
+            {/* ─ Modo calibração: todos os pontos em laranja com nome ─ */}
+            {calibrando && Object.entries(PONTO_ANATOMICO).map(([id, pos]) => {
+              const off = savedOrganOffsets[id] ?? { dx: 0, dy: 0 };
+              const cx = pos.cx + off.dx;
+              const cy = pos.cy + off.dy;
+              const isSelected = calibRegiaoId === id;
+              return (
+                <g key={`cal-${id}`} pointerEvents="none">
+                  <circle cx={cx} cy={cy} r={isSelected ? 7 : 4} fill="none"
+                    stroke={isSelected ? 'rgba(255,60,0,0.90)' : 'rgba(255,120,0,0.55)'}
+                    strokeWidth={isSelected ? 1.8 : 1.0} strokeDasharray="2,2" />
+                  <text x={cx + 7} y={cy + 3} fontSize="5" fontFamily="system-ui,sans-serif"
+                    fill={isSelected ? 'rgba(255,60,0,0.95)' : 'rgba(255,100,0,0.75)'}>
+                    {id.replace(/_/g, ' ')}
+                  </text>
+                </g>
+              );
+            })}
 
           </svg>
         </div>
