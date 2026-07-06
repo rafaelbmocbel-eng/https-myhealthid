@@ -270,8 +270,6 @@ export default function ResumoConsultaPresencial({
   return (
     <div className="space-y-3">
       <SafetyBanner pacienteId={pacienteId} />
-      <MyIDResumoInline pacienteId={pacienteId} />
-      <ProtocoloAtivoResumo pacienteId={pacienteId} />
 
       {/* Indicador de processamento automático em background */}
       {isAutoProcessing && (
@@ -307,23 +305,7 @@ export default function ResumoConsultaPresencial({
         </div>
       )}
 
-      {lente && (
-        <div className="flex items-center justify-end gap-2 flex-wrap">
-          <button
-            onClick={() => navigate('/configuracoes')}
-            className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded-full border border-border/40 px-2 py-0.5"
-            title="Trocar profissão em Configurações"
-          >
-            <Stethoscope className="icon-xs shrink-0" />
-            <span>Lente: {lente.nome_exibicao}</span>
-          </button>
-        </div>
-      )}
-
-      {/* Gravador de nova avaliação por voz — oculto por padrão quando já existe uma avaliação,
-          já que o card "Última avaliação" acima já oferece "Complementar com áudio ou texto".
-          Some aqui para evitar dois gravadores de áudio na mesma tela. */}
-      {!loadingAval && (!latestAval || mostrarNovoRegistro) ? (
+      {!loadingAval && (!latestAval || mostrarNovoRegistro) && (
         <div className="space-y-2">
           <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
             <Sparkles className="icon-xs shrink-0" />
@@ -340,19 +322,7 @@ export default function ResumoConsultaPresencial({
             perfilProfissional={lente?.id}
           />
         </div>
-      ) : !loadingAval && latestAval ? (
-        <Button
-          size="sm"
-          variant="ghost"
-          className="gap-1.5 text-xs text-muted-foreground"
-          onClick={() => setMostrarNovoRegistro(true)}
-        >
-          <Mic className="icon-xs shrink-0" />
-          Nova avaliação por voz
-        </Button>
-      ) : null}
-
-      <FechamentoSessaoForm pacienteId={pacienteId} onSuccess={onAssessmentComplete} />
+      )}
     </div>
   );
 }
