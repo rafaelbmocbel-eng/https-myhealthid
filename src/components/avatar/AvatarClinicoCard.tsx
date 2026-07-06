@@ -23,6 +23,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
+import { PONTO_ANATOMICO, LS_DOT_OFFSETS } from '@/utils/anatomia/pontoAnatomico';
 
 
 
@@ -55,121 +56,6 @@ const FRONT_OUTLINE =
   'C 96 84 88 70 88 54 ' +
   'C 88 34 102 18 120 18 Z';
 
-// Posições dos pontos anatômicos no stick-figure (viewBox 240×520).
-// Frente/costas compartilham o mesmo mapa — o ponto indica a região, não a superfície.
-const PONTO_ANATOMICO: Record<string, { cx: number; cy: number }> = {
-  // ─ CABEÇA / PESCOÇO ────────────────────────────────────────
-  cabeca:               { cx: 120, cy: 32  },
-  occipital:            { cx: 120, cy: 32  },
-  // ─ PESCOÇO ─────────────────────────────────────────────────
-  pescoco:              { cx: 120, cy: 61  },
-  cervical:             { cx: 120, cy: 61  },
-  // ─ OMBROS ──────────────────────────────────────────────────
-  ombro_d:              { cx:  72, cy: 90  },
-  ombro_e:              { cx: 168, cy: 90  },
-  trapezio_d:           { cx:  82, cy: 99  },
-  trapezio_e:           { cx: 158, cy: 99  },
-  // ─ BRAÇO D (paciente direito = esquerda na tela) ────────────
-  braco_d:              { cx:  60, cy: 112 },
-  cotovelo_d:           { cx:  51, cy: 138 },
-  antebraco_d:          { cx:  50, cy: 152 },
-  punho_d:              { cx:  50, cy: 161 },
-  mao_d:                { cx:  50, cy: 164 },
-  // ─ BRAÇO E (paciente esquerdo = direita na tela) ────────────
-  braco_e:              { cx: 180, cy: 112 },
-  cotovelo_e:           { cx: 189, cy: 138 },
-  antebraco_e:          { cx: 190, cy: 152 },
-  punho_e:              { cx: 190, cy: 161 },
-  mao_e:                { cx: 190, cy: 164 },
-  // ─ TRONCO ──────────────────────────────────────────────────
-  peitoral:             { cx: 120, cy: 108 },
-  toracica:             { cx: 120, cy: 115 },
-  dorso:                { cx: 120, cy: 122 },
-  abdomen:              { cx: 120, cy: 145 },
-  lombar:               { cx: 120, cy: 148 },
-  pelve:                { cx: 120, cy: 168 },
-  sacral:               { cx: 120, cy: 166 },
-  // ─ QUADRIL ─────────────────────────────────────────────────
-  coxofemural_d:        { cx: 102, cy: 182 },
-  coxofemural_e:        { cx: 138, cy: 182 },
-  gluteo_d:             { cx: 100, cy: 182 },
-  gluteo_e:             { cx: 140, cy: 182 },
-  // ─ COXA ────────────────────────────────────────────────────
-  coxa_d:               { cx:  99, cy: 248 },
-  coxa_e:               { cx: 141, cy: 248 },
-  // ─ JOELHO ──────────────────────────────────────────────────
-  joelho_d:             { cx:  99, cy: 315 },
-  joelho_e:             { cx: 141, cy: 315 },
-  // ─ PERNA ───────────────────────────────────────────────────
-  canela_d:             { cx:  98, cy: 376 },
-  canela_e:             { cx: 142, cy: 376 },
-  // ─ TORNOZELO ───────────────────────────────────────────────
-  tornozelo_d:          { cx:  99, cy: 455 },
-  tornozelo_e:          { cx: 141, cy: 455 },
-  // ─ PÉ ──────────────────────────────────────────────────────
-  pe_d:                 { cx: 100, cy: 498 },
-  pe_e:                 { cx: 140, cy: 498 },
-  // ─ NERVOSO ─────────────────────────────────────────────────
-  cerebro:              { cx: 120, cy: 26  },
-  cerebelo:             { cx: 120, cy: 40  },
-  cerebro_p:            { cx: 120, cy: 26  },
-  cerebelo_p:           { cx: 120, cy: 40  },
-  tronco_encefalico:    { cx: 120, cy: 55  },
-  medula_espinhal_v:    { cx: 120, cy: 122 },
-  medula_p:             { cx: 120, cy: 122 },
-  // ─ CIRCULATÓRIO ────────────────────────────────────────────
-  coracao:              { cx: 112, cy: 108 },
-  aorta:                { cx: 120, cy: 115 },
-  vena_cava:            { cx: 122, cy: 118 },
-  // ─ RESPIRATÓRIO ────────────────────────────────────────────
-  traqueia:             { cx: 120, cy: 78  },
-  pulmao_d:             { cx: 104, cy: 112 },
-  pulmao_e:             { cx: 136, cy: 112 },
-  pulmao_d_p:           { cx: 104, cy: 112 },
-  pulmao_e_p:           { cx: 136, cy: 112 },
-  // ─ DIGESTÓRIO ──────────────────────────────────────────────
-  esofago:              { cx: 120, cy: 90  },
-  figado:               { cx: 109, cy: 130 },
-  estomago:             { cx: 114, cy: 138 },
-  vesicula_biliar:      { cx: 117, cy: 137 },
-  pancreas_corpo:       { cx: 120, cy: 142 },
-  duodeno:              { cx: 126, cy: 140 },
-  baco_frente:          { cx: 131, cy: 135 },
-  intestino_delgado:    { cx: 120, cy: 150 },
-  colon_ascendente:     { cx: 108, cy: 147 },
-  colon_transverso:     { cx: 120, cy: 143 },
-  colon_descendente:    { cx: 132, cy: 147 },
-  colon_sigmoide:       { cx: 128, cy: 158 },
-  apendice:             { cx: 110, cy: 153 },
-  reto:                 { cx: 120, cy: 163 },
-  // ─ ENDÓCRINO ───────────────────────────────────────────────
-  hipofise:             { cx: 120, cy: 28  },
-  tireoide:             { cx: 120, cy: 68  },
-  adrenal_d:            { cx: 108, cy: 133 },
-  adrenal_e:            { cx: 132, cy: 133 },
-  adrenal_d_p:          { cx: 108, cy: 133 },
-  adrenal_e_p:          { cx: 132, cy: 133 },
-  ilhotas_langerhans:   { cx: 120, cy: 142 },
-  // ─ URINÁRIO ────────────────────────────────────────────────
-  rim_d_frente:         { cx: 107, cy: 138 },
-  rim_e_frente:         { cx: 133, cy: 138 },
-  rim_d:                { cx: 107, cy: 138 },
-  rim_e:                { cx: 133, cy: 138 },
-  bexiga:               { cx: 120, cy: 163 },
-  ureteres:             { cx: 120, cy: 150 },
-  // ─ LINFÁTICO ───────────────────────────────────────────────
-  timo:                 { cx: 120, cy: 95  },
-  linfonodos_cervicais: { cx: 120, cy: 67  },
-  linfonodos_axilares_d:{ cx:  65, cy: 95  },
-  linfonodos_axilares_e:{ cx: 175, cy: 95  },
-  linfonodos_inguinais: { cx: 120, cy: 173 },
-  cisterna_chyli:       { cx: 120, cy: 133 },
-  // ─ REPRODUTOR ──────────────────────────────────────────────
-  utero:                { cx: 120, cy: 163 },
-  ovarios:              { cx: 120, cy: 162 },
-  testiculos:           { cx: 120, cy: 170 },
-  prostata:             { cx: 120, cy: 166 },
-};
 
 const ORGAN_RESTING_COLORS: Record<string, string> = {
   // Nervous — blue-lavender
@@ -520,13 +406,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   // synced across tabs via the storage event.
   const [savedOrganOffsets, setSavedOrganOffsets] = useState<Record<string, { dx: number; dy: number }>>(() => {
     try {
-      const raw = localStorage.getItem('organ-offsets-calibrado');
+      const raw = localStorage.getItem(LS_DOT_OFFSETS);
       return raw ? JSON.parse(raw) : {};
     } catch { return {}; }
   });
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'organ-offsets-calibrado') {
+      if (e.key === LS_DOT_OFFSETS) {
         try { setSavedOrganOffsets(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
       }
       if (e.key === 'organ-labels-calibrado') {
@@ -1023,7 +909,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const saveDot = (dx: number, dy: number) => {
                   const next = { ...savedOrganOffsets, [calibRegiaoId]: { dx, dy } };
                   setSavedOrganOffsets(next);
-                  localStorage.setItem('organ-offsets-calibrado', JSON.stringify(next));
+                  localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(next));
                 };
                 return (
                   <div className="space-y-1.5 pt-1 border-t border-border/30">
