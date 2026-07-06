@@ -431,7 +431,6 @@ export default function PacientePerfil() {
   // Links helpers
   const linkAvAtivo = linksAvaliacao.find((l: any) => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
   const linkAgendaAtivo = linksAgenda.find((l: any) => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
-  const temAgendaFutura = agendamentosFuturos.length > 0;
   const scoreCritico = ultimoScoreKpi?.myid_score != null && Number(ultimoScoreKpi.myid_score) < 50;
 
   const gerarLinkAgenda = async () => {
@@ -471,6 +470,7 @@ export default function PacientePerfil() {
     .filter((ag: any) => isAfter(parseISO(ag.data_inicio), hoje) || format(parseISO(ag.data_inicio), 'yyyy-MM-dd') === format(hoje, 'yyyy-MM-dd'))
     .sort((a: any, b: any) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
   const agendamentosPassados = agendamentos.filter((ag: any) => isBefore(parseISO(ag.data_inicio), hoje) && format(parseISO(ag.data_inicio), 'yyyy-MM-dd') !== format(hoje, 'yyyy-MM-dd'));
+  const temAgendaFutura = agendamentosFuturos.length > 0;
 
   const handleDeletePaciente = async () => {
     if (!confirm(`EXCLUIR DEFINITIVAMENTE ${paciente.nome} ${paciente.sobrenome}?\n\nIsso apagará TODO o histórico, avaliações, agendamentos e links deste paciente. Esta ação é IRREVERSÍVEL.`)) return;
