@@ -40,7 +40,12 @@ export default class AppErrorBoundary extends Component<Props, State> {
       msg.includes('Importing a module script failed') ||
       msg.includes('ChunkLoadError') ||
       msg.includes('Loading chunk') ||
-      msg.includes('Loading CSS chunk');
+      msg.includes('Loading CSS chunk') ||
+      // TDZ errors ("Cannot access 'X' before initialization") occur when the
+      // service worker serves a mix of old and new chunk versions after a deploy.
+      // skipWaiting+clientsClaim causes the new SW to take over existing sessions,
+      // invalidating the old session's module graph → treat as a stale-chunk error.
+      /Cannot access '.+' before initialization/.test(msg);
 
     if (isChunkError) {
       const flag = 'app-boundary-reload-at';

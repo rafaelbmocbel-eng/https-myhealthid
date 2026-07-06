@@ -45,6 +45,9 @@ const DYNAMIC_IMPORT_ERROR_PATTERN =
 // from inside vendor-react. Treat it as a chunk-mismatch and reload (throttled).
 const LAZY_DEFAULT_ERROR_PATTERN =
   /Cannot read properties of undefined \(reading 'default'\)|undefined is not an object \(evaluating '.*\.default'\)/i;
+// TDZ error: happens when skipWaiting+clientsClaim forces a new SW onto an old page,
+// making old chunk module graphs reference exports that haven't been initialized yet.
+const STALE_CHUNK_TDZ_PATTERN = /Cannot access '.+' before initialization/i;
 
 const reloadOnDynamicImportFailure = () => {
   // Note: allowed in DEV too — Vite HMR restarts can leave stale module URLs
@@ -75,9 +78,16 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 // React.lazy() reading `.default` from an undefined module = stale chunk after deploy.
+// TDZ "Cannot access 'X' before initialization" = mixed old/new chunk versions from SW.
 window.addEventListener("error", (event) => {
   const message = event.error instanceof Error ? event.error.message : event.message || "";
   const stack = event.error instanceof Error ? event.error.stack || "" : "";
+
+  if (STALE_CHUNK_TDZ_PATTERN.test(message)) {
+    reloadOnDynamicImportFailure();
+    return;
+  }
+
   if (!LAZY_DEFAULT_ERROR_PATTERN.test(message)) return;
   // Only reload when the failure comes from a vendor/react lazy resolution,
   // not from arbitrary user code that happens to read `.default`.
@@ -98,9 +108,10 @@ if (isSafeForSW) {
         window.setInterval(check, 60_000);
       },
       onNeedRefresh() {
-        // Silently apply update — the user will get it on next navigation
-        // No forced reload to avoid jarring UX
-        console.info("[PWA] Nova versão disponível. Será aplicada ao recarregar.");
+        // The new SW has already activated via skipWaiting+clientsClaim. Reload
+        // so the page uses the new chunk URLs from the updated SW cache instead
+        // of the old session's stale module graph (which causes TDZ crashes).
+        reloadOnDynamicImportFailure();
       },
     });
   });
