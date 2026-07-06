@@ -983,12 +983,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               <mask id="avc-body-mask-back" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="520">
                 <path d={FRONT_OUTLINE} fill="white" />
               </mask>
-              {/* Clean neutral silhouette gradient */}
-              <radialGradient id="avc-skin" cx="40%" cy="18%" r="75%">
-                <stop offset="0%"   stopColor="#e8edf2" stopOpacity="0.95" />
-                <stop offset="60%"  stopColor="#d1d8e0" stopOpacity="0.88" />
-                <stop offset="100%" stopColor="#b8c2cc" stopOpacity="0.80" />
-              </radialGradient>
               {/* Organ volume highlight */}
               <radialGradient id="organ-vol" cx="28%" cy="22%" r="72%">
                 <stop offset="0%" stopColor="white" stopOpacity="0.55" />
@@ -1057,10 +1051,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             <g pointerEvents="none">
               <path
                 d={FRONT_OUTLINE}
-                fill="url(#avc-skin)"
-                stroke="hsl(215 16% 60%)"
-                strokeWidth="1.2"
-                opacity="0.92"
+                fill="hsl(var(--muted))"
+                fillOpacity={0.35}
+                stroke="hsl(var(--muted-foreground))"
+                strokeWidth="1.4"
+                opacity={0.30}
               />
 
 
