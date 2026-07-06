@@ -731,6 +731,43 @@ function ResumoPretty({ texto }: { texto: string }) {
   return <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{texto}</p>;
 }
 
+// ---------- Diretriz compacta — resumo visual das fases sem repetir conteúdo da aba Diretrizes ----------
+const FASES_COMPACTO = [
+  { key: 'fase_1_alivio',  label: 'Fase 1 — Alívio & Proteção',    chip: 'bg-red-500/10 text-red-700 border-red-500/20' },
+  { key: 'fase_2_carga',   label: 'Fase 2 — Carga Progressiva',     chip: 'bg-amber-500/10 text-amber-700 border-amber-500/20' },
+  { key: 'fase_3_retorno', label: 'Fase 3 — Retorno Funcional',     chip: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' },
+];
+
+function DiretrizCompact({ diretriz }: { diretriz: any }) {
+  if (!diretriz || typeof diretriz !== 'object') return null;
+
+  const fases = FASES_COMPACTO.map(f => ({ ...f, data: diretriz[f.key] })).filter(f => f.data);
+  if (fases.length === 0) return null;
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex flex-wrap gap-1.5">
+        {fases.map((f) => {
+          const dur = f.data?.duracao_semanas;
+          return (
+            <span key={f.key} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium', f.chip)}>
+              {f.label}
+              {dur && <span className="opacity-60 font-normal">· {dur}</span>}
+            </span>
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+        {diretriz.frequencia_sugerida && <span>📅 {diretriz.frequencia_sugerida}</span>}
+        {diretriz.prognostico && <span className="max-w-[260px] truncate">🔮 {diretriz.prognostico}</span>}
+      </div>
+      <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
+        <ListChecks className="h-3 w-3 shrink-0" />
+        Técnicas e critérios completos na aba Diretrizes
+      </p>
+    </div>
+  );
+}
 
 export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao }: Props) {
   const { user } = useAuth();
@@ -750,7 +787,16 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     });
     return init;
   });
-  const [confirmadas, setConfirmadas] = useState<Set<SecaoKey>>(new Set(confirmadasIniciais));
+  const [confirmadas, setConfirmadas] = useState<Set<SecaoKey>>(() => {
+    if (confirmadasIniciais.length > 0) return new Set(confirmadasIniciais);
+    // Primeira abertura: pré-seleciona todas as seções confirmáveis que têm conteúdo
+    return new Set(
+      SECOES
+        .filter(s => !SECOES_SEM_PRONTUARIO.includes(s.key))
+        .filter(s => (editadasIniciais[s.key] ?? s.builder(resultado, transcricao)).trim().length > 0)
+        .map(s => s.key)
+    );
+  });
   const [editando, setEditando] = useState<SecaoKey | null>(null);
   const [rascunho, setRascunho] = useState<string>('');
   const [saving, setSaving] = useState<SecaoKey | null>(null);
@@ -759,6 +805,21 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   // Sem isto, quando a avaliação é reprocessada (ex.: "Complementar com áudio ou texto") e o
   // componente recebe um `resultado` novo via prop, a tela continua mostrando o resumo antigo
   // até a página ser recarregada — re-sincroniza sempre que a avaliação for resalva.
+  // Se é primeira abertura (nenhuma seção confirmada no DB), persiste a pré-seleção automática
+  const autoConfirmadoRef = useRef(false);
+  useEffect(() => {
+    if (autoConfirmadoRef.current) return;
+    if (confirmadasIniciais.length > 0) { autoConfirmadoRef.current = true; return; }
+    if (confirmadas.size === 0) { autoConfirmadoRef.current = true; return; }
+    autoConfirmadoRef.current = true;
+    const novoResultado = {
+      ...resultado,
+      _secoes: { ...(resultado?._secoes || {}), editadas: editadasIniciais, confirmadas: Array.from(confirmadas) },
+    };
+    supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const ultimoSavedAtRef = useRef(resultado?._meta?.savedAt);
   useEffect(() => {
     const savedAt = resultado?._meta?.savedAt;
@@ -1125,23 +1186,34 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button
-                          size="sm"
-                          variant={(confirmadaF && confirmadaP) ? 'outline' : 'default'}
-                          className={cn(
-                            'h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium',
-                            (confirmadaF && confirmadaP) && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
-                          )}
-                          onClick={async () => {
-                            if (sFunc) await toggleConfirmacao('funcionalidade');
-                            if (sPsi) await toggleConfirmacao('psicossocial');
-                          }}
-                          disabled={savingF}
-                        >
-                          {savingF ? <Loader2 className="icon-xs animate-spin" /> : (confirmadaF && confirmadaP) ? <X className="icon-xs" /> : <Check className="icon-xs" />}
-                          {(confirmadaF && confirmadaP) ? 'Remover' : 'Confirmar'}
-                        </Button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {savingF ? (
+                          <Loader2 className="icon-xs animate-spin text-muted-foreground mx-1" />
+                        ) : (confirmadaF && confirmadaP) ? (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (sFunc) await toggleConfirmacao('funcionalidade');
+                              if (sPsi) await toggleConfirmacao('psicossocial');
+                            }}
+                            title="Remover do prontuário"
+                            className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground/25 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          >
+                            <X className="icon-xs" />
+                          </button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium"
+                            onClick={async () => {
+                              if (sFunc) await toggleConfirmacao('funcionalidade');
+                              if (sPsi) await toggleConfirmacao('psicossocial');
+                            }}
+                            disabled={savingF}
+                          >
+                            <Check className="icon-xs" /> Adicionar
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <div className="px-3 sm:px-3.5 pb-3 sm:pb-3.5 space-y-3">
@@ -1220,31 +1292,47 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                   </div>
 
                   {!editandoEsta && (
-                    <div className="flex gap-1 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-7 w-7 p-0 rounded-md text-muted-foreground hover:text-foreground"
                         onClick={() => iniciarEdicao(s.key)}
                         disabled={savingEsta}
-                        title="Editar"
+                        title="Editar texto"
                       >
                         <Pencil className="icon-xs" />
                       </Button>
                       {!semProntuario && (
-                        <Button
-                          size="sm"
-                          variant={confirmada ? 'outline' : 'default'}
-                          className={cn(
-                            'h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium',
-                            confirmada && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
-                          )}
-                          onClick={() => toggleConfirmacao(s.key)}
-                          disabled={savingEsta}
-                        >
-                          {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : diretrizPendenteEnvio ? <Check className="icon-xs" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
-                          {diretrizPendenteEnvio ? 'Enviar' : confirmada ? 'Remover' : 'Confirmar'}
-                        </Button>
+                        savingEsta ? (
+                          <Loader2 className="icon-xs animate-spin text-muted-foreground mx-1" />
+                        ) : diretrizPendenteEnvio ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium"
+                            onClick={() => toggleConfirmacao(s.key)}
+                          >
+                            <Check className="icon-xs" /> Enviar
+                          </Button>
+                        ) : confirmada ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleConfirmacao(s.key)}
+                            title="Remover do prontuário"
+                            className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground/25 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          >
+                            <X className="icon-xs" />
+                          </button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium"
+                            onClick={() => toggleConfirmacao(s.key)}
+                          >
+                            <Check className="icon-xs" /> Adicionar
+                          </Button>
+                        )
                       )}
                     </div>
                   )}
@@ -1273,7 +1361,9 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                   ) : (
                     <SectionCollapse>
                       {s.key === 'diretriz' ? (
-                        <DiretrizFases texto={textos[s.key]} />
+                        editadoManualmente
+                          ? <DiretrizFases texto={textos[s.key]} />
+                          : <DiretrizCompact diretriz={resultado?.diretriz_tratamento} />
                       ) : s.key === 'soap' ? (
                         <SoapPretty texto={textos[s.key]} />
                       ) : (
