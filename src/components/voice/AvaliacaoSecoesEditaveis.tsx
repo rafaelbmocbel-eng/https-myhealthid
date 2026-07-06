@@ -1207,12 +1207,12 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     }
   };
 
-  const total = secoesDisponiveis.length;
-  const progresso = total > 0 ? Math.round((confirmadas.size / total) * 100) : 0;
-
   // Seções que podem ser confirmadas (excluindo as de apoio)
   const secoesConfirmaveis = secoesDisponiveis.filter((s) => !SECOES_SEM_PRONTUARIO.includes(s.key));
   const todasConfirmadas = secoesConfirmaveis.length > 0 && secoesConfirmaveis.every((s) => confirmadas.has(s.key));
+
+  const total = secoesConfirmaveis.length;
+  const progresso = total > 0 ? Math.round((confirmadas.size / total) * 100) : 0;
 
   const confirmarTodas = async () => {
     const pendentes = secoesConfirmaveis.filter((s) => !confirmadas.has(s.key));
