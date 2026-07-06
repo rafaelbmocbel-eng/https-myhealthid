@@ -14,9 +14,10 @@ interface Props {
   onMarcarConcluido: (id: string) => void;
   onMarcarFaltou: (id: string) => void;
   onAddWalkIn: (pacienteId: string) => Promise<void>;
+  onOpenDrawer?: () => void;
 }
 
-export default function LembreteEncerramento({ agendamentos, pacientes, config, onMarcarConcluido, onMarcarFaltou, onAddWalkIn }: Props) {
+export default function LembreteEncerramento({ agendamentos, pacientes, config, onMarcarConcluido, onMarcarFaltou, onAddWalkIn, onOpenDrawer }: Props) {
   const [dismissed, setDismissed] = useState(false);
   const [now, setNow] = useState(new Date());
   const [showAddWalkIn, setShowAddWalkIn] = useState(false);
@@ -74,9 +75,16 @@ export default function LembreteEncerramento({ agendamentos, pacientes, config, 
             </p>
           </div>
         </div>
-        <button onClick={() => setDismissed(true)} className="p-1 rounded-full hover:bg-accent">
-          <X className="h-4 w-4 text-muted-foreground" />
-        </button>
+        <div className="flex items-center gap-1">
+          {onOpenDrawer && (
+            <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1" onClick={() => { setDismissed(true); onOpenDrawer(); }}>
+              Abrir painel <CheckCircle2 className="h-3 w-3" />
+            </Button>
+          )}
+          <button onClick={() => setDismissed(true)} className="p-1 rounded-full hover:bg-accent">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       {pendentesHoje.length > 0 && (

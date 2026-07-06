@@ -9,7 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
   Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
-  Smartphone, CreditCard, Info, DollarSign, Repeat, Mic
+  Smartphone, CreditCard, Info, DollarSign, Repeat, Mic, ClipboardCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +36,7 @@ import { gerarNotaConduta } from '@/utils/prontuarioAutoNotes';
 import { gerarEvolucaoSessaoConcluida } from '@/utils/evolucaoAutoNotes';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
+import FechaExpedienteDrawer from '@/components/agenda/FechaExpedienteDrawer';
 import AgendaPatientStats from '@/components/agenda/AgendaPatientStats';
 import { shareConfirmacaoSessao } from '@/utils/whatsapp';
 import { MyIDFreshnessDot } from '@/components/agenda/MyIDFreshnessDot';
@@ -195,6 +196,7 @@ export default function Agenda() {
   const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 768 ? 'dia' : 'semana');
   const [currentDate, setCurrentDate] = useState(getInitialAgendaDate);
   const [showBloqueioLote, setShowBloqueioLote] = useState(false);
+  const [showFechaExpediente, setShowFechaExpediente] = useState(false);
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [showNewPaciente, setShowNewPaciente] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -1214,9 +1216,15 @@ export default function Agenda() {
   };
 
   const handleAddWalkIn = async (pacienteId: string) => {
+    await handleAddWalkInComHorario(pacienteId, format(new Date(), 'HH:mm'), 'outro');
+  };
+
+  const handleAddWalkInComHorario = async (pacienteId: string, horario: string, tipo: string) => {
     if (!user) return;
     try {
+      const [h, m] = horario.split(':').map(Number);
       const inicio = new Date();
+      inicio.setHours(h, m, 0, 0);
       const fim = new Date(inicio.getTime() + config.duracao_padrao * 60000);
       const { data: novoAg, error } = await supabase.from('agendamentos').insert({
         terapeuta_id: user.id,
@@ -1224,7 +1232,7 @@ export default function Agenda() {
         data_inicio: inicio.toISOString(),
         data_fim: fim.toISOString(),
         status: 'confirmado',
-        tipo_atendimento: 'outro',
+        tipo_atendimento: tipo || 'outro',
         observacoes: 'Atendimento sem agendamento prévio (encaixe).',
       }).select().single();
       if (error) throw error;
@@ -1294,6 +1302,36 @@ export default function Agenda() {
             </Button>
             <ListaEspera />
             <SalaEsperaVirtual />
+            {/* Botão Fechar Expediente */}
+            {(() => {
+              const now = new Date();
+              const pendentesHoje = agendamentos.filter(ag =>
+                ag.paciente_id &&
+                isToday(parseISO(ag.data_inicio)) &&
+                (ag.status === 'confirmado' || ag.status === 'pendente') &&
+                parseISO(ag.data_fim) <= now,
+              ).length;
+              return (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    'h-9 gap-1.5 text-xs relative',
+                    pendentesHoje > 0 && 'border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30',
+                  )}
+                  onClick={() => setShowFechaExpediente(true)}
+                  title="Fechar expediente — confirmar atendimentos do dia"
+                >
+                  <ClipboardCheck className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Fechar expediente</span>
+                  {pendentesHoje > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center">
+                      {pendentesHoje}
+                    </span>
+                  )}
+                </Button>
+              );
+            })()}
           </div>
         </div>
 
@@ -1341,7 +1379,7 @@ export default function Agenda() {
           </div>
         )}
 
-        {/* Lembrete de encerramento do expediente */}
+        {/* Lembrete de encerramento do expediente — abre o drawer */}
         <LembreteEncerramento
           agendamentos={agendamentos}
           pacientes={pacientes}
@@ -1355,6 +1393,18 @@ export default function Agenda() {
             if (ag) handleSessaoStatus(ag, 'faltou');
           }}
           onAddWalkIn={handleAddWalkIn}
+          onOpenDrawer={() => setShowFechaExpediente(true)}
+        />
+
+        {/* Drawer de controle de encerramento do expediente */}
+        <FechaExpedienteDrawer
+          open={showFechaExpediente}
+          onClose={() => setShowFechaExpediente(false)}
+          agendamentos={agendamentos}
+          pacientes={pacientes}
+          duracaoPadrao={config.duracao_padrao}
+          onSessaoStatus={(ag, status) => handleSessaoStatus(ag, status)}
+          onAddWalkIn={handleAddWalkInComHorario}
         />
 
         <div className="flex flex-1 overflow-hidden">
