@@ -8,7 +8,6 @@ import {
   Mic, LayoutDashboard, ClipboardList,
 } from 'lucide-react';
 import { useState } from 'react';
-import avatarFrente from '@/assets/avatar-humano-frente.png';
 
 // ── MyID ring data (demo values) ─────────────────────────────────────────────
 const MYID_DIMS = [
@@ -122,12 +121,11 @@ function MyIDRingsVisual() {
 }
 
 // ── Body Avatar visual ────────────────────────────────────────────────────────
-// Posições em % sobre a imagem avatar-humano-frente.png (900×1382 px)
 const AVATAR_FINDINGS = [
-  { top: '22%', left: '29%', color: '#EF4444', label: 'Ombro D.',  tipo: 'Tendinopatia', status: 'Ativo',     delay: '0s' },
-  { top: '16%', left: '50%', color: '#10B981', label: 'Cervical',  tipo: 'Contratura',   status: 'Resolvido', delay: '0.7s' },
-  { top: '52%', left: '50%', color: '#F97316', label: 'Lombar',    tipo: 'Lombalgia',    status: 'Ativo',     delay: '1.2s' },
-  { top: '61%', left: '57%', color: '#A855F7', label: 'Quadril E.',tipo: 'Bursite',      status: 'Ativo',     delay: '0.4s' },
+  { cx: 72,  cy: 88,  color: '#EF4444', label: 'Ombro D.',  tipo: 'Tendinopatia', status: 'Ativo',     delay: '0s' },
+  { cx: 100, cy: 68,  color: '#10B981', label: 'Cervical',  tipo: 'Contratura',   status: 'Resolvido', delay: '0.7s' },
+  { cx: 100, cy: 152, color: '#F97316', label: 'Lombar',    tipo: 'Lombalgia',    status: 'Ativo',     delay: '1.2s' },
+  { cx: 116, cy: 182, color: '#A855F7', label: 'Quadril E.',tipo: 'Bursite',      status: 'Ativo',     delay: '0.4s' },
 ];
 
 function BodyAvatarVisual() {
@@ -135,46 +133,42 @@ function BodyAvatarVisual() {
     <>
       <style>{`
         @keyframes avPing {
-          0%   { transform: scale(1); opacity: 0.75; }
-          65%  { transform: scale(3); opacity: 0; }
-          100% { transform: scale(1); opacity: 0; }
+          0%   { r: 5; opacity: 0.7; }
+          65%  { r: 15; opacity: 0; }
+          100% { r: 5; opacity: 0; }
         }
-        .av-dot-ping {
-          animation: avPing 2.6s ease-out infinite;
-          border-radius: 50%;
-          position: absolute; inset: 0;
-        }
+        .av-ping { animation: avPing 2.6s ease-out infinite; }
       `}</style>
-      {/* Imagem real + dots sobrepostos */}
-      <div style={{ position: 'relative', width: 160, height: 260 }}>
-        <img
-          src={avatarFrente}
-          alt="Avatar Clínico 3D"
-          style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'top' }}
-          draggable={false}
-        />
+      <svg viewBox="0 0 200 330" width="155" height="255" fill="none" aria-label="Avatar Clínico">
+        {/* ── Silhueta clean ── */}
+        {/* Cabeça */}
+        <circle cx="100" cy="32" r="24" stroke="currentColor" strokeWidth="1.8" opacity="0.20"
+          fill="currentColor" fillOpacity="0.05" />
+        {/* Pescoço */}
+        <rect x="93" y="54" width="14" height="14" rx="4"
+          fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeWidth="1.4" opacity="0.18" />
+        {/* Tronco */}
+        <path d="M66 80 Q58 120 62 168 Q80 176 100 176 Q120 176 138 168 Q142 120 134 80 Q118 74 100 74 Q82 74 66 80 Z"
+          stroke="currentColor" strokeWidth="1.8" opacity="0.20" fill="currentColor" fillOpacity="0.05" />
+        {/* Braço esq */}
+        <path d="M66 84 Q46 110 42 164" stroke="currentColor" strokeWidth="9" strokeLinecap="round" opacity="0.12" fill="none"/>
+        {/* Braço dir */}
+        <path d="M134 84 Q154 110 158 164" stroke="currentColor" strokeWidth="9" strokeLinecap="round" opacity="0.12" fill="none"/>
+        {/* Perna esq */}
+        <path d="M86 174 Q82 230 82 278 Q82 296 86 306" stroke="currentColor" strokeWidth="12" strokeLinecap="round" opacity="0.12" fill="none"/>
+        {/* Perna dir */}
+        <path d="M114 174 Q118 230 118 278 Q118 296 114 306" stroke="currentColor" strokeWidth="12" strokeLinecap="round" opacity="0.12" fill="none"/>
+
+        {/* ── Dots clínicos ── */}
         {AVATAR_FINDINGS.map((d) => (
-          <div key={d.label} style={{
-            position: 'absolute', top: d.top, left: d.left,
-            transform: 'translate(-50%,-50%)',
-            width: 14, height: 14,
-          }}>
-            {/* Ping ring */}
-            <div className="av-dot-ping" style={{
-              background: d.color,
-              animationDelay: d.delay,
-              opacity: 0.5,
-            }} />
-            {/* Solid dot */}
-            <div style={{
-              position: 'absolute', inset: 2,
-              borderRadius: '50%',
-              background: d.color,
-              boxShadow: `0 0 0 2px white, 0 0 0 3px ${d.color}`,
-            }} />
-          </div>
+          <g key={d.label}>
+            <circle cx={d.cx} cy={d.cy} r="5" fill={d.color} className="av-ping"
+              style={{ animationDelay: d.delay }} />
+            <circle cx={d.cx} cy={d.cy} r="5.5" fill={d.color} />
+            <circle cx={d.cx} cy={d.cy} r="2.2" fill="white" opacity="0.6" />
+          </g>
         ))}
-      </div>
+      </svg>
     </>
   );
 }

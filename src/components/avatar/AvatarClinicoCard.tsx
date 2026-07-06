@@ -23,8 +23,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
-import avatarHumanoFrente from '@/assets/avatar-humano-frente.png';
-import avatarHumanoCostas from '@/assets/avatar-humano-costas.png';
 
 
 
@@ -980,18 +978,16 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 <path d={FRONT_OUTLINE} />
               </clipPath>
               <mask id="avc-body-mask-front" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="520">
-                <rect x="0" y="0" width="240" height="520" fill="black" />
-                <image href={avatarHumanoFrente} {...AVATAR_IMAGE_FRAME} preserveAspectRatio="none" />
+                <path d={FRONT_OUTLINE} fill="white" />
               </mask>
               <mask id="avc-body-mask-back" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="520">
-                <rect x="0" y="0" width="240" height="520" fill="black" />
-                <image href={avatarHumanoCostas} {...AVATAR_BACK_IMAGE_FRAME} preserveAspectRatio="none" />
+                <path d={FRONT_OUTLINE} fill="white" />
               </mask>
-              {/* Warm anatomical skin gradient */}
-              <radialGradient id="avc-skin" cx="44%" cy="22%" r="72%">
-                <stop offset="0%"   stopColor="#f5d5b8" stopOpacity="0.96" />
-                <stop offset="55%"  stopColor="#eccaa8" stopOpacity="0.92" />
-                <stop offset="100%" stopColor="#d4a880" stopOpacity="0.88" />
+              {/* Clean neutral silhouette gradient */}
+              <radialGradient id="avc-skin" cx="40%" cy="18%" r="75%">
+                <stop offset="0%"   stopColor="#e8edf2" stopOpacity="0.95" />
+                <stop offset="60%"  stopColor="#d1d8e0" stopOpacity="0.88" />
+                <stop offset="100%" stopColor="#b8c2cc" stopOpacity="0.80" />
               </radialGradient>
               {/* Organ volume highlight */}
               <radialGradient id="organ-vol" cx="28%" cy="22%" r="72%">
@@ -1057,29 +1053,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            {/* Silhueta humana calibrada no mesmo sistema anatômico de REGIONS/VISCERAL_REGIONS. */}
+            {/* Silhueta humana clean — gradiente neutro, sem foto */}
             <g pointerEvents="none">
-              {view === 'back' ? (
-                <image
-                  href={avatarHumanoCostas}
-                  x={AVATAR_BACK_IMAGE_FRAME.x}
-                  y={AVATAR_BACK_IMAGE_FRAME.y}
-                  width={AVATAR_BACK_IMAGE_FRAME.width}
-                  height={AVATAR_BACK_IMAGE_FRAME.height}
-                  preserveAspectRatio="none"
-                  opacity={0.95}
-                />
-              ) : (
-                <image
-                  href={avatarHumanoFrente}
-                  x={AVATAR_IMAGE_FRAME.x}
-                  y={AVATAR_IMAGE_FRAME.y}
-                  width={AVATAR_IMAGE_FRAME.width}
-                  height={AVATAR_IMAGE_FRAME.height}
-                  preserveAspectRatio="none"
-                  opacity={0.95}
-                />
-              )}
+              <path
+                d={FRONT_OUTLINE}
+                fill="url(#avc-skin)"
+                stroke="hsl(215 16% 60%)"
+                strokeWidth="1.2"
+                opacity="0.92"
+              />
 
 
               {view === 'back' && (
