@@ -376,6 +376,21 @@ export default function PacientePerfil() {
     };
   }, [agendamentos]);
 
+  const { data: ultimoScoreKpi } = useQuery({
+    queryKey: ['score-kpi', id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('avaliacoes_identidade')
+        .select('myid_score')
+        .eq('paciente_id', id!)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id && !!user,
+  });
+
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   if (loadingPac) {
@@ -416,6 +431,8 @@ export default function PacientePerfil() {
   // Links helpers
   const linkAvAtivo = linksAvaliacao.find((l: any) => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
   const linkAgendaAtivo = linksAgenda.find((l: any) => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
+  const temAgendaFutura = agendamentosFuturos.length > 0;
+  const scoreCritico = ultimoScoreKpi?.myid_score != null && Number(ultimoScoreKpi.myid_score) < 50;
 
   const gerarLinkAgenda = async () => {
     if (!user) return;
@@ -771,12 +788,30 @@ export default function PacientePerfil() {
           </div>
 
           {/* Próxima sessão */}
-          <div className="flex items-center gap-2.5 rounded-xl border border-violet-200/70 bg-violet-50/50 dark:border-violet-800/40 dark:bg-violet-950/20 p-3 shrink-0 min-w-[148px] sm:flex-1 hover:shadow-sm transition-shadow">
-            <div className="h-7 w-7 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center shrink-0">
-              <CalendarDays className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+          <div className={cn(
+            "flex items-center gap-2.5 rounded-xl border p-3 shrink-0 min-w-[148px] sm:flex-1 hover:shadow-sm transition-shadow",
+            !agendamentosFuturos[0] && scoreCritico
+              ? "border-red-200/70 bg-red-50/50 dark:border-red-800/40 dark:bg-red-950/20"
+              : "border-violet-200/70 bg-violet-50/50 dark:border-violet-800/40 dark:bg-violet-950/20"
+          )}>
+            <div className={cn(
+              "h-7 w-7 rounded-lg flex items-center justify-center shrink-0",
+              !agendamentosFuturos[0] && scoreCritico
+                ? "bg-red-100 dark:bg-red-900/50"
+                : "bg-violet-100 dark:bg-violet-900/50"
+            )}>
+              {!agendamentosFuturos[0] && scoreCritico
+                ? <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                : <CalendarDays className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+              }
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">Próxima</div>
+              <div className={cn(
+                "text-[10px] font-semibold uppercase tracking-wider",
+                !agendamentosFuturos[0] && scoreCritico
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-violet-600 dark:text-violet-400"
+              )}>Próxima</div>
               <div className="text-sm font-bold tracking-tight text-foreground">
                 {agendamentosFuturos[0]
                   ? (() => {
@@ -811,13 +846,20 @@ export default function PacientePerfil() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
                     Sessões
+                    {sessoesInfo.numeroAtual > 0 && (
+                      <span className="font-normal normal-case tracking-normal text-muted-foreground">· nº{sessoesInfo.numeroAtual}</span>
+                    )}
                     <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
                   </div>
                   <div className="text-sm font-bold tracking-tight text-foreground">
-                    #{sessoesInfo.numeroAtual || 0}
+                    {sessoesInfo.totalRealizadas > 0 ? sessoesInfo.totalRealizadas : '—'}
                   </div>
                   <div className="text-[10px] text-muted-foreground">
-                    {sessoesInfo.totalRealizadas} realizadas
+                    {sessoesInfo.totalRealizadas === 0
+                      ? 'nenhuma ainda'
+                      : sessoesInfo.totalRealizadas === 1
+                        ? 'sessão realizada'
+                        : 'sessões realizadas'}
                   </div>
                 </div>
               </button>
@@ -1019,7 +1061,7 @@ export default function PacientePerfil() {
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
           {!activeTab && (
             <div className="mb-4 space-y-4">
-              {id && <PainelDecisaoClinica pacienteId={id} />}
+              {id && <PainelDecisaoClinica pacienteId={id} temAgendaFutura={temAgendaFutura} />}
               <Suspense fallback={LazyFallback}>
                 <PacienteDashboardIdentidade
                   paciente={paciente as any}
