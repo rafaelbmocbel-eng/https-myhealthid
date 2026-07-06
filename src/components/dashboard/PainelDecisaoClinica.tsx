@@ -1,15 +1,17 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, XCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, TrendingUp, TrendingDown, Minus, ClipboardList, X } from 'lucide-react';
 import { useEventosAnatomicos, useSaveEventoAnatomico, type EventoAnatomico } from '@/hooks/useEventosAnatomicos';
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { detectarEstagnacao, MCID_MYID } from '@/components/paciente/EvolucaoDashboard';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PainelDecisaoClinicaProps {
   pacienteId: string;
+  temAgendaFutura?: boolean;
 }
 
 interface MyidRow {
@@ -78,7 +80,7 @@ function ScoreGauge({ score, color }: { score: number; color: string }) {
   );
 }
 
-export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinicaProps) {
+export default function PainelDecisaoClinica({ pacienteId, temAgendaFutura = true }: PainelDecisaoClinicaProps) {
   const { data: eventos = [] } = useEventosAnatomicos(pacienteId);
   const saveEvento = useSaveEventoAnatomico();
   const qc = useQueryClient();
@@ -124,7 +126,10 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
   const redFlags = useMemo(() => {
     const doMyid: string[] = Array.isArray(myid[0]?.red_flags) ? (myid[0]!.red_flags as string[]) : [];
     const doVoz: string[]  = Array.isArray(ultimaVoz?.resultado?.red_flags) ? ultimaVoz!.resultado.red_flags! : [];
-    return Array.from(new Set([...doMyid, ...doVoz]));
+    const all = Array.from(new Set([...doMyid, ...doVoz]));
+    // Filter out "no red flags" messages that AI sometimes returns as flag entries
+    const negPattern = /nenhum|sem red|não ident|escassez|insuficiente|dados insuficientes/i;
+    return all.filter(f => f.length > 3 && !negPattern.test(f));
   }, [myid, ultimaVoz]);
 
   const myidAtual    = myid[0];
@@ -160,6 +165,32 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
   const color = scoreColor(rawScore);
   const totalAlerts = redFlags.length + pendentes.length + (estagnado ? 1 : 0);
   const classificacao = myidAtual?.classificacao || null;
+
+  const { user } = useAuth();
+  const [intercorrenciaOpen, setIntercorrenciaOpen] = useState(false);
+  const [intercorrenciaTexto, setIntercorrenciaTexto] = useState('');
+  const [intercorrenciaUrgencia, setIntercorrenciaUrgencia] = useState<'baixa' | 'media' | 'alta'>('media');
+  const [salvandoIntercorrencia, setSalvandoIntercorrencia] = useState(false);
+
+  const salvarIntercorrencia = async () => {
+    if (!user || !intercorrenciaTexto.trim()) return;
+    setSalvandoIntercorrencia(true);
+    try {
+      await (supabase as any).from('notas_prontuario').insert({
+        paciente_id: pacienteId,
+        terapeuta_id: user.id,
+        tipo: 'intercorrencia',
+        titulo: `Intercorrência — Urgência ${intercorrenciaUrgencia === 'alta' ? 'Alta' : intercorrenciaUrgencia === 'media' ? 'Média' : 'Baixa'}`,
+        descricao: intercorrenciaTexto.trim(),
+        dados_extras: { urgencia: intercorrenciaUrgencia, score_atual: rawScore },
+      });
+      setIntercorrenciaOpen(false);
+      setIntercorrenciaTexto('');
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+    } catch { /* silent — nota opcional */ } finally {
+      setSalvandoIntercorrencia(false);
+    }
+  };
 
   // Band-based styling tokens
   const wrapperCls = cn(
@@ -269,6 +300,17 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
         </div>
       )}
 
+      {/* C-03: Sem agenda + score crítico */}
+      {(band === 'critical' || band === 'severe') && !temAgendaFutura && (
+        <div className="mx-4 mb-3 rounded-xl border border-amber-200/60 bg-amber-50/80 dark:bg-amber-900/20 dark:border-amber-700/40 px-3 py-2.5 flex items-center gap-2">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+          <p className="text-xs text-amber-800 dark:text-amber-300 flex-1 leading-snug">
+            <strong>Paciente crítico sem consulta agendada.</strong>{' '}
+            Agende um retorno para acompanhamento urgente.
+          </p>
+        </div>
+      )}
+
       {/* ── Relatos pendentes ────────────────────────────────────────────── */}
       {pendentes.length > 0 && (
         <div className="mx-4 mb-4 space-y-1.5">
@@ -294,6 +336,64 @@ export default function PainelDecisaoClinica({ pacienteId }: PainelDecisaoClinic
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* I-04: Intercorrência para casos críticos */}
+      {(band === 'critical' || band === 'severe') && (
+        <div className="px-4 pb-4">
+          {intercorrenciaOpen ? (
+            <div className="rounded-xl border border-border bg-background p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Registrar Intercorrência</p>
+                <button onClick={() => setIntercorrenciaOpen(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="flex gap-1.5">
+                {(['baixa', 'media', 'alta'] as const).map(u => (
+                  <button
+                    key={u}
+                    onClick={() => setIntercorrenciaUrgencia(u)}
+                    className={cn(
+                      'flex-1 text-[10px] font-semibold py-1 rounded-md border transition-colors',
+                      intercorrenciaUrgencia === u
+                        ? u === 'alta' ? 'bg-red-100 border-red-300 text-red-700' : u === 'media' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-sky-100 border-sky-300 text-sky-700'
+                        : 'bg-muted border-transparent text-muted-foreground',
+                    )}
+                  >
+                    {u === 'alta' ? 'Alta' : u === 'media' ? 'Média' : 'Baixa'}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                className="w-full text-xs rounded-lg border border-border bg-muted/40 px-2.5 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground"
+                rows={3}
+                placeholder="Descreva a intercorrência clínica…"
+                value={intercorrenciaTexto}
+                onChange={e => setIntercorrenciaTexto(e.target.value)}
+              />
+              <Button
+                size="sm"
+                className="w-full gap-1.5 text-xs"
+                disabled={!intercorrenciaTexto.trim() || salvandoIntercorrencia}
+                onClick={salvarIntercorrencia}
+              >
+                {salvandoIntercorrencia ? <TrendingUp className="h-3.5 w-3.5 animate-spin" /> : <ClipboardList className="h-3.5 w-3.5" />}
+                Salvar no prontuário
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full text-xs gap-1.5 text-muted-foreground border-dashed hover:border-red-300 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+              onClick={() => setIntercorrenciaOpen(true)}
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              Registrar intercorrência
+            </Button>
+          )}
         </div>
       )}
     </div>

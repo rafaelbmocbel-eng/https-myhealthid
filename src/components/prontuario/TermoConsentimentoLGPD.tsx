@@ -135,6 +135,33 @@ export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome, compa
   );
 
   if (compact) {
+    // No term at all → prominent amber banner with inline CTA
+    if (!isLoading && !termoAtivo && !termoPendente) {
+      return (
+        <div className="flex items-start sm:items-center gap-3 p-3 rounded-xl border border-amber-300/70 bg-amber-50/80 dark:border-amber-700/40 dark:bg-amber-900/20 flex-col sm:flex-row">
+          <div className="flex items-start gap-2 flex-1">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+            <div className="text-xs">
+              <p className="font-semibold text-amber-900 dark:text-amber-200">Termo LGPD não assinado</p>
+              <p className="text-amber-800/80 dark:text-amber-300/80 leading-snug">
+                Dados de saúde exigem consentimento explícito (Art. 11, LGPD). Envie o termo para o paciente assinar.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={enviarTermo}
+            disabled={enviando}
+            className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white text-xs gap-1.5 w-full sm:w-auto"
+          >
+            {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            Enviar termo
+          </Button>
+        </div>
+      );
+    }
+
+    // Term pending or accepted → small clickable button (original behavior)
     return (
       <Dialog open={openCompact} onOpenChange={setOpenCompact}>
         <DialogTrigger asChild>
