@@ -1047,16 +1047,30 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            {/* Silhueta humana clean — gradiente neutro, sem foto */}
+            {/* Silhueta stick-figure — mesmas proporções da landing page, escalada para 240×520 */}
             <g pointerEvents="none">
-              <path
-                d={FRONT_OUTLINE}
-                fill="hsl(var(--muted))"
-                fillOpacity={0.35}
-                stroke="hsl(var(--muted-foreground))"
-                strokeWidth="1.4"
-                opacity={0.30}
-              />
+              {/* Cabeça */}
+              <circle cx={120} cy={32} r={24}
+                stroke="currentColor" strokeWidth="1.8" opacity="0.22"
+                fill="currentColor" fillOpacity="0.05" />
+              {/* Pescoço */}
+              <rect x={112} y={54} width={16} height={14} rx={4}
+                fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeWidth="1.4" opacity="0.18" />
+              {/* Tronco */}
+              <path d="M79 80 Q70 120 74 168 Q96 176 120 176 Q144 176 166 168 Q170 120 161 80 Q142 74 120 74 Q98 74 79 80 Z"
+                stroke="currentColor" strokeWidth="1.8" opacity="0.22" fill="currentColor" fillOpacity="0.05" />
+              {/* Braço esquerdo */}
+              <path d="M79 84 Q55 110 50 164"
+                stroke="currentColor" strokeWidth="11" strokeLinecap="round" opacity="0.12" fill="none"/>
+              {/* Braço direito */}
+              <path d="M161 84 Q185 110 190 164"
+                stroke="currentColor" strokeWidth="11" strokeLinecap="round" opacity="0.12" fill="none"/>
+              {/* Perna esquerda */}
+              <path d="M103 174 Q98 315 98 436 Q98 482 103 507"
+                stroke="currentColor" strokeWidth="14" strokeLinecap="round" opacity="0.12" fill="none"/>
+              {/* Perna direita */}
+              <path d="M137 174 Q142 315 142 436 Q142 482 137 507"
+                stroke="currentColor" strokeWidth="14" strokeLinecap="round" opacity="0.12" fill="none"/>
 
 
               {view === 'back' && (
