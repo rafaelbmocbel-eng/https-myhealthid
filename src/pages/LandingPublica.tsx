@@ -120,12 +120,30 @@ function MyIDRingsVisual() {
   );
 }
 
-// ── Body Avatar visual ────────────────────────────────────────────────────────
+// ── Sistema corporal → cor (paleta unificada landing + app) ───────────────────
+const SISTEMA_COR: Record<string, string> = {
+  musculoesqueletico: '#fb923c',
+  nervoso:            '#818cf8',
+  digestorio:         '#34d399',
+  circulatorio:       '#ef4444',
+  respiratorio:       '#ec4899',
+  urinario:           '#60a5fa',
+  endocrino:          '#fbbf24',
+};
+
+const SISTEMAS_LEGENDA = [
+  { key: 'musculoesqueletico', label: 'Musculoesq.' },
+  { key: 'nervoso',            label: 'Nervoso'     },
+  { key: 'circulatorio',       label: 'Circulatório'},
+  { key: 'digestorio',         label: 'Digestório'  },
+];
+
+// Demo: 4 sistemas diferentes para ilustrar a codificação por cor
 const AVATAR_FINDINGS = [
-  { cx: 72,  cy: 88,  color: '#EF4444', label: 'Ombro D.',  tipo: 'Tendinopatia', status: 'Ativo',     delay: '0s' },
-  { cx: 100, cy: 68,  color: '#10B981', label: 'Cervical',  tipo: 'Contratura',   status: 'Resolvido', delay: '0.7s' },
-  { cx: 100, cy: 152, color: '#F97316', label: 'Lombar',    tipo: 'Lombalgia',    status: 'Ativo',     delay: '1.2s' },
-  { cx: 116, cy: 182, color: '#A855F7', label: 'Quadril E.',tipo: 'Bursite',      status: 'Ativo',     delay: '0.4s' },
+  { cx: 72,  cy: 90,  sistema: 'musculoesqueletico', label: 'Ombro D.',  tipo: 'Tendinopatia', status: 'Ativo',     delay: '0s'   },
+  { cx: 106, cy: 28,  sistema: 'nervoso',            label: 'Cabeça',    tipo: 'Enxaqueca',    status: 'Ativo',     delay: '0.6s' },
+  { cx: 92,  cy: 118, sistema: 'circulatorio',       label: 'Tórax',     tipo: 'Palpitação',   status: 'Obs.',      delay: '1.1s' },
+  { cx: 100, cy: 152, sistema: 'digestorio',         label: 'Abdômen',   tipo: 'Refluxo',      status: 'Resolvido', delay: '1.6s' },
 ];
 
 function BodyAvatarVisual() {
@@ -133,41 +151,41 @@ function BodyAvatarVisual() {
     <>
       <style>{`
         @keyframes avPing {
-          0%   { r: 5; opacity: 0.7; }
-          65%  { r: 15; opacity: 0; }
-          100% { r: 5; opacity: 0; }
+          0%   { transform: scale(1); opacity: 0.7; }
+          65%  { transform: scale(3.2); opacity: 0; }
+          100% { transform: scale(1); opacity: 0; }
         }
-        .av-ping { animation: avPing 2.6s ease-out infinite; }
+        .av-ping {
+          animation: avPing 2.6s ease-out infinite;
+          transform-box: fill-box;
+          transform-origin: center;
+        }
       `}</style>
       <svg viewBox="0 0 200 330" width="155" height="255" fill="none" aria-label="Avatar Clínico">
         {/* ── Silhueta clean ── */}
-        {/* Cabeça */}
         <circle cx="100" cy="32" r="24" stroke="currentColor" strokeWidth="1.8" opacity="0.20"
           fill="currentColor" fillOpacity="0.05" />
-        {/* Pescoço */}
         <rect x="93" y="54" width="14" height="14" rx="4"
           fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeWidth="1.4" opacity="0.18" />
-        {/* Tronco */}
         <path d="M66 80 Q58 120 62 168 Q80 176 100 176 Q120 176 138 168 Q142 120 134 80 Q118 74 100 74 Q82 74 66 80 Z"
           stroke="currentColor" strokeWidth="1.8" opacity="0.20" fill="currentColor" fillOpacity="0.05" />
-        {/* Braço esq */}
         <path d="M66 84 Q46 110 42 164" stroke="currentColor" strokeWidth="9" strokeLinecap="round" opacity="0.12" fill="none"/>
-        {/* Braço dir */}
         <path d="M134 84 Q154 110 158 164" stroke="currentColor" strokeWidth="9" strokeLinecap="round" opacity="0.12" fill="none"/>
-        {/* Perna esq */}
         <path d="M86 174 Q82 230 82 278 Q82 296 86 306" stroke="currentColor" strokeWidth="12" strokeLinecap="round" opacity="0.12" fill="none"/>
-        {/* Perna dir */}
         <path d="M114 174 Q118 230 118 278 Q118 296 114 306" stroke="currentColor" strokeWidth="12" strokeLinecap="round" opacity="0.12" fill="none"/>
 
-        {/* ── Dots clínicos ── */}
-        {AVATAR_FINDINGS.map((d) => (
-          <g key={d.label}>
-            <circle cx={d.cx} cy={d.cy} r="5" fill={d.color} className="av-ping"
-              style={{ animationDelay: d.delay }} />
-            <circle cx={d.cx} cy={d.cy} r="5.5" fill={d.color} />
-            <circle cx={d.cx} cy={d.cy} r="2.2" fill="white" opacity="0.6" />
-          </g>
-        ))}
+        {/* ── Dots por sistema ── */}
+        {AVATAR_FINDINGS.map((d) => {
+          const cor = SISTEMA_COR[d.sistema];
+          return (
+            <g key={d.label}>
+              <circle cx={d.cx} cy={d.cy} r="6" fill={cor} className="av-ping"
+                style={{ animationDelay: d.delay }} />
+              <circle cx={d.cx} cy={d.cy} r="6" fill={cor} />
+              <circle cx={d.cx} cy={d.cy} r="2.5" fill="white" opacity="0.65" />
+            </g>
+          );
+        })}
       </svg>
     </>
   );
@@ -552,24 +570,38 @@ export default function LandingPublica() {
                   <BodyAvatarVisual />
                 </div>
 
-                {/* Finding cards — ordered to match body top→bottom */}
-                <div className="flex flex-col gap-2.5 pt-6 w-[170px]">
-                  {AVATAR_FINDINGS.map(({ color, label, tipo, status }) => (
-                    <div key={label}
-                      className="rounded-xl border bg-card px-3 py-2.5 shadow-sm"
-                      style={{ borderColor: `${color}30` }}>
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[12px] font-bold" style={{ color }}>{label}</span>
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                          status === 'Resolvido'
-                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300'
-                        }`}>{status}</span>
+                {/* Finding cards — cor do sistema no label e na borda */}
+                <div className="flex flex-col gap-2.5 pt-4 w-[170px]">
+                  {AVATAR_FINDINGS.map(({ sistema, label, tipo, status }) => {
+                    const cor = SISTEMA_COR[sistema];
+                    const badgeCls = status === 'Resolvido'
+                      ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                      : status === 'Obs.'
+                      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                      : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300';
+                    return (
+                      <div key={label}
+                        className="rounded-xl border bg-card px-3 py-2.5 shadow-sm"
+                        style={{ borderColor: `${cor}35` }}>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[12px] font-bold" style={{ color: cor }}>{label}</span>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badgeCls}`}>{status}</span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">{tipo}</div>
                       </div>
-                      <div className="text-[11px] text-muted-foreground">{tipo}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* Legenda de sistemas */}
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
+                {SISTEMAS_LEGENDA.map(({ key, label }) => (
+                  <div key={key} className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full shrink-0" style={{ background: SISTEMA_COR[key] }} />
+                    <span className="text-[10px] text-muted-foreground">{label}</span>
+                  </div>
+                ))}
               </div>
 
               <p className="text-[11px] text-muted-foreground text-center max-w-[34ch]">
