@@ -1262,33 +1262,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 Confirmar todos
               </Button>
             )}
-            {todasConfirmadas && pacienteInfo?.telefone && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 h-9 px-3 text-[12px] border-green-500 text-green-700 hover:bg-green-50 dark:border-green-600 dark:text-green-400 shrink-0"
-                onClick={() => {
-                  const nome = pacienteInfo.nome ?? '';
-                  const soap = textos.soap?.split('\n').slice(0, 3).join('\n') || '';
-                  const resumo = textos.resumo_clinico?.slice(0, 300) || '';
-                  const eva = resultado?.dor?.intensidade_eva ?? resultado?.dor?.intensidade ?? '';
-                  const diretriz = textos.diretriz?.slice(0, 400) || '';
-                  const linhas = [
-                    `Olá ${nome}! 👋 Aqui está o resumo da sua sessão de hoje:`,
-                    soap ? `\n📋 *SOAP:*\n${soap}` : '',
-                    resumo ? `\n📊 *Resumo Clínico:*\n${resumo}` : '',
-                    eva ? `\n🩺 *Dor (EVA):* ${eva}/10` : '',
-                    diretriz ? `\n🎯 *Diretriz:*\n${diretriz}` : '',
-                    '\nContinue firme! Até a próxima sessão. 💪',
-                  ].filter(Boolean).join('');
-                  const phone = pacienteInfo.telefone!.replace(/\D/g, '');
-                  const url = `https://wa.me/55${phone}?text=${encodeURIComponent(linhas)}`;
-                  window.open(url, '_blank', 'noopener,noreferrer');
-                }}
-              >
-                <MessageCircle className="icon-xs" /> WhatsApp
-              </Button>
-            )}
           </div>
         </div>
       </div>
