@@ -4,7 +4,8 @@ import { REGIONS } from '@/components/presencial/Body3DAvatar';
 import avatarHumanoFrente from '@/assets/avatar-humano-frente.png';
 import avatarHumanoCostas from '@/assets/avatar-humano-costas.png';
 
-// Wrap REGIONS into OrganRegion shape so the calibrator can handle them uniformly
+// Wrap REGIONS into OrganRegion shape so the calibrator can handle them uniformly.
+// Pass cx/cy from REGIONS so pathCentroid (which misreads arc flag numbers) is bypassed.
 const MUSCULO_REGIONS: OrganRegion[] = REGIONS.map(r => ({
   id: r.id,
   label: r.label,
@@ -13,6 +14,8 @@ const MUSCULO_REGIONS: OrganRegion[] = REGIONS.map(r => ({
   d: r.d,
   type: 'organ' as const,
   layer: 1,
+  cx: r.cx,
+  cy: r.cy,
 }));
 
 function pathCentroid(d: string): { cx: number; cy: number } {
@@ -196,7 +199,9 @@ export default function Calibrador() {
           <line x1="0" y1="260" x2="240" y2="260" stroke="#ffffff18" strokeWidth="0.5" strokeDasharray="4 4" />
 
           {organs.map(organ => {
-            const { cx, cy } = pathCentroid(organ.d);
+            const { cx: computedCx, cy: computedCy } = pathCentroid(organ.d);
+            const cx = organ.cx ?? computedCx;
+            const cy = organ.cy ?? computedCy;
             const off   = offsets[organ.id] ?? { dx: 0, dy: 0 };
             const color = SYS_COLOR[organ.sistemas[0]] ?? '#fff';
             const isSel = selected === organ.id;

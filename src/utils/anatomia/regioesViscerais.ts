@@ -6,6 +6,8 @@ export interface OrganRegion {
   d: string;
   type?: 'organ' | 'vessel' | 'nerve' | 'gland' | 'structural';
   layer?: number; // render order: 0=back, 10=front
+  cx?: number;   // explicit label/handle x (overrides pathCentroid)
+  cy?: number;   // explicit label/handle y (overrides pathCentroid)
 }
 
 /**
