@@ -754,11 +754,11 @@ function ResumoPretty({ texto }: { texto: string }) {
   return <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{texto}</p>;
 }
 
-// ---------- Diretriz compacta — resumo visual das fases sem repetir conteúdo da aba Diretrizes ----------
+// ---------- Diretriz compacta — cards por fase com layout igual à aba Diretrizes, porém resumidos ----------
 const FASES_COMPACTO = [
-  { key: 'fase_1_alivio',  label: 'Fase 1 — Alívio & Proteção',    chip: 'bg-red-500/10 text-red-700 border-red-500/20' },
-  { key: 'fase_2_carga',   label: 'Fase 2 — Carga Progressiva',     chip: 'bg-amber-500/10 text-amber-700 border-amber-500/20' },
-  { key: 'fase_3_retorno', label: 'Fase 3 — Retorno Funcional',     chip: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' },
+  { key: 'fase_1_alivio',  label: 'Fase 1 — Alívio & Proteção',    chipLabel: 'Fase 1', chip: 'bg-red-500/10 text-red-700 border-red-500/20',          num: 'bg-red-500/10 text-red-600',           ring: 'from-red-400/60 to-red-500/10' },
+  { key: 'fase_2_carga',   label: 'Fase 2 — Carga Progressiva',     chipLabel: 'Fase 2', chip: 'bg-amber-500/10 text-amber-700 border-amber-500/20',    num: 'bg-amber-500/10 text-amber-600',       ring: 'from-amber-400/60 to-amber-500/10' },
+  { key: 'fase_3_retorno', label: 'Fase 3 — Retorno Funcional',     chipLabel: 'Fase 3', chip: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20', num: 'bg-emerald-500/10 text-emerald-600', ring: 'from-emerald-400/60 to-emerald-500/10' },
 ];
 
 function DiretrizCompact({ diretriz }: { diretriz: any }) {
@@ -767,27 +767,98 @@ function DiretrizCompact({ diretriz }: { diretriz: any }) {
   const fases = FASES_COMPACTO.map(f => ({ ...f, data: diretriz[f.key] })).filter(f => f.data);
   if (fases.length === 0) return null;
 
+  const nomeTec = (it: any) =>
+    typeof it === 'string' ? it : (it?.nome || it?.tecnica || it?.exercicio || it?.titulo || '');
+  const textoObj = (o: any) =>
+    typeof o === 'string' ? o : (o?.descricao || o?.objetivo || o?.text || '');
+  const textoCrit = (c: any) =>
+    typeof c === 'string' ? c : (c?.criterio || c?.descricao || '');
+
   return (
-    <div className="space-y-2.5">
-      <div className="flex flex-wrap gap-1.5">
-        {fases.map((f) => {
-          const dur = f.data?.duracao_semanas;
-          return (
-            <span key={f.key} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium', f.chip)}>
-              {f.label}
-              {dur && <span className="opacity-60 font-normal">· {dur}</span>}
-            </span>
-          );
-        })}
-      </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
-        {diretriz.frequencia_sugerida && <span>📅 {diretriz.frequencia_sugerida}</span>}
-        {diretriz.prognostico && <span className="max-w-[260px] truncate">🔮 {diretriz.prognostico}</span>}
-      </div>
-      <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
-        <ListChecks className="h-3 w-3 shrink-0" />
-        Técnicas e critérios completos na aba Diretrizes
-      </p>
+    <div className="space-y-2">
+      {fases.map((f, idx) => {
+        const v = f.data;
+        const dur: string | undefined = v?.duracao_semanas;
+        const objs: any[] = Array.isArray(v?.objetivos) ? v.objetivos : [];
+        const tecs: any[] = Array.isArray(v?.tecnicas) ? v.tecnicas : (Array.isArray(v?.exercicios) ? v.exercicios : []);
+        const crit: any[] = Array.isArray(v?.criterios_progressao) ? v.criterios_progressao
+          : v?.criterios_progressao ? [v.criterios_progressao] : [];
+
+        return (
+          <div key={f.key} className="relative rounded-xl border border-border/40 bg-card/60 p-3 pl-3.5">
+            <div className={cn('absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full bg-gradient-to-b', f.ring)} />
+
+            {/* Cabeçalho: número + nome + chip de fase */}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className={cn('inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold shrink-0', f.num)}>
+                  {idx + 1}
+                </span>
+                <span className="font-semibold text-[13px] text-foreground truncate">{f.label}</span>
+              </div>
+              <span className={cn('inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium shrink-0', f.chip)}>
+                {f.chipLabel}
+              </span>
+            </div>
+
+            {/* Duração */}
+            {dur && <p className="text-[11px] text-muted-foreground mb-2">⏱️ {dur}</p>}
+
+            {/* Objetivos — até 2, truncados em 1 linha */}
+            {objs.length > 0 && (
+              <div className="mb-2">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">🎯 Objetivos</p>
+                <ul className="space-y-0.5">
+                  {objs.slice(0, 2).map((o, i) => (
+                    <li key={i} className="flex gap-1.5 text-[12px] text-foreground/80">
+                      <span className="shrink-0">•</span>
+                      <span className="line-clamp-1">{textoObj(o)}</span>
+                    </li>
+                  ))}
+                  {objs.length > 2 && (
+                    <li className="text-[11px] text-muted-foreground/60 pl-3">+{objs.length - 2} objetivos na aba Diretrizes</li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Técnicas — só os nomes como chips, até 4 */}
+            {tecs.length > 0 && (
+              <div className="mb-2">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">🔧 Técnicas</p>
+                <div className="flex flex-wrap gap-1">
+                  {tecs.slice(0, 4).map((t, i) => (
+                    <span key={i} className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/75">
+                      {nomeTec(t) || `Técnica ${i + 1}`}
+                    </span>
+                  ))}
+                  {tecs.length > 4 && (
+                    <span className="text-[11px] text-muted-foreground/60 self-center">+{tecs.length - 4}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Critério de progressão — 1ª linha apenas */}
+            {crit.length > 0 && (
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">✅ Progressão</p>
+                <p className="text-[11px] text-foreground/75 line-clamp-1">
+                  {textoCrit(crit[0])}{crit.length > 1 ? ` (+${crit.length - 1})` : ''}
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Frequência e prognóstico globais */}
+      {(diretriz.frequencia_sugerida || diretriz.prognostico) && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground px-1 pt-0.5">
+          {diretriz.frequencia_sugerida && <span>📅 {diretriz.frequencia_sugerida}</span>}
+          {diretriz.prognostico && <span className="line-clamp-1 max-w-[260px]">🔮 {diretriz.prognostico}</span>}
+        </div>
+      )}
     </div>
   );
 }
