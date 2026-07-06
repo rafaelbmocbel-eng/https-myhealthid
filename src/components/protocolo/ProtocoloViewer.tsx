@@ -30,6 +30,8 @@ const FASE_COLORS = [
 function DiretrizSnapshotCompact({ snapshot }: { snapshot: DiretrizSnapshot }) {
   if (!snapshot?.fases?.length) return null;
 
+  const manut = snapshot.manutencao && typeof snapshot.manutencao === 'object' ? snapshot.manutencao : null;
+
   return (
     <div className="space-y-3">
       {snapshot.fases.map((fase: DiretrizSnapshotPhase, idx: number) => {
@@ -66,47 +68,119 @@ function DiretrizSnapshotCompact({ snapshot }: { snapshot: DiretrizSnapshot }) {
                 </p>
               )}
 
-              {/* Objectives */}
+              {/* Objectives — até 4 linhas */}
               {objs.length > 0 && (
                 <div className="space-y-0.5">
-                  {objs.slice(0, 2).map((obj, i) => (
-                    <p key={i} className="text-[12px] text-foreground/80 leading-snug line-clamp-1">
-                      {i === 0 ? '🎯 ' : '• '}{obj}
-                    </p>
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">🎯 Objetivos</p>
+                  {objs.slice(0, 4).map((obj, i) => (
+                    <p key={i} className="text-[12px] text-foreground/80 leading-snug line-clamp-1 pl-1">• {obj}</p>
                   ))}
-                  {objs.length > 2 && (
-                    <p className="text-[11px] text-muted-foreground/60">+{objs.length - 2} objetivos</p>
+                  {objs.length > 4 && (
+                    <p className="text-[11px] text-muted-foreground/60 pl-1">+{objs.length - 4} objetivos</p>
                   )}
                 </div>
               )}
 
-              {/* Technique chips */}
+              {/* Technique chips — até 5 */}
               {tecnicas.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-0.5">
-                  {tecnicas.slice(0, 4).map((t, i) => (
-                    <span key={i} className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-foreground/70">
-                      {t.nome}
-                    </span>
-                  ))}
-                  {tecnicas.length > 4 && (
-                    <span className="inline-flex items-center rounded-md border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground/60">
-                      +{tecnicas.length - 4}
-                    </span>
-                  )}
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">🔧 Técnicas</p>
+                  <div className="flex flex-wrap gap-1">
+                    {tecnicas.slice(0, 5).map((t, i) => (
+                      <span key={i} className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-foreground/70">
+                        {t.nome}
+                      </span>
+                    ))}
+                    {tecnicas.length > 5 && (
+                      <span className="inline-flex items-center rounded-md border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground/60">
+                        +{tecnicas.length - 5}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Criteria */}
+              {/* Criteria — até 2 linhas */}
               {criterios.length > 0 && (
-                <p className="text-[11px] text-muted-foreground/70 flex items-start gap-1 line-clamp-1">
-                  <ListChecks className="h-3 w-3 shrink-0 mt-0.5" />
-                  {criterios[0]}
-                </p>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground flex items-center gap-1">
+                    <ListChecks className="h-3 w-3" /> Progressão
+                  </p>
+                  {criterios.slice(0, 2).map((c, i) => (
+                    <p key={i} className="text-[11px] text-foreground/75 line-clamp-1 pl-1">• {c}</p>
+                  ))}
+                  {criterios.length > 2 && (
+                    <p className="text-[11px] text-muted-foreground/60 pl-1">+{criterios.length - 2} critérios</p>
+                  )}
+                </div>
               )}
             </div>
           </div>
         );
       })}
+
+      {/* Card Manutenção / Pós-reabilitação */}
+      {manut && (
+        <div className="relative rounded-xl border border-border bg-card overflow-hidden">
+          <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-violet-400/60 to-violet-500/10" />
+          <div className="pl-4 pr-4 pt-3 pb-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold shrink-0 bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                  {snapshot.fases.length + 1}
+                </span>
+                <span className="font-semibold text-[13px] text-foreground truncate">Pós-Reabilitação & Manutenção</span>
+              </div>
+              <span className="inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold bg-violet-500/10 text-violet-700 border-violet-500/20 dark:text-violet-400">
+                Manutenção
+              </span>
+            </div>
+
+            {manut.frequencia_reavaliacao && (
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3 shrink-0" /> {String(manut.frequencia_reavaliacao)}
+              </p>
+            )}
+
+            {manut.mensagem_paciente && (
+              <div className="space-y-0.5">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">🎯 Orientação</p>
+                <p className="text-[12px] text-foreground/80 line-clamp-2 pl-1">{String(manut.mensagem_paciente)}</p>
+              </div>
+            )}
+
+            {Array.isArray(manut.rotina_minima) && (manut.rotina_minima as string[]).length > 0 && (
+              <div className="space-y-1">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">🔧 Rotina mínima</p>
+                <div className="flex flex-wrap gap-1">
+                  {(manut.rotina_minima as string[]).slice(0, 4).map((r: string, i: number) => (
+                    <span key={i} className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-foreground/70 max-w-[200px] truncate">
+                      {r}
+                    </span>
+                  ))}
+                  {(manut.rotina_minima as string[]).length > 4 && (
+                    <span className="inline-flex items-center rounded-md border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground/60">
+                      +{(manut.rotina_minima as string[]).length - 4}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {Array.isArray(manut.sinais_para_retornar) && (manut.sinais_para_retornar as string[]).length > 0 && (
+              <div className="space-y-0.5">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">⚠️ Retornar ao profissional</p>
+                {(manut.sinais_para_retornar as string[]).slice(0, 2).map((s: string, i: number) => (
+                  <p key={i} className="text-[11px] text-foreground/75 line-clamp-1 pl-1">• {s}</p>
+                ))}
+                {(manut.sinais_para_retornar as string[]).length > 2 && (
+                  <p className="text-[11px] text-muted-foreground/60 pl-1">+{(manut.sinais_para_retornar as string[]).length - 2} sinais</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Frequency + Prognosis */}
       <div className="flex flex-wrap gap-2 pt-1">

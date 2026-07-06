@@ -756,16 +756,19 @@ function ResumoPretty({ texto }: { texto: string }) {
 
 // ---------- Diretriz compacta — cards por fase com layout igual à aba Diretrizes, porém resumidos ----------
 const FASES_COMPACTO = [
-  { key: 'fase_1_alivio',  label: 'Fase 1 — Alívio & Proteção',    chipLabel: 'Fase 1', chip: 'bg-red-500/10 text-red-700 border-red-500/20',          num: 'bg-red-500/10 text-red-600',           ring: 'from-red-400/60 to-red-500/10' },
-  { key: 'fase_2_carga',   label: 'Fase 2 — Carga Progressiva',     chipLabel: 'Fase 2', chip: 'bg-amber-500/10 text-amber-700 border-amber-500/20',    num: 'bg-amber-500/10 text-amber-600',       ring: 'from-amber-400/60 to-amber-500/10' },
-  { key: 'fase_3_retorno', label: 'Fase 3 — Retorno Funcional',     chipLabel: 'Fase 3', chip: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20', num: 'bg-emerald-500/10 text-emerald-600', ring: 'from-emerald-400/60 to-emerald-500/10' },
+  { key: 'fase_1_alivio',  label: 'Fase 1 — Alívio & Proteção',    chipLabel: 'Fase 1',      chip: 'bg-red-500/10 text-red-700 border-red-500/20',             num: 'bg-red-500/10 text-red-600',             ring: 'from-red-400/60 to-red-500/10' },
+  { key: 'fase_2_carga',   label: 'Fase 2 — Carga Progressiva',     chipLabel: 'Fase 2',      chip: 'bg-amber-500/10 text-amber-700 border-amber-500/20',       num: 'bg-amber-500/10 text-amber-600',         ring: 'from-amber-400/60 to-amber-500/10' },
+  { key: 'fase_3_retorno', label: 'Fase 3 — Retorno Funcional',     chipLabel: 'Fase 3',      chip: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20', num: 'bg-emerald-500/10 text-emerald-600',     ring: 'from-emerald-400/60 to-emerald-500/10' },
+  { key: 'fase_4_manutencao', label: 'Fase 4 — Pós-Reabilitação',  chipLabel: 'Manutenção',  chip: 'bg-violet-500/10 text-violet-700 border-violet-500/20',    num: 'bg-violet-500/10 text-violet-600',       ring: 'from-violet-400/60 to-violet-500/10' },
 ];
 
 function DiretrizCompact({ diretriz }: { diretriz: any }) {
   if (!diretriz || typeof diretriz !== 'object') return null;
 
   const fases = FASES_COMPACTO.map(f => ({ ...f, data: diretriz[f.key] })).filter(f => f.data);
-  if (fases.length === 0) return null;
+  // Também aceita fase_4 vindo como campo separado 'manutencao'
+  const manut = diretriz.manutencao && typeof diretriz.manutencao === 'object' ? diretriz.manutencao : null;
+  if (fases.length === 0 && !manut) return null;
 
   const nomeTec = (it: any) =>
     typeof it === 'string' ? it : (it?.nome || it?.tecnica || it?.exercicio || it?.titulo || '');
@@ -804,53 +807,114 @@ function DiretrizCompact({ diretriz }: { diretriz: any }) {
             {/* Duração */}
             {dur && <p className="text-[11px] text-muted-foreground mb-2">⏱️ {dur}</p>}
 
-            {/* Objetivos — até 2, truncados em 1 linha */}
+            {/* Objetivos — até 4 linhas */}
             {objs.length > 0 && (
               <div className="mb-2">
                 <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">🎯 Objetivos</p>
                 <ul className="space-y-0.5">
-                  {objs.slice(0, 2).map((o, i) => (
+                  {objs.slice(0, 4).map((o, i) => (
                     <li key={i} className="flex gap-1.5 text-[12px] text-foreground/80">
                       <span className="shrink-0">•</span>
                       <span className="line-clamp-1">{textoObj(o)}</span>
                     </li>
                   ))}
-                  {objs.length > 2 && (
-                    <li className="text-[11px] text-muted-foreground/60 pl-3">+{objs.length - 2} objetivos na aba Diretrizes</li>
+                  {objs.length > 4 && (
+                    <li className="text-[11px] text-muted-foreground/60 pl-3">+{objs.length - 4} objetivos</li>
                   )}
                 </ul>
               </div>
             )}
 
-            {/* Técnicas — só os nomes como chips, até 4 */}
+            {/* Técnicas — chips com nome, até 5 */}
             {tecs.length > 0 && (
               <div className="mb-2">
                 <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">🔧 Técnicas</p>
                 <div className="flex flex-wrap gap-1">
-                  {tecs.slice(0, 4).map((t, i) => (
+                  {tecs.slice(0, 5).map((t, i) => (
                     <span key={i} className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/75">
                       {nomeTec(t) || `Técnica ${i + 1}`}
                     </span>
                   ))}
-                  {tecs.length > 4 && (
-                    <span className="text-[11px] text-muted-foreground/60 self-center">+{tecs.length - 4}</span>
+                  {tecs.length > 5 && (
+                    <span className="text-[11px] text-muted-foreground/60 self-center">+{tecs.length - 5}</span>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Critério de progressão — 1ª linha apenas */}
+            {/* Critérios de progressão — até 2 linhas */}
             {crit.length > 0 && (
               <div>
                 <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">✅ Progressão</p>
-                <p className="text-[11px] text-foreground/75 line-clamp-1">
-                  {textoCrit(crit[0])}{crit.length > 1 ? ` (+${crit.length - 1})` : ''}
-                </p>
+                {crit.slice(0, 2).map((c, i) => (
+                  <p key={i} className="text-[11px] text-foreground/75 line-clamp-1">• {textoCrit(c)}</p>
+                ))}
+                {crit.length > 2 && (
+                  <p className="text-[11px] text-muted-foreground/60">+{crit.length - 2} critérios</p>
+                )}
               </div>
             )}
           </div>
         );
       })}
+
+      {/* Fase Manutenção — vinda do campo 'manutencao' (quando não está em fase_4_manutencao) */}
+      {manut && !diretriz.fase_4_manutencao && (
+        <div className="relative rounded-xl border border-border/40 bg-card/60 p-3 pl-3.5">
+          <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full bg-gradient-to-b from-violet-400/60 to-violet-500/10" />
+
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold shrink-0 bg-violet-500/10 text-violet-600">
+                {fases.length + 1}
+              </span>
+              <span className="font-semibold text-[13px] text-foreground truncate">Pós-Reabilitação & Manutenção</span>
+            </div>
+            <span className="inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium shrink-0 bg-violet-500/10 text-violet-700 border-violet-500/20">
+              Manutenção
+            </span>
+          </div>
+
+          {manut.frequencia_reavaliacao && (
+            <p className="text-[11px] text-muted-foreground mb-2">⏱️ {String(manut.frequencia_reavaliacao)}</p>
+          )}
+
+          {manut.mensagem_paciente && (
+            <div className="mb-2">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">🎯 Orientação</p>
+              <p className="text-[12px] text-foreground/80 line-clamp-2">{String(manut.mensagem_paciente)}</p>
+            </div>
+          )}
+
+          {Array.isArray(manut.rotina_minima) && manut.rotina_minima.length > 0 && (
+            <div className="mb-2">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">🔧 Rotina mínima</p>
+              <div className="flex flex-wrap gap-1">
+                {(manut.rotina_minima as string[]).slice(0, 4).map((r: string, i: number) => (
+                  <span key={i} className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/75 max-w-[200px] truncate">
+                    {r}
+                  </span>
+                ))}
+                {manut.rotina_minima.length > 4 && (
+                  <span className="text-[11px] text-muted-foreground/60 self-center">+{manut.rotina_minima.length - 4}</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {Array.isArray(manut.sinais_para_retornar) && manut.sinais_para_retornar.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">⚠️ Retornar ao profissional</p>
+              {(manut.sinais_para_retornar as string[]).slice(0, 2).map((s: string, i: number) => (
+                <p key={i} className="text-[11px] text-foreground/75 line-clamp-1">• {s}</p>
+              ))}
+              {manut.sinais_para_retornar.length > 2 && (
+                <p className="text-[11px] text-muted-foreground/60">+{manut.sinais_para_retornar.length - 2} sinais</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Frequência e prognóstico globais */}
       {(diretriz.frequencia_sugerida || diretriz.prognostico) && (
