@@ -530,9 +530,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       queryClient.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
       queryClient.invalidateQueries({ queryKey: ['prontuario'] });
       queryClient.invalidateQueries({ queryKey: ['evolucao'] });
-      // Invalidate timeline e insights do paciente — para que a avaliação apareça
-      // imediatamente em tudo que ela alimenta, sem precisar recarregar a página.
+      // Invalida a query da avaliação mais recente → AvaliacaoVozAtual recarrega
+      // e transiciona para AvaliacaoSecoesEditaveis em vez de ficar preso na
+      // visualização interna do VoiceAssessment (voz e escrita ficam idênticos).
       if (pacienteId) {
+        queryClient.invalidateQueries({ queryKey: ['avaliacao-voz-latest', pacienteId] });
         queryClient.invalidateQueries({ queryKey: ['timeline_completa', pacienteId] });
         queryClient.invalidateQueries({ queryKey: ['paciente-insights-aval', pacienteId] });
       }

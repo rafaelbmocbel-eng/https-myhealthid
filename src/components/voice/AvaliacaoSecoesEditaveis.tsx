@@ -726,6 +726,29 @@ function InsightsPretty({ data }: { data: any }) {
   );
 }
 
+function InsightsCompact({ data }: { data: any }) {
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const first = data[0];
+  const texto = typeof first === 'string' ? first : (first.insight || first.texto || '');
+  return (
+    <div className="space-y-2">
+      <span className={cn(
+        'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium',
+        'bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/20'
+      )}>
+        💡 {data.length} {data.length === 1 ? 'insight' : 'insights'} baseados em evidências
+      </span>
+      <p className="text-[13px] text-foreground/80 leading-relaxed line-clamp-2">{texto}</p>
+      {data.length > 1 && (
+        <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
+          <ListChecks className="h-3 w-3 shrink-0" />
+          {data.length - 1} insight{data.length - 1 > 1 ? 's' : ''} adicionais disponíveis
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ResumoPretty({ texto }: { texto: string }) {
   if (!texto?.trim()) return null;
   return <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{texto}</p>;
@@ -1387,7 +1410,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                           ) : s.key === 'insights' ? (
                             editadoManualmente
                               ? <ResumoPretty texto={textos[s.key]} />
-                              : <InsightsPretty data={resultado?.insights_baseados_evidencia} />
+                              : <InsightsCompact data={resultado?.insights_baseados_evidencia} />
                           ) : s.key === 'resumo_clinico' ? (
                             <ResumoPretty texto={textos[s.key]} />
                           ) : (
