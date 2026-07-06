@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft, Download, Activity, Target, CheckCircle2,
-  Loader2, Zap, Shield, Beaker, TrendingUp, Layers, FileText
+  Loader2, Zap, Shield, Beaker, TrendingUp, Layers, FileText,
+  Clock, ListChecks, Pencil,
 } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
@@ -15,6 +16,116 @@ import ProtocoloTratamento from './ProtocoloTratamento';
 import ProtocoloProgressao from './ProtocoloProgressao';
 import ProtocoloDiretrizEditor from './ProtocoloDiretrizEditor';
 import { createDiretrizSnapshotFromVoz, getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
+import type { DiretrizSnapshot, DiretrizSnapshotPhase } from '@/lib/protocoloSnapshot';
+import { cn } from '@/lib/utils';
+
+/* ─── Compact phase-card view (same style as assessment DiretrizCompact) ─── */
+const FASE_COLORS = [
+  { chip: 'bg-red-500/10 text-red-700 border-red-500/20 dark:text-red-400', num: 'bg-red-500/10 text-red-600 dark:text-red-400', ring: 'from-red-400/60 to-red-500/10' },
+  { chip: 'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-400', num: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', ring: 'from-amber-400/60 to-amber-500/10' },
+  { chip: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:text-emerald-400', num: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', ring: 'from-emerald-400/60 to-emerald-500/10' },
+  { chip: 'bg-blue-500/10 text-blue-700 border-blue-500/20 dark:text-blue-400', num: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', ring: 'from-blue-400/60 to-blue-500/10' },
+];
+
+function DiretrizSnapshotCompact({ snapshot }: { snapshot: DiretrizSnapshot }) {
+  if (!snapshot?.fases?.length) return null;
+
+  return (
+    <div className="space-y-3">
+      {snapshot.fases.map((fase: DiretrizSnapshotPhase, idx: number) => {
+        const colors = FASE_COLORS[idx % FASE_COLORS.length];
+        const objs = [fase.objetivo, ...(fase.demandasAlvo || [])].filter(Boolean);
+        const tecnicas = fase.tecnicas || [];
+        const criterios = fase.criteriosProgressao || [];
+
+        return (
+          <div key={fase.numero} className="relative rounded-xl border border-border bg-card overflow-hidden">
+            <div className={cn('absolute inset-y-0 left-0 w-1 bg-gradient-to-b', colors.ring)} />
+
+            <div className="pl-4 pr-4 pt-3 pb-3 space-y-2">
+              {/* Header */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold shrink-0', colors.num)}>
+                    {fase.numero}
+                  </span>
+                  <span className="font-semibold text-[13px] text-foreground truncate">{fase.titulo}</span>
+                </div>
+                <span className={cn('inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold', colors.chip)}>
+                  Fase {fase.numero}
+                </span>
+              </div>
+
+              {/* Duration */}
+              {fase.semanas && (
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3 shrink-0" />
+                  Semanas {fase.semanas}
+                  {fase.frequenciaSemanal ? ` · ${fase.frequenciaSemanal}x/sem` : ''}
+                  {fase.duracaoSessao ? ` · ${fase.duracaoSessao}` : ''}
+                </p>
+              )}
+
+              {/* Objectives */}
+              {objs.length > 0 && (
+                <div className="space-y-0.5">
+                  {objs.slice(0, 2).map((obj, i) => (
+                    <p key={i} className="text-[12px] text-foreground/80 leading-snug line-clamp-1">
+                      {i === 0 ? '🎯 ' : '• '}{obj}
+                    </p>
+                  ))}
+                  {objs.length > 2 && (
+                    <p className="text-[11px] text-muted-foreground/60">+{objs.length - 2} objetivos</p>
+                  )}
+                </div>
+              )}
+
+              {/* Technique chips */}
+              {tecnicas.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {tecnicas.slice(0, 4).map((t, i) => (
+                    <span key={i} className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-foreground/70">
+                      {t.nome}
+                    </span>
+                  ))}
+                  {tecnicas.length > 4 && (
+                    <span className="inline-flex items-center rounded-md border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground/60">
+                      +{tecnicas.length - 4}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Criteria */}
+              {criterios.length > 0 && (
+                <p className="text-[11px] text-muted-foreground/70 flex items-start gap-1 line-clamp-1">
+                  <ListChecks className="h-3 w-3 shrink-0 mt-0.5" />
+                  {criterios[0]}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Frequency + Prognosis */}
+      <div className="flex flex-wrap gap-2 pt-1">
+        {snapshot.frequenciaSugerida && (
+          <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="text-[12px] text-foreground/80">{snapshot.frequenciaSugerida}</span>
+          </div>
+        )}
+        {snapshot.prognostico && (
+          <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5">
+            <span className="text-[11px] text-muted-foreground">Prognóstico:</span>
+            <span className="text-[12px] text-foreground/80">{snapshot.prognostico}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const parseResultado = (value: unknown) => {
   if (typeof value !== 'string') return value as any;
@@ -35,6 +146,7 @@ interface Props {
 
 export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNewDiretriz, embedded = false }: Props) {
   const [tabAtiva, setTabAtiva] = useState<'fases' | 'tecnicas' | 'tratamento' | 'progressao'>('fases');
+  const [showEditor, setShowEditor] = useState(false);
 
   const { data: protocolo, isLoading: loadingProt } = useQuery({
     queryKey: ['protocolo', protocoloId],
@@ -148,12 +260,38 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
     return (
       <div className="space-y-4">
         {diretrizSnapshot ? (
-          <ProtocoloDiretrizEditor
-            protocoloId={protocoloId}
-            snapshot={diretrizSnapshot}
-            faseAtual={faseAtual}
-            queixa={protocolo.titulo}
-          />
+          <>
+            {!showEditor ? (
+              <>
+                <DiretrizSnapshotCompact snapshot={diretrizSnapshot} />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full gap-2 text-muted-foreground"
+                  onClick={() => setShowEditor(true)}
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Editar / detalhar diretriz
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-muted-foreground"
+                  onClick={() => setShowEditor(false)}
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" /> Voltar ao resumo
+                </Button>
+                <ProtocoloDiretrizEditor
+                  protocoloId={protocoloId}
+                  snapshot={diretrizSnapshot}
+                  faseAtual={faseAtual}
+                  queixa={protocolo.titulo}
+                />
+              </>
+            )}
+          </>
         ) : (
           <div className="rounded-xl border border-border/40 bg-card p-4 text-sm text-muted-foreground">
             Esta diretriz ainda não possui o conteúdo confirmado salvo.
