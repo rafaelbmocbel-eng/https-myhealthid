@@ -59,8 +59,6 @@ export default function Configuracoes() {
   const [form, setForm] = useState<ConfigAgenda>(config);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [savingVagas, setSavingVagas] = useState(false);
-  const [savedVagas, setSavedVagas] = useState(false);
   const [tab, setTab] = useState<TabId>('clinica');
 
   useEffect(() => { setForm(config); }, [config]);
@@ -175,45 +173,27 @@ export default function Configuracoes() {
               <div className="flex items-center gap-2 mb-3">
                 <Users className="icon-sm text-muted-foreground" />
                 <h2 className="h-section">Vagas por horário</h2>
-                {savedVagas && (
-                  <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-emerald-600">
-                    <CheckCircle2 className="h-3 w-3" /> Salvo
-                  </span>
-                )}
               </div>
               <p className="text-caption mb-3">Quantos pacientes podem agendar no mesmo horário simultaneamente.</p>
               <div className="max-w-xs">
                 <Label className="text-xs font-medium mb-1.5 block">Vagas simultâneas</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={99}
-                    value={form.vagas_por_horario || ''}
-                    onChange={e => {
-                      const raw = e.target.value;
-                      if (raw === '') { setForm(f => ({ ...f, vagas_por_horario: 0 })); return; }
-                      const num = parseInt(raw, 10);
-                      if (!isNaN(num)) setForm(f => ({ ...f, vagas_por_horario: Math.min(99, num) }));
-                    }}
-                    onBlur={async () => {
-                      const valor = Math.max(1, form.vagas_por_horario || 1);
-                      const proximo = { ...form, vagas_por_horario: valor };
-                      setForm(proximo);
-                      if (valor !== config.vagas_por_horario) {
-                        setSavingVagas(true);
-                        await saveConfig(proximo);
-                        setSavingVagas(false);
-                        setSavedVagas(true);
-                        setTimeout(() => setSavedVagas(false), 2000);
-                      }
-                    }}
-                    disabled={savingVagas}
-                  />
-                  {savingVagas && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">Salva automaticamente ao sair do campo. Padrão: 1 (atendimento individual).</p>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={99}
+                  value={form.vagas_por_horario || ''}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    if (raw === '') { setForm(f => ({ ...f, vagas_por_horario: 0 })); return; }
+                    const num = parseInt(raw, 10);
+                    if (!isNaN(num)) setForm(f => ({ ...f, vagas_por_horario: Math.min(99, num) }));
+                  }}
+                  onBlur={() => {
+                    setForm(f => ({ ...f, vagas_por_horario: Math.max(1, f.vagas_por_horario || 1) }));
+                  }}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Padrão: 1 (atendimento individual). Use o botão Salvar para confirmar.</p>
               </div>
             </div>
           </TabsContent>
@@ -277,7 +257,7 @@ export default function Configuracoes() {
       {isDirty && (
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+12px)] animate-in slide-in-from-bottom">
           <div className="container max-w-2xl flex items-center justify-between gap-3 px-0">
-            <p className="text-xs text-muted-foreground">Você tem alterações não salvas na agenda.</p>
+            <p className="text-xs text-muted-foreground">Você tem alterações não salvas.</p>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => setForm(config)} disabled={saving} className="rounded-xl">
                 Descartar
