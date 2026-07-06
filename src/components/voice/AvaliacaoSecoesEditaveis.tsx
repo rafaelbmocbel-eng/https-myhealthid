@@ -1093,6 +1093,10 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 const confirmadaF = confirmadas.has('funcionalidade');
                 const confirmadaP = confirmadas.has('psicossocial');
                 const savingF = saving === 'funcionalidade' || saving === 'psicossocial';
+                const sDefFunc = SECOES.find((x) => x.key === 'funcionalidade')!;
+                const sDefPsi = SECOES.find((x) => x.key === 'psicossocial')!;
+                const funcEditada = sFunc && textos['funcionalidade'] !== sDefFunc.builder(resultado, transcricao);
+                const psiEditada = sPsi && textos['psicossocial'] !== sDefPsi.builder(resultado, transcricao);
                 cards.push(
                   <Card
                     key="func-psi"
@@ -1145,7 +1149,9 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         <div>
                           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5">Funcionalidade</p>
                           <div className={cn('rounded-lg border border-border/30 px-3 py-2.5', accentF.surface)}>
-                            <ObjPretty data={resultado?.funcionalidade} />
+                            {funcEditada
+                              ? <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos['funcionalidade']}</p>
+                              : <ObjPretty data={resultado?.funcionalidade} />}
                           </div>
                         </div>
                       )}
@@ -1153,7 +1159,9 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         <div>
                           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5">Fatores Psicossociais</p>
                           <div className={cn('rounded-lg border border-border/30 px-3 py-2.5', ACCENTS['psicossocial'].surface)}>
-                            <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
+                            {psiEditada
+                              ? <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos['psicossocial']}</p>
+                              : <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />}
                           </div>
                         </div>
                       )}
@@ -1173,6 +1181,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
             const isDiretriz = s.key === 'diretriz';
             const semProntuario = SECOES_SEM_PRONTUARIO.includes(s.key);
             const diretrizPendenteEnvio = isDiretriz && confirmada && !resultado?._secoes?.diretriz_protocolo_id;
+            const textoOriginal = s.builder(resultado, transcricao);
+            const editadoManualmente = textos[s.key] !== textoOriginal;
             rendered.add(s.key);
 
             cards.push(
@@ -1269,15 +1279,25 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                       ) : (
                         <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
                           {s.key === 'dor' ? (
-                            <DorPretty data={resultado?.dor} />
+                            editadoManualmente
+                              ? <ResumoPretty texto={textos[s.key]} />
+                              : <DorPretty data={resultado?.dor} />
                           ) : s.key === 'red_flags' ? (
-                            <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
+                            editadoManualmente
+                              ? <ResumoPretty texto={textos[s.key]} />
+                              : <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
                           ) : s.key === 'hipoteses' ? (
-                            <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
+                            editadoManualmente
+                              ? <ResumoPretty texto={textos[s.key]} />
+                              : <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
                           ) : s.key === 'cif' ? (
-                            <CifPretty data={resultado?.cif_codes} />
+                            editadoManualmente
+                              ? <ResumoPretty texto={textos[s.key]} />
+                              : <CifPretty data={resultado?.cif_codes} />
                           ) : s.key === 'insights' ? (
-                            <InsightsPretty data={resultado?.insights_baseados_evidencia} />
+                            editadoManualmente
+                              ? <ResumoPretty texto={textos[s.key]} />
+                              : <InsightsPretty data={resultado?.insights_baseados_evidencia} />
                           ) : s.key === 'resumo_clinico' ? (
                             <ResumoPretty texto={textos[s.key]} />
                           ) : (
