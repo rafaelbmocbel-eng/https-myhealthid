@@ -98,26 +98,29 @@ export default function Calibrador() {
 
   const onPointerUp = useCallback(() => { dragging.current = null; }, []);
 
-  // Load calibration from Supabase user metadata on mount (works cross-device without migration)
+  // Load calibration from Supabase table on mount
   useEffect(() => {
     if (!user) return;
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const saved = (u?.user_metadata as any)?.avatar_calibracao;
-      if (!saved) return;
-      if (saved.offsets && Object.keys(saved.offsets).length > 0) {
-        setOffsets(saved.offsets);
-        localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(saved.offsets));
-      }
-      if (saved.scales && Object.keys(saved.scales).length > 0) {
-        setScales(saved.scales);
-        localStorage.setItem(LS_SCALES, JSON.stringify(saved.scales));
-      }
-      if (saved.figura && Object.keys(saved.figura).length > 0) {
-        setFigura(saved.figura);
-        localStorage.setItem(LS_FIGURA, JSON.stringify(saved.figura));
-      }
-    });
+    // @ts-expect-error -- tabela criada por migração; tipos serão regenerados
+    supabase.from('avatar_calibracao')
+      .select('offsets, scales, figura')
+      .eq('terapeuta_id', user.id)
+      .maybeSingle()
+      .then(({ data }: { data: { offsets: Record<string,Offset>; scales: Record<string,Scale>; figura: FiguraParams } | null }) => {
+        if (!data) return;
+        if (data.offsets && Object.keys(data.offsets).length > 0) {
+          setOffsets(data.offsets);
+          localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(data.offsets));
+        }
+        if (data.scales && Object.keys(data.scales).length > 0) {
+          setScales(data.scales);
+          localStorage.setItem(LS_SCALES, JSON.stringify(data.scales));
+        }
+        if (data.figura && Object.keys(data.figura).length > 0) {
+          setFigura(data.figura);
+          localStorage.setItem(LS_FIGURA, JSON.stringify(data.figura));
+        }
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -135,12 +138,15 @@ export default function Calibrador() {
   const persistSupabase = useCallback(async (
     offs: typeof offsets, scs: typeof scales, fig: typeof figura
   ) => {
+    if (!user) return;
     setCloudSync('syncing');
-    const { error } = await supabase.auth.updateUser({
-      data: { avatar_calibracao: { offsets: offs, scales: scs, figura: fig } },
-    });
+    // @ts-expect-error -- tabela criada por migração; tipos serão regenerados
+    const { error } = await supabase.from('avatar_calibracao').upsert(
+      { terapeuta_id: user.id, offsets: offs, scales: scs, figura: fig, updated_at: new Date().toISOString() },
+      { onConflict: 'terapeuta_id' }
+    );
     setCloudSync(error ? 'error' : 'ok');
-  }, []);
+  }, [user]);
 
   const doSave = useCallback(async (
     offs: typeof offsets, scs: typeof scales, fig: typeof figura

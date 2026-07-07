@@ -435,22 +435,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Load calibration from Supabase user metadata — runs on mount and when page regains focus
+  // Load calibration from Supabase table — runs on mount and when page regains focus
   const applyCalibrationFromCloud = useCallback(() => {
     if (!user) return;
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const saved = (u?.user_metadata as any)?.avatar_calibracao;
-      if (!saved) return;
-      if (saved.offsets && Object.keys(saved.offsets).length > 0) {
-        setSavedOrganOffsets(saved.offsets);
-        localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(saved.offsets));
-      }
-      if (saved.scales && Object.keys(saved.scales).length > 0) {
-        setSavedOrganScales(saved.scales);
-        localStorage.setItem(LS_SCALES, JSON.stringify(saved.scales));
-      }
-    });
+    // @ts-expect-error -- tabela criada por migração; tipos serão regenerados
+    supabase.from('avatar_calibracao')
+      .select('offsets, scales')
+      .eq('terapeuta_id', user.id)
+      .maybeSingle()
+      .then(({ data }: { data: { offsets: Record<string,{dx:number;dy:number}>; scales: Record<string,{sx:number;sy:number}> } | null }) => {
+        if (!data) return;
+        if (data.offsets && Object.keys(data.offsets).length > 0) {
+          setSavedOrganOffsets(data.offsets);
+          localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(data.offsets));
+        }
+        if (data.scales && Object.keys(data.scales).length > 0) {
+          setSavedOrganScales(data.scales);
+          localStorage.setItem(LS_SCALES, JSON.stringify(data.scales));
+        }
+      });
   }, [user]);
 
   useEffect(() => {
