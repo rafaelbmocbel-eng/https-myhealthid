@@ -1087,9 +1087,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             })}
           </div>
 
-          {/* Silhueta */}
-          <div className="relative mx-auto" style={{ maxWidth: 260 }}>
-          <svg viewBox="0 0 240 520" className="w-full h-auto relative" shapeRendering="geometricPrecision" style={{ maxHeight: 520, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))' }}>
+          <div className="flex items-start gap-2">
+          {/* Silhueta — principal */}
+          <div className="flex-1 relative min-w-0">
+          <svg viewBox="0 0 240 514" className="w-full h-auto relative" shapeRendering="geometricPrecision" style={{ filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.14)) drop-shadow(0 2px 5px rgba(0,0,0,0.10))' }}>
             <defs>
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
@@ -1157,7 +1158,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </style>
 
             {/* Drop shadow */}
-            <ellipse cx={120} cy={516} rx={50} ry={4.5} fill="black" opacity={0.09} />
+            <ellipse cx={120} cy={508} rx={46} ry={3} fill="black" opacity={0.08} />
 
 
             {/* Silhueta stick-figure — proporções da figura calibrada */}
@@ -1486,36 +1487,41 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             })}
 
           </svg>
-        </div>
-          {/* Achados — pills abaixo do avatar, visíveis quando sistema selecionado */}
-          {sistemasAtivos.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 justify-center pt-1">
-              {findingsForCards.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground italic">Sem achados ativos neste sistema.</p>
-              ) : findingsForCards.map(c => {
-                const sysColor = SISTEMA_CHART_COLOR[c.sistema] || '#94a3b8';
-                const statusHex: Record<string, string> = {
-                  'Ativo': '#ec4899', 'Crônico': '#f59e0b', 'Em tratamento': '#f97316',
-                  'Obs.': '#eab308',
-                };
-                const sh = statusHex[c.status] || '#94a3b8';
-                return (
-                  <button key={c.zonaId} type="button" onClick={() => abrirSheet(c.zonaId)}
-                    className="flex items-center gap-1 rounded-full border px-2.5 py-1 transition-opacity hover:opacity-80 active:opacity-60"
-                    style={{ borderColor: `${sysColor}40`, background: `${sysColor}0d` }}>
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sysColor }} />
-                    <span className="text-[10px] font-semibold leading-none" style={{ color: sysColor }}>{c.label}</span>
-                    {c.tipo_achado && (
-                      <span className="text-[9px] text-muted-foreground leading-none truncate max-w-[72px]">· {c.tipo_achado}</span>
-                    )}
-                    <span className="text-[8px] font-semibold px-1 py-px rounded-full shrink-0 ml-0.5"
+          </div>
+
+          {/* Achados — coluna lateral direita */}
+          <div className="w-32 shrink-0 flex flex-col gap-1.5 max-h-[500px] overflow-y-auto pr-0.5">
+            {sistemasAtivos.length === 0 ? (
+              <p className="text-[10px] text-muted-foreground text-center py-4 italic leading-relaxed">
+                Selecione um sistema acima.
+              </p>
+            ) : findingsForCards.length === 0 ? (
+              <p className="text-[10px] text-muted-foreground text-center py-4 italic">
+                Sem achados ativos.
+              </p>
+            ) : findingsForCards.map(c => {
+              const sysColor = SISTEMA_CHART_COLOR[c.sistema] || '#94a3b8';
+              const statusHex: Record<string, string> = {
+                'Ativo': '#ec4899', 'Crônico': '#f59e0b', 'Em tratamento': '#f97316', 'Obs.': '#eab308',
+              };
+              const sh = statusHex[c.status] || '#94a3b8';
+              return (
+                <button key={c.zonaId} type="button" onClick={() => abrirSheet(c.zonaId)}
+                  className="w-full text-left rounded-xl border px-2 py-1.5 transition-opacity hover:opacity-80 active:opacity-60 shrink-0"
+                  style={{ borderColor: `${sysColor}35`, background: `${sysColor}0a` }}>
+                  <div className="flex items-start justify-between gap-1 mb-0.5">
+                    <p className="text-[10px] font-bold leading-tight" style={{ color: sysColor }}>{c.label}</p>
+                    <span className="text-[8px] font-semibold px-1 py-px rounded-full shrink-0"
                       style={{ color: sh, background: `${sh}1a` }}>{c.status}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  </div>
+                  {c.tipo_achado && (
+                    <p className="text-[9px] text-muted-foreground leading-snug line-clamp-2">{c.tipo_achado}</p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          </div>
 
         {/* Detalhe do sistema selecionado/hovered — aparece na íntegra com sua marcação clínica */}
         {(() => {
