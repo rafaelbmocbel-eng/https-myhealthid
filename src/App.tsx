@@ -10,6 +10,7 @@ import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import PortalErrorBoundary from "./components/paciente/PortalErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import RouteRestorer from "./components/RouteRestorer";
+import PwaUpdateNotifier from "./components/PwaUpdateNotifier";
 import GlobalBackButton from "./components/GlobalBackButton";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 
@@ -130,6 +131,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <PwaUpdateNotifier />
         <BrowserRouter>
           <ScrollToTop />
           <AuthProvider>
