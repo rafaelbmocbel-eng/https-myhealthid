@@ -17,30 +17,48 @@ export interface TabConfig {
 
 export interface LayoutConfig {
   version: 1;
+
+  // ── Botões de Ação ──────────────────────────────────────────────────────────
   botao_presencial: BotaoConfig;
   botao_resposta_completa: BotaoConfig;
   botoes_unidos: boolean;
+  // Onde os botões aparecem: 'topo' = acima das sub-abas | 'rodape' = abaixo
+  botoes_posicao: 'topo' | 'rodape';
+  // Direção do grupo de botões
+  botoes_direcao: 'row' | 'column';
+  // Alinhamento horizontal dos botões
+  botoes_alinhamento: 'start' | 'center' | 'end' | 'between';
+  // Largura do botão principal
+  botao_presencial_largura: 'auto' | 'half' | 'full';
+
+  // ── Abas ────────────────────────────────────────────────────────────────────
   main_tabs: TabConfig[];
   sub_tabs: TabConfig[];
+  tabs_compacto: boolean;
+  tabs_icone: boolean;
+
+  // ── Header ──────────────────────────────────────────────────────────────────
   header_portal: boolean;
   header_docs: boolean;
   header_identidade: boolean;
+
+  // ── Seções da Página ────────────────────────────────────────────────────────
+  mostrar_stats: boolean;
+  mostrar_lgpd: boolean;
+  mostrar_decisao: boolean;
 }
 
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   version: 1,
-  botao_presencial: {
-    label: 'Iniciar Avaliação Presencial',
-    visivel: true,
-    tamanho: 'lg',
-    variante: 'primary',
-  },
-  botao_resposta_completa: {
-    label: 'Resposta Completa',
-    visivel: true,
-    tamanho: 'sm',
-  },
+
+  botao_presencial: { label: 'Iniciar Avaliação Presencial', visivel: true, tamanho: 'lg', variante: 'primary' },
+  botao_resposta_completa: { label: 'Resposta Completa', visivel: true, tamanho: 'sm' },
   botoes_unidos: false,
+  botoes_posicao: 'topo',
+  botoes_direcao: 'row',
+  botoes_alinhamento: 'between',
+  botao_presencial_largura: 'auto',
+
   main_tabs: [
     { id: 'presencial', defaultLabel: 'Avaliação', label: 'Avaliação', visivel: true, ordem: 0 },
     { id: 'diretrizes', defaultLabel: 'Diretrizes', label: 'Diretrizes', visivel: true, ordem: 1 },
@@ -53,9 +71,16 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
     { id: 'corpo', defaultLabel: 'Corpo', label: 'Corpo', visivel: true, ordem: 1 },
     { id: 'jornada', defaultLabel: 'Jornada', label: 'Jornada', visivel: true, ordem: 2 },
   ],
+  tabs_compacto: false,
+  tabs_icone: true,
+
   header_portal: true,
   header_docs: true,
   header_identidade: true,
+
+  mostrar_stats: true,
+  mostrar_lgpd: true,
+  mostrar_decisao: true,
 };
 
 const LS_KEY = 'myhealthid_layout_v1';

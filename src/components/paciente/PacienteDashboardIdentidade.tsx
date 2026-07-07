@@ -605,35 +605,50 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
   const br = layoutCfg.botao_resposta_completa;
   const btnSizeMap = { sm: 'sm', md: 'default', lg: 'lg' } as const;
 
+  // Derived button layout classes from config
+  const btnDirClass = layoutCfg.botoes_direcao === 'column'
+    ? 'flex-col items-stretch'
+    : 'flex-row flex-wrap items-center';
+  const btnAlignClass = {
+    start: 'justify-start', center: 'justify-center',
+    end: 'justify-end', between: 'justify-between',
+  }[layoutCfg.botoes_alinhamento];
+  const btnPrimaryWidthClass = layoutCfg.botoes_direcao === 'column' ? 'w-full'
+    : layoutCfg.botao_presencial_largura === 'full' ? 'w-full'
+    : layoutCfg.botao_presencial_largura === 'half' ? 'w-[calc(50%-0.25rem)]'
+    : '';
+
+  const BotaoAcao = subTabAtiva !== 'myid' && (bp.visivel || br.visivel) ? (
+    <div className={`flex gap-3 ${btnDirClass} ${btnAlignClass}`}>
+      {bp.visivel && (
+        <Button
+          size={btnSizeMap[bp.tamanho]}
+          className={`gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg transition-all ${btnPrimaryWidthClass}`}
+          onClick={() => setSubTabAtiva('myid')}
+        >
+          <Presentation className="h-5 w-5 shrink-0" />
+          {bp.label}
+        </Button>
+      )}
+      {!layoutCfg.botoes_unidos && br.visivel && (
+        <Button
+          size={btnSizeMap[br.tamanho]}
+          variant="outline"
+          className={`gap-1.5 ${layoutCfg.botoes_direcao === 'column' ? 'w-full' : ''}`}
+          onClick={handleRespostaCompleta}
+          disabled={gerandoRespostaCompleta}
+        >
+          {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
+          {br.label}
+        </Button>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className="space-y-6">
-      {/* Botões de ação — configuráveis via Editor de Layout */}
-      {subTabAtiva !== 'myid' && (bp.visivel || br.visivel) && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {bp.visivel && (
-            <Button
-              size={btnSizeMap[bp.tamanho]}
-              className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
-              onClick={() => setSubTabAtiva('myid')}
-            >
-              <Presentation className="h-5 w-5" />
-              {bp.label}
-            </Button>
-          )}
-          {!layoutCfg.botoes_unidos && br.visivel && (
-            <Button
-              size={btnSizeMap[br.tamanho]}
-              variant="outline"
-              className="gap-1.5"
-              onClick={handleRespostaCompleta}
-              disabled={gerandoRespostaCompleta}
-            >
-              {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
-              {br.label}
-            </Button>
-          )}
-        </div>
-      )}
+      {/* Botões de ação — posição topo (padrão) */}
+      {layoutCfg.botoes_posicao === 'topo' && BotaoAcao}
 
       {subTabAtiva === 'myid' && (
         <div className="flex items-center justify-between gap-3">
@@ -1087,6 +1102,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
               />
             </TabsContent>
       </Tabs>
+
+      {/* Botões de ação — posição rodapé */}
+      {layoutCfg.botoes_posicao === 'rodape' && BotaoAcao}
 
       {/* PDF Report Modal */}
       {showReport && (

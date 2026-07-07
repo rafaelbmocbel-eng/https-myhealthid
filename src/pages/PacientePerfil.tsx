@@ -772,7 +772,7 @@ export default function PacientePerfil() {
         </div>
 
         {/* ============ KPI STRIP — horizontal scroll on mobile ============ */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 mb-3 scrollbar-hide">
+        {layoutCfg.mostrar_stats && <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 mb-3 scrollbar-hide">
           {/* Tempo de cadastro */}
           <div className="flex items-center gap-2.5 rounded-xl border border-border/50 bg-card p-3 shrink-0 min-w-[148px] sm:flex-1 hover:shadow-sm transition-shadow">
             <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
@@ -975,7 +975,7 @@ export default function PacientePerfil() {
               </div>
             </SheetContent>
           </Sheet>
-        </div>
+        </div>}
         {/* Scrollbar hidden for KPI strip on mobile */}
         <style>{`.scrollbar-hide::-webkit-scrollbar{display:none}.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}`}</style>
 
@@ -990,9 +990,11 @@ export default function PacientePerfil() {
         )}
 
         {/* LGPD Consent — banner compacto acima das abas */}
-        <div className="mb-3">
-          <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} compact />
-        </div>
+        {layoutCfg.mostrar_lgpd && (
+          <div className="mb-3">
+            <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} compact />
+          </div>
+        )}
 
         {/* Banner: rascunhos de diretriz IA aguardando aprovação */}
         {(() => {
@@ -1070,10 +1072,11 @@ export default function PacientePerfil() {
           <TabsList className={`bg-muted/50 p-1 rounded-2xl grid ${mainGridCols} h-auto gap-0.5 w-full mb-4 border border-border/30`}>
             {visibleMainTabs.map(tab => {
               const Icon = MAIN_TAB_ICONS[tab.id] || Activity;
+              const compactCls = layoutCfg.tabs_compacto ? 'py-1.5 min-h-[34px]' : 'py-2.5 min-h-[50px]';
               return (
                 <TabsTrigger key={tab.id} value={tab.id}
-                  className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground">
-                  <Icon className="h-4 w-4 shrink-0" />
+                  className={cn('gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 flex-col sm:flex-row text-muted-foreground', compactCls)}>
+                  {layoutCfg.tabs_icone && <Icon className="h-4 w-4 shrink-0" />}
                   <span>{tab.label}</span>
                 </TabsTrigger>
               );
@@ -1085,7 +1088,7 @@ export default function PacientePerfil() {
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
           {!activeTab && (
             <div className="mb-4 space-y-4">
-              {id && <PainelDecisaoClinica pacienteId={id} temAgendaFutura={temAgendaFutura} />}
+              {id && layoutCfg.mostrar_decisao && <PainelDecisaoClinica pacienteId={id} temAgendaFutura={temAgendaFutura} />}
               <Suspense fallback={LazyFallback}>
                 <PacienteDashboardIdentidade
                   paciente={paciente as any}
