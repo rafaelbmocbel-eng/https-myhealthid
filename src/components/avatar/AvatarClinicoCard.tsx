@@ -1380,6 +1380,31 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               })}
             </g>
 
+            {/* ═══ Contornos de zona calibrados — sempre visíveis ═══ */}
+            {ZONAS_CORPORAIS
+              .filter(z => !z.views || z.views.includes(view as 'front' | 'back'))
+              .map(zona => {
+                const off = savedOrganOffsets[zona.id] ?? { dx: 0, dy: 0 };
+                const sc  = savedOrganScales[zona.id]  ?? { sx: 1, sy: 1 };
+                const piv = zonePivot(zona.shape);
+                const hasScale = sc.sx !== 1 || sc.sy !== 1;
+                const xf = hasScale
+                  ? `translate(${off.dx},${off.dy}) translate(${piv.x},${piv.y}) scale(${sc.sx},${sc.sy}) translate(${-piv.x},${-piv.y})`
+                  : `translate(${off.dx},${off.dy})`;
+                const hasCond = zona.ids.some(id => corPorRegiao[id]);
+                const stroke = hasCond ? 'rgba(255,165,60,0.55)' : 'rgba(255,165,60,0.22)';
+                const fill   = hasCond ? 'rgba(255,165,60,0.10)' : 'rgba(255,165,60,0.05)';
+                const s = zona.shape;
+                return (
+                  <g key={`z-${zona.id}`} transform={xf} pointerEvents="none">
+                    {s.kind === 'circle'  && <circle  cx={s.cx} cy={s.cy} r={s.r}               fill={fill} stroke={stroke} strokeWidth={0.9} />}
+                    {s.kind === 'ellipse' && <ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}   fill={fill} stroke={stroke} strokeWidth={0.9} />}
+                    {s.kind === 'path'    && <path    d={s.d}                                     fill={fill} stroke={stroke} strokeWidth={0.9} />}
+                  </g>
+                );
+              })
+            }
+
             {/* ═══ Dots clínicos — um ponto colorido por zona com achado ativo ═══ */}
             {ZONAS_CORPORAIS
               .filter(z => !z.views || z.views.includes(view as 'front' | 'back'))
