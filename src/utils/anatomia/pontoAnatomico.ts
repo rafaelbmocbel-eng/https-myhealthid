@@ -310,6 +310,22 @@ export interface ZonaRegiao {
   views?: ('front' | 'back')[];
 }
 
+/** Mapeamento de pares bilaterais: dado um ID retorna o ID do lado oposto. */
+export const BILATERAL_PAIRS: Record<string, string> = {
+  ombro_d: 'ombro_e',         ombro_e: 'ombro_d',
+  braco_d: 'braco_e',         braco_e: 'braco_d',
+  cotovelo_d: 'cotovelo_e',   cotovelo_e: 'cotovelo_d',
+  antebraco_d: 'antebraco_e', antebraco_e: 'antebraco_d',
+  punho_d: 'punho_e',         punho_e: 'punho_d',
+  mao_d: 'mao_e',             mao_e: 'mao_d',
+  coxofemural_d: 'coxofemural_e', coxofemural_e: 'coxofemural_d',
+  coxa_d: 'coxa_e',           coxa_e: 'coxa_d',
+  joelho_d: 'joelho_e',       joelho_e: 'joelho_d',
+  canela_d: 'canela_e',       canela_e: 'canela_d',
+  tornozelo_d: 'tornozelo_e', tornozelo_e: 'tornozelo_d',
+  pe_d: 'pe_e',               pe_e: 'pe_d',
+};
+
 /** Ponto central de uma ZonaShape — usado como pivot do transform scale. */
 export function zonePivot(s: ZonaShape): { x: number; y: number } {
   if (s.kind === 'circle')  return { x: s.cx, y: s.cy };

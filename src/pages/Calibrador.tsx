@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   PONTO_ANATOMICO, SISTEMA_DOT_COLOR,
-  ZONAS_CORPORAIS, zonePivot,
+  ZONAS_CORPORAIS, zonePivot, BILATERAL_PAIRS,
   DEFAULT_FIGURA, deriveFigura, buildStickFigurePaths, computeProportionalOffsets,
   LS_DOT_OFFSETS, LS_FIGURA, LS_SCALES,
   type FiguraParams,
@@ -413,7 +413,15 @@ export default function Calibrador() {
                   ))}
 
                   {/* Escala */}
-                  <div style={{ fontSize: 9, color: '#444', marginTop: 8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Escala</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, marginBottom: 4 }}>
+                    <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Escala</div>
+                    {BILATERAL_PAIRS[selected] && (
+                      <div style={{ fontSize: 8, color: '#a78bfa', background: '#2d1b6933',
+                        border: '1px solid #7c3aed55', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>
+                        ⟷ bilateral
+                      </div>
+                    )}
+                  </div>
                   {([
                     { axis: 'sx' as const, label: 'Largura' },
                     { axis: 'sy' as const, label: 'Comprimento' },
@@ -424,7 +432,12 @@ export default function Calibrador() {
                         value={selScale[axis]}
                         onChange={e => {
                           const val = Number(e.target.value);
-                          setScales(prev => ({ ...prev, [selected]: { ...(prev[selected] ?? { sx: 1, sy: 1 }), [axis]: val } }));
+                          const partner = BILATERAL_PAIRS[selected];
+                          setScales(prev => {
+                            const next = { ...prev, [selected]: { ...(prev[selected] ?? { sx: 1, sy: 1 }), [axis]: val } };
+                            if (partner) next[partner] = { ...(prev[partner] ?? { sx: 1, sy: 1 }), [axis]: val };
+                            return next;
+                          });
                           setDirty(true);
                         }}
                         style={{ flex: 1, accentColor: '#7c3aed', height: 3 }}
@@ -437,12 +450,18 @@ export default function Calibrador() {
 
                   <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
                     <button onClick={() => {
+                      const partner = BILATERAL_PAIRS[selected!];
                       setOffsets(prev => { const n = { ...prev }; delete n[selected!]; return n; });
-                      setScales(prev => { const n = { ...prev }; delete n[selected!]; return n; });
+                      setScales(prev => {
+                        const n = { ...prev };
+                        delete n[selected!];
+                        if (partner) delete n[partner];
+                        return n;
+                      });
                       setDirty(true);
                     }} style={{ flex: 1, padding: '4px 0', borderRadius: 5, border: 'none', cursor: 'pointer',
                       background: '#2a2a38', color: '#aaa', fontSize: 10 }}>
-                      ↺ Resetar
+                      ↺ Resetar{BILATERAL_PAIRS[selected] ? ' (ambos)' : ''}
                     </button>
                     <button onClick={() => setSelected(null)}
                       style={{ flex: 1, padding: '4px 0', borderRadius: 5, border: 'none', cursor: 'pointer',
