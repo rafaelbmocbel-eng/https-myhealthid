@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   PONTO_ANATOMICO, SISTEMA_DOT_COLOR,
+  ZONAS_CORPORAIS,
   DEFAULT_FIGURA, deriveFigura, buildStickFigurePaths, computeProportionalOffsets,
   LS_DOT_OFFSETS, LS_FIGURA,
-  type FiguraParams,
+  type FiguraParams, type ZonaShape,
 } from '@/utils/anatomia/pontoAnatomico';
 
 type Offset = { dx: number; dy: number };
@@ -13,45 +14,46 @@ function loadLS<T>(key: string, fallback: T): T {
   try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : fallback; } catch { return fallback; }
 }
 
-const ALL_SISTEMAS = ['todos', ...Object.keys(SISTEMA_DOT_COLOR)];
-const LABEL_SISTEMA: Record<string, string> = {
-  todos: 'Todos',
-  musculoesqueletico: 'Musculoesquelético',
-  nervoso: 'Nervoso',
-  circulatorio: 'Circulatório',
-  respiratorio: 'Respiratório',
-  digestorio: 'Digestório',
-  endocrino: 'Endócrino',
-  urinario: 'Urinário',
-  linfatico: 'Linfático',
-  reprodutor: 'Reprodutor',
-  tegumentar: 'Tegumentar',
-  sensorial: 'Sensorial',
-};
+/** Posição central de uma zona para colocar o rótulo */
+function labelPos(s: ZonaShape): { x: number; y: number; anchor: 'middle' | 'start' | 'end' } {
+  if (s.kind === 'circle')  return { x: s.cx, y: s.cy + 1.5, anchor: 'middle' };
+  if (s.kind === 'ellipse') return { x: s.cx, y: s.cy + 1.5, anchor: 'middle' };
+  // Para paths: extrai números e calcula ponto médio da bezier
+  const nums = s.d.replace(/[A-Za-z]/g, ' ').trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+  if (nums.length >= 6) {
+    const mx = Math.round(0.25 * nums[0] + 0.5 * nums[2] + 0.25 * nums[4]);
+    const my = Math.round(0.25 * nums[1] + 0.5 * nums[3] + 0.25 * nums[5]);
+    // Zona no lado esq da tela (x < 120): label à esquerda
+    const left = nums[0] < 110;
+    return { x: left ? mx - 6 : mx + 6, y: my, anchor: left ? 'end' : 'start' };
+  }
+  return { x: 120, y: 260, anchor: 'middle' };
+}
 
 export default function Calibrador() {
-  const [view,     setView]     = useState<View>('front');
-  const [sistema,  setSistema]  = useState('todos');
-  const [tab,      setTab]      = useState<'pontos' | 'figura'>('pontos');
-  const [offsets,  setOffsets]  = useState<Record<string, Offset>>(() => loadLS(LS_DOT_OFFSETS, {}));
-  const [figura,   setFigura]   = useState<FiguraParams>(() => loadLS(LS_FIGURA, DEFAULT_FIGURA));
-  const [selected, setSelected] = useState<string | null>(null);
-  const [dirty,    setDirty]    = useState(false);
-  const [savedAt,  setSavedAt]  = useState<string | null>(null);
+  const [view,        setView]        = useState<View>('front');
+  const [tab,         setTab]         = useState<'zonas' | 'figura'>('zonas');
+  const [offsets,     setOffsets]     = useState<Record<string, Offset>>(() => loadLS(LS_DOT_OFFSETS, {}));
+  const [figura,      setFigura]      = useState<FiguraParams>(() => loadLS(LS_FIGURA, DEFAULT_FIGURA));
+  const [selected,    setSelected]    = useState<string | null>(null);
+  const [dirty,       setDirty]       = useState(false);
+  const [savedAt,     setSavedAt]     = useState<string | null>(null);
   const [propApplied, setPropApplied] = useState(false);
 
   const svgRef   = useRef<SVGSVGElement>(null);
   const dragging = useRef<{ id: string; svgX0: number; svgY0: number; dx0: number; dy0: number } | null>(null);
 
-  const fig = useMemo(() => deriveFigura(figura), [figura]);
+  const fig   = useMemo(() => deriveFigura(figura), [figura]);
   const paths = useMemo(() => buildStickFigurePaths(figura), [figura]);
 
-  // Pontos filtrados por vista e sistema
-  const visibleDots = useMemo(() =>
-    Object.entries(PONTO_ANATOMICO).filter(([, p]) =>
-      p.views.includes(view) && (sistema === 'todos' || p.sistema === sistema)
-    ),
-    [view, sistema],
+  const visibleZones = useMemo(() =>
+    ZONAS_CORPORAIS.filter(z => !z.views || z.views.includes(view)),
+    [view],
+  );
+
+  const movedZones = useMemo(() =>
+    ZONAS_CORPORAIS.filter(z => { const o = offsets[z.id]; return o && (o.dx !== 0 || o.dy !== 0); }),
+    [offsets],
   );
 
   const toSvgXY = (e: React.PointerEvent) => {
@@ -68,7 +70,7 @@ export default function Calibrador() {
   const onPointerDown = useCallback((e: React.PointerEvent, id: string) => {
     e.preventDefault();
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    const pt = toSvgXY(e);
+    const pt  = toSvgXY(e);
     const cur = offsets[id] ?? { dx: 0, dy: 0 };
     dragging.current = { id, svgX0: pt.x, svgY0: pt.y, dx0: cur.dx, dy0: cur.dy };
     setSelected(id);
@@ -96,26 +98,24 @@ export default function Calibrador() {
     } catch {}
   }, [offsets, figura]);
 
-  // Auto-save shortcut
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const h = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
   }, [saveAll]);
 
-  // Cross-tab sync
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
+    const h = (e: StorageEvent) => {
       if (e.key === LS_DOT_OFFSETS && e.newValue) setOffsets(JSON.parse(e.newValue));
       if (e.key === LS_FIGURA      && e.newValue) setFigura(JSON.parse(e.newValue));
     };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener('storage', h);
+    return () => window.removeEventListener('storage', h);
   }, []);
 
-  const setFiguraField = <K extends keyof FiguraParams>(key: K, val: number) => {
+  const setFigField = <K extends keyof FiguraParams>(key: K, val: number) => {
     setFigura(prev => ({ ...prev, [key]: val }));
     setDirty(true);
     setPropApplied(false);
@@ -126,10 +126,7 @@ export default function Calibrador() {
     setOffsets(prev => {
       const next = { ...prev };
       Object.entries(proposed).forEach(([id, off]) => {
-        next[id] = {
-          dx: (prev[id]?.dx ?? 0) + off.dx,
-          dy: (prev[id]?.dy ?? 0) + off.dy,
-        };
+        next[id] = { dx: (prev[id]?.dx ?? 0) + off.dx, dy: (prev[id]?.dy ?? 0) + off.dy };
       });
       return next;
     });
@@ -137,19 +134,13 @@ export default function Calibrador() {
     setPropApplied(true);
   };
 
-  const resetAll = () => {
-    setOffsets({});
-    setFigura(DEFAULT_FIGURA);
-    setDirty(true);
-    setPropApplied(false);
-  };
+  const resetAll = () => { setOffsets({}); setFigura(DEFAULT_FIGURA); setDirty(true); setPropApplied(false); };
 
   const exportJSON = () => {
     const data = { offsets, figura, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
-    const a    = Object.assign(document.createElement('a'), { href: url, download: 'calibracao-avatar.json' });
-    a.click();
+    Object.assign(document.createElement('a'), { href: url, download: 'calibracao-avatar.json' }).click();
     URL.revokeObjectURL(url);
   };
 
@@ -169,12 +160,14 @@ export default function Calibrador() {
     e.target.value = '';
   };
 
-  const selDot = selected ? PONTO_ANATOMICO[selected] : null;
-  const selOff = selected ? (offsets[selected] ?? { dx: 0, dy: 0 }) : null;
+  const selZona = selected ? ZONAS_CORPORAIS.find(z => z.id === selected) : null;
+  const selOff  = selected ? (offsets[selected] ?? { dx: 0, dy: 0 }) : null;
 
   const BG  = '#0d0d0f';
   const PAN = '#141418';
   const BDR = '#2a2a35';
+  const ACC = '#a78bfa';
+  const ORG = '#f97316';
 
   const figSliders: Array<{ key: keyof FiguraParams; label: string; min: number; max: number; step: number }> = [
     { key: 'headR',      label: 'Raio da cabeça',      min: 12, max: 40,  step: 1 },
@@ -190,52 +183,46 @@ export default function Calibrador() {
 
   return (
     <div style={{ display: 'flex', height: '100dvh', background: BG, color: '#e8e8f0',
-      fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
+      fontFamily: 'system-ui,-apple-system,sans-serif', overflow: 'hidden' }}>
 
-      {/* ── SVG canvas ─────────────────────────── */}
+      {/* ── SVG canvas ─────────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden', position: 'relative' }}>
 
-        {/* Legend strip */}
-        <div style={{ position: 'absolute', bottom: 10, left: 10, display: 'flex', flexWrap: 'wrap',
-          gap: 6, maxWidth: 220 }}>
-          {Object.entries(SISTEMA_DOT_COLOR).map(([s, c]) => (
-            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: c }} />
-              <span style={{ color: '#888' }}>{LABEL_SISTEMA[s] ?? s}</span>
-            </div>
-          ))}
+        {/* Status bar */}
+        <div style={{ position: 'absolute', top: 10, left: 12, fontSize: 10, color: '#555', lineHeight: 1.6 }}>
+          <span style={{ color: ACC, fontWeight: 600 }}>Calibrador de Regiões</span>
+          {movedZones.length > 0 && (
+            <span style={{ color: ORG, marginLeft: 8 }}>
+              {movedZones.length} região{movedZones.length > 1 ? 'ões' : ''} ajustada{movedZones.length > 1 ? 's' : ''}
+            </span>
+          )}
         </div>
 
         <svg
           ref={svgRef}
           viewBox="0 0 240 520"
-          style={{ height: '96dvh', maxWidth: '100%', touchAction: 'none' }}
+          style={{ height: '92dvh', maxWidth: '100%', touchAction: 'none' }}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
         >
-          {/* Grid guides */}
-          <line x1="120" y1="0" x2="120" y2="520" stroke="#ffffff0d" strokeWidth="0.5" />
-          <line x1="0" y1="260" x2="240" y2="260" stroke="#ffffff0d" strokeWidth="0.5" />
-          {[0,1,2,3,4,5,6,7,8,9,10].map(i => (
-            <line key={i} x1="0" y1={i*52} x2="240" y2={i*52} stroke="#ffffff06" strokeWidth="0.3" />
-          ))}
+          {/* Guias */}
+          <line x1="120" y1="0"   x2="120" y2="520" stroke="#ffffff08" strokeWidth="0.5" />
+          <line x1="0"   y1="260" x2="240" y2="260"  stroke="#ffffff08" strokeWidth="0.5" />
 
-          {/* Stick figure */}
+          {/* Boneco de palito */}
           <circle cx={fig.cx} cy={fig.headCy} r={figura.headR}
-            fill="none" stroke="#ffffff18" strokeWidth="1.5" />
+            fill="none" stroke="#ffffff12" strokeWidth="1.5" />
           <rect x={fig.cx - 8} y={fig.neckTop} width={16} height={fig.neckH} rx={4}
-            fill="none" stroke="#ffffff14" strokeWidth="1.2" />
-          <path d={paths.torso}  fill="none" stroke="#ffffff18" strokeWidth="1.5" />
-          <path d={paths.leftArm}  fill="none" stroke="#ffffff18" strokeWidth={figura.armSW} strokeLinecap="round" />
-          <path d={paths.rightArm} fill="none" stroke="#ffffff18" strokeWidth={figura.armSW} strokeLinecap="round" />
-          <path d={paths.leftLeg}  fill="none" stroke="#ffffff18" strokeWidth={figura.legSW} strokeLinecap="round" />
-          <path d={paths.rightLeg} fill="none" stroke="#ffffff18" strokeWidth={figura.legSW} strokeLinecap="round" />
-
-          {/* Back view spine */}
+            fill="none" stroke="#ffffff0e" strokeWidth="1.2" />
+          <path d={paths.torso}    fill="none" stroke="#ffffff12" strokeWidth="1.5" />
+          <path d={paths.leftArm}  fill="none" stroke="#ffffff12" strokeWidth={figura.armSW} strokeLinecap="round" />
+          <path d={paths.rightArm} fill="none" stroke="#ffffff12" strokeWidth={figura.armSW} strokeLinecap="round" />
+          <path d={paths.leftLeg}  fill="none" stroke="#ffffff12" strokeWidth={figura.legSW} strokeLinecap="round" />
+          <path d={paths.rightLeg} fill="none" stroke="#ffffff12" strokeWidth={figura.legSW} strokeLinecap="round" />
           {view === 'back' && (
-            <g fill="none" stroke="#ffffff1a" strokeLinecap="round">
+            <g fill="none" stroke="#ffffff18" strokeLinecap="round">
               <path d={`M120 ${fig.neckBot} L120 ${fig.torsoBot - 10}`} strokeWidth={0.8} strokeDasharray="3,2" />
               {[0,1,2,3,4,5,6,7,8,9,10,11].map(i => {
                 const y = fig.neckBot + i * ((fig.torsoBot - fig.neckBot) / 12);
@@ -244,83 +231,135 @@ export default function Calibrador() {
             </g>
           )}
 
-          {/* Anatomical dots */}
-          {visibleDots.map(([id, p]) => {
-            const off  = offsets[id] ?? { dx: 0, dy: 0 };
-            const cx   = p.cx + off.dx;
-            const cy   = p.cy + off.dy;
-            const color = SISTEMA_DOT_COLOR[p.sistema] ?? '#888';
-            const isSel = selected === id;
+          {/* ═══ Zonas corporais arrastáveis ═══ */}
+          {visibleZones.map(zona => {
+            const off    = offsets[zona.id] ?? { dx: 0, dy: 0 };
+            const isSel  = selected === zona.id;
+            const isMov  = off.dx !== 0 || off.dy !== 0;
+            const s      = zona.shape;
+            const lp     = labelPos(s);
+
+            const baseColor = SISTEMA_DOT_COLOR[PONTO_ANATOMICO[zona.id]?.sistema ?? 'musculoesqueletico'] ?? ACC;
+            const zColor = isSel ? ACC : isMov ? ORG : '#c8c8e8';
+            const fOpac  = isSel ? 0.22 : isMov ? 0.16 : 0.07;
+            const sOpac  = isSel ? 0.85 : isMov ? 0.72 : 0.28;
 
             return (
-              <g key={id} onPointerDown={e => onPointerDown(e, id)} style={{ cursor: 'grab' }}>
-                {isSel && (
-                  <circle cx={cx} cy={cy} r={12} fill="none" stroke={color} strokeWidth={1.5}
-                    strokeDasharray="3,2" opacity={0.7} />
+              <g key={zona.id}
+                transform={`translate(${off.dx},${off.dy})`}
+                onPointerDown={e => onPointerDown(e, zona.id)}
+                style={{ cursor: 'grab' }}>
+
+                {/* Anel de seleção */}
+                {isSel && s.kind === 'circle' && (
+                  <circle cx={s.cx} cy={s.cy} r={s.r + 6} fill="none"
+                    stroke={ACC} strokeWidth={1} strokeDasharray="3,2" opacity={0.65} />
                 )}
-                <circle cx={cx} cy={cy} r={isSel ? 6 : 4.5} fill={color}
-                  fillOpacity={isSel ? 0.95 : 0.75} />
-                <circle cx={cx} cy={cy} r={2} fill="white" opacity={0.7} style={{ pointerEvents: 'none' }} />
-                <text x={cx + 7} y={cy + 3} fontSize={4}
-                  fill={isSel ? color : '#ccc'} fontWeight={isSel ? '700' : '400'}
-                  stroke="#0a0a10" strokeWidth={2} paintOrder="stroke"
+                {isSel && s.kind === 'ellipse' && (
+                  <ellipse cx={s.cx} cy={s.cy} rx={s.rx + 6} ry={s.ry + 6} fill="none"
+                    stroke={ACC} strokeWidth={1} strokeDasharray="3,2" opacity={0.65} />
+                )}
+
+                {/* Forma da zona */}
+                {s.kind === 'circle' && (
+                  <circle cx={s.cx} cy={s.cy} r={s.r}
+                    fill={zColor} fillOpacity={fOpac}
+                    stroke={zColor} strokeOpacity={sOpac} strokeWidth={1.2} />
+                )}
+                {s.kind === 'ellipse' && (
+                  <ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
+                    fill={zColor} fillOpacity={fOpac}
+                    stroke={zColor} strokeOpacity={sOpac} strokeWidth={1.2} />
+                )}
+                {s.kind === 'path' && s.sw && (
+                  <>
+                    {/* Área de toque maior (invisível) */}
+                    <path d={s.d} fill="none" stroke="transparent" strokeWidth={s.sw + 16} strokeLinecap="round" />
+                    <path d={s.d} fill="none"
+                      stroke={zColor} strokeOpacity={sOpac} strokeWidth={s.sw} strokeLinecap="round" />
+                    {isSel && (
+                      <path d={s.d} fill="none"
+                        stroke={ACC} strokeOpacity={0.5} strokeWidth={s.sw + 6}
+                        strokeLinecap="round" strokeDasharray="5,4" />
+                    )}
+                  </>
+                )}
+                {s.kind === 'path' && !s.sw && (
+                  <path d={s.d}
+                    fill={zColor} fillOpacity={fOpac}
+                    stroke={zColor} strokeOpacity={sOpac} strokeWidth={1.2} />
+                )}
+
+                {/* Rótulo */}
+                <text x={lp.x} y={lp.y} fontSize={isSel ? 5.5 : 4.2}
+                  fill={isSel ? '#fff' : isMov ? ORG : '#8888aa'}
+                  stroke="#05050a" strokeWidth={isSel ? 3 : 2} paintOrder="stroke"
+                  textAnchor={lp.anchor}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                  {p.label}
+                  {zona.label}
                 </text>
-                {(off.dx !== 0 || off.dy !== 0) && (
-                  <text x={cx + 7} y={cy + 8.5} fontSize={3.5} fill="#fffc"
-                    stroke="#0a0a10" strokeWidth={1.5} paintOrder="stroke"
+
+                {/* Offset */}
+                {isMov && (
+                  <text x={lp.x} y={lp.y + (s.kind === 'path' ? 7 : 7)} fontSize={3.8}
+                    fill={ORG} stroke="#05050a" strokeWidth={1.8} paintOrder="stroke"
+                    textAnchor={lp.anchor}
                     style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                    {`(${off.dx > 0 ? '+' : ''}${off.dx}, ${off.dy > 0 ? '+' : ''}${off.dy})`}
+                    {`${off.dx > 0 ? '+' : ''}${off.dx}, ${off.dy > 0 ? '+' : ''}${off.dy}`}
                   </text>
                 )}
               </g>
             );
           })}
+
+          {/* Sombra */}
+          <ellipse cx={120} cy={516} rx={50} ry={4.5} fill="black" opacity={0.3} />
         </svg>
       </div>
 
-      {/* ── Right panel ─────────────────────────── */}
+      {/* ── Painel direito ──────────────────────────────── */}
       <div style={{ width: 290, display: 'flex', flexDirection: 'column',
         background: PAN, borderLeft: `1px solid ${BDR}`, overflowY: 'auto', flexShrink: 0 }}>
 
-        {/* Header */}
+        {/* Cabeçalho */}
         <div style={{ padding: '14px 14px 10px', borderBottom: `1px solid ${BDR}` }}>
           <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: '0.02em' }}>
             Calibrador do Avatar
           </h2>
-          <p style={{ margin: '3px 0 0', fontSize: 10, color: '#666' }}>
-            Arraste pontos · Ctrl+S salva
+          <p style={{ margin: '3px 0 0', fontSize: 10, color: '#555' }}>
+            Arraste regiões · Ctrl+S salva
           </p>
         </div>
 
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: `1px solid ${BDR}` }}>
-          {(['pontos', 'figura'] as const).map(t => (
+          {(['zonas', 'figura'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
-              flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+              flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600,
               background: tab === t ? '#1e1e2a' : 'transparent',
-              color: tab === t ? '#a78bfa' : '#666',
-              borderBottom: tab === t ? '2px solid #a78bfa' : '2px solid transparent',
+              color: tab === t ? ACC : '#555',
+              borderBottom: tab === t ? `2px solid ${ACC}` : '2px solid transparent',
             }}>
-              {t === 'pontos' ? '📍 Pontos' : '📐 Figura'}
+              {t === 'zonas' ? '🗺 Zonas' : '📐 Figura'}
             </button>
           ))}
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-          {tab === 'pontos' && (
+          {/* ── Tab Zonas ── */}
+          {tab === 'zonas' && (
             <>
               {/* Vista */}
               <div>
-                <div style={{ fontSize: 10, color: '#666', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vista</div>
+                <div style={{ fontSize: 10, color: '#555', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vista</div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {(['front', 'back'] as const).map(v => (
                     <button key={v} onClick={() => setView(v)} style={{
                       flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
                       background: view === v ? '#7c3aed' : '#1e1e2a',
-                      color: view === v ? '#fff' : '#888', fontSize: 11, fontWeight: 600,
+                      color: view === v ? '#fff' : '#666', fontSize: 11, fontWeight: 600,
                     }}>
                       {v === 'front' ? 'Anterior' : 'Posterior'}
                     </button>
@@ -328,41 +367,18 @@ export default function Calibrador() {
                 </div>
               </div>
 
-              {/* Sistema filter */}
-              <div>
-                <div style={{ fontSize: 10, color: '#666', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Sistema</div>
-                <select value={sistema} onChange={e => setSistema(e.target.value)} style={{
-                  width: '100%', padding: '6px 8px', borderRadius: 6,
-                  background: '#1e1e2a', color: '#e8e8f0', border: `1px solid ${BDR}`, fontSize: 11,
-                }}>
-                  {ALL_SISTEMAS.map(s => (
-                    <option key={s} value={s}>{LABEL_SISTEMA[s] ?? s}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Selected dot panel */}
-              {selDot && selOff && selected && (
+              {/* Zona selecionada */}
+              {selZona && selOff && selected ? (
                 <div style={{ background: '#1a1a28', borderRadius: 8, padding: 10,
-                  border: `1px solid ${SISTEMA_DOT_COLOR[selDot.sistema] ?? BDR}44` }}>
-                  <div style={{ fontSize: 10, color: '#666', marginBottom: 4 }}>Selecionado</div>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: SISTEMA_DOT_COLOR[selDot.sistema] ?? '#fff', marginBottom: 2 }}>
-                    {selDot.label}
-                  </div>
-                  <div style={{ fontSize: 10, color: '#555', marginBottom: 8 }}>
-                    <code style={{ color: '#888' }}>{selected}</code>
-                    {'  '}Sistema: {LABEL_SISTEMA[selDot.sistema] ?? selDot.sistema}
+                  border: `1px solid ${ACC}44` }}>
+                  <div style={{ fontSize: 10, color: '#555', marginBottom: 3 }}>Região selecionada</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: ACC, marginBottom: 6 }}>
+                    {selZona.label}
                   </div>
 
-                  {/* Position info */}
-                  <div style={{ fontSize: 10, color: '#888', marginBottom: 8 }}>
-                    Base ({selDot.cx},{selDot.cy}) → Final ({selDot.cx + selOff.dx},{selDot.cy + selOff.dy})
-                  </div>
-
-                  {/* Fine-tune sliders */}
                   {(['dx', 'dy'] as const).map(axis => (
                     <div key={axis} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-                      <span style={{ fontSize: 10, width: 14, color: '#888' }}>{axis}:</span>
+                      <span style={{ fontSize: 10, width: 16, color: '#666' }}>{axis}:</span>
                       <input type="range" min={-80} max={80} step={0.5}
                         value={selOff[axis]}
                         onChange={e => {
@@ -370,15 +386,15 @@ export default function Calibrador() {
                           setOffsets(prev => ({ ...prev, [selected]: { ...prev[selected] ?? { dx: 0, dy: 0 }, [axis]: val } }));
                           setDirty(true);
                         }}
-                        style={{ flex: 1, accentColor: SISTEMA_DOT_COLOR[selDot.sistema] ?? '#a78bfa', height: 3 }}
+                        style={{ flex: 1, accentColor: ACC, height: 3 }}
                       />
-                      <span style={{ fontSize: 10, fontFamily: 'monospace', width: 28, textAlign: 'right', color: '#ccc' }}>
+                      <span style={{ fontSize: 10, fontFamily: 'monospace', width: 32, textAlign: 'right', color: '#ccc' }}>
                         {selOff[axis] > 0 ? '+' : ''}{selOff[axis]}
                       </span>
                     </div>
                   ))}
 
-                  <div style={{ display: 'flex', gap: 5, marginTop: 4 }}>
+                  <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
                     <button onClick={() => {
                       setOffsets(prev => { const n = { ...prev }; delete n[selected!]; return n; });
                       setDirty(true);
@@ -386,33 +402,37 @@ export default function Calibrador() {
                       background: '#2a2a38', color: '#aaa', fontSize: 10 }}>
                       ↺ Resetar
                     </button>
-                    <button onClick={() => setSelected(null)} style={{ flex: 1, padding: '4px 0', borderRadius: 5, border: 'none', cursor: 'pointer',
+                    <button onClick={() => setSelected(null)}
+                      style={{ flex: 1, padding: '4px 0', borderRadius: 5, border: 'none', cursor: 'pointer',
                       background: '#2a2a38', color: '#aaa', fontSize: 10 }}>
                       ✕ Fechar
                     </button>
                   </div>
                 </div>
+              ) : (
+                <div style={{ fontSize: 11, color: '#3a3a50', textAlign: 'center', padding: '16px 4px', lineHeight: 1.5 }}>
+                  Toque em uma região do corpo para selecionar e ajustar sua posição.
+                </div>
               )}
 
-              {/* Offsets list */}
-              {Object.keys(offsets).length > 0 && (
+              {/* Regiões movidas */}
+              {movedZones.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 10, color: '#666', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Pontos movidos ({Object.keys(offsets).length})
+                  <div style={{ fontSize: 10, color: '#555', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Ajustadas ({movedZones.length})
                   </div>
-                  <div style={{ maxHeight: 130, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {Object.entries(offsets).map(([id, { dx, dy }]) => {
-                      const p = PONTO_ANATOMICO[id];
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {movedZones.map(z => {
+                      const off = offsets[z.id]!;
                       return (
-                        <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 5,
-                          background: '#16161e', borderRadius: 4, padding: '3px 7px', fontSize: 10,
-                          cursor: 'pointer', border: selected === id ? `1px solid ${SISTEMA_DOT_COLOR[p?.sistema ?? ''] ?? '#555'}` : '1px solid transparent' }}
-                          onClick={() => setSelected(id)}>
-                          <span style={{ color: SISTEMA_DOT_COLOR[p?.sistema ?? ''] ?? '#888', flex: 1, minWidth: 0 }}>
-                            {p?.label ?? id}
-                          </span>
-                          <span style={{ fontFamily: 'monospace', color: '#666', fontSize: 9, whiteSpace: 'nowrap' }}>
-                            {dx > 0 ? '+' : ''}{dx}, {dy > 0 ? '+' : ''}{dy}
+                        <div key={z.id}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#16161e',
+                            borderRadius: 4, padding: '3px 7px', fontSize: 10, cursor: 'pointer',
+                            border: selected === z.id ? `1px solid ${ACC}` : '1px solid transparent' }}
+                          onClick={() => setSelected(z.id)}>
+                          <span style={{ color: ORG, flex: 1 }}>{z.label}</span>
+                          <span style={{ fontFamily: 'monospace', color: '#555', fontSize: 9, whiteSpace: 'nowrap' }}>
+                            {off.dx > 0 ? '+' : ''}{off.dx}, {off.dy > 0 ? '+' : ''}{off.dy}
                           </span>
                         </div>
                       );
@@ -420,25 +440,54 @@ export default function Calibrador() {
                   </div>
                 </div>
               )}
+
+              {/* Lista de todas as zonas */}
+              <div>
+                <div style={{ fontSize: 10, color: '#555', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Todas ({visibleZones.length})
+                </div>
+                <div style={{ maxHeight: 210, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {visibleZones.map(z => {
+                    const off  = offsets[z.id] ?? { dx: 0, dy: 0 };
+                    const moved = off.dx !== 0 || off.dy !== 0;
+                    return (
+                      <div key={z.id}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5,
+                          background: selected === z.id ? '#1e1e2e' : 'transparent',
+                          borderRadius: 4, padding: '3px 6px', fontSize: 10, cursor: 'pointer',
+                          border: selected === z.id ? `1px solid ${ACC}55` : '1px solid transparent' }}
+                        onClick={() => setSelected(z.id)}>
+                        <span style={{ color: moved ? ORG : '#555', flex: 1 }}>{z.label}</span>
+                        {moved && (
+                          <span style={{ fontFamily: 'monospace', color: '#444', fontSize: 9, whiteSpace: 'nowrap' }}>
+                            {off.dx > 0 ? '+' : ''}{off.dx},{off.dy > 0 ? '+' : ''}{off.dy}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </>
           )}
 
+          {/* ── Tab Figura ── */}
           {tab === 'figura' && (
             <>
-              <div style={{ fontSize: 10, color: '#666', lineHeight: 1.5 }}>
-                Ajuste as dimensões da figura. Clique em <b style={{ color: '#a78bfa' }}>Aplicar proporções</b> para
-                reescalar os pontos automaticamente.
+              <div style={{ fontSize: 10, color: '#555', lineHeight: 1.5 }}>
+                Ajuste as dimensões do boneco. Clique em{' '}
+                <b style={{ color: ACC }}>Aplicar proporções</b> para reescalar as regiões automaticamente.
               </div>
 
               {figSliders.map(({ key, label, min, max, step }) => (
                 <div key={key}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                     <span style={{ fontSize: 10, color: '#bbb' }}>{label}</span>
-                    <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#a78bfa' }}>{figura[key]}</span>
+                    <span style={{ fontSize: 10, fontFamily: 'monospace', color: ACC }}>{figura[key]}</span>
                   </div>
                   <input type="range" min={min} max={max} step={step}
                     value={figura[key]}
-                    onChange={e => setFiguraField(key, Number(e.target.value))}
+                    onChange={e => setFigField(key, Number(e.target.value))}
                     style={{ width: '100%', accentColor: '#7c3aed', height: 3 }}
                   />
                 </div>
@@ -446,41 +495,40 @@ export default function Calibrador() {
 
               <button onClick={applyProportional} style={{
                 width: '100%', padding: '8px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
-                background: propApplied ? '#1e3a1e' : '#4c1d95', color: propApplied ? '#4ade80' : '#e9d5ff',
+                background: propApplied ? '#1e3a1e' : '#4c1d95',
+                color: propApplied ? '#4ade80' : '#e9d5ff',
                 fontSize: 11, fontWeight: 600, marginTop: 4,
               }}>
-                {propApplied ? '✓ Proporções aplicadas' : '⟳ Aplicar proporções aos pontos'}
+                {propApplied ? '✓ Proporções aplicadas' : '⟳ Aplicar proporções às regiões'}
               </button>
 
               <button onClick={() => { setFigura(DEFAULT_FIGURA); setDirty(true); setPropApplied(false); }}
                 style={{ width: '100%', padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
-                  background: '#1e1e2a', color: '#666', fontSize: 10 }}>
+                  background: '#1e1e2a', color: '#555', fontSize: 10 }}>
                 Restaurar dimensões padrão
               </button>
 
-              {/* Live preview numbers */}
               <div style={{ background: '#0d0d14', borderRadius: 6, padding: 8, fontSize: 9,
-                fontFamily: 'monospace', color: '#666', lineHeight: 1.8 }}>
-                <div style={{ color: '#888', marginBottom: 4, fontSize: 10 }}>Pontos-chave calculados</div>
+                fontFamily: 'monospace', color: '#555', lineHeight: 1.8 }}>
+                <div style={{ color: '#777', marginBottom: 4, fontSize: 10 }}>Pontos-chave calculados</div>
                 {[
-                  ['Cabeça cy',   fig.headCy.toFixed(1)],
-                  ['Pescoço top', fig.neckTop.toFixed(1)],
-                  ['Tronco top',  fig.torsoTop.toFixed(1)],
-                  ['Tronco bot',  fig.torsoBot.toFixed(1)],
-                  ['Braço end y', fig.armEndY.toFixed(1)],
-                  ['Pé y',        fig.footY.toFixed(1)],
+                  ['Cabeça cy',    fig.headCy.toFixed(1)],
+                  ['Pescoço top',  fig.neckTop.toFixed(1)],
+                  ['Tronco top',   fig.torsoTop.toFixed(1)],
+                  ['Tronco bot',   fig.torsoBot.toFixed(1)],
+                  ['Braço end y',  fig.armEndY.toFixed(1)],
+                  ['Pé y',         fig.footY.toFixed(1)],
                 ].map(([k, v]) => (
                   <div key={k} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{k}</span><span style={{ color: '#a78bfa' }}>{v}</span>
+                    <span>{k}</span><span style={{ color: ACC }}>{v}</span>
                   </div>
                 ))}
               </div>
             </>
           )}
-
         </div>
 
-        {/* Footer actions */}
+        {/* ── Footer ── */}
         <div style={{ padding: '10px 12px', borderTop: `1px solid ${BDR}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <button onClick={saveAll} style={{
             width: '100%', padding: '10px 0', borderRadius: 7, border: 'none', cursor: 'pointer',
@@ -492,25 +540,25 @@ export default function Calibrador() {
 
           {savedAt && !dirty && (
             <div style={{ textAlign: 'center', fontSize: 10, color: '#4ade80' }}>
-              Salvo às {savedAt} — avatar atualizado
+              Salvo às {savedAt} — atualize o app para ver
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 5 }}>
-            <button onClick={exportJSON} style={{ flex: 1, padding: '5px 0', borderRadius: 5, border: `1px solid ${BDR}`,
-              cursor: 'pointer', background: 'transparent', color: '#888', fontSize: 10 }}>
+            <button onClick={exportJSON} style={{ flex: 1, padding: '5px 0', borderRadius: 5,
+              border: `1px solid ${BDR}`, cursor: 'pointer', background: 'transparent', color: '#666', fontSize: 10 }}>
               ↓ Export JSON
             </button>
             <label style={{ flex: 1, padding: '5px 0', borderRadius: 5, border: `1px solid ${BDR}`,
-              cursor: 'pointer', background: 'transparent', color: '#888', fontSize: 10, textAlign: 'center' }}>
+              cursor: 'pointer', background: 'transparent', color: '#666', fontSize: 10, textAlign: 'center' }}>
               ↑ Import JSON
               <input type="file" accept=".json" onChange={importJSON} style={{ display: 'none' }} />
             </label>
           </div>
 
-          <button onClick={resetAll} style={{ width: '100%', padding: '5px 0', borderRadius: 5, border: 'none',
-            cursor: 'pointer', background: '#1a0808', color: '#854545', fontSize: 10 }}>
-            ⚠ Resetar tudo (posições + figura)
+          <button onClick={resetAll} style={{ width: '100%', padding: '5px 0', borderRadius: 5,
+            border: 'none', cursor: 'pointer', background: '#1a0808', color: '#854545', fontSize: 10 }}>
+            ⚠ Resetar tudo
           </button>
         </div>
       </div>
