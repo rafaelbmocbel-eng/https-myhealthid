@@ -784,14 +784,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     return result;
   }, [eventosFiltrados]);
 
-  // Cards: all active conditions regardless of which system icon is selected
+  // Cards: conditions for the currently selected system (mirrors avatar dots)
   const findingsForCards = useMemo(() => {
     const statusLabel: Record<string, string> = {
       ativo: 'Ativo', cronico: 'Crônico', em_tratamento: 'Em tratamento', observacao: 'Obs.',
     };
-    const evs = eventos.filter(
-      e => (e as any).tipo_diagnostico !== 'relato_paciente' && e.status !== 'resolvido',
-    );
+    const evs = eventosFiltrados.filter(e => e.status !== 'resolvido');
     const result: Array<{
       zonaId: string; label: string; cor: string; status: string; tipo_achado: string; sistema: SistemaCorporal;
     }> = [];
@@ -813,7 +811,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       });
     });
     return result;
-  }, [eventos]);
+  }, [eventosFiltrados]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
 
@@ -1509,9 +1507,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </div>
         {/* Right: one card per active condition zone */}
         <div className="flex-1 min-w-0 flex flex-col gap-1.5 pt-6 max-h-[430px] overflow-y-auto pr-0.5">
-          {findingsForCards.length === 0 ? (
+          {sistemasAtivos.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8 italic leading-relaxed">
+              Selecione um sistema à esquerda para ver os achados.
+            </p>
+          ) : findingsForCards.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-6 italic">
-              Nenhum achado ativo registrado.
+              Nenhum achado ativo neste sistema.
             </p>
           ) : findingsForCards.map(c => {
             const sysColor = SISTEMA_CHART_COLOR[c.sistema] || '#94a3b8';
