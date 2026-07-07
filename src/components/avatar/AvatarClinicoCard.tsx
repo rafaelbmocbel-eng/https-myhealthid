@@ -1088,7 +1088,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </div>
 
         {/* Silhueta */}
-        <div className="relative" style={{ width: 150 }}>
+        <div className="relative flex-1 min-w-0">
           <svg viewBox="0 0 240 520" className="w-full h-auto relative" shapeRendering="geometricPrecision" style={{ maxHeight: 480, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))' }}>
             <defs>
               <clipPath id="avc-clip">
