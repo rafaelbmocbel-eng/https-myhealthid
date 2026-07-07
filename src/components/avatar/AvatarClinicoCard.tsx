@@ -1089,10 +1089,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
         {/* Silhueta */}
         <div className="relative" style={{ width: 150 }}>
-          {/* Glow de fundo do avatar */}
-          <div className="absolute inset-0 rounded-full opacity-20 blur-3xl pointer-events-none"
-            style={{ background: hoveredSistema ? (SYSTEM_HOVER[hoveredSistema] || 'hsl(var(--primary))') : 'hsl(var(--muted-foreground) / 0.3)', transform: 'scale(0.7) translateY(5%)' }}
-          />
           <svg viewBox="0 0 240 520" className="w-full h-auto relative" shapeRendering="geometricPrecision" style={{ maxHeight: 480, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))' }}>
             <defs>
               <clipPath id="avc-clip">
@@ -1163,20 +1159,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             {/* Drop shadow */}
             <ellipse cx={120} cy={516} rx={50} ry={4.5} fill="black" opacity={0.09} />
 
-            {/* Halo de sistema ativo/hovered */}
-            {(hoveredSistema || sistemasAtivos.length === 1) && (() => {
-              const sys = hoveredSistema || sistemasAtivos[0];
-              const haloColor = SYSTEM_HOVER[sys] || 'rgba(99,102,241,0.30)';
-              return (
-                <ellipse
-                  cx={120} cy={260} rx={80} ry={260}
-                  fill={haloColor}
-                  opacity={0.18}
-                  filter="url(#glow)"
-                  pointerEvents="none"
-                />
-              );
-            })()}
 
             {/* Silhueta stick-figure — proporções da figura calibrada */}
             {(() => {
@@ -1505,15 +1487,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
           </svg>
         </div>
-        {/* Right: one card per active condition zone */}
-        <div className="flex-1 min-w-0 flex flex-col gap-1.5 pt-6 max-h-[430px] overflow-y-auto pr-0.5">
+        {/* Right: compact condition cards */}
+        <div className="w-28 shrink-0 flex flex-col gap-1 pt-6 max-h-[430px] overflow-y-auto pr-0.5">
           {sistemasAtivos.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8 italic leading-relaxed">
-              Selecione um sistema à esquerda para ver os achados.
+            <p className="text-[10px] text-muted-foreground text-center py-6 italic leading-relaxed">
+              Selecione um sistema ao lado.
             </p>
           ) : findingsForCards.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-6 italic">
-              Nenhum achado ativo neste sistema.
+            <p className="text-[10px] text-muted-foreground text-center py-4 italic">
+              Sem achados ativos.
             </p>
           ) : findingsForCards.map(c => {
             const sysColor = SISTEMA_CHART_COLOR[c.sistema] || '#94a3b8';
@@ -1524,15 +1506,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             const sh = statusHex[c.status] || '#94a3b8';
             return (
               <button key={c.zonaId} type="button" onClick={() => abrirSheet(c.zonaId)}
-                className="w-full text-left rounded-xl border px-2.5 py-2 transition-opacity hover:opacity-80 active:opacity-60 shrink-0"
+                className="w-full text-left rounded-lg border px-1.5 py-1 transition-opacity hover:opacity-80 active:opacity-60 shrink-0"
                 style={{ borderColor: `${sysColor}35`, background: `${sysColor}0a` }}>
-                <div className="flex items-start justify-between gap-1 mb-0.5">
-                  <p className="text-[11px] font-bold leading-tight" style={{ color: sysColor }}>{c.label}</p>
-                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
+                <div className="flex items-center justify-between gap-0.5 mb-0.5">
+                  <p className="text-[10px] font-bold leading-tight truncate" style={{ color: sysColor }}>{c.label}</p>
+                  <span className="text-[8px] font-semibold px-1 py-px rounded-full shrink-0"
                     style={{ color: sh, background: `${sh}1a` }}>{c.status}</span>
                 </div>
                 {c.tipo_achado && (
-                  <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">{c.tipo_achado}</p>
+                  <p className="text-[9px] text-muted-foreground leading-snug line-clamp-1">{c.tipo_achado}</p>
                 )}
               </button>
             );
