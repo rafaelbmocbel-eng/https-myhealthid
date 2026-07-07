@@ -23,7 +23,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
-import { PONTO_ANATOMICO, LS_DOT_OFFSETS, LS_SCALES, ZONAS_CORPORAIS, zonePivot } from '@/utils/anatomia/pontoAnatomico';
+import {
+  PONTO_ANATOMICO, LS_DOT_OFFSETS, LS_SCALES, LS_FIGURA,
+  ZONAS_CORPORAIS, zonePivot,
+  buildStickFigurePaths, deriveFigura, DEFAULT_FIGURA,
+  type FiguraParams,
+} from '@/utils/anatomia/pontoAnatomico';
 
 
 
@@ -416,6 +421,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       return raw ? JSON.parse(raw) : {};
     } catch { return {}; }
   });
+  const [figura, setFigura] = useState<FiguraParams>(() => {
+    try {
+      const raw = localStorage.getItem(LS_FIGURA);
+      return raw ? JSON.parse(raw) : DEFAULT_FIGURA;
+    } catch { return DEFAULT_FIGURA; }
+  });
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === LS_DOT_OFFSETS) {
@@ -440,10 +451,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     if (!user) return;
     // @ts-expect-error -- tabela criada por migração; tipos serão regenerados
     supabase.from('avatar_calibracao')
-      .select('offsets, scales')
+      .select('offsets, scales, figura')
       .eq('terapeuta_id', user.id)
       .maybeSingle()
-      .then(({ data }: { data: { offsets: Record<string,{dx:number;dy:number}>; scales: Record<string,{sx:number;sy:number}> } | null }) => {
+      .then(({ data }: { data: { offsets: Record<string,{dx:number;dy:number}>; scales: Record<string,{sx:number;sy:number}>; figura: FiguraParams } | null }) => {
         if (!data) return;
         if (data.offsets && Object.keys(data.offsets).length > 0) {
           setSavedOrganOffsets(data.offsets);
@@ -452,6 +463,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         if (data.scales && Object.keys(data.scales).length > 0) {
           setSavedOrganScales(data.scales);
           localStorage.setItem(LS_SCALES, JSON.stringify(data.scales));
+        }
+        if (data.figura && Object.keys(data.figura).length > 0) {
+          setFigura(data.figura);
+          localStorage.setItem(LS_FIGURA, JSON.stringify(data.figura));
         }
       });
   }, [user]);
@@ -1134,31 +1149,35 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })()}
 
-            {/* Silhueta stick-figure — mesmas proporções da landing page, escalada para 240×520 */}
-            <g pointerEvents="none">
-              {/* Cabeça */}
-              <circle cx={120} cy={32} r={24}
-                stroke="currentColor" strokeWidth="1.8" opacity="0.22"
-                fill="currentColor" fillOpacity="0.05" />
-              {/* Pescoço */}
-              <rect x={112} y={54} width={16} height={14} rx={4}
-                fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeWidth="1.4" opacity="0.18" />
-              {/* Tronco */}
-              <path d="M79 80 Q70 120 74 168 Q96 176 120 176 Q144 176 166 168 Q170 120 161 80 Q142 74 120 74 Q98 74 79 80 Z"
-                stroke="currentColor" strokeWidth="1.8" opacity="0.22" fill="currentColor" fillOpacity="0.05" />
-              {/* Braço esquerdo */}
-              <path d="M79 84 Q55 110 50 164"
-                stroke="currentColor" strokeWidth="11" strokeLinecap="round" opacity="0.12" fill="none"/>
-              {/* Braço direito */}
-              <path d="M161 84 Q185 110 190 164"
-                stroke="currentColor" strokeWidth="11" strokeLinecap="round" opacity="0.12" fill="none"/>
-              {/* Perna esquerda */}
-              <path d="M103 174 Q98 315 98 436 Q98 482 103 507"
-                stroke="currentColor" strokeWidth="14" strokeLinecap="round" opacity="0.12" fill="none"/>
-              {/* Perna direita */}
-              <path d="M137 174 Q142 315 142 436 Q142 482 137 507"
-                stroke="currentColor" strokeWidth="14" strokeLinecap="round" opacity="0.12" fill="none"/>
-
+            {/* Silhueta stick-figure — proporções da figura calibrada */}
+            {(() => {
+              const fig = figura;
+              const d   = deriveFigura(fig);
+              const bp  = buildStickFigurePaths(fig);
+              return (
+              <g pointerEvents="none">
+                {/* Cabeça */}
+                <circle cx={d.cx} cy={d.headCy} r={fig.headR}
+                  stroke="currentColor" strokeWidth="1.8" opacity="0.22"
+                  fill="currentColor" fillOpacity="0.05" />
+                {/* Pescoço */}
+                <rect x={d.cx - 8} y={d.neckTop} width={16} height={d.neckH} rx={4}
+                  fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeWidth="1.4" opacity="0.18" />
+                {/* Tronco */}
+                <path d={bp.torso}
+                  stroke="currentColor" strokeWidth="1.8" opacity="0.22" fill="currentColor" fillOpacity="0.05" />
+                {/* Braço esquerdo */}
+                <path d={bp.leftArm}
+                  stroke="currentColor" strokeWidth={fig.armSW} strokeLinecap="round" opacity="0.12" fill="none"/>
+                {/* Braço direito */}
+                <path d={bp.rightArm}
+                  stroke="currentColor" strokeWidth={fig.armSW} strokeLinecap="round" opacity="0.12" fill="none"/>
+                {/* Perna esquerda */}
+                <path d={bp.leftLeg}
+                  stroke="currentColor" strokeWidth={fig.legSW} strokeLinecap="round" opacity="0.12" fill="none"/>
+                {/* Perna direita */}
+                <path d={bp.rightLeg}
+                  stroke="currentColor" strokeWidth={fig.legSW} strokeLinecap="round" opacity="0.12" fill="none"/>
 
               {view === 'back' && (
                 /* Overlay anatômico das costas — coluna, escápulas, glúteos, Aquiles */
@@ -1179,7 +1198,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   <path d="M132 478 L132 500" strokeWidth={0.5} />
                 </g>
               )}
-            </g>
+              </g>
+              );
+            })()}
 
             <g mask={view === 'back' ? 'url(#avc-body-mask-back)' : 'url(#avc-body-mask-front)'}>
 
