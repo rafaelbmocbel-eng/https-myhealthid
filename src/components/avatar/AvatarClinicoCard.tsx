@@ -435,27 +435,22 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Load calibration from Supabase on mount — overrides localStorage so all devices stay in sync
+  // Load calibration from Supabase user metadata on mount — syncs across all devices
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('avatar_calibracao')
-      .select('offsets, scales')
-      .eq('terapeuta_id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        if (data.offsets && Object.keys(data.offsets as object).length > 0) {
-          const offs = data.offsets as Record<string, { dx: number; dy: number }>;
-          setSavedOrganOffsets(offs);
-          localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(offs));
-        }
-        if (data.scales && Object.keys(data.scales as object).length > 0) {
-          const scs = data.scales as Record<string, { sx: number; sy: number }>;
-          setSavedOrganScales(scs);
-          localStorage.setItem(LS_SCALES, JSON.stringify(scs));
-        }
-      });
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const saved = (u?.user_metadata as any)?.avatar_calibracao;
+      if (!saved) return;
+      if (saved.offsets && Object.keys(saved.offsets).length > 0) {
+        setSavedOrganOffsets(saved.offsets);
+        localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(saved.offsets));
+      }
+      if (saved.scales && Object.keys(saved.scales).length > 0) {
+        setSavedOrganScales(saved.scales);
+        localStorage.setItem(LS_SCALES, JSON.stringify(saved.scales));
+      }
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
