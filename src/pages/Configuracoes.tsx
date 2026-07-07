@@ -49,6 +49,7 @@ const TABS: TabItem[] = [
   { id: 'recompensas', label: 'Recompensas', icon: Gift, kind: 'panel' },
   { id: 'ia', label: 'IA', icon: Sparkles, kind: 'panel' },
   { id: 'vitrine', label: 'Vitrine', icon: Store, kind: 'panel' },
+  { id: 'layout', label: 'Layout', icon: LayoutGrid, kind: 'link', to: '/configuracoes/layout' },
   { id: 'exportar', label: 'Exportar dados', icon: Download, kind: 'link', to: '/configuracoes/exportar' },
 ];
 

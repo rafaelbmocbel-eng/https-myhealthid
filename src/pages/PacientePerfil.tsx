@@ -20,7 +20,7 @@ import {
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints, CalendarPlus,
-  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, DollarSign, Package, Target, LayoutDashboard, Smartphone,
+  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, DollarSign, Package, Target, LayoutDashboard, Smartphone, LayoutTemplate,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { useToast } from '@/hooks/use-toast';
 import { useAgenda } from '@/hooks/useAgenda';
+import { useLayoutConfig } from '@/hooks/useLayoutConfig';
 const QuestionariosComparacao = lazy(() => import('@/components/paciente/QuestionariosComparacao'));
 const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashboard'));
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
@@ -110,6 +111,7 @@ export default function PacientePerfil() {
   const location = useLocation();
   const { data: acessoClinico } = useAcessoClinicoPaciente(id);
   const { data: lenteAtiva } = useLenteAtiva();
+  const { config: layoutCfg } = useLayoutConfig();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const rawTab = searchParams.get('tab') || '';
   // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
@@ -625,7 +627,7 @@ export default function PacientePerfil() {
               </Tooltip>
 
               {/* Portal — enviar link ao paciente */}
-              {paciente.portal_token && (
+              {layoutCfg.header_portal && paciente.portal_token && (
                 <Tooltip delayDuration={0}>
                   <TooltipTrigger asChild>
                     <Button
@@ -657,6 +659,7 @@ export default function PacientePerfil() {
               )}
 
               {/* Documentos */}
+              {layoutCfg.header_docs && (
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
                   <Button
@@ -671,13 +674,26 @@ export default function PacientePerfil() {
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">Atestados, recibos, declarações</TooltipContent>
               </Tooltip>
+              )}
 
               {/* Identidade portátil (PDF + MyID) */}
-              <AcoesIdentidadeDropdown
-                pacienteId={paciente.id}
-                pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
-                terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
-              />
+              {layoutCfg.header_identidade && (
+                <AcoesIdentidadeDropdown
+                  pacienteId={paciente.id}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                  terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
+                />
+              )}
+
+              {/* Editor de Layout */}
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => navigate('/configuracoes/layout')}>
+                    <LayoutTemplate className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Editor de Layout</TooltipContent>
+              </Tooltip>
 
               {/* Editar e excluir — secundários */}
               <Tooltip delayDuration={0}>
@@ -1040,23 +1056,31 @@ export default function PacientePerfil() {
               <span>Voltar para Visão Integrada</span>
             </button>
           )}
-          <TabsList className="bg-muted/50 p-1 rounded-2xl grid grid-cols-5 h-auto gap-0.5 w-full mb-4 border border-border/30">
-            <TabsTrigger value="presencial" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground" title="Avaliação Clínica">
-              <Activity className="h-4 w-4 shrink-0" /> <span>Avaliação</span>
-            </TabsTrigger>
-            <TabsTrigger value="diretrizes" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground" title="Diretrizes e Tratamentos">
-              <Target className="h-4 w-4 shrink-0" /> <span>Diretrizes</span>
-            </TabsTrigger>
-            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground">
-              <ClipboardList className="h-4 w-4 shrink-0" /> <span>Prontuário</span>
-            </TabsTrigger>
-            <TabsTrigger value="portal" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground" title="Portal do Paciente">
-              <Smartphone className="h-4 w-4 shrink-0" /> <span>Portal</span>
-            </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground" title="Histórico de Avaliações">
-              <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
-            </TabsTrigger>
+          {(() => {
+            const MAIN_TAB_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+              presencial: Activity,
+              diretrizes: Target,
+              'evolucao-prontuario': ClipboardList,
+              portal: Smartphone,
+              historico: FileText,
+            };
+            const visibleMainTabs = layoutCfg.main_tabs.filter(t => t.visivel);
+            const mainGridCols = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4', 'grid-cols-5'][Math.min(visibleMainTabs.length, 5)] ?? 'grid-cols-5';
+            return (
+          <TabsList className={`bg-muted/50 p-1 rounded-2xl grid ${mainGridCols} h-auto gap-0.5 w-full mb-4 border border-border/30`}>
+            {visibleMainTabs.map(tab => {
+              const Icon = MAIN_TAB_ICONS[tab.id] || Activity;
+              return (
+                <TabsTrigger key={tab.id} value={tab.id}
+                  className="gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 py-2.5 flex-col sm:flex-row min-h-[50px] text-muted-foreground">
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span>{tab.label}</span>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
+            );
+          })()}
 
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
           {!activeTab && (

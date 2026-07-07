@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useLayoutConfig } from '@/hooks/useLayoutConfig';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, parse } from 'date-fns';
@@ -107,6 +108,7 @@ export default function PatientIntegratedDashboard({
   isProfessional = false,
 }: PatientIntegratedDashboardProps) {
   const { user } = useAuth();
+  const { config: layoutCfg } = useLayoutConfig();
   const [hoveredScoreKey, setHoveredScoreKey] = useState<string | null>(null);
   const [showDiretrizes, setShowDiretrizes] = useState(false);
   const [drillDownKey, setDrillDownKey] = useState<string | null>(null);
@@ -422,23 +424,27 @@ export default function PatientIntegratedDashboard({
       ) : (
         <>
           {/* ═══════════ MEU MyID — duas leituras, dois tons ═══════════ */}
-          <Tabs defaultValue="diagnostico" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-11 p-1 rounded-xl bg-muted/60">
-              <TabsTrigger value="diagnostico" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <Fingerprint className="icon-sm" />
-                <span className="hidden xs:inline">Meu MyID</span>
-                <span className="xs:hidden">MyID</span>
-              </TabsTrigger>
-              <TabsTrigger value="corpo" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <Stethoscope className="icon-sm" />
-                <span className="hidden xs:inline">Meu Corpo</span>
-                <span className="xs:hidden">Corpo</span>
-              </TabsTrigger>
-              <TabsTrigger value="jornada" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <Rocket className="icon-sm" />
-                <span className="hidden xs:inline">Minha Jornada</span>
-                <span className="xs:hidden">Jornada</span>
-              </TabsTrigger>
+          {(() => {
+            const visibleSubs = layoutCfg.sub_tabs.filter(t => t.visivel);
+            const defaultSub = visibleSubs[0]?.id ?? 'diagnostico';
+            const gridCols = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3'][Math.min(visibleSubs.length, 3)] ?? 'grid-cols-3';
+            const SUB_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+              diagnostico: Fingerprint,
+              corpo: Stethoscope,
+              jornada: Rocket,
+            };
+            return (
+          <Tabs defaultValue={defaultSub} className="w-full">
+            <TabsList className={`grid w-full ${gridCols} h-11 p-1 rounded-xl bg-muted/60`}>
+              {visibleSubs.map(tab => {
+                const Icon = SUB_ICONS[tab.id] || Fingerprint;
+                return (
+                  <TabsTrigger key={tab.id} value={tab.id} className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <Icon className="icon-sm" />
+                    <span>{tab.label}</span>
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
 
             {/* ─────────── ABA 1: DIAGNÓSTICO (calmo, claro, único) ─────────── */}
@@ -824,6 +830,8 @@ export default function PatientIntegratedDashboard({
               )}
             </TabsContent>
           </Tabs>
+            );
+          })()}
         </>
       )}
 

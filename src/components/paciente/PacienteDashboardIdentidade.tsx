@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLayoutConfig } from '@/hooks/useLayoutConfig';
 import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Download, Mic, Eye, ChevronDown, Edit3, Save, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -599,30 +600,38 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
     },
   });
 
+  const { config: layoutCfg } = useLayoutConfig();
+  const bp = layoutCfg.botao_presencial;
+  const br = layoutCfg.botao_resposta_completa;
+  const btnSizeMap = { sm: 'sm', md: 'default', lg: 'lg' } as const;
+
   return (
     <div className="space-y-6">
-      {/* Botão grande e destacado: Avaliação Presencial */}
-      {subTabAtiva !== 'myid' && (
+      {/* Botões de ação — configuráveis via Editor de Layout */}
+      {subTabAtiva !== 'myid' && (bp.visivel || br.visivel) && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <Button
-            size="lg"
-            className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
-            onClick={() => setSubTabAtiva('myid')}
-          >
-            <Presentation className="h-5 w-5" />
-            Iniciar Avaliação Presencial
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5"
-            onClick={handleRespostaCompleta}
-            disabled={gerandoRespostaCompleta}
-          >
-            {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
-            Resposta Completa
-          </Button>
+          {bp.visivel && (
+            <Button
+              size={btnSizeMap[bp.tamanho]}
+              className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
+              onClick={() => setSubTabAtiva('myid')}
+            >
+              <Presentation className="h-5 w-5" />
+              {bp.label}
+            </Button>
+          )}
+          {!layoutCfg.botoes_unidos && br.visivel && (
+            <Button
+              size={btnSizeMap[br.tamanho]}
+              variant="outline"
+              className="gap-1.5"
+              onClick={handleRespostaCompleta}
+              disabled={gerandoRespostaCompleta}
+            >
+              {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
+              {br.label}
+            </Button>
+          )}
         </div>
       )}
 
@@ -631,16 +640,18 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
           <Button size="sm" variant="ghost" className="gap-2" onClick={() => setSubTabAtiva('integrada')}>
             <ArrowLeft className="h-4 w-4" /> Voltar à Visão Integrada
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5"
-            onClick={handleRespostaCompleta}
-            disabled={gerandoRespostaCompleta}
-          >
-            {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
-            Resposta Completa
-          </Button>
+          {br.visivel && (
+            <Button
+              size={btnSizeMap[br.tamanho]}
+              variant="outline"
+              className="gap-1.5"
+              onClick={handleRespostaCompleta}
+              disabled={gerandoRespostaCompleta}
+            >
+              {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
+              {br.label}
+            </Button>
+          )}
         </div>
       )}
 
