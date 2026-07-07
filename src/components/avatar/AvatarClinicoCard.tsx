@@ -784,6 +784,37 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     return result;
   }, [eventosFiltrados]);
 
+  // Cards: all active conditions regardless of which system icon is selected
+  const findingsForCards = useMemo(() => {
+    const statusLabel: Record<string, string> = {
+      ativo: 'Ativo', cronico: 'Crônico', em_tratamento: 'Em tratamento', observacao: 'Obs.',
+    };
+    const evs = eventos.filter(
+      e => (e as any).tipo_diagnostico !== 'relato_paciente' && e.status !== 'resolvido',
+    );
+    const result: Array<{
+      zonaId: string; label: string; cor: string; status: string; tipo_achado: string; sistema: SistemaCorporal;
+    }> = [];
+    ZONAS_CORPORAIS.forEach(zona => {
+      const zoneEvs = evs.filter(ev => zona.ids.includes(ev.regiao_id));
+      if (zoneEvs.length === 0) return;
+      const top = [...zoneEvs].sort((a, b) => {
+        const da = tipoPeso((a as any).tipo_diagnostico);
+        const db = tipoPeso((b as any).tipo_diagnostico);
+        return da !== db ? db - da : (b.severidade ?? 0) - (a.severidade ?? 0);
+      })[0];
+      result.push({
+        zonaId: zona.id,
+        label: zona.label,
+        cor: corEvento(top),
+        status: statusLabel[top.status] ?? top.status,
+        tipo_achado: top.tipo_achado || '',
+        sistema: top.sistema,
+      });
+    });
+    return result;
+  }, [eventos]);
+
   const regioesBase = REGIONS.filter(r => r.view === view);
 
   // Órgãos exclusivos de cada sexo — ocultados quando incompatíveis com o gênero do paciente.
@@ -1027,7 +1058,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           )}
         </div>
 
-        <div className="flex items-start justify-center gap-1.5">
+        <div className="flex items-start gap-2">
           {/* Ícones laterais de sistema — clique para ver o sistema na íntegra com sua marcação clínica */}
           <div className="flex flex-col gap-1 pt-6 shrink-0">
             {systemScores.map(({ sistema: s, score }) => {
@@ -1059,7 +1090,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </div>
 
         {/* Silhueta */}
-        <div className="mx-auto relative" style={{ maxWidth: 260 }}>
+        <div className="relative" style={{ width: 150 }}>
           {/* Glow de fundo do avatar */}
           <div className="absolute inset-0 rounded-full opacity-20 blur-3xl pointer-events-none"
             style={{ background: hoveredSistema ? (SYSTEM_HOVER[hoveredSistema] || 'hsl(var(--primary))') : 'hsl(var(--muted-foreground) / 0.3)', transform: 'scale(0.7) translateY(5%)' }}
@@ -1476,39 +1507,36 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
           </svg>
         </div>
+        {/* Right: one card per active condition zone */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5 pt-6 max-h-[430px] overflow-y-auto pr-0.5">
+          {findingsForCards.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-6 italic">
+              Nenhum achado ativo registrado.
+            </p>
+          ) : findingsForCards.map(c => {
+            const sysColor = SISTEMA_CHART_COLOR[c.sistema] || '#94a3b8';
+            const statusHex: Record<string, string> = {
+              'Ativo': '#ec4899', 'Crônico': '#f59e0b', 'Em tratamento': '#f97316',
+              'Obs.': '#eab308',
+            };
+            const sh = statusHex[c.status] || '#94a3b8';
+            return (
+              <button key={c.zonaId} type="button" onClick={() => abrirSheet(c.zonaId)}
+                className="w-full text-left rounded-xl border px-2.5 py-2 transition-opacity hover:opacity-80 active:opacity-60 shrink-0"
+                style={{ borderColor: `${sysColor}35`, background: `${sysColor}0a` }}>
+                <div className="flex items-start justify-between gap-1 mb-0.5">
+                  <p className="text-[11px] font-bold leading-tight" style={{ color: sysColor }}>{c.label}</p>
+                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
+                    style={{ color: sh, background: `${sh}1a` }}>{c.status}</span>
+                </div>
+                {c.tipo_achado && (
+                  <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">{c.tipo_achado}</p>
+                )}
+              </button>
+            );
+          })}
         </div>
-
-        {/* ── Lista compacta de condições ativas ─────────────────────────────── */}
-        {activeConditions.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 px-3 pb-3 pt-0.5">
-            {activeConditions.map(c => {
-              const isResolvido = c.status === 'Resolvido';
-              return (
-                <button key={c.zonaId}
-                  onClick={() => abrirSheet(c.zonaId)}
-                  className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-opacity hover:opacity-75 active:opacity-60"
-                  style={{
-                    borderColor: `${c.cor}45`,
-                    background: isResolvido ? 'transparent' : `${c.cor}12`,
-                    opacity: isResolvido ? 0.6 : 1,
-                  }}>
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: c.cor }} />
-                  <span className="font-semibold leading-none" style={{ color: c.cor }}>{c.label}</span>
-                  {c.tipo_achado && (
-                    <>
-                      <span className="text-muted-foreground/40">·</span>
-                      <span className="text-muted-foreground truncate max-w-[90px] leading-none">{c.tipo_achado}</span>
-                    </>
-                  )}
-                  <span className="rounded-full border px-1 text-[9px] leading-4"
-                    style={{ borderColor: `${c.cor}30`, color: c.cor, opacity: 0.8 }}>
-                    {c.status}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        </div>
 
         {/* Detalhe do sistema selecionado/hovered — aparece na íntegra com sua marcação clínica */}
         {(() => {
@@ -1727,19 +1755,24 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           );
         })()}
 
-        {/* Legend — hierarquia de confirmação clínica */}
-        <div className="space-y-1 mt-2">
-          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider text-center">Hierarquia de Confirmação</p>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] justify-center">
-            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#991b1b]" /> Diagnóstico grave</span>
-            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#dc2626]" /> Diagnóstico confirmado</span>
-            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#fb923c]" /> Achado clínico</span>
-            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#ddd6fe]" /> Relato paciente</span>
-            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#eab308]" /> Crônico</span>
-            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#f97316]" /> Em tratamento</span>
-            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#9ca3af]" /> Resolvido (histórico)</span>
+        {/* Legend — sistema → cor */}
+        {findingsForCards.length > 0 && (
+          <div className="space-y-1 mt-2">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] justify-center">
+              {(Object.entries(SISTEMA_CHART_COLOR) as [SistemaCorporal, string][])
+                .filter(([s]) => findingsForCards.some(c => c.sistema === s))
+                .map(([s, color]) => (
+                  <span key={s} className="flex items-center gap-1 text-muted-foreground">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                    {SISTEMA_CONFIG[s]?.label || s}
+                  </span>
+                ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center italic mt-1">
+              O avatar é atualizado automaticamente a cada avaliação por voz ou presencial.
+            </p>
           </div>
-        </div>
+        )}
       </div>
           </TabsContent>
 
