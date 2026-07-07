@@ -435,8 +435,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Load calibration from Supabase user metadata on mount — syncs across all devices
-  useEffect(() => {
+  // Load calibration from Supabase user metadata — runs on mount and when page regains focus
+  const applyCalibrationFromCloud = useCallback(() => {
     if (!user) return;
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -451,8 +451,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         localStorage.setItem(LS_SCALES, JSON.stringify(saved.scales));
       }
     });
+  }, [user]);
+
+  useEffect(() => {
+    applyCalibrationFromCloud();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // Re-sync calibration whenever the user returns to this page/tab (e.g. after calibrating in another tab)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') applyCalibrationFromCloud();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [applyCalibrationFromCloud]);
 
   const [savedOrganLabels, setSavedOrganLabels] = useState<Record<string, string>>(() => {
     try { const r = localStorage.getItem('organ-labels-calibrado'); return r ? JSON.parse(r) : {}; } catch { return {}; }

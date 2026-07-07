@@ -43,6 +43,7 @@ export default function Calibrador() {
   const [selected,    setSelected]    = useState<string | null>(null);
   const [dirty,       setDirty]       = useState(false);
   const [savedAt,     setSavedAt]     = useState<string | null>(null);
+  const [cloudSync,   setCloudSync]   = useState<'idle' | 'syncing' | 'ok' | 'error'>('idle');
   const [propApplied, setPropApplied] = useState(false);
 
   const svgRef   = useRef<SVGSVGElement>(null);
@@ -134,33 +135,35 @@ export default function Calibrador() {
   const persistSupabase = useCallback(async (
     offs: typeof offsets, scs: typeof scales, fig: typeof figura
   ) => {
-    await supabase.auth.updateUser({
+    setCloudSync('syncing');
+    const { error } = await supabase.auth.updateUser({
       data: { avatar_calibracao: { offsets: offs, scales: scs, figura: fig } },
     });
+    setCloudSync(error ? 'error' : 'ok');
   }, []);
 
-  const saveAll = useCallback(() => {
-    if (persistNow(offsets, scales, figura)) {
-      void persistSupabase(offsets, scales, figura);
-      const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      setSavedAt(now);
-      setDirty(false);
-    }
-  }, [offsets, scales, figura, persistNow, persistSupabase]);
+  const doSave = useCallback(async (
+    offs: typeof offsets, scs: typeof scales, fig: typeof figura
+  ) => {
+    if (!persistNow(offs, scs, fig)) return;
+    const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setSavedAt(now);
+    setDirty(false);
+    await persistSupabase(offs, scs, fig);
+  }, [persistNow, persistSupabase]);
 
-  // Auto-save 600ms after any change — user never needs to click the button
+  const saveAll = useCallback(() => {
+    void doSave(offsets, scales, figura);
+  }, [offsets, scales, figura, doSave]);
+
+  // Auto-save 600ms after any change
   useEffect(() => {
     if (!dirty) return;
     const id = setTimeout(() => {
-      if (persistNow(offsets, scales, figura)) {
-        void persistSupabase(offsets, scales, figura);
-        const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        setSavedAt(now);
-        setDirty(false);
-      }
+      void doSave(offsets, scales, figura);
     }, 600);
     return () => clearTimeout(id);
-  }, [offsets, scales, figura, dirty, persistNow, persistSupabase]);
+  }, [offsets, scales, figura, dirty, doSave]);
 
   // Safety net: save synchronously to localStorage when user navigates away
   useEffect(() => {
@@ -664,12 +667,16 @@ export default function Calibrador() {
             background: dirty ? '#1d4ed8' : '#14532d',
             color: dirty ? '#fff' : '#86efac', fontSize: 13, fontWeight: 700,
           }}>
-            {dirty ? '⏳ Salvando…' : '✓ Salvo automaticamente'}
+            {dirty ? '⏳ Salvando…' : '✓ Salvo'}
           </button>
 
           {savedAt && (
-            <div style={{ textAlign: 'center', fontSize: 10, color: '#4ade80' }}>
-              Auto-salvo às {savedAt}
+            <div style={{ textAlign: 'center', fontSize: 10, color:
+              cloudSync === 'error' ? '#f87171' : cloudSync === 'ok' ? '#4ade80' : '#a3a3a3' }}>
+              {cloudSync === 'syncing' && '☁ Sincronizando com a nuvem…'}
+              {cloudSync === 'ok'      && `☁ Sincronizado às ${savedAt} — visível em todos os dispositivos`}
+              {cloudSync === 'error'   && '⚠ Erro ao sincronizar com a nuvem — apenas salvo localmente'}
+              {cloudSync === 'idle'    && `Salvo às ${savedAt}`}
             </div>
           )}
 
