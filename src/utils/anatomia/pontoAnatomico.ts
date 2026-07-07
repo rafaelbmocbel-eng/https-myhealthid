@@ -292,6 +292,7 @@ export function computeProportionalOffsets(
 
 export const LS_DOT_OFFSETS = 'organ-offsets-calibrado';
 export const LS_FIGURA      = 'stick-figura-calibrado';
+export const LS_SCALES      = 'organ-scales-calibrado';
 
 // ── Zonas corporais — formas SVG para renderização no avatar ─────────────────
 export type ZonaShape =
@@ -307,6 +308,17 @@ export interface ZonaRegiao {
   ids: readonly string[];
   shape: ZonaShape;
   views?: ('front' | 'back')[];
+}
+
+/** Ponto central de uma ZonaShape — usado como pivot do transform scale. */
+export function zonePivot(s: ZonaShape): { x: number; y: number } {
+  if (s.kind === 'circle')  return { x: s.cx, y: s.cy };
+  if (s.kind === 'ellipse') return { x: s.cx, y: s.cy };
+  const nums = s.d.replace(/[A-Za-z,]/g, ' ').trim().split(/\s+/).map(Number).filter(n => !isNaN(n));
+  if (nums.length < 2) return { x: 120, y: 260 };
+  let sumX = 0, sumY = 0, count = 0;
+  for (let i = 0; i + 1 < nums.length; i += 2) { sumX += nums[i]; sumY += nums[i + 1]; count++; }
+  return count > 0 ? { x: sumX / count, y: sumY / count } : { x: 120, y: 260 };
 }
 
 export const ZONAS_CORPORAIS: ZonaRegiao[] = [

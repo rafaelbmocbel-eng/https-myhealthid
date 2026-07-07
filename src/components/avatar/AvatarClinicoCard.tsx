@@ -23,7 +23,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
-import { PONTO_ANATOMICO, LS_DOT_OFFSETS, ZONAS_CORPORAIS, type ZonaShape } from '@/utils/anatomia/pontoAnatomico';
+import { PONTO_ANATOMICO, LS_DOT_OFFSETS, LS_SCALES, ZONAS_CORPORAIS, zonePivot } from '@/utils/anatomia/pontoAnatomico';
 
 
 
@@ -402,7 +402,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     Object.fromEntries(SISTEMAS_ORDEM.map(s => [s, 0]))
   );
 
-  // Per-organ offsets saved by the /calibrar tool — persisted in localStorage,
+  // Per-organ offsets and scales saved by the /calibrar tool — persisted in localStorage,
   // synced across tabs via the storage event.
   const [savedOrganOffsets, setSavedOrganOffsets] = useState<Record<string, { dx: number; dy: number }>>(() => {
     try {
@@ -410,10 +410,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       return raw ? JSON.parse(raw) : {};
     } catch { return {}; }
   });
+  const [savedOrganScales, setSavedOrganScales] = useState<Record<string, { sx: number; sy: number }>>(() => {
+    try {
+      const raw = localStorage.getItem(LS_SCALES);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === LS_DOT_OFFSETS) {
         try { setSavedOrganOffsets(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
+      }
+      if (e.key === LS_SCALES) {
+        try { setSavedOrganScales(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
       }
       if (e.key === 'organ-labels-calibrado') {
         try { setSavedOrganLabels(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
@@ -1318,6 +1327,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   null,
                 );
                 const off = savedOrganOffsets[zona.id] ?? { dx: 0, dy: 0 };
+                const sc  = savedOrganScales[zona.id]  ?? { sx: 1, sy: 1 };
                 const ativo = !!cor;
                 const s = zona.shape;
 
@@ -1330,10 +1340,16 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const sOpac   = ativo ? 0.70 : 0.14;
                 const sWidth  = 1.2;
 
+                const hasScale = sc.sx !== 1 || sc.sy !== 1;
+                const piv = hasScale ? zonePivot(s) : { x: 0, y: 0 };
+                const zTransform = hasScale
+                  ? `translate(${off.dx},${off.dy}) translate(${piv.x},${piv.y}) scale(${sc.sx},${sc.sy}) translate(${-piv.x},${-piv.y})`
+                  : (off.dx !== 0 || off.dy !== 0 ? `translate(${off.dx},${off.dy})` : undefined);
+
                 return (
                   <g
                     key={zona.id}
-                    transform={`translate(${off.dx},${off.dy})`}
+                    transform={zTransform}
                     className={ativo ? 'avc-zona-ativa' : undefined}
                     style={{ cursor: ativo ? 'pointer' : 'default', animationDelay: undefined }}
                     onClick={() => ativo && abrirSheet(zona.id)}

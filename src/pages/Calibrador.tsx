@@ -1,13 +1,14 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   PONTO_ANATOMICO, SISTEMA_DOT_COLOR,
-  ZONAS_CORPORAIS,
+  ZONAS_CORPORAIS, zonePivot,
   DEFAULT_FIGURA, deriveFigura, buildStickFigurePaths, computeProportionalOffsets,
-  LS_DOT_OFFSETS, LS_FIGURA,
-  type FiguraParams, type ZonaShape,
+  LS_DOT_OFFSETS, LS_FIGURA, LS_SCALES,
+  type FiguraParams,
 } from '@/utils/anatomia/pontoAnatomico';
 
 type Offset = { dx: number; dy: number };
+type Scale  = { sx: number; sy: number };
 type View   = 'front' | 'back';
 
 function loadLS<T>(key: string, fallback: T): T {
@@ -34,6 +35,7 @@ export default function Calibrador() {
   const [view,        setView]        = useState<View>('front');
   const [tab,         setTab]         = useState<'zonas' | 'figura'>('zonas');
   const [offsets,     setOffsets]     = useState<Record<string, Offset>>(() => loadLS(LS_DOT_OFFSETS, {}));
+  const [scales,      setScales]      = useState<Record<string, Scale>>(() => loadLS(LS_SCALES, {}));
   const [figura,      setFigura]      = useState<FiguraParams>(() => loadLS(LS_FIGURA, DEFAULT_FIGURA));
   const [selected,    setSelected]    = useState<string | null>(null);
   const [dirty,       setDirty]       = useState(false);
@@ -51,9 +53,13 @@ export default function Calibrador() {
     [view],
   );
 
-  const movedZones = useMemo(() =>
-    ZONAS_CORPORAIS.filter(z => { const o = offsets[z.id]; return o && (o.dx !== 0 || o.dy !== 0); }),
-    [offsets],
+  const adjustedZones = useMemo(() =>
+    ZONAS_CORPORAIS.filter(z => {
+      const o = offsets[z.id];
+      const sc = scales[z.id];
+      return (o && (o.dx !== 0 || o.dy !== 0)) || (sc && (sc.sx !== 1 || sc.sy !== 1));
+    }),
+    [offsets, scales],
   );
 
   const toSvgXY = (e: React.PointerEvent) => {
@@ -91,12 +97,13 @@ export default function Calibrador() {
   const saveAll = useCallback(() => {
     try {
       localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(offsets));
-      localStorage.setItem(LS_FIGURA, JSON.stringify(figura));
+      localStorage.setItem(LS_SCALES,      JSON.stringify(scales));
+      localStorage.setItem(LS_FIGURA,      JSON.stringify(figura));
       const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setSavedAt(now);
       setDirty(false);
     } catch {}
-  }, [offsets, figura]);
+  }, [offsets, scales, figura]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -109,6 +116,7 @@ export default function Calibrador() {
   useEffect(() => {
     const h = (e: StorageEvent) => {
       if (e.key === LS_DOT_OFFSETS && e.newValue) setOffsets(JSON.parse(e.newValue));
+      if (e.key === LS_SCALES      && e.newValue) setScales(JSON.parse(e.newValue));
       if (e.key === LS_FIGURA      && e.newValue) setFigura(JSON.parse(e.newValue));
     };
     window.addEventListener('storage', h);
@@ -134,10 +142,10 @@ export default function Calibrador() {
     setPropApplied(true);
   };
 
-  const resetAll = () => { setOffsets({}); setFigura(DEFAULT_FIGURA); setDirty(true); setPropApplied(false); };
+  const resetAll = () => { setOffsets({}); setScales({}); setFigura(DEFAULT_FIGURA); setDirty(true); setPropApplied(false); };
 
   const exportJSON = () => {
-    const data = { offsets, figura, exportedAt: new Date().toISOString() };
+    const data = { offsets, scales, figura, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     Object.assign(document.createElement('a'), { href: url, download: 'calibracao-avatar.json' }).click();
@@ -152,6 +160,7 @@ export default function Calibrador() {
       try {
         const data = JSON.parse(ev.target?.result as string);
         if (data.offsets) setOffsets(data.offsets);
+        if (data.scales)  setScales(data.scales);
         if (data.figura)  setFigura(data.figura);
         setDirty(true);
       } catch { alert('JSON inválido'); }
@@ -160,8 +169,9 @@ export default function Calibrador() {
     e.target.value = '';
   };
 
-  const selZona = selected ? ZONAS_CORPORAIS.find(z => z.id === selected) : null;
-  const selOff  = selected ? (offsets[selected] ?? { dx: 0, dy: 0 }) : null;
+  const selZona  = selected ? ZONAS_CORPORAIS.find(z => z.id === selected) : null;
+  const selOff   = selected ? (offsets[selected] ?? { dx: 0, dy: 0 }) : null;
+  const selScale = selected ? (scales[selected]  ?? { sx: 1, sy: 1  }) : null;
 
   const BG  = '#0d0d0f';
   const PAN = '#141418';
@@ -192,9 +202,9 @@ export default function Calibrador() {
         {/* Status bar */}
         <div style={{ position: 'absolute', top: 10, left: 12, fontSize: 10, color: '#555', lineHeight: 1.6 }}>
           <span style={{ color: ACC, fontWeight: 600 }}>Calibrador de Regiões</span>
-          {movedZones.length > 0 && (
+          {adjustedZones.length > 0 && (
             <span style={{ color: ORG, marginLeft: 8 }}>
-              {movedZones.length} região{movedZones.length > 1 ? 'ões' : ''} ajustada{movedZones.length > 1 ? 's' : ''}
+              {adjustedZones.length} região{adjustedZones.length > 1 ? 'ões' : ''} ajustada{adjustedZones.length > 1 ? 's' : ''}
             </span>
           )}
         </div>
@@ -234,19 +244,25 @@ export default function Calibrador() {
           {/* ═══ Zonas corporais arrastáveis ═══ */}
           {visibleZones.map(zona => {
             const off    = offsets[zona.id] ?? { dx: 0, dy: 0 };
+            const sc     = scales[zona.id]  ?? { sx: 1, sy: 1 };
             const isSel  = selected === zona.id;
-            const isMov  = off.dx !== 0 || off.dy !== 0;
+            const hasScale = sc.sx !== 1 || sc.sy !== 1;
+            const isMov  = off.dx !== 0 || off.dy !== 0 || hasScale;
             const s      = zona.shape;
             const lp     = labelPos(s);
+            const piv    = zonePivot(s);
 
-            const baseColor = SISTEMA_DOT_COLOR[PONTO_ANATOMICO[zona.id]?.sistema ?? 'musculoesqueletico'] ?? ACC;
             const zColor = isSel ? ACC : isMov ? ORG : '#c8c8e8';
             const fOpac  = isSel ? 0.22 : isMov ? 0.16 : 0.07;
             const sOpac  = isSel ? 0.85 : isMov ? 0.72 : 0.28;
 
+            const zTransform = hasScale
+              ? `translate(${off.dx},${off.dy}) translate(${piv.x},${piv.y}) scale(${sc.sx},${sc.sy}) translate(${-piv.x},${-piv.y})`
+              : `translate(${off.dx},${off.dy})`;
+
             return (
               <g key={zona.id}
-                transform={`translate(${off.dx},${off.dy})`}
+                transform={zTransform}
                 onPointerDown={e => onPointerDown(e, zona.id)}
                 style={{ cursor: 'grab' }}>
 
@@ -368,7 +384,7 @@ export default function Calibrador() {
               </div>
 
               {/* Zona selecionada */}
-              {selZona && selOff && selected ? (
+              {selZona && selOff && selScale && selected ? (
                 <div style={{ background: '#1a1a28', borderRadius: 8, padding: 10,
                   border: `1px solid ${ACC}44` }}>
                   <div style={{ fontSize: 10, color: '#555', marginBottom: 3 }}>Região selecionada</div>
@@ -376,6 +392,8 @@ export default function Calibrador() {
                     {selZona.label}
                   </div>
 
+                  {/* Posição */}
+                  <div style={{ fontSize: 9, color: '#444', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Posição</div>
                   {(['dx', 'dy'] as const).map(axis => (
                     <div key={axis} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
                       <span style={{ fontSize: 10, width: 16, color: '#666' }}>{axis}:</span>
@@ -394,9 +412,33 @@ export default function Calibrador() {
                     </div>
                   ))}
 
+                  {/* Escala */}
+                  <div style={{ fontSize: 9, color: '#444', marginTop: 8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Escala</div>
+                  {([
+                    { axis: 'sx' as const, label: 'Largura' },
+                    { axis: 'sy' as const, label: 'Comprimento' },
+                  ]).map(({ axis, label }) => (
+                    <div key={axis} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                      <span style={{ fontSize: 10, width: 70, color: '#666', flexShrink: 0 }}>{label}:</span>
+                      <input type="range" min={0.2} max={2.5} step={0.05}
+                        value={selScale[axis]}
+                        onChange={e => {
+                          const val = Number(e.target.value);
+                          setScales(prev => ({ ...prev, [selected]: { ...(prev[selected] ?? { sx: 1, sy: 1 }), [axis]: val } }));
+                          setDirty(true);
+                        }}
+                        style={{ flex: 1, accentColor: '#7c3aed', height: 3 }}
+                      />
+                      <span style={{ fontSize: 10, fontFamily: 'monospace', width: 36, textAlign: 'right', color: '#ccc' }}>
+                        {selScale[axis].toFixed(2)}×
+                      </span>
+                    </div>
+                  ))}
+
                   <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
                     <button onClick={() => {
                       setOffsets(prev => { const n = { ...prev }; delete n[selected!]; return n; });
+                      setScales(prev => { const n = { ...prev }; delete n[selected!]; return n; });
                       setDirty(true);
                     }} style={{ flex: 1, padding: '4px 0', borderRadius: 5, border: 'none', cursor: 'pointer',
                       background: '#2a2a38', color: '#aaa', fontSize: 10 }}>
@@ -416,14 +458,17 @@ export default function Calibrador() {
               )}
 
               {/* Regiões movidas */}
-              {movedZones.length > 0 && (
+              {adjustedZones.length > 0 && (
                 <div>
                   <div style={{ fontSize: 10, color: '#555', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Ajustadas ({movedZones.length})
+                    Ajustadas ({adjustedZones.length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {movedZones.map(z => {
-                      const off = offsets[z.id]!;
+                    {adjustedZones.map(z => {
+                      const off = offsets[z.id] ?? { dx: 0, dy: 0 };
+                      const sc  = scales[z.id]  ?? { sx: 1, sy: 1 };
+                      const hasMov = off.dx !== 0 || off.dy !== 0;
+                      const hasSc  = sc.sx !== 1 || sc.sy !== 1;
                       return (
                         <div key={z.id}
                           style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#16161e',
@@ -432,7 +477,8 @@ export default function Calibrador() {
                           onClick={() => setSelected(z.id)}>
                           <span style={{ color: ORG, flex: 1 }}>{z.label}</span>
                           <span style={{ fontFamily: 'monospace', color: '#555', fontSize: 9, whiteSpace: 'nowrap' }}>
-                            {off.dx > 0 ? '+' : ''}{off.dx}, {off.dy > 0 ? '+' : ''}{off.dy}
+                            {hasMov && `${off.dx > 0?'+':''}${off.dx},${off.dy > 0?'+':''}${off.dy} `}
+                            {hasSc  && `${sc.sx.toFixed(1)}×${sc.sy.toFixed(1)}`}
                           </span>
                         </div>
                       );
