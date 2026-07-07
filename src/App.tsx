@@ -33,6 +33,7 @@ const AvaliacaoPublica = lazyWithRetry(() => import("./pages/AvaliacaoPublica"))
 const AgendaPublica = lazyWithRetry(() => import("./pages/AgendaPublica"));
 const Configuracoes = lazyWithRetry(() => import("./pages/Configuracoes"));
 const LayoutEditor = lazyWithRetry(() => import("./pages/LayoutEditor"));
+const EditarPaciente = lazyWithRetry(() => import("./pages/EditarPaciente"));
 const CrmHub = lazyWithRetry(() => import("./pages/CrmHub"));
 const FunilPublico = lazyWithRetry(() => import("./pages/FunilPublico"));
 const Eventos = lazyWithRetry(() => import("./pages/Eventos"));
@@ -183,6 +184,7 @@ const App = () => (
                 <Route path="/configuracoes" element={<ProfessionalGuard><Configuracoes /></ProfessionalGuard>} />
                 <Route path="/configuracoes/exportar" element={<ProfessionalGuard><ExportarDados /></ProfessionalGuard>} />
                 <Route path="/configuracoes/layout" element={<ProfessionalGuard><LayoutEditor /></ProfessionalGuard>} />
+                <Route path="/editarpaciente" element={<ProfessionalGuard><EditarPaciente /></ProfessionalGuard>} />
                 <Route path="/financeiro" element={<Navigate to="/pacientes?tab=financeiro" replace />} />
                 <Route path="/base-cientifica" element={<ProfessionalGuard><BaseCientifica /></ProfessionalGuard>} />
 
