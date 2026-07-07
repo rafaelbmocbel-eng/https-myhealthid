@@ -23,7 +23,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
-import { PONTO_ANATOMICO, LS_DOT_OFFSETS } from '@/utils/anatomia/pontoAnatomico';
+import { PONTO_ANATOMICO, LS_DOT_OFFSETS, ZONAS_CORPORAIS, type ZonaShape } from '@/utils/anatomia/pontoAnatomico';
 
 
 
@@ -1034,15 +1034,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   50% { opacity: 1.0; }
                 }
                 .pulse-organ { animation: pulse-organ 2.2s infinite ease-in-out; }
-                @keyframes avcDotPing {
-                  0%   { transform: scale(1);   opacity: 0.30; }
-                  60%  { transform: scale(3.0);  opacity: 0;    }
-                  100% { transform: scale(1);   opacity: 0;    }
+                @keyframes avcZonaPulse {
+                  0%, 100% { opacity: 1; }
+                  50%      { opacity: 0.65; }
                 }
-                .avc-dot-ping {
-                  animation: avcDotPing 2.5s ease-out infinite;
-                  transform-box: fill-box;
-                  transform-origin: center;
+                .avc-zona-ativa {
+                  animation: avcZonaPulse 2.8s ease-in-out infinite;
                 }
               `}
             </style>
@@ -1311,21 +1308,59 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               })}
             </g>
 
-            {/* ═══ Pontos anatômicos (fora da máscara, posições calibradas) ═══ */}
-            {Object.entries(PONTO_ANATOMICO)
-              .filter(([id]) => corPorRegiao[id])
-              .map(([id, pos], i) => {
-                const cor = corPorRegiao[id];
-                const off = savedOrganOffsets[id] ?? { dx: 0, dy: 0 };
-                const cx = pos.cx + off.dx;
-                const cy = pos.cy + off.dy;
+            {/* ═══ Zonas corporais — regiões coloridas por achado clínico ═══ */}
+            {ZONAS_CORPORAIS
+              .filter(z => !z.views || z.views.includes(view as 'front' | 'back'))
+              .map(zona => {
+                // Primeira cor encontrada entre os IDs da zona
+                const cor = zona.ids.reduce(
+                  (acc: string | null, id) => acc ?? (corPorRegiao[id] ?? null),
+                  null,
+                );
+                const off = savedOrganOffsets[zona.id] ?? { dx: 0, dy: 0 };
+                const ativo = !!cor;
+                const s = zona.shape;
+
+                // Membros sem achado: omite (o stroke do boneco já está visível)
+                if (!ativo && s.kind === 'path' && s.sw) return null;
+
+                const fill    = ativo ? cor! : 'currentColor';
+                const fOpac   = ativo ? 0.30 : 0.05;
+                const stroke  = ativo ? cor! : 'currentColor';
+                const sOpac   = ativo ? 0.70 : 0.14;
+                const sWidth  = 1.2;
+
                 return (
-                  <g key={id} style={{ cursor: 'pointer' }} onClick={() => abrirSheet(id)}>
-                    <circle cx={cx} cy={cy} r={9} fill={cor} opacity={0.25}
-                      className="avc-dot-ping"
-                      style={{ animationDelay: `${(i % 5) * 0.52}s` }} />
-                    <circle cx={cx} cy={cy} r={5} fill={cor} />
-                    <circle cx={cx} cy={cy} r={2} fill="white" opacity={0.75} />
+                  <g
+                    key={zona.id}
+                    transform={`translate(${off.dx},${off.dy})`}
+                    className={ativo ? 'avc-zona-ativa' : undefined}
+                    style={{ cursor: ativo ? 'pointer' : 'default', animationDelay: undefined }}
+                    onClick={() => ativo && abrirSheet(zona.id)}
+                  >
+                    {s.kind === 'circle' && (
+                      <circle cx={s.cx} cy={s.cy} r={s.r}
+                        fill={fill} fillOpacity={fOpac}
+                        stroke={stroke} strokeOpacity={sOpac} strokeWidth={sWidth} />
+                    )}
+                    {s.kind === 'ellipse' && (
+                      <ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
+                        fill={fill} fillOpacity={fOpac}
+                        stroke={stroke} strokeOpacity={sOpac} strokeWidth={sWidth} />
+                    )}
+                    {s.kind === 'path' && s.sw && (
+                      /* Membro: zona como stroke largo sobre o path do boneco */
+                      <path d={s.d}
+                        fill="none"
+                        stroke={stroke} strokeOpacity={sOpac}
+                        strokeWidth={s.sw} strokeLinecap="round" />
+                    )}
+                    {s.kind === 'path' && !s.sw && (
+                      /* Tronco / área fechada */
+                      <path d={s.d}
+                        fill={fill} fillOpacity={fOpac}
+                        stroke={stroke} strokeOpacity={sOpac} strokeWidth={sWidth} />
+                    )}
                   </g>
                 );
               })

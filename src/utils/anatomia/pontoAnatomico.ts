@@ -292,3 +292,149 @@ export function computeProportionalOffsets(
 
 export const LS_DOT_OFFSETS = 'organ-offsets-calibrado';
 export const LS_FIGURA      = 'stick-figura-calibrado';
+
+// ── Zonas corporais — formas SVG para renderização no avatar ─────────────────
+export type ZonaShape =
+  | { kind: 'circle';  cx: number; cy: number; r: number }
+  | { kind: 'ellipse'; cx: number; cy: number; rx: number; ry: number }
+  /** sw = strokeWidth → zona de membro (stroke-only). filled=true → shape fechado. */
+  | { kind: 'path'; d: string; sw?: number; filled?: boolean };
+
+export interface ZonaRegiao {
+  id: string;
+  label: string;
+  /** IDs de PONTO_ANATOMICO cujos achados colorem esta zona */
+  ids: readonly string[];
+  shape: ZonaShape;
+  views?: ('front' | 'back')[];
+}
+
+export const ZONAS_CORPORAIS: ZonaRegiao[] = [
+  // ── Cabeça / crânio ──────────────────────────────────────────────────────
+  { id: 'cabeca',   label: 'Cabeça',       views: ['front'],
+    ids: ['cabeca','cerebro','cerebelo','hipofise','tronco_encefalico'],
+    shape: { kind: 'circle', cx: 120, cy: 32, r: 26 } },
+  { id: 'occipital', label: 'Crânio Post.', views: ['back'],
+    ids: ['occipital','cerebro_p','cerebelo_p'],
+    shape: { kind: 'circle', cx: 120, cy: 32, r: 26 } },
+
+  // ── Pescoço ───────────────────────────────────────────────────────────────
+  { id: 'pescoco',  label: 'Pescoço',   views: ['front'],
+    ids: ['pescoco','tireoide','traqueia','linfonodos_cervicais'],
+    shape: { kind: 'ellipse', cx: 120, cy: 62, rx: 11, ry: 10 } },
+  { id: 'cervical', label: 'Cervical',   views: ['back'],
+    ids: ['cervical'],
+    shape: { kind: 'ellipse', cx: 120, cy: 62, rx: 11, ry: 10 } },
+
+  // ── Ombros ────────────────────────────────────────────────────────────────
+  { id: 'ombro_d', label: 'Ombro D', views: ['front','back'],
+    ids: ['ombro_d','trapezio_d','linfonodos_axilares_d'],
+    shape: { kind: 'ellipse', cx: 72, cy: 89, rx: 20, ry: 13 } },
+  { id: 'ombro_e', label: 'Ombro E', views: ['front','back'],
+    ids: ['ombro_e','trapezio_e','linfonodos_axilares_e'],
+    shape: { kind: 'ellipse', cx: 168, cy: 89, rx: 20, ry: 13 } },
+
+  // ── Braço D (esquerda na tela = paciente direito) ─────────────────────────
+  { id: 'braco_d',    label: 'Braço D',    views: ['front','back'],
+    ids: ['braco_d'],
+    shape: { kind: 'path', d: 'M77 88 Q64 108 56 127', sw: 22 } },
+  { id: 'cotovelo_d', label: 'Cotovelo D', views: ['front','back'],
+    ids: ['cotovelo_d'],
+    shape: { kind: 'circle', cx: 51, cy: 138, r: 13 } },
+  { id: 'antebraco_d', label: 'Antebraço D', views: ['front','back'],
+    ids: ['antebraco_d'],
+    shape: { kind: 'path', d: 'M51 149 Q50 157 50 163', sw: 19 } },
+  { id: 'punho_d', label: 'Punho D', views: ['front','back'],
+    ids: ['punho_d'],
+    shape: { kind: 'circle', cx: 50, cy: 163, r: 8 } },
+  { id: 'mao_d', label: 'Mão D', views: ['front','back'],
+    ids: ['mao_d'],
+    shape: { kind: 'ellipse', cx: 50, cy: 169, rx: 9, ry: 6 } },
+
+  // ── Braço E (direita na tela = paciente esquerdo) ─────────────────────────
+  { id: 'braco_e',    label: 'Braço E',    views: ['front','back'],
+    ids: ['braco_e'],
+    shape: { kind: 'path', d: 'M163 88 Q176 108 184 127', sw: 22 } },
+  { id: 'cotovelo_e', label: 'Cotovelo E', views: ['front','back'],
+    ids: ['cotovelo_e'],
+    shape: { kind: 'circle', cx: 189, cy: 138, r: 13 } },
+  { id: 'antebraco_e', label: 'Antebraço E', views: ['front','back'],
+    ids: ['antebraco_e'],
+    shape: { kind: 'path', d: 'M189 149 Q190 157 190 163', sw: 19 } },
+  { id: 'punho_e', label: 'Punho E', views: ['front','back'],
+    ids: ['punho_e'],
+    shape: { kind: 'circle', cx: 190, cy: 163, r: 8 } },
+  { id: 'mao_e', label: 'Mão E', views: ['front','back'],
+    ids: ['mao_e'],
+    shape: { kind: 'ellipse', cx: 190, cy: 169, rx: 9, ry: 6 } },
+
+  // ── Tronco — dividido em 3 faixas ─────────────────────────────────────────
+  { id: 'peitoral', label: 'Tórax / Peitoral', views: ['front'],
+    ids: ['peitoral','coracao','aorta','vena_cava','pulmao_d','pulmao_e','esofago','timo','medula_espinhal_v'],
+    shape: { kind: 'path', filled: true,
+      d: 'M82 78 Q73 100 73 122 L167 122 Q167 100 158 78 Q140 74 120 74 Q100 74 82 78 Z' } },
+  { id: 'toracica', label: 'Dorso Torácico', views: ['back'],
+    ids: ['toracica','dorso','pulmao_d_p','pulmao_e_p','medula_p'],
+    shape: { kind: 'path', filled: true,
+      d: 'M82 78 Q73 100 73 122 L167 122 Q167 100 158 78 Q140 74 120 74 Q100 74 82 78 Z' } },
+  { id: 'abdomen', label: 'Abdômen', views: ['front'],
+    ids: ['abdomen','figado','estomago','vesicula_biliar','pancreas_corpo','duodeno','baco_frente',
+          'intestino_delgado','colon_ascendente','colon_transverso','colon_descendente',
+          'cisterna_chyli','adrenal_d','adrenal_e','ilhotas_langerhans','rim_d_frente','rim_e_frente'],
+    shape: { kind: 'path', filled: true,
+      d: 'M73 122 L167 122 L165 158 L75 158 Z' } },
+  { id: 'lombar', label: 'Lombar / Dorso', views: ['back'],
+    ids: ['lombar','adrenal_d_p','adrenal_e_p','rim_d','rim_e'],
+    shape: { kind: 'path', filled: true,
+      d: 'M73 122 L167 122 L165 158 L75 158 Z' } },
+  { id: 'pelve', label: 'Pelve', views: ['front'],
+    ids: ['pelve','reto','colon_sigmoide','apendice','bexiga','ureteres','utero','ovarios','testiculos','prostata','linfonodos_inguinais'],
+    shape: { kind: 'path', filled: true,
+      d: 'M75 158 L165 158 Q163 170 166 168 Q144 176 120 176 Q96 176 74 168 Q77 170 75 158 Z' } },
+  { id: 'sacral', label: 'Região Sacral', views: ['back'],
+    ids: ['sacral'],
+    shape: { kind: 'path', filled: true,
+      d: 'M75 158 L165 158 Q163 170 166 168 Q144 176 120 176 Q96 176 74 168 Q77 170 75 158 Z' } },
+
+  // ── Quadril ───────────────────────────────────────────────────────────────
+  { id: 'coxofemural_d', label: 'Coxofemural D', views: ['front','back'],
+    ids: ['coxofemural_d','gluteo_d'],
+    shape: { kind: 'circle', cx: 102, cy: 184, r: 14 } },
+  { id: 'coxofemural_e', label: 'Coxofemural E', views: ['front','back'],
+    ids: ['coxofemural_e','gluteo_e'],
+    shape: { kind: 'circle', cx: 138, cy: 184, r: 14 } },
+
+  // ── Perna D ───────────────────────────────────────────────────────────────
+  { id: 'coxa_d',     label: 'Coxa D',      views: ['front','back'],
+    ids: ['coxa_d'],
+    shape: { kind: 'path', d: 'M103 200 Q99 255 99 312', sw: 27 } },
+  { id: 'joelho_d',   label: 'Joelho D',    views: ['front','back'],
+    ids: ['joelho_d'],
+    shape: { kind: 'circle', cx: 99, cy: 316, r: 17 } },
+  { id: 'canela_d',   label: 'Perna D',     views: ['front','back'],
+    ids: ['canela_d'],
+    shape: { kind: 'path', d: 'M99 335 Q98 390 98 436', sw: 22 } },
+  { id: 'tornozelo_d', label: 'Tornozelo D', views: ['front','back'],
+    ids: ['tornozelo_d'],
+    shape: { kind: 'circle', cx: 98, cy: 456, r: 12 } },
+  { id: 'pe_d',       label: 'Pé D',        views: ['front','back'],
+    ids: ['pe_d'],
+    shape: { kind: 'ellipse', cx: 100, cy: 501, rx: 13, ry: 8 } },
+
+  // ── Perna E ───────────────────────────────────────────────────────────────
+  { id: 'coxa_e',     label: 'Coxa E',      views: ['front','back'],
+    ids: ['coxa_e'],
+    shape: { kind: 'path', d: 'M137 200 Q141 255 141 312', sw: 27 } },
+  { id: 'joelho_e',   label: 'Joelho E',    views: ['front','back'],
+    ids: ['joelho_e'],
+    shape: { kind: 'circle', cx: 141, cy: 316, r: 17 } },
+  { id: 'canela_e',   label: 'Perna E',     views: ['front','back'],
+    ids: ['canela_e'],
+    shape: { kind: 'path', d: 'M141 335 Q142 390 142 436', sw: 22 } },
+  { id: 'tornozelo_e', label: 'Tornozelo E', views: ['front','back'],
+    ids: ['tornozelo_e'],
+    shape: { kind: 'circle', cx: 142, cy: 456, r: 12 } },
+  { id: 'pe_e',       label: 'Pé E',        views: ['front','back'],
+    ids: ['pe_e'],
+    shape: { kind: 'ellipse', cx: 140, cy: 501, rx: 13, ry: 8 } },
+];
