@@ -709,6 +709,31 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     return map;
   }, [eventosFiltrados, sinalRegions, sistemasAtivos]);
 
+  // Condições ativas por zona corporal — usada para dots e lista compacta
+  const activeConditions = useMemo(() => {
+    const result: Array<{
+      zonaId: string; label: string; cor: string; status: string; tipo_achado: string;
+    }> = [];
+    const statusLabel: Record<string, string> = {
+      ativo: 'Ativo', cronico: 'Crônico', observacao: 'Obs.', resolvido: 'Resolvido',
+    };
+    ZONAS_CORPORAIS.forEach(zona => {
+      const zoneEvs = eventosFiltrados.filter(ev => zona.ids.includes(ev.regiao_id));
+      if (zoneEvs.length === 0) return;
+      const top = [...zoneEvs].sort((a, b) => {
+        const da = tipoPeso((a as any).tipo_diagnostico);
+        const db = tipoPeso((b as any).tipo_diagnostico);
+        return da !== db ? db - da : (b.severidade ?? 0) - (a.severidade ?? 0);
+      })[0];
+      result.push({
+        zonaId: zona.id, label: zona.label, cor: corEvento(top),
+        status: statusLabel[top.status] ?? top.status,
+        tipo_achado: top.tipo_achado || '',
+      });
+    });
+    return result;
+  }, [eventosFiltrados]);
+
   const regioesBase = REGIONS.filter(r => r.view === view);
 
   // Órgãos exclusivos de cada sexo — ocultados quando incompatíveis com o gênero do paciente.
@@ -1043,12 +1068,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   50% { opacity: 1.0; }
                 }
                 .pulse-organ { animation: pulse-organ 2.2s infinite ease-in-out; }
-                @keyframes avcZonaPulse {
-                  0%, 100% { opacity: 1; }
-                  50%      { opacity: 0.65; }
+                @keyframes avcDotPing {
+                  0%   { transform: scale(1);   opacity: 0.70; }
+                  65%  { transform: scale(3.4); opacity: 0;    }
+                  100% { transform: scale(1);   opacity: 0;    }
                 }
-                .avc-zona-ativa {
-                  animation: avcZonaPulse 2.8s ease-in-out infinite;
+                .avc-dot-ping {
+                  animation: avcDotPing 2.6s ease-out infinite;
+                  transform-box: fill-box;
+                  transform-origin: center;
                 }
               `}
             </style>
@@ -1317,66 +1345,30 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               })}
             </g>
 
-            {/* ═══ Zonas corporais — regiões coloridas por achado clínico ═══ */}
+            {/* ═══ Dots clínicos — um ponto colorido por zona com achado ativo ═══ */}
             {ZONAS_CORPORAIS
               .filter(z => !z.views || z.views.includes(view as 'front' | 'back'))
               .map(zona => {
-                // Primeira cor encontrada entre os IDs da zona
                 const cor = zona.ids.reduce(
                   (acc: string | null, id) => acc ?? (corPorRegiao[id] ?? null),
                   null,
                 );
+                if (!cor) return null;
+
                 const off = savedOrganOffsets[zona.id] ?? { dx: 0, dy: 0 };
-                const sc  = savedOrganScales[zona.id]  ?? { sx: 1, sy: 1 };
-                const ativo = !!cor;
-                const s = zona.shape;
-
-                // Membros sem achado: omite (o stroke do boneco já está visível)
-                if (!ativo && s.kind === 'path' && s.sw) return null;
-
-                const fill    = ativo ? cor! : 'currentColor';
-                const fOpac   = ativo ? 0.30 : 0.05;
-                const stroke  = ativo ? cor! : 'currentColor';
-                const sOpac   = ativo ? 0.70 : 0.14;
-                const sWidth  = 1.2;
-
-                const hasScale = sc.sx !== 1 || sc.sy !== 1;
-                const piv = hasScale ? zonePivot(s) : { x: 0, y: 0 };
-                const zTransform = hasScale
-                  ? `translate(${off.dx},${off.dy}) translate(${piv.x},${piv.y}) scale(${sc.sx},${sc.sy}) translate(${-piv.x},${-piv.y})`
-                  : (off.dx !== 0 || off.dy !== 0 ? `translate(${off.dx},${off.dy})` : undefined);
+                const piv = zonePivot(zona.shape);
+                const cx  = piv.x + off.dx;
+                const cy  = piv.y + off.dy;
 
                 return (
-                  <g
-                    key={zona.id}
-                    transform={zTransform}
-                    className={ativo ? 'avc-zona-ativa' : undefined}
-                    style={{ cursor: ativo ? 'pointer' : 'default', animationDelay: undefined }}
-                    onClick={() => ativo && abrirSheet(zona.id)}
-                  >
-                    {s.kind === 'circle' && (
-                      <circle cx={s.cx} cy={s.cy} r={s.r}
-                        fill={fill} fillOpacity={fOpac}
-                        stroke={stroke} strokeOpacity={sOpac} strokeWidth={sWidth} />
-                    )}
-                    {s.kind === 'ellipse' && (
-                      <ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
-                        fill={fill} fillOpacity={fOpac}
-                        stroke={stroke} strokeOpacity={sOpac} strokeWidth={sWidth} />
-                    )}
-                    {s.kind === 'path' && s.sw && (
-                      /* Membro: zona como stroke largo sobre o path do boneco */
-                      <path d={s.d}
-                        fill="none"
-                        stroke={stroke} strokeOpacity={sOpac}
-                        strokeWidth={s.sw} strokeLinecap="round" />
-                    )}
-                    {s.kind === 'path' && !s.sw && (
-                      /* Tronco / área fechada */
-                      <path d={s.d}
-                        fill={fill} fillOpacity={fOpac}
-                        stroke={stroke} strokeOpacity={sOpac} strokeWidth={sWidth} />
-                    )}
+                  <g key={zona.id} style={{ cursor: 'pointer' }}
+                    onClick={() => abrirSheet(zona.id)}>
+                    {/* Anel pulsante */}
+                    <circle cx={cx} cy={cy} r={9} fill={cor} className="avc-dot-ping" />
+                    {/* Ponto sólido */}
+                    <circle cx={cx} cy={cy} r={7} fill={cor} />
+                    {/* Destaque central */}
+                    <circle cx={cx} cy={cy} r={2.8} fill="white" opacity={0.70} />
                   </g>
                 );
               })
@@ -1404,6 +1396,38 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </svg>
         </div>
         </div>
+
+        {/* ── Lista compacta de condições ativas ─────────────────────────────── */}
+        {activeConditions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 px-3 pb-3 pt-0.5">
+            {activeConditions.map(c => {
+              const isResolvido = c.status === 'Resolvido';
+              return (
+                <button key={c.zonaId}
+                  onClick={() => abrirSheet(c.zonaId)}
+                  className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-opacity hover:opacity-75 active:opacity-60"
+                  style={{
+                    borderColor: `${c.cor}45`,
+                    background: isResolvido ? 'transparent' : `${c.cor}12`,
+                    opacity: isResolvido ? 0.6 : 1,
+                  }}>
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: c.cor }} />
+                  <span className="font-semibold leading-none" style={{ color: c.cor }}>{c.label}</span>
+                  {c.tipo_achado && (
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-muted-foreground truncate max-w-[90px] leading-none">{c.tipo_achado}</span>
+                    </>
+                  )}
+                  <span className="rounded-full border px-1 text-[9px] leading-4"
+                    style={{ borderColor: `${c.cor}30`, color: c.cor, opacity: 0.8 }}>
+                    {c.status}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Detalhe do sistema selecionado/hovered — aparece na íntegra com sua marcação clínica */}
         {(() => {
