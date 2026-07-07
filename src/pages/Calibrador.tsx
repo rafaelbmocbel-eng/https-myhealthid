@@ -94,16 +94,44 @@ export default function Calibrador() {
 
   const onPointerUp = useCallback(() => { dragging.current = null; }, []);
 
-  const saveAll = useCallback(() => {
+  const persistNow = useCallback((
+    offs: typeof offsets, scs: typeof scales, fig: typeof figura
+  ) => {
     try {
-      localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(offsets));
-      localStorage.setItem(LS_SCALES,      JSON.stringify(scales));
-      localStorage.setItem(LS_FIGURA,      JSON.stringify(figura));
+      localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(offs));
+      localStorage.setItem(LS_SCALES,      JSON.stringify(scs));
+      localStorage.setItem(LS_FIGURA,      JSON.stringify(fig));
+      return true;
+    } catch { return false; }
+  }, []);
+
+  const saveAll = useCallback(() => {
+    if (persistNow(offsets, scales, figura)) {
       const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setSavedAt(now);
       setDirty(false);
-    } catch {}
-  }, [offsets, scales, figura]);
+    }
+  }, [offsets, scales, figura, persistNow]);
+
+  // Auto-save 600ms after any change — user never needs to click the button
+  useEffect(() => {
+    if (!dirty) return;
+    const id = setTimeout(() => {
+      if (persistNow(offsets, scales, figura)) {
+        const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setSavedAt(now);
+        setDirty(false);
+      }
+    }, 600);
+    return () => clearTimeout(id);
+  }, [offsets, scales, figura, dirty, persistNow]);
+
+  // Safety net: save synchronously when user navigates away
+  useEffect(() => {
+    const onUnload = () => { if (dirty) persistNow(offsets, scales, figura); };
+    window.addEventListener('beforeunload', onUnload);
+    return () => window.removeEventListener('beforeunload', onUnload);
+  }, [dirty, offsets, scales, figura, persistNow]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -343,7 +371,7 @@ export default function Calibrador() {
             Calibrador do Avatar
           </h2>
           <p style={{ margin: '3px 0 0', fontSize: 10, color: '#555' }}>
-            Arraste regiões · Ctrl+S salva
+            Arraste regiões · salvo automaticamente
           </p>
         </div>
 
@@ -597,15 +625,15 @@ export default function Calibrador() {
         <div style={{ padding: '10px 12px', borderTop: `1px solid ${BDR}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <button onClick={saveAll} style={{
             width: '100%', padding: '10px 0', borderRadius: 7, border: 'none', cursor: 'pointer',
-            background: dirty ? '#2563eb' : '#172554',
-            color: dirty ? '#fff' : '#4b6cb7', fontSize: 13, fontWeight: 700,
+            background: dirty ? '#1d4ed8' : '#14532d',
+            color: dirty ? '#fff' : '#86efac', fontSize: 13, fontWeight: 700,
           }}>
-            {dirty ? '💾 Salvar tudo' : '✓ Salvo'}
+            {dirty ? '⏳ Salvando…' : '✓ Salvo automaticamente'}
           </button>
 
-          {savedAt && !dirty && (
+          {savedAt && (
             <div style={{ textAlign: 'center', fontSize: 10, color: '#4ade80' }}>
-              Salvo às {savedAt} — atualize o app para ver
+              Auto-salvo às {savedAt}
             </div>
           )}
 
