@@ -1759,6 +1759,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </div>
         )}
       </div>
+      </div>
           </TabsContent>
 
           <TabsContent value="achados" className="pt-3">
