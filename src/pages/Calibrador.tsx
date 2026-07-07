@@ -6,6 +6,8 @@ import {
   LS_DOT_OFFSETS, LS_FIGURA, LS_SCALES,
   type FiguraParams,
 } from '@/utils/anatomia/pontoAnatomico';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Offset = { dx: number; dy: number };
 type Scale  = { sx: number; sy: number };
@@ -32,6 +34,7 @@ function labelPos(s: ZonaShape): { x: number; y: number; anchor: 'middle' | 'sta
 }
 
 export default function Calibrador() {
+  const { user } = useAuth();
   const [view,        setView]        = useState<View>('front');
   const [tab,         setTab]         = useState<'zonas' | 'figura'>('zonas');
   const [offsets,     setOffsets]     = useState<Record<string, Offset>>(() => loadLS(LS_DOT_OFFSETS, {}));
@@ -94,6 +97,35 @@ export default function Calibrador() {
 
   const onPointerUp = useCallback(() => { dragging.current = null; }, []);
 
+  // Load calibration from Supabase on mount (overrides localStorage if Supabase has data)
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('avatar_calibracao')
+      .select('offsets, scales, figura')
+      .eq('terapeuta_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        if (data.offsets && Object.keys(data.offsets as object).length > 0) {
+          const offs = data.offsets as Record<string, Offset>;
+          setOffsets(offs);
+          localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(offs));
+        }
+        if (data.scales && Object.keys(data.scales as object).length > 0) {
+          const scs = data.scales as Record<string, Scale>;
+          setScales(scs);
+          localStorage.setItem(LS_SCALES, JSON.stringify(scs));
+        }
+        if (data.figura && Object.keys(data.figura as object).length > 0) {
+          const fig = data.figura as FiguraParams;
+          setFigura(fig);
+          localStorage.setItem(LS_FIGURA, JSON.stringify(fig));
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const persistNow = useCallback((
     offs: typeof offsets, scs: typeof scales, fig: typeof figura
   ) => {
@@ -105,28 +137,42 @@ export default function Calibrador() {
     } catch { return false; }
   }, []);
 
+  const persistSupabase = useCallback(async (
+    offs: typeof offsets, scs: typeof scales, fig: typeof figura
+  ) => {
+    if (!user) return;
+    await supabase
+      .from('avatar_calibracao')
+      .upsert(
+        { terapeuta_id: user.id, offsets: offs, scales: scs, figura: fig, updated_at: new Date().toISOString() },
+        { onConflict: 'terapeuta_id' }
+      );
+  }, [user]);
+
   const saveAll = useCallback(() => {
     if (persistNow(offsets, scales, figura)) {
+      void persistSupabase(offsets, scales, figura);
       const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setSavedAt(now);
       setDirty(false);
     }
-  }, [offsets, scales, figura, persistNow]);
+  }, [offsets, scales, figura, persistNow, persistSupabase]);
 
   // Auto-save 600ms after any change — user never needs to click the button
   useEffect(() => {
     if (!dirty) return;
     const id = setTimeout(() => {
       if (persistNow(offsets, scales, figura)) {
+        void persistSupabase(offsets, scales, figura);
         const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         setSavedAt(now);
         setDirty(false);
       }
     }, 600);
     return () => clearTimeout(id);
-  }, [offsets, scales, figura, dirty, persistNow]);
+  }, [offsets, scales, figura, dirty, persistNow, persistSupabase]);
 
-  // Safety net: save synchronously when user navigates away
+  // Safety net: save synchronously to localStorage when user navigates away
   useEffect(() => {
     const onUnload = () => { if (dirty) persistNow(offsets, scales, figura); };
     window.addEventListener('beforeunload', onUnload);

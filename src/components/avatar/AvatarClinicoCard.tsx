@@ -435,6 +435,30 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  // Load calibration from Supabase on mount — overrides localStorage so all devices stay in sync
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('avatar_calibracao')
+      .select('offsets, scales')
+      .eq('terapeuta_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        if (data.offsets && Object.keys(data.offsets as object).length > 0) {
+          const offs = data.offsets as Record<string, { dx: number; dy: number }>;
+          setSavedOrganOffsets(offs);
+          localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(offs));
+        }
+        if (data.scales && Object.keys(data.scales as object).length > 0) {
+          const scs = data.scales as Record<string, { sx: number; sy: number }>;
+          setSavedOrganScales(scs);
+          localStorage.setItem(LS_SCALES, JSON.stringify(scs));
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const [savedOrganLabels, setSavedOrganLabels] = useState<Record<string, string>>(() => {
     try { const r = localStorage.getItem('organ-labels-calibrado'); return r ? JSON.parse(r) : {}; } catch { return {}; }
   });
