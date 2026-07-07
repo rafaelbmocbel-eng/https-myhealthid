@@ -49,6 +49,7 @@ const ExportarDados = lazyWithRetry(() => import("./pages/ExportarDados"));
 const Vitrine = lazyWithRetry(() => import("./pages/Vitrine"));
 const AuthConfirm = lazyWithRetry(() => import("./pages/AuthConfirm"));
 import { AuthProvider } from "./contexts/AuthContext";
+import { LayoutConfigProvider } from "./contexts/LayoutConfigContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
 
@@ -136,6 +137,7 @@ const App = () => (
         <BrowserRouter>
           <ScrollToTop />
           <AuthProvider>
+            <LayoutConfigProvider>
             <RouteRestorer />
             <GlobalBackButton />
             <Suspense fallback={<LazyFallback />}>
@@ -221,6 +223,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
+            </LayoutConfigProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

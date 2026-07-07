@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useLayoutConfig } from '@/hooks/useLayoutConfig';
+import { useLayoutConfig } from '@/contexts/LayoutConfigContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, parse } from 'date-fns';

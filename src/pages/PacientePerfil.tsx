@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { useToast } from '@/hooks/use-toast';
 import { useAgenda } from '@/hooks/useAgenda';
-import { useLayoutConfig } from '@/hooks/useLayoutConfig';
+import { useLayoutConfig } from '@/contexts/LayoutConfigContext';
 const QuestionariosComparacao = lazy(() => import('@/components/paciente/QuestionariosComparacao'));
 const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashboard'));
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';

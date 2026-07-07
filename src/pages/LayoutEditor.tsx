@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -15,11 +15,11 @@ import {
   CreditCard, ShieldAlert, Bell,
 } from 'lucide-react';
 import {
-  useLayoutConfig,
   DEFAULT_LAYOUT_CONFIG,
   type LayoutConfig,
   type TabConfig,
 } from '@/hooks/useLayoutConfig';
+import { useLayoutConfig } from '@/contexts/LayoutConfigContext';
 import { useToast } from '@/hooks/use-toast';
 
 // ─── icon maps ────────────────────────────────────────────────────────────────
@@ -255,21 +255,30 @@ function ToggleRow({ label, desc, checked, onChange, icon: Icon }: {
 // ─── main component ────────────────────────────────────────────────────────────
 export default function LayoutEditor() {
   const navigate = useNavigate();
-  const { config: saved, save, reset } = useLayoutConfig();
+  const { config: saved, loading, save, reset } = useLayoutConfig();
   const { toast } = useToast();
   const [draft, setDraft] = useState<LayoutConfig>(() => JSON.parse(JSON.stringify(saved)));
+  // Sync draft once Supabase finishes loading the real stored config.
+  const syncedRef = useRef(false);
+  useEffect(() => {
+    if (!loading && !syncedRef.current) {
+      syncedRef.current = true;
+      setDraft(JSON.parse(JSON.stringify(saved)));
+    }
+  }, [loading]);
 
   const isDirty = JSON.stringify(draft) !== JSON.stringify(saved);
 
-  function handleSave() {
-    save(draft);
-    toast({ title: 'Layout salvo!', description: 'Mudanças aplicadas em todos os perfis.' });
+  async function handleSave() {
+    await save(draft);
+    toast({ title: 'Layout salvo!', description: 'Mudanças visíveis para todos em toda a plataforma.' });
   }
 
-  function handleReset() {
+  async function handleReset() {
     const fresh: LayoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
     setDraft(fresh);
-    reset();
+    await reset();
+    syncedRef.current = true;
     toast({ title: 'Layout resetado para o padrão.' });
   }
 
