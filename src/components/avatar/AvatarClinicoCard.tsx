@@ -1056,9 +1056,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           )}
         </div>
 
-        <div className="flex items-start gap-2">
-          {/* Ícones laterais de sistema — clique para ver o sistema na íntegra com sua marcação clínica */}
-          <div className="flex flex-col gap-1 pt-6 shrink-0">
+        <div className="flex flex-col gap-2">
+          {/* Ícones de sistema — fileira horizontal */}
+          <div className="flex flex-wrap gap-1 justify-center">
             {systemScores.map(({ sistema: s, score }) => {
               const active = sistemasAtivos.length === 1 && sistemasAtivos[0] === s;
               const config = SISTEMA_CONFIG[s];
@@ -1087,9 +1087,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             })}
           </div>
 
-        {/* Silhueta */}
-        <div className="relative flex-1 min-w-0">
-          <svg viewBox="0 0 240 520" className="w-full h-auto relative" shapeRendering="geometricPrecision" style={{ maxHeight: 480, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))' }}>
+          {/* Silhueta */}
+          <div className="relative mx-auto" style={{ maxWidth: 260 }}>
+          <svg viewBox="0 0 240 520" className="w-full h-auto relative" shapeRendering="geometricPrecision" style={{ maxHeight: 520, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))' }}>
             <defs>
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
@@ -1487,39 +1487,34 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
           </svg>
         </div>
-        {/* Right: compact condition cards */}
-        <div className="w-28 shrink-0 flex flex-col gap-1 pt-6 max-h-[430px] overflow-y-auto pr-0.5">
-          {sistemasAtivos.length === 0 ? (
-            <p className="text-[10px] text-muted-foreground text-center py-6 italic leading-relaxed">
-              Selecione um sistema ao lado.
-            </p>
-          ) : findingsForCards.length === 0 ? (
-            <p className="text-[10px] text-muted-foreground text-center py-4 italic">
-              Sem achados ativos.
-            </p>
-          ) : findingsForCards.map(c => {
-            const sysColor = SISTEMA_CHART_COLOR[c.sistema] || '#94a3b8';
-            const statusHex: Record<string, string> = {
-              'Ativo': '#ec4899', 'Crônico': '#f59e0b', 'Em tratamento': '#f97316',
-              'Obs.': '#eab308',
-            };
-            const sh = statusHex[c.status] || '#94a3b8';
-            return (
-              <button key={c.zonaId} type="button" onClick={() => abrirSheet(c.zonaId)}
-                className="w-full text-left rounded-lg border px-1.5 py-1 transition-opacity hover:opacity-80 active:opacity-60 shrink-0"
-                style={{ borderColor: `${sysColor}35`, background: `${sysColor}0a` }}>
-                <div className="flex items-center justify-between gap-0.5 mb-0.5">
-                  <p className="text-[10px] font-bold leading-tight truncate" style={{ color: sysColor }}>{c.label}</p>
-                  <span className="text-[8px] font-semibold px-1 py-px rounded-full shrink-0"
-                    style={{ color: sh, background: `${sh}1a` }}>{c.status}</span>
-                </div>
-                {c.tipo_achado && (
-                  <p className="text-[9px] text-muted-foreground leading-snug line-clamp-1">{c.tipo_achado}</p>
-                )}
-              </button>
-            );
-          })}
-        </div>
+          {/* Achados — pills abaixo do avatar, visíveis quando sistema selecionado */}
+          {sistemasAtivos.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 justify-center pt-1">
+              {findingsForCards.length === 0 ? (
+                <p className="text-[10px] text-muted-foreground italic">Sem achados ativos neste sistema.</p>
+              ) : findingsForCards.map(c => {
+                const sysColor = SISTEMA_CHART_COLOR[c.sistema] || '#94a3b8';
+                const statusHex: Record<string, string> = {
+                  'Ativo': '#ec4899', 'Crônico': '#f59e0b', 'Em tratamento': '#f97316',
+                  'Obs.': '#eab308',
+                };
+                const sh = statusHex[c.status] || '#94a3b8';
+                return (
+                  <button key={c.zonaId} type="button" onClick={() => abrirSheet(c.zonaId)}
+                    className="flex items-center gap-1 rounded-full border px-2.5 py-1 transition-opacity hover:opacity-80 active:opacity-60"
+                    style={{ borderColor: `${sysColor}40`, background: `${sysColor}0d` }}>
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sysColor }} />
+                    <span className="text-[10px] font-semibold leading-none" style={{ color: sysColor }}>{c.label}</span>
+                    {c.tipo_achado && (
+                      <span className="text-[9px] text-muted-foreground leading-none truncate max-w-[72px]">· {c.tipo_achado}</span>
+                    )}
+                    <span className="text-[8px] font-semibold px-1 py-px rounded-full shrink-0 ml-0.5"
+                      style={{ color: sh, background: `${sh}1a` }}>{c.status}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Detalhe do sistema selecionado/hovered — aparece na íntegra com sua marcação clínica */}
