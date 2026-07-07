@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import {
   ArrowLeft, Save, RotateCcw, ChevronUp, ChevronDown,
-  Eye, EyeOff, AlignLeft, AlignCenter, AlignRight,
+  Eye, EyeOff, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   ArrowLeftRight, Activity, Target, ClipboardList,
   Smartphone, FileText, Fingerprint, Stethoscope, Rocket,
   LayoutTemplate, Rows, Columns, Maximize2, Minimize2,
@@ -392,7 +392,7 @@ export default function LayoutEditor() {
                 { value: 'start',   label: <AlignLeft className="w-3.5 h-3.5" />, title: 'Esquerda' },
                 { value: 'center',  label: <AlignCenter className="w-3.5 h-3.5" />, title: 'Centro' },
                 { value: 'end',     label: <AlignRight className="w-3.5 h-3.5" />, title: 'Direita' },
-                { value: 'between', label: <AlignLeftRight className="w-3.5 h-3.5" />, title: 'Separados (entre)' },
+                { value: 'between', label: <AlignJustify className="w-3.5 h-3.5" />, title: 'Separados (entre)' },
               ]}
             />
           </div>
