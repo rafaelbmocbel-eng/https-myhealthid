@@ -47,7 +47,7 @@ const GRUPO_FUNC_PSI: SecaoKey[] = ['funcionalidade', 'psicossocial'];
 
 // Agrupamento em abas para navegação mobile-first
 const TABS_CONFIG = [
-  { id: 'clinico',      label: 'Clínico',    keys: ['soap', 'resumo_clinico'] as SecaoKey[] },
+  { id: 'clinico',      label: 'Clínico',    keys: ['resumo_clinico'] as SecaoKey[] },
   { id: 'quadro',       label: 'Quadro',     keys: ['dor', 'funcionalidade', 'psicossocial'] as SecaoKey[] },
   { id: 'diagnostico',  label: 'Diagnóstico', keys: ['red_flags', 'hipoteses', 'cif'] as SecaoKey[] },
   { id: 'tratamento',   label: 'Tratamento', keys: ['diretriz', 'insights'] as SecaoKey[] },
@@ -100,16 +100,6 @@ function objToText(obj: any): string {
 }
 
 const SECOES: SecaoDef[] = [
-  {
-    key: 'soap',
-    titulo: 'SOAP',
-    emoji: '📝',
-    Icon: FileText,
-    builder: (r, t) => {
-      const s = buildSoapFromVoice(r, t || undefined);
-      return `S — SUBJETIVO\n${s.subjectivo}\n\nO — OBJETIVO\n${s.objetivo}\n\nA — AVALIAÇÃO\n${s.avaliacao}\n\nP — PLANO\n${s.plano}`;
-    },
-  },
   { key: 'resumo_clinico', titulo: 'Resumo Clínico', emoji: '📋', Icon: Stethoscope, builder: (r) => r?.resumo_clinico || '' },
   {
     key: 'dor', titulo: 'Análise da Dor', emoji: '🩹', Icon: HeartPulse,
@@ -752,6 +742,61 @@ function InsightsCompact({ data }: { data: any }) {
 function ResumoPretty({ texto }: { texto: string }) {
   if (!texto?.trim()) return null;
   return <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{texto}</p>;
+}
+
+function SoapResumoPretty({ resultado, transcricao, resumoClinico }: {
+  resultado: any;
+  transcricao?: string | null;
+  resumoClinico: string;
+}) {
+  const soap = buildSoapFromVoice(resultado, transcricao || undefined);
+
+  const saText = resumoClinico || soap.avaliacao || soap.subjectivo;
+
+  const redFlags = resultado?.red_flags || resultado?.redflags;
+  const hasRedFlags = Array.isArray(redFlags) && redFlags.length > 0;
+  const oText = [
+    resultado?.classificacao_severidade && `Classificação: ${resultado.classificacao_severidade}`,
+    hasRedFlags
+      ? `⚠️ Red flags: ${(redFlags as any[]).map((r: any) => r.descricao || r).join('; ')}`
+      : 'Sem red flags aparentes',
+  ].filter(Boolean).join(' · ');
+
+  const pLines = soap.plano.split('\n').filter(Boolean).slice(0, 3);
+  const pText = pLines.join('\n');
+
+  if (!saText && !oText && !pText) return null;
+
+  return (
+    <div className="space-y-2.5">
+      {saText && (
+        <div className="relative rounded-lg border border-border/30 px-3 py-2.5 bg-sky-500/[0.04] pl-4">
+          <div className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r-full bg-sky-400/60" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-1">
+            Subjetivo &amp; Avaliação
+          </p>
+          <p className="text-[12.5px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{saText}</p>
+        </div>
+      )}
+      {(oText || pText) && (
+        <div className="relative rounded-lg border border-border/30 px-3 py-2.5 bg-emerald-500/[0.04] pl-4 space-y-2">
+          <div className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r-full bg-emerald-400/60" />
+          {oText && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-0.5">Objetivo</p>
+              <p className="text-[12px] leading-snug text-foreground/80">{oText}</p>
+            </div>
+          )}
+          {pText && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400 mb-0.5">Plano</p>
+              <p className="text-[12px] leading-snug text-foreground/80 whitespace-pre-wrap">{pText}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ---------- Diretriz compacta — cards por fase com layout igual à aba Diretrizes, porém resumidos ----------
@@ -1478,7 +1523,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                               ? <ResumoPretty texto={textos[s.key]} />
                               : <InsightsCompact data={resultado?.insights_baseados_evidencia} />
                           ) : s.key === 'resumo_clinico' ? (
-                            <ResumoPretty texto={textos[s.key]} />
+                            <SoapResumoPretty resultado={resultado} transcricao={transcricao} resumoClinico={textos[s.key]} />
                           ) : (
                             <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
                           )}
