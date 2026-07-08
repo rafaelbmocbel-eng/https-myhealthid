@@ -165,6 +165,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [fullEditorJson, setFullEditorJson] = useState('');
   const [fullEditorError, setFullEditorError] = useState<string | null>(null);
   const { adicionar: adicionarNotaProntuario } = useNotasProntuario(pacienteId || '');
+  const [resumableJob, setResumableJob] = useState<{ id: string; resultado: any; transcricao: string } | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -173,6 +174,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const savedAssessmentIdRef = useRef<string | null>(null);
   const savedNoteIdRef = useRef<string | null>(null);
   const uploadedAudioPathRef = useRef<string | null>(null);
+  const activeJobIdRef = useRef<string | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -295,6 +297,30 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessment, editedTranscript]);
+
+  // On mount: check if a previous voice assessment job completed while the app was closed.
+  // The edge function continues running server-side even when the browser tab closes and
+  // saves its result to voice_assessment_jobs — we restore it here.
+  useEffect(() => {
+    if (!user?.id || !pacienteId || appendMode || initialRecord) return;
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(); // 2 h
+    supabase
+      .from('voice_assessment_jobs' as any)
+      .select('id, resultado, transcricao, status, created_at')
+      .eq('terapeuta_id', user.id)
+      .eq('paciente_id', pacienteId)
+      .gte('created_at', cutoff)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data: job }: { data: any }) => {
+        if (job?.resultado?.assessment) {
+          setResumableJob({ id: job.id, resultado: job.resultado, transcricao: job.transcricao || '' });
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, pacienteId]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -657,6 +683,37 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         body.transcript = contextPrefix ? `${contextPrefix}\n\n${text}` : text;
       } else if (contextPrefix) {
         body.transcript = contextPrefix;
+      }
+
+      // Create a job row BEFORE calling the edge function.  The function will
+      // save its result there, so if the browser tab closes mid-processing the
+      // result survives and the user sees it on the next app open.
+      if (user && pacienteId && !appendMode) {
+        try {
+          const { data: jobData } = await supabase
+            .from('voice_assessment_jobs' as any)
+            .insert({
+              terapeuta_id: user.id,
+              paciente_id: pacienteId,
+              audio_path: uploadedAudioPathRef.current,
+              audio_mime_type: audioMimeType,
+              input_params: {
+                serviceType, patientName, patientAge, patientSex,
+                perfilProfissional,
+                ...(body.patientContext ? { patientContext: body.patientContext } : {}),
+                ...(text.length >= 20 ? { transcript: text } : {}),
+              },
+              status: 'pending',
+            })
+            .select('id')
+            .single();
+          if (jobData?.id) {
+            body.jobId = jobData.id;
+            activeJobIdRef.current = jobData.id;
+          }
+        } catch {
+          // Job row creation is best-effort — processing continues without it.
+        }
       }
 
       const { data, error } = await supabase.functions.invoke('voice-assessment', { body });
@@ -1845,6 +1902,39 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
   // ── Step 1: Recording UI ──
   return (
     <div className="space-y-4">
+      {resumableJob && (
+        <Card className="border-blue-300 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-700">
+          <CardContent className="py-3 px-4 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Avaliação concluída em segundo plano</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">Processada enquanto o app estava fechado — clique para ver o resultado.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  setAssessment(resumableJob.resultado.assessment);
+                  setEditedTranscript(resumableJob.transcricao);
+                  setStep('result');
+                  setResumableJob(null);
+                  // Mark job as seen by deleting it
+                  void supabase.from('voice_assessment_jobs' as any).delete().eq('id', resumableJob.id).catch(() => {});
+                }}>
+                Ver resultado
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => {
+                setResumableJob(null);
+                void supabase.from('voice_assessment_jobs' as any).delete().eq('id', resumableJob.id).catch(() => {});
+              }}>
+                Ignorar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-primary/20">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 mb-4">

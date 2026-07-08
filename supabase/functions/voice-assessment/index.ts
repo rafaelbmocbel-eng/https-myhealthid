@@ -320,12 +320,43 @@ function validarCifCodes(cifCodes: any): any {
   });
 }
 
+// ──────────────────────────────────────────────────────────────────
+// JOB-QUEUE HELPERS — saves result to voice_assessment_jobs so the
+// browser can recover the result even when the tab was closed mid-way.
+// ──────────────────────────────────────────────────────────────────
+async function updateVoiceAssessmentJob(
+  supabaseUrl: string,
+  serviceKey: string,
+  jobId: string | null | undefined,
+  update: Record<string, unknown>,
+): Promise<void> {
+  if (!jobId || !supabaseUrl || !serviceKey) return;
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/voice_assessment_jobs?id=eq.${encodeURIComponent(jobId)}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Prefer": "return=minimal",
+      },
+      body: JSON.stringify({ ...update, updated_at: new Date().toISOString() }),
+    });
+  } catch (e) {
+    console.warn("[voice-assessment] updateJob failed (non-blocking):", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Read env vars once at the top — reused for job-queue updates throughout.
+  const SUPABASE_URL_J = Deno.env.get("SUPABASE_URL") ?? "";
+  const SERVICE_KEY_J  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
   try {
     try { await requireUser(req); } catch (r) { return r as Response; }
-    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional, patientContext } = await req.json();
+    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional, patientContext, jobId } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
@@ -392,11 +423,16 @@ Deno.serve(async (req) => {
     const hasAudio = audioBase64ToUse && audioBase64ToUse.length > 100;
 
     if (!hasText && !hasAudio) {
+      await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: "Sem áudio ou transcrição válida." });
       return new Response(JSON.stringify({ error: "Envie áudio ou transcrição com pelo menos algumas frases." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Mark job as processing — the function continues server-side even if the
+    // browser tab closes, so the result will be persisted to the job row.
+    await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "processing" });
 
     const serviceLabel = serviceType === 'identidade' ? 'Método Identidade' :
       serviceType === 'cobzero' ? 'COB° ZERO' :
@@ -700,12 +736,25 @@ Deno.serve(async (req) => {
       console.warn("[voice-assessment] uso_ia tracking error (non-blocking):", e);
     }
 
+    // Persist result so the browser can recover it even if the tab was closed
+    // during processing.  Non-blocking — the HTTP response is the primary path.
+    await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, {
+      status: "completed",
+      resultado: { assessment, evidencias },
+      transcricao,
+    });
+
     return new Response(JSON.stringify({ assessment, transcricao, transcript_length: transcricao.length, evidencias }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("voice-assessment error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
+    const errMsg = e instanceof Error ? e.message : "Erro desconhecido";
+    await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, {
+      status: "failed",
+      error_message: errMsg,
+    });
+    return new Response(JSON.stringify({ error: errMsg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
