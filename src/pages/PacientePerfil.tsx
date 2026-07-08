@@ -174,6 +174,7 @@ export default function PacientePerfil() {
     convenio_id: '' as string,
   });
   const [submittingEdit, setSubmittingEdit] = useState(false);
+  const [statsExpanded, setStatsExpanded] = useState(false);
   const { membros: membrosEquipe } = useEquipe();
   const { convenios } = useConvenios();
 
@@ -768,213 +769,278 @@ export default function PacientePerfil() {
           </div>
         </div>
 
-        {/* ============ KPI STRIP — horizontal scroll on mobile ============ */}
-        {layoutCfg.mostrar_stats && <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 mb-3 scrollbar-hide">
-          {/* Tempo de cadastro */}
-          <div className="flex items-center gap-2.5 rounded-xl border border-border/50 bg-card p-3 shrink-0 min-w-[148px] sm:flex-1 hover:shadow-sm transition-shadow">
-            <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-              <Clock className="h-3.5 w-3.5 text-slate-500" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cliente há</div>
-              <div className="text-sm font-bold tracking-tight text-foreground">
-                {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                desde {format(parseISO(paciente.created_at), 'dd/MM/yy')}
-              </div>
-            </div>
-          </div>
+        {/* ============ KPI STRIP — painel colapsável ============ */}
+        {layoutCfg.mostrar_stats && (
+          <div className="mb-3">
+            {/* Barra compacta — sempre visível */}
+            <button
+              type="button"
+              onClick={() => setStatsExpanded(e => !e)}
+              className="w-full flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-left hover:bg-accent/30 transition-colors"
+            >
+              {/* Ponto de alerta se sem agenda */}
+              {!agendamentosFuturos[0] && scoreCritico && (
+                <span className="h-2 w-2 rounded-full bg-red-500 shrink-0 animate-pulse" />
+              )}
 
-          {/* Avaliações MyID */}
-          <div className="flex items-center gap-2.5 rounded-xl border border-sky-200/70 bg-sky-50/50 dark:border-sky-800/40 dark:bg-sky-950/20 p-3 shrink-0 min-w-[132px] sm:flex-1 hover:shadow-sm transition-shadow">
-            <div className="h-7 w-7 rounded-lg bg-sky-100 dark:bg-sky-900/50 flex items-center justify-center shrink-0">
-              <Activity className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">MyID</div>
-              <div className="text-sm font-bold tracking-tight text-foreground">
-                {myidCount > 0 ? `${myidCount} ${myidCount === 1 ? 'avaliação' : 'avaliações'}` : '—'}
-              </div>
-              <div className="text-[10px] text-muted-foreground">{myidCount === 0 ? 'nenhuma ainda' : 'concluídas'}</div>
-            </div>
-          </div>
+              {/* Mini-resumo em linha */}
+              <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden text-xs">
+                <span className="flex items-center gap-1 text-muted-foreground shrink-0">
+                  <Clock className="h-3 w-3" />
+                  <span className="font-medium text-foreground">
+                    {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
+                  </span>
+                </span>
 
-          {/* Próxima sessão */}
-          <div className={cn(
-            "flex items-center gap-2.5 rounded-xl border p-3 shrink-0 min-w-[148px] sm:flex-1 hover:shadow-sm transition-shadow",
-            !agendamentosFuturos[0] && scoreCritico
-              ? "border-red-200/70 bg-red-50/50 dark:border-red-800/40 dark:bg-red-950/20"
-              : "border-violet-200/70 bg-violet-50/50 dark:border-violet-800/40 dark:bg-violet-950/20"
-          )}>
-            <div className={cn(
-              "h-7 w-7 rounded-lg flex items-center justify-center shrink-0",
-              !agendamentosFuturos[0] && scoreCritico
-                ? "bg-red-100 dark:bg-red-900/50"
-                : "bg-violet-100 dark:bg-violet-900/50"
-            )}>
-              {!agendamentosFuturos[0] && scoreCritico
-                ? <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                : <CalendarDays className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-              }
-            </div>
-            <div className="min-w-0">
-              <div className={cn(
-                "text-[10px] font-semibold uppercase tracking-wider",
-                !agendamentosFuturos[0] && scoreCritico
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-violet-600 dark:text-violet-400"
-              )}>Próxima</div>
-              <div className="text-sm font-bold tracking-tight text-foreground">
-                {agendamentosFuturos[0]
-                  ? (() => {
-                      const d = parseISO(agendamentosFuturos[0].data_inicio);
-                      const dias = differenceInDays(d, hoje);
-                      if (dias === 0) return 'Hoje';
-                      if (dias === 1) return 'Amanhã';
-                      if (dias < 7) return `em ${dias}d`;
-                      return format(d, 'dd/MM', { locale: ptBR });
-                    })()
-                  : 'Sem agenda'}
-              </div>
-              <div className="text-[10px] text-muted-foreground truncate">
-                {agendamentosFuturos[0]
-                  ? format(parseISO(agendamentosFuturos[0].data_inicio), "HH:mm · dd/MM", { locale: ptBR })
-                  : 'agende agora'}
-              </div>
-            </div>
-          </div>
+                <span className="text-border">·</span>
 
-          {/* KPI Sessões — clicável, abre Sheet */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-2.5 rounded-xl border border-primary/30 bg-primary/5 p-3 text-left hover:bg-primary/10 hover:shadow-sm hover:border-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 group shrink-0 min-w-[132px] sm:flex-1"
-                title="Abrir gestão de sessões e pacotes"
-              >
-                <div className="h-7 w-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-                  <Package className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                    Sessões
-                    {sessoesInfo.numeroAtual > 0 && (
-                      <span className="font-normal normal-case tracking-normal text-muted-foreground">· nº{sessoesInfo.numeroAtual}</span>
-                    )}
-                    <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+                <span className="flex items-center gap-1 text-sky-600 dark:text-sky-400 shrink-0">
+                  <Activity className="h-3 w-3" />
+                  <span className="font-medium">{myidCount} MyID</span>
+                </span>
+
+                <span className="text-border">·</span>
+
+                {!agendamentosFuturos[0] ? (
+                  <span className="flex items-center gap-1 text-red-500 shrink-0">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span className="font-medium">Sem agenda</span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-violet-600 dark:text-violet-400 shrink-0">
+                    <CalendarDays className="h-3 w-3" />
+                    <span className="font-medium">
+                      {(() => {
+                        const d = parseISO(agendamentosFuturos[0].data_inicio);
+                        const dias = differenceInDays(d, hoje);
+                        if (dias === 0) return 'Hoje';
+                        if (dias === 1) return 'Amanhã';
+                        return format(d, 'dd/MM', { locale: ptBR });
+                      })()}
+                    </span>
+                  </span>
+                )}
+
+                <span className="text-border">·</span>
+
+                <span className="flex items-center gap-1 text-primary shrink-0">
+                  <Package className="h-3 w-3" />
+                  <span className="font-medium">{sessoesInfo.totalRealizadas} sess.</span>
+                </span>
+
+                <span className="text-border hidden sm:inline">·</span>
+
+                <span className="hidden sm:flex items-center gap-1 shrink-0 text-emerald-700 dark:text-emerald-400">
+                  <DollarSign className="h-3 w-3" />
+                  <span className="font-medium">
+                    {finResumo.pendente > 0 ? `${fmtBRL(finResumo.pendente)} pend.` : 'Em dia'}
+                  </span>
+                </span>
+              </div>
+
+              <ChevronDown className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0",
+                statsExpanded && "rotate-180"
+              )} />
+            </button>
+
+            {/* Painel expandido — grid de cards */}
+            {statsExpanded && (
+              <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {/* Cliente há */}
+                <div className="flex items-center gap-2.5 rounded-xl border border-border/50 bg-card p-3 hover:shadow-sm transition-shadow">
+                  <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                    <Clock className="h-3.5 w-3.5 text-slate-500" />
                   </div>
-                  <div className="text-sm font-bold tracking-tight text-foreground">
-                    {sessoesInfo.totalRealizadas > 0 ? sessoesInfo.totalRealizadas : '—'}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    {sessoesInfo.totalRealizadas === 0
-                      ? 'nenhuma ainda'
-                      : sessoesInfo.totalRealizadas === 1
-                        ? 'sessão realizada'
-                        : 'sessões realizadas'}
-                  </div>
-                </div>
-              </button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-primary" /> Sessões e Pacotes
-                </SheetTitle>
-              </SheetHeader>
-              <div className="mt-4 space-y-6">
-                <PacoteSessoesManager pacienteId={id!} />
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <CalendarDays className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold text-sm">
-                      Próximas sessões ({agendamentosFuturos.length})
-                    </h3>
-                  </div>
-                  {loadingAg ? (
-                    <div className="flex justify-center py-6">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cliente há</div>
+                    <div className="text-sm font-bold tracking-tight">
+                      {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
                     </div>
-                  ) : agendamentosFuturos.length === 0 ? (
-                    <EmptyState
-                      icon={<CalendarDays />}
-                      title="Nenhuma sessão agendada"
-                      subtitle="Use a Agenda para criar um novo agendamento."
-                    />
-                  ) : (
-                    <div className="space-y-2">
-                      {agendamentosFuturos.slice(0, 10).map((ag: any) => (
-                        <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} />
-                      ))}
+                    <div className="text-[10px] text-muted-foreground">
+                      desde {format(parseISO(paciente.created_at), 'dd/MM/yy')}
                     </div>
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="font-semibold text-sm">Histórico ({agendamentosPassados.length})</h3>
                   </div>
-                  {agendamentosPassados.length === 0 ? (
-                    <EmptyState
-                      icon={<Clock />}
-                      title="Sem histórico"
-                      subtitle="Sessões realizadas aparecerão aqui."
-                    />
-                  ) : (
-                    <div className="space-y-2">
-                      {agendamentosPassados.slice(0, 15).map((ag: any) => (
-                        <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} muted />
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </div>
-            </SheetContent>
-          </Sheet>
 
-          {/* KPI Financeiro — clicável, abre Sheet */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/50 dark:border-emerald-800/40 dark:bg-emerald-950/20 p-3 text-left hover:bg-emerald-50 hover:shadow-sm hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group shrink-0 min-w-[148px] sm:flex-1"
-                title="Abrir financeiro"
-              >
-                <div className="h-7 w-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
-                  <DollarSign className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                    Financeiro
-                    <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+                {/* MyID */}
+                <div className="flex items-center gap-2.5 rounded-xl border border-sky-200/70 bg-sky-50/50 dark:border-sky-800/40 dark:bg-sky-950/20 p-3 hover:shadow-sm transition-shadow">
+                  <div className="h-7 w-7 rounded-lg bg-sky-100 dark:bg-sky-900/50 flex items-center justify-center shrink-0">
+                    <Activity className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                   </div>
-                  <div className="text-sm font-bold tracking-tight text-foreground">
-                    {finResumo.pago > 0 ? fmtBRL(finResumo.pago) : 'R$ 0'}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground truncate">
-                    {finResumo.pendente > 0 ? `${fmtBRL(finResumo.pendente)} pendente` : 'em dia'}
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">MyID</div>
+                    <div className="text-sm font-bold tracking-tight">
+                      {myidCount > 0 ? `${myidCount} ${myidCount === 1 ? 'avaliação' : 'avaliações'}` : '—'}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">{myidCount === 0 ? 'nenhuma ainda' : 'concluídas'}</div>
                   </div>
                 </div>
-              </button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-emerald-600" /> Financeiro
-                </SheetTitle>
-              </SheetHeader>
-              <div className="mt-4">
-                <PacienteFinanceiroTab
-                  pacienteId={id!}
-                  pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-                />
+
+                {/* Próxima sessão */}
+                <div className={cn(
+                  "flex items-center gap-2.5 rounded-xl border p-3 hover:shadow-sm transition-shadow",
+                  !agendamentosFuturos[0] && scoreCritico
+                    ? "border-red-200/70 bg-red-50/50 dark:border-red-800/40 dark:bg-red-950/20"
+                    : "border-violet-200/70 bg-violet-50/50 dark:border-violet-800/40 dark:bg-violet-950/20"
+                )}>
+                  <div className={cn(
+                    "h-7 w-7 rounded-lg flex items-center justify-center shrink-0",
+                    !agendamentosFuturos[0] && scoreCritico
+                      ? "bg-red-100 dark:bg-red-900/50"
+                      : "bg-violet-100 dark:bg-violet-900/50"
+                  )}>
+                    {!agendamentosFuturos[0] && scoreCritico
+                      ? <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                      : <CalendarDays className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                    }
+                  </div>
+                  <div className="min-w-0">
+                    <div className={cn(
+                      "text-[10px] font-semibold uppercase tracking-wider",
+                      !agendamentosFuturos[0] && scoreCritico
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-violet-600 dark:text-violet-400"
+                    )}>Próxima</div>
+                    <div className="text-sm font-bold tracking-tight">
+                      {agendamentosFuturos[0]
+                        ? (() => {
+                            const d = parseISO(agendamentosFuturos[0].data_inicio);
+                            const dias = differenceInDays(d, hoje);
+                            if (dias === 0) return 'Hoje';
+                            if (dias === 1) return 'Amanhã';
+                            if (dias < 7) return `em ${dias}d`;
+                            return format(d, 'dd/MM', { locale: ptBR });
+                          })()
+                        : 'Sem agenda'}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {agendamentosFuturos[0]
+                        ? format(parseISO(agendamentosFuturos[0].data_inicio), "HH:mm · dd/MM", { locale: ptBR })
+                        : 'agende agora'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sessões — abre Sheet */}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-2.5 rounded-xl border border-primary/30 bg-primary/5 p-3 text-left hover:bg-primary/10 hover:shadow-sm hover:border-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 group"
+                    >
+                      <div className="h-7 w-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                        <Package className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                          Sessões
+                          {sessoesInfo.numeroAtual > 0 && (
+                            <span className="font-normal normal-case tracking-normal text-muted-foreground">· nº{sessoesInfo.numeroAtual}</span>
+                          )}
+                          <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+                        </div>
+                        <div className="text-sm font-bold tracking-tight">
+                          {sessoesInfo.totalRealizadas > 0 ? sessoesInfo.totalRealizadas : '—'}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {sessoesInfo.totalRealizadas === 0
+                            ? 'nenhuma ainda'
+                            : sessoesInfo.totalRealizadas === 1
+                              ? 'sessão realizada'
+                              : 'sessões realizadas'}
+                        </div>
+                      </div>
+                    </button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-primary" /> Sessões e Pacotes
+                      </SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 space-y-6">
+                      <PacoteSessoesManager pacienteId={id!} />
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <CalendarDays className="h-4 w-4 text-primary" />
+                          <h3 className="font-semibold text-sm">Próximas sessões ({agendamentosFuturos.length})</h3>
+                        </div>
+                        {loadingAg ? (
+                          <div className="flex justify-center py-6">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : agendamentosFuturos.length === 0 ? (
+                          <EmptyState icon={<CalendarDays />} title="Nenhuma sessão agendada" subtitle="Use a Agenda para criar um novo agendamento." />
+                        ) : (
+                          <div className="space-y-2">
+                            {agendamentosFuturos.slice(0, 10).map((ag: any) => (
+                              <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <h3 className="font-semibold text-sm">Histórico ({agendamentosPassados.length})</h3>
+                        </div>
+                        {agendamentosPassados.length === 0 ? (
+                          <EmptyState icon={<Clock />} title="Sem histórico" subtitle="Sessões realizadas aparecerão aqui." />
+                        ) : (
+                          <div className="space-y-2">
+                            {agendamentosPassados.slice(0, 15).map((ag: any) => (
+                              <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} muted />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                {/* Financeiro — abre Sheet */}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/50 dark:border-emerald-800/40 dark:bg-emerald-950/20 p-3 text-left hover:bg-emerald-50 hover:shadow-sm hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group"
+                    >
+                      <div className="h-7 w-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
+                        <DollarSign className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                          Financeiro
+                          <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+                        </div>
+                        <div className="text-sm font-bold tracking-tight">
+                          {finResumo.pago > 0 ? fmtBRL(finResumo.pago) : 'R$ 0'}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground truncate">
+                          {finResumo.pendente > 0 ? `${fmtBRL(finResumo.pendente)} pendente` : 'em dia'}
+                        </div>
+                      </div>
+                    </button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-emerald-600" /> Financeiro
+                      </SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4">
+                      <PacienteFinanceiroTab
+                        pacienteId={id!}
+                        pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
               </div>
-            </SheetContent>
-          </Sheet>
-        </div>}
-        {/* Scrollbar hidden for KPI strip on mobile */}
-        <style>{`.scrollbar-hide::-webkit-scrollbar{display:none}.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}`}</style>
+            )}
+          </div>
+        )}
 
         {/* Observações inline (se houver) */}
         {paciente.observacoes && (
