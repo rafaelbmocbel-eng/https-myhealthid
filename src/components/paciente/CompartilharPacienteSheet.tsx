@@ -55,9 +55,6 @@ export default function CompartilharPacienteSheet({
   const myidUrl = ultimaMyID?.token_acesso
     ? `${getBaseUrl()}/myid/ver/${ultimaMyID.token_acesso}`
     : null;
-  const score = ultimaMyID?.myid_score_parcial
-    ?? (ultimaMyID?.resultado_processado as any)?.myidScore
-    ?? null;
 
   // ── Diretriz de Tratamento ──────────────────────────────────────────────────
   const { data: protocolo } = useQuery({
@@ -217,9 +214,7 @@ export default function CompartilharPacienteSheet({
               : <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />}
             <div className="min-w-0">
               <p className="text-xs font-semibold">
-                {hasMyID
-                  ? `MyID disponível${score !== null ? ` · Score ${score}` : ''}`
-                  : 'Sem avaliação MyID concluída'}
+                {hasMyID ? 'MyID disponível' : 'Sem avaliação MyID concluída'}
               </p>
               {ultimaMyID?.updated_at && (
                 <p className="text-[10px] text-muted-foreground">

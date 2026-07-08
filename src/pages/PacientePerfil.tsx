@@ -43,7 +43,6 @@ import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
 import { TimelineUnificada } from '@/components/paciente/TimelineUnificada';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
-import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
@@ -742,7 +741,16 @@ export default function PacientePerfil() {
                     <><span className="text-muted-foreground/40">·</span>
                     <span className="capitalize">{paciente.genero}</span></>
                   )}
-
+                  <span
+                    className={cn(
+                      'text-[10px] font-bold px-1.5 py-0.5 rounded leading-none',
+                      (paciente as any).lgpd_aceite_em
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-yellow-400 text-yellow-900',
+                    )}
+                  >
+                    LGPD
+                  </span>
                 </div>
               </div>
             </div>
@@ -1029,13 +1037,6 @@ export default function PacientePerfil() {
             <span className="leading-snug">
               <span className="font-semibold">Observações:</span> {paciente.observacoes}
             </span>
-          </div>
-        )}
-
-        {/* LGPD Consent — banner compacto acima das abas */}
-        {layoutCfg.mostrar_lgpd && (
-          <div className="mb-3">
-            <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} compact />
           </div>
         )}
 
