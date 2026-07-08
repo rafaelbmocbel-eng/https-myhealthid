@@ -70,7 +70,6 @@ import PlanoTreinoCard from '@/components/educador/PlanoTreinoCard';
 import RecordatorioCard from '@/components/nutricao/RecordatorioCard';
 import PlanoAlimentarCard from '@/components/nutricao/PlanoAlimentarCard';
 import EscalasPsicologiaCard from '@/components/psicologia/EscalasPsicologiaCard';
-import PainelDecisaoClinica from '@/components/dashboard/PainelDecisaoClinica';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
@@ -1132,7 +1131,6 @@ export default function PacientePerfil() {
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
           {!activeTab && (
             <div className="mb-4 space-y-4">
-              {id && layoutCfg.mostrar_decisao && <PainelDecisaoClinica pacienteId={id} temAgendaFutura={temAgendaFutura} />}
               <Suspense fallback={LazyFallback}>
                 <PacienteDashboardIdentidade
                   paciente={paciente as any}
