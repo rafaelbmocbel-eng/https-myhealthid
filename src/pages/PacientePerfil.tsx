@@ -54,7 +54,7 @@ import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 const PacienteDashboardIdentidade = lazy(() => import('@/components/paciente/PacienteDashboardIdentidade'));
 import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
-import AcoesIdentidadeDropdown from '@/components/paciente/AcoesIdentidadeDropdown';
+import CompartilharPacienteSheet from '@/components/paciente/CompartilharPacienteSheet';
 import DocumentosModal from '@/components/documentos/DocumentosModal';
 import { PacienteSchema } from '@/lib/validations';
 import { useEquipe } from '@/hooks/useEquipe';
@@ -677,21 +677,16 @@ export default function PacientePerfil() {
               </Tooltip>
               )}
 
-              {/* Identidade portátil (PDF + MyID) */}
+              {/* Compartilhar (MyID + Avatar + Resumo IA → WhatsApp) */}
               {layoutCfg.header_identidade && (
-                <AcoesIdentidadeDropdown
+                <CompartilharPacienteSheet
                   pacienteId={paciente.id}
                   pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                  pacienteTelefone={paciente.telefone}
                   terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
                 />
               )}
 
-              {/* Editor de Layout */}
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Editor de Layout</TooltipContent>
-              </Tooltip>
 
               {/* Editar e excluir — secundários */}
               <Tooltip delayDuration={0}>
@@ -747,22 +742,7 @@ export default function PacientePerfil() {
                     <><span className="text-muted-foreground/40">·</span>
                     <span className="capitalize">{paciente.genero}</span></>
                   )}
-                  {paciente.telefone && (
-                    <><span className="text-muted-foreground/40">·</span>
-                    <a
-                      href={`https://wa.me/${paciente.telefone.replace(/\D/g, '')}`}
-                      target="_blank" rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-emerald-700 hover:underline"
-                    >
-                      <Phone className="h-3 w-3" />{paciente.telefone}
-                    </a></>
-                  )}
-                  {paciente.email && (
-                    <><span className="text-muted-foreground/40">·</span>
-                    <a href={`mailto:${paciente.email}`} className="hover:text-foreground transition-colors max-w-[180px] truncate">
-                      {paciente.email}
-                    </a></>
-                  )}
+
                 </div>
               </div>
             </div>
