@@ -9,8 +9,8 @@ import {
 } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Share2, Download, Sparkles, Loader2, Copy, RefreshCw,
-  MessageCircle, CheckCircle2, AlertCircle, User2, Activity, FileText,
+  Share2, Loader2, Copy, MessageCircle,
+  CheckCircle2, AlertCircle, User2, Activity, FileText, Target,
 } from 'lucide-react';
 import { getBaseUrl } from '@/utils/linkUrls';
 import { format, parseISO } from 'date-fns';
@@ -30,12 +30,10 @@ export default function CompartilharPacienteSheet({
   const [open, setOpen] = useState(false);
   const [incluirMyID, setIncluirMyID] = useState(true);
   const [incluirAvatar, setIncluirAvatar] = useState(true);
-  const [incluirResumo, setIncluirResumo] = useState(false);
-  const [resumo, setResumo] = useState<string | null>(null);
-  const [loadingResumo, setLoadingResumo] = useState(false);
+  const [incluirDiretriz, setIncluirDiretriz] = useState(false);
   const [exportando, setExportando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
 
+  // ── MyID ────────────────────────────────────────────────────────────────────
   const { data: ultimaMyID } = useQuery({
     queryKey: ['ultima-myid-concluida', pacienteId],
     queryFn: async () => {
@@ -57,62 +55,72 @@ export default function CompartilharPacienteSheet({
   const myidUrl = ultimaMyID?.token_acesso
     ? `${getBaseUrl()}/myid/ver/${ultimaMyID.token_acesso}`
     : null;
-
   const score = ultimaMyID?.myid_score_parcial
     ?? (ultimaMyID?.resultado_processado as any)?.myidScore
     ?? null;
 
-  async function gerarResumo() {
-    setLoadingResumo(true);
-    setResumo(null);
-    try {
-      const { data, error } = await supabase.functions.invoke('resumo-30s', {
-        body: { pacienteId },
-      });
+  // ── Diretriz de Tratamento ──────────────────────────────────────────────────
+  const { data: protocolo } = useQuery({
+    queryKey: ['compartilhar-diretriz', pacienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('protocolos')
+        .select('*')
+        .eq('paciente_id', pacienteId)
+        .eq('status', 'ativo')
+        .order('created_at', { ascending: false })
+        .limit(1);
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setResumo(data.resumo);
-    } catch (e: any) {
-      toast({ title: 'Erro ao gerar resumo', description: e.message, variant: 'destructive' });
-      setIncluirResumo(false);
-    } finally {
-      setLoadingResumo(false);
-    }
-  }
+      return data?.[0] || null;
+    },
+    enabled: open,
+  });
 
-  function handleToggleResumo(checked: boolean) {
-    setIncluirResumo(checked);
-    if (checked && !resumo) gerarResumo();
-  }
+  const { data: fasesDiretriz = [] } = useQuery({
+    queryKey: ['compartilhar-diretriz-fases', protocolo?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('protocolo_fases' as any)
+        .select('*')
+        .eq('protocolo_id', protocolo!.id)
+        .order('numero_fase');
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!protocolo?.id && open,
+  });
 
+  const hasDiretriz = !!protocolo;
+
+  // ── Message builder ─────────────────────────────────────────────────────────
   function buildMessage(): string {
-    const lines: string[] = [`Olá ${pacienteNome.split(' ')[0]}! 🩺`];
+    const firstName = pacienteNome.split(' ')[0];
+    const lines: string[] = [`Olá ${firstName}! 🩺`];
 
     if (incluirMyID && myidUrl) {
       lines.push('');
       lines.push('Sua Avaliação MyID está disponível:');
-      if (incluirAvatar) lines.push('(inclui seu Avatar Clínico e todos os resultados)');
+      if (incluirAvatar) lines.push('(inclui Avatar Clínico e todos os resultados)');
       lines.push(`🔗 ${myidUrl}`);
     }
 
-    if (incluirResumo && resumo) {
+    if (incluirDiretriz && protocolo) {
       lines.push('');
-      lines.push('📋 Resumo clínico:');
-      lines.push(resumo);
+      lines.push(`📋 Diretriz de Tratamento: ${protocolo.nome || 'Protocolo ativo'}`);
+      if (fasesDiretriz.length > 0) {
+        fasesDiretriz.forEach((f: any) => {
+          lines.push(`  • Fase ${f.numero_fase}: ${f.nome || f.descricao || '—'}`);
+        });
+      }
     }
 
     lines.push('');
     lines.push(`Att, ${terapeutaNome}`);
-
     return lines.join('\n');
   }
 
+  // ── Actions ─────────────────────────────────────────────────────────────────
   async function handleWhatsApp() {
-    if (incluirResumo && !resumo) {
-      setEnviando(true);
-      await gerarResumo();
-      setEnviando(false);
-    }
     const msg = buildMessage();
     const phone = pacienteTelefone?.replace(/\D/g, '');
     if (phone) {
@@ -120,9 +128,9 @@ export default function CompartilharPacienteSheet({
     } else {
       try {
         await navigator.clipboard.writeText(msg);
-        toast({ title: 'Mensagem copiada!', description: 'Número não cadastrado — mensagem copiada para a área de transferência.' });
+        toast({ title: 'Mensagem copiada!', description: 'Número não cadastrado — mensagem copiada.' });
       } catch {
-        toast({ title: 'Número não cadastrado', description: 'Cadastre o telefone para enviar via WhatsApp.', variant: 'destructive' });
+        toast({ title: 'Número não cadastrado', variant: 'destructive' });
       }
     }
   }
@@ -134,7 +142,7 @@ export default function CompartilharPacienteSheet({
     }
     try {
       await navigator.clipboard.writeText(myidUrl);
-      toast({ title: '🔗 Link copiado!', description: 'Link de visualização copiado.' });
+      toast({ title: '🔗 Link copiado!' });
     } catch {
       toast({ title: myidUrl });
     }
@@ -171,22 +179,23 @@ export default function CompartilharPacienteSheet({
     }
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
+        {/* Apenas ícone, sem texto */}
         <Button
           variant="outline"
-          size="sm"
-          className="h-7 gap-1.5 px-2 bg-background/80 backdrop-blur text-xs"
+          size="icon"
+          className="h-7 w-7 bg-background/80 backdrop-blur"
           title="Compartilhar"
         >
           <Share2 className="h-3.5 w-3.5 text-primary" />
-          <span className="hidden sm:inline font-semibold">Compartilhar</span>
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto flex flex-col gap-0 p-0">
-        <SheetHeader className="px-5 py-4 border-b">
+      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col gap-0 p-0">
+        <SheetHeader className="px-5 py-4 border-b shrink-0">
           <SheetTitle className="flex items-center gap-2 text-base">
             <Share2 className="h-4 w-4 text-primary" />
             Compartilhar
@@ -196,7 +205,7 @@ export default function CompartilharPacienteSheet({
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
 
-          {/* Status do MyID */}
+          {/* Status MyID */}
           <div className={cn(
             'flex items-center gap-3 rounded-xl border p-3',
             hasMyID
@@ -205,12 +214,11 @@ export default function CompartilharPacienteSheet({
           )}>
             {hasMyID
               ? <CheckCircle2 className="h-4 w-4 text-sky-600 shrink-0" />
-              : <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-            }
+              : <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />}
             <div className="min-w-0">
               <p className="text-xs font-semibold">
                 {hasMyID
-                  ? `MyID disponível ${score !== null ? `· Score ${score}` : ''}`
+                  ? `MyID disponível${score !== null ? ` · Score ${score}` : ''}`
                   : 'Sem avaliação MyID concluída'}
               </p>
               {ultimaMyID?.updated_at && (
@@ -222,29 +230,27 @@ export default function CompartilharPacienteSheet({
           </div>
 
           {/* O que incluir */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">O que incluir</p>
 
+            {/* Avaliação MyID */}
             <div className={cn('flex items-center justify-between rounded-lg border p-3', !hasMyID && 'opacity-40')}>
               <div className="flex items-center gap-2.5">
                 <Activity className="h-4 w-4 text-sky-600 shrink-0" />
                 <div>
-                  <Label className="text-xs font-medium cursor-pointer">Avaliação MyID</Label>
+                  <Label className="text-xs font-medium">Avaliação MyID</Label>
                   <p className="text-[10px] text-muted-foreground">Link de visualização dos resultados</p>
                 </div>
               </div>
-              <Switch
-                checked={incluirMyID && hasMyID}
-                onCheckedChange={setIncluirMyID}
-                disabled={!hasMyID}
-              />
+              <Switch checked={incluirMyID && hasMyID} onCheckedChange={setIncluirMyID} disabled={!hasMyID} />
             </div>
 
-            <div className={cn('flex items-center justify-between rounded-lg border p-3', !hasMyID && 'opacity-40')}>
+            {/* Avatar Clínico */}
+            <div className={cn('flex items-center justify-between rounded-lg border p-3', (!hasMyID || !incluirMyID) && 'opacity-40')}>
               <div className="flex items-center gap-2.5">
                 <User2 className="h-4 w-4 text-teal-600 shrink-0" />
                 <div>
-                  <Label className="text-xs font-medium cursor-pointer">Avatar Clínico</Label>
+                  <Label className="text-xs font-medium">Avatar Clínico</Label>
                   <p className="text-[10px] text-muted-foreground">Incluído no link do MyID</p>
                 </div>
               </div>
@@ -255,38 +261,25 @@ export default function CompartilharPacienteSheet({
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border p-3">
+            {/* Diretriz de Tratamento */}
+            <div className={cn('flex items-center justify-between rounded-lg border p-3', !hasDiretriz && 'opacity-40')}>
               <div className="flex items-center gap-2.5">
-                <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                <Target className="h-4 w-4 text-violet-600 shrink-0" />
                 <div>
-                  <Label className="text-xs font-medium cursor-pointer">Resumo em 30s (IA)</Label>
-                  <p className="text-[10px] text-muted-foreground">Breve explicação dos resultados</p>
+                  <Label className="text-xs font-medium">Diretriz de Tratamento</Label>
+                  <p className="text-[10px] text-muted-foreground">
+                    {hasDiretriz
+                      ? protocolo?.nome || `${fasesDiretriz.length} fase${fasesDiretriz.length !== 1 ? 's' : ''}`
+                      : 'Nenhum protocolo ativo'}
+                  </p>
                 </div>
               </div>
-              <Switch checked={incluirResumo} onCheckedChange={handleToggleResumo} />
+              <Switch
+                checked={incluirDiretriz && hasDiretriz}
+                onCheckedChange={setIncluirDiretriz}
+                disabled={!hasDiretriz}
+              />
             </div>
-
-            {/* Resumo carregado */}
-            {incluirResumo && (
-              <div className="rounded-lg border bg-muted/30 p-3">
-                {loadingResumo ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Gerando resumo clínico…
-                  </div>
-                ) : resumo ? (
-                  <div className="space-y-2">
-                    <p className="text-[11px] leading-relaxed whitespace-pre-wrap text-foreground/80">{resumo}</p>
-                    <button
-                      onClick={gerarResumo}
-                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-                    >
-                      <RefreshCw className="h-3 w-3" /> Regenerar
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            )}
           </div>
 
           {/* Ações */}
@@ -295,10 +288,9 @@ export default function CompartilharPacienteSheet({
 
             <Button
               onClick={handleWhatsApp}
-              disabled={enviando || loadingResumo}
               className="w-full gap-2 bg-[#25D366] hover:bg-[#1ebe59] text-white border-0"
             >
-              {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+              <MessageCircle className="h-4 w-4" />
               {pacienteTelefone ? 'Enviar via WhatsApp' : 'Copiar mensagem'}
             </Button>
 
@@ -309,27 +301,12 @@ export default function CompartilharPacienteSheet({
             )}
 
             <div className="grid grid-cols-2 gap-2 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopiarLink}
-                disabled={!hasMyID}
-                className="gap-1.5 text-xs"
-              >
+              <Button variant="outline" size="sm" onClick={handleCopiarLink} disabled={!hasMyID} className="gap-1.5 text-xs">
                 <Copy className="h-3.5 w-3.5" />
                 Copiar link
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBaixarPDF}
-                disabled={!hasMyID || exportando}
-                className="gap-1.5 text-xs"
-              >
-                {exportando
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <FileText className="h-3.5 w-3.5" />
-                }
+              <Button variant="outline" size="sm" onClick={handleBaixarPDF} disabled={!hasMyID || exportando} className="gap-1.5 text-xs">
+                {exportando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
                 Baixar PDF
               </Button>
             </div>
