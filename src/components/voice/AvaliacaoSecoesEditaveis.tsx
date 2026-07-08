@@ -1224,48 +1224,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
 
   return (
     <div className="space-y-5">
-      {/* Header com progresso */}
-      <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-primary/[0.04] via-card to-card p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Sparkles className="icon-md" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-base text-foreground leading-tight">Seções da Avaliação</h3>
-              <p className="text-caption text-muted-foreground mt-0.5">
-                Confirme as seções que vão para o prontuário.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold tabular-nums text-foreground">{confirmadas.size}</span>
-                <span className="text-sm text-muted-foreground">/ {total}</span>
-              </div>
-              <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
-                  style={{ width: `${progresso}%` }}
-                />
-              </div>
-            </div>
-            {!todasConfirmadas && secoesConfirmaveis.length > 0 && (
-              <Button
-                size="sm"
-                onClick={confirmarTodas}
-                disabled={saving !== null}
-                className="gap-1.5 h-9 px-3 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
-              >
-                {saving !== null ? <Loader2 className="icon-xs animate-spin" /> : <CheckCircle2 className="icon-xs" />}
-                Confirmar todos
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Abas de navegação + Grid de cards */}
       {(() => {
         const renderCards = (secoesParaRenderizar: SecaoDef[]) => {
