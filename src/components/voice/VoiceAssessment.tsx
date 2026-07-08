@@ -628,6 +628,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
       // Áudio longo (>90s gravado OU >3.5MB base64) → signedUrl para evitar timeout
       const isLongAudio = recordingTime > 90;
+      const mins = Math.round(recordingTime / 60);
       if (audioBase64 && (isLongAudio || audioBase64.length > 3.5 * 1024 * 1024)) {
         if (!audioBlob) {
           toast({
@@ -640,7 +641,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         }
         toast({
           title: isLongAudio ? 'Enviando áudio longo...' : 'Enviando áudio...',
-          description: isLongAudio ? `Áudio de ${Math.round(recordingTime / 60)}min+ sendo carregado. Aguarde (~1-2 min).` : 'O áudio está sendo carregado para processamento.',
+          description: isLongAudio
+            ? `Áudio de ${mins} min sendo carregado. Aguarde ${mins >= 7 ? '3-5 min' : mins >= 4 ? '2-3 min' : '1-2 min'} enquanto a IA transcreve e analisa.`
+            : 'O áudio está sendo carregado para processamento.',
         });
         const signedUrl = await uploadAudioToStorage(audioBlob);
         body.signedUrl = signedUrl;
@@ -1876,9 +1879,13 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 <Button onClick={stopRecording} variant="destructive">
                   <MicOff className="h-4 w-4 mr-2" />Parar Gravação
                 </Button>
-                <div className="flex items-center gap-1.5 text-sm text-destructive font-mono">
+                <div className={cn(
+                  'flex items-center gap-1.5 text-sm font-mono',
+                  recordingTime >= 600 ? 'text-red-500' : recordingTime >= 420 ? 'text-amber-500' : 'text-destructive',
+                )}>
                   <Clock className="h-4 w-4" />
                   {formatTime(recordingTime)}
+                  {recordingTime >= 540 && <span className="text-[10px] font-sans ml-1 opacity-80">máx 10min</span>}
                 </div>
               </>
             )}
@@ -1914,7 +1921,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                     const file = e.target.files?.[0];
                     if (!file) return;
                     if (file.size > 25 * 1024 * 1024) {
-                      toast({ title: 'Arquivo muito grande', description: 'Máximo 25MB.', variant: 'destructive' });
+                      toast({ title: 'Arquivo muito grande', description: 'Máximo 25MB (equivale a ~2h de áudio opus/webm).', variant: 'destructive' });
                       return;
                     }
                     const reader = new FileReader();

@@ -425,7 +425,7 @@ Deno.serve(async (req) => {
     if (hasAudio && !hasText) {
       try {
         const pass1Ctrl = new AbortController();
-        const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 180_000);
+        const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 270_000);
         const transcribeRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
           method: "POST",
           signal: pass1Ctrl.signal,
@@ -572,7 +572,7 @@ Deno.serve(async (req) => {
     }
 
     const pass2Ctrl = new AbortController();
-    const pass2Timer = setTimeout(() => pass2Ctrl.abort(), 110_000);
+    const pass2Timer = setTimeout(() => pass2Ctrl.abort(), 120_000);
     let response: Response;
     try {
       response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
