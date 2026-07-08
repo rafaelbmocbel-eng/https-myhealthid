@@ -69,6 +69,7 @@ export default function MyIDFingerprint({
   const [selectedIdx, setSelectedIdx]       = useState<number | null>(null);
   const [revealed, setRevealed]             = useState(false);
   const [revealProgress, setRevealProgress] = useState(0);
+  const [mouseOver, setMouseOver]           = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setRevealed(true), 120);
@@ -152,18 +153,38 @@ export default function MyIDFingerprint({
     : selectedIdx !== null ? selectedIdx
     : hoveredIdx;
 
+  const isPaused = mouseOver || activeIdx !== null;
+
   return (
     <div
       className={`relative w-full ${className}`}
       role="img"
       aria-label={`Impressão digital MyID — score ${Math.round(myidScore)}/100 — ${label}`}
     >
-      <svg
-        viewBox={`0 0 ${VW} ${VH}`}
-        className="w-full mx-auto"
-        style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.09))' }}
-        preserveAspectRatio="xMidYMid meet"
-      >
+      {/* 3-D spin keyframe — scoped name to avoid conflicts with multiple instances */}
+      <style>{`
+        @keyframes myid-fp-spin3d {
+          from { transform: rotateX(22deg) rotateY(0deg);   }
+          to   { transform: rotateX(22deg) rotateY(360deg); }
+        }
+      `}</style>
+
+      {/* Perspective container creates the depth field */}
+      <div style={{ perspective: '1100px', perspectiveOrigin: '50% 38%' }}>
+        <svg
+          viewBox={`0 0 ${VW} ${VH}`}
+          className="w-full mx-auto"
+          style={{
+            filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.12)) drop-shadow(0 28px 55px rgba(0,0,0,0.20))',
+            animation: 'myid-fp-spin3d 18s linear infinite',
+            animationPlayState: isPaused ? 'paused' : 'running',
+            transformOrigin: '50% 50%',
+            willChange: 'transform',
+          }}
+          preserveAspectRatio="xMidYMid meet"
+          onMouseEnter={() => setMouseOver(true)}
+          onMouseLeave={() => setMouseOver(false)}
+        >
         <defs>
           <filter id="fp-glow-hi" x="-25%" y="-25%" width="150%" height="150%">
             <feGaussianBlur stdDeviation="5" result="blur" />
@@ -379,6 +400,7 @@ export default function MyIDFingerprint({
           }
         `}</style>
       </svg>
+      </div>{/* /perspective */}
 
       {/* Detail panel */}
       {!compact && (() => {
