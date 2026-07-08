@@ -14,6 +14,14 @@ const PUBLIC_PREFIXES = [
   '/wellness/', '/preview/',
 ];
 
+// Páginas de ferramenta/editor que nunca devem ser restauradas como ponto de entrada.
+// (Se o usuário fechar o app nelas, na próxima abertura deve ir para /inicio-app.)
+const TOOL_PAGES = new Set([
+  '/configuracoes/layout',
+  '/editarpaciente',
+  '/configuracoes/exportar',
+]);
+
 // Landings nas quais devemos restaurar a última rota (em vez de manter aí).
 const PRO_LANDINGS = new Set(['/', '/auth', '/inicio-app']);
 const PATIENT_LANDINGS = new Set(['/paciente/login']);
@@ -29,6 +37,7 @@ function isProfessionalRoute(path: string): boolean {
 
 function shouldPersistPro(path: string): boolean {
   if (PRO_LANDINGS.has(path)) return false;
+  if (TOOL_PAGES.has(path)) return false;
   return isProfessionalRoute(path);
 }
 
@@ -86,6 +95,11 @@ export default function RouteRestorer() {
     try {
       if (PRO_LANDINGS.has(location.pathname)) {
         saved = localStorage.getItem(PRO_KEY);
+        if (saved && TOOL_PAGES.has(saved.split('?')[0])) {
+          // Stale tool-page saved — clear it so next restore doesn't repeat.
+          localStorage.removeItem(PRO_KEY);
+          saved = null;
+        }
         if (saved && isProfessionalRoute(saved) && saved !== location.pathname) {
           navigate(saved, { replace: true });
           return;
