@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRepasseConfig } from '@/hooks/useRepasseConfig';
-import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { DollarSign, Receipt, Percent, TrendingUp, TrendingDown, Minus, Wallet } from 'lucide-react';
 
 const FALLBACK_PCT = 0.4;
@@ -27,6 +27,7 @@ export default function FinanceiroHeaderKPIs() {
   const { user } = useAuth();
   const { getRepasse } = useRepasseConfig();
 
+  const mesAtual = format(new Date(), 'yyyy-MM');
   const periodos = useMemo(() => {
     const now = new Date();
     const prev = subMonths(now, 1);
@@ -36,7 +37,7 @@ export default function FinanceiroHeaderKPIs() {
       prevIni: startOfMonth(prev).toISOString(),
       prevFim: endOfMonth(prev).toISOString(),
     };
-  }, []);
+  }, [mesAtual]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['financeiro-kpis-topo', user?.id, periodos.atualIni],

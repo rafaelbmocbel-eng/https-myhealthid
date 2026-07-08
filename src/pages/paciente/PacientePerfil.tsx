@@ -21,10 +21,10 @@ export default function PacientePerfil() {
     if (!user) return;
     supabase
       .from('pacientes')
-      .select('id, nome, sobrenome, email, telefone, data_nascimento, avatar_url')
+      .select('id, nome, sobrenome, email, telefone, data_nascimento, avatar_url, terapeuta_id')
       .eq('user_id', user.id)
       .maybeSingle()
-      .then(({ data }) => { setPaciente(data); setLoading(false); });
+      .then(({ data, error }) => { if (error) console.warn('[PacientePerfil]', error); setPaciente(data); setLoading(false); });
   }, [user]);
 
   const infoItems = paciente

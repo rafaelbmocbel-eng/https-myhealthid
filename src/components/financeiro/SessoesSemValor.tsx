@@ -85,7 +85,7 @@ export default function SessoesSemValor({ mesOffset }: Props) {
       payload.convenio_id = edit.convenio_id || null;
       payload.tipo_cliente = edit.convenio_id ? 'plano' : 'particular';
     }
-    const { error } = await supabase.from('controle_sessoes').update(payload).eq('id', id);
+    const { error } = await supabase.from('controle_sessoes').update(payload).eq('id', id).eq('terapeuta_id', user!.id);
     setSaving(null);
     if (error) {
       toast.error('Erro ao salvar', { description: error.message });

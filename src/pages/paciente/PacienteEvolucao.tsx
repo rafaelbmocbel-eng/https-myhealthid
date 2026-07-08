@@ -63,7 +63,7 @@ export default function PacienteEvolucao() {
             .order('created_at', { ascending: true }).limit(90),
           supabase.from('evolucao_paciente').select('*').eq('paciente_id', pac.id)
             .order('data_registro', { ascending: true }),
-          (supabase as any).from('notas_prontuario').select('*').eq('paciente_id', pac.id)
+          supabase.from('notas_prontuario').select('*').eq('paciente_id', pac.id)
             .order('created_at', { ascending: false }).limit(50),
         ]);
 

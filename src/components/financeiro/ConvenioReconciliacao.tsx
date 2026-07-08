@@ -86,6 +86,7 @@ export default function ConvenioReconciliacao() {
           forma_recebimento: 'convenio',
           observacao_pagamento: observacao,
         })
+        .eq('terapeuta_id', user!.id)
         .in('id', ids);
       if (error) throw error;
       return ids.length;

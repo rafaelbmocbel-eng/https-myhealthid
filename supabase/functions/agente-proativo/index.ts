@@ -1,7 +1,7 @@
 // Agente proativo — roda via cron a cada 15 min e dispara mensagens contextualizadas
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
-import { montarContextoClinico } from "../_shared/agente-contexto.ts";
+import { montarContextoClinico, buildSystemPrompt } from "../_shared/agente-contexto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -167,7 +167,6 @@ Deno.serve(async (req) => {
         const tel = (ag as any).pacientes?.telefone;
         if (!tel || !ag.paciente_id) continue;
         const ctxClinico = await montarContextoClinico(admin, terapeuta_id, ag.paciente_id, tel, null);
-        const { buildSystemPrompt } = await import("../_shared/agente-contexto.ts");
         await dispararConfirmacao24h({
           admin, terapeuta_id, paciente_id: ag.paciente_id, telefone: tel,
           systemPromptBase: buildSystemPrompt(ctxClinico), cfg,
@@ -191,7 +190,6 @@ Deno.serve(async (req) => {
         const tel = (ag as any).pacientes?.telefone;
         if (!tel || !ag.paciente_id) continue;
         const ctxClinico = await montarContextoClinico(admin, terapeuta_id, ag.paciente_id, tel, null);
-        const { buildSystemPrompt } = await import("../_shared/agente-contexto.ts");
         await dispararLembrete2h({
           admin, terapeuta_id, paciente_id: ag.paciente_id, telefone: tel,
           systemPromptBase: buildSystemPrompt(ctxClinico), cfg,
@@ -215,7 +213,6 @@ Deno.serve(async (req) => {
         const tel = (ag as any).pacientes?.telefone;
         if (!tel || !ag.paciente_id) continue;
         const ctxClinico = await montarContextoClinico(admin, terapeuta_id, ag.paciente_id, tel, null);
-        const { buildSystemPrompt } = await import("../_shared/agente-contexto.ts");
         await dispararPosSessao({
           admin, terapeuta_id, paciente_id: ag.paciente_id, telefone: tel,
           systemPromptBase: buildSystemPrompt(ctxClinico), cfg,
@@ -237,7 +234,6 @@ Deno.serve(async (req) => {
       for (const p of pacs || []) {
         if (!p.telefone) continue;
         const ctxClinico = await montarContextoClinico(admin, terapeuta_id, p.id, p.telefone, null);
-        const { buildSystemPrompt } = await import("../_shared/agente-contexto.ts");
         const baseCtx = {
           admin, terapeuta_id, paciente_id: p.id, telefone: p.telefone,
           systemPromptBase: buildSystemPrompt(ctxClinico), cfg,

@@ -13,6 +13,10 @@ import RouteRestorer from "./components/RouteRestorer";
 import PwaUpdateNotifier from "./components/PwaUpdateNotifier";
 import GlobalBackButton from "./components/GlobalBackButton";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
+import { AuthProvider } from "./contexts/AuthContext";
+import { LayoutConfigProvider } from "./contexts/LayoutConfigContext";
+import { isAuthLockTimeoutError } from "./lib/authLock";
+import { Loader2 } from "lucide-react";
 
 // ALL pages lazy-loaded for optimal code-splitting.
 // lazyWithRetry tolerates chunk-load errors (stale chunk after a deploy, network
@@ -49,10 +53,6 @@ const Pendencias = lazyWithRetry(() => import("./pages/Pendencias"));
 const ExportarDados = lazyWithRetry(() => import("./pages/ExportarDados"));
 const Vitrine = lazyWithRetry(() => import("./pages/Vitrine"));
 const AuthConfirm = lazyWithRetry(() => import("./pages/AuthConfirm"));
-import { AuthProvider } from "./contexts/AuthContext";
-import { LayoutConfigProvider } from "./contexts/LayoutConfigContext";
-import { isAuthLockTimeoutError } from "./lib/authLock";
-import { Loader2 } from "lucide-react";
 
 // Vitrine pública do marketplace de terapeutas
 const PortalLanding = lazyWithRetry(() => import("./pages/paciente/PortalLanding"));
