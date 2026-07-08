@@ -64,7 +64,7 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
     { id: 'diretrizes', defaultLabel: 'Diretrizes', label: 'Diretrizes', visivel: true, ordem: 1 },
     { id: 'evolucao-prontuario', defaultLabel: 'Prontuário', label: 'Prontuário', visivel: true, ordem: 2 },
     { id: 'portal', defaultLabel: 'Portal', label: 'Portal', visivel: true, ordem: 3 },
-    { id: 'historico', defaultLabel: 'Histórico', label: 'Histórico', visivel: true, ordem: 4 },
+    { id: 'historico', defaultLabel: 'Histórico', label: 'Histórico', visivel: false, ordem: 4 },
   ],
   sub_tabs: [
     { id: 'diagnostico', defaultLabel: 'MyID', label: 'MyID', visivel: true, ordem: 0 },

@@ -35,7 +35,6 @@ import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import ResumoConsultaPresencial from '@/components/presencial/ResumoConsultaPresencial';
-import HistoricoAvaliacoesTab from '@/components/paciente/HistoricoAvaliacoesTab';
 import AvaliacaoVozAtual from '@/components/voice/AvaliacaoVozAtual';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import PortalControleTab from '@/components/paciente/PortalControleTab';
@@ -112,12 +111,12 @@ export default function PacientePerfil() {
   const { config: layoutCfg } = useLayoutConfig();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const rawTab = searchParams.get('tab') || '';
-  // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
-  const VALID_TABS = ['historico', 'diretrizes', 'evolucao-prontuario', 'portal'];
+  // Aba ativa: '' (Visão Integrada padrão) | presencial | diretrizes | evolucao-prontuario | portal
+  const VALID_TABS = ['presencial', 'diretrizes', 'evolucao-prontuario', 'portal'];
   const normalizedTab = rawTab === 'prontuario' || rawTab === 'evolucao'
     ? 'evolucao-prontuario'
-    : rawTab === 'avaliacoes' || rawTab === 'agenda' || rawTab === 'historico-avaliacoes' || rawTab === 'clinico'
-      ? 'historico'
+    : rawTab === 'avaliacoes' || rawTab === 'agenda' || rawTab === 'historico-avaliacoes' || rawTab === 'clinico' || rawTab === 'historico'
+      ? 'presencial'
       : rawTab === 'protocolos'
         ? 'diretrizes'
         : rawTab === 'engajamento' || rawTab === 'chat'
@@ -1080,36 +1079,25 @@ export default function PacientePerfil() {
         {/* ==== ABAS COMPLEMENTARES ==== */}
         <div ref={tabsSectionRef} className="scroll-mt-4">
         <Tabs
-          value={activeTab}
+          value={activeTab || 'integrada'}
           onValueChange={(v) => {
-            const next = v === activeTab ? '' : v;
+            const next = v === 'integrada' ? '' : v === activeTab ? '' : v;
             setActiveTab(next);
             navigate(`/pacientes/${id}${next ? `?tab=${next}` : ''}`, { replace: true });
           }}
         >
-          {activeTab && (
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('');
-                navigate(`/pacientes/${id}`, { replace: true });
-              }}
-              className="mb-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-semibold active:scale-[0.98]"
-              title="Voltar para Visão Integrada"
-            >
-              <LayoutDashboard className="h-4 w-4 shrink-0" />
-              <span>Voltar para Visão Integrada</span>
-            </button>
-          )}
           {(() => {
             const MAIN_TAB_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+              integrada: LayoutDashboard,
               presencial: Activity,
               diretrizes: Target,
               'evolucao-prontuario': ClipboardList,
               portal: Smartphone,
-              historico: FileText,
             };
-            const visibleMainTabs = layoutCfg.main_tabs.filter(t => t.visivel);
+            const visibleMainTabs = [
+              { id: 'integrada', label: 'Visão Geral', visivel: true, ordem: -1 },
+              ...layoutCfg.main_tabs.filter(t => t.visivel && t.id !== 'historico'),
+            ];
             const mainGridCols = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4', 'grid-cols-5'][Math.min(visibleMainTabs.length, 5)] ?? 'grid-cols-5';
             return (
           <TabsList className={`bg-muted/50 p-1 rounded-2xl grid ${mainGridCols} h-auto gap-0.5 w-full mb-4 border border-border/30`}>
@@ -1168,11 +1156,6 @@ export default function PacientePerfil() {
                 qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest'] });
               }}
             />
-          </TabsContent>
-
-          {/* TAB: HISTÓRICO DE AVALIAÇÕES */}
-          <TabsContent value="historico" className="mt-4">
-            <HistoricoAvaliacoesTab pacienteId={id!} />
           </TabsContent>
 
           {/* TAB: DIRETRIZES E TRATAMENTOS */}
