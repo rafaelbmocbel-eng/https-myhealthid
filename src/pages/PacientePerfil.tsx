@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import {
   ArrowLeft, User, Mail, Phone, Calendar, FileText, Activity,
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
-  TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
+  TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight, ChevronDown,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints, CalendarPlus,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, DollarSign, Package, Target, LayoutDashboard, Smartphone,
 } from 'lucide-react';
