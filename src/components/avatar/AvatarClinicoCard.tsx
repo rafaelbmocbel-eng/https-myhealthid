@@ -401,11 +401,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>([]);
   const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
-  const [calibrando, setCalibrandoState] = useState(false);
-  const [calibRegiaoId, setCalibRegiaoId] = useState<string>('');
-  const [offsetsCalib, setOffsetsCalib] = useState<Record<string, number>>(
-    Object.fromEntries(SISTEMAS_ORDEM.map(s => [s, 0]))
-  );
 
   // Per-organ offsets and scales saved by the /calibrar tool — persisted in localStorage,
   // synced across tabs via the storage event.
@@ -989,72 +984,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           ))}
         </div>
 
-        {/* Painel de calibração de posicionamento anatômico */}
-        <div className="mb-3">
-          <button
-            type="button"
-            onClick={() => setCalibrandoState(c => !c)}
-            className="text-[10px] text-muted-foreground/60 underline underline-offset-2 w-full text-center"
-          >
-            {calibrando ? '✕ Fechar calibração' : '⚙ Calibrar posição dos órgãos'}
-          </button>
-          {calibrando && (
-            <div className="mt-2 bg-muted/50 border border-border/40 rounded-xl p-3 space-y-2">
-              <p className="text-[10px] text-muted-foreground text-center">
-                Pontos em laranja = todas as regiões. Selecione uma para ajustar a posição.
-              </p>
-              <div className="flex gap-2 items-center">
-                <span className="text-[10px] text-foreground/70 shrink-0">Região:</span>
-                <select
-                  value={calibRegiaoId}
-                  onChange={e => setCalibRegiaoId(e.target.value)}
-                  className="flex-1 text-[11px] bg-background border border-border rounded px-1.5 py-0.5"
-                >
-                  <option value="">— selecionar —</option>
-                  {Object.entries(PONTO_ANATOMICO).map(([id]) => (
-                    <option key={id} value={id}>{id.replace(/_/g, ' ')}</option>
-                  ))}
-                </select>
-              </div>
-              {calibRegiaoId && (() => {
-                const base = PONTO_ANATOMICO[calibRegiaoId];
-                const curr = savedOrganOffsets[calibRegiaoId] ?? { dx: 0, dy: 0 };
-                const saveDot = (dx: number, dy: number) => {
-                  const next = { ...savedOrganOffsets, [calibRegiaoId]: { dx, dy } };
-                  setSavedOrganOffsets(next);
-                  localStorage.setItem(LS_DOT_OFFSETS, JSON.stringify(next));
-                };
-                return (
-                  <div className="space-y-1.5 pt-1 border-t border-border/30">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] w-16 shrink-0">Horizontal</span>
-                      <input type="range" min={-50} max={50} step={1} value={curr.dx}
-                        onChange={e => saveDot(Number(e.target.value), curr.dy)}
-                        className="flex-1 h-1 accent-orange-500" />
-                      <span className="text-[10px] w-8 text-right font-mono">{curr.dx > 0 ? '+' : ''}{curr.dx}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] w-16 shrink-0">Vertical</span>
-                      <input type="range" min={-80} max={80} step={1} value={curr.dy}
-                        onChange={e => saveDot(curr.dx, Number(e.target.value))}
-                        className="flex-1 h-1 accent-orange-500" />
-                      <span className="text-[10px] w-8 text-right font-mono">{curr.dy > 0 ? '+' : ''}{curr.dy}</span>
-                    </div>
-                    <p className="text-[9px] text-muted-foreground text-center">
-                      Base ({base.cx},{base.cy}) → Final ({base.cx + curr.dx},{base.cy + curr.dy})
-                    </p>
-                    {(curr.dx !== 0 || curr.dy !== 0) && (
-                      <button type="button" onClick={() => saveDot(0, 0)}
-                        className="text-[10px] text-red-500/70 underline w-full text-center">
-                        Resetar posição
-                      </button>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-        </div>
+
 
         <div className="flex flex-col gap-2">
           {/* Ícones de sistema — fileira horizontal */}
@@ -1291,13 +1221,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const isUrgent = severityScore >= 13;
                 const sys0 = r.sistemas[0];
                 // Shift vertical por sistema. Em modo calibração usa os valores
-                // dos sliders (offsetsCalib); em produção usa DEFAULT_SYS_Y_OFFSET.
+
                 // Órgãos com offset salvo pelo /calibrar já incorporam a correção
                 // completa — não aplicar o offset de sistema para evitar dupla soma.
                 const hasCalibrated = r.id in savedOrganOffsets;
                 const sysDy = hasCalibrated
                   ? 0
-                  : (calibrando ? (offsetsCalib[sys0] ?? 0) : (DEFAULT_SYS_Y_OFFSET[sys0] ?? 0));
+                  : (DEFAULT_SYS_Y_OFFSET[sys0] ?? 0);
                 // Per-organ offset salvo pelo calibrador (/calibrar)
                 const organOff = savedOrganOffsets[r.id] ?? { dx: 0, dy: 0 };
                 const totalDx = organOff.dx;
@@ -1467,24 +1397,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               })
             }
 
-            {/* ─ Modo calibração: todos os pontos em laranja com nome ─ */}
-            {calibrando && Object.entries(PONTO_ANATOMICO).map(([id, pos]) => {
-              const off = savedOrganOffsets[id] ?? { dx: 0, dy: 0 };
-              const cx = pos.cx + off.dx;
-              const cy = pos.cy + off.dy;
-              const isSelected = calibRegiaoId === id;
-              return (
-                <g key={`cal-${id}`} pointerEvents="none">
-                  <circle cx={cx} cy={cy} r={isSelected ? 7 : 4} fill="none"
-                    stroke={isSelected ? 'rgba(255,60,0,0.90)' : 'rgba(255,120,0,0.55)'}
-                    strokeWidth={isSelected ? 1.8 : 1.0} strokeDasharray="2,2" />
-                  <text x={cx + 7} y={cy + 3} fontSize="5" fontFamily="system-ui,sans-serif"
-                    fill={isSelected ? 'rgba(255,60,0,0.95)' : 'rgba(255,100,0,0.75)'}>
-                    {id.replace(/_/g, ' ')}
-                  </text>
-                </g>
-              );
-            })}
+
 
           </svg>
           </div>
