@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { FingerprintRing } from '@/types/myid';
 import { getThermalColor } from '@/utils/myidCalculations';
 import { classificarMyID100 } from '@/utils/myid/lossTable';
@@ -52,14 +52,11 @@ const CY = 490;
 
 const BASE_R = 68;
 const MAX_R  = 448;
-const STROKE = 22;
+const STROKE = 20;
 
-// Each ring's arc is nearly a complete circle.
-// The tiny gap (12°) is rotated 30° per ring, spreading the 12 openings evenly
-// around the full 360° — no two adjacent rings open at the same angle.
-// Result: no "vinco" (notch) is visible from any direction.
-const GAP_DEG      = 12;              // tiny gap per ring
-const AVAIL_SWEEP  = 360 - GAP_DEG;  // 348° — nearly full circle
+// Todos os arcos começam no topo (12h) e crescem no sentido horário,
+// desenhados com <circle> + strokeDasharray — geometria perfeita,
+// sem aproximação por path.
 
 export default function MyIDFingerprint({
   rings, myidScore, className = '', onRingClick, onRingHover,
@@ -94,36 +91,15 @@ export default function MyIDFingerprint({
 
   const spacing = Math.min(32, (MAX_R - BASE_R) / totalRings);
 
-  // ── Arc path — all rings share the same center (CX, CY) ───────────────────
-  const arcPath = useCallback((r: number, startDeg: number, sweepDeg: number): string => {
-    if (sweepDeg < 0.5) return '';
-    const toRad = (d: number) => (d * Math.PI) / 180;
-    const s  = toRad(startDeg);
-    const e  = toRad(startDeg + sweepDeg);
-    const x1 = CX + r * Math.cos(s);
-    const y1 = CY + r * Math.sin(s);
-    const x2 = CX + r * Math.cos(e);
-    const y2 = CY + r * Math.sin(e);
-    const large = sweepDeg > 180 ? 1 : 0;
-    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
-  }, []);
-
   // ── Ridge data ───────────────────────────────────────────────────────────────
   const ridgeData = useMemo(() => {
-    // Spread the 12 gaps evenly: ring i has its opening at (i * 30°) around the circle.
-    // This means no ring starts or ends at the same angle as its neighbor.
-    const gapStep = 360 / totalRings;
-
     return allRings.map((ring, i) => {
       const r = BASE_R + i * spacing;
 
-      // Gap center for this ring — rotated 30° from the previous ring
-      const gapCenter = (i * gapStep + 270) % 360; // start offset at top-ish for ring 0
-      const startDeg  = (gapCenter + GAP_DEG / 2 + 360) % 360;
-
-      // Value → arc fill (min 8% so even zero-score rings show a tiny arc)
-      const fillFraction = Math.max(ring.value / 10, 0.08);
-      const filledSweep  = AVAIL_SWEEP * fillFraction;
+      // Value → fração do círculo (min 4% para score zero ainda mostrar um traço)
+      const fillFraction = Math.max(ring.value / 10, 0.04);
+      const circumference = 2 * Math.PI * r;
+      const dashLen = circumference * Math.min(fillFraction, 1);
 
       const color = ring.color || getThermalColor(ring.value);
       // Severity drives brightness (0-10, maior = mais alarmante):
@@ -131,11 +107,11 @@ export default function MyIDFingerprint({
       // demand (outer): high value = alarming
       // EFI é "outer" mas é bem-estar (menor = pior), por isso vem com severity explícito.
       const severity = ring.severity ?? (ring.type === 'inner' ? 10 - ring.value : ring.value);
-      const opacity = 0.42 + (severity / 10) * 0.53;
+      const opacity = 0.55 + (severity / 10) * 0.45;
 
-      return { ...ring, r, startDeg, gapCenter, filledSweep, color, opacity, severity, index: i };
+      return { ...ring, r, fillFraction, circumference, dashLen, color, opacity, severity, index: i };
     });
-  }, [allRings, spacing, totalRings]);
+  }, [allRings, spacing]);
 
   const centerColor = scoreStatusColor(myidScore);
   const label       = scoreStatusLabel(myidScore);
@@ -163,30 +139,15 @@ export default function MyIDFingerprint({
         <svg
           viewBox={`0 0 ${VW} ${VH}`}
           className="w-full mx-auto"
-          style={{
-            filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.12)) drop-shadow(0 28px 55px rgba(0,0,0,0.20))',
-          }}
           preserveAspectRatio="xMidYMid meet"
         >
         <defs>
-          <filter id="fp-glow-hi" x="-25%" y="-25%" width="150%" height="150%">
-            <feGaussianBlur stdDeviation="5" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="fp-glow-med" x="-12%" y="-12%" width="124%" height="124%">
-            <feGaussianBlur stdDeviation="2.5" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="fp-core-glow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="20" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="fp-pulse-glow" x="-10%" y="-10%" width="120%" height="120%">
-            <feGaussianBlur stdDeviation="8" result="blur" />
+          <filter id="fp-active-glow" x="-25%" y="-25%" width="150%" height="150%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
           <radialGradient id="fp-center-g" cx="50%" cy="50%">
-            <stop offset="0%"   stopColor={centerColor} stopOpacity="0.28" />
+            <stop offset="0%"   stopColor={centerColor} stopOpacity="0.22" />
             <stop offset="100%" stopColor={centerColor} stopOpacity="0"    />
           </radialGradient>
           <linearGradient id="fp-legend-g" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -199,30 +160,25 @@ export default function MyIDFingerprint({
         </defs>
 
         {/* Ambient glow */}
-        <circle cx={CX} cy={CY} r={MAX_R + 40} fill="url(#fp-center-g)" opacity="0.30" />
+        <circle cx={CX} cy={CY} r={MAX_R + 40} fill="url(#fp-center-g)" opacity="0.25" />
 
-        {/* ── Rings ── */}
+        {/* ── Rings — círculos perfeitos via strokeDasharray, todos iniciando no topo ── */}
         {ridgeData.map((ridge, ridgeIdx) => {
           const isActive   = activeIdx === ridgeIdx;
           const isRevealed = revealProgress > ridgeIdx;
-          const sw         = isActive ? STROKE + 8 : STROKE;
+          const sw         = isActive ? STROKE + 6 : STROKE;
 
-          // Background: full 360° circle (no gap) — very faint reference track
-          const fillPath = arcPath(ridge.r, ridge.startDeg, Math.min(ridge.filledSweep, AVAIL_SWEEP));
+          // Sigla no ponto médio do arco preenchido (ângulo a partir do topo, sentido horário)
+          const midDeg = -90 + ridge.fillFraction * 360 / 2;
+          const midRad = (midDeg * Math.PI) / 180;
+          const lx = CX + ridge.r * Math.cos(midRad);
+          const ly = CY + ridge.r * Math.sin(midRad);
+          const norm = ((midDeg % 360) + 360) % 360;
+          const rawRot = midDeg + 90;
+          const rot = (norm > 0 && norm < 180) ? rawRot + 180 : rawRot;
 
-          // Short label at the midpoint of the filled arc
-          const labelAngleDeg = ridge.startDeg + ridge.filledSweep / 2;
-          const labelAngleRad = (labelAngleDeg * Math.PI) / 180;
-          const lx = CX + ridge.r * Math.cos(labelAngleRad);
-          const ly = CY + ridge.r * Math.sin(labelAngleRad);
-          // Flip text in the upper-left / upper-right quadrants to avoid upside-down rendering
-          const rawRot = labelAngleDeg + 90;
-          const rot    = (labelAngleDeg % 360 > 90 && labelAngleDeg % 360 < 270)
-            ? rawRot + 180 : rawRot;
-
-          const sigla  = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
-          const arcLen = (Math.min(ridge.filledSweep, AVAIL_SWEEP) * Math.PI * ridge.r) / 180;
-          const showSig = arcLen > 42;
+          const sigla   = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
+          const showSig = ridge.dashLen > 46;
 
           return (
             <g
@@ -238,35 +194,31 @@ export default function MyIDFingerprint({
                 transition: `opacity 0.55s ease ${ridgeIdx * 65}ms`,
               }}
             >
-              {/* Full-circle background track (360°, no gap) */}
+              {/* Trilha de fundo — círculo completo, bem sutil */}
               <circle
                 cx={CX} cy={CY} r={ridge.r}
                 fill="none"
                 stroke={ridge.color}
                 strokeWidth={STROKE}
-                opacity={0.08}
+                opacity={0.09}
               />
 
-              {/* Value arc — starts at this ring's unique angle */}
-              {fillPath && (
-                <path
-                  d={fillPath}
-                  fill="none"
-                  stroke={ridge.color}
-                  strokeWidth={sw}
-                  strokeLinecap="round"
-                  opacity={isActive ? 1 : ridge.opacity}
-                  filter={
-                    isActive             ? 'url(#fp-glow-hi)'  :
-                    ridge.severity >= 7   ? 'url(#fp-glow-hi)'  :
-                    ridge.severity >= 4.5 ? 'url(#fp-glow-med)' : undefined
-                  }
-                  style={{ transition: 'stroke-width 0.2s ease, opacity 0.2s ease' }}
-                />
-              )}
+              {/* Arco de valor — círculo nativo com dasharray, início no topo */}
+              <circle
+                cx={CX} cy={CY} r={ridge.r}
+                fill="none"
+                stroke={ridge.color}
+                strokeWidth={sw}
+                strokeLinecap="round"
+                strokeDasharray={`${ridge.dashLen.toFixed(2)} ${(ridge.circumference - ridge.dashLen).toFixed(2)}`}
+                transform={`rotate(-90, ${CX}, ${CY})`}
+                opacity={isActive ? 1 : ridge.opacity}
+                filter={isActive ? 'url(#fp-active-glow)' : undefined}
+                style={{ transition: 'stroke-width 0.2s ease, opacity 0.2s ease' }}
+              />
 
               {/* Sigla centralizada no arco — nome completo na legenda abaixo */}
-              {showSig && isRevealed && fillPath && (
+              {showSig && isRevealed && (
                 <text
                   x={lx} y={ly}
                   textAnchor="middle"
@@ -292,7 +244,7 @@ export default function MyIDFingerprint({
         {/* Outer labels removed — sigla + nome ficam juntos dentro de cada arco */}
 
         {/* ── Center core ── */}
-        <circle cx={CX} cy={CY} r={BASE_R - 12} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
+        <circle cx={CX} cy={CY} r={BASE_R - 12} fill="url(#fp-center-g)" />
 
         {/* Progress ring */}
         <circle cx={CX} cy={CY} r={50} fill="none" stroke={centerColor} strokeWidth={5} opacity="0.12"
@@ -343,7 +295,6 @@ export default function MyIDFingerprint({
             />
             <circle cx={CX} cy={CY} r={MAX_R + 24} fill="none"
               stroke="hsl(0,72%,51%)" strokeWidth={7} opacity={0.10}
-              filter="url(#fp-pulse-glow)"
             />
             <text x={CX} y={CY - MAX_R - 42} textAnchor="middle"
               fill="hsl(0,72%,51%)" fontSize="14" fontWeight="900" letterSpacing="2.5">

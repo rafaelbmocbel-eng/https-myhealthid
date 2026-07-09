@@ -35,13 +35,7 @@ function MyIDRingsVisual() {
   return (
     <>
       <style>{`
-        @keyframes myidFloat {
-          0%   { transform: perspective(700px) rotateX(22deg) rotateY(-18deg); }
-          33%  { transform: perspective(700px) rotateX(14deg) rotateY(14deg); }
-          66%  { transform: perspective(700px) rotateX(24deg) rotateY(4deg); }
-          100% { transform: perspective(700px) rotateX(22deg) rotateY(-18deg); }
-        }
-        .myid-3d { animation: myidFloat 8s ease-in-out infinite; display: flex; justify-content: center; }
+        .myid-3d { display: flex; justify-content: center; }
         @keyframes myidCenterPulse {
           0%,100% { opacity: 0.6; }
           50%     { opacity: 1; }
