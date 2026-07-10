@@ -10,18 +10,20 @@ import { Trash2, Plus, X } from 'lucide-react';
 // regional (Sistemas Ósseo, Articular, Muscular, Nervoso) — cada estrutura fica
 // exclusivamente na sua região de localização principal, sem divergência entre
 // o nome, o segmento e o sistema. Validado por scripts/validarAnatomia.mjs.
-type StructCat = 'ossos' | 'articulacoes' | 'musculos' | 'ligamentos' | 'nervos' | 'vertebras';
-const CAT_ORDER: StructCat[] = ['ossos', 'articulacoes', 'musculos', 'ligamentos', 'nervos', 'vertebras'];
+type StructCat = 'ossos' | 'articulacoes' | 'musculos' | 'ligamentos' | 'nervos' | 'vasos' | 'linfaticos' | 'vertebras';
+const CAT_ORDER: StructCat[] = ['ossos', 'articulacoes', 'musculos', 'ligamentos', 'nervos', 'vasos', 'linfaticos', 'vertebras'];
 const CAT_LABEL: Record<StructCat, string> = {
   ossos: 'Ossos',
   articulacoes: 'Articulações',
   musculos: 'Músculos',
   ligamentos: 'Ligamentos / Tendões',
   nervos: 'Nervos',
+  vasos: 'Vasos (artérias / veias)',
+  linfaticos: 'Linfáticos',
   vertebras: 'Nível Vertebral',
 };
 const CAT_EMOJI: Record<StructCat, string> = {
-  ossos: '🦴', articulacoes: '🔵', musculos: '💪', ligamentos: '🔗', nervos: '⚡', vertebras: '🧬',
+  ossos: '🦴', articulacoes: '🔵', musculos: '💪', ligamentos: '🔗', nervos: '⚡', vasos: '🩸', linfaticos: '🟢', vertebras: '🧬',
 };
 
 type RegionStructures = Partial<Record<StructCat, string[]>>;
@@ -32,11 +34,15 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     articulacoes: ['ATM', 'Suturas cranianas'],
     musculos: ['Temporal', 'Masseter', 'Pterigóideos', 'Frontal', 'Orbicular dos olhos', 'Orbicular da boca', 'Bucinador'],
     nervos: ['Trigêmeo (V)', 'Facial (VII)', 'Occipital'],
+    vasos: ['Carótida externa (ramos)', 'Artéria facial', 'Artéria maxilar', 'Artéria temporal superficial', 'Seios venosos da dura-máter'],
+    linfaticos: ['Linfonodos parotídeos', 'Linfonodos submandibulares', 'Linfonodos submentuais', 'Linfonodos occipitais'],
   },
   occipital: {
     ossos: ['Occipital', 'Parietais (post.)', 'Temporais (post.)'],
     musculos: ['Suboccipitais', 'Trapézio sup.'],
     nervos: ['Occipital maior', 'Occipital menor'],
+    vasos: ['Artéria occipital'],
+    linfaticos: ['Linfonodos occipitais'],
   },
   // ── PESCOÇO ──
   pescoco: {
@@ -44,12 +50,15 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     articulacoes: ['Atlanto-occipital', 'Atlantoaxial', 'Intervertebrais cervicais'],
     musculos: ['ECOM', 'Escalenos', 'Platisma', 'Supra-hióideos', 'Infra-hióideos', 'Suboccipitais'],
     nervos: ['Plexo cervical', 'Vago (X)'],
+    vasos: ['Artéria carótida comum', 'Veia jugular interna', 'Veia jugular externa'],
+    linfaticos: ['Linfonodos cervicais superficiais', 'Linfonodos cervicais profundos'],
   },
   cervical: {
     ossos: ['C1 (Atlas)', 'C2 (Áxis)', 'C3', 'C4', 'C5', 'C6', 'C7'],
     articulacoes: ['Facetas C2-C7', 'Atlantoaxial'],
     musculos: ['Suboccipitais', 'Esplênio', 'Semiespinhal', 'Multífidos cervicais'],
     nervos: ['Raízes C5-C8'],
+    linfaticos: ['Linfonodos cervicais posteriores'],
     vertebras: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'],
   },
   // ── OMBRO / CÍNGULO ──
@@ -59,6 +68,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Deltoide', 'Supraespinhal', 'Infraespinhal', 'Subescapular', 'Redondo menor', 'Trapézio (inserção)'],
     ligamentos: ['Coracoacromial', 'Glenoumerais'],
     nervos: ['Axilar', 'Supraescapular'],
+    vasos: ['Artéria subclávia', 'Veia subclávia', 'Artéria axilar (transição)'],
+    linfaticos: ['Linfonodos deltopeitorais'],
   },
   ombro_e: {
     ossos: ['Clavícula', 'Escápula', 'Úmero (cabeça)'],
@@ -66,6 +77,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Deltoide', 'Supraespinhal', 'Infraespinhal', 'Subescapular', 'Redondo menor', 'Trapézio (inserção)'],
     ligamentos: ['Coracoacromial', 'Glenoumerais'],
     nervos: ['Axilar', 'Supraescapular'],
+    vasos: ['Artéria subclávia', 'Veia subclávia', 'Artéria axilar (transição)'],
+    linfaticos: ['Linfonodos deltopeitorais'],
   },
   trapezio_d: {
     ossos: ['Escápula', 'Vértebras torácicas sup.'],
@@ -84,23 +97,31 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     ossos: ['Úmero'],
     articulacoes: ['Glenoumeral'],
     musculos: ['Bíceps braquial', 'Braquial', 'Coracobraquial'],
-    nervos: ['Musculocutâneo', 'Mediano'],
+    nervos: ['Musculocutâneo', 'Mediano', 'Ulnar', 'Radial'],
+    vasos: ['Artéria braquial', 'Veias braquiais', 'Veia cefálica', 'Veia basílica'],
+    linfaticos: ['Vasos linfáticos do braço'],
   },
   braco_e: {
     ossos: ['Úmero'],
     articulacoes: ['Glenoumeral'],
     musculos: ['Bíceps braquial', 'Braquial', 'Coracobraquial'],
-    nervos: ['Musculocutâneo', 'Mediano'],
+    nervos: ['Musculocutâneo', 'Mediano', 'Ulnar', 'Radial'],
+    vasos: ['Artéria braquial', 'Veias braquiais', 'Veia cefálica', 'Veia basílica'],
+    linfaticos: ['Vasos linfáticos do braço'],
   },
   braco_p_d: {
     ossos: ['Úmero'],
     musculos: ['Tríceps braquial (3 cabeças)', 'Ancôneo'],
     nervos: ['Radial'],
+    vasos: ['Artéria braquial profunda', 'Veia basílica'],
+    linfaticos: ['Vasos linfáticos do braço'],
   },
   braco_p_e: {
     ossos: ['Úmero'],
     musculos: ['Tríceps braquial (3 cabeças)', 'Ancôneo'],
     nervos: ['Radial'],
+    vasos: ['Artéria braquial profunda', 'Veia basílica'],
+    linfaticos: ['Vasos linfáticos do braço'],
   },
   // ── COTOVELO ──
   cotovelo_d: {
@@ -108,24 +129,32 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     articulacoes: ['Úmero-ulnar', 'Úmero-radial', 'Rádio-ulnar prox.'],
     ligamentos: ['Colateral medial', 'Colateral lateral', 'Anular', 'Tendão do bíceps'],
     nervos: ['Ulnar', 'Mediano', 'Radial'],
+    vasos: ['Anastomoses arteriais do cotovelo', 'Veia intermédia do cotovelo'],
+    linfaticos: ['Linfonodos cubitais'],
   },
   cotovelo_e: {
     ossos: ['Úmero distal', 'Rádio (cabeça)', 'Ulna (olécrano)'],
     articulacoes: ['Úmero-ulnar', 'Úmero-radial', 'Rádio-ulnar prox.'],
     ligamentos: ['Colateral medial', 'Colateral lateral', 'Anular', 'Tendão do bíceps'],
     nervos: ['Ulnar', 'Mediano', 'Radial'],
+    vasos: ['Anastomoses arteriais do cotovelo', 'Veia intermédia do cotovelo'],
+    linfaticos: ['Linfonodos cubitais'],
   },
   cotovelo_p_d: {
     ossos: ['Úmero distal', 'Rádio (cabeça)', 'Ulna (olécrano)'],
     articulacoes: ['Úmero-ulnar', 'Úmero-radial', 'Rádio-ulnar prox.'],
     ligamentos: ['Colateral medial', 'Colateral lateral', 'Anular', 'Tendão comum extensores', 'Tendão comum flexores'],
     nervos: ['Ulnar', 'Mediano', 'Radial'],
+    vasos: ['Anastomoses arteriais do cotovelo', 'Veia intermédia do cotovelo'],
+    linfaticos: ['Linfonodos cubitais'],
   },
   cotovelo_p_e: {
     ossos: ['Úmero distal', 'Rádio (cabeça)', 'Ulna (olécrano)'],
     articulacoes: ['Úmero-ulnar', 'Úmero-radial', 'Rádio-ulnar prox.'],
     ligamentos: ['Colateral medial', 'Colateral lateral', 'Anular', 'Tendão comum extensores', 'Tendão comum flexores'],
     nervos: ['Ulnar', 'Mediano', 'Radial'],
+    vasos: ['Anastomoses arteriais do cotovelo', 'Veia intermédia do cotovelo'],
+    linfaticos: ['Linfonodos cubitais'],
   },
   // ── ANTEBRAÇO ──
   antebraco_d: {
@@ -133,24 +162,32 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     articulacoes: ['Rádio-ulnar média (membrana interóssea)'],
     musculos: ['Flexores', 'Extensores', 'Pronador redondo', 'Braquiorradial', 'Supinador'],
     nervos: ['Mediano', 'Radial', 'Ulnar'],
+    vasos: ['Artéria radial', 'Artéria ulnar', 'Artérias interósseas'],
+    linfaticos: ['Vasos linfáticos do antebraço'],
   },
   antebraco_e: {
     ossos: ['Rádio', 'Ulna'],
     articulacoes: ['Rádio-ulnar média (membrana interóssea)'],
     musculos: ['Flexores', 'Extensores', 'Pronador redondo', 'Braquiorradial', 'Supinador'],
     nervos: ['Mediano', 'Radial', 'Ulnar'],
+    vasos: ['Artéria radial', 'Artéria ulnar', 'Artérias interósseas'],
+    linfaticos: ['Vasos linfáticos do antebraço'],
   },
   antebr_p_d: {
     ossos: ['Rádio', 'Ulna'],
     articulacoes: ['Rádio-ulnar média (membrana interóssea)'],
     musculos: ['Extensores', 'Flexores', 'Supinador', 'Braquiorradial'],
     nervos: ['Radial (ramo prof.)', 'Mediano', 'Ulnar'],
+    vasos: ['Artéria interóssea posterior', 'Artéria ulnar'],
+    linfaticos: ['Vasos linfáticos do antebraço'],
   },
   antebr_p_e: {
     ossos: ['Rádio', 'Ulna'],
     articulacoes: ['Rádio-ulnar média (membrana interóssea)'],
     musculos: ['Extensores', 'Flexores', 'Supinador', 'Braquiorradial'],
     nervos: ['Radial (ramo prof.)', 'Mediano', 'Ulnar'],
+    vasos: ['Artéria interóssea posterior', 'Artéria ulnar'],
+    linfaticos: ['Vasos linfáticos do antebraço'],
   },
   // ── PUNHO E MÃO ──
   mao_d: {
@@ -159,6 +196,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Tênares', 'Hipotênares', 'Lumbricais', 'Interósseos'],
     ligamentos: ['Retináculo dos flexores (túnel do carpo)', 'Retináculo dos extensores', 'Colaterais'],
     nervos: ['Mediano (túnel do carpo)', 'Ulnar (canal de Guyon)', 'Radial (ramo superf.)'],
+    vasos: ['Arco palmar superficial', 'Arco palmar profundo', 'Artérias digitais palmares'],
+    linfaticos: ['Rede linfática palmar', 'Rede linfática dorsal'],
   },
   mao_e: {
     ossos: ['Carpo (escafoide, semilunar, piramidal, pisiforme)', 'Carpo (trapézio, trapezoide, capitato, hamato)', 'Metacarpos I-V', 'Falanges'],
@@ -166,6 +205,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Tênares', 'Hipotênares', 'Lumbricais', 'Interósseos'],
     ligamentos: ['Retináculo dos flexores (túnel do carpo)', 'Retináculo dos extensores', 'Colaterais'],
     nervos: ['Mediano (túnel do carpo)', 'Ulnar (canal de Guyon)', 'Radial (ramo superf.)'],
+    vasos: ['Arco palmar superficial', 'Arco palmar profundo', 'Artérias digitais palmares'],
+    linfaticos: ['Rede linfática palmar', 'Rede linfática dorsal'],
   },
   mao_p_d: {
     ossos: ['Carpo (fileira proximal)', 'Carpo (fileira distal)', 'Metacarpos I-V', 'Falanges'],
@@ -173,6 +214,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Interósseos dorsais', 'Lumbricais'],
     ligamentos: ['Retináculo dos extensores', 'Colaterais'],
     nervos: ['Radial (ramo superf.)', 'Ulnar', 'Mediano'],
+    vasos: ['Rede arterial dorsal do carpo', 'Artérias digitais dorsais'],
+    linfaticos: ['Rede linfática dorsal'],
   },
   mao_p_e: {
     ossos: ['Carpo (fileira proximal)', 'Carpo (fileira distal)', 'Metacarpos I-V', 'Falanges'],
@@ -180,6 +223,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Interósseos dorsais', 'Lumbricais'],
     ligamentos: ['Retináculo dos extensores', 'Colaterais'],
     nervos: ['Radial (ramo superf.)', 'Ulnar', 'Mediano'],
+    vasos: ['Rede arterial dorsal do carpo', 'Artérias digitais dorsais'],
+    linfaticos: ['Rede linfática dorsal'],
   },
   // ── TÓRAX ──
   peitoral: {
@@ -187,12 +232,16 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     articulacoes: ['Esternocostais', 'Costocondrais', 'Costovertebrais'],
     musculos: ['Peitoral maior', 'Peitoral menor', 'Serrátil anterior', 'Intercostais', 'Diafragma (limite inf.)'],
     nervos: ['Nervos intercostais'],
+    vasos: ['Aorta torácica', 'Veia cava superior', 'Tronco pulmonar', 'Artéria torácica interna'],
+    linfaticos: ['Linfonodos mediastinais', 'Linfonodos intercostais', 'Ducto torácico'],
   },
   dorsal: {
     ossos: ['Vértebras torácicas T1-T12', 'Costelas'],
     articulacoes: ['Facetas T1-T12', 'Costovertebrais'],
     musculos: ['Latíssimo do dorso', 'Eretores da espinha', 'Romboides', 'Serrátil posterior'],
     nervos: ['Nervos intercostais', 'Cadeia simpática'],
+    vasos: ['Aorta torácica descendente', 'Artérias intercostais'],
+    linfaticos: ['Ducto torácico', 'Linfonodos intercostais'],
     vertebras: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'],
   },
   // ── ABDÔMEN ──
@@ -201,12 +250,16 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     articulacoes: ['Intervertebrais lombares'],
     musculos: ['Reto abdominal', 'Oblíquo externo', 'Oblíquo interno', 'Transverso do abdômen', 'Quadrado lombar', 'Psoas maior'],
     nervos: ['Plexo lombar', 'Nervos intercostais T7-T12'],
+    vasos: ['Aorta abdominal', 'Veia cava inferior', 'Veia porta hepática', 'Artérias mesentéricas'],
+    linfaticos: ['Cisterna do quilo', 'Linfonodos aórticos', 'Linfonodos ilíacos'],
   },
   lombar: {
     ossos: ['L1', 'L2', 'L3', 'L4', 'L5', 'Sacro', 'Cóccix'],
     articulacoes: ['Facetas L1-L5', 'L5-S1'],
     musculos: ['Multífidos', 'Quadrado lombar', 'Eretores da espinha'],
     nervos: ['Raízes L1-L5'],
+    vasos: ['Aorta abdominal (bifurcação)', 'Veia cava inferior'],
+    linfaticos: ['Linfonodos lombares (aórticos)'],
     vertebras: ['L1', 'L2', 'L3', 'L4', 'L5', 'S1 (Sacro)', 'Cóccix'],
   },
   // ── PELVE ──
@@ -216,33 +269,42 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Iliopsoas', 'Piriforme', 'Assoalho pélvico (levantador do ânus)', 'Obturador interno'],
     ligamentos: ['Sacrotuberoso', 'Sacroespinhoso'],
     nervos: ['Plexo sacral', 'Pudendo', 'Ciático (origem)'],
+    vasos: ['Artéria ilíaca comum', 'Artéria ilíaca interna', 'Artéria ilíaca externa', 'Veias ilíacas'],
+    linfaticos: ['Linfonodos ilíacos internos', 'Linfonodos ilíacos externos'],
   },
   gluteos: {
     ossos: ['Ílio', 'Ísquio', 'Sacro', 'Fêmur (cabeça/colo)'],
     articulacoes: ['Coxofemoral', 'Sacroilíaca'],
     musculos: ['Glúteo máximo', 'Glúteo médio', 'Glúteo mínimo', 'Piriforme', 'Tensor da fáscia lata', 'Quadrado femoral'],
     nervos: ['Ciático', 'Glúteo superior', 'Glúteo inferior'],
+    vasos: ['Artéria glútea superior', 'Artéria glútea inferior', 'Artérias circunflexas femorais'],
   },
   // ── COXA ──
   coxa_d: {
     ossos: ['Fêmur (diáfise)'],
     musculos: ['Quadríceps femoral', 'Sartório', 'Adutores (longo, curto, magno)', 'Grácil', 'TFL'],
     nervos: ['Femoral', 'Obturador'],
+    vasos: ['Artéria femoral', 'Artéria femoral profunda', 'Veia femoral', 'Veia safena magna'],
+    linfaticos: ['Linfonodos inguinais superficiais', 'Linfonodos inguinais profundos'],
   },
   coxa_e: {
     ossos: ['Fêmur (diáfise)'],
     musculos: ['Quadríceps femoral', 'Sartório', 'Adutores (longo, curto, magno)', 'Grácil', 'TFL'],
     nervos: ['Femoral', 'Obturador'],
+    vasos: ['Artéria femoral', 'Artéria femoral profunda', 'Veia femoral', 'Veia safena magna'],
+    linfaticos: ['Linfonodos inguinais superficiais', 'Linfonodos inguinais profundos'],
   },
   isquio_d: {
     ossos: ['Fêmur (diáfise)'],
     musculos: ['Bíceps femoral', 'Semitendíneo', 'Semimembranoso'],
     nervos: ['Ciático'],
+    vasos: ['Artéria femoral profunda', 'Veia femoral'],
   },
   isquio_e: {
     ossos: ['Fêmur (diáfise)'],
     musculos: ['Bíceps femoral', 'Semitendíneo', 'Semimembranoso'],
     nervos: ['Ciático'],
+    vasos: ['Artéria femoral profunda', 'Veia femoral'],
   },
   // ── JOELHO ──
   joelho_d: {
@@ -250,12 +312,16 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     articulacoes: ['Femorotibial', 'Femoropatelar'],
     ligamentos: ['LCA', 'LCP', 'LCM', 'LCL', 'Menisco medial', 'Menisco lateral', 'Ligamento patelar', 'Pata de ganso'],
     nervos: ['Fibular comum', 'Tibial'],
+    vasos: ['Artéria poplítea', 'Veia poplítea', 'Rede articular do joelho'],
+    linfaticos: ['Linfonodos poplíteos'],
   },
   joelho_e: {
     ossos: ['Fêmur distal', 'Patela', 'Tíbia proximal'],
     articulacoes: ['Femorotibial', 'Femoropatelar'],
     ligamentos: ['LCA', 'LCP', 'LCM', 'LCL', 'Menisco medial', 'Menisco lateral', 'Ligamento patelar', 'Pata de ganso'],
     nervos: ['Fibular comum', 'Tibial'],
+    vasos: ['Artéria poplítea', 'Veia poplítea', 'Rede articular do joelho'],
+    linfaticos: ['Linfonodos poplíteos'],
   },
   cavo_d: {
     ossos: ['Fêmur distal', 'Tíbia proximal'],
@@ -263,6 +329,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Poplíteo', 'Gastrocnêmio (origem)'],
     ligamentos: ['LCP'],
     nervos: ['Tibial', 'Fibular comum'],
+    vasos: ['Artéria poplítea', 'Veia poplítea'],
+    linfaticos: ['Linfonodos poplíteos'],
   },
   cavo_e: {
     ossos: ['Fêmur distal', 'Tíbia proximal'],
@@ -270,6 +338,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Poplíteo', 'Gastrocnêmio (origem)'],
     ligamentos: ['LCP'],
     nervos: ['Tibial', 'Fibular comum'],
+    vasos: ['Artéria poplítea', 'Veia poplítea'],
+    linfaticos: ['Linfonodos poplíteos'],
   },
   // ── PERNA ──
   canela_d: {
@@ -277,12 +347,14 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     articulacoes: ['Tibiofibular prox.', 'Membrana interóssea'],
     musculos: ['Tibial anterior', 'Fibular longo', 'Fibular curto', 'Extensor longo dos dedos'],
     nervos: ['Fibular profundo', 'Fibular superficial'],
+    vasos: ['Artéria tibial anterior', 'Veia tibial anterior', 'Veia safena magna'],
   },
   canela_e: {
     ossos: ['Tíbia', 'Fíbula'],
     articulacoes: ['Tibiofibular prox.', 'Membrana interóssea'],
     musculos: ['Tibial anterior', 'Fibular longo', 'Fibular curto', 'Extensor longo dos dedos'],
     nervos: ['Fibular profundo', 'Fibular superficial'],
+    vasos: ['Artéria tibial anterior', 'Veia tibial anterior', 'Veia safena magna'],
   },
   panturr_d: {
     ossos: ['Tíbia', 'Fíbula'],
@@ -290,6 +362,7 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Gastrocnêmio', 'Sóleo', 'Tibial posterior', 'Flexor longo dos dedos'],
     ligamentos: ['Tendão calcâneo (de Aquiles)'],
     nervos: ['Tibial', 'Sural'],
+    vasos: ['Artéria tibial posterior', 'Artéria fibular', 'Veia safena parva'],
   },
   panturr_e: {
     ossos: ['Tíbia', 'Fíbula'],
@@ -297,6 +370,7 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Gastrocnêmio', 'Sóleo', 'Tibial posterior', 'Flexor longo dos dedos'],
     ligamentos: ['Tendão calcâneo (de Aquiles)'],
     nervos: ['Tibial', 'Sural'],
+    vasos: ['Artéria tibial posterior', 'Artéria fibular', 'Veia safena parva'],
   },
   // ── TORNOZELO E PÉ ──
   pe_d: {
@@ -305,6 +379,8 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Intrínsecos do pé', 'Abdutor do hálux', 'Flexor curto dos dedos', 'Interósseos'],
     ligamentos: ['Talofibular ant.', 'Calcaneofibular', 'Deltoide', 'Aponeurose plantar', 'Retináculos'],
     nervos: ['Tibial', 'Plantar medial', 'Plantar lateral', 'Fibular superficial'],
+    vasos: ['Artéria dorsal do pé (pediosa)', 'Arco arterial plantar', 'Veias dorsais do pé', 'Veias plantares'],
+    linfaticos: ['Rede linfática plantar', 'Rede linfática dorsal do pé'],
   },
   pe_e: {
     ossos: ['Tarso (calcâneo, tálus, navicular, cuboide, cuneiformes)', 'Metatarsos I-V', 'Falanges', 'Maléolos (tíbia/fíbula)'],
@@ -312,18 +388,22 @@ export const STRUCTURES: Record<string, RegionStructures> = {
     musculos: ['Intrínsecos do pé', 'Abdutor do hálux', 'Flexor curto dos dedos', 'Interósseos'],
     ligamentos: ['Talofibular ant.', 'Calcaneofibular', 'Deltoide', 'Aponeurose plantar', 'Retináculos'],
     nervos: ['Tibial', 'Plantar medial', 'Plantar lateral', 'Fibular superficial'],
+    vasos: ['Artéria dorsal do pé (pediosa)', 'Arco arterial plantar', 'Veias dorsais do pé', 'Veias plantares'],
+    linfaticos: ['Rede linfática plantar', 'Rede linfática dorsal do pé'],
   },
   calc_d: {
     ossos: ['Calcâneo', 'Tálus'],
     articulacoes: ['Subtalar', 'Talocrural'],
     ligamentos: ['Tendão calcâneo (de Aquiles)', 'Aponeurose plantar'],
     nervos: ['Sural', 'Tibial'],
+    vasos: ['Ramos calcâneos (tibial post.)'],
   },
   calc_e: {
     ossos: ['Calcâneo', 'Tálus'],
     articulacoes: ['Subtalar', 'Talocrural'],
     ligamentos: ['Tendão calcâneo (de Aquiles)', 'Aponeurose plantar'],
     nervos: ['Sural', 'Tibial'],
+    vasos: ['Ramos calcâneos (tibial post.)'],
   },
 };
 type RegionStructState = Record<string, string[]>; // regionId -> selected structure names
