@@ -20,6 +20,7 @@ import WhatsappAutomacoes from '@/pages/WhatsappAutomacoes';
 import { useWhatsappConversas, useWhatsappMensagens, type WAConversa } from '@/hooks/useWhatsappInbox';
 import { useWhatsappTemplates, useWhatsappNotas, useGlobalMessageSearch, useAtribuirConversa, getSLAStatus } from '@/hooks/useWhatsappExtras';
 import { buildTemplateContext, aplicarVariaveis, TEMPLATE_VARIAVEIS } from '@/utils/whatsappTemplateVars';
+import { WaBubblePreview } from '@/components/whatsapp/WaBubblePreview';
 import { formatPhoneNumber } from '@/utils/whatsapp';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -995,6 +996,10 @@ function TemplatesManager({ open, onOpenChange }: { open: boolean; onOpenChange:
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Prévia no WhatsApp</Label>
+              <WaBubblePreview text={edit.conteudo} compact emptyHint="A prévia aparece aqui conforme você escreve o template." />
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setEdit(null)}>Cancelar</Button>

@@ -12,47 +12,14 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import { CheckCheck, CalendarClock, BellRing, HeartHandshake, UserX, MessageSquare, Moon } from "lucide-react";
-
-// Valores de exemplo usados no preview do WhatsApp — deixam claro para o
-// profissional como a mensagem chega ao paciente, com as variáveis já trocadas.
-const SAMPLE: Record<string, string> = { nome: "Marina", horario: "14h30", data: "quinta, 12/07" };
-function aplicarSample(txt: string) {
-  return (txt || "").replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] ?? m);
-}
+import { CalendarClock, BellRing, HeartHandshake, UserX, MessageSquare, Moon } from "lucide-react";
+import { WaBubblePreview } from "@/components/whatsapp/WaBubblePreview";
 
 const VARIAVEIS_MSG: { k: string; l: string }[] = [
   { k: "nome", l: "Nome do paciente" },
   { k: "horario", l: "Horário da sessão" },
   { k: "data", l: "Data da sessão" },
 ];
-
-// Bolha estilo WhatsApp para pré-visualizar a mensagem enquanto se edita.
-function WaBubblePreview({ text, incoming = false }: { text: string; incoming?: boolean }) {
-  const t = (text || "").trim();
-  return (
-    <div className="rounded-xl p-3 border border-border/30" style={{ backgroundColor: "var(--wa-prev)" }}>
-      <style>{`:root{--wa-prev:#efeae2}.dark{--wa-prev:#0b141a}`}</style>
-      {t ? (
-        <div className={cn(
-          "max-w-[88%] px-3 py-2 shadow-sm text-[13px] leading-relaxed whitespace-pre-wrap break-words text-gray-900 dark:text-gray-100",
-          incoming
-            ? "bg-white dark:bg-[#202c33] rounded-[14px] rounded-tl-[4px]"
-            : "bg-[#dcf8c6] dark:bg-[#005c4b] rounded-[14px] rounded-tr-[4px] ml-auto",
-        )}>
-          {aplicarSample(t)}
-          <div className={cn("flex items-center justify-end gap-1 mt-0.5", incoming ? "text-muted-foreground/60" : "text-[#008069]/60 dark:text-[#25D366]/60")}>
-            <span className="text-[10px] tabular-nums">14:32</span>
-            {!incoming && <CheckCheck className="h-3 w-3 text-[#53bdeb]" />}
-          </div>
-        </div>
-      ) : (
-        <p className="text-[11px] text-muted-foreground text-center py-2">A prévia aparece aqui conforme você escreve.</p>
-      )}
-    </div>
-  );
-}
 
 // Editor de mensagem: ícone + rótulo + prazo, textarea, chips de variáveis e
 // preview ao vivo do WhatsApp. Padroniza o visual de todas as mensagens.
@@ -626,17 +593,23 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                   onCheckedChange={(v) => setBroadcast({ ...broadcast, abAtivo: v })} />
               </div>
               {!broadcast.abAtivo ? (
-                <div>
-                  <Label>Intenção / mensagem base</Label>
-                  <Textarea rows={4} placeholder="Ex.: Quero te lembrar que vale a pena retomar os exercícios."
-                    value={broadcast.intencao}
-                    onChange={(e) => setBroadcast({ ...broadcast, intencao: e.target.value })} />
-                  <p className="text-micro mt-1">A IA reescreve isso personalizado para cada paciente.</p>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Intenção / mensagem base</Label>
+                    <Textarea rows={4} placeholder="Ex.: Quero te lembrar que vale a pena retomar os exercícios."
+                      value={broadcast.intencao}
+                      onChange={(e) => setBroadcast({ ...broadcast, intencao: e.target.value })} />
+                    <p className="text-micro mt-1">A IA reescreve isso personalizado para cada paciente.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-micro text-muted-foreground font-medium">Prévia aproximada · a IA personaliza por paciente</p>
+                    <WaBubblePreview text={broadcast.intencao} emptyHint="Escreva a intenção para ver um exemplo." />
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {broadcast.variantes.map((v, i) => (
-                    <div key={v.key} className="space-y-2">
+                    <div key={v.key} className="space-y-2 rounded-lg border border-border/40 p-3">
                       <div className="flex items-center justify-between gap-2">
                         <Label className="text-sm">Variante {v.key}</Label>
                         <div className="flex items-center gap-2">
@@ -650,16 +623,19 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                             }} />
                         </div>
                       </div>
-                      <Textarea rows={3} placeholder={`Texto base da variante ${v.key}`}
-                        value={v.texto}
-                        onChange={(e) => {
-                          const nv = [...broadcast.variantes];
-                          nv[i] = { ...v, texto: e.target.value };
-                          setBroadcast({ ...broadcast, variantes: nv });
-                        }} />
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <Textarea rows={3} placeholder={`Texto base da variante ${v.key}`}
+                          value={v.texto}
+                          onChange={(e) => {
+                            const nv = [...broadcast.variantes];
+                            nv[i] = { ...v, texto: e.target.value };
+                            setBroadcast({ ...broadcast, variantes: nv });
+                          }} />
+                        <WaBubblePreview text={v.texto} compact emptyHint={`Escreva a variante ${v.key}.`} />
+                      </div>
                     </div>
                   ))}
-                  <p className="text-micro">Resultado por variante fica visível no histórico após o envio.</p>
+                  <p className="text-micro">Resultado por variante fica visível no histórico após o envio. A IA personaliza cada mensagem por paciente.</p>
                 </div>
               )}
             </div>
