@@ -103,7 +103,9 @@ function WaAvatar({ name, size = 40 }: { name: string; size?: number }) {
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
   const [filaTab, setFilaTab] = useState<FilaTab>('todas');
-  const [coluna, setColuna] = useState<ColunaWS>('pendentes');
+  // Abre em "Conversas" (visão geral) em vez de "Pendentes" (só não-lidas, quase
+  // sempre vazia) — assim uma conversa recém-iniciada aparece de imediato.
+  const [coluna, setColuna] = useState<ColunaWS>('conversas');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversas = [], isLoading } = useWhatsappConversas();
