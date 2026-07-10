@@ -29,9 +29,8 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { supabase } from '@/integrations/supabase/client';
-import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
+import { clearDraft } from '@/lib/draftStorage';
 import { useToast } from '@/hooks/use-toast';
-import { ToastAction } from '@/components/ui/toast';
 import { getPatientColor } from '@/utils/agendaUtils';
 import { gerarNotaConduta } from '@/utils/prontuarioAutoNotes';
 import { gerarEvolucaoSessaoConcluida } from '@/utils/evolucaoAutoNotes';
@@ -485,38 +484,10 @@ export default function Agenda() {
 
   // ── Draft persistence for appointment form ─────────────────────
   const AGENDA_DRAFT_KEY = 'agenda:form';
-  const AGENDA_DRAFT_VER = 1;
 
-  // A agenda SEMPRE abre normalmente (no calendário). Se houver um rascunho de
-  // novo horário não finalizado, não reabrimos o formulário automaticamente —
-  // oferecemos um toast discreto com a opção de retomar.
-  useEffect(() => {
-    void readDraft<{ form: FormData; modalOpen: boolean }>(AGENDA_DRAFT_KEY, AGENDA_DRAFT_VER).then(draft => {
-      if (!draft || !draft.modalOpen || !draft.form.data_inicio) return;
-      toast({
-        title: 'Novo horário não finalizado',
-        description: 'Você começou a adicionar um horário. Deseja retomar?',
-        action: (
-          <ToastAction altText="Retomar novo horário" onClick={() => { setForm(draft.form); setModal({ open: true }); }}>
-            Retomar
-          </ToastAction>
-        ),
-      });
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!modal.open) return;
-    const save = () => void writeDraft(AGENDA_DRAFT_KEY, { form, modalOpen: modal.open }, AGENDA_DRAFT_VER);
-    const onVis = () => { if (document.visibilityState === 'hidden') save(); };
-    document.addEventListener('visibilitychange', onVis);
-    window.addEventListener('beforeunload', save);
-    return () => {
-      document.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('beforeunload', save);
-    };
-  }, [modal.open, form]);
+  // A agenda abre sempre no calendário. Não há recuperação de rascunho: se um
+  // novo horário for iniciado e não finalizado, ele é simplesmente descartado,
+  // sem nenhuma mensagem.
 
   const openNew = (date?: Date) => {
     const base = date || new Date();
