@@ -36,15 +36,17 @@ import { gerarNotaConduta } from '@/utils/prontuarioAutoNotes';
 import { gerarEvolucaoSessaoConcluida } from '@/utils/evolucaoAutoNotes';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
-import FechaExpedienteDrawer from '@/components/agenda/FechaExpedienteDrawer';
-import AgendaPatientStats from '@/components/agenda/AgendaPatientStats';
 import { shareConfirmacaoSessao } from '@/utils/whatsapp';
 import { MyIDFreshnessDot } from '@/components/agenda/MyIDFreshnessDot';
 import { useMyIDFreshnessMap, getFreshnessInfo } from '@/hooks/useMyIDFreshness';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
-import ListaEspera from '@/components/agenda/ListaEspera';
-import SalaEsperaVirtual from '@/components/agenda/SalaEsperaVirtual';
-import BloqueioEmLote from '@/components/agenda/BloqueioEmLote';
+
+// Painéis auxiliares — lazy para manter o chunk principal da Agenda menor
+const FechaExpedienteDrawer = lazy(() => import('@/components/agenda/FechaExpedienteDrawer'));
+const AgendaPatientStats = lazy(() => import('@/components/agenda/AgendaPatientStats'));
+const ListaEspera = lazy(() => import('@/components/agenda/ListaEspera'));
+const SalaEsperaVirtual = lazy(() => import('@/components/agenda/SalaEsperaVirtual'));
+const BloqueioEmLote = lazy(() => import('@/components/agenda/BloqueioEmLote'));
 
 type ViewMode = 'dia' | 'semana' | 'mes' | 'controle';
 
@@ -1256,8 +1258,10 @@ export default function Agenda() {
               <Lock className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Férias</span>
             </Button>
-            <ListaEspera />
-            <SalaEsperaVirtual />
+            <Suspense fallback={null}>
+              <ListaEspera />
+              <SalaEsperaVirtual />
+            </Suspense>
             {/* Botão Fechar Expediente */}
             {(() => {
               const now = new Date();
@@ -1352,16 +1356,20 @@ export default function Agenda() {
           onOpenDrawer={() => setShowFechaExpediente(true)}
         />
 
-        {/* Drawer de controle de encerramento do expediente */}
-        <FechaExpedienteDrawer
-          open={showFechaExpediente}
-          onClose={() => setShowFechaExpediente(false)}
-          agendamentos={agendamentos}
-          pacientes={pacientes}
-          duracaoPadrao={config.duracao_padrao}
-          onSessaoStatus={(ag, status) => handleSessaoStatus(ag, status)}
-          onAddWalkIn={handleAddWalkInComHorario}
-        />
+        {/* Drawer de controle de encerramento do expediente — monta só quando aberto */}
+        {showFechaExpediente && (
+          <Suspense fallback={null}>
+            <FechaExpedienteDrawer
+              open={showFechaExpediente}
+              onClose={() => setShowFechaExpediente(false)}
+              agendamentos={agendamentos}
+              pacientes={pacientes}
+              duracaoPadrao={config.duracao_padrao}
+              onSessaoStatus={(ag, status) => handleSessaoStatus(ag, status)}
+              onAddWalkIn={handleAddWalkInComHorario}
+            />
+          </Suspense>
+        )}
 
         <div className="flex flex-1 overflow-hidden">
           {/* Left: mini calendar + stats */}
@@ -2051,7 +2059,9 @@ export default function Agenda() {
                       </Button>
                     </div>
 
-                    <AgendaPatientStats pacienteId={form.paciente_id} />
+                    <Suspense fallback={null}>
+                      <AgendaPatientStats pacienteId={form.paciente_id} />
+                    </Suspense>
                   </div>
                 );
               })()}
@@ -2512,14 +2522,18 @@ export default function Agenda() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <BloqueioEmLote
-        open={showBloqueioLote}
-        onOpenChange={setShowBloqueioLote}
-        onCriar={async (items) => {
-          await createBatchAgendamentos(items as any[]);
-          refresh();
-        }}
-      />
+      {showBloqueioLote && (
+        <Suspense fallback={null}>
+          <BloqueioEmLote
+            open={showBloqueioLote}
+            onOpenChange={setShowBloqueioLote}
+            onCriar={async (items) => {
+              await createBatchAgendamentos(items as any[]);
+              refresh();
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Modal de criação de sessão para turma */}
       <Dialog open={turmaModal.open} onOpenChange={(o) => setTurmaModal(prev => ({ ...prev, open: o }))}>

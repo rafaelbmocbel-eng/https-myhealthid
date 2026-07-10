@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import JSZip from 'jszip';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -96,6 +95,8 @@ export default function ExportarDados() {
     setStatus('running');
     setResults([]);
     setProgress(0);
+    // JSZip (~100 kB) só é baixado quando o usuário de fato exporta
+    const { default: JSZip } = await import('jszip');
     const zip = new JSZip();
     const folder = zip.folder('myhealthid-export')!;
     const localResults: RowResult[] = [];
