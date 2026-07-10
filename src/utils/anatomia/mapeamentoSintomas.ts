@@ -485,6 +485,29 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     regioes: ['dorsal', 'trapezio_d', 'trapezio_e'],
     sistema: 'musculoesqueletico'
   },
+  // ── Níveis vertebrais → marcam o segmento correto da coluna ──
+  // (Como estrutura musculoesquelética. Os mesmos níveis também constam na
+  //  seção NERVOSO como radiculopatia — o sistema ativo decide qual marcar.)
+  {
+    keywords: ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'vertebra cervical', 'vértebra cervical'],
+    regioes: ['cervical'],
+    sistema: 'musculoesqueletico'
+  },
+  {
+    keywords: ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 'vertebra toracica', 'vértebra torácica'],
+    regioes: ['dorsal'],
+    sistema: 'musculoesqueletico'
+  },
+  {
+    keywords: ['l1', 'l2', 'l3', 'l4', 'l5', 'vertebra lombar', 'vértebra lombar'],
+    regioes: ['lombar'],
+    sistema: 'musculoesqueletico'
+  },
+  {
+    keywords: ['s1', 's2', 's3', 'sacro', 'coccix', 'cóccix', 'coccige', 'cóccix'],
+    regioes: ['lombar'],
+    sistema: 'musculoesqueletico'
+  },
   {
     keywords: ['trapezio', 'trapézio', 'ombro tenso', 'tensão cervical', 'tensao cervical'],
     regioes: ['trapezio_d', 'trapezio_e', 'cervical'],

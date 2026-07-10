@@ -502,8 +502,10 @@ const VINCULOS_ESTRUTURA_ZONA: Record<string, string[]> = {
   peitoral: ['pericardio', 'aorta_arco', 'veia_cava_sup', 'bronquio_d', 'bronquio_e',
              'bronquiolos_d', 'bronquiolos_e', 'vasos_pulmonares', 'diafragma',
              'mama_d', 'mama_e', 'linfonodos_mediastinais', 'ducto_toracico'],
-  // Tórax posterior
-  toracica: ['diafragma_p'],
+  // Tórax posterior (inclui a região MSK 'dorsal' das costas)
+  toracica: ['diafragma_p', 'dorsal'],
+  // Região sacral posterior (inclui os glúteos)
+  sacral: ['gluteos', 'gluteos_p'],
   // Abdômen
   abdomen: ['ducto_biliar', 'baco', 'pelve_renal_d', 'pelve_renal_e',
             'aorta_abdominal', 'veia_cava_inf', 'veia_porta', 'ceco', 'vasos_quiferos',
@@ -513,12 +515,18 @@ const VINCULOS_ESTRUTURA_ZONA: Record<string, string[]> = {
           'epididimo_d', 'epididimo_e', 'escroto', 'penis', 'vagina',
           'linfonodos_iliacos', 'iliaca_d', 'iliaca_e',
           'plexo_lombosacro_d', 'plexo_lombosacro_e'],
-  // Coxas (trajeto principal dos nervos/vasos do MMII)
-  coxa_d: ['femoral_d', 'nervo_ciatico_d', 'nervo_femoral_d'],
-  coxa_e: ['femoral_e', 'nervo_ciatico_e', 'nervo_femoral_e'],
-  // Pernas
-  canela_d: ['nervo_tibial_d', 'nervo_fibular_d'],
-  canela_e: ['nervo_tibial_e', 'nervo_fibular_e'],
+  // Coxas (trajeto principal dos nervos/vasos do MMII; 'isquio' = coxa posterior)
+  coxa_d: ['femoral_d', 'nervo_ciatico_d', 'nervo_femoral_d', 'isquio_d'],
+  coxa_e: ['femoral_e', 'nervo_ciatico_e', 'nervo_femoral_e', 'isquio_e'],
+  // Joelhos ('cavo' = fossa poplítea, joelho posterior)
+  joelho_d: ['cavo_d'],
+  joelho_e: ['cavo_e'],
+  // Pernas ('panturr' = panturrilha, perna posterior)
+  canela_d: ['nervo_tibial_d', 'nervo_fibular_d', 'panturr_d'],
+  canela_e: ['nervo_tibial_e', 'nervo_fibular_e', 'panturr_e'],
+  // Pés ('calc' = calcanhar)
+  pe_d: ['calc_d'],
+  pe_e: ['calc_e'],
 };
 
 /**

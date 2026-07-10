@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS } from '@/utils/anatomia/regioesViscerais';
 import { ZONAS_CORPORAIS, ESTRUTURAS_SISTEMICAS, zonaDeRegiao } from '@/utils/anatomia/pontoAnatomico';
+import { MAPEAMENTO_SINTOMAS } from '@/utils/anatomia/mapeamentoSintomas';
 
 /**
  * Guardião de coerência anatômica do Avatar Clínico.
@@ -97,6 +98,19 @@ describe('Avatar Clínico — coerência anatômica', () => {
       .filter(r => !zonaDeRegiao(r.id))
       .map(r => r.id);
     expect(orfaos, `Estruturas sem região: ${orfaos.join(', ')}`).toEqual([]);
+  });
+
+  it('toda região do mapeamento de sintomas resolve para uma zona corporal', () => {
+    // Se um sintoma aponta para uma região que não pertence a nenhuma zona,
+    // o achado não marca nada (ou marca lugar errado). Ex.: o bug do 'dorsal'.
+    const orfaos = new Set<string>();
+    for (const m of MAPEAMENTO_SINTOMAS) {
+      for (const regiao of m.regioes) {
+        if (ESTRUTURAS_SISTEMICAS.has(regiao)) continue;
+        if (!zonaDeRegiao(regiao)) orfaos.add(regiao);
+      }
+    }
+    expect([...orfaos], `Regiões de sintoma sem zona: ${[...orfaos].join(', ')}`).toEqual([]);
   });
 
   it('nenhuma estrutura visceral é reivindicada por duas regiões', () => {
