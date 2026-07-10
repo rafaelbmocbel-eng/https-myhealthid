@@ -1108,13 +1108,20 @@ export default function PacientePerfil() {
             ];
             const mainGridCols = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4', 'grid-cols-5'][Math.min(visibleMainTabs.length, 5)] ?? 'grid-cols-5';
             return (
-          <TabsList className={`bg-muted/50 p-1 rounded-2xl grid ${mainGridCols} h-auto gap-0.5 w-full mb-4 border border-border/30`}>
+          <TabsList className={`bg-muted/60 p-1 rounded-2xl grid ${mainGridCols} h-auto gap-0.5 w-full mb-4 border border-border/40`}>
             {visibleMainTabs.map(tab => {
               const Icon = MAIN_TAB_ICONS[tab.id] || Activity;
               const compactCls = layoutCfg.tabs_compacto ? 'py-1.5 min-h-[34px]' : 'py-2.5 min-h-[50px]';
               return (
                 <TabsTrigger key={tab.id} value={tab.id}
-                  className={cn('gap-1 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 text-[11px] sm:text-xs font-semibold px-1 flex-col sm:flex-row text-muted-foreground', compactCls)}>
+                  className={cn(
+                    'gap-1 rounded-xl text-[11px] sm:text-xs font-semibold px-1 flex-col sm:flex-row transition-colors',
+                    // Inativo: menos apagado + realce no hover
+                    'text-foreground/70 hover:text-foreground hover:bg-background/60',
+                    // Ativo: cor de acento + sombra e anel para destacar
+                    'data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/25 data-[state=active]:border data-[state=active]:border-primary/20 data-[state=active]:font-bold',
+                    compactCls,
+                  )}>
                   {layoutCfg.tabs_icone && <Icon className="h-4 w-4 shrink-0" />}
                   <span>{tab.label}</span>
                 </TabsTrigger>
