@@ -618,30 +618,19 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
     : layoutCfg.botao_presencial_largura === 'half' ? 'w-[calc(50%-0.25rem)]'
     : '';
 
-  const BotaoAcao = subTabAtiva !== 'myid' && (bp.visivel || br.visivel) ? (
+  // Se o paciente já tem avaliação concluída, o botão vira "Nova Avaliação".
+  const jaAvaliou = myidAvaliacoes.length > 0 || voiceAvaliacoes.length > 0;
+
+  const BotaoAcao = subTabAtiva !== 'myid' && bp.visivel ? (
     <div className={`flex gap-3 ${btnDirClass} ${btnAlignClass}`}>
-      {bp.visivel && (
-        <Button
-          size={btnSizeMap[bp.tamanho]}
-          className={`gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg transition-all ${btnPrimaryWidthClass}`}
-          onClick={() => setSubTabAtiva('myid')}
-        >
-          <Presentation className="h-5 w-5 shrink-0" />
-          {bp.label}
-        </Button>
-      )}
-      {!layoutCfg.botoes_unidos && br.visivel && (
-        <Button
-          size={btnSizeMap[br.tamanho]}
-          variant="outline"
-          className={`gap-1.5 ${layoutCfg.botoes_direcao === 'column' ? 'w-full' : ''}`}
-          onClick={handleRespostaCompleta}
-          disabled={gerandoRespostaCompleta}
-        >
-          {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
-          {br.label}
-        </Button>
-      )}
+      <Button
+        size={btnSizeMap[bp.tamanho]}
+        className={`gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg transition-all ${btnPrimaryWidthClass}`}
+        onClick={() => setSubTabAtiva('myid')}
+      >
+        {jaAvaliou ? <Plus className="h-5 w-5 shrink-0" /> : <Presentation className="h-5 w-5 shrink-0" />}
+        {jaAvaliou ? 'Nova Avaliação' : bp.label}
+      </Button>
     </div>
   ) : null;
 
@@ -651,22 +640,10 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
       {layoutCfg.botoes_posicao === 'topo' && BotaoAcao}
 
       {subTabAtiva === 'myid' && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <Button size="sm" variant="ghost" className="gap-2" onClick={() => setSubTabAtiva('integrada')}>
             <ArrowLeft className="h-4 w-4" /> Voltar à Visão Integrada
           </Button>
-          {br.visivel && (
-            <Button
-              size={btnSizeMap[br.tamanho]}
-              variant="outline"
-              className="gap-1.5"
-              onClick={handleRespostaCompleta}
-              disabled={gerandoRespostaCompleta}
-            >
-              {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
-              {br.label}
-            </Button>
-          )}
         </div>
       )}
 

@@ -761,20 +761,6 @@ export default function PatientIntegratedDashboard({
                 </div>
               )}
 
-              {/* Detalhes da avaliação */}
-              <Accordion type="single" collapsible className="border border-border/40 rounded-xl bg-card">
-                <AccordionItem value="alertas" className="border-b-0">
-                  <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
-                    <div className="flex items-center gap-2">
-                      <Activity className="icon-sm text-muted-foreground" />
-                      Detalhes da minha avaliação
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
-                    <PatientHealthAreas scores={scores} />
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
             </TabsContent>
 
             {/* ─────────── ABA 1.1: MEU CORPO (Avatar Clínico) ─────────── */}
@@ -910,10 +896,7 @@ export default function PatientIntegratedDashboard({
         </Card>
       )}
 
-      {/* ─── SEÇÃO 4: DIRETRIZES DE TRATAMENTO (dados reais) ─── */}
-      {hasMyID && (
-        <ActiveDiretrizSection pacienteId={pacienteId} />
-      )}
+      {/* Diretrizes e Tratamentos removidos daqui — já existem na aba "Diretrizes". */}
 
       {/* (Drill-down agora é inline, renderizado abaixo da impressão digital) */}
 

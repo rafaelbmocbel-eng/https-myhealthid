@@ -1108,7 +1108,7 @@ export default function PacientePerfil() {
             ];
             const mainGridCols = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4', 'grid-cols-5'][Math.min(visibleMainTabs.length, 5)] ?? 'grid-cols-5';
             return (
-          <TabsList className={`bg-muted/60 p-1 rounded-2xl grid ${mainGridCols} h-auto gap-0.5 w-full mb-4 border border-border/40`}>
+          <TabsList className={`bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 p-1 rounded-2xl grid ${mainGridCols} h-auto gap-0.5 w-full mb-4 border border-primary/15 shadow-sm`}>
             {visibleMainTabs.map(tab => {
               const Icon = MAIN_TAB_ICONS[tab.id] || Activity;
               const compactCls = layoutCfg.tabs_compacto ? 'py-1.5 min-h-[34px]' : 'py-2.5 min-h-[50px]';
