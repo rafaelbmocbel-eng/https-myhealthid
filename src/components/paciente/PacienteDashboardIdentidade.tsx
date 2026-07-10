@@ -618,18 +618,19 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
     : layoutCfg.botao_presencial_largura === 'half' ? 'w-[calc(50%-0.25rem)]'
     : '';
 
-  // Se o paciente já tem avaliação concluída, o botão vira "Nova Avaliação".
+  // "Iniciar Avaliação Presencial" só aparece na Visão Geral na PRIMEIRA vez.
+  // Depois da primeira avaliação, a ação "Nova Avaliação" vive na aba "Avaliação".
   const jaAvaliou = myidAvaliacoes.length > 0 || voiceAvaliacoes.length > 0;
 
-  const BotaoAcao = subTabAtiva !== 'myid' && bp.visivel ? (
+  const BotaoAcao = subTabAtiva !== 'myid' && bp.visivel && !jaAvaliou ? (
     <div className={`flex gap-3 ${btnDirClass} ${btnAlignClass}`}>
       <Button
         size={btnSizeMap[bp.tamanho]}
         className={`gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg transition-all ${btnPrimaryWidthClass}`}
         onClick={() => setSubTabAtiva('myid')}
       >
-        {jaAvaliou ? <Plus className="h-5 w-5 shrink-0" /> : <Presentation className="h-5 w-5 shrink-0" />}
-        {jaAvaliou ? 'Nova Avaliação' : bp.label}
+        <Presentation className="h-5 w-5 shrink-0" />
+        {bp.label}
       </Button>
     </div>
   ) : null;

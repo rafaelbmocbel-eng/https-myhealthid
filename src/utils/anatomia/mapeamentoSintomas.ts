@@ -56,9 +56,20 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'nervoso'
   },
   {
-    keywords: ['radiculopatia', 'hernia de disco', 'hérnia de disco', 'compressao nervosa', 'compressão nervosa', 'neuropatia', 'neuralgia', 'spurling', 'teste de spurling', 'sinal de spurling', 'compressao foraminal', 'compressão foraminal', 'stenose', 'estenose do canal'],
+    // Apenas termos de medula/canal (verdadeiramente centrais) ficam na coluna
+    // como estrutura neural central. Hérnia de disco e radiculopatia NÃO são
+    // "medula no tórax" — foram movidas para o nível vertebral correspondente.
+    keywords: ['mielopatia', 'compressao medular', 'compressão medular', 'lesao medular', 'lesão medular', 'estenose do canal', 'stenose', 'compressao foraminal', 'compressão foraminal'],
     regioes: ['medula_espinhal_v', 'medula_p'],
     sistema: 'nervoso'
+  },
+  {
+    // Hérnia de disco / protrusão / radiculopatia sem nível explícito → coluna
+    // lombar (localização mais comum), como estrutura musculoesquelética/vertebral.
+    // Se o texto trouxer o nível (L5, C6...), a regra do nível vertebral tem prioridade.
+    keywords: ['hernia de disco', 'hérnia de disco', 'protrusao discal', 'protrusão discal', 'abaulamento discal', 'radiculopatia', 'disco herniado', 'hernia discal', 'hérnia discal'],
+    regioes: ['lombar'],
+    sistema: 'musculoesqueletico'
   },
   {
     keywords: ['ciatica', 'ciática', 'ciatalgia', 'dor ciatica', 'dor ciática', 'nervo ciatico', 'nervo ciático', 'irradiacao para perna', 'lombociatalgia', 'irradiacao para pe', 'irradiação para pé', 'irradiacao para pe esquerdo', 'irradiação para pé esquerdo', 'radiculopatia lombar', 'l4', 'l5', 's1'],
