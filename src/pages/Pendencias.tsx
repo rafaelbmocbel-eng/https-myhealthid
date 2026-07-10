@@ -6,6 +6,7 @@ import {
   Lock, Phone, Calendar, Palette, Share2, DollarSign, BookOpen,
   ChevronRight, CheckCircle2, Circle, Sparkles, Receipt,
 } from 'lucide-react';
+import AppLayout from '@/components/AppLayout';
 import PageHeader from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -360,6 +361,7 @@ export default function Pendencias() {
   }, [filtradas]);
 
   return (
+    <AppLayout>
     <div className="container max-w-5xl py-6 sm:py-8">
       <PageHeader
         eyebrow="Setup do App"
@@ -495,5 +497,6 @@ export default function Pendencias() {
         )}
       </div>
     </div>
+    </AppLayout>
   );
 }
