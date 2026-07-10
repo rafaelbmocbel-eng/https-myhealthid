@@ -1,6 +1,3 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,17 +10,12 @@ import {
   NIVEL_LIMITES, proximoNivel
 } from '@/hooks/useRecompensas';
 import { cn } from '@/lib/utils';
+import { usePacientePortal } from '@/hooks/usePacientePortal';
 
 export default function PacienteRecompensas() {
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [pacienteId, setPacienteId] = useState<string>();
-
-  useEffect(() => {
-    if (!user) return;
-    supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle()
-      .then(({ data }) => data && setPacienteId(data.id));
-  }, [user]);
+  const { paciente } = usePacientePortal();
+  const pacienteId = paciente?.id;
 
   const { data: xpData } = usePacienteXP(pacienteId);
   const { catalogo, meusResgates, isLoading, resgatar, resgatando } = useRecompensasPaciente(pacienteId);

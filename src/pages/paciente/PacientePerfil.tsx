@@ -1,31 +1,20 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import PacienteConsentimentoLGPD from '@/components/paciente/PacienteConsentimentoLGPD';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { User, Mail, Phone, Calendar, Pencil, Loader2 } from 'lucide-react';
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
+import { usePacientePortal } from '@/hooks/usePacientePortal';
 
 export default function PacientePerfil() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [paciente, setPaciente] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from('pacientes')
-      .select('id, nome, sobrenome, email, telefone, data_nascimento, avatar_url, terapeuta_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data, error }) => { if (error) console.warn('[PacientePerfil]', error); setPaciente(data); setLoading(false); });
-  }, [user]);
+  const { paciente, isLoading: loading, isError, refetch, updateCache } = usePacientePortal();
 
   const infoItems = paciente
     ? [
@@ -43,6 +32,16 @@ export default function PacientePerfil() {
           <div className="flex items-center justify-center min-h-[50vh]">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => refetch()} />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );
@@ -75,7 +74,7 @@ export default function PacientePerfil() {
                     nome={paciente.nome}
                     sobrenome={paciente.sobrenome}
                     size="xl"
-                    onUpdated={(url) => setPaciente({ ...paciente, avatar_url: url })}
+                    onUpdated={(url) => updateCache({ avatar_url: url })}
                   />
                 </div>
               )}

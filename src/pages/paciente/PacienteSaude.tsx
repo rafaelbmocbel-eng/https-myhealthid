@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, LayoutDashboard, Moon, Droplets, Scale, UtensilsCrossed, Activity, Watch, Mic } from 'lucide-react';
@@ -17,20 +16,14 @@ import WearablePhotoCard from '@/components/paciente/WearablePhotoCard';
 import PacienteRelatoVoz from '@/components/paciente/PacienteRelatoVoz';
 import { useHealthData } from '@/hooks/useHealthData';
 import type { HealthSyncResult } from '@/hooks/useHealthSync';
+import { usePacientePortal } from '@/hooks/usePacientePortal';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 
 export default function PacienteSaude() {
-  const { user } = useAuth();
-  const [paciente, setPaciente] = useState<{ id: string; terapeuta_id: string } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { paciente, isLoading: loading, isError, refetch } = usePacientePortal();
   const [tab, setTab] = useState('dashboard');
 
-  useEffect(() => {
-    if (!user) return;
-    supabase.from('pacientes').select('id, terapeuta_id').eq('user_id', user.id).maybeSingle()
-      .then(({ data }) => { setPaciente(data); setLoading(false); });
-  }, [user]);
-
-  const health = useHealthData(paciente?.id || null, paciente?.terapeuta_id);
+  const health = useHealthData(paciente?.id || null, paciente?.terapeuta_id || undefined);
 
   const handleSyncComplete = async (data: HealthSyncResult) => {
     if (!paciente) return;
@@ -57,6 +50,16 @@ export default function PacienteSaude() {
       <ProtectedPatientRoute>
         <PacienteLayout>
           <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => refetch()} />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Activity, Info, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePacientePortal } from '@/hooks/usePacientePortal';
 
 const LEGENDA = [
   { cor: '#dc2626', label: 'Condição ativa' },
@@ -16,26 +15,9 @@ const LEGENDA = [
 ];
 
 export default function PacienteAvatar() {
-  const { user } = useAuth();
-  const [pacienteId, setPacienteId] = useState<string | null>(null);
-  const [semProfissional, setSemProfissional] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from('pacientes')
-      .select('id, terapeuta_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setPacienteId(data.id);
-          if (!data.terapeuta_id) setSemProfissional(true);
-        }
-        setLoading(false);
-      });
-  }, [user]);
+  const { paciente, isLoading: loading, isError, refetch } = usePacientePortal();
+  const pacienteId = paciente?.id ?? null;
+  const semProfissional = !!paciente && !paciente.terapeuta_id;
 
   if (loading) {
     return (
@@ -44,6 +26,16 @@ export default function PacienteAvatar() {
           <div className="flex items-center justify-center min-h-[50vh]">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => refetch()} />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

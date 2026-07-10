@@ -1,35 +1,17 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import ChatWindow from '@/components/chat/ChatWindow';
 import { MessageSquare, Loader2, Lock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
+import { usePacientePortal } from '@/hooks/usePacientePortal';
 
 export default function PacienteChat() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { hasFeature, isFree } = useWellnessAccess();
-  const [paciente, setPaciente] = useState<{ id: string; terapeuta_id: string; nome: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from('pacientes')
-      .select('id, terapeuta_id, nome')
-      .eq('user_id', user.id)
-      .eq('ativo', true)
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        setPaciente(data);
-        setLoading(false);
-      });
-  }, [user]);
+  const { paciente, isLoading: loading, isError, refetch } = usePacientePortal();
 
   return (
     <ProtectedPatientRoute>
@@ -44,6 +26,8 @@ export default function PacienteChat() {
             <div className="flex-1 flex items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
+          ) : isError ? (
+            <PortalErrorState onRetry={() => refetch()} />
           ) : isFree && !hasFeature('chat') ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -59,7 +43,7 @@ export default function PacienteChat() {
                 <Sparkles className="icon-sm" /> Conhecer plano
               </Button>
             </div>
-          ) : paciente ? (
+          ) : paciente?.terapeuta_id ? (
             <ChatWindow
               pacienteId={paciente.id}
               terapeutaId={paciente.terapeuta_id}
@@ -68,7 +52,7 @@ export default function PacienteChat() {
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-              Perfil não encontrado
+              {paciente ? 'Você ainda não está vinculado a um profissional' : 'Perfil não encontrado'}
             </div>
           )}
         </div>
