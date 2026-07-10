@@ -6,7 +6,6 @@ export interface BreadcrumbEntry {
 const PROFESSIONAL_ROUTES: { path: string; label: string }[] = [
   { path: '/agenda', label: 'Agenda' },
   { path: '/pacientes', label: 'Pacientes' },
-  { path: '/pendencias', label: 'Pendências' },
   { path: '/crm', label: 'CRM' },
   { path: '/eventos', label: 'Eventos' },
   { path: '/configuracoes', label: 'Configurações' },

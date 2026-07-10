@@ -49,7 +49,6 @@ const RecuperarSenha = lazyWithRetry(() => import("./pages/RecuperarSenha"));
 const NovaSenha = lazyWithRetry(() => import("./pages/NovaSenha"));
 const BaseCientifica = lazyWithRetry(() => import("./pages/BaseCientifica"));
 const Hoje = lazyWithRetry(() => import("./pages/Hoje"));
-const Pendencias = lazyWithRetry(() => import("./pages/Pendencias"));
 const ExportarDados = lazyWithRetry(() => import("./pages/ExportarDados"));
 const Vitrine = lazyWithRetry(() => import("./pages/Vitrine"));
 const AuthConfirm = lazyWithRetry(() => import("./pages/AuthConfirm"));
@@ -157,7 +156,7 @@ const App = () => (
                 <Route path="/agenda" element={<ProfessionalGuard><Agenda /></ProfessionalGuard>} />
                 <Route path="/hoje" element={<ProfessionalGuard><Hoje /></ProfessionalGuard>} />
                 <Route path="/pacientes" element={<ProfessionalGuard><Pacientes /></ProfessionalGuard>} />
-                <Route path="/pendencias" element={<ProfessionalGuard><Pendencias /></ProfessionalGuard>} />
+                <Route path="/pendencias" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/vitrine" element={<ProfessionalGuard><Vitrine /></ProfessionalGuard>} />
                 <Route path="/pacientes/:id" element={<ProfessionalGuard><PacientePerfil /></ProfessionalGuard>} />
                 <Route path="/protocolos" element={<Navigate to="/pacientes" replace />} />
