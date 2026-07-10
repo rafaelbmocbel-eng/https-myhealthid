@@ -142,8 +142,21 @@ export default function ConfigClinica() {
         body: { test: true, ...creds, clientToken: form.zapi_client_token.trim() },
       });
       if (error || !data?.connected) {
-        const message = data?.status?.error || data?.error || error?.message || 'Falha';
-        throw new Error(message === 'You are not connected.' ? 'Instância Z-API sem WhatsApp conectado. Abra o painel da Z-API e reconecte pelo QR Code.' : message);
+        // Traduz os erros mais comuns da Z-API em algo acionável
+        const rawMsg = String(data?.status?.error || data?.error || data?.raw || error?.message || '').toLowerCase();
+        let amigavel: string;
+        if (rawMsg.includes('not connected') || rawMsg.includes('disconnected') || rawMsg.includes('smartphonenotconnected')) {
+          amigavel = 'A instância existe, mas o WhatsApp não está conectado. Abra o painel da Z-API e leia o QR Code com o celular do consultório.';
+        } else if (rawMsg.includes('client-token') || rawMsg.includes('client token') || rawMsg.includes('403')) {
+          amigavel = 'Client-Token ausente ou incorreto. Copie o Account Security Token da Z-API (Segurança) e cole no campo Client-Token.';
+        } else if (rawMsg.includes('401') || rawMsg.includes('invalid') || rawMsg.includes('not found') || rawMsg.includes('unauthorized')) {
+          amigavel = 'Instance ID ou Token incorretos. Confira se copiou exatamente do painel da Z-API (sem espaços).';
+        } else if (!rawMsg) {
+          amigavel = 'Não consegui falar com a Z-API. Verifique sua internet e se a instância está ativa no painel.';
+        } else {
+          amigavel = `Z-API respondeu: ${data?.status?.error || data?.error || data?.raw || error?.message}`;
+        }
+        throw new Error(amigavel);
       }
       setTestResult('ok');
       toast({ title: 'Conexão Z-API funcionando! ✅' });
@@ -352,20 +365,36 @@ function WhatsappSetupGuide({ zapiOk }: { zapiOk: boolean }) {
     toast({ title: `${label} copiado!` });
   };
 
+  // O webhook EXIGE ?secret=<WHATSAPP_WEBHOOK_SECRET>. Sem ele, a Z-API recebe
+  // 401 e as respostas dos pacientes nunca chegam na inbox.
+  const webhookUrlComSecret = `${webhookUrl}?secret=SEU_WHATSAPP_WEBHOOK_SECRET`;
+
   const steps = [
     {
       done: zapiOk,
-      title: 'Credenciais Z-API configuradas',
-      desc: zapiOk ? 'Instance ID, Token e Client Token salvos e ativos.' : 'Preencha os campos abaixo e ative o WhatsApp próprio.',
+      title: '1. Conectar o WhatsApp na Z-API',
+      desc: 'Crie a instância na Z-API e leia o QR Code com o WhatsApp do consultório. A instância precisa aparecer como "Conectada" no painel Z-API ANTES de testar aqui.',
+    },
+    {
+      done: zapiOk,
+      title: '2. Credenciais Z-API no app',
+      desc: zapiOk
+        ? 'Instance ID, Token e Client Token salvos e ativos. Use o botão "Testar conexão" abaixo.'
+        : 'Copie do painel Z-API: Instance ID, Token e o Client-Token (Segurança → Account Security). Cole abaixo, ative e teste.',
     },
     {
       done: false,
-      title: 'Webhook configurado na Z-API',
-      desc: 'No painel Z-API → sua instância → Webhooks → "On Message", cole a URL abaixo.',
+      title: '3. Secret do webhook (Backend → Secrets)',
+      desc: 'Em Backend → Functions/Secrets, crie WHATSAPP_WEBHOOK_SECRET com uma senha secreta qualquer (ex.: um texto aleatório). É ela que protege o recebimento de mensagens.',
+    },
+    {
+      done: false,
+      title: '4. Webhook na Z-API (com o secret)',
+      desc: 'No painel Z-API → sua instância → Webhooks → "Ao receber", cole a URL abaixo TROCANDO SEU_WHATSAPP_WEBHOOK_SECRET pelo valor que você criou no passo 3:',
       action: (
         <div className="flex items-center gap-1.5 mt-2 p-2 rounded-lg bg-muted/60 border border-border/40">
-          <code className="text-[11px] flex-1 break-all text-foreground">{webhookUrl}</code>
-          <Button size="sm" variant="ghost" className="h-7 px-2 shrink-0" onClick={() => copiar(webhookUrl, 'URL do webhook')}>
+          <code className="text-[11px] flex-1 break-all text-foreground">{webhookUrlComSecret}</code>
+          <Button size="sm" variant="ghost" className="h-7 px-2 shrink-0" onClick={() => copiar(webhookUrlComSecret, 'URL do webhook')}>
             <Copy className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -373,13 +402,8 @@ function WhatsappSetupGuide({ zapiOk }: { zapiOk: boolean }) {
     },
     {
       done: false,
-      title: 'LOVABLE_API_KEY configurada (bot IA)',
-      desc: 'Em Backend → Functions/Secrets, adicione LOVABLE_API_KEY com sua chave. Sem ela o bot funciona, mas sem IA.',
-    },
-    {
-      done: false,
-      title: 'CRON_SECRET + agendadores ativos',
-      desc: 'Adicione CRON_SECRET (qualquer string secreta) em Backend → Functions/Secrets. Depois aplique a migration dos agendadores pelo fluxo de backend.',
+      title: '5. GEMINI_API_KEY (respostas com IA)',
+      desc: 'Em Backend → Functions/Secrets, adicione GEMINI_API_KEY com sua chave do Google AI Studio. Sem ela, o WhatsApp envia/recebe normalmente, mas as respostas automáticas com IA ficam desativadas.',
     },
   ];
 
