@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Image as ImageIcon, Upload, X, UserMinus, Plus, Trash2, Copy, ExternalLink, Zap } from 'lucide-react';
 import { useWhatsappBloqueados } from '@/hooks/useWhatsappBloqueados';
+import ConectarWhatsappCard from '@/components/configuracoes/ConectarWhatsappCard';
 
 
 type ConfigClinica = {
@@ -87,23 +88,23 @@ export default function ConfigClinica() {
 
   const removerLogo = () => update('logo_url', '');
 
-  useEffect(() => {
+  const carregar = useCallback(async () => {
     if (!user) return;
-    (async () => {
-      const { data } = await supabase.from('config_clinica').select('*').eq('terapeuta_id', user.id).maybeSingle();
-      if (data) {
-        const creds = extractZapiCredentials(data.zapi_instance_id || '', data.zapi_token || '');
-        setForm({
-          ...EMPTY,
-          ...data,
-          zapi_instance_id: creds.instanceId,
-          zapi_token: creds.token,
-          zapi_client_token: data.zapi_client_token?.trim() || '',
-        });
-      }
-      setLoading(false);
-    })();
+    const { data } = await supabase.from('config_clinica').select('*').eq('terapeuta_id', user.id).maybeSingle();
+    if (data) {
+      const creds = extractZapiCredentials(data.zapi_instance_id || '', data.zapi_token || '');
+      setForm({
+        ...EMPTY,
+        ...data,
+        zapi_instance_id: creds.instanceId,
+        zapi_token: creds.token,
+        zapi_client_token: data.zapi_client_token?.trim() || '',
+      });
+    }
+    setLoading(false);
   }, [user]);
+
+  useEffect(() => { void carregar(); }, [carregar]);
 
   const update = <K extends keyof ConfigClinica>(k: K, v: ConfigClinica[K]) => setForm(f => ({ ...f, [k]: v }));
 
@@ -291,21 +292,23 @@ export default function ConfigClinica() {
         </div>
       </div>
 
-      {/* Guia de configuração WhatsApp Bot */}
-      <WhatsappSetupGuide zapiOk={!!(form.zapi_instance_id && form.zapi_token && form.zapi_ativo)} />
+      {/* Conexão em 1 clique (auto-provisionamento + QR) */}
+      <ConectarWhatsappCard
+        jaConectado={!!(form.zapi_instance_id && form.zapi_token && form.zapi_ativo)}
+        onConectado={carregar}
+      />
 
-      {/* WhatsApp próprio (Z-API) */}
-      <div className="clinical-card mb-4 sm:mb-5 border-2 border-emerald-500/20">
-        <div className="flex items-center gap-2 mb-2">
+      {/* Configuração manual avançada (fallback) */}
+      <details className="clinical-card mb-4 sm:mb-5 border border-border/40 group">
+        <summary className="cursor-pointer list-none flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <MessageCircle className="h-4 w-4 text-emerald-600" />
-          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">WhatsApp Próprio</h2>
+          <span className="uppercase tracking-wider">Configuração manual (avançado)</span>
           {form.zapi_ativo && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold">ATIVO</span>}
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">Mensagens automáticas saem do <strong>seu próprio número</strong> via Z-API.</p>
-        <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 mb-4 text-xs text-amber-900 dark:text-amber-200 flex gap-2">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>Crie uma conta em <a href="https://z-api.io" target="_blank" rel="noopener noreferrer" className="underline font-medium">z-api.io</a>, conecte seu WhatsApp e cole as credenciais abaixo.</span>
-        </div>
+          <span className="ml-auto text-[10px] group-open:hidden">abrir</span>
+        </summary>
+        <div className="mt-3">
+        <p className="text-xs text-muted-foreground mb-3">Se preferir, cole manualmente as credenciais de uma conta Z-API própria.</p>
+        <WhatsappSetupGuide zapiOk={!!(form.zapi_instance_id && form.zapi_token && form.zapi_ativo)} />
 
         <div className="space-y-3">
           <div>
@@ -337,7 +340,8 @@ export default function ConfigClinica() {
             </Button>
           </div>
         </div>
-      </div>
+        </div>
+      </details>
 
       <ContatosBloqueadosCard />
 

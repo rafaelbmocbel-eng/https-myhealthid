@@ -66,7 +66,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Descobre o terapeuta dono pela instância Z-API
+    // Descobre o terapeuta dono EXCLUSIVAMENTE pela instância Z-API.
+    // Multi-tenant: NUNCA usar fallback para "a primeira clínica ativa" — isso
+    // entregaria a mensagem de um paciente para a clínica errada. Sem instância
+    // reconhecida, a mensagem é registrada como não-roteada e descartada.
     let terapeuta_id: string | null = null;
     if (instanceId) {
       const { data } = await admin
@@ -76,20 +79,12 @@ Deno.serve(async (req) => {
         .maybeSingle();
       terapeuta_id = data?.terapeuta_id ?? null;
     }
-    // Fallback: primeiro terapeuta com Z-API ativa
     if (!terapeuta_id) {
-      const { data } = await admin
-        .from("config_clinica")
-        .select("terapeuta_id")
-        .eq("zapi_ativo", true)
-        .limit(1)
-        .maybeSingle();
-      terapeuta_id = data?.terapeuta_id ?? null;
-    }
-    if (!terapeuta_id) {
-      return new Response(JSON.stringify({ ok: false, error: "no-terapeuta" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.warn("[whatsapp-webhook] instância não reconhecida (não-roteada):", instanceId);
+      return new Response(
+        JSON.stringify({ ok: true, ignored: "instancia-nao-reconhecida", instanceId }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // Tenta vincular paciente pelo telefone
