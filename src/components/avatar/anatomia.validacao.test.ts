@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS } from '@/utils/anatomia/regioesViscerais';
+import { ZONAS_CORPORAIS, ESTRUTURAS_SISTEMICAS, zonaDeRegiao } from '@/utils/anatomia/pontoAnatomico';
 
 /**
  * Guardião de coerência anatômica do Avatar Clínico.
@@ -86,5 +87,30 @@ describe('Avatar Clínico — coerência anatômica', () => {
       vistos.add(chave(r));
     }
     expect(dups, `IDs duplicados: ${dups.join(', ')}`).toEqual([]);
+  });
+
+  it('toda estrutura visceral marca uma região corporal (não fica órfã)', () => {
+    // O achado precisa colorir uma zona mesmo sem o órgão desenhado.
+    // Exceção: estruturas tegumentares sistêmicas, sem localização segmentar.
+    const orfaos = VISCERAL_REGIONS
+      .filter(r => !ESTRUTURAS_SISTEMICAS.has(r.id))
+      .filter(r => !zonaDeRegiao(r.id))
+      .map(r => r.id);
+    expect(orfaos, `Estruturas sem região: ${orfaos.join(', ')}`).toEqual([]);
+  });
+
+  it('nenhuma estrutura visceral é reivindicada por duas regiões', () => {
+    const dono = new Map<string, string[]>();
+    for (const z of ZONAS_CORPORAIS) {
+      for (const id of z.ids) {
+        // Ignora os IDs próprios de zona MSK (compartilham nome entre front/back)
+        if (!VISCERAL_REGIONS.some(v => v.id === id)) continue;
+        dono.set(id, [...(dono.get(id) ?? []), z.id]);
+      }
+    }
+    const divergentes = [...dono.entries()]
+      .filter(([, zonas]) => new Set(zonas).size > 1)
+      .map(([id, zonas]) => `${id} → {${[...new Set(zonas)].join(', ')}}`);
+    expect(divergentes, `Estruturas em múltiplas regiões: ${divergentes.join(' | ')}`).toEqual([]);
   });
 });

@@ -337,7 +337,7 @@ export function zonePivot(s: ZonaShape): { x: number; y: number } {
   return count > 0 ? { x: sumX / count, y: sumY / count } : { x: 120, y: 260 };
 }
 
-export const ZONAS_CORPORAIS: ZonaRegiao[] = [
+const ZONAS_CORPORAIS_BASE: ZonaRegiao[] = [
   // ── Cabeça / crânio ──────────────────────────────────────────────────────
   { id: 'cabeca',   label: 'Cabeça',       views: ['front'],
     ids: ['cabeca','cerebro','cerebelo','hipofise','tronco_encefalico'],
@@ -466,3 +466,77 @@ export const ZONAS_CORPORAIS: ZonaRegiao[] = [
     ids: ['pe_e'],
     shape: { kind: 'ellipse', cx: 140, cy: 501, rx: 13, ry: 8 } },
 ];
+
+/**
+ * Vínculo estrutura → região corporal.
+ *
+ * Toda estrutura visceral (órgão, vaso, nervo, glândula, linfonodo) precisa
+ * pertencer à zona da sua localização anatômica principal, para que um achado
+ * registrado nela COLORA a região correta — mesmo que o órgão não esteja
+ * desenhado no avatar. Sem este mapa, um achado em "aorta abdominal" ou
+ * "nervo ciático" não marcaria zona alguma.
+ *
+ * Regra: cada estrutura em UMA única região (a principal/segmentar). Estruturas
+ * que atravessam segmentos (nervos, grandes vasos) vão para o segmento onde são
+ * clinicamente avaliadas. Validado em anatomia.validacao.test.ts.
+ */
+const VINCULOS_ESTRUTURA_ZONA: Record<string, string[]> = {
+  // Cabeça
+  cabeca: ['pineal', 'nervos_cranianos', 'olho_d', 'olho_e', 'orelha_d', 'orelha_e',
+           'nariz_olfato', 'seios_face', 'lingua_paladar', 'couro_cabeludo'],
+  // Pescoço
+  pescoco: ['laringe', 'faringe', 'paratireoides', 'amigdalas', 'nervo_vago',
+            'glandula_parotida_d', 'glandula_parotida_e', 'glandula_sublingual',
+            'glandula_submandibular_d', 'glandula_submandibular_e',
+            'carotida_d', 'carotida_e', 'jugular_d', 'jugular_e',
+            'plexo_cervical_d', 'plexo_cervical_e', 'ganglio_estrelado',
+            'ducto_linfatico_d', 'linfonodos_subclaviculares',
+            'linfonodos_submandibulares', 'linfonodos_submentuais'],
+  // Ombros / cíngulo
+  ombro_d: ['subclavia_d', 'subclavias_d', 'plexo_braquial_d'],
+  ombro_e: ['subclavia_e', 'subclavias_e', 'plexo_braquial_e'],
+  // Braços (trajeto principal dos nervos do MMSS)
+  braco_d: ['nervo_mediano_d', 'nervo_radial_d', 'nervo_ulnar_d'],
+  braco_e: ['nervo_mediano_e', 'nervo_radial_e', 'nervo_ulnar_e'],
+  // Tórax anterior
+  peitoral: ['pericardio', 'aorta_arco', 'veia_cava_sup', 'bronquio_d', 'bronquio_e',
+             'bronquiolos_d', 'bronquiolos_e', 'vasos_pulmonares', 'diafragma',
+             'mama_d', 'mama_e', 'linfonodos_mediastinais', 'ducto_toracico'],
+  // Tórax posterior
+  toracica: ['diafragma_p'],
+  // Abdômen
+  abdomen: ['ducto_biliar', 'baco', 'pelve_renal_d', 'pelve_renal_e',
+            'aorta_abdominal', 'veia_cava_inf', 'veia_porta', 'ceco', 'vasos_quiferos',
+            'linfonodos_abdominais', 'linfonodos_mesentericos', 'placas_peyer'],
+  // Pelve
+  pelve: ['anus', 'canal_anal', 'uretra', 'trompas_falopio', 'vesiculas_seminais',
+          'epididimo_d', 'epididimo_e', 'escroto', 'penis', 'vagina',
+          'linfonodos_iliacos', 'iliaca_d', 'iliaca_e',
+          'plexo_lombosacro_d', 'plexo_lombosacro_e'],
+  // Coxas (trajeto principal dos nervos/vasos do MMII)
+  coxa_d: ['femoral_d', 'nervo_ciatico_d', 'nervo_femoral_d'],
+  coxa_e: ['femoral_e', 'nervo_ciatico_e', 'nervo_femoral_e'],
+  // Pernas
+  canela_d: ['nervo_tibial_d', 'nervo_fibular_d'],
+  canela_e: ['nervo_tibial_e', 'nervo_fibular_e'],
+};
+
+/**
+ * Zonas corporais com o vínculo de estruturas mesclado. É esta lista que a UI
+ * consome: um achado em qualquer estrutura resolve para a zona correta e a
+ * colore, independentemente de o órgão estar desenhado.
+ */
+export const ZONAS_CORPORAIS: ZonaRegiao[] = ZONAS_CORPORAIS_BASE.map(z => {
+  const extra = VINCULOS_ESTRUTURA_ZONA[z.id];
+  return extra ? { ...z, ids: [...new Set([...z.ids, ...extra])] } : z;
+});
+
+/** Estruturas tegumentares sistêmicas (sem localização segmentar única). */
+export const ESTRUTURAS_SISTEMICAS = new Set<string>([
+  'glandulas_sebaceas', 'glandulas_sudoriparas', 'unhas_maos', 'unhas_pes',
+]);
+
+/** Resolve a zona corporal de um regiao_id de achado (estrutura ou região MSK). */
+export function zonaDeRegiao(regiaoId: string): ZonaRegiao | undefined {
+  return ZONAS_CORPORAIS.find(z => z.ids.includes(regiaoId) || z.id === regiaoId);
+}
