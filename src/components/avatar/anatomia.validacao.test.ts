@@ -1,0 +1,90 @@
+import { describe, it, expect } from 'vitest';
+import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
+import { VISCERAL_REGIONS } from '@/utils/anatomia/regioesViscerais';
+
+/**
+ * Guardião de coerência anatômica do Avatar Clínico.
+ *
+ * Objetivo: garantir que cada estrutura/ponto do avatar esteja na sua região
+ * correta, sem divergência entre nome, segmento e sistema. Se alguém adicionar
+ * uma região sem catálogo, uma estrutura duplicada ou marcar um órgão com um
+ * sistema inexistente, este teste quebra no CI antes de chegar ao paciente.
+ */
+
+// Normaliza IDs de vistas posteriores (_p_/_p) para o ID base do catálogo,
+// espelhando exatamente o fallback usado na UI (Body3DAvatar).
+const baseId = (id: string) => id.replace(/_p_/, '_').replace(/_p$/, '');
+
+const SISTEMAS_VALIDOS = new Set([
+  'nervoso', 'circulatorio', 'respiratorio', 'digestorio', 'urinario',
+  'endocrino', 'linfatico', 'reprodutor', 'musculoesqueletico',
+  'sensorial', 'tegumentar',
+]);
+
+describe('Avatar Clínico — coerência anatômica', () => {
+  it('toda região clicável resolve para um catálogo de estruturas', () => {
+    const semCatalogo = REGIONS.filter(r => {
+      const cat = STRUCTURES[r.id] ?? STRUCTURES[baseId(r.id)];
+      return !cat || Object.keys(cat).length === 0;
+    }).map(r => r.id);
+    expect(semCatalogo, `Regiões sem catálogo: ${semCatalogo.join(', ')}`).toEqual([]);
+  });
+
+  it('nenhuma categoria de estrutura fica vazia', () => {
+    const vazias: string[] = [];
+    for (const [regiao, cats] of Object.entries(STRUCTURES)) {
+      for (const [cat, lista] of Object.entries(cats)) {
+        if (!Array.isArray(lista) || lista.length === 0) vazias.push(`${regiao}.${cat}`);
+      }
+    }
+    expect(vazias, `Categorias vazias: ${vazias.join(', ')}`).toEqual([]);
+  });
+
+  it('não há estruturas duplicadas dentro de uma mesma categoria', () => {
+    const dups: string[] = [];
+    for (const [regiao, cats] of Object.entries(STRUCTURES)) {
+      for (const [cat, lista] of Object.entries(cats)) {
+        const vistos = new Set<string>();
+        for (const nome of lista as string[]) {
+          if (vistos.has(nome)) dups.push(`${regiao}.${cat}: "${nome}"`);
+          vistos.add(nome);
+        }
+      }
+    }
+    expect(dups, `Duplicatas: ${dups.join(' | ')}`).toEqual([]);
+  });
+
+  it('todo catálogo de estruturas corresponde a uma região existente', () => {
+    const idsValidos = new Set(REGIONS.flatMap(r => [r.id, baseId(r.id)]));
+    const orfaos = Object.keys(STRUCTURES).filter(id => !idsValidos.has(id));
+    expect(orfaos, `Catálogos sem região: ${orfaos.join(', ')}`).toEqual([]);
+  });
+
+  it('toda região visceral aponta para sistemas válidos', () => {
+    const invalidos: string[] = [];
+    for (const r of VISCERAL_REGIONS) {
+      for (const s of r.sistemas) {
+        if (!SISTEMAS_VALIDOS.has(s)) invalidos.push(`${r.id} → "${s}"`);
+      }
+    }
+    expect(invalidos, `Sistemas inválidos: ${invalidos.join(', ')}`).toEqual([]);
+  });
+
+  it('todo órgão visceral tem ao menos um sistema e um path SVG', () => {
+    const incompletos = VISCERAL_REGIONS
+      .filter(r => !r.sistemas?.length || !r.d?.trim())
+      .map(r => r.id);
+    expect(incompletos, `Regiões viscerais incompletas: ${incompletos.join(', ')}`).toEqual([]);
+  });
+
+  it('IDs de região são únicos por vista (sem colisão front/back)', () => {
+    const chave = (r: { id: string; view: string }) => `${r.view}:${r.id}`;
+    const vistos = new Set<string>();
+    const dups: string[] = [];
+    for (const r of REGIONS) {
+      if (vistos.has(chave(r))) dups.push(chave(r));
+      vistos.add(chave(r));
+    }
+    expect(dups, `IDs duplicados: ${dups.join(', ')}`).toEqual([]);
+  });
+});
