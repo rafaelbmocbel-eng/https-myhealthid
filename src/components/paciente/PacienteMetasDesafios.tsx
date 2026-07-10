@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -273,22 +273,64 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
     [myidData]
   );
 
-  // Load completed missions from localStorage (daily reset)
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const stored = localStorage.getItem(`missoes_${pacienteId}_${today}`);
-    if (stored) {
-      try { setCompletedMissions(new Set(JSON.parse(stored))); } catch { /* localStorage corrompido — segue sem missões */ }
+  const hojeStr = new Date().toISOString().split('T')[0];
+
+  // Fonte de verdade: check-ins do dia no banco (compartilhados entre paciente
+  // e profissional). localStorage é apenas um espelho offline / fallback.
+  const carregarCheckins = useCallback(async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('missao_checkins')
+        .select('missao_key')
+        .eq('paciente_id', pacienteId)
+        .eq('data', hojeStr);
+      if (error) throw error;
+      const set = new Set<string>((data || []).map((r: any) => r.missao_key));
+      setCompletedMissions(set);
+      try { localStorage.setItem(`missoes_${pacienteId}_${hojeStr}`, JSON.stringify([...set])); } catch { /* ignore */ }
+    } catch {
+      // Tabela ainda não disponível ou offline → usa o espelho local
+      const stored = localStorage.getItem(`missoes_${pacienteId}_${hojeStr}`);
+      if (stored) {
+        try { setCompletedMissions(new Set(JSON.parse(stored))); } catch { /* corrompido */ }
+      }
     }
-  }, [pacienteId]);
+  }, [pacienteId, hojeStr]);
+
+  useEffect(() => { void carregarCheckins(); }, [carregarCheckins]);
+
+  // Realtime: o profissional vê ao vivo o que o paciente cumpriu (e vice-versa)
+  useEffect(() => {
+    if (!pacienteId) return;
+    const channel = supabase
+      .channel(`missao-checkins-${pacienteId}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'missao_checkins', filter: `paciente_id=eq.${pacienteId}` },
+        () => { void carregarCheckins(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [pacienteId, carregarCheckins]);
 
   const toggleMission = (id: string) => {
     setCompletedMissions(prev => {
       const next = new Set(prev);
       const wasDone = next.has(id);
       if (wasDone) next.delete(id); else next.add(id);
-      const today = new Date().toISOString().split('T')[0];
-      localStorage.setItem(`missoes_${pacienteId}_${today}`, JSON.stringify([...next]));
+      try { localStorage.setItem(`missoes_${pacienteId}_${hojeStr}`, JSON.stringify([...next])); } catch { /* ignore */ }
+
+      // Persiste no banco (best-effort — se a tabela não existir ainda, o
+      // localStorage garante que nada quebra)
+      void (async () => {
+        try {
+          if (wasDone) {
+            await (supabase as any).from('missao_checkins')
+              .delete().eq('paciente_id', pacienteId).eq('missao_key', id).eq('data', hojeStr);
+          } else {
+            await (supabase as any).from('missao_checkins')
+              .upsert({ paciente_id: pacienteId, missao_key: id, data: hojeStr }, { onConflict: 'paciente_id,missao_key,data' });
+          }
+        } catch { /* fallback: fica só no localStorage */ }
+      })();
 
       // Microceleração ao concluir (não ao desfazer)
       if (!wasDone) {
