@@ -742,7 +742,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     };
     const evs = eventosFiltrados.filter(e => e.status !== 'resolvido');
     const result: Array<{
-      zonaId: string; label: string; cor: string; status: string; tipo_achado: string; sistema: SistemaCorporal;
+      zonaId: string; id: string; label: string; cor: string; status: string; tipo_achado: string; sistema: SistemaCorporal;
     }> = [];
     ZONAS_CORPORAIS.forEach(zona => {
       const zoneEvs = evs.filter(ev => zona.ids.includes(ev.regiao_id));
@@ -754,6 +754,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       })[0];
       result.push({
         zonaId: zona.id,
+        id: top.id,
         label: zona.label,
         cor: corEvento(top),
         status: statusLabel[top.status] ?? top.status,
@@ -784,7 +785,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   );
 
 
-  const eventosDaRegiao = (rid: string) => eventos.filter(e => e.regiao_id === rid);
+  // Achados da região. Se rid for uma ZONA corporal (ex.: 'peitoral'), inclui
+  // também os achados registrados em estruturas dessa zona (ex.: medula) — assim
+  // o sheet aberto pelo card sempre mostra o achado para excluir/editar.
+  const eventosDaRegiao = (rid: string) => {
+    const zona = ZONAS_CORPORAIS.find(z => z.id === rid);
+    const ids = zona ? new Set(zona.ids) : null;
+    return eventos.filter(e => e.regiao_id === rid || (ids ? ids.has(e.regiao_id) : false));
+  };
 
   const abrirSheet = (rid: string) => {
     if (!isProfessional || modoSimplificado) return;
@@ -1356,18 +1364,35 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               };
               const sh = statusHex[c.status] || '#94a3b8';
               return (
-                <button key={c.zonaId} type="button" onClick={() => abrirSheet(c.zonaId)}
-                  className="w-full text-left rounded-xl border px-2 py-1.5 transition-opacity hover:opacity-80 active:opacity-60 shrink-0"
+                <div key={c.zonaId}
+                  className="w-full rounded-xl border px-2 py-1.5 shrink-0 relative group"
                   style={{ borderColor: `${sysColor}35`, background: `${sysColor}0a` }}>
-                  <div className="flex items-start justify-between gap-1 mb-0.5">
-                    <p className="text-[10px] font-bold leading-tight" style={{ color: sysColor }}>{c.label}</p>
-                    <span className="text-[8px] font-semibold px-1 py-px rounded-full shrink-0"
-                      style={{ color: sh, background: `${sh}1a` }}>{c.status}</span>
-                  </div>
-                  {c.tipo_achado && (
-                    <p className="text-[9px] text-muted-foreground leading-snug line-clamp-2">{c.tipo_achado}</p>
+                  <button type="button" onClick={() => abrirSheet(c.zonaId)} className="w-full text-left transition-opacity hover:opacity-80 active:opacity-60">
+                    <div className="flex items-start justify-between gap-1 mb-0.5 pr-5">
+                      <p className="text-[10px] font-bold leading-tight" style={{ color: sysColor }}>{c.label}</p>
+                      <span className="text-[8px] font-semibold px-1 py-px rounded-full shrink-0"
+                        style={{ color: sh, background: `${sh}1a` }}>{c.status}</span>
+                    </div>
+                    {c.tipo_achado && (
+                      <p className="text-[9px] text-muted-foreground leading-snug line-clamp-2 pr-5">{c.tipo_achado}</p>
+                    )}
+                  </button>
+                  {isProfessional && !modoSimplificado && (
+                    <button
+                      type="button"
+                      title="Excluir achado"
+                      className="absolute top-1 right-1 p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      disabled={deleteMut.isPending}
+                      onClick={() => {
+                        if (window.confirm(`Excluir o achado "${c.tipo_achado || c.label}"?`)) {
+                          deleteMut.mutate(c.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
