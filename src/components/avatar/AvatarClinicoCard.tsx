@@ -847,83 +847,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
           </div>
         </CardTitle>
-        <div className="flex flex-wrap justify-between items-center gap-2 mt-1">
-          <p className="text-xs text-muted-foreground">
-            Mapa de achados clínicos georreferenciados.
-          </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            {!modoSimplificado && lente && (
-              <button
-                type="button"
-                className="text-[9px] border border-border rounded-full px-2 py-0.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                title={`Destacar sistemas relevantes para ${lente.nome_exibicao}`}
-                onClick={() => setSistemasAtivos(SISTEMAS_POR_ESPECIALIDADE[lente.id] || SISTEMAS_ORDEM)}
-              >
-                Lente: {lente.nome_exibicao}
-              </button>
-            )}
-            {isProfessional && (
-              <>
-                <Label htmlFor="modo-view" className="text-[10px] cursor-pointer">
-                  {modoSimplificado ? "Visão Paciente" : "Visão Profissional"}
-                </Label>
-                <Switch
-                  id="modo-view"
-                  checked={!modoSimplificado}
-                  onCheckedChange={(v) => setModoSimplificadoState(!v)}
-                  className="h-4 w-8"
-                />
-              </>
-            )}
-          </div>
-        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Mapa de achados clínicos georreferenciados.
+        </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Resumo sempre visível (não fica escondido em aba): homeostase + pendências de revisão */}
-        <div className="space-y-3">
-        {/* Resumo de Homeostase (sempre visível, compacto) */}
-        <div className="bg-muted/30 p-3 rounded-lg border border-border/50 flex items-center justify-between">
-          {(() => {
-            const totalScore = systemScores.reduce((acc, curr) => acc + curr.score, 0);
-            const homeostase = Math.max(0, Math.min(100, Math.round(100 - Math.log1p(totalScore) * 18)));
-            return (
-              <>
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                    Índice de Homeostase
-                    <span title="Calculado a partir da carga clínica de cada sistema (achados confirmados, histórico de vida e diagnósticos CID — autorrelato MyID não entra no cálculo), com decaimento logarítmico. Não substitui o MyID-100.">
-                      <Info className="h-3 w-3 text-muted-foreground/70 cursor-help" />
-                    </span>
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "text-xl font-black",
-                      homeostase > 80 ? "text-emerald-600" : homeostase > 50 ? "text-amber-600" : "text-red-600"
-                    )}>
-                      {homeostase.toFixed(0)}%
-                    </span>
-                    <div className="h-1.5 w-24 bg-border rounded-full overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full transition-all duration-1000",
-                          homeostase > 80 ? "bg-emerald-500" : homeostase > 50 ? "bg-amber-500" : "bg-red-500"
-                        )}
-                        style={{ width: `${homeostase}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Alertas Ativos</p>
-                  <span className="text-lg font-bold">{systemScores.filter(s => s.score > 0).length} Sistemas</span>
-                </div>
-              </>
-            );
-          })()}
-        </div>
-        </div>
-
-        <Tabs defaultValue="mapa" className="w-full pt-2">
+        <Tabs defaultValue="mapa" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="mapa" className="text-xs">Mapa Corporal</TabsTrigger>
             <TabsTrigger value="achados" className="text-xs">Achados</TabsTrigger>
