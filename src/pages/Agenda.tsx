@@ -31,6 +31,7 @@ import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications
 import { supabase } from '@/integrations/supabase/client';
 import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { getPatientColor } from '@/utils/agendaUtils';
 import { gerarNotaConduta } from '@/utils/prontuarioAutoNotes';
 import { gerarEvolucaoSessaoConcluida } from '@/utils/evolucaoAutoNotes';
@@ -486,14 +487,23 @@ export default function Agenda() {
   const AGENDA_DRAFT_KEY = 'agenda:form';
   const AGENDA_DRAFT_VER = 1;
 
+  // A agenda SEMPRE abre normalmente (no calendário). Se houver um rascunho de
+  // novo horário não finalizado, não reabrimos o formulário automaticamente —
+  // oferecemos um toast discreto com a opção de retomar.
   useEffect(() => {
     void readDraft<{ form: FormData; modalOpen: boolean }>(AGENDA_DRAFT_KEY, AGENDA_DRAFT_VER).then(draft => {
-      if (!draft || !draft.modalOpen) return;
-      if (draft.form.data_inicio) {
-        setForm(draft.form);
-        setModal({ open: true });
-      }
+      if (!draft || !draft.modalOpen || !draft.form.data_inicio) return;
+      toast({
+        title: 'Novo horário não finalizado',
+        description: 'Você começou a adicionar um horário. Deseja retomar?',
+        action: (
+          <ToastAction altText="Retomar novo horário" onClick={() => { setForm(draft.form); setModal({ open: true }); }}>
+            Retomar
+          </ToastAction>
+        ),
+      });
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
