@@ -1,1 +1,20 @@
 project_id = "zxulglbcxehqplxainmz"
+
+# Funções chamadas SEM um JWT do Supabase (webhook da Z-API e jobs do cron).
+# Elas fazem a própria autenticação por dentro (secret do webhook / CRON_SECRET),
+# então precisam do portão de JWT desligado — senão o Supabase responde 401
+# "Invalid JWT" antes da função rodar.
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.whatsapp-auto-confirm]
+verify_jwt = false
+
+[functions.crm-cadencia-runner]
+verify_jwt = false
+
+[functions.broadcast-scheduler]
+verify_jwt = false
+
+[functions.agente-proativo]
+verify_jwt = false
