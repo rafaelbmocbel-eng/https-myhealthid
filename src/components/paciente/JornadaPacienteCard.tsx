@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Award, Rocket } from 'lucide-react';
@@ -12,32 +11,31 @@ interface Props {
 }
 
 /**
- * Jornada do paciente (missões + conquistas), autossuficiente.
- * Usada no botão "Portal" do app do profissional para espelhar a jornada que
- * o paciente vê no portal dele — a jornada para melhorar o MyID após a avaliação.
+ * Jornada do paciente (missões + conquistas), autossuficiente e IDÊNTICA nos
+ * dois apps (cliente e profissional): a busca é por paciente_id (sem filtrar
+ * por terapeuta), e as missões/conquistas derivam do MyID respondido pelo
+ * cliente. O mesmo componente é usado no dashboard do paciente e no botão
+ * "Portal" do app do profissional.
  */
 export default function JornadaPacienteCard({ pacienteId }: Props) {
-  const { user } = useAuth();
-
-  // Última avaliação MyID concluída — para derivar as conquistas (badges).
+  // Última avaliação MyID concluída — mesma fonte das missões (por paciente_id).
   const { data: scores } = useQuery({
-    queryKey: ['jornada-myid-scores', user?.id, pacienteId],
-    enabled: !!user && !!pacienteId,
+    queryKey: ['jornada-myid-scores', pacienteId],
+    enabled: !!pacienteId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('myid_avaliacoes')
+      const { data: avId } = await supabase
+        .from('avaliacoes_identidade')
         .select('score_r, myid_analysis')
-        .eq('terapeuta_id', user!.id)
         .eq('paciente_id', pacienteId)
-        .eq('status', 'concluido')
+        .not('myid_score', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!data) return null;
-      const analysis = (data as any).myid_analysis as any;
+        .limit(1);
+      const row = avId?.[0];
+      if (!row) return null;
+      const analysis = (row as any).myid_analysis as any;
       const cs = analysis?.componentScores || analysis?.component_scores || {};
       return {
-        R: cs.R ?? (Number((data as any).score_r) || 0),
+        R: cs.R ?? (Number((row as any).score_r) || 0),
         HID: cs.HID ?? 5,
         AF: cs.AF ?? 5,
         P: cs.P ?? 0,

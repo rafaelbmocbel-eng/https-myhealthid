@@ -15,6 +15,7 @@ import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
+const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 import PacienteDicaInteligente from '@/components/paciente/PacienteDicaInteligente';
 import PacienteInsightsDaAvaliacao from '@/components/paciente/PacienteInsightsDaAvaliacao';
@@ -488,6 +489,16 @@ export default function PacienteDashboard() {
               </Suspense>
             )}
           </V>
+
+          {/* Jornada (missões + conquistas) — a MESMA que o profissional vê no Portal,
+              gerada a partir do MyID respondido pelo paciente */}
+          {paciente && (
+            <V i={8}>
+              <Suspense fallback={null}>
+                <JornadaPacienteCard pacienteId={paciente.id} />
+              </Suspense>
+            </V>
+          )}
 
           {/* Exercícios */}
           <V i={8}>
