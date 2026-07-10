@@ -680,79 +680,33 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     const peso = (e: EventoAnatomico) =>
       (e.status === 'resolvido' ? 0 : 10) + e.severidade;
 
+    // Cada achado marca EXCLUSIVAMENTE a sua própria região. Não há inferência
+    // automática a partir do texto livre (ex.: "hérnia de disco L5" NÃO passa a
+    // marcar coxa/ciático sozinho) nem a partir do histórico do paciente: todo
+    // achado clínico no avatar é adicionado explicitamente pelo terapeuta.
+    // As sugestões vindas do portal do paciente ficam no painel de sugestões
+    // (sinalRegionsParaSincronizar), para o terapeuta adicionar ou não.
     eventosFiltrados.forEach(ev => {
       const td = (ev as any).tipo_diagnostico as string | undefined;
       const evTP = tipoPeso(td);
       const evP = peso(ev);
+      const regId = ev.regiao_id;
 
-      // A descrição livre (tipo_achado) pode mencionar outras regiões/lados além
-      // da região fixa selecionada no formulário (ex.: regiao_id = 'joelho_d' mas
-      // o texto diz "fratura joelho direito e esquerdo") — detecta e marca também.
-      // Não restringe pelo sistema do achado: a região fixa (ex.: "Abdômen") pode
-      // ter sido salva sob um sistema diferente do que o texto livre menciona
-      // (ex.: achado em "Abdômen"/digestório cuja descrição fala de "coxa
-      // esquerda" — musculoesquelético). O texto é a fonte de verdade aqui.
-      const regioesAfetadas = new Set([ev.regiao_id]);
-      if (ev.tipo_achado) {
-        encontrarSintomasEmTexto(ev.tipo_achado)
-          .filter(s => sistemasAtivos.includes(s.sistema as any))
-          .forEach(s => regioesAfetadas.add(s.regiao_id));
-      }
-
-      regioesAfetadas.forEach(regId => {
-        const prevTP = Number(map[regId + '__tipopeso'] || 0);
-        const prevP = Number(map[regId + '__peso'] || -1);
-        const shouldReplace = !map[regId] ||
-          evTP > prevTP ||
-          (evTP === prevTP && evP > prevP);
-        if (shouldReplace) {
-          map[regId] = corEvento(ev);
-          map[regId + '__peso'] = String(evP);
-          map[regId + '__tipo'] = td || 'achado_clinico';
-          map[regId + '__tipopeso'] = String(evTP);
-        }
-      });
-    });
-
-    // Sinais não-confirmados (histórico do paciente, notas clínicas) — nunca competem
-    // visualmente com achado documentado, opacidade baixa.
-    const FONTE_ALPHA: Record<string, number> = {
-      notas_clinicas: 0.52,
-      historico_paciente: 0.44,
-    };
-    const SISTEMA_COR: Record<string, string> = {
-      nervoso:            '14, 165, 233',
-      digestorio:         '249, 115, 22',
-      musculoesqueletico: '168, 85, 247',
-      circulatorio:       '239, 68, 68',
-      respiratorio:       '6, 182, 212',
-      endocrino:          '234, 179, 8',
-      urinario:           '99, 102, 241',
-      reprodutor:         '236, 72, 153',
-      linfatico:          '132, 204, 22',
-      tegumentar:         '120, 113, 108',
-      sensorial:          '16, 185, 129',
-    };
-    sinalRegions.forEach(item => {
-      const isSystemActive = sistemasAtivos.includes(item.sistema as any);
-      if (!isSystemActive) return;
-      const fonte = (item as any).fonte || 'historico_paciente';
-      const alpha = FONTE_ALPHA[fonte] ?? 0.38;
-      const cor = SISTEMA_COR[item.sistema] || '14, 165, 233';
-      // Só sobrescreve se não houver achado clínico (que tem prioridade)
-      if (!map[item.regiao_id]) {
-        map[item.regiao_id] = `rgba(${cor}, ${alpha})`;
-        map[item.regiao_id + '__is_sinal'] = fonte;
-      } else if (map[item.regiao_id + '__is_sinal'] && fonte === 'notas_clinicas') {
-        // notas clínicas sobrescrevem sinais de fontes menos confiáveis
-        map[item.regiao_id] = `rgba(${cor}, ${alpha})`;
-        map[item.regiao_id + '__is_sinal'] = fonte;
+      const prevTP = Number(map[regId + '__tipopeso'] || 0);
+      const prevP = Number(map[regId + '__peso'] || -1);
+      const shouldReplace = !map[regId] ||
+        evTP > prevTP ||
+        (evTP === prevTP && evP > prevP);
+      if (shouldReplace) {
+        map[regId] = corEvento(ev);
+        map[regId + '__peso'] = String(evP);
+        map[regId + '__tipo'] = td || 'achado_clinico';
+        map[regId + '__tipopeso'] = String(evTP);
       }
     });
-
 
     return map;
-  }, [eventosFiltrados, sinalRegions, sistemasAtivos]);
+  }, [eventosFiltrados]);
 
   // Condições ativas por zona corporal — usada para dots e lista compacta
   const activeConditions = useMemo(() => {
@@ -1019,8 +973,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
           <div className="flex items-start gap-2">
           {/* Silhueta — principal */}
-          <div className="flex-1 relative min-w-0">
-          <svg viewBox="0 0 240 514" className="w-full h-auto relative" shapeRendering="geometricPrecision" style={{ filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.14)) drop-shadow(0 2px 5px rgba(0,0,0,0.10))' }}>
+          <div className="flex-1 relative min-w-0 flex justify-center">
+          <svg viewBox="0 0 240 514" className="h-auto w-full max-h-[62vh] mx-auto relative" shapeRendering="geometricPrecision" preserveAspectRatio="xMidYMid meet" style={{ filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.14)) drop-shadow(0 2px 5px rgba(0,0,0,0.10))' }}>
             <defs>
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
