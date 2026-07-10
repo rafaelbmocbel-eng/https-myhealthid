@@ -489,6 +489,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number; sinal: string; sistema: string }[] | null>(null);
+  // Sugestões do portal que o terapeuta dispensou nesta sessão (não viram achado).
+  const [sugestoesIgnoradas, setSugestoesIgnoradas] = useState<Set<string>>(new Set());
   const [notaSistema, setNotaSistema] = useState<{ texto: string; natureza: 'condicao' | 'sintoma'; condicaoAssociada: string }>({
     texto: '', natureza: 'condicao', condicaoAssociada: '',
   });
@@ -1606,6 +1608,81 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </p>
           </div>
         )}
+
+        {/* ═══ Sugestões da história clínica do portal ═══
+            Nada é marcado no avatar automaticamente. Aqui aparece o que o
+            paciente relatou no portal; o terapeuta decide adicionar ou não. */}
+        {isProfessional && !modoSimplificado && (() => {
+          const pendentes = sinalRegionsParaSincronizar.filter(
+            s => !sugestoesIgnoradas.has(`${s.regiao_id}|${s.sinal}`),
+          );
+          if (pendentes.length === 0) return null;
+          const limparHist = (t: string) => t.replace(/^Histórico:\s*/i, '');
+          return (
+            <div className="rounded-xl border border-sky-200/70 bg-sky-50/50 dark:border-sky-900/40 dark:bg-sky-950/20 p-3 mt-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-sky-600 shrink-0" />
+                <p className="text-xs font-bold text-sky-800 dark:text-sky-300">Sugestões da história do paciente</p>
+                <span className="ml-auto text-[10px] font-semibold text-sky-700/80 bg-sky-100 dark:bg-sky-900/40 rounded-full px-2 py-0.5">
+                  {pendentes.length}
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Detectado no que o paciente respondeu no portal. Nada é marcado no avatar até você adicionar como achado clínico.
+              </p>
+              <div className="space-y-1.5">
+                {pendentes.map((s, idx) => {
+                  const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === s.regiao_id);
+                  const sysLabel = SISTEMA_CONFIG[s.sistema as SistemaCorporal]?.label || s.sistema;
+                  const key = `${s.regiao_id}|${s.sinal}`;
+                  return (
+                    <div key={`${key}-${idx}`} className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-1.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-semibold truncate">{limparHist(s.sinal)}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{reg?.label || s.regiao_id} · {sysLabel}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="h-7 px-2 text-[11px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                        disabled={saveMut.isPending}
+                        onClick={async () => {
+                          const visceral = VISCERAL_REGIONS.find(v => v.id === s.regiao_id);
+                          const musculo = REGIONS.find(r => r.id === s.regiao_id);
+                          const sistema = visceral
+                            ? (visceral.sistemas[0] as any)
+                            : musculo ? 'musculoesqueletico' : (s.sistema || 'musculoesqueletico');
+                          await saveMut.mutateAsync({
+                            paciente_id: pacienteId,
+                            regiao_id: s.regiao_id,
+                            sistema,
+                            origem: 'autocadastro_paciente',
+                            tipo_achado: limparHist(s.sinal),
+                            tipo_diagnostico: 'achado_clinico',
+                            severidade: 2,
+                            status: 'cronico',
+                            visivel_paciente: true,
+                            data_inicio: new Date().toISOString().slice(0, 10),
+                            metadata: { origem_sugestao_portal: true, revisado_profissional: true },
+                          } as any);
+                        }}
+                      >
+                        <Plus className="h-3 w-3" /> Adicionar
+                      </Button>
+                      <button
+                        type="button"
+                        className="p-1 rounded hover:bg-accent shrink-0"
+                        title="Ignorar sugestão"
+                        onClick={() => setSugestoesIgnoradas(prev => new Set(prev).add(key))}
+                      >
+                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </div>
       </div>
           </TabsContent>
