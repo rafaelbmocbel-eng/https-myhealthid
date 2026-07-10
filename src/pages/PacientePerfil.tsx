@@ -50,6 +50,7 @@ const ResumoConsultaPresencial = lazy(() => import('@/components/presencial/Resu
 const AvaliacaoVozAtual = lazy(() => import('@/components/voice/AvaliacaoVozAtual'));
 const PortalControleTab = lazy(() => import('@/components/paciente/PortalControleTab'));
 const ProntuarioTimeline = lazy(() => import('@/components/paciente/ProntuarioTimeline'));
+const ProntuarioEstruturado = lazy(() => import('@/components/paciente/ProntuarioEstruturado'));
 const TimelineUnificada = lazy(() =>
   import('@/components/paciente/TimelineUnificada').then(m => ({ default: m.TimelineUnificada })),
 );
@@ -1198,9 +1199,23 @@ export default function PacientePerfil() {
           {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
             <Suspense fallback={LazyFallback}>
-              <ResumoNarrativo pacienteId={id!} notas={notasProntuario} />
-              <TimelineUnificada pacienteId={id!} />
-              <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
+              {/* Prontuário estruturado: avaliação atual → histórico → diretriz vigente → sessões */}
+              <ProntuarioEstruturado notas={notasProntuario} isLoading={loadingNotas} />
+
+              {/* Resumo narrativo (IA) e registro cronológico completo — recolhidos */}
+              <details className="rounded-xl border border-border/50 group">
+                <summary className="cursor-pointer list-none px-3 py-2.5 flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground">
+                  <FileText className="h-4 w-4" />
+                  Resumo narrativo e registro cronológico completo
+                  <span className="ml-auto text-[10px] group-open:hidden">expandir</span>
+                  <span className="ml-auto text-[10px] hidden group-open:inline">recolher</span>
+                </summary>
+                <div className="px-3 pb-3 pt-1 space-y-5">
+                  <ResumoNarrativo pacienteId={id!} notas={notasProntuario} />
+                  <TimelineUnificada pacienteId={id!} />
+                  <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
+                </div>
+              </details>
             </Suspense>
 
             {evolucoesId.length >= 2 ? (

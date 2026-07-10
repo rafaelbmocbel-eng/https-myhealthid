@@ -20,7 +20,7 @@ export async function gerarEvolucaoSessaoConcluida(params: {
     // Fetch active guideline
     const { data: diretriz } = await (supabase as any)
       .from('protocolos')
-      .select('id, titulo, objetivo_geral, frequencia, duracao_total, scores_avaliacao')
+      .select('id, titulo, objetivo_geral, frequencia, duracao_total, scores_avaliacao, created_at')
       .eq('paciente_id', pacienteId)
       .eq('terapeuta_id', terapeutaId)
       .eq('status', 'ativo')
@@ -47,6 +47,10 @@ export async function gerarEvolucaoSessaoConcluida(params: {
 
     let descricao: string;
 
+    const diretrizDesde = diretriz?.created_at
+      ? format(new Date(diretriz.created_at), "dd/MM/yyyy", { locale: ptBR })
+      : null;
+
     if (diretriz) {
       descricao = `📝 EVOLUÇÃO — Sessão ${tipo}
 
@@ -54,7 +58,7 @@ export async function gerarEvolucaoSessaoConcluida(params: {
 ⏱️ Duração: ${duracaoMinutos || 45} min
 
 ✅ CONDUTA TERAPÊUTICA MANTIDA
-Diretriz vigente: ${diretriz.titulo}
+Diretriz vigente: ${diretriz.titulo}${diretrizDesde ? ` (vigente desde ${diretrizDesde})` : ''}
 Objetivo: ${diretriz.objetivo_geral || 'N/I'}${faseInfo}
 
 Atendimento realizado conforme plano terapêutico vigente. Sem alterações na conduta.`;
