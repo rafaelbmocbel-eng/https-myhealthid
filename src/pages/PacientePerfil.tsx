@@ -51,6 +51,7 @@ const AvaliacaoVozAtual = lazy(() => import('@/components/voice/AvaliacaoVozAtua
 const PortalControleTab = lazy(() => import('@/components/paciente/PortalControleTab'));
 const ProntuarioTimeline = lazy(() => import('@/components/paciente/ProntuarioTimeline'));
 const ProntuarioEstruturado = lazy(() => import('@/components/paciente/ProntuarioEstruturado'));
+const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
 const TimelineUnificada = lazy(() =>
   import('@/components/paciente/TimelineUnificada').then(m => ({ default: m.TimelineUnificada })),
 );
@@ -1260,6 +1261,8 @@ export default function PacientePerfil() {
                   telefone={paciente.telefone}
                   tipoConta={paciente.tipo_conta}
                 />
+                {/* Jornada do paciente (missões + conquistas) — espelha o portal do cliente */}
+                <JornadaPacienteCard pacienteId={id!} />
                 <WearableMonitorCard
                   pacienteId={id!}
                   pacienteNome={paciente.nome}

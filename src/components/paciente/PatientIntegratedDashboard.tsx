@@ -425,13 +425,13 @@ export default function PatientIntegratedDashboard({
         <>
           {/* ═══════════ MEU MyID — duas leituras, dois tons ═══════════ */}
           {(() => {
-            const visibleSubs = layoutCfg.sub_tabs.filter(t => t.visivel);
+            // "Jornada" migrou para o botão Portal (espelho do portal do paciente).
+            const visibleSubs = layoutCfg.sub_tabs.filter(t => t.visivel && t.id !== 'jornada');
             const defaultSub = visibleSubs[0]?.id ?? 'diagnostico';
             const gridCols = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3'][Math.min(visibleSubs.length, 3)] ?? 'grid-cols-3';
             const SUB_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
               diagnostico: Fingerprint,
               corpo: Stethoscope,
-              jornada: Rocket,
             };
             return (
           <Tabs defaultValue={defaultSub} className="w-full">
@@ -768,53 +768,6 @@ export default function PatientIntegratedDashboard({
               <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
             </TabsContent>
 
-            {/* ─────────── ABA 2: JORNADA (energia, leve, motivacional) ─────────── */}
-            <TabsContent value="jornada" className="mt-5 space-y-5 focus-visible:outline-none">
-              {/* Missões da semana */}
-              <PacienteMetasDesafios pacienteId={pacienteId} />
-
-              {/* Bio-Conquistas */}
-              <Card className="rounded-xl border-border/40 shadow-xs">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Award className="icon-sm text-primary" />
-                    <h4 className="h-card">Suas conquistas</h4>
-                  </div>
-                  {(() => {
-                    const badges = scores ? [
-                      { condition: scores.HID > 7, label: '💧 Hidratado',  cls: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' },
-                      { condition: scores.R   > 7, label: '🌙 Sono em dia', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300' },
-                      { condition: scores.AF  > 6, label: '🏃 Ativo',       cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' },
-                      { condition: scores.P   < 4, label: '🧘 Equilíbrio',  cls: 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300' },
-                    ].filter(b => b.condition) : [];
-                    return badges.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {badges.map((b, i) => (
-                          <Badge key={i} variant="secondary" className={cn("rounded-full px-3 py-1 gap-2", b.cls)}>
-                            {b.label}
-                          </Badge>
-                        ))}
-                        <p className="w-full text-xs text-muted-foreground mt-1">Continue cuidando dos seus hábitos para desbloquear mais.</p>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground py-2">
-                        Nenhuma conquista desbloqueada ainda. Melhore hidratação, sono, movimento ou equilíbrio emocional para ganhar badges.
-                      </p>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-
-              {/* Dimensões por status — substituiu os cards abstratos Corpo/Hábitos/Mente/Proteção */}
-              {scores && (
-                <Card className="rounded-xl border-border/40 shadow-xs">
-                  <CardContent className="p-5">
-                    <h4 className="h-card mb-4">Como cada dimensão está hoje</h4>
-                    <PatientHealthAreas scores={scores} />
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
           </Tabs>
             );
           })()}
