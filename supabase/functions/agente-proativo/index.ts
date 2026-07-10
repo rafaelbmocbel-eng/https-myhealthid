@@ -152,8 +152,11 @@ Deno.serve(async (req) => {
     const gatilhos = (cfg.gatilhos_ativos as any) || {};
     const terapeuta_id = cfg.terapeuta_id;
 
-    // 1) Confirmação 24h: sessões entre 22-26h à frente
-    if (gatilhos.confirmacao_24h !== false) {
+    // 1) Confirmação 24h — DESLIGADA aqui: quem cuida das confirmações/lembretes/
+    // pós-sessão é a função whatsapp-auto-confirm (mensagens template). Manter
+    // ligado aqui duplicaria as mensagens. Este agente foca no PROATIVO
+    // (reativação, aniversário, exercício, MyID vencido).
+    if (false && gatilhos.confirmacao_24h !== false) {
       const ini = new Date(Date.now() + 22 * 3600000);
       const fim = new Date(Date.now() + 26 * 3600000);
       const { data: ags } = await admin.from("agendamentos")
@@ -175,8 +178,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2) Lembrete 2h: sessões entre 1.5h-2.5h à frente
-    if (gatilhos.lembrete_2h !== false) {
+    // 2) Lembrete 2h — DESLIGADO aqui (feito pelo whatsapp-auto-confirm)
+    if (false && gatilhos.lembrete_2h !== false) {
       const ini = new Date(Date.now() + 1.5 * 3600000);
       const fim = new Date(Date.now() + 2.5 * 3600000);
       const { data: ags } = await admin.from("agendamentos")
@@ -198,8 +201,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3) Pós-sessão: concluídas entre 1.5-2.5h atrás
-    if (gatilhos.pos_sessao !== false) {
+    // 3) Pós-sessão — DESLIGADO aqui (feito pelo whatsapp-auto-confirm)
+    if (false && gatilhos.pos_sessao !== false) {
       const fim = new Date(Date.now() - 1.5 * 3600000);
       const ini = new Date(Date.now() - 2.5 * 3600000);
       const { data: ags } = await admin.from("agendamentos")
