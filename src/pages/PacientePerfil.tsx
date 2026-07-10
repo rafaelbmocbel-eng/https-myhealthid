@@ -33,42 +33,44 @@ const QuestionariosComparacao = lazy(() => import('@/components/paciente/Questio
 const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashboard'));
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
-import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
-import ResumoConsultaPresencial from '@/components/presencial/ResumoConsultaPresencial';
-import AvaliacaoVozAtual from '@/components/voice/AvaliacaoVozAtual';
-import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
-import PortalControleTab from '@/components/paciente/PortalControleTab';
-import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
-import { TimelineUnificada } from '@/components/paciente/TimelineUnificada';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
-import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
-import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
-import VoiceAssessment from '@/components/voice/VoiceAssessment';
-import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
 import StatusClinicoBadge from '@/components/paciente/StatusClinicoBadge';
 import { useAcessoClinicoPaciente } from '@/hooks/useAcessoClinicoPaciente';
-import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
-import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
-import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
-const PacienteDashboardIdentidade = lazy(() => import('@/components/paciente/PacienteDashboardIdentidade'));
 import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
-import CompartilharPacienteSheet from '@/components/paciente/CompartilharPacienteSheet';
-import DocumentosModal from '@/components/documentos/DocumentosModal';
 import { PacienteSchema } from '@/lib/validations';
 import { useEquipe } from '@/hooks/useEquipe';
 import { useConvenios } from '@/hooks/useConvenios';
-import WearableMonitorCard from '@/components/perfil-paciente/WearableMonitorCard';
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
-import SinaisVitaisCard from '@/components/medicina/SinaisVitaisCard';
-import DiagnosticosCID10Card from '@/components/medicina/DiagnosticosCID10Card';
-import PrescricaoMedicaCard from '@/components/medicina/PrescricaoMedicaCard';
-import ImportarExameCard from '@/components/medicina/ImportarExameCard';
-import AntropometriaCard from '@/components/educador/AntropometriaCard';
-import TestesFuncionaisCard from '@/components/educador/TestesFuncionaisCard';
-import PlanoTreinoCard from '@/components/educador/PlanoTreinoCard';
-import RecordatorioCard from '@/components/nutricao/RecordatorioCard';
-import PlanoAlimentarCard from '@/components/nutricao/PlanoAlimentarCard';
-import EscalasPsicologiaCard from '@/components/psicologia/EscalasPsicologiaCard';
+
+// Conteúdo de abas/sheets/modais — só carrega quando o usuário abre.
+// Mantém o chunk inicial do perfil pequeno (DocumentosModal sozinho puxa jspdf+html2canvas).
+const PacienteDashboardIdentidade = lazy(() => import('@/components/paciente/PacienteDashboardIdentidade'));
+const PacienteProtocolosTab = lazy(() => import('@/components/paciente/PacienteProtocolosTab'));
+const ResumoConsultaPresencial = lazy(() => import('@/components/presencial/ResumoConsultaPresencial'));
+const AvaliacaoVozAtual = lazy(() => import('@/components/voice/AvaliacaoVozAtual'));
+const PortalControleTab = lazy(() => import('@/components/paciente/PortalControleTab'));
+const ProntuarioTimeline = lazy(() => import('@/components/paciente/ProntuarioTimeline'));
+const TimelineUnificada = lazy(() =>
+  import('@/components/paciente/TimelineUnificada').then(m => ({ default: m.TimelineUnificada })),
+);
+const NpsSurveyCard = lazy(() => import('@/components/nps/NpsSurveyCard'));
+const ResumoNarrativo = lazy(() => import('@/components/paciente/ResumoNarrativo'));
+const PacoteSessoesManager = lazy(() => import('@/components/paciente/PacoteSessoesManager'));
+const PacienteFinanceiroTab = lazy(() => import('@/components/paciente/PacienteFinanceiroTab'));
+const ChatPacienteTab = lazy(() => import('@/components/chat/ChatPacienteTab'));
+const CompartilharPacienteSheet = lazy(() => import('@/components/paciente/CompartilharPacienteSheet'));
+const DocumentosModal = lazy(() => import('@/components/documentos/DocumentosModal'));
+const WearableMonitorCard = lazy(() => import('@/components/perfil-paciente/WearableMonitorCard'));
+const SinaisVitaisCard = lazy(() => import('@/components/medicina/SinaisVitaisCard'));
+const DiagnosticosCID10Card = lazy(() => import('@/components/medicina/DiagnosticosCID10Card'));
+const PrescricaoMedicaCard = lazy(() => import('@/components/medicina/PrescricaoMedicaCard'));
+const ImportarExameCard = lazy(() => import('@/components/medicina/ImportarExameCard'));
+const AntropometriaCard = lazy(() => import('@/components/educador/AntropometriaCard'));
+const TestesFuncionaisCard = lazy(() => import('@/components/educador/TestesFuncionaisCard'));
+const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
+const RecordatorioCard = lazy(() => import('@/components/nutricao/RecordatorioCard'));
+const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
+const EscalasPsicologiaCard = lazy(() => import('@/components/psicologia/EscalasPsicologiaCard'));
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
@@ -676,12 +678,14 @@ export default function PacientePerfil() {
 
               {/* Compartilhar (MyID + Avatar + Resumo IA → WhatsApp) */}
               {layoutCfg.header_identidade && (
-                <CompartilharPacienteSheet
-                  pacienteId={paciente.id}
-                  pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
-                  pacienteTelefone={paciente.telefone}
-                  terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
-                />
+                <Suspense fallback={null}>
+                  <CompartilharPacienteSheet
+                    pacienteId={paciente.id}
+                    pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                    pacienteTelefone={paciente.telefone}
+                    terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
+                  />
+                </Suspense>
               )}
 
 
@@ -946,7 +950,9 @@ export default function PacientePerfil() {
                       </SheetTitle>
                     </SheetHeader>
                     <div className="mt-4 space-y-6">
-                      <PacoteSessoesManager pacienteId={id!} />
+                      <Suspense fallback={LazyFallback}>
+                        <PacoteSessoesManager pacienteId={id!} />
+                      </Suspense>
                       <div>
                         <div className="flex items-center gap-2 mb-3">
                           <CalendarDays className="h-4 w-4 text-primary" />
@@ -1016,10 +1022,12 @@ export default function PacientePerfil() {
                       </SheetTitle>
                     </SheetHeader>
                     <div className="mt-4">
-                      <PacienteFinanceiroTab
-                        pacienteId={id!}
-                        pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-                      />
+                      <Suspense fallback={LazyFallback}>
+                        <PacienteFinanceiroTab
+                          pacienteId={id!}
+                          pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                        />
+                      </Suspense>
                     </div>
                   </SheetContent>
                 </Sheet>
@@ -1131,6 +1139,7 @@ export default function PacientePerfil() {
 
           {/* TAB: AVALIAÇÃO PRESENCIAL — Avatar 3D + Voz/Áudio/Escrita */}
           <TabsContent value="presencial" className="mt-4 space-y-4">
+            <Suspense fallback={LazyFallback}>
             {temBloco(lenteAtiva, 'vitais') && id && <SinaisVitaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'cid') && id && <DiagnosticosCID10Card pacienteId={id} />}
             {temBloco(lenteAtiva, 'prescricao') && id && <PrescricaoMedicaCard pacienteId={id} />}
@@ -1156,23 +1165,27 @@ export default function PacientePerfil() {
                 qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest'] });
               }}
             />
+            </Suspense>
           </TabsContent>
 
           {/* TAB: DIRETRIZES E TRATAMENTOS */}
           <TabsContent value="diretrizes" className="mt-4 space-y-6">
-            <PacienteProtocolosTab
-              pacienteId={id!}
-              pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-              tipo="identidade"
-            />
+            <Suspense fallback={LazyFallback}>
+              <PacienteProtocolosTab
+                pacienteId={id!}
+                pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                tipo="identidade"
+              />
+            </Suspense>
           </TabsContent>
 
           {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
-            <ResumoNarrativo pacienteId={id!} notas={notasProntuario} />
-            <TimelineUnificada pacienteId={id!} />
-            
-            <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
+            <Suspense fallback={LazyFallback}>
+              <ResumoNarrativo pacienteId={id!} notas={notasProntuario} />
+              <TimelineUnificada pacienteId={id!} />
+              <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
+            </Suspense>
 
             {evolucoesId.length >= 2 ? (
               <div>
@@ -1208,7 +1221,7 @@ export default function PacientePerfil() {
           {/* TAB: PORTAL — Controle dos espaços do cliente */}
           <TabsContent value="portal" className="mt-4 space-y-6">
             {paciente && (
-              <>
+              <Suspense fallback={LazyFallback}>
                 <PortalControleTab
                   pacienteId={id!}
                   pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
@@ -1226,25 +1239,30 @@ export default function PacientePerfil() {
                   pacienteTelefone={paciente.telefone}
                 />
                 <NpsSurveyCard pacienteId={id!} />
-              </>
+              </Suspense>
             )}
           </TabsContent>
         </Tabs>
       </div>
       {paciente && (
         <>
-          <DocumentosModal
-            open={docsModalOpen}
-            onOpenChange={setDocsModalOpen}
-            paciente={{
-              id: paciente.id,
-              nome: paciente.nome,
-              sobrenome: paciente.sobrenome,
-              cpf: paciente.cpf,
-              data_nascimento: (paciente as any).data_nascimento,
-              sexo: (paciente as any).sexo,
-            }}
-          />
+          {/* Renderiza só quando aberto — evita baixar jspdf/html2canvas junto com a página */}
+          {docsModalOpen && (
+            <Suspense fallback={null}>
+              <DocumentosModal
+                open={docsModalOpen}
+                onOpenChange={setDocsModalOpen}
+                paciente={{
+                  id: paciente.id,
+                  nome: paciente.nome,
+                  sobrenome: paciente.sobrenome,
+                  cpf: paciente.cpf,
+                  data_nascimento: (paciente as any).data_nascimento,
+                  sexo: (paciente as any).sexo,
+                }}
+              />
+            </Suspense>
+          )}
           <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
