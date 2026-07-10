@@ -194,7 +194,9 @@ export default function PacienteDashboard() {
     supabase.from('pacientes').select('xp_total').eq('id', paciente.id).maybeSingle().then(({ data }) => {
       const atual = (data as { xp_total: number } | null)?.xp_total || 0;
       if (xp > atual) {
-        supabase.from('pacientes').update({ xp_total: xp }).eq('id', paciente.id).then(() => {});
+        supabase.from('pacientes').update({ xp_total: xp }).eq('id', paciente.id).then(({ error }) => {
+          if (error) console.warn('[PacienteDashboard] falha ao salvar XP:', error);
+        });
       }
     });
   }, [paciente?.id, xp, loading]);

@@ -19,34 +19,59 @@
         } catch (_) { /* never block boot */ }
       })();
     </script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- Zoom liberado (acessibilidade): pacientes com baixa visão precisam ampliar. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#0d1f33" />
+
+    <!-- Preconnect: corta DNS+TLS da 1ª chamada de API e do download da fonte -->
+    <link rel="preconnect" href="https://zxulglbcxehqplxainmz.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    />
+
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/pwa-icon-512.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="google" content="notranslate" />
-    <!-- TODO: Set the document title to the name of your application -->
+
     <title>My Health ID – Plataforma Clínica Inteligente</title>
-    <meta name="description" content="My Health ID – Avaliação multidimensional da dor, protocolos baseados em evidências e gestão clínica inteligente.">
+    <meta name="description" content="My Health ID – Avaliação multidimensional da dor, protocolos baseados em evidências e gestão clínica inteligente para fisioterapeutas e profissionais de saúde.">
     <meta name="author" content="My Health ID" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://www.myhealthid.com.br/pwa-icon-512.png">
+    <meta property="og:site_name" content="My Health ID" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:url" content="https://www.myhealthid.com.br/" />
+    <meta property="og:title" content="My Health ID – Plataforma Clínica Inteligente" />
+    <meta property="og:description" content="Avaliação multidimensional da dor e gestão clínica inteligente." />
+    <meta property="og:image" content="https://www.myhealthid.com.br/pwa-icon-512.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://www.myhealthid.com.br/pwa-icon-512.png">
-    <meta property="og:title" content="My Health ID – Plataforma Clínica">
-  <meta name="twitter:title" content="My Health ID – Plataforma Clínica">
-  <meta property="og:description" content="Avaliação multidimensional da dor e gestão clínica inteligente.">
-  <meta name="twitter:description" content="Avaliação multidimensional da dor e gestão clínica inteligente.">
+    <meta name="twitter:title" content="My Health ID – Plataforma Clínica Inteligente" />
+    <meta name="twitter:description" content="Avaliação multidimensional da dor e gestão clínica inteligente." />
+    <meta name="twitter:image" content="https://www.myhealthid.com.br/pwa-icon-512.png" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "My Health ID",
+      "url": "https://www.myhealthid.com.br/",
+      "applicationCategory": "MedicalApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "description": "Avaliação multidimensional da dor, protocolos baseados em evidências e gestão clínica inteligente.",
+      "inLanguage": "pt-BR",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "BRL" }
+    }
+    </script>
 </head>
 
   <body>
