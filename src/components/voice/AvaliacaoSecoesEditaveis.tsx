@@ -48,8 +48,8 @@ const GRUPO_FUNC_PSI: SecaoKey[] = ['funcionalidade', 'psicossocial'];
 // Agrupamento em abas para navegação mobile-first
 const TABS_CONFIG = [
   { id: 'clinico',      label: 'Clínico',    keys: ['resumo_clinico'] as SecaoKey[] },
-  { id: 'quadro',       label: 'Quadro',     keys: ['dor', 'funcionalidade', 'psicossocial'] as SecaoKey[] },
-  { id: 'diagnostico',  label: 'Diagnóstico', keys: ['red_flags', 'hipoteses', 'cif'] as SecaoKey[] },
+  // "Quadro" e "Diagnóstico" unidos numa aba só.
+  { id: 'quadro',       label: 'Quadro/Dx',  keys: ['dor', 'funcionalidade', 'psicossocial', 'red_flags', 'hipoteses', 'cif'] as SecaoKey[] },
   { id: 'tratamento',   label: 'Tratamento', keys: ['diretriz', 'insights'] as SecaoKey[] },
 ];
 
@@ -1551,7 +1551,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
 
           return (
             <Tabs defaultValue="clinico" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 h-9 mb-2.5">
+              <TabsList className="grid w-full grid-cols-3 h-9 mb-2.5">
                 {TABS_CONFIG.map(tab => {
                   const count = secoesDisponiveis.filter(s => tab.keys.includes(s.key)).length;
                   return (
