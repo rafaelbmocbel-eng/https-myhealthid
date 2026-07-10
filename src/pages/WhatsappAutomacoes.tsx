@@ -12,6 +12,90 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import { CheckCheck, CalendarClock, BellRing, HeartHandshake, UserX, MessageSquare, Moon } from "lucide-react";
+
+// Valores de exemplo usados no preview do WhatsApp — deixam claro para o
+// profissional como a mensagem chega ao paciente, com as variáveis já trocadas.
+const SAMPLE: Record<string, string> = { nome: "Marina", horario: "14h30", data: "quinta, 12/07" };
+function aplicarSample(txt: string) {
+  return (txt || "").replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] ?? m);
+}
+
+const VARIAVEIS_MSG: { k: string; l: string }[] = [
+  { k: "nome", l: "Nome do paciente" },
+  { k: "horario", l: "Horário da sessão" },
+  { k: "data", l: "Data da sessão" },
+];
+
+// Bolha estilo WhatsApp para pré-visualizar a mensagem enquanto se edita.
+function WaBubblePreview({ text, incoming = false }: { text: string; incoming?: boolean }) {
+  const t = (text || "").trim();
+  return (
+    <div className="rounded-xl p-3 border border-border/30" style={{ backgroundColor: "var(--wa-prev)" }}>
+      <style>{`:root{--wa-prev:#efeae2}.dark{--wa-prev:#0b141a}`}</style>
+      {t ? (
+        <div className={cn(
+          "max-w-[88%] px-3 py-2 shadow-sm text-[13px] leading-relaxed whitespace-pre-wrap break-words text-gray-900 dark:text-gray-100",
+          incoming
+            ? "bg-white dark:bg-[#202c33] rounded-[14px] rounded-tl-[4px]"
+            : "bg-[#dcf8c6] dark:bg-[#005c4b] rounded-[14px] rounded-tr-[4px] ml-auto",
+        )}>
+          {aplicarSample(t)}
+          <div className={cn("flex items-center justify-end gap-1 mt-0.5", incoming ? "text-muted-foreground/60" : "text-[#008069]/60 dark:text-[#25D366]/60")}>
+            <span className="text-[10px] tabular-nums">14:32</span>
+            {!incoming && <CheckCheck className="h-3 w-3 text-[#53bdeb]" />}
+          </div>
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground text-center py-2">A prévia aparece aqui conforme você escreve.</p>
+      )}
+    </div>
+  );
+}
+
+// Editor de mensagem: ícone + rótulo + prazo, textarea, chips de variáveis e
+// preview ao vivo do WhatsApp. Padroniza o visual de todas as mensagens.
+function MensagemEditor({
+  icon: Icon, titulo, prazo, valor, onChange, placeholder, incoming = false, dica,
+}: {
+  icon: any; titulo: string; prazo?: string; valor: string;
+  onChange: (v: string) => void; placeholder?: string; incoming?: boolean; dica?: string;
+}) {
+  const inserir = (chave: string) => onChange((valor || "") + `{${chave}}`);
+  return (
+    <div className="rounded-xl border border-border/50 overflow-hidden bg-card">
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border/40 bg-muted/30">
+        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <Icon className="h-4 w-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold leading-tight">{titulo}</p>
+          {prazo && <p className="text-micro text-muted-foreground">{prazo}</p>}
+        </div>
+      </div>
+      <div className="grid md:grid-cols-2 gap-3 p-3.5">
+        <div className="space-y-2">
+          <Textarea rows={4} value={valor} placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)} className="resize-none text-sm" />
+          <div className="flex flex-wrap gap-1">
+            {VARIAVEIS_MSG.map((v) => (
+              <button key={v.k} type="button" title={v.l} onClick={() => inserir(v.k)}
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                {"{" + v.k + "}"}
+              </button>
+            ))}
+          </div>
+          {dica && <p className="text-micro text-muted-foreground">{dica}</p>}
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-micro text-muted-foreground font-medium">Prévia no WhatsApp</p>
+          <WaBubblePreview text={valor} incoming={incoming} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const DIAS = [
   { k: "seg", l: "Seg" }, { k: "ter", l: "Ter" }, { k: "qua", l: "Qua" },
@@ -322,6 +406,16 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               <Switch checked={cfg.pausar_bot_apos_humano} onCheckedChange={(v) => setCfg({ ...cfg, pausar_bot_apos_humano: v })} />
               <Label className="flex-1">Pausar bot quando profissional já respondeu (30 min)</Label>
             </div>
+            <div className="pt-1">
+              <MensagemEditor
+                icon={MessageSquare}
+                titulo="Saudação"
+                prazo="Primeira resposta automática quando o paciente escreve"
+                valor={cfg.mensagem_saudacao || ""}
+                onChange={(v) => setCfg({ ...cfg, mensagem_saudacao: v })}
+                placeholder="Oi! Aqui é a assistente virtual da clínica. Já já um profissional te responde."
+              />
+            </div>
           </Card>
 
           <Card className="p-5 space-y-4">
@@ -344,10 +438,14 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                 ))}
               </div>
             </div>
-            <div>
-              <Label>Mensagem fora do horário</Label>
-              <Textarea rows={2} value={cfg.mensagem_fora_horario} onChange={(e) => setCfg({ ...cfg, mensagem_fora_horario: e.target.value })} />
-            </div>
+            <MensagemEditor
+              icon={Moon}
+              titulo="Mensagem fora do horário"
+              prazo="Enviada quando o paciente escreve fora dos dias/horários acima"
+              valor={cfg.mensagem_fora_horario || ""}
+              onChange={(v) => setCfg({ ...cfg, mensagem_fora_horario: v })}
+              placeholder="Estamos fora do horário de atendimento. Retornaremos assim que possível."
+            />
           </Card>
         </TabsContent>
 
@@ -371,26 +469,39 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                 </div>
               ))}
             </div>
-            <div className="space-y-3 pt-2 border-t border-border/40">
-              <p className="text-caption font-medium">Mensagens enviadas automaticamente</p>
-              <p className="text-micro text-muted-foreground">Variáveis: {`{nome}`}, {`{horario}`}, {`{data}`}. O bot interpreta SIM/REAGENDAR/CANCELAR nas respostas e atualiza a agenda.</p>
+            <div className="space-y-3 pt-3 border-t border-border/40">
               <div>
-                <Label className="text-xs">24h antes (confirmação)</Label>
-                <Textarea rows={2} value={cfg.mensagem_confirmacao || ""}
-                  onChange={(e) => setCfg({ ...cfg, mensagem_confirmacao: e.target.value })} />
+                <p className="text-caption font-medium">Mensagens enviadas automaticamente</p>
+                <p className="text-micro text-muted-foreground">Clique numa variável para inserir. O bot interpreta SIM / REAGENDAR / CANCELAR nas respostas e atualiza a agenda sozinho.</p>
               </div>
+              <MensagemEditor
+                icon={CalendarClock}
+                titulo="Confirmação"
+                prazo="Enviada 24h antes da sessão"
+                valor={cfg.mensagem_confirmacao || ""}
+                onChange={(v) => setCfg({ ...cfg, mensagem_confirmacao: v })}
+                placeholder="Oi {nome}! Confirmando sua sessão amanhã às {horario}. Responda SIM para confirmar."
+              />
+              <MensagemEditor
+                icon={BellRing}
+                titulo="Lembrete + aviso final"
+                prazo="Enviada 2h antes da sessão"
+                valor={cfg.mensagem_lembrete_2h || ""}
+                onChange={(v) => setCfg({ ...cfg, mensagem_lembrete_2h: v })}
+                placeholder="Oi {nome}! Sua sessão é hoje às {horario}. Se precisar remarcar, avise agora."
+                dica="Dica: informe que após esse horário a sessão será contabilizada."
+              />
+              <MensagemEditor
+                icon={UserX}
+                titulo="Faltou (no-show)"
+                prazo="Enviada quando a falta é registrada automaticamente"
+                valor={cfg.mensagem_no_show || ""}
+                onChange={(v) => setCfg({ ...cfg, mensagem_no_show: v })}
+                placeholder="Oi {nome}, sentimos sua falta hoje às {horario}. Vamos reagendar?"
+                dica="Enviada quando a sessão é contabilizada no pacote por ausência."
+              />
               <div>
-                <Label className="text-xs">2h antes (lembrete + aviso final)</Label>
-                <Textarea rows={2} value={cfg.mensagem_lembrete_2h || ""}
-                  onChange={(e) => setCfg({ ...cfg, mensagem_lembrete_2h: e.target.value })} />
-                <p className="text-micro text-muted-foreground mt-1">Dica: informe que após esse horário a sessão será contabilizada.</p>
-              </div>
-              <div>
-                <Label className="text-xs">No-show (após a hora sem confirmar/cancelar)</Label>
-                <Textarea rows={2} value={cfg.mensagem_no_show || ""}
-                  onChange={(e) => setCfg({ ...cfg, mensagem_no_show: e.target.value })} />
-                <p className="text-micro text-muted-foreground mt-1">Enviada quando a falta é registrada automaticamente e a sessão é contabilizada no pacote.</p>
-                <div className="mt-3 space-y-2 p-3 rounded-lg bg-muted/30 border border-border/40">
+                <div className="space-y-2 p-3 rounded-lg bg-muted/30 border border-border/40">
                   <p className="text-xs font-medium">Exceções de contabilização</p>
                   <label className="flex items-start gap-3 cursor-pointer">
                     <Switch checked={cfg.no_show_perdoar_primeira !== false}
@@ -410,11 +521,14 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                   </label>
                 </div>
               </div>
-              <div>
-                <Label className="text-xs">Pós-sessão (check-in)</Label>
-                <Textarea rows={2} value={cfg.mensagem_pos_sessao || ""}
-                  onChange={(e) => setCfg({ ...cfg, mensagem_pos_sessao: e.target.value })} />
-              </div>
+              <MensagemEditor
+                icon={HeartHandshake}
+                titulo="Pós-atendimento (check-in)"
+                prazo="Enviada algumas horas após a sessão"
+                valor={cfg.mensagem_pos_sessao || ""}
+                onChange={(v) => setCfg({ ...cfg, mensagem_pos_sessao: v })}
+                placeholder="Oi {nome}! Como você está se sentindo depois da sessão de hoje?"
+              />
             </div>
           </Card>
         </TabsContent>
