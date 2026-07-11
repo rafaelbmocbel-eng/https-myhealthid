@@ -129,6 +129,11 @@ export default function Hoje() {
     ? `${(proxima as any).pacientes.nome || ''} ${(proxima as any).pacientes.sobrenome || ''}`.trim()
     : proxima?.titulo || 'Sessão agendada';
 
+  const nHoje = stats?.hoje ?? 0;
+  const agendaSub = nHoje === 0
+    ? 'Nenhuma sessão hoje'
+    : `${nHoje} ${nHoje === 1 ? 'sessão' : 'sessões'} hoje`;
+
   return (
     <AppLayout>
       <div className="h-[100dvh] overflow-hidden flex flex-col">
@@ -200,38 +205,48 @@ export default function Hoje() {
             <section className="lg:col-span-7 grid grid-cols-2 gap-2 sm:gap-3">
               <button
                 onClick={() => navigate('/agenda')}
-                className="h-20 sm:h-24 lg:h-full lg:min-h-[140px] rounded-2xl p-3 sm:p-4 text-left flex flex-col justify-between
+                className="h-28 sm:h-32 lg:h-full lg:min-h-[150px] rounded-2xl p-3.5 sm:p-4 text-left flex flex-col justify-between relative overflow-hidden
                            bg-gradient-to-br from-primary to-primary-dark text-primary-foreground shadow-md
                            hover:shadow-lg transition active:scale-[0.98]"
               >
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
-                  <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="pointer-events-none absolute -right-7 -top-7 h-20 w-20 rounded-full bg-white/10 blur-xl" aria-hidden />
+                <div className="flex items-center justify-between">
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                    <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <ArrowRight className="h-4 w-4 opacity-70" />
                 </div>
                 <div>
-                  <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase opacity-80">Hoje</div>
-                  <div className="text-base sm:text-lg lg:text-xl font-bold leading-tight">Agenda</div>
+                  <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase opacity-75">Minha agenda</div>
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight">Agenda</div>
+                  <div className="text-[11px] sm:text-xs opacity-85 mt-0.5 truncate">{agendaSub}</div>
                 </div>
               </button>
 
               <button
                 onClick={() => navigate('/crm?tab=inbox')}
                 className={cn(
-                  "h-20 sm:h-24 lg:h-full lg:min-h-[140px] rounded-2xl p-3 sm:p-4 text-left flex flex-col justify-between relative",
+                  "h-28 sm:h-32 lg:h-full lg:min-h-[150px] rounded-2xl p-3.5 sm:p-4 text-left flex flex-col justify-between relative overflow-hidden",
                   "bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]",
                   pulseRing(urgency(alerts?.whatsapp ?? 0, 5)),
                 )}
               >
-                {alerts?.whatsapp ? (
-                  <span className="absolute top-2 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
-                    {alerts.whatsapp > 99 ? '99+' : alerts.whatsapp}
-                  </span>
-                ) : null}
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                  <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                <div className="flex items-center justify-between">
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+                    <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  {alerts?.whatsapp ? (
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
+                      {alerts.whatsapp > 99 ? '99+' : alerts.whatsapp}
+                    </span>
+                  ) : (
+                    <ArrowRight className="h-4 w-4 text-muted-foreground/50" />
+                  )}
                 </div>
                 <div>
-                  <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">Inbox</div>
-                  <div className="text-base sm:text-lg lg:text-xl font-bold leading-tight">Zap.CRM.Tráfe</div>
+                  <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">Atendimento</div>
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight text-foreground">Zap &amp; CRM</div>
+                  <div className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate">WhatsApp · Pipeline · Tráfego</div>
                 </div>
               </button>
             </section>
@@ -279,7 +294,7 @@ export default function Hoje() {
               {atalhos.length > 0 && (
                 <div className="flex-1 min-h-0 flex flex-col gap-1.5">
                   <SectionLabel>Atalhos</SectionLabel>
-                  <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 content-start">
+                  <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 auto-rows-fr">
                     {atalhos.map(a => (
                       <PillBtn
                         key={a.id}
@@ -318,12 +333,12 @@ function PillBtn({
     <button
       onClick={onClick}
       className={cn(
-        "h-12 sm:h-14 rounded-2xl bg-card border border-border/40 px-3 sm:px-4 flex items-center gap-2.5 sm:gap-3 relative",
-        "shadow-xs hover:shadow-sm hover:border-border transition active:scale-[0.98]",
+        "h-full min-h-[3.25rem] rounded-2xl bg-card border border-border/40 px-3 sm:px-4 flex items-center gap-2.5 sm:gap-3 relative",
+        "shadow-xs hover:shadow-md hover:border-border hover:-translate-y-0.5 transition-all active:scale-[0.98]",
         pulseRing(urgency),
       )}
     >
-      <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0 relative">
+      <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-primary/8 flex items-center justify-center text-primary shrink-0 relative">
         <Icon className="h-4 w-4 sm:h-4 sm:w-4" />
         {badge ? (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center shadow-sm">
