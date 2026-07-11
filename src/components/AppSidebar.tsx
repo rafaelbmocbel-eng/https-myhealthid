@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users,
   Settings, LogOut, User, MessageCircle,
-  Sun, Wallet, Store, type LucideIcon,
+  Sun, Wallet, Store, Dumbbell, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,7 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'Home', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
+  { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },
   { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: Wallet },
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
