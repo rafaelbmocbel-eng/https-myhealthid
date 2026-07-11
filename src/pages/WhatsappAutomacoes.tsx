@@ -76,6 +76,7 @@ const GATILHOS: { k: string; label: string; desc: string }[] = [
   { k: "no_show_automatico", label: "No-show automático", desc: "Se não confirmar nem cancelar até a hora, marca FALTA e contabiliza a sessão" },
   { k: "pos_sessao", label: "Pós-sessão (check-in)", desc: "Pergunta como está se sentindo 2h depois" },
   { k: "exercicio_pendente", label: "Exercícios pendentes", desc: "Quando há missões/exercícios não feitos" },
+  { k: "diario_pendente", label: "Diário parado", desc: "Convida a registrar o diário quando o paciente some por 3+ dias" },
   { k: "myid_vencido", label: "MyID vencido (30 dias)", desc: "Convida a refazer a avaliação mensal" },
   { k: "reengajamento", label: "Reengajamento (14/30/60d)", desc: "Mensagem quando paciente some" },
   { k: "aniversario", label: "Aniversário", desc: "Parabeniza no dia do paciente" },

@@ -113,6 +113,25 @@ async function dispararReengajamento(ctx: DispatchCtx, ctxClinico: any, dias: nu
   await registrarDisparo(ctx.admin, ctx.terapeuta_id, ctx.paciente_id, key, null, msg, ok);
 }
 
+async function dispararDiarioPendente(ctx: DispatchCtx) {
+  if (await jaDisparado(ctx.admin, ctx.paciente_id, "diario_pendente", null, 72)) return;
+  // Só convida quem JÁ usou o diário (faz parte da rotina dele) e sumiu há 3+ dias.
+  const { data: logs } = await ctx.admin.from("daily_logs")
+    .select("created_at")
+    .eq("paciente_id", ctx.paciente_id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const ultimo = logs?.[0]?.created_at ? new Date(logs[0].created_at) : null;
+  if (!ultimo) return;
+  const dias = Math.floor((Date.now() - ultimo.getTime()) / 86400000);
+  if (dias < 3) return;
+  const instrucao = `O paciente não registra o diário de saúde há ${dias} dias. Gere uma mensagem MUITO curta (2 linhas), leve e gentil, convidando a registrar no app como está se sentindo hoje (humor, dor, energia, sono). Sem culpar. Tom de cuidado.`;
+  const msg = await gerarMensagem(ctx.systemPromptBase, instrucao);
+  if (!msg) return;
+  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg);
+  await registrarDisparo(ctx.admin, ctx.terapeuta_id, ctx.paciente_id, "diario_pendente", null, msg, ok);
+}
+
 async function dispararAniversario(ctx: DispatchCtx) {
   if (await jaDisparado(ctx.admin, ctx.paciente_id, "aniversario", null, 24 * 300)) return;
   const instrucao = `HOJE é aniversário do paciente. Gere mensagem CURTA, calorosa, com um voto sincero. Sem promoções.`;
@@ -131,7 +150,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const stats = { confirmacao: 0, lembrete: 0, pos: 0, exerc: 0, myid: 0, reeng: 0, aniv: 0 };
+  const stats = { confirmacao: 0, lembrete: 0, pos: 0, exerc: 0, myid: 0, reeng: 0, aniv: 0, diario: 0 };
 
   // Para cada terapeuta com automações + bot ativos
   const { data: configs } = await admin.from("whatsapp_automacoes")
@@ -236,6 +255,9 @@ Deno.serve(async (req) => {
         }
         if (gatilhos.exercicio_pendente !== false) {
           await dispararExerciciosPendentes(baseCtx, ctxClinico); stats.exerc++;
+        }
+        if (gatilhos.diario_pendente !== false) {
+          await dispararDiarioPendente(baseCtx); stats.diario++;
         }
         if (gatilhos.myid_vencido !== false) {
           await dispararMyidVencido(baseCtx, ctxClinico); stats.myid++;

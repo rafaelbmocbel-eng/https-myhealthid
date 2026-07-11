@@ -28,7 +28,7 @@ export function defaultAutomacoes(userId: string) {
     usar_contexto_clinico: true,
     gatilhos_ativos: {
       confirmacao_24h: true, lembrete_2h: true, no_show_automatico: false, pos_sessao: true,
-      exercicio_pendente: true, myid_vencido: true, reengajamento: true,
+      exercicio_pendente: true, diario_pendente: true, myid_vencido: true, reengajamento: true,
       aniversario: true, pagamento_pendente: false,
     },
     palavras_escalonamento: ["urgente", "emergência", "dor forte", "não aguento", "sangrando"],
