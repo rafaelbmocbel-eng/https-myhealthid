@@ -253,36 +253,37 @@ export default function PacienteDashboard() {
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
 
-          {/* Saudação + nível */}
+          {/* Hero — saudação, nível e streak */}
           <V i={0}>
-            <div className="flex items-center justify-between px-1 pt-1">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-full p-0.5 shrink-0 bg-gradient-to-tr from-[hsl(42,60%,55%)] via-primary to-primary/60">
-                  <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
-                    <span className="text-sm font-semibold text-foreground">
+            <div className="relative overflow-hidden rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-primary to-primary-dark text-white shadow-md">
+              <span className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[hsl(42,75%,60%)]/25 blur-2xl" aria-hidden />
+              <div className="relative flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full p-[2px] shrink-0 bg-gradient-to-tr from-[hsl(42,75%,62%)] to-white/40">
+                  <div className="w-full h-full rounded-full bg-primary flex items-center justify-center">
+                    <span className="text-sm font-bold text-white">
                       {(paciente?.nome?.[0] || '?').toUpperCase()}{(paciente?.sobrenome?.[0] || '').toUpperCase()}
                     </span>
                   </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-muted-foreground font-medium">{getGreeting()}</p>
-                  <h1 className="font-display text-2xl sm:text-3xl text-foreground truncate leading-tight">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium text-white/70">{getGreeting()}</p>
+                  <h1 className="font-display text-2xl sm:text-3xl text-white truncate leading-tight">
                     {paciente?.nome || '...'}
                   </h1>
-                  {notifications.streak > 1 && (
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[hsl(var(--gold))] shrink-0" />
-                      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {notifications.streak} dias de foco
-                      </span>
-                    </div>
-                  )}
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm shrink-0 self-start">
+                  <LevelIcon className="h-4 w-4 text-[hsl(42,85%,72%)]" />
+                  <span className="text-[11px] font-semibold text-white">{level.label} · {xp} XP</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/60 shrink-0">
-                <LevelIcon className={cn('h-4 w-4', level.color)} />
-                <span className="text-[11px] font-medium text-foreground">{level.label} · {xp} XP</span>
-              </div>
+              {notifications.streak > 1 && (
+                <div className="relative mt-3 flex items-center gap-1.5">
+                  <Flame className="h-3.5 w-3.5 text-[hsl(28,90%,62%)]" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-white/80">
+                    {notifications.streak} dias de foco
+                  </span>
+                </div>
+              )}
             </div>
           </V>
 
