@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireInternal } from "../_shared/auth.ts";
+import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,22 +17,15 @@ function fmtData(dataISO: string, horario: string) {
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
-async function sendZapi(creds: any, telefone: string, mensagem: string) {
-  if (!creds?.zapi_ativo || !creds.zapi_instance_id || !creds.zapi_token) return;
+// deno-lint-ignore no-explicit-any
+async function sendWa(admin: any, terapeuta_id: string, telefone: string, mensagem: string) {
   const phone = telefone.replace(/\D/g, "");
   if (phone.length < 10) return;
   const fullPhone = phone.startsWith("55") ? phone : `55${phone}`;
   try {
-    await fetch(`https://api.z-api.io/instances/${creds.zapi_instance_id}/token/${creds.zapi_token}/send-text`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(creds.zapi_client_token ? { "Client-Token": creds.zapi_client_token } : {}),
-      },
-      body: JSON.stringify({ phone: fullPhone, message: mensagem }),
-    });
+    await enviarWhatsapp(admin, terapeuta_id, fullPhone, mensagem);
   } catch (e) {
-    console.warn("zapi fail", e);
+    console.warn("whatsapp fail", e);
   }
 }
 
@@ -88,9 +82,10 @@ Deno.serve(async (req) => {
       // Credenciais Z-API do terapeuta
       const { data: cfg } = await supabase
         .from("config_clinica")
-        .select("zapi_ativo, zapi_instance_id, zapi_token, zapi_client_token")
+        .select("zapi_ativo, whatsapp_provider")
         .eq("terapeuta_id", ev.terapeuta_id)
         .maybeSingle();
+      const waAtivo = cfg?.zapi_ativo || cfg?.whatsapp_provider === "evolution";
 
       const catLabel = CATEGORIA_LABEL[ev.categoria || "outro"] || "Evento";
       const quando = fmtData(ev.data_evento, ev.horario_inicio);
@@ -111,11 +106,11 @@ Deno.serve(async (req) => {
         }
 
         // 2) WhatsApp
-        if (ins.telefone && cfg?.zapi_ativo) {
+        if (ins.telefone && waAtivo) {
           const msg = need24h
             ? `Olá ${ins.nome.split(" ")[0]}! 👋\n\nLembrete: amanhã (${quando}) tem *${ev.titulo}* (${catLabel}).\n${localOuLink}\n\nNos vemos lá! 💪`
             : `Olá ${ins.nome.split(" ")[0]}! ⏰\n\n*${ev.titulo}* começa em ~1h (${ev.horario_inicio.slice(0, 5)}).\n${localOuLink}`;
-          await sendZapi(cfg, ins.telefone, msg);
+          await sendWa(supabase, ev.terapeuta_id, ins.telefone, msg);
         }
       }
 

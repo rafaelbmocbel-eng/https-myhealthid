@@ -30,6 +30,10 @@ type ConfigClinica = {
   zapi_token: string;
   zapi_client_token: string;
   zapi_ativo: boolean;
+  whatsapp_provider: string;
+  evolution_base_url: string;
+  evolution_instance: string;
+  evolution_api_key: string;
 };
 
 const EMPTY: ConfigClinica = {
@@ -38,6 +42,7 @@ const EMPTY: ConfigClinica = {
   horario_funcionamento: '',
   logo_url: '',
   zapi_instance_id: '', zapi_token: '', zapi_client_token: '', zapi_ativo: false,
+  whatsapp_provider: 'zapi', evolution_base_url: '', evolution_instance: '', evolution_api_key: '',
 };
 
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -100,6 +105,10 @@ export default function ConfigClinica() {
         zapi_instance_id: creds.instanceId,
         zapi_token: creds.token,
         zapi_client_token: data.zapi_client_token?.trim() || '',
+        whatsapp_provider: (data as any).whatsapp_provider || 'zapi',
+        evolution_base_url: (data as any).evolution_base_url || '',
+        evolution_instance: (data as any).evolution_instance || '',
+        evolution_api_key: (data as any).evolution_api_key || '',
       });
     }
     setLoading(false);
@@ -298,11 +307,13 @@ export default function ConfigClinica() {
         </div>
       </div>
 
-      {/* Conexão em 1 clique (auto-provisionamento + QR) */}
-      <ConectarWhatsappCard
-        jaConectado={!!(form.zapi_instance_id && form.zapi_token && form.zapi_ativo)}
-        onConectado={carregar}
-      />
+      {/* Conexão em 1 clique (auto-provisionamento + QR) — só faz sentido no Z-API */}
+      {form.whatsapp_provider !== 'evolution' && (
+        <ConectarWhatsappCard
+          jaConectado={!!(form.zapi_instance_id && form.zapi_token && form.zapi_ativo)}
+          onConectado={carregar}
+        />
+      )}
 
       {/* Configuração manual avançada (fallback) */}
       <details className="clinical-card mb-4 sm:mb-5 border border-border/40 group">
@@ -316,6 +327,44 @@ export default function ConfigClinica() {
         <p className="text-xs text-muted-foreground mb-3">Se preferir, cole manualmente as credenciais de uma conta Z-API própria.</p>
         <WhatsappSetupGuide zapiOk={!!(form.zapi_instance_id && form.zapi_token && form.zapi_ativo)} />
 
+        <div className="mb-3">
+          <Label className="text-xs font-medium mb-1.5 block">Provedor de WhatsApp</Label>
+          <Select value={form.whatsapp_provider} onValueChange={v => update('whatsapp_provider', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="zapi">Z-API (padrão — mais fácil)</SelectItem>
+              <SelectItem value="evolution">Evolution API (self-host — mais barato)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-[11px] text-muted-foreground mt-1">Z-API: paga por número, sem servidor. Evolution: você hospeda e roda vários números barato.</p>
+        </div>
+
+        {form.whatsapp_provider === 'evolution' && (
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs font-medium mb-1.5 block">URL do servidor Evolution</Label>
+              <Input value={form.evolution_base_url} onChange={e => update('evolution_base_url', e.target.value)} placeholder="Ex: https://evo.seudominio.com" />
+            </div>
+            <div>
+              <Label className="text-xs font-medium mb-1.5 block">Nome da instância</Label>
+              <Input value={form.evolution_instance} onChange={e => update('evolution_instance', e.target.value)} placeholder="Ex: clinica-rafael" />
+            </div>
+            <div>
+              <Label className="text-xs font-medium mb-1.5 block">API Key</Label>
+              <Input value={form.evolution_api_key} onChange={e => update('evolution_api_key', e.target.value)} placeholder="Chave apikey do seu Evolution" />
+              <p className="text-[11px] text-muted-foreground mt-1">A conexão do número (QR Code) é feita no painel do seu Evolution. Aqui vão só as credenciais.</p>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <Label className="text-xs font-medium cursor-pointer">Ativar envio via WhatsApp próprio</Label>
+              </div>
+              <Switch checked={form.zapi_ativo} onCheckedChange={v => update('zapi_ativo', v)} />
+            </div>
+          </div>
+        )}
+
+        {form.whatsapp_provider !== 'evolution' && (
         <div className="space-y-3">
           <div>
             <Label className="text-xs font-medium mb-1.5 block">Instance ID</Label>
@@ -346,6 +395,7 @@ export default function ConfigClinica() {
             </Button>
           </div>
         </div>
+        )}
         </div>
       </details>
 

@@ -2,6 +2,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
 import { montarContextoClinico, buildSystemPrompt, type ContextoClinico } from "../_shared/agente-contexto.ts";
+import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,21 +70,6 @@ function detectRedFlag(texto: string, palavras: string[]): string | null {
     if (lower.includes(pn)) return p;
   }
   return null;
-}
-
-async function enviarWhatsapp(admin: AdminClient, terapeuta_id: string, phone: string, message: string) {
-  const { data: cfg } = await admin
-    .from("config_clinica")
-    .select("zapi_instance_id, zapi_token, zapi_client_token")
-    .eq("terapeuta_id", terapeuta_id).maybeSingle();
-  if (!cfg?.zapi_instance_id || !cfg?.zapi_token) return false;
-  const baseUrl = `https://api.z-api.io/instances/${cfg.zapi_instance_id}/token/${cfg.zapi_token}`;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (cfg.zapi_client_token) headers["Client-Token"] = cfg.zapi_client_token;
-  const r = await fetch(`${baseUrl}/send-text`, {
-    method: "POST", headers, body: JSON.stringify({ phone, message }),
-  });
-  return r.ok;
 }
 
 // === TOOLS ===

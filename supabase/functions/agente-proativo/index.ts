@@ -2,6 +2,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
 import { montarContextoClinico, buildSystemPrompt } from "../_shared/agente-contexto.ts";
+import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,18 +29,6 @@ async function gerarMensagem(systemPrompt: string, instrucao: string): Promise<s
   if (!r.ok) return "";
   const j = await r.json();
   return j.choices?.[0]?.message?.content?.trim() || "";
-}
-
-async function enviarWhatsapp(admin: any, terapeuta_id: string, phone: string, message: string) {
-  const { data: cfg } = await admin.from("config_clinica")
-    .select("zapi_instance_id, zapi_token, zapi_client_token")
-    .eq("terapeuta_id", terapeuta_id).maybeSingle();
-  if (!cfg?.zapi_instance_id || !cfg?.zapi_token) return false;
-  const url = `https://api.z-api.io/instances/${cfg.zapi_instance_id}/token/${cfg.zapi_token}/send-text`;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (cfg.zapi_client_token) headers["Client-Token"] = cfg.zapi_client_token;
-  const r = await fetch(url, { method: "POST", headers, body: JSON.stringify({ phone, message }) });
-  return r.ok;
 }
 
 async function jaDisparado(admin: any, paciente_id: string, gatilho: string, ref_id: string | null, janela_horas = 24) {

@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════════
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, requireInternal } from "../_shared/auth.ts";
+import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
 
 interface Regra {
   id: string;
@@ -172,15 +173,7 @@ Deno.serve(async (req) => {
             // 7c. WhatsApp (se canal e telefone) — chama Z-API diretamente com credenciais do banco
             if (regra.canal === "whatsapp" && pac.telefone) {
               try {
-                const { data: cfg } = await supabase.from("config_clinica")
-                  .select("zapi_instance_id, zapi_token, zapi_client_token")
-                  .eq("terapeuta_id", regra.terapeuta_id).maybeSingle();
-                if (cfg?.zapi_instance_id && cfg?.zapi_token) {
-                  const zapiUrl = `https://api.z-api.io/instances/${cfg.zapi_instance_id}/token/${cfg.zapi_token}/send-text`;
-                  const zapiHeaders: Record<string, string> = { "Content-Type": "application/json" };
-                  if (cfg.zapi_client_token) zapiHeaders["Client-Token"] = cfg.zapi_client_token;
-                  await fetch(zapiUrl, { method: "POST", headers: zapiHeaders, body: JSON.stringify({ phone: pac.telefone, message: mensagem }) });
-                }
+                await enviarWhatsapp(supabase, regra.terapeuta_id, pac.telefone, mensagem);
               } catch (whErr) {
                 console.warn("[notif] whatsapp falhou:", whErr);
               }

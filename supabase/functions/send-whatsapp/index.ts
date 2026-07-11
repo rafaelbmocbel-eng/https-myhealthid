@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0"
+import { enviarWhatsapp, enviarWhatsappMidia } from "../_shared/enviar-whatsapp.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,41 +40,71 @@ function normalizeZapiCreds(instanceId: string, token: string, clientToken?: str
   }
 }
 
-async function getZapiCreds(req: Request, body: SendWhatsappBody): Promise<ZapiCreds> {
-  // Always require an authenticated therapist
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) throw new Error('unauthorized')
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } },
-  )
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('unauthorized')
-
-  // Allow the "test connection" panel to send explicit credentials, but only
-  // if the caller is an authenticated therapist.
-  if (body.instanceId && body.token) {
-    return normalizeZapiCreds(body.instanceId, body.token, body.clientToken)
-  }
-
-  const { data } = await supabase
-    .from('config_clinica')
-    .select('zapi_instance_id, zapi_token, zapi_client_token, zapi_ativo')
-    .eq('terapeuta_id', user.id)
-    .maybeSingle()
-  if (data?.zapi_ativo && data.zapi_instance_id && data.zapi_token) {
-    return normalizeZapiCreds(data.zapi_instance_id, data.zapi_token, data.zapi_client_token || '')
-  }
-  throw new Error('Credenciais Z-API do terapeuta não configuradas')
-}
-
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
     const body: SendWhatsappBody = await req.json()
-    const { instanceId, token, clientToken } = await getZapiCreds(req, body)
+
+    // Autenticação obrigatória do terapeuta
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) throw new Error('unauthorized')
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    )
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('unauthorized')
+
+    // Envio normal via Evolution API (quando o provedor da clínica é evolution
+    // e não é teste de conexão nem credenciais Z-API explícitas do painel).
+    if (!body.test && !(body.instanceId && body.token)) {
+      const { data: prov } = await supabase
+        .from('config_clinica')
+        .select('whatsapp_provider')
+        .eq('terapeuta_id', user.id)
+        .maybeSingle()
+      if ((prov?.whatsapp_provider || 'zapi').toLowerCase() === 'evolution') {
+        const admin = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        )
+        const { phone, message, mediaUrl, mediaType, caption, fileName } = body
+        if (!phone) throw new Error('Phone is required')
+        let ok = false
+        if (mediaUrl && (mediaType === 'image' || mediaType === 'document')) {
+          ok = await enviarWhatsappMidia(admin, user.id, phone, { mediaUrl, mediaType, caption, fileName })
+        } else {
+          if (!message) throw new Error('Message or media is required')
+          ok = await enviarWhatsapp(admin, user.id, phone, message)
+        }
+        if (!ok) throw new Error('Falha ao enviar pelo Evolution API')
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
+        )
+      }
+    }
+
+    // ===== Caminho Z-API (comportamento inalterado) =====
+    let creds: ZapiCreds
+    if (body.instanceId && body.token) {
+      // Painel de "testar conexão" pode enviar credenciais explícitas.
+      creds = normalizeZapiCreds(body.instanceId, body.token, body.clientToken)
+    } else {
+      const { data } = await supabase
+        .from('config_clinica')
+        .select('zapi_instance_id, zapi_token, zapi_client_token, zapi_ativo')
+        .eq('terapeuta_id', user.id)
+        .maybeSingle()
+      if (data?.zapi_ativo && data.zapi_instance_id && data.zapi_token) {
+        creds = normalizeZapiCreds(data.zapi_instance_id, data.zapi_token, data.zapi_client_token || '')
+      } else {
+        throw new Error('Credenciais Z-API do terapeuta não configuradas')
+      }
+    }
+    const { instanceId, token, clientToken } = creds
 
     const baseUrl = `https://api.z-api.io/instances/${instanceId}/token/${token}`
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -127,7 +158,7 @@ serve(async (req: Request) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
     )
   } catch (error) {
-    console.error('Erro Z-API:', error)
+    console.error('Erro envio WhatsApp:', error)
     const message = error instanceof Error ? error.message : 'Internal error'
     return new Response(
       JSON.stringify({ error: message, connected: false }),

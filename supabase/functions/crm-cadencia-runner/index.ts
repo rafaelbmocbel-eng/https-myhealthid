@@ -1,6 +1,7 @@
 // Processa execuções pendentes de cadências CRM — invocado via cron a cada 15min
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
+import { enviarWhatsapp as enviarWhatsappCore } from "../_shared/enviar-whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,20 +9,8 @@ const corsHeaders = {
 };
 
 async function enviarWhatsapp(supa: any, terapeuta_id: string, phone: string, message: string) {
-  const { data: cfg } = await supa
-    .from("config_clinica")
-    .select("zapi_instance_id, zapi_token, zapi_client_token")
-    .eq("terapeuta_id", terapeuta_id)
-    .maybeSingle();
-  if (!cfg?.zapi_instance_id || !cfg?.zapi_token) return { ok: false, err: "zapi_nao_configurado" };
-  const baseUrl = `https://api.z-api.io/instances/${cfg.zapi_instance_id}/token/${cfg.zapi_token}`;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (cfg.zapi_client_token) headers["Client-Token"] = cfg.zapi_client_token;
-  const r = await fetch(`${baseUrl}/send-text`, {
-    method: "POST", headers,
-    body: JSON.stringify({ phone: phone.replace(/\D/g, ""), message }),
-  });
-  return { ok: r.ok, err: r.ok ? null : await r.text() };
+  const ok = await enviarWhatsappCore(supa, terapeuta_id, phone, message);
+  return { ok, err: ok ? null : "falha_envio" };
 }
 
 Deno.serve(async (req) => {
