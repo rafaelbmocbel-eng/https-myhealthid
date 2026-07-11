@@ -109,7 +109,14 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
   const [coluna, setColuna] = useState<ColunaWS>('conversas');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
-  const { data: conversas = [], isLoading } = useWhatsappConversas();
+  const { data: conversasRaw = [], isLoading } = useWhatsappConversas();
+  // No Zap aparecem APENAS pacientes cadastrados (vinculados por telefone).
+  // Números de fora do ecossistema não entram na lista — o bot também não
+  // responde a eles.
+  const conversas = useMemo(
+    () => conversasRaw.filter(c => !!c.paciente_id),
+    [conversasRaw],
+  );
   const { data: idsGlobais = [] } = useGlobalMessageSearch(busca);
 
   useEffect(() => {
