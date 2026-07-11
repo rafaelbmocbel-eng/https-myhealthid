@@ -2,6 +2,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isInternalCall, requireUser } from "../_shared/auth.ts";
 import { montarContextoClinico, buildSystemPrompt } from "../_shared/agente-contexto.ts";
+import { registrarMensagemSaida } from "../_shared/registrar-saida.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,6 +110,14 @@ Deno.serve(async (req) => {
             status: ok ? "enviado" : "erro",
             metadata: { variante: variante.key },
           });
+          // Registra no chat (cria a conversa se preciso) para o paciente
+          // aparecer no Zap com o histórico da campanha.
+          if (ok) {
+            await registrarMensagemSaida(admin, {
+              terapeuta_id: bc.terapeuta_id, paciente_id,
+              telefone: pac.telefone, conteudo: msg, origem: "broadcast",
+            });
+          }
           if (ok) { enviados++; stats[variante.key].enviados++; }
           else { erros++; stats[variante.key].erros++; }
           await admin.from("agente_broadcasts").update({

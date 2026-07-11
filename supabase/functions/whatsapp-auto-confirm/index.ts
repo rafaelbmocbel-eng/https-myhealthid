@@ -2,6 +2,7 @@
 // 3 janelas: 24h antes (confirmação) | 2h antes (lembrete) | 1h depois (pós-sessão).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
+import { registrarMensagemSaida } from "../_shared/registrar-saida.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,15 +67,10 @@ function aplicar(template: string, nome: string, hora: string, data: string) {
 }
 
 async function registrarEnvio(admin: AdminClient, terapeuta_id: string, paciente_id: string | null, telefone: string, mensagem: string) {
-  // Tenta linkar com conversa existente para aparecer no histórico
-  const tail = telefone.replace(/\D/g, "");
-  const { data: conv } = await admin.from("whatsapp_conversas")
-    .select("id").eq("terapeuta_id", terapeuta_id).eq("telefone", tail).maybeSingle();
-  if (!conv) return;
-  await admin.from("whatsapp_mensagens_inbox").insert({
-    conversa_id: conv.id, terapeuta_id, direcao: "saida", tipo: "texto",
-    conteudo: mensagem, status: "enviada",
-    metadata: { origem: "auto_reminder" },
+  // Cria a conversa se não existir, para o lembrete aparecer no chat e o
+  // paciente entrar na lista do Zap mesmo sem ter respondido antes.
+  await registrarMensagemSaida(admin, {
+    terapeuta_id, paciente_id, telefone, conteudo: mensagem, origem: "auto_reminder",
   });
 }
 
