@@ -37,6 +37,7 @@ export default function BibliotecaExercicios() {
   const [edit, setEdit] = useState<(typeof VAZIO & { id?: string }) | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [subindo, setSubindo] = useState(false);
+  const [pack, setPack] = useState<{ done: number; total: number } | null>(null);
 
   const carregar = async () => {
     if (!user) return;
@@ -82,6 +83,39 @@ export default function BibliotecaExercicios() {
     }
   };
 
+  // Envio em massa: cada GIF vira um exercício (nome = nome do arquivo).
+  const uploadPack = async (files: FileList) => {
+    if (!user || files.length === 0) return;
+    const arr = Array.from(files).filter(f => f.type.startsWith('image/') || /\.(gif|png|jpe?g|webp)$/i.test(f.name));
+    if (arr.length === 0) { toast.error('Selecione arquivos de imagem (GIF).'); return; }
+    setPack({ done: 0, total: arr.length });
+    let ok = 0, falhas = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const file = arr[i];
+      try {
+        if (file.size > 15 * 1024 * 1024) throw new Error('maior que 15MB');
+        const ext = file.name.split('.').pop() || 'gif';
+        const path = `${user.id}/${Date.now()}-${i}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('exercise-gifs').upload(path, file, { upsert: true, contentType: file.type });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from('exercise-gifs').getPublicUrl(path);
+        const nome = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim() || 'Exercício';
+        const { error: insErr } = await supabase.from('biblioteca_exercicios').insert({
+          terapeuta_id: user.id, nome, gif_url: pub.publicUrl,
+          series_padrao: 3, repeticoes_padrao: 12, descanso_padrao_segundos: 45,
+        });
+        if (insErr) throw insErr;
+        ok++;
+      } catch {
+        falhas++;
+      }
+      setPack({ done: i + 1, total: arr.length });
+    }
+    setPack(null);
+    toast.success(`${ok} exercício(s) adicionado(s)${falhas ? ` · ${falhas} falharam` : ''}`);
+    carregar();
+  };
+
   const salvar = async () => {
     if (!edit || !user) return;
     if (!edit.nome.trim()) { toast.error('Dê um nome ao exercício.'); return; }
@@ -124,10 +158,19 @@ export default function BibliotecaExercicios() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar por nome ou grupo…" value={busca} onChange={e => setBusca(e.target.value)} className="pl-9" />
           </div>
+          <label className="inline-flex items-center gap-1.5 h-10 px-3 rounded-md border border-border bg-background text-sm font-medium cursor-pointer hover:bg-muted shrink-0 whitespace-nowrap">
+            {pack ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {pack ? `${pack.done}/${pack.total}` : 'Enviar pack'}
+            <input type="file" accept="image/gif,image/*" multiple className="hidden" disabled={!!pack}
+              onChange={e => { if (e.target.files) uploadPack(e.target.files); e.currentTarget.value = ''; }} />
+          </label>
           <Button onClick={() => setEdit({ ...VAZIO })} className="gap-1.5 shrink-0">
             <Plus className="h-4 w-4" /> Novo
           </Button>
         </div>
+        <p className="text-[11px] text-muted-foreground -mt-2">
+          "Enviar pack": selecione vários GIFs de uma vez — cada um vira um exercício (nome = nome do arquivo). Depois é só completar grupo e orientações.
+        </p>
 
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
