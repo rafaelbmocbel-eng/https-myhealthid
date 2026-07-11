@@ -56,6 +56,7 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
           antropometria: antro.data || null,
           testes: testes.data || [],
           idade, sexo: p?.sexo,
+          paciente_id: pacienteId,
         },
       });
       if (error) throw error;
