@@ -109,12 +109,18 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
   const [coluna, setColuna] = useState<ColunaWS>('conversas');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
+  // Por padrão o Zap mostra só pacientes cadastrados; este toggle revela os
+  // números de fora do ecossistema quando o profissional quiser conferir.
+  const [verOutros, setVerOutros] = useState(false);
   const { data: conversasRaw = [], isLoading } = useWhatsappConversas();
-  // No Zap aparecem APENAS pacientes cadastrados (vinculados por telefone).
-  // Números de fora do ecossistema não entram na lista — o bot também não
-  // responde a eles.
+  // No Zap aparecem APENAS pacientes cadastrados (vinculados por telefone),
+  // a menos que o profissional peça para ver os não cadastrados.
   const conversas = useMemo(
-    () => conversasRaw.filter(c => !!c.paciente_id),
+    () => verOutros ? conversasRaw : conversasRaw.filter(c => !!c.paciente_id),
+    [conversasRaw, verOutros],
+  );
+  const naoCadCount = useMemo(
+    () => conversasRaw.filter(c => !c.paciente_id).length,
     [conversasRaw],
   );
   const { data: idsGlobais = [] } = useGlobalMessageSearch(busca);
@@ -211,6 +217,21 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                 {counts.fila[k] > 0 && <span className="opacity-60">{counts.fila[k]}</span>}
               </button>
             ))}
+            {(naoCadCount > 0 || verOutros) && (
+              <button
+                onClick={() => setVerOutros(v => !v)}
+                title={verOutros ? 'Voltar a mostrar só pacientes cadastrados' : 'Mostrar números que não são pacientes cadastrados'}
+                className={cn(
+                  'shrink-0 flex items-center gap-1 text-[11px] px-3 py-1 rounded-full border transition-all font-medium ml-auto',
+                  verOutros
+                    ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
+                    : 'bg-white dark:bg-[#2a3942] border-border/40 text-muted-foreground',
+                )}
+              >
+                {verOutros ? 'Só pacientes' : `Não cadastrados`}
+                {!verOutros && naoCadCount > 0 && <span className="opacity-60">{naoCadCount}</span>}
+              </button>
+            )}
           </div>
 
           {/* Column tabs */}
@@ -331,6 +352,11 @@ function ConversaItem({ conversa: c, ativa, userId, last, onClick }: {
           </div>
         </div>
         <div className="flex items-center gap-2 mt-1">
+          {!c.paciente_id && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60 shrink-0">
+              não cadastrado
+            </span>
+          )}
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
             <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
             {stage.label}
