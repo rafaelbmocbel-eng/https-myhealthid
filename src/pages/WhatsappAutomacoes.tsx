@@ -115,6 +115,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
       setCfg(data || {
         terapeuta_id: user.id,
         bot_ativo: false,
+        bot_apenas_cadastrados: true,
         delay_resposta_segundos: 30,
         horario_inicio: "08:00",
         horario_fim: "20:00",
@@ -364,6 +365,13 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               <Textarea rows={3} placeholder="Ex.: Não falamos sobre planos de saúde. Endereço: Rua X, 123. Em emergência fora de horário, ligar 192."
                 value={cfg.prompt_extra || ""} onChange={(e) => setCfg({ ...cfg, prompt_extra: e.target.value })} />
               <p className="text-micro mt-1">Vai junto no prompt da IA em toda conversa.</p>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
+              <Switch checked={cfg.bot_apenas_cadastrados !== false} onCheckedChange={(v) => setCfg({ ...cfg, bot_apenas_cadastrados: v })} />
+              <div className="flex-1">
+                <Label>Responder apenas a contatos cadastrados</Label>
+                <p className="text-micro text-muted-foreground">Só pacientes/clientes do app recebem resposta automática. Números de fora do seu ecossistema aparecem na inbox, mas o bot não responde — evita poluir o atendimento.</p>
+              </div>
             </div>
             <div className="flex items-center gap-3 pt-2">
               <Switch checked={cfg.usar_contexto_clinico !== false} onCheckedChange={(v) => setCfg({ ...cfg, usar_contexto_clinico: v })} />

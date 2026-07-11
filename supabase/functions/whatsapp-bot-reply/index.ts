@@ -12,6 +12,7 @@ type AdminClient = ReturnType<typeof createClient>;
 
 interface ConfigAutomacao {
   bot_ativo?: boolean;
+  bot_apenas_cadastrados?: boolean;
   max_turnos_bot?: number;
   palavras_escalonamento?: string[];
   mensagem_fora_horario?: string | null;
@@ -412,6 +413,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, skip: "bot desativado" }), { headers: corsHeaders });
     }
 
+    // Só responde a contatos cadastrados (pacientes do app). Números de fora do
+    // ecossistema aparecem na inbox para o profissional ver, mas o bot não
+    // responde automaticamente — evita poluir o atendimento. O webhook já
+    // vincula paciente_id pelo telefone antes de chamar aqui.
+    if (cfg.bot_apenas_cadastrados !== false && !conv.paciente_id) {
+      return new Response(JSON.stringify({ ok: true, skip: "contato_nao_cadastrado" }), { headers: corsHeaders });
+    }
 
     // Já escalada? Não responde.
     if (conv.requer_atencao || !conv.bot_ativo) {
