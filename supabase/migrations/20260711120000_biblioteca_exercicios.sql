@@ -1,8 +1,9 @@
--- Biblioteca de Exercícios: catálogo reutilizável do profissional. Cadastra o
--- exercício UMA vez (nome, grupo, orientações, GIF animado, padrões) e reaproveita
--- ao montar treinos. GIF é imagem (leve) → hospedado no nosso storage.
+-- Biblioteca de Exercícios DA CLÍNICA (por terapeuta). É DISTINTA da tabela
+-- global pré-existente public.exercicios_biblioteca (catálogo geral). Aqui cada
+-- profissional cadastra os PRÓPRIOS exercícios (com GIF animado) para reaproveitar
+-- ao montar treinos. Nome propositalmente diferente para não colidir.
 
-CREATE TABLE IF NOT EXISTS public.exercicios_biblioteca (
+CREATE TABLE IF NOT EXISTS public.biblioteca_exercicios (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   terapeuta_id uuid NOT NULL DEFAULT auth.uid(),
   nome text NOT NULL,
@@ -18,25 +19,25 @@ CREATE TABLE IF NOT EXISTS public.exercicios_biblioteca (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_exercicios_biblioteca_terapeuta
-  ON public.exercicios_biblioteca (terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_biblioteca_exercicios_terapeuta
+  ON public.biblioteca_exercicios (terapeuta_id);
 
-ALTER TABLE public.exercicios_biblioteca ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.biblioteca_exercicios ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Terapeuta ve sua biblioteca" ON public.exercicios_biblioteca;
-CREATE POLICY "Terapeuta ve sua biblioteca" ON public.exercicios_biblioteca
+DROP POLICY IF EXISTS "Terapeuta ve sua biblioteca" ON public.biblioteca_exercicios;
+CREATE POLICY "Terapeuta ve sua biblioteca" ON public.biblioteca_exercicios
   FOR SELECT USING (terapeuta_id = auth.uid());
 
-DROP POLICY IF EXISTS "Terapeuta insere na sua biblioteca" ON public.exercicios_biblioteca;
-CREATE POLICY "Terapeuta insere na sua biblioteca" ON public.exercicios_biblioteca
+DROP POLICY IF EXISTS "Terapeuta insere na sua biblioteca" ON public.biblioteca_exercicios;
+CREATE POLICY "Terapeuta insere na sua biblioteca" ON public.biblioteca_exercicios
   FOR INSERT WITH CHECK (terapeuta_id = auth.uid());
 
-DROP POLICY IF EXISTS "Terapeuta edita sua biblioteca" ON public.exercicios_biblioteca;
-CREATE POLICY "Terapeuta edita sua biblioteca" ON public.exercicios_biblioteca
+DROP POLICY IF EXISTS "Terapeuta edita sua biblioteca" ON public.biblioteca_exercicios;
+CREATE POLICY "Terapeuta edita sua biblioteca" ON public.biblioteca_exercicios
   FOR UPDATE USING (terapeuta_id = auth.uid());
 
-DROP POLICY IF EXISTS "Terapeuta deleta sua biblioteca" ON public.exercicios_biblioteca;
-CREATE POLICY "Terapeuta deleta sua biblioteca" ON public.exercicios_biblioteca
+DROP POLICY IF EXISTS "Terapeuta deleta sua biblioteca" ON public.biblioteca_exercicios;
+CREATE POLICY "Terapeuta deleta sua biblioteca" ON public.biblioteca_exercicios
   FOR DELETE USING (terapeuta_id = auth.uid());
 
 -- Bucket público dos GIFs (leitura pública p/ o app do paciente exibir; upload
