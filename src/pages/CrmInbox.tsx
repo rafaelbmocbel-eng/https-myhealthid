@@ -157,7 +157,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
 
   return (
     <Shell embedded={embedded}>
-      <div className={cn('flex overflow-hidden', embedded ? 'h-[calc(100dvh-160px)]' : 'h-[calc(100dvh-64px)]')}>
+      <div className={cn('flex overflow-hidden', embedded ? 'h-full' : 'h-[calc(100dvh-64px)]')}>
 
         {/* ── LEFT PANEL ── */}
         <div className={panelLeft}>

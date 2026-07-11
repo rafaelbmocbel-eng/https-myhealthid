@@ -62,7 +62,7 @@ export default function CrmHub({ embedded = false }: Props) {
 
   return (
     <Wrapper>
-      <div className={cn('flex flex-col md:flex-row w-full', embedded ? '' : 'h-[calc(100dvh-56px)] md:h-[calc(100dvh-64px)]')}>
+      <div className={cn('flex flex-col md:flex-row w-full', embedded ? '' : 'h-full')}>
         {/* Sidebar (desktop) */}
         <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-border/40 bg-card/30">
           <div className="px-4 py-4 border-b border-border/40">
@@ -119,7 +119,7 @@ export default function CrmHub({ embedded = false }: Props) {
         </div>
 
         {/* Content */}
-        <main className="flex-1 min-w-0 overflow-y-auto">
+        <main className="flex-1 min-w-0 min-h-0 overflow-y-auto">
           <Suspense fallback={
             <div className="flex items-center justify-center h-64">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />

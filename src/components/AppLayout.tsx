@@ -45,6 +45,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const hideQuickActionsFab = location.pathname.startsWith('/pacientes');
   const isHomePage = useMemo(() => location.pathname === '/hoje', [location.pathname]);
+  // Páginas "imersivas" (estilo app/WhatsApp): ocupam toda a altura útil, sem
+  // rodapé nem respiro ocioso. O conteúdo controla a própria rolagem.
+  const immersive = useMemo(() => location.pathname === '/crm', [location.pathname]);
   const breadcrumbs = useMemo(() => getProfessionalBreadcrumbs(location.pathname), [location.pathname]);
 
   useLayoutEffect(() => {
@@ -79,7 +82,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const sidebarW = isMobile ? 0 : sidebarCollapsed ? 72 : 224;
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-background relative">
+    <div className={cn('min-h-screen min-h-[100dvh] bg-background relative', immersive && 'h-[100dvh] overflow-hidden')}>
       {/* Background decoration — hidden on mobile to avoid GPU overdraw */}
       <div className="hidden md:block absolute top-0 right-0 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="hidden md:block absolute bottom-0 left-0 w-[30vw] h-[30vh] bg-accent/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
@@ -124,8 +127,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main content offset by sidebar width */}
       <div
-        className="flex flex-col min-h-[100dvh] transition-[margin-left] duration-300 ease-in-out relative z-10"
-        style={{ marginLeft: sidebarW }}
+        className={cn(
+          'flex flex-col transition-[margin-left] duration-300 ease-in-out relative z-10',
+          immersive ? 'h-[100dvh] overflow-hidden' : 'min-h-[100dvh]',
+        )}
+        style={{
+          marginLeft: sidebarW,
+          // Reserva o espaço da barra de navegação fixa (mobile) para o chat
+          // terminar exatamente acima dela, sem sobra.
+          ...(immersive && isMobile ? { paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom))' } : {}),
+        }}
       >
         {/* Header */}
         <header
@@ -181,14 +192,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         <main
           className={cn(
-            'flex-1 px-2 pt-3 transition-all duration-500 overflow-x-clip',
-            'sm:px-4',
-            isMobile ? (isHomePage ? 'pb-4' : 'pb-24') : 'pb-12 px-6 lg:px-8 pt-6',
+            immersive
+              ? 'flex-1 min-h-0 overflow-hidden'
+              : cn(
+                  'flex-1 px-2 pt-3 transition-all duration-500 overflow-x-clip sm:px-4',
+                  isMobile ? (isHomePage ? 'pb-4' : 'pb-24') : 'pb-12 px-6 lg:px-8 pt-6',
+                ),
           )}
           style={{ touchAction: 'pan-y' }}
         >
           {children}
-          <AppFooter />
+          {!immersive && <AppFooter />}
         </main>
       </div>
 
