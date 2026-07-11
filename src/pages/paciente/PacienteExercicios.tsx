@@ -9,13 +9,29 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import {
   Loader2, Dumbbell, Check, ChevronDown, ChevronUp,
-  Play, Clock, Flame, AlertCircle, Star
+  Play, Clock, Flame, AlertCircle, Star, X, SkipForward,
 } from 'lucide-react';
 import { format, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
+
+// Converte um link de vídeo (YouTube / Vimeo / arquivo direto) no formato certo
+// para exibir dentro do app.
+function resolverVideo(url: string): { tipo: 'iframe' | 'video'; src: string } {
+  const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{6,})/);
+  if (yt) return { tipo: 'iframe', src: `https://www.youtube.com/embed/${yt[1]}` };
+  const vim = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vim) return { tipo: 'iframe', src: `https://player.vimeo.com/video/${vim[1]}` };
+  return { tipo: 'video', src: url };
+}
+
+function fmtTimer(s: number) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
 
 interface Treino {
   id: string;
@@ -67,6 +83,31 @@ export default function PacienteExercicios() {
   const [sessionDor, setSessionDor] = useState(0);
   const [sessionFeedback, setSessionFeedback] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [doneEx, setDoneEx] = useState<Set<string>>(new Set());
+  const [restSec, setRestSec] = useState<number | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
+  // Timer de descanso (conta pra baixo). Chega a 0 → some.
+  useEffect(() => {
+    if (restSec === null) return;
+    if (restSec <= 0) { setRestSec(null); return; }
+    const t = setTimeout(() => setRestSec(s => (s === null ? null : s - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [restSec]);
+
+  const toggleDone = (ex: TreinoExercicio) => {
+    setDoneEx(prev => {
+      const n = new Set(prev);
+      if (n.has(ex.id)) {
+        n.delete(ex.id);
+      } else {
+        n.add(ex.id);
+        // Ao marcar como feito, já inicia o descanso prescrito.
+        if (ex.descanso_segundos && ex.descanso_segundos > 0) setRestSec(ex.descanso_segundos);
+      }
+      return n;
+    });
+  };
 
   const fetchData = async () => {
     if (!user) return;
@@ -128,6 +169,14 @@ export default function PacienteExercicios() {
     setActiveSession(treinoId);
     setSessionDor(0);
     setSessionFeedback('');
+    setDoneEx(new Set());
+    setRestSec(null);
+  };
+
+  const cancelSession = () => {
+    setActiveSession(null);
+    setDoneEx(new Set());
+    setRestSec(null);
   };
 
   const handleCompleteSession = async () => {
@@ -148,6 +197,8 @@ export default function PacienteExercicios() {
     } else {
       toast({ title: 'Treino concluído! 💪', description: '+15 XP pelo treino completo' });
       setActiveSession(null);
+      setDoneEx(new Set());
+      setRestSec(null);
       fetchData();
     }
     setSubmitting(false);
@@ -182,28 +233,81 @@ export default function PacienteExercicios() {
           {activeSession && (
             <Card className="border-primary/30 shadow-lg bg-gradient-to-br from-primary/5 to-transparent">
               <CardContent className="p-5 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Play className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Sessão em andamento</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {treinos.find(t => t.id === activeSession)?.titulo}
-                    </p>
-                  </div>
-                </div>
+                {(() => {
+                  const sessExs = exercicios.filter(e => e.treino_id === activeSession);
+                  const feitos = sessExs.filter(e => doneEx.has(e.id)).length;
+                  return (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Play className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground">Sessão em andamento</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {treinos.find(t => t.id === activeSession)?.titulo}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold text-primary tabular-nums shrink-0">
+                          {feitos}/{sessExs.length}
+                        </span>
+                      </div>
 
-                {/* Exercise checklist */}
-                <div className="space-y-1.5">
-                  {exercicios.filter(e => e.treino_id === activeSession).map(ex => (
-                    <div key={ex.id} className="flex items-center gap-2 p-2 rounded-lg bg-background/50 text-xs">
-                      <Check className="icon-sm text-muted-foreground" />
-                      <span className="font-medium text-foreground flex-1">{ex.nome_customizado || 'Exercício'}</span>
-                      <span className="text-muted-foreground">{ex.series}×{ex.repeticoes}</span>
-                    </div>
-                  ))}
-                </div>
+                      {/* Timer de descanso */}
+                      {restSec !== null && (
+                        <div className="rounded-xl bg-primary text-primary-foreground p-3 flex items-center gap-2">
+                          <Clock className="h-4 w-4 shrink-0" />
+                          <span className="text-sm font-semibold">Descanso</span>
+                          <span className="text-xl font-black tabular-nums ml-auto">{fmtTimer(restSec)}</span>
+                          <button onClick={() => setRestSec(s => (s ?? 0) + 15)} className="h-8 px-2 rounded-lg bg-white/20 text-xs font-bold shrink-0">+15s</button>
+                          <button onClick={() => setRestSec(null)} className="h-8 px-2.5 rounded-lg bg-white/20 text-xs font-bold flex items-center gap-1 shrink-0"><SkipForward className="h-3 w-3" /> Pular</button>
+                        </div>
+                      )}
+
+                      {/* Checklist interativo */}
+                      <div className="space-y-1.5">
+                        {sessExs.map(ex => {
+                          const done = doneEx.has(ex.id);
+                          return (
+                            <div key={ex.id} className={cn(
+                              'flex items-center gap-2.5 p-2.5 rounded-lg text-xs transition-colors',
+                              done ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-background/50',
+                            )}>
+                              <button onClick={() => toggleDone(ex)} className="shrink-0" aria-label="Marcar como feito">
+                                <span className={cn(
+                                  'h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors',
+                                  done ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-muted-foreground/40',
+                                )}>
+                                  {done && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                                </span>
+                              </button>
+                              <div className="flex-1 min-w-0" onClick={() => toggleDone(ex)}>
+                                <span className={cn('font-medium block truncate', done && 'line-through text-muted-foreground')}>
+                                  {ex.nome_customizado || 'Exercício'}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {ex.series}×{ex.repeticoes}{ex.carga_kg ? ` · ${ex.carga_kg}kg` : ''}
+                                </span>
+                              </div>
+                              {ex.video_url && (
+                                <button onClick={() => setVideoUrl(ex.video_url)} title="Ver vídeo"
+                                  className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                  <Play className="h-4 w-4" />
+                                </button>
+                              )}
+                              {ex.descanso_segundos ? (
+                                <button onClick={() => setRestSec(ex.descanso_segundos!)} title="Iniciar descanso"
+                                  className="h-8 px-2 rounded-full bg-muted flex items-center gap-1 text-[10px] font-medium shrink-0">
+                                  <Clock className="h-3 w-3" /> {ex.descanso_segundos}s
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Pain rating */}
                 <div>
@@ -223,7 +327,7 @@ export default function PacienteExercicios() {
                 />
 
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 text-sm" onClick={() => setActiveSession(null)}>
+                  <Button variant="outline" className="flex-1 text-sm" onClick={cancelSession}>
                     Cancelar
                   </Button>
                   <Button className="flex-1 text-sm font-bold gap-2" onClick={handleCompleteSession} disabled={submitting}>
@@ -326,6 +430,12 @@ export default function PacienteExercicios() {
                                 <span className="text-[9px] text-muted-foreground/70 block mt-0.5">{ex.grupo_muscular}</span>
                               )}
                             </div>
+                            {ex.video_url && (
+                              <button onClick={() => setVideoUrl(ex.video_url)} title="Ver vídeo"
+                                className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 self-center">
+                                <Play className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                           );
                         })}
@@ -389,6 +499,30 @@ export default function PacienteExercicios() {
             </Card>
           )}
         </div>
+
+        {/* Player de vídeo do exercício */}
+        <Dialog open={!!videoUrl} onOpenChange={(o) => { if (!o) setVideoUrl(null); }}>
+          <DialogContent className="max-w-lg p-0 overflow-hidden bg-black border-0">
+            {videoUrl && (() => {
+              const v = resolverVideo(videoUrl);
+              return (
+                <div className="relative w-full aspect-video bg-black">
+                  {v.tipo === 'iframe' ? (
+                    <iframe
+                      src={v.src}
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title="Vídeo do exercício"
+                    />
+                  ) : (
+                    <video src={v.src} controls autoPlay playsInline className="absolute inset-0 w-full h-full" />
+                  )}
+                </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
       </PacienteLayout>
     </ProtectedPatientRoute>
   );
