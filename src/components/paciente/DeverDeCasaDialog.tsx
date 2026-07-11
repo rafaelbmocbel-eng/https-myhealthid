@@ -33,6 +33,7 @@ interface CatalogItem {
   nivel_dificuldade: string;
   regiao_corporal: any;
   perfis_indicados: any;
+  gif_url?: string | null;
 }
 
 interface Selecionado {
@@ -43,9 +44,10 @@ interface Selecionado {
   series: number;
   repeticoes: number;
   orientacoes: string;
+  gif_url?: string | null;
 }
 
-const CATEGORIAS = ['Sugeridos MyID', 'Todas', 'Alongamento', 'Mobilidade', 'Fortalecimento', 'Postura', 'Respiração', 'Funcional', 'Propriocepção', 'Relaxamento'];
+const CATEGORIAS = ['Sugeridos MyID', 'Minha Biblioteca', 'Todas', 'Alongamento', 'Mobilidade', 'Fortalecimento', 'Postura', 'Respiração', 'Funcional', 'Propriocepção', 'Relaxamento'];
 
 // Mapa: dimensão MyID com perda alta → perfis do catálogo
 const DIM_TO_PERFIS: Record<string, string[]> = {
@@ -109,8 +111,19 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
-    ]).then(([cat, tre, exe, myid]) => {
-      setCatalogo((cat.data || []) as CatalogItem[]);
+      // Biblioteca de Treinos do profissional (com GIF animado)
+      supabase.from('biblioteca_exercicios')
+        .select('id, nome, grupo_muscular, orientacoes, gif_url')
+        .eq('terapeuta_id', terapeutaId)
+        .eq('ativo', true)
+        .order('nome'),
+    ]).then(([cat, tre, exe, myid, bib]: any[]) => {
+      const minhaBiblioteca: CatalogItem[] = ((bib?.data || []) as any[]).map((b: any) => ({
+        id: b.id, nome: b.nome, categoria: 'Minha Biblioteca',
+        descricao: b.orientacoes ?? null, tempo_duracao: null, nivel_dificuldade: '',
+        regiao_corporal: [], perfis_indicados: [], gif_url: b.gif_url ?? null,
+      }));
+      setCatalogo([...minhaBiblioteca, ...((cat.data || []) as CatalogItem[])]);
       setTreinosAtivos(tre.data || []);
       setExecucoes(exe.data || []);
 
@@ -158,6 +171,7 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
       series: 2,
       repeticoes: 10,
       orientacoes: c.descricao || '',
+      gif_url: c.gif_url ?? null,
     }]);
   };
 
@@ -217,6 +231,7 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
       series: s.series,
       repeticoes: s.repeticoes,
       orientacoes: s.orientacoes || null,
+      gif_url: s.gif_url || null,
       ordem: i + 1,
     }));
 

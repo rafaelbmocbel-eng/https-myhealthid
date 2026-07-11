@@ -56,6 +56,7 @@ interface TreinoExercicio {
   metodo: string | null;
   orientacoes: string | null;
   video_url: string | null;
+  gif_url: string | null;
   ordem: number | null;
 }
 
@@ -391,7 +392,8 @@ export default function PacienteExercicios() {
                       {/* Exercises */}
                       <div className="p-4 space-y-2">
                         {exs.map((ex, i) => {
-                          const imgUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/exercise-images/exercises/${ex.id}.png`;
+                          // GIF da Biblioteca de Treinos anima sozinho; senão, imagem por convenção.
+                          const imgUrl = ex.gif_url || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/exercise-images/exercises/${ex.id}.png`;
                           return (
                           <div key={ex.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-muted/30">
                             <div className="h-14 w-14 rounded-xl bg-muted/50 flex items-center justify-center shrink-0 mt-0.5 overflow-hidden border border-border">
