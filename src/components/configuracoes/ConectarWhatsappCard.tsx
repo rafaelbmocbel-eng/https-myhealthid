@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MessageCircle, Loader2, CheckCircle2, QrCode, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ensureAutomacoesPadrao } from '@/lib/whatsappAutomacoesDefaults';
 
 interface Props {
   /** Chamado quando a conexão é concluída, para o pai recarregar as credenciais. */
@@ -34,24 +35,34 @@ export default function ConectarWhatsappCard({ onConectado, jaConectado }: Props
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
+  // Ao conectar, semeia a configuração padrão das automações (confirmação,
+  // lembrete, pós-sessão já ligados) para o app funcionar "de cara".
+  const finalizarConexao = useCallback(async () => {
+    setConnected(true);
+    pararPoll();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await ensureAutomacoesPadrao(user.id);
+    } catch { /* semear é best-effort — não bloqueia a conexão */ }
+    setTimeout(() => { setOpen(false); onConectado?.(); }, 1500);
+  }, [onConectado]);
+
   const iniciarPoll = useCallback(() => {
     pararPoll();
     pollRef.current = window.setInterval(async () => {
       try {
         const st = await chamar('status');
         if (st.connected) {
-          setConnected(true);
-          pararPoll();
-          setTimeout(() => { setOpen(false); onConectado?.(); }, 1500);
+          await finalizarConexao();
           return;
         }
         // Renova o QR (expira periodicamente)
         const q = await chamar('qrcode');
-        if (q.connected) { setConnected(true); pararPoll(); setTimeout(() => { setOpen(false); onConectado?.(); }, 1500); }
+        if (q.connected) { await finalizarConexao(); }
         else if (q.qr) setQr(q.qr);
       } catch { /* mantém tentando */ }
     }, 4000);
-  }, [chamar, onConectado]);
+  }, [chamar, finalizarConexao]);
 
   const conectar = async () => {
     setProvisionando(true);
@@ -61,7 +72,7 @@ export default function ConectarWhatsappCard({ onConectado, jaConectado }: Props
       await chamar('provisionar');
       setOpen(true);
       const q = await chamar('qrcode');
-      if (q.connected) { setConnected(true); onConectado?.(); }
+      if (q.connected) { await finalizarConexao(); }
       else setQr(q.qr ?? null);
       iniciarPoll();
     } catch (e: any) {

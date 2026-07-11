@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Image as ImageIcon, Upload, X, UserMinus, Plus, Trash2, Copy, ExternalLink, Zap } from 'lucide-react';
 import { useWhatsappBloqueados } from '@/hooks/useWhatsappBloqueados';
 import ConectarWhatsappCard from '@/components/configuracoes/ConectarWhatsappCard';
+import { ensureAutomacoesPadrao } from '@/lib/whatsappAutomacoesDefaults';
 
 
 type ConfigClinica = {
@@ -124,6 +125,11 @@ export default function ConfigClinica() {
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
     } else {
+      // Se acabou de configurar o WhatsApp, garante a config de automações
+      // padrão (lembretes já ligados) — para funcionar sem passo escondido.
+      if (creds.instanceId && creds.token) {
+        ensureAutomacoesPadrao(user.id).catch(() => { /* best-effort */ });
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       toast({ title: 'Configurações salvas! ✓' });

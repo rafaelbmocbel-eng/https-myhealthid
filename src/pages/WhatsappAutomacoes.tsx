@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarClock, BellRing, HeartHandshake, UserX, MessageSquare, Moon } from "lucide-react";
 import { WaBubblePreview } from "@/components/whatsapp/WaBubblePreview";
+import { defaultAutomacoes, ensureAutomacoesPadrao } from "@/lib/whatsappAutomacoesDefaults";
 
 const VARIAVEIS_MSG: { k: string; l: string }[] = [
   { k: "nome", l: "Nome do paciente" },
@@ -112,34 +113,14 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         .select("*")
         .eq("terapeuta_id", user.id)
         .maybeSingle();
-      setCfg(data || {
-        terapeuta_id: user.id,
-        bot_ativo: false,
-        bot_apenas_cadastrados: true,
-        delay_resposta_segundos: 30,
-        horario_inicio: "08:00",
-        horario_fim: "20:00",
-        dias_semana: ["seg", "ter", "qua", "qui", "sex"],
-        mensagem_saudacao: "Oi! 👋 Aqui é a assistente virtual da clínica 💙 Já já um profissional te responde. Enquanto isso, posso te ajudar a agendar, remarcar ou confirmar uma sessão — é só me contar o que você precisa.",
-        mensagem_fora_horario: "Oi! 💙 No momento estamos fora do horário de atendimento, mas sua mensagem já está salva aqui. Assim que abrirmos, a gente te responde. Se for uma emergência de saúde, procure o pronto-socorro mais próximo ou ligue 192.",
-        auto_confirmacao_24h: true,
-        mensagem_confirmacao: "Oi {nome}! 💙 Passando pra confirmar sua sessão amanhã às {horario}. Podemos contar com você? Responda *SIM* para confirmar ou *REAGENDAR* se precisar de outro horário. Seu cuidado é a nossa prioridade!",
-        mensagem_lembrete_2h: "Oi {nome}! ⏰ Sua sessão é hoje às {horario} — daqui a pouco te esperamos por aqui. Se precisar remarcar, me avise agora, tá? Após o horário a sessão é contabilizada. Até já! 💪",
-        mensagem_no_show: "Oi {nome}, sentimos sua falta hoje na sessão das {horario} 💙 Aconteceu alguma coisa? Ficamos à disposição pra reagendar e continuar seu tratamento — é só me chamar.",
-        mensagem_pos_sessao: "Oi {nome}! 💙 Como você está se sentindo depois da sessão de hoje? Qualquer dor, dúvida ou desconforto, pode me contar por aqui. E não esquece dos seus exercícios — cada dia conta na sua evolução! 💪",
-        detectar_intencao: true,
-        pausar_bot_apos_humano: true,
-        tom_voz: "amigavel",
-        prompt_extra: "Você é a assistente virtual de uma clínica de fisioterapia e saúde que usa o método MyID (avaliação biopsicossocial da dor). Seja acolhedora, empática e objetiva. Ajude a agendar, remarcar e confirmar sessões, lembrar dos exercícios e tirar dúvidas simples sobre o tratamento. NUNCA dê diagnóstico, prescrição ou conselho médico específico — nesses casos, diga que o profissional vai avaliar. Não fale sobre valores de convênios/planos de saúde. Em caso de dor intensa, piora súbita ou emergência, oriente procurar atendimento presencial (ou 192) e avise que vai chamar o profissional. Use o primeiro nome do paciente e mantenha as respostas curtas (2 a 4 linhas). [EDITE: endereço, horários e telefone da sua clínica aqui.]",
-        max_turnos_bot: 5,
-        usar_contexto_clinico: true,
-        gatilhos_ativos: {
-          confirmacao_24h: true, lembrete_2h: true, no_show_automatico: false, pos_sessao: true,
-          exercicio_pendente: true, myid_vencido: true, reengajamento: true,
-          aniversario: true, pagamento_pendente: false,
-        },
-        palavras_escalonamento: ["urgente", "emergência", "dor forte", "não aguento", "sangrando"],
-      });
+      if (data) {
+        setCfg(data);
+      } else {
+        // Primeiro acesso: já semeia a config padrão no banco (não só na tela),
+        // para os lembretes automáticos funcionarem sem depender de "Salvar".
+        setCfg(defaultAutomacoes(user.id));
+        ensureAutomacoesPadrao(user.id);
+      }
 
       const desde = new Date(Date.now() - 7 * 86400000).toISOString();
       const { data: disp } = await supabase
