@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import AppLayout from '@/components/AppLayout';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,7 +14,7 @@ import {
   Search, Send, MessageCircle, Phone, User, Loader2, Zap, StickyNote,
   Trash2, Plus, Sparkles, Bot, Paperclip, Image as ImageIcon, FileText,
   X, Pencil, SmilePlus, ArrowLeft, MoreVertical, Copy, CheckCheck,
-  ChevronDown, AlertCircle, Clock, UserCheck,
+  ChevronDown, AlertCircle, Clock, UserCheck, UserPlus,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WhatsappAutomacoes from '@/pages/WhatsappAutomacoes';
@@ -108,15 +109,15 @@ function WaAvatar({ name, size = 40 }: { name: string; size?: number }) {
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
-export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
+export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embedded?: boolean; mode?: 'clientes' | 'leads' } = {}) {
+  const isLeads = mode === 'leads';
   const [busca, setBusca] = useState('');
-  // Visão única e simples (estilo WhatsApp). O Zap mostra SOMENTE clientes
-  // cadastrados — números de fora (não-clientes) nunca aparecem aqui.
   const [view, setView] = useState<ViewKey>('conversas');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversasRaw = [], isLoading } = useWhatsappConversas();
   const { data: idsGlobais = [] } = useGlobalMessageSearch(busca);
+  const qc = useQueryClient();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -124,33 +125,63 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
 
   const temMsg = (c: WAConversa) => !!c.ultima_mensagem_em;
 
-  // Apenas conversas de pacientes cadastrados entram no Zap.
-  const pacientesConv = useMemo(
-    () => conversasRaw.filter(c => !!c.paciente_id),
-    [conversasRaw],
+  // 'clientes' (Zap): só pacientes cadastrados.
+  // 'leads' (Captação): só NÃO cadastrados com atividade (quem veio de anúncio).
+  const baseConv = useMemo(
+    () => isLeads
+      ? conversasRaw.filter(c => !c.paciente_id && temMsg(c))
+      : conversasRaw.filter(c => !!c.paciente_id),
+    [conversasRaw, isLeads],
   );
 
   const counts = useMemo(() => ({
-    conversas: pacientesConv.filter(temMsg).length,
-    todos:     pacientesConv.length,
-    nao_lidas: pacientesConv.filter(c => (c.nao_lidas || 0) > 0).length,
-  } as Record<ViewKey, number>), [pacientesConv]);
+    conversas: baseConv.filter(temMsg).length,
+    todos:     baseConv.length,
+    nao_lidas: baseConv.filter(c => (c.nao_lidas || 0) > 0).length,
+  } as Record<ViewKey, number>), [baseConv]);
 
-  const filtradas = useMemo(() => pacientesConv.filter(c => {
+  const filtradas = useMemo(() => baseConv.filter(c => {
     const q = busca.toLowerCase().trim();
     if (q) {
       const matchMeta = (c.nome_contato || '').toLowerCase().includes(q) || c.telefone.includes(q);
       const matchMsg  = q.length >= 3 && idsGlobais.includes(c.id);
       if (!matchMeta && !matchMsg) return false;
     }
-    if (view === 'todos') return true;                 // todos os pacientes (mesmo sem msg ainda)
+    if (view === 'todos') return true;
     if (view === 'nao_lidas') return (c.nao_lidas || 0) > 0;
-    return temMsg(c);                                  // 'conversas' — pacientes com atividade
-  }), [pacientesConv, busca, idsGlobais, view]);
+    return temMsg(c);
+  }), [baseConv, busca, idsGlobais, view]);
 
-  const VIEWS: [ViewKey, string][] = [
-    ['conversas', 'Conversas'], ['todos', 'Todos os pacientes'], ['nao_lidas', 'Não lidas'],
-  ];
+  const VIEWS: [ViewKey, string][] = isLeads
+    ? [['conversas', 'Leads'], ['nao_lidas', 'Não respondidos']]
+    : [['conversas', 'Conversas'], ['todos', 'Todos os pacientes'], ['nao_lidas', 'Não lidas']];
+
+  // Converte um lead em cliente: cria o paciente a partir da conversa e vincula.
+  const cadastrarCliente = async (conversa: WAConversa) => {
+    if (!userId) return;
+    const nome = (conversa.nome_contato || '').trim();
+    const [primeiro, ...resto] = nome.split(/\s+/);
+    try {
+      const { data: novo, error } = await supabase.from('pacientes').insert({
+        nome: primeiro || 'Cliente',
+        sobrenome: resto.join(' ') || '',
+        telefone: conversa.telefone,
+        terapeuta_id: userId,
+        ativo: true,
+        origem: 'captacao_zap',
+      }).select('id').single();
+      if (error) throw error;
+      await supabase.from('whatsapp_conversas')
+        .update({ paciente_id: novo.id, pipeline_stage: 'qualificado' })
+        .eq('id', conversa.id);
+      toast.success('Cliente cadastrado! A conversa foi para o Zap de clientes.');
+      qc.invalidateQueries({ queryKey: ['wa-conversas'] });
+      qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
+      setSelecionada(null);
+    } catch (e: any) {
+      toast.error('Erro ao cadastrar: ' + (e.message || e));
+    }
+  };
 
   const panelLeft = cn(
     'flex flex-col border-r border-border/30 bg-background w-full md:w-[390px] shrink-0',
@@ -167,7 +198,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
           {/* WA-style top bar */}
           <div className="h-14 px-4 flex items-center gap-3 bg-[#008069] dark:bg-[#202c33] shrink-0">
             <MessageCircle className="h-5 w-5 text-white/90" />
-            <span className="text-white font-semibold flex-1 text-[15px]">WhatsApp</span>
+            <span className="text-white font-semibold flex-1 text-[15px]">{isLeads ? 'Captação · Leads' : 'WhatsApp'}</span>
             <BotConfigPanelBtn />
           </div>
 
@@ -238,6 +269,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
               conversa={selecionada}
               userId={userId}
               onBack={() => setSelecionada(null)}
+              onCadastrar={isLeads && !selecionada.paciente_id ? () => cadastrarCliente(selecionada) : undefined}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-5 bg-[#f0f2f5] dark:bg-[#222e35]">
@@ -322,7 +354,7 @@ function ConversaItem({ conversa: c, ativa, userId, last, onClick }: {
 }
 
 // ─── ChatPanel ────────────────────────────────────────────────────────────────
-function ChatPanel({ conversa, userId, onBack }: { conversa: WAConversa; userId: string | null; onBack: () => void }) {
+function ChatPanel({ conversa, userId, onBack, onCadastrar }: { conversa: WAConversa; userId: string | null; onBack: () => void; onCadastrar?: () => void }) {
   const [texto, setTexto] = useState('');
   const [replyTo, setReplyTo] = useState<ReplyTo | null>(null);
   const [transcribingId, setTranscribingId] = useState<string | null>(null);
@@ -501,6 +533,21 @@ function ChatPanel({ conversa, userId, onBack }: { conversa: WAConversa; userId:
           </div>
         )}
       </div>
+
+      {/* Faixa de conversão de lead → cliente (aba Captação) */}
+      {onCadastrar && (
+        <div className="shrink-0 px-4 py-2.5 flex items-center gap-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
+          <UserCheck className="h-4 w-4 text-amber-600 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-semibold text-amber-800 dark:text-amber-200">Este contato ainda é um lead</p>
+            <p className="text-[10px] text-amber-700/80 dark:text-amber-300/80">Cadastre para virar cliente e ir pro Zap (com automações, agenda, etc.)</p>
+          </div>
+          <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+            onClick={onCadastrar}>
+            <UserPlus className="h-3.5 w-3.5" /> Cadastrar cliente
+          </Button>
+        </div>
+      )}
 
       {/* Bot status strip */}
       {botOn && (
