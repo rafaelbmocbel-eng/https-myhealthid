@@ -1254,7 +1254,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
                 const off = savedOrganOffsets[zona.id] ?? { dx: 0, dy: 0 };
                 const piv = zonePivot(zona.shape);
-                const cx  = piv.x + off.dx;
+                const rawX = piv.x + off.dx;
+                // Na vista posterior a lateralidade espelha: o lado direito do
+                // paciente aparece à DIREITA de quem olha (o oposto da frente).
+                // As zonas bilaterais dos membros usam coordenadas orientadas
+                // pela frente, então espelhamos em torno do eixo médio (x=120,
+                // viewBox 240). Estruturas na linha média (coluna, crânio) ficam
+                // em x=120 → 240-120=120, ou seja, não se movem.
+                const cx  = view === 'back' ? 240 - rawX : rawX;
                 const cy  = piv.y + off.dy;
 
                 return (
