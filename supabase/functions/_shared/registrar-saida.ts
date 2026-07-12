@@ -20,14 +20,23 @@ export async function registrarMensagemSaida(
   if (!digits) return;
   const sufixo = digits.slice(-10); // ignora código do país ao casar a conversa
 
-  let { data: conv } = await admin
-    .from("whatsapp_conversas")
-    .select("id, paciente_id")
-    .eq("terapeuta_id", opts.terapeuta_id)
-    .ilike("telefone", `%${sufixo}`)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  // Paciente cadastrado → uma conversa por paciente_id (à prova de formato de
+  // telefone). Sem paciente → casa pela terminação do número.
+  let conv: { id: string; paciente_id: string | null } | null = null;
+  if (opts.paciente_id) {
+    const { data } = await admin
+      .from("whatsapp_conversas").select("id, paciente_id")
+      .eq("terapeuta_id", opts.terapeuta_id).eq("paciente_id", opts.paciente_id)
+      .order("created_at", { ascending: true }).limit(1).maybeSingle();
+    conv = data as typeof conv;
+  }
+  if (!conv) {
+    const { data } = await admin
+      .from("whatsapp_conversas").select("id, paciente_id")
+      .eq("terapeuta_id", opts.terapeuta_id).ilike("telefone", `%${sufixo}`)
+      .order("created_at", { ascending: true }).limit(1).maybeSingle();
+    conv = data as typeof conv;
+  }
 
   // Conversa já existe mas sem vínculo de paciente → religa agora, senão ela
   // fica presa como "não cadastrado" e some do filtro padrão do Zap.
