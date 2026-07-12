@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, Clock, CheckCircle, AlertTriangle, Users, MessageCircle, BarChart3, ShoppingCart, Loader2 } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Users, MessageCircle, BarChart3, ShoppingCart, Loader2 } from 'lucide-react';
 import { format, startOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -111,51 +111,40 @@ export default function FinanceiroGeral() {
         </Suspense>
       ) : (
       <div className="space-y-6">
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 opacity-80" />
-              <span className="text-[10px] uppercase font-bold opacity-80">Receita do Mês</span>
-            </div>
-            <p className="text-2xl font-black">{fmt(metrics.receitaTotalMes)}</p>
-            <p className="text-[10px] opacity-70">{metrics.sessoesMesCount} sessões realizadas</p>
-          </CardContent>
-        </Card>
+      {/* KPIs — linguagem premium (clinical-card + kpi-hero) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Receita do mês — número-herói em ouro */}
+        <div className="clinical-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground/70 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: 'hsl(42 58% 50%)' }} /> Receita do mês
+          </div>
+          <div className="kpi-hero tabular-nums leading-none text-lg sm:text-xl text-gradient-gold">{fmt(metrics.receitaTotalMes)}</div>
+          <p className="text-[10px] text-muted-foreground mt-1.5">{metrics.sessoesMesCount} sessões realizadas</p>
+        </div>
 
-        <Card className="border">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
-              <span className="text-[10px] uppercase font-bold text-muted-foreground">Confirmado</span>
-            </div>
-            <p className="text-2xl font-black text-emerald-600">{fmt(metrics.totalConfirmadoMes)}</p>
-            <p className="text-[10px] text-muted-foreground">Pagamentos confirmados no mês</p>
-          </CardContent>
-        </Card>
+        <div className="clinical-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground/70 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: 'hsl(152 55% 42%)' }} /> Confirmado
+          </div>
+          <div className="kpi-hero tabular-nums leading-none text-lg sm:text-xl text-emerald-600 dark:text-emerald-400">{fmt(metrics.totalConfirmadoMes)}</div>
+          <p className="text-[10px] text-muted-foreground mt-1.5">Pagamentos confirmados no mês</p>
+        </div>
 
-        <Card className="border">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Clock className="h-4 w-4 text-amber-500" />
-              <span className="text-[10px] uppercase font-bold text-muted-foreground">Pendente</span>
-            </div>
-            <p className="text-2xl font-black text-amber-600">{fmt(metrics.totalPendenteMes)}</p>
-            <p className="text-[10px] text-muted-foreground">{metrics.pagPendentesCount} cobranças pendentes</p>
-          </CardContent>
-        </Card>
+        <div className="clinical-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground/70 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: 'hsl(38 90% 46%)' }} /> Pendente
+          </div>
+          <div className="kpi-hero tabular-nums leading-none text-lg sm:text-xl text-amber-600 dark:text-amber-400">{fmt(metrics.totalPendenteMes)}</div>
+          <p className="text-[10px] text-muted-foreground mt-1.5">{metrics.pagPendentesCount} cobranças pendentes</p>
+        </div>
 
-        <Card className="border">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-[10px] uppercase font-bold text-muted-foreground">Sessões s/ Pgto</span>
-            </div>
-            <p className="text-2xl font-black text-red-500">{metrics.sessoesSemPagamento.length}</p>
-            <p className="text-[10px] text-muted-foreground">Sessões realizadas sem valor</p>
-          </CardContent>
-        </Card>
+        <div className="clinical-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground/70 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: 'hsl(0 72% 55%)' }} /> Sessões s/ pgto
+          </div>
+          <div className="kpi-hero tabular-nums leading-none text-lg sm:text-xl text-rose-500">{metrics.sessoesSemPagamento.length}</div>
+          <p className="text-[10px] text-muted-foreground mt-1.5">Sessões realizadas sem valor</p>
+        </div>
       </div>
 
       {/* Sessões sem pagamento */}
