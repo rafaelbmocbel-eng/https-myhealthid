@@ -5,7 +5,7 @@ import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
   LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame,
   Dumbbell, Wallet, Watch, Ticket, MessageSquare, Mic, MoreHorizontal, X,
-  ChevronRight, Lock, Users, Activity, Sparkles,
+  ChevronRight, Lock, Users, Activity, Sparkles, Lightbulb,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
@@ -37,6 +37,7 @@ const navItems = [
   { path: '/paciente/profissionais', label: 'Encontrar profissional', shortLabel: 'Profiss.', icon: Users,          badgeKey: null, premium: false },
   { path: '/paciente/avatar',        label: 'Meu Avatar Clínico',   shortLabel: 'Avatar',   icon: Activity,        badgeKey: null, premium: false },
   { path: '/paciente/plano-ia',      label: 'Meu Plano (IA)',       shortLabel: 'Plano',    icon: Sparkles,        badgeKey: null, premium: false },
+  { path: '/paciente/dicas',         label: 'Dicas pra você',       shortLabel: 'Dicas',    icon: Lightbulb,       badgeKey: null, premium: false },
 ];
 
 // Bottom nav: Início, Agenda, Treinos, Diário, +Mais
