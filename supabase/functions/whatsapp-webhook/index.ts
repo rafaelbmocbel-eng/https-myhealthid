@@ -101,9 +101,9 @@ Deno.serve(async (req) => {
     // por texto não funcionava e a resposta caía sem paciente_id.
     let paciente_id: string | null = null;
     const tail = phone.slice(-10);
-    const { data: pacRows } = await admin.rpc("paciente_por_sufixo_telefone", {
+    const { data: pacRows } = await admin.rpc("paciente_por_telefone_norm", {
       p_terapeuta: terapeuta_id,
-      p_sufixo: tail,
+      p_telefone: phone,
     });
     const pac = (Array.isArray(pacRows) ? pacRows[0] : pacRows) as
       { id: string; nome?: string | null; sobrenome?: string | null } | null;

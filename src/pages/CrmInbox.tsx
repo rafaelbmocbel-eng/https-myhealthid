@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 // ─── Types ───────────────────────────────────────────────────────────────────
 type FilaTab = 'todas' | 'minhas' | 'nao_atribuidas' | 'atrasadas';
 type ColunaWS = 'pendentes' | 'andamento' | 'conversas' | 'fechadas';
-type ViewKey = 'todas' | 'pacientes' | 'nao_lidas' | 'nao_cad';
+type ViewKey = 'conversas' | 'todos' | 'nao_lidas';
 interface ReplyTo { id: string; content: string; isMine: boolean }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -110,8 +110,9 @@ function WaAvatar({ name, size = 40 }: { name: string; size?: number }) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
-  // Visão única e simples (estilo WhatsApp), sem as duas fileiras de abas.
-  const [view, setView] = useState<ViewKey>('todas');
+  // Visão única e simples (estilo WhatsApp). O Zap mostra SOMENTE clientes
+  // cadastrados — números de fora (não-clientes) nunca aparecem aqui.
+  const [view, setView] = useState<ViewKey>('conversas');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversasRaw = [], isLoading } = useWhatsappConversas();
@@ -123,28 +124,32 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
 
   const temMsg = (c: WAConversa) => !!c.ultima_mensagem_em;
 
-  const counts = useMemo(() => ({
-    todas:     conversasRaw.filter(temMsg).length,
-    pacientes: conversasRaw.filter(c => !!c.paciente_id).length,
-    nao_lidas: conversasRaw.filter(c => (c.nao_lidas || 0) > 0).length,
-    nao_cad:   conversasRaw.filter(c => !c.paciente_id && temMsg(c)).length,
-  } as Record<ViewKey, number>), [conversasRaw]);
+  // Apenas conversas de pacientes cadastrados entram no Zap.
+  const pacientesConv = useMemo(
+    () => conversasRaw.filter(c => !!c.paciente_id),
+    [conversasRaw],
+  );
 
-  const filtradas = useMemo(() => conversasRaw.filter(c => {
+  const counts = useMemo(() => ({
+    conversas: pacientesConv.filter(temMsg).length,
+    todos:     pacientesConv.length,
+    nao_lidas: pacientesConv.filter(c => (c.nao_lidas || 0) > 0).length,
+  } as Record<ViewKey, number>), [pacientesConv]);
+
+  const filtradas = useMemo(() => pacientesConv.filter(c => {
     const q = busca.toLowerCase().trim();
     if (q) {
       const matchMeta = (c.nome_contato || '').toLowerCase().includes(q) || c.telefone.includes(q);
       const matchMsg  = q.length >= 3 && idsGlobais.includes(c.id);
       if (!matchMeta && !matchMsg) return false;
     }
-    if (view === 'pacientes') return !!c.paciente_id;                 // todos os pacientes (mesmo sem msg ainda)
+    if (view === 'todos') return true;                 // todos os pacientes (mesmo sem msg ainda)
     if (view === 'nao_lidas') return (c.nao_lidas || 0) > 0;
-    if (view === 'nao_cad')   return !c.paciente_id && temMsg(c);
-    return temMsg(c);                                                 // 'todas' — qualquer conversa com atividade
-  }), [conversasRaw, busca, idsGlobais, view]);
+    return temMsg(c);                                  // 'conversas' — pacientes com atividade
+  }), [pacientesConv, busca, idsGlobais, view]);
 
   const VIEWS: [ViewKey, string][] = [
-    ['todas', 'Todas'], ['pacientes', 'Pacientes'], ['nao_lidas', 'Não lidas'], ['nao_cad', 'Não cadastradas'],
+    ['conversas', 'Conversas'], ['todos', 'Todos os pacientes'], ['nao_lidas', 'Não lidas'],
   ];
 
   const panelLeft = cn(
