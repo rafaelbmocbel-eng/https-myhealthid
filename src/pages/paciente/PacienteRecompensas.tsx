@@ -24,6 +24,10 @@ export default function PacienteRecompensas() {
   const nivel = xpData?.nivel_atual ?? 'bronze';
   const { proximo, faltam } = proximoNivel(xp);
   const nivelIdx = NIVEIS_ORDEM.indexOf(nivel);
+  const pct = proximo
+    ? Math.min(100, Math.max(0, ((xp - NIVEL_LIMITES[nivel]) / (NIVEL_LIMITES[proximo] - NIVEL_LIMITES[nivel])) * 100))
+    : 100;
+  const RING = 2 * Math.PI * 44; // circunferência do anel de progresso
 
   const handleResgate = async (id: string, custo: number, titulo: string) => {
     if (xp < custo) {
@@ -47,52 +51,45 @@ export default function PacienteRecompensas() {
             <p className="text-caption mt-1">Troque seu XP por benefícios reais</p>
           </div>
 
-          {/* Card de nível */}
-          <Card className="overflow-hidden">
-            <CardContent className="p-5 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center', NIVEL_COR[nivel])}>
-                  <Trophy className="w-6 h-6" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-caption">Seu nível</div>
-                  <div className="text-xl font-bold">{NIVEL_LABEL[nivel]}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-caption">XP</div>
-                  <div className="text-xl font-bold text-primary">{xp}</div>
+          {/* Hero de nível — anel de progresso dourado */}
+          <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-primary to-primary-dark text-white shadow-md">
+            <span className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-[hsl(42,80%,60%)]/25 blur-2xl" aria-hidden />
+            <div className="relative flex items-center gap-4">
+              <div className="relative h-[76px] w-[76px] shrink-0">
+                <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="8" />
+                  <circle cx="50" cy="50" r="44" fill="none" stroke="hsl(42 85% 65%)" strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={RING} strokeDashoffset={RING * (1 - pct / 100)} style={{ transition: 'stroke-dashoffset .6s ease' }} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Trophy className="h-8 w-8 text-[hsl(42,85%,70%)]" />
                 </div>
               </div>
-
-              {proximo && (
-                <div>
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="text-muted-foreground">Para {NIVEL_LABEL[proximo]}</span>
-                    <span className="font-semibold">{faltam} XP</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all"
-                      style={{ width: `${Math.min(100, ((xp - NIVEL_LIMITES[nivel]) / (NIVEL_LIMITES[proximo] - NIVEL_LIMITES[nivel])) * 100)}%` }} />
-                  </div>
-                </div>
-              )}
-
-              {/* Trilha de níveis */}
-              <div className="flex justify-between pt-2">
-                {NIVEIS_ORDEM.map((n, i) => (
-                  <div key={n} className="flex flex-col items-center gap-1">
-                    <div className={cn(
-                      'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2',
-                      i <= nivelIdx ? 'border-primary bg-primary text-primary-foreground' : 'border-muted bg-background text-muted-foreground'
-                    )}>
-                      {i <= nivelIdx ? <Check className="w-3.5 h-3.5" /> : i + 1}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{NIVEL_LABEL[n]}</span>
-                  </div>
-                ))}
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-white/70">Seu nível</div>
+                <div className="font-display text-2xl leading-tight text-white">{NIVEL_LABEL[nivel]}</div>
+                <div className="text-sm font-semibold text-[hsl(42,85%,72%)] mt-0.5">{xp} XP</div>
+                {proximo && (
+                  <div className="text-[11px] text-white/70 mt-0.5">Faltam <strong className="text-white">{faltam} XP</strong> para {NIVEL_LABEL[proximo]}</div>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Trilha de níveis */}
+            <div className="relative mt-4 flex justify-between">
+              {NIVEIS_ORDEM.map((n, i) => (
+                <div key={n} className="flex flex-col items-center gap-1">
+                  <div className={cn(
+                    'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold border-2 transition-colors',
+                    i <= nivelIdx ? 'border-[hsl(42,85%,65%)] bg-[hsl(42,85%,65%)] text-primary' : 'border-white/30 text-white/50',
+                  )}>
+                    {i <= nivelIdx ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : i + 1}
+                  </div>
+                  <span className={cn('text-[10px]', i <= nivelIdx ? 'text-white/90' : 'text-white/50')}>{NIVEL_LABEL[n]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Catálogo */}
           <section>
