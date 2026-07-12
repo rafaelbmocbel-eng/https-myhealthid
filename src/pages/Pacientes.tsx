@@ -853,7 +853,7 @@ export default function Pacientes() {
                 disabled={!clickable}
                 onClick={() => { if (clickable) setFilterTag(active ? 'todos' : (k.key as ClassificacaoTag | 'todos')); }}
                 className={cn(
-                  'text-left rounded-xl border p-3 sm:p-4 transition-colors',
+                  'text-left rounded-xl border px-3 py-2.5 sm:py-3 transition-colors',
                   active
                     ? 'border-primary/50 bg-muted/30 ring-1 ring-primary/20'
                     : 'border-border/40 bg-card',
@@ -864,7 +864,7 @@ export default function Pacientes() {
                   {k.dot && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: k.dot }} />}
                   {k.label}
                 </div>
-                <div className={cn('kpi-hero tabular-nums leading-none text-2xl sm:text-3xl', k.gold ? 'text-gradient-gold' : 'text-foreground')}>
+                <div className={cn('kpi-hero tabular-nums leading-none text-xl sm:text-2xl', k.gold ? 'text-gradient-gold' : 'text-foreground')}>
                   {k.value}
                 </div>
               </button>
