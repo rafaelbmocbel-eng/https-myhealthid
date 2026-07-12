@@ -168,36 +168,49 @@ export default function PacienteEvolucao() {
 
             <TabsContent value="evolucao" className="mt-4 space-y-5">
               {/* Main wellness gauge — only shown when patient has enough data */}
-              {logs.length >= 3 && (
-                <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Índice de Bem-Estar</p>
-                        <div className="flex items-baseline gap-2 mt-1">
-                          <span className="text-4xl font-black text-foreground">{trend.weekAvg}</span>
-                          <span className="text-lg text-muted-foreground">/100</span>
+              {logs.length >= 3 && (() => {
+                const R = 2 * Math.PI * 42;
+                const cor = trend.weekAvg >= 70 ? 'hsl(152 55% 45%)' : trend.weekAvg >= 40 ? 'hsl(42 85% 52%)' : 'hsl(0 72% 55%)';
+                return (
+                  <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-5">
+                        {/* Medidor circular */}
+                        <div className="relative h-28 w-28 shrink-0">
+                          <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="9" />
+                            <circle cx="50" cy="50" r="42" fill="none" stroke={cor} strokeWidth="9" strokeLinecap="round"
+                              strokeDasharray={R} strokeDashoffset={R * (1 - trend.weekAvg / 100)} style={{ transition: 'stroke-dashoffset .6s ease' }} />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-3xl font-black text-foreground leading-none">{trend.weekAvg}</span>
+                            <span className="text-[10px] text-muted-foreground mt-0.5">de 100</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <TrendIcon className={`icon-sm ${trendColor}`} />
-                          <span className={`text-xs font-bold ${trendColor}`}>
-                            {trend.delta > 0 ? '+' : ''}{trend.delta} pts vs semana anterior
-                          </span>
+                        {/* Nível + tendência */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Índice de Bem-Estar</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-2xl">{currentLevel.emoji}</span>
+                            <span className={`text-sm font-bold ${currentLevel.color}`}>{currentLevel.label}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-2">
+                            <TrendIcon className={`icon-sm ${trendColor}`} />
+                            <span className={`text-xs font-semibold ${trendColor}`}>
+                              {trend.delta > 0 ? '+' : ''}{trend.delta} pts vs semana anterior
+                            </span>
+                          </div>
+                          {trend.streak > 0 && (
+                            <Badge variant="outline" className="mt-2 text-[9px] gap-0.5 border-amber-200 text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-300">
+                              <Flame className="h-2.5 w-2.5" /> {trend.streak} dias de registro
+                            </Badge>
+                          )}
                         </div>
                       </div>
-                      <div className="text-center">
-                        <span className="text-4xl">{currentLevel.emoji}</span>
-                        <p className={`text-xs font-bold mt-1 ${currentLevel.color}`}>{currentLevel.label}</p>
-                        {trend.streak > 0 && (
-                          <Badge variant="outline" className="mt-1 text-[9px] gap-0.5 border-amber-200 text-amber-700 bg-amber-50">
-                            <Flame className="h-2.5 w-2.5" /> {trend.streak}d
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               {/* Alerts */}
               {alerts.length > 0 && (
