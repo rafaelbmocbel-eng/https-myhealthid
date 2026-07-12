@@ -66,12 +66,15 @@ Deno.serve(async (req) => {
         fetch(`${base}/webhooks`, { headers: zHeaders }).then(r => r.json()).catch((e) => ({ erro: String(e) })),
       ]);
       const webhooksTxt = JSON.stringify(whRes);
+      // Sinal REAL de que o recebimento funciona: chegaram mensagens de entrada.
+      // (a leitura do GET /webhooks da Z-API é inconsistente e dava falso "Não")
+      const recebendo = db.mensagens_entrada > 0;
       zapi = {
         configurada: true,
         instancia: cfg.zapi_instance_id,
         conectada: (stRes as any)?.connected === true || (stRes as any)?.smartphoneConnected === true,
         status_bruto: stRes,
-        webhook_recebimento_aponta_pra_nos: webhooksTxt.includes("whatsapp-webhook"),
+        webhook_recebimento_aponta_pra_nos: recebendo || webhooksTxt.includes("whatsapp-webhook"),
         webhooks_bruto: whRes,
       };
     } else if (provider === "evolution") {
@@ -82,8 +85,8 @@ Deno.serve(async (req) => {
     const problemas: string[] = [];
     if (!cfg?.zapi_instance_id && provider === "zapi") problemas.push("Clínica sem instância Z-API — conecte o WhatsApp.");
     if (provider === "zapi" && zapi.configurada && !zapi.conectada) problemas.push("WhatsApp NÃO está conectado na Z-API (reescaneie o QR).");
-    if (provider === "zapi" && zapi.configurada && zapi.webhook_recebimento_aponta_pra_nos === false) problemas.push("O webhook de RECEBIMENTO não aponta pro app — clique em Reconectar.");
-    if (db.mensagens_entrada === 0) problemas.push("ZERO mensagens de entrada no banco — a Z-API não está entregando as respostas ao webhook (webhook/instância).");
+    // Só é problema de recebimento se NENHUMA mensagem de entrada existir.
+    if (db.mensagens_entrada === 0) problemas.push("ZERO mensagens de entrada no banco — a Z-API não está entregando as respostas ao webhook. Clique em Reconectar.");
 
     return json({ ok: true, provider, db, zapi, problemas });
   } catch (err) {
