@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionTitle } from "@/components/ui/section-title";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -238,9 +239,12 @@ export default function BaseCientifica() {
       {/* Per-area ingestion */}
       <Card className="p-5">
         <SectionTitle
-          title="Atualizar por área"
-          description="Dispare a carga ou atualização individualmente para cada área da saúde. Roda em background — pode fechar a página."
+          title="Atualizar por área · ✨ Gerar exercícios"
+          description="Baixe artigos por área e use ✨ para a IA gerar exercícios/dicas de evidência (rascunho). Depois revise e libere no Catálogo."
         />
+        <Link to="/catalogo-evidencia" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary mt-2 hover:underline">
+          <Sparkles className="h-4 w-4" /> Revisar e liberar exercícios gerados →
+        </Link>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
           {AREAS.map((a) => {
             const busy = ingestingArea === a.key;
