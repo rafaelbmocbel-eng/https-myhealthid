@@ -84,9 +84,10 @@ Deno.serve(async (req) => {
     async function processarPaciente(ag: AgendamentoBase): Promise<PacienteInfo | null> {
       const { data: pac } = await admin
         .from("pacientes")
-        .select("nome, telefone")
+        .select("nome, telefone, ativo")
         .eq("id", ag.paciente_id).maybeSingle();
-      if (!pac?.telefone) return null;
+      // Sem telefone, ou removido/inativado dos clientes → não envia automática.
+      if (!pac?.telefone || (pac as { ativo?: boolean }).ativo === false) return null;
       const dt = new Date(ag.data_inicio);
       return {
         pac,

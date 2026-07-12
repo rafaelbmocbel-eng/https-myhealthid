@@ -399,13 +399,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, skip: "bot desativado" }), { headers: corsHeaders });
     }
 
-    // O bot responde APENAS a: CLIENTES (paciente_id) OU LEADS DE ANÚNCIO
-    // (conversa com origem de propaganda — Instagram/Google/…). Contatos
-    // aleatórios/pessoais (sem cadastro e sem origem de anúncio) NÃO recebem
-    // mensagem automática — evita responder família/amigos e poluir.
-    const clienteOuLeadDeAnuncio = !!conv.paciente_id || !!(conv as { origem?: string | null }).origem;
-    if (cfg.bot_apenas_cadastrados !== false && !clienteOuLeadDeAnuncio) {
-      return new Response(JSON.stringify({ ok: true, skip: "contato_nao_cadastrado" }), { headers: corsHeaders });
+    // REGRA ESTRITA: o bot só manda automática para quem está na lista de
+    // CLIENTES — cadastrado E ativo. Sem cadastro, inativo, ou removido dos
+    // clientes → NÃO responde. (Leads de anúncio ficam para quando houver
+    // campanhas; por ora, ninguém fora da lista de clientes recebe.)
+    if (!conv.paciente_id) {
+      return new Response(JSON.stringify({ ok: true, skip: "nao_cliente" }), { headers: corsHeaders });
+    }
+    const { data: pacStatus } = await admin
+      .from("pacientes").select("ativo").eq("id", conv.paciente_id).maybeSingle();
+    if (!pacStatus || (pacStatus as { ativo?: boolean }).ativo === false) {
+      return new Response(JSON.stringify({ ok: true, skip: "cliente_inativo_ou_removido" }), { headers: corsHeaders });
     }
 
     // Já escalada? Não responde.
