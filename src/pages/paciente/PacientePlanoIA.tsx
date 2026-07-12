@@ -26,9 +26,9 @@ export default function PacientePlanoIA() {
       if (!pac) { setLoading(false); return; }
       const [t, d] = await Promise.all([
         supabase.from('planos_treino').select('titulo, objetivo, estrutura, created_at')
-          .eq('paciente_id', pac.id).eq('ativo', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          .eq('paciente_id', pac.id).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
         (supabase as any).from('planos_alimentares').select('titulo, calorias_alvo, plano, created_at')
-          .eq('paciente_id', pac.id).eq('ativo', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          .eq('paciente_id', pac.id).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       ]);
       setTreino(t.data || null);
       setDieta(d.data || null);

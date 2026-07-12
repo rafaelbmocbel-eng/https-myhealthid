@@ -72,6 +72,7 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
         duracao_semanas: duracao,
         restricoes: restricoes || null,
         estrutura: plano,
+        aprovado: false,
       });
       if (insErr) throw insErr;
     },
@@ -86,6 +87,13 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
   const apagar = async (id: string) => {
     if (!confirm('Apagar este plano?')) return;
     await (supabase as any).from('planos_treino').delete().eq('id', id);
+    qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+  };
+
+  const liberar = async (id: string, aprovado: boolean) => {
+    const { error } = await (supabase as any).from('planos_treino').update({ aprovado }).eq('id', id);
+    if (error) return toast.error(error.message);
+    toast.success(aprovado ? 'Liberado para o paciente' : 'Ocultado do paciente');
     qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
   };
 
@@ -154,6 +162,12 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
                   <Badge variant="outline" className="ml-1 text-[10px]">{p.nivel}</Badge>
                 </div>
               </div>
+              {p.aprovado
+                ? <Badge className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 shrink-0">Liberado</Badge>
+                : <Badge variant="outline" className="text-[10px] shrink-0">Rascunho</Badge>}
+              <Button size="sm" variant={p.aprovado ? 'ghost' : 'default'} className="h-7 text-[11px] px-2 shrink-0" onClick={() => liberar(p.id, !p.aprovado)}>
+                {p.aprovado ? 'Ocultar' : 'Liberar'}
+              </Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setVerPlano(p)}><Eye className="icon-xs" /></Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => apagar(p.id)}><Trash2 className="icon-xs text-destructive" /></Button>
             </div>

@@ -88,6 +88,7 @@ export default function PlanoAlimentarCard({ pacienteId }: Props) {
           sexo: paciente?.sexo,
           antropometria: antropoUlt,
           recordatorio: recUlt,
+          paciente_id: pacienteId,
         },
       });
       if (error) throw error;
@@ -103,6 +104,7 @@ export default function PlanoAlimentarCard({ pacienteId }: Props) {
         macros_alvo: p.macros || null,
         plano: p,
         ativo: true,
+        aprovado: false,
       });
       if (insErr) throw insErr;
     },
@@ -120,6 +122,15 @@ export default function PlanoAlimentarCard({ pacienteId }: Props) {
       if (error) throw error;
     },
     onSuccess: () => { toast.success('Removido'); qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] }); },
+  });
+
+  const aprovar = useMutation({
+    mutationFn: async ({ id, aprovado }: { id: string; aprovado: boolean }) => {
+      const { error } = await (supabase as any).from('planos_alimentares').update({ aprovado }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => { toast.success(v.aprovado ? 'Liberado para o paciente' : 'Ocultado do paciente'); qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] }); },
+    onError: (e: any) => toast.error(e.message),
   });
 
   return (
@@ -146,7 +157,13 @@ export default function PlanoAlimentarCard({ pacienteId }: Props) {
                     {format(parseISO(p.created_at), 'dd/MM/yyyy')} · {p.calorias_alvo || '—'} kcal · {p.objetivo}
                   </p>
                 </div>
-                {p.ativo && <Badge variant="secondary" className="text-xs">Ativo</Badge>}
+                {p.aprovado
+                  ? <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Liberado</Badge>
+                  : <Badge variant="outline" className="text-xs">Rascunho</Badge>}
+                <Button variant={p.aprovado ? 'ghost' : 'default'} size="sm" className="h-8 text-xs px-2.5"
+                  onClick={() => aprovar.mutate({ id: p.id, aprovado: !p.aprovado })} disabled={aprovar.isPending}>
+                  {p.aprovado ? 'Ocultar' : 'Liberar'}
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => setView(p.plano)}>
                   <Eye className="icon-sm" />
                 </Button>
