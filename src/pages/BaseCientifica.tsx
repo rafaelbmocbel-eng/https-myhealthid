@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SectionTitle } from "@/components/ui/section-title";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
-import { Loader2, BookOpen, RefreshCw, Download, ExternalLink, Search } from "lucide-react";
+import { Loader2, BookOpen, RefreshCw, Download, ExternalLink, Search, Sparkles } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 
 type Article = {
@@ -122,6 +122,21 @@ export default function BaseCientifica() {
       setIngesting(null);
     }
   };
+  const [gerandoArea, setGerandoArea] = useState<string | null>(null);
+  const gerarExercicios = async (areaKey: string, areaLabel: string) => {
+    setGerandoArea(areaKey);
+    try {
+      const { data, error } = await supabase.functions.invoke("gerar-exercicios-evidencia", { body: { area: areaKey, quantos: 6 } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`${areaLabel}: ${(data as any)?.gerados ?? 0} exercícios gerados (rascunho) de ${(data as any)?.artigos_usados ?? 0} artigos.`);
+    } catch (e: any) {
+      toast.error("Falha ao gerar: " + (e?.message ?? e));
+    } finally {
+      setGerandoArea(null);
+    }
+  };
+
   const runIngestArea = async (areaKey: string, areaLabel: string, mode: "initial" | "weekly") => {
     setIngestingArea(areaKey);
     try {
@@ -255,6 +270,14 @@ export default function BaseCientifica() {
                     title="Atualizar (últimos 10 dias)"
                   >
                     {busy ? <Loader2 className="icon-xs animate-spin" /> : <RefreshCw className="icon-xs" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={gerandoArea === a.key || busy || !!ingesting}
+                    onClick={() => gerarExercicios(a.key, a.label)}
+                    title="Gerar exercícios terapêuticos por IA a partir da evidência desta área (rascunho para revisão)"
+                  >
+                    {gerandoArea === a.key ? <Loader2 className="icon-xs animate-spin" /> : <Sparkles className="icon-xs" />}
                   </Button>
                 </div>
               </div>

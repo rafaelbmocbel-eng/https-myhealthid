@@ -20,6 +20,7 @@ const QUERIES: { area: string; query: string }[] = [
   { area: "fisioterapia", query: "(physical therapy OR physiotherapy OR rehabilitation) AND (systematic review[pt] OR meta-analysis[pt])" },
   { area: "fisioterapia", query: "(low back pain OR neck pain OR shoulder pain OR knee pain) AND (exercise OR manual therapy) AND (systematic review[pt] OR meta-analysis[pt])" },
   { area: "fisioterapia", query: "(tendinopathy OR osteoarthritis OR chronic pain) AND rehabilitation AND (systematic review[pt] OR meta-analysis[pt])" },
+  { area: "fisioterapia", query: "(breathing exercises OR diaphragmatic breathing OR stretching OR mobility exercises OR relaxation techniques) AND (pain OR rehabilitation OR function) AND (systematic review[pt] OR meta-analysis[pt])" },
   // Medicina
   { area: "medicina", query: "(musculoskeletal disorders OR sports medicine) AND clinical guideline AND (systematic review[pt] OR meta-analysis[pt])" },
   { area: "medicina", query: "(red flags OR cauda equina OR radiculopathy) AND (systematic review[pt] OR meta-analysis[pt])" },
