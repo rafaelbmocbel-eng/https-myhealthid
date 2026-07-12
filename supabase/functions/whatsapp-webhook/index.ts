@@ -14,16 +14,21 @@ function cleanPhone(p: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Exige ?secret=... ou header x-webhook-secret correspondente ao WHATSAPP_WEBHOOK_SECRET
-  // configurado nas secrets do projeto. Configure a mesma URL com ?secret=... no painel Z-API.
+  // Segredo do webhook. Só é EXIGIDO se WHATSAPP_WEBHOOK_SECRET estiver
+  // configurado no projeto — e nesse caso o zapi-conectar aponta a URL com
+  // ?secret=... Se o segredo NÃO estiver configurado, o zapi-conectar aponta a
+  // URL sem secret; então aqui também não exigimos (senão o recebimento ficaria
+  // 100% quebrado quando o dono da plataforma não criou o segredo).
   const expectedSecret = Deno.env.get("WHATSAPP_WEBHOOK_SECRET");
-  const provided = new URL(req.url).searchParams.get("secret") || req.headers.get("x-webhook-secret");
-  if (!expectedSecret || provided !== expectedSecret) {
-    console.warn("[whatsapp-webhook] unauthorized: secret mismatch");
-    return new Response(JSON.stringify({ error: "unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (expectedSecret) {
+    const provided = new URL(req.url).searchParams.get("secret") || req.headers.get("x-webhook-secret");
+    if (provided !== expectedSecret) {
+      console.warn("[whatsapp-webhook] unauthorized: secret mismatch");
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
   try {
