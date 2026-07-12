@@ -913,7 +913,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <div className="flex items-start gap-2">
           {/* Silhueta — principal */}
           <div className="flex-1 relative min-w-0 flex justify-center">
-          <svg viewBox="0 0 240 514" className="h-auto w-full max-h-[62vh] mx-auto relative" shapeRendering="geometricPrecision" preserveAspectRatio="xMidYMid meet" style={{ filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.14)) drop-shadow(0 2px 5px rgba(0,0,0,0.10))' }}>
+          <svg viewBox={`0 0 240 ${Math.round(deriveFigura(figura).footY + 13)}`} className="h-auto w-full max-h-[62vh] mx-auto relative" shapeRendering="geometricPrecision" preserveAspectRatio="xMidYMid meet" style={{ filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.14)) drop-shadow(0 2px 5px rgba(0,0,0,0.10))' }}>
             <defs>
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
@@ -980,8 +980,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               `}
             </style>
 
-            {/* Drop shadow */}
-            <ellipse cx={120} cy={508} rx={46} ry={3} fill="black" opacity={0.08} />
+            {/* Drop shadow — acompanha os pés da figura calibrada */}
+            <ellipse cx={120} cy={Math.round(deriveFigura(figura).footY + 6)} rx={46} ry={3} fill="black" opacity={0.08} />
 
 
             {/* Silhueta stick-figure — proporções da figura calibrada */}
