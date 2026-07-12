@@ -44,12 +44,12 @@ type MainTab = 'clientes' | 'crm' | 'financeiro';
 // ── Classificação automática de pacientes ───────────────────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
 
-const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; color: string; bgColor: string }[] = [
-  { key: 'lead', label: 'Lead', emoji: '🟡', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300' },
-  { key: 'novo', label: 'Cliente Novo', emoji: '🟢', color: 'text-emerald-700', bgColor: 'bg-emerald-100 border-emerald-300' },
-  { key: 'recorrente', label: 'Recorrente', emoji: '🔵', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300' },
-  { key: 'inadimplente', label: 'Inadimplente', emoji: '🔴', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
-  { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
+const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; color: string; bgColor: string; dot: string }[] = [
+  { key: 'lead', label: 'Lead', emoji: '🟡', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300', dot: 'hsl(45 90% 50%)' },
+  { key: 'novo', label: 'Cliente Novo', emoji: '🟢', color: 'text-emerald-700', bgColor: 'bg-emerald-100 border-emerald-300', dot: 'hsl(152 55% 42%)' },
+  { key: 'recorrente', label: 'Recorrente', emoji: '🔵', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300', dot: 'hsl(210 80% 52%)' },
+  { key: 'inadimplente', label: 'Inadimplente', emoji: '🔴', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300', dot: 'hsl(0 72% 55%)' },
+  { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300', dot: 'hsl(30 90% 52%)' },
 ];
 
 // ── Utilitários de máscara ──────────────────────────────────────────────────
@@ -651,6 +651,35 @@ export default function Pacientes() {
     return counts;
   }, [pacientes, getClassificacao]);
 
+  // Nº de sessões por paciente (para o mini-stat na linha)
+  const sessoesCount = useMemo(() => {
+    const m: Record<string, number> = {};
+    sessoes.forEach((s: any) => { m[s.paciente_id] = (m[s.paciente_id] || 0) + 1; });
+    return m;
+  }, [sessoes]);
+
+  // Próxima sessão futura de cada paciente
+  const proximaSessao = useMemo(() => {
+    const now = new Date();
+    const m: Record<string, string> = {};
+    todosAgendamentos.forEach((a: any) => {
+      if (a.status === 'cancelado' || !a.paciente_id) return;
+      const d = new Date(a.data_inicio);
+      if (d <= now) return;
+      if (!m[a.paciente_id] || new Date(m[a.paciente_id]) > d) m[a.paciente_id] = a.data_inicio;
+    });
+    return m;
+  }, [todosAgendamentos]);
+
+  // Pacientes sem consulta há mais de 30 dias (KPI)
+  const semConsulta30d = useMemo(() => {
+    const now = new Date();
+    return pacientes.filter(p => {
+      const u = ultimosAgendamentos[p.id];
+      return !u || differenceInDays(now, new Date(u.data)) > 30;
+    }).length;
+  }, [pacientes, ultimosAgendamentos]);
+
   const filtered = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
     const list = pacientes.filter(p => {
@@ -773,7 +802,7 @@ export default function Pacientes() {
         <div className="flex gap-1 bg-muted/40 p-1 rounded-xl mb-5">
           {([
             { id: 'clientes' as MainTab, label: 'Clientes', icon: Users },
-            { id: 'crm' as MainTab, label: 'Zap.CRM.Tráfe', icon: MessageSquare },
+            { id: 'crm' as MainTab, label: 'Relacionamento', icon: MessageSquare },
             { id: 'financeiro' as MainTab, label: 'Financeiro', icon: DollarSign },
           ]).map(tab => (
             <button
@@ -807,6 +836,42 @@ export default function Pacientes() {
 
         {activeMainTab === 'clientes' && (
         <>
+        {/* ── Faixa de KPIs (mesma linguagem do painel) — também filtram a lista ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mb-5">
+          {([
+            { key: 'todos' as const, label: 'Ativos', value: pacientes.length, gold: false, dot: '' },
+            { key: 'novo' as const, label: 'Novos 30d', value: classificationCounts.novo || 0, gold: true, dot: 'hsl(152 55% 42%)' },
+            { key: 'recorrente' as const, label: 'Recorrentes', value: classificationCounts.recorrente || 0, gold: false, dot: 'hsl(210 80% 52%)' },
+            { key: 'a_pagar' as const, label: 'A pagar', value: classificationCounts.a_pagar || 0, gold: true, dot: 'hsl(30 90% 52%)' },
+            { key: '__sem' as const, label: 'Sem consulta 30d', value: semConsulta30d, gold: false, dot: 'hsl(220 12% 66%)' },
+          ]).map(k => {
+            const clickable = k.key !== '__sem';
+            const active = clickable && filterTag === k.key;
+            return (
+              <button
+                key={k.label}
+                disabled={!clickable}
+                onClick={() => { if (clickable) setFilterTag(active ? 'todos' : (k.key as ClassificacaoTag | 'todos')); }}
+                className={cn(
+                  'text-left rounded-xl border p-3 sm:p-4 transition-colors',
+                  active
+                    ? 'border-primary/50 bg-muted/30 ring-1 ring-primary/20'
+                    : 'border-border/40 bg-card',
+                  clickable ? 'hover:border-primary/40 hover:bg-muted/20' : 'cursor-default',
+                )}
+              >
+                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 truncate text-muted-foreground/70 flex items-center gap-1.5">
+                  {k.dot && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: k.dot }} />}
+                  {k.label}
+                </div>
+                <div className={cn('kpi-hero tabular-nums leading-none text-2xl sm:text-3xl', k.gold ? 'text-gradient-gold' : 'text-foreground')}>
+                  {k.value}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex flex-wrap gap-3 mb-5">
           <div className="relative flex-1 min-w-52">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary pointer-events-none z-10" />
@@ -849,19 +914,28 @@ export default function Pacientes() {
               const tag = getClassificacao(p.id, p.created_at);
               const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
               const pend = pendenciasPorPaciente[p.id];
+              const proxima = proximaSessao[p.id];
+              const nSessoes = sessoesCount[p.id] || 0;
               return (
-                <div key={p.id} className="clinical-card group p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
+                <div key={p.id} className="clinical-card group relative overflow-hidden p-3 sm:p-4 pl-4 sm:pl-5 hover:shadow-md hover:-translate-y-0.5 hover:border-[hsl(var(--gold)/0.45)] transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
+                  {/* Faixa lateral na cor do status */}
+                  <span className={cn('absolute left-0 top-0 bottom-0 w-1', status.color)} aria-hidden />
                   <div className="flex items-center gap-3 sm:gap-4">
-                    {/* Avatar with status dot */}
+                    {/* Avatar com gradiente + ponto de status */}
                     <div className="relative shrink-0">
-                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
+                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-bold text-sm shadow-sm">
                         {p.nome[0]}{p.sobrenome?.[0] || ''}
                       </div>
-                      <div className={cn('absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white', status.color)} title={status.label} />
+                      <div className={cn('absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card', status.color)} title={status.label} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-sm">{p.nome} {p.sobrenome}</span>
+                        {/* Chip de classificação (sempre visível, com bolinha) */}
+                        <Badge variant="outline" className={cn('text-[10px] h-5 gap-1 border font-medium', tagCfg.bgColor, tagCfg.color)}>
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tagCfg.dot }} />
+                          {tagCfg.label}
+                        </Badge>
                         {(() => {
                           // Mostra só o badge de maior prioridade inline; o resto fica acessível via tooltip "+N".
                           const candidatos: { key: string; node: React.ReactNode }[] = [];
@@ -892,16 +966,6 @@ export default function Pacientes() {
                                   }}
                                 >
                                   <Clock className="h-2.5 w-2.5" /> Aguardando dados
-                                </Badge>
-                              ),
-                            });
-                          }
-                          if (tag === 'inadimplente') {
-                            candidatos.push({
-                              key: 'tag',
-                              node: (
-                                <Badge variant="outline" className={cn('text-[10px] h-5 border', tagCfg.bgColor, tagCfg.color)}>
-                                  {tagCfg.emoji} {tagCfg.label}
                                 </Badge>
                               ),
                             });
@@ -951,14 +1015,31 @@ export default function Pacientes() {
                           );
                         })()}
                       </div>
-                      <div className="hidden sm:flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
-                        {p.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telefone}</span>}
-                        {ultimoAg ? (
-                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Última consulta: {formatDistanceToNow(new Date(ultimoAg.data), { addSuffix: true, locale: ptBR })}</span>
+                      <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
+                        {p.telefone ? (
+                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telefone}</span>
+                        ) : (
+                          <button
+                            onClick={e => { e.stopPropagation(); openEdit(p); }}
+                            className="flex items-center gap-1 text-rose-500 hover:underline font-medium"
+                            title="Este paciente não tem telefone — sem WhatsApp"
+                          >
+                            <Phone className="h-3 w-3" />Sem WhatsApp — completar
+                          </button>
+                        )}
+                        {proxima ? (
+                          <span className="flex items-center gap-1 text-primary/80 font-medium"><CalendarDays className="h-3 w-3" />Próxima: {format(new Date(proxima), "dd/MM 'às' HH'h'")}</span>
+                        ) : ultimoAg ? (
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Sessão {formatDistanceToNow(new Date(ultimoAg.data), { addSuffix: true, locale: ptBR })}</span>
                         ) : (
                           <span className="flex items-center gap-1 text-slate-400"><Clock className="h-3 w-3" />Sem consultas</span>
                         )}
                       </div>
+                    </div>
+                    {/* Mini-stat: nº de sessões */}
+                    <div className="hidden sm:block text-right shrink-0 pr-1">
+                      <div className="text-sm font-bold tabular-nums text-foreground leading-none">{nSessoes || '—'}</div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground/70 mt-1">sessões</div>
                     </div>
                     {/* Actions — primary (WhatsApp) + overflow menu */}
                     <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
