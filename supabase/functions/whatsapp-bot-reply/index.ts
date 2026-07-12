@@ -360,7 +360,7 @@ Deno.serve(async (req) => {
 
     const { data: conv } = await admin
       .from("whatsapp_conversas")
-      .select("id, terapeuta_id, telefone, bot_ativo, paciente_id, nome_contato, turnos_bot, requer_atencao")
+      .select("id, terapeuta_id, telefone, bot_ativo, paciente_id, nome_contato, turnos_bot, requer_atencao, origem")
       .eq("id", conversa_id).maybeSingle();
     if (!conv) return new Response(JSON.stringify({ ok: false, error: "conversa não encontrada" }), { status: 404, headers: corsHeaders });
 
@@ -399,11 +399,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, skip: "bot desativado" }), { headers: corsHeaders });
     }
 
-    // Só responde a contatos cadastrados (pacientes do app). Números de fora do
-    // ecossistema aparecem na inbox para o profissional ver, mas o bot não
-    // responde automaticamente — evita poluir o atendimento. O webhook já
-    // vincula paciente_id pelo telefone antes de chamar aqui.
-    if (cfg.bot_apenas_cadastrados !== false && !conv.paciente_id) {
+    // O bot responde APENAS a: CLIENTES (paciente_id) OU LEADS DE ANÚNCIO
+    // (conversa com origem de propaganda — Instagram/Google/…). Contatos
+    // aleatórios/pessoais (sem cadastro e sem origem de anúncio) NÃO recebem
+    // mensagem automática — evita responder família/amigos e poluir.
+    const clienteOuLeadDeAnuncio = !!conv.paciente_id || !!(conv as { origem?: string | null }).origem;
+    if (cfg.bot_apenas_cadastrados !== false && !clienteOuLeadDeAnuncio) {
       return new Response(JSON.stringify({ ok: true, skip: "contato_nao_cadastrado" }), { headers: corsHeaders });
     }
 
