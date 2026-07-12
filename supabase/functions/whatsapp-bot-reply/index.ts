@@ -469,6 +469,18 @@ Deno.serve(async (req) => {
 
     // Fora do horário?
     if (!dentroDoHorario(cfg)) {
+      // ANTI-SPAM: só avisa "fora de horário" UMA vez por período — não a cada
+      // mensagem. Se já avisamos nas últimas 8h, apenas guarda a mensagem
+      // recebida e não responde de novo.
+      const { data: ultForaData } = await admin
+        .from("whatsapp_mensagens_inbox")
+        .select("created_at, metadata")
+        .eq("conversa_id", conversa_id).eq("direcao", "saida")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const ultFora = ultForaData as { created_at: string; metadata: Record<string, unknown> | null } | null;
+      if (ultFora?.metadata?.fora_horario && (Date.now() - new Date(ultFora.created_at).getTime()) < 8 * 3600 * 1000) {
+        return new Response(JSON.stringify({ ok: true, skip: "fora_horario_ja_avisado" }), { headers: corsHeaders });
+      }
       const msgFora = cfg.mensagem_fora_horario || "Recebemos sua mensagem! Nosso horário de atendimento é em breve, e logo te respondemos. 💙";
       const personalizada = msgFora.replace("{nome}", (conv.nome_contato?.split(" ")[0] || ""));
       await enviarWhatsapp(admin, conv.terapeuta_id, conv.telefone, personalizada);
