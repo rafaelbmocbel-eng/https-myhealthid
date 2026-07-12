@@ -16,14 +16,17 @@ export async function registrarMensagemSaida(
     origem: string;
   },
 ): Promise<void> {
-  const tail = (opts.telefone || "").replace(/\D/g, "");
-  if (!tail) return;
+  const digits = (opts.telefone || "").replace(/\D/g, "");
+  if (!digits) return;
+  const sufixo = digits.slice(-10); // ignora código do país ao casar a conversa
 
   let { data: conv } = await admin
     .from("whatsapp_conversas")
     .select("id, paciente_id")
     .eq("terapeuta_id", opts.terapeuta_id)
-    .eq("telefone", tail)
+    .ilike("telefone", `%${sufixo}`)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   // Conversa já existe mas sem vínculo de paciente → religa agora, senão ela
@@ -52,7 +55,7 @@ export async function registrarMensagemSaida(
       .from("whatsapp_conversas")
       .insert({
         terapeuta_id: opts.terapeuta_id,
-        telefone: tail,
+        telefone: digits,
         paciente_id: opts.paciente_id,
         nome_contato,
       })

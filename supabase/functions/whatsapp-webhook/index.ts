@@ -108,14 +108,18 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (pac) paciente_id = pac.id;
 
-    // Upsert conversa
+    // Upsert conversa — casa pela TERMINAÇÃO do número (últimos 10 dígitos),
+    // ignorando o código do país (55). Assim a resposta da cliente cai na mesma
+    // conversa do lembrete, mesmo que os formatos difiram (55… vs cadastro).
     const nome_contato = senderName || (pac ? `${pac.nome ?? ""} ${pac.sobrenome ?? ""}`.trim() : null);
     let conversaId: string;
     const { data: existing } = await admin
       .from("whatsapp_conversas")
       .select("id")
       .eq("terapeuta_id", terapeuta_id)
-      .eq("telefone", phone)
+      .ilike("telefone", `%${tail}`)
+      .order("created_at", { ascending: true })
+      .limit(1)
       .maybeSingle();
 
     if (existing) {
