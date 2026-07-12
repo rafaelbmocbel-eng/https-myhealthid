@@ -314,8 +314,6 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
 function ConversaItem({ conversa: c, ativa, userId, last, onClick, onExcluir }: {
   conversa: WAConversa; ativa: boolean; userId: string | null; last: boolean; onClick: () => void; onExcluir?: () => void;
 }) {
-  const sla   = getSLAStatus(c);
-  const stage = getStage(c.pipeline_stage);
   const name  = c.nome_contato || formatPhoneNumber(c.telefone);
   const time  = c.ultima_mensagem_em ? fmtTime(c.ultima_mensagem_em) : '';
 
@@ -345,7 +343,6 @@ function ConversaItem({ conversa: c, ativa, userId, last, onClick, onExcluir }: 
             {c.ultima_mensagem || '—'}
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
-            {sla.status === 'atrasado' && <span className="h-2 w-2 rounded-full bg-destructive" />}
             {c.nao_lidas > 0 && (
               <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-[#25D366] text-white text-[11px] font-bold">
                 {c.nao_lidas > 99 ? '99+' : c.nao_lidas}
@@ -353,29 +350,20 @@ function ConversaItem({ conversa: c, ativa, userId, last, onClick, onExcluir }: 
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-1">
-          {c.origem ? (
-            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 flex items-center gap-1', ORIGEM_CLS[c.origem] || 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-300/60')}>
-              <Radio className="h-2.5 w-2.5" /> {c.origem}
-            </span>
-          ) : !c.paciente_id ? (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60 shrink-0">
-              Lead
-            </span>
-          ) : null}
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
-            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
-            {stage.label}
-          </span>
-          {c.intencao_atual && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 truncate max-w-[90px]">
-              {c.intencao_atual}
-            </span>
-          )}
-          {c.atribuido_a === userId && (
-            <span className="text-[10px] text-[#008069] dark:text-[#25D366] font-semibold">• minha</span>
-          )}
-        </div>
+        {/* Só o selo de origem/Lead (chat limpo, sem funil/SLA/atribuição) */}
+        {(c.origem || !c.paciente_id) && (
+          <div className="flex items-center gap-2 mt-1">
+            {c.origem ? (
+              <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 flex items-center gap-1', ORIGEM_CLS[c.origem] || 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-300/60')}>
+                <Radio className="h-2.5 w-2.5" /> {c.origem}
+              </span>
+            ) : (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60 shrink-0">
+                Lead
+              </span>
+            )}
+          </div>
+        )}
       </div>
       {onExcluir && (
         <button
@@ -511,7 +499,11 @@ function ChatPanel({ conversa, userId, onBack, onCadastrar, onExcluir }: { conve
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[14px] font-semibold text-foreground truncate leading-tight">{name}</span>
-              <PipelineChip conversa={conversa} />
+              {conversa.origem && (
+                <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border flex items-center gap-1', ORIGEM_CLS[conversa.origem] || 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-300/60')}>
+                  <Radio className="h-2.5 w-2.5" /> {conversa.origem}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
               <Phone className="h-3 w-3 shrink-0" />
@@ -538,7 +530,6 @@ function ChatPanel({ conversa, userId, onBack, onCadastrar, onExcluir }: { conve
                 </Button>
               </Link>
             )}
-            <AtribuirButton conversa={conversa} userId={userId} />
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9"><MoreVertical className="h-4 w-4" /></Button>
