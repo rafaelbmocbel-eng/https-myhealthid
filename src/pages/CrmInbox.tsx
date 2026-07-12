@@ -192,13 +192,20 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
     }
   };
 
-  // Exclui uma conversa (e suas mensagens) — para tirar grupos/spam do crivo.
-  const excluirConversa = async (conversa: WAConversa) => {
-    if (!window.confirm(`Excluir a conversa com "${conversa.nome_contato || conversa.telefone}"? As mensagens serão apagadas.`)) return;
+  // Exclusão com confirmação: abre um diálogo "tem certeza?" antes de apagar.
+  const [confirmExcluir, setConfirmExcluir] = useState<WAConversa | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const pedirExcluir = (conversa: WAConversa) => setConfirmExcluir(conversa);
+  const confirmarExclusao = async () => {
+    const conversa = confirmExcluir;
+    if (!conversa) return;
+    setExcluindo(true);
     const { error } = await supabase.from('whatsapp_conversas').delete().eq('id', conversa.id);
+    setExcluindo(false);
     if (error) { toast.error('Erro ao excluir: ' + error.message); return; }
     toast.success('Conversa excluída');
     if (selecionada?.id === conversa.id) setSelecionada(null);
+    setConfirmExcluir(null);
     qc.invalidateQueries({ queryKey: ['wa-conversas'] });
   };
 
@@ -275,7 +282,7 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
                 userId={userId}
                 last={i === filtradas.length - 1}
                 onClick={() => setSelecionada(c)}
-                onExcluir={() => excluirConversa(c)}
+                onExcluir={() => pedirExcluir(c)}
               />
             ))}
           </div>
@@ -290,7 +297,7 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
               userId={userId}
               onBack={() => setSelecionada(null)}
               onCadastrar={isLeads && !selecionada.paciente_id ? () => cadastrarCliente(selecionada) : undefined}
-              onExcluir={() => excluirConversa(selecionada)}
+              onExcluir={() => pedirExcluir(selecionada)}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-5 bg-[#f0f2f5] dark:bg-[#222e35]">
@@ -306,6 +313,31 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
         </div>
 
       </div>
+
+      {/* Confirmação de exclusão */}
+      <Dialog open={!!confirmExcluir} onOpenChange={o => { if (!o) setConfirmExcluir(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" /> Excluir conversa
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Tem certeza que quer excluir a conversa com{' '}
+            <strong className="text-foreground">
+              {confirmExcluir?.nome_contato || (confirmExcluir ? formatPhoneNumber(confirmExcluir.telefone) : '')}
+            </strong>
+            ? As mensagens serão apagadas e esta ação não pode ser desfeita.
+          </p>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setConfirmExcluir(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmarExclusao} disabled={excluindo} className="gap-1.5">
+              {excluindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Shell>
   );
 }
