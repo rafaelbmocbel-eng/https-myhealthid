@@ -53,6 +53,16 @@ Deno.serve(async (req) => {
     const phone = cleanPhone(body.phone || body.from || "");
     const fromMe = body.fromMe === true;
     const messageId = body.messageId || body.id || null;
+
+    // Ignora mensagens de GRUPOS do WhatsApp — não entram no Zap/Captação.
+    const rawId = String(body.phone || body.chatId || body.from || "");
+    const ehGrupo = body.isGroup === true || body.isGroup === "true"
+      || /@g\.us/i.test(rawId) || /-\d/.test(rawId) || phone.length > 14;
+    if (ehGrupo) {
+      return new Response(JSON.stringify({ ok: true, ignored: "grupo" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     // Identifica a instância pelo corpo OU pela query da URL (que nós carimbamos
     // ao registrar o webhook) — assim a identificação não depende de a Z-API
     // incluir o campo no payload.

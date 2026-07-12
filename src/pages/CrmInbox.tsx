@@ -192,6 +192,16 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
     }
   };
 
+  // Exclui uma conversa (e suas mensagens) — para tirar grupos/spam do crivo.
+  const excluirConversa = async (conversa: WAConversa) => {
+    if (!window.confirm(`Excluir a conversa com "${conversa.nome_contato || conversa.telefone}"? As mensagens serão apagadas.`)) return;
+    const { error } = await supabase.from('whatsapp_conversas').delete().eq('id', conversa.id);
+    if (error) { toast.error('Erro ao excluir: ' + error.message); return; }
+    toast.success('Conversa excluída');
+    if (selecionada?.id === conversa.id) setSelecionada(null);
+    qc.invalidateQueries({ queryKey: ['wa-conversas'] });
+  };
+
   const panelLeft = cn(
     'flex flex-col border-r border-border/30 bg-background w-full md:w-[390px] shrink-0',
     selecionada ? 'hidden md:flex' : 'flex',
@@ -265,6 +275,7 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
                 userId={userId}
                 last={i === filtradas.length - 1}
                 onClick={() => setSelecionada(c)}
+                onExcluir={() => excluirConversa(c)}
               />
             ))}
           </div>
@@ -279,6 +290,7 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
               userId={userId}
               onBack={() => setSelecionada(null)}
               onCadastrar={isLeads && !selecionada.paciente_id ? () => cadastrarCliente(selecionada) : undefined}
+              onExcluir={() => excluirConversa(selecionada)}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-5 bg-[#f0f2f5] dark:bg-[#222e35]">
@@ -299,8 +311,8 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
 }
 
 // ─── ConversaItem ─────────────────────────────────────────────────────────────
-function ConversaItem({ conversa: c, ativa, userId, last, onClick }: {
-  conversa: WAConversa; ativa: boolean; userId: string | null; last: boolean; onClick: () => void;
+function ConversaItem({ conversa: c, ativa, userId, last, onClick, onExcluir }: {
+  conversa: WAConversa; ativa: boolean; userId: string | null; last: boolean; onClick: () => void; onExcluir?: () => void;
 }) {
   const sla   = getSLAStatus(c);
   const stage = getStage(c.pipeline_stage);
@@ -308,10 +320,13 @@ function ConversaItem({ conversa: c, ativa, userId, last, onClick }: {
   const time  = c.ultima_mensagem_em ? fmtTime(c.ultima_mensagem_em) : '';
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={e => { if (e.key === 'Enter') onClick(); }}
       className={cn(
-        'w-full text-left px-4 py-3 flex items-center gap-3 transition-colors',
+        'group w-full text-left px-4 py-3 flex items-center gap-3 transition-colors cursor-pointer',
         ativa ? 'bg-[#f0f2f5] dark:bg-[#2a3942]' : 'hover:bg-[#f5f6f6] dark:hover:bg-[#2a3942]/50',
         !last && 'border-b border-border/20',
       )}
@@ -362,12 +377,21 @@ function ConversaItem({ conversa: c, ativa, userId, last, onClick }: {
           )}
         </div>
       </div>
-    </button>
+      {onExcluir && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onExcluir(); }}
+          title="Excluir conversa (grupo, spam, contato indesejado)"
+          className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
+    </div>
   );
 }
 
 // ─── ChatPanel ────────────────────────────────────────────────────────────────
-function ChatPanel({ conversa, userId, onBack, onCadastrar }: { conversa: WAConversa; userId: string | null; onBack: () => void; onCadastrar?: () => void }) {
+function ChatPanel({ conversa, userId, onBack, onCadastrar, onExcluir }: { conversa: WAConversa; userId: string | null; onBack: () => void; onCadastrar?: () => void; onExcluir?: () => void }) {
   const [texto, setTexto] = useState('');
   const [replyTo, setReplyTo] = useState<ReplyTo | null>(null);
   const [transcribingId, setTranscribingId] = useState<string | null>(null);
@@ -523,6 +547,11 @@ function ChatPanel({ conversa, userId, onBack, onCadastrar }: { conversa: WAConv
                 <button onClick={() => setShowBotSheet(true)} className="w-full text-left px-3 py-2 rounded-md hover:bg-muted text-sm flex items-center gap-2">
                   <Bot className="h-4 w-4 text-primary" /> Bot &amp; Automações
                 </button>
+                {onExcluir && (
+                  <button onClick={onExcluir} className="w-full text-left px-3 py-2 rounded-md hover:bg-destructive/10 text-sm flex items-center gap-2 text-destructive">
+                    <Trash2 className="h-4 w-4" /> Excluir conversa
+                  </button>
+                )}
               </PopoverContent>
             </Popover>
           </div>
