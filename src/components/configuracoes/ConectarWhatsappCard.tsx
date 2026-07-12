@@ -23,6 +23,22 @@ export default function ConectarWhatsappCard({ onConectado, jaConectado }: Props
   const [qr, setQr] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const pollRef = useRef<number | null>(null);
+  const [diag, setDiag] = useState<any>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagOpen, setDiagOpen] = useState(false);
+
+  const rodarDiagnostico = async () => {
+    setDiagLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-diagnostico', { body: {} });
+      setDiag(error ? { error: error.message } : data);
+    } catch (e: any) {
+      setDiag({ error: e.message });
+    } finally {
+      setDiagLoading(false);
+      setDiagOpen(true);
+    }
+  };
 
   const chamar = useCallback(async (action: 'provisionar' | 'qrcode' | 'status') => {
     const { data, error } = await supabase.functions.invoke('zapi-conectar', { body: { action } });
@@ -95,10 +111,62 @@ export default function ConectarWhatsappCard({ onConectado, jaConectado }: Props
         Conecte o WhatsApp da clínica em 1 clique — sem copiar credenciais nem configurar nada.
         Basta escanear o QR Code com o celular do consultório.
       </p>
-      <Button onClick={conectar} disabled={provisionando} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-        {provisionando ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
-        {jaConectado ? 'Reconectar WhatsApp' : 'Conectar WhatsApp'}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={conectar} disabled={provisionando} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+          {provisionando ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+          {jaConectado ? 'Reconectar WhatsApp' : 'Conectar WhatsApp'}
+        </Button>
+        <Button variant="outline" onClick={rodarDiagnostico} disabled={diagLoading} className="gap-2">
+          {diagLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Diagnóstico
+        </Button>
+      </div>
+
+      {/* Resultado do diagnóstico */}
+      <Dialog open={diagOpen} onOpenChange={setDiagOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-emerald-600" /> Diagnóstico do WhatsApp
+            </DialogTitle>
+          </DialogHeader>
+          {!diag ? (
+            <p className="text-xs text-muted-foreground py-6 text-center">Sem dados.</p>
+          ) : diag.error ? (
+            <p className="text-sm text-red-600 py-4">Erro: {diag.error}</p>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border p-2.5">
+                  <div className="text-[10px] uppercase text-muted-foreground">Respostas recebidas</div>
+                  <div className="text-2xl font-bold tabular-nums">{diag.db?.mensagens_entrada ?? '—'}</div>
+                </div>
+                <div className="rounded-lg border p-2.5">
+                  <div className="text-[10px] uppercase text-muted-foreground">Enviadas pela clínica</div>
+                  <div className="text-2xl font-bold tabular-nums">{diag.db?.mensagens_saida ?? '—'}</div>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between"><span className="text-muted-foreground">Conectado na Z-API</span><b>{diag.zapi?.conectada ? '✅ Sim' : '❌ Não'}</b></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Webhook aponta pro app</span><b>{diag.zapi?.webhook_recebimento_aponta_pra_nos === true ? '✅ Sim' : diag.zapi?.webhook_recebimento_aponta_pra_nos === false ? '❌ Não' : '—'}</b></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Segredo do webhook</span><b>{diag.db?.webhook_secret_configurado ? 'Configurado' : 'Não (ok)'}</b></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Conversas ativas</span><b>{diag.db?.conversas_ativas ?? '—'}</b></div>
+              </div>
+              {Array.isArray(diag.problemas) && diag.problemas.length > 0 && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-2.5 space-y-1">
+                  <div className="text-[11px] font-bold text-amber-700 uppercase">Possíveis problemas</div>
+                  {diag.problemas.map((p: string, i: number) => (
+                    <p key={i} className="text-xs text-amber-800 dark:text-amber-300">• {p}</p>
+                  ))}
+                </div>
+              )}
+              {Array.isArray(diag.problemas) && diag.problemas.length === 0 && (
+                <p className="text-xs text-emerald-700">✅ Nenhum problema óbvio detectado.</p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={(o) => { if (!o) pararPoll(); setOpen(o); }}>
         <DialogContent className="max-w-sm">
