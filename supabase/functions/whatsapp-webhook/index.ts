@@ -41,7 +41,11 @@ Deno.serve(async (req) => {
     const phone = cleanPhone(body.phone || body.from || "");
     const fromMe = body.fromMe === true;
     const messageId = body.messageId || body.id || null;
-    const instanceId = body.instanceId || body.instance || null;
+    // Identifica a instância pelo corpo OU pela query da URL (que nós carimbamos
+    // ao registrar o webhook) — assim a identificação não depende de a Z-API
+    // incluir o campo no payload.
+    const urlInstance = new URL(req.url).searchParams.get("instanceId") || new URL(req.url).searchParams.get("instance");
+    const instanceId = body.instanceId || body.instance || urlInstance || null;
     const senderName = body.senderName || body.chatName || body.notifyName || null;
 
     if (!phone) {

@@ -46,6 +46,19 @@ Deno.serve(async (req) => {
 
     const zHeaders = { "Content-Type": "application/json", "Client-Token": clientToken };
 
+    // Aponta o webhook de recebimento pro nosso endpoint, carimbando o
+    // instanceId (e o secret, se houver) na URL. Chamado ao provisionar E ao
+    // checar status, para auto-reparar conexões antigas sem reescanear o QR.
+    const apontarWebhook = async (iid: string, tkn: string) => {
+      const params = new URLSearchParams();
+      params.set("instanceId", iid);
+      if (webhookSecret) params.set("secret", webhookSecret);
+      const webhookUrl = `${supabaseUrl}/functions/v1/whatsapp-webhook?${params.toString()}`;
+      await fetch(`${ZAPI}/instances/${iid}/token/${tkn}/update-webhook-received`, {
+        method: "PUT", headers: zHeaders, body: JSON.stringify({ value: webhookUrl }),
+      }).catch(() => { /* best-effort */ });
+    };
+
     // Credenciais já existentes desta clínica (se houver)
     const { data: cfg } = await admin
       .from("config_clinica")
@@ -81,11 +94,8 @@ Deno.serve(async (req) => {
         }, { onConflict: "terapeuta_id" });
       }
 
-      // Aponta o webhook de recebimento para o nosso endpoint (com o secret)
-      const webhookUrl = `${supabaseUrl}/functions/v1/whatsapp-webhook${webhookSecret ? `?secret=${encodeURIComponent(webhookSecret)}` : ""}`;
-      await fetch(`${ZAPI}/instances/${instanceId}/token/${token}/update-webhook-received`, {
-        method: "PUT", headers: zHeaders, body: JSON.stringify({ value: webhookUrl }),
-      }).catch(() => { /* best-effort */ });
+      // Aponta o webhook de recebimento para o nosso endpoint
+      await apontarWebhook(instanceId, token);
 
       return json({ ok: true, instanceId });
     }
@@ -111,6 +121,9 @@ Deno.serve(async (req) => {
 
     // ── STATUS: conectado? (para o app parar de mostrar o QR) ──
     if (action === "status") {
+      // Auto-reparo: re-aponta o webhook (com instanceId na URL) sempre que o
+      // app checa o status — conserta conexões antigas sem reescanear o QR.
+      await apontarWebhook(instanceId, token);
       const r = await fetch(`${ZAPI}/instances/${instanceId}/token/${token}/status`, { headers: zHeaders });
       const parsed = await r.json().catch(() => ({}));
       const connected = parsed.connected === true || parsed.smartphoneConnected === true;
