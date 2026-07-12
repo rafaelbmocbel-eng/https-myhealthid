@@ -14,7 +14,7 @@ import {
   Search, Send, MessageCircle, Phone, User, Loader2, Zap, StickyNote,
   Trash2, Plus, Sparkles, Bot, Paperclip, Image as ImageIcon, FileText,
   X, Pencil, SmilePlus, ArrowLeft, MoreVertical, Copy, CheckCheck,
-  ChevronDown, AlertCircle, Clock, UserCheck, UserPlus,
+  ChevronDown, AlertCircle, Clock, UserCheck, UserPlus, Radio, Link2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WhatsappAutomacoes from '@/pages/WhatsappAutomacoes';
@@ -45,6 +45,15 @@ const PIPELINE_STAGES = [
 ] as const;
 
 const AVATAR_PALETTE = ['#EF5350','#EC407A','#AB47BC','#7E57C2','#42A5F5','#26C6DA','#26A69A','#66BB6A','#FFA726','#FF7043'];
+
+// Cor do badge de origem do lead (aba Captação)
+const ORIGEM_CLS: Record<string, string> = {
+  Instagram: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 border-pink-300/60',
+  Google:    'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300/60',
+  Facebook:  'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 border-sky-300/60',
+  TikTok:    'bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border-neutral-400/50',
+  Site:      'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-300/60',
+};
 
 const QUICK_EMOJIS = ['😊','👋','❤️','✅','🙏','😂','👍','🤝','💪','🌟','😍','🎉','📅','⏰','💙','✨','🏃','💊','🩺','📋'];
 
@@ -199,7 +208,7 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
           <div className="h-14 px-4 flex items-center gap-3 bg-[#008069] dark:bg-[#202c33] shrink-0">
             <MessageCircle className="h-5 w-5 text-white/90" />
             <span className="text-white font-semibold flex-1 text-[15px]">{isLeads ? 'Captação · Leads' : 'WhatsApp'}</span>
-            <BotConfigPanelBtn />
+            {isLeads ? <GerarLinkCaptacaoBtn /> : <BotConfigPanelBtn />}
           </div>
 
           {/* Search */}
@@ -330,11 +339,15 @@ function ConversaItem({ conversa: c, ativa, userId, last, onClick }: {
           </div>
         </div>
         <div className="flex items-center gap-2 mt-1">
-          {!c.paciente_id && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60 shrink-0">
-              não cadastrado
+          {c.origem ? (
+            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 flex items-center gap-1', ORIGEM_CLS[c.origem] || 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-300/60')}>
+              <Radio className="h-2.5 w-2.5" /> {c.origem}
             </span>
-          )}
+          ) : !c.paciente_id ? (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60 shrink-0">
+              Lead
+            </span>
+          ) : null}
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
             <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
             {stage.label}
@@ -875,6 +888,58 @@ function AttachBtn({ uploading, onImage, onDoc }: { uploading: boolean; onImage(
 }
 
 // ─── Bot Config Panel Btn (header of left panel) ──────────────────────────────
+// ─── Gerador de links de captação (aba Captação) ─────────────────────────────
+function GerarLinkCaptacaoBtn() {
+  const [numero, setNumero] = useState(() => {
+    try { return localStorage.getItem('captacao.numero') || ''; } catch { return ''; }
+  });
+  const FONTES = ['Instagram', 'Google', 'Facebook', 'TikTok'] as const;
+  const numLimpo = numero.replace(/\D/g, '');
+  const linkDe = (fonte: string) => {
+    const msg = `Olá! Vim pelo ${fonte} e quero saber mais 🙂`;
+    return `https://wa.me/${numLimpo}?text=${encodeURIComponent(msg)}`;
+  };
+  const copiar = (fonte: string) => {
+    if (numLimpo.length < 12) { toast.error('Preencha o número com DDI+DDD (ex.: 5591988887777).'); return; }
+    navigator.clipboard.writeText(linkDe(fonte));
+    toast.success(`Link do ${fonte} copiado! Cole no anúncio/bio.`);
+  };
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/20" title="Gerar links de captação">
+          <Link2 className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-3 space-y-3">
+        <div>
+          <p className="text-sm font-semibold">Links de captação</p>
+          <p className="text-[11px] text-muted-foreground">Cole cada link no anúncio/bio da rede. Quando o lead clicar e enviar, a origem é marcada sozinha.</p>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Número do WhatsApp da clínica (DDI+DDD)</Label>
+          <Input
+            placeholder="5591988887777"
+            value={numero}
+            onChange={e => { setNumero(e.target.value); try { localStorage.setItem('captacao.numero', e.target.value); } catch { /* ignore */ } }}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          {FONTES.map(f => (
+            <div key={f} className="flex items-center gap-2">
+              <span className={cn('text-[11px] px-2 py-0.5 rounded-full border shrink-0 w-20 text-center', ORIGEM_CLS[f])}>{f}</span>
+              <Button size="sm" variant="outline" className="h-7 text-xs flex-1 gap-1.5" onClick={() => copiar(f)}>
+                <Copy className="h-3 w-3" /> Copiar link
+              </Button>
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function BotConfigPanelBtn() {
   const [open, setOpen] = useState(false);
   return (

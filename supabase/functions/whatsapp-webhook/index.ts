@@ -11,6 +11,18 @@ function cleanPhone(p: string) {
   return String(p || "").replace(/\D/g, "");
 }
 
+// Detecta a origem do lead pela 1ª mensagem, marcada pelos links de captação
+// (ex.: "... vim pelo Instagram"). Retorna null se não reconhecer.
+function detectarOrigem(txt: string | null): string | null {
+  const t = (txt || "").toLowerCase();
+  if (/\binstagram\b|\binsta\b|\big\b/.test(t)) return "Instagram";
+  if (/\bgoogle\b/.test(t)) return "Google";
+  if (/\bfacebook\b|\bface\b|\bfb\b/.test(t)) return "Facebook";
+  if (/\btiktok\b|\btik tok\b/.test(t)) return "TikTok";
+  if (/\bsite\b|\bwebsite\b/.test(t)) return "Site";
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -137,9 +149,11 @@ Deno.serve(async (req) => {
         nome_contato: nome_contato ?? undefined,
       }).eq("id", conversaId);
     } else {
+      // Detecta a origem do lead pela 1ª mensagem (links de captação marcados)
+      const origem = !fromMe ? detectarOrigem(conteudo) : null;
       const { data: created, error: cErr } = await admin
         .from("whatsapp_conversas")
-        .insert({ terapeuta_id, telefone: phone, paciente_id, nome_contato })
+        .insert({ terapeuta_id, telefone: phone, paciente_id, nome_contato, origem })
         .select("id").single();
       if (cErr) throw cErr;
       conversaId = created.id;

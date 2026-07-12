@@ -21,6 +21,7 @@ export interface WAConversa {
   atribuido_a?: string | null;
   sla_responder_ate?: string | null;
   primeiro_resposta_em?: string | null;
+  origem?: string | null;
   pipeline_stage?: 'novo' | 'qualificado' | 'agendado' | 'fechado' | 'perdido';
 }
 
