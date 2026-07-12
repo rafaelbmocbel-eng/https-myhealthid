@@ -21,10 +21,19 @@ export async function registrarMensagemSaida(
 
   let { data: conv } = await admin
     .from("whatsapp_conversas")
-    .select("id")
+    .select("id, paciente_id")
     .eq("terapeuta_id", opts.terapeuta_id)
     .eq("telefone", tail)
     .maybeSingle();
+
+  // Conversa já existe mas sem vínculo de paciente → religa agora, senão ela
+  // fica presa como "não cadastrado" e some do filtro padrão do Zap.
+  if (conv && !(conv as { paciente_id: string | null }).paciente_id && opts.paciente_id) {
+    await admin
+      .from("whatsapp_conversas")
+      .update({ paciente_id: opts.paciente_id })
+      .eq("id", (conv as { id: string }).id);
+  }
 
   if (!conv) {
     let nome_contato: string | null = null;

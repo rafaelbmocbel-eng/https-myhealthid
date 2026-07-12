@@ -65,9 +65,15 @@ function getStage(key?: string | null) {
 }
 
 function colunaDe(c: WAConversa): ColunaWS {
+  // Não-lidas sempre em "Pendentes" — inclusive de pacientes cadastrados.
+  if ((c.nao_lidas || 0) > 0) return 'pendentes';
+  // Paciente cadastrado fica na visão principal "Conversas". O funil de
+  // estágios (novo→qualificado→agendado→fechado) é só para LEADS não
+  // cadastrados; sem isto, todo paciente entra como "fechado" (venda ganha) e
+  // some na aba "Fechadas", que ninguém abre.
+  if (c.paciente_id) return 'conversas';
   const st = c.pipeline_stage || 'novo';
   if (st === 'fechado' || st === 'perdido') return 'fechadas';
-  if ((c.nao_lidas || 0) > 0) return 'pendentes';
   if (st === 'qualificado' || st === 'agendado') return 'andamento';
   return 'conversas';
 }
