@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 // ─── Types ───────────────────────────────────────────────────────────────────
 type FilaTab = 'todas' | 'minhas' | 'nao_atribuidas' | 'atrasadas';
 type ColunaWS = 'pendentes' | 'andamento' | 'conversas' | 'fechadas';
+type ViewKey = 'todas' | 'pacientes' | 'nao_lidas' | 'nao_cad';
 interface ReplyTo { id: string; content: string; isMine: boolean }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -109,64 +110,41 @@ function WaAvatar({ name, size = 40 }: { name: string; size?: number }) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
-  const [filaTab, setFilaTab] = useState<FilaTab>('todas');
-  // Abre em "Conversas" (visão geral) em vez de "Pendentes" (só não-lidas, quase
-  // sempre vazia) — assim uma conversa recém-iniciada aparece de imediato.
-  const [coluna, setColuna] = useState<ColunaWS>('conversas');
+  // Visão única e simples (estilo WhatsApp), sem as duas fileiras de abas.
+  const [view, setView] = useState<ViewKey>('todas');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
-  // Por padrão o Zap mostra só pacientes cadastrados; este toggle revela os
-  // números de fora do ecossistema quando o profissional quiser conferir.
-  const [verOutros, setVerOutros] = useState(false);
   const { data: conversasRaw = [], isLoading } = useWhatsappConversas();
-  // No Zap aparecem APENAS pacientes cadastrados (vinculados por telefone),
-  // a menos que o profissional peça para ver os não cadastrados.
-  const conversas = useMemo(
-    () => verOutros ? conversasRaw : conversasRaw.filter(c => !!c.paciente_id),
-    [conversasRaw, verOutros],
-  );
-  const naoCadCount = useMemo(
-    () => conversasRaw.filter(c => !c.paciente_id).length,
-    [conversasRaw],
-  );
   const { data: idsGlobais = [] } = useGlobalMessageSearch(busca);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
 
-  const baseFiltradas = useMemo(() => conversas.filter(c => {
+  const temMsg = (c: WAConversa) => !!c.ultima_mensagem_em;
+
+  const counts = useMemo(() => ({
+    todas:     conversasRaw.filter(temMsg).length,
+    pacientes: conversasRaw.filter(c => !!c.paciente_id).length,
+    nao_lidas: conversasRaw.filter(c => (c.nao_lidas || 0) > 0).length,
+    nao_cad:   conversasRaw.filter(c => !c.paciente_id && temMsg(c)).length,
+  } as Record<ViewKey, number>), [conversasRaw]);
+
+  const filtradas = useMemo(() => conversasRaw.filter(c => {
     const q = busca.toLowerCase().trim();
     if (q) {
       const matchMeta = (c.nome_contato || '').toLowerCase().includes(q) || c.telefone.includes(q);
       const matchMsg  = q.length >= 3 && idsGlobais.includes(c.id);
       if (!matchMeta && !matchMsg) return false;
     }
-    if (filaTab === 'minhas') return c.atribuido_a === userId;
-    if (filaTab === 'nao_atribuidas') return !c.atribuido_a;
-    if (filaTab === 'atrasadas') { const s = getSLAStatus(c); return s.status === 'atrasado' || s.status === 'em_breve'; }
-    return true;
-  }), [conversas, busca, idsGlobais, filaTab, userId]);
+    if (view === 'pacientes') return !!c.paciente_id;                 // todos os pacientes (mesmo sem msg ainda)
+    if (view === 'nao_lidas') return (c.nao_lidas || 0) > 0;
+    if (view === 'nao_cad')   return !c.paciente_id && temMsg(c);
+    return temMsg(c);                                                 // 'todas' — qualquer conversa com atividade
+  }), [conversasRaw, busca, idsGlobais, view]);
 
-  const counts = useMemo(() => ({
-    col: {
-      pendentes: baseFiltradas.filter(c => colunaDe(c) === 'pendentes').length,
-      andamento: baseFiltradas.filter(c => colunaDe(c) === 'andamento').length,
-      conversas: baseFiltradas.filter(c => colunaDe(c) === 'conversas').length,
-      fechadas:  baseFiltradas.filter(c => colunaDe(c) === 'fechadas').length,
-    } as Record<ColunaWS, number>,
-    fila: {
-      todas:          conversas.length,
-      minhas:         conversas.filter(c => c.atribuido_a === userId).length,
-      nao_atribuidas: conversas.filter(c => !c.atribuido_a).length,
-      atrasadas:      conversas.filter(c => { const s = getSLAStatus(c); return s.status === 'atrasado' || s.status === 'em_breve'; }).length,
-    } as Record<FilaTab, number>,
-  }), [baseFiltradas, conversas, userId]);
-
-  const filtradas = useMemo(() => baseFiltradas.filter(c => colunaDe(c) === coluna), [baseFiltradas, coluna]);
-
-  const FILA_TABS: [FilaTab, string][] = [
-    ['todas', 'Todas'], ['minhas', 'Minhas'], ['nao_atribuidas', 'Sem dono'], ['atrasadas', '⏰ SLA'],
+  const VIEWS: [ViewKey, string][] = [
+    ['todas', 'Todas'], ['pacientes', 'Pacientes'], ['nao_lidas', 'Não lidas'], ['nao_cad', 'Não cadastradas'],
   ];
 
   const panelLeft = cn(
@@ -206,66 +184,23 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
             </div>
           </div>
 
-          {/* Filter chips */}
-          <div className="flex gap-1.5 px-3 py-2 bg-[#f0f2f5] dark:bg-[#111b21] overflow-x-auto scrollbar-none shrink-0">
-            {FILA_TABS.map(([k, label]) => (
+          {/* Filtros simples (uma linha, estilo WhatsApp) */}
+          <div className="flex gap-1.5 px-3 py-2 bg-[#f0f2f5] dark:bg-[#111b21] border-b border-border/30 overflow-x-auto scrollbar-none shrink-0">
+            {VIEWS.map(([k, label]) => (
               <button
                 key={k}
-                onClick={() => setFilaTab(k)}
+                onClick={() => setView(k)}
                 className={cn(
-                  'shrink-0 flex items-center gap-1 text-[11px] px-3 py-1 rounded-full border transition-all font-medium',
-                  filaTab === k
+                  'shrink-0 flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full border transition-all font-medium',
+                  view === k
                     ? 'bg-[#e7f8ef] dark:bg-[#005c4b]/60 border-[#25D366]/60 text-[#008069] dark:text-[#25D366]'
                     : 'bg-white dark:bg-[#2a3942] border-border/40 text-muted-foreground',
                 )}
               >
                 {label}
-                {counts.fila[k] > 0 && <span className="opacity-60">{counts.fila[k]}</span>}
+                {counts[k] > 0 && <span className="opacity-60 tabular-nums">{counts[k]}</span>}
               </button>
             ))}
-            {(naoCadCount > 0 || verOutros) && (
-              <button
-                onClick={() => setVerOutros(v => !v)}
-                title={verOutros ? 'Voltar a mostrar só pacientes cadastrados' : 'Mostrar números que não são pacientes cadastrados'}
-                className={cn(
-                  'shrink-0 flex items-center gap-1 text-[11px] px-3 py-1 rounded-full border transition-all font-medium ml-auto',
-                  verOutros
-                    ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
-                    : 'bg-white dark:bg-[#2a3942] border-border/40 text-muted-foreground',
-                )}
-              >
-                {verOutros ? 'Só pacientes' : `Não cadastrados`}
-                {!verOutros && naoCadCount > 0 && <span className="opacity-60">{naoCadCount}</span>}
-              </button>
-            )}
-          </div>
-
-          {/* Column tabs */}
-          <div className="flex border-b border-border/30 bg-background shrink-0">
-            {COLUNAS.map(col => {
-              const active = coluna === col.key;
-              const n = counts.col[col.key];
-              return (
-                <button
-                  key={col.key}
-                  onClick={() => setColuna(col.key)}
-                  className={cn(
-                    'flex-1 py-2.5 text-[11px] font-medium flex items-center justify-center gap-1 transition-colors border-b-2',
-                    active
-                      ? 'border-[#008069] dark:border-[#25D366] text-[#008069] dark:text-[#25D366]'
-                      : 'border-transparent text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {n > 0 && (
-                    <span className={cn(
-                      'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold',
-                      active ? 'bg-[#25D366] text-white' : 'bg-muted text-muted-foreground',
-                    )}>{n}</span>
-                  )}
-                  {col.label}
-                </button>
-              );
-            })}
           </div>
 
           {/* List */}
@@ -275,7 +210,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
             ) : filtradas.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 px-6 text-center gap-3">
                 <MessageCircle className="h-12 w-12 text-muted-foreground/20" />
-                <p className="text-sm text-muted-foreground">Nenhuma conversa em <strong>{COLUNAS.find(c => c.key === coluna)?.label}</strong></p>
+                <p className="text-sm text-muted-foreground">Nenhuma conversa aqui.</p>
               </div>
             ) : filtradas.map((c, i) => (
               <ConversaItem
