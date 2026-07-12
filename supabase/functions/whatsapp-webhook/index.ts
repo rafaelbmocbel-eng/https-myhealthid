@@ -96,16 +96,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Tenta vincular paciente pelo telefone
+    // Tenta vincular paciente pela TERMINAÇÃO do telefone (só dígitos), via RPC
+    // — o cadastro guarda o telefone com máscara "(91) 98765-4321", então casar
+    // por texto não funcionava e a resposta caía sem paciente_id.
     let paciente_id: string | null = null;
     const tail = phone.slice(-10);
-    const { data: pac } = await admin
-      .from("pacientes")
-      .select("id, nome, sobrenome")
-      .eq("terapeuta_id", terapeuta_id)
-      .ilike("telefone", `%${tail}`)
-      .limit(1)
-      .maybeSingle();
+    const { data: pacRows } = await admin.rpc("paciente_por_sufixo_telefone", {
+      p_terapeuta: terapeuta_id,
+      p_sufixo: tail,
+    });
+    const pac = (Array.isArray(pacRows) ? pacRows[0] : pacRows) as
+      { id: string; nome?: string | null; sobrenome?: string | null } | null;
     if (pac) paciente_id = pac.id;
 
     // Upsert conversa. Para paciente CADASTRADO, casa pelo paciente_id (uma
