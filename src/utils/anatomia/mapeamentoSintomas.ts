@@ -595,8 +595,20 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'musculoesqueletico'
   },
   {
-    keywords: ['joelho', 'patela', 'condromalacia', 'menisco', 'ligamento cruzado', 'lca', 'lcp'],
+    keywords: ['joelho', 'patela', 'condromalacia', 'condromalácia', 'menisco', 'ligamento cruzado', 'cruzado anterior', 'cruzado posterior', 'lca', 'lcp', 'lcm', 'lcl', 'colateral medial', 'colateral lateral', 'pata de ganso', 'tendinite patelar', 'ligamento patelar'],
     regioes: ['joelho_d', 'joelho_e', 'cavo_d', 'cavo_e'],
+    sistema: 'musculoesqueletico'
+  },
+  {
+    // Poplítea = parte de trás do joelho (fossa poplítea / poplíteo)
+    keywords: ['poplitea', 'poplítea', 'popliteo', 'poplíteo', 'fossa poplitea', 'fossa poplítea', 'regiao poplitea', 'região poplítea', 'cisto de baker', 'cisto poplíteo', 'cisto popliteo'],
+    regioes: ['joelho_d', 'joelho_e', 'cavo_d', 'cavo_e'],
+    sistema: 'musculoesqueletico'
+  },
+  {
+    // Panturrilha / tríceps sural (gastrocnêmio, sóleo, gêmeos) — perna posterior
+    keywords: ['gastrocnemio', 'gastrocnêmio', 'panturrilha', 'panturilha', 'soleo', 'sóleo', 'gemeos', 'gêmeos', 'triceps sural', 'tríceps sural', 'dor na panturrilha', 'plantar (musculo)'],
+    regioes: ['panturr_d', 'panturr_e', 'canela_d', 'canela_e'],
     sistema: 'musculoesqueletico'
   },
   {

@@ -491,9 +491,28 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number; sinal: string; sistema: string }[] | null>(null);
   // Sugestões do portal que o terapeuta dispensou nesta sessão (não viram achado).
   const [sugestoesIgnoradas, setSugestoesIgnoradas] = useState<Set<string>>(new Set());
-  const [notaSistema, setNotaSistema] = useState<{ texto: string; natureza: 'condicao' | 'sintoma'; condicaoAssociada: string }>({
-    texto: '', natureza: 'condicao', condicaoAssociada: '',
+  const [notaSistema, setNotaSistema] = useState<{ texto: string; natureza: 'condicao' | 'sintoma'; condicaoAssociada: string; regiaoManual: string }>({
+    texto: '', natureza: 'condicao', condicaoAssociada: '', regiaoManual: '',
   });
+
+  // Regiões musculoesqueléticas selecionáveis quando o texto não resolve a
+  // região sozinho — evita que um achado de perna/joelho caia em "abdômen".
+  const MSK_REGIOES_OPCOES: { id: string; label: string }[] = [
+    { id: 'cabeca', label: 'Cabeça / ATM' }, { id: 'cervical', label: 'Cervical / Pescoço' },
+    { id: 'ombro_d', label: 'Ombro D' }, { id: 'ombro_e', label: 'Ombro E' },
+    { id: 'cotovelo_d', label: 'Cotovelo D' }, { id: 'cotovelo_e', label: 'Cotovelo E' },
+    { id: 'antebraco_d', label: 'Antebraço D' }, { id: 'antebraco_e', label: 'Antebraço E' },
+    { id: 'mao_d', label: 'Punho / Mão D' }, { id: 'mao_e', label: 'Punho / Mão E' },
+    { id: 'dorsal', label: 'Dorso / Torácica' }, { id: 'lombar', label: 'Lombar / Sacro / Cóccix' },
+    { id: 'gluteos', label: 'Glúteos / Quadril' },
+    { id: 'coxa_d', label: 'Coxa D' }, { id: 'coxa_e', label: 'Coxa E' },
+    { id: 'joelho_d', label: 'Joelho D' }, { id: 'joelho_e', label: 'Joelho E' },
+    { id: 'cavo_d', label: 'Poplítea D (trás do joelho)' }, { id: 'cavo_e', label: 'Poplítea E (trás do joelho)' },
+    { id: 'canela_d', label: 'Perna D' }, { id: 'canela_e', label: 'Perna E' },
+    { id: 'panturr_d', label: 'Panturrilha D' }, { id: 'panturr_e', label: 'Panturrilha E' },
+    { id: 'tornozelo_d', label: 'Tornozelo D' }, { id: 'tornozelo_e', label: 'Tornozelo E' },
+    { id: 'pe_d', label: 'Pé D' }, { id: 'pe_e', label: 'Pé E' },
+  ];
 
   const { data: lente } = useLenteAtiva();
 
@@ -1387,13 +1406,16 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           };
 
           const selecionadoExplicitamente = sistemasAtivos.length === 1 && sistemasAtivos[0] === sysToShow;
+          // MSK NÃO tem fallback de região (antes caía em 'abdomen', marcando
+          // achados de perna/joelho no abdômen). Sem detecção, o profissional
+          // escolhe a região no seletor abaixo.
           const regiaoPadrao = sysToShow === 'musculoesqueletico'
-            ? 'abdomen'
+            ? ''
             : (VISCERAL_REGIONS.find(r => r.sistemas.includes(sysToShow))?.id || 'abdomen');
           const regiaoDetectada = notaSistema.texto.trim()
             ? encontrarSintomasEmTexto(notaSistema.texto).find(s => s.sistema === sysToShow)?.regiao_id
             : undefined;
-          const regiaoAuto = regiaoDetectada || regiaoPadrao;
+          const regiaoAuto = notaSistema.regiaoManual || regiaoDetectada || regiaoPadrao;
 
           return (
             <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 mt-3 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -1413,12 +1435,29 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     value={notaSistema.texto}
                     onChange={(e) => setNotaSistema({ ...notaSistema, texto: e.target.value })}
                   />
-                  {notaSistema.texto.trim() && (
+                  {notaSistema.texto.trim() && sysToShow === 'musculoesqueletico' && (
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">
+                        Região no corpo {regiaoDetectada ? '(detectada — confira)' : '(escolha a região correta)'}
+                      </Label>
+                      <Select
+                        value={regiaoAuto || undefined}
+                        onValueChange={(v) => setNotaSistema({ ...notaSistema, regiaoManual: v })}
+                      >
+                        <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Escolha a região…" /></SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {MSK_REGIOES_OPCOES.map(o => (
+                            <SelectItem key={o.id} value={o.id} className="text-xs">{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {notaSistema.texto.trim() && sysToShow !== 'musculoesqueletico' && (
                     <p className="text-[10px] text-muted-foreground">
                       Será marcado no avatar em: <span className="font-bold text-foreground">
                         {[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === regiaoAuto)?.label || regiaoAuto}
                       </span>
-                      {!regiaoDetectada && ' (padrão — não identifiquei a região pelo texto)'}
                     </p>
                   )}
                   <div className="flex items-center gap-2">
@@ -1447,7 +1486,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <Button
                       size="sm"
                       className="h-7 px-3 text-xs"
-                      disabled={!notaSistema.texto.trim() || (notaSistema.natureza === 'sintoma' && !notaSistema.condicaoAssociada.trim())}
+                      disabled={!notaSistema.texto.trim() || !regiaoAuto || (notaSistema.natureza === 'sintoma' && !notaSistema.condicaoAssociada.trim())}
                       onClick={() => {
                         saveMut.mutate({
                           paciente_id: pacienteId,
@@ -1464,7 +1503,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             revisado_profissional: true,
                           },
                         } as any);
-                        setNotaSistema({ texto: '', natureza: 'condicao', condicaoAssociada: '' });
+                        setNotaSistema({ texto: '', natureza: 'condicao', condicaoAssociada: '', regiaoManual: '' });
                       }}
                     >
                       <Check className="mr-1 h-3 w-3" /> Salvar e marcar no avatar
