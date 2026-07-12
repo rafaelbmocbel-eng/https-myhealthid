@@ -66,8 +66,9 @@ export default function CrmHub({ embedded = false }: Props) {
         {/* Sidebar (desktop) */}
         <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-border/40 bg-card/30">
           <div className="px-4 py-4 border-b border-border/40">
-            <h2 className="text-base font-semibold">CRM</h2>
-            <p className="text-micro text-muted-foreground">Vendas & relacionamento</p>
+            <div className="eyebrow-accent mb-1.5">Relacionamento</div>
+            <h2 className="h-section">CRM &amp; Zap</h2>
+            <p className="text-caption mt-0.5">Vendas &amp; atendimento</p>
           </div>
           <nav className="flex-1 p-2 space-y-1">
             {TABS.map(t => {
@@ -77,12 +78,13 @@ export default function CrmHub({ embedded = false }: Props) {
                   key={t.key}
                   onClick={() => changeTab(t.key)}
                   className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left',
+                    'relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left',
                     active
-                      ? 'bg-primary/10 text-primary font-medium'
+                      ? 'bg-primary/10 text-primary font-semibold'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
                   )}
                 >
+                  {active && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-[hsl(var(--gold))]" aria-hidden />}
                   <t.icon className="h-4 w-4 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="truncate">{t.label}</div>

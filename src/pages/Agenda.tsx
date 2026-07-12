@@ -1205,10 +1205,11 @@ export default function Agenda() {
             <span className="font-semibold text-sm ml-1 capitalize hidden sm:block">{headerLabel()}</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="flex rounded-xl border overflow-hidden text-[10px] sm:text-xs shadow-sm">
+            <div className="flex gap-0.5 rounded-xl bg-muted/50 p-0.5 text-[10px] sm:text-xs">
               {(['dia', 'semana', 'mes', 'controle'] as ViewMode[]).map(v => (
                 <button key={v} onClick={() => setViewMode(v)}
-                  className={cn('px-2 sm:px-3 py-2 font-bold transition-all capitalize', viewMode === v ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary/30 bg-card')}>
+                  className={cn('px-2.5 sm:px-3 py-1.5 rounded-lg font-medium transition-all capitalize',
+                    viewMode === v ? 'bg-background text-foreground shadow-sm ring-1 ring-border/40' : 'text-muted-foreground hover:text-foreground')}>
                   {v === 'dia' ? 'Dia' : v === 'semana' ? 'Semana' : v === 'mes' ? 'Mês' : 'Controle'}
                 </button>
               ))}
