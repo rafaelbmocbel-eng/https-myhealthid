@@ -27,12 +27,25 @@ export default function PacienteDicas() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [dicas, setDicas] = useState<Dica[]>([]);
+  const [pessoais, setPessoais] = useState<Dica[]>([]);
   const [aberto, setAberto] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data: pac } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
+      // 1) Dicas PERSONALIZADAS — geradas automaticamente pela IA quando o
+      // MyID é concluído (MyID + história clínica + artigos científicos).
+      if (pac) {
+        const { data: pd } = await (supabase as any).from('paciente_dicas')
+          .select('dicas').eq('paciente_id', pac.id).maybeSingle();
+        const lista = Array.isArray(pd?.dicas) ? pd.dicas : [];
+        setPessoais(lista.map((d: any, i: number) => ({
+          id: `pd-${i}`, nome: d.nome || 'Dica', categoria: d.categoria || null,
+          descricao: d.descricao || null, instrucoes: d.instrucoes || [],
+          precaucoes: d.precaucoes || [], perfis_indicados: [], tempo_duracao: d.tempo_duracao || null,
+        })));
+      }
       // Perfis recomendados a partir do MyID
       const perfis = new Set<string>();
       if (pac) {
@@ -65,8 +78,11 @@ export default function PacienteDicas() {
   const grupos = useMemo(() => {
     const g: Record<string, Dica[]> = {};
     dicas.forEach(d => { const k = d.categoria || 'Geral'; (g[k] ||= []).push(d); });
-    return Object.entries(g);
-  }, [dicas]);
+    const entradas = Object.entries(g);
+    // As personalizadas (IA + MyID + história) vêm SEMPRE primeiro.
+    if (pessoais.length > 0) entradas.unshift(['✨ Feitas pra você (do seu MyID)', pessoais]);
+    return entradas;
+  }, [dicas, pessoais]);
 
   return (
     <ProtectedPatientRoute><PacienteLayout>
@@ -86,7 +102,7 @@ export default function PacienteDicas() {
 
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-        ) : dicas.length === 0 ? (
+        ) : dicas.length === 0 && pessoais.length === 0 ? (
           <Card><CardContent className="p-8 text-center">
             <Lightbulb className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm font-medium text-muted-foreground">Ainda não há dicas disponíveis</p>

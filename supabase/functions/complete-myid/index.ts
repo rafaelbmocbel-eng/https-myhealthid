@@ -498,6 +498,22 @@ Avaliação via MyID-100 v2.0. Dados completos no dashboard.`;
       console.warn("Enriquecimento MyID da diretriz falhou (não bloqueante):", enrichErr);
     }
 
+    // 8. DICAS AUTOMÁTICAS DE EVIDÊNCIA — toda vez que o cliente conclui um
+    // MyID, gera as dicas/exercícios personalizados (MyID + história clínica +
+    // artigos científicos). Fire-and-forget: não atrasa nem bloqueia a resposta.
+    try {
+      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/gerar-dicas-paciente`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: JSON.stringify({ paciente_id: pacienteId }),
+      }).catch((e) => console.warn("[complete-myid] gerar-dicas-paciente falhou:", e));
+    } catch (dicasErr) {
+      console.warn("Disparo de dicas automáticas falhou (não bloqueante):", dicasErr);
+    }
+
     return new Response(JSON.stringify({ ok: true, synced: true, avaliacao_identidade_id: inserted.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
