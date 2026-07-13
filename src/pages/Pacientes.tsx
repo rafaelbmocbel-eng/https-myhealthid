@@ -836,8 +836,8 @@ export default function Pacientes() {
 
         {activeMainTab === 'clientes' && (
         <>
-        {/* ── Faixa de KPIs (mesma linguagem do painel) — também filtram a lista ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mb-5">
+        {/* ── KPIs compactos: uma linha de chips (rolável no mobile) — filtram a lista ── */}
+        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-none -mx-1 px-1 pb-0.5">
           {([
             { key: 'todos' as const, label: 'Ativos', value: pacientes.length, gold: false, dot: '' },
             { key: 'novo' as const, label: 'Novos 30d', value: classificationCounts.novo || 0, gold: true, dot: 'hsl(152 55% 42%)' },
@@ -853,20 +853,18 @@ export default function Pacientes() {
                 disabled={!clickable}
                 onClick={() => { if (clickable) setFilterTag(active ? 'todos' : (k.key as ClassificacaoTag | 'todos')); }}
                 className={cn(
-                  'text-left rounded-xl border px-3 py-2.5 sm:py-3 transition-colors',
+                  'shrink-0 flex items-center gap-1.5 rounded-full border pl-3 pr-2.5 py-1.5 transition-colors',
                   active
-                    ? 'border-primary/50 bg-muted/30 ring-1 ring-primary/20'
+                    ? 'border-primary/50 bg-muted/40 ring-1 ring-primary/20'
                     : 'border-border/40 bg-card',
                   clickable ? 'hover:border-primary/40 hover:bg-muted/20' : 'cursor-default',
                 )}
               >
-                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 truncate text-muted-foreground/70 flex items-center gap-1.5">
-                  {k.dot && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: k.dot }} />}
-                  {k.label}
-                </div>
-                <div className={cn('kpi-hero tabular-nums leading-none text-xl sm:text-2xl', k.gold ? 'text-gradient-gold' : 'text-foreground')}>
+                {k.dot && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: k.dot }} />}
+                <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">{k.label}</span>
+                <span className={cn('kpi-hero tabular-nums leading-none text-sm', k.gold ? 'text-gradient-gold' : 'text-foreground')}>
                   {k.value}
-                </div>
+                </span>
               </button>
             );
           })}
