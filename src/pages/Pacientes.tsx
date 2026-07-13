@@ -798,7 +798,7 @@ export default function Pacientes() {
           </div>
         </div>
 
-        {/* ── Main Tabs (clean / minimal) ── */}
+        {/* ── Main Tabs — só ícones (rótulo vira title/aria) ── */}
         <div className="flex gap-1 bg-muted/40 p-1 rounded-xl mb-5">
           {([
             { id: 'clientes' as MainTab, label: 'Clientes', icon: Users },
@@ -808,15 +808,16 @@ export default function Pacientes() {
             <button
               key={tab.id}
               onClick={() => setActiveMainTab(tab.id)}
+              title={tab.label}
+              aria-label={tab.label}
               className={cn(
-                'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+                'flex-1 flex items-center justify-center py-2 rounded-lg transition-all',
                 activeMainTab === tab.id
-                  ? 'bg-background text-foreground shadow-xs ring-1 ring-border/40'
+                  ? 'bg-background text-primary shadow-xs ring-1 ring-border/40'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <tab.icon className="icon-sm" />
-              <span>{tab.label}</span>
+              <tab.icon className="h-5 w-5" />
             </button>
           ))}
         </div>
