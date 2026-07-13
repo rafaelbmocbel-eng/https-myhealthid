@@ -41,7 +41,8 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
       const sb: any = supabase;
       const [
         dailyLogs, execucoes, prescricoes, agendamentos, pagamentos,
-        chat, eventoInscricoes, healthData, respostas, meals, body, notif
+        chat, eventoInscricoes, healthData, respostas, meals, body, notif,
+        dicasIA, planosTreino, planosAlim
       ] = await Promise.all([
         sb.from('daily_logs').select('*').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(60),
         sb.from('studio_execucoes').select('id, created_at, treino_id, exercicios_executados, duracao_total_segundos').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(60),
@@ -55,6 +56,9 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         sb.from('meal_logs').select('id, date, meal_type, description, calories, time_eaten').eq('paciente_id', pacienteId).order('date', { ascending: false }).limit(30),
         sb.from('body_composition').select('*').eq('paciente_id', pacienteId).order('date', { ascending: false }).limit(20),
         sb.from('notificacoes').select('id, titulo, mensagem, lida, created_at, tipo').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(30),
+        sb.from('paciente_dicas').select('dicas, gerado_em').eq('paciente_id', pacienteId).maybeSingle(),
+        sb.from('planos_treino').select('id, created_at, aprovado, estrutura').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
+        sb.from('planos_alimentares').select('id, created_at, aprovado, calorias_alvo').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
       ]);
 
       return {
@@ -70,6 +74,9 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         meals: (meals.data || []) as any[],
         body: (body.data || []) as any[],
         notif: (notif.data || []) as any[],
+        dicasIA: (dicasIA.data || null) as { dicas: any[]; gerado_em: string } | null,
+        planosTreino: (planosTreino.data || []) as any[],
+        planosAlim: (planosAlim.data || []) as any[],
       };
     },
     enabled: !!user,
@@ -107,9 +114,15 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
     window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
+  const nDicasIA = data.dicasIA?.dicas?.length || 0;
+  const planoTreinoAprovado = data.planosTreino.filter((p: any) => p.aprovado).length;
+  const planoAlimAprovado = data.planosAlim.filter((p: any) => p.aprovado).length;
+
   const espacos = [
     { key: 'diario', icon: Heart, label: 'Diário', color: 'text-rose-600 bg-rose-50', stat: `${diarioSemana} (7d)`, total: data.dailyLogs.length },
     { key: 'exerc', icon: Dumbbell, label: 'Exercícios', color: 'text-amber-600 bg-amber-50', stat: `${execSemana} (7d)`, total: data.execucoes.length, sub: `${prescricoesAtivas} ativas` },
+    { key: 'dicas-ia', icon: GraduationCap, label: 'Dicas IA (MyID)', color: 'text-sky-600 bg-sky-50', stat: nDicasIA > 0 ? `${nDicasIA} dicas` : '—', total: nDicasIA },
+    { key: 'plano-ia', icon: Stethoscope, label: 'Plano IA', color: 'text-purple-600 bg-purple-50', stat: (data.planosTreino.length + data.planosAlim.length) > 0 ? `${planoTreinoAprovado + planoAlimAprovado} aprov.` : '—', total: data.planosTreino.length + data.planosAlim.length },
     { key: 'agenda', icon: Calendar, label: 'Agenda', color: 'text-blue-600 bg-blue-50', stat: proxAg ? format(parseISO(proxAg.data_inicio), 'dd/MM HH:mm', { locale: ptBR }) : '—', total: data.agendamentos.length },
     { key: 'pag', icon: DollarSign, label: 'Pagamentos', color: 'text-emerald-600 bg-emerald-50', stat: `R$ ${pagPagos30.toFixed(0)}`, total: data.pagamentos.length, sub: `${pagPendentes} pend.` },
     { key: 'chat', icon: MessageCircle, label: 'Chat', color: 'text-indigo-600 bg-indigo-50', stat: chatNaoLido > 0 ? `${chatNaoLido} novas` : 'Em dia', total: data.chat.length },
@@ -254,6 +267,75 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                     </div>
                   ))}
                   {data.execucoes.length === 0 && <p className="text-[11px] text-muted-foreground italic px-2">Sem execuções</p>}
+                </div>
+              </ScrollArea>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Dicas IA — geradas automaticamente pelo MyID + evidência (grátis) */}
+          <AccordionItem value="dicas-ia">
+            <AccordionTrigger className="text-xs font-bold py-2 px-2">
+              <div className="flex items-center gap-2"><GraduationCap className="icon-sm text-sky-600" /> Dicas automáticas IA · MyID ({nDicasIA})</div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <ScrollArea className="h-64">
+                <div className="space-y-1.5 pr-2">
+                  {nDicasIA > 0 ? (
+                    <>
+                      <p className="text-[10px] text-muted-foreground px-1">
+                        Geradas em {data.dicasIA?.gerado_em ? format(parseISO(data.dicasIA.gerado_em), "dd/MM/yyyy", { locale: ptBR }) : '—'} a partir do MyID + artigos científicos. O cliente vê no portal em "Dicas".
+                      </p>
+                      {(data.dicasIA?.dicas || []).map((d: any, i: number) => (
+                        <div key={i} className="border rounded-lg p-2 text-[11px]">
+                          <div className="font-semibold flex items-center gap-1.5">
+                            {d.nome}
+                            {d.categoria && <Badge variant="outline" className="text-[9px] h-4">{d.categoria}</Badge>}
+                          </div>
+                          {d.descricao && <div className="text-[10px] text-muted-foreground mt-0.5">{d.descricao}</div>}
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground italic px-2">
+                      Ainda sem dicas — são geradas automaticamente quando o cliente conclui um MyID.
+                    </p>
+                  )}
+                </div>
+              </ScrollArea>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Plano IA — treino (GIFs) + alimentar (pagos), com aprovação */}
+          <AccordionItem value="plano-ia">
+            <AccordionTrigger className="text-xs font-bold py-2 px-2">
+              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> Plano IA · treino &amp; nutrição ({data.planosTreino.length + data.planosAlim.length})</div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <ScrollArea className="h-64">
+                <div className="space-y-1.5 pr-2">
+                  {data.planosTreino.map((p: any) => (
+                    <div key={p.id} className="border rounded-lg p-2 text-[11px] flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">Plano de treino (MyID + biblioteca GIF)</div>
+                        <div className="text-[10px] text-muted-foreground">{format(parseISO(p.created_at), 'dd/MM/yyyy', { locale: ptBR })}</div>
+                      </div>
+                      <Badge variant={p.aprovado ? 'default' : 'outline'} className="text-[9px] h-4">{p.aprovado ? 'aprovado' : 'aguardando revisão'}</Badge>
+                    </div>
+                  ))}
+                  {data.planosAlim.map((p: any) => (
+                    <div key={p.id} className="border rounded-lg p-2 text-[11px] flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">Plano alimentar{p.calorias_alvo ? ` · ${p.calorias_alvo} kcal` : ''}</div>
+                        <div className="text-[10px] text-muted-foreground">{format(parseISO(p.created_at), 'dd/MM/yyyy', { locale: ptBR })}</div>
+                      </div>
+                      <Badge variant={p.aprovado ? 'default' : 'outline'} className="text-[9px] h-4">{p.aprovado ? 'aprovado' : 'aguardando revisão'}</Badge>
+                    </div>
+                  ))}
+                  {(data.planosTreino.length + data.planosAlim.length) === 0 && (
+                    <p className="text-[11px] text-muted-foreground italic px-2">
+                      Sem planos IA ainda — gere na aba Avaliação do paciente (usa MyID + exercícios da sua biblioteca GIF + nutrição). O cliente pago vê em "Meu Plano" após sua aprovação.
+                    </p>
+                  )}
                 </div>
               </ScrollArea>
             </AccordionContent>
