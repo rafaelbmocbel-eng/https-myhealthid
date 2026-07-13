@@ -113,15 +113,19 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
         .maybeSingle(),
       // Biblioteca de Treinos do profissional (com GIF animado)
       supabase.from('biblioteca_exercicios')
-        .select('id, nome, grupo_muscular, orientacoes, gif_url')
+        .select('id, nome, grupo_muscular, orientacoes, gif_url, gif_url_fem')
         .eq('terapeuta_id', terapeutaId)
         .eq('ativo', true)
         .order('nome'),
-    ]).then(([cat, tre, exe, myid, bib]: any[]) => {
+      supabase.from('pacientes').select('sexo').eq('id', pacienteId).maybeSingle(),
+    ]).then(([cat, tre, exe, myid, bib, pacSexo]: any[]) => {
+      // Paciente mulher vê o GIF com avatar feminino quando o exercício tem os dois
+      const prefereFem = /^f/i.test(String(pacSexo?.data?.sexo || ''));
       const minhaBiblioteca: CatalogItem[] = ((bib?.data || []) as any[]).map((b: any) => ({
         id: b.id, nome: b.nome, categoria: 'Minha Biblioteca',
         descricao: b.orientacoes ?? null, tempo_duracao: null, nivel_dificuldade: '',
-        regiao_corporal: [], perfis_indicados: [], gif_url: b.gif_url ?? null,
+        regiao_corporal: [], perfis_indicados: [],
+        gif_url: (prefereFem && b.gif_url_fem) ? b.gif_url_fem : (b.gif_url ?? null),
       }));
       setCatalogo([...minhaBiblioteca, ...((cat.data || []) as CatalogItem[])]);
       setTreinosAtivos(tre.data || []);

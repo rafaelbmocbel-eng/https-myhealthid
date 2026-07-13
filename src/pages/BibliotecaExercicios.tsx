@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
-import { Dumbbell, Plus, Pencil, Trash2, Loader2, Search, Upload, ImageOff, X } from 'lucide-react';
+import { Dumbbell, Plus, Pencil, Trash2, Loader2, Search, Upload, ImageOff, X, FolderUp, FileArchive } from 'lucide-react';
 
 interface Exercicio {
   id: string;
@@ -18,6 +18,7 @@ interface Exercicio {
   grupo_muscular: string | null;
   orientacoes: string | null;
   gif_url: string | null;
+  gif_url_fem: string | null;
   equipamento: string | null;
   series_padrao: number | null;
   repeticoes_padrao: number | null;
@@ -83,37 +84,149 @@ export default function BibliotecaExercicios() {
     }
   };
 
-  // Envio em massa: cada GIF vira um exercício (nome = nome do arquivo).
-  const uploadPack = async (files: FileList) => {
+  // ── Envio em massa inteligente ─────────────────────────────────────────────
+  // Aceita GIFs avulsos, PASTA inteira ou arquivo ZIP. Detecta as variantes
+  // masculino/feminino pelo nome/caminho (male/female, _m/_f, man/woman) e
+  // junta as duas no MESMO exercício. Traduz o nome do inglês e sugere o
+  // grupo muscular pelas palavras do arquivo.
+  const DICIONARIO: [RegExp, string][] = [
+    [/\bsquats?\b/gi, 'Agachamento'], [/\blunges?\b/gi, 'Afundo'],
+    [/\bpush[ -]?ups?\b/gi, 'Flexão de braço'], [/\bpull[ -]?ups?\b/gi, 'Barra fixa'],
+    [/\bchin[ -]?ups?\b/gi, 'Barra supinada'], [/\bplanks?\b/gi, 'Prancha'],
+    [/\bcrunch(es)?\b/gi, 'Abdominal'], [/\bsit[ -]?ups?\b/gi, 'Abdominal completo'],
+    [/\bdeadlifts?\b/gi, 'Levantamento terra'], [/\bbench press\b/gi, 'Supino'],
+    [/\bshoulder press\b/gi, 'Desenvolvimento de ombro'], [/\boverhead press\b/gi, 'Desenvolvimento'],
+    [/\bpress\b/gi, 'Pressão'], [/\bcurls?\b/gi, 'Rosca'], [/\bbiceps?\b/gi, 'Bíceps'],
+    [/\btriceps?\b/gi, 'Tríceps'], [/\brows?\b/gi, 'Remada'], [/\bdips?\b/gi, 'Mergulho'],
+    [/\bbridges?\b/gi, 'Ponte'], [/\bglute\b/gi, 'Glúteo'], [/\bhip thrusts?\b/gi, 'Elevação de quadril'],
+    [/\bcalf raises?\b/gi, 'Elevação de panturrilha'], [/\braises?\b/gi, 'Elevação'],
+    [/\bstretch(ing|es)?\b/gi, 'Alongamento'], [/\bjumping jacks?\b/gi, 'Polichinelo'],
+    [/\bjumps?\b/gi, 'Salto'], [/\bburpees?\b/gi, 'Burpee'], [/\bmountain climbers?\b/gi, 'Escalador'],
+    [/\bhigh knees\b/gi, 'Corrida com joelho alto'], [/\bkicks?\b/gi, 'Chute'],
+    [/\bkickbacks?\b/gi, 'Extensão para trás'], [/\btwists?\b/gi, 'Rotação'],
+    [/\brussian\b/gi, 'russa'], [/\bside\b/gi, 'lateral'], [/\bfront\b/gi, 'frontal'],
+    [/\bback\b/gi, 'costas'], [/\breverse\b/gi, 'invertido'], [/\bsingle leg\b/gi, 'unilateral'],
+    [/\bleg\b/gi, 'perna'], [/\blegs\b/gi, 'pernas'], [/\barms?\b/gi, 'braço'],
+    [/\bknee(s)?\b/gi, 'joelho'], [/\bchest\b/gi, 'peito'], [/\bshoulders?\b/gi, 'ombro'],
+    [/\bdumbbells?\b/gi, 'com halteres'], [/\bbarbells?\b/gi, 'com barra'],
+    [/\bkettlebells?\b/gi, 'com kettlebell'], [/\bresistance band\b/gi, 'com faixa elástica'],
+    [/\bbands?\b/gi, 'com faixa'], [/\bwall\b/gi, 'na parede'], [/\bchair\b/gi, 'na cadeira'],
+    [/\bstanding\b/gi, 'em pé'], [/\bseated\b/gi, 'sentado'], [/\blying\b/gi, 'deitado'],
+    [/\bwalking\b/gi, 'caminhando'], [/\brunning\b/gi, 'corrida'], [/\brotations?\b/gi, 'rotação'],
+    [/\bextensions?\b/gi, 'extensão'], [/\bflexions?\b/gi, 'flexão'], [/\bholds?\b/gi, 'isometria'],
+  ];
+  const GRUPOS: [RegExp, string][] = [
+    [/squat|lunge|leg|calf|glute|hip|deadlift/i, 'Pernas e glúteos'],
+    [/push[ -]?up|bench|chest|dip/i, 'Peito'],
+    [/pull[ -]?up|chin[ -]?up|row|back|lat/i, 'Costas'],
+    [/shoulder|overhead|lateral raise|front raise/i, 'Ombros'],
+    [/curl|bicep/i, 'Bíceps'], [/tricep|kickback/i, 'Tríceps'],
+    [/plank|crunch|sit[ -]?up|ab|core|twist|mountain/i, 'Core / abdômen'],
+    [/stretch|mobility/i, 'Alongamento / mobilidade'],
+    [/jump|burpee|jack|cardio|high knee|running/i, 'Cardio'],
+  ];
+  const traduzir = (base: string) => {
+    let t = ` ${base.replace(/[_\-.]+/g, ' ').replace(/\s+/g, ' ').trim()} `;
+    for (const [re, pt] of DICIONARIO) t = t.replace(re, pt);
+    t = t.replace(/\s+/g, ' ').trim();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  };
+  const grupoDe = (base: string) => GRUPOS.find(([re]) => re.test(base))?.[1] || null;
+
+  const [packInfo, setPackInfo] = useState<string | null>(null);
+
+  const uploadPack = async (files: { name: string; path: string; blob: Blob }[]) => {
     if (!user || files.length === 0) return;
-    const arr = Array.from(files).filter(f => f.type.startsWith('image/') || /\.(gif|png|jpe?g|webp)$/i.test(f.name));
-    if (arr.length === 0) { toast.error('Selecione arquivos de imagem (GIF).'); return; }
-    setPack({ done: 0, total: arr.length });
-    let ok = 0, falhas = 0;
-    for (let i = 0; i < arr.length; i++) {
-      const file = arr[i];
+    const imgs = files.filter(f => /\.(gif|png|jpe?g|webp)$/i.test(f.name));
+    if (imgs.length === 0) { toast.error('Nenhuma imagem/GIF encontrada.'); return; }
+
+    // Agrupa por exercício: remove o marcador de sexo do nome → mesma chave
+    type Par = { base: string; masc?: typeof imgs[number]; fem?: typeof imgs[number] };
+    const pares = new Map<string, Par>();
+    for (const f of imgs) {
+      const semExt = f.name.replace(/\.[^.]+$/, '');
+      const caminho = `${f.path} ${semExt}`;
+      // "female" contém "male" — por isso o feminino é testado primeiro e com tokens completos
+      const ehFem = /female|woman|women|girl/i.test(caminho) ||
+        (/(^|[^a-z])(fem|f)([^a-z]|$)/i.test(semExt) && !/(^|[^a-z])(male|man|men|m)([^a-z]|$)/i.test(semExt));
+      const base = semExt
+        .replace(/(^|[^a-z])(female|females|male|males|woman|women|man|men|girl|boy|fem)([^a-z]|$)/gi, '$1$3')
+        .replace(/(^|[_\- ])(f|m)([_\- ]|$)/gi, '$1$3')
+        .replace(/[_\-.]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase() || semExt.toLowerCase();
+      const par = pares.get(base) || { base };
+      if (ehFem) par.fem = par.fem || f; else par.masc = par.masc || f;
+      pares.set(base, par);
+    }
+
+    // Evita duplicar em re-envios: pula o que já existe pelo nome original
+    const { data: existentes } = await supabase.from('biblioteca_exercicios')
+      .select('nome_original').eq('terapeuta_id', user.id).eq('ativo', true);
+    const jaTem = new Set((existentes || []).map((e: any) => (e.nome_original || '').toLowerCase()).filter(Boolean));
+
+    const lista = [...pares.values()];
+    setPack({ done: 0, total: lista.length });
+    let ok = 0, duplicados = 0, falhas = 0, comPar = 0;
+
+    const subir = async (f: { name: string; blob: Blob }, i: number, sufixo: string) => {
+      const ext = f.name.split('.').pop() || 'gif';
+      const path = `${user.id}/${Date.now()}-${i}${sufixo}.${ext}`;
+      const { error } = await supabase.storage.from('exercise-gifs')
+        .upload(path, f.blob, { upsert: true, contentType: 'image/gif' });
+      if (error) throw error;
+      return supabase.storage.from('exercise-gifs').getPublicUrl(path).data.publicUrl;
+    };
+
+    for (let i = 0; i < lista.length; i++) {
+      const par = lista[i];
       try {
-        if (file.size > 15 * 1024 * 1024) throw new Error('maior que 15MB');
-        const ext = file.name.split('.').pop() || 'gif';
-        const path = `${user.id}/${Date.now()}-${i}.${ext}`;
-        const { error: upErr } = await supabase.storage.from('exercise-gifs').upload(path, file, { upsert: true, contentType: file.type });
-        if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from('exercise-gifs').getPublicUrl(path);
-        const nome = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim() || 'Exercício';
+        if (jaTem.has(par.base)) { duplicados++; setPack({ done: i + 1, total: lista.length }); continue; }
+        const principal = par.masc || par.fem!;
+        if (principal.blob.size > 15 * 1024 * 1024) throw new Error('maior que 15MB');
+        const urlMasc = par.masc ? await subir(par.masc, i, '') : null;
+        const urlFem = par.fem ? await subir(par.fem, i, '-f') : null;
+        if (par.masc && par.fem) comPar++;
         const { error: insErr } = await supabase.from('biblioteca_exercicios').insert({
-          terapeuta_id: user.id, nome, gif_url: pub.publicUrl,
+          terapeuta_id: user.id,
+          nome: traduzir(par.base),
+          nome_original: par.base,
+          grupo_muscular: grupoDe(par.base),
+          gif_url: urlMasc || urlFem,
+          gif_url_fem: urlFem,
           series_padrao: 3, repeticoes_padrao: 12, descanso_padrao_segundos: 45,
-        });
+        } as any);
         if (insErr) throw insErr;
         ok++;
       } catch {
         falhas++;
       }
-      setPack({ done: i + 1, total: arr.length });
+      setPack({ done: i + 1, total: lista.length });
     }
     setPack(null);
-    toast.success(`${ok} exercício(s) adicionado(s)${falhas ? ` · ${falhas} falharam` : ''}`);
+    setPackInfo(`✅ ${ok} exercícios criados${comPar ? ` (${comPar} com avatar M+F)` : ''}${duplicados ? ` · ${duplicados} já existiam` : ''}${falhas ? ` · ${falhas} falharam` : ''}`);
+    toast.success(`${ok} exercício(s) adicionado(s)`);
     carregar();
+  };
+
+  const filesDeFileList = (fl: FileList) =>
+    Array.from(fl).map(f => ({ name: f.name, path: (f as any).webkitRelativePath || f.name, blob: f as Blob }));
+
+  const uploadZip = async (file: File) => {
+    try {
+      toast.info('Abrindo o ZIP…');
+      const JSZip = (await import('jszip')).default;
+      const zip = await JSZip.loadAsync(file);
+      const out: { name: string; path: string; blob: Blob }[] = [];
+      for (const [path, entry] of Object.entries(zip.files)) {
+        if ((entry as any).dir) continue;
+        if (!/\.(gif|png|jpe?g|webp)$/i.test(path)) continue;
+        const blob = await (entry as any).async('blob');
+        out.push({ name: path.split('/').pop() || path, path, blob });
+      }
+      if (out.length === 0) { toast.error('O ZIP não contém imagens/GIFs.'); return; }
+      await uploadPack(out);
+    } catch (e: any) {
+      toast.error('Erro ao ler o ZIP: ' + (e.message || e));
+    }
   };
 
   const salvar = async () => {
@@ -158,18 +271,39 @@ export default function BibliotecaExercicios() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar por nome ou grupo…" value={busca} onChange={e => setBusca(e.target.value)} className="pl-9" />
           </div>
-          <label className="inline-flex items-center gap-1.5 h-10 px-3 rounded-md border border-border bg-background text-sm font-medium cursor-pointer hover:bg-muted shrink-0 whitespace-nowrap">
-            {pack ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {pack ? `${pack.done}/${pack.total}` : 'Enviar pack'}
-            <input type="file" accept="image/gif,image/*" multiple className="hidden" disabled={!!pack}
-              onChange={e => { if (e.target.files) uploadPack(e.target.files); e.currentTarget.value = ''; }} />
-          </label>
           <Button onClick={() => setEdit({ ...VAZIO })} className="gap-1.5 shrink-0">
             <Plus className="h-4 w-4" /> Novo
           </Button>
         </div>
-        <p className="text-[11px] text-muted-foreground -mt-2">
-          "Enviar pack": selecione vários GIFs de uma vez — cada um vira um exercício (nome = nome do arquivo). Depois é só completar grupo e orientações.
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border bg-background text-xs font-medium cursor-pointer hover:bg-muted shrink-0 whitespace-nowrap">
+            {pack ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {pack ? `${pack.done}/${pack.total}` : 'Enviar GIFs'}
+            <input type="file" accept="image/gif,image/*" multiple className="hidden" disabled={!!pack}
+              onChange={e => { if (e.target.files) uploadPack(filesDeFileList(e.target.files)); e.currentTarget.value = ''; }} />
+          </label>
+          <label className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border bg-background text-xs font-medium cursor-pointer hover:bg-muted shrink-0 whitespace-nowrap">
+            <FolderUp className="h-4 w-4" /> Enviar pasta inteira
+            <input type="file" multiple className="hidden" disabled={!!pack}
+              {...({ webkitdirectory: '', directory: '' } as any)}
+              onChange={e => { if (e.target.files) uploadPack(filesDeFileList(e.target.files)); e.currentTarget.value = ''; }} />
+          </label>
+          <label className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border bg-background text-xs font-medium cursor-pointer hover:bg-muted shrink-0 whitespace-nowrap">
+            <FileArchive className="h-4 w-4" /> Enviar ZIP
+            <input type="file" accept=".zip,application/zip,application/x-zip-compressed" className="hidden" disabled={!!pack}
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadZip(f); e.currentTarget.value = ''; }} />
+          </label>
+        </div>
+        {packInfo && (
+          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-3 py-2">
+            {packInfo}
+          </p>
+        )}
+        <p className="text-[11px] text-muted-foreground -mt-1">
+          Envie GIFs avulsos, a pasta inteira ou o arquivo ZIP. As versões masculina e feminina do mesmo exercício
+          (male/female no nome) são juntadas automaticamente em um só, o nome em inglês vira português e o grupo
+          muscular é sugerido — depois é só revisar.
         </p>
 
         {loading ? (
@@ -184,10 +318,15 @@ export default function BibliotecaExercicios() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {filtradas.map(ex => (
               <Card key={ex.id} className="overflow-hidden group">
-                <div className="aspect-square bg-muted/40 flex items-center justify-center overflow-hidden">
+                <div className="relative aspect-square bg-muted/40 flex items-center justify-center overflow-hidden">
                   {ex.gif_url
                     ? <img src={ex.gif_url} alt={ex.nome} className="w-full h-full object-cover" loading="lazy" />
                     : <ImageOff className="h-8 w-8 text-muted-foreground/30" />}
+                  {ex.gif_url_fem && (
+                    <span className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-background/85 border border-border/60 text-foreground/80">
+                      M+F
+                    </span>
+                  )}
                 </div>
                 <CardContent className="p-2.5">
                   <p className="text-xs font-semibold truncate">{ex.nome}</p>

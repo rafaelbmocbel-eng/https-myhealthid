@@ -65,14 +65,20 @@ Deno.serve(async (req) => {
     // catálogo terapêutico. A IA escolhe SÓ daqui.
     const [bibRes, catRes] = await Promise.all([
       admin.from("biblioteca_exercicios")
-        .select("id, nome, grupo_muscular, gif_url")
+        .select("id, nome, grupo_muscular, gif_url, gif_url_fem")
         .eq("terapeuta_id", userId).eq("ativo", true).limit(250),
       admin.from("exercicios_biblioteca")
         .select("id, nome, categoria").limit(250),
     ]);
+    // Se a paciente é mulher e o exercício tem a variante com avatar feminino,
+    // entrega o GIF feminino.
+    const prefereFem = /^f/i.test(String(sexo || ""));
     type Disp = { id: string; nome: string; grupo: string; gif_url: string | null };
     const disponiveis: Disp[] = [
-      ...((bibRes.data || []) as any[]).map((e) => ({ id: e.id, nome: e.nome, grupo: e.grupo_muscular || "", gif_url: e.gif_url || null })),
+      ...((bibRes.data || []) as any[]).map((e) => ({
+        id: e.id, nome: e.nome, grupo: e.grupo_muscular || "",
+        gif_url: (prefereFem && e.gif_url_fem) ? e.gif_url_fem : (e.gif_url || null),
+      })),
       ...((catRes.data || []) as any[]).map((e) => ({ id: e.id, nome: e.nome, grupo: e.categoria || "", gif_url: null })),
     ];
     const mapa = new Map(disponiveis.map((e) => [e.id, e]));
