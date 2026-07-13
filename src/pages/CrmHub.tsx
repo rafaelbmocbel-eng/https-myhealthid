@@ -14,7 +14,7 @@ const CrmTrafego = lazy(() => import('./CrmTrafego'));
 type TabKey = 'inbox' | 'captacao' | 'pipeline' | 'cadencias' | 'metricas' | 'automacoes' | 'trafego';
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; desc: string }[] = [
-  { key: 'inbox', label: 'WhatsApp', icon: MessageCircle, desc: 'Conversas' },
+  { key: 'inbox', label: 'Zap', icon: MessageCircle, desc: 'Conversas' },
   { key: 'captacao', label: 'Captação', icon: UserPlus, desc: 'Leads de anúncios' },
   { key: 'pipeline', label: 'Pipeline', icon: Kanban, desc: 'Kanban' },
   { key: 'cadencias', label: 'Cadências', icon: Workflow, desc: 'Follow-ups' },
@@ -67,8 +67,8 @@ export default function CrmHub({ embedded = false }: Props) {
         {/* Sidebar (desktop) */}
         <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-border/40 bg-card/30">
           <div className="px-4 py-4 border-b border-border/40">
-            <div className="eyebrow-accent mb-1.5">Relacionamento</div>
-            <h2 className="h-section">CRM &amp; Zap</h2>
+            <div className="eyebrow-accent mb-1.5">Zap</div>
+            <h2 className="h-section">Conversas &amp; automações</h2>
             <p className="text-caption mt-0.5">Vendas &amp; atendimento</p>
           </div>
           <nav className="flex-1 p-2 space-y-1">

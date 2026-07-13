@@ -20,9 +20,9 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },
-  { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true },
+  { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign },
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Início', href: '/', icon: LayoutDashboard },
   { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true, separatorAfter: true },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];

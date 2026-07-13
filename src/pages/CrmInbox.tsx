@@ -224,7 +224,7 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
           {/* WA-style top bar */}
           <div className="h-14 px-4 flex items-center gap-3 bg-[#008069] dark:bg-[#202c33] shrink-0">
             <MessageCircle className="h-5 w-5 text-white/90" />
-            <span className="text-white font-semibold flex-1 text-[15px]">{isLeads ? 'Captação · Leads' : 'WhatsApp'}</span>
+            <span className="text-white font-semibold flex-1 text-[15px]">{isLeads ? 'Captação · Leads' : 'Zap'}</span>
             {isLeads ? <GerarLinkCaptacaoBtn /> : <BotConfigPanelBtn />}
           </div>
 
@@ -305,7 +305,7 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
                 <MessageCircle className="h-16 w-16 text-[#008069] dark:text-[#25D366] opacity-50" />
               </div>
               <div className="text-center space-y-1">
-                <h3 className="text-xl font-semibold text-foreground/80">WhatsApp Clínico</h3>
+                <h3 className="text-xl font-semibold text-foreground/80">Zap</h3>
                 <p className="text-sm text-muted-foreground max-w-xs">Selecione uma conversa para ver as mensagens</p>
               </div>
             </div>
