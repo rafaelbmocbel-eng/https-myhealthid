@@ -222,7 +222,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Exercícios */}
           <AccordionItem value="exerc">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Dumbbell className="icon-sm text-amber-600" /> Exercícios ({data.execucoes.length} execuções)</div>
+              <div className="flex items-center gap-2"><Dumbbell className="icon-sm text-amber-600" /> Dever de Casa · prescritos por você ({data.execucoes.length} execuções)</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -256,7 +256,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Dicas IA — geradas automaticamente pelo MyID + evidência (grátis) */}
           <AccordionItem value="dicas-ia">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><GraduationCap className="icon-sm text-sky-600" /> Exercícios &amp; dicas IA · MyID ({nDicasIA})</div>
+              <div className="flex items-center gap-2"><GraduationCap className="icon-sm text-sky-600" /> ✨ Exercícios da IA · gerados do MyID ({nDicasIA})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -301,7 +301,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Plano IA — criar aqui (treino com GIFs + nutrição) e LIBERAR pro portal */}
           <AccordionItem value="plano-ia">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> Plano IA · treino &amp; nutrição ({data.planosTreino.length + data.planosAlim.length})</div>
+              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> 💎 Plano premium IA · treino (GIFs) &amp; nutrição ({data.planosTreino.length + data.planosAlim.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3 px-1 pb-2">
