@@ -127,17 +127,12 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId }: Props) {
   const handleConcluirDesafio = () => {
     try { localStorage.setItem(storageKey, '1'); } catch { /* */ }
     setDesafioConcluido(true);
-    // Increment XP via supabase update
+    // XP REAL via ganhar_xp — idempotente (1x por dia) e sem corrida de escrita
     if (user?.id) {
-      supabase
-        .from('pacientes')
-        .select('xp_total')
-        .eq('id', pacienteId)
-        .maybeSingle()
-        .then(({ data }) => {
-          const xpAtual = (data as any)?.xp_total || 0;
-          supabase.from('pacientes').update({ xp_total: xpAtual + desafio.xp }).eq('id', pacienteId);
-        });
+      const hoje = new Date().toISOString().split('T')[0];
+      void (supabase as any).rpc('ganhar_xp', {
+        p_paciente_id: pacienteId, p_chave: `desafio:${hoje}`, p_xp: desafio.xp,
+      });
     }
   };
 

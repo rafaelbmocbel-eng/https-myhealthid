@@ -345,6 +345,11 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           } else {
             await (supabase as any).from('missao_checkins')
               .upsert({ paciente_id: pacienteId, missao_key: id, data: hojeStr }, { onConflict: 'paciente_id,missao_key,data' });
+            // XP REAL: credita a carteira uma única vez por missão/dia (chave única no banco)
+            const xpMissao = missoesSaude.find(m => m.id === id)?.xpRecompensa || 10;
+            void (supabase as any).rpc('ganhar_xp', {
+              p_paciente_id: pacienteId, p_chave: `missao:${id}:${hojeStr}`, p_xp: xpMissao,
+            });
           }
         } catch { /* fallback: fica só no localStorage */ }
       })();
@@ -455,6 +460,17 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
 
       setMetas(metasList);
       setLoading(false);
+
+      // XP REAL das metas semanais: credita quando a meta fecha (1x por semana,
+      // deduplicado no banco pela chave meta:{id}:{segunda-feira}).
+      const seg = new Date(now);
+      seg.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+      const weekKey = seg.toISOString().split('T')[0];
+      metasList.filter(m => m.concluida).forEach(m => {
+        void (supabase as any).rpc('ganhar_xp', {
+          p_paciente_id: pacienteId, p_chave: `meta:${m.id}:${weekKey}`, p_xp: m.xpRecompensa,
+        });
+      });
     };
 
     fetchMetas();

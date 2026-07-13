@@ -192,6 +192,13 @@ export default function PacienteExercicios() {
       nota_dor: sessionDor,
       feedback_aluno: sessionFeedback.trim() || null,
     });
+    if (!error && pacienteId) {
+      // XP REAL: +15 por dia com treino concluído (deduplicado no banco)
+      const hoje = new Date().toISOString().split('T')[0];
+      void (supabase as any).rpc('ganhar_xp', {
+        p_paciente_id: pacienteId, p_chave: `treino:${hoje}`, p_xp: 15,
+      });
+    }
 
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });

@@ -102,6 +102,13 @@ export default function PacienteDiario() {
       sleep_hours: sleepHours,
       notes: notes.trim() || null,
     });
+    if (!error) {
+      // XP REAL: +10 por dia de diário (deduplicado no banco)
+      const hoje = new Date().toISOString().split('T')[0];
+      void (supabase as any).rpc('ganhar_xp', {
+        p_paciente_id: paciente.id, p_chave: `diario:${hoje}`, p_xp: 10,
+      });
+    }
 
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });

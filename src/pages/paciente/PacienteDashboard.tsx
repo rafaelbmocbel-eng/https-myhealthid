@@ -42,14 +42,14 @@ interface Agendamento {
   tipo_atendimento: string | null;
 }
 
-function calcXP(stats: { avaliacoes: number; consultas: number; diarios: number; vocais: number }) {
-  return stats.avaliacoes * 50 + stats.consultas * 30 + stats.diarios * 10 + stats.vocais * 20;
-}
+// Escala ÚNICA de níveis — a mesma do banco (calcular_nivel_paciente) e das
+// Recompensas: bronze 0 · prata 200 · ouro 500 · platina 1000 · diamante 2000.
 function getLevel(xp: number) {
-  if (xp >= 500) return { label: 'Ouro',     color: 'text-yellow-600', icon: Trophy, next: null };
-  if (xp >= 250) return { label: 'Prata',    color: 'text-slate-500',  icon: Star,   next: 500 };
-  if (xp >= 100) return { label: 'Bronze',   color: 'text-amber-700',  icon: Flame,  next: 250 };
-  return           { label: 'Iniciante', color: 'text-primary',    icon: Star,   next: 100 };
+  if (xp >= 2000) return { label: 'Diamante', color: 'text-cyan-500',   icon: Trophy, next: null };
+  if (xp >= 1000) return { label: 'Platina',  color: 'text-slate-400',  icon: Trophy, next: 2000 };
+  if (xp >= 500)  return { label: 'Ouro',     color: 'text-yellow-600', icon: Trophy, next: 1000 };
+  if (xp >= 200)  return { label: 'Prata',    color: 'text-slate-500',  icon: Star,   next: 500 };
+  return            { label: 'Bronze',   color: 'text-amber-700',  icon: Flame,  next: 200 };
 }
 
 const fadeUp = {
@@ -90,7 +90,7 @@ export default function PacienteDashboard() {
       try {
         const { data: pac, error: pacError } = await supabase
           .from('pacientes')
-          .select('id, nome, sobrenome, terapeuta_id, cadastro_status')
+          .select('id, nome, sobrenome, terapeuta_id, cadastro_status, xp_total')
           .eq('user_id', user.id)
           .maybeSingle();
         if (pacError) throw pacError;
@@ -185,22 +185,12 @@ export default function PacienteDashboard() {
     fetchData();
   }, [user, navigate]);
 
-  const xp = calcXP(stats);
+  // XP agora vem SÓ da carteira real (pacientes.xp_total), creditada pela
+  // função ganhar_xp em missões/metas/diário/treino/desafios — sem recomputo
+  // local nem sobrescrita concorrente.
+  const xp = (paciente as any)?.xp_total || 0;
   const level = getLevel(xp);
   const LevelIcon = level.icon;
-
-  useEffect(() => {
-    if (!paciente?.id || loading) return;
-    // Não sobrescrever XP ganho em outras fontes (ex.: desafios diários) — só sobe, nunca desce.
-    supabase.from('pacientes').select('xp_total').eq('id', paciente.id).maybeSingle().then(({ data }) => {
-      const atual = (data as { xp_total: number } | null)?.xp_total || 0;
-      if (xp > atual) {
-        supabase.from('pacientes').update({ xp_total: xp }).eq('id', paciente.id).then(({ error }) => {
-          if (error) console.warn('[PacienteDashboard] falha ao salvar XP:', error);
-        });
-      }
-    });
-  }, [paciente?.id, xp, loading]);
 
   const getGreeting = () => {
     const h = new Date().getHours();
