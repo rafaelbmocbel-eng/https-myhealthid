@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users,
   Settings, LogOut, User, MessageCircle,
-  Home, DollarSign, Store, Dumbbell, type LucideIcon,
+  Sun, DollarSign, Store, Dumbbell, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,7 +16,7 @@ import { useVitrineNotifications } from '@/hooks/useVitrineNotifications';
 type ServiceKey = 'eventos';
 
 const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; separatorAfter?: boolean }[] = [
-  { label: 'Home', href: '/hoje', icon: Home },
+  { label: 'Hoje', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },

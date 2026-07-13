@@ -7,7 +7,7 @@ import {
 import {
   LayoutDashboard, Users, CalendarDays, Settings, Search, User, PartyPopper,
   BookOpen, DollarSign, Tag, Inbox, GitBranch, Zap, BarChart3, Target, Wrench, MessageCircle,
-  Kanban, TrendingUp, Radio, Bot, UserCog,
+  Kanban, TrendingUp, Radio, Bot, UserCog, Sun,
   UserPlus, CalendarPlus, Plug, Bell, ShieldCheck, Stethoscope, Home, Workflow,
   Loader2,
 } from 'lucide-react';
@@ -29,7 +29,7 @@ interface AgendamentoResult { id: string; titulo: string | null; data_inicio: st
 
 /* ─── Static nav items ─── */
 const ITEMS: NavItem[] = [
-  { label: 'Home', href: '/hoje', icon: Home, keywords: 'inicio hoje dashboard atalhos', group: 'Páginas' },
+  { label: 'Hoje', href: '/hoje', icon: Sun, keywords: 'inicio home hoje dia atalhos', group: 'Páginas' },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, keywords: 'calendario horario sessao consulta', group: 'Páginas' },
   { label: 'Pacientes', href: '/pacientes', icon: Users, keywords: 'clientes lista cadastro', group: 'Páginas' },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, keywords: 'workshop curso mentoria inscricao', group: 'Páginas' },
@@ -47,7 +47,7 @@ const ITEMS: NavItem[] = [
   { label: 'Zap · Tráfego', href: '/crm?tab=trafego', icon: Radio, keywords: 'utm origem pixel instagram links', group: 'CRM' },
   { label: 'Zap · Automações', href: '/crm?tab=automacoes', icon: Bot, keywords: 'whatsapp template automatico mensagem', group: 'CRM' },
 
-  { label: 'Configurações · Home', href: '/configuracoes?tab=home', icon: Home, keywords: 'atalhos personalizar', group: 'Configurações' },
+  { label: 'Configurações · Hoje', href: '/configuracoes?tab=home', icon: Sun, keywords: 'atalhos personalizar home', group: 'Configurações' },
   { label: 'Configurações · Clínica', href: '/configuracoes?tab=clinica', icon: Settings, keywords: 'empresa dados', group: 'Configurações' },
   { label: 'Configurações · Agenda', href: '/configuracoes?tab=agenda', icon: CalendarDays, keywords: 'horario disponibilidade', group: 'Configurações' },
   { label: 'Configurações · Equipe', href: '/configuracoes?tab=equipe', icon: UserCog, keywords: 'profissionais membros usuarios', group: 'Configurações' },
