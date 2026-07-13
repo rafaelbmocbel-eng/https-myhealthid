@@ -8,9 +8,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM = `Você é nutricionista clínico (CFN) especialista em prescrição dietética.
-Gere um plano alimentar personalizado em JSON, distribuído em refeições ao longo do dia, respeitando objetivo, preferências e restrições.
-Use alimentos comuns no Brasil, medidas caseiras E gramatura. Cálculos de macros realistas.
+const SYSTEM = `Você é um GRUPO de nutricionistas clínicos (CFN) com 15 anos de experiência de consultório, trabalhando em conjunto para um plano de excelência.
+Padrão de qualidade: individualização REAL — o plano deve refletir a bioimpedância/composição corporal, as respostas da anamnese, o perfil MyID e a rotina do paciente; nada genérico.
+Gere um plano alimentar personalizado em JSON, distribuído em refeições ao longo do dia, respeitando objetivo, preferências, aversões e restrições declaradas na anamnese.
+Use alimentos comuns no Brasil, medidas caseiras E gramatura; inclua substituições práticas quando fizer sentido. Cálculos de macros realistas, coerentes com massa magra/gordura quando a composição corporal for fornecida.
 Retorne SOMENTE JSON neste formato:
 {
   "titulo": "string curta",
@@ -57,20 +58,29 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       );
-      const [myRes, pacRes] = await Promise.all([
+      const [myRes, pacRes, bioRes, anamRes] = await Promise.all([
         admin.from("myid_avaliacoes").select("resultado_processado")
           .eq("paciente_id", paciente_id).eq("status", "concluido")
           .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
         admin.from("pacientes").select("queixa_principal, historia_atual, condicoes_saude")
           .eq("id", paciente_id).maybeSingle(),
+        admin.from("body_composition").select("*")
+          .eq("paciente_id", paciente_id)
+          .order("date", { ascending: false }).limit(1).maybeSingle(),
+        admin.from("nutricao_anamnese").select("respostas")
+          .eq("paciente_id", paciente_id).maybeSingle(),
       ]);
       const scores = (myRes.data?.resultado_processado as any)?.scores;
       const pac = pacRes.data as any;
+      const bio = bioRes.data as any;
+      const anam = (anamRes.data as any)?.respostas;
       const partes: string[] = [];
       if (scores) partes.push(`Perfil MyID (scores por dimensão): ${JSON.stringify(scores)}`);
       if (pac?.queixa_principal) partes.push(`Queixa principal: ${String(pac.queixa_principal).slice(0, 400)}`);
       if (pac?.historia_atual) partes.push(`História: ${String(pac.historia_atual).slice(0, 600)}`);
       if (pac?.condicoes_saude) partes.push(`Condições de saúde: ${JSON.stringify(pac.condicoes_saude).slice(0, 400)}`);
+      if (bio) partes.push(`Bioimpedância/composição corporal (mais recente): ${JSON.stringify(bio).slice(0, 600)}`);
+      if (anam && Object.keys(anam).length) partes.push(`Anamnese nutricional (respostas do paciente): ${JSON.stringify(anam).slice(0, 800)}`);
       if (partes.length) {
         perfilClinico = `\nPerfil clínico do paciente (use para personalizar, com base em evidências; considere comorbidades e sinais das dimensões mais críticas):\n${partes.join("\n")}`;
       }

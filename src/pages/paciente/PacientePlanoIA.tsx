@@ -7,7 +7,11 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
-import { Loader2, Dumbbell, Salad, Lock, Sparkles, ChevronRight, Info } from 'lucide-react';
+import { Loader2, Dumbbell, Salad, Lock, Sparkles, ChevronRight, Info, ClipboardList, Check } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 export default function PacientePlanoIA() {
   const { user } = useAuth();
@@ -16,6 +20,7 @@ export default function PacientePlanoIA() {
   const [loading, setLoading] = useState(true);
   const [treino, setTreino] = useState<any>(null);
   const [dieta, setDieta] = useState<any>(null);
+  const [pacienteId, setPacienteId] = useState<string | null>(null);
 
   const bloqueado = isFree && !isInTrial;
 
@@ -24,6 +29,7 @@ export default function PacientePlanoIA() {
     (async () => {
       const { data: pac } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
       if (!pac) { setLoading(false); return; }
+      setPacienteId(pac.id);
       const [t, d] = await Promise.all([
         supabase.from('planos_treino').select('titulo, objetivo, estrutura, created_at')
           .eq('paciente_id', pac.id).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
@@ -78,6 +84,9 @@ export default function PacientePlanoIA() {
                 Estes planos são uma <strong>sugestão de apoio</strong> gerada por IA a partir da sua avaliação — <strong>não substituem</strong> a orientação do seu profissional de saúde. Converse com ele antes de mudanças importantes.
               </p>
             </div>
+
+            {/* Perguntas do plano nutricional (anamnese) */}
+            {pacienteId && <AnamneseNutricionalCard pacienteId={pacienteId} />}
 
             {/* Plano de treino */}
             <PlanoTreinoView treino={treino} />
@@ -186,6 +195,83 @@ function PlanoDietaView({ dieta }: { dieta: any }) {
           );
         })}
       </CardContent>
+    </Card>
+  );
+}
+
+// ─── Anamnese nutricional — perguntas que individualizam o plano alimentar ────
+function AnamneseNutricionalCard({ pacienteId }: { pacienteId: string }) {
+  const [aberto, setAberto] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [preenchida, setPreenchida] = useState(false);
+  const [r, setR] = useState<Record<string, string>>({
+    objetivo: '', refeicoes_por_dia: '', restricoes_alergias: '',
+    aversoes: '', preferencias: '', rotina: '',
+  });
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any).from('nutricao_anamnese')
+        .select('respostas').eq('paciente_id', pacienteId).maybeSingle();
+      if (data?.respostas) {
+        setR(prev => ({ ...prev, ...data.respostas }));
+        setPreenchida(Object.values(data.respostas as Record<string, string>).some(v => String(v || '').trim() !== ''));
+      }
+    })();
+  }, [pacienteId]);
+
+  const salvar = async () => {
+    setSalvando(true);
+    const { error } = await (supabase as any).from('nutricao_anamnese')
+      .upsert({ paciente_id: pacienteId, respostas: r, updated_at: new Date().toISOString() }, { onConflict: 'paciente_id' });
+    setSalvando(false);
+    if (error) { toast.error('Erro ao salvar: ' + error.message); return; }
+    setPreenchida(true);
+    setAberto(false);
+    toast.success('Respostas salvas! Elas entram no seu próximo plano alimentar.');
+  };
+
+  const CAMPOS: { k: string; label: string; ph: string; area?: boolean }[] = [
+    { k: 'objetivo', label: 'Qual seu objetivo principal?', ph: 'Ex.: perder gordura, ganhar massa, mais energia…' },
+    { k: 'refeicoes_por_dia', label: 'Quantas refeições consegue fazer por dia?', ph: 'Ex.: 4' },
+    { k: 'restricoes_alergias', label: 'Restrições ou alergias alimentares', ph: 'Ex.: lactose, glúten, amendoim… (ou "nenhuma")', area: true },
+    { k: 'aversoes', label: 'Alimentos que você NÃO gosta', ph: 'Ex.: fígado, quiabo…', area: true },
+    { k: 'preferencias', label: 'Alimentos que você adora', ph: 'Ex.: frango, banana, aveia…', area: true },
+    { k: 'rotina', label: 'Sua rotina (horários de trabalho/treino/sono)', ph: 'Ex.: trabalho 8h-18h, treino 19h, durmo 23h', area: true },
+  ];
+
+  return (
+    <Card className="overflow-hidden">
+      <button onClick={() => setAberto(v => !v)} className="w-full text-left p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+          {preenchida ? <Check className="h-5 w-5" /> : <ClipboardList className="h-5 w-5" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold">Perguntas do seu plano nutricional</p>
+          <p className="text-[11px] text-muted-foreground">
+            {preenchida ? 'Respondido — toque para revisar/atualizar.' : 'Responda para o plano ser feito sob medida pra você.'}
+          </p>
+        </div>
+        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${aberto ? 'rotate-90' : ''}`} />
+      </button>
+      {aberto && (
+        <CardContent className="pt-0 space-y-3">
+          {CAMPOS.map(c => (
+            <div key={c.k} className="space-y-1">
+              <Label className="text-xs">{c.label}</Label>
+              {c.area ? (
+                <Textarea rows={2} placeholder={c.ph} value={r[c.k] || ''} onChange={e => setR(prev => ({ ...prev, [c.k]: e.target.value }))} className="text-sm" />
+              ) : (
+                <Input placeholder={c.ph} value={r[c.k] || ''} onChange={e => setR(prev => ({ ...prev, [c.k]: e.target.value }))} className="text-sm" />
+              )}
+            </div>
+          ))}
+          <Button onClick={salvar} disabled={salvando} className="w-full gap-1.5">
+            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            Salvar respostas
+          </Button>
+        </CardContent>
+      )}
     </Card>
   );
 }
