@@ -256,7 +256,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Dicas IA — geradas automaticamente pelo MyID + evidência (grátis) */}
           <AccordionItem value="dicas-ia">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><GraduationCap className="icon-sm text-sky-600" /> Dicas automáticas IA · MyID ({nDicasIA})</div>
+              <div className="flex items-center gap-2"><GraduationCap className="icon-sm text-sky-600" /> Exercícios &amp; dicas IA · MyID ({nDicasIA})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">

@@ -207,6 +207,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const [showDicas, setShowDicas] = useState(true);
   const [showFases, setShowFases] = useState(false);
   const [temDicasIA, setTemDicasIA] = useState(false);
+  const [verTodasMissoes, setVerTodasMissoes] = useState(false);
   const [dicasIA, setDicasIA] = useState<any[]>([]);
   const [planoTreinoIA, setPlanoTreinoIA] = useState<any>(null);
   const [planoAlimIA, setPlanoAlimIA] = useState<any>(null);
@@ -496,7 +497,12 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
     ? metas.reduce((acc, m) => acc + m.progresso, 0) / metas.length
     : 0;
 
-  const missoesConcluiveis = missoesSaude.filter(m => m.completavel);
+  const ORDEM_CATEGORIA: Record<string, number> = { urgente: 0, importante: 1, oportunidade: 2, positivo: 3 };
+  const missoesConcluiveis = missoesSaude
+    .filter(m => m.completavel)
+    .sort((a, b) => (ORDEM_CATEGORIA[a.categoria] ?? 9) - (ORDEM_CATEGORIA[b.categoria] ?? 9));
+  // Mostra só as 5 mais importantes — 10 tarefas de uma vez paralisam.
+  const missoesVisiveis = verTodasMissoes ? missoesConcluiveis : missoesConcluiveis.slice(0, 5);
   const missoesPositivas = missoesSaude.filter(m => m.categoria === 'positivo');
   const missoesConcluidas = missoesConcluiveis.filter(m => completedMissions.has(m.id)).length;
 
@@ -632,7 +638,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
               )}
 
               {/* Actionable missions */}
-              {missoesConcluiveis.map(missao => {
+              {missoesVisiveis.map(missao => {
                 const isDone = completedMissions.has(missao.id);
                 const Icon = missao.icon;
                 return (
@@ -681,6 +687,15 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                 );
               })}
 
+              {missoesConcluiveis.length > 5 && (
+                <button
+                  onClick={() => setVerTodasMissoes(v => !v)}
+                  className="w-full text-center text-[11px] font-semibold text-primary py-1.5 rounded-lg hover:bg-muted/40"
+                >
+                  {verTodasMissoes ? 'Mostrar menos' : `Ver todas as ${missoesConcluiveis.length} tarefas`}
+                </button>
+              )}
+
               {/* Pontos fortes */}
               {missoesPositivas.length > 0 && (
                 <div className="space-y-1.5 pt-1">
@@ -712,7 +727,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
         <div className="space-y-2 pt-2">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-sky-600" />
-            <h2 className="text-sm font-bold text-foreground">Suas dicas do MyID</h2>
+            <h2 className="text-sm font-bold text-foreground">Exercícios &amp; dicas do MyID</h2>
             <span className="text-[10px] text-muted-foreground">({dicasIA.length})</span>
           </div>
           <div className="space-y-1.5">
@@ -749,7 +764,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       )}
 
       {/* ── MEU TREINO & MINHA NUTRIÇÃO — os planos moram na Jornada ── */}
-      {typeof window !== 'undefined' && window.location.pathname.startsWith('/paciente') && (
+      {typeof window !== 'undefined' && window.location.pathname.startsWith('/paciente/') && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
           <Card className="overflow-hidden">
             <Link to={planoTreinoIA ? '/paciente/plano-ia' : '/paciente/exercicios'} className="block p-3">
