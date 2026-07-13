@@ -807,7 +807,12 @@ export default function Pacientes() {
           ]).map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveMainTab(tab.id)}
+              onClick={() => {
+                // Relacionamento vai DIRETO ao Zap (mesma tela do botão "Zap"
+                // da barra inferior), sem o hub embutido de visual diferente.
+                if (tab.id === 'crm') { navigate('/crm?tab=inbox'); return; }
+                setActiveMainTab(tab.id);
+              }}
               title={tab.label}
               aria-label={tab.label}
               className={cn(
