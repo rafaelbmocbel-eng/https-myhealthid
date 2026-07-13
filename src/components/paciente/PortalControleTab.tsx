@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -13,6 +13,8 @@ import {
   TrendingUp, Trophy, Apple, Ruler, Bell, GraduationCap, Stethoscope
 } from 'lucide-react';
 import DeverDeCasaDialog from './DeverDeCasaDialog';
+const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
+const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
 import AvatarClinicoCard from '../avatar/AvatarClinicoCard';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -296,39 +298,21 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
             </AccordionContent>
           </AccordionItem>
 
-          {/* Plano IA — treino (GIFs) + alimentar (pagos), com aprovação */}
+          {/* Plano IA — criar aqui (treino com GIFs + nutrição) e LIBERAR pro portal */}
           <AccordionItem value="plano-ia">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
               <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> Plano IA · treino &amp; nutrição ({data.planosTreino.length + data.planosAlim.length})</div>
             </AccordionTrigger>
             <AccordionContent>
-              <ScrollArea className="h-64">
-                <div className="space-y-1.5 pr-2">
-                  {data.planosTreino.map((p: any) => (
-                    <div key={p.id} className="border rounded-lg p-2 text-[11px] flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold">Plano de treino (MyID + biblioteca GIF)</div>
-                        <div className="text-[10px] text-muted-foreground">{format(parseISO(p.created_at), 'dd/MM/yyyy', { locale: ptBR })}</div>
-                      </div>
-                      <Badge variant={p.aprovado ? 'default' : 'outline'} className="text-[9px] h-4">{p.aprovado ? 'aprovado' : 'aguardando revisão'}</Badge>
-                    </div>
-                  ))}
-                  {data.planosAlim.map((p: any) => (
-                    <div key={p.id} className="border rounded-lg p-2 text-[11px] flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold">Plano alimentar{p.calorias_alvo ? ` · ${p.calorias_alvo} kcal` : ''}</div>
-                        <div className="text-[10px] text-muted-foreground">{format(parseISO(p.created_at), 'dd/MM/yyyy', { locale: ptBR })}</div>
-                      </div>
-                      <Badge variant={p.aprovado ? 'default' : 'outline'} className="text-[9px] h-4">{p.aprovado ? 'aprovado' : 'aguardando revisão'}</Badge>
-                    </div>
-                  ))}
-                  {(data.planosTreino.length + data.planosAlim.length) === 0 && (
-                    <p className="text-[11px] text-muted-foreground italic px-2">
-                      Sem planos IA ainda — gere na aba Avaliação do paciente (usa MyID + exercícios da sua biblioteca GIF + nutrição). O cliente pago vê em "Meu Plano" após sua aprovação.
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
+              <div className="space-y-3 px-1 pb-2">
+                <p className="text-[10px] text-muted-foreground px-1">
+                  Gere o plano de treino (usa MyID + seus exercícios em GIF) e o plano nutricional (usa MyID + bioimpedância + anamnese). Depois toque em <strong>Liberar</strong> para enviar ao portal do cliente.
+                </p>
+                <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                  <PlanoTreinoCard pacienteId={pacienteId} />
+                  <PlanoAlimentarCard pacienteId={pacienteId} />
+                </Suspense>
+              </div>
             </AccordionContent>
           </AccordionItem>
 

@@ -206,6 +206,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const [showDicas, setShowDicas] = useState(true);
   const [showFases, setShowFases] = useState(false);
   const [temDicasIA, setTemDicasIA] = useState(false);
+  const [dicasIA, setDicasIA] = useState<any[]>([]);
+  const [dicaAberta, setDicaAberta] = useState<number | null>(null);
 
   // Fetch MyID scores for health missions
   const { data: myidData } = useQuery({
@@ -393,8 +395,10 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       const treinos = treinosRes.data || [];
       // Execuções REAIS da semana (antes ficava fixo em zero e a meta nunca andava)
       const execucoes: any[] = execRes.data || [];
-      const nDicasIA = Array.isArray(dicasRes.data?.dicas) ? dicasRes.data.dicas.length : 0;
+      const listaDicas = Array.isArray(dicasRes.data?.dicas) ? dicasRes.data.dicas : [];
+      const nDicasIA = listaDicas.length;
       setTemDicasIA(nDicasIA > 0);
+      setDicasIA(listaDicas);
 
       let streakCount = 0;
       const streakLogs = streakRes.data || [];
@@ -671,6 +675,47 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── SUAS DICAS DO MyID (IA + evidência) — moram na Jornada ── */}
+      {dicasIA.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-sky-600" />
+            <h2 className="text-sm font-bold text-foreground">Suas dicas do MyID</h2>
+            <span className="text-[10px] text-muted-foreground">({dicasIA.length})</span>
+          </div>
+          <div className="space-y-1.5">
+            {dicasIA.map((d: any, i: number) => {
+              const open = dicaAberta === i;
+              return (
+                <Card key={i} className="overflow-hidden">
+                  <button onClick={() => setDicaAberta(open ? null : i)} className="w-full text-left p-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold">{d.nome}</span>
+                      {d.categoria && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">{d.categoria}</span>}
+                      {d.tempo_duracao && <span className="text-[9px] text-muted-foreground ml-auto">{d.tempo_duracao}</span>}
+                    </div>
+                    {!open && d.descricao && <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">{d.descricao}</p>}
+                  </button>
+                  {open && (
+                    <CardContent className="pt-0 pb-3 space-y-2 text-[11px]">
+                      {d.descricao && <p className="text-muted-foreground">{d.descricao}</p>}
+                      {Array.isArray(d.instrucoes) && d.instrucoes.length > 0 && (
+                        <ol className="list-decimal pl-4 space-y-0.5 text-foreground/80">
+                          {d.instrucoes.map((x: any, j: number) => <li key={j}>{String(x)}</li>)}
+                        </ol>
+                      )}
+                      {Array.isArray(d.precaucoes) && d.precaucoes.length > 0 && (
+                        <p className="text-amber-700 dark:text-amber-400 text-[10px]">⚠ {d.precaucoes.map(String).join(' · ')}</p>
+                      )}
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
 
