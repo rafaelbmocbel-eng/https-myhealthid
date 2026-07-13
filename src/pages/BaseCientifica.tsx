@@ -420,12 +420,13 @@ function BackfillDicasButton() {
       for (let i = 0; i < 20; i++) {
         const { data, error } = await supabase.functions.invoke('gerar-dicas-backfill', { body: {} });
         if (error) throw new Error(error.message);
-        const d = data as { total: number; ja_tinham: number; gerados: number; falhas: number; restantes: number };
+        const d = data as { total: number; ja_tinham: number; gerados: number; falhas: number; restantes: number; motivos?: string[] };
         geradosTotal += d.gerados || 0;
         falhasTotal += d.falhas || 0;
         setResumo(`Gerando… ${geradosTotal} prontos${d.restantes ? ` · faltam ${d.restantes}` : ''}`);
         if (!d.restantes || (d.gerados === 0 && d.falhas === 0)) {
-          setResumo(`✅ Concluído: ${geradosTotal} pacientes com dicas novas · ${d.ja_tinham} já tinham${falhasTotal ? ` · ${falhasTotal} sem evidência/erro` : ''}`);
+          const motivosTxt = d.motivos?.length ? ` — motivos: ${d.motivos.join('; ')}` : '';
+          setResumo(`✅ Concluído: ${geradosTotal} pacientes com dicas novas · ${d.ja_tinham} já tinham${falhasTotal ? ` · ${falhasTotal} falhas${motivosTxt}` : ''}`);
           toast.success(`Dicas geradas para ${geradosTotal} pacientes!`);
           return;
         }

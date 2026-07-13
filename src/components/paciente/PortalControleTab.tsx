@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,7 +32,37 @@ const moodEmoji = (m: number) => ['😞','😕','😐','🙂','😄'][Math.max(0
 export default function PortalControleTab({ pacienteId, pacienteNome, portalToken, telefone, tipoConta }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const [deverOpen, setDeverOpen] = useState(false);
+  const [gerandoDicas, setGerandoDicas] = useState(false);
+
+  // Gera (ou regenera) as dicas IA deste paciente na hora — e mostra o motivo
+  // se a IA não conseguir (ex.: sem MyID concluído, sem evidência, erro).
+  const gerarDicasAgora = async () => {
+    setGerandoDicas(true);
+    try {
+      const { data: res, error } = await supabase.functions.invoke('gerar-dicas-paciente', {
+        body: { paciente_id: pacienteId },
+      });
+      if (error) throw new Error(error.message);
+      const r = res as { ok?: boolean; geradas?: number; reason?: string; error?: string };
+      if (r?.ok) {
+        toast({ title: `✨ ${r.geradas} dicas geradas!` });
+        qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
+      } else {
+        const motivo = r?.reason === 'sem_evidencia'
+          ? 'Sem artigos aplicáveis às áreas do MyID deste paciente.'
+          : r?.reason === 'sem_dicas'
+            ? 'A IA não retornou dicas — tente novamente.'
+            : (r?.error || 'Motivo desconhecido.');
+        toast({ title: 'Não foi possível gerar', description: motivo, variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar dicas', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setGerandoDicas(false);
+    }
+  };
   const since30 = subDays(new Date(), 30).toISOString();
   const since7 = subDays(new Date(), 7).toISOString();
 
@@ -118,21 +149,6 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const planoTreinoAprovado = data.planosTreino.filter((p: any) => p.aprovado).length;
   const planoAlimAprovado = data.planosAlim.filter((p: any) => p.aprovado).length;
 
-  const espacos = [
-    { key: 'diario', icon: Heart, label: 'Diário', color: 'text-rose-600 bg-rose-50', stat: `${diarioSemana} (7d)`, total: data.dailyLogs.length },
-    { key: 'exerc', icon: Dumbbell, label: 'Exercícios', color: 'text-amber-600 bg-amber-50', stat: `${execSemana} (7d)`, total: data.execucoes.length, sub: `${prescricoesAtivas} ativas` },
-    { key: 'dicas-ia', icon: GraduationCap, label: 'Dicas IA (MyID)', color: 'text-sky-600 bg-sky-50', stat: nDicasIA > 0 ? `${nDicasIA} dicas` : '—', total: nDicasIA },
-    { key: 'plano-ia', icon: Stethoscope, label: 'Plano IA', color: 'text-purple-600 bg-purple-50', stat: (data.planosTreino.length + data.planosAlim.length) > 0 ? `${planoTreinoAprovado + planoAlimAprovado} aprov.` : '—', total: data.planosTreino.length + data.planosAlim.length },
-    { key: 'agenda', icon: Calendar, label: 'Agenda', color: 'text-blue-600 bg-blue-50', stat: proxAg ? format(parseISO(proxAg.data_inicio), 'dd/MM HH:mm', { locale: ptBR }) : '—', total: data.agendamentos.length },
-    { key: 'pag', icon: DollarSign, label: 'Pagamentos', color: 'text-emerald-600 bg-emerald-50', stat: `R$ ${pagPagos30.toFixed(0)}`, total: data.pagamentos.length, sub: `${pagPendentes} pend.` },
-    { key: 'chat', icon: MessageCircle, label: 'Chat', color: 'text-indigo-600 bg-indigo-50', stat: chatNaoLido > 0 ? `${chatNaoLido} novas` : 'Em dia', total: data.chat.length },
-    { key: 'quest', icon: ClipboardList, label: 'Questionários', color: 'text-violet-600 bg-violet-50', stat: respostasPendentes > 0 ? `${respostasPendentes} pend.` : 'Em dia', total: data.respostas.length },
-    { key: 'saude', icon: Activity, label: 'Wearables', color: 'text-cyan-600 bg-cyan-50', stat: `${data.health.length}`, total: data.health.length },
-    { key: 'eventos', icon: CalendarDays, label: 'Eventos', color: 'text-fuchsia-600 bg-fuchsia-50', stat: `${data.eventos.length}`, total: data.eventos.length },
-    { key: 'meals', icon: Apple, label: 'Refeições', color: 'text-orange-600 bg-orange-50', stat: `${data.meals.length}`, total: data.meals.length },
-    { key: 'body', icon: Ruler, label: 'Composição', color: 'text-teal-600 bg-teal-50', stat: data.body[0]?.weight_kg ? `${data.body[0].weight_kg}kg` : '—', total: data.body.length },
-    { key: 'notif', icon: Bell, label: 'Notificações', color: 'text-yellow-600 bg-yellow-50', stat: `${data.notif.filter((n: any) => !n.lida).length} novas`, total: data.notif.length },
-  ];
 
   return (
     <div className="space-y-4">
@@ -179,36 +195,12 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         </div>
       </Card>
 
-      {/* Espaços resumo */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <TrendingUp className="h-4 w-4 text-primary" />
-          <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Espaços do Cliente</h4>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          {espacos.map((e) => {
-            const Icon = e.icon;
-            const inactive = e.total === 0;
-            return (
-              <Card key={e.key} className={`p-2.5 ${inactive ? 'opacity-60' : ''}`}>
-                <div className="flex items-start gap-2">
-                  <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${e.color}`}>
-                    <Icon className="icon-sm" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11px] font-bold leading-tight truncate">{e.label}</div>
-                    <div className="text-[9px] text-muted-foreground">Total: {e.total}{e.sub ? ` · ${e.sub}` : ''}</div>
-                    <div className="text-xs font-bold text-foreground mt-0.5">{e.stat}</div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Drill-down acordeão com tudo que o cliente faz */}
+      {/* Espelho do portal — uma lista só (sem cards duplicando os mesmos números) */}
       <Card className="p-2">
+        <div className="flex items-center gap-2 px-2 pt-2 pb-1">
+          <TrendingUp className="h-4 w-4 text-primary" />
+          <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">O que o cliente vê no portal</h4>
+        </div>
         <Accordion type="multiple" className="w-full">
           {/* Diário */}
           <AccordionItem value="diario">
@@ -296,9 +288,15 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                       ))}
                     </>
                   ) : (
-                    <p className="text-[11px] text-muted-foreground italic px-2">
-                      Ainda sem dicas — são geradas automaticamente quando o cliente conclui um MyID.
-                    </p>
+                    <div className="px-2 space-y-2">
+                      <p className="text-[11px] text-muted-foreground italic">
+                        Ainda sem dicas — são geradas automaticamente quando o cliente conclui um MyID.
+                      </p>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" disabled={gerandoDicas} onClick={gerarDicasAgora}>
+                        {gerandoDicas ? <Loader2 className="h-3 w-3 animate-spin" /> : <GraduationCap className="h-3 w-3" />}
+                        Gerar agora (usa o MyID já respondido)
+                      </Button>
+                    </div>
                   )}
                 </div>
               </ScrollArea>

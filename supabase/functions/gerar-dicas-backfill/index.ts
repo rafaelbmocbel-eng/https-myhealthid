@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
     const inicio = Date.now();
     const BUDGET_MS = 100_000;
     let gerados = 0, falhas = 0;
+    const motivos: string[] = [];
     for (const paciente_id of pendentes) {
       if (Date.now() - inicio > BUDGET_MS) break;
       try {
@@ -73,11 +74,17 @@ Deno.serve(async (req) => {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
           body: JSON.stringify({ paciente_id }),
         });
-        const j = await r.json().catch(() => ({}));
-        if (r.ok && (j as any)?.ok) gerados++;
-        else falhas++;
-      } catch {
+        const j: any = await r.json().catch(() => ({}));
+        if (r.ok && j?.ok) gerados++;
+        else {
+          falhas++;
+          const motivo = j?.reason || j?.error || `HTTP ${r.status}`;
+          if (motivos.length < 3 && !motivos.includes(motivo)) motivos.push(motivo);
+        }
+      } catch (e) {
         falhas++;
+        const motivo = e instanceof Error ? e.message : String(e);
+        if (motivos.length < 3 && !motivos.includes(motivo)) motivos.push(motivo);
       }
     }
 
@@ -88,6 +95,7 @@ Deno.serve(async (req) => {
       ja_tinham: comDicas.size,    // já tinham dicas antes desta chamada
       gerados,                     // gerados agora
       falhas,                      // sem evidência/erro de IA nesta rodada
+      motivos,                     // primeiras razões de falha (diagnóstico)
       restantes: Math.max(0, restantes),
     });
   } catch (e) {
