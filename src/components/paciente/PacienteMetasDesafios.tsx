@@ -205,6 +205,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const { vibrate } = useHaptics();
   const [showDicas, setShowDicas] = useState(true);
   const [showFases, setShowFases] = useState(false);
+  const [temDicasIA, setTemDicasIA] = useState(false);
 
   // Fetch MyID scores for health missions
   const { data: myidData } = useQuery({
@@ -265,7 +266,21 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   });
 
   const myidScores = myidData?.scores || null;
-  const missoesSaude = useMemo(() => gerarMissoesSaude(myidScores), [myidScores]);
+  const missoesSaude = useMemo(() => {
+    const base = gerarMissoesSaude(myidScores);
+    // Coerência com as dicas IA: se o paciente tem dicas do MyID, a jornada
+    // inclui a missão diária de praticá-las.
+    if (temDicasIA) {
+      base.unshift({
+        id: 'missao-dica-dia', icon: Sparkles, titulo: 'Praticar 1 dica de hoje',
+        descricao: 'Suas dicas foram feitas do SEU MyID — uma por dia já muda o jogo.',
+        acaoImediata: 'Abra a aba Dicas e faça a primeira da lista agora.',
+        categoria: 'importante', lossPoints: 0, xpRecompensa: 15, completavel: true,
+        colorClass: 'text-sky-700 dark:text-sky-400', bgClass: 'bg-sky-50 dark:bg-sky-950/30', borderClass: 'border-sky-200 dark:border-sky-800/50',
+      });
+    }
+    return base;
+  }, [myidScores, temDicasIA]);
   const insights = useMemo(
     () => myidData?.scores && myidData.myidScore
       ? gerarInsightsClinicosMyID(myidData.scores, myidData.myidScore)
@@ -349,7 +364,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       const weekAgo = subDays(now, 7);
       const metasList: Meta[] = [];
 
-      const [diarioRes, treinosRes, streakRes] = await Promise.all([
+      const [diarioRes, treinosRes, streakRes, execRes, dicasRes] = await Promise.all([
         supabase.from('daily_logs')
           .select('id, created_at')
           .eq('paciente_id', pacienteId)
@@ -364,11 +379,22 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           .eq('paciente_id', pacienteId)
           .order('created_at', { ascending: false })
           .limit(30),
+        (supabase as any).from('studio_execucoes')
+          .select('id, created_at')
+          .eq('paciente_id', pacienteId)
+          .gte('created_at', weekAgo.toISOString()),
+        (supabase as any).from('paciente_dicas')
+          .select('dicas')
+          .eq('paciente_id', pacienteId)
+          .maybeSingle(),
       ]);
 
       const diarios = diarioRes.data || [];
       const treinos = treinosRes.data || [];
-      const execucoes: any[] = []; // studio_execucoes table not yet created
+      // Execuções REAIS da semana (antes ficava fixo em zero e a meta nunca andava)
+      const execucoes: any[] = execRes.data || [];
+      const nDicasIA = Array.isArray(dicasRes.data?.dicas) ? dicasRes.data.dicas.length : 0;
+      setTemDicasIA(nDicasIA > 0);
 
       let streakCount = 0;
       const streakLogs = streakRes.data || [];
@@ -389,16 +415,30 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
         unidade: 'dias', icon: Heart, cor: 'text-rose-600', concluida: diasDiario >= 7, xpRecompensa: 50,
       });
 
+      // Coerência com o planejamento: a meta de exercícios só existe se o
+      // profissional prescreveu treino; sem treino, a jornada aponta pras
+      // dicas do MyID (nível gratuito) em vez de cobrar algo que não existe.
       const totalTreinosMeta = treinos.reduce((acc, t) => acc + parseInt(t.frequencia?.match(/\d+/)?.[0] || '3'), 0);
       const totalTreinosFeitos = execucoes.length;
-      metasList.push({
-        id: 'treinos-semanal', titulo: 'Fazer meus exercícios',
-        descricao: 'Complete todos os exercícios da semana',
-        progresso: totalTreinosMeta > 0 ? Math.min(100, (totalTreinosFeitos / totalTreinosMeta) * 100) : 0,
-        meta: totalTreinosMeta || 3, atual: totalTreinosFeitos,
-        unidade: 'exercícios', icon: Dumbbell, cor: 'text-blue-600',
-        concluida: totalTreinosFeitos >= totalTreinosMeta && totalTreinosMeta > 0, xpRecompensa: 75,
-      });
+      if (treinos.length > 0) {
+        metasList.push({
+          id: 'treinos-semanal', titulo: treinos.length === 1 && treinos[0].titulo ? `Fazer: ${treinos[0].titulo}` : 'Fazer meus exercícios',
+          descricao: 'Complete as sessões prescritas pelo seu profissional nesta semana',
+          progresso: totalTreinosMeta > 0 ? Math.min(100, (totalTreinosFeitos / totalTreinosMeta) * 100) : 0,
+          meta: totalTreinosMeta || 3, atual: totalTreinosFeitos,
+          unidade: 'sessões', icon: Dumbbell, cor: 'text-blue-600',
+          concluida: totalTreinosFeitos >= totalTreinosMeta && totalTreinosMeta > 0, xpRecompensa: 75,
+        });
+      } else if (nDicasIA > 0) {
+        const diasComDica = new Set((execucoes as any[]).map((e: any) => String(e.created_at).split('T')[0])).size;
+        metasList.push({
+          id: 'dicas-semanal', titulo: 'Praticar minhas dicas do MyID',
+          descricao: `Você tem ${nDicasIA} dicas personalizadas — pratique em 3 dias desta semana`,
+          progresso: Math.min(100, (diasComDica / 3) * 100), meta: 3, atual: diasComDica,
+          unidade: 'dias', icon: Dumbbell, cor: 'text-sky-600',
+          concluida: diasComDica >= 3, xpRecompensa: 60,
+        });
+      }
 
       metasList.push({
         id: 'streak-5', titulo: '5 dias seguidos',

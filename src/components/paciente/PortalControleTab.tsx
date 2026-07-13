@@ -160,48 +160,27 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <Card className="p-4 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-        <div className="flex items-start gap-3">
-          <div className="h-11 w-11 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-            <Smartphone className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-sm">Controle do Portal</h3>
-              <Badge variant="outline" className="text-[10px] h-5">
-                <Trophy className="h-3 w-3 mr-1" />
-                {totalAtividade} atividades
-              </Badge>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Visão completa — sem precisar abrir o portal do cliente
-            </p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {user && tipoConta !== 'wellness_free' && (
-                <button
-                  onClick={() => setDeverOpen(true)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[11px] font-semibold hover:opacity-90"
-                >
-                  <GraduationCap className="h-3 w-3" /> Dever de Casa
-                </button>
-              )}
-              {portalToken && (
-                <>
-                  <button onClick={copyLink} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90">
-                    <ExternalLink className="h-3 w-3" /> Copiar link
-                  </button>
-                  {telefone && (
-                    <button onClick={sendWhatsApp} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/10 text-success text-[11px] font-semibold hover:bg-success/20">
-                      <MessageCircle className="h-3 w-3" /> WhatsApp
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </Card>
+      {/* Ações do portal — linha compacta (prescrever + enviar acesso) */}
+      <div className="flex flex-wrap gap-2">
+        {user && tipoConta !== 'wellness_free' && (
+          <button
+            onClick={() => setDeverOpen(true)}
+            className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:opacity-90"
+          >
+            <GraduationCap className="h-3.5 w-3.5" /> Dever de Casa
+          </button>
+        )}
+        {portalToken && telefone && (
+          <button onClick={sendWhatsApp} className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-success/10 text-success text-xs font-semibold hover:bg-success/20 border border-success/20">
+            <MessageCircle className="h-3.5 w-3.5" /> Enviar portal
+          </button>
+        )}
+        {portalToken && (
+          <button onClick={copyLink} title="Copiar link do portal" className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border/60 text-muted-foreground text-xs font-semibold hover:bg-muted/40">
+            <ExternalLink className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
       {/* Espelho do portal — uma lista só (sem cards duplicando os mesmos números) */}
       <Card className="p-2">
