@@ -35,6 +35,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const qc = useQueryClient();
   const [deverOpen, setDeverOpen] = useState(false);
   const [gerandoDicas, setGerandoDicas] = useState(false);
+  const [dicasRecemGeradas, setDicasRecemGeradas] = useState<any[] | null>(null);
 
   // Gera (ou regenera) as dicas IA deste paciente na hora — e mostra o motivo
   // se a IA não conseguir (ex.: sem MyID concluído, sem evidência, erro).
@@ -45,8 +46,9 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         body: { paciente_id: pacienteId },
       });
       if (error) throw new Error(error.message);
-      const r = res as { ok?: boolean; geradas?: number; reason?: string; error?: string; terapeuta_dono?: string };
+      const r = res as { ok?: boolean; geradas?: number; reason?: string; error?: string; terapeuta_dono?: string; dicas?: any[] };
       if (r?.ok) {
+        if (Array.isArray(r.dicas)) setDicasRecemGeradas(r.dicas);
         if (r.terapeuta_dono && user?.id && r.terapeuta_dono !== user.id) {
           toast({ title: `✨ ${r.geradas} dicas geradas`, description: 'Atenção: este paciente pertence a outro profissional da equipe — as dicas ficam visíveis para ele.', variant: 'destructive' });
         } else {
@@ -150,7 +152,8 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
     window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  const nDicasIA = data.dicasIA?.dicas?.length || 0;
+  const dicasVisiveis = (data.dicasIA?.dicas?.length ? data.dicasIA.dicas : dicasRecemGeradas) || [];
+  const nDicasIA = dicasVisiveis.length;
   const planoTreinoAprovado = data.planosTreino.filter((p: any) => p.aprovado).length;
   const planoAlimAprovado = data.planosAlim.filter((p: any) => p.aprovado).length;
 
@@ -282,7 +285,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                       <p className="text-[10px] text-muted-foreground px-1">
                         Geradas em {data.dicasIA?.gerado_em ? format(parseISO(data.dicasIA.gerado_em), "dd/MM/yyyy", { locale: ptBR }) : '—'} a partir do MyID + artigos científicos. O cliente vê no portal em "Dicas".
                       </p>
-                      {(data.dicasIA?.dicas || []).map((d: any, i: number) => (
+                      {dicasVisiveis.map((d: any, i: number) => (
                         <div key={i} className="border rounded-lg p-2 text-[11px]">
                           <div className="font-semibold flex items-center gap-1.5">
                             {d.nome}

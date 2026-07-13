@@ -130,6 +130,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       ok: true, geradas: salvas,
+      dicas: (confirma as any)?.dicas ?? dicas,
       terapeuta_dono: (confirma as any)?.terapeuta_id ?? null,
       areas: Array.from(areas),
     }), {
