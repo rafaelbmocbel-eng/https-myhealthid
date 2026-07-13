@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Award, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
+import PacienteInsightsDaAvaliacao from '@/components/paciente/PacienteInsightsDaAvaliacao';
 
 interface Props {
   pacienteId: string;
@@ -61,6 +62,9 @@ export default function JornadaPacienteCard({ pacienteId }: Props) {
 
       {/* Missões / desafios da semana — o mesmo que o paciente vê no portal dele */}
       <PacienteMetasDesafios pacienteId={pacienteId} />
+
+      {/* Desafio do Dia + insights da avaliação — parte da Jornada */}
+      <PacienteInsightsDaAvaliacao pacienteId={pacienteId} />
 
       {/* Conquistas (badges do MyID) */}
       <Card className="rounded-xl border-border/40 shadow-xs">

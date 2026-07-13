@@ -15,6 +15,7 @@ import { subDays } from 'date-fns';
 import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
 import { gerarInsightsClinicosMyID, type ClinicalInsightResult } from '@/utils/myid/clinicalInsights';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';
+import { Link } from 'react-router-dom';
 import { useHaptics } from '@/hooks/useHaptics';
 
 // ── Interfaces ─────────────────────────────────────────────────────
@@ -207,6 +208,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const [showFases, setShowFases] = useState(false);
   const [temDicasIA, setTemDicasIA] = useState(false);
   const [dicasIA, setDicasIA] = useState<any[]>([]);
+  const [planoTreinoIA, setPlanoTreinoIA] = useState<any>(null);
+  const [planoAlimIA, setPlanoAlimIA] = useState<any>(null);
   const [dicaAberta, setDicaAberta] = useState<number | null>(null);
 
   // Fetch MyID scores for health missions
@@ -371,7 +374,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       const weekAgo = subDays(now, 7);
       const metasList: Meta[] = [];
 
-      const [diarioRes, treinosRes, streakRes, execRes, dicasRes] = await Promise.all([
+      const [diarioRes, treinosRes, streakRes, execRes, dicasRes, ptRes, paRes] = await Promise.all([
         supabase.from('daily_logs')
           .select('id, created_at')
           .eq('paciente_id', pacienteId)
@@ -394,6 +397,14 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           .select('dicas')
           .eq('paciente_id', pacienteId)
           .maybeSingle(),
+        (supabase as any).from('planos_treino')
+          .select('titulo, objetivo, created_at')
+          .eq('paciente_id', pacienteId).eq('ativo', true).eq('aprovado', true)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        (supabase as any).from('planos_alimentares')
+          .select('titulo, calorias_alvo, created_at')
+          .eq('paciente_id', pacienteId).eq('ativo', true).eq('aprovado', true)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
       ]);
 
       const diarios = diarioRes.data || [];
@@ -404,6 +415,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       const nDicasIA = listaDicas.length;
       setTemDicasIA(nDicasIA > 0);
       setDicasIA(listaDicas);
+      setPlanoTreinoIA(ptRes?.data || null);
+      setPlanoAlimIA(paRes?.data || null);
 
       let streakCount = 0;
       const streakLogs = streakRes.data || [];
@@ -732,6 +745,48 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── MEU TREINO & MINHA NUTRIÇÃO — os planos moram na Jornada ── */}
+      {typeof window !== 'undefined' && window.location.pathname.startsWith('/paciente') && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+          <Card className="overflow-hidden">
+            <Link to={planoTreinoIA ? '/paciente/plano-ia' : '/paciente/exercicios'} className="block p-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+                  <Dumbbell className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold">Meu treino</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {planoTreinoIA
+                      ? (planoTreinoIA.titulo || 'Plano personalizado pronto — toque para ver')
+                      : 'Ver meus exercícios da semana'}
+                  </p>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              </div>
+            </Link>
+          </Card>
+          <Card className="overflow-hidden">
+            <Link to="/paciente/plano-ia" className="block p-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Heart className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold">Minha nutrição</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {planoAlimIA
+                      ? `Plano pronto${planoAlimIA.calorias_alvo ? ` · ${planoAlimIA.calorias_alvo} kcal` : ''} — toque para ver`
+                      : 'Responda as perguntas do seu plano'}
+                  </p>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              </div>
+            </Link>
+          </Card>
         </div>
       )}
 

@@ -17,10 +17,7 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
 const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
-import PacienteDicaInteligente from '@/components/paciente/PacienteDicaInteligente';
-import PacienteInsightsDaAvaliacao from '@/components/paciente/PacienteInsightsDaAvaliacao';
 import MyIDPDFButton from '@/components/paciente/MyIDPDFButton';
-import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
 import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
@@ -491,26 +488,9 @@ export default function PacienteDashboard() {
             </V>
           )}
 
-          {/* Exercícios */}
-          <V i={8}>
-            {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
-          </V>
-
-          {/* Insights da avaliação + Desafio do Dia */}
-          {paciente && (
-            <V i={9}>
-              <PacienteInsightsDaAvaliacao pacienteId={paciente.id} />
-            </V>
-          )}
-
           {/* Alertas e lembretes */}
-          <V i={10}>
+          <V i={8}>
             {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
-          </V>
-
-          {/* Dica inteligente */}
-          <V i={11}>
-            <PacienteDicaInteligente />
           </V>
 
           {/* Recompensas */}

@@ -43,7 +43,7 @@ const navItems = [
 // Bottom nav: Início, Agenda, Treinos, Diário, +Mais
 const MOBILE_PRIMARY = [0, 5, 4, 2]; // indices in navItems
 // Items in "Mais" sheet (all others) — avatar is index 12
-const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12];
+const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
 interface Props {
   children: ReactNode;
