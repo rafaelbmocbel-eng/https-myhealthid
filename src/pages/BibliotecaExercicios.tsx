@@ -212,9 +212,26 @@ export default function BibliotecaExercicios() {
 
   const uploadZip = async (file: File) => {
     try {
+      if (!file.size) {
+        toast.error('O arquivo chegou vazio (0 bytes). Se ele está no OneDrive/Drive, baixe primeiro para o computador e tente de novo.');
+        return;
+      }
       toast.info('Abrindo o ZIP…');
       const JSZip = (await import('jszip')).default;
-      const zip = await JSZip.loadAsync(file);
+      let dados: ArrayBuffer;
+      try {
+        dados = await file.arrayBuffer();
+      } catch {
+        // NotReadableError: o navegador perdeu o acesso ao arquivo depois da seleção
+        // (OneDrive "sob demanda", pasta de rede, download/sincronização em andamento,
+        // arquivo aberto em outro programa). Não é falha do app — orienta o caminho.
+        toast.error(
+          'O navegador perdeu o acesso ao arquivo. Copie o ZIP para uma pasta local do computador (ex.: Downloads ou Área de Trabalho), feche programas que estejam usando ele e tente de novo. Alternativa: descompacte e use "Enviar pasta inteira".',
+          { duration: 12000 },
+        );
+        return;
+      }
+      const zip = await JSZip.loadAsync(dados);
       const out: { name: string; path: string; blob: Blob }[] = [];
       for (const [path, entry] of Object.entries(zip.files)) {
         if ((entry as any).dir) continue;
