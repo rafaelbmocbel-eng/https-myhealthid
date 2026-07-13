@@ -13,6 +13,7 @@ import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Ste
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { cn } from '@/lib/utils';
 import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
+import { backupAppendChunk, backupSetMeta, backupRead, backupClear } from '@/lib/recordingBackup';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
 import DiretrizIAReviewDialog from './DiretrizIAReviewDialog';
@@ -168,6 +169,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [resumableJob, setResumableJob] = useState<{ id: string; resultado: any; transcricao: string } | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recTimeRef = useRef(0);
+  const recMimeRef = useRef('audio/webm');
+  const preUploadRef = useRef<{ url: string; ts: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const hasRestoredDraftRef = useRef(false);
@@ -181,6 +185,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [audioLevel, setAudioLevel] = useState(0);
 
   const draftKey = `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
+  const recBackupKey = `${draftKey}::rec`;
 
   // Wake Lock helpers
   const requestWakeLock = useCallback(async () => {
@@ -235,6 +240,16 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       setEditedTranscript(draft.editedTranscript ?? '');
       setAudioBase64(draft.audioBase64 ?? null);
       setAudioMimeType(draft.audioMimeType ?? 'audio/webm');
+      // Reconstrói o Blob a partir do base64 salvo — áudio LONGO restaurado de
+      // rascunho volta a ser processável (antes exigia gravar de novo).
+      if (draft.audioBase64) {
+        try {
+          const bin = atob(draft.audioBase64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          setAudioBlob(new Blob([bytes], { type: draft.audioMimeType || 'audio/webm' }));
+        } catch { /* base64 corrompido — segue sem blob */ }
+      }
       setRecordingTime(draft.recordingTime ?? 0);
       setAssessment(draft.assessment ?? null);
       setExpandedSections(draft.expandedSections ?? {
@@ -248,8 +263,32 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         title: 'Rascunho restaurado',
         description: 'Recuperamos sua avaliação em andamento após o descanso do aparelho.',
       });
+    }).then(async () => {
+      // Gravação interrompida no meio (recarregou/fechou/travou)? Os chunks
+      // ficaram no aparelho — reconstrói o áudio e devolve pronto pra processar.
+      try {
+        const rec = await backupRead(recBackupKey);
+        if (!rec || rec.blob.size < 2000) return;
+        setAudioBlob((atual) => {
+          if (atual) return atual; // já há áudio (rascunho) — não sobrescreve
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const b64 = (reader.result as string).split(',')[1];
+            setAudioBase64((cur) => cur ?? b64);
+          };
+          reader.readAsDataURL(rec.blob);
+          setAudioMimeType((rec.meta.mimeType || 'audio/webm').split(';')[0]);
+          setRecordingTime((t) => t || rec.meta.seconds || 0);
+          recTimeRef.current = rec.meta.seconds || 0;
+          toast({
+            title: '🎙️ Gravação recuperada!',
+            description: `Recuperamos ${Math.max(1, Math.round((rec.meta.seconds || 0) / 60))} min de áudio interrompido — é só processar.`,
+          });
+          return rec.blob;
+        });
+      } catch { /* sem backup — segue normal */ }
     });
-  }, [appendMode, draftKey, toast, user]);
+  }, [appendMode, draftKey, recBackupKey, toast, user]);
 
   useEffect(() => {
     if (!user || appendMode) return;
@@ -283,6 +322,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       VOICE_DRAFT_VERSION,
     );
   }, [appendMode, assessment, audioBase64, audioMimeType, draftKey, editedTranscript, expandedSections, isSaved, recordingTime, step, transcript, user]);
+
+  // Avaliação salva no banco → o backup da gravação pode ser descartado.
+  useEffect(() => {
+    if (isSaved) {
+      void backupClear(recBackupKey);
+      preUploadRef.current = null;
+    }
+  }, [isSaved, recBackupKey]);
 
   // Auto-save em edições — após o primeiro save, qualquer alteração é gravada (debounced)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -348,9 +395,28 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       chunksRef.current = [];
+      recMimeRef.current = recorder.mimeType || mimeType || 'audio/webm';
+      // Backup contínuo: zera a sessão anterior e grava cada chunk no aparelho
+      // (IndexedDB) na hora — recarregou/fechou no meio? O áudio volta inteiro.
+      void backupClear(recBackupKey);
+      preUploadRef.current = null;
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+          void backupAppendChunk(recBackupKey, e.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        // Falha do gravador no meio (dispositivo removido, erro do navegador):
+        // não perde nada — os chunks já estão no backup; encerra com o que há.
+        toast({
+          title: 'O microfone parou no meio',
+          description: 'Sem pânico: o áudio gravado até aqui foi preservado.',
+          variant: 'destructive',
+        });
+        try { if (recorder.state !== 'inactive') recorder.stop(); } catch { /* já parado */ }
       };
 
       recorder.onstop = () => {
@@ -364,6 +430,13 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           setAudioMimeType(recorder.mimeType.split(';')[0]);
         };
         reader.readAsDataURL(blob);
+        // Áudio longo: já sobe pro storage em segundo plano AGORA — quando o
+        // profissional clicar em processar, o upload já está pronto (mais rápido).
+        if (recTimeRef.current > 90) {
+          void uploadAudioToStorage(blob, recorder.mimeType.split(';')[0])
+            .then((url) => { preUploadRef.current = { url, ts: Date.now() }; })
+            .catch(() => { /* sem problema — sobe na hora do processamento */ });
+        }
       };
 
       // Audio level meter via Web Audio API
@@ -391,7 +464,12 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       recorder.start(1000); // collect chunks every second
       setIsRecording(true);
       setRecordingTime(0);
-      timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+      timerRef.current = setInterval(() => setRecordingTime(t => {
+        const n = t + 1;
+        recTimeRef.current = n;
+        if (n % 5 === 0) void backupSetMeta(recBackupKey, { mimeType: recMimeRef.current, seconds: n });
+        return n;
+      }), 1000);
       await requestWakeLock();
     } catch (err) {
       console.error('Failed to start recording:', err);
@@ -443,12 +521,19 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       if (isRecording) stopRecording();
     };
 
+    // Saída acidental durante a gravação: o navegador pergunta antes de fechar.
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isRecording) { e.preventDefault(); e.returnValue = ''; }
+    };
+
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [isRecording, requestWakeLock, stopRecording, toast]);
 
@@ -588,13 +673,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     }
   };
 
-  const uploadAudioToStorage = async (blob: Blob): Promise<string> => {
+  const uploadAudioToStorage = async (blob: Blob, mimeOverride?: string): Promise<string> => {
     if (!user) throw new Error('Usuário não autenticado');
-    const ext = audioMimeType.includes('webm') ? 'webm' : audioMimeType.includes('mp4') ? 'm4a' : 'ogg';
+    const mime = mimeOverride || audioMimeType;
+    const ext = mime.includes('webm') ? 'webm' : mime.includes('mp4') ? 'm4a' : 'ogg';
     const path = `${user.id}/${Date.now()}.${ext}`;
     const { error: upError } = await supabase.storage
       .from('audio-temp')
-      .upload(path, blob, { contentType: audioMimeType, upsert: false });
+      .upload(path, blob, { contentType: mime, upsert: false });
     if (upError) throw new Error(`Falha no upload do áudio: ${upError.message}`);
     const { data: signedData, error: signError } = await supabase.storage
       .from('audio-temp')
@@ -671,7 +757,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
             ? `Áudio de ${mins} min sendo carregado. Aguarde ${mins >= 7 ? '3-5 min' : mins >= 4 ? '2-3 min' : '1-2 min'} enquanto a IA transcreve e analisa.`
             : 'O áudio está sendo carregado para processamento.',
         });
-        const signedUrl = await uploadAudioToStorage(audioBlob);
+        // Reaproveita o upload feito em segundo plano logo após a gravação
+        // (URL assinada vale 1h) — corta minutos de espera no áudio longo.
+        const pre = preUploadRef.current;
+        const preValido = pre && (Date.now() - pre.ts) < 50 * 60 * 1000;
+        const signedUrl = preValido ? pre!.url : await uploadAudioToStorage(audioBlob);
         body.signedUrl = signedUrl;
         body.audioMimeType = audioMimeType;
       } else if (audioBase64) {
