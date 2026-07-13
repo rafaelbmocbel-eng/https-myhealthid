@@ -59,7 +59,6 @@ const NpsSurveyCard = lazy(() => import('@/components/nps/NpsSurveyCard'));
 const ResumoNarrativo = lazy(() => import('@/components/paciente/ResumoNarrativo'));
 const PacoteSessoesManager = lazy(() => import('@/components/paciente/PacoteSessoesManager'));
 const PacienteFinanceiroTab = lazy(() => import('@/components/paciente/PacienteFinanceiroTab'));
-const ChatPacienteTab = lazy(() => import('@/components/chat/ChatPacienteTab'));
 const CompartilharPacienteSheet = lazy(() => import('@/components/paciente/CompartilharPacienteSheet'));
 const DocumentosModal = lazy(() => import('@/components/documentos/DocumentosModal'));
 const WearableMonitorCard = lazy(() => import('@/components/perfil-paciente/WearableMonitorCard'));
@@ -1273,11 +1272,6 @@ export default function PacientePerfil() {
                 <WearableMonitorCard
                   pacienteId={id!}
                   pacienteNome={paciente.nome}
-                />
-                <ChatPacienteTab
-                  pacienteId={id!}
-                  pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-                  pacienteTelefone={paciente.telefone}
                 />
                 <NpsSurveyCard pacienteId={id!} />
               </Suspense>

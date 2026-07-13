@@ -374,25 +374,6 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
             </AccordionContent>
           </AccordionItem>
 
-          {/* Chat */}
-          <AccordionItem value="chat">
-            <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><MessageCircle className="icon-sm text-indigo-600" /> Chat ({data.chat.length})</div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ScrollArea className="h-64">
-                <div className="space-y-1.5 pr-2">
-                  {data.chat.slice().reverse().map((c: any) => (
-                    <div key={c.id} className={`rounded-lg p-2 text-[11px] ${c.remetente === 'paciente' ? 'bg-muted/50 mr-6' : 'bg-primary/10 ml-6'}`}>
-                      <div className="text-[9px] font-bold uppercase text-muted-foreground">{c.remetente} · {format(parseISO(c.created_at), 'dd/MM HH:mm', { locale: ptBR })}</div>
-                      <div className="mt-0.5 whitespace-pre-wrap">{c.mensagem}</div>
-                    </div>
-                  ))}
-                  {data.chat.length === 0 && <p className="text-[11px] text-muted-foreground italic px-2">Sem mensagens</p>}
-                </div>
-              </ScrollArea>
-            </AccordionContent>
-          </AccordionItem>
 
           {/* Wearables */}
           <AccordionItem value="health">
