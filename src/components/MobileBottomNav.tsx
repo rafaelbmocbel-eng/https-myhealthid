@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, Users, Settings, Zap, Wallet, Store, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Settings, MessageCircle, Wallet, Store, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
@@ -13,7 +13,7 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Início', href: '/', icon: LayoutDashboard },
   { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true },
-  { label: 'Zap', href: '/crm/inbox', icon: Zap },
+  { label: 'Zap', href: '/crm/inbox', icon: MessageCircle },
   { label: 'Config', href: '/configuracoes', icon: Settings },
 ];
 

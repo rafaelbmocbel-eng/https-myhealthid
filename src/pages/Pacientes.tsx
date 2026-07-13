@@ -802,7 +802,7 @@ export default function Pacientes() {
         <div className="flex gap-1 bg-muted/40 p-1 rounded-xl mb-5">
           {([
             { id: 'clientes' as MainTab, label: 'Clientes', icon: Users },
-            { id: 'crm' as MainTab, label: 'Relacionamento', icon: MessageSquare },
+            { id: 'crm' as MainTab, label: 'Relacionamento', icon: MessageCircle },
             { id: 'financeiro' as MainTab, label: 'Financeiro', icon: DollarSign },
           ]).map(tab => (
             <button

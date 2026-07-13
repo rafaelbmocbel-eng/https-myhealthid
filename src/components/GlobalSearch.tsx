@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/command';
 import {
   LayoutDashboard, Users, CalendarDays, Settings, Search, User, PartyPopper,
-  BookOpen, DollarSign, Tag, Inbox, GitBranch, Zap, BarChart3, Target, Wrench,
+  BookOpen, DollarSign, Tag, Inbox, GitBranch, Zap, BarChart3, Target, Wrench, MessageCircle,
   UserPlus, CalendarPlus, Plug, Bell, ShieldCheck, Stethoscope, Home, Workflow,
   Loader2,
 } from 'lucide-react';
@@ -39,7 +39,7 @@ const ITEMS: NavItem[] = [
   { label: 'Planos', href: '/precos', icon: Tag, keywords: 'assinatura preco upgrade essencial profissional clinica', group: 'Páginas' },
   { label: 'Demo MyID', href: '/demo', icon: Stethoscope, keywords: 'apresentacao avaliacao demonstracao', group: 'Páginas' },
 
-  { label: 'CRM · Inbox WhatsApp', href: '/crm?tab=inbox', icon: Inbox, keywords: 'whatsapp conversa mensagem chat', group: 'CRM' },
+  { label: 'CRM · Inbox WhatsApp', href: '/crm?tab=inbox', icon: MessageCircle, keywords: 'whatsapp conversa mensagem chat', group: 'CRM' },
   { label: 'CRM · Pipeline', href: '/crm?tab=pipeline', icon: GitBranch, keywords: 'funil vendas lead oportunidade kanban', group: 'CRM' },
   { label: 'CRM · Cadências', href: '/crm?tab=cadencias', icon: Workflow, keywords: 'automacao sequencia followup', group: 'CRM' },
   { label: 'CRM · Métricas', href: '/crm?tab=metricas', icon: BarChart3, keywords: 'kpi conversao analise', group: 'CRM' },
