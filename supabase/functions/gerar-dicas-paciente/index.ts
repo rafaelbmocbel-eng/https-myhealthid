@@ -107,12 +107,31 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: false, reason: "sem_dicas" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    await admin.from("paciente_dicas").upsert({
+    const { error: upErr } = await admin.from("paciente_dicas").upsert({
       paciente_id, terapeuta_id: pac.terapeuta_id ?? null,
       dicas, gerado_em: new Date().toISOString(),
     }, { onConflict: "paciente_id" });
+    if (upErr) {
+      return new Response(JSON.stringify({ ok: false, error: `Falha ao salvar: ${upErr.message}` }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    return new Response(JSON.stringify({ ok: true, geradas: dicas.length, areas: Array.from(areas) }), {
+    // Confirma que o registro está mesmo no banco antes de dizer "criou".
+    const { data: confirma, error: readErr } = await admin
+      .from("paciente_dicas").select("dicas, terapeuta_id").eq("paciente_id", paciente_id).maybeSingle();
+    const salvas = Array.isArray((confirma as any)?.dicas) ? (confirma as any).dicas.length : 0;
+    if (readErr || salvas === 0) {
+      return new Response(JSON.stringify({ ok: false, error: `Gerou mas não confirmou no banco (${readErr?.message || "0 salvas"})` }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({
+      ok: true, geradas: salvas,
+      terapeuta_dono: (confirma as any)?.terapeuta_id ?? null,
+      areas: Array.from(areas),
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {

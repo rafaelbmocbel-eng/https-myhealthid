@@ -45,9 +45,13 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         body: { paciente_id: pacienteId },
       });
       if (error) throw new Error(error.message);
-      const r = res as { ok?: boolean; geradas?: number; reason?: string; error?: string };
+      const r = res as { ok?: boolean; geradas?: number; reason?: string; error?: string; terapeuta_dono?: string };
       if (r?.ok) {
-        toast({ title: `✨ ${r.geradas} dicas geradas!` });
+        if (r.terapeuta_dono && user?.id && r.terapeuta_dono !== user.id) {
+          toast({ title: `✨ ${r.geradas} dicas geradas`, description: 'Atenção: este paciente pertence a outro profissional da equipe — as dicas ficam visíveis para ele.', variant: 'destructive' });
+        } else {
+          toast({ title: `✨ ${r.geradas} dicas geradas!` });
+        }
         qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
       } else {
         const motivo = r?.reason === 'sem_evidencia'
@@ -87,7 +91,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         sb.from('meal_logs').select('id, date, meal_type, description, calories, time_eaten').eq('paciente_id', pacienteId).order('date', { ascending: false }).limit(30),
         sb.from('body_composition').select('*').eq('paciente_id', pacienteId).order('date', { ascending: false }).limit(20),
         sb.from('notificacoes').select('id, titulo, mensagem, lida, created_at, tipo').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(30),
-        sb.from('paciente_dicas').select('dicas, gerado_em').eq('paciente_id', pacienteId).maybeSingle(),
+        sb.from('paciente_dicas').select('dicas, gerado_em, terapeuta_id').eq('paciente_id', pacienteId).maybeSingle(),
         sb.from('planos_treino').select('id, created_at, aprovado, estrutura').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
         sb.from('planos_alimentares').select('id, created_at, aprovado, calorias_alvo').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
       ]);
@@ -105,7 +109,8 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         meals: (meals.data || []) as any[],
         body: (body.data || []) as any[],
         notif: (notif.data || []) as any[],
-        dicasIA: (dicasIA.data || null) as { dicas: any[]; gerado_em: string } | null,
+        dicasIA: (dicasIA.data || null) as { dicas: any[]; gerado_em: string; terapeuta_id?: string } | null,
+        dicasIAErro: dicasIA.error?.message || null,
         planosTreino: (planosTreino.data || []) as any[],
         planosAlim: (planosAlim.data || []) as any[],
       };
@@ -289,9 +294,15 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                     </>
                   ) : (
                     <div className="px-2 space-y-2">
-                      <p className="text-[11px] text-muted-foreground italic">
-                        Ainda sem dicas — são geradas automaticamente quando o cliente conclui um MyID.
-                      </p>
+                      {(data as any).dicasIAErro ? (
+                        <p className="text-[11px] text-destructive">
+                          Erro ao ler as dicas: {(data as any).dicasIAErro}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground italic">
+                          Ainda sem dicas — são geradas automaticamente quando o cliente conclui um MyID.
+                        </p>
+                      )}
                       <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" disabled={gerandoDicas} onClick={gerarDicasAgora}>
                         {gerandoDicas ? <Loader2 className="h-3 w-3 animate-spin" /> : <GraduationCap className="h-3 w-3" />}
                         Gerar agora (usa o MyID já respondido)
