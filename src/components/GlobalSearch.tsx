@@ -7,6 +7,7 @@ import {
 import {
   LayoutDashboard, Users, CalendarDays, Settings, Search, User, PartyPopper,
   BookOpen, DollarSign, Tag, Inbox, GitBranch, Zap, BarChart3, Target, Wrench, MessageCircle,
+  Kanban, TrendingUp, Radio, Bot, UserCog,
   UserPlus, CalendarPlus, Plug, Bell, ShieldCheck, Stethoscope, Home, Workflow,
   Loader2,
 } from 'lucide-react';
@@ -40,16 +41,16 @@ const ITEMS: NavItem[] = [
   { label: 'Demo MyID', href: '/demo', icon: Stethoscope, keywords: 'apresentacao avaliacao demonstracao', group: 'Páginas' },
 
   { label: 'CRM · Inbox WhatsApp', href: '/crm?tab=inbox', icon: MessageCircle, keywords: 'whatsapp conversa mensagem chat', group: 'CRM' },
-  { label: 'CRM · Pipeline', href: '/crm?tab=pipeline', icon: GitBranch, keywords: 'funil vendas lead oportunidade kanban', group: 'CRM' },
+  { label: 'CRM · Pipeline', href: '/crm?tab=pipeline', icon: Kanban, keywords: 'funil vendas lead oportunidade kanban', group: 'CRM' },
   { label: 'CRM · Cadências', href: '/crm?tab=cadencias', icon: Workflow, keywords: 'automacao sequencia followup', group: 'CRM' },
-  { label: 'CRM · Métricas', href: '/crm?tab=metricas', icon: BarChart3, keywords: 'kpi conversao analise', group: 'CRM' },
-  { label: 'CRM · Tráfego', href: '/crm?tab=trafego', icon: Target, keywords: 'utm origem pixel instagram links', group: 'CRM' },
-  { label: 'CRM · Automações', href: '/crm?tab=automacoes', icon: Zap, keywords: 'whatsapp template automatico mensagem', group: 'CRM' },
+  { label: 'CRM · Métricas', href: '/crm?tab=metricas', icon: TrendingUp, keywords: 'kpi conversao analise', group: 'CRM' },
+  { label: 'CRM · Tráfego', href: '/crm?tab=trafego', icon: Radio, keywords: 'utm origem pixel instagram links', group: 'CRM' },
+  { label: 'CRM · Automações', href: '/crm?tab=automacoes', icon: Bot, keywords: 'whatsapp template automatico mensagem', group: 'CRM' },
 
   { label: 'Configurações · Home', href: '/configuracoes?tab=home', icon: Home, keywords: 'atalhos personalizar', group: 'Configurações' },
   { label: 'Configurações · Clínica', href: '/configuracoes?tab=clinica', icon: Settings, keywords: 'empresa dados', group: 'Configurações' },
   { label: 'Configurações · Agenda', href: '/configuracoes?tab=agenda', icon: CalendarDays, keywords: 'horario disponibilidade', group: 'Configurações' },
-  { label: 'Configurações · Equipe', href: '/configuracoes?tab=equipe', icon: Users, keywords: 'profissionais membros usuarios', group: 'Configurações' },
+  { label: 'Configurações · Equipe', href: '/configuracoes?tab=equipe', icon: UserCog, keywords: 'profissionais membros usuarios', group: 'Configurações' },
   { label: 'Configurações · Base Científica', href: '/configuracoes?tab=base-cientifica', icon: BookOpen, keywords: 'evidencia pubmed', group: 'Configurações' },
   { label: 'Configurações · Convênios', href: '/configuracoes?tab=convenios', icon: ShieldCheck, keywords: 'plano saude seguro', group: 'Configurações' },
   { label: 'Configurações · Serviços', href: '/configuracoes?tab=servicos', icon: Wrench, keywords: 'precos atendimento sessao', group: 'Configurações' },

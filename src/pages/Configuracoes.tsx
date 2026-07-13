@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy,
-  ExternalLink, RefreshCw, Plus, UserPlus, Building2, Bell, Sparkles,
+  ExternalLink, RefreshCw, Plus, UserPlus, UserCog, Building2, Bell, Sparkles,
   Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid, Brain, Gift, Download, Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -40,7 +40,7 @@ const TABS: TabItem[] = [
   { id: 'clinica', label: 'Clínica', icon: Building2, kind: 'panel' },
   { id: 'home', label: 'Home', icon: LayoutGrid, kind: 'panel' },
   { id: 'agenda', label: 'Agenda', icon: CalendarDays, kind: 'panel' },
-  { id: 'equipe', label: 'Equipe', icon: Users, kind: 'panel' },
+  { id: 'equipe', label: 'Equipe', icon: UserCog, kind: 'panel' },
   { id: 'base-cientifica', label: 'Base Científica', icon: BookOpen, kind: 'link', to: '/base-cientifica' },
   { id: 'eventos', label: 'Eventos', icon: PartyPopper, kind: 'link', to: '/eventos' },
   { id: 'links', label: 'Links', icon: Link2, kind: 'panel' },

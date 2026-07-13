@@ -2,7 +2,7 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { cn } from '@/lib/utils';
-import { MessageCircle, Kanban, Zap, TrendingUp, Bot, Loader2, Radio, UserPlus } from 'lucide-react';
+import { MessageCircle, Kanban, Workflow, TrendingUp, Bot, Loader2, Radio, UserPlus } from 'lucide-react';
 
 const CrmInbox = lazy(() => import('./CrmInbox'));
 const CrmPipeline = lazy(() => import('./CrmPipeline'));
@@ -17,7 +17,7 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: 'inbox', label: 'WhatsApp', icon: MessageCircle, desc: 'Conversas' },
   { key: 'captacao', label: 'Captação', icon: UserPlus, desc: 'Leads de anúncios' },
   { key: 'pipeline', label: 'Pipeline', icon: Kanban, desc: 'Kanban' },
-  { key: 'cadencias', label: 'Cadências', icon: Zap, desc: 'Follow-ups' },
+  { key: 'cadencias', label: 'Cadências', icon: Workflow, desc: 'Follow-ups' },
   { key: 'metricas', label: 'Métricas', icon: TrendingUp, desc: 'Conversão' },
   { key: 'trafego', label: 'Tráfego', icon: Radio, desc: 'Origem & canais' },
   { key: 'automacoes', label: 'Automações', icon: Bot, desc: 'Bot & regras' },

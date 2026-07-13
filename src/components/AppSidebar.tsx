@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users,
   Settings, LogOut, User, MessageCircle,
-  Sun, Wallet, Store, Dumbbell, type LucideIcon,
+  Home, DollarSign, Store, Dumbbell, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,12 +16,12 @@ import { useVitrineNotifications } from '@/hooks/useVitrineNotifications';
 type ServiceKey = 'eventos';
 
 const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; separatorAfter?: boolean }[] = [
-  { label: 'Home', href: '/hoje', icon: Sun },
+  { label: 'Home', href: '/hoje', icon: Home },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },
   { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true },
-  { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: Wallet },
+  { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign },
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true, separatorAfter: true },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
