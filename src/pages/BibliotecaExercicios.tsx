@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
-import { Dumbbell, Plus, Pencil, Trash2, Loader2, Search, Upload, ImageOff, X, FolderUp, FileArchive } from 'lucide-react';
+import { Dumbbell, Plus, Pencil, Trash2, Loader2, Search, Upload, ImageOff, X, FolderUp, FileArchive, Languages } from 'lucide-react';
 
 interface Exercicio {
   id: string;
@@ -246,6 +246,27 @@ export default function BibliotecaExercicios() {
     }
   };
 
+  const [traduzindo, setTraduzindo] = useState(false);
+
+  // Tradução COMPLETA dos nomes via IA — pega o nome original do arquivo (em
+  // inglês) e devolve o nome de academia em português, para toda a biblioteca.
+  const traduzirTudo = async () => {
+    setTraduzindo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('traduzir-biblioteca', { body: {} });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const d = data as any;
+      setPackInfo(`🌐 ${d.traduzidos} de ${d.total} nomes traduzidos${d.falhas ? ` · ${d.falhas} falharam (tente de novo)` : ''}`);
+      toast.success(`${d.traduzidos} nome(s) traduzido(s)`);
+      carregar();
+    } catch (e: any) {
+      toast.error('Erro ao traduzir: ' + (e.message || e));
+    } finally {
+      setTraduzindo(false);
+    }
+  };
+
   const salvar = async () => {
     if (!edit || !user) return;
     if (!edit.nome.trim()) { toast.error('Dê um nome ao exercício.'); return; }
@@ -311,6 +332,11 @@ export default function BibliotecaExercicios() {
             <input type="file" accept=".zip,application/zip,application/x-zip-compressed" className="hidden" disabled={!!pack}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadZip(f); e.currentTarget.value = ''; }} />
           </label>
+          <button type="button" onClick={traduzirTudo} disabled={traduzindo || !!pack}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-primary/30 bg-primary/5 text-primary text-xs font-medium hover:bg-primary/10 shrink-0 whitespace-nowrap disabled:opacity-50">
+            {traduzindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+            {traduzindo ? 'Traduzindo…' : 'Traduzir nomes (IA)'}
+          </button>
         </div>
         {packInfo && (
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-3 py-2">
@@ -319,8 +345,8 @@ export default function BibliotecaExercicios() {
         )}
         <p className="text-[11px] text-muted-foreground -mt-1">
           Envie GIFs avulsos, a pasta inteira ou o arquivo ZIP. As versões masculina e feminina do mesmo exercício
-          (male/female no nome) são juntadas automaticamente em um só, o nome em inglês vira português e o grupo
-          muscular é sugerido — depois é só revisar.
+          (male/female no nome) são juntadas automaticamente em um só e o grupo muscular é sugerido. Depois toque em
+          "Traduzir nomes (IA)" para converter TODOS os nomes do inglês para o português de academia.
         </p>
 
         {loading ? (
