@@ -105,8 +105,14 @@ Deno.serve(async (req) => {
           });
         }
 
-        // 2) WhatsApp
-        if (ins.telefone && waAtivo) {
+        // 2) WhatsApp — SÓ para inscrito que é CLIENTE cadastrado e ativo
+        let clienteAtivo = false;
+        if (ins.paciente_id) {
+          const { data: pAtv } = await supabase.from("pacientes")
+            .select("ativo").eq("id", ins.paciente_id).maybeSingle();
+          clienteAtivo = (pAtv as any)?.ativo === true;
+        }
+        if (ins.telefone && waAtivo && clienteAtivo) {
           const msg = need24h
             ? `Olá ${ins.nome.split(" ")[0]}! 👋\n\nLembrete: amanhã (${quando}) tem *${ev.titulo}* (${catLabel}).\n${localOuLink}\n\nNos vemos lá! 💪`
             : `Olá ${ins.nome.split(" ")[0]}! ⏰\n\n*${ev.titulo}* começa em ~1h (${ev.horario_inicio.slice(0, 5)}).\n${localOuLink}`;

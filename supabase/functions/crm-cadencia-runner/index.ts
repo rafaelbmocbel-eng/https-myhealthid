@@ -35,11 +35,23 @@ Deno.serve(async (req) => {
       // Skip se conversa teve resposta humana após o agendamento da execução
       const { data: conv } = await admin
         .from("whatsapp_conversas")
-        .select("telefone, pipeline_stage, ultima_direcao, ultima_mensagem_em, nome_contato, arquivada")
+        .select("telefone, pipeline_stage, ultima_direcao, ultima_mensagem_em, nome_contato, arquivada, paciente_id")
         .eq("id", exec.conversa_id).maybeSingle();
 
       if (!conv || conv.arquivada) {
         await admin.from("crm_cadencia_execucoes").update({ status: "cancelado", erro: "conversa_inativa" }).eq("id", exec.id);
+        skipados++; continue;
+      }
+
+      // GARANTIA: automática só para CLIENTE cadastrado e ativo.
+      if (!conv.paciente_id) {
+        await admin.from("crm_cadencia_execucoes").update({ status: "cancelado", erro: "nao_cliente" }).eq("id", exec.id);
+        skipados++; continue;
+      }
+      const { data: pacAtv } = await admin.from("pacientes")
+        .select("ativo").eq("id", conv.paciente_id).maybeSingle();
+      if (!pacAtv || (pacAtv as any).ativo === false) {
+        await admin.from("crm_cadencia_execucoes").update({ status: "cancelado", erro: "cliente_inativo" }).eq("id", exec.id);
         skipados++; continue;
       }
 

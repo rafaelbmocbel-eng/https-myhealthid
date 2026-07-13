@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
 import { montarContextoClinico, buildSystemPrompt } from "../_shared/agente-contexto.ts";
 import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
+import { registrarMensagemSaida } from "../_shared/registrar-saida.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,6 +49,18 @@ async function registrarDisparo(admin: any, terapeuta_id: string, paciente_id: s
     terapeuta_id, paciente_id, gatilho, ref_id, conteudo,
     status: ok ? "enviado" : "erro", erro,
   });
+  // Conversa do Zap sempre atualizada: registra a saída na thread do paciente.
+  if (ok) {
+    try {
+      const { data: p } = await admin.from("pacientes")
+        .select("telefone").eq("id", paciente_id).maybeSingle();
+      if (p?.telefone) {
+        await registrarMensagemSaida(admin, {
+          terapeuta_id, paciente_id, telefone: p.telefone, conteudo, origem: gatilho,
+        });
+      }
+    } catch { /* best-effort */ }
+  }
 }
 
 type DispatchCtx = {

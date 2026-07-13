@@ -87,8 +87,9 @@ Deno.serve(async (req) => {
       for (const paciente_id of bc.paciente_ids || []) {
         try {
           const { data: pac } = await admin.from("pacientes")
-            .select("telefone").eq("id", paciente_id).maybeSingle();
-          if (!pac?.telefone) { erros++; continue; }
+            .select("telefone, ativo").eq("id", paciente_id).maybeSingle();
+          // Só cliente ATIVO recebe automática — removido/inativado fica fora.
+          if (!pac?.telefone || (pac as any).ativo === false) { erros++; continue; }
           const variante = pickVariante();
           const ctxClinico = await montarContextoClinico(admin, bc.terapeuta_id, paciente_id, pac.telefone, null);
           const msg = await gerarMensagem(buildSystemPrompt(ctxClinico), variante.texto);
