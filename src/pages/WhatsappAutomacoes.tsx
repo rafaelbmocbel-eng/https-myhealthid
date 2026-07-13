@@ -81,6 +81,7 @@ const GATILHOS: { k: string; label: string; desc: string }[] = [
   { k: "reengajamento", label: "Reengajamento (14/30/60d)", desc: "Mensagem quando paciente some" },
   { k: "aniversario", label: "Aniversário", desc: "Parabeniza no dia do paciente" },
   { k: "pagamento_pendente", label: "Pagamento pendente", desc: "Lembrete gentil sobre pendência financeira" },
+  { k: "progresso_semanal", label: "Progresso semanal 🏆", desc: "Domingo à noite: resumo da semana com XP, nível e incentivo (só para quem teve atividade)" },
 ];
 
 const TOM_VOZ = [
