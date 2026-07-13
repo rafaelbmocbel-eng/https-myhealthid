@@ -279,7 +279,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       base.unshift({
         id: 'missao-dica-dia', icon: Sparkles, titulo: 'Praticar 1 dica de hoje',
         descricao: 'Suas dicas foram feitas do SEU MyID — uma por dia já muda o jogo.',
-        acaoImediata: 'Abra a aba Dicas e faça a primeira da lista agora.',
+        acaoImediata: 'Veja "Suas dicas do MyID" aqui embaixo e faça a primeira agora.',
         categoria: 'importante', lossPoints: 0, xpRecompensa: 15, completavel: true,
         colorClass: 'text-sky-700 dark:text-sky-400', bgClass: 'bg-sky-50 dark:bg-sky-950/30', borderClass: 'border-sky-200 dark:border-sky-800/50',
       });

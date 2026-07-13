@@ -37,13 +37,12 @@ const navItems = [
   { path: '/paciente/profissionais', label: 'Encontrar profissional', shortLabel: 'Profiss.', icon: Users,          badgeKey: null, premium: false },
   { path: '/paciente/avatar',        label: 'Meu Avatar Clínico',   shortLabel: 'Avatar',   icon: Activity,        badgeKey: null, premium: false },
   { path: '/paciente/plano-ia',      label: 'Meu Plano (IA)',       shortLabel: 'Plano',    icon: Sparkles,        badgeKey: null, premium: false },
-  { path: '/paciente/dicas',         label: 'Dicas pra você',       shortLabel: 'Dicas',    icon: Lightbulb,       badgeKey: null, premium: false },
 ];
 
 // Bottom nav: Início, Agenda, Treinos, Diário, +Mais
 const MOBILE_PRIMARY = [0, 5, 4, 2]; // indices in navItems
 // Items in "Mais" sheet (all others) — avatar is index 12
-const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12, 13];
 
 interface Props {
   children: ReactNode;
