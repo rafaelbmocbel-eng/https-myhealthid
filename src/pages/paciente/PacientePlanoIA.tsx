@@ -20,6 +20,7 @@ export default function PacientePlanoIA() {
   const [loading, setLoading] = useState(true);
   const [treino, setTreino] = useState<any>(null);
   const [dieta, setDieta] = useState<any>(null);
+  const [diretriz, setDiretriz] = useState<any>(null);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
 
   const bloqueado = isFree && !isInTrial;
@@ -30,14 +31,19 @@ export default function PacientePlanoIA() {
       const { data: pac } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
       if (!pac) { setLoading(false); return; }
       setPacienteId(pac.id);
-      const [t, d] = await Promise.all([
+      const [t, d, dir] = await Promise.all([
         supabase.from('planos_treino').select('titulo, objetivo, estrutura, created_at')
           .eq('paciente_id', pac.id).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
         (supabase as any).from('planos_alimentares').select('titulo, calorias_alvo, plano, created_at')
           .eq('paciente_id', pac.id).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        // RLS só entrega o que o profissional enviou ao portal
+        (supabase as any).from('diretrizes_profissionais').select('titulo, area, conteudo, updated_at')
+          .eq('paciente_id', pac.id).eq('area', 'nutricao').eq('enviada_portal', true)
+          .order('updated_at', { ascending: false }).limit(1).maybeSingle(),
       ]);
       setTreino(t.data || null);
       setDieta(d.data || null);
+      setDiretriz(dir.data || null);
       setLoading(false);
     })();
   }, [user, bloqueado]);
@@ -88,13 +94,16 @@ export default function PacientePlanoIA() {
             {/* Perguntas do plano nutricional (anamnese) */}
             {pacienteId && <AnamneseNutricionalCard pacienteId={pacienteId} />}
 
+            {/* Diretriz nutricional do profissional */}
+            <DiretrizNutricionalView diretriz={diretriz} />
+
             {/* Plano de treino */}
             <PlanoTreinoView treino={treino} />
 
             {/* Plano alimentar */}
             <PlanoDietaView dieta={dieta} />
 
-            {!treino && !dieta && (
+            {!treino && !dieta && !diretriz && (
               <Card><CardContent className="p-8 text-center">
                 <Sparkles className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-sm font-medium text-muted-foreground">Nenhum plano ainda</p>
@@ -105,6 +114,54 @@ export default function PacientePlanoIA() {
         )}
       </div>
     </PacienteLayout></ProtectedPatientRoute>
+  );
+}
+
+// Diretriz criada e revisada pelo PROFISSIONAL (nutrição por fases, com metas
+// e marcadores de exame) — só aparece depois que ele envia ao portal.
+function DiretrizNutricionalView({ diretriz }: { diretriz: any }) {
+  if (!diretriz) return null;
+  const c = diretriz.conteudo || {};
+  const fases: any[] = Array.isArray(c.fases) ? c.fases : [];
+  return (
+    <Card className="border-emerald-500/30">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+            <ClipboardList className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold truncate">{c.titulo || diretriz.titulo || 'Diretriz Nutricional'}</p>
+            <p className="text-[11px] text-muted-foreground">Montada e revisada pelo seu profissional</p>
+          </div>
+        </div>
+        {c.objetivo && <p className="text-xs text-foreground">{c.objetivo}</p>}
+        {fases.map((f, fi) => (
+          <div key={fi} className="rounded-xl border border-border/40 overflow-hidden">
+            <div className="px-3 py-2 bg-muted/40 flex items-center justify-between">
+              <span className="text-xs font-bold">Fase {f.numero || fi + 1} — {f.titulo}</span>
+              {f.duracao_semanas && <span className="text-[10px] text-muted-foreground">{f.duracao_semanas} semanas</span>}
+            </div>
+            <div className="p-2.5 space-y-2">
+              {(Array.isArray(f.metas) ? f.metas : []).map((m: any, mi: number) => (
+                <div key={mi} className="flex items-start gap-2 text-[11px]">
+                  <span className="shrink-0">🎯</span>
+                  <div>
+                    <p className="font-medium text-foreground">{m.descricao}</p>
+                    {m.como_medir && <p className="text-[10px] text-muted-foreground">Como medir: {m.como_medir}</p>}
+                  </div>
+                </div>
+              ))}
+              {(Array.isArray(f.orientacoes) ? f.orientacoes : []).length > 0 && (
+                <ul className="list-disc list-inside text-[11px] text-muted-foreground space-y-0.5">
+                  {f.orientacoes.map((o: string, oi: number) => <li key={oi}>{o}</li>)}
+                </ul>
+              )}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 
