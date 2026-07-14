@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     const userPrompt = `${perfil}\n\nObjetivo pedido pelo profissional: ${body?.objetivo || "condicionamento físico geral com segurança"}.\nObservações do profissional: ${body?.observacoes || "-"}\n\nMonte a diretriz de treino (periodização) por fases. Retorne o JSON.`;
 
     const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 55_000);
+    setTimeout(() => ctrl.abort(), 120_000);
     const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST", signal: ctrl.signal,
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },

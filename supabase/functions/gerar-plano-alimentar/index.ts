@@ -100,7 +100,7 @@ Preferências: ${preferencias || 'sem preferências especiais'}
 Gere o plano alimentar completo em JSON conforme o formato. Baseie-se em diretrizes e evidências científicas; NÃO faça recomendações fora de escopo (medicamentos, suplementação de risco).`.trim();
 
     const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 45_000);
+    setTimeout(() => ctrl.abort(), 120_000);
     const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       signal: ctrl.signal,

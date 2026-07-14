@@ -111,8 +111,10 @@ Restrições/lesões: ${restricoes || 'nenhuma'}${myidStr}${listaBlock}
 
 Gere o plano periodizado completo em JSON.`.trim();
 
+    // Plano periodizado completo + lista de até 250 exercícios da biblioteca:
+    // geração longa — 45s abortava antes da IA terminar.
     const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 45_000);
+    setTimeout(() => ctrl.abort(), 120_000);
     const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       signal: ctrl.signal,
@@ -156,7 +158,10 @@ Gere o plano periodizado completo em JSON.`.trim();
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message || String(e) }), {
+    const msg = e?.name === "AbortError" || /abort/i.test(String(e?.message))
+      ? "A IA demorou demais para responder. Tente de novo — a segunda tentativa costuma ser mais rápida."
+      : e.message || String(e);
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Dumbbell, Sparkles, Loader2, Eye, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { erroDaFuncao } from '@/lib/fnError';
 
 interface Props { pacienteId: string; }
 
@@ -59,7 +60,7 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
           paciente_id: pacienteId,
         },
       });
-      if (error) throw error;
+      if (error) throw await erroDaFuncao(error);
       if ((data as any)?.error) throw new Error((data as any).error);
       const plano = (data as any).plano;
 

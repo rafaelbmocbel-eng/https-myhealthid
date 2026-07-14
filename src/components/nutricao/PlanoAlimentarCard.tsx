@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Apple, Sparkles, Loader2, Trash2, Eye, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { erroDaFuncao } from '@/lib/fnError';
 import { format, parseISO } from 'date-fns';
 
 interface Props { pacienteId: string; }
@@ -91,7 +92,7 @@ export default function PlanoAlimentarCard({ pacienteId }: Props) {
           paciente_id: pacienteId,
         },
       });
-      if (error) throw error;
+      if (error) throw await erroDaFuncao(error);
       if (!data?.ok) throw new Error(data?.error || 'Falha ao gerar');
 
       const p = data.plano;

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Sparkles, Loader2, Eye, Send, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
+import { erroDaFuncao } from '@/lib/fnError';
 
 export interface DiretrizAreaProps {
   pacienteId: string;
@@ -50,7 +51,7 @@ export default function DiretrizAreaCard({
       const { data, error } = await supabase.functions.invoke(funcaoIA, {
         body: { paciente_id: pacienteId, objetivo: objetivo || undefined, observacoes: obs || undefined },
       });
-      if (error) throw error;
+      if (error) throw await erroDaFuncao(error);
       if (!(data as any)?.ok) throw new Error((data as any)?.error || 'Falha ao gerar');
       return data as any;
     },
