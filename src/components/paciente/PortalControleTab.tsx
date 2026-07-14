@@ -16,6 +16,7 @@ import DeverDeCasaDialog from './DeverDeCasaDialog';
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
 const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
+const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
 import AvatarClinicoCard from '../avatar/AvatarClinicoCard';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -311,6 +312,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                 </p>
                 <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                   <PlanoTreinoCard pacienteId={pacienteId} />
+                  <DiretrizTreinoCard pacienteId={pacienteId} />
                   <PlanoAlimentarCard pacienteId={pacienteId} />
                   <DiretrizNutricionalCard pacienteId={pacienteId} />
                 </Suspense>
