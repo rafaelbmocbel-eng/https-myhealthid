@@ -1,26 +1,26 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, Sparkles, ArrowLeft, Lock } from 'lucide-react';
+import { Check, Sparkles, ArrowLeft, Lock, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 const FREE_FEATURES = [
   'Avaliação MyID completa',
-  'Painel pessoal de saúde',
-  '1/3 das missões personalizadas',
-  'Acompanhamento mensal de evolução',
+  'Missões, metas e pontos (XP)',
+  'Dicas e exercícios do seu MyID',
+  'Diário e acompanhamento de evolução',
 ];
 
 const PREMIUM_FEATURES = [
   'Tudo do plano gratuito',
-  'Biblioteca completa de exercícios',
-  'Protocolos de ansiedade e bem-estar',
-  'Todas as missões e desafios (XP completo)',
-  'Chat com profissional',
+  'Plano de treino personalizado com GIFs (IA)',
+  'Plano alimentar personalizado (IA)',
   '1 consulta com profissional por mês',
   'Eventos e aulas online exclusivos',
 ];
@@ -28,13 +28,31 @@ const PREMIUM_FEATURES = [
 export default function PacientePlano() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { tipoConta, isPremium, isFree } = useWellnessAccess();
+  const [pagando, setPagando] = useState(false);
 
-  const handleAssinar = () => {
-    toast({
-      title: 'Em breve',
-      description: 'O pagamento online estará disponível na próxima atualização. Fale conosco para liberar manualmente.',
-    });
+  const handleAssinar = async () => {
+    setPagando(true);
+    try {
+      const { createSumUpCheckout } = await import('@/utils/sumupCheckout');
+      const result = await createSumUpCheckout({
+        amount: 49,
+        description: 'Wellness Premium — My Health ID (mensal)',
+        customer_email: user?.email || undefined,
+        reference: `wellness-premium-${user?.id || 'anon'}-${Date.now()}`,
+        redirect_url: `${window.location.origin}/paciente/plano`,
+      });
+      window.location.href = result.checkout_url;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({
+        title: 'Não foi possível abrir o pagamento',
+        description: msg + ' — tente de novo ou fale com seu profissional.',
+        variant: 'destructive',
+      });
+      setPagando(false);
+    }
   };
 
   return (
@@ -109,8 +127,9 @@ export default function PacientePlano() {
                 ))}
               </ul>
               {!isPremium && tipoConta !== 'clinico' && (
-                <Button className="w-full mt-3" onClick={handleAssinar}>
-                  <Sparkles className="icon-sm mr-2" /> Assinar agora
+                <Button className="w-full mt-3" onClick={handleAssinar} disabled={pagando}>
+                  {pagando ? <Loader2 className="icon-sm mr-2 animate-spin" /> : <Sparkles className="icon-sm mr-2" />}
+                  {pagando ? 'Abrindo pagamento…' : 'Assinar agora'}
                 </Button>
               )}
               {tipoConta === 'clinico' && (

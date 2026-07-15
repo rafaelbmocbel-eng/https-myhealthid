@@ -50,6 +50,8 @@ const PacienteHistoria = lazyWithRetry(() => import("./pages/paciente/PacienteHi
 const PacienteRecompensas = lazyWithRetry(() => import("./pages/paciente/PacienteRecompensas"));
 const PacienteProfissionais = lazyWithRetry(() => import("./pages/paciente/PacienteProfissionais"));
 const PacienteAvatar = lazyWithRetry(() => import("./pages/paciente/PacienteAvatar"));
+const PacientePlanoIA = lazyWithRetry(() => import("./pages/paciente/PacientePlanoIA"));
+const PacienteDicas = lazyWithRetry(() => import("./pages/paciente/PacienteDicas"));
 const AuthConfirm = lazyWithRetry(() => import("./pages/AuthConfirm"));
 
 const queryClient = new QueryClient({
@@ -150,6 +152,8 @@ const AppPaciente = () => (
                 <Route path="/paciente/recompensas" element={<ProtectedPatientRoute><PacienteRecompensas /></ProtectedPatientRoute>} />
                 <Route path="/paciente/profissionais" element={<ProtectedPatientRoute><PacienteProfissionais /></ProtectedPatientRoute>} />
                 <Route path="/paciente/avatar" element={<ProtectedPatientRoute><PacienteAvatar /></ProtectedPatientRoute>} />
+                <Route path="/paciente/plano-ia" element={<ProtectedPatientRoute><PacientePlanoIA /></ProtectedPatientRoute>} />
+                <Route path="/paciente/dicas" element={<ProtectedPatientRoute><PacienteDicas /></ProtectedPatientRoute>} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>

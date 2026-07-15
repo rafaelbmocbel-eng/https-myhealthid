@@ -729,6 +729,10 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
             <Sparkles className="h-4 w-4 text-sky-600" />
             <h2 className="text-sm font-bold text-foreground">Exercícios &amp; dicas do MyID</h2>
             <span className="text-[10px] text-muted-foreground">({dicasIA.length})</span>
+            <button onClick={() => { window.location.href = '/paciente/dicas'; }}
+              className="ml-auto text-[11px] font-medium text-primary hover:underline shrink-0">
+              ver todas →
+            </button>
           </div>
           <div className="space-y-1.5">
             {dicasIA.map((d: any, i: number) => {
