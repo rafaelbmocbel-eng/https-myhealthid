@@ -25,16 +25,30 @@ export function LayoutConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<LayoutConfig>(DEFAULT_LAYOUT_CONFIG);
   const [loading, setLoading] = useState(true);
 
-  // Load global config from Supabase on mount (once auth is ready).
+  // Config POR USUÁRIO (layout_config_usuario); a linha global id=1 é só o
+  // modelo padrão para quem nunca personalizou.
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('app_layout_config')
+      let data: { config: unknown } | null = null;
+      let error: unknown = null;
+      const meu = await (supabase as any)
+        .from('layout_config_usuario')
         .select('config')
-        .eq('id', 1)
+        .eq('user_id', user!.id)
         .maybeSingle();
+      if (meu.data?.config && Object.keys(meu.data.config as object).length > 0) {
+        data = meu.data;
+      } else {
+        const global = await supabase
+          .from('app_layout_config')
+          .select('config')
+          .eq('id', 1)
+          .maybeSingle();
+        data = global.data;
+        error = global.error;
+      }
 
       if (!cancelled) {
         if (!error && data?.config && Object.keys(data.config as object).length > 0) {
@@ -69,19 +83,25 @@ export function LayoutConfigProvider({ children }: { children: ReactNode }) {
   const save = useCallback(async (next: LayoutConfig) => {
     // Optimistic update — UI reflects change immediately.
     setConfig(next);
-    await supabase
-      .from('app_layout_config')
-      .update({ config: next as unknown as Record<string, unknown>, updated_at: new Date().toISOString() })
-      .eq('id', 1);
-  }, []);
+    if (!user) return;
+    await (supabase as any)
+      .from('layout_config_usuario')
+      .upsert(
+        { user_id: user.id, config: next as unknown as Record<string, unknown>, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' },
+      );
+  }, [user?.id]);
 
   const reset = useCallback(async () => {
     setConfig(DEFAULT_LAYOUT_CONFIG);
-    await supabase
-      .from('app_layout_config')
-      .update({ config: DEFAULT_LAYOUT_CONFIG as unknown as Record<string, unknown>, updated_at: new Date().toISOString() })
-      .eq('id', 1);
-  }, []);
+    if (!user) return;
+    await (supabase as any)
+      .from('layout_config_usuario')
+      .upsert(
+        { user_id: user.id, config: DEFAULT_LAYOUT_CONFIG as unknown as Record<string, unknown>, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' },
+      );
+  }, [user?.id]);
 
   return (
     <LayoutConfigContext.Provider value={{ config, loading, save, reset }}>

@@ -62,12 +62,13 @@ function MiniLinha({ dados, dataKey, cor, unidade, titulo }: {
 
 export default function EvolucaoFisicaCard({ pacienteId }: Props) {
   const [testeSel, setTesteSel] = useState<string | null>(null);
+  const [marcadorSel, setMarcadorSel] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['evolucao-fisica', pacienteId],
     queryFn: async () => {
       const sb = supabase as any;
-      const [antro, comp, testes, vitais, exec] = await Promise.all([
+      const [antro, comp, testes, vitais, exec, exames] = await Promise.all([
         sb.from('antropometria').select('data_medicao, peso_kg, imc, gordura_pct')
           .eq('paciente_id', pacienteId).order('data_medicao', { ascending: true }).limit(60),
         sb.from('body_composition').select('date, weight_kg, body_fat_pct, muscle_mass_kg')
@@ -80,10 +81,14 @@ export default function EvolucaoFisicaCard({ pacienteId }: Props) {
           .eq('paciente_id', pacienteId)
           .gte('data_execucao', new Date(Date.now() - 8 * 7 * 86400000).toISOString())
           .order('data_execucao', { ascending: true }).limit(500),
+        sb.from('exames_importados').select('data_exame, dados_extraidos')
+          .eq('paciente_id', pacienteId)
+          .not('data_exame', 'is', null)
+          .order('data_exame', { ascending: true }).limit(30),
       ]);
       return {
         antro: antro.data || [], comp: comp.data || [], testes: testes.data || [],
-        vitais: vitais.data || [], exec: exec.data || [],
+        vitais: vitais.data || [], exec: exec.data || [], exames: exames.data || [],
       };
     },
   });
@@ -120,6 +125,23 @@ export default function EvolucaoFisicaCard({ pacienteId }: Props) {
     });
     for (const [k, arr] of tiposTeste) if (arr.length < 2) tiposTeste.delete(k);
 
+    // Marcadores de exame: mesmo parâmetro (glicemia, colesterol...) ao longo
+    // dos exames importados — só entra quem aparece em 2+ exames com valor numérico
+    const marcadores = new Map<string, { x: string; v: number; unidade: string }[]>();
+    data.exames.forEach((e: any) => {
+      const vals = Array.isArray(e.dados_extraidos?.valores) ? e.dados_extraidos.valores : [];
+      vals.forEach((p: any) => {
+        const nome = String(p?.parametro || '').trim();
+        const v = parseFloat(String(p?.valor ?? '').replace(',', '.'));
+        if (!nome || Number.isNaN(v)) return;
+        const chave = nome.charAt(0).toUpperCase() + nome.slice(1).toLowerCase();
+        const arr = marcadores.get(chave) || [];
+        arr.push({ x: dt(e.data_exame), v, unidade: p?.unidade || '' });
+        marcadores.set(chave, arr);
+      });
+    });
+    for (const [k, arr] of marcadores) if (arr.length < 2) marcadores.delete(k);
+
     // Adesão: execuções por semana (últimas 8)
     const semanas: { x: string; v: number }[] = [];
     for (let i = 7; i >= 0; i--) {
@@ -133,18 +155,22 @@ export default function EvolucaoFisicaCard({ pacienteId }: Props) {
     }
     const temExec = semanas.some(s => s.v > 0);
 
-    return { peso, gordura, musculo, pa, tiposTeste, semanas, temExec };
+    return { peso, gordura, musculo, pa, tiposTeste, marcadores, semanas, temExec };
   }, [data]);
 
   if (isLoading || !series) return null;
 
   const nadaParaMostrar =
     series.peso.length < 2 && series.gordura.length < 2 && series.musculo.length < 2 &&
-    series.pa.length < 2 && series.tiposTeste.size === 0 && !series.temExec;
+    series.pa.length < 2 && series.tiposTeste.size === 0 && series.marcadores.size === 0 && !series.temExec;
 
   const tipos = [...series.tiposTeste.keys()];
   const testeAtivo = testeSel && series.tiposTeste.has(testeSel) ? testeSel : tipos[0] || null;
   const dadosTeste = testeAtivo ? series.tiposTeste.get(testeAtivo)! : [];
+
+  const nomesMarcadores = [...series.marcadores.keys()];
+  const marcadorAtivo = marcadorSel && series.marcadores.has(marcadorSel) ? marcadorSel : nomesMarcadores[0] || null;
+  const dadosMarcador = marcadorAtivo ? series.marcadores.get(marcadorAtivo)! : [];
 
   return (
     <Card className="border-border/40 shadow-xs">
@@ -210,6 +236,35 @@ export default function EvolucaoFisicaCard({ pacienteId }: Props) {
                         labelFormatter={(l) => `Data: ${l}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                       <Line type="monotone" dataKey="v" stroke="#7c3aed" strokeWidth={2}
                         dot={{ r: 3, fill: '#7c3aed', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {marcadorAtivo && (
+                <div className="rounded-xl border border-border/40 p-3">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-xs font-semibold text-foreground shrink-0">Exame</p>
+                    {nomesMarcadores.length > 1 ? (
+                      <Select value={marcadorAtivo} onValueChange={setMarcadorSel}>
+                        <SelectTrigger className="h-7 text-[11px] w-auto max-w-[60%]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {nomesMarcadores.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground truncate">{marcadorAtivo}</span>
+                    )}
+                  </div>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <LineChart data={dadosMarcador} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.25} vertical={false} />
+                      <XAxis dataKey="x" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={52} domain={['auto', 'auto']} />
+                      <Tooltip formatter={(v: number) => [`${Number(v).toLocaleString('pt-BR')} ${dadosMarcador[0]?.unidade || ''}`, marcadorAtivo]}
+                        labelFormatter={(l) => `Data: ${l}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                      <Line type="monotone" dataKey="v" stroke="#be185d" strokeWidth={2}
+                        dot={{ r: 3, fill: '#be185d', strokeWidth: 0 }} activeDot={{ r: 5 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

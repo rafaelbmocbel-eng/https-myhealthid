@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const FREE_FEATURES = [
@@ -29,8 +31,44 @@ export default function PacientePlano() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { tipoConta, isPremium, isFree } = useWellnessAccess();
+  const qc = useQueryClient();
+  const { tipoConta, isPremium, isFree, proximaCobranca } = useWellnessAccess();
   const [pagando, setPagando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  const CHECKOUT_KEY = 'wellness.checkout';
+
+  // Voltou do SumUp: confirma o pagamento na API e ativa o Premium sozinho
+  useEffect(() => {
+    const raw = localStorage.getItem(CHECKOUT_KEY);
+    if (!raw || !user) return;
+    let pendente: { id: string; ts: number } | null = null;
+    try { pendente = JSON.parse(raw); } catch { localStorage.removeItem(CHECKOUT_KEY); return; }
+    if (!pendente?.id || Date.now() - pendente.ts > 48 * 3600000) {
+      localStorage.removeItem(CHECKOUT_KEY);
+      return;
+    }
+    (async () => {
+      setConfirmando(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('wellness-pagamento', {
+          body: { checkout_id: pendente!.id },
+        });
+        if (error) throw error;
+        if ((data as any)?.ok) {
+          localStorage.removeItem(CHECKOUT_KEY);
+          toast({ title: '🎉 Premium ativado!', description: 'Seu plano já está liberado — aproveite.' });
+          qc.invalidateQueries({ queryKey: ['wellness-status'] });
+        }
+        // status PENDENTE: mantém guardado e tenta de novo na próxima visita
+      } catch {
+        // rede/instabilidade: tenta de novo na próxima visita
+      } finally {
+        setConfirmando(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const handleAssinar = async () => {
     setPagando(true);
@@ -43,6 +81,7 @@ export default function PacientePlano() {
         reference: `wellness-premium-${user?.id || 'anon'}-${Date.now()}`,
         redirect_url: `${window.location.origin}/paciente/plano`,
       });
+      localStorage.setItem(CHECKOUT_KEY, JSON.stringify({ id: result.checkout_id, ts: Date.now() }));
       window.location.href = result.checkout_url;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -54,6 +93,10 @@ export default function PacientePlano() {
       setPagando(false);
     }
   };
+
+  const diasParaVencer = proximaCobranca
+    ? Math.ceil((new Date(proximaCobranca).getTime() - Date.now()) / 86400000)
+    : null;
 
   return (
     <ProtectedPatientRoute>
@@ -126,11 +169,31 @@ export default function PacientePlano() {
                   </li>
                 ))}
               </ul>
-              {!isPremium && tipoConta !== 'clinico' && (
+              {confirmando && (
+                <div className="flex items-center gap-2 mt-3 p-2 rounded-lg bg-muted/40">
+                  <Loader2 className="icon-sm animate-spin text-muted-foreground" />
+                  <p className="text-[11px] text-muted-foreground">Confirmando seu pagamento…</p>
+                </div>
+              )}
+              {!isPremium && tipoConta !== 'clinico' && !confirmando && (
                 <Button className="w-full mt-3" onClick={handleAssinar} disabled={pagando}>
                   {pagando ? <Loader2 className="icon-sm mr-2 animate-spin" /> : <Sparkles className="icon-sm mr-2" />}
                   {pagando ? 'Abrindo pagamento…' : 'Assinar agora'}
                 </Button>
+              )}
+              {isPremium && proximaCobranca && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Ativo até {new Date(proximaCobranca).toLocaleDateString('pt-BR')}
+                    {diasParaVencer !== null && diasParaVencer <= 5 && diasParaVencer >= 0 && ' — vence em breve'}
+                  </p>
+                  {diasParaVencer !== null && diasParaVencer <= 5 && (
+                    <Button className="w-full" variant="outline" onClick={handleAssinar} disabled={pagando}>
+                      {pagando ? <Loader2 className="icon-sm mr-2 animate-spin" /> : <Sparkles className="icon-sm mr-2" />}
+                      Renovar agora (+31 dias)
+                    </Button>
+                  )}
+                </div>
               )}
               {tipoConta === 'clinico' && (
                 <div className="flex items-center gap-2 mt-3 p-2 rounded-lg bg-muted/40">

@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.event-reminders]
 verify_jwt = false
+
+[functions.wellness-recorrencia]
+verify_jwt = false
