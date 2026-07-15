@@ -209,6 +209,30 @@ Deno.serve(async (req) => {
       }
     } catch (e) { console.warn("lookup nova msg falhou:", e); }
 
+    // Captura de NPS: se o cliente respondeu só um número 0–10 e recebeu a
+    // pergunta de NPS nos últimos 7 dias, guarda a nota (1 por pergunta).
+    try {
+      if (!fromMe && tipo === "texto" && paciente_id && conteudo && /^\s*(?:10|[0-9])\s*$/.test(conteudo)) {
+        const seteDias = new Date(Date.now() - 7 * 86400000).toISOString();
+        const { count: perguntou } = await admin.from("agente_disparos")
+          .select("id", { count: "exact", head: true })
+          .eq("paciente_id", paciente_id)
+          .eq("gatilho", "nps_pos_sessao")
+          .gte("created_at", seteDias);
+        if ((perguntou || 0) > 0) {
+          const { count: jaRespondeu } = await admin.from("nps_respostas")
+            .select("id", { count: "exact", head: true })
+            .eq("paciente_id", paciente_id)
+            .gte("created_at", seteDias);
+          if ((jaRespondeu || 0) === 0) {
+            await admin.from("nps_respostas").insert({
+              terapeuta_id, paciente_id, nota: parseInt(conteudo.trim(), 10),
+            });
+          }
+        }
+      }
+    } catch (e) { console.warn("captura NPS falhou:", e); }
+
     const internalHeaders = {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,

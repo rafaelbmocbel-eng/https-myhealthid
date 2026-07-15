@@ -250,7 +250,46 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, enviados24, enviados2h, enviadosPos, noShows }), {
+    // ── JANELA 5: 24h depois — NPS (0–10). OPT-IN explícito (=== true) e no
+    // máximo 1 pergunta por cliente a cada 30 dias. A nota respondida no Zap
+    // é capturada pelo webhook em nps_respostas.
+    let enviadosNps = 0;
+    {
+      const start = new Date(now - 25 * 3600000).toISOString();
+      const end   = new Date(now - 24 * 3600000).toISOString();
+      const { data: ags } = await admin.from("agendamentos")
+        .select("id, terapeuta_id, paciente_id, data_fim, status")
+        .gte("data_fim", start).lte("data_fim", end)
+        .in("status", ["confirmado", "concluido", "realizado"]);
+      for (const ag of ags || []) {
+        const cfg = await getCfg(ag.terapeuta_id);
+        if (cfg?.gatilhos_ativos?.nps_pos_sessao !== true) continue;
+        const { count: jaPerguntou } = await admin.from("agente_disparos")
+          .select("id", { count: "exact", head: true })
+          .eq("paciente_id", ag.paciente_id)
+          .eq("gatilho", "nps_pos_sessao")
+          .gte("created_at", new Date(now - 30 * 86400000).toISOString());
+        if ((jaPerguntou || 0) > 0) continue;
+        const info = await processarPaciente({ ...ag, data_inicio: ag.data_fim });
+        if (!info) continue;
+        const msg = aplicar(
+          "Oi {nome}! De 0 a 10, o quanto você recomendaria meu atendimento para um amigo ou familiar? É só responder com o número 🙏",
+          info.nome, info.hora, info.data,
+        );
+        const ok = await enviarWhatsapp(admin, ag.terapeuta_id, info.pac.telefone, msg);
+        if (ok) {
+          await registrarEnvio(admin, ag.terapeuta_id, ag.paciente_id, info.pac.telefone, msg);
+          enviadosNps++;
+        }
+        await admin.from("agente_disparos").insert({
+          terapeuta_id: ag.terapeuta_id, paciente_id: ag.paciente_id,
+          gatilho: "nps_pos_sessao", ref_id: ag.id, conteudo: msg,
+          status: ok ? "enviado" : "erro",
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, enviados24, enviados2h, enviadosPos, noShows, enviadosNps }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

@@ -82,6 +82,7 @@ const GATILHOS: { k: string; label: string; desc: string }[] = [
   { k: "aniversario", label: "Aniversário", desc: "Parabeniza no dia do paciente" },
   { k: "pagamento_pendente", label: "Pagamento pendente", desc: "Lembrete gentil sobre pendência financeira" },
   { k: "progresso_semanal", label: "Progresso semanal 🏆", desc: "Domingo à noite: resumo da semana com XP, nível e incentivo (só para quem teve atividade)" },
+  { k: "nps_pos_sessao", label: "NPS (nota 0–10) ⭐", desc: "No dia seguinte à sessão pergunta a nota de 0 a 10; a resposta é guardada sozinha. Máximo 1 pergunta por cliente a cada 30 dias." },
 ];
 
 const TOM_VOZ = [
@@ -105,6 +106,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
     abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
   });
   const [palavraNova, setPalavraNova] = useState("");
+  const [nps, setNps] = useState<{ media: number; total: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -144,6 +146,13 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         escalados7d: esc || 0,
         gatilhoTop: top ? `${top[0]} (${top[1]})` : "—",
       });
+
+      const { data: notas } = await (supabase as any)
+        .from("nps_respostas").select("nota").eq("terapeuta_id", user.id).limit(500);
+      if (notas && notas.length > 0) {
+        const soma = notas.reduce((s: number, n: any) => s + (n.nota || 0), 0);
+        setNps({ media: Math.round((soma / notas.length) * 10) / 10, total: notas.length });
+      }
       setLoading(false);
     })();
   }, []);
@@ -277,9 +286,15 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
       : [...(cfg.dias_semana || []), k];
     setCfg({ ...cfg, dias_semana: dias });
   };
+  // Opt-in: só disparam com true explícito no backend — o interruptor nasce desligado.
+  const GATILHOS_OPT_IN = new Set(['nps_pos_sessao', 'progresso_semanal']);
+  const gatilhoLigado = (k: string) => {
+    const v = (cfg.gatilhos_ativos || {})[k];
+    return GATILHOS_OPT_IN.has(k) ? v === true : v !== false;
+  };
   const toggleGatilho = (k: string) => {
     const g = { ...(cfg.gatilhos_ativos || {}) };
-    g[k] = !g[k];
+    g[k] = !gatilhoLigado(k);
     setCfg({ ...cfg, gatilhos_ativos: g });
   };
   const removerPalavra = (p: string) => {
@@ -419,10 +434,15 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
             <div className="space-y-2 pt-2">
               {GATILHOS.map(g => (
                 <div key={g.k} className="flex items-start gap-3 p-3 rounded-lg border border-border/40">
-                  <Switch checked={(cfg.gatilhos_ativos || {})[g.k] !== false} onCheckedChange={() => toggleGatilho(g.k)} />
+                  <Switch checked={gatilhoLigado(g.k)} onCheckedChange={() => toggleGatilho(g.k)} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{g.label}</p>
                     <p className="text-micro text-muted-foreground">{g.desc}</p>
+                    {g.k === 'nps_pos_sessao' && nps && (
+                      <p className="text-micro font-semibold text-emerald-600 mt-0.5">
+                        ⭐ Nota média: {nps.media.toLocaleString('pt-BR')} · {nps.total} resposta{nps.total > 1 ? 's' : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
