@@ -7,6 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, requireInternal } from "../_shared/auth.ts";
 import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
+import { registrarMensagemSaida } from "../_shared/registrar-saida.ts";
 
 interface Regra {
   id: string;
@@ -173,7 +174,13 @@ Deno.serve(async (req) => {
             // 7c. WhatsApp (se canal e telefone) — chama Z-API diretamente com credenciais do banco
             if (regra.canal === "whatsapp" && pac.telefone) {
               try {
-                await enviarWhatsapp(supabase, regra.terapeuta_id, pac.telefone, mensagem);
+                const ok = await enviarWhatsapp(supabase, regra.terapeuta_id, pac.telefone, mensagem);
+                if (ok) {
+                  await registrarMensagemSaida(supabase, {
+                    terapeuta_id: regra.terapeuta_id, paciente_id: pac.id,
+                    telefone: pac.telefone, conteudo: mensagem, origem: "notificacao_inteligente",
+                  });
+                }
               } catch (whErr) {
                 console.warn("[notif] whatsapp falhou:", whErr);
               }
