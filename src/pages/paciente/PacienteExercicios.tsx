@@ -232,7 +232,7 @@ export default function PacienteExercicios() {
           <div>
             <h1 className="h-page flex items-center gap-2">
               <Dumbbell className="h-5 w-5 text-primary" />
-              Meus Exercícios
+              Treinos
             </h1>
             <p className="text-xs text-muted-foreground">Treinos prescritos pelo seu profissional</p>
           </div>

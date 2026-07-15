@@ -9,6 +9,7 @@ import {
 import { useHomeAtalhos } from '@/hooks/useHomeAtalhos';
 
 import AppLayout from '@/components/AppLayout';
+import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -160,6 +161,11 @@ export default function Hoje() {
               </div>
             </div>
           </header>
+
+          {/* Primeiros passos — banner compacto, some sozinho quando concluído */}
+          <div className="shrink-0">
+            <OnboardingGuide />
+          </div>
 
           {/* Desktop/Tablet: 2-column main area | Mobile: stacked */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 shrink-0">

@@ -22,6 +22,7 @@ import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
+import { NIVEL_LIMITES } from '@/hooks/useRecompensas';
 import { cn } from '@/lib/utils';
 
 interface PacienteInfo {
@@ -41,12 +42,13 @@ interface Agendamento {
 
 // Escala ÚNICA de níveis — a mesma do banco (calcular_nivel_paciente) e das
 // Recompensas: bronze 0 · prata 200 · ouro 500 · platina 1000 · diamante 2000.
+// Limiares vêm da MESMA fonte das Recompensas (NIVEL_LIMITES) — uma escala só.
 function getLevel(xp: number) {
-  if (xp >= 2000) return { label: 'Diamante', color: 'text-cyan-500',   icon: Trophy, next: null };
-  if (xp >= 1000) return { label: 'Platina',  color: 'text-slate-400',  icon: Trophy, next: 2000 };
-  if (xp >= 500)  return { label: 'Ouro',     color: 'text-yellow-600', icon: Trophy, next: 1000 };
-  if (xp >= 200)  return { label: 'Prata',    color: 'text-slate-500',  icon: Star,   next: 500 };
-  return            { label: 'Bronze',   color: 'text-amber-700',  icon: Flame,  next: 200 };
+  if (xp >= NIVEL_LIMITES.diamante) return { label: 'Diamante', color: 'text-cyan-500',   icon: Trophy, next: null };
+  if (xp >= NIVEL_LIMITES.platina)  return { label: 'Platina',  color: 'text-slate-400',  icon: Trophy, next: NIVEL_LIMITES.diamante };
+  if (xp >= NIVEL_LIMITES.ouro)     return { label: 'Ouro',     color: 'text-yellow-600', icon: Trophy, next: NIVEL_LIMITES.platina };
+  if (xp >= NIVEL_LIMITES.prata)    return { label: 'Prata',    color: 'text-slate-500',  icon: Star,   next: NIVEL_LIMITES.ouro };
+  return                              { label: 'Bronze',   color: 'text-amber-700',  icon: Flame,  next: NIVEL_LIMITES.prata };
 }
 
 const fadeUp = {

@@ -1,7 +1,7 @@
 import { forwardRef, Fragment } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, CalendarDays, Users,
+  CalendarDays, Users,
   Settings, LogOut, User, MessageCircle,
   Sun, DollarSign, Store, Dumbbell, type LucideIcon,
 } from 'lucide-react';
@@ -15,6 +15,8 @@ import { useVitrineNotifications } from '@/hooks/useVitrineNotifications';
 
 type ServiceKey = 'eventos';
 
+// UMA home só: "Hoje". O painel clínico completo (/inicio-app) é alcançado
+// pelos tiles da própria Hoje — não concorre mais no menu.
 const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; separatorAfter?: boolean }[] = [
   { label: 'Hoje', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
@@ -22,7 +24,6 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },
   { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign },
-  { label: 'Início', href: '/', icon: LayoutDashboard },
   { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true, separatorAfter: true },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
@@ -68,7 +69,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
         "flex items-center shrink-0 px-4",
         collapsed ? "justify-center h-[72px]" : "justify-start h-20"
       )}>
-        <Link to="/" className="flex items-center gap-3 min-w-1 group">
+        <Link to="/hoje" className="flex items-center gap-3 min-w-1 group">
           <LogoIcon size={collapsed ? 36 : 40} glow={!collapsed} className="shrink-0" />
           {!collapsed && (
             <div className="min-w-0 flex flex-col justify-center">

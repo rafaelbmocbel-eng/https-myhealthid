@@ -567,7 +567,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                     {meta.titulo}
                   </p>
                   <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
-                    <Zap className="h-2 w-2" /> +{meta.xpRecompensa} pts
+                    <Zap className="h-2 w-2" /> +{meta.xpRecompensa} XP
                   </Badge>
                 </div>
                 <p className="text-[10px] text-muted-foreground mb-1.5">{meta.descricao}</p>
@@ -672,7 +672,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                               {categoriaLabel[missao.categoria]}
                             </span>
                             <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5 ml-auto">
-                              <Zap className="h-2 w-2" /> +{missao.xpRecompensa} pts
+                              <Zap className="h-2 w-2" /> +{missao.xpRecompensa} XP
                             </Badge>
                           </div>
                           <p className="text-[10px] text-muted-foreground mb-0.5">{missao.descricao}</p>
@@ -767,21 +767,19 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
         </div>
       )}
 
-      {/* ── MEU TREINO & MINHA NUTRIÇÃO — os planos moram na Jornada ── */}
+      {/* ── ATALHOS FIXOS — cada card SEMPRE leva ao mesmo lugar ── */}
       {typeof window !== 'undefined' && window.location.pathname.startsWith('/paciente/') && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
           <Card className="overflow-hidden">
-            <Link to={planoTreinoIA ? '/paciente/plano-ia' : '/paciente/exercicios'} className="block p-3">
+            <Link to="/paciente/exercicios" className="block p-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
                   <Dumbbell className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold">Meu treino</p>
+                  <p className="text-xs font-bold">Treinos</p>
                   <p className="text-[10px] text-muted-foreground truncate">
-                    {planoTreinoIA
-                      ? (planoTreinoIA.titulo || 'Plano personalizado pronto — toque para ver')
-                      : 'Ver meus exercícios da semana'}
+                    Prescritos pelo seu profissional
                   </p>
                 </div>
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -795,11 +793,11 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                   <Heart className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold">Minha nutrição</p>
+                  <p className="text-xs font-bold">Meu Plano (IA)</p>
                   <p className="text-[10px] text-muted-foreground truncate">
-                    {planoAlimIA
-                      ? `Plano pronto${planoAlimIA.calorias_alvo ? ` · ${planoAlimIA.calorias_alvo} kcal` : ''} — toque para ver`
-                      : 'Responda as perguntas do seu plano'}
+                    {planoTreinoIA || planoAlimIA
+                      ? `Treino e nutrição prontos${planoAlimIA?.calorias_alvo ? ` · ${planoAlimIA.calorias_alvo} kcal` : ''} — toque para ver`
+                      : 'Treino com GIFs + nutrição personalizados'}
                   </p>
                 </div>
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -891,7 +889,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                         <Trophy className="h-3 w-3 text-primary/60 shrink-0" />
                         <span className="text-[10px] text-foreground/70 flex-1">{missao.titulo}</span>
                         <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
-                          <Zap className="h-2 w-2" /> +{missao.xp} pts
+                          <Zap className="h-2 w-2" /> +{missao.xp} XP
                         </Badge>
                       </div>
 

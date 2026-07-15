@@ -263,7 +263,7 @@ export default function LandingPublica() {
 
   if (authReady && user) {
     if (user.user_metadata?.is_patient === true) return <Navigate to="/paciente/dashboard" replace />;
-    return <Navigate to="/inicio-app" replace />;
+    return <Navigate to="/hoje" replace />;
   }
 
   return (

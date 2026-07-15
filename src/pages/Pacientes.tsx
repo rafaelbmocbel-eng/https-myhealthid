@@ -37,9 +37,8 @@ import { getBaseUrl } from '@/utils/linkUrls';
 const GestaoVendas = lazy(() => import('@/pages/GestaoVendas'));
 const FinanceiroGeral = lazy(() => import('@/components/paciente/FinanceiroGeral'));
 const FinanceiroPage = lazy(() => import('@/pages/Financeiro'));
-const CrmHub = lazy(() => import('@/pages/CrmHub'));
 
-type MainTab = 'clientes' | 'crm' | 'financeiro';
+type MainTab = 'clientes' | 'financeiro';
 
 // ── Classificação automática de pacientes ───────────────────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
@@ -250,7 +249,8 @@ export default function Pacientes() {
     }, 30000);
   };
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeMainTab = (searchParams.get('tab') as MainTab) || 'clientes';
+  // Links antigos com ?tab=crm caem em Clientes em vez de tela vazia
+  const activeMainTab: MainTab = searchParams.get('tab') === 'financeiro' ? 'financeiro' : 'clientes';
   const setActiveMainTab = (tab: MainTab) => {
     if (tab === 'clientes') {
       searchParams.delete('tab');
@@ -798,21 +798,16 @@ export default function Pacientes() {
           </div>
         </div>
 
-        {/* ── Main Tabs — só ícones (rótulo vira title/aria) ── */}
+        {/* ── Main Tabs — só ícones (rótulo vira title/aria) ──
+            O Zap tem lugar próprio no menu; aqui ficam só Clientes e Financeiro. */}
         <div className="flex gap-1 bg-muted/40 p-1 rounded-xl mb-5">
           {([
             { id: 'clientes' as MainTab, label: 'Clientes', icon: Users },
-            { id: 'crm' as MainTab, label: 'Zap', icon: MessageCircle },
             { id: 'financeiro' as MainTab, label: 'Financeiro', icon: DollarSign },
           ]).map(tab => (
             <button
               key={tab.id}
-              onClick={() => {
-                // Relacionamento vai DIRETO ao Zap (mesma tela do botão "Zap"
-                // da barra inferior), sem o hub embutido de visual diferente.
-                if (tab.id === 'crm') { navigate('/crm?tab=inbox'); return; }
-                setActiveMainTab(tab.id);
-              }}
+              onClick={() => setActiveMainTab(tab.id)}
               title={tab.label}
               aria-label={tab.label}
               className={cn(
@@ -828,12 +823,6 @@ export default function Pacientes() {
         </div>
 
         {/* ── Tab Content ── */}
-        {activeMainTab === 'crm' && (
-          <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-            <CrmHub embedded />
-          </Suspense>
-        )}
-
         {activeMainTab === 'financeiro' && (
           <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
             <FinanceiroPage embedded />

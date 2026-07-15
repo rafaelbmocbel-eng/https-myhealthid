@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, Users, Settings, MessageCircle, Wallet, Store, type LucideIcon } from 'lucide-react';
+import { Sun, CalendarDays, Users, Settings, MessageCircle, Store, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
@@ -9,11 +9,11 @@ import { useHaptics } from '@/hooks/useHaptics';
 type ServiceKey = 'eventos';
 
 const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey }[] = [
+  { label: 'Hoje', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
-  { label: 'Início', href: '/', icon: LayoutDashboard },
-  { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true },
   { label: 'Zap', href: '/crm/inbox', icon: MessageCircle },
+  { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true },
   { label: 'Config', href: '/configuracoes', icon: Settings },
 ];
 

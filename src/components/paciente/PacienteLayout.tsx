@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
-  LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame,
+  LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, TrendingUp,
   Dumbbell, Wallet, Watch, Ticket, MessageSquare, Mic, MoreHorizontal, X,
   ChevronRight, Lock, Users, Activity, Sparkles, Lightbulb,
 } from 'lucide-react';
@@ -26,7 +26,7 @@ const navItems = [
   { path: '/paciente/dashboard', label: 'Início',                shortLabel: 'Início',   icon: LayoutDashboard, badgeKey: null, premium: false },
   { path: '/paciente/saude',     label: 'Saúde',                 shortLabel: 'Saúde',    icon: Watch,           badgeKey: null, premium: false },
   { path: '/paciente/diario',    label: 'Diário',                shortLabel: 'Diário',   icon: Heart,           badgeKey: 'diario' as const, premium: false },
-  { path: '/paciente/evolucao',  label: 'Evolução e Prontuários',shortLabel: 'Evolução', icon: Flame,           badgeKey: null, premium: false },
+  { path: '/paciente/evolucao',  label: 'Evolução e Prontuários',shortLabel: 'Evolução', icon: TrendingUp,      badgeKey: null, premium: false },
   { path: '/paciente/exercicios',label: 'Treinos',               shortLabel: 'Treinos',  icon: Dumbbell,        badgeKey: null, premium: false },
   { path: '/paciente/agenda',    label: 'Agenda',                shortLabel: 'Agenda',   icon: CalendarDays,    badgeKey: 'agenda' as const, premium: false },
   { path: '/paciente/questionarios',label:'Questionários',       shortLabel: 'Quest.',   icon: ClipboardList,   badgeKey: 'questionarios' as const, premium: false },
@@ -42,6 +42,8 @@ const navItems = [
 const MOBILE_PRIMARY = [0, 5, 4, 2]; // indices in navItems
 // Items in "Mais" sheet (all others) — avatar is index 12
 const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12];
+// Agrupamento do sheet "Mais": saúde em cima, conta embaixo — menos carga visual
+const GRUPO_SAUDE = new Set(['/paciente/saude', '/paciente/evolucao', '/paciente/questionarios', '/paciente/avatar', '/paciente/plano-ia']);
 
 interface Props {
   children: ReactNode;
@@ -309,35 +311,45 @@ export default function PacienteLayout({ children }: Props) {
               </button>
             </div>
 
-            <div className="px-4 pb-2 grid grid-cols-2 gap-2">
-              {secondaryItems.map((item) => {
-                const active = location.pathname === item.path;
-                const badge = getBadgeCount(item.badgeKey);
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.97] text-left',
-                      active
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted/60 text-foreground hover:bg-muted',
-                    )}
-                  >
-                    <item.icon className="h-5 w-5 shrink-0" />
-                    <span className="flex-1 truncate text-sm">{item.label}</span>
-                    {item.premium && isFree && (
-                      <Lock className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-                    )}
-                    {badge > 0 && (
-                      <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
-                        {badge}
-                      </span>
-                    )}
-                    {!badge && !item.premium && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />}
-                  </button>
-                );
-              })}
+            <div className="px-4 pb-2 space-y-2">
+              {([
+                { titulo: 'Minha saúde', itens: secondaryItems.filter(i => GRUPO_SAUDE.has(i.path)) },
+                { titulo: 'Conta e mais', itens: secondaryItems.filter(i => !GRUPO_SAUDE.has(i.path)) },
+              ]).map(grupo => (
+                <div key={grupo.titulo}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1 pb-1.5">{grupo.titulo}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {grupo.itens.map((item) => {
+                      const active = location.pathname === item.path;
+                      const badge = getBadgeCount(item.badgeKey);
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => navigate(item.path)}
+                          className={cn(
+                            'flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.97] text-left',
+                            active
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'bg-muted/60 text-foreground hover:bg-muted',
+                          )}
+                        >
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span className="flex-1 truncate text-sm">{item.label}</span>
+                          {item.premium && isFree && (
+                            <Lock className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                          )}
+                          {badge > 0 && (
+                            <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
+                              {badge}
+                            </span>
+                          )}
+                          {!badge && !item.premium && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="px-4 pt-1 border-t border-border/50 mt-1">
