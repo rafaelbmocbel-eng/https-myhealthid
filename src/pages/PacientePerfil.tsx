@@ -73,6 +73,7 @@ const RecordatorioCard = lazy(() => import('@/components/nutricao/RecordatorioCa
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
 const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
 const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
+const EvolucaoFisicaCard = lazy(() => import('@/components/evolucao/EvolucaoFisicaCard'));
 const EscalasPsicologiaCard = lazy(() => import('@/components/psicologia/EscalasPsicologiaCard'));
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
@@ -1203,6 +1204,9 @@ export default function PacientePerfil() {
           {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
             <Suspense fallback={LazyFallback}>
+              {/* Evolução física: peso, gordura, músculo, PA, testes e adesão em gráficos */}
+              {id && <EvolucaoFisicaCard pacienteId={id} />}
+
               {/* Prontuário estruturado: avaliação atual → histórico → diretriz vigente → sessões */}
               <ProntuarioEstruturado notas={notasProntuario} isLoading={loadingNotas} />
 

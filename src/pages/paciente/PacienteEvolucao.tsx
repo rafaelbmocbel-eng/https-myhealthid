@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, TrendingUp, TrendingDown, Minus, Zap, Brain, Target, Flame, AlertTriangle, ChevronRight, FileText } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+const EvolucaoFisicaCard = lazy(() => import('@/components/evolucao/EvolucaoFisicaCard'));
 import { ptBR } from 'date-fns/locale';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -44,6 +45,7 @@ export default function PacienteEvolucao() {
   const [logs, setLogs] = useState<DailyLogEntry[]>([]);
   const [myidScores, setMyidScores] = useState<MyIDScore[]>([]);
   const [notas, setNotas] = useState<any[]>([]);
+  const [pacienteId, setPacienteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,6 +59,7 @@ export default function PacienteEvolucao() {
           .maybeSingle();
 
         if (!pac) return;
+        setPacienteId(pac.id);
 
         const [logsRes, evolRes, notasRes] = await Promise.all([
           supabase.from('daily_logs').select('*').eq('paciente_id', pac.id)
@@ -167,6 +170,13 @@ export default function PacienteEvolucao() {
             </TabsList>
 
             <TabsContent value="evolucao" className="mt-4 space-y-5">
+              {/* Evolução física: peso, gordura, músculo, PA, testes, treinos */}
+              {pacienteId && (
+                <Suspense fallback={null}>
+                  <EvolucaoFisicaCard pacienteId={pacienteId} />
+                </Suspense>
+              )}
+
               {/* Main wellness gauge — only shown when patient has enough data */}
               {logs.length >= 3 && (() => {
                 const R = 2 * Math.PI * 42;
