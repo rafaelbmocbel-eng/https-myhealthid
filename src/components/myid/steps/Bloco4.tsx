@@ -88,24 +88,29 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                     <Label className="text-base font-bold text-gray-800">Auto-eficácia</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Se eu realmente me concentrar e usar minhas próprias ferramentas (descanso, atividade moderada, respirar, pensar diferente), eu sinto que EU MESMO consigo diminuir minha dor sem depender de remédio ou médico toda vez."</p>
                     <RadioGroup
-                        className="flex flex-wrap gap-2 sm:gap-4 mt-2"
+                        className="flex flex-col gap-2 mt-2"
                         value={data.bloco_4_self_efficacy?.toString() || ''}
                         onValueChange={(v) => updateData({ bloco_4_self_efficacy: parseInt(v) })}
                     >
                         {[
-                            { val: 0, label: '0 (Nenhum controle. Só com remédio ou médico eu melhoro)' },
-                            { val: 2, label: '2' },
-                            { val: 5, label: '5 (Confio moderadamente nas minhas ferramentas)' },
-                            { val: 8, label: '8' },
-                            { val: 10, label: '10 (Total controle. Eu sei administrar minha exata dor muito bem)' },
-                        ].map(item => (
-                            <div key={item.val} className="flex flex-col items-center space-y-1">
-                                <RadioGroupItem value={item.val.toString()} id={`eff-${item.val}`} className="w-5 h-5 sm:w-6 sm:h-6" />
-                                <Label htmlFor={`eff-${item.val}`} className="text-xs font-medium cursor-pointer text-center max-w-28">
-                                    {item.label}
-                                </Label>
-                            </div>
-                        ))}
+                            { val: 0, label: 'Nenhum controle — só melhoro com remédio ou médico' },
+                            { val: 2, label: 'Confio pouco nas minhas próprias ferramentas' },
+                            { val: 5, label: 'Confio moderadamente nas minhas ferramentas' },
+                            { val: 8, label: 'Confio bastante — quase sempre consigo aliviar sozinho' },
+                            { val: 10, label: 'Total controle — sei administrar minha dor muito bem' },
+                        ].map(item => {
+                            const ativo = data.bloco_4_self_efficacy?.toString() === item.val.toString();
+                            return (
+                                <label key={item.val} htmlFor={`eff-${item.val}`}
+                                    className={`flex items-center gap-3 w-full p-3 rounded-xl border cursor-pointer transition-colors ${
+                                        ativo ? 'border-primary bg-primary/10' : 'border-border/60 bg-background hover:bg-muted/40'
+                                    }`}>
+                                    <RadioGroupItem value={item.val.toString()} id={`eff-${item.val}`} className="shrink-0" />
+                                    <span className={`w-8 text-center text-base font-bold tabular-nums shrink-0 ${ativo ? 'text-primary' : 'text-muted-foreground'}`}>{item.val}</span>
+                                    <span className={`text-sm flex-1 ${ativo ? 'font-semibold' : ''}`}>{item.label}</span>
+                                </label>
+                            );
+                        })}
                     </RadioGroup>
                 </div>
 
@@ -113,24 +118,29 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                     <Label className="text-base font-bold text-gray-800">Expectativa de melhora</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Quanto você acredita que consegue melhorar do seu problema atual?"</p>
                     <RadioGroup
-                        className="flex flex-wrap gap-2 sm:gap-4 mt-2"
+                        className="flex flex-col gap-2 mt-2"
                         value={data.bloco_4_expectation?.toString() || ''}
                         onValueChange={(v) => updateData({ bloco_4_expectation: parseInt(v) })}
                     >
                         {[
-                            { val: 0, label: '0 (Acho que não vou melhorar nada, meu caso não tem solução)' },
-                            { val: 2, label: '2' },
-                            { val: 5, label: '5 (Tenho esperança de melhorar parcialmente)' },
-                            { val: 8, label: '8' },
-                            { val: 10, label: '10 (Acredito que vou me recuperar 100% e voltar ao normal)' },
-                        ].map(item => (
-                            <div key={item.val} className="flex flex-col items-center space-y-1">
-                                <RadioGroupItem value={item.val.toString()} id={`exp-${item.val}`} className="w-5 h-5 sm:w-6 sm:h-6" />
-                                <Label htmlFor={`exp-${item.val}`} className="text-xs font-medium cursor-pointer text-center max-w-28">
-                                    {item.label}
-                                </Label>
-                            </div>
-                        ))}
+                            { val: 0, label: 'Não acredito que vou melhorar — meu caso não tem solução' },
+                            { val: 2, label: 'Acho difícil melhorar muito' },
+                            { val: 5, label: 'Tenho esperança de melhorar parcialmente' },
+                            { val: 8, label: 'Acredito que vou melhorar quase totalmente' },
+                            { val: 10, label: 'Vou me recuperar 100% e voltar ao normal' },
+                        ].map(item => {
+                            const ativo = data.bloco_4_expectation?.toString() === item.val.toString();
+                            return (
+                                <label key={item.val} htmlFor={`exp-${item.val}`}
+                                    className={`flex items-center gap-3 w-full p-3 rounded-xl border cursor-pointer transition-colors ${
+                                        ativo ? 'border-primary bg-primary/10' : 'border-border/60 bg-background hover:bg-muted/40'
+                                    }`}>
+                                    <RadioGroupItem value={item.val.toString()} id={`exp-${item.val}`} className="shrink-0" />
+                                    <span className={`w-8 text-center text-base font-bold tabular-nums shrink-0 ${ativo ? 'text-primary' : 'text-muted-foreground'}`}>{item.val}</span>
+                                    <span className={`text-sm flex-1 ${ativo ? 'font-semibold' : ''}`}>{item.label}</span>
+                                </label>
+                            );
+                        })}
                     </RadioGroup>
                 </div>
             </div>
