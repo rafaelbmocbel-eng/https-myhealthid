@@ -55,8 +55,13 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
     // Minutos restantes até terminar
     const minutosRestantes = BLOCK_INFO.slice(step).reduce((acc, b) => acc + b.minutos, 0);
 
+    // Ao trocar de bloco, volta ao TOPO. window.scrollTo não funciona no portal
+    // do paciente (quem rola é um contêiner interno) — rolar o marcador do topo
+    // para a vista funciona em qualquer layout.
+    const topoRef = React.useRef<HTMLDivElement | null>(null);
     React.useEffect(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        topoRef.current?.scrollIntoView({ block: 'start' });
+        window.scrollTo({ top: 0 });
     }, [step]);
 
     // Restaura rascunho local (cobre celular desligado no meio de um bloco)
@@ -139,7 +144,7 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
     };
 
     return (
-        <div className="w-full max-w-4xl mx-auto py-8 px-4 sm:px-6">
+        <div ref={topoRef} className="w-full max-w-4xl mx-auto py-8 px-4 sm:px-6" style={{ scrollMarginTop: 16 }}>
 
             {/* Barra de progresso com fase e nome do bloco */}
             {step > 0 && step < 7 && (
