@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, TrendingUp, TrendingDown, Minus, Zap, Brain, Target, Flame, AlertTriangle, ChevronRight, FileText } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 const EvolucaoFisicaCard = lazy(() => import('@/components/evolucao/EvolucaoFisicaCard'));
+const RelatorioAvaliacaoView = lazy(() => import('@/components/paciente/RelatorioAvaliacaoView'));
 import { ptBR } from 'date-fns/locale';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -170,6 +171,13 @@ export default function PacienteEvolucao() {
             </TabsList>
 
             <TabsContent value="evolucao" className="mt-4 space-y-5">
+              {/* Relatório de Avaliação — devolutiva de pontos fortes e a melhorar */}
+              {pacienteId && (
+                <Suspense fallback={null}>
+                  <RelatorioAvaliacaoView pacienteId={pacienteId} />
+                </Suspense>
+              )}
+
               {/* Evolução física: peso, gordura, músculo, PA, testes, treinos */}
               {pacienteId && (
                 <Suspense fallback={null}>

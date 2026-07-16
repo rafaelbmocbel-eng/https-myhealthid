@@ -514,6 +514,22 @@ Avaliação via MyID-100 v2.0. Dados completos no dashboard.`;
       console.warn("Disparo de dicas automáticas falhou (não bloqueante):", dicasErr);
     }
 
+    // 9. RELATÓRIO DE AVALIAÇÃO — devolutiva de pontos fortes e a melhorar
+    // (MyID + avatar clínico + métricas), escrita para o cliente ler no portal.
+    // Fire-and-forget, como as dicas.
+    try {
+      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/gerar-relatorio-avaliacao`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: JSON.stringify({ paciente_id: pacienteId }),
+      }).catch((e) => console.warn("[complete-myid] gerar-relatorio-avaliacao falhou:", e));
+    } catch (relErr) {
+      console.warn("Disparo do relatório de avaliação falhou (não bloqueante):", relErr);
+    }
+
     return new Response(JSON.stringify({ ok: true, synced: true, avaliacao_identidade_id: inserted.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

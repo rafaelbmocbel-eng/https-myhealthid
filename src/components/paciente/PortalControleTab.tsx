@@ -17,6 +17,7 @@ const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
 const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
 const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
+const RelatorioAvaliacaoCard = lazy(() => import('@/components/paciente/RelatorioAvaliacaoCard'));
 import AvatarClinicoCard from '../avatar/AvatarClinicoCard';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -185,6 +186,11 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           </button>
         )}
       </div>
+
+      {/* Relatório de Avaliação — pontos fortes e a melhorar, gerado do MyID */}
+      <Suspense fallback={null}>
+        <RelatorioAvaliacaoCard pacienteId={pacienteId} pacienteNome={pacienteNome} pacienteTelefone={telefone} />
+      </Suspense>
 
       {/* Espelho do portal — uma lista só (sem cards duplicando os mesmos números) */}
       <Card className="p-2">
