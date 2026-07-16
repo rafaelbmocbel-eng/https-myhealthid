@@ -89,7 +89,7 @@ export default function PacienteDashboard() {
       try {
         const { data: pac, error: pacError } = await supabase
           .from('pacientes')
-          .select('id, nome, sobrenome, terapeuta_id, cadastro_status, xp_total')
+          .select('id, nome, sobrenome, terapeuta_id, cadastro_status, xp_total, historico_clinico')
           .eq('user_id', user.id)
           .maybeSingle();
         if (pacError) throw pacError;
@@ -198,21 +198,23 @@ export default function PacienteDashboard() {
     return 'Boa noite';
   };
 
-  // Onboarding — 3 passos iniciais para novos pacientes
+  // Onboarding — 3 passos iniciais: MyID primeiro, depois o histórico clínico.
+  // "Contar sua história" NÃO é passo — é o card fixo logo abaixo (áudio ou texto).
+  const historicoFeito = !!(paciente as any)?.historico_clinico;
   const onboardingSteps = [
-    {
-      done: historiaContada,
-      label: 'Contar sua história',
-      sub: 'Responda em voz como você está',
-      path: '/paciente/historia',
-      Icon: Mic,
-    },
     {
       done: stats.avaliacoes > 0,
       label: 'Completar avaliação MyID',
       sub: 'Descubra seu perfil de saúde',
       path: '/paciente/questionarios',
       Icon: Fingerprint,
+    },
+    {
+      done: historicoFeito,
+      label: 'Responder histórico clínico',
+      sub: 'Fraturas, cirurgias, medicações e condições',
+      path: '/paciente/questionarios',
+      Icon: ClipboardList,
     },
     {
       done: stats.consultas > 0,
@@ -322,6 +324,30 @@ export default function PacienteDashboard() {
               </Card>
             </V>
           )}
+
+          {/* Contar sua história — card fixo (substitui o microfone do topo).
+              Fala (ditado) ou escreve, como na avaliação presencial. */}
+          <V i={1}>
+            <Card className="overflow-hidden">
+              <button onClick={() => navigate('/paciente/historia')} className="w-full text-left p-4 flex items-center gap-3">
+                <div className={cn(
+                  'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                  historiaContada ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary',
+                )}>
+                  {historiaContada ? <CheckCircle2 className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">Contar sua história</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {historiaContada
+                      ? 'História registrada — toque para atualizar quando algo mudar'
+                      : 'Fale (áudio) ou escreva como você está — seu profissional recebe tudo'}
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
+            </Card>
+          </V>
 
           {/* Bloqueio total */}
           {bloqueadoClinico && (
