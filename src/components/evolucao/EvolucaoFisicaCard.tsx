@@ -68,7 +68,7 @@ export default function EvolucaoFisicaCard({ pacienteId }: Props) {
     queryKey: ['evolucao-fisica', pacienteId],
     queryFn: async () => {
       const sb = supabase as any;
-      const [antro, comp, testes, vitais, exec, exames] = await Promise.all([
+      const [antro, comp, testes, vitais, exec, exames, diario] = await Promise.all([
         sb.from('antropometria').select('data_medicao, peso_kg, imc, gordura_pct')
           .eq('paciente_id', pacienteId).order('data_medicao', { ascending: true }).limit(60),
         sb.from('body_composition').select('date, weight_kg, body_fat_pct, muscle_mass_kg')
@@ -85,10 +85,15 @@ export default function EvolucaoFisicaCard({ pacienteId }: Props) {
           .eq('paciente_id', pacienteId)
           .not('data_exame', 'is', null)
           .order('data_exame', { ascending: true }).limit(30),
+        sb.from('daily_logs').select('created_at, mood, pain')
+          .eq('paciente_id', pacienteId)
+          .gte('created_at', new Date(Date.now() - 60 * 86400000).toISOString())
+          .order('created_at', { ascending: true }).limit(120),
       ]);
       return {
         antro: antro.data || [], comp: comp.data || [], testes: testes.data || [],
         vitais: vitais.data || [], exec: exec.data || [], exames: exames.data || [],
+        diario: diario.data || [],
       };
     },
   });
@@ -155,14 +160,29 @@ export default function EvolucaoFisicaCard({ pacienteId }: Props) {
     }
     const temExec = semanas.some(s => s.v > 0);
 
-    return { peso, gordura, musculo, pa, tiposTeste, marcadores, semanas, temExec };
+    // Diário: humor e dor por dia (média quando há mais de um registro no dia)
+    const porDia = new Map<string, { mood: number[]; pain: number[] }>();
+    data.diario.forEach((d: any) => {
+      const dia = String(d.created_at).slice(0, 10);
+      const agg = porDia.get(dia) || { mood: [], pain: [] };
+      if (d.mood != null) agg.mood.push(Number(d.mood));
+      if (d.pain != null) agg.pain.push(Number(d.pain));
+      porDia.set(dia, agg);
+    });
+    const media = (a: number[]) => a.length ? Math.round((a.reduce((s, v) => s + v, 0) / a.length) * 10) / 10 : null;
+    const diario = [...porDia.entries()].sort(([a], [b]) => a.localeCompare(b))
+      .map(([dia, agg]) => ({ x: dt(dia), humor: media(agg.mood), dor: media(agg.pain) }))
+      .filter(d => d.humor != null || d.dor != null);
+
+    return { peso, gordura, musculo, pa, tiposTeste, marcadores, semanas, temExec, diario };
   }, [data]);
 
   if (isLoading || !series) return null;
 
   const nadaParaMostrar =
     series.peso.length < 2 && series.gordura.length < 2 && series.musculo.length < 2 &&
-    series.pa.length < 2 && series.tiposTeste.size === 0 && series.marcadores.size === 0 && !series.temExec;
+    series.pa.length < 2 && series.tiposTeste.size === 0 && series.marcadores.size === 0 &&
+    !series.temExec && series.diario.length < 2;
 
   const tipos = [...series.tiposTeste.keys()];
   const testeAtivo = testeSel && series.tiposTeste.has(testeSel) ? testeSel : tipos[0] || null;
@@ -236,6 +256,25 @@ export default function EvolucaoFisicaCard({ pacienteId }: Props) {
                         labelFormatter={(l) => `Data: ${l}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                       <Line type="monotone" dataKey="v" stroke="#7c3aed" strokeWidth={2}
                         dot={{ r: 3, fill: '#7c3aed', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {series.diario.length >= 2 && (
+                <div className="rounded-xl border border-border/40 p-3">
+                  <p className="text-xs font-semibold text-foreground mb-1">Diário: humor e dor (0–10)</p>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <LineChart data={series.diario} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.25} vertical={false} />
+                      <XAxis dataKey="x" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={52} domain={[0, 10]} />
+                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} labelFormatter={(l) => `Data: ${l}`} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line type="monotone" dataKey="humor" name="Humor" stroke="#6366f1" strokeWidth={2}
+                        dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls />
+                      <Line type="monotone" dataKey="dor" name="Dor" stroke="#ea580c" strokeWidth={2}
+                        dot={{ r: 3, fill: '#ea580c', strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

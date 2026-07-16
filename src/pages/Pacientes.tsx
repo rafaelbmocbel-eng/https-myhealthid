@@ -34,7 +34,6 @@ import { useConvenios } from '@/hooks/useConvenios';
 import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
 import { getBaseUrl } from '@/utils/linkUrls';
 
-const GestaoVendas = lazy(() => import('@/pages/GestaoVendas'));
 const FinanceiroGeral = lazy(() => import('@/components/paciente/FinanceiroGeral'));
 const FinanceiroPage = lazy(() => import('@/pages/Financeiro'));
 

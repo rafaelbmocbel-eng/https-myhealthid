@@ -30,3 +30,6 @@ verify_jwt = false
 
 [functions.wellness-recorrencia]
 verify_jwt = false
+
+[functions.wearable-alert-monitor]
+verify_jwt = false
