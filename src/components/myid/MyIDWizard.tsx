@@ -130,15 +130,18 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
     };
 
     // Indicador de save
+    // Indicador DISCRETO: o salvamento continua automático a cada resposta,
+    // mas na tela só aparece um ✓ pequeno e breve quando termina de salvar —
+    // o "Salvando…" pulsando a cada toque distraía as respostas.
     const SaveIndicator = () => {
-        if (saveStatus === 'idle') return null;
+        if (saveStatus !== 'saved') return null;
         return (
-            <span className={`text-[11px] flex items-center gap-1 transition-opacity ${saveStatus === 'saved' ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                {saveStatus === 'saving' ? (
-                    <><span className="animate-pulse">●</span> Salvando…</>
-                ) : (
-                    <><span>✓</span> Salvo</>
-                )}
+            <span
+                className="text-[11px] text-emerald-600/70 transition-opacity"
+                title="Respostas salvas automaticamente"
+                aria-label="Respostas salvas automaticamente"
+            >
+                ✓
             </span>
         );
     };
