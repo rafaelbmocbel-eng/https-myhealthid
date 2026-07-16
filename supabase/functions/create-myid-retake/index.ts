@@ -13,10 +13,10 @@ serve(async (req) => {
   try {
     let userId: string;
     try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
-    const { paciente_id, terapeuta_id } = await req.json();
+    const { paciente_id } = await req.json();
 
-    if (!paciente_id || !terapeuta_id) {
-      return new Response(JSON.stringify({ error: "paciente_id and terapeuta_id are required" }), {
+    if (!paciente_id) {
+      return new Response(JSON.stringify({ error: "paciente_id is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -24,23 +24,22 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Autoriza: profissional dono OU o próprio paciente
-    const isTherapist = terapeuta_id === userId;
-
+    // Autoriza: o próprio paciente OU o profissional dono. Pacientes de
+    // autocadastro (wellness) não têm terapeuta — também podem iniciar.
     const { data: ownedPatient } = await supabase
       .from("pacientes")
       .select("id, user_id, terapeuta_id")
       .eq("id", paciente_id)
-      .eq("terapeuta_id", terapeuta_id)
       .maybeSingle();
 
     if (!ownedPatient) {
-      return new Response(JSON.stringify({ error: "Paciente não encontrado para este profissional." }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "Paciente não encontrado." }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const isPatientSelf = ownedPatient.user_id === userId;
+    const isTherapist = !!ownedPatient.terapeuta_id && ownedPatient.terapeuta_id === userId;
 
     if (!isTherapist && !isPatientSelf) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
@@ -70,7 +69,7 @@ serve(async (req) => {
       .from("myid_avaliacoes")
       .insert({
         paciente_id,
-        terapeuta_id,
+        terapeuta_id: ownedPatient.terapeuta_id ?? null,
         status: "pendente",
       })
       .select("id")

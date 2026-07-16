@@ -125,7 +125,7 @@ export default function PacienteQuestionarios() {
   };
 
   const handleRequestRetake = async () => {
-    if (!pacienteId || !terapeutaId) return;
+    if (!pacienteId) return;
     setCreatingRetake(true);
 
     try {
@@ -141,7 +141,6 @@ export default function PacienteQuestionarios() {
           },
           body: JSON.stringify({
             paciente_id: pacienteId,
-            terapeuta_id: terapeutaId,
           }),
         }
       );
@@ -256,16 +255,14 @@ export default function PacienteQuestionarios() {
                     Descubra sua Identidade Sistêmica respondendo o questionário por etapas. São 6 blocos curtos — você pode pausar e continuar quando quiser.
                   </p>
                 </div>
-                {terapeutaId && (
-                  <Button
-                    onClick={handleRequestRetake}
-                    disabled={creatingRetake}
-                    className="gap-2"
-                  >
-                    {creatingRetake ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
-                    Iniciar MyID
-                  </Button>
-                )}
+                <Button
+                  onClick={handleRequestRetake}
+                  disabled={creatingRetake || !pacienteId}
+                  className="gap-2"
+                >
+                  {creatingRetake ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+                  Iniciar MyID
+                </Button>
               </CardContent>
             </Card>
           ) : (
