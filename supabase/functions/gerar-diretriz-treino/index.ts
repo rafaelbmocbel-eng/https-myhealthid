@@ -95,6 +95,24 @@ Deno.serve(async (req) => {
       myid: !!scores,
     };
 
+
+
+    // Questionários clínicos validados (PAR-Q+, PSFS, START Back, ISI, PHQ-4)
+    let questTxt = "";
+    try {
+      const { data: quests } = await admin.from("questionarios_clinicos")
+        .select("instrumento, escore, classificacao, respostas, created_at")
+        .eq("paciente_id", paciente_id).order("created_at", { ascending: false }).limit(20);
+      const ult = new Map<string, any>();
+      (quests || []).forEach((q: any) => { if (!ult.has(q.instrumento)) ult.set(q.instrumento, q); });
+      questTxt = [...ult.values()].map((q: any) => {
+        const metas = Array.isArray(q.respostas?.atividades)
+          ? ` — metas do paciente: ${q.respostas.atividades.map((a: any) => `${a.nome} (${a.nota}/10)`).join(", ")}`
+          : "";
+        return `${String(q.instrumento).toUpperCase()}: escore ${q.escore}, ${q.classificacao}${metas}`;
+      }).join("\n");
+    } catch (_qErr) { /* tabela pode não existir ainda — segue sem */ }
+
     const perfil = [
       `Paciente: ${idade ? idade + " anos" : "idade ?"}, sexo ${pac.sexo || "?"}.`,
       pac.queixa_principal ? `Queixa: ${String(pac.queixa_principal).slice(0, 300)}` : "",
@@ -104,8 +122,10 @@ Deno.serve(async (req) => {
       body_comp.data ? `Bioimpedância: ${JSON.stringify(body_comp.data).slice(0, 600)}` : "",
       vitais.data ? `Sinais vitais: ${JSON.stringify(vitais.data)}` : "",
       scores ? `MyID (scores por dimensão): ${JSON.stringify(scores)}` : "",
+      questTxt ? `QUESTIONÁRIOS CLÍNICOS VALIDADOS (respeite: PARQ requer_atencao = plano CONSERVADOR e alerta para avaliação presencial antes de intensificar; SBST alto_risco = abordagem biopsicossocial e progressão cautelosa; PSFS = use as metas do paciente como objetivos do plano; ISI/PHQ4 alterados = considere sono/estresse na periodização):\n${questTxt}` : "",
       testesTxt ? `TESTES FUNCIONAIS:\n${testesTxt}` : "(sem testes funcionais registrados)",
     ].filter(Boolean).join("\n");
+
 
     const userPrompt = `${perfil}\n\nObjetivo pedido pelo profissional: ${body?.objetivo || "condicionamento físico geral com segurança"}.\nObservações do profissional: ${body?.observacoes || "-"}\n\nMonte a diretriz de treino (periodização) por fases. Retorne o JSON.`;
 

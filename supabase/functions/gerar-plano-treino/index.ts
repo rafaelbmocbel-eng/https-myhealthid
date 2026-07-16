@@ -98,6 +98,23 @@ Deno.serve(async (req) => {
       ? `\n\nExercícios disponíveis no banco da clínica — use SOMENTE estes e preencha "id" com o id exato (NÃO invente exercícios fora desta lista):\n${disponiveis.slice(0, 250).map((e) => `- [${e.id}] ${e.nome}${e.grupo ? ` (${e.grupo})` : ""}`).join("\n")}`
       : "";
 
+
+    // Questionários clínicos validados (PAR-Q+, PSFS, START Back, ISI, PHQ-4)
+    let questTxt = "";
+    try {
+      const { data: quests } = await admin.from("questionarios_clinicos")
+        .select("instrumento, escore, classificacao, respostas, created_at")
+        .eq("paciente_id", paciente_id).order("created_at", { ascending: false }).limit(20);
+      const ult = new Map<string, any>();
+      (quests || []).forEach((q: any) => { if (!ult.has(q.instrumento)) ult.set(q.instrumento, q); });
+      questTxt = [...ult.values()].map((q: any) => {
+        const metas = Array.isArray(q.respostas?.atividades)
+          ? ` — metas do paciente: ${q.respostas.atividades.map((a: any) => `${a.nome} (${a.nota}/10)`).join(", ")}`
+          : "";
+        return `${String(q.instrumento).toUpperCase()}: escore ${q.escore}, ${q.classificacao}${metas}`;
+      }).join("\n");
+    } catch (_qErr) { /* tabela pode não existir ainda — segue sem */ }
+
     const userPrompt = `
 Paciente: ${idade ? idade + ' anos' : 'idade não informada'}, sexo ${sexo || 'não informado'}.
 Antropometria: ${antropometria ? JSON.stringify(antropometria) : 'não informada'}.
@@ -107,7 +124,7 @@ Objetivo: ${objetivo}
 Nível: ${nivel}
 Frequência: ${frequencia_semanal}x/semana
 Duração total: ${duracao_semanas || 12} semanas
-Restrições/lesões: ${restricoes || 'nenhuma'}${myidStr}${listaBlock}
+Restrições/lesões: ${restricoes || 'nenhuma'}${myidStr}${questTxt ? `\nQUESTIONÁRIOS CLÍNICOS VALIDADOS (respeite: PARQ requer_atencao = plano CONSERVADOR e alerta para avaliação presencial antes de intensificar; SBST alto_risco = abordagem biopsicossocial e progressão cautelosa; PSFS = use as metas do paciente como objetivos do plano; ISI/PHQ4 alterados = considere sono/estresse na periodização):\n${questTxt}` : ''}${listaBlock}
 
 Gere o plano periodizado completo em JSON.`.trim();
 

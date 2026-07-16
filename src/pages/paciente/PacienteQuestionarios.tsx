@@ -10,6 +10,7 @@ import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2, E
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
 import { MyIDResult } from '@/components/myid/MyIDResult';
 import HistoricoClinicoCard from '@/components/paciente/HistoricoClinicoCard';
+import QuestionariosClinicosSection from '@/components/paciente/QuestionariosClinicosSection';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
@@ -376,6 +377,9 @@ export default function PacienteQuestionarios() {
           )}
 
           <HistoricoClinicoCard />
+
+          {/* Questionários clínicos adaptativos (premium) — o MyID decide quais */}
+          {pacienteId && <QuestionariosClinicosSection pacienteId={pacienteId} />}
         </div>
       </PacienteLayout>
     </ProtectedPatientRoute>

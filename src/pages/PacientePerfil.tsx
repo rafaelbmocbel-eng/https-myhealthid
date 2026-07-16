@@ -48,6 +48,7 @@ const PacienteDashboardIdentidade = lazy(() => import('@/components/paciente/Pac
 const PacienteProtocolosTab = lazy(() => import('@/components/paciente/PacienteProtocolosTab'));
 const ResumoConsultaPresencial = lazy(() => import('@/components/presencial/ResumoConsultaPresencial'));
 const AvaliacaoVozAtual = lazy(() => import('@/components/voice/AvaliacaoVozAtual'));
+const QuestionariosClinicosCard = lazy(() => import('@/components/paciente/QuestionariosClinicosCard'));
 const PortalControleTab = lazy(() => import('@/components/paciente/PortalControleTab'));
 const ProntuarioTimeline = lazy(() => import('@/components/paciente/ProntuarioTimeline'));
 const ProntuarioEstruturado = lazy(() => import('@/components/paciente/ProntuarioEstruturado'));
@@ -1173,6 +1174,7 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <DiretrizNutricionalCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'escalas_psicologia') && id && <EscalasPsicologiaCard pacienteId={id} />}
+            {id && <QuestionariosClinicosCard pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
