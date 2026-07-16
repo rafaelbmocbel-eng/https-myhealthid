@@ -3,9 +3,11 @@ import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import RootErrorBoundary from "./RootErrorBoundary";
 import { installSupabaseLockPatch } from "./lib/navigatorLockPatch";
+import { initMonitoring } from "./lib/monitoring";
 import "./index.css";
 
 installSupabaseLockPatch();
+initMonitoring('profissional');
 
 // ── Detect hostile environments for SW ──
 const isInIframe = (() => {

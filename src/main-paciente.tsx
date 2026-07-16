@@ -2,9 +2,11 @@ import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import AppPaciente from "./AppPaciente.tsx";
 import { installSupabaseLockPatch } from "./lib/navigatorLockPatch";
+import { initMonitoring } from "./lib/monitoring";
 import "./index.css";
 
 installSupabaseLockPatch();
+initMonitoring('paciente');
 
 const isInIframe = (() => {
   try { return window.self !== window.top; } catch { return true; }
