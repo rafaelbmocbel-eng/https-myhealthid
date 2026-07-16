@@ -63,6 +63,7 @@ export default function MyIDFingerprint({
   highlightedKey, hasRedFlags = false, compact = false,
 }: Props) {
   const [hoveredIdx, setHoveredIdx]         = useState<number | null>(null);
+  const [legendaAberta, setLegendaAberta]   = useState(false);
   const [selectedIdx, setSelectedIdx]       = useState<number | null>(null);
   const [revealed, setRevealed]             = useState(false);
   const [revealProgress, setRevealProgress] = useState(0);
@@ -367,31 +368,43 @@ export default function MyIDFingerprint({
                 </div>
               </>
             ) : (
-              /* Legenda sempre visível — mapeia sigla ↔ dimensão */
+              /* Legenda RECOLHIDA por padrão — 12 linhas sempre abertas pesavam
+                 o card; um toque expande (e tocar num anel continua abrindo o
+                 detalhe da dimensão direto) */
               <div>
-                <p className="text-[11px] text-muted-foreground mb-2 font-semibold tracking-wide uppercase">
-                  Legenda das dimensões
-                </p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  {ridgeData.map((r) => (
-                    <button
-                      key={r.scoreKey}
-                      className="flex items-center gap-1.5 text-left hover:opacity-80 transition-opacity"
-                      onClick={() => handleClick(r, r.index)}
-                    >
-                      <span className="shrink-0 w-2 h-2 rounded-full" style={{ background: r.color }} />
-                      <span className="text-[11px] font-black tabular-nums" style={{ color: r.color }}>
-                        {r.scoreKey}
-                      </span>
-                      <span className="text-[11px] text-foreground/70 truncate">
-                        {FULL_LABELS[r.scoreKey] || r.label}
-                      </span>
-                      <span className="ml-auto text-[10px] text-muted-foreground tabular-nums shrink-0">
-                        {r.value.toFixed(1)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                <button
+                  onClick={() => setLegendaAberta(v => !v)}
+                  className="w-full flex items-center justify-between text-left"
+                >
+                  <span className="text-[11px] text-muted-foreground font-semibold tracking-wide uppercase">
+                    Legenda das dimensões
+                  </span>
+                  <span className="text-[11px] text-primary font-medium">
+                    {legendaAberta ? 'recolher' : 'toque para ver'}
+                  </span>
+                </button>
+                {legendaAberta && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                    {ridgeData.map((r) => (
+                      <button
+                        key={r.scoreKey}
+                        className="flex items-center gap-1.5 text-left hover:opacity-80 transition-opacity"
+                        onClick={() => handleClick(r, r.index)}
+                      >
+                        <span className="shrink-0 w-2 h-2 rounded-full" style={{ background: r.color }} />
+                        <span className="text-[11px] font-black tabular-nums" style={{ color: r.color }}>
+                          {r.scoreKey}
+                        </span>
+                        <span className="text-[11px] text-foreground/70 truncate">
+                          {FULL_LABELS[r.scoreKey] || r.label}
+                        </span>
+                        <span className="ml-auto text-[10px] text-muted-foreground tabular-nums shrink-0">
+                          {r.value.toFixed(1)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

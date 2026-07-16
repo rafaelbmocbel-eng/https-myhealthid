@@ -171,6 +171,23 @@ export default function PacienteEvolucao() {
             </TabsList>
 
             <TabsContent value="evolucao" className="mt-4 space-y-5">
+              {/* Acesso permanente ao resultado completo do MyID */}
+              {myidScores.length > 0 && (
+                <button
+                  onClick={() => { window.location.href = '/paciente/questionarios?ver=ultimo'; }}
+                  className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-primary/25 bg-primary/5 hover:bg-primary/10 text-left transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Target className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold">Como está seu corpo hoje</p>
+                    <p className="text-[11px] text-muted-foreground">Resultado completo da sua última avaliação MyID</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
+              )}
+
               {/* Relatório de Avaliação — devolutiva de pontos fortes e a melhorar */}
               {pacienteId && (
                 <Suspense fallback={null}>
