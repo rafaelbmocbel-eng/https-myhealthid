@@ -63,9 +63,6 @@ const LEGACY_ALLOWLIST: RegExp[] = [
   /RelatorioIdentidade\.tsx$/,
   // Páginas com layout de hero amplo intencional (sweep não concluído)
   /pages\/Index\.tsx$/,
-  /pages\/Relatorios\.tsx$/,
-  /pages\/Protocolos\.tsx$/,
-  /pages\/GestaoVendas\.tsx$/,
   /pages\/Agenda\.tsx$/,
   /pages\/PacientePerfil\.tsx$/,
   // Componentes Patient* com layouts próprios
