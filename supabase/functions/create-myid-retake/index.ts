@@ -71,6 +71,7 @@ serve(async (req) => {
         paciente_id,
         terapeuta_id: ownedPatient.terapeuta_id ?? null,
         status: "pendente",
+        token_acesso: crypto.randomUUID(),
       })
       .select("id")
       .single();
