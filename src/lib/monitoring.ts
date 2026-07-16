@@ -6,7 +6,8 @@
 // abaixo ou defina VITE_SENTRY_DSN no ambiente de build.
 import * as Sentry from '@sentry/react';
 
-const SENTRY_DSN = (import.meta.env.VITE_SENTRY_DSN as string | undefined) || '';
+const SENTRY_DSN = (import.meta.env.VITE_SENTRY_DSN as string | undefined)
+  || 'https://f9ec84f3d986d4c7760e74578516d73a@o4511744590544896.ingest.us.sentry.io/4511744632422405';
 
 export function initMonitoring(app: 'profissional' | 'paciente') {
   if (!SENTRY_DSN || !import.meta.env.PROD) return;
