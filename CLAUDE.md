@@ -32,3 +32,12 @@ git push origin main
 ## Deploy
 O site `www.myhealthid.com.br` faz deploy automático a partir da branch `main`.
 Push na `main` = mudanças visíveis no site em ~1-3 minutos.
+
+## Produto — fluxo do cliente e tiers
+A especificação do fluxo de entrada do cliente e das regras free vs premium
+está em `docs/fluxo-cliente-e-tiers.md` — **leia antes de mexer no portal do
+cliente** e não altere o fluxo sem decisão explícita do Rafael. Resumo: ordem
+MyID → histórico clínico (gera achados para revisão do profissional → Avatar)
+→ contar o caso (opcional); free recebe só dicas de IA; premium tem avatar
+montado por profissional, questionários baseados em evidência e planos que
+NÃO substituem profissional (planos elaborados pedem acompanhamento presencial).
