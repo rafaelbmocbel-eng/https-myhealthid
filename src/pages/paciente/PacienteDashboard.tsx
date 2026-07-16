@@ -77,6 +77,8 @@ export default function PacienteDashboard() {
   const [showMyIdPrompt, setShowMyIdPrompt] = useState(false);
   const [myIdPromptType, setMyIdPromptType] = useState<'first' | 'monthly'>('first');
   const [historiaContada, setHistoriaContada] = useState(false);
+  const [myidConcluido, setMyidConcluido] = useState(false);
+  const [nDicas, setNDicas] = useState(0);
 
   const notifications = usePacienteNotifications(user?.id);
   const { isFree, isInTrial, trialDiasRestantes, emCarencia, bloqueadoClinico, diasRestantesCarencia } = useWellnessAccess();
@@ -114,7 +116,7 @@ export default function PacienteDashboard() {
 
         const now = new Date().toISOString();
 
-        const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, avalVozRes, historiaRes] = await Promise.all([
+        const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, avalVozRes, historiaRes, dicasRes] = await Promise.all([
           supabase.from('agendamentos')
             .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
             .eq('paciente_id', pac.id)
@@ -150,6 +152,10 @@ export default function PacienteDashboard() {
             .eq('paciente_id', pac.id)
             .order('created_at', { ascending: false })
             .limit(20),
+          (supabase as any).from('paciente_dicas')
+            .select('dicas')
+            .eq('paciente_id', pac.id)
+            .maybeSingle(),
         ]);
 
         setProximasConsultas(agendaRes.data || []);
@@ -161,8 +167,10 @@ export default function PacienteDashboard() {
           vocais: avalVozRes.count || 0,
         });
         setHistoriaContada((historiaRes.data || []).some((r: any) => r?.resultado?._meta?.origem === 'portal_paciente_historia'));
+        setNDicas(Array.isArray((dicasRes.data as any)?.dicas) ? (dicasRes.data as any).dicas.length : 0);
 
         const completedMyIds = lastMyIdRes.data || [];
+        setMyidConcluido(completedMyIds.length > 0);
         // Mostra prompt do MyID independentemente de avaliação de voz
         if (completedMyIds.length === 0) {
           setShowMyIdPrompt(true);
@@ -203,7 +211,9 @@ export default function PacienteDashboard() {
   const historicoFeito = !!(paciente as any)?.historico_clinico;
   const onboardingSteps = [
     {
-      done: stats.avaliacoes > 0,
+      // Conta o MyID CONCLUÍDO de verdade (antes olhava avaliacoes_identidade,
+      // que nem sempre existe para conta de autocadastro — o passo nunca marcava)
+      done: myidConcluido,
       label: 'Completar avaliação MyID',
       sub: 'Descubra seu perfil de saúde',
       path: '/paciente/questionarios',
@@ -349,6 +359,74 @@ export default function PacienteDashboard() {
             </Card>
           </V>
 
+          {/* 🎯 PRÓXIMOS PASSOS DA AVALIAÇÃO — o funil pós-MyID: resultado
+              completo, exercícios da IA e questionários do plano (ou Premium) */}
+          {myidConcluido && (
+            <V i={1}>
+              <Card className="border-primary/25">
+                <CardContent className="p-4 space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Sua avaliação gerou isto para você
+                  </p>
+
+                  <button onClick={() => navigate('/paciente/questionarios?ver=ultimo')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Fingerprint className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">Ver meu resultado completo</p>
+                      <p className="text-[11px] text-muted-foreground">Como está seu corpo hoje, em linguagem simples</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+
+                  <button onClick={() => navigate('/paciente/dicas')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
+                    <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 flex items-center justify-center shrink-0">
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">Exercícios &amp; dicas da IA</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {nDicas > 0
+                          ? `${nDicas} dicas prontas, feitas do seu MyID`
+                          : 'Sendo preparadas a partir do seu MyID — volte em instantes'}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+
+                  <button
+                    onClick={() => navigate(isFree && !isInTrial ? '/paciente/plano' : '/paciente/questionarios')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
+                    <div className="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center shrink-0">
+                      <ClipboardList className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">Questionários do seu plano</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {isFree && !isInTrial
+                          ? '🔒 Desbloqueie no Premium — personalizam treino, fisioterapia e nutrição'
+                          : 'O seu MyID escolheu os que personalizam seu treino, fisio e nutrição'}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+                </CardContent>
+              </Card>
+            </V>
+          )}
+
+          {/* Jornada (plano de hoje + metas) — SOBE: é a ação diária do cliente */}
+          {paciente && myidConcluido && (
+            <V i={2}>
+              <Suspense fallback={null}>
+                <JornadaPacienteCard pacienteId={paciente.id} />
+              </Suspense>
+            </V>
+          )}
+
           {/* Bloqueio total */}
           {bloqueadoClinico && (
             <V i={2}>
@@ -433,29 +511,6 @@ export default function PacienteDashboard() {
             </V>
           )}
 
-          {/* CTA: histórico clínico (fraturas, cirurgias, traumas etc.) */}
-          {onboardingCompleto && (
-            <V i={5}>
-              <Card
-                className="border border-border/40 shadow-sm cursor-pointer"
-                onClick={() => navigate('/paciente/questionarios')}
-              >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <ClipboardList className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-foreground">Histórico Clínico</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Conte sobre fraturas, cirurgias, traumas e medicações — seu profissional revisa antes de qualquer coisa entrar no seu prontuário.
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                </CardContent>
-              </Card>
-            </V>
-          )}
-
           {/* Prompt MyID — reavaliação mensal (1ª vez já fica coberta pelo checklist de onboarding) */}
           {showMyIdPrompt && stats.pendentes === 0 && (myIdPromptType === 'monthly' || onboardingCompleto) && (
             <V i={6}>
@@ -506,9 +561,9 @@ export default function PacienteDashboard() {
             )}
           </V>
 
-          {/* Jornada (missões + conquistas) — a MESMA que o profissional vê no Portal,
-              gerada a partir do MyID respondido pelo paciente */}
-          {paciente && (
+          {/* Jornada para quem ainda NÃO fez o MyID (a versão pós-MyID subiu
+              para logo abaixo dos Próximos Passos) */}
+          {paciente && !myidConcluido && (
             <V i={8}>
               <Suspense fallback={null}>
                 <JornadaPacienteCard pacienteId={paciente.id} />

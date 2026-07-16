@@ -66,6 +66,21 @@ export default function PacienteQuestionarios() {
 
   useEffect(() => { fetchQuestionarios(); }, [user]);
 
+  // ?ver=ultimo — atalho do Início ("Ver meu resultado completo"): abre direto
+  // o resultado da avaliação concluída mais recente, sem caçar o botão "Ver".
+  useEffect(() => {
+    if (loading || viewMode !== 'list') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ver') !== 'ultimo') return;
+    const ultimo = questionarios.find(q => q.status === 'concluido');
+    if (ultimo) {
+      setActiveId(ultimo.id);
+      setViewMode('viewing');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, questionarios]);
+
   // Auto-save progress
   const handleSaveProgress = async (data: any, step: number) => {
     if (!activeId) return;
