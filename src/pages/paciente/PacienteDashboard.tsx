@@ -15,7 +15,6 @@ import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
-const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
 import MyIDPDFButton from '@/components/paciente/MyIDPDFButton';
 import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
@@ -463,8 +462,8 @@ export default function PacienteDashboard() {
                       <p className="text-sm font-semibold">Exercícios &amp; dicas da IA</p>
                       <p className="text-[11px] text-muted-foreground">
                         {nDicas > 0
-                          ? `${nDicas} dicas prontas, feitas do seu MyID`
-                          : 'Sendo preparadas a partir do seu MyID — volte em instantes'}
+                          ? `Sua Jornada, plano de hoje e ${nDicas} dicas do seu MyID`
+                          : 'Sua Jornada, plano de hoje e dicas feitas do seu MyID'}
                       </p>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -489,17 +488,8 @@ export default function PacienteDashboard() {
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </button>
-
-                  {/* Jornada (plano de hoje + metas da semana) VIVE dentro do
-                      funil da avaliação: é o que a avaliação gerou para o
-                      cliente FAZER, e o que move o resultado ao vivo. */}
-                  {paciente && (
-                    <div className="pt-2 mt-1 border-t border-border/40">
-                      <Suspense fallback={null}>
-                        <JornadaPacienteCard pacienteId={paciente.id} />
-                      </Suspense>
-                    </div>
-                  )}
+                  {/* A Jornada (plano de hoje + metas + gamificação) mora dentro
+                      da página "Exercícios & dicas da IA" (botão acima). */}
                 </CardContent>
               </Card>
             </V>
@@ -660,16 +650,6 @@ export default function PacienteDashboard() {
               </Suspense>
             )}
           </V>
-
-          {/* Jornada para quem ainda NÃO fez o MyID (a versão pós-MyID subiu
-              para logo abaixo dos Próximos Passos) */}
-          {paciente && !myidConcluido && (
-            <V i={8}>
-              <Suspense fallback={null}>
-                <JornadaPacienteCard pacienteId={paciente.id} />
-              </Suspense>
-            </V>
-          )}
 
           {/* Recompensas */}
           <V i={12}>

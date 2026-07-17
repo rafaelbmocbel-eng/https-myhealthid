@@ -492,6 +492,10 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
 
   if (loading) return null;
 
+  // Na própria página "Exercícios & dicas da IA" (/paciente/dicas) a lista de
+  // dicas já aparece embaixo — evita duplicar a seção interna da Jornada.
+  const naPaginaDicas = typeof window !== 'undefined' && window.location.pathname === '/paciente/dicas';
+
   const concluidas = metas.filter(m => m.concluida).length;
   const progressoGeral = metas.length > 0
     ? metas.reduce((acc, m) => acc + m.progresso, 0) / metas.length
@@ -723,7 +727,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       ))}
 
       {/* ── SUAS DICAS DO MyID (IA + evidência) — moram na Jornada ── */}
-      {dicasIA.length > 0 && (
+      {dicasIA.length > 0 && !naPaginaDicas && (
         <div className="space-y-2 pt-2">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-sky-600" />

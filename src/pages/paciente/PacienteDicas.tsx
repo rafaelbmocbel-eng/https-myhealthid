@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Lightbulb, ChevronDown, ChevronUp, ShieldAlert, Stethoscope, ChevronRight, Info } from 'lucide-react';
 import { scoresDoResultado } from '@/utils/myid/scores';
+import JornadaPacienteCard from '@/components/paciente/JornadaPacienteCard';
 
 // Dimensão MyID (com perda) → perfis do catálogo (mesmo mapa do Dever de Casa).
 const DIM_TO_PERFIS: Record<string, string[]> = {
@@ -30,11 +31,13 @@ export default function PacienteDicas() {
   const [dicas, setDicas] = useState<Dica[]>([]);
   const [pessoais, setPessoais] = useState<Dica[]>([]);
   const [aberto, setAberto] = useState<string | null>(null);
+  const [pacienteId, setPacienteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data: pac } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
+      if (pac) setPacienteId(pac.id);
       // 1) Dicas PERSONALIZADAS — geradas automaticamente pela IA quando o
       // MyID é concluído (MyID + história clínica + artigos científicos).
       if (pac) {
@@ -89,9 +92,12 @@ export default function PacienteDicas() {
     <ProtectedPatientRoute><PacienteLayout>
       <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
         <div>
-          <h1 className="h-page flex items-center gap-2"><Lightbulb className="h-5 w-5 text-primary" /> Dicas pra você</h1>
-          <p className="text-xs text-muted-foreground">Exercícios e dicas baseados em evidência científica, escolhidos a partir da sua avaliação MyID.</p>
+          <h1 className="h-page flex items-center gap-2"><Lightbulb className="h-5 w-5 text-primary" /> Exercícios &amp; dicas da IA</h1>
+          <p className="text-xs text-muted-foreground">Sua Jornada e as dicas baseadas em evidência, escolhidas a partir da sua avaliação MyID.</p>
         </div>
+
+        {/* Jornada completa — plano de hoje, metas da semana e gamificação */}
+        {pacienteId && <JornadaPacienteCard pacienteId={pacienteId} />}
 
         {/* Disclaimer */}
         <div className="flex items-start gap-2 p-3 rounded-xl bg-muted/50 border border-border/40">
