@@ -395,9 +395,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     }
   };
 
-  const [modoSimplificadoState, setModoSimplificadoState] = useState(!isProfessional);
-  // Paciente nunca tem acesso de edição: força modo simplificado independente de estado local.
-  const modoSimplificado = !isProfessional || modoSimplificadoState;
+  // O cliente tem o MESMO avatar do profissional (corpo, sistemas, painéis,
+  // histórico) — só muda: (1) privacidade dos dados: vê apenas os achados que o
+  // profissional liberou (visivel_paciente); (2) sem edição (gated por
+  // isProfessional). A riqueza VISUAL não é mais reduzida para o cliente.
+  const soLiberados = !isProfessional;
+  const modoSimplificado = false;
   const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>([]);
   const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
@@ -644,7 +647,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   // que o achado esteve ativo — suficiente para mostrar tendência (subiu/desceu/estável),
   // não um valor retroativo exato.
   const evolucaoMensal = useMemo(() => {
-    const eventosBase = eventos.filter(e => modoSimplificado ? e.visivel_paciente : true);
+    const eventosBase = eventos.filter(e => soLiberados ? e.visivel_paciente : true);
     if (eventosBase.length === 0) return { data: [] as Record<string, any>[], sistemasComCarga: [] as SistemaCorporal[] };
 
     const MESES = 6;
@@ -682,7 +685,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       .slice(0, 4);
 
     return { data, sistemasComCarga };
-  }, [eventos, modoSimplificado]);
+  }, [eventos, soLiberados]);
 
   // Regiões com achado ATIVO no Avatar Clínico — usado para não reoferecer no
   // "Sincronizar MyID" um achado que já foi confirmado anteriormente.
@@ -1691,12 +1694,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         {/* Lista de achados ativos */}
         {isLoading ? (
           <p className="text-xs text-muted-foreground text-center py-2">Carregando…</p>
-        ) : (eventos.filter(e => e.status !== 'resolvido' && (e as any).tipo_diagnostico !== 'relato_paciente' && (modoSimplificado ? e.visivel_paciente : true)).length === 0) ? (
+        ) : (eventos.filter(e => e.status !== 'resolvido' && (e as any).tipo_diagnostico !== 'relato_paciente' && (soLiberados ? e.visivel_paciente : true)).length === 0) ? (
           <p className="text-xs text-muted-foreground text-center py-2">
-            Nenhum achado ativo {modoSimplificado ? 'visível' : 'registrado'}.
+            Nenhum achado ativo {soLiberados ? 'visível' : 'registrado'}.
           </p>
         ) : (() => {
-          const achados = eventos.filter(e => e.status !== 'resolvido' && (e as any).tipo_diagnostico !== 'relato_paciente' && (modoSimplificado ? e.visivel_paciente : true));
+          const achados = eventos.filter(e => e.status !== 'resolvido' && (e as any).tipo_diagnostico !== 'relato_paciente' && (soLiberados ? e.visivel_paciente : true));
           const visiveis = achados.slice(0, 6);
           const extras = achados.length - visiveis.length;
           return (
@@ -1709,7 +1712,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 return (
                   <button
                     key={ev.id}
-                    disabled={modoSimplificado}
+                    disabled={!isProfessional}
                     onClick={() => abrirSheet(ev.regiao_id)}
                     className={`w-full flex items-center gap-2 text-left p-2 rounded-lg transition border ${
                       isDiag
@@ -1717,7 +1720,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         : isRelato
                           ? 'border-purple-200/40 bg-purple-50/20 dark:bg-purple-950/10 dark:border-purple-900/30'
                           : 'border-border/30 hover:bg-muted/40'
-                    } ${modoSimplificado ? 'cursor-default' : ''}`}
+                    } ${!isProfessional ? 'cursor-default' : ''}`}
                   >
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: corEvento(ev) }} />
                     <div className="flex-1 min-w-0">
@@ -1753,8 +1756,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         })()}
 
         {/* Histórico Clínico — achados resolvidos */}
-        {!modoSimplificado && (() => {
-          const historico = eventos.filter(e => e.status === 'resolvido');
+        {(() => {
+          // Resolvidos — privacidade: o cliente só vê os liberados (o histórico
+          // relatado no portal é resolvido + visivel_paciente=false até o
+          // profissional confirmar, então não vaza aqui).
+          const historico = eventos.filter(e => e.status === 'resolvido' && (!soLiberados || e.visivel_paciente));
           if (historico.length === 0) return null;
           return (
             <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
