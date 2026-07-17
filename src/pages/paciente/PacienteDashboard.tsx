@@ -418,6 +418,28 @@ export default function PacienteDashboard() {
             </V>
           )}
 
+          {/* Sem terapeuta vinculado: convite ao marketplace (fluxo aprovado —
+              premium terá o avatar montado por um profissional) */}
+          {paciente && !(paciente as any).terapeuta_id && (
+            <V i={1}>
+              <button
+                onClick={() => navigate('/paciente/profissionais')}
+                className="w-full rounded-2xl border border-[hsl(var(--gold)/0.35)] bg-[hsl(var(--gold)/0.06)] p-4 flex items-center gap-3 hover:bg-[hsl(var(--gold)/0.12)] transition-colors text-left active:scale-[0.99]"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-gold flex items-center justify-center shadow-xs shrink-0">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">Conecte-se a um profissional</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Um profissional monta seu Avatar Clínico, revisa sua avaliação e acompanha você de perto
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
+            </V>
+          )}
+
           {/* Jornada (plano de hoje + metas) — SOBE: é a ação diária do cliente */}
           {paciente && myidConcluido && (
             <V i={2}>
