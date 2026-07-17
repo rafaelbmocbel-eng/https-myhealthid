@@ -18,6 +18,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { erroDaFuncao } from '@/lib/fnError';
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -305,7 +306,7 @@ export default function HistoricoClinicoCard() {
       const { data, error } = await supabase.functions.invoke('triagem-historico-clinico', {
         body: { answers, regions },
       });
-      if (error) throw error;
+      if (error) throw await erroDaFuncao(error);
       if ((data as any)?.error) throw new Error((data as any).error);
 
       // Salva timestamp do último envio

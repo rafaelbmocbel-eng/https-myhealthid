@@ -77,7 +77,6 @@ ${driver ? `Driver MyID do paciente: ${driver.label} (${driver.key}) — score $
 
 Retorne ${body.tipo === 'exercicios' ? '5 exercícios' : '5 técnicas'} adequados a esta fase.`;
 
-    const toolName = body.tipo === 'exercicios' ? 'sugerir_exercicios' : 'sugerir_tecnicas';
     const itemSchema = body.tipo === 'exercicios'
       ? {
           type: 'object',
@@ -105,31 +104,18 @@ Retorne ${body.tipo === 'exercicios' ? '5 exercícios' : '5 técnicas'} adequado
           required: ['nome', 'categoria', 'nivel_evidencia', 'motivo'],
         };
 
+    // JSON mode (response_format) — o function-calling forçado (tool_choice)
+    // não é bem suportado pelo endpoint OpenAI-compat do Gemini e retorna non-2xx.
     const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'gemini-2.5-flash',
         messages: [
-          { role: 'system', content: sys },
+          { role: 'system', content: `${sys}\n\nResponda APENAS com um objeto JSON no formato {"sugestoes": [ ... ]}, onde cada item segue: ${JSON.stringify(itemSchema)}.` },
           { role: 'user', content: user },
         ],
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: toolName,
-              description: `Retorna sugestões de ${alvo}`,
-              parameters: {
-                type: 'object',
-                properties: { sugestoes: { type: 'array', items: itemSchema } },
-                required: ['sugestoes'],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: 'function', function: { name: toolName } },
+        response_format: { type: 'json_object' },
       }),
     });
 
@@ -142,8 +128,14 @@ Retorne ${body.tipo === 'exercicios' ? '5 exercícios' : '5 técnicas'} adequado
     }
 
     const json = await resp.json();
-    const toolCall = json?.choices?.[0]?.message?.tool_calls?.[0];
-    const args = toolCall?.function?.arguments ? JSON.parse(toolCall.function.arguments) : { sugestoes: [] };
+    const content = json?.choices?.[0]?.message?.content ?? '';
+    let args: { sugestoes?: any[] } = { sugestoes: [] };
+    try {
+      args = JSON.parse(content);
+    } catch {
+      const m = content.match(/\{[\s\S]*\}/);
+      if (m) { try { args = JSON.parse(m[0]); } catch { /* mantém vazio */ } }
+    }
 
     return new Response(JSON.stringify({ sugestoes: args.sugestoes || [] }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

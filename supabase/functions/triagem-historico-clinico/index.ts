@@ -64,35 +64,10 @@ ${regionList}`;
       .map((a) => `Categoria: ${a.categoria}\nPergunta: ${a.pergunta}\nResposta: ${a.resposta}`)
       .join("\n\n");
 
-    const tool = {
-      type: "function",
-      function: {
-        name: "report_historico_clinico",
-        description: "Reporta achados de histórico clínico classificados por região/sistema.",
-        parameters: {
-          type: "object",
-          properties: {
-            achados: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  categoria: { type: "string" },
-                  regiao_id: { type: "string" },
-                  sistema: { type: "string" },
-                  tipo_achado: { type: "string" },
-                  severidade: { type: "integer", minimum: 0, maximum: 4 },
-                },
-                required: ["categoria", "regiao_id", "sistema", "tipo_achado", "severidade"],
-                additionalProperties: false,
-              },
-            },
-          },
-          required: ["achados"],
-          additionalProperties: false,
-        },
-      },
-    };
+    // Padrão comprovado no app: JSON mode (response_format). O function-calling
+    // forçado (tool_choice) não é bem suportado pelo endpoint OpenAI-compat do
+    // Gemini e retornava non-2xx. Pedimos o JSON direto no prompt.
+    const formatoPrompt = `\n\nResponda APENAS com um objeto JSON no formato:\n{"achados":[{"categoria":"<repita a categoria recebida>","regiao_id":"<id da lista>","sistema":"<sistema da região>","tipo_achado":"<rótulo clínico curto>","severidade":<inteiro 0 a 4>}]}\nSe nada for clinicamente relevante, retorne {"achados":[]}.`;
 
     const ctrl = new AbortController();
     setTimeout(() => ctrl.abort(), 45_000);
@@ -106,11 +81,10 @@ ${regionList}`;
       body: JSON.stringify({
         model: "gemini-2.5-flash",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: systemPrompt + formatoPrompt },
           { role: "user", content: userPrompt },
         ],
-        tools: [tool],
-        tool_choice: { type: "function", function: { name: "report_historico_clinico" } },
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -133,8 +107,15 @@ ${regionList}`;
     }
 
     const aiData = await aiRes.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    const args = toolCall ? JSON.parse(toolCall.function.arguments) : { achados: [] };
+    const content = aiData.choices?.[0]?.message?.content ?? "";
+    let args: { achados?: any[] } = { achados: [] };
+    try {
+      args = JSON.parse(content);
+    } catch {
+      // JSON mode raramente escapa — tenta extrair o objeto do texto
+      const m = content.match(/\{[\s\S]*\}/);
+      if (m) { try { args = JSON.parse(m[0]); } catch { /* mantém vazio */ } }
+    }
 
     const validIds = new Set(regions.map((r) => r.id));
     const validSistemas = new Set(regions.flatMap((r) => r.sistemas));
