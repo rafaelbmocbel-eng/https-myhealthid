@@ -489,6 +489,17 @@ export default function PacienteDashboard() {
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </button>
+
+                  {/* Jornada (plano de hoje + metas da semana) VIVE dentro do
+                      funil da avaliação: é o que a avaliação gerou para o
+                      cliente FAZER, e o que move o resultado ao vivo. */}
+                  {paciente && (
+                    <div className="pt-2 mt-1 border-t border-border/40">
+                      <Suspense fallback={null}>
+                        <JornadaPacienteCard pacienteId={paciente.id} />
+                      </Suspense>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </V>
@@ -513,15 +524,6 @@ export default function PacienteDashboard() {
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
-            </V>
-          )}
-
-          {/* Jornada (plano de hoje + metas) — SOBE: é a ação diária do cliente */}
-          {paciente && myidConcluido && (
-            <V i={2}>
-              <Suspense fallback={null}>
-                <JornadaPacienteCard pacienteId={paciente.id} />
-              </Suspense>
             </V>
           )}
 

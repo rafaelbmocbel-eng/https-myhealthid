@@ -7,11 +7,12 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2, Eye, RefreshCw, Save } from 'lucide-react';
+import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2, Eye, RefreshCw, Save, Sparkles } from 'lucide-react';
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
 import { MyIDResult } from '@/components/myid/MyIDResult';
 import HistoricoClinicoCard from '@/components/paciente/HistoricoClinicoCard';
 import QuestionariosClinicosSection from '@/components/paciente/QuestionariosClinicosSection';
+import EvolucaoAoVivoResultado from '@/components/paciente/EvolucaoAoVivoResultado';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
@@ -235,6 +236,8 @@ export default function PacienteQuestionarios() {
             </button>
             {item?.resultado_processado ? (
               <div className="bg-card p-4 md:p-6 rounded-xl border shadow-sm">
+                {/* Camada viva: reflete a Jornada do cliente acima do resultado */}
+                <EvolucaoAoVivoResultado pacienteId={item.paciente_id} />
                 <MyIDResult
                   result={item.resultado_processado}
                   rawData={item.respostas_brutas}
@@ -290,7 +293,42 @@ export default function PacienteQuestionarios() {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : pacienteId ? (
-              <QuestionariosClinicosSection pacienteId={pacienteId} />
+              <>
+                <QuestionariosClinicosSection pacienteId={pacienteId} />
+
+                {/* Próximo passo — sem isto, responder os questionários não
+                    levava a lugar nenhum. Aqui fecha o ciclo: as respostas +
+                    o MyID vão para o seu plano, montado e revisado pelo
+                    profissional, e visível em "Meu Plano". */}
+                <Card className="border-primary/25">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold">E agora? Seu plano personalizado</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Suas respostas + o MyID viram treino, nutrição e tratamento sob medida —
+                          montados e revisados pelo seu profissional.
+                        </p>
+                      </div>
+                    </div>
+                    <Button className="w-full gap-1.5" onClick={() => navigate('/paciente/plano-ia')}>
+                      Ver Meu Plano
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    {!terapeutaId && (
+                      <button
+                        onClick={() => navigate('/paciente/profissionais')}
+                        className="w-full text-[11px] font-medium text-primary hover:underline"
+                      >
+                        Você ainda não tem um profissional — conecte-se a um para montar seu plano →
+                      </button>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
             ) : null}
           </div>
         </PacienteLayout>
