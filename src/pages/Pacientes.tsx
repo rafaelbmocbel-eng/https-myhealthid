@@ -21,7 +21,7 @@ import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit, Trash2,
   Loader2, User, Activity, AlignCenter, CalendarDays, CalendarPlus, Link2, Copy, RefreshCw,
   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download, BarChart3,
-  DollarSign, MessageSquare, MoreHorizontal, Bell,
+  DollarSign, MessageSquare, MoreHorizontal, Bell, Store,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -86,6 +86,7 @@ interface Paciente {
   ativo: boolean;
   created_at: string;
   terapeuta_id: string;
+  origem?: string | null;
   _servicos?: string[];
 }
 
@@ -923,6 +924,12 @@ export default function Pacientes() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-sm">{p.nome} {p.sobrenome}</span>
+                        {/* Selo Vitrine — paciente que chegou pelo marketplace */}
+                        {p.origem === 'vitrine' && (
+                          <Badge variant="outline" className="text-[10px] h-5 gap-1 border font-medium border-[hsl(var(--gold)/0.4)] bg-[hsl(var(--gold)/0.1)] text-amber-700">
+                            <Store className="h-3 w-3" /> Vitrine
+                          </Badge>
+                        )}
                         {/* Chip de classificação (sempre visível, com bolinha) */}
                         <Badge variant="outline" className={cn('text-[10px] h-5 gap-1 border font-medium', tagCfg.bgColor, tagCfg.color)}>
                           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tagCfg.dot }} />

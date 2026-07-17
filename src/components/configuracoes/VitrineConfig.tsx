@@ -134,16 +134,24 @@ export default function VitrineConfig() {
 
   const mutResponder = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: 'aceita' | 'recusada' }) => {
-      const { error } = await supabase
-        .from('solicitacoes_conexao')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .eq('terapeuta_id', user!.id);
-      if (error) throw error;
+      if (status === 'aceita') {
+        // Aceitar VINCULA o paciente (terapeuta_id + selo vitrine) via RPC
+        // SECURITY DEFINER — só marcar "aceita" não o fazia aparecer nos Pacientes.
+        const { error } = await supabase.rpc('aceitar_solicitacao_conexao', { p_id: id });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('solicitacoes_conexao')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .eq('terapeuta_id', user!.id);
+        if (error) throw error;
+      }
     },
     onSuccess: (_, { status }) => {
-      toast.success(status === 'aceita' ? 'Solicitação aceita' : 'Solicitação recusada');
+      toast.success(status === 'aceita' ? 'Paciente aceito e vinculado! Já aparece em Pacientes.' : 'Solicitação recusada');
       qc.invalidateQueries({ queryKey: ['solicitacoes-conexao'] });
+      qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
     },
   });
 
