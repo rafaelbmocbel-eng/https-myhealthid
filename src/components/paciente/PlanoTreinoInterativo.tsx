@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Dumbbell, CheckCircle2, ChevronDown, ChevronRight, Flame, Info, AlertTriangle, Loader2, PlayCircle,
+  Dumbbell, CheckCircle2, ChevronDown, ChevronRight, Flame, Info, AlertTriangle, Loader2, PlayCircle, FileDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { startOfWeek } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   pacienteId: string;
@@ -31,6 +32,8 @@ function sessaoKey(fi: number, si: number, nome: string) {
 // plano se adaptar.
 export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, onRegenerarComIncomodo, regenerando }: Props) {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
   const fases: any[] = Array.isArray(conteudo?.fases) ? conteudo.fases : [];
   const [aberta, setAberta] = useState<string | null>(() => (fases[0]?.sessoes?.[0] ? sessaoKey(0, 0, fases[0].sessoes[0].nome) : null));
   const [expExercicio, setExpExercicio] = useState<string | null>(null);
@@ -78,6 +81,30 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
     setNotaIncomodo('');
   };
 
+  const baixarPdf = async () => {
+    setBaixandoPdf(true);
+    try {
+      const { data: pac } = await supabase.from('pacientes').select('nome, sobrenome').eq('id', pacienteId).maybeSingle();
+      const nome = pac ? `${pac.nome || ''} ${pac.sobrenome || ''}`.trim() : ((user?.user_metadata?.nome as string) || 'Paciente');
+      const { gerarPDFPlanoTreino } = await import('@/utils/pdfPlanoTreino');
+      const { downloadPDFBlob } = await import('@/utils/pdfMyIDPaciente');
+      const blob = await gerarPDFPlanoTreino({ pacienteNome: nome, titulo, conteudo });
+      const filename = `Meu_Treino_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const file = new File([blob], filename, { type: 'application/pdf' });
+      const navAny = navigator as any;
+      if (navAny.canShare && navAny.canShare({ files: [file] })) {
+        try { await navAny.share({ files: [file], title: 'Meu Treino' }); }
+        catch (e: any) { if (e?.name !== 'AbortError') downloadPDFBlob(blob, filename); }
+      } else {
+        downloadPDFBlob(blob, filename);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Não consegui gerar o PDF agora.');
+    } finally {
+      setBaixandoPdf(false);
+    }
+  };
+
   if (fases.length === 0) return null;
 
   return (
@@ -100,6 +127,12 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
           <p className="text-[12px] font-semibold text-foreground">{totalSemana} treino{totalSemana !== 1 ? 's' : ''} concluído{totalSemana !== 1 ? 's' : ''} esta semana</p>
           <span className="ml-auto text-[10px] text-muted-foreground">marque abaixo ao terminar</span>
         </div>
+
+        {/* Baixar o treino em PDF (com explicações e os GIFs do banco) */}
+        <Button variant="outline" className="w-full gap-1.5" disabled={baixandoPdf} onClick={baixarPdf}>
+          {baixandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+          {baixandoPdf ? 'Montando seu PDF…' : 'Baixar treino em PDF (com GIFs)'}
+        </Button>
 
         {/* Fases → sessões */}
         {fases.map((f, fi) => (
