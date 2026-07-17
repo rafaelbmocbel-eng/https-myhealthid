@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 export function defaultAutomacoes(userId: string) {
   return {
     terapeuta_id: userId,
+    automacoes_pausadas: false,
     bot_ativo: false,
     bot_apenas_cadastrados: true,
     delay_resposta_segundos: 30,

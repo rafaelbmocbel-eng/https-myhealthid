@@ -32,13 +32,28 @@ function isEvolution(cfg: WaConfig): boolean {
   return (cfg.whatsapp_provider || "zapi").toLowerCase() === "evolution";
 }
 
+// Interruptor geral (modo férias): quando a clínica pausa as automações,
+// NENHUMA mensagem automática sai — o bloqueio fica aqui, no ponto único de
+// envio, então qualquer motor novo já nasce respeitando a pausa. Envios que o
+// profissional faz de propósito (inbox, campanhas) passam { manual: true }.
+async function automacoesPausadas(admin: AdminClient, terapeuta_id: string): Promise<boolean> {
+  const { data } = await admin
+    .from("whatsapp_automacoes")
+    .select("automacoes_pausadas")
+    .eq("terapeuta_id", terapeuta_id)
+    .maybeSingle();
+  return (data as { automacoes_pausadas?: boolean } | null)?.automacoes_pausadas === true;
+}
+
 // Envia texto simples. Retorna true se o provedor aceitou o envio.
 export async function enviarWhatsapp(
   admin: AdminClient,
   terapeuta_id: string,
   phone: string,
   message: string,
+  opts?: { manual?: boolean },
 ): Promise<boolean> {
+  if (!opts?.manual && await automacoesPausadas(admin, terapeuta_id)) return false;
   const cfg = await getConfig(admin, terapeuta_id);
   if (!cfg) return false;
   const num = String(phone || "").replace(/\D/g, "");
@@ -79,8 +94,9 @@ export async function enviarWhatsappMidia(
   admin: AdminClient,
   terapeuta_id: string,
   phone: string,
-  opts: { mediaUrl: string; mediaType: "image" | "document"; caption?: string; fileName?: string },
+  opts: { mediaUrl: string; mediaType: "image" | "document"; caption?: string; fileName?: string; manual?: boolean },
 ): Promise<boolean> {
+  if (!opts.manual && await automacoesPausadas(admin, terapeuta_id)) return false;
   const cfg = await getConfig(admin, terapeuta_id);
   if (!cfg) return false;
   const num = String(phone || "").replace(/\D/g, "");

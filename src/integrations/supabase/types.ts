@@ -6008,6 +6008,7 @@ export type Database = {
       whatsapp_automacoes: {
         Row: {
           auto_confirmacao_24h: boolean
+          automacoes_pausadas: boolean
           bot_ativo: boolean
           created_at: string
           delay_resposta_segundos: number
@@ -6038,6 +6039,7 @@ export type Database = {
         }
         Insert: {
           auto_confirmacao_24h?: boolean
+          automacoes_pausadas?: boolean
           bot_ativo?: boolean
           created_at?: string
           delay_resposta_segundos?: number
@@ -6068,6 +6070,7 @@ export type Database = {
         }
         Update: {
           auto_confirmacao_24h?: boolean
+          automacoes_pausadas?: boolean
           bot_ativo?: boolean
           created_at?: string
           delay_resposta_segundos?: number

@@ -74,10 +74,10 @@ serve(async (req: Request) => {
         if (!phone) throw new Error('Phone is required')
         let ok = false
         if (mediaUrl && (mediaType === 'image' || mediaType === 'document')) {
-          ok = await enviarWhatsappMidia(admin, user.id, phone, { mediaUrl, mediaType, caption, fileName })
+          ok = await enviarWhatsappMidia(admin, user.id, phone, { mediaUrl, mediaType, caption, fileName, manual: true })
         } else {
           if (!message) throw new Error('Message or media is required')
-          ok = await enviarWhatsapp(admin, user.id, phone, message)
+          ok = await enviarWhatsapp(admin, user.id, phone, message, { manual: true })
         }
         if (!ok) throw new Error('Falha ao enviar pelo Evolution API')
         return new Response(

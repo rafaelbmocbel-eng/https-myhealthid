@@ -165,6 +165,28 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
     toast.success("Automações salvas");
   };
 
+  // Modo férias — salva NA HORA (não espera o botão "Salvar automações"), para
+  // ser um interruptor de emergência de um clique só.
+  const [pausando, setPausando] = useState(false);
+  const alternarPausa = async (pausar: boolean) => {
+    if (!cfg?.terapeuta_id) return;
+    setPausando(true);
+    const anterior = cfg.automacoes_pausadas;
+    setCfg((c: any) => ({ ...c, automacoes_pausadas: pausar })); // otimista
+    const { error } = await supabase
+      .from("whatsapp_automacoes")
+      .update({ automacoes_pausadas: pausar })
+      .eq("terapeuta_id", cfg.terapeuta_id);
+    setPausando(false);
+    if (error) {
+      setCfg((c: any) => ({ ...c, automacoes_pausadas: anterior })); // desfaz
+      return toast.error("Não consegui alterar: " + error.message);
+    }
+    toast.success(pausar
+      ? "Mensagens automáticas pausadas 🌴 Nada sai até você reativar."
+      : "Mensagens automáticas reativadas ✅");
+  };
+
   const resolverSegmento = async (userId: string, seg: string): Promise<string[]> => {
     const base = supabase.from("pacientes").select("id").eq("terapeuta_id", userId).eq("ativo", true).not("telefone", "is", null);
     if (seg === "todos") {
@@ -310,6 +332,43 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
   return (
     <div className={embedded ? 'p-3 sm:p-5 space-y-4' : 'container max-w-3xl py-6 space-y-4'}>
       {!embedded && <PageHeader back title="Automações & Bot IA" subtitle="Atendimento automático, mensagens proativas e broadcasts personalizados." />}
+
+      {/* MODO FÉRIAS — interruptor geral, um clique, salva na hora */}
+      <Card className={cfg?.automacoes_pausadas
+        ? "p-4 border-amber-400/60 bg-amber-50 dark:bg-amber-950/20"
+        : "p-4 border-border/60"}>
+        <div className="flex items-center gap-3">
+          <div className={cfg?.automacoes_pausadas
+            ? "h-11 w-11 rounded-xl bg-amber-400/20 flex items-center justify-center shrink-0"
+            : "h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"}>
+            {cfg?.automacoes_pausadas
+              ? <Moon className="h-5 w-5 text-amber-600" />
+              : <Zap className="h-5 w-5 text-primary" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">
+              {cfg?.automacoes_pausadas ? "Mensagens automáticas PAUSADAS 🌴" : "Mensagens automáticas ativas"}
+            </p>
+            <p className="text-micro text-muted-foreground">
+              {cfg?.automacoes_pausadas
+                ? "Nenhuma mensagem automática está saindo (nem o bot). As mensagens dos pacientes continuam chegando na caixa, e você responde quando quiser."
+                : "Confirmações, lembretes, pós-sessão, NPS, progresso e o bot. Pause tudo quando estiver de férias."}
+            </p>
+          </div>
+          <Switch
+            checked={!!cfg?.automacoes_pausadas}
+            disabled={pausando || !cfg}
+            onCheckedChange={(v) => alternarPausa(v)}
+            aria-label="Pausar mensagens automáticas"
+          />
+        </div>
+        {cfg?.automacoes_pausadas && (
+          <Button variant="outline" size="sm" className="mt-3 w-full" disabled={pausando}
+            onClick={() => alternarPausa(false)}>
+            Reativar mensagens automáticas
+          </Button>
+        )}
+      </Card>
 
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-3">

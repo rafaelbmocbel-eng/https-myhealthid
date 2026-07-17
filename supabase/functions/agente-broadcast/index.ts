@@ -93,7 +93,9 @@ Deno.serve(async (req) => {
           const variante = pickVariante();
           const ctxClinico = await montarContextoClinico(admin, bc.terapeuta_id, paciente_id, pac.telefone, null);
           const msg = await gerarMensagem(buildSystemPrompt(ctxClinico), variante.texto);
-          const ok = await enviarWhatsapp(admin, bc.terapeuta_id, pac.telefone, msg);
+          // Campanha composta e disparada pelo próprio profissional — conta
+          // como envio intencional, não é pausada pelo modo férias
+          const ok = await enviarWhatsapp(admin, bc.terapeuta_id, pac.telefone, msg, { manual: true });
           await admin.from("agente_disparos").insert({
             terapeuta_id: bc.terapeuta_id, paciente_id, gatilho: "broadcast",
             ref_id: broadcast_id, conteudo: msg,
