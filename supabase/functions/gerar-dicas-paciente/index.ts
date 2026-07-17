@@ -52,7 +52,9 @@ Deno.serve(async (req) => {
       admin.from("pacientes").select("terapeuta_id, queixa_principal, historia_atual, condicoes_saude")
         .eq("id", paciente_id).maybeSingle(),
     ]);
-    const scores = (myRes.data?.resultado_processado as any)?.scores || {};
+    const _rp = (myRes.data?.resultado_processado as any);
+    // formato variou entre gerações: component_scores (atual), componentScores ou scores
+    const scores = (_rp?.scores || _rp?.component_scores || _rp?.componentScores) || {};
     const pac = (pacRes.data || {}) as any;
 
     // Dimensões críticas → áreas de evidência

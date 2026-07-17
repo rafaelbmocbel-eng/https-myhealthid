@@ -15,6 +15,7 @@ import {
   INSTRUMENTOS, CLASSIFICACAO_LABEL, MOTIVO_RECOMENDACAO,
   instrumentosRecomendados, type InstrumentoId,
 } from '@/lib/instrumentosClinicos';
+import { scoresDoResultado } from '@/utils/myid/scores';
 
 interface Props { pacienteId: string; }
 
@@ -43,7 +44,7 @@ export default function QuestionariosClinicosSection({ pacienteId }: Props) {
         sb.from('questionarios_clinicos').select('instrumento, escore, classificacao, created_at')
           .eq('paciente_id', pacienteId).order('created_at', { ascending: false }),
       ]);
-      const scores = (myid.data?.resultado_processado as any)?.scores || null;
+      const scores = scoresDoResultado(myid.data?.resultado_processado);
       const ultimos = new Map<string, any>();
       (resp.data || []).forEach((r: any) => { if (!ultimos.has(r.instrumento)) ultimos.set(r.instrumento, r); });
       return { scores, ultimos, temMyid: !!scores };

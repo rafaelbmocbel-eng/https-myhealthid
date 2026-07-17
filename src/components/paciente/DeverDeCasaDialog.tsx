@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { scoresDoResultado } from '@/utils/myid/scores';
 
 interface Props {
   open: boolean;
@@ -133,7 +134,7 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
 
       // Extrai dimensões fracas do MyID e mapeia para perfis do catálogo
       const perfis = new Set<string>();
-      const scores = (myid.data?.resultado_processado as any)?.scores || {};
+      const scores = scoresDoResultado(myid.data?.resultado_processado) || {};
       Object.entries(scores).forEach(([dim, val]) => {
         const v = Number(val);
         if (Number.isNaN(v)) return;

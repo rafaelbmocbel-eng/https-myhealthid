@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Lightbulb, ChevronDown, ChevronUp, ShieldAlert, Stethoscope, ChevronRight, Info } from 'lucide-react';
+import { scoresDoResultado } from '@/utils/myid/scores';
 
 // Dimensão MyID (com perda) → perfis do catálogo (mesmo mapa do Dever de Casa).
 const DIM_TO_PERFIS: Record<string, string[]> = {
@@ -52,7 +53,7 @@ export default function PacienteDicas() {
         const { data: my } = await supabase.from('myid_avaliacoes')
           .select('resultado_processado').eq('paciente_id', pac.id).eq('status', 'concluido')
           .order('updated_at', { ascending: false }).limit(1).maybeSingle();
-        const scores = (my?.resultado_processado as any)?.scores || {};
+        const scores = scoresDoResultado(my?.resultado_processado) || {};
         Object.entries(scores).forEach(([dim, val]) => {
           const v = Number(val); if (Number.isNaN(v)) return;
           const isDemanda = ['D', 'EFI', 'P', 'I'].includes(dim);

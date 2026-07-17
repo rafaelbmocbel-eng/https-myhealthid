@@ -23,6 +23,7 @@ import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 import { NIVEL_LIMITES } from '@/hooks/useRecompensas';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
+import { scoresDoResultado } from '@/utils/myid/scores';
 import { INSTRUMENTOS, instrumentosRecomendados } from '@/lib/instrumentosClinicos';
 import { cn } from '@/lib/utils';
 
@@ -180,7 +181,7 @@ export default function PacienteDashboard() {
 
         // Focos da avaliação (mesma lógica do painel MyID): maior oportunidade
         // e ponto de atenção — mostrados DENTRO do card "Sua avaliação gerou..."
-        const sc = (completedMyIds[0] as any)?.resultado_processado?.scores;
+        const sc = scoresDoResultado((completedMyIds[0] as any)?.resultado_processado);
         if (sc) {
           const fatores = [
             { label: 'Melhorar o sono', p: calcularPerdaDimensao('R', 10 - sc.R).perda_pontos },

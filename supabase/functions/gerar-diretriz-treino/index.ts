@@ -83,7 +83,9 @@ Deno.serve(async (req) => {
     const idade = pac.data_nascimento
       ? Math.floor((Date.now() - new Date(pac.data_nascimento).getTime()) / (365.25 * 24 * 3600 * 1000))
       : null;
-    const scores = (myid.data?.resultado_processado as any)?.scores || null;
+    const _rp = (myid.data?.resultado_processado as any);
+    // formato variou entre gerações: component_scores (atual), componentScores ou scores
+    const scores = (_rp?.scores || _rp?.component_scores || _rp?.componentScores) || null;
     const testesTxt = (testes.data || []).map((t: any) =>
       `${t.tipo_teste}: ${t.resultado} ${t.unidade || ""} (${t.classificacao || "?"}, ${t.data_teste || "?"})`).join("\n");
 

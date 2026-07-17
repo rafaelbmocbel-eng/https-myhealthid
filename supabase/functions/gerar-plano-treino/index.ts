@@ -90,7 +90,9 @@ Deno.serve(async (req) => {
         .select("resultado_processado")
         .eq("paciente_id", paciente_id).eq("status", "concluido")
         .order("updated_at", { ascending: false }).limit(1).maybeSingle();
-      const scores = (my?.resultado_processado as any)?.scores;
+      const _rp = (my?.resultado_processado as any);
+    // formato variou entre gerações: component_scores (atual), componentScores ou scores
+    const scores = (_rp?.scores || _rp?.component_scores || _rp?.componentScores);
       if (scores) myidStr = `\nPerfil MyID (scores por dimensão): ${JSON.stringify(scores)}. Priorize exercícios que atendam às dimensões mais críticas do paciente.`;
     }
 
