@@ -7,11 +7,12 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
-import { Loader2, Dumbbell, Salad, Lock, Sparkles, ChevronRight, Info, ClipboardList, Check } from 'lucide-react';
+import { Loader2, Dumbbell, Salad, Lock, Sparkles, ChevronRight, Info, ClipboardList, Check, Wand2, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { erroDaFuncao } from '@/lib/fnError';
 
 export default function PacientePlanoIA() {
   const { user } = useAuth();
@@ -22,8 +23,33 @@ export default function PacientePlanoIA() {
   const [dieta, setDieta] = useState<any>(null);
   const [diretrizes, setDiretrizes] = useState<any[]>([]);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
+  // Planos gerados pela IA para o próprio cliente (premium)
+  const [treinoIA, setTreinoIA] = useState<any>(null);
+  const [dietaIA, setDietaIA] = useState<any>(null);
+  const [gerando, setGerando] = useState<'' | 'treino' | 'nutricao' | 'tudo'>('');
 
   const bloqueado = isFree && !isInTrial;
+
+  const carregar = async (pid: string) => {
+    const [t, d, dir, ia] = await Promise.all([
+      supabase.from('planos_treino').select('titulo, objetivo, estrutura, created_at')
+        .eq('paciente_id', pid).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      (supabase as any).from('planos_alimentares').select('titulo, calorias_alvo, plano, created_at')
+        .eq('paciente_id', pid).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      // RLS só entrega o que o profissional enviou ao portal — todas as áreas
+      (supabase as any).from('diretrizes_profissionais').select('titulo, area, conteudo, updated_at')
+        .eq('paciente_id', pid).eq('enviada_portal', true)
+        .order('updated_at', { ascending: false }),
+      (supabase as any).from('planos_ia_cliente').select('tipo, titulo, conteudo')
+        .eq('paciente_id', pid),
+    ]);
+    setTreino(t.data || null);
+    setDieta(d.data || null);
+    setDiretrizes(dir.data || []);
+    const iaRows = (ia.data || []) as any[];
+    setTreinoIA(iaRows.find(r => r.tipo === 'treino') || null);
+    setDietaIA(iaRows.find(r => r.tipo === 'nutricao') || null);
+  };
 
   useEffect(() => {
     if (!user || bloqueado) { setLoading(false); return; }
@@ -31,22 +57,62 @@ export default function PacientePlanoIA() {
       const { data: pac } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
       if (!pac) { setLoading(false); return; }
       setPacienteId(pac.id);
-      const [t, d, dir] = await Promise.all([
-        supabase.from('planos_treino').select('titulo, objetivo, estrutura, created_at')
-          .eq('paciente_id', pac.id).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        (supabase as any).from('planos_alimentares').select('titulo, calorias_alvo, plano, created_at')
-          .eq('paciente_id', pac.id).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        // RLS só entrega o que o profissional enviou ao portal — todas as áreas
-        (supabase as any).from('diretrizes_profissionais').select('titulo, area, conteudo, updated_at')
-          .eq('paciente_id', pac.id).eq('enviada_portal', true)
-          .order('updated_at', { ascending: false }),
-      ]);
-      setTreino(t.data || null);
-      setDieta(d.data || null);
-      setDiretrizes(dir.data || []);
+      await carregar(pac.id);
       setLoading(false);
     })();
   }, [user, bloqueado]);
+
+  // Gera o plano do cliente (treino e/ou nutrição) a partir do MyID +
+  // questionários + anamnese. Usa as MESMAS funções de IA do profissional
+  // (que aceitam paciente_id) e persiste em planos_ia_cliente.
+  const gerarPlano = async (alvo: 'treino' | 'nutricao' | 'tudo') => {
+    if (!pacienteId) return;
+    setGerando(alvo);
+    try {
+      const { data: anamRow } = await (supabase as any).from('nutricao_anamnese')
+        .select('respostas').eq('paciente_id', pacienteId).maybeSingle();
+      const r = (anamRow?.respostas || {}) as Record<string, string>;
+      const objetivo = (r.objetivo || '').trim() || 'Saúde geral, alívio de dor e mais energia no dia a dia';
+
+      if (alvo === 'treino' || alvo === 'tudo') {
+        const res = await supabase.functions.invoke('gerar-plano-treino', {
+          body: { paciente_id: pacienteId, objetivo, nivel: 'iniciante', frequencia_semanal: 3, duracao_semanas: 8 },
+        });
+        if (res.error) throw await erroDaFuncao(res.error);
+        const plano = (res.data as any)?.plano;
+        if (plano) {
+          await (supabase as any).from('planos_ia_cliente').upsert(
+            { paciente_id: pacienteId, tipo: 'treino', titulo: plano.titulo || 'Meu treino (IA)', conteudo: plano },
+            { onConflict: 'paciente_id,tipo' });
+        }
+      }
+
+      if (alvo === 'nutricao' || alvo === 'tudo') {
+        const res = await supabase.functions.invoke('gerar-plano-alimentar', {
+          body: {
+            paciente_id: pacienteId, objetivo,
+            refeicoes_por_dia: Number(r.refeicoes_por_dia) || 5,
+            restricoes: r.restricoes_alergias || '',
+            preferencias: r.preferencias || '',
+          },
+        });
+        if (res.error) throw await erroDaFuncao(res.error);
+        const plano = (res.data as any)?.plano;
+        if (plano) {
+          await (supabase as any).from('planos_ia_cliente').upsert(
+            { paciente_id: pacienteId, tipo: 'nutricao', titulo: plano.titulo || 'Meu plano alimentar (IA)', conteudo: plano },
+            { onConflict: 'paciente_id,tipo' });
+        }
+      }
+
+      await carregar(pacienteId);
+      toast.success('Plano pronto! 💪 Role a tela para ver.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Não consegui gerar o plano agora. Tente de novo em instantes.');
+    } finally {
+      setGerando('');
+    }
+  };
 
   if (acLoading || loading) {
     return (
@@ -91,23 +157,63 @@ export default function PacientePlanoIA() {
               </p>
             </div>
 
-            {/* Perguntas do plano nutricional (anamnese) */}
+            {/* Perguntas do plano nutricional (anamnese) — alimenta o gerador */}
             {pacienteId && <AnamneseNutricionalCard pacienteId={pacienteId} />}
+
+            {/* Gerador de plano do cliente (IA) — treino + nutrição sob medida */}
+            <Card className="border-primary/25">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Wand2 className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold">Montar meu plano com IA</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Treino e alimentação sob medida, a partir do seu MyID, questionários e anamnese.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Button variant="outline" className="gap-1.5" disabled={!!gerando}
+                    onClick={() => gerarPlano('treino')}>
+                    {gerando === 'treino' ? <Loader2 className="h-4 w-4 animate-spin" /> : treinoIA ? <RefreshCw className="h-4 w-4" /> : <Dumbbell className="h-4 w-4" />}
+                    {treinoIA ? 'Refazer treino' : 'Gerar treino'}
+                  </Button>
+                  <Button variant="outline" className="gap-1.5" disabled={!!gerando}
+                    onClick={() => gerarPlano('nutricao')}>
+                    {gerando === 'nutricao' ? <Loader2 className="h-4 w-4 animate-spin" /> : dietaIA ? <RefreshCw className="h-4 w-4" /> : <Salad className="h-4 w-4" />}
+                    {dietaIA ? 'Refazer nutrição' : 'Gerar nutrição'}
+                  </Button>
+                </div>
+                {!treinoIA && !dietaIA && (
+                  <Button className="w-full gap-1.5" disabled={!!gerando} onClick={() => gerarPlano('tudo')}>
+                    {gerando === 'tudo' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                    {gerando === 'tudo' ? 'Montando seu plano…' : 'Gerar treino + nutrição'}
+                  </Button>
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  Responda a anamnese acima antes para o plano ficar mais preciso. A geração leva alguns segundos.
+                </p>
+              </CardContent>
+            </Card>
 
             {/* Diretrizes do profissional (nutrição, treino, ...) */}
             {diretrizes.map((dir, i) => <DiretrizProfissionalView key={i} diretriz={dir} />)}
 
-            {/* Plano de treino */}
+            {/* Plano de treino — profissional tem prioridade; senão, o da IA */}
             <PlanoTreinoView treino={treino} />
+            {!treino && treinoIA && <PlanoTreinoView treino={{ titulo: treinoIA.titulo, estrutura: treinoIA.conteudo }} ia />}
 
             {/* Plano alimentar */}
             <PlanoDietaView dieta={dieta} />
+            {!dieta && dietaIA && <PlanoDietaView dieta={{ titulo: dietaIA.titulo, plano: dietaIA.conteudo, calorias_alvo: dietaIA.conteudo?.calorias_totais }} ia />}
 
-            {!treino && !dieta && diretrizes.length === 0 && (
+            {!treino && !dieta && !treinoIA && !dietaIA && diretrizes.length === 0 && (
               <Card><CardContent className="p-8 text-center">
                 <Sparkles className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-sm font-medium text-muted-foreground">Nenhum plano ainda</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Seu profissional vai gerar seu plano personalizado em breve.</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Toque em "Gerar treino + nutrição" acima para montar o seu — ou seu profissional pode montar um.</p>
               </CardContent></Card>
             )}
           </>
@@ -168,7 +274,7 @@ function DiretrizProfissionalView({ diretriz }: { diretriz: any }) {
   );
 }
 
-function PlanoTreinoView({ treino }: { treino: any }) {
+function PlanoTreinoView({ treino, ia }: { treino: any; ia?: boolean }) {
   if (!treino) return null;
   const est = treino.estrutura || {};
   const fases: any[] = Array.isArray(est.fases) ? est.fases : [];
@@ -177,8 +283,11 @@ function PlanoTreinoView({ treino }: { treino: any }) {
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><Dumbbell className="h-5 w-5 text-primary" /></div>
-          <div className="min-w-0">
-            <p className="text-sm font-bold truncate">{treino.titulo || 'Plano de Treino'}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold truncate flex items-center gap-1.5">
+              {treino.titulo || 'Plano de Treino'}
+              {ia && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">IA</span>}
+            </p>
             {est.resumo && <p className="text-[11px] text-muted-foreground line-clamp-2">{est.resumo}</p>}
           </div>
         </div>
@@ -217,7 +326,7 @@ function PlanoTreinoView({ treino }: { treino: any }) {
   );
 }
 
-function PlanoDietaView({ dieta }: { dieta: any }) {
+function PlanoDietaView({ dieta, ia }: { dieta: any; ia?: boolean }) {
   if (!dieta) return null;
   const plano = dieta.plano || {};
   const refeicoes: any[] = Array.isArray(plano.refeicoes) ? plano.refeicoes
@@ -228,8 +337,11 @@ function PlanoDietaView({ dieta }: { dieta: any }) {
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0"><Salad className="h-5 w-5 text-emerald-600" /></div>
-          <div className="min-w-0">
-            <p className="text-sm font-bold truncate">{dieta.titulo || 'Plano Alimentar'}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold truncate flex items-center gap-1.5">
+              {dieta.titulo || 'Plano Alimentar'}
+              {ia && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 shrink-0">IA</span>}
+            </p>
             {dieta.calorias_alvo && <p className="text-[11px] text-muted-foreground">Meta: ~{dieta.calorias_alvo} kcal/dia</p>}
           </div>
         </div>

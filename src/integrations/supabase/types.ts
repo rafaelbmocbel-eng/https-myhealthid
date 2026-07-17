@@ -3869,6 +3869,36 @@ export type Database = {
           },
         ]
       }
+      planos_ia_cliente: {
+        Row: {
+          conteudo: Json
+          created_at: string
+          id: string
+          paciente_id: string
+          tipo: string
+          titulo: string | null
+          updated_at: string
+        }
+        Insert: {
+          conteudo?: Json
+          created_at?: string
+          id?: string
+          paciente_id: string
+          tipo: string
+          titulo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          conteudo?: Json
+          created_at?: string
+          id?: string
+          paciente_id?: string
+          tipo?: string
+          titulo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       planos_treino: {
         Row: {
           ativo: boolean
