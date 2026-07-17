@@ -13,6 +13,7 @@ import { MyIDResult } from '@/components/myid/MyIDResult';
 import HistoricoClinicoCard from '@/components/paciente/HistoricoClinicoCard';
 import QuestionariosClinicosSection from '@/components/paciente/QuestionariosClinicosSection';
 import EvolucaoAoVivoResultado from '@/components/paciente/EvolucaoAoVivoResultado';
+import { PlanoPersonalizadoSection } from '@/pages/paciente/PacientePlanoIA';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
@@ -294,40 +295,21 @@ export default function PacienteQuestionarios() {
               </div>
             ) : pacienteId ? (
               <>
+                {/* Questionários específicos que calibram o plano */}
                 <QuestionariosClinicosSection pacienteId={pacienteId} />
 
-                {/* Próximo passo — sem isto, responder os questionários não
-                    levava a lugar nenhum. Aqui fecha o ciclo: as respostas +
-                    o MyID vão para o seu plano, montado e revisado pelo
-                    profissional, e visível em "Meu Plano". */}
-                <Card className="border-primary/25">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                        <Sparkles className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold">E agora? Seu plano personalizado</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Suas respostas + o MyID viram treino, nutrição e tratamento sob medida —
-                          montados e revisados pelo seu profissional.
-                        </p>
-                      </div>
-                    </div>
-                    <Button className="w-full gap-1.5" onClick={() => navigate('/paciente/plano-ia')}>
-                      Ver Meu Plano
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    {!terapeutaId && (
-                      <button
-                        onClick={() => navigate('/paciente/profissionais')}
-                        className="w-full text-[11px] font-medium text-primary hover:underline"
-                      >
-                        Você ainda não tem um profissional — conecte-se a um para montar seu plano →
-                      </button>
-                    )}
-                  </CardContent>
-                </Card>
+                {/* O plano em si — treino IA + personal + nutrição — vive AQUI
+                    (o lugar correto). Gera, exibe e adapta na própria página. */}
+                <PlanoPersonalizadoSection />
+
+                {!terapeutaId && (
+                  <button
+                    onClick={() => navigate('/paciente/profissionais')}
+                    className="w-full text-[11px] font-medium text-primary hover:underline"
+                  >
+                    Quer um plano acompanhado por um profissional? Conecte-se a um →
+                  </button>
+                )}
               </>
             ) : null}
           </div>

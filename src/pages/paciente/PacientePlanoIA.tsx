@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import PacienteLayout from '@/components/paciente/PacienteLayout';
-import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
@@ -15,7 +13,10 @@ import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
 import PlanoTreinoInterativo from '@/components/paciente/PlanoTreinoInterativo';
 
-export default function PacientePlanoIA() {
+// Seção reutilizável do plano personalizado (treino IA + personal + nutrição).
+// Mora dentro de "Treino personalizado" (/paciente/questionarios?foco=plano) —
+// o único lugar correto. Sem wrapper de layout (o pai fornece).
+export function PlanoPersonalizadoSection() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { isFree, isInTrial, isLoading: acLoading } = useWellnessAccess();
@@ -120,22 +121,11 @@ export default function PacientePlanoIA() {
   };
 
   if (acLoading || loading) {
-    return (
-      <ProtectedPatientRoute><PacienteLayout>
-        <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-      </PacienteLayout></ProtectedPatientRoute>
-    );
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
-  return (
-    <ProtectedPatientRoute><PacienteLayout>
-      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-        <div>
-          <h1 className="h-page flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Meu Plano</h1>
-          <p className="text-xs text-muted-foreground">Treino e alimentação montados com IA a partir da sua avaliação.</p>
-        </div>
-
-        {bloqueado ? (
+  if (bloqueado) {
+    return (
           <Card className="border-0 shadow-md overflow-hidden">
             <div className="p-6 text-center text-white" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)' }}>
               <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-3">
@@ -152,8 +142,11 @@ export default function PacientePlanoIA() {
               </Button>
             </div>
           </Card>
-        ) : (
-          <>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
             {/* Disclaimer de segurança */}
             <div className="flex items-start gap-2 p-3 rounded-xl bg-muted/50 border border-border/40">
               <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -230,11 +223,14 @@ export default function PacientePlanoIA() {
                 <p className="text-xs text-muted-foreground/60 mt-1">Toque em "Gerar treino + nutrição" acima para montar o seu — ou seu profissional pode montar um.</p>
               </CardContent></Card>
             )}
-          </>
-        )}
-      </div>
-    </PacienteLayout></ProtectedPatientRoute>
+    </div>
   );
+}
+
+// Rota antiga /paciente/plano-ia → o plano agora vive dentro de "Treino
+// personalizado". Redireciona para lá (um único lugar correto).
+export default function PacientePlanoIA() {
+  return <Navigate to="/paciente/questionarios?foco=plano" replace />;
 }
 
 // Diretriz criada e revisada pelo PROFISSIONAL (por fases, com metas e

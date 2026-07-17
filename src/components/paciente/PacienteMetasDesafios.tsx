@@ -791,13 +791,13 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
             </Link>
           </Card>
           <Card className="overflow-hidden">
-            <Link to="/paciente/plano-ia" className="block p-3">
+            <Link to="/paciente/questionarios?foco=plano" className="block p-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
                   <Heart className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold">Meu Plano (IA)</p>
+                  <p className="text-xs font-bold">Treino personalizado</p>
                   <p className="text-[10px] text-muted-foreground truncate">
                     {planoTreinoIA || planoAlimIA
                       ? `Treino e nutrição prontos${planoAlimIA?.calorias_alvo ? ` · ${planoAlimIA.calorias_alvo} kcal` : ''} — toque para ver`
