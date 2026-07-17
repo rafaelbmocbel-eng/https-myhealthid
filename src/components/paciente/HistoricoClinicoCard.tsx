@@ -122,6 +122,7 @@ export default function HistoricoClinicoCard() {
 
   const [dados, setDados] = useState<HistoricoClinico>(ESTADO_INICIAL);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
+  const [temProfissional, setTemProfissional] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [enviando, setEnviando] = useState(false);
@@ -135,11 +136,12 @@ export default function HistoricoClinicoCard() {
     (async () => {
       const { data } = await (supabase as any)
         .from('pacientes')
-        .select('id, historico_clinico')
+        .select('id, historico_clinico, terapeuta_id')
         .eq('user_id', user.id)
         .maybeSingle();
       if (data) {
         setPacienteId(data.id);
+        setTemProfissional(!!data.terapeuta_id);
         if (data.historico_clinico) {
           setDados({ ...ESTADO_INICIAL, ...(data.historico_clinico as HistoricoClinico) });
         }
@@ -314,8 +316,10 @@ export default function HistoricoClinicoCard() {
       setDados(d => ({ ...d, ultimo_envio: new Date().toISOString() }));
 
       toast({
-        title: '✅ Histórico enviado',
-        description: 'Seu profissional vai revisar e decidir o que entra no seu Avatar Clínico.',
+        title: '✅ Histórico salvo',
+        description: temProfissional
+          ? 'Seu profissional vai revisar e decidir o que entra no seu Avatar Clínico.'
+          : 'Guardamos tudo. Assim que você se conectar a um profissional, ele revisa e monta seu Avatar Clínico.',
       });
     } catch (e) {
       toast({
@@ -641,12 +645,14 @@ export default function HistoricoClinicoCard() {
             size="lg"
           >
             {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {enviando ? 'Enviando…' : 'Enviar para meu profissional'}
+            {enviando ? 'Enviando…' : temProfissional ? 'Enviar para meu profissional' : 'Salvar meu histórico'}
           </Button>
           <p className="text-[11px] text-muted-foreground text-center max-w-xs">
             {!temConteudo
               ? 'Preencha pelo menos uma seção para enviar.'
-              : 'Seu profissional recebe uma lista para revisar e adicionar ao seu Avatar Clínico.'}
+              : temProfissional
+              ? 'Seu profissional recebe uma lista para revisar e adicionar ao seu Avatar Clínico.'
+              : 'Guardamos seu histórico. Quando você tiver um profissional, ele revisa e monta seu Avatar Clínico.'}
           </p>
         </div>
       </CardContent>

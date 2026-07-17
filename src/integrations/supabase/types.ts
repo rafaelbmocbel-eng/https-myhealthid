@@ -1990,7 +1990,7 @@ export type Database = {
           severidade: number
           sistema: Database["public"]["Enums"]["sistema_corporal"]
           status: Database["public"]["Enums"]["status_evento_anatomico"]
-          terapeuta_id: string
+          terapeuta_id: string | null
           tipo_achado: string
           tipo_diagnostico: string
           updated_at: string
@@ -2012,7 +2012,7 @@ export type Database = {
           severidade?: number
           sistema?: Database["public"]["Enums"]["sistema_corporal"]
           status?: Database["public"]["Enums"]["status_evento_anatomico"]
-          terapeuta_id: string
+          terapeuta_id?: string | null
           tipo_achado: string
           tipo_diagnostico?: string
           updated_at?: string
@@ -2034,7 +2034,7 @@ export type Database = {
           severidade?: number
           sistema?: Database["public"]["Enums"]["sistema_corporal"]
           status?: Database["public"]["Enums"]["status_evento_anatomico"]
-          terapeuta_id?: string
+          terapeuta_id?: string | null
           tipo_achado?: string
           tipo_diagnostico?: string
           updated_at?: string
