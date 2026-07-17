@@ -509,80 +509,6 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   return (
     <div className="space-y-4">
       <ConfettiBurst trigger={celebrate} duration={2200} pieces={24} />
-      {/* Header com streak */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Target className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-bold text-foreground">Suas metas da semana</h2>
-        </div>
-        {streak > 0 && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30">
-            <Flame className="h-3 w-3 text-orange-600" />
-            <span className="text-[10px] font-black text-orange-600">{streak} dias seguidos</span>
-          </div>
-        )}
-      </div>
-
-
-      {/* Progresso geral metas semanais */}
-      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/15">
-        <CardContent className="p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-foreground">
-              {concluidas} de {metas.length} metas concluídas
-            </span>
-            <span className="text-[10px] font-bold text-primary">{progressoGeral.toFixed(0)}%</span>
-
-          </div>
-          <Progress value={progressoGeral} className="h-2" />
-          {concluidas === metas.length && metas.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-2">
-              <Trophy className="icon-sm text-yellow-600" />
-              <span className="text-[10px] font-bold text-yellow-700">
-                Você bateu todas as metas! 🎉 +{metas.reduce((a, m) => a + m.xpRecompensa, 0)} pontos
-              </span>
-            </div>
-
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Lista de metas semanais */}
-      {metas.map(meta => (
-        <Card key={meta.id} className={meta.concluida ? 'opacity-75' : ''}>
-          <CardContent className="p-3">
-            <div className="flex items-start gap-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                meta.concluida ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-muted'
-              }`}>
-                {meta.concluida ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                ) : (
-                  <meta.icon className={`h-4 w-4 ${meta.cor}`} />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className={`text-xs font-bold ${meta.concluida ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                    {meta.titulo}
-                  </p>
-                  <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
-                    <Zap className="h-2 w-2" /> +{meta.xpRecompensa} XP
-                  </Badge>
-                </div>
-                <p className="text-[10px] text-muted-foreground mb-1.5">{meta.descricao}</p>
-                <div className="flex items-center gap-2">
-                  <Progress value={meta.progresso} className="h-1.5 flex-1" />
-                  <span className="text-[10px] font-bold text-muted-foreground shrink-0">
-                    {meta.atual}/{meta.meta} {meta.unidade}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-
       {/* ── MISSÕES DE SAÚDE (Baseadas no MyID) ── */}
       {missoesConcluiveis.length > 0 && (
         <div className="space-y-3 pt-2">
@@ -721,6 +647,80 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           )}
         </div>
       )}
+
+      {/* Header com streak */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-bold text-foreground">Suas metas da semana</h2>
+        </div>
+        {streak > 0 && (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30">
+            <Flame className="h-3 w-3 text-orange-600" />
+            <span className="text-[10px] font-black text-orange-600">{streak} dias seguidos</span>
+          </div>
+        )}
+      </div>
+
+
+      {/* Progresso geral metas semanais */}
+      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/15">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-foreground">
+              {concluidas} de {metas.length} metas concluídas
+            </span>
+            <span className="text-[10px] font-bold text-primary">{progressoGeral.toFixed(0)}%</span>
+
+          </div>
+          <Progress value={progressoGeral} className="h-2" />
+          {concluidas === metas.length && metas.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <Trophy className="icon-sm text-yellow-600" />
+              <span className="text-[10px] font-bold text-yellow-700">
+                Você bateu todas as metas! 🎉 +{metas.reduce((a, m) => a + m.xpRecompensa, 0)} pontos
+              </span>
+            </div>
+
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Lista de metas semanais */}
+      {metas.map(meta => (
+        <Card key={meta.id} className={meta.concluida ? 'opacity-75' : ''}>
+          <CardContent className="p-3">
+            <div className="flex items-start gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                meta.concluida ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-muted'
+              }`}>
+                {meta.concluida ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <meta.icon className={`h-4 w-4 ${meta.cor}`} />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className={`text-xs font-bold ${meta.concluida ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                    {meta.titulo}
+                  </p>
+                  <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
+                    <Zap className="h-2 w-2" /> +{meta.xpRecompensa} XP
+                  </Badge>
+                </div>
+                <p className="text-[10px] text-muted-foreground mb-1.5">{meta.descricao}</p>
+                <div className="flex items-center gap-2">
+                  <Progress value={meta.progresso} className="h-1.5 flex-1" />
+                  <span className="text-[10px] font-bold text-muted-foreground shrink-0">
+                    {meta.atual}/{meta.meta} {meta.unidade}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
 
       {/* ── SUAS DICAS DO MyID (IA + evidência) — moram na Jornada ── */}
       {dicasIA.length > 0 && (

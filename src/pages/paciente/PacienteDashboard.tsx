@@ -23,6 +23,7 @@ import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 import { NIVEL_LIMITES } from '@/hooks/useRecompensas';
+import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { cn } from '@/lib/utils';
 
 interface PacienteInfo {
@@ -79,6 +80,7 @@ export default function PacienteDashboard() {
   const [historiaContada, setHistoriaContada] = useState(false);
   const [myidConcluido, setMyidConcluido] = useState(false);
   const [nDicas, setNDicas] = useState(0);
+  const [focos, setFocos] = useState<{ oportunidade: string; atencao: string | null } | null>(null);
 
   const notifications = usePacienteNotifications(user?.id);
   const { isFree, isInTrial, trialDiasRestantes, emCarencia, bloqueadoClinico, diasRestantesCarencia } = useWellnessAccess();
@@ -139,7 +141,7 @@ export default function PacienteDashboard() {
             .eq('paciente_id', pac.id)
             .neq('status', 'concluido'),
           supabase.from('myid_avaliacoes')
-            .select('id, updated_at')
+            .select('id, updated_at, resultado_processado')
             .eq('paciente_id', pac.id)
             .eq('status', 'concluido')
             .order('updated_at', { ascending: false })
@@ -171,6 +173,29 @@ export default function PacienteDashboard() {
 
         const completedMyIds = lastMyIdRes.data || [];
         setMyidConcluido(completedMyIds.length > 0);
+
+        // Focos da avaliação (mesma lógica do painel MyID): maior oportunidade
+        // e ponto de atenção — mostrados DENTRO do card "Sua avaliação gerou..."
+        const sc = (completedMyIds[0] as any)?.resultado_processado?.scores;
+        if (sc) {
+          const fatores = [
+            { label: 'Melhorar o sono', p: calcularPerdaDimensao('R', 10 - sc.R).perda_pontos },
+            { label: 'Beber mais água', p: calcularPerdaDimensao('HID', 10 - sc.HID).perda_pontos },
+            { label: 'Mais movimento', p: calcularPerdaDimensao('AF', 10 - sc.AF).perda_pontos },
+            { label: 'Ajustar a alimentação', p: calcularPerdaDimensao('NUT', 10 - sc.NUT).perda_pontos },
+            { label: 'Reduzir a ansiedade', p: calcularPerdaDimensao('P', sc.P).perda_pontos },
+            { label: 'Vencer a inércia', p: calcularPerdaDimensao('I', sc.I).perda_pontos },
+            { label: 'Reduzir a dor', p: calcularPerdaDimensao('D', sc.D).perda_pontos },
+            { label: 'Melhorar a rotina', p: calcularPerdaDimensao('C', 10 - sc.C).perda_pontos },
+            { label: 'Cuidar da postura', p: calcularPerdaDimensao('ERG', 10 - sc.ERG).perda_pontos },
+          ].filter(f => f.p > 0).sort((a, b) => b.p - a.p);
+          if (fatores.length > 0) {
+            setFocos({
+              oportunidade: fatores[0].label,
+              atencao: fatores.length > 1 ? fatores[fatores.length - 1].label : null,
+            });
+          }
+        }
         // Mostra prompt do MyID independentemente de avaliação de voz
         if (completedMyIds.length === 0) {
           setShowMyIdPrompt(true);
@@ -368,6 +393,20 @@ export default function PacienteDashboard() {
                   <p className="text-xs font-bold uppercase tracking-wider text-primary">
                     Sua avaliação gerou isto para você
                   </p>
+
+                  {/* Os achados importantes, direto no funil */}
+                  {focos && (
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                        🎯 Maior oportunidade: {focos.oportunidade}
+                      </span>
+                      {focos.atencao && (
+                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                          ⚠️ Ponto de atenção: {focos.atencao}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   <button onClick={() => navigate('/paciente/questionarios?ver=ultimo')}
                     className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
