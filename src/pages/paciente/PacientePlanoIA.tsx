@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
+import PlanoTreinoInterativo from '@/components/paciente/PlanoTreinoInterativo';
 
 export default function PacientePlanoIA() {
   const { user } = useAuth();
@@ -65,7 +66,7 @@ export default function PacientePlanoIA() {
   // Gera o plano do cliente (treino e/ou nutrição) a partir do MyID +
   // questionários + anamnese. Usa as MESMAS funções de IA do profissional
   // (que aceitam paciente_id) e persiste em planos_ia_cliente.
-  const gerarPlano = async (alvo: 'treino' | 'nutricao' | 'tudo') => {
+  const gerarPlano = async (alvo: 'treino' | 'nutricao' | 'tudo', incomodo?: string) => {
     if (!pacienteId) return;
     setGerando(alvo);
     try {
@@ -76,7 +77,11 @@ export default function PacientePlanoIA() {
 
       if (alvo === 'treino' || alvo === 'tudo') {
         const res = await supabase.functions.invoke('gerar-plano-treino', {
-          body: { paciente_id: pacienteId, objetivo, nivel: 'iniciante', frequencia_semanal: 3, duracao_semanas: 8 },
+          body: {
+            paciente_id: pacienteId, objetivo, nivel: 'iniciante', frequencia_semanal: 3, duracao_semanas: 8,
+            // Incômodo relatado pelo cliente → o plano evita/adapta a região
+            ...(incomodo ? { restricoes: `IMPORTANTE — incômodo relatado pelo paciente, adapte com cuidado (reduza carga/ADM ou substitua exercícios que sobrecarreguem a região; progrida devagar): ${incomodo}` } : {}),
+          },
         });
         if (res.error) throw await erroDaFuncao(res.error);
         const plano = (res.data as any)?.plano;
@@ -106,7 +111,7 @@ export default function PacientePlanoIA() {
       }
 
       await carregar(pacienteId);
-      toast.success('Plano pronto! 💪 Role a tela para ver.');
+      toast.success(incomodo ? 'Treino adaptado ao seu incômodo! 💪' : 'Plano pronto! 💪 Role a tela para ver.');
     } catch (e: any) {
       toast.error(e?.message || 'Não consegui gerar o plano agora. Tente de novo em instantes.');
     } finally {
@@ -201,9 +206,18 @@ export default function PacientePlanoIA() {
             {/* Diretrizes do profissional (nutrição, treino, ...) */}
             {diretrizes.map((dir, i) => <DiretrizProfissionalView key={i} diretriz={dir} />)}
 
-            {/* Plano de treino — profissional tem prioridade; senão, o da IA */}
+            {/* Plano de treino — profissional tem prioridade; senão, o da IA
+                (interativo: GIFs, como fazer, marcar feito, adaptar por incômodo) */}
             <PlanoTreinoView treino={treino} />
-            {!treino && treinoIA && <PlanoTreinoView treino={{ titulo: treinoIA.titulo, estrutura: treinoIA.conteudo }} ia />}
+            {!treino && treinoIA && pacienteId && (
+              <PlanoTreinoInterativo
+                pacienteId={pacienteId}
+                titulo={treinoIA.titulo}
+                conteudo={treinoIA.conteudo}
+                onRegenerarComIncomodo={(nota) => gerarPlano('treino', nota)}
+                regenerando={gerando === 'treino'}
+              />
+            )}
 
             {/* Plano alimentar */}
             <PlanoDietaView dieta={dieta} />

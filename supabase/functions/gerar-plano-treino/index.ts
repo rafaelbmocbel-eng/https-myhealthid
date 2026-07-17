@@ -61,25 +61,46 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Cardápio de exercícios do banco: biblioteca de GIFs do profissional +
-    // catálogo terapêutico. A IA escolhe SÓ daqui.
-    const [bibRes, catRes] = await Promise.all([
-      admin.from("biblioteca_exercicios")
-        .select("id, nome, grupo_muscular, gif_url, gif_url_fem")
-        .eq("terapeuta_id", userId).eq("ativo", true).limit(250),
-      admin.from("exercicios_biblioteca")
-        .select("id, nome, categoria").limit(250),
-    ]);
+    // Dono do banco de GIFs: quando o CLIENTE gera o próprio plano, o
+    // biblioteca_exercicios dele (paciente) é vazio — os GIFs pertencem ao
+    // PROFISSIONAL. Então usamos o banco do profissional do paciente; se ele
+    // não tem profissional (ou o banco está vazio), caímos no banco da
+    // plataforma (qualquer biblioteca com GIF) para o cliente também ter a
+    // demonstração em vídeo. Profissional gerando: bankOwner = ele mesmo.
+    let bankOwner: string | null = userId;
+    if (paciente_id) {
+      const { data: pacRow } = await admin.from("pacientes")
+        .select("terapeuta_id").eq("id", paciente_id).maybeSingle();
+      bankOwner = ((pacRow as any)?.terapeuta_id) || userId;
+    }
+    const BANK_COLS = "id, nome, grupo_muscular, gif_url, gif_url_fem, orientacoes, series_padrao, repeticoes_padrao, descanso_padrao_segundos";
+    let bibData: any[] = [];
+    {
+      const { data } = await admin.from("biblioteca_exercicios")
+        .select(BANK_COLS).eq("terapeuta_id", bankOwner).eq("ativo", true).limit(250);
+      bibData = data || [];
+    }
+    if (bibData.length === 0) {
+      // Fallback: banco da plataforma — só exercícios com GIF, de qualquer profissional.
+      const { data } = await admin.from("biblioteca_exercicios")
+        .select(BANK_COLS).eq("ativo", true).not("gif_url", "is", null).limit(250);
+      bibData = data || [];
+    }
+    const { data: catData } = await admin.from("exercicios_biblioteca")
+      .select("id, nome, categoria").limit(250);
+
     // Se a paciente é mulher e o exercício tem a variante com avatar feminino,
     // entrega o GIF feminino.
     const prefereFem = /^f/i.test(String(sexo || ""));
-    type Disp = { id: string; nome: string; grupo: string; gif_url: string | null };
+    type Disp = { id: string; nome: string; grupo: string; gif_url: string | null; orientacoes: string | null; series?: number; reps?: number; descanso?: number };
     const disponiveis: Disp[] = [
-      ...((bibRes.data || []) as any[]).map((e) => ({
+      ...bibData.map((e) => ({
         id: e.id, nome: e.nome, grupo: e.grupo_muscular || "",
         gif_url: (prefereFem && e.gif_url_fem) ? e.gif_url_fem : (e.gif_url || null),
+        orientacoes: e.orientacoes || null,
+        series: e.series_padrao ?? undefined, reps: e.repeticoes_padrao ?? undefined, descanso: e.descanso_padrao_segundos ?? undefined,
       })),
-      ...((catRes.data || []) as any[]).map((e) => ({ id: e.id, nome: e.nome, grupo: e.categoria || "", gif_url: null })),
+      ...((catData || []) as any[]).map((e) => ({ id: e.id, nome: e.nome, grupo: e.categoria || "", gif_url: null, orientacoes: null })),
     ];
     const mapa = new Map(disponiveis.map((e) => [e.id, e]));
 
@@ -161,13 +182,18 @@ Gere o plano periodizado completo em JSON.`.trim();
       if (m) plano = JSON.parse(m[0]);
     }
 
-    // Enriquece cada exercício com o gif_url e o nome canônico do banco.
+    // Enriquece cada exercício com o gif_url, o nome canônico e as ORIENTAÇÕES
+    // oficiais do banco (execução correta) — para o plano ficar bem explicado.
     if (disponiveis.length && plano?.fases) {
       for (const f of plano.fases || []) {
         for (const s of f.sessoes || []) {
           for (const ex of s.exercicios || []) {
             const ref = ex?.id ? mapa.get(ex.id) : null;
-            if (ref) { ex.nome = ref.nome; ex.gif_url = ref.gif_url; }
+            if (ref) {
+              ex.nome = ref.nome;
+              ex.gif_url = ref.gif_url;
+              if (ref.orientacoes) ex.orientacoes = ref.orientacoes;
+            }
           }
         }
       }
