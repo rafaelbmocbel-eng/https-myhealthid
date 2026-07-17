@@ -300,7 +300,7 @@ export default function Hoje() {
               {atalhos.length > 0 && (
                 <div className="flex-1 min-h-0 flex flex-col gap-1.5">
                   <SectionLabel>Atalhos</SectionLabel>
-                  <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 auto-rows-fr">
+                  <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 auto-rows-min content-start">
                     {atalhos.map(a => (
                       <PillBtn
                         key={a.id}
@@ -339,7 +339,7 @@ function PillBtn({
     <button
       onClick={onClick}
       className={cn(
-        "h-full min-h-[3.25rem] rounded-2xl bg-card border border-border/40 px-3 sm:px-4 flex items-center gap-2.5 sm:gap-3 relative",
+        "min-h-[3.25rem] rounded-2xl bg-card border border-border/40 px-3 sm:px-4 flex items-center gap-2.5 sm:gap-3 relative",
         "shadow-xs hover:shadow-md hover:border-border hover:-translate-y-0.5 transition-all active:scale-[0.98]",
         pulseRing(urgency),
       )}
