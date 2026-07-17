@@ -102,9 +102,9 @@ export default function QuestionariosClinicosSection({ pacienteId }: Props) {
             <ClipboardCheck className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold">Questionários do seu plano</p>
+            <p className="text-sm font-bold">Questionários do plano</p>
             <p className="text-[11px] text-muted-foreground">
-              Baseados em evidência científica — o seu MyID escolheu estes para você
+              Baseados em evidência — montam seu plano nutricional e treino personalizados
             </p>
           </div>
         </div>

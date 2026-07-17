@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Award } from 'lucide-react';
+import { Award, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import PacienteInsightsDaAvaliacao from '@/components/paciente/PacienteInsightsDaAvaliacao';
@@ -53,8 +53,16 @@ export default function JornadaPacienteCard({ pacienteId }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Sem rótulo extra: "Seu plano de hoje" e "Metas da semana" já dizem
-          tudo — três nomes para o mesmo conceito (tarefas) confundiam. */}
+      {/* Um nome só para esta área: Jornada = as metas + o plano diário
+          para chegar lá ("Seu plano de hoje" e "Metas da semana" são as
+          partes dela) */}
+      <div className="flex items-center gap-2">
+        <Rocket className="icon-sm text-primary" />
+        <div>
+          <h3 className="text-sm font-bold text-foreground leading-tight">Jornada</h3>
+          <p className="text-[11px] text-muted-foreground">Suas metas e o plano diário para chegar lá</p>
+        </div>
+      </div>
 
       {/* Missões / desafios da semana — o mesmo que o paciente vê no portal dele */}
       <PacienteMetasDesafios pacienteId={pacienteId} />

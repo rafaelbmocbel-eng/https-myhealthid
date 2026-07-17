@@ -16,7 +16,6 @@ import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
 const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
-import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 import MyIDPDFButton from '@/components/paciente/MyIDPDFButton';
 import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
@@ -24,6 +23,7 @@ import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 import { NIVEL_LIMITES } from '@/hooks/useRecompensas';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
+import { INSTRUMENTOS, instrumentosRecomendados } from '@/lib/instrumentosClinicos';
 import { cn } from '@/lib/utils';
 
 interface PacienteInfo {
@@ -81,6 +81,7 @@ export default function PacienteDashboard() {
   const [myidConcluido, setMyidConcluido] = useState(false);
   const [nDicas, setNDicas] = useState(0);
   const [focos, setFocos] = useState<{ oportunidade: string; atencao: string | null } | null>(null);
+  const [proxInstrumento, setProxInstrumento] = useState<{ nome: string; sigla: string } | null>(null);
 
   const notifications = usePacienteNotifications(user?.id);
   const { isFree, isInTrial, trialDiasRestantes, emCarencia, bloqueadoClinico, diasRestantesCarencia } = useWellnessAccess();
@@ -118,7 +119,7 @@ export default function PacienteDashboard() {
 
         const now = new Date().toISOString();
 
-        const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, avalVozRes, historiaRes, dicasRes] = await Promise.all([
+        const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, avalVozRes, historiaRes, dicasRes, questClinRes] = await Promise.all([
           supabase.from('agendamentos')
             .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
             .eq('paciente_id', pac.id)
@@ -158,6 +159,9 @@ export default function PacienteDashboard() {
             .select('dicas')
             .eq('paciente_id', pac.id)
             .maybeSingle(),
+          (supabase as any).from('questionarios_clinicos')
+            .select('instrumento')
+            .eq('paciente_id', pac.id),
         ]);
 
         setProximasConsultas(agendaRes.data || []);
@@ -195,6 +199,12 @@ export default function PacienteDashboard() {
               atencao: fatores.length > 1 ? fatores[fatores.length - 1].label : null,
             });
           }
+
+          // Próximo questionário apontado pelo MyID (o primeiro recomendado
+          // que ainda não foi respondido) — mostrado dentro do funil
+          const respondidos = new Set(((questClinRes.data as any[]) || []).map((r: any) => r.instrumento));
+          const prox = instrumentosRecomendados(sc).find((id) => !respondidos.has(id));
+          setProxInstrumento(prox ? { nome: INSTRUMENTOS[prox].nome, sigla: INSTRUMENTOS[prox].sigla } : null);
         }
         // Mostra prompt do MyID independentemente de avaliação de voz
         if (completedMyIds.length === 0) {
@@ -248,7 +258,7 @@ export default function PacienteDashboard() {
       done: historicoFeito,
       label: 'Responder histórico clínico',
       sub: 'Fraturas, cirurgias, medicações e condições',
-      path: '/paciente/questionarios',
+      path: '/paciente/questionarios?foco=historico',
       Icon: ClipboardList,
     },
     {
@@ -420,6 +430,29 @@ export default function PacienteDashboard() {
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </button>
 
+                  {/* O próximo questionário que o MyID apontou — tudo importante
+                      fica aqui dentro; free vê que o próximo é do Premium */}
+                  {proxInstrumento && (
+                    <button
+                      onClick={() => navigate(isFree && !isInTrial ? '/paciente/plano' : '/paciente/questionarios?foco=plano')}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                        <ClipboardList className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">
+                          Próximo questionário: {proxInstrumento.sigla}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {isFree && !isInTrial
+                            ? `🔒 ${proxInstrumento.nome} — o MyID apontou este, disponível no Premium`
+                            : `${proxInstrumento.nome} — o seu MyID apontou este como o próximo passo`}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  )}
+
                   <button onClick={() => navigate('/paciente/dicas')}
                     className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
                     <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 flex items-center justify-center shrink-0">
@@ -437,17 +470,20 @@ export default function PacienteDashboard() {
                   </button>
 
                   <button
-                    onClick={() => navigate(isFree && !isInTrial ? '/paciente/plano' : '/paciente/questionarios')}
+                    onClick={() => navigate(isFree && !isInTrial ? '/paciente/plano' : '/paciente/questionarios?foco=plano')}
                     className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
                     <div className="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center shrink-0">
                       <ClipboardList className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Questionários do seu plano</p>
+                      <p className="text-sm font-semibold">
+                        Treino personalizado
+                        {isFree && !isInTrial && <span className="ml-1.5 text-[10px] font-bold text-violet-600">💎 Premium</span>}
+                      </p>
                       <p className="text-[11px] text-muted-foreground">
                         {isFree && !isInTrial
-                          ? '🔒 Desbloqueie no Premium — personalizam treino, fisioterapia e nutrição'
-                          : 'O seu MyID escolheu os que personalizam seu treino, fisio e nutrição'}
+                          ? '🔒 Monte seu plano nutricional, seu treino e tratamento personalizado'
+                          : 'Monte seu plano nutricional, seu treino e tratamento personalizado'}
                       </p>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -631,11 +667,6 @@ export default function PacienteDashboard() {
               </Suspense>
             </V>
           )}
-
-          {/* Alertas e lembretes */}
-          <V i={8}>
-            {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
-          </V>
 
           {/* Recompensas */}
           <V i={12}>

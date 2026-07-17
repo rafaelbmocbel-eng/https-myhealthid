@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
@@ -29,9 +30,18 @@ interface QuestionarioItem {
 
 type ViewMode = 'list' | 'answering' | 'viewing';
 
+// ?foco=historico → só o Histórico Clínico (sem o resultado do MyID, que já tem
+// lugar próprio no Início); ?foco=plano → só os questionários do plano
+// personalizado (Treino personalizado). Sem foco → a página é do MyID.
+type Foco = 'historico' | 'plano' | null;
+
 export default function PacienteQuestionarios() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const focoParam = new URLSearchParams(location.search).get('foco');
+  const foco: Foco = focoParam === 'historico' || focoParam === 'plano' ? focoParam : null;
   const [questionarios, setQuestionarios] = useState<QuestionarioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -246,7 +256,49 @@ export default function PacienteQuestionarios() {
     );
   }
 
-  // ── View: List ──
+  // ── View: Histórico clínico (só o card de perguntas — o resultado do MyID
+  // tem lugar próprio no Início e em "Ver meu resultado completo") ──
+  if (foco === 'historico') {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
+            <h1 className="h-page">Histórico clínico</h1>
+            <p className="text-xs text-muted-foreground -mt-3">
+              Fraturas, cirurgias, medicações e condições — vira achados clínicos para o seu Avatar.
+            </p>
+            <HistoricoClinicoCard />
+          </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  // ── View: Treino personalizado (pago) — questionários que montam o plano ──
+  if (foco === 'plano') {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
+            <h1 className="h-page">Treino personalizado</h1>
+            <p className="text-xs text-muted-foreground -mt-3">
+              Monte seu plano nutricional, seu treino e tratamento personalizado — estes
+              questionários calibram tudo com base no seu MyID.
+            </p>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : pacienteId ? (
+              <QuestionariosClinicosSection pacienteId={pacienteId} />
+            ) : null}
+          </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  // ── View: List (MyID) ──
   const pendentes = questionarios.filter(q => q.status !== 'concluido');
   const concluidos = questionarios.filter(q => q.status === 'concluido');
   const hasPending = pendentes.length > 0;
@@ -391,10 +443,36 @@ export default function PacienteQuestionarios() {
             </>
           )}
 
-          <HistoricoClinicoCard />
-
-          {/* Questionários clínicos adaptativos (premium) — o MyID decide quais */}
-          {pacienteId && <QuestionariosClinicosSection pacienteId={pacienteId} />}
+          {/* Cada coisa no seu lugar: aqui é a página do MyID. Histórico e
+              Treino personalizado têm views próprias (?foco=) — só atalhos. */}
+          <div className="space-y-2">
+            <button
+              onClick={() => navigate('/paciente/questionarios?foco=historico')}
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors"
+            >
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <ClipboardList className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Histórico clínico</p>
+                <p className="text-[11px] text-muted-foreground">Fraturas, cirurgias, medicações e condições</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+            <button
+              onClick={() => navigate('/paciente/questionarios?foco=plano')}
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors"
+            >
+              <div className="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center shrink-0">
+                <ClipboardList className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Treino personalizado</p>
+                <p className="text-[11px] text-muted-foreground">Questionários que montam seu plano nutricional e treino</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+          </div>
         </div>
       </PacienteLayout>
     </ProtectedPatientRoute>

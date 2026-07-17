@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 
 interface PacienteData {
   id: string;
@@ -385,6 +386,10 @@ export default function PacienteAgenda() {
               </Button>
             )}
           </div>
+
+          {/* Lembretes & alertas — moraram no Início; aqui é o lugar deles
+              (consulta chegando, diário e questionários pendentes) */}
+          {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
 
           {/* View toggle */}
           <div className="flex rounded-xl bg-muted p-1">

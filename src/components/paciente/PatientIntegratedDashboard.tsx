@@ -598,6 +598,44 @@ export default function PatientIntegratedDashboard({
                       </span>
                       <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
                     </summary>
+                    {/* Cliente: versão MINI — só o que cada zona significa e onde
+                        ele está. A explicação completa (perdas por anel) é do
+                        profissional. */}
+                    {!isProfessional ? (
+                      <div className="px-4 pb-4 pt-1 text-[12.5px] leading-relaxed space-y-2">
+                        <p className="text-muted-foreground">
+                          Seu MyID vai de 0 a 100 — quanto maior, melhor seu corpo está hoje.
+                        </p>
+                        <ul className="space-y-1">
+                          {[
+                            { emoji: '🟢', faixa: '85–100', nome: 'Excelente', desc: 'corpo em equilíbrio, siga assim', min: 85, max: 200 },
+                            { emoji: '🟡', faixa: '70–84', nome: 'Bom', desc: 'vai bem, com pequenos ajustes a fazer', min: 70, max: 84 },
+                            { emoji: '🟠', faixa: '50–69', nome: 'Moderado', desc: 'alguns hábitos estão pesando, hora de agir', min: 50, max: 69 },
+                            { emoji: '🔴', faixa: '30–49', nome: 'Crítico', desc: 'seu corpo pede cuidado com prioridade', min: 30, max: 49 },
+                            { emoji: '🆘', faixa: '0–29', nome: 'Crítico severo', desc: 'fale com seu profissional o quanto antes', min: 0, max: 29 },
+                          ].map((z) => {
+                            const aqui = Math.round(myidScore) >= z.min && Math.round(myidScore) <= z.max;
+                            return (
+                              <li key={z.nome} className={cn('flex gap-2', aqui ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
+                                <span className="shrink-0">{z.emoji}</span>
+                                <span>
+                                  {z.faixa} · {z.nome} — {z.desc}
+                                  {aqui && <span className="text-primary"> ← você está aqui</span>}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        {redFlagsDetected && (
+                          <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
+                            ⚠️ Foram detectados sinais de alerta clínico — converse com seu profissional antes de mudar o plano.
+                          </p>
+                        )}
+                        <p className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/40">
+                          O MyID é um apoio à decisão clínica — ele não substitui a avaliação do seu profissional.
+                        </p>
+                      </div>
+                    ) : (
                     <div className="px-4 pb-4 pt-1 text-sm leading-relaxed text-foreground/85 space-y-3">
                       <p className="text-[12.5px]">
                         Cada anel parte de uma <span className="font-medium">nota de 0 a 10</span> e desconta uma quantidade de pontos do seu MyID (que começa em <span className="font-mono">100</span>).
@@ -702,6 +740,7 @@ export default function PatientIntegratedDashboard({
                         O MyID é um apoio à decisão clínica — ele não substitui a avaliação do seu profissional.
                       </p>
                     </div>
+                    )}
                   </details>
                 </CardContent>
               </Card>
