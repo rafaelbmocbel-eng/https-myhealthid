@@ -209,29 +209,13 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         <RelatorioAvaliacaoCard pacienteId={pacienteId} pacienteNome={pacienteNome} pacienteTelefone={telefone} />
       </Suspense>
 
-      {/* O QUE O CLIENTE MONTOU — questionários clínicos respondidos + plano IA
-          que o próprio cliente gerou. Espelha o app do cliente para o
-          profissional acompanhar (e é o que faltava aparecer aqui). */}
+      {/* O QUE O CLIENTE MONTOU — questionários clínicos respondidos.
+          (O plano que o cliente gerou sozinho fica DENTRO do acordeão
+          "Plano premium IA", junto das ferramentas de edição do profissional.) */}
       <div className="space-y-3">
         <Suspense fallback={null}>
           <QuestionariosClinicosCard pacienteId={pacienteId} />
         </Suspense>
-        {(geradoCliente?.treinoIA || geradoCliente?.nutricaoIA) && (
-          <Card className="p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Dumbbell className="h-4 w-4 text-primary" />
-              <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Plano que o cliente montou (IA)</h4>
-            </div>
-            <Suspense fallback={<div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-              <TreinoDocumento
-                nome={pacienteNome}
-                titulo={geradoCliente?.treinoIA?.titulo}
-                conteudo={geradoCliente?.treinoIA?.conteudo || {}}
-                nutricao={geradoCliente?.nutricaoIA}
-              />
-            </Suspense>
-          </Card>
-        )}
       </div>
 
       {/* Espelho do portal — uma lista só (sem cards duplicando os mesmos números) */}
@@ -348,13 +332,35 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
             </AccordionContent>
           </AccordionItem>
 
-          {/* Plano IA — criar aqui (treino com GIFs + nutrição) e LIBERAR pro portal */}
+          {/* Plano IA — o que o cliente gerou (referência) + criar/editar aqui
+              (treino com GIFs + nutrição) e LIBERAR pro portal */}
           <AccordionItem value="plano-ia">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> 💎 Plano premium IA · treino (GIFs) &amp; nutrição ({data.planosTreino.length + data.planosAlim.length})</div>
+              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> 💎 Plano premium IA · treino (GIFs) &amp; nutrição ({data.planosTreino.length + data.planosAlim.length + (geradoCliente?.treinoIA ? 1 : 0) + (geradoCliente?.nutricaoIA ? 1 : 0)})</div>
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3 px-1 pb-2">
+                {/* O que o CLIENTE montou sozinho — referência, recolhível */}
+                {(geradoCliente?.treinoIA || geradoCliente?.nutricaoIA) && (
+                  <details className="rounded-lg border border-primary/20 bg-primary/5">
+                    <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-bold text-primary flex items-center gap-1.5">
+                      <Dumbbell className="h-3.5 w-3.5" /> Plano que o cliente montou (IA) — toque para ver
+                    </summary>
+                    <div className="p-2">
+                      <p className="text-[10px] text-muted-foreground mb-2">
+                        Gerado pelo próprio cliente no portal. Use como base: crie o plano abaixo (você pode ajustar tudo) e <strong>Liberar</strong> a sua versão.
+                      </p>
+                      <Suspense fallback={<div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                        <TreinoDocumento
+                          nome={pacienteNome}
+                          titulo={geradoCliente?.treinoIA?.titulo}
+                          conteudo={geradoCliente?.treinoIA?.conteudo || {}}
+                          nutricao={geradoCliente?.nutricaoIA}
+                        />
+                      </Suspense>
+                    </div>
+                  </details>
+                )}
                 <p className="text-[10px] text-muted-foreground px-1">
                   Gere o plano de treino (usa MyID + seus exercícios em GIF) e o plano nutricional (usa MyID + bioimpedância + anamnese). Depois toque em <strong>Liberar</strong> para enviar ao portal do cliente.
                 </p>
