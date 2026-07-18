@@ -28,7 +28,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { exportToCsv } from '@/utils/exportCsv';
-import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/whatsapp';
+import { shareBoasVindas, shareLembreteRetorno, sharePosAlta, waUrl } from '@/utils/whatsapp';
 import { useEquipe } from '@/hooks/useEquipe';
 import { useConvenios } from '@/hooks/useConvenios';
 import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
@@ -174,7 +174,7 @@ function LinkModalContent({ pac, links, gerando, gerarLink, copiarLink, cancelar
             <Button className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => {
               const url = getLinkUrl(linkAtivo.token);
               const msg = `Olá ${pac.nome}! 🩺\n\nPreencha sua avaliação:\n${url}`;
-              window.open(`https://wa.me/${pac.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+              window.open(waUrl(pac.telefone, msg), '_blank');
             }}>
               <MessageCircle className="icon-sm" /> Enviar via WhatsApp
             </Button>
@@ -1049,8 +1049,7 @@ export default function Pacientes() {
                           className="h-9 w-9 text-[#25D366] hover:bg-[#25D366]/10"
                           title="WhatsApp"
                           onClick={() => {
-                            const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
-                            window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                            window.open(waUrl(p.telefone, `Olá ${p.nome}! 👋\n\n`), '_blank');
                           }}
                         >
                           <MessageCircle className="icon-sm" />
@@ -1527,8 +1526,7 @@ export default function Pacientes() {
                 onClick={() => {
                   if (!shareModal.url || !shareModal.telefone) return;
                   const msg = `Olá ${shareModal.nome}! Para agilizar seu atendimento, complete seu cadastro neste link seguro:\n\n${shareModal.url}\n\nLeva menos de 3 minutos. 🙏`;
-                  const tel = shareModal.telefone.replace(/\D/g, '');
-                  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+                  window.open(waUrl(shareModal.telefone, msg), '_blank');
                 }}
               >
                 <MessageCircle className="h-4 w-4" /> WhatsApp

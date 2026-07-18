@@ -243,6 +243,26 @@ export async function sharePacoteInfo(patientName: string, patientPhone: string,
 
 // ── Utility functions ─────────────────────────────────────────────────
 
+// Normaliza um telefone brasileiro para o formato que o wa.me exige (com DDI
+// 55). Evita os dois bugs comuns: (a) abrir wa.me sem o 55 (link não abre a
+// conversa) e (b) prefixar 55 num número que já tem 55 (vira 5555...).
+export function normalizarTelefoneWhats(phone?: string | null): string {
+  let n = (phone || '').replace(/\D/g, '');
+  if (!n) return '';
+  // Remove zero de tronco (ex.: 0 41 9...) antes de avaliar o DDI.
+  n = n.replace(/^0+/, '');
+  // Já vem com DDI 55 + DDD (10 ou 11 dígitos após o 55) → mantém.
+  if (n.startsWith('55') && (n.length === 12 || n.length === 13)) return n;
+  return `55${n}`;
+}
+
+// Monta a URL do wa.me com o telefone normalizado e a mensagem já codificada.
+export function waUrl(phone?: string | null, message?: string): string {
+  const tel = normalizarTelefoneWhats(phone);
+  const base = `https://wa.me/${tel}`;
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
+}
+
 export function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
   if (cleaned.length === 11) {

@@ -13,6 +13,7 @@ import {
   CheckCircle2, AlertCircle, User2, Activity, FileText, Target,
 } from 'lucide-react';
 import { getBaseUrl } from '@/utils/linkUrls';
+import { waUrl } from '@/utils/whatsapp';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -121,7 +122,7 @@ export default function CompartilharPacienteSheet({
     const msg = buildMessage();
     const phone = pacienteTelefone?.replace(/\D/g, '');
     if (phone) {
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      window.open(waUrl(pacienteTelefone, msg), '_blank');
     } else {
       try {
         await navigator.clipboard.writeText(msg);

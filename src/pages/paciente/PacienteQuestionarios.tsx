@@ -117,6 +117,15 @@ export default function PacienteQuestionarios() {
     if (!activeId) return;
     setSubmitting(true);
 
+    // Fecha o wizard e volta para a lista. Só é chamado quando a avaliação
+    // foi de fato persistida — numa falha dura mantemos o wizard aberto para
+    // o paciente poder tentar de novo sem redigitar.
+    const encerrarComSucesso = () => {
+      setActiveId(null);
+      setViewMode('list');
+      fetchQuestionarios();
+    };
+
     try {
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const res = await fetch(
@@ -140,19 +149,31 @@ export default function PacienteQuestionarios() {
       if (!res.ok) throw new Error(body.error || 'Erro ao processar avaliação');
 
       toast({ title: 'Concluído! ✅', description: 'Sua avaliação foi enviada e sincronizada.' });
+      encerrarComSucesso();
     } catch (err: any) {
-      await supabase.from('myid_avaliacoes').update({
+      // Fallback: grava direto na tabela se a edge function falhar. Mas se o
+      // fallback também falhar, NÃO podemos mostrar "concluído" — o paciente
+      // perderia as respostas sem saber.
+      console.error('[complete-myid] edge function falhou, tentando fallback direto:', err);
+      const { error: fbErr } = await supabase.from('myid_avaliacoes').update({
         status: 'concluido',
         respostas_brutas: rawData,
         resultado_processado: result,
         updated_at: new Date().toISOString(),
       }).eq('id', activeId);
+      if (fbErr) {
+        console.error('[complete-myid] fallback direto falhou:', fbErr);
+        toast({
+          title: 'Não foi possível enviar',
+          description: 'Verifique sua conexão e tente novamente — suas respostas não foram perdidas.',
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({ title: 'Concluído! ✅', description: 'Sua avaliação foi enviada ao profissional.' });
+      encerrarComSucesso();
     } finally {
       setSubmitting(false);
-      setActiveId(null);
-      setViewMode('list');
-      fetchQuestionarios();
     }
   };
 

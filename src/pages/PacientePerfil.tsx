@@ -32,7 +32,7 @@ import { useLayoutConfig } from '@/contexts/LayoutConfigContext';
 const QuestionariosComparacao = lazy(() => import('@/components/paciente/QuestionariosComparacao'));
 const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashboard'));
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
-import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
+import { shareAvaliacaoLink, shareAgendaLink, waUrl } from '@/utils/whatsapp';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import StatusClinicoBadge from '@/components/paciente/StatusClinicoBadge';
 import { useAcessoClinicoPaciente } from '@/hooks/useAcessoClinicoPaciente';
@@ -643,9 +643,10 @@ export default function PacientePerfil() {
                       onClick={() =>
                         paciente.telefone
                           ? window.open(
-                              `https://wa.me/${paciente.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                              waUrl(
+                                paciente.telefone,
                                 `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${getPortalUrl(paciente.portal_token!)}`,
-                              )}`,
+                              ),
                               '_blank',
                             )
                           : (() => {
