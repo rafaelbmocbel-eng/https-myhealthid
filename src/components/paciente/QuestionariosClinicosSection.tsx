@@ -28,6 +28,7 @@ export default function QuestionariosClinicosSection({ pacienteId }: Props) {
   const bloqueado = isFree && !isInTrial;
 
   const [aberto, setAberto] = useState<InstrumentoId | null>(null);
+  const [histAberto, setHistAberto] = useState(false);
   const [respostas, setRespostas] = useState<Record<string, number>>({});
   const [atividades, setAtividades] = useState<{ nome: string; nota: number }[]>([
     { nome: '', nota: 5 }, { nome: '', nota: 5 }, { nome: '', nota: 5 },
@@ -123,31 +124,65 @@ export default function QuestionariosClinicosSection({ pacienteId }: Props) {
           <p className="text-xs text-muted-foreground p-2">
             Complete primeiro o Questionário MyID acima — ele define quais destes você precisa responder.
           </p>
-        ) : (
-          <div className="space-y-2">
-            {recomendados.map((id) => {
-              const i = INSTRUMENTOS[id];
-              const feito = data.ultimos.get(id);
-              return (
-                <button key={id} onClick={() => { setAberto(id); setRespostas({}); }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
-                  {feito
-                    ? <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-                    : <Sparkles className="h-5 w-5 text-violet-500 shrink-0" />}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{i.nome} <span className="text-muted-foreground font-normal">({i.sigla})</span></p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {feito
-                        ? `Respondido — ${CLASSIFICACAO_LABEL[feito.classificacao] || feito.classificacao}. Toque para refazer.`
-                        : `${MOTIVO_RECOMENDACAO[id]} · ${i.tempoEstimado}`}
-                    </p>
-                  </div>
-                  {!feito && <Badge variant="outline" className="text-[10px] shrink-0">Responder</Badge>}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        ) : (() => {
+          // Pendentes ficam como cards (ação a fazer); respondidos viram um
+          // histórico compacto e recolhível — não ocupam a tela toda.
+          const pendentes = recomendados.filter((id) => !data.ultimos.get(id));
+          const respondidos = recomendados.filter((id) => data.ultimos.get(id));
+          return (
+            <div className="space-y-2">
+              {pendentes.length === 0 && respondidos.length > 0 && (
+                <div className="flex items-center gap-2 rounded-xl bg-emerald-500/5 border border-emerald-500/20 px-3 py-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <p className="text-[12px] font-medium text-emerald-700 dark:text-emerald-400">Você respondeu todos os questionários do seu plano. 🎉</p>
+                </div>
+              )}
+
+              {pendentes.map((id) => {
+                const i = INSTRUMENTOS[id];
+                return (
+                  <button key={id} onClick={() => { setAberto(id); setRespostas({}); }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
+                    <Sparkles className="h-5 w-5 text-violet-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">{i.nome} <span className="text-muted-foreground font-normal">({i.sigla})</span></p>
+                      <p className="text-[11px] text-muted-foreground">{MOTIVO_RECOMENDACAO[id]} · {i.tempoEstimado}</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] shrink-0">Responder</Badge>
+                  </button>
+                );
+              })}
+
+              {respondidos.length > 0 && (
+                <div className="rounded-xl border border-border/40 overflow-hidden">
+                  <button onClick={() => setHistAberto(v => !v)}
+                    className="w-full flex items-center gap-2 px-3 py-2 bg-muted/30 text-left">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <span className="text-xs font-semibold flex-1">Respondidos ({respondidos.length})</span>
+                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${histAberto ? 'rotate-90' : ''}`} />
+                  </button>
+                  {histAberto && (
+                    <div className="divide-y divide-border/40">
+                      {respondidos.map((id) => {
+                        const i = INSTRUMENTOS[id];
+                        const feito = data.ultimos.get(id);
+                        return (
+                          <button key={id} onClick={() => { setAberto(id); setRespostas({}); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-muted/30 text-left">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[12px] font-medium truncate">{i.sigla} <span className="text-muted-foreground font-normal">· {CLASSIFICACAO_LABEL[feito.classificacao] || feito.classificacao}</span></p>
+                            </div>
+                            <span className="text-[10px] text-primary shrink-0">Refazer</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </CardContent>
 
       <Dialog open={!!aberto} onOpenChange={(o) => { if (!o) setAberto(null); }}>

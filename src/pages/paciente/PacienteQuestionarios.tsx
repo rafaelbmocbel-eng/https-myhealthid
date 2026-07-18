@@ -48,6 +48,9 @@ export default function PacienteQuestionarios() {
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  // Entrou na view de resultado direto do Início (?ver=ultimo)? Então "Voltar"
+  // volta pro Início, não para a lista de questionários (que confunde).
+  const [veioDoInicio, setVeioDoInicio] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [creatingRetake, setCreatingRetake] = useState(false);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
@@ -88,6 +91,7 @@ export default function PacienteQuestionarios() {
     if (ultimo) {
       setActiveId(ultimo.id);
       setViewMode('viewing');
+      setVeioDoInicio(true); // veio do Início ("Ver meu resultado completo")
       window.history.replaceState({}, '', window.location.pathname);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -230,10 +234,13 @@ export default function PacienteQuestionarios() {
         <PacienteLayout>
           <div className="p-4 md:p-6 max-w-4xl mx-auto">
             <button
-              onClick={() => { setActiveId(null); setViewMode('list'); }}
+              onClick={() => {
+                if (veioDoInicio) { navigate('/paciente/dashboard'); return; }
+                setActiveId(null); setViewMode('list');
+              }}
               className="flex items-center gap-1 text-sm font-medium text-muted-foreground mb-4 hover:text-foreground transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" /> Voltar aos questionários
+              <ArrowLeft className="h-4 w-4" /> {veioDoInicio ? 'Voltar ao início' : 'Voltar aos questionários'}
             </button>
             {item?.resultado_processado ? (
               <div className="bg-card p-4 md:p-6 rounded-xl border shadow-sm">

@@ -5,7 +5,7 @@ import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
   LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, TrendingUp,
   Dumbbell, Wallet, Watch, Ticket, MessageSquare, MoreHorizontal, X,
-  ChevronRight, Lock, Users, Activity, Sparkles, Lightbulb,
+  ChevronRight, Lock, Users, Activity, Sparkles, Lightbulb, ArrowLeft,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
@@ -161,25 +161,38 @@ export default function PacienteLayout({ children }: Props) {
           className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6"
           style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', scrollBehavior: 'auto', touchAction: 'pan-y' }}
         >
-          {breadcrumbs.length > 0 && (
-            <Breadcrumb className="px-4 pt-3">
-              <BreadcrumbList>
-                {breadcrumbs.map((crumb, i) => (
-                  <Fragment key={crumb.path ?? crumb.label}>
-                    {i > 0 && <BreadcrumbSeparator />}
-                    <BreadcrumbItem>
-                      {crumb.path ? (
-                        <BreadcrumbLink asChild>
-                          <Link to={crumb.path}>{crumb.label}</Link>
-                        </BreadcrumbLink>
-                      ) : (
-                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                      )}
-                    </BreadcrumbItem>
-                  </Fragment>
-                ))}
-              </BreadcrumbList>
-            </Breadcrumb>
+          {/* Voltar — em toda página do portal exceto o Início (a maioria não
+              tinha). Volta no histórico; sem histórico, cai no Início. */}
+          {location.pathname !== '/paciente/dashboard' && (
+            <div className="flex items-center gap-3 px-4 pt-3">
+              <button
+                onClick={() => { if (window.history.length > 1) navigate(-1); else navigate('/paciente/dashboard'); }}
+                aria-label="Voltar"
+                className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0 active:scale-95"
+              >
+                <ArrowLeft className="h-4 w-4" /> Voltar
+              </button>
+              {breadcrumbs.length > 0 && (
+                <Breadcrumb className="min-w-0">
+                  <BreadcrumbList>
+                    {breadcrumbs.map((crumb, i) => (
+                      <Fragment key={crumb.path ?? crumb.label}>
+                        {i > 0 && <BreadcrumbSeparator />}
+                        <BreadcrumbItem>
+                          {crumb.path ? (
+                            <BreadcrumbLink asChild>
+                              <Link to={crumb.path}>{crumb.label}</Link>
+                            </BreadcrumbLink>
+                          ) : (
+                            <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                          )}
+                        </BreadcrumbItem>
+                      </Fragment>
+                    ))}
+                  </BreadcrumbList>
+                </Breadcrumb>
+              )}
+            </div>
           )}
           {children}
         </main>
