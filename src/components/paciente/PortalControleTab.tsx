@@ -18,6 +18,8 @@ const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAliment
 const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
 const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
 const RelatorioAvaliacaoCard = lazy(() => import('@/components/paciente/RelatorioAvaliacaoCard'));
+const QuestionariosClinicosCard = lazy(() => import('@/components/paciente/QuestionariosClinicosCard'));
+const TreinoDocumento = lazy(() => import('@/components/paciente/TreinoDocumento'));
 import AvatarClinicoCard from '../avatar/AvatarClinicoCard';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -76,6 +78,21 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   };
   const since30 = subDays(new Date(), 30).toISOString();
   const since7 = subDays(new Date(), 7).toISOString();
+
+  // O que o CLIENTE montou sozinho (premium): plano IA (treino+nutrição) que o
+  // cliente gerou. Fica junto do que ele gera para o profissional acompanhar.
+  const { data: geradoCliente } = useQuery({
+    queryKey: ['portal-cliente-gerado', pacienteId],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('planos_ia_cliente')
+        .select('tipo, titulo, conteudo').eq('paciente_id', pacienteId);
+      const rows = (data || []) as any[];
+      return {
+        treinoIA: rows.find((r) => r.tipo === 'treino') || null,
+        nutricaoIA: rows.find((r) => r.tipo === 'nutricao')?.conteudo || null,
+      };
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['portal-controle-full', pacienteId],
@@ -191,6 +208,31 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
       <Suspense fallback={null}>
         <RelatorioAvaliacaoCard pacienteId={pacienteId} pacienteNome={pacienteNome} pacienteTelefone={telefone} />
       </Suspense>
+
+      {/* O QUE O CLIENTE MONTOU — questionários clínicos respondidos + plano IA
+          que o próprio cliente gerou. Espelha o app do cliente para o
+          profissional acompanhar (e é o que faltava aparecer aqui). */}
+      <div className="space-y-3">
+        <Suspense fallback={null}>
+          <QuestionariosClinicosCard pacienteId={pacienteId} />
+        </Suspense>
+        {(geradoCliente?.treinoIA || geradoCliente?.nutricaoIA) && (
+          <Card className="p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Dumbbell className="h-4 w-4 text-primary" />
+              <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Plano que o cliente montou (IA)</h4>
+            </div>
+            <Suspense fallback={<div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+              <TreinoDocumento
+                nome={pacienteNome}
+                titulo={geradoCliente?.treinoIA?.titulo}
+                conteudo={geradoCliente?.treinoIA?.conteudo || {}}
+                nutricao={geradoCliente?.nutricaoIA}
+              />
+            </Suspense>
+          </Card>
+        )}
+      </div>
 
       {/* Espelho do portal — uma lista só (sem cards duplicando os mesmos números) */}
       <Card className="p-2">
