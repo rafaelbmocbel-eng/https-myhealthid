@@ -4,6 +4,7 @@
 // paciente_id, usa o MyID dele para personalizar.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { carregarMotoresClinicos, textoMyID, textoPresencial, textoQuestionarios } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -111,64 +112,21 @@ Deno.serve(async (req) => {
     ];
     const mapa = new Map(disponiveis.map((e) => [e.id, e]));
 
-    // MyID (opcional) para personalizar
-    let myidStr = "";
-    if (paciente_id) {
-      const { data: my } = await admin.from("myid_avaliacoes")
-        .select("resultado_processado")
-        .eq("paciente_id", paciente_id).eq("status", "concluido")
-        .order("updated_at", { ascending: false }).limit(1).maybeSingle();
-      const _rp = (my?.resultado_processado as any);
-    // formato variou entre gerações: component_scores (atual), componentScores ou scores
-    const scores = (_rp?.scores || _rp?.component_scores || _rp?.componentScores);
-      if (scores) myidStr = `\nPerfil MyID (scores por dimensão): ${JSON.stringify(scores)}. Priorize exercícios que atendam às dimensões mais críticas do paciente.`;
-    }
-
     const listaBlock = disponiveis.length
       ? `\n\nExercícios disponíveis no banco da clínica — use SOMENTE estes e preencha "id" com o id exato (NÃO invente exercícios fora desta lista):\n${disponiveis.slice(0, 250).map((e) => `- [${e.id}] ${e.nome}${e.grupo ? ` (${e.grupo})` : ""}`).join("\n")}`
       : "";
 
-
-    // Questionários clínicos validados (PAR-Q+, PSFS, START Back, ISI, PHQ-4)
+    // TRÊS MOTORES (fonte única em _shared/motores-plano.ts): MyID +
+    // questionários clínicos validados + avaliação presencial (achados do
+    // avatar clínico E as observações/notas do profissional no atendimento).
+    let myidStr = "";
     let questTxt = "";
-    try {
-      const { data: quests } = await admin.from("questionarios_clinicos")
-        .select("instrumento, escore, classificacao, respostas, created_at")
-        .eq("paciente_id", paciente_id).order("created_at", { ascending: false }).limit(20);
-      const ult = new Map<string, any>();
-      (quests || []).forEach((q: any) => { if (!ult.has(q.instrumento)) ult.set(q.instrumento, q); });
-      questTxt = [...ult.values()].map((q: any) => {
-        const metas = Array.isArray(q.respostas?.atividades)
-          ? ` — metas do paciente: ${q.respostas.atividades.map((a: any) => `${a.nome} (${a.nota}/10)`).join(", ")}`
-          : "";
-        return `${String(q.instrumento).toUpperCase()}: escore ${q.escore}, ${q.classificacao}${metas}`;
-      }).join("\n");
-    } catch (_qErr) { /* tabela pode não existir ainda — segue sem */ }
-
-    // AVALIAÇÃO PRESENCIAL do profissional: achados do avatar clínico +
-    // queixa/história. É o que o profissional viu no atendimento — prioridade
-    // clínica ao montar o treino.
     let presencialTxt = "";
     if (paciente_id) {
-      try {
-        const [evRes, pacRes] = await Promise.all([
-          admin.from("eventos_clinicos_anatomicos")
-            .select("regiao_id, sistema, tipo_achado, severidade, status")
-            .eq("paciente_id", paciente_id).neq("status", "resolvido").limit(20),
-          admin.from("pacientes").select("queixa_principal, historia_atual, condicoes_saude")
-            .eq("id", paciente_id).maybeSingle(),
-        ]);
-        const evs = (evRes.data || []) as any[];
-        const pac = pacRes.data as any;
-        const partes: string[] = [];
-        if (pac?.queixa_principal) partes.push(`Queixa principal: ${String(pac.queixa_principal).slice(0, 300)}`);
-        if (pac?.historia_atual) partes.push(`História atual: ${String(pac.historia_atual).slice(0, 400)}`);
-        if (pac?.condicoes_saude) partes.push(`Condições de saúde: ${JSON.stringify(pac.condicoes_saude).slice(0, 300)}`);
-        if (evs.length) partes.push(`Achados registrados no avatar clínico: ${evs.map((e) => `${e.tipo_achado} (região ${e.regiao_id}, severidade ${e.severidade})`).join("; ")}`);
-        if (partes.length) {
-          presencialTxt = `\nAVALIAÇÃO PRESENCIAL (achados do profissional — trate como PRIORIDADE clínica: evite sobrecarregar regiões com achados ativos, inclua trabalho específico/terapêutico onde indicado e progrida com cautela nessas áreas):\n${partes.join("\n")}`;
-        }
-      } catch (_pErr) { /* segue sem */ }
+      const motores = await carregarMotoresClinicos(admin, paciente_id);
+      myidStr = textoMyID(motores, "treino");
+      questTxt = textoQuestionarios(motores, "treino");
+      presencialTxt = textoPresencial(motores, "treino");
     }
 
     const userPrompt = `
@@ -180,7 +138,7 @@ Objetivo: ${objetivo}
 Nível: ${nivel}
 Frequência: ${frequencia_semanal}x/semana
 Duração total: ${duracao_semanas || 12} semanas (a SOMA das semanas das fases DEVE ser exatamente ${duracao_semanas || 12})
-Restrições/lesões: ${restricoes || 'nenhuma'}${presencialTxt}${myidStr}${questTxt ? `\nQUESTIONÁRIOS CLÍNICOS VALIDADOS (respeite: PARQ requer_atencao = plano CONSERVADOR e alerta para avaliação presencial antes de intensificar; SBST alto_risco = abordagem biopsicossocial e progressão cautelosa; PSFS = use as metas do paciente como objetivos do plano; ISI/PHQ4 alterados = considere sono/estresse na periodização):\n${questTxt}` : ''}${listaBlock}
+Restrições/lesões: ${restricoes || 'nenhuma'}${presencialTxt}${myidStr}${questTxt}${listaBlock}
 
 Gere o plano periodizado completo em JSON.`.trim();
 

@@ -2,6 +2,7 @@
 // evidências e no perfil clínico do paciente (MyID + história).
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { carregarMotoresClinicos, textoMyID, textoPresencial, textoQuestionarios } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,41 +58,33 @@ Deno.serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
-    // Perfil clínico do paciente (MyID + história) para personalizar por evidência.
+    // TRÊS MOTORES (fonte única em _shared/motores-plano.ts): MyID +
+    // questionários clínicos validados + avaliação presencial (achados do avatar
+    // clínico E observações do profissional). Bioimpedância e anamnese
+    // nutricional são específicas da nutrição e entram à parte.
     let perfilClinico = "";
     if (paciente_id) {
       const admin = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       );
-      const [myRes, pacRes, bioRes, anamRes] = await Promise.all([
-        admin.from("myid_avaliacoes").select("resultado_processado")
-          .eq("paciente_id", paciente_id).eq("status", "concluido")
-          .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
-        admin.from("pacientes").select("queixa_principal, historia_atual, condicoes_saude")
-          .eq("id", paciente_id).maybeSingle(),
+      const [motores, bioRes, anamRes] = await Promise.all([
+        carregarMotoresClinicos(admin, paciente_id),
         admin.from("body_composition").select("*")
           .eq("paciente_id", paciente_id)
           .order("date", { ascending: false }).limit(1).maybeSingle(),
         admin.from("nutricao_anamnese").select("respostas")
           .eq("paciente_id", paciente_id).maybeSingle(),
       ]);
-      const _rp = (myRes.data?.resultado_processado as any);
-    // formato variou entre gerações: component_scores (atual), componentScores ou scores
-    const scores = (_rp?.scores || _rp?.component_scores || _rp?.componentScores);
-      const pac = pacRes.data as any;
       const bio = bioRes.data as any;
       const anam = (anamRes.data as any)?.respostas;
-      const partes: string[] = [];
-      if (scores) partes.push(`Perfil MyID (scores por dimensão): ${JSON.stringify(scores)}`);
-      if (pac?.queixa_principal) partes.push(`Queixa principal: ${String(pac.queixa_principal).slice(0, 400)}`);
-      if (pac?.historia_atual) partes.push(`História: ${String(pac.historia_atual).slice(0, 600)}`);
-      if (pac?.condicoes_saude) partes.push(`Condições de saúde: ${JSON.stringify(pac.condicoes_saude).slice(0, 400)}`);
-      if (bio) partes.push(`Bioimpedância/composição corporal (mais recente): ${JSON.stringify(bio).slice(0, 600)}`);
-      if (anam && Object.keys(anam).length) partes.push(`Anamnese nutricional (respostas do paciente): ${JSON.stringify(anam).slice(0, 800)}`);
-      if (partes.length) {
-        perfilClinico = `\nPerfil clínico do paciente (use para personalizar, com base em evidências; considere comorbidades e sinais das dimensões mais críticas):\n${partes.join("\n")}`;
-      }
+      const extras: string[] = [];
+      if (bio) extras.push(`Bioimpedância/composição corporal (mais recente): ${JSON.stringify(bio).slice(0, 600)}`);
+      if (anam && Object.keys(anam).length) extras.push(`Anamnese nutricional (respostas do paciente): ${JSON.stringify(anam).slice(0, 800)}`);
+      const extrasTxt = extras.length
+        ? `\nDados nutricionais específicos (use para individualizar):\n${extras.join("\n")}`
+        : "";
+      perfilClinico = `${textoMyID(motores, "nutricao")}${textoPresencial(motores, "nutricao")}${textoQuestionarios(motores, "nutricao")}${extrasTxt}`;
     }
 
     const userPrompt = `
