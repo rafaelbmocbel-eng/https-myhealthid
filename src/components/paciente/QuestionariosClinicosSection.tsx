@@ -16,6 +16,7 @@ import {
   instrumentosRecomendados, type InstrumentoId,
 } from '@/lib/instrumentosClinicos';
 import { scoresDoResultado } from '@/utils/myid/scores';
+import AnamneseNutricionalCard from '@/components/paciente/AnamneseNutricionalCard';
 
 interface Props { pacienteId: string; }
 
@@ -183,6 +184,14 @@ export default function QuestionariosClinicosSection({ pacienteId }: Props) {
             </div>
           );
         })()}
+
+        {/* Questionário de nutrição — mora AQUI, junto dos questionários do
+            plano (não como card separado). Coleta peso/altura/idade/atividade. */}
+        {!bloqueado && data.temMyid && (
+          <div className="pt-1">
+            <AnamneseNutricionalCard pacienteId={pacienteId} />
+          </div>
+        )}
       </CardContent>
 
       <Dialog open={!!aberto} onOpenChange={(o) => { if (!o) setAberto(null); }}>
