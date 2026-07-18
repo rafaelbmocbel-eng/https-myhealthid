@@ -9,9 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Dumbbell, Sparkles, Loader2, Eye, Trash2, Save } from 'lucide-react';
+import { Dumbbell, Sparkles, Loader2, Eye, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
+import PlanoTreinoEditor from './PlanoTreinoEditor';
 
 interface Props { pacienteId: string; }
 
@@ -25,6 +26,7 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
   const [duracao, setDuracao] = useState(12);
   const [restricoes, setRestricoes] = useState('');
   const [verPlano, setVerPlano] = useState<any | null>(null);
+  const [editarPlano, setEditarPlano] = useState<any | null>(null);
 
   const { data: planos = [] } = useQuery({
     queryKey: ['planos-treino', pacienteId],
@@ -147,6 +149,9 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
           {gerarMut.isPending ? <Loader2 className="icon-xs animate-spin mr-2" /> : <Sparkles className="icon-xs mr-2" />}
           {gerarMut.isPending ? 'Gerando plano periodizado...' : 'Gerar plano com IA'}
         </Button>
+        <p className="text-[10px] text-muted-foreground text-center -mt-1">
+          A IA usa a avaliação presencial (avatar clínico + queixa), o MyID e os questionários respondidos. Depois é só editar e liberar.
+        </p>
 
         {planos.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-4">Nenhum plano gerado.</p>
@@ -170,6 +175,7 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
                 {p.aprovado ? 'Ocultar' : 'Liberar'}
               </Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setVerPlano(p)}><Eye className="icon-xs" /></Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditarPlano(p)}><Pencil className="icon-xs" /></Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => apagar(p.id)}><Trash2 className="icon-xs text-destructive" /></Button>
             </div>
           </div>
@@ -227,6 +233,10 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
           })()}
         </DialogContent>
       </Dialog>
+
+      {editarPlano && (
+        <PlanoTreinoEditor plano={editarPlano} pacienteId={pacienteId} onClose={() => setEditarPlano(null)} />
+      )}
     </Card>
   );
 }

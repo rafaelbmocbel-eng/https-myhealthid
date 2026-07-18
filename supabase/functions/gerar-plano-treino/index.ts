@@ -138,6 +138,32 @@ Deno.serve(async (req) => {
       }).join("\n");
     } catch (_qErr) { /* tabela pode não existir ainda — segue sem */ }
 
+    // AVALIAÇÃO PRESENCIAL do profissional: achados do avatar clínico +
+    // queixa/história. É o que o profissional viu no atendimento — prioridade
+    // clínica ao montar o treino.
+    let presencialTxt = "";
+    if (paciente_id) {
+      try {
+        const [evRes, pacRes] = await Promise.all([
+          admin.from("eventos_clinicos_anatomicos")
+            .select("regiao_id, sistema, tipo_achado, severidade, status")
+            .eq("paciente_id", paciente_id).neq("status", "resolvido").limit(20),
+          admin.from("pacientes").select("queixa_principal, historia_atual, condicoes_saude")
+            .eq("id", paciente_id).maybeSingle(),
+        ]);
+        const evs = (evRes.data || []) as any[];
+        const pac = pacRes.data as any;
+        const partes: string[] = [];
+        if (pac?.queixa_principal) partes.push(`Queixa principal: ${String(pac.queixa_principal).slice(0, 300)}`);
+        if (pac?.historia_atual) partes.push(`História atual: ${String(pac.historia_atual).slice(0, 400)}`);
+        if (pac?.condicoes_saude) partes.push(`Condições de saúde: ${JSON.stringify(pac.condicoes_saude).slice(0, 300)}`);
+        if (evs.length) partes.push(`Achados registrados no avatar clínico: ${evs.map((e) => `${e.tipo_achado} (região ${e.regiao_id}, severidade ${e.severidade})`).join("; ")}`);
+        if (partes.length) {
+          presencialTxt = `\nAVALIAÇÃO PRESENCIAL (achados do profissional — trate como PRIORIDADE clínica: evite sobrecarregar regiões com achados ativos, inclua trabalho específico/terapêutico onde indicado e progrida com cautela nessas áreas):\n${partes.join("\n")}`;
+        }
+      } catch (_pErr) { /* segue sem */ }
+    }
+
     const userPrompt = `
 Paciente: ${idade ? idade + ' anos' : 'idade não informada'}, sexo ${sexo || 'não informado'}.
 Antropometria: ${antropometria ? JSON.stringify(antropometria) : 'não informada'}.
@@ -147,7 +173,7 @@ Objetivo: ${objetivo}
 Nível: ${nivel}
 Frequência: ${frequencia_semanal}x/semana
 Duração total: ${duracao_semanas || 12} semanas
-Restrições/lesões: ${restricoes || 'nenhuma'}${myidStr}${questTxt ? `\nQUESTIONÁRIOS CLÍNICOS VALIDADOS (respeite: PARQ requer_atencao = plano CONSERVADOR e alerta para avaliação presencial antes de intensificar; SBST alto_risco = abordagem biopsicossocial e progressão cautelosa; PSFS = use as metas do paciente como objetivos do plano; ISI/PHQ4 alterados = considere sono/estresse na periodização):\n${questTxt}` : ''}${listaBlock}
+Restrições/lesões: ${restricoes || 'nenhuma'}${presencialTxt}${myidStr}${questTxt ? `\nQUESTIONÁRIOS CLÍNICOS VALIDADOS (respeite: PARQ requer_atencao = plano CONSERVADOR e alerta para avaliação presencial antes de intensificar; SBST alto_risco = abordagem biopsicossocial e progressão cautelosa; PSFS = use as metas do paciente como objetivos do plano; ISI/PHQ4 alterados = considere sono/estresse na periodização):\n${questTxt}` : ''}${listaBlock}
 
 Gere o plano periodizado completo em JSON.`.trim();
 
