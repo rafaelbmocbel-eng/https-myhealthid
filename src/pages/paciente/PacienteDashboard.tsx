@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   CalendarDays, ChevronRight,
-  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles, Clock, Mic,
+  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles, Clock,
   CheckCircle2, Circle,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -370,32 +370,10 @@ export default function PacienteDashboard() {
             </V>
           )}
 
-          {/* Contar sua história — card fixo (substitui o microfone do topo).
-              Fala (ditado) ou escreve, como na avaliação presencial. */}
-          <V i={1}>
-            <Card className="overflow-hidden">
-              <button onClick={() => navigate('/paciente/historia')} className="w-full text-left p-4 flex items-center gap-3">
-                <div className={cn(
-                  'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-                  historiaContada ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary',
-                )}>
-                  {historiaContada ? <CheckCircle2 className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold">Contar sua história</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {historiaContada
-                      ? 'História registrada — toque para atualizar quando algo mudar'
-                      : 'Fale (áudio) ou escreva como você está — seu profissional recebe tudo'}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </button>
-            </Card>
-          </V>
+          {/* "Contar sua história" (História da Doença Atual) saiu daqui e agora
+              mora dentro de "Responder histórico clínico". */}
 
-          {/* 🎯 PRÓXIMOS PASSOS DA AVALIAÇÃO — o funil pós-MyID: resultado
-              completo, exercícios da IA e questionários do plano (ou Premium) */}
+          {/* 🎯 PRÓXIMOS PASSOS DA AVALIAÇÃO — o funil pós-MyID */}
           {myidConcluido && (
             <V i={1}>
               <Card className="border-primary/25">
@@ -403,32 +381,10 @@ export default function PacienteDashboard() {
                   <p className="text-xs font-bold uppercase tracking-wider text-primary">
                     Sua avaliação gerou isto para você
                   </p>
-
-                  {/* Os achados importantes, direto no funil */}
-                  {focos && (
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                        🎯 Maior oportunidade: {focos.oportunidade}
-                      </span>
-                      {focos.atencao && (
-                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                          ⚠️ Ponto de atenção: {focos.atencao}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  <button onClick={() => navigate('/paciente/questionarios?ver=ultimo')}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
-                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Fingerprint className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Ver meu resultado completo</p>
-                      <p className="text-[11px] text-muted-foreground">Como está seu corpo hoje, em linguagem simples</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </button>
+                  {/* Os focos (oportunidade/atenção) e "Ver meu resultado
+                      completo" saíram daqui: os focos já aparecem no gráfico MyID
+                      abaixo e o "Ver resultado" foi para baixo do gráfico — sem
+                      duplicar o resultado. */}
 
                   {/* O próximo questionário que o MyID apontou — tudo importante
                       fica aqui dentro; free vê que o próximo é do Premium */}
@@ -459,11 +415,11 @@ export default function PacienteDashboard() {
                       <Sparkles className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Exercícios &amp; dicas da IA</p>
+                      <p className="text-sm font-semibold">Minha jornada</p>
                       <p className="text-[11px] text-muted-foreground">
                         {nDicas > 0
-                          ? `Sua Jornada, plano de hoje e ${nDicas} dicas do seu MyID`
-                          : 'Sua Jornada, plano de hoje e dicas feitas do seu MyID'}
+                          ? `Plano de hoje, metas e ${nDicas} dicas do seu MyID`
+                          : 'Plano de hoje, metas e dicas feitas do seu MyID'}
                       </p>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -650,6 +606,24 @@ export default function PacienteDashboard() {
               </Suspense>
             )}
           </V>
+
+          {/* Ver meu resultado completo — logo ABAIXO do gráfico MyID (é a
+              versão completa/em linguagem simples do que o gráfico resume) */}
+          {myidConcluido && (
+            <V i={7}>
+              <button onClick={() => navigate('/paciente/questionarios?ver=ultimo')}
+                className="w-full flex items-center gap-3 p-4 rounded-xl border border-primary/25 bg-primary/[0.03] hover:bg-primary/[0.06] text-left transition-colors active:scale-[0.99]">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Fingerprint className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">Ver meu resultado completo</p>
+                  <p className="text-[11px] text-muted-foreground">Como está seu corpo hoje, em linguagem simples</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
+            </V>
+          )}
 
           {/* Recompensas */}
           <V i={12}>

@@ -7,7 +7,7 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2, Eye, RefreshCw, Save, Sparkles } from 'lucide-react';
+import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2, Eye, RefreshCw, Save, Sparkles, Mic } from 'lucide-react';
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
 import { MyIDResult } from '@/components/myid/MyIDResult';
 import HistoricoClinicoCard from '@/components/paciente/HistoricoClinicoCard';
@@ -278,6 +278,24 @@ export default function PacienteQuestionarios() {
             <p className="text-xs text-muted-foreground -mt-3">
               Fraturas, cirurgias, medicações e condições — vira achados clínicos para o seu Avatar.
             </p>
+
+            {/* Contar sua história (História da Doença Atual, com áudio) — mora
+                aqui, junto do histórico clínico */}
+            <Card className="overflow-hidden">
+              <button onClick={() => navigate('/paciente/historia')} className="w-full text-left p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Mic className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">Contar sua história</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Fale (áudio) ou escreva como você está — sua queixa, quando começou e o que muda. Seu profissional recebe tudo.
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
+            </Card>
+
             <HistoricoClinicoCard />
           </div>
         </PacienteLayout>
