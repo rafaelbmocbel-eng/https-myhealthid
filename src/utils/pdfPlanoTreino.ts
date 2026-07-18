@@ -13,6 +13,7 @@ export interface PlanoTreinoPDFData {
   pacienteNome: string;
   titulo?: string | null;
   conteudo: any; // { resumo, fases: [{ nome, semanas, objetivo, sessoes: [...] }], observacoes_gerais }
+  nutricao?: any; // { titulo, resumo, calorias_totais, macros, refeicoes: [...], orientacoes, lista_compras }
 }
 
 const NAVY: [number, number, number] = [30, 41, 82];
@@ -169,6 +170,60 @@ export async function gerarPDFPlanoTreino(data: PlanoTreinoPDFData): Promise<Blo
     garantir(12);
     paragrafo('Observações', MARGIN, CONTENT_W, 9.5, NAVY, true);
     paragrafo(String(data.conteudo.observacoes_gerais), MARGIN, CONTENT_W, 8.5, MUTED);
+  }
+
+  // ── Plano Alimentar (nova página) ──
+  const nut = data.nutricao;
+  const refeicoes: any[] = Array.isArray(nut?.refeicoes) ? nut.refeicoes
+    : Array.isArray(nut?.meals) ? nut.meals : [];
+  if (refeicoes.length > 0) {
+    novaPagina();
+    // Faixa verde de nutrição
+    const GREEN: [number, number, number] = [22, 163, 74];
+    doc.setFillColor(...GREEN); doc.roundedRect(MARGIN, y, CONTENT_W, 9, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(255, 255, 255);
+    doc.text('Plano Alimentar', MARGIN + 3, y + 6);
+    y += 13;
+    if (nut.titulo) { paragrafo(String(nut.titulo), MARGIN, CONTENT_W, 11, NAVY, true); }
+    if (nut.resumo) { paragrafo(String(nut.resumo), MARGIN, CONTENT_W, 9, MUTED); y += 1; }
+
+    // Metas do dia (kcal + macros)
+    const metas = [
+      nut.calorias_totais && `${nut.calorias_totais} kcal/dia`,
+      nut.macros?.proteina_g && `Proteína ${nut.macros.proteina_g}g`,
+      nut.macros?.carbo_g && `Carbo ${nut.macros.carbo_g}g`,
+      nut.macros?.gordura_g && `Gordura ${nut.macros.gordura_g}g`,
+    ].filter(Boolean).join('   ·   ');
+    if (metas) { paragrafo(metas, MARGIN, CONTENT_W, 9.5, PRIMARY, true); y += 1; }
+
+    for (const r of refeicoes) {
+      const itens: any[] = Array.isArray(r.itens) ? r.itens : Array.isArray(r.alimentos) ? r.alimentos : [];
+      garantir(10 + itens.length * 4);
+      const cab = `${r.nome || r.refeicao || 'Refeição'}${(r.horario || r.hora) ? ` · ${r.horario || r.hora}` : ''}${r.calorias ? ` · ${r.calorias} kcal` : ''}`;
+      paragrafo(cab, MARGIN, CONTENT_W, 9.5, NAVY, true);
+      for (const it of itens) {
+        const nome = it.alimento || it.nome || String(it);
+        const dir = [it.porcao || it['porção'], it.kcal && `${it.kcal} kcal`].filter(Boolean).join(' · ');
+        garantir(4.5);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...INK);
+        doc.text(String(nome), MARGIN + 2, y);
+        if (dir) { doc.setTextColor(...MUTED); doc.text(dir, PAGE_W - MARGIN, y, { align: 'right' }); }
+        y += 4.2;
+      }
+      if (r.substituicoes) { paragrafo(`Trocas: ${r.substituicoes}`, MARGIN + 2, CONTENT_W - 2, 8, MUTED); }
+      y += 2;
+    }
+
+    if (Array.isArray(nut.orientacoes) && nut.orientacoes.length) {
+      garantir(10);
+      paragrafo('Orientações', MARGIN, CONTENT_W, 9.5, NAVY, true);
+      for (const o of nut.orientacoes) paragrafo(`• ${o}`, MARGIN + 2, CONTENT_W - 2, 8.5, MUTED);
+    }
+    if (Array.isArray(nut.lista_compras) && nut.lista_compras.length) {
+      garantir(10);
+      paragrafo('Lista de compras', MARGIN, CONTENT_W, 9.5, NAVY, true);
+      paragrafo(nut.lista_compras.join(' · '), MARGIN + 2, CONTENT_W - 2, 8.5, MUTED);
+    }
   }
 
   footer();
