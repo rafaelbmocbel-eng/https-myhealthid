@@ -18,6 +18,7 @@ import {
 import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
 import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
+import { scoresDoResultado } from '@/utils/myid/scores';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDDimensionDrillDown from '@/components/myid/MyIDDimensionDrillDown';
@@ -169,8 +170,11 @@ export default function PatientIntegratedDashboard({
 
   // ── Build scores
   const getScores = () => {
-    if (myidLinkResult?.component_scores) {
-      const cs = myidLinkResult.component_scores;
+    // Formato do resultado variou (scores / component_scores / componentScores);
+    // usar o helper único evita painel MyID vazio em avaliações antigas.
+    const csResult = scoresDoResultado(myidLinkResult);
+    if (csResult) {
+      const cs = csResult;
       return {
         D: cs.D ?? (cs.D_pain ?? 0),
         EFI: cs.EFI ?? (cs.EFI_functionality ?? 0),

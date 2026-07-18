@@ -906,7 +906,9 @@ export default function Agenda() {
 
       if (!existing) {
         const duracaoMin = differenceInMinutes(parseISO(ag.data_fim), parseISO(ag.data_inicio));
-        await supabase.from('controle_sessoes').insert({
+        // Faturamento: se este insert falhar, a sessão fica confirmada mas o
+        // registro de cobrança some — avisar em vez de engolir o erro.
+        const { error: sessaoErr } = await supabase.from('controle_sessoes').insert({
           paciente_id: ag.paciente_id,
           agendamento_id: id,
           terapeuta_id: user!.id,
@@ -916,6 +918,9 @@ export default function Agenda() {
           status: 'realizada',
           valor_cobrado: 0,
         });
+        if (sessaoErr) {
+          toast({ title: 'Sessão confirmada, mas o registro de cobrança falhou', description: sessaoErr.message + ' — registre a sessão manualmente no financeiro.', variant: 'destructive' });
+        }
       }
     }
 

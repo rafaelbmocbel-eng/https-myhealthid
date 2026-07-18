@@ -184,7 +184,11 @@ export default function ResumoConsultaPresencial({
           estrutura: null,
           severidade: 1, // sempre leve — dor relatada pelo paciente, não diagnóstico confirmado
           status: 'ativo',
-          visivel_paciente: true,
+          // É RELATO do paciente (voz/MyID), não achado confirmado: fica oculto
+          // do paciente e marcado como relato até o profissional classificar —
+          // evita mostrar dor "confirmada" ao paciente (nocebo).
+          tipo_diagnostico: 'relato_paciente',
+          visivel_paciente: false,
           data_inicio: new Date().toISOString().slice(0, 10),
           notas_clinicas: `Registrado automaticamente a partir de queixa do paciente. Aguarda classificação clínica pelo profissional.`,
           metadata: {
@@ -245,7 +249,8 @@ export default function ResumoConsultaPresencial({
           estrutura: f.structures?.join(', ') || null,
           severidade: 1, // sempre leve — profissional reclassifica se necessário
           status: 'ativo',
-          visivel_paciente: true,
+          tipo_diagnostico: 'relato_paciente',
+          visivel_paciente: false,
           data_inicio: new Date().toISOString().slice(0, 10),
           notas_clinicas: `Queixa de dor referida pelo paciente durante avaliação por voz. Aguarda classificação clínica.`,
           metadata: { fontes: ['voz_ia'], confianca: 'baixa', auto_processado: true } as any,

@@ -82,7 +82,9 @@ Deno.serve(async (req) => {
 
     const pac = (pacRes.data || {}) as any;
     const resultado = (myRes.data?.resultado_processado || null) as any;
-    const scores = resultado?.scores || null;
+    // Formato variou: scores / component_scores / componentScores. Sem o
+    // fallback, o relatório NUNCA era gerado para o formato atual.
+    const scores = resultado?.scores || resultado?.component_scores || resultado?.componentScores || null;
     if (!scores) {
       return new Response(JSON.stringify({ ok: false, reason: "sem_myid" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
