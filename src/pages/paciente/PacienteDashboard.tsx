@@ -15,6 +15,8 @@ import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
+const MyIDResult = lazy(() => import('@/components/myid/MyIDResult').then(m => ({ default: m.MyIDResult })));
+import EvolucaoAoVivoResultado from '@/components/paciente/EvolucaoAoVivoResultado';
 import MyIDPDFButton from '@/components/paciente/MyIDPDFButton';
 import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
@@ -79,6 +81,7 @@ export default function PacienteDashboard() {
   const [myIdPromptType, setMyIdPromptType] = useState<'first' | 'monthly'>('first');
   const [historiaContada, setHistoriaContada] = useState(false);
   const [myidConcluido, setMyidConcluido] = useState(false);
+  const [lastMyId, setLastMyId] = useState<any>(null);
   const [nDicas, setNDicas] = useState(0);
   const [focos, setFocos] = useState<{ oportunidade: string; atencao: string | null } | null>(null);
   const [proxInstrumento, setProxInstrumento] = useState<{ nome: string; sigla: string } | null>(null);
@@ -142,7 +145,7 @@ export default function PacienteDashboard() {
             .eq('paciente_id', pac.id)
             .neq('status', 'concluido'),
           supabase.from('myid_avaliacoes')
-            .select('id, updated_at, resultado_processado')
+            .select('id, updated_at, resultado_processado, respostas_brutas, terapeuta_id')
             .eq('paciente_id', pac.id)
             .eq('status', 'concluido')
             .order('updated_at', { ascending: false })
@@ -177,6 +180,7 @@ export default function PacienteDashboard() {
 
         const completedMyIds = lastMyIdRes.data || [];
         setMyidConcluido(completedMyIds.length > 0);
+        setLastMyId(completedMyIds[0] || null);
 
         // Focos da avaliação (mesma lógica do painel MyID): maior oportunidade
         // e ponto de atenção — mostrados DENTRO do card "Sua avaliação gerou..."
@@ -607,21 +611,27 @@ export default function PacienteDashboard() {
             )}
           </V>
 
-          {/* Ver meu resultado completo — logo ABAIXO do gráfico MyID (é a
-              versão completa/em linguagem simples do que o gráfico resume) */}
-          {myidConcluido && (
+          {/* Meu resultado completo — já ABERTO logo abaixo do gráfico MyID
+              (versão completa/em linguagem simples do que o gráfico resume) */}
+          {myidConcluido && paciente && lastMyId?.resultado_processado && (
             <V i={7}>
-              <button onClick={() => navigate('/paciente/questionarios?ver=ultimo')}
-                className="w-full flex items-center gap-3 p-4 rounded-xl border border-primary/25 bg-primary/[0.03] hover:bg-primary/[0.06] text-left transition-colors active:scale-[0.99]">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Fingerprint className="h-5 w-5" />
+              <div className="space-y-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                  <Fingerprint className="h-3.5 w-3.5" /> Meu resultado completo
+                </p>
+                <div className="bg-card p-4 rounded-xl border shadow-sm">
+                  <EvolucaoAoVivoResultado pacienteId={paciente.id} />
+                  <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                    <MyIDResult
+                      result={lastMyId.resultado_processado}
+                      rawData={lastMyId.respostas_brutas}
+                      pacienteId={paciente.id}
+                      terapeutaId={lastMyId.terapeuta_id}
+                      avaliacaoId={lastMyId.id}
+                    />
+                  </Suspense>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold">Ver meu resultado completo</p>
-                  <p className="text-[11px] text-muted-foreground">Como está seu corpo hoje, em linguagem simples</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </button>
+              </div>
             </V>
           )}
 
