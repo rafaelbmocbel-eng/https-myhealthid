@@ -18,6 +18,7 @@ export default function PacienteTreinoCompleto() {
   const [nome, setNome] = useState('');
   const [pacienteId, setPacienteId] = useState<string | null>(null);
   const [plano, setPlano] = useState<{ titulo?: string; conteudo: any; share_token?: string | null } | null>(null);
+  const [nutricao, setNutricao] = useState<any>(null);
   const [baixando, setBaixando] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
 
@@ -29,8 +30,10 @@ export default function PacienteTreinoCompleto() {
       setPacienteId(pac.id);
       setNome(`${pac.nome || ''} ${pac.sobrenome || ''}`.trim());
       const { data } = await (supabase as any).from('planos_ia_cliente')
-        .select('titulo, conteudo, share_token').eq('paciente_id', pac.id).eq('tipo', 'treino').maybeSingle();
-      setPlano(data || null);
+        .select('tipo, titulo, conteudo, share_token').eq('paciente_id', pac.id);
+      const rows = (data || []) as any[];
+      setPlano(rows.find((r) => r.tipo === 'treino') || null);
+      setNutricao(rows.find((r) => r.tipo === 'nutricao')?.conteudo || null);
       setLoading(false);
     })();
   }, [user]);
@@ -109,7 +112,7 @@ export default function PacienteTreinoCompleto() {
           </div>
         ) : (
           <div className="max-w-2xl mx-auto my-4 print:my-0">
-            <TreinoDocumento nome={nome} titulo={plano.titulo} conteudo={plano.conteudo} />
+            <TreinoDocumento nome={nome} titulo={plano.titulo} conteudo={plano.conteudo} nutricao={nutricao} />
           </div>
         )}
       </div>

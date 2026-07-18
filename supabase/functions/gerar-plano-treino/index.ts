@@ -12,10 +12,17 @@ const corsHeaders = {
 
 const SYSTEM = `Você é uma EQUIPE de personal trainers e educadores físicos com 15 anos de mercado (ACSM/NSCA/CBCE), planejando juntos como fariam para um cliente premium.
 Padrão de qualidade: plano digno de consultoria — periodização real, progressão de carga/volume explícita entre fases, técnica e segurança em cada exercício, e coerência total com o perfil MyID e a condição clínica do paciente.
-Gere um plano de treino periodizado em JSON estruturado, com fases progressivas (adaptação → desenvolvimento → consolidação) e exercícios específicos por sessão.
+
+PERIODIZAÇÃO (parte teórica — siga com rigor):
+- Divida a duração TOTAL informada em 2 a 4 fases progressivas. A SOMA das "semanas" de TODAS as fases DEVE ser EXATAMENTE igual à duração total informada (ex.: total 8 semanas → fases 3+3+2 ou 2+3+3; total 12 → 4+4+4). NUNCA deixe a soma diferente do total.
+- Cada fase tem um foco fisiológico claro e progressivo: Fase 1 Adaptação anatômica/aprendizado motor (volume moderado, intensidade baixa, ADM e técnica) → Fase 2 Desenvolvimento (aumento progressivo de volume, depois intensidade/carga) → Fase 3 Consolidação/Especialização (maior intensidade, densidade ou especificidade ao objetivo). Em planos ≥ 12 semanas, inclua 1 semana de deload/regeneração.
+- Explicite a PROGRESSÃO entre fases no campo "objetivo" de cada fase (o que aumenta: séries, repetições, carga, densidade, complexidade) e mantenha coerência com o objetivo (ex.: emagrecimento = maior densidade e gasto calórico; força = maior intensidade/menos reps; hipertrofia = volume na zona 6-12).
+- Parâmetros baseados em evidência por objetivo: força 3-6 reps/descanso 2-3min; hipertrofia 6-12 reps/descanso 60-90s; resistência/emagrecimento 12-20 reps ou circuitos/descanso 30-60s; iniciante e condições clínicas = progressão conservadora.
+- Frequência e nº de sessões por semana coerentes com a "Frequência" informada. Cada sessão com aquecimento específico e desaquecimento.
+
 PRIORIZE os exercícios da biblioteca do profissional (que têm demonstração em GIF para o paciente ver) sempre que cobrirem o objetivo — o paciente executa muito melhor vendo o movimento.
 Quando for fornecida uma lista de "Exercícios disponíveis no banco", você DEVE escolher APENAS exercícios dessa lista e preencher o campo "id" com o id EXATO da lista. NUNCA invente exercícios fora da lista nesse caso.
-Retorne SOMENTE JSON neste formato:
+Retorne SOMENTE JSON neste formato (o campo "semanas" de cada fase é OBRIGATÓRIO e a soma deve bater com o total):
 {
   "titulo": "string curta",
   "resumo": "1-2 frases sobre estratégia",
@@ -172,7 +179,7 @@ Testes funcionais: ${testes ? JSON.stringify(testes) : 'não informados'}.
 Objetivo: ${objetivo}
 Nível: ${nivel}
 Frequência: ${frequencia_semanal}x/semana
-Duração total: ${duracao_semanas || 12} semanas
+Duração total: ${duracao_semanas || 12} semanas (a SOMA das semanas das fases DEVE ser exatamente ${duracao_semanas || 12})
 Restrições/lesões: ${restricoes || 'nenhuma'}${presencialTxt}${myidStr}${questTxt ? `\nQUESTIONÁRIOS CLÍNICOS VALIDADOS (respeite: PARQ requer_atencao = plano CONSERVADOR e alerta para avaliação presencial antes de intensificar; SBST alto_risco = abordagem biopsicossocial e progressão cautelosa; PSFS = use as metas do paciente como objetivos do plano; ISI/PHQ4 alterados = considere sono/estresse na periodização):\n${questTxt}` : ''}${listaBlock}
 
 Gere o plano periodizado completo em JSON.`.trim();
@@ -206,6 +213,26 @@ Gere o plano periodizado completo em JSON.`.trim();
     try { plano = JSON.parse(content); } catch {
       const m = content.match(/\{[\s\S]*\}/);
       if (m) plano = JSON.parse(m[0]);
+    }
+
+    // Correção determinística das durações: garante que a soma das semanas das
+    // fases seja EXATAMENTE a duração total (a IA às vezes erra por 1-2 semanas).
+    const totalSemanas = Number(duracao_semanas) || 12;
+    if (Array.isArray(plano?.fases) && plano.fases.length > 0) {
+      plano.fases.forEach((f: any) => { f.semanas = Math.max(1, Math.round(Number(f.semanas) || 0)); });
+      let soma = plano.fases.reduce((s: number, f: any) => s + f.semanas, 0);
+      if (soma !== totalSemanas) {
+        // Ajusta a última fase para fechar o total (mantém ≥ 1 semana).
+        const ultima = plano.fases[plano.fases.length - 1];
+        ultima.semanas = Math.max(1, ultima.semanas + (totalSemanas - soma));
+        // Se ainda não bater (ex.: total menor que nº de fases), redistribui.
+        soma = plano.fases.reduce((s: number, f: any) => s + f.semanas, 0);
+        if (soma !== totalSemanas && plano.fases.length <= totalSemanas) {
+          const base = Math.floor(totalSemanas / plano.fases.length);
+          let resto = totalSemanas - base * plano.fases.length;
+          plano.fases.forEach((f: any) => { f.semanas = base + (resto-- > 0 ? 1 : 0); });
+        }
+      }
     }
 
     // Enriquece cada exercício com o gif_url, o nome canônico e as ORIENTAÇÕES

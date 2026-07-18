@@ -10,7 +10,7 @@ import { Loader2, Dumbbell } from 'lucide-react';
 export default function TreinoPublico() {
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
-  const [dados, setDados] = useState<{ paciente_nome: string; titulo: string | null; conteudo: any } | null>(null);
+  const [dados, setDados] = useState<{ paciente_nome: string; titulo: string | null; conteudo: any; nutricao?: any } | null>(null);
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
@@ -43,7 +43,7 @@ export default function TreinoPublico() {
       ) : (
         <>
           <div className="max-w-2xl mx-auto my-4 print:my-0">
-            <TreinoDocumento nome={dados.paciente_nome} titulo={dados.titulo} conteudo={dados.conteudo} />
+            <TreinoDocumento nome={dados.paciente_nome} titulo={dados.titulo} conteudo={dados.conteudo} nutricao={dados.nutricao} />
           </div>
           {/* CTA — quem recebeu o link conhece a plataforma */}
           <div className="max-w-2xl mx-auto px-4 pb-8 print:hidden">
