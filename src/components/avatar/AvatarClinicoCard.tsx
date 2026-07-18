@@ -444,13 +444,24 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Load calibration from Supabase table — runs on mount and when page regains focus
-  const applyCalibrationFromCloud = useCallback(() => {
+  // Load calibration from Supabase table — runs on mount and when page regains focus.
+  // O CLIENTE deve ver o avatar EXATAMENTE como o profissional calibrou (tamanho
+  // da figura, posição e escala dos órgãos). Como a calibração é do profissional,
+  // quando o viewer é o paciente carregamos a calibração do terapeuta DELE — não
+  // a própria (que não existe → figura grande/default e órgãos fora do lugar).
+  const applyCalibrationFromCloud = useCallback(async () => {
     if (!user) return;
+    let ownerId = user.id;
+    if (!isProfessional) {
+      const { data: pac } = await supabase.from('pacientes')
+        .select('terapeuta_id').eq('id', pacienteId).maybeSingle();
+      if (!pac?.terapeuta_id) return; // sem profissional → mantém o default
+      ownerId = pac.terapeuta_id;
+    }
     // @ts-expect-error -- tabela criada por migração; tipos serão regenerados
     supabase.from('avatar_calibracao')
       .select('offsets, scales, figura')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', ownerId)
       .maybeSingle()
       .then(({ data }: { data: { offsets: Record<string,{dx:number;dy:number}>; scales: Record<string,{sx:number;sy:number}>; figura: FiguraParams } | null }) => {
         if (!data) return;
@@ -467,7 +478,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           localStorage.setItem(LS_FIGURA, JSON.stringify(data.figura));
         }
       });
-  }, [user]);
+  }, [user, isProfessional, pacienteId]);
 
   useEffect(() => {
     applyCalibrationFromCloud();
