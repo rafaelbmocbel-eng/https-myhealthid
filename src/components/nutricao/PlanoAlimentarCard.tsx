@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Apple, Sparkles, Loader2, Trash2, Eye, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
+import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import { format, parseISO } from 'date-fns';
 
 interface Props { pacienteId: string; }
@@ -24,6 +25,7 @@ const OBJETIVOS = [
 export default function PlanoAlimentarCard({ pacienteId }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const chancela = usePodeChancelar('nutricao');
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<any | null>(null);
   const [form, setForm] = useState({
@@ -127,6 +129,8 @@ export default function PlanoAlimentarCard({ pacienteId }: Props) {
 
   const aprovar = useMutation({
     mutationFn: async ({ id, aprovado }: { id: string; aprovado: boolean }) => {
+      // Chancela: só o Nutricionista (ou a clínica que o tenha) libera. Ocultar é livre.
+      if (aprovado && !chancela.pode) throw new Error(chancela.motivo);
       const { error } = await (supabase as any).from('planos_alimentares').update({ aprovado }).eq('id', id);
       if (error) throw error;
     },
@@ -147,6 +151,9 @@ export default function PlanoAlimentarCard({ pacienteId }: Props) {
           </Button>
         </CardHeader>
         <CardContent className="space-y-2">
+          {planos.length > 0 && !chancela.loading && !chancela.pode && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 text-center">🔒 {chancela.motivo}</p>
+          )}
           {planos.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Nenhum plano gerado ainda.</p>
           ) : (
@@ -162,7 +169,9 @@ export default function PlanoAlimentarCard({ pacienteId }: Props) {
                   ? <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Liberado</Badge>
                   : <Badge variant="outline" className="text-xs">Rascunho</Badge>}
                 <Button variant={p.aprovado ? 'ghost' : 'default'} size="sm" className="h-8 text-xs px-2.5"
-                  onClick={() => aprovar.mutate({ id: p.id, aprovado: !p.aprovado })} disabled={aprovar.isPending}>
+                  onClick={() => aprovar.mutate({ id: p.id, aprovado: !p.aprovado })}
+                  disabled={aprovar.isPending || (!p.aprovado && (chancela.loading || !chancela.pode))}
+                  title={!p.aprovado && !chancela.pode ? chancela.motivo : (chancela.viaClinica ? chancela.motivo : undefined)}>
                   {p.aprovado ? 'Ocultar' : 'Liberar'}
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => setView(p.plano)}>

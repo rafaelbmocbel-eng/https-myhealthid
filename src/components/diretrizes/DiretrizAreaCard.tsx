@@ -11,6 +11,7 @@ import { Sparkles, Loader2, Eye, Send, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { erroDaFuncao } from '@/lib/fnError';
+import { usePodeChancelar, type AreaChancela } from '@/hooks/usePodeChancelar';
 
 export interface DiretrizAreaProps {
   pacienteId: string;
@@ -35,6 +36,9 @@ export default function DiretrizAreaCard({
   const [view, setView] = useState(false);
   const [objetivo, setObjetivo] = useState('');
   const [obs, setObs] = useState('');
+  // A chancela (enviar ao portal) é do profissional habilitado pela área.
+  const areaChancela: AreaChancela = area === 'nutricao' ? 'nutricao' : area === 'educacao_fisica' ? 'treino' : 'fisioterapia';
+  const chancela = usePodeChancelar(areaChancela);
 
   const { data: diretriz } = useQuery({
     queryKey: ['diretriz-prof', area, pacienteId],
@@ -71,6 +75,9 @@ export default function DiretrizAreaCard({
 
   const enviarPortal = useMutation({
     mutationFn: async (enviar: boolean) => {
+      // Só o profissional habilitado (ou a clínica que o tenha) envia ao portal.
+      // Ocultar (enviar=false) é sempre permitido.
+      if (enviar && !chancela.pode) throw new Error(chancela.motivo);
       const { error } = await (supabase as any).from('diretrizes_profissionais')
         .update({ enviada_portal: enviar, status: enviar ? 'ativa' : 'rascunho', updated_at: new Date().toISOString() })
         .eq('id', diretriz.id);
@@ -115,7 +122,9 @@ export default function DiretrizAreaCard({
                 <Eye className="icon-sm" />
               </Button>
               <Button variant={diretriz.enviada_portal ? 'ghost' : 'default'} size="sm" className="h-8 text-xs px-2.5"
-                onClick={() => enviarPortal.mutate(!diretriz.enviada_portal)} disabled={enviarPortal.isPending}>
+                onClick={() => enviarPortal.mutate(!diretriz.enviada_portal)}
+                disabled={enviarPortal.isPending || (!diretriz.enviada_portal && (chancela.loading || !chancela.pode))}
+                title={!diretriz.enviada_portal && !chancela.pode ? chancela.motivo : (chancela.viaClinica ? chancela.motivo : undefined)}>
                 {diretriz.enviada_portal ? <><EyeOff className="icon-sm mr-1" /> Ocultar</> : <><Send className="icon-sm mr-1" /> Enviar ao portal</>}
               </Button>
             </div>
@@ -196,9 +205,15 @@ export default function DiretrizAreaCard({
                   </div>
                 )}
                 {diretriz && !diretriz.enviada_portal && (
-                  <Button className="w-full" onClick={() => { enviarPortal.mutate(true); setView(false); }}>
-                    <Send className="icon-sm mr-2" /> Revisei — enviar ao portal do cliente
-                  </Button>
+                  <>
+                    <Button className="w-full" disabled={chancela.loading || !chancela.pode}
+                      onClick={() => { enviarPortal.mutate(true); setView(false); }}>
+                      <Send className="icon-sm mr-2" /> Revisei — enviar ao portal do cliente
+                    </Button>
+                    {!chancela.loading && !chancela.pode && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 text-center">🔒 {chancela.motivo}</p>
+                    )}
+                  </>
                 )}
               </div>
             </>

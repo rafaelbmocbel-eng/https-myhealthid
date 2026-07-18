@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Dumbbell, Sparkles, Loader2, Eye, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
+import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import PlanoTreinoEditor from './PlanoTreinoEditor';
 
 interface Props { pacienteId: string; }
@@ -19,6 +20,7 @@ interface Props { pacienteId: string; }
 export default function PlanoTreinoCard({ pacienteId }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const chancela = usePodeChancelar('treino');
 
   const [objetivo, setObjetivo] = useState('hipertrofia');
   const [nivel, setNivel] = useState('iniciante');
@@ -94,6 +96,9 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
   };
 
   const liberar = async (id: string, aprovado: boolean) => {
+    // Chancela = só o profissional habilitado (ou a clínica que o tenha) libera.
+    // Ocultar (aprovado=false) é sempre permitido.
+    if (aprovado && !chancela.pode) { toast.error(chancela.motivo); return; }
     const { error } = await (supabase as any).from('planos_treino').update({ aprovado }).eq('id', id);
     if (error) return toast.error(error.message);
     toast.success(aprovado ? 'Liberado para o paciente' : 'Ocultado do paciente');
@@ -157,6 +162,10 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
           <p className="text-sm text-muted-foreground text-center py-4">Nenhum plano gerado.</p>
         )}
 
+        {planos.length > 0 && !chancela.loading && !chancela.pode && (
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 text-center -mt-1">🔒 {chancela.motivo}</p>
+        )}
+
         {planos.map((p: any) => (
           <div key={p.id} className="p-3 rounded-lg border border-border/40 space-y-1">
             <div className="flex items-center justify-between gap-2">
@@ -171,7 +180,10 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
               {p.aprovado
                 ? <Badge className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 shrink-0">Liberado</Badge>
                 : <Badge variant="outline" className="text-[10px] shrink-0">Rascunho</Badge>}
-              <Button size="sm" variant={p.aprovado ? 'ghost' : 'default'} className="h-7 text-[11px] px-2 shrink-0" onClick={() => liberar(p.id, !p.aprovado)}>
+              <Button size="sm" variant={p.aprovado ? 'ghost' : 'default'} className="h-7 text-[11px] px-2 shrink-0"
+                disabled={!p.aprovado && (chancela.loading || !chancela.pode)}
+                title={!p.aprovado && !chancela.pode ? chancela.motivo : (chancela.viaClinica ? chancela.motivo : undefined)}
+                onClick={() => liberar(p.id, !p.aprovado)}>
                 {p.aprovado ? 'Ocultar' : 'Liberar'}
               </Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setVerPlano(p)}><Eye className="icon-xs" /></Button>

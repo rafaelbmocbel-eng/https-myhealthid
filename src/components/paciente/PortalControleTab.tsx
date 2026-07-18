@@ -43,6 +43,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const [deverOpen, setDeverOpen] = useState(false);
   const [gerandoDicas, setGerandoDicas] = useState(false);
   const [dicasRecemGeradas, setDicasRecemGeradas] = useState<any[] | null>(null);
+  const [usandoBase, setUsandoBase] = useState<null | 'treino' | 'nutricao'>(null);
 
   // Gera (ou regenera) as dicas IA deste paciente na hora — e mostra o motivo
   // se a IA não conseguir (ex.: sem MyID concluído, sem evidência, erro).
@@ -76,6 +77,57 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
       setGerandoDicas(false);
     }
   };
+  // "Usar como base": copia o plano que o CLIENTE gerou para a tabela do
+  // profissional como RASCUNHO (aprovado=false), para o profissional refinar
+  // e depois liberar a sua versão. Só aparece para quem já criou o plano.
+  const usarComoBase = async (tipo: 'treino' | 'nutricao') => {
+    if (!user) return;
+    setUsandoBase(tipo);
+    try {
+      if (tipo === 'treino') {
+        const t = geradoCliente?.treinoIA;
+        const conteudo = (t?.conteudo || {}) as any;
+        const fases = Array.isArray(conteudo.fases) ? conteudo.fases : [];
+        const duracao = fases.reduce((s: number, f: any) => s + (Number(f.semanas) || 0), 0) || 8;
+        const freq = fases.reduce((mx: number, f: any) => Math.max(mx, Array.isArray(f.sessoes) ? f.sessoes.length : 0), 0) || 3;
+        const { error } = await (supabase as any).from('planos_treino').insert({
+          terapeuta_id: user.id,
+          paciente_id: pacienteId,
+          titulo: `${t?.titulo || 'Treino do cliente'} (base do cliente)`,
+          objetivo: conteudo?.baseadoEm?.objetivo ? 'personalizado' : 'saude',
+          nivel: 'iniciante',
+          frequencia_semanal: freq,
+          duracao_semanas: duracao,
+          restricoes: null,
+          estrutura: conteudo,
+          aprovado: false,
+        });
+        if (error) throw error;
+        qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+      } else {
+        const plano = (geradoCliente?.nutricaoIA || {}) as any;
+        const { error } = await (supabase as any).from('planos_alimentares').insert({
+          paciente_id: pacienteId,
+          terapeuta_id: user.id,
+          titulo: `${plano?.titulo || 'Plano alimentar do cliente'} (base do cliente)`,
+          objetivo: 'Reeducação alimentar',
+          calorias_alvo: plano?.calorias_totais || null,
+          macros_alvo: plano?.macros || null,
+          plano,
+          ativo: true,
+          aprovado: false,
+        });
+        if (error) throw error;
+        qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] });
+      }
+      toast({ title: 'Copiado como rascunho ✅', description: 'Ajuste no card abaixo e libere a sua versão.' });
+    } catch (e: any) {
+      toast({ title: 'Não consegui copiar', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setUsandoBase(null);
+    }
+  };
+
   const since30 = subDays(new Date(), 30).toISOString();
   const since7 = subDays(new Date(), 7).toISOString();
 
@@ -348,8 +400,22 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                     </summary>
                     <div className="p-2">
                       <p className="text-[10px] text-muted-foreground mb-2">
-                        Gerado pelo próprio cliente no portal. Use como base: crie o plano abaixo (você pode ajustar tudo) e <strong>Liberar</strong> a sua versão.
+                        Gerado pelo próprio cliente no portal. Use como base: copie para o seu gerador, ajuste tudo e <strong>Libere</strong> a sua versão.
                       </p>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {geradoCliente?.treinoIA && (
+                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" disabled={usandoBase !== null} onClick={() => usarComoBase('treino')}>
+                            {usandoBase === 'treino' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Dumbbell className="h-3 w-3" />}
+                            Usar treino como base
+                          </Button>
+                        )}
+                        {geradoCliente?.nutricaoIA && (
+                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" disabled={usandoBase !== null} onClick={() => usarComoBase('nutricao')}>
+                            {usandoBase === 'nutricao' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Apple className="h-3 w-3" />}
+                            Usar nutrição como base
+                          </Button>
+                        )}
+                      </div>
                       <Suspense fallback={<div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                         <TreinoDocumento
                           nome={pacienteNome}
