@@ -153,6 +153,8 @@ export default function VitrineConfig() {
       qc.invalidateQueries({ queryKey: ['solicitacoes-conexao'] });
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
     },
+    // Sem isto, uma falha na RPC ficava invisível ("nada acontece").
+    onError: (e: any) => toast.error(e?.message || 'Não consegui processar a solicitação. Tente de novo.'),
   });
 
   const addTag = (field: 'vitrine_especialidades' | 'vitrine_convenios', value: string) => {
@@ -442,9 +444,21 @@ export default function VitrineConfig() {
                         </Button>
                       </>
                     ) : s.status === 'aceita' ? (
-                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> Aceita
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Aceita
+                        </Badge>
+                        {/* Revincular — conserta solicitações aceitas antes do
+                            fix que não viraram paciente. Idempotente. */}
+                        <Button
+                          size="sm" variant="outline"
+                          className="h-7 text-[11px] px-2"
+                          onClick={() => mutResponder.mutate({ id: s.id, status: 'aceita' })}
+                          disabled={mutResponder.isPending}
+                        >
+                          {mutResponder.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Vincular'}
+                        </Button>
+                      </div>
                     ) : (
                       <Badge variant="outline" className="text-red-600 border-red-200 text-[10px]">
                         <XCircle className="h-3 w-3 mr-1" /> Recusada
