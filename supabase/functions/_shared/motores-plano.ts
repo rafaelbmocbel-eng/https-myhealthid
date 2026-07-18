@@ -116,15 +116,17 @@ function formatAchados(presencial: AchadoPresencial[]): string {
   }).join("; ");
 }
 
-function instrucaoPresencial(foco: "treino" | "nutricao"): string {
-  return foco === "treino"
-    ? "trate como PRIORIDADE clínica: evite sobrecarregar regiões com achados ativos, inclua trabalho específico/terapêutico onde indicado, respeite as observações do profissional e progrida com cautela nessas áreas"
-    : "considere no plano alimentar: padrão anti-inflamatório onde houver dor/lesão ativa, ajuste para as comorbidades e respeite as observações do profissional";
+export type FocoPlano = "treino" | "nutricao" | "clinica";
+
+function instrucaoPresencial(foco: FocoPlano): string {
+  if (foco === "treino") return "trate como PRIORIDADE clínica: evite sobrecarregar regiões com achados ativos, inclua trabalho específico/terapêutico onde indicado, respeite as observações do profissional e progrida com cautela nessas áreas";
+  if (foco === "nutricao") return "considere no plano alimentar: padrão anti-inflamatório onde houver dor/lesão ativa, ajuste para as comorbidades e respeite as observações do profissional";
+  return "trate como PRIORIDADE clínica: incorpore os achados e as observações do profissional na conduta, priorize as áreas com achado ativo e defina as fases a partir deles";
 }
 
 // Texto compacto da avaliação presencial (queixa/história/condições + achados
 // do avatar + observações do profissional). `foco` muda só a instrução de uso.
-export function textoPresencial(m: MotoresClinicos, foco: "treino" | "nutricao"): string {
+export function textoPresencial(m: MotoresClinicos, foco: FocoPlano): string {
   const partes: string[] = [];
   if (m.queixa) partes.push(`Queixa principal: ${String(m.queixa).slice(0, 300)}`);
   if (m.historia) partes.push(`História atual: ${String(m.historia).slice(0, 400)}`);
@@ -156,14 +158,14 @@ export async function carregarAchadosPresenciais(admin: SB, pacienteId: string):
   }));
 }
 
-export function textoAchadosPresenciais(achados: AchadoPresencial[], foco: "treino" | "nutricao"): string {
+export function textoAchadosPresenciais(achados: AchadoPresencial[], foco: FocoPlano): string {
   if (!achados.length) return "";
   return `\nAVALIAÇÃO PRESENCIAL — achados no avatar clínico e observações do profissional (${instrucaoPresencial(foco)}):\n${formatAchados(achados)}`;
 }
 
 // Texto compacto dos questionários clínicos validados (PAR-Q+, PSFS, START Back,
 // ISI, PHQ-4...). `foco` acrescenta a instrução de uso conforme o plano.
-export function textoQuestionarios(m: MotoresClinicos, foco: "treino" | "nutricao"): string {
+export function textoQuestionarios(m: MotoresClinicos, foco: FocoPlano): string {
   if (!m.questionarios.length) return "";
   const linhas = m.questionarios.map((q) => {
     const metas = Array.isArray(q.respostas?.atividades)
@@ -173,15 +175,19 @@ export function textoQuestionarios(m: MotoresClinicos, foco: "treino" | "nutrica
   }).join("\n");
   const instrucao = foco === "treino"
     ? "PARQ requer_atencao = plano CONSERVADOR e alerta para avaliação presencial antes de intensificar; SBST alto_risco = abordagem biopsicossocial e progressão cautelosa; PSFS = use as metas do paciente como objetivos do plano; ISI/PHQ4 alterados = considere sono/estresse na periodização"
-    : "ISI alterado (sono ruim) = cuide de cafeína/horário das refeições e ceia leve; PHQ4 alterado (humor/estresse) = evite restrição agressiva, priorize aderência; PARQ requer_atencao = mantenha conduta nutricional conservadora e dentro do escopo";
+    : foco === "nutricao"
+      ? "ISI alterado (sono ruim) = cuide de cafeína/horário das refeições e ceia leve; PHQ4 alterado (humor/estresse) = evite restrição agressiva, priorize aderência; PARQ requer_atencao = mantenha conduta nutricional conservadora e dentro do escopo"
+      : "use os escores validados na conduta e nas metas; PHQ4/PHQ9/GAD7 alterados = atenção a humor/ansiedade e possível encaminhamento; respeite o escopo da sua profissão";
   return `\nQUESTIONÁRIOS CLÍNICOS VALIDADOS (respeite — ${instrucao}):\n${linhas}`;
 }
 
 // Texto do MyID (motor 1). `foco` muda a instrução de priorização.
-export function textoMyID(m: MotoresClinicos, foco: "treino" | "nutricao"): string {
+export function textoMyID(m: MotoresClinicos, foco: FocoPlano): string {
   if (!m.scores) return "";
   const instrucao = foco === "treino"
     ? "Priorize exercícios que atendam às dimensões mais críticas do paciente."
-    : "Ajuste macros, alimentos e orientações às dimensões mais críticas (ex.: inflamação, metabólico, sono).";
+    : foco === "nutricao"
+      ? "Ajuste macros, alimentos e orientações às dimensões mais críticas (ex.: inflamação, metabólico, sono)."
+      : "Priorize a conduta e as fases nas dimensões mais críticas do paciente.";
   return `\nPerfil MyID (scores por dimensão): ${JSON.stringify(m.scores)}. ${instrucao}`;
 }

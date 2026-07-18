@@ -74,6 +74,7 @@ const RecordatorioCard = lazy(() => import('@/components/nutricao/RecordatorioCa
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
 const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
 const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
+const DiretrizLenteCard = lazy(() => import('@/components/diretrizes/DiretrizLenteCard'));
 const EvolucaoFisicaCard = lazy(() => import('@/components/evolucao/EvolucaoFisicaCard'));
 const AvaliacoesVozHistorico = lazy(() => import('@/components/voice/AvaliacoesVozHistorico'));
 const EscalasPsicologiaCard = lazy(() => import('@/components/psicologia/EscalasPsicologiaCard'));
@@ -1174,6 +1175,7 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'recordatorio') && id && <RecordatorioCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <DiretrizNutricionalCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'diretriz_tratamento') && id && <DiretrizLenteCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'escalas_psicologia') && id && <EscalasPsicologiaCard pacienteId={id} />}
             {id && <QuestionariosClinicosCard pacienteId={id} />}
             <AvaliacaoVozAtual

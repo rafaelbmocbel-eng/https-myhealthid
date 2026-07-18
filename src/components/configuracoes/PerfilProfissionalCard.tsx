@@ -20,6 +20,7 @@ const OPCOES: { value: PerfilProfissional; label: string; hint: string }[] = [
   { value: 'nutricionista', label: 'Nutricionista', hint: 'Antropometria, recordatório, plano alimentar' },
   { value: 'educador_fisico', label: 'Educador(a) Físico(a)', hint: 'Testes funcionais, periodização de treino' },
   { value: 'terapeuta_ocupacional', label: 'Terapeuta Ocupacional', hint: 'AVDs, ambiente, ocupações significativas' },
+  { value: 'dentista', label: 'Dentista', hint: 'Anamnese odontológica, exame intraoral, plano por fases' },
 ];
 
 const ESPECIALIDADES_MEDICAS: { value: string; label: string; hint: string }[] = [

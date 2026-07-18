@@ -37,7 +37,15 @@ export default function DiretrizAreaCard({
   const [objetivo, setObjetivo] = useState('');
   const [obs, setObs] = useState('');
   // A chancela (enviar ao portal) é do profissional habilitado pela área.
-  const areaChancela: AreaChancela = area === 'nutricao' ? 'nutricao' : area === 'educacao_fisica' ? 'treino' : 'fisioterapia';
+  const AREA_CHANCELA: Record<string, AreaChancela> = {
+    nutricao: 'nutricao',
+    educacao_fisica: 'treino',
+    medicina: 'medicina',
+    psicologia: 'psicologia',
+    terapia_ocupacional: 'terapia_ocupacional',
+    odontologia: 'odontologia',
+  };
+  const areaChancela: AreaChancela = AREA_CHANCELA[area] || 'fisioterapia';
   const chancela = usePodeChancelar(areaChancela);
 
   const { data: diretriz } = useQuery({
@@ -53,7 +61,7 @@ export default function DiretrizAreaCard({
   const gerar = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke(funcaoIA, {
-        body: { paciente_id: pacienteId, objetivo: objetivo || undefined, observacoes: obs || undefined },
+        body: { paciente_id: pacienteId, area, objetivo: objetivo || undefined, observacoes: obs || undefined },
       });
       if (error) throw await erroDaFuncao(error);
       if (!(data as any)?.ok) throw new Error((data as any)?.error || 'Falha ao gerar');

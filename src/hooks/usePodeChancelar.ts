@@ -8,18 +8,28 @@ import { useClinicaContext } from './useClinicaContext';
 // Nutricionista; plano de fisioterapia → Fisioterapeuta. Gerar rascunho é livre;
 // só a LIBERAÇÃO exige o profissional certo — ou uma clínica que tenha esse
 // profissional ativo lá dentro (a clínica dá a chancela pela sua equipe).
-export type AreaChancela = 'treino' | 'nutricao' | 'fisioterapia';
+export type AreaChancela =
+  | 'treino' | 'nutricao' | 'fisioterapia'
+  | 'medicina' | 'psicologia' | 'terapia_ocupacional' | 'odontologia';
 
 const PERFIL_EXIGIDO: Record<AreaChancela, PerfilProfissional> = {
   treino: 'educador_fisico',
   nutricao: 'nutricionista',
   fisioterapia: 'fisioterapeuta',
+  medicina: 'medico',
+  psicologia: 'psicologo',
+  terapia_ocupacional: 'terapeuta_ocupacional',
+  odontologia: 'dentista',
 };
 
 const LABEL: Record<AreaChancela, string> = {
   treino: 'Educador Físico',
   nutricao: 'Nutricionista',
   fisioterapia: 'Fisioterapeuta',
+  medicina: 'Médico(a)',
+  psicologia: 'Psicólogo(a)',
+  terapia_ocupacional: 'Terapeuta Ocupacional',
+  odontologia: 'Dentista',
 };
 
 export interface Chancela {

@@ -8,7 +8,8 @@ export type PerfilProfissional =
   | 'psicologo'
   | 'nutricionista'
   | 'educador_fisico'
-  | 'terapeuta_ocupacional';
+  | 'terapeuta_ocupacional'
+  | 'dentista';
 
 export interface LenteProfissional {
   id: PerfilProfissional;

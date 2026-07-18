@@ -17,6 +17,7 @@ const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
 const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
 const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
+const DiretrizLenteCard = lazy(() => import('@/components/diretrizes/DiretrizLenteCard'));
 const RelatorioAvaliacaoCard = lazy(() => import('@/components/paciente/RelatorioAvaliacaoCard'));
 const QuestionariosClinicosCard = lazy(() => import('@/components/paciente/QuestionariosClinicosCard'));
 const TreinoDocumento = lazy(() => import('@/components/paciente/TreinoDocumento'));
@@ -435,6 +436,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                   <DiretrizTreinoCard pacienteId={pacienteId} />
                   <PlanoAlimentarCard pacienteId={pacienteId} />
                   <DiretrizNutricionalCard pacienteId={pacienteId} />
+                  <DiretrizLenteCard pacienteId={pacienteId} />
                 </Suspense>
               </div>
             </AccordionContent>
