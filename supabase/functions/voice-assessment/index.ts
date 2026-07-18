@@ -668,10 +668,19 @@ Deno.serve(async (req) => {
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("Resposta da IA sem dados estruturados");
-
-    let assessment = JSON.parse(toolCall.function.arguments);
+    const msg = data.choices?.[0]?.message;
+    const toolCall = msg?.tool_calls?.[0];
+    // Robustez: o endpoint OpenAI-compat do Gemini nem sempre honra o
+    // tool_choice forçado e pode devolver o JSON no content. Aceitamos os dois.
+    let assessment: any;
+    if (toolCall?.function?.arguments) {
+      assessment = JSON.parse(toolCall.function.arguments);
+    } else if (msg?.content) {
+      const m = String(msg.content).match(/\{[\s\S]*\}/);
+      assessment = JSON.parse(m ? m[0] : String(msg.content));
+    } else {
+      throw new Error("Resposta da IA sem dados estruturados");
+    }
 
     // ── Sanitiza citações [n] que não correspondem a evidência real injetada ──
     assessment = sanitizeCitationsDeep(assessment, evidencias.length);

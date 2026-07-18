@@ -234,7 +234,9 @@ export default function BibliotecaExercicios() {
         } as any);
         if (insErr) throw insErr;
         ok++;
-      } catch {
+      } catch (e) {
+        // Antes o erro era descartado — impossível diagnosticar (RLS, cota…).
+        console.error('[BibliotecaExercicios] falha ao subir GIF:', par?.base, e);
         falhas++;
       }
       setPack({ done: i + 1, total: lista.length });

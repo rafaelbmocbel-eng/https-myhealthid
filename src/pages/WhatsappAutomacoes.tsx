@@ -110,6 +110,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
 
   useEffect(() => {
     (async () => {
+     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase
@@ -153,7 +154,12 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         const soma = notas.reduce((s: number, n: any) => s + (n.nota || 0), 0);
         setNps({ media: Math.round((soma / notas.length) * 10) / 10, total: notas.length });
       }
-      setLoading(false);
+     } catch (e) {
+       // Sem isto, qualquer falha deixava a tela travada em "Carregando…".
+       console.error('[WhatsappAutomacoes] erro ao carregar:', e);
+     } finally {
+       setLoading(false);
+     }
     })();
   }, []);
 

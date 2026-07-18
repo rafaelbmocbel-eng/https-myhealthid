@@ -144,8 +144,16 @@ ${catalogText}`;
     }
 
     const data = await aiRes.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    const args = toolCall ? JSON.parse(toolCall.function.arguments) : { findings: [] };
+    const msg = data.choices?.[0]?.message;
+    // Aceita tool_call OU JSON no content (o tool_choice forçado nem sempre é
+    // honrado pelo endpoint do Gemini) — antes caía em findings:[] silencioso.
+    let args: any = { findings: [] };
+    if (msg?.tool_calls?.[0]?.function?.arguments) {
+      args = JSON.parse(msg.tool_calls[0].function.arguments);
+    } else if (msg?.content) {
+      const m = String(msg.content).match(/\{[\s\S]*\}/);
+      try { args = JSON.parse(m ? m[0] : String(msg.content)); } catch { /* mantém vazio */ }
+    }
 
     // Validar IDs
     const validIds = new Set(regions.map((r) => r.id));
