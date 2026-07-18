@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -43,6 +44,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }: Props) {
   const { user, profile } = useAuth();
+  const chancelaFisio = usePodeChancelar('fisioterapia');
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -254,6 +256,11 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
   };
 
   const handleCriarProtocoloDaVoz = async (av: any) => {
+    // Chancela: ativar a diretriz de tratamento é ato do Fisioterapeuta (ou clínica que o tenha).
+    if (!chancelaFisio.pode) {
+      toast({ title: 'Chancela restrita', description: chancelaFisio.motivo, variant: 'destructive' });
+      return;
+    }
     try {
       const resultado = typeof av.resultado === 'string' ? JSON.parse(av.resultado) : av.resultado;
       const diretriz = resultado?.diretriz_tratamento;

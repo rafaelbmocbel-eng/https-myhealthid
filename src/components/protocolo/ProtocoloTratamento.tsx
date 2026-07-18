@@ -6,6 +6,7 @@ import { Zap, Brain, CheckCircle2, Save, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 
 const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
 const FASE_CORES_BG = ['bg-indigo-50', 'bg-amber-50', 'bg-emerald-50', 'bg-red-50'];
@@ -41,6 +42,7 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
   const [salvando, setSalvando] = useState(false);
   const qc = useQueryClient();
   const { user } = useAuth();
+  const chancelaFisio = usePodeChancelar('fisioterapia');
 
   const { data: tratamentos = [], isLoading } = useQuery({
     queryKey: ['protocolo-tratamentos', protocoloId],
@@ -57,6 +59,12 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
   });
 
   const salvarProtocolo = async () => {
+    // Chancela: ativar a diretriz de tratamento é ato do Fisioterapeuta (ou
+    // clínica que o tenha).
+    if (!chancelaFisio.pode) {
+      toast({ title: 'Chancela restrita', description: chancelaFisio.motivo, variant: 'destructive' });
+      return;
+    }
     setSalvando(true);
     try {
       const { data: prot, error } = await (supabase as any)
@@ -145,13 +153,17 @@ Diretriz criada no cardápio de técnicas e salva automaticamente no prontuário
           </div>
           <Button
             onClick={salvarProtocolo}
-            disabled={salvando}
+            disabled={salvando || chancelaFisio.loading || !chancelaFisio.pode}
+            title={!chancelaFisio.pode ? chancelaFisio.motivo : undefined}
             className="bg-primary text-primary-foreground gap-2 shrink-0"
           >
             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Salvar Diretriz
           </Button>
         </div>
+        {!chancelaFisio.loading && !chancelaFisio.pode && (
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">🔒 {chancelaFisio.motivo}</p>
+        )}
       </div>
 
       {[1, 2, 3, 4].map(faseNum => {

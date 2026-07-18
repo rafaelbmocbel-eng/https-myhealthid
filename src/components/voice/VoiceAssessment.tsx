@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
 import { backupAppendChunk, backupSetMeta, backupRead, backupClear } from '@/lib/recordingBackup';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
+import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
 import DiretrizIAReviewDialog from './DiretrizIAReviewDialog';
 import ProntuarioReviewDialog from './ProntuarioReviewDialog';
@@ -160,6 +161,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [soapNoteSaved, setSoapNoteSaved] = useState(false);
   const [creatingDiretriz, setCreatingDiretriz] = useState(false);
   const [diretrizCreatedId, setDiretrizCreatedId] = useState<string | null>(null);
+  // A diretriz de tratamento (fisioterapia) só é chancelada por Fisioterapeuta
+  // — ou por clínica que tenha um ativo na equipe.
+  const chancelaFisio = usePodeChancelar('fisioterapia');
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [showProntuarioReview, setShowProntuarioReview] = useState(false);
   const [showFullEditor, setShowFullEditor] = useState(false);
@@ -1144,6 +1148,12 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           : 'A IA não gerou uma diretriz nesta análise.',
         variant: 'destructive',
       });
+      return;
+    }
+    // Chancela: ativar a diretriz de tratamento (status ativo) é ato do
+    // Fisioterapeuta (ou clínica que o tenha). "Personalizar" só cria rascunho.
+    if (intent === 'aprovar' && !chancelaFisio.pode) {
+      toast({ title: 'Chancela restrita', description: chancelaFisio.motivo, variant: 'destructive' });
       return;
     }
 

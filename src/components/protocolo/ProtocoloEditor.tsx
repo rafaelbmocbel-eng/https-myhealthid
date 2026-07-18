@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -59,6 +60,7 @@ const STEPS = [
 
 export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCancel }: ProtocoloEditorProps) {
     const { user } = useAuth();
+    const chancelaFisio = usePodeChancelar('fisioterapia');
     const qc = useQueryClient();
     const [salvando, setSalvando] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
@@ -166,6 +168,11 @@ export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCan
 
     const handleSalvar = async () => {
         if (!user) return;
+        // Chancela: ativar a diretriz de tratamento é ato do Fisioterapeuta (ou clínica que o tenha).
+        if (!chancelaFisio.pode) {
+            toast({ title: 'Chancela restrita', description: chancelaFisio.motivo, variant: 'destructive' });
+            return;
+        }
         setSalvando(true);
         try {
             const analisePersonalizada: ProtocoloAnalise = {
@@ -771,7 +778,8 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                             <Button
                                 size="sm"
                                 onClick={handleSalvar}
-                                disabled={salvando || (totalExSelecionados === 0 && totalTecSelecionados === 0)}
+                                disabled={salvando || (totalExSelecionados === 0 && totalTecSelecionados === 0) || chancelaFisio.loading || !chancelaFisio.pode}
+                                title={!chancelaFisio.pode ? chancelaFisio.motivo : undefined}
                                 className="bg-primary text-primary-foreground gap-1.5 px-5"
                             >
                                 {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}

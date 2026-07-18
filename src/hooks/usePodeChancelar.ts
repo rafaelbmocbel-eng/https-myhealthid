@@ -1,12 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useLenteAtiva, type PerfilProfissional } from './useLenteAtiva';
 import { useClinicaContext } from './useClinicaContext';
-
-// Conta principal (fundador) — pode dar a chancela em qualquer área,
-// independentemente do perfil profissional. É a conta que criou a plataforma.
-const CONTA_PRINCIPAL = 'rafaelbmocbel@gmail.com';
 
 // A CHANCELA (liberar/enviar um plano ao paciente) é ato do profissional
 // habilitado: plano de treino/personal → Educador Físico; plano nutricional →
@@ -36,12 +31,10 @@ export interface Chancela {
 }
 
 export function usePodeChancelar(area: AreaChancela): Chancela {
-  const { user } = useAuth();
   const { data: lente, isLoading: lLoading } = useLenteAtiva();
   const { clinica, isSolo, loading: cLoading } = useClinicaContext();
   const exigido = PERFIL_EXIGIDO[area];
   const clinicaId = clinica?.id;
-  const ehContaPrincipal = (user?.email || '').trim().toLowerCase() === CONTA_PRINCIPAL;
 
   // A clínica ativa tem ALGUM profissional do tipo exigido, ativo?
   // Lê só clinica_membros (legível dentro da clínica) — a coluna perfil_profissional
@@ -57,11 +50,6 @@ export function usePodeChancelar(area: AreaChancela): Chancela {
       return (data || []).some((m: any) => m.perfil_profissional === exigido);
     },
   });
-
-  // Conta principal não espera nenhuma query — sempre pode.
-  if (ehContaPrincipal) {
-    return { pode: true, motivo: '', loading: false, labelExigido: LABEL[area], viaClinica: false };
-  }
 
   const loading = lLoading || cLoading || (!!clinicaId && qLoading);
   const ehProprio = lente?.id === exigido;
