@@ -42,6 +42,7 @@ const CrmHub = lazyWithRetry(() => import("./pages/CrmHub"));
 const FunilPublico = lazyWithRetry(() => import("./pages/FunilPublico"));
 const Eventos = lazyWithRetry(() => import("./pages/Eventos"));
 const EventoPublico = lazyWithRetry(() => import("./pages/EventoPublico"));
+const TreinoPublico = lazyWithRetry(() => import("./pages/TreinoPublico"));
 const CadastroCliente = lazyWithRetry(() => import("./pages/CadastroCliente"));
 const CompletarCadastro = lazyWithRetry(() => import("./pages/CompletarCadastro"));
 const Precos = lazyWithRetry(() => import("./pages/Precos"));
@@ -182,6 +183,7 @@ const App = () => (
                 <Route path="/crm/trafego" element={<Navigate to="/crm?tab=trafego" replace />} />
                 <Route path="/eventos" element={<ProfessionalGuard><Eventos /></ProfessionalGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
+                <Route path="/treino/:token" element={<TreinoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
                 <Route path="/portaldocliente/completar/:token" element={<CompletarCadastro />} />
                 <Route path="/configuracoes" element={<ProfessionalGuard><Configuracoes /></ProfessionalGuard>} />

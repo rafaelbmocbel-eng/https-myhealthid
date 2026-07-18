@@ -20,6 +20,7 @@ const MyIDResponder = lazyWithRetry(() => import("./pages/MyIDResponder"));
 const MyIDView = lazyWithRetry(() => import("./pages/MyIDView"));
 const FunilPublico = lazyWithRetry(() => import("./pages/FunilPublico"));
 const EventoPublico = lazyWithRetry(() => import("./pages/EventoPublico"));
+const TreinoPublico = lazyWithRetry(() => import("./pages/TreinoPublico"));
 const CadastroCliente = lazyWithRetry(() => import("./pages/CadastroCliente"));
 const CompletarCadastro = lazyWithRetry(() => import("./pages/CompletarCadastro"));
 const RecuperarSenha = lazyWithRetry(() => import("./pages/RecuperarSenha"));
@@ -124,6 +125,7 @@ const AppPaciente = () => (
                 <Route path="/myid/ver/:token" element={<MyIDView />} />
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
+                <Route path="/treino/:token" element={<TreinoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
                 <Route path="/portaldocliente/completar/:token" element={<CompletarCadastro />} />
                 <Route path="/wellness/cadastro" element={<WellnessCadastro />} />

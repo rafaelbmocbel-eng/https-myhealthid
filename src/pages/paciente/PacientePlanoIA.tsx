@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
 import PlanoTreinoInterativo from '@/components/paciente/PlanoTreinoInterativo';
+import { INSTRUMENTOS, CLASSIFICACAO_LABEL } from '@/lib/instrumentosClinicos';
 
 // Seção reutilizável do plano personalizado (treino IA + personal + nutrição).
 // Mora dentro de "Treino personalizado" (/paciente/questionarios?foco=plano) —
@@ -71,10 +72,28 @@ export function PlanoPersonalizadoSection() {
     if (!pacienteId) return;
     setGerando(alvo);
     try {
-      const { data: anamRow } = await (supabase as any).from('nutricao_anamnese')
-        .select('respostas').eq('paciente_id', pacienteId).maybeSingle();
+      const [{ data: anamRow }, { data: questRows }] = await Promise.all([
+        (supabase as any).from('nutricao_anamnese').select('respostas').eq('paciente_id', pacienteId).maybeSingle(),
+        (supabase as any).from('questionarios_clinicos')
+          .select('instrumento, classificacao, created_at').eq('paciente_id', pacienteId)
+          .order('created_at', { ascending: false }),
+      ]);
       const r = (anamRow?.respostas || {}) as Record<string, string>;
       const objetivo = (r.objetivo || '').trim() || 'Saúde geral, alívio de dor e mais energia no dia a dia';
+
+      // Perfil individual que embasou o treino — guardado JUNTO do plano para
+      // deixar claro (inclusive na página pública) que é feito dos SEUS
+      // questionários, não genérico.
+      const ultQuest = new Map<string, any>();
+      ((questRows as any[]) || []).forEach((q) => { if (!ultQuest.has(q.instrumento)) ultQuest.set(q.instrumento, q); });
+      const baseadoEm = {
+        objetivo,
+        questionarios: [...ultQuest.values()].map((q: any) => ({
+          sigla: (INSTRUMENTOS[q.instrumento as keyof typeof INSTRUMENTOS]?.sigla) || String(q.instrumento).toUpperCase(),
+          nome: INSTRUMENTOS[q.instrumento as keyof typeof INSTRUMENTOS]?.nome,
+          classificacao: CLASSIFICACAO_LABEL[q.classificacao] || q.classificacao,
+        })),
+      };
 
       if (alvo === 'treino' || alvo === 'tudo') {
         const res = await supabase.functions.invoke('gerar-plano-treino', {
@@ -88,7 +107,7 @@ export function PlanoPersonalizadoSection() {
         const plano = (res.data as any)?.plano;
         if (plano) {
           await (supabase as any).from('planos_ia_cliente').upsert(
-            { paciente_id: pacienteId, tipo: 'treino', titulo: plano.titulo || 'Meu treino (IA)', conteudo: plano },
+            { paciente_id: pacienteId, tipo: 'treino', titulo: plano.titulo || 'Meu treino (IA)', conteudo: { ...plano, baseadoEm } },
             { onConflict: 'paciente_id,tipo' });
         }
       }
