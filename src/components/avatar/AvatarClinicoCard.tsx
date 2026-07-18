@@ -652,6 +652,16 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     };
   }).sort((a, b) => b.score - a.score), [eventos, sinalRegions, historiaVida, diagnosticosCID]);
 
+  // Auto-ativa (uma vez) os sistemas que têm achados quando o avatar carrega —
+  // antes o profissional gerava achados, abria o Avatar e via vazio até
+  // adivinhar que precisava clicar num ícone de sistema ("salvou mas sumiu").
+  const [autoAtivado, setAutoAtivado] = useState(false);
+  useEffect(() => {
+    if (!isProfessional || autoAtivado || sistemasAtivos.length > 0) return;
+    const comAchado = systemScores.filter(s => s.count > 0).map(s => s.sistema);
+    if (comAchado.length > 0) { setSistemasAtivos(comAchado); setAutoAtivado(true); }
+  }, [systemScores, autoAtivado, sistemasAtivos.length, isProfessional]);
+
   // Reconstrói a carga clínica de cada sistema mês a mês a partir do ciclo de vida
   // dos achados (data_inicio/data_resolucao). Como o registro não guarda histórico de
   // mudanças de severidade/status, usa o valor ATUAL como aproximação para os meses em

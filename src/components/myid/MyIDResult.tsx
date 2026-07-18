@@ -401,23 +401,11 @@ function ClienteView({ result, rawData, pacienteId, terapeutaId, avaliacaoId, pe
         redFlags={!!red_flags_detected}
       />
 
-      {/* CTA footer */}
-      <div className="bg-card p-5 rounded-xl border shadow-sm text-center space-y-3">
-        <p className="text-sm text-muted-foreground">Compartilhe com seu profissional para um plano personalizado.</p>
-        <div className="flex flex-wrap justify-center gap-2">
-          <button className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-md text-sm transition-colors">
-            Baixar PDF
-          </button>
-          <button
-            onClick={() => shareMyIDResults(result.paciente_nome || 'Paciente', '5511999999999', result)}
-            className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary font-bold rounded-md text-sm transition-colors"
-          >
-            Compartilhar com profissional
-          </button>
-          <button className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-md text-sm transition-colors">
-            Agendar consulta
-          </button>
-        </div>
+      {/* Rodapé — os botões "Baixar PDF"/"Agendar"/"Compartilhar" foram
+          removidos: os dois primeiros não faziam nada e o compartilhar usava um
+          telefone fictício. O paciente tem o PDF no Início e a Agenda na aba
+          própria. */}
+      <div className="text-center">
         <p className="text-[10px] text-muted-foreground/40 font-mono">
           {new Date().toLocaleDateString()} · MyID-100 v2.0
         </p>
