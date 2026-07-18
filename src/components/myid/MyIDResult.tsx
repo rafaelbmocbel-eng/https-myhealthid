@@ -136,6 +136,10 @@ interface MyIDResultProps {
   pacienteId?: string;
   terapeutaId?: string;
   avaliacaoId?: string;
+  // Quem está VENDO — não derivar de terapeutaId (todo paciente vinculado tem
+  // um). Só o app do profissional passa true; o portal do paciente nunca vê a
+  // visão clínica (linguagem nocebo: red flags, "crítico severo", etc.).
+  isProfessional?: boolean;
 }
 
 interface PerdaItem {
@@ -619,8 +623,10 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPONENTE PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════════
-export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, avaliacaoId }: MyIDResultProps) {
-  const isTerapeuta = !!terapeutaId;
+export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, avaliacaoId, isProfessional = false }: MyIDResultProps) {
+  // A visão clínica é SÓ para o profissional. terapeutaId continua usado apenas
+  // para persistir o checklist (não para decidir a visão).
+  const isTerapeuta = isProfessional;
   const [visao, setVisao] = useState<'cliente' | 'terapeuta'>(isTerapeuta ? 'terapeuta' : 'cliente');
   const [celebrate, setCelebrate] = useState(false);
 

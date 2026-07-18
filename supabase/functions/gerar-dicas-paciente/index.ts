@@ -3,6 +3,7 @@
 // evidence_library. Chamada automaticamente ao concluir o MyID. Salva 1 registro
 // por paciente em paciente_dicas.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { isInternalCall, requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,6 +44,20 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Autorização: interno (complete-myid/cron) OU dono (paciente ou terapeuta).
+    // Sem isto era IDOR — qualquer autenticado gerava/gravava para qualquer paciente.
+    if (!isInternalCall(req)) {
+      let userId: string;
+      try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
+      const { data: dono } = await admin.from("pacientes")
+        .select("user_id, terapeuta_id").eq("id", paciente_id).maybeSingle();
+      if (!dono || (dono.user_id !== userId && dono.terapeuta_id !== userId)) {
+        return new Response(JSON.stringify({ error: "Sem permissão para este paciente." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // MyID + história do paciente
     const [myRes, pacRes] = await Promise.all([

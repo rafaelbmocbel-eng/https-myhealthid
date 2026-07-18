@@ -799,6 +799,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
                                 pacienteId={paciente.id}
                                 terapeutaId={av.terapeuta_id}
                                 avaliacaoId={av.id}
+                                isProfessional
                               />
                               <div className="mt-4 flex justify-end">
                                 <Button

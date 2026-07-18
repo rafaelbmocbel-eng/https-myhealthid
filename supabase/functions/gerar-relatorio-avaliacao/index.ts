@@ -4,6 +4,7 @@
 // funcionais, bioimpedância, antropometria, sinais vitais e história clínica.
 // Disparado automaticamente pelo complete-myid e regenerável pelo profissional.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { isInternalCall, requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,6 +46,21 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Autorização: interno (complete-myid/cron) OU dono (o paciente ou o
+    // terapeuta dele). Sem isto, qualquer autenticado puxava PHI de qualquer
+    // paciente passando um paciente_id alheio (IDOR).
+    if (!isInternalCall(req)) {
+      let userId: string;
+      try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
+      const { data: dono } = await admin.from("pacientes")
+        .select("user_id, terapeuta_id").eq("id", paciente_id).maybeSingle();
+      if (!dono || (dono.user_id !== userId && dono.terapeuta_id !== userId)) {
+        return new Response(JSON.stringify({ error: "Sem permissão para este paciente." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     const [pacRes, myRes, avatarRes, testesRes, compRes, antroRes, vitaisRes] = await Promise.all([
       admin.from("pacientes").select("terapeuta_id, nome, sexo, data_nascimento, queixa_principal, historia_atual, condicoes_saude")
