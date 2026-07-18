@@ -232,7 +232,14 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         .order("updated_at", { ascending: false });
       const ultimoScore = new Map<string, number>();
       (data || []).forEach((r: any) => {
-        if (!ultimoScore.has(r.paciente_id)) ultimoScore.set(r.paciente_id, Number(r.myid_score_parcial || 0));
+        // Só segmenta por gravidade quem tem score de fato calculado. Antes,
+        // score nulo virava 0 → o paciente caía em "crítico" e recebia uma
+        // mensagem alarmante sem motivo. Sem score, fica fora dos 3 segmentos.
+        if (ultimoScore.has(r.paciente_id)) return;
+        const s = Number(r.myid_score_parcial);
+        if (r.myid_score_parcial != null && Number.isFinite(s)) {
+          ultimoScore.set(r.paciente_id, s);
+        }
       });
       const range = seg === "myid_critico" ? (s: number) => s < 50
         : seg === "myid_moderado" ? (s: number) => s >= 50 && s < 75
