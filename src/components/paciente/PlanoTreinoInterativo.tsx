@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { startOfWeek } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
@@ -33,6 +34,7 @@ function sessaoKey(fi: number, si: number, nome: string) {
 export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, onRegenerarComIncomodo, regenerando }: Props) {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const fases: any[] = Array.isArray(conteudo?.fases) ? conteudo.fases : [];
   const [aberta, setAberta] = useState<string | null>(() => (fases[0]?.sessoes?.[0] ? sessaoKey(0, 0, fases[0].sessoes[0].nome) : null));
@@ -128,11 +130,16 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
           <span className="ml-auto text-[10px] text-muted-foreground">marque abaixo ao terminar</span>
         </div>
 
-        {/* Baixar o treino em PDF (com explicações e os GIFs do banco) */}
-        <Button variant="outline" className="w-full gap-1.5" disabled={baixandoPdf} onClick={baixarPdf}>
-          {baixandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-          {baixandoPdf ? 'Montando seu PDF…' : 'Baixar treino em PDF (com GIFs)'}
-        </Button>
+        {/* Ver a versão web (GIFs ANIMANDO, imita o PDF) + baixar PDF estático */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button variant="default" className="gap-1.5" onClick={() => navigate('/paciente/treino-completo')}>
+            <PlayCircle className="h-4 w-4" /> Ver treino completo (com GIFs)
+          </Button>
+          <Button variant="outline" className="gap-1.5" disabled={baixandoPdf} onClick={baixarPdf}>
+            {baixandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            {baixandoPdf ? 'Montando PDF…' : 'Baixar PDF'}
+          </Button>
+        </div>
 
         {/* Fases → sessões */}
         {fases.map((f, fi) => (

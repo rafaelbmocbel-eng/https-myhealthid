@@ -51,6 +51,7 @@ const PacienteRecompensas = lazyWithRetry(() => import("./pages/paciente/Pacient
 const PacienteProfissionais = lazyWithRetry(() => import("./pages/paciente/PacienteProfissionais"));
 const PacienteAvatar = lazyWithRetry(() => import("./pages/paciente/PacienteAvatar"));
 const PacientePlanoIA = lazyWithRetry(() => import("./pages/paciente/PacientePlanoIA"));
+const PacienteTreinoCompleto = lazyWithRetry(() => import("./pages/paciente/PacienteTreinoCompleto"));
 const PacienteDicas = lazyWithRetry(() => import("./pages/paciente/PacienteDicas"));
 const AuthConfirm = lazyWithRetry(() => import("./pages/AuthConfirm"));
 
@@ -153,6 +154,7 @@ const AppPaciente = () => (
                 <Route path="/paciente/profissionais" element={<ProtectedPatientRoute><PacienteProfissionais /></ProtectedPatientRoute>} />
                 <Route path="/paciente/avatar" element={<ProtectedPatientRoute><PacienteAvatar /></ProtectedPatientRoute>} />
                 <Route path="/paciente/plano-ia" element={<ProtectedPatientRoute><PacientePlanoIA /></ProtectedPatientRoute>} />
+                <Route path="/paciente/treino-completo" element={<ProtectedPatientRoute><PacienteTreinoCompleto /></ProtectedPatientRoute>} />
                 <Route path="/paciente/dicas" element={<ProtectedPatientRoute><PacienteDicas /></ProtectedPatientRoute>} />
 
                 <Route path="*" element={<NotFound />} />
