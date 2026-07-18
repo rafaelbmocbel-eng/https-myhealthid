@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
-import { Dumbbell, Plus, Pencil, Trash2, Loader2, Search, Upload, ImageOff, X, FolderUp, FileArchive, Languages } from 'lucide-react';
+import { Dumbbell, Plus, Pencil, Trash2, Loader2, Search, Upload, ImageOff, X, FolderUp, FileArchive, Languages, CheckCircle2 } from 'lucide-react';
 
 interface Exercicio {
   id: string;
@@ -39,6 +39,44 @@ export default function BibliotecaExercicios() {
   const [salvando, setSalvando] = useState(false);
   const [subindo, setSubindo] = useState(false);
   const [pack, setPack] = useState<{ done: number; total: number } | null>(null);
+  const [verificando, setVerificando] = useState(false);
+  const [progVerif, setProgVerif] = useState({ done: 0, total: 0 });
+  const [quebrados, setQuebrados] = useState<{ id: string; nome: string; campo: 'gif_url' | 'gif_url_fem'; url: string }[] | null>(null);
+
+  // Verifica se um GIF/imagem carrega de fato (roda no navegador do profissional,
+  // que tem acesso à rede). Timeout evita travar em URL lenta.
+  const testarImagem = (url: string, timeout = 9000): Promise<boolean> => new Promise((resolve) => {
+    const img = new Image();
+    let done = false;
+    const finish = (ok: boolean) => { if (!done) { done = true; resolve(ok); } };
+    const t = setTimeout(() => finish(false), timeout);
+    img.onload = () => { clearTimeout(t); finish((img.naturalWidth || 0) > 0); };
+    img.onerror = () => { clearTimeout(t); finish(false); };
+    img.src = url;
+  });
+
+  const verificarGifs = async () => {
+    setVerificando(true);
+    setQuebrados(null);
+    const alvos: { id: string; nome: string; campo: 'gif_url' | 'gif_url_fem'; url: string }[] = [];
+    lista.forEach((ex) => {
+      if (ex.gif_url) alvos.push({ id: ex.id, nome: ex.nome, campo: 'gif_url', url: ex.gif_url });
+      if (ex.gif_url_fem) alvos.push({ id: ex.id, nome: ex.nome, campo: 'gif_url_fem', url: ex.gif_url_fem });
+    });
+    setProgVerif({ done: 0, total: alvos.length });
+    const ruins: typeof alvos = [];
+    const LOTE = 6;
+    for (let i = 0; i < alvos.length; i += LOTE) {
+      const lote = alvos.slice(i, i + LOTE);
+      const res = await Promise.all(lote.map(async (a) => ({ a, ok: await testarImagem(a.url) })));
+      res.forEach((r) => { if (!r.ok) ruins.push(r.a); });
+      setProgVerif({ done: Math.min(i + LOTE, alvos.length), total: alvos.length });
+    }
+    setQuebrados(ruins);
+    setVerificando(false);
+    if (ruins.length === 0) toast.success('Nenhum GIF quebrado 🎉');
+    else toast.warning(`${ruins.length} GIF(s) com erro`);
+  };
 
   const carregar = async () => {
     if (!user) return;
@@ -337,7 +375,50 @@ export default function BibliotecaExercicios() {
             {traduzindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
             {traduzindo ? 'Traduzindo…' : 'Traduzir nomes (IA)'}
           </button>
+          <button type="button" onClick={verificarGifs} disabled={verificando || !!pack}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-amber-300 bg-amber-50 text-amber-700 text-xs font-medium hover:bg-amber-100 shrink-0 whitespace-nowrap disabled:opacity-50">
+            {verificando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageOff className="h-4 w-4" />}
+            {verificando ? `Verificando… ${progVerif.done}/${progVerif.total}` : 'Verificar GIFs quebrados'}
+          </button>
         </div>
+
+        {/* Resultado da verificação de GIFs quebrados */}
+        {quebrados !== null && !verificando && (
+          <div className={`rounded-xl border p-3 ${quebrados.length === 0 ? 'border-emerald-300 bg-emerald-50' : 'border-amber-300 bg-amber-50'}`}>
+            {quebrados.length === 0 ? (
+              <p className="text-sm font-medium text-emerald-700 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" /> Nenhum GIF quebrado — todos {' '}
+                carregaram normalmente. 🎉
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                  <ImageOff className="h-4 w-4" /> {quebrados.length} GIF(s) com erro — toque para corrigir:
+                </p>
+                <div className="space-y-1.5">
+                  {quebrados.map((q, i) => {
+                    const ex = lista.find(e => e.id === q.id);
+                    return (
+                      <button key={i} onClick={() => ex && setEdit({
+                        id: ex.id, nome: ex.nome, grupo_muscular: ex.grupo_muscular || '', orientacoes: ex.orientacoes || '',
+                        gif_url: ex.gif_url || '', equipamento: ex.equipamento || '',
+                        series_padrao: ex.series_padrao ?? 3, repeticoes_padrao: ex.repeticoes_padrao ?? 12, descanso_padrao_segundos: ex.descanso_padrao_segundos ?? 45,
+                      })}
+                        className="w-full flex items-center gap-2 rounded-lg bg-white border border-amber-200 px-3 py-2 text-left hover:bg-amber-100/50">
+                        <ImageOff className="h-4 w-4 text-amber-500 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold truncate">{q.nome}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{q.campo === 'gif_url_fem' ? 'GIF feminino' : 'GIF'} · {q.url}</p>
+                        </div>
+                        <span className="text-[10px] font-medium text-primary shrink-0">Corrigir →</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {packInfo && (
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-3 py-2">
             {packInfo}
