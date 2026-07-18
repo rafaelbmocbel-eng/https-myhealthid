@@ -5,6 +5,7 @@
 // diretriz nutricional — salva como RASCUNHO em diretrizes_profissionais.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { carregarAchadosPresenciais, textoAchadosPresenciais } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +14,7 @@ const corsHeaders = {
 
 const SYSTEM = `Você é uma EQUIPE de personal trainers e educadores físicos com 15 anos de mercado (ACSM/NSCA/CBCE), planejando juntos a periodização de um cliente premium.
 Padrão de qualidade: diretriz digna de consultoria — fases progressivas com duração definida, metas MENSURÁVEIS (com como medir), progressão explícita de carga/volume/intensidade entre as fases, marcadores físicos a acompanhar com valores-alvo (testes funcionais, composição corporal, PA/FC de repouso quando fizer sentido) e reavaliação definida ao fim de cada fase.
-Baseie TUDO nos dados fornecidos (testes funcionais, antropometria, bioimpedância, MyID, condição clínica). Quando um teste indicar déficit (força, equilíbrio, mobilidade), a diretriz DEVE endereçar isso com meta e marcador específicos, citando o dado.
+Baseie TUDO nos dados fornecidos (avaliação presencial/achados do avatar clínico, testes funcionais, antropometria, bioimpedância, MyID, condição clínica). Os achados da AVALIAÇÃO PRESENCIAL e as observações do profissional têm PRIORIDADE — não sobrecarregue regiões com achado ativo e trabalhe a área com cautela. Quando um teste indicar déficit (força, equilíbrio, mobilidade), a diretriz DEVE endereçar isso com meta e marcador específicos, citando o dado.
 Segurança primeiro: respeite a condição clínica; nada que exija supervisão médica sem sinalizar em alertas.
 Retorne SOMENTE JSON neste formato:
 {
@@ -80,6 +81,11 @@ Deno.serve(async (req) => {
         .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
 
+    // AVALIAÇÃO PRESENCIAL: achados do avatar clínico + observações do
+    // profissional (mesma base da diretriz de tratamento do fisioterapeuta).
+    const achadosPresenciais = await carregarAchadosPresenciais(admin, paciente_id);
+    const presencialTxt = textoAchadosPresenciais(achadosPresenciais, "treino");
+
     const idade = pac.data_nascimento
       ? Math.floor((Date.now() - new Date(pac.data_nascimento).getTime()) / (365.25 * 24 * 3600 * 1000))
       : null;
@@ -95,6 +101,7 @@ Deno.serve(async (req) => {
       antropometria: !!antropo.data,
       sinais_vitais: !!vitais.data,
       myid: !!scores,
+      avaliacao_presencial: achadosPresenciais.length,
     };
 
 
@@ -120,6 +127,7 @@ Deno.serve(async (req) => {
       pac.queixa_principal ? `Queixa: ${String(pac.queixa_principal).slice(0, 300)}` : "",
       pac.historia_atual ? `História: ${String(pac.historia_atual).slice(0, 500)}` : "",
       pac.condicoes_saude ? `Condições de saúde: ${JSON.stringify(pac.condicoes_saude).slice(0, 300)}` : "",
+      presencialTxt,
       antropo.data ? `Antropometria: ${JSON.stringify(antropo.data)}` : "",
       body_comp.data ? `Bioimpedância: ${JSON.stringify(body_comp.data).slice(0, 600)}` : "",
       vitais.data ? `Sinais vitais: ${JSON.stringify(vitais.data)}` : "",

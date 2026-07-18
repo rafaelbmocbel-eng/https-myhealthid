@@ -100,32 +100,65 @@ export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Pr
   };
 }
 
-// Texto compacto da avaliação presencial (achados do avatar + observações do
-// profissional). `foco` muda só a instrução de como a IA deve usar os achados.
+// Formata os achados anatômicos da avaliação presencial (avatar clínico) +
+// as observações (notas_clinicas) do profissional numa linha compacta.
+function formatAchados(presencial: AchadoPresencial[]): string {
+  return presencial.map((e) => {
+    const det = [
+      e.tipo_achado,
+      e.estrutura ? `estrutura ${e.estrutura}` : null,
+      e.regiao_id ? `região ${e.regiao_id}` : null,
+      e.diagnostico_cid ? `CID ${e.diagnostico_cid}` : null,
+      e.severidade != null ? `severidade ${e.severidade}` : null,
+    ].filter(Boolean).join(", ");
+    const nota = e.notas_clinicas ? ` — obs. do profissional: "${String(e.notas_clinicas).slice(0, 200)}"` : "";
+    return `${det}${nota}`;
+  }).join("; ");
+}
+
+function instrucaoPresencial(foco: "treino" | "nutricao"): string {
+  return foco === "treino"
+    ? "trate como PRIORIDADE clínica: evite sobrecarregar regiões com achados ativos, inclua trabalho específico/terapêutico onde indicado, respeite as observações do profissional e progrida com cautela nessas áreas"
+    : "considere no plano alimentar: padrão anti-inflamatório onde houver dor/lesão ativa, ajuste para as comorbidades e respeite as observações do profissional";
+}
+
+// Texto compacto da avaliação presencial (queixa/história/condições + achados
+// do avatar + observações do profissional). `foco` muda só a instrução de uso.
 export function textoPresencial(m: MotoresClinicos, foco: "treino" | "nutricao"): string {
   const partes: string[] = [];
   if (m.queixa) partes.push(`Queixa principal: ${String(m.queixa).slice(0, 300)}`);
   if (m.historia) partes.push(`História atual: ${String(m.historia).slice(0, 400)}`);
   if (m.condicoes) partes.push(`Condições de saúde: ${JSON.stringify(m.condicoes).slice(0, 300)}`);
   if (m.presencial.length) {
-    const achados = m.presencial.map((e) => {
-      const det = [
-        e.tipo_achado,
-        e.estrutura ? `estrutura ${e.estrutura}` : null,
-        e.regiao_id ? `região ${e.regiao_id}` : null,
-        e.diagnostico_cid ? `CID ${e.diagnostico_cid}` : null,
-        e.severidade != null ? `severidade ${e.severidade}` : null,
-      ].filter(Boolean).join(", ");
-      const nota = e.notas_clinicas ? ` — obs. do profissional: "${String(e.notas_clinicas).slice(0, 200)}"` : "";
-      return `${det}${nota}`;
-    }).join("; ");
-    partes.push(`Achados registrados na avaliação presencial (avatar clínico): ${achados}`);
+    partes.push(`Achados registrados na avaliação presencial (avatar clínico): ${formatAchados(m.presencial)}`);
   }
   if (!partes.length) return "";
-  const instrucao = foco === "treino"
-    ? "trate como PRIORIDADE clínica: evite sobrecarregar regiões com achados ativos, inclua trabalho específico/terapêutico onde indicado, respeite as observações do profissional e progrida com cautela nessas áreas"
-    : "considere no plano alimentar: padrão anti-inflamatório onde houver dor/lesão ativa, ajuste para as comorbidades e respeite as observações do profissional";
-  return `\nAVALIAÇÃO PRESENCIAL (achados e observações do profissional — ${instrucao}):\n${partes.join("\n")}`;
+  return `\nAVALIAÇÃO PRESENCIAL (achados e observações do profissional — ${instrucaoPresencial(foco)}):\n${partes.join("\n")}`;
+}
+
+// SÓ os achados anatômicos do avatar + observações do profissional — para
+// funções que já trazem queixa/história à parte (as diretrizes por lente).
+export async function carregarAchadosPresenciais(admin: SB, pacienteId: string): Promise<AchadoPresencial[]> {
+  if (!pacienteId) return [];
+  const res = await admin.from("eventos_clinicos_anatomicos")
+    .select("regiao_id, sistema, tipo_achado, estrutura, diagnostico_cid, severidade, status, notas_clinicas")
+    .eq("paciente_id", pacienteId).neq("status", "resolvido").limit(30)
+    .then((r: SB) => r).catch(() => ({ data: [] }));
+  return ((res?.data as SB[]) || []).map((e: SB) => ({
+    regiao_id: e.regiao_id ?? null,
+    sistema: e.sistema ?? null,
+    tipo_achado: e.tipo_achado ?? null,
+    estrutura: e.estrutura ?? null,
+    diagnostico_cid: e.diagnostico_cid ?? null,
+    severidade: e.severidade ?? null,
+    status: e.status ?? null,
+    notas_clinicas: e.notas_clinicas ?? null,
+  }));
+}
+
+export function textoAchadosPresenciais(achados: AchadoPresencial[], foco: "treino" | "nutricao"): string {
+  if (!achados.length) return "";
+  return `\nAVALIAÇÃO PRESENCIAL — achados no avatar clínico e observações do profissional (${instrucaoPresencial(foco)}):\n${formatAchados(achados)}`;
 }
 
 // Texto compacto dos questionários clínicos validados (PAR-Q+, PSFS, START Back,

@@ -6,6 +6,7 @@
 // revisa e só então envia ao portal do cliente.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { carregarAchadosPresenciais, textoAchadosPresenciais } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,7 +15,7 @@ const corsHeaders = {
 
 const SYSTEM = `Você é um GRUPO de nutricionistas clínicos com 15 anos de experiência (CFN/ASBRAN), montando juntos o acompanhamento nutricional de um cliente premium.
 Padrão de qualidade: diretriz digna de consultório — fases progressivas com duração definida, metas MENSURÁVEIS (com como medir), orientações práticas, marcadores de exame a acompanhar com valores-alvo, e reavaliação definida ao fim de cada fase.
-Baseie TUDO nos dados clínicos fornecidos (exames, bioimpedância, anamnese, MyID). Quando um exame indicar alteração (glicemia, lipidograma, vitaminas...), a diretriz DEVE endereçar isso com meta e marcador específicos, citando o dado.
+Baseie TUDO nos dados clínicos fornecidos (avaliação presencial/achados do avatar clínico, exames, bioimpedância, anamnese, MyID). Os achados da AVALIAÇÃO PRESENCIAL e as observações do profissional têm PRIORIDADE — onde houver dor/lesão ativa, priorize padrão anti-inflamatório e ajuste às comorbidades. Quando um exame indicar alteração (glicemia, lipidograma, vitaminas...), a diretriz DEVE endereçar isso com meta e marcador específicos, citando o dado.
 Nada de prescrição de medicamentos ou suplementação com dose — no máximo "discutir suplementação de X com o profissional".
 Retorne SOMENTE JSON neste formato:
 {
@@ -84,6 +85,11 @@ Deno.serve(async (req) => {
         .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
 
+    // AVALIAÇÃO PRESENCIAL: achados do avatar clínico + observações do
+    // profissional (mesma base da diretriz de tratamento do fisioterapeuta).
+    const achadosPresenciais = await carregarAchadosPresenciais(admin, paciente_id);
+    const presencialTxt = textoAchadosPresenciais(achadosPresenciais, "nutricao");
+
     const idade = pac.data_nascimento
       ? Math.floor((Date.now() - new Date(pac.data_nascimento).getTime()) / (365.25 * 24 * 3600 * 1000))
       : null;
@@ -100,6 +106,7 @@ Deno.serve(async (req) => {
       sinais_vitais: !!vitais.data,
       anamnese: !!anamnese.data,
       myid: !!scores,
+      avaliacao_presencial: achadosPresenciais.length,
     };
 
 
@@ -125,6 +132,7 @@ Deno.serve(async (req) => {
       pac.queixa_principal ? `Queixa: ${String(pac.queixa_principal).slice(0, 300)}` : "",
       pac.historia_atual ? `História: ${String(pac.historia_atual).slice(0, 500)}` : "",
       pac.condicoes_saude ? `Condições de saúde: ${JSON.stringify(pac.condicoes_saude).slice(0, 300)}` : "",
+      presencialTxt,
       body_comp.data ? `Bioimpedância: ${JSON.stringify(body_comp.data).slice(0, 600)}` : "",
       antropo.data ? `Antropometria: ${JSON.stringify(antropo.data)}` : "",
       vitais.data ? `Sinais vitais: ${JSON.stringify(vitais.data)}` : "",
