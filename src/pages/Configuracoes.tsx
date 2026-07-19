@@ -137,6 +137,12 @@ export default function Configuracoes() {
           <TabsContent value="clinica" className="mt-0 space-y-4">
             <PerfilProfissionalCard />
             <ConfigClinica />
+            <Link to="/clinica" className="block rounded-xl border border-border/60 bg-card p-4 hover:bg-muted/40 transition-colors">
+              <div className="font-semibold text-sm">Equipe da clínica (vários profissionais)</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Plano Clínica: convide outros profissionais para a mesma clínica — cada um com seu login, compartilhando pacientes e agenda.
+              </div>
+            </Link>
           </TabsContent>
 
           {/* HOME — atalhos */}

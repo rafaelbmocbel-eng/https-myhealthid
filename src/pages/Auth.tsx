@@ -21,6 +21,11 @@ export default function Auth() {
 
   if (!loading && user) {
     if (user.user_metadata?.is_patient === true) return <Navigate to="/paciente/dashboard" replace />;
+    // Honra ?redirect= (ex.: aceitar convite de clínica) — só caminhos internos.
+    const redirect = new URLSearchParams(window.location.search).get('redirect');
+    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+      return <Navigate to={redirect} replace />;
+    }
     return <Navigate to="/hoje" replace />;
   }
 
