@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
 import { Dumbbell, Plus, Pencil, Trash2, Loader2, Search, Upload, ImageOff, X, FolderUp, FileArchive, Languages, CheckCircle2 } from 'lucide-react';
+import { classificarExercicio, SEGMENTOS, FUNCOES, type Segmento, type Funcao } from '@/utils/classificarExercicio';
 
 interface Exercicio {
   id: string;
@@ -35,6 +36,8 @@ export default function BibliotecaExercicios() {
   const [lista, setLista] = useState<Exercicio[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
+  const [segAtivo, setSegAtivo] = useState<Segmento | 'Todos'>('Todos');
+  const [funAtivo, setFunAtivo] = useState<Funcao | 'Todas'>('Todas');
   const [edit, setEdit] = useState<(typeof VAZIO & { id?: string }) | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [subindo, setSubindo] = useState(false);
@@ -92,12 +95,26 @@ export default function BibliotecaExercicios() {
 
   useEffect(() => { carregar(); }, [user]);
 
+  // Classifica cada exercício em segmento + função (heurística por nome/grupo).
+  const classificadas = useMemo(
+    () => lista.map(e => ({ ...e, ...classificarExercicio(e.nome, e.grupo_muscular) })),
+    [lista],
+  );
+
   const filtradas = useMemo(() => {
     const q = busca.toLowerCase().trim();
-    if (!q) return lista;
-    return lista.filter(e =>
-      e.nome.toLowerCase().includes(q) || (e.grupo_muscular || '').toLowerCase().includes(q));
-  }, [lista, busca]);
+    return classificadas.filter(e =>
+      (segAtivo === 'Todos' || e.segmento === segAtivo) &&
+      (funAtivo === 'Todas' || e.funcao === funAtivo) &&
+      (!q || e.nome.toLowerCase().includes(q) || (e.grupo_muscular || '').toLowerCase().includes(q)));
+  }, [classificadas, busca, segAtivo, funAtivo]);
+
+  // Agrupa por segmento para exibir em seções (na ordem canônica).
+  const porSegmento = useMemo(() => {
+    const m = new Map<string, typeof filtradas>();
+    for (const e of filtradas) { const arr = m.get(e.segmento) || []; arr.push(e); m.set(e.segmento, arr); }
+    return [...m.entries()].sort((a, b) => SEGMENTOS.indexOf(a[0] as Segmento) - SEGMENTOS.indexOf(b[0] as Segmento));
+  }, [filtradas]);
 
   const uploadGif = async (file: File) => {
     if (!user) return;
@@ -354,6 +371,26 @@ export default function BibliotecaExercicios() {
           </Button>
         </div>
 
+        {/* Filtros por categoria — segmento e função */}
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap gap-1.5">
+            {(['Todos', ...SEGMENTOS] as const).map(s => (
+              <button key={s} onClick={() => setSegAtivo(s as any)}
+                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${segAtivo === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
+                {s}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {(['Todas', ...FUNCOES] as const).map(f => (
+              <button key={f} onClick={() => setFunAtivo(f as any)}
+                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${funAtivo === f ? 'bg-accent text-accent-foreground border-accent' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <label className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border bg-background text-xs font-medium cursor-pointer hover:bg-muted shrink-0 whitespace-nowrap">
             {pack ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -441,39 +478,49 @@ export default function BibliotecaExercicios() {
             <p className="text-xs text-muted-foreground/60 mt-1">Toque em "Novo" para adicionar seu primeiro exercício.</p>
           </CardContent></Card>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filtradas.map(ex => (
-              <Card key={ex.id} className="overflow-hidden group">
-                <div className="relative aspect-square bg-muted/40 flex items-center justify-center overflow-hidden">
-                  {ex.gif_url
-                    ? <img src={ex.gif_url} alt={ex.nome} className="w-full h-full object-cover" loading="lazy" />
-                    : <ImageOff className="h-8 w-8 text-muted-foreground/30" />}
-                  {ex.gif_url_fem && (
-                    <span className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-background/85 border border-border/60 text-foreground/80">
-                      M+F
-                    </span>
-                  )}
+          <div className="space-y-5">
+            {porSegmento.map(([seg, lista]) => (
+              <div key={seg}>
+                <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">{seg} ({lista.length})</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {lista.map(ex => (
+                    <Card key={ex.id} className="overflow-hidden group">
+                      <div className="relative aspect-square bg-muted/40 flex items-center justify-center overflow-hidden">
+                        {ex.gif_url
+                          ? <img src={ex.gif_url} alt={ex.nome} className="w-full h-full object-cover" loading="lazy" />
+                          : <ImageOff className="h-8 w-8 text-muted-foreground/30" />}
+                        {ex.gif_url_fem && (
+                          <span className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-background/85 border border-border/60 text-foreground/80">
+                            M+F
+                          </span>
+                        )}
+                        <span className="absolute bottom-1.5 left-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-background/85 border border-border/60 text-foreground/70">
+                          {ex.funcao}
+                        </span>
+                      </div>
+                      <CardContent className="p-2.5">
+                        <p className="text-xs font-semibold truncate">{ex.nome}</p>
+                        {ex.grupo_muscular && <p className="text-[10px] text-muted-foreground truncate">{ex.grupo_muscular}</p>}
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <Button size="sm" variant="outline" className="h-7 flex-1 text-[11px] px-2"
+                            onClick={() => setEdit({
+                              id: ex.id, nome: ex.nome, grupo_muscular: ex.grupo_muscular || '', orientacoes: ex.orientacoes || '',
+                              gif_url: ex.gif_url || '', equipamento: ex.equipamento || '',
+                              series_padrao: ex.series_padrao ?? 3, repeticoes_padrao: ex.repeticoes_padrao ?? 12,
+                              descanso_padrao_segundos: ex.descanso_padrao_segundos ?? 45,
+                            })}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-destructive hover:text-destructive"
+                            onClick={() => remover(ex.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                <CardContent className="p-2.5">
-                  <p className="text-xs font-semibold truncate">{ex.nome}</p>
-                  {ex.grupo_muscular && <p className="text-[10px] text-muted-foreground truncate">{ex.grupo_muscular}</p>}
-                  <div className="flex items-center gap-1 mt-1.5">
-                    <Button size="sm" variant="outline" className="h-7 flex-1 text-[11px] px-2"
-                      onClick={() => setEdit({
-                        id: ex.id, nome: ex.nome, grupo_muscular: ex.grupo_muscular || '', orientacoes: ex.orientacoes || '',
-                        gif_url: ex.gif_url || '', equipamento: ex.equipamento || '',
-                        series_padrao: ex.series_padrao ?? 3, repeticoes_padrao: ex.repeticoes_padrao ?? 12,
-                        descanso_padrao_segundos: ex.descanso_padrao_segundos ?? 45,
-                      })}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-destructive hover:text-destructive"
-                      onClick={() => remover(ex.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              </div>
             ))}
           </div>
         )}
