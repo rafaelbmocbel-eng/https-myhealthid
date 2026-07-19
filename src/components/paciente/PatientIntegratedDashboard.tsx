@@ -16,6 +16,7 @@ import {
   AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket, Stethoscope
 } from 'lucide-react';
 import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
+import CondicoesSistemicasCard from '@/components/avatar/CondicoesSistemicasCard';
 import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { scoresDoResultado } from '@/utils/myid/scores';
@@ -806,6 +807,8 @@ export default function PatientIntegratedDashboard({
             {/* ─────────── ABA 1.1: MEU CORPO (Avatar Clínico) ─────────── */}
             <TabsContent value="corpo" className="mt-5 space-y-5 focus-visible:outline-none">
               <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
+              {/* Condições sistêmicas (sem região) — só o profissional registra. */}
+              {isProfessional && <CondicoesSistemicasCard pacienteId={pacienteId} />}
             </TabsContent>
 
           </Tabs>

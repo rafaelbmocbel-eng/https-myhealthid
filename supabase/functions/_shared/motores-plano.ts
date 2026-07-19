@@ -113,10 +113,15 @@ export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Pr
 // as observações (notas_clinicas) do profissional numa linha compacta.
 function formatAchados(presencial: AchadoPresencial[]): string {
   return presencial.map((e) => {
+    // Condição sistêmica (regiao_id='sistemico') não é uma região do corpo —
+    // é um sistema inteiro (ex.: diabetes → endócrino).
+    const localizacao = e.regiao_id === "sistemico"
+      ? `condição sistêmica${e.sistema ? ` (sistema ${e.sistema})` : ""}`
+      : (e.regiao_id ? `região ${e.regiao_id}` : null);
     const det = [
       e.tipo_achado,
       e.estrutura ? `estrutura ${e.estrutura}` : null,
-      e.regiao_id ? `região ${e.regiao_id}` : null,
+      localizacao,
       e.diagnostico_cid ? `CID ${e.diagnostico_cid}` : null,
       e.severidade != null ? `severidade ${e.severidade}` : null,
     ].filter(Boolean).join(", ");
