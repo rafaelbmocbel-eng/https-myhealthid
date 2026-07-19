@@ -1,4 +1,4 @@
-import { Stethoscope, Brain, Hand, Smile } from 'lucide-react';
+import { Stethoscope, Brain, Hand, Smile, Activity } from 'lucide-react';
 import DiretrizAreaCard from './DiretrizAreaCard';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 
@@ -9,6 +9,7 @@ import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 const LENTE_DIRETRIZ: Partial<Record<PerfilProfissional, {
   area: string; nome: string; Icone: any; cor: string; objetivoPh: string;
 }>> = {
+  fisioterapeuta: { area: 'fisioterapia', nome: 'Plano Fisioterápico (Tratamento)', Icone: Activity, cor: 'text-rose-600', objetivoPh: 'ex: alívio de dor lombar e estabilização' },
   medico: { area: 'medicina', nome: 'Diretriz de Tratamento (Médica)', Icone: Stethoscope, cor: 'text-sky-600', objetivoPh: 'ex: controle pressórico e metabólico' },
   psicologo: { area: 'psicologia', nome: 'Plano Terapêutico (Psicologia)', Icone: Brain, cor: 'text-violet-600', objetivoPh: 'ex: reduzir sintomas de ansiedade' },
   terapeuta_ocupacional: { area: 'terapia_ocupacional', nome: 'Plano Ocupacional (TO)', Icone: Hand, cor: 'text-amber-600', objetivoPh: 'ex: independência nas AVDs' },

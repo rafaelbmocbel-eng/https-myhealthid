@@ -12,7 +12,6 @@ import {
   CalendarDays, ClipboardList, Activity, ExternalLink, Loader2, Smartphone,
   TrendingUp, Trophy, Apple, Ruler, Bell, GraduationCap, Stethoscope
 } from 'lucide-react';
-import DeverDeCasaDialog from './DeverDeCasaDialog';
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
 const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
@@ -21,6 +20,7 @@ const DiretrizLenteCard = lazy(() => import('@/components/diretrizes/DiretrizLen
 const RelatorioAvaliacaoCard = lazy(() => import('@/components/paciente/RelatorioAvaliacaoCard'));
 const QuestionariosClinicosCard = lazy(() => import('@/components/paciente/QuestionariosClinicosCard'));
 const TreinoDocumento = lazy(() => import('@/components/paciente/TreinoDocumento'));
+const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
 import AvatarClinicoCard from '../avatar/AvatarClinicoCard';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -41,7 +41,6 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [deverOpen, setDeverOpen] = useState(false);
   const [gerandoDicas, setGerandoDicas] = useState(false);
   const [dicasRecemGeradas, setDicasRecemGeradas] = useState<any[] | null>(null);
   const [usandoBase, setUsandoBase] = useState<null | 'treino' | 'nutricao'>(null);
@@ -235,16 +234,9 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
 
   return (
     <div className="space-y-4">
-      {/* Ações do portal — linha compacta (prescrever + enviar acesso) */}
+      {/* Ações do portal — linha compacta (enviar acesso). O "Dever de Casa"
+          virou o Plano Fisioterápico, dentro do acordeão de planos. */}
       <div className="flex flex-wrap gap-2">
-        {user && tipoConta !== 'wellness_free' && (
-          <button
-            onClick={() => setDeverOpen(true)}
-            className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:opacity-90"
-          >
-            <GraduationCap className="h-3.5 w-3.5" /> Dever de Casa
-          </button>
-        )}
         {portalToken && telefone && (
           <button onClick={sendWhatsApp} className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-success/10 text-success text-xs font-semibold hover:bg-success/20 border border-success/20">
             <MessageCircle className="h-3.5 w-3.5" /> Enviar portal
@@ -262,14 +254,31 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         <RelatorioAvaliacaoCard pacienteId={pacienteId} pacienteNome={pacienteNome} pacienteTelefone={telefone} />
       </Suspense>
 
-      {/* O QUE O CLIENTE MONTOU — questionários clínicos respondidos.
-          (O plano que o cliente gerou sozinho fica DENTRO do acordeão
-          "Plano premium IA", junto das ferramentas de edição do profissional.) */}
-      <div className="space-y-3">
-        <Suspense fallback={null}>
-          <QuestionariosClinicosCard pacienteId={pacienteId} />
-        </Suspense>
-      </div>
+      {/* QUESTIONÁRIOS RESPONDIDOS — uma linha só, abre ao clicar. Histórico do
+          que o cliente respondeu (nutrição, fisioterapia, personal, etc.). */}
+      <details className="rounded-xl border border-border/40 bg-card group">
+        <summary className="cursor-pointer select-none px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+          <ClipboardList className="h-4 w-4 text-violet-600" /> Questionários respondidos (histórico) — toque para abrir
+        </summary>
+        <div className="px-3 pb-3">
+          <Suspense fallback={null}>
+            <QuestionariosClinicosCard pacienteId={pacienteId} />
+          </Suspense>
+        </div>
+      </details>
+
+      {/* MINHA JORNADA — espelho exato do que o cliente vê e cumpre no portal
+          (plano de hoje, metas da semana, gamificação e dicas do MyID). */}
+      <details className="rounded-xl border border-border/40 bg-card">
+        <summary className="cursor-pointer select-none px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+          🚀 Minha jornada — plano de hoje, metas e dicas (o que o cliente vê) — toque para abrir
+        </summary>
+        <div className="px-3 pb-3">
+          <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+            <JornadaPacienteCard pacienteId={pacienteId} />
+          </Suspense>
+        </div>
+      </details>
 
       {/* Espelho do portal — uma lista só (sem cards duplicando os mesmos números) */}
       <Card className="p-2">
@@ -306,90 +315,14 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
             </AccordionContent>
           </AccordionItem>
 
-          {/* Exercícios */}
-          <AccordionItem value="exerc">
-            <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Dumbbell className="icon-sm text-amber-600" /> Dever de Casa · prescritos por você ({data.execucoes.length} execuções)</div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ScrollArea className="h-64">
-                <div className="space-y-1.5 pr-2">
-                  {data.prescricoes.length > 0 && (
-                    <div className="bg-muted/30 rounded-lg p-2">
-                      <div className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Prescrições</div>
-                      {data.prescricoes.map((p: any) => (
-                        <div key={p.id} className="text-[11px] flex items-center justify-between">
-                          <span>{p.nome || 'Prescrição'}</span>
-                          <Badge variant={p.ativa ? 'default' : 'outline'} className="text-[9px] h-4">{p.ativa ? 'ativa' : 'inativa'}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {data.execucoes.map((e: any) => (
-                    <div key={e.id} className="border rounded-lg p-2 text-[11px]">
-                      <div className="font-semibold">{format(parseISO(e.created_at), "dd/MM HH:mm", { locale: ptBR })}</div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {e.exercicios_executados ? `${(Array.isArray(e.exercicios_executados) ? e.exercicios_executados.length : 0)} exercícios` : 'Sessão'}
-                        {e.duracao_total_segundos ? ` · ${Math.round(e.duracao_total_segundos / 60)}min` : ''}
-                      </div>
-                    </div>
-                  ))}
-                  {data.execucoes.length === 0 && <p className="text-[11px] text-muted-foreground italic px-2">Sem execuções</p>}
-                </div>
-              </ScrollArea>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Dicas IA — geradas automaticamente pelo MyID + evidência (grátis) */}
-          <AccordionItem value="dicas-ia">
-            <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><GraduationCap className="icon-sm text-sky-600" /> ✨ Exercícios da IA · gerados do MyID ({nDicasIA})</div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ScrollArea className="h-64">
-                <div className="space-y-1.5 pr-2">
-                  {nDicasIA > 0 ? (
-                    <>
-                      <p className="text-[10px] text-muted-foreground px-1">
-                        Geradas em {data.dicasIA?.gerado_em ? format(parseISO(data.dicasIA.gerado_em), "dd/MM/yyyy", { locale: ptBR }) : '—'} a partir do MyID + artigos científicos. O cliente vê no portal em "Dicas".
-                      </p>
-                      {dicasVisiveis.map((d: any, i: number) => (
-                        <div key={i} className="border rounded-lg p-2 text-[11px]">
-                          <div className="font-semibold flex items-center gap-1.5">
-                            {d.nome}
-                            {d.categoria && <Badge variant="outline" className="text-[9px] h-4">{d.categoria}</Badge>}
-                          </div>
-                          {d.descricao && <div className="text-[10px] text-muted-foreground mt-0.5">{d.descricao}</div>}
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <div className="px-2 space-y-2">
-                      {(data as any).dicasIAErro ? (
-                        <p className="text-[11px] text-destructive">
-                          Erro ao ler as dicas: {(data as any).dicasIAErro}
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-muted-foreground italic">
-                          Ainda sem dicas — são geradas automaticamente quando o cliente conclui um MyID.
-                        </p>
-                      )}
-                      <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" disabled={gerandoDicas} onClick={gerarDicasAgora}>
-                        {gerandoDicas ? <Loader2 className="h-3 w-3 animate-spin" /> : <GraduationCap className="h-3 w-3" />}
-                        Gerar agora (usa o MyID já respondido)
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </AccordionContent>
-          </AccordionItem>
+          {/* (Dever de Casa e Exercícios da IA agora vivem em "Minha jornada"
+              acima — espelho exato do que o cliente vê e cumpre.) */}
 
           {/* Plano IA — o que o cliente gerou (referência) + criar/editar aqui
               (treino com GIFs + nutrição) e LIBERAR pro portal */}
           <AccordionItem value="plano-ia">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> 💎 Plano premium IA · treino (GIFs) &amp; nutrição ({data.planosTreino.length + data.planosAlim.length + (geradoCliente?.treinoIA ? 1 : 0) + (geradoCliente?.nutricaoIA ? 1 : 0)})</div>
+              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> 💎 Planos de tratamento · fisio · treino (GIFs) · nutrição ({data.planosTreino.length + data.planosAlim.length + (geradoCliente?.treinoIA ? 1 : 0) + (geradoCliente?.nutricaoIA ? 1 : 0)})</div>
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3 px-1 pb-2">
@@ -604,25 +537,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
             </AccordionContent>
           </AccordionItem>
 
-          {/* Questionários */}
-          <AccordionItem value="quest">
-            <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><ClipboardList className="icon-sm text-violet-600" /> Questionários ({data.respostas.length})</div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ScrollArea className="h-64">
-                <div className="space-y-1.5 pr-2">
-                  {data.respostas.map((r: any) => (
-                    <div key={r.id} className="border rounded-lg p-2 text-[11px] flex items-center justify-between">
-                      <div className="font-semibold">{format(parseISO(r.created_at), "dd/MM HH:mm", { locale: ptBR })}</div>
-                      <Badge variant={r.status === 'concluida' ? 'default' : 'outline'} className="text-[9px] h-4">{r.status}</Badge>
-                    </div>
-                  ))}
-                  {data.respostas.length === 0 && <p className="text-[11px] text-muted-foreground italic px-2">Sem respostas</p>}
-                </div>
-              </ScrollArea>
-            </AccordionContent>
-          </AccordionItem>
+          {/* (Questionários respondidos agora ficam na linha recolhível acima.) */}
 
           {/* Notificações */}
           <AccordionItem value="notif">
@@ -649,15 +564,6 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         </Accordion>
       </Card>
 
-      {user && (
-        <DeverDeCasaDialog
-          open={deverOpen}
-          onOpenChange={setDeverOpen}
-          pacienteId={pacienteId}
-          pacienteNome={pacienteNome}
-          terapeutaId={user.id}
-        />
-      )}
     </div>
   );
 }

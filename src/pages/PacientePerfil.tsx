@@ -1287,15 +1287,8 @@ export default function PacientePerfil() {
                   telefone={paciente.telefone}
                   tipoConta={paciente.tipo_conta}
                 />
-                {/* Jornada do paciente — recolhida por padrão (a aba já é longa) */}
-                <details className="rounded-xl border border-border/40 bg-card">
-                  <summary className="cursor-pointer select-none px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-                    🚀 Jornada do paciente — o que ele vê e cumpre (toque para abrir)
-                  </summary>
-                  <div className="px-3 pb-3">
-                    <JornadaPacienteCard pacienteId={id!} />
-                  </div>
-                </details>
+                {/* (A jornada do paciente agora vive dentro do PortalControleTab
+                    acima — "Minha jornada", espelho do que o cliente vê.) */}
                 <WearableMonitorCard
                   pacienteId={id!}
                   pacienteNome={paciente.nome}
