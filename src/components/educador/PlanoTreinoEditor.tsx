@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Plus, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import SeletorExercicios, { type ExercicioEscolhido } from './SeletorExercicios';
 
 interface Props {
   plano: any;          // linha de planos_treino (id, titulo, estrutura, ...)
@@ -22,6 +23,8 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
   const [titulo, setTitulo] = useState<string>(plano.titulo || '');
   // deep clone para editar sem mexer no original até salvar
   const [est, setEst] = useState<any>(() => JSON.parse(JSON.stringify(plano.estrutura || {})));
+  // Qual sessão (fase/sessão) está escolhendo exercício na biblioteca.
+  const [seletor, setSeletor] = useState<{ fi: number; si: number } | null>(null);
 
   const fases: any[] = Array.isArray(est.fases) ? est.fases : [];
 
@@ -32,8 +35,20 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
     atualizar((d) => { d.fases[fi].sessoes[si].exercicios[ei][campo] = valor; });
   const removerEx = (fi: number, si: number, ei: number) =>
     atualizar((d) => { d.fases[fi].sessoes[si].exercicios.splice(ei, 1); });
-  const addEx = (fi: number, si: number) =>
-    atualizar((d) => { (d.fases[fi].sessoes[si].exercicios ||= []).push({ nome: '', series: 3, reps: '12', carga: '', descanso_s: 45, obs: '' }); });
+  const addExDaBiblioteca = (fi: number, si: number, ex: ExercicioEscolhido) =>
+    atualizar((d) => {
+      (d.fases[fi].sessoes[si].exercicios ||= []).push({
+        id: ex.id,
+        nome: ex.nome || '',
+        gif_url: ex.gif_url || undefined,
+        orientacoes: ex.orientacoes || undefined,
+        series: ex.series ?? 3,
+        reps: ex.reps ?? '12',
+        carga: '',
+        descanso_s: ex.descanso_s ?? 45,
+        obs: '',
+      });
+    });
   const setSessaoNome = (fi: number, si: number, valor: string) =>
     atualizar((d) => { d.fases[fi].sessoes[si].nome = valor; });
 
@@ -102,8 +117,8 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
                     </div>
                   ))}
 
-                  <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 w-full" onClick={() => addEx(fi, si)}>
-                    <Plus className="h-3 w-3" /> Adicionar exercício
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 w-full" onClick={() => setSeletor({ fi, si })}>
+                    <Plus className="h-3 w-3" /> Adicionar exercício (da biblioteca, por categoria)
                   </Button>
                 </div>
               ))}
@@ -119,6 +134,12 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
           </div>
         </div>
       </DialogContent>
+
+      <SeletorExercicios
+        open={!!seletor}
+        onOpenChange={(o) => { if (!o) setSeletor(null); }}
+        onPick={(ex) => { if (seletor) addExDaBiblioteca(seletor.fi, seletor.si, ex); }}
+      />
     </Dialog>
   );
 }
