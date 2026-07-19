@@ -49,9 +49,11 @@ const HOJE = new Date().toISOString().slice(0, 10);
 
 interface Props {
   pacienteId: string;
+  // Espelho do profissional: só visualização, sem cumprir desafio nem creditar XP.
+  soLeitura?: boolean;
 }
 
-export default function PacienteInsightsDaAvaliacao({ pacienteId }: Props) {
+export default function PacienteInsightsDaAvaliacao({ pacienteId, soLeitura = false }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const storageKey = `desafio-${HOJE}-${pacienteId}`;
@@ -125,6 +127,7 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId }: Props) {
   const desafio = getDesafioParaRegiao(regioesAtivas);
 
   const handleConcluirDesafio = () => {
+    if (soLeitura) return; // profissional não cumpre o desafio pelo paciente
     try { localStorage.setItem(storageKey, '1'); } catch { /* */ }
     setDesafioConcluido(true);
     // XP REAL via ganhar_xp — idempotente (1x por dia) e sem corrida de escrita
@@ -246,7 +249,9 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId }: Props) {
           </div>
         </div>
 
-        {!desafioConcluido ? (
+        {soLeitura ? (
+          <p className="mt-3 text-[11px] text-muted-foreground text-center italic">Desafio do dia do cliente (visualização)</p>
+        ) : !desafioConcluido ? (
           <Button
             size="sm"
             className="w-full mt-3 h-8 gap-1.5 text-xs"
@@ -263,8 +268,8 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId }: Props) {
         )}
       </div>
 
-      {/* CTA MyID (se não fez ainda) */}
-      {!myid?.myid_score && (
+      {/* CTA MyID (se não fez ainda) — só no app do cliente */}
+      {!soLeitura && !myid?.myid_score && (
         <button
           onClick={() => navigate('/paciente/questionarios')}
           className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-dashed border-primary/30 hover:bg-primary/5 transition-colors group"

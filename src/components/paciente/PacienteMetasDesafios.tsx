@@ -50,6 +50,9 @@ interface MissaoSaude {
 
 interface Props {
   pacienteId: string;
+  // Quando true (espelho no app do profissional), a jornada é só visualização:
+  // nenhum clique cumpre missão nem credita XP na conta do paciente.
+  soLeitura?: boolean;
 }
 
 // ── Generate health missions from MyID scores ─────────────────────
@@ -197,7 +200,7 @@ const categoriaLabel: Record<string, string> = {
 };
 
 
-export default function PacienteMetasDesafios({ pacienteId }: Props) {
+export default function PacienteMetasDesafios({ pacienteId, soLeitura = false }: Props) {
   const [metas, setMetas] = useState<Meta[]>([]);
   const [loading, setLoading] = useState(true);
   const [streak, setStreak] = useState(0);
@@ -333,6 +336,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   }, [pacienteId, carregarCheckins]);
 
   const toggleMission = (id: string) => {
+    // Espelho do profissional: não cumpre missão pelo paciente.
+    if (soLeitura) return;
     setCompletedMissions(prev => {
       const next = new Set(prev);
       const wasDone = next.has(id);
@@ -477,10 +482,11 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
 
       // XP REAL das metas semanais: credita quando a meta fecha (1x por semana,
       // deduplicado no banco pela chave meta:{id}:{segunda-feira}).
+      // No espelho do profissional (soLeitura) não credita nada.
       const seg = new Date(now);
       seg.setDate(now.getDate() - ((now.getDay() + 6) % 7));
       const weekKey = seg.toISOString().split('T')[0];
-      metasList.filter(m => m.concluida).forEach(m => {
+      (soLeitura ? [] : metasList.filter(m => m.concluida)).forEach(m => {
         void (supabase as any).rpc('ganhar_xp', {
           p_paciente_id: pacienteId, p_chave: `meta:${m.id}:${weekKey}`, p_xp: m.xpRecompensa,
         });
@@ -575,11 +581,11 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                   <Card
                     key={missao.id}
                     className={cn(
-                      "cursor-pointer transition-all hover:shadow-sm active:scale-[0.99]",
+                      soLeitura ? "transition-all" : "cursor-pointer transition-all hover:shadow-sm active:scale-[0.99]",
                       isDone && "opacity-60",
                       missao.borderClass
                     )}
-                    onClick={() => toggleMission(missao.id)}
+                    onClick={soLeitura ? undefined : () => toggleMission(missao.id)}
                   >
                     <CardContent className="p-3">
                       <div className="flex items-start gap-3">
@@ -733,10 +739,12 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
             <Sparkles className="h-4 w-4 text-sky-600" />
             <h2 className="text-sm font-bold text-foreground">Exercícios &amp; dicas do MyID</h2>
             <span className="text-[10px] text-muted-foreground">({dicasIA.length})</span>
-            <button onClick={() => { window.location.href = '/paciente/dicas'; }}
-              className="ml-auto text-[11px] font-medium text-primary hover:underline shrink-0">
-              ver todas →
-            </button>
+            {!soLeitura && (
+              <button onClick={() => { window.location.href = '/paciente/dicas'; }}
+                className="ml-auto text-[11px] font-medium text-primary hover:underline shrink-0">
+                ver todas →
+              </button>
+            )}
           </div>
           <div className="space-y-1.5">
             {dicasIA.map((d: any, i: number) => {

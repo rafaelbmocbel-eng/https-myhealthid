@@ -9,6 +9,9 @@ import PacienteInsightsDaAvaliacao from '@/components/paciente/PacienteInsightsD
 
 interface Props {
   pacienteId: string;
+  // No espelho do app do profissional a jornada é só visualização (não cumpre
+  // missões nem credita XP na conta do paciente).
+  soLeitura?: boolean;
 }
 
 /**
@@ -18,7 +21,7 @@ interface Props {
  * cliente. O mesmo componente é usado no dashboard do paciente e no botão
  * "Portal" do app do profissional.
  */
-export default function JornadaPacienteCard({ pacienteId }: Props) {
+export default function JornadaPacienteCard({ pacienteId, soLeitura = false }: Props) {
   // Última avaliação MyID concluída — mesma fonte das missões (por paciente_id).
   const { data: scores } = useQuery({
     queryKey: ['jornada-myid-scores', pacienteId],
@@ -65,10 +68,10 @@ export default function JornadaPacienteCard({ pacienteId }: Props) {
       </div>
 
       {/* Missões / desafios da semana — o mesmo que o paciente vê no portal dele */}
-      <PacienteMetasDesafios pacienteId={pacienteId} />
+      <PacienteMetasDesafios pacienteId={pacienteId} soLeitura={soLeitura} />
 
       {/* Desafio do Dia + insights da avaliação — parte da Jornada */}
-      <PacienteInsightsDaAvaliacao pacienteId={pacienteId} />
+      <PacienteInsightsDaAvaliacao pacienteId={pacienteId} soLeitura={soLeitura} />
 
       {/* Conquistas (badges do MyID) */}
       <Card className="rounded-xl border-border/40 shadow-xs">
