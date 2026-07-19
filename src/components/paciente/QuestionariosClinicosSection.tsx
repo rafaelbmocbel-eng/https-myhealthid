@@ -39,17 +39,23 @@ export default function QuestionariosClinicosSection({ pacienteId }: Props) {
     queryKey: ['questionarios-clinicos', pacienteId],
     queryFn: async () => {
       const sb = supabase as any;
-      const [myid, resp] = await Promise.all([
+      const [myid, resp, identidade] = await Promise.all([
         sb.from('myid_avaliacoes').select('resultado_processado')
           .eq('paciente_id', pacienteId).eq('status', 'concluido')
           .order('updated_at', { ascending: false }).limit(1).maybeSingle(),
         sb.from('questionarios_clinicos').select('instrumento, escore, classificacao, created_at')
           .eq('paciente_id', pacienteId).order('created_at', { ascending: false }),
+        // Fallback: MyID importado do app antigo pode estar só em avaliacoes_identidade.
+        sb.from('avaliacoes_identidade').select('myid_score, myid_analysis')
+          .eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       ]);
-      const scores = scoresDoResultado(myid.data?.resultado_processado);
+      // scores para recomendar instrumentos: do myid_avaliacoes, senão do myid_analysis.
+      const scores = scoresDoResultado(myid.data?.resultado_processado) || scoresDoResultado(identidade.data?.myid_analysis);
       const ultimos = new Map<string, any>();
       (resp.data || []).forEach((r: any) => { if (!ultimos.has(r.instrumento)) ultimos.set(r.instrumento, r); });
-      return { scores, ultimos, temMyid: !!scores };
+      // Tem MyID se qualquer das tabelas tem — desbloqueia os questionários do plano.
+      const temMyid = !!scores || !!identidade.data || !!myid.data?.resultado_processado;
+      return { scores, ultimos, temMyid };
     },
   });
 

@@ -15,6 +15,7 @@ import MyIDDicasPessoais from './MyIDDicasPessoais';
 import MyIDTreatmentPlan from './MyIDTreatmentPlan';
 import { shareMyIDResults } from '@/utils/whatsapp';
 import { DIMENSION_LABELS, PerdaCalculada } from '@/utils/myid/lossTable';
+import { scoresDoResultado } from '@/utils/myid/scores';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';
@@ -181,7 +182,7 @@ const URGENCIA_LABEL = { imediata: 'Urgente', breve: 'Breve prazo', eletiva: 'El
 // VISÃO DO CLIENTE — narrativa, humana, focada em 1 ação
 // ═══════════════════════════════════════════════════════════════════════════════
 function ClienteView({ result, rawData, pacienteId, terapeutaId, avaliacaoId, perdasItems, scores, celebrate }: any) {
-  const myidScoreValue = result?.MyID_score ?? 0;
+  const myidScoreValue = result?.MyID_score ?? result?.myidScore ?? 0;
   const red_flags_detected = result?.red_flags_detected ?? false;
   const [showOutras, setShowOutras] = useState(false);
 
@@ -418,7 +419,7 @@ function ClienteView({ result, rawData, pacienteId, terapeutaId, avaliacaoId, pe
 // VISÃO DO TERAPEUTA — clínica, com evidência e encaminhamentos
 // ═══════════════════════════════════════════════════════════════════════════════
 function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, scores }: any) {
-  const myidScoreValue = result?.MyID_score ?? 0;
+  const myidScoreValue = result?.MyID_score ?? result?.myidScore ?? 0;
   const red_flags_detected = result?.red_flags_detected ?? false;
   const driverDim = result?.myid_100?.driver_primario?.dimensao;
   const gatilhosCriticos: string[] = result?.myid_100?.gatilhos_criticos_ativados || [];
@@ -618,7 +619,7 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
   const [visao, setVisao] = useState<'cliente' | 'terapeuta'>(isTerapeuta ? 'terapeuta' : 'cliente');
   const [celebrate, setCelebrate] = useState(false);
 
-  const myidScoreEarly = result?.MyID_score ?? 0;
+  const myidScoreEarly = result?.MyID_score ?? result?.myidScore ?? 0;
   useEffect(() => {
     if (myidScoreEarly >= 70) {
       const t = setTimeout(() => setCelebrate(true), 400);
@@ -629,7 +630,8 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
   if (!result) return null;
 
   const { component_scores, perdas_calculadas, myid_100 } = result;
-  const scores = component_scores || {};
+  // Tolerante ao formato importado do app antigo: component_scores / componentScores / scores.
+  const scores = scoresDoResultado(result) || component_scores || {};
   const D   = scores.D   ?? scores.D_pain          ?? 0;
   const EFI = scores.EFI ?? scores.EFI_functionality ?? 0;
   const P   = scores.P   ?? scores.P_psychological  ?? 0;

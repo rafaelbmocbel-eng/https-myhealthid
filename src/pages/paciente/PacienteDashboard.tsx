@@ -122,7 +122,7 @@ export default function PacienteDashboard() {
 
         const now = new Date().toISOString();
 
-        const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, avalVozRes, historiaRes, dicasRes, questClinRes] = await Promise.all([
+        const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes, avalVozRes, historiaRes, dicasRes, questClinRes, identidadeRes] = await Promise.all([
           supabase.from('agendamentos')
             .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
             .eq('paciente_id', pac.id)
@@ -165,6 +165,12 @@ export default function PacienteDashboard() {
           (supabase as any).from('questionarios_clinicos')
             .select('instrumento')
             .eq('paciente_id', pac.id),
+          // Fallback do MyID importado do app antigo: pode estar só aqui.
+          (supabase as any).from('avaliacoes_identidade')
+            .select('id, myid_score, myid_analysis, terapeuta_id, created_at')
+            .eq('paciente_id', pac.id)
+            .order('created_at', { ascending: false })
+            .limit(1),
         ]);
 
         setProximasConsultas(agendaRes.data || []);
@@ -179,12 +185,29 @@ export default function PacienteDashboard() {
         setNDicas(Array.isArray((dicasRes.data as any)?.dicas) ? (dicasRes.data as any).dicas.length : 0);
 
         const completedMyIds = lastMyIdRes.data || [];
-        setMyidConcluido(completedMyIds.length > 0);
-        setLastMyId(completedMyIds[0] || null);
+        // Pacientes migrados do app antigo podem ter o MyID SÓ em
+        // avaliacoes_identidade — usamos como fallback para o resultado completo.
+        const aiRow = (identidadeRes.data || [])[0] || null;
+        let effectiveLast: any = completedMyIds[0] || null;
+        if (!effectiveLast && aiRow) {
+          const an = (aiRow.myid_analysis || {}) as any;
+          effectiveLast = {
+            id: aiRow.id,
+            terapeuta_id: aiRow.terapeuta_id,
+            respostas_brutas: {},
+            resultado_processado: {
+              ...(an && typeof an === 'object' ? an : {}),
+              MyID_score: an.MyID_score ?? an.myidScore ?? aiRow.myid_score,
+            },
+          };
+        }
+        const temMyid = completedMyIds.length > 0 || !!aiRow;
+        setMyidConcluido(temMyid);
+        setLastMyId(effectiveLast);
 
         // Focos da avaliação (mesma lógica do painel MyID): maior oportunidade
         // e ponto de atenção — mostrados DENTRO do card "Sua avaliação gerou..."
-        const sc = scoresDoResultado((completedMyIds[0] as any)?.resultado_processado);
+        const sc = scoresDoResultado(effectiveLast?.resultado_processado);
         if (sc) {
           const fatores = [
             { label: 'Melhorar o sono', p: calcularPerdaDimensao('R', 10 - sc.R).perda_pontos },
@@ -210,11 +233,13 @@ export default function PacienteDashboard() {
           const prox = instrumentosRecomendados(sc).find((id) => !respondidos.has(id));
           setProxInstrumento(prox ? { nome: INSTRUMENTOS[prox].nome, sigla: INSTRUMENTOS[prox].sigla } : null);
         }
-        // Mostra prompt do MyID independentemente de avaliação de voz
-        if (completedMyIds.length === 0) {
+        // Prompt do MyID: "primeira vez" só se NÃO houver MyID em nenhuma das
+        // tabelas (senão o migrado seria mandado refazer). Reavaliação mensal
+        // só quando temos a data (myid_avaliacoes).
+        if (!temMyid) {
           setShowMyIdPrompt(true);
           setMyIdPromptType('first');
-        } else {
+        } else if (completedMyIds.length > 0) {
           const daysSince = differenceInDays(new Date(), new Date(completedMyIds[0].updated_at));
           if (daysSince >= 30) {
             setShowMyIdPrompt(true);
