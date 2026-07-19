@@ -49,7 +49,7 @@ export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Pr
   const vazio: MotoresClinicos = { scores: null, queixa: null, historia: null, condicoes: null, presencial: [], questionarios: [] };
   if (!pacienteId) return vazio;
 
-  const [myRes, pacRes, evRes, questRes] = await Promise.all([
+  const [myRes, pacRes, evRes, questRes, identRes] = await Promise.all([
     admin.from("myid_avaliacoes").select("resultado_processado")
       .eq("paciente_id", pacienteId).eq("status", "concluido")
       .order("updated_at", { ascending: false }).limit(1).maybeSingle()
@@ -65,11 +65,20 @@ export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Pr
       .select("instrumento, escore, classificacao, respostas, created_at")
       .eq("paciente_id", pacienteId).order("created_at", { ascending: false }).limit(20)
       .then((r: SB) => r).catch(() => ({ data: [] })),
+    // Fallback do MyID importado do app antigo (fica em avaliacoes_identidade).
+    admin.from("avaliacoes_identidade").select("myid_analysis")
+      .eq("paciente_id", pacienteId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+      .then((r: SB) => r).catch(() => ({ data: null })),
   ]);
 
-  // MyID: o formato variou entre gerações (component_scores atual, componentScores, scores).
+  // MyID: o formato variou entre gerações (component_scores atual, componentScores,
+  // scores). Se não estiver em myid_avaliacoes, cai para avaliacoes_identidade.
   const rp = (myRes?.data?.resultado_processado as SB) || null;
-  const scores = rp ? (rp.scores || rp.component_scores || rp.componentScores || null) : null;
+  let scores = rp ? (rp.scores || rp.component_scores || rp.componentScores || null) : null;
+  if (!scores) {
+    const an = (identRes?.data?.myid_analysis as SB) || null;
+    scores = an ? (an.component_scores || an.componentScores || an.scores || null) : null;
+  }
 
   const pac = (pacRes?.data as SB) || null;
 
@@ -136,6 +145,36 @@ export function textoPresencial(m: MotoresClinicos, foco: FocoPlano): string {
   }
   if (!partes.length) return "";
   return `\nAVALIAÇÃO PRESENCIAL (achados e observações do profissional — ${instrucaoPresencial(foco)}):\n${partes.join("\n")}`;
+}
+
+// Resultado completo do MyID (component_scores, MyID_score, perdas_calculadas,
+// myid_100…), com fallback para o formato importado do app antigo, que fica em
+// avaliacoes_identidade.myid_analysis. Retorna o objeto no formato canônico.
+export async function carregarResultadoMyid(admin: SB, pacienteId: string): Promise<SB | null> {
+  if (!pacienteId) return null;
+  const my = await admin.from("myid_avaliacoes").select("resultado_processado")
+    .eq("paciente_id", pacienteId).eq("status", "concluido")
+    .order("updated_at", { ascending: false }).limit(1).maybeSingle()
+    .then((r: SB) => r).catch(() => ({ data: null }));
+  const rp = (my?.data?.resultado_processado as SB) || null;
+  if (rp && (rp.scores || rp.component_scores || rp.componentScores)) return rp;
+  // Fallback: MyID importado (avaliacoes_identidade). O myid_analysis do app
+  // antigo já vem no formato canônico (com component_scores, MyID_score, etc.).
+  const ai = await admin.from("avaliacoes_identidade").select("myid_analysis, myid_score")
+    .eq("paciente_id", pacienteId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+    .then((r: SB) => r).catch(() => ({ data: null }));
+  const an = (ai?.data?.myid_analysis as SB) || null;
+  if (an && typeof an === "object") {
+    return { ...an, MyID_score: an.MyID_score ?? an.myidScore ?? ai?.data?.myid_score };
+  }
+  return rp || null;
+}
+
+// Scores do MyID por dimensão, com o mesmo fallback. Para funções que só
+// precisam dos scores (as diretrizes de treino/nutrição, dicas).
+export async function carregarScoresMyid(admin: SB, pacienteId: string): Promise<unknown | null> {
+  const r = await carregarResultadoMyid(admin, pacienteId) as SB;
+  return r ? (r.scores || r.component_scores || r.componentScores || null) : null;
 }
 
 // SÓ os achados anatômicos do avatar + observações do profissional — para

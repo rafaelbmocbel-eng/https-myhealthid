@@ -6,7 +6,7 @@
 // revisa e só então envia ao portal do cliente.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { carregarAchadosPresenciais, textoAchadosPresenciais } from "../_shared/motores-plano.ts";
+import { carregarAchadosPresenciais, textoAchadosPresenciais, carregarScoresMyid } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -93,9 +93,8 @@ Deno.serve(async (req) => {
     const idade = pac.data_nascimento
       ? Math.floor((Date.now() - new Date(pac.data_nascimento).getTime()) / (365.25 * 24 * 3600 * 1000))
       : null;
-    const _rp = (myid.data?.resultado_processado as any);
-    // formato variou entre gerações: component_scores (atual), componentScores ou scores
-    const scores = (_rp?.scores || _rp?.component_scores || _rp?.componentScores) || null;
+    // MyID com fallback para o formato importado (avaliacoes_identidade).
+    const scores = await carregarScoresMyid(admin, paciente_id) as any;
     const examesTxt = (exames.data || []).map((e: any) =>
       `Exame ${e.tipo || "?"} (${e.data_exame || "?"}): ${JSON.stringify(e.dados_extraidos).slice(0, 900)}`).join("\n");
 

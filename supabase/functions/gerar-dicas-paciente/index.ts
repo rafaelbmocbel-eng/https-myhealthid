@@ -4,6 +4,7 @@
 // por paciente em paciente_dicas.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isInternalCall, requireUser } from "../_shared/auth.ts";
+import { carregarScoresMyid } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,17 +60,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // MyID + história do paciente
-    const [myRes, pacRes] = await Promise.all([
-      admin.from("myid_avaliacoes").select("resultado_processado")
-        .eq("paciente_id", paciente_id).eq("status", "concluido")
-        .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+    // MyID (com fallback para o formato importado) + história do paciente
+    const [scoresRaw, pacRes] = await Promise.all([
+      carregarScoresMyid(admin, paciente_id),
       admin.from("pacientes").select("terapeuta_id, queixa_principal, historia_atual, condicoes_saude")
         .eq("id", paciente_id).maybeSingle(),
     ]);
-    const _rp = (myRes.data?.resultado_processado as any);
-    // formato variou entre gerações: component_scores (atual), componentScores ou scores
-    const scores = (_rp?.scores || _rp?.component_scores || _rp?.componentScores) || {};
+    const scores = (scoresRaw as any) || {};
     const pac = (pacRes.data || {}) as any;
 
     // Dimensões críticas → áreas de evidência

@@ -5,6 +5,7 @@
 // Disparado automaticamente pelo complete-myid e regenerável pelo profissional.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isInternalCall, requireUser } from "../_shared/auth.ts";
+import { carregarResultadoMyid } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,12 +63,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    const [pacRes, myRes, avatarRes, testesRes, compRes, antroRes, vitaisRes] = await Promise.all([
+    const [pacRes, resultadoMyid, avatarRes, testesRes, compRes, antroRes, vitaisRes] = await Promise.all([
       admin.from("pacientes").select("terapeuta_id, nome, sexo, data_nascimento, queixa_principal, historia_atual, condicoes_saude")
         .eq("id", paciente_id).maybeSingle(),
-      admin.from("myid_avaliacoes").select("resultado_processado")
-        .eq("paciente_id", paciente_id).eq("status", "concluido")
-        .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+      // MyID completo com fallback para o formato importado (avaliacoes_identidade).
+      carregarResultadoMyid(admin, paciente_id),
       admin.from("eventos_clinicos_anatomicos").select("*")
         .eq("paciente_id", paciente_id).order("created_at", { ascending: false }).limit(12),
       admin.from("testes_funcionais_paciente").select("tipo_teste, resultado, unidade, classificacao")
@@ -81,9 +81,8 @@ Deno.serve(async (req) => {
     ]);
 
     const pac = (pacRes.data || {}) as any;
-    const resultado = (myRes.data?.resultado_processado || null) as any;
-    // Formato variou: scores / component_scores / componentScores. Sem o
-    // fallback, o relatório NUNCA era gerado para o formato atual.
+    const resultado = (resultadoMyid || null) as any;
+    // Formato variou: scores / component_scores / componentScores.
     const scores = resultado?.scores || resultado?.component_scores || resultado?.componentScores || null;
     if (!scores) {
       return new Response(JSON.stringify({ ok: false, reason: "sem_myid" }), {
