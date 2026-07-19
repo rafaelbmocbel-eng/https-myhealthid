@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
+import { sistemaDaCondicaoSistemica } from '@/utils/condicoesSistemicas';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 import {
   PONTO_ANATOMICO, LS_DOT_OFFSETS, LS_SCALES, LS_FIGURA,
@@ -1670,14 +1671,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         className="h-7 px-2 text-[11px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
                         disabled={saveMut.isPending}
                         onClick={async () => {
+                          // Condição sistêmica (diabetes, hipertensão, asma…) não
+                          // vai para uma região — vira achado sistêmico do sistema.
+                          const sisSistemica = sistemaDaCondicaoSistemica(s.sinal);
                           const visceral = VISCERAL_REGIONS.find(v => v.id === s.regiao_id);
                           const musculo = REGIONS.find(r => r.id === s.regiao_id);
-                          const sistema = visceral
-                            ? (visceral.sistemas[0] as any)
-                            : musculo ? 'musculoesqueletico' : (s.sistema || 'musculoesqueletico');
+                          const sistema = sisSistemica
+                            ? sisSistemica
+                            : visceral
+                              ? (visceral.sistemas[0] as any)
+                              : musculo ? 'musculoesqueletico' : (s.sistema || 'musculoesqueletico');
                           await saveMut.mutateAsync({
                             paciente_id: pacienteId,
-                            regiao_id: s.regiao_id,
+                            regiao_id: sisSistemica ? 'sistemico' : s.regiao_id,
                             sistema,
                             origem: 'autocadastro_paciente',
                             tipo_achado: limparHist(s.sinal),
