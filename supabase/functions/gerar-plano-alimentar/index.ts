@@ -43,7 +43,8 @@ Retorne SOMENTE JSON neste formato:
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    try { await requireUser(req); } catch (r) { return r as Response; }
+    let userId: string;
+    try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
     const body = await req.json();
     const {
       objetivo, calorias_alvo, refeicoes_por_dia, restricoes, preferencias,
@@ -57,6 +58,28 @@ Deno.serve(async (req) => {
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
+
+    // TRAVA DE ENTITLEMENT: se quem chama é o PRÓPRIO cliente (não o profissional),
+    // gerar o plano alimentar com IA exige Premium ou período de teste. Cliente
+    // clínico não gera sozinho — paga o Premium ou o profissional monta.
+    if (paciente_id) {
+      const adminAuth = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: pacRow } = await adminAuth.from("pacientes")
+        .select("user_id, tipo_conta, created_at").eq("id", paciente_id).maybeSingle();
+      if ((pacRow as any)?.user_id && (pacRow as any).user_id === userId) {
+        const tipo = (pacRow as any).tipo_conta;
+        const emTeste = tipo === "wellness_free" &&
+          Date.now() < new Date((pacRow as any).created_at).getTime() + 7 * 86400000;
+        if (tipo !== "wellness_premium" && !emTeste) {
+          return new Response(JSON.stringify({ error: "Recurso Premium: assine o Premium ou peça ao seu profissional para montar o plano." }), {
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
 
     // TRÊS MOTORES (fonte única em _shared/motores-plano.ts): MyID +
     // questionários clínicos validados + avaliação presencial (achados do avatar

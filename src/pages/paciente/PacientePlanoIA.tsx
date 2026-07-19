@@ -20,7 +20,7 @@ import { INSTRUMENTOS, CLASSIFICACAO_LABEL } from '@/lib/instrumentosClinicos';
 export function PlanoPersonalizadoSection() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isFree, isInTrial, isLoading: acLoading } = useWellnessAccess();
+  const { isFree, isPremium, isInTrial, isLoading: acLoading } = useWellnessAccess();
   const [loading, setLoading] = useState(true);
   const [treino, setTreino] = useState<any>(null);
   const [dieta, setDieta] = useState<any>(null);
@@ -31,7 +31,10 @@ export function PlanoPersonalizadoSection() {
   const [dietaIA, setDietaIA] = useState<any>(null);
   const [gerando, setGerando] = useState<'' | 'treino' | 'nutricao' | 'tudo'>('');
 
-  const bloqueado = isFree && !isInTrial;
+  // VER o que o profissional montou: liberado para todo cliente (inclusive o
+  // clínico). GERAR o próprio plano com IA: só Premium ou período de teste — o
+  // cliente clínico NÃO gera sozinho (paga o Premium ou o profissional monta).
+  const podeGerar = isPremium || isInTrial;
 
   const carregar = async (pid: string) => {
     const [t, d, dir, ia] = await Promise.all([
@@ -55,7 +58,7 @@ export function PlanoPersonalizadoSection() {
   };
 
   useEffect(() => {
-    if (!user || bloqueado) { setLoading(false); return; }
+    if (!user) { setLoading(false); return; }
     (async () => {
       const { data: pac } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
       if (!pac) { setLoading(false); return; }
@@ -63,13 +66,15 @@ export function PlanoPersonalizadoSection() {
       await carregar(pac.id);
       setLoading(false);
     })();
-  }, [user, bloqueado]);
+  }, [user]);
 
   // Gera o plano do cliente (treino e/ou nutrição) a partir do MyID +
   // questionários + anamnese. Usa as MESMAS funções de IA do profissional
   // (que aceitam paciente_id) e persiste em planos_ia_cliente.
   const gerarPlano = async (alvo: 'treino' | 'nutricao' | 'tudo', incomodo?: string) => {
     if (!pacienteId) return;
+    // Trava do cliente: gerar o próprio plano é Premium/teste. Sem isso, leva ao Premium.
+    if (!podeGerar) { navigate('/paciente/plano'); return; }
     setGerando(alvo);
     try {
       const [{ data: anamRow }, { data: questRows }] = await Promise.all([
@@ -151,27 +156,6 @@ export function PlanoPersonalizadoSection() {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
-  if (bloqueado) {
-    return (
-          <Card className="border-0 shadow-md overflow-hidden">
-            <div className="p-6 text-center text-white" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)' }}>
-              <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-3">
-                <Lock className="h-7 w-7" />
-              </div>
-              <h2 className="text-lg font-black">Recurso do Premium</h2>
-              <p className="text-sm text-white/80 mt-1 max-w-sm mx-auto">
-                Plano de treino e plano alimentar personalizados pela IA fazem parte do Wellness Premium.
-                No plano gratuito você já tem seus exercícios, dicas e a avaliação MyID.
-              </p>
-              <Button variant="secondary" className="mt-4 gap-1.5 bg-white/20 hover:bg-white/30 text-white border-0"
-                onClick={() => navigate('/paciente/plano')}>
-                Conhecer o Premium <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-    );
-  }
-
   return (
     <div className="space-y-4">
             {/* Disclaimer de segurança */}
@@ -185,43 +169,68 @@ export function PlanoPersonalizadoSection() {
             {/* A anamnese nutricional agora mora dentro dos "Questionários do
                 plano" (QuestionariosClinicosSection), não como card separado. */}
 
-            {/* Gerador de plano do cliente (IA) — treino + nutrição sob medida */}
-            <Card className="border-primary/25">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Wand2 className="h-5 w-5" />
+            {/* Gerador de plano do cliente (IA) — só Premium/teste. O cliente
+                clínico não gera sozinho: paga o Premium OU o profissional monta. */}
+            {podeGerar ? (
+              <Card className="border-primary/25">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Wand2 className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold">Montar meu plano com IA</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Treino e alimentação sob medida, a partir do seu MyID, questionários e anamnese.
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold">Montar meu plano com IA</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Treino e alimentação sob medida, a partir do seu MyID, questionários e anamnese.
-                    </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Button variant="outline" className="gap-1.5" disabled={!!gerando}
+                      onClick={() => gerarPlano('treino')}>
+                      {gerando === 'treino' ? <Loader2 className="h-4 w-4 animate-spin" /> : treinoIA ? <RefreshCw className="h-4 w-4" /> : <Dumbbell className="h-4 w-4" />}
+                      {treinoIA ? 'Refazer treino' : 'Gerar treino'}
+                    </Button>
+                    <Button variant="outline" className="gap-1.5" disabled={!!gerando}
+                      onClick={() => gerarPlano('nutricao')}>
+                      {gerando === 'nutricao' ? <Loader2 className="h-4 w-4 animate-spin" /> : dietaIA ? <RefreshCw className="h-4 w-4" /> : <Salad className="h-4 w-4" />}
+                      {dietaIA ? 'Refazer nutrição' : 'Gerar nutrição'}
+                    </Button>
+                  </div>
+                  {!treinoIA && !dietaIA && (
+                    <Button className="w-full gap-1.5" disabled={!!gerando} onClick={() => gerarPlano('tudo')}>
+                      {gerando === 'tudo' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                      {gerando === 'tudo' ? 'Montando seu plano…' : 'Gerar treino + nutrição'}
+                    </Button>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Responda a anamnese acima antes para o plano ficar mais preciso. A geração leva alguns segundos.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-0 shadow-md overflow-hidden">
+                <div className="p-5 text-center text-white" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)' }}>
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-2">
+                    <Wand2 className="h-6 w-6" />
+                  </div>
+                  <h2 className="text-base font-black">Monte seu treino e nutrição sob medida</h2>
+                  <p className="text-xs text-white/85 mt-1 max-w-sm mx-auto">
+                    Criar seu próprio plano com IA faz parte do <strong>Premium</strong>. Você continua vendo tudo o que seu profissional montar para você aqui.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center mt-3">
+                    <Button variant="secondary" className="gap-1.5 bg-white text-primary hover:bg-white/90 border-0"
+                      onClick={() => navigate('/paciente/plano')}>
+                      Assinar o Premium <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button variant="secondary" className="gap-1.5 bg-white/20 hover:bg-white/30 text-white border-0"
+                      onClick={() => navigate('/paciente/profissionais')}>
+                      Falar com meu profissional
+                    </Button>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Button variant="outline" className="gap-1.5" disabled={!!gerando}
-                    onClick={() => gerarPlano('treino')}>
-                    {gerando === 'treino' ? <Loader2 className="h-4 w-4 animate-spin" /> : treinoIA ? <RefreshCw className="h-4 w-4" /> : <Dumbbell className="h-4 w-4" />}
-                    {treinoIA ? 'Refazer treino' : 'Gerar treino'}
-                  </Button>
-                  <Button variant="outline" className="gap-1.5" disabled={!!gerando}
-                    onClick={() => gerarPlano('nutricao')}>
-                    {gerando === 'nutricao' ? <Loader2 className="h-4 w-4 animate-spin" /> : dietaIA ? <RefreshCw className="h-4 w-4" /> : <Salad className="h-4 w-4" />}
-                    {dietaIA ? 'Refazer nutrição' : 'Gerar nutrição'}
-                  </Button>
-                </div>
-                {!treinoIA && !dietaIA && (
-                  <Button className="w-full gap-1.5" disabled={!!gerando} onClick={() => gerarPlano('tudo')}>
-                    {gerando === 'tudo' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                    {gerando === 'tudo' ? 'Montando seu plano…' : 'Gerar treino + nutrição'}
-                  </Button>
-                )}
-                <p className="text-[10px] text-muted-foreground">
-                  Responda a anamnese acima antes para o plano ficar mais preciso. A geração leva alguns segundos.
-                </p>
-              </CardContent>
-            </Card>
+              </Card>
+            )}
 
             {/* Diretrizes do profissional (nutrição, treino, ...) */}
             {diretrizes.map((dir, i) => <DiretrizProfissionalView key={i} diretriz={dir} />)}
@@ -247,7 +256,11 @@ export function PlanoPersonalizadoSection() {
               <Card><CardContent className="p-8 text-center">
                 <Sparkles className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-sm font-medium text-muted-foreground">Nenhum plano ainda</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Toque em "Gerar treino + nutrição" acima para montar o seu — ou seu profissional pode montar um.</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">
+                  {podeGerar
+                    ? 'Toque em "Gerar treino + nutrição" acima para montar o seu — ou seu profissional pode montar um.'
+                    : 'Seu profissional pode montar um plano sob medida para você. Assine o Premium para criar o seu com IA quando quiser.'}
+                </p>
               </CardContent></Card>
             )}
     </div>

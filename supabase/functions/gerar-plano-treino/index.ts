@@ -78,8 +78,22 @@ Deno.serve(async (req) => {
     let bankOwner: string | null = userId;
     if (paciente_id) {
       const { data: pacRow } = await admin.from("pacientes")
-        .select("terapeuta_id").eq("id", paciente_id).maybeSingle();
+        .select("terapeuta_id, user_id, tipo_conta, created_at").eq("id", paciente_id).maybeSingle();
       bankOwner = ((pacRow as any)?.terapeuta_id) || userId;
+
+      // TRAVA DE ENTITLEMENT: se quem chama é o PRÓPRIO cliente (não o
+      // profissional), gerar o plano com IA exige Premium ou período de teste.
+      // Cliente clínico não gera sozinho — paga o Premium ou o profissional monta.
+      if ((pacRow as any)?.user_id && (pacRow as any).user_id === userId) {
+        const tipo = (pacRow as any).tipo_conta;
+        const emTeste = tipo === "wellness_free" &&
+          Date.now() < new Date((pacRow as any).created_at).getTime() + 7 * 86400000;
+        if (tipo !== "wellness_premium" && !emTeste) {
+          return new Response(JSON.stringify({ error: "Recurso Premium: assine o Premium ou peça ao seu profissional para montar o plano." }), {
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
     }
     const BANK_COLS = "id, nome, grupo_muscular, gif_url, gif_url_fem, orientacoes, series_padrao, repeticoes_padrao, descanso_padrao_segundos";
     let bibData: any[] = [];
