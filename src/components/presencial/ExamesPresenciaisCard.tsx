@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Activity, ChevronDown, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Activity, ChevronDown, Plus, Trash2, Loader2, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,41 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
   const [tipoSel, setTipoSel] = useState<string>('');
   const [dados, setDados] = useState<Record<string, string>>({});
   const [dataExame, setDataExame] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [importando, setImportando] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const lerBase64 = (file: File) => new Promise<{ file_base64: string; mime: string }>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve({ file_base64: String(r.result).split(',')[1] || '', mime: file.type || 'image/jpeg' });
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+
+  // Importa a bioimpedância de foto(s)/print(s): a IA lê o laudo e preenche os
+  // campos; o profissional confere e salva.
+  const importarFotos = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setImportando(true);
+    try {
+      const imagens = await Promise.all(Array.from(files).slice(0, 6).map(lerBase64));
+      const { data, error } = await supabase.functions.invoke('importar-bioimpedancia', {
+        body: { paciente_id: pacienteId, imagens },
+      });
+      if (error) throw error;
+      const extra = (data?.dados || {}) as Record<string, string>;
+      const n = Object.keys(extra).length;
+      if (n === 0) { toast.error('Não consegui ler os números do laudo. Tente uma foto mais nítida.'); return; }
+      setTipoSel('bioimpedancia');
+      setDados(d => ({ ...d, ...extra }));
+      if (data?.data_hint) setDataExame(data.data_hint);
+      toast.success(`Bioimpedância lida — ${n} campos preenchidos. Confira e registre.`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao importar');
+    } finally {
+      setImportando(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
 
   const { data: exames = [], isLoading } = useQuery({
     queryKey: ['exames-presenciais', pacienteId],
@@ -115,6 +150,28 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
         <CardContent className="space-y-4 pt-0">
           {/* Registro de novo exame */}
           <div className="rounded-lg border border-border/50 p-3 space-y-3">
+            {/* Importar bioimpedância de foto/print — a IA lê e preenche */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={e => importarFotos(e.target.files)}
+            />
+            <Button
+              variant="outline"
+              className="w-full gap-1.5 border-dashed"
+              disabled={importando}
+              onClick={() => fileRef.current?.click()}
+            >
+              {importando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="icon-sm" />}
+              {importando ? 'Lendo o laudo…' : 'Importar bioimpedância de foto/print'}
+            </Button>
+            <p className="text-[10px] text-muted-foreground -mt-1 text-center">
+              Suba os prints do laudo do aparelho — a IA lê os números e preenche abaixo para você conferir.
+            </p>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Tipo de exame</Label>
