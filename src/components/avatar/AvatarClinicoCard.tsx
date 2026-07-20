@@ -1653,51 +1653,68 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 </span>
               </div>
               <p className="text-[10px] text-muted-foreground leading-snug">
-                Detectado no que o paciente respondeu no portal. Nada é marcado no avatar até você adicionar como achado clínico.
+                Detectado no que o paciente respondeu no portal. Você decide como guardar cada um:
+                <span className="font-semibold text-rose-700 dark:text-rose-300"> Sistêmico</span> (acende o sistema, sem região) ou
+                <span className="font-semibold"> No corpo</span> (na região do avatar). Pode guardar os dois — tudo vira história clínica visível a qualquer profissional futuro.
               </p>
               <div className="space-y-1.5">
                 {pendentes.map((s, idx) => {
                   const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === s.regiao_id);
                   const sysLabel = SISTEMA_CONFIG[s.sistema as SistemaCorporal]?.label || s.sistema;
                   const key = `${s.regiao_id}|${s.sinal}`;
+                  // O enum do banco usa 'cardiovascular' (o app usa 'circulatorio'
+                  // em alguns lugares) — normaliza para o valor válido ao gravar.
+                  const normSist = (v: any) => (v === 'circulatorio' ? 'cardiovascular' : v);
+                  const sisSistemica = sistemaDaCondicaoSistemica(s.sinal);
+                  const ehSistemica = !!sisSistemica;
+                  const visceral = VISCERAL_REGIONS.find(v => v.id === s.regiao_id);
+                  const musculo = REGIONS.find(r => r.id === s.regiao_id);
+                  const sistemaRegiao = normSist(visceral ? (visceral.sistemas[0] as any) : musculo ? 'musculoesqueletico' : (s.sistema || 'musculoesqueletico'));
+                  // Grava a sugestão como achado SISTÊMICO (sem região) ou NO CORPO
+                  // (na região detectada). Os dois são história clínica persistente.
+                  const salvar = async (comoSistemico: boolean) => {
+                    await saveMut.mutateAsync({
+                      paciente_id: pacienteId,
+                      regiao_id: comoSistemico ? 'sistemico' : s.regiao_id,
+                      sistema: comoSistemico ? normSist(sisSistemica || sistemaRegiao) : sistemaRegiao,
+                      origem: 'autocadastro_paciente',
+                      tipo_achado: limparHist(s.sinal),
+                      tipo_diagnostico: 'achado_clinico',
+                      severidade: 2,
+                      status: 'cronico',
+                      visivel_paciente: true,
+                      data_inicio: new Date().toISOString().slice(0, 10),
+                      metadata: { origem_sugestao_portal: true, revisado_profissional: true, natureza: comoSistemico ? 'sistemica' : 'regional' },
+                    } as any);
+                  };
                   return (
                     <div key={`${key}-${idx}`} className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-1.5">
                       <div className="min-w-0 flex-1">
                         <p className="text-[12px] font-semibold truncate">{limparHist(s.sinal)}</p>
                         <p className="text-[10px] text-muted-foreground truncate">{reg?.label || s.regiao_id} · {sysLabel}</p>
                       </div>
-                      <Button
-                        size="sm"
-                        className="h-7 px-2 text-[11px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
-                        disabled={saveMut.isPending}
-                        onClick={async () => {
-                          // Condição sistêmica (diabetes, hipertensão, asma…) não
-                          // vai para uma região — vira achado sistêmico do sistema.
-                          const sisSistemica = sistemaDaCondicaoSistemica(s.sinal);
-                          const visceral = VISCERAL_REGIONS.find(v => v.id === s.regiao_id);
-                          const musculo = REGIONS.find(r => r.id === s.regiao_id);
-                          const sistema = sisSistemica
-                            ? sisSistemica
-                            : visceral
-                              ? (visceral.sistemas[0] as any)
-                              : musculo ? 'musculoesqueletico' : (s.sistema || 'musculoesqueletico');
-                          await saveMut.mutateAsync({
-                            paciente_id: pacienteId,
-                            regiao_id: sisSistemica ? 'sistemico' : s.regiao_id,
-                            sistema,
-                            origem: 'autocadastro_paciente',
-                            tipo_achado: limparHist(s.sinal),
-                            tipo_diagnostico: 'achado_clinico',
-                            severidade: 2,
-                            status: 'cronico',
-                            visivel_paciente: true,
-                            data_inicio: new Date().toISOString().slice(0, 10),
-                            metadata: { origem_sugestao_portal: true, revisado_profissional: true },
-                          } as any);
-                        }}
-                      >
-                        <Plus className="h-3 w-3" /> Adicionar
-                      </Button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant={ehSistemica ? 'default' : 'outline'}
+                          className={`h-7 px-2 text-[11px] gap-1 ${ehSistemica ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''}`}
+                          disabled={saveMut.isPending}
+                          title="Guardar como achado sistêmico (acende o sistema, sem região)"
+                          onClick={() => salvar(true)}
+                        >
+                          <Plus className="h-3 w-3" /> Sistêmico
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-[11px] gap-1"
+                          disabled={saveMut.isPending}
+                          title="Guardar como achado clínico na região do avatar"
+                          onClick={() => salvar(false)}
+                        >
+                          <Plus className="h-3 w-3" /> No corpo
+                        </Button>
+                      </div>
                       <button
                         type="button"
                         className="p-1 rounded hover:bg-accent shrink-0"
