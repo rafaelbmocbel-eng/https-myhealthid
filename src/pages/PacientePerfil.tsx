@@ -1170,7 +1170,7 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'prescricao') && id && <PrescricaoMedicaCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'exames') && id && <ImportarExameCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'antropometria') && id && <AntropometriaCard pacienteId={id} />}
-            {(temBloco(lenteAtiva, 'antropometria') || temBloco(lenteAtiva, 'testes_funcionais') || temBloco(lenteAtiva, 'bioimpedancia')) && id && <ExamesPresenciaisCard pacienteId={id} />}
+            {(temBloco(lenteAtiva, 'exames_presenciais') || temBloco(lenteAtiva, 'antropometria') || temBloco(lenteAtiva, 'testes_funcionais')) && id && <ExamesPresenciaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'testes_funcionais') && id && <TestesFuncionaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_treino') && id && <PlanoTreinoCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_treino') && id && <DiretrizTreinoCard pacienteId={id} />}
