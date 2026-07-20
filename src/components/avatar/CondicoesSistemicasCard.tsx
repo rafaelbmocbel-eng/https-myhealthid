@@ -2,14 +2,15 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { HeartPulse, Plus, Trash2, Loader2 } from 'lucide-react';
+import { HeartPulse, Plus, Trash2, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 // Condições SISTÊMICAS não pertencem a uma região anatômica — pertencem a um
 // SISTEMA do corpo. Ficam guardadas como evento com regiao_id='sistemico' (fora
@@ -70,6 +71,7 @@ export default function CondicoesSistemicasCard({ pacienteId }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [aberto, setAberto] = useState(false);   // painel recolhido por padrão (economiza espaço)
   const [escolha, setEscolha] = useState<string>('');   // label da lista ou 'outra'
   const [customLabel, setCustomLabel] = useState('');
   const [customSistema, setCustomSistema] = useState<Sistema>('endocrino');
@@ -144,49 +146,80 @@ export default function CondicoesSistemicasCard({ pacienteId }: Props) {
 
   return (
     <Card className="border-border/40 shadow-xs">
-      <CardHeader className="pb-3 flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <HeartPulse className="icon-sm text-rose-600 shrink-0" /> Condições sistêmicas
-        </CardTitle>
-        <Button size="sm" onClick={() => setOpen(true)} className="gap-1">
-          <Plus className="icon-sm" /> Adicionar
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <p className="text-[11px] text-muted-foreground -mt-1">
-          Ansiedade, hipertensão, diabetes, reumatismo… — condições que afetam o corpo todo. Não marcam uma região, mas acendem o <strong>sistema</strong> no avatar e entram na IA dos planos.
-        </p>
-        {isLoading ? (
-          <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-        ) : condicoes.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-3">Nenhuma condição sistêmica registrada.</p>
-        ) : (
-          <div className="space-y-2.5">
-            {porSistema.map(([sis, lista]) => {
-              const cor = SIST_COR[sis] || '#64748b';
-              return (
-                <div key={sis} className="space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cor }} />
-                    <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: cor }}>{SIST_LABEL[sis as Sistema] || sis}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 pl-3.5">
-                    {lista.map((c) => (
-                      <span key={c.id} className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-full border border-border/50 bg-muted/40 text-[11px]">
-                        <span className="font-medium">{c.tipo_achado}</span>
-                        {c.severidade >= 3 && <span className="text-[8px] font-bold px-1 rounded bg-red-100 text-red-700">grave</span>}
-                        <button onClick={() => remover.mutate(c.id)} className="h-4 w-4 rounded-full hover:bg-muted flex items-center justify-center" title="Remover">
-                          <Trash2 className="h-2.5 w-2.5 text-destructive" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          {/* Cabeçalho clicável: abre/fecha o painel */}
+          <button
+            type="button"
+            onClick={() => setAberto(a => !a)}
+            className="flex items-center gap-2 flex-1 min-w-0 text-left"
+            title={aberto ? 'Fechar' : 'Abrir para ver os achados'}
+          >
+            <HeartPulse className="icon-sm text-rose-600 shrink-0" />
+            <span className="text-base font-semibold truncate">Condições sistêmicas</span>
+            {condicoes.length > 0 && (
+              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-rose-100 text-rose-700 text-[11px] font-bold shrink-0">
+                {condicoes.length}
+              </span>
+            )}
+            <ChevronDown className={cn('icon-sm text-muted-foreground shrink-0 transition-transform', aberto && 'rotate-180')} />
+          </button>
+          <Button size="sm" onClick={() => setOpen(true)} className="gap-1 shrink-0">
+            <Plus className="icon-sm" /> Adicionar
+          </Button>
+        </div>
+        {/* Fechado: mostra que há achados e convida a abrir */}
+        {!aberto && (
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            {condicoes.length > 0
+              ? `Toque no título para abrir e ver ${condicoes.length} ${condicoes.length === 1 ? 'achado sistêmico' : 'achados sistêmicos'}.`
+              : 'Nenhuma condição sistêmica registrada.'}
+          </p>
         )}
-      </CardContent>
+      </CardHeader>
+
+      {aberto && (
+        <CardContent className="space-y-2 pt-0">
+          <p className="text-[11px] text-muted-foreground -mt-1">
+            Ansiedade, hipertensão, diabetes, reumatismo… — condições que afetam o corpo todo. Não marcam uma região, mas acendem o <strong>sistema</strong> no avatar e entram na IA dos planos.
+          </p>
+          {isLoading ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : condicoes.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-3">Nenhuma condição sistêmica registrada.</p>
+          ) : (
+            <div className="space-y-3">
+              {porSistema.map(([sis, lista]) => {
+                const cor = SIST_COR[sis] || '#64748b';
+                return (
+                  <div key={sis} className="space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cor }} />
+                      <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: cor }}>{SIST_LABEL[sis as Sistema] || sis}</span>
+                    </div>
+                    {/* Achados em TEXTO (lista), não em botões */}
+                    <ul className="pl-3.5">
+                      {lista.map((c) => (
+                        <li key={c.id} className="group flex items-center gap-2 py-1 border-b border-border/30 last:border-0">
+                          <span className="text-[13px] text-foreground">{c.tipo_achado}</span>
+                          {c.severidade >= 3 && <span className="text-[8px] font-bold px-1 rounded bg-red-100 text-red-700">grave</span>}
+                          <button
+                            onClick={() => remover.mutate(c.id)}
+                            className="ml-auto h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                            title="Remover"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
