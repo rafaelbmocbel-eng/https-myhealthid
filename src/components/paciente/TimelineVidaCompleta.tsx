@@ -45,7 +45,7 @@ const TIPO_HISTORIA_LABELS: Record<string, string> = {
 };
 
 const SISTEMAS_CORPORAIS = [
-  'musculoesqueletico', 'nervoso', 'digestorio', 'cardiovascular',
+  'musculoesqueletico', 'nervoso', 'digestorio', 'circulatorio',
   'respiratorio', 'endocrino', 'urinario', 'reprodutor', 'tegumentar',
   'linfatico', 'sensorial',
 ];

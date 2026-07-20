@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,12 +26,6 @@ const SIST_LABEL: Record<Sistema, string> = {
   musculoesqueletico: 'Musculoesquelético', nervoso: 'Nervoso / Mental', cardiovascular: 'Cardiovascular',
   respiratorio: 'Respiratório', digestorio: 'Digestório', endocrino: 'Endócrino / Metabólico',
   urinario: 'Urinário', reprodutor: 'Reprodutor', tegumentar: 'Pele', linfatico: 'Linfático / Sangue', sensorial: 'Sensorial',
-};
-
-const SIST_COR: Record<Sistema, string> = {
-  musculoesqueletico: '#a855f7', nervoso: '#6366f1', cardiovascular: '#ef4444',
-  respiratorio: '#06b6d4', digestorio: '#f97316', endocrino: '#10b981',
-  urinario: '#8b5cf6', reprodutor: '#ec4899', tegumentar: '#f59e0b', linfatico: '#84cc16', sensorial: '#14b8a6',
 };
 
 // Condições comuns já mapeadas ao sistema (com CID quando aplicável).
@@ -86,13 +80,6 @@ export default function CondicoesSistemicasCard({ pacienteId }: Props) {
       return (data || []) as any[];
     },
   });
-
-  // Agrupa as condições por sistema (ordem: mais itens primeiro).
-  const porSistema = useMemo(() => {
-    const m = new Map<string, any[]>();
-    for (const c of condicoes as any[]) { const arr = m.get(c.sistema) || []; arr.push(c); m.set(c.sistema, arr); }
-    return [...m.entries()].sort((a, b) => b[1].length - a[1].length);
-  }, [condicoes]);
 
   const invalidar = () => {
     qc.invalidateQueries({ queryKey: ['condicoes-sistemicas', pacienteId] });
@@ -161,29 +148,16 @@ export default function CondicoesSistemicasCard({ pacienteId }: Props) {
         ) : condicoes.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-3">Nenhuma condição sistêmica registrada.</p>
         ) : (
-          <div className="space-y-2.5">
-            {porSistema.map(([sis, lista]) => {
-              const cor = SIST_COR[sis as Sistema] || '#64748b';
-              return (
-                <div key={sis} className="space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cor }} />
-                    <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: cor }}>{SIST_LABEL[sis as Sistema] || sis}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 pl-3.5">
-                    {lista.map((c) => (
-                      <span key={c.id} className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-full border border-border/50 bg-muted/40 text-[11px]">
-                        <span className="font-medium">{c.tipo_achado}</span>
-                        {c.severidade >= 3 && <span className="text-[8px] font-bold px-1 rounded bg-red-100 text-red-700">grave</span>}
-                        <button onClick={() => remover.mutate(c.id)} className="h-4 w-4 rounded-full hover:bg-muted flex items-center justify-center" title="Remover">
-                          <Trash2 className="h-2.5 w-2.5 text-destructive" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex flex-wrap gap-1.5">
+            {condicoes.map((c) => (
+              <span key={c.id} className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-full border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20 text-[11px]">
+                <span className="font-medium text-rose-800 dark:text-rose-300">{c.tipo_achado}</span>
+                <span className="text-[9px] text-rose-500/80">{SIST_LABEL[c.sistema as Sistema] || c.sistema}</span>
+                <button onClick={() => remover.mutate(c.id)} className="h-4 w-4 rounded-full hover:bg-rose-200/60 flex items-center justify-center" title="Remover">
+                  <Trash2 className="h-2.5 w-2.5 text-rose-600" />
+                </button>
+              </span>
+            ))}
           </div>
         )}
       </CardContent>

@@ -134,7 +134,7 @@
 
   /* ── Cores dos Sistemas Corporais ─────────────────────────── */
   --sistema-nervoso:            210 100% 48%;
-  --sistema-cardiovascular:       0   80% 55%;
+  --sistema-circulatorio:       0   80% 55%;
   --sistema-respiratorio:       188 75% 48%;
   --sistema-digestorio:         25  90% 54%;
   --sistema-endocrino:          45  90% 52%;
@@ -885,7 +885,7 @@
 
 /* ── Avatar backdrop glow ─────────────────────────────────── */
 .avatar-glow-nervoso        { --glow-color: hsl(var(--sistema-nervoso)      / 0.25); }
-.avatar-glow-cardiovascular   { --glow-color: hsl(var(--sistema-cardiovascular)  / 0.25); }
+.avatar-glow-circulatorio   { --glow-color: hsl(var(--sistema-circulatorio)  / 0.25); }
 .avatar-glow-respiratorio   { --glow-color: hsl(var(--sistema-respiratorio)  / 0.25); }
 .avatar-glow-digestorio     { --glow-color: hsl(var(--sistema-digestorio)    / 0.25); }
 .avatar-glow-endocrino      { --glow-color: hsl(var(--sistema-endocrino)     / 0.25); }

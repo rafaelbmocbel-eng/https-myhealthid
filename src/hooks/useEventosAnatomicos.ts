@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 export type SistemaCorporal =
-  | 'musculoesqueletico' | 'nervoso' | 'digestorio' | 'cardiovascular'
+  | 'musculoesqueletico' | 'nervoso' | 'digestorio' | 'circulatorio'
   | 'respiratorio' | 'endocrino' | 'urinario'
   | 'reprodutor' | 'tegumentar' | 'linfatico' | 'sensorial';
 

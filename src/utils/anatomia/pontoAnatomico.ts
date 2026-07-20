@@ -69,9 +69,9 @@ export const PONTO_ANATOMICO: Record<string, PontoInfo> = {
   medula_espinhal_v:    { cx: 120, cy: 122, label: 'Medula Esp.',        sistema: 'nervoso',            views: ['front'] },
   medula_p:             { cx: 120, cy: 122, label: 'Medula Esp. Post.',  sistema: 'nervoso',            views: ['back'] },
   // ─ CIRCULATÓRIO ───────────────────────────────────────────
-  coracao:              { cx: 112, cy: 108, label: 'Coração',            sistema: 'cardiovascular',       views: ['front'] },
-  aorta:                { cx: 120, cy: 115, label: 'Aorta',              sistema: 'cardiovascular',       views: ['front'] },
-  vena_cava:            { cx: 122, cy: 118, label: 'Veia Cava',          sistema: 'cardiovascular',       views: ['front'] },
+  coracao:              { cx: 112, cy: 108, label: 'Coração',            sistema: 'circulatorio',       views: ['front'] },
+  aorta:                { cx: 120, cy: 115, label: 'Aorta',              sistema: 'circulatorio',       views: ['front'] },
+  vena_cava:            { cx: 122, cy: 118, label: 'Veia Cava',          sistema: 'circulatorio',       views: ['front'] },
   // ─ RESPIRATÓRIO ───────────────────────────────────────────
   traqueia:             { cx: 120, cy:  78, label: 'Traqueia',           sistema: 'respiratorio',       views: ['front'] },
   pulmao_d:             { cx: 104, cy: 112, label: 'Pulmão D',           sistema: 'respiratorio',       views: ['front'] },
@@ -126,7 +126,7 @@ export const PONTO_ANATOMICO: Record<string, PontoInfo> = {
 export const SISTEMA_DOT_COLOR: Record<string, string> = {
   musculoesqueletico: '#a855f7',
   nervoso:            '#818cf8',
-  cardiovascular:       '#ef4444',
+  circulatorio:       '#ef4444',
   respiratorio:       '#06b6d4',
   digestorio:         '#f97316',
   endocrino:          '#eab308',

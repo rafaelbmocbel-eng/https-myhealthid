@@ -125,7 +125,7 @@ const ORGAN_RESTING_COLORS: Record<string, string> = {
 
 const SYSTEM_RESTING: Record<string, string> = {
   nervoso:       'rgba(130,145,210,0.58)',
-  cardiovascular:  'rgba(210,45,45,0.62)',
+  circulatorio:  'rgba(210,45,45,0.62)',
   respiratorio:  'rgba(195,128,150,0.60)',
   digestorio:    'rgba(200,120,78,0.54)',
   urinario:      'rgba(95,138,218,0.56)',
@@ -137,7 +137,7 @@ const SYSTEM_RESTING: Record<string, string> = {
 
 const SYSTEM_HOVER: Record<string, string> = {
   nervoso:       'rgba(14,165,233,0.78)',
-  cardiovascular:  'rgba(239,68,68,0.82)',
+  circulatorio:  'rgba(239,68,68,0.82)',
   respiratorio:  'rgba(6,182,212,0.78)',
   digestorio:    'rgba(249,115,22,0.78)',
   urinario:      'rgba(99,102,241,0.78)',
@@ -148,7 +148,7 @@ const SYSTEM_HOVER: Record<string, string> = {
 };
 
 const VESSEL_COLOR: Record<string, string> = {
-  cardiovascular:  'rgba(200,40,40,0.72)',
+  circulatorio:  'rgba(200,40,40,0.72)',
   respiratorio:  'rgba(100,180,212,0.68)',
   nervoso:       'rgba(14,165,233,0.60)',
   urinario:      'rgba(95,138,218,0.60)',
@@ -156,7 +156,7 @@ const VESSEL_COLOR: Record<string, string> = {
 };
 
 const SISTEMAS_ORDEM: SistemaCorporal[] = [
-  'musculoesqueletico', 'nervoso', 'digestorio', 'cardiovascular',
+  'musculoesqueletico', 'nervoso', 'digestorio', 'circulatorio',
   'respiratorio', 'endocrino', 'urinario',
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
@@ -169,7 +169,7 @@ const DEFAULT_SYS_Y_OFFSET: Partial<Record<string, number>> = {
   nervoso:            0,
   musculoesqueletico: 0,
   locomotor:          0,
-  cardiovascular:       0,
+  circulatorio:       0,
   respiratorio:       0,
   digestorio:       -50,  // calibrado: Δ=36 base + margem extra para pâncreas
   endocrino:          0,
@@ -194,7 +194,7 @@ const SISTEMA_CHART_COLOR: Record<SistemaCorporal, string> = {
   musculoesqueletico: '#a855f7',
   nervoso: '#3b82f6',
   digestorio: '#f97316',
-  cardiovascular: '#ef4444',
+  circulatorio: '#ef4444',
   respiratorio: '#06b6d4',
   endocrino: '#eab308',
   urinario: '#6366f1',
@@ -223,7 +223,7 @@ const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color:
     color: 'orange',
     resumo: 'Trato gastrointestinal e glândulas anexas responsáveis pela quebra mecânico-química, absorção de nutrientes e barreira imunológica entérica.'
   },
-  cardiovascular: { 
+  circulatorio: { 
     label: 'Circulatório', 
     icon: Heart, 
     color: 'red',
@@ -1417,7 +1417,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <div key={`${key}-${idx}`} className="flex items-start gap-2">
                       <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: corEvento(e) }} />
                       <div className="text-[11px] leading-tight">
-                        <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label || (e.regiao_id === 'sistemico' ? 'Sistêmico' : e.regiao_id)}:</span> {e.tipo_achado}
+                        <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
                         {(e as any).metadata?.natureza === 'sintoma' && (e as any).metadata?.condicao_associada && (
                           <p className="text-[10px] text-sky-700 mt-0.5">Sintoma de: {(e as any).metadata.condicao_associada}</p>
                         )}
@@ -1761,7 +1761,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         )}>
                           {TIPO_DIAG_BADGE[td || 'achado_clinico'] || td}
                         </span>
-                        <span className="text-muted-foreground font-normal">· {reg?.label || (ev.regiao_id === 'sistemico' ? 'Sistêmico' : ev.regiao_id)}</span>
+                        <span className="text-muted-foreground font-normal">· {reg?.label || ev.regiao_id}</span>
                       </p>
                       {!modoSimplificado && (
                         <p className="text-[10px] text-muted-foreground">

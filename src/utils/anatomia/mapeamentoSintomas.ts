@@ -3,7 +3,7 @@ export type SistemaCorporal =
   | 'musculoesqueletico'
   | 'nervoso'
   | 'digestorio'
-  | 'cardiovascular'
+  | 'circulatorio'
   | 'respiratorio'
   | 'endocrino'
   | 'urinario'
@@ -118,53 +118,53 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
   {
     keywords: ['coracao', 'coração', 'cardio', 'cardiopatia', 'infarto', 'angina', 'arritmia', 'bradicardia', 'flutter', 'fibrilacao', 'fibrilação'],
     regioes: ['coracao'],
-    sistema: 'cardiovascular'
+    sistema: 'circulatorio'
   },
   {
     keywords: ['palpitacao', 'palpitação', 'taquicardia', 'palpitacoes', 'coração acelerado'],
     regioes: ['coracao'],
-    sistema: 'cardiovascular'
+    sistema: 'circulatorio'
   },
   {
     keywords: ['pressao alta', 'pressão alta', 'hipertensao', 'hipertensão', 'hipertenso', 'hipertensa', 'has', 'hipertensao arterial', 'hipertensão arterial'],
     regioes: ['coracao', 'aorta_arco'],
-    sistema: 'cardiovascular',
+    sistema: 'circulatorio',
     tipo_diagnostico: 'historico_relatado',
   },
   {
     keywords: ['pressao baixa', 'pressão baixa', 'hipotensao', 'hipotensão', 'hipotensivo'],
     regioes: ['coracao'],
-    sistema: 'cardiovascular'
+    sistema: 'circulatorio'
   },
   {
     keywords: ['arteria', 'artéria', 'aorta', 'aneurisma', 'aterosclerose', 'arteriosclerose'],
     regioes: ['aorta_arco', 'coracao'],
-    sistema: 'cardiovascular'
+    sistema: 'circulatorio'
   },
   {
     keywords: ['insuficiencia cardiaca', 'insuficiência cardíaca', 'ic'],
     regioes: ['coracao'],
-    sistema: 'cardiovascular'
+    sistema: 'circulatorio'
   },
   {
     keywords: ['edema nos pes', 'edema nos pés'],
     regioes: ['coracao', 'pe_d', 'pe_e'],
-    sistema: 'cardiovascular'
+    sistema: 'circulatorio'
   },
   {
     keywords: ['trombose', 'tvp', 'coagulo', 'coágulo', 'embolia', 'tromboembolismo'],
     regioes: ['coracao'],
-    sistema: 'cardiovascular'
+    sistema: 'circulatorio'
   },
   {
     keywords: ['varizes', 'insuficiencia venosa', 'insuficiência venosa', 'tvp na perna', 'trombose na perna', 'trombose venosa profunda'],
     regioes: ['coxa_d', 'coxa_e', 'canela_d', 'canela_e'],
-    sistema: 'cardiovascular'
+    sistema: 'circulatorio'
   },
   {
     keywords: ['colesterol alto', 'dislipidemia', 'triglicerideos altos', 'hdl baixo', 'ldl alto'],
     regioes: ['coracao', 'figado'],
-    sistema: 'cardiovascular'
+    sistema: 'circulatorio'
   },
 
   // ══════════════════════════════════════════════════════════════════
