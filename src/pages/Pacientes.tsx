@@ -21,7 +21,7 @@ import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit, Trash2,
   Loader2, User, Activity, AlignCenter, CalendarDays, CalendarPlus, Link2, Copy, RefreshCw,
   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download, BarChart3,
-  DollarSign, MessageSquare, MoreHorizontal, Bell, Store, ShieldCheck, UserCheck, Filter,
+  DollarSign, MessageSquare, MoreHorizontal, Bell, Store, ShieldCheck, UserCheck,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -232,10 +232,10 @@ export default function Pacientes() {
   }, [search]);
   const [filterServico, setFilterServico] = useState('todos');
   const [filterTag, setFilterTag] = useState<ClassificacaoTag | 'todos'>('todos');
-  // Marcadores extras: profissional responsável, plano de saúde e origem vitrine.
-  const [filterResponsavel, setFilterResponsavel] = useState<string>('todos');
-  const [filterPlano, setFilterPlano] = useState<'todos' | 'plano' | 'particular'>('todos');
-  const [filterOrigem, setFilterOrigem] = useState<'todos' | 'vitrine'>('todos');
+  // Marcadores extras (chips que ligam/desligam): CASSI, com responsável, vitrine.
+  const [chipCassi, setChipCassi] = useState(false);
+  const [chipComResponsavel, setChipComResponsavel] = useState(false);
+  const [chipVitrine, setChipVitrine] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>('nome');
   const [modal, setModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [linkModal, setLinkModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
@@ -655,6 +655,13 @@ export default function Pacientes() {
     return counts;
   }, [pacientes, getClassificacao]);
 
+  // Contagens dos marcadores (CASSI, com responsável, vitrine) para os chips.
+  const markerCounts = useMemo(() => ({
+    cassi: pacientes.filter(p => /cassi/i.test(String((p as any).plano_saude || ''))).length,
+    comResponsavel: pacientes.filter(p => (p as any).responsavel_id).length,
+    vitrine: pacientes.filter(p => (p as any).origem === 'vitrine').length,
+  }), [pacientes]);
+
   // Nº de sessões por paciente (para o mini-stat na linha)
   const sessoesCount = useMemo(() => {
     const m: Record<string, number> = {};
@@ -702,16 +709,9 @@ export default function Pacientes() {
       }
       if (filterServico !== 'todos' && !getServicosForPaciente(p.id).includes(filterServico)) return false;
       if (filterTag !== 'todos' && getClassificacao(p.id, p.created_at) !== filterTag) return false;
-      if (filterResponsavel !== 'todos') {
-        if (filterResponsavel === 'nenhum') {
-          if ((p as any).responsavel_id) return false;
-        } else if ((p as any).responsavel_id !== filterResponsavel) {
-          return false;
-        }
-      }
-      if (filterPlano === 'plano' && (p as any).tipo_pagamento !== 'plano') return false;
-      if (filterPlano === 'particular' && (p as any).tipo_pagamento === 'plano') return false;
-      if (filterOrigem === 'vitrine' && (p as any).origem !== 'vitrine') return false;
+      if (chipCassi && !/cassi/i.test(String((p as any).plano_saude || ''))) return false;
+      if (chipComResponsavel && !(p as any).responsavel_id) return false;
+      if (chipVitrine && (p as any).origem !== 'vitrine') return false;
       return true;
     });
     // Ordem alfabética estável em pt-BR (insensível a acento/caixa), por nome
@@ -739,7 +739,7 @@ export default function Pacientes() {
       }
       return 0;
     });
-  }, [pacientes, debouncedSearch, filterServico, filterTag, filterResponsavel, filterPlano, filterOrigem, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
+  }, [pacientes, debouncedSearch, filterServico, filterTag, chipCassi, chipComResponsavel, chipVitrine, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -885,6 +885,28 @@ export default function Pacientes() {
               </button>
             );
           })}
+
+          {/* Marcadores (ligam/desligam): CASSI, por profissional responsável, vitrine */}
+          {([
+            { key: 'cassi' as const, label: 'Plano CASSI', icon: ShieldCheck, value: markerCounts.cassi, active: chipCassi, toggle: () => setChipCassi(v => !v) },
+            { key: 'prof' as const, label: 'Por profissional', icon: UserCheck, value: markerCounts.comResponsavel, active: chipComResponsavel, toggle: () => setChipComResponsavel(v => !v) },
+            { key: 'vitrine' as const, label: 'Vitrine', icon: Store, value: markerCounts.vitrine, active: chipVitrine, toggle: () => setChipVitrine(v => !v) },
+          ]).map(k => (
+            <button
+              key={k.key}
+              onClick={k.toggle}
+              className={cn(
+                'shrink-0 flex items-center gap-1.5 rounded-full border pl-3 pr-2.5 py-1.5 transition-colors hover:border-primary/40 hover:bg-muted/20',
+                k.active
+                  ? 'border-primary/50 bg-muted/40 ring-1 ring-primary/20'
+                  : 'border-border/40 bg-card',
+              )}
+            >
+              <k.icon className={cn('h-3.5 w-3.5 shrink-0', k.active ? 'text-primary' : 'text-muted-foreground')} />
+              <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">{k.label}</span>
+              <span className="kpi-hero tabular-nums leading-none text-sm text-foreground">{k.value}</span>
+            </button>
+          ))}
         </div>
 
         <div className="flex flex-wrap gap-3 mb-5">
@@ -907,46 +929,6 @@ export default function Pacientes() {
               <SelectItem value="nome">Nome (A-Z)</SelectItem>
               <SelectItem value="created_at">Mais recentes</SelectItem>
               <SelectItem value="ultimo_agendamento">Última consulta</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Marcadores: profissional responsável */}
-          <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
-            <SelectTrigger className="w-48">
-              <UserCheck className="icon-sm mr-1.5" />
-              <SelectValue placeholder="Responsável" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os responsáveis</SelectItem>
-              <SelectItem value="nenhum">Sem responsável</SelectItem>
-              {membrosEquipe.filter(m => m.ativo).map(m => (
-                <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Marcadores: plano de saúde x particular */}
-          <Select value={filterPlano} onValueChange={v => setFilterPlano(v as typeof filterPlano)}>
-            <SelectTrigger className="w-44">
-              <ShieldCheck className="icon-sm mr-1.5" />
-              <SelectValue placeholder="Pagamento" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Plano e particular</SelectItem>
-              <SelectItem value="plano">Só plano de saúde</SelectItem>
-              <SelectItem value="particular">Só particular</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Marcadores: origem (vitrine) */}
-          <Select value={filterOrigem} onValueChange={v => setFilterOrigem(v as typeof filterOrigem)}>
-            <SelectTrigger className="w-40">
-              <Filter className="icon-sm mr-1.5" />
-              <SelectValue placeholder="Origem" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todas as origens</SelectItem>
-              <SelectItem value="vitrine">Só da Vitrine</SelectItem>
             </SelectContent>
           </Select>
         </div>
