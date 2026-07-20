@@ -1451,91 +1451,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 <p className="text-xs font-black uppercase tracking-wider">{config.label}</p>
               </div>
 
-              {isProfessional && selecionadoExplicitamente && (
-                <div className="space-y-2 rounded-lg border border-primary/20 bg-background p-2.5">
-                  <Label className="text-[10px]">Adicionar nota sobre sintoma/problema neste sistema</Label>
-                  <Textarea
-                    className="text-xs min-h-[60px]"
-                    placeholder="Ex.: Refluxo gastroesofágico recorrente"
-                    value={notaSistema.texto}
-                    onChange={(e) => setNotaSistema({ ...notaSistema, texto: e.target.value })}
-                  />
-                  {notaSistema.texto.trim() && sysToShow === 'musculoesqueletico' && (
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">
-                        Região no corpo {regiaoDetectada ? '(detectada — confira)' : '(escolha a região correta)'}
-                      </Label>
-                      <Select
-                        value={regiaoAuto || undefined}
-                        onValueChange={(v) => setNotaSistema({ ...notaSistema, regiaoManual: v })}
-                      >
-                        <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Escolha a região…" /></SelectTrigger>
-                        <SelectContent className="max-h-64">
-                          {MSK_REGIOES_OPCOES.map(o => (
-                            <SelectItem key={o.id} value={o.id} className="text-xs">{o.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  {notaSistema.texto.trim() && sysToShow !== 'musculoesqueletico' && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Será marcado no avatar em: <span className="font-bold text-foreground">
-                        {[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === regiaoAuto)?.label || regiaoAuto}
-                      </span>
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={notaSistema.natureza}
-                      onValueChange={(v) => setNotaSistema({ ...notaSistema, natureza: v as 'condicao' | 'sintoma' })}
-                    >
-                      <SelectTrigger className="h-7 text-[11px] flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="condicao" className="text-xs">É a condição em si</SelectItem>
-                        <SelectItem value="sintoma" className="text-xs">É sintoma de outra condição</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {notaSistema.natureza === 'sintoma' && (
-                      <Input
-                        className="h-7 text-[11px] flex-1"
-                        placeholder="Sintoma de qual condição?"
-                        value={notaSistema.condicaoAssociada}
-                        onChange={(e) => setNotaSistema({ ...notaSistema, condicaoAssociada: e.target.value })}
-                      />
-                    )}
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      className="h-7 px-3 text-xs"
-                      disabled={!notaSistema.texto.trim() || !regiaoAuto || (notaSistema.natureza === 'sintoma' && !notaSistema.condicaoAssociada.trim())}
-                      onClick={() => {
-                        saveMut.mutate({
-                          paciente_id: pacienteId,
-                          regiao_id: regiaoAuto,
-                          sistema: sysToShow,
-                          tipo_achado: notaSistema.texto.trim(),
-                          tipo_diagnostico: 'achado_clinico',
-                          origem: 'exame_clinico',
-                          status: 'cronico',
-                          metadata: {
-                            natureza: notaSistema.natureza,
-                            condicao_associada: notaSistema.natureza === 'sintoma' ? notaSistema.condicaoAssociada.trim() : null,
-                            origem_manual: true,
-                            revisado_profissional: true,
-                          },
-                        } as any);
-                        setNotaSistema({ texto: '', natureza: 'condicao', condicaoAssociada: '', regiaoManual: '' });
-                      }}
-                    >
-                      <Check className="mr-1 h-3 w-3" /> Salvar e marcar no avatar
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {/* (Adicionar condição saiu daqui: use o painel "Condições
+                  sistêmicas" acima, ou clique numa região no corpo. Este painel
+                  agora só MOSTRA os achados do sistema.) */}
 
               <div className="space-y-3">
                 {sinaisHistorico.length > 0 && (
