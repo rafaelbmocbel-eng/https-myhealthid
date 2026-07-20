@@ -282,6 +282,25 @@ export default function Pacientes() {
     enabled: !!user,
   });
 
+  // Quem veio da Vitrine: além do campo origem (que pode não ter sido preenchido
+  // em quem foi vinculado antes), deriva pelo vínculo real — toda solicitação de
+  // conexão aceita deste profissional. Assim o marcador não depende de um campo
+  // de texto que pode estar em branco.
+  const { data: vitrineUserIds = new Set<string>() } = useQuery({
+    queryKey: ['vitrine-user-ids', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('solicitacoes_conexao')
+        .select('paciente_user_id')
+        .eq('terapeuta_id', user!.id)
+        .eq('status', 'aceita');
+      return new Set((data || []).map((s: any) => s.paciente_user_id as string));
+    },
+  });
+  const ehVitrine = (p: any) =>
+    p?.origem === 'vitrine' || (p?.user_id && vitrineUserIds.has(p.user_id));
+
   // Fetch all agendamentos for each paciente (for tracking panel)
   const { data: todosAgendamentos = [] } = useQuery({
     queryKey: ['todos-agendamentos-pacientes', user?.id],
@@ -659,8 +678,8 @@ export default function Pacientes() {
   const markerCounts = useMemo(() => ({
     cassi: pacientes.filter(p => /cassi/i.test(String((p as any).plano_saude || ''))).length,
     comResponsavel: pacientes.filter(p => (p as any).responsavel_id).length,
-    vitrine: pacientes.filter(p => (p as any).origem === 'vitrine').length,
-  }), [pacientes]);
+    vitrine: pacientes.filter(p => ehVitrine(p)).length,
+  }), [pacientes, vitrineUserIds]);
 
   // Nº de sessões por paciente (para o mini-stat na linha)
   const sessoesCount = useMemo(() => {
@@ -711,7 +730,7 @@ export default function Pacientes() {
       if (filterTag !== 'todos' && getClassificacao(p.id, p.created_at) !== filterTag) return false;
       if (chipCassi && !/cassi/i.test(String((p as any).plano_saude || ''))) return false;
       if (chipComResponsavel && !(p as any).responsavel_id) return false;
-      if (chipVitrine && (p as any).origem !== 'vitrine') return false;
+      if (chipVitrine && !ehVitrine(p)) return false;
       return true;
     });
     // Ordem alfabética estável em pt-BR (insensível a acento/caixa), por nome
@@ -739,7 +758,7 @@ export default function Pacientes() {
       }
       return 0;
     });
-  }, [pacientes, debouncedSearch, filterServico, filterTag, chipCassi, chipComResponsavel, chipVitrine, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
+  }, [pacientes, debouncedSearch, filterServico, filterTag, chipCassi, chipComResponsavel, chipVitrine, vitrineUserIds, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -969,7 +988,7 @@ export default function Pacientes() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-sm">{p.nome} {p.sobrenome}</span>
                         {/* Selo Vitrine — paciente que chegou pelo marketplace */}
-                        {p.origem === 'vitrine' && (
+                        {ehVitrine(p) && (
                           <Badge variant="outline" className="text-[10px] h-5 gap-1 border font-medium border-[hsl(var(--gold)/0.4)] bg-[hsl(var(--gold)/0.1)] text-amber-700">
                             <Store className="h-3 w-3" /> Vitrine
                           </Badge>
