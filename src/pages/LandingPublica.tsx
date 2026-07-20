@@ -119,7 +119,7 @@ const SISTEMA_COR: Record<string, string> = {
   musculoesqueletico: '#fb923c',
   nervoso:            '#818cf8',
   digestorio:         '#34d399',
-  circulatorio:       '#ef4444',
+  cardiovascular:       '#ef4444',
   respiratorio:       '#ec4899',
   urinario:           '#60a5fa',
   endocrino:          '#fbbf24',
@@ -128,7 +128,7 @@ const SISTEMA_COR: Record<string, string> = {
 const SISTEMAS_LEGENDA = [
   { key: 'musculoesqueletico', label: 'Musculoesq.' },
   { key: 'nervoso',            label: 'Nervoso'     },
-  { key: 'circulatorio',       label: 'Circulatório'},
+  { key: 'cardiovascular',       label: 'Circulatório'},
   { key: 'digestorio',         label: 'Digestório'  },
 ];
 
@@ -136,7 +136,7 @@ const SISTEMAS_LEGENDA = [
 const AVATAR_FINDINGS = [
   { cx: 72,  cy: 90,  sistema: 'musculoesqueletico', label: 'Ombro D.',  tipo: 'Tendinopatia', status: 'Ativo',     delay: '0s'   },
   { cx: 106, cy: 28,  sistema: 'nervoso',            label: 'Cabeça',    tipo: 'Enxaqueca',    status: 'Ativo',     delay: '0.6s' },
-  { cx: 92,  cy: 118, sistema: 'circulatorio',       label: 'Tórax',     tipo: 'Palpitação',   status: 'Obs.',      delay: '1.1s' },
+  { cx: 92,  cy: 118, sistema: 'cardiovascular',       label: 'Tórax',     tipo: 'Palpitação',   status: 'Obs.',      delay: '1.1s' },
   { cx: 100, cy: 152, sistema: 'digestorio',         label: 'Abdômen',   tipo: 'Refluxo',      status: 'Resolvido', delay: '1.6s' },
 ];
 

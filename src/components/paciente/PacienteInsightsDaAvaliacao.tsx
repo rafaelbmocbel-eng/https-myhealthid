@@ -33,7 +33,7 @@ const DESAFIO_PADRAO = { emoji: '🎯', titulo: 'Mexa o corpo', acao: 'Caminhe p
 const INSIGHT_SISTEMA: Record<string, { icon: any; cor: string; bg: string; titulo: string; texto: string }> = {
   nervoso:       { icon: Brain,    cor: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/30', titulo: 'Sistema nervoso', texto: 'Seu sistema nervoso está sobrecarregado. Sono, respiração e pausas são medicamentos naturais.' },
   musculoesqueletico: { icon: Activity, cor: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30', titulo: 'Tensão muscular', texto: 'Músculos e articulações precisam de movimento e descaso alternados — evite ficar muito tempo parado.' },
-  circulatorio:  { icon: Heart,    cor: 'text-red-600',    bg: 'bg-red-50 dark:bg-red-950/30',       titulo: 'Sistema circulatório', texto: 'Hidratação, movimento leve e evitar longas posições estáticas ajudam muito a circulação.' },
+  cardiovascular:  { icon: Heart,    cor: 'text-red-600',    bg: 'bg-red-50 dark:bg-red-950/30',       titulo: 'Sistema circulatório', texto: 'Hidratação, movimento leve e evitar longas posições estáticas ajudam muito a circulação.' },
   respiratorio:  { icon: Wind,     cor: 'text-cyan-600',   bg: 'bg-cyan-50 dark:bg-cyan-950/30',     titulo: 'Sistema respiratório', texto: 'A respiração diafragmática profunda 3× ao dia ajuda a reduzir inflamação e tensão.' },
   digestorio:    { icon: Zap,      cor: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-950/30', titulo: 'Sistema digestório', texto: 'Mastigar devagar, manter hidratação e evitar estresse nas refeições faz toda diferença.' },
 };

@@ -18,7 +18,7 @@ import { MAPEAMENTO_SINTOMAS } from '@/utils/anatomia/mapeamentoSintomas';
 const baseId = (id: string) => id.replace(/_p_/, '_').replace(/_p$/, '');
 
 const SISTEMAS_VALIDOS = new Set([
-  'nervoso', 'circulatorio', 'respiratorio', 'digestorio', 'urinario',
+  'nervoso', 'cardiovascular', 'respiratorio', 'digestorio', 'urinario',
   'endocrino', 'linfatico', 'reprodutor', 'musculoesqueletico',
   'sensorial', 'tegumentar',
 ]);

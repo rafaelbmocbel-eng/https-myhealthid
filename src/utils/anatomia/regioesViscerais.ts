@@ -195,7 +195,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'coracao',
     label: 'Coração',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'organ',
     layer: 7,
     d: 'M120 143 C 125 140 134 140 138 146 C 142 152 142 160 136 166 C 134 170 128 176 120 178 C 112 182 106 178 110 170 C 112 164 118 162 120 160 C 116 158 108 158 106 151 C 104 144 110 140 120 143 Z'
@@ -206,7 +206,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'pericardio',
     label: 'Pericárdio',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'structural',
     layer: 6,
     d: 'M120 139 C 127 136 138 136 143 144 C 147 152 147 164 140 172 C 137 177 129 183 120 186 C 111 190 103 185 106 175 C 108 167 116 164 120 162 C 115 158 104 156 102 148 C 100 140 108 136 120 139 Z'
@@ -217,7 +217,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'aorta_arco',
     label: 'Arco Aórtico',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M127 143 C 127 136 128 130 126 124 C 124 118 118 118 116 124 C 114 130 116 136 118 143'
@@ -228,7 +228,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'aorta_abdominal',
     label: 'Aorta Abdominal',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M118 182 L118 294 L122 294 L122 182 Z'
@@ -239,7 +239,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'veia_cava_sup',
     label: 'Veia Cava Superior',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M124 128 C 126 130 128 136 128 143 L130 143 C 130 136 128 130 126 128 Z'
@@ -250,7 +250,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'carotida_d',
     label: 'Artéria Carótida D',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M118 128 C 116 118 115 110 115 104'
@@ -261,7 +261,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'carotida_e',
     label: 'Artéria Carótida E',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M122 128 C 124 118 125 110 125 104'
@@ -272,7 +272,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'veia_cava_inf',
     label: 'Veia Cava Inferior',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M113 184 L113 294 L115 294 L115 184 Z'
@@ -283,7 +283,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'vasos_pulmonares',
     label: 'Vasos Pulmonares',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M128 148 C 122 144 116 140 110 138 M128 152 C 134 148 140 144 146 142'
@@ -294,7 +294,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'femoral_d',
     label: 'Artéria Femoral D',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M108 308 C 106 326 104 348 103 372 C 102 392 102 410 102 430'
@@ -305,7 +305,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'femoral_e',
     label: 'Artéria Femoral E',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M132 308 C 134 326 136 348 137 372 C 138 392 138 410 138 430'
@@ -316,7 +316,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'subclavias_d',
     label: 'Artéria Subclávia D',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M118 124 C 108 120 96 118 86 122 C 78 126 74 136 76 150'
@@ -325,7 +325,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'subclavias_e',
     label: 'Artéria Subclávia E',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M122 124 C 132 120 144 118 154 122 C 162 126 166 136 164 150'
@@ -336,7 +336,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'iliaca_d',
     label: 'Artéria Ilíaca D',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M118 294 C 116 298 112 304 108 308'
@@ -345,7 +345,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'iliaca_e',
     label: 'Artéria Ilíaca E',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['cardiovascular'],
     type: 'vessel',
     layer: 9,
     d: 'M122 294 C 124 298 128 304 132 308'
@@ -1364,27 +1364,27 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   // ── CIRCULATÓRIO — vasos grandes adicionais ──
   {
     id: 'jugular_d', label: 'Veia Jugular D', view: 'front',
-    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    sistemas: ['cardiovascular'], type: 'vessel', layer: 9,
     d: 'M108 92 L 110 110'
   },
   {
     id: 'jugular_e', label: 'Veia Jugular E', view: 'front',
-    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    sistemas: ['cardiovascular'], type: 'vessel', layer: 9,
     d: 'M132 92 L 130 110'
   },
   {
     id: 'subclavia_d', label: 'Artéria/Veia Subclávia D', view: 'front',
-    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    sistemas: ['cardiovascular'], type: 'vessel', layer: 9,
     d: 'M118 110 C 130 112 144 116 156 122'
   },
   {
     id: 'subclavia_e', label: 'Artéria/Veia Subclávia E', view: 'front',
-    sistemas: ['circulatorio'], type: 'vessel', layer: 9,
+    sistemas: ['cardiovascular'], type: 'vessel', layer: 9,
     d: 'M122 110 C 110 112 96 116 84 122'
   },
   {
     id: 'veia_porta', label: 'Veia Porta', view: 'front',
-    sistemas: ['circulatorio', 'digestorio'], type: 'vessel', layer: 8,
+    sistemas: ['cardiovascular', 'digestorio'], type: 'vessel', layer: 8,
     d: 'M108 218 C 114 224 120 228 124 232'
   },
 

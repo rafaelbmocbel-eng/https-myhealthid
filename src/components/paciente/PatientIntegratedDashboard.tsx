@@ -806,9 +806,9 @@ export default function PatientIntegratedDashboard({
 
             {/* ─────────── ABA 1.1: MEU CORPO (Avatar Clínico) ─────────── */}
             <TabsContent value="corpo" className="mt-5 space-y-5 focus-visible:outline-none">
-              <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
-              {/* Condições sistêmicas (sem região) — só o profissional registra. */}
+              {/* Condições sistêmicas (sem região) primeiro — só o profissional. */}
               {isProfessional && <CondicoesSistemicasCard pacienteId={pacienteId} />}
+              <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
             </TabsContent>
 
           </Tabs>
