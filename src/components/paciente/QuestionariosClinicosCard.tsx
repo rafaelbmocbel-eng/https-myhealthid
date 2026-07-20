@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardCheck, AlertTriangle } from 'lucide-react';
+import { ClipboardCheck, AlertTriangle, ChevronDown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { INSTRUMENTOS, CLASSIFICACAO_LABEL, type InstrumentoId } from '@/lib/instrumentosClinicos';
 
 // Visão do PROFISSIONAL: últimos escores dos questionários clínicos do
@@ -24,17 +26,42 @@ export default function QuestionariosClinicosCard({ pacienteId }: { pacienteId: 
     },
   });
 
+  const [aberto, setAberto] = useState(false);   // recolhido por padrão (economiza espaço)
+
   if (itens.length === 0) return null;
+
+  const atencaoCount = itens.filter((r: any) => ATENCAO.has(r.classificacao)).length;
 
   return (
     <Card className="border-border/40 shadow-xs">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
+        <button
+          type="button"
+          onClick={() => setAberto(a => !a)}
+          className="flex items-center gap-2 w-full text-left"
+          title={aberto ? 'Fechar' : 'Abrir para ver os questionários'}
+        >
           <ClipboardCheck className="icon-sm text-violet-600 shrink-0" />
-          Questionários clínicos
-        </CardTitle>
+          <span className="text-base font-semibold truncate">Questionários clínicos</span>
+          <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-violet-100 text-violet-700 text-[11px] font-bold shrink-0">
+            {itens.length}
+          </span>
+          {atencaoCount > 0 && (
+            <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold shrink-0">
+              <AlertTriangle className="h-3 w-3" /> {atencaoCount}
+            </span>
+          )}
+          <ChevronDown className={cn('icon-sm text-muted-foreground shrink-0 ml-auto transition-transform', aberto && 'rotate-180')} />
+        </button>
+        {!aberto && (
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            Toque no título para abrir e ver {itens.length} {itens.length === 1 ? 'questionário respondido' : 'questionários respondidos'} no portal
+            {atencaoCount > 0 ? ` · ${atencaoCount} com atenção` : ''}.
+          </p>
+        )}
       </CardHeader>
-      <CardContent className="space-y-2">
+      {aberto && (
+      <CardContent className="space-y-2 pt-0">
         {itens.map((r: any) => {
           const inst = INSTRUMENTOS[r.instrumento as InstrumentoId];
           const atencao = ATENCAO.has(r.classificacao);
@@ -64,6 +91,7 @@ export default function QuestionariosClinicosCard({ pacienteId }: { pacienteId: 
           Instrumentos validados respondidos no portal. PAR-Q+ com atenção = avaliar antes de liberar treino.
         </p>
       </CardContent>
+      )}
     </Card>
   );
 }
