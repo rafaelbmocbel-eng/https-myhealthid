@@ -21,7 +21,7 @@ import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit, Trash2,
   Loader2, User, Activity, AlignCenter, CalendarDays, CalendarPlus, Link2, Copy, RefreshCw,
   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download, BarChart3,
-  DollarSign, MessageSquare, MoreHorizontal, Bell, Store,
+  DollarSign, MessageSquare, MoreHorizontal, Bell, Store, ShieldCheck, UserCheck, Filter,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -232,6 +232,10 @@ export default function Pacientes() {
   }, [search]);
   const [filterServico, setFilterServico] = useState('todos');
   const [filterTag, setFilterTag] = useState<ClassificacaoTag | 'todos'>('todos');
+  // Marcadores extras: profissional responsável, plano de saúde e origem vitrine.
+  const [filterResponsavel, setFilterResponsavel] = useState<string>('todos');
+  const [filterPlano, setFilterPlano] = useState<'todos' | 'plano' | 'particular'>('todos');
+  const [filterOrigem, setFilterOrigem] = useState<'todos' | 'vitrine'>('todos');
   const [sortBy, setSortBy] = useState<SortKey>('nome');
   const [modal, setModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [linkModal, setLinkModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
@@ -698,9 +702,27 @@ export default function Pacientes() {
       }
       if (filterServico !== 'todos' && !getServicosForPaciente(p.id).includes(filterServico)) return false;
       if (filterTag !== 'todos' && getClassificacao(p.id, p.created_at) !== filterTag) return false;
+      if (filterResponsavel !== 'todos') {
+        if (filterResponsavel === 'nenhum') {
+          if ((p as any).responsavel_id) return false;
+        } else if ((p as any).responsavel_id !== filterResponsavel) {
+          return false;
+        }
+      }
+      if (filterPlano === 'plano' && (p as any).tipo_pagamento !== 'plano') return false;
+      if (filterPlano === 'particular' && (p as any).tipo_pagamento === 'plano') return false;
+      if (filterOrigem === 'vitrine' && (p as any).origem !== 'vitrine') return false;
       return true;
     });
+    // Ordem alfabética estável em pt-BR (insensível a acento/caixa), por nome
+    // completo. É o padrão e o que vale sempre durante uma busca.
+    const cmpNome = (a: Paciente, b: Paciente) =>
+      `${a.nome || ''} ${a.sobrenome || ''}`.trim()
+        .localeCompare(`${b.nome || ''} ${b.sobrenome || ''}`.trim(), 'pt-BR', { sensitivity: 'base', numeric: true });
     return [...list].sort((a, b) => {
+      // Durante a busca, resultado sempre em ordem alfabética pura.
+      if (q) return cmpNome(a, b);
+      // Fora da busca, recém-adicionados aparecem no topo por alguns instantes.
       const aRecent = recentlyAddedIds.indexOf(a.id);
       const bRecent = recentlyAddedIds.indexOf(b.id);
       if (aRecent !== -1 || bRecent !== -1) {
@@ -708,7 +730,7 @@ export default function Pacientes() {
         if (bRecent === -1) return -1;
         return aRecent - bRecent;
       }
-      if (sortBy === 'nome') return a.nome.localeCompare(b.nome);
+      if (sortBy === 'nome') return cmpNome(a, b);
       if (sortBy === 'created_at') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (sortBy === 'ultimo_agendamento') {
         const da = ultimosAgendamentos[a.id]?.data || '1900-01-01';
@@ -717,7 +739,7 @@ export default function Pacientes() {
       }
       return 0;
     });
-  }, [pacientes, debouncedSearch, filterServico, filterTag, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
+  }, [pacientes, debouncedSearch, filterServico, filterTag, filterResponsavel, filterPlano, filterOrigem, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -887,6 +909,46 @@ export default function Pacientes() {
               <SelectItem value="ultimo_agendamento">Última consulta</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Marcadores: profissional responsável */}
+          <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
+            <SelectTrigger className="w-48">
+              <UserCheck className="icon-sm mr-1.5" />
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os responsáveis</SelectItem>
+              <SelectItem value="nenhum">Sem responsável</SelectItem>
+              {membrosEquipe.filter(m => m.ativo).map(m => (
+                <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Marcadores: plano de saúde x particular */}
+          <Select value={filterPlano} onValueChange={v => setFilterPlano(v as typeof filterPlano)}>
+            <SelectTrigger className="w-44">
+              <ShieldCheck className="icon-sm mr-1.5" />
+              <SelectValue placeholder="Pagamento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Plano e particular</SelectItem>
+              <SelectItem value="plano">Só plano de saúde</SelectItem>
+              <SelectItem value="particular">Só particular</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Marcadores: origem (vitrine) */}
+          <Select value={filterOrigem} onValueChange={v => setFilterOrigem(v as typeof filterOrigem)}>
+            <SelectTrigger className="w-40">
+              <Filter className="icon-sm mr-1.5" />
+              <SelectValue placeholder="Origem" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as origens</SelectItem>
+              <SelectItem value="vitrine">Só da Vitrine</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {filtered.length === 0 ? (
@@ -930,6 +992,22 @@ export default function Pacientes() {
                             <Store className="h-3 w-3" /> Vitrine
                           </Badge>
                         )}
+                        {/* Selo Plano de saúde */}
+                        {(p as any).tipo_pagamento === 'plano' && (
+                          <Badge variant="outline" className="text-[10px] h-5 gap-1 border font-medium border-sky-300 bg-sky-50 text-sky-700">
+                            <ShieldCheck className="h-3 w-3" /> {(p as any).plano_saude || 'Plano de saúde'}
+                          </Badge>
+                        )}
+                        {/* Selo Responsável — profissional vinculado ao paciente */}
+                        {(p as any).responsavel_id && (() => {
+                          const resp = membrosEquipe.find(m => m.id === (p as any).responsavel_id);
+                          if (!resp) return null;
+                          return (
+                            <Badge variant="outline" className="text-[10px] h-5 gap-1 border font-medium border-violet-300 bg-violet-50 text-violet-700">
+                              <UserCheck className="h-3 w-3" /> {resp.nome}
+                            </Badge>
+                          );
+                        })()}
                         {/* Chip de classificação (sempre visível, com bolinha) */}
                         <Badge variant="outline" className={cn('text-[10px] h-5 gap-1 border font-medium', tagCfg.bgColor, tagCfg.color)}>
                           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tagCfg.dot }} />
