@@ -19,6 +19,7 @@ const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTrei
 const DiretrizLenteCard = lazy(() => import('@/components/diretrizes/DiretrizLenteCard'));
 const RelatorioAvaliacaoCard = lazy(() => import('@/components/paciente/RelatorioAvaliacaoCard'));
 const QuestionariosClinicosCard = lazy(() => import('@/components/paciente/QuestionariosClinicosCard'));
+const ExamesPresenciaisCard = lazy(() => import('@/components/presencial/ExamesPresenciaisCard'));
 const TreinoDocumento = lazy(() => import('@/components/paciente/TreinoDocumento'));
 const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
 import AvatarClinicoCard from '../avatar/AvatarClinicoCard';
@@ -266,6 +267,14 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           </Suspense>
         </div>
       </details>
+
+      {/* EXAMES PRESENCIAIS — espelho do que o cliente vê na aba de exames
+          (bioimpedância, dinamometria, baropodometria, teste de pisada). */}
+      <div className="px-0">
+        <Suspense fallback={null}>
+          <ExamesPresenciaisCard pacienteId={pacienteId} soLeitura />
+        </Suspense>
+      </div>
 
       {/* MINHA JORNADA — espelho exato do que o cliente vê e cumpre no portal
           (plano de hoje, metas da semana, gamificação e dicas do MyID). */}

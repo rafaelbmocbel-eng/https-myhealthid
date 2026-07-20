@@ -17,10 +17,10 @@ import { EXAMES_PRESENCIAIS, tipoExame, resumoExame, resumoCurto, gruposDoExame 
 // Exames presenciais (bioimpedância, teste de pisada, …) registrados pelo
 // profissional. Genérico: os campos vêm de src/lib/examesPresenciais.ts. O
 // resultado alimenta os motores de IA (treino/nutrição/saúde).
-export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: string }) {
+export default function ExamesPresenciaisCard({ pacienteId, soLeitura = false, defaultAberto = false }: { pacienteId: string; soLeitura?: boolean; defaultAberto?: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [aberto, setAberto] = useState(false);
+  const [aberto, setAberto] = useState(defaultAberto);
   const [tipoSel, setTipoSel] = useState<string>('');
   const [dados, setDados] = useState<Record<string, string>>({});
   const [dataExame, setDataExame] = useState<string>(() => new Date().toISOString().slice(0, 10));
@@ -142,14 +142,15 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
         {!aberto && (
           <p className="text-[11px] text-muted-foreground mt-1.5">
             Bioimpedância, teste de pisada e outros exames feitos na clínica — entram nos planos de IA.
-            {exames.length > 0 ? ` Toque para ver ${exames.length}.` : ' Toque para registrar.'}
+            {exames.length > 0 ? ` Toque para ver ${exames.length}.` : (soLeitura ? '' : ' Toque para registrar.')}
           </p>
         )}
       </CardHeader>
 
       {aberto && (
         <CardContent className="space-y-4 pt-0">
-          {/* Registro de novo exame */}
+          {/* Registro de novo exame (oculto em modo só-leitura: portal/espelho) */}
+          {!soLeitura && (
           <div className="rounded-lg border border-border/50 p-3 space-y-3">
             {/* Importar bioimpedância de foto/print — a IA lê e preenche */}
             <input
@@ -244,6 +245,7 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
               </>
             )}
           </div>
+          )}
 
           {/* Histórico */}
           {isLoading ? (
@@ -264,13 +266,15 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
                           <p className="text-[13px] text-foreground">{resumoCurto(e.tipo, e.dados || {})}</p>
                           <p className="text-[10px] text-muted-foreground">{format(parseISO(e.data_exame), 'dd/MM/yyyy')}</p>
                         </div>
-                        <button
-                          onClick={() => remover.mutate(e.id)}
-                          className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center shrink-0 opacity-60 hover:opacity-100 transition-opacity"
-                          title="Remover"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </button>
+                        {!soLeitura && (
+                          <button
+                            onClick={() => remover.mutate(e.id)}
+                            className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                            title="Remover"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>
