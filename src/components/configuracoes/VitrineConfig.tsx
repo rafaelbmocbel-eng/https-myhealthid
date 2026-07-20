@@ -34,6 +34,8 @@ type Solicitacao = {
   status: string;
   mensagem: string | null;
   created_at: string;
+  paciente_nome?: string | null;
+  paciente_email?: string | null;
 };
 
 const ESPECIALIDADES_SUGESTOES = [
@@ -81,11 +83,9 @@ export default function VitrineConfig() {
     queryKey: ['solicitacoes-conexao', user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('solicitacoes_conexao')
-        .select('id,paciente_user_id,status,mensagem,created_at')
-        .eq('terapeuta_id', user!.id)
-        .order('created_at', { ascending: false });
+      // RPC resolve o NOME do cliente (a tabela só tem o user_id, e a RLS não
+      // deixa o profissional ler o perfil dele direto).
+      const { data, error } = await (supabase as any).rpc('minhas_solicitacoes_conexao');
       if (error) throw error;
       return (data || []) as Solicitacao[];
     },
@@ -414,7 +414,10 @@ export default function VitrineConfig() {
               <Card key={s.id} className="p-3 border-border/40">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold">Paciente {s.paciente_user_id.slice(0, 8)}…</p>
+                    <p className="text-xs font-semibold truncate">{s.paciente_nome || `Paciente ${s.paciente_user_id.slice(0, 8)}…`}</p>
+                    {s.paciente_email && (
+                      <p className="text-[10px] text-muted-foreground truncate">{s.paciente_email}</p>
+                    )}
                     {s.mensagem && (
                       <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{s.mensagem}</p>
                     )}
