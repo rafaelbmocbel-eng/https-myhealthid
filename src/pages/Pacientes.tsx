@@ -231,11 +231,10 @@ export default function Pacientes() {
     return () => clearTimeout(searchTimerRef.current);
   }, [search]);
   const [filterServico, setFilterServico] = useState('todos');
-  const [filterTag, setFilterTag] = useState<ClassificacaoTag | 'todos'>('todos');
-  // Marcadores extras (chips que ligam/desligam): CASSI, com responsável, vitrine.
-  const [chipCassi, setChipCassi] = useState(false);
-  const [chipComResponsavel, setChipComResponsavel] = useState(false);
-  const [chipVitrine, setChipVitrine] = useState(false);
+  // Um único chip ativo por vez (classificação OU marcador). Evita filtros
+  // grudados que deixavam a lista vazia "pra sempre" ao combinar chips.
+  // Valores: 'todos' | 'novo' | 'recorrente' | 'a_pagar' | 'cassi' | 'prof' | 'vitrine'
+  const [chip, setChip] = useState<string>('todos');
   const [sortBy, setSortBy] = useState<SortKey>('nome');
   const [modal, setModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [linkModal, setLinkModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
@@ -286,7 +285,7 @@ export default function Pacientes() {
   // em quem foi vinculado antes), deriva pelo vínculo real — toda solicitação de
   // conexão aceita deste profissional. Assim o marcador não depende de um campo
   // de texto que pode estar em branco.
-  const { data: vitrineUserIds = new Set<string>() } = useQuery({
+  const { data: vitrineIds = [] } = useQuery({
     queryKey: ['vitrine-user-ids', user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -295,9 +294,13 @@ export default function Pacientes() {
         .select('paciente_user_id')
         .eq('terapeuta_id', user!.id)
         .eq('status', 'aceita');
-      return new Set((data || []).map((s: any) => s.paciente_user_id as string));
+      return (data || []).map((s: any) => s.paciente_user_id as string);
     },
   });
+  // O Set é montado localmente (nunca guardado no cache) para garantir que
+  // continua sendo um Set de verdade — guardar Set direto no React Query pode
+  // deixá-lo sem o método .has e quebrar a lista inteira.
+  const vitrineUserIds = useMemo(() => new Set(vitrineIds), [vitrineIds]);
   const ehVitrine = (p: any) =>
     p?.origem === 'vitrine' || (p?.user_id && vitrineUserIds.has(p.user_id));
 
@@ -727,10 +730,10 @@ export default function Pacientes() {
         if (!matchSearch) return false;
       }
       if (filterServico !== 'todos' && !getServicosForPaciente(p.id).includes(filterServico)) return false;
-      if (filterTag !== 'todos' && getClassificacao(p.id, p.created_at) !== filterTag) return false;
-      if (chipCassi && !/cassi/i.test(String((p as any).plano_saude || ''))) return false;
-      if (chipComResponsavel && !(p as any).responsavel_id) return false;
-      if (chipVitrine && !ehVitrine(p)) return false;
+      if (['novo', 'recorrente', 'a_pagar'].includes(chip) && getClassificacao(p.id, p.created_at) !== chip) return false;
+      if (chip === 'cassi' && !/cassi/i.test(String((p as any).plano_saude || ''))) return false;
+      if (chip === 'prof' && !(p as any).responsavel_id) return false;
+      if (chip === 'vitrine' && !ehVitrine(p)) return false;
       return true;
     });
     // Ordem alfabética estável em pt-BR (insensível a acento/caixa), por nome
@@ -758,7 +761,7 @@ export default function Pacientes() {
       }
       return 0;
     });
-  }, [pacientes, debouncedSearch, filterServico, filterTag, chipCassi, chipComResponsavel, chipVitrine, vitrineUserIds, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
+  }, [pacientes, debouncedSearch, filterServico, chip, vitrineUserIds, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -882,12 +885,12 @@ export default function Pacientes() {
             { key: '__sem' as const, label: 'Sem consulta 30d', value: semConsulta30d, gold: false, dot: 'hsl(220 12% 66%)' },
           ]).map(k => {
             const clickable = k.key !== '__sem';
-            const active = clickable && filterTag === k.key;
+            const active = clickable && chip === k.key;
             return (
               <button
                 key={k.label}
                 disabled={!clickable}
-                onClick={() => { if (clickable) setFilterTag(active ? 'todos' : (k.key as ClassificacaoTag | 'todos')); }}
+                onClick={() => { if (clickable) setChip(active ? 'todos' : k.key); }}
                 className={cn(
                   'shrink-0 flex items-center gap-1.5 rounded-full border pl-3 pr-2.5 py-1.5 transition-colors',
                   active
@@ -907,9 +910,9 @@ export default function Pacientes() {
 
           {/* Marcadores (ligam/desligam): CASSI, por profissional responsável, vitrine */}
           {([
-            { key: 'cassi' as const, label: 'Plano CASSI', icon: ShieldCheck, value: markerCounts.cassi, active: chipCassi, toggle: () => setChipCassi(v => !v) },
-            { key: 'prof' as const, label: 'Por profissional', icon: UserCheck, value: markerCounts.comResponsavel, active: chipComResponsavel, toggle: () => setChipComResponsavel(v => !v) },
-            { key: 'vitrine' as const, label: 'Vitrine', icon: Store, value: markerCounts.vitrine, active: chipVitrine, toggle: () => setChipVitrine(v => !v) },
+            { key: 'cassi' as const, label: 'Plano CASSI', icon: ShieldCheck, value: markerCounts.cassi, active: chip === 'cassi', toggle: () => setChip(c => c === 'cassi' ? 'todos' : 'cassi') },
+            { key: 'prof' as const, label: 'Por profissional', icon: UserCheck, value: markerCounts.comResponsavel, active: chip === 'prof', toggle: () => setChip(c => c === 'prof' ? 'todos' : 'prof') },
+            { key: 'vitrine' as const, label: 'Vitrine', icon: Store, value: markerCounts.vitrine, active: chip === 'vitrine', toggle: () => setChip(c => c === 'vitrine' ? 'todos' : 'vitrine') },
           ]).map(k => (
             <button
               key={k.key}
