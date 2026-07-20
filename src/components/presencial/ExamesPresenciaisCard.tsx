@@ -11,7 +11,7 @@ import { Activity, ChevronDown, Plus, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { EXAMES_PRESENCIAIS, tipoExame, resumoExame } from '@/lib/examesPresenciais';
+import { EXAMES_PRESENCIAIS, tipoExame, resumoExame, resumoCurto, gruposDoExame } from '@/lib/examesPresenciais';
 
 // Exames presenciais (bioimpedância, teste de pisada, …) registrados pelo
 // profissional. Genérico: os campos vêm de src/lib/examesPresenciais.ts. O
@@ -134,28 +134,35 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
             {tipoAtual && (
               <>
                 <p className="text-[11px] text-muted-foreground -mt-1">{tipoAtual.descricao}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {tipoAtual.campos.map(c => (
-                    <div key={c.key} className="space-y-1">
-                      <Label className="text-xs">{c.label}{c.unidade ? ` (${c.unidade})` : ''}</Label>
-                      {c.tipo === 'select' ? (
-                        <Select value={dados[c.key] || ''} onValueChange={(v) => setDados(d => ({ ...d, [c.key]: v }))}>
-                          <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                          <SelectContent>
-                            {(c.opcoes || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          inputMode={c.tipo === 'number' ? 'decimal' : 'text'}
-                          placeholder={c.placeholder}
-                          value={dados[c.key] || ''}
-                          onChange={e => setDados(d => ({ ...d, [c.key]: e.target.value }))}
-                        />
-                      )}
+                {gruposDoExame(tipoAtual).map(({ grupo, campos }) => (
+                  <div key={grupo || 'sem-grupo'} className="space-y-1.5">
+                    {grupo && (
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground pt-1">{grupo}</p>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {campos.map(c => (
+                        <div key={c.key} className="space-y-1">
+                          <Label className="text-xs">{c.label}{c.unidade ? ` (${c.unidade})` : ''}</Label>
+                          {c.tipo === 'select' ? (
+                            <Select value={dados[c.key] || ''} onValueChange={(v) => setDados(d => ({ ...d, [c.key]: v }))}>
+                              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                              <SelectContent>
+                                {(c.opcoes || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              inputMode={c.tipo === 'number' ? 'decimal' : 'text'}
+                              placeholder={c.placeholder}
+                              value={dados[c.key] || ''}
+                              onChange={e => setDados(d => ({ ...d, [c.key]: e.target.value }))}
+                            />
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
                 <Button className="w-full gap-1" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
                   {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="icon-sm" /> Registrar exame</>}
                 </Button>
@@ -179,7 +186,7 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
                     {lista.map((e: any) => (
                       <li key={e.id} className="group flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
                         <div className="min-w-0 flex-1">
-                          <p className="text-[13px] text-foreground">{e.resumo || resumoExame(e.tipo, e.dados || {})}</p>
+                          <p className="text-[13px] text-foreground">{resumoCurto(e.tipo, e.dados || {})}</p>
                           <p className="text-[10px] text-muted-foreground">{format(parseISO(e.data_exame), 'dd/MM/yyyy')}</p>
                         </div>
                         <button
