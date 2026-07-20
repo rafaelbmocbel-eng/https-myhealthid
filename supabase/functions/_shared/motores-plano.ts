@@ -31,6 +31,14 @@ export interface QuestionarioClinico {
   respostas: any;
 }
 
+export interface ExamePresencial {
+  tipo: string;             // 'bioimpedancia' | 'teste_pisada' | …
+  data_exame: string | null;
+  resumo: string | null;    // frase pronta gerada no cadastro
+  // deno-lint-ignore no-explicit-any
+  dados: any;
+}
+
 export interface MotoresClinicos {
   // Motor 1 — MyID (impressão digital sistêmica)
   scores: unknown | null;
@@ -39,6 +47,8 @@ export interface MotoresClinicos {
   historia: string | null;
   condicoes: unknown | null;
   presencial: AchadoPresencial[];
+  // Exames presenciais (bioimpedância, teste de pisada, …)
+  exames: ExamePresencial[];
   // Motor 2 — questionários clínicos validados respondidos (o "extra")
   questionarios: QuestionarioClinico[];
 }
@@ -46,10 +56,10 @@ export interface MotoresClinicos {
 // Carrega os três motores para um paciente. Tolerante a tabelas/colunas
 // ausentes — cada peça que falhar volta vazia, sem derrubar a geração.
 export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Promise<MotoresClinicos> {
-  const vazio: MotoresClinicos = { scores: null, queixa: null, historia: null, condicoes: null, presencial: [], questionarios: [] };
+  const vazio: MotoresClinicos = { scores: null, queixa: null, historia: null, condicoes: null, presencial: [], exames: [], questionarios: [] };
   if (!pacienteId) return vazio;
 
-  const [myRes, pacRes, evRes, questRes, identRes] = await Promise.all([
+  const [myRes, pacRes, evRes, questRes, identRes, exRes] = await Promise.all([
     admin.from("myid_avaliacoes").select("resultado_processado")
       .eq("paciente_id", pacienteId).eq("status", "concluido")
       .order("updated_at", { ascending: false }).limit(1).maybeSingle()
@@ -69,6 +79,11 @@ export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Pr
     admin.from("avaliacoes_identidade").select("myid_analysis")
       .eq("paciente_id", pacienteId).order("created_at", { ascending: false }).limit(1).maybeSingle()
       .then((r: SB) => r).catch(() => ({ data: null })),
+    // Exames presenciais (bioimpedância, teste de pisada, …) — o mais recente
+    // de cada tipo é o que vale para o plano.
+    admin.from("exames_presenciais").select("tipo, data_exame, resumo, dados")
+      .eq("paciente_id", pacienteId).order("data_exame", { ascending: false }).limit(20)
+      .then((r: SB) => r).catch(() => ({ data: [] })),
   ]);
 
   // MyID: o formato variou entre gerações (component_scores atual, componentScores,
@@ -81,6 +96,14 @@ export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Pr
   }
 
   const pac = (pacRes?.data as SB) || null;
+
+  // Só o exame mais recente de cada tipo (a lista vem ordenada por data desc).
+  const ultExame = new Map<string, ExamePresencial>();
+  ((exRes?.data as SB[]) || []).forEach((e: SB) => {
+    if (e?.tipo && !ultExame.has(e.tipo)) {
+      ultExame.set(e.tipo, { tipo: e.tipo, data_exame: e.data_exame ?? null, resumo: e.resumo ?? null, dados: e.dados ?? null });
+    }
+  });
 
   // Só o achado mais recente de cada instrumento (a lista vem ordenada desc).
   const ultQuest = new Map<string, QuestionarioClinico>();
@@ -105,8 +128,21 @@ export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Pr
       status: e.status ?? null,
       notas_clinicas: e.notas_clinicas ?? null,
     })),
+    exames: [...ultExame.values()],
     questionarios: [...ultQuest.values()],
   };
+}
+
+// Formata os exames presenciais (bioimpedância, teste de pisada, …). Usa o
+// `resumo` pronto quando existe; senão, monta a partir do JSON de dados.
+function formatExames(exames: ExamePresencial[]): string {
+  return exames.map((e) => {
+    const data = e.data_exame ? ` (${e.data_exame})` : "";
+    const corpo = e.resumo
+      ? e.resumo
+      : `${e.tipo}${e.dados ? `: ${JSON.stringify(e.dados).slice(0, 300)}` : ""}`;
+    return `- ${corpo}${data}`;
+  }).join("\n");
 }
 
 // Formata os achados anatômicos da avaliação presencial (avatar clínico) +
@@ -147,6 +183,9 @@ export function textoPresencial(m: MotoresClinicos, foco: FocoPlano): string {
   if (m.condicoes) partes.push(`Condições de saúde: ${JSON.stringify(m.condicoes).slice(0, 300)}`);
   if (m.presencial.length) {
     partes.push(`Achados registrados na avaliação presencial (avatar clínico): ${formatAchados(m.presencial)}`);
+  }
+  if (m.exames.length) {
+    partes.push(`Exames presenciais (bioimpedância, teste de pisada, … — considere estes números objetivos no plano):\n${formatExames(m.exames)}`);
   }
   if (!partes.length) return "";
   return `\nAVALIAÇÃO PRESENCIAL (achados e observações do profissional — ${instrucaoPresencial(foco)}):\n${partes.join("\n")}`;

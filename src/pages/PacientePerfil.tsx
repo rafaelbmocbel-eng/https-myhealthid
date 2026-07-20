@@ -49,6 +49,7 @@ const PacienteProtocolosTab = lazy(() => import('@/components/paciente/PacienteP
 const ResumoConsultaPresencial = lazy(() => import('@/components/presencial/ResumoConsultaPresencial'));
 const AvaliacaoVozAtual = lazy(() => import('@/components/voice/AvaliacaoVozAtual'));
 const QuestionariosClinicosCard = lazy(() => import('@/components/paciente/QuestionariosClinicosCard'));
+const ExamesPresenciaisCard = lazy(() => import('@/components/presencial/ExamesPresenciaisCard'));
 const PortalControleTab = lazy(() => import('@/components/paciente/PortalControleTab'));
 const ProntuarioTimeline = lazy(() => import('@/components/paciente/ProntuarioTimeline'));
 const ProntuarioEstruturado = lazy(() => import('@/components/paciente/ProntuarioEstruturado'));
@@ -1169,6 +1170,7 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'prescricao') && id && <PrescricaoMedicaCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'exames') && id && <ImportarExameCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'antropometria') && id && <AntropometriaCard pacienteId={id} />}
+            {(temBloco(lenteAtiva, 'antropometria') || temBloco(lenteAtiva, 'testes_funcionais') || temBloco(lenteAtiva, 'bioimpedancia')) && id && <ExamesPresenciaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'testes_funcionais') && id && <TestesFuncionaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_treino') && id && <PlanoTreinoCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_treino') && id && <DiretrizTreinoCard pacienteId={id} />}
