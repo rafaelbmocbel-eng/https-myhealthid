@@ -1638,11 +1638,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             Nada é marcado no avatar automaticamente. Aqui aparece o que o
             paciente relatou no portal; o terapeuta decide adicionar ou não. */}
         {isProfessional && !modoSimplificado && (() => {
+          const limparHist = (t: string) => t.replace(/^Histórico:\s*/i, '');
+          const norm = (t: string) => limparHist(t || '').trim().toLowerCase();
+          // Achados já gravados (sistêmicos ou no corpo) — some da sugestão de vez,
+          // inclusive depois de recarregar a tela.
+          const jaGravados = new Set(eventos.map(e => norm((e as any).tipo_achado)));
           const pendentes = sinalRegionsParaSincronizar.filter(
-            s => !sugestoesIgnoradas.has(`${s.regiao_id}|${s.sinal}`),
+            s => !sugestoesIgnoradas.has(`${s.regiao_id}|${s.sinal}`) && !jaGravados.has(norm(s.sinal)),
           );
           if (pendentes.length === 0) return null;
-          const limparHist = (t: string) => t.replace(/^Histórico:\s*/i, '');
           return (
             <div className="rounded-xl border border-sky-200/70 bg-sky-50/50 dark:border-sky-900/40 dark:bg-sky-950/20 p-3 mt-3 space-y-2">
               <div className="flex items-center gap-2">
@@ -1686,6 +1690,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       data_inicio: new Date().toISOString().slice(0, 10),
                       metadata: { origem_sugestao_portal: true, revisado_profissional: true, natureza: comoSistemico ? 'sistemica' : 'regional' },
                     } as any);
+                    // Tira a sugestão da lista na hora e, se for sistêmico, atualiza
+                    // o card "Condições sistêmicas" (query própria, fora do avatar).
+                    setSugestoesIgnoradas(prev => new Set(prev).add(key));
+                    if (comoSistemico) {
+                      qc.invalidateQueries({ queryKey: ['condicoes-sistemicas', pacienteId] });
+                    }
                   };
                   return (
                     <div key={`${key}-${idx}`} className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-1.5">
