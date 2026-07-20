@@ -5,9 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Activity, ChevronDown, Plus, Trash2, Loader2, Camera } from 'lucide-react';
+import { Activity, ChevronDown, Plus, Trash2, Loader2, Camera, Stethoscope } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -159,18 +160,22 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
               className="hidden"
               onChange={e => importarFotos(e.target.files)}
             />
-            <Button
-              variant="outline"
-              className="w-full gap-1.5 border-dashed"
-              disabled={importando}
-              onClick={() => fileRef.current?.click()}
-            >
-              {importando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="icon-sm" />}
-              {importando ? 'Lendo o laudo…' : 'Importar bioimpedância de foto/print'}
-            </Button>
-            <p className="text-[10px] text-muted-foreground -mt-1 text-center">
-              Suba os prints do laudo do aparelho — a IA lê os números e preenche abaixo para você conferir.
-            </p>
+            {(tipoSel === '' || tipoSel === 'bioimpedancia') && (
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full gap-1.5 border-dashed"
+                  disabled={importando}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {importando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="icon-sm" />}
+                  {importando ? 'Lendo o laudo…' : 'Importar bioimpedância de foto/print'}
+                </Button>
+                <p className="text-[10px] text-muted-foreground -mt-1 text-center">
+                  Suba os prints do laudo do aparelho — a IA lê os números e preenche abaixo para você conferir.
+                </p>
+              </>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="space-y-1">
@@ -191,6 +196,12 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
             {tipoAtual && (
               <>
                 <p className="text-[11px] text-muted-foreground -mt-1">{tipoAtual.descricao}</p>
+                {tipoAtual.nota && (
+                  <div className="flex items-start gap-1.5 rounded-md border border-amber-300/60 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1.5">
+                    <Stethoscope className="h-3.5 w-3.5 text-amber-700 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300">{tipoAtual.nota}</p>
+                  </div>
+                )}
                 {gruposDoExame(tipoAtual).map(({ grupo, campos }) => (
                   <div key={grupo || 'sem-grupo'} className="space-y-1.5">
                     {grupo && (
@@ -198,7 +209,7 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {campos.map(c => (
-                        <div key={c.key} className="space-y-1">
+                        <div key={c.key} className={cn('space-y-1', c.tipo === 'textarea' && 'sm:col-span-2')}>
                           <Label className="text-xs">{c.label}{c.unidade ? ` (${c.unidade})` : ''}</Label>
                           {c.tipo === 'select' ? (
                             <Select value={dados[c.key] || ''} onValueChange={(v) => setDados(d => ({ ...d, [c.key]: v }))}>
@@ -207,6 +218,13 @@ export default function ExamesPresenciaisCard({ pacienteId }: { pacienteId: stri
                                 {(c.opcoes || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                               </SelectContent>
                             </Select>
+                          ) : c.tipo === 'textarea' ? (
+                            <Textarea
+                              rows={5}
+                              placeholder={c.placeholder}
+                              value={dados[c.key] || ''}
+                              onChange={e => setDados(d => ({ ...d, [c.key]: e.target.value }))}
+                            />
                           ) : (
                             <Input
                               inputMode={c.tipo === 'number' ? 'decimal' : 'text'}

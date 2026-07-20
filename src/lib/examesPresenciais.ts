@@ -5,7 +5,7 @@
 // como texto e `dados` como JSON) e sem mexer no card, que se monta a partir
 // daqui. O `resumo` gerado alimenta os motores de IA dos planos.
 
-export type CampoTipo = 'number' | 'text' | 'select';
+export type CampoTipo = 'number' | 'text' | 'select' | 'textarea';
 
 export interface CampoExame {
   key: string;
@@ -23,6 +23,7 @@ export interface TipoExame {
   descricao: string;
   campos: CampoExame[];
   destaque?: string[];      // chaves mostradas no resumo curto da lista
+  nota?: string;            // aviso mostrado no card (ex.: pedir avaliação presencial)
 }
 
 // Bioimpedância no formato dos aparelhos usados na clínica (composição global,
@@ -81,6 +82,29 @@ export const EXAMES_PRESENCIAIS: TipoExame[] = [
       { key: 'observacoes', label: 'Observações', tipo: 'text', placeholder: 'Dor, calçado, assimetrias…' },
     ],
     destaque: ['pisada_direita', 'pisada_esquerda', 'tipo_arco'],
+    nota: 'Pede interpretação presencial por um profissional (ex.: fisioterapeuta).',
+  },
+  {
+    id: 'dinamometria',
+    nome: 'Dinamometria',
+    descricao: 'Força muscular (preensão/segmentar). Cole abaixo o texto do resultado.',
+    campos: [
+      { key: 'resultado', label: 'Resultado', tipo: 'textarea', placeholder: 'Cole aqui o texto do laudo da dinamometria…' },
+      { key: 'observacoes', label: 'Observações', tipo: 'text', placeholder: 'Membro dominante, assimetrias…' },
+    ],
+    destaque: ['resultado'],
+    nota: 'Pede avaliação presencial e interpretação por um profissional (ex.: fisioterapeuta).',
+  },
+  {
+    id: 'baropodometria',
+    nome: 'Baropodometria',
+    descricao: 'Mapa de pressão plantar / distribuição de carga. Cole abaixo o texto do resultado.',
+    campos: [
+      { key: 'resultado', label: 'Resultado', tipo: 'textarea', placeholder: 'Cole aqui o texto do laudo da baropodometria…' },
+      { key: 'observacoes', label: 'Observações', tipo: 'text', placeholder: 'Sobrecargas, assimetrias…' },
+    ],
+    destaque: ['resultado'],
+    nota: 'Pede avaliação presencial e interpretação por um profissional (ex.: fisioterapeuta).',
   },
 ];
 
@@ -126,11 +150,14 @@ export function resumoCurto(tipoId: string, dados: Record<string, unknown>): str
   const t = tipoExame(tipoId);
   if (!t) return '';
   const chaves = t.destaque && t.destaque.length ? t.destaque : t.campos.slice(0, 3).map(c => c.key);
+  const curto = (s: string) => (s.length > 90 ? `${s.slice(0, 90)}…` : s);
   const partes = chaves
     .map(k => {
       const c = t.campos.find(x => x.key === k);
       const v = dados[k];
       if (!c || v === undefined || v === null || String(v).trim() === '') return null;
+      // Textos longos (dinamometria/baropodometria) entram encurtados na lista.
+      if (c.tipo === 'textarea') return curto(String(v));
       return `${c.label} ${valorComUnidade(c, v)}`;
     })
     .filter(Boolean);
