@@ -19,6 +19,7 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
 const MyIDResult = lazy(() => import('@/components/myid/MyIDResult').then(m => ({ default: m.MyIDResult })));
 const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
+const PlanoPersonalizadoSection = lazy(() => import('@/pages/paciente/PacientePlanoIA').then(m => ({ default: m.PlanoPersonalizadoSection })));
 import EvolucaoAoVivoResultado from '@/components/paciente/EvolucaoAoVivoResultado';
 import MyIDPDFButton from '@/components/paciente/MyIDPDFButton';
 import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
@@ -89,6 +90,8 @@ export default function PacienteDashboard() {
   // Início em 3 abas: Passos (o que fazer) · Jornada (gamificação IA) · Resultados.
   const [aba, setAba] = useState<'passos' | 'jornada' | 'resultados'>('passos');
   const [abaTocada, setAbaTocada] = useState(false);
+  // Sub-abas dentro da Jornada: as metas do dia OU os planos personalizados.
+  const [subJornada, setSubJornada] = useState<'jornada' | 'planos'>('jornada');
   const [focos, setFocos] = useState<{ oportunidade: string; atencao: string | null } | null>(null);
   const [proxInstrumento, setProxInstrumento] = useState<{ nome: string; sigla: string } | null>(null);
 
@@ -381,56 +384,41 @@ export default function PacienteDashboard() {
             </TabsList>
           </Tabs>
 
-          {/* JORNADA — plano de hoje, metas, missões e insights da IA (mesma
-              regra de sempre: completa para free e premium). */}
-          {aba === 'jornada' && paciente && (
-            <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-              <JornadaPacienteCard pacienteId={paciente.id} />
-            </Suspense>
-          )}
-
-          {/* MEUS PLANOS (IA) — treino personal, nutricional e futuros, gerados
-              dos formulários. Botões que FUNCIONAM: premium abre o plano, free
-              vai para o upgrade. Substitui os botões que não faziam nada. */}
+          {/* JORNADA — sub-abas: metas do dia OU planos personalizados */}
           {aba === 'jornada' && (
-            <V i={2}>
-              <Card className="border-primary/20">
-                <CardContent className="p-4 space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                    Meus planos {questFree && <span className="ml-1 text-[10px] text-violet-600">💎 Premium</span>}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground -mt-1">
-                    Feitos pela IA a partir do seu MyID, histórico, questionários e exames.
-                  </p>
-                  {[
-                    { nome: 'Treino personal', sub: 'Treino montado para você', cor: 'sky' },
-                    { nome: 'Plano nutricional', sub: 'Alimentação para os seus objetivos', cor: 'emerald' },
-                    { nome: 'Plano de tratamento', sub: 'Fisioterapia e cuidados — e outros no futuro', cor: 'violet' },
-                  ].map((p) => (
-                    <button
-                      key={p.nome}
-                      onClick={() => navigate(questFree ? '/paciente/plano' : '/paciente/plano-ia')}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors"
-                    >
-                      <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-                        p.cor === 'sky' ? 'bg-sky-500/10 text-sky-600' : p.cor === 'emerald' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-violet-500/10 text-violet-600')}>
-                        <Sparkles className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold">
-                          {p.nome}
-                          {questFree && <span className="ml-1.5 text-[10px] font-bold text-violet-600">🔒</span>}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {questFree ? `${p.sub} — disponível no Premium` : p.sub}
-                        </p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    </button>
-                  ))}
-                </CardContent>
-              </Card>
-            </V>
+            <>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSubJornada('jornada')}
+                  className={cn('flex-1 rounded-xl px-3 py-2 text-xs font-bold transition-colors',
+                    subJornada === 'jornada' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/60 text-muted-foreground hover:bg-muted')}
+                >
+                  Jornada
+                </button>
+                <button
+                  onClick={() => setSubJornada('planos')}
+                  className={cn('flex-1 rounded-xl px-3 py-2 text-xs font-bold transition-colors',
+                    subJornada === 'planos' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/60 text-muted-foreground hover:bg-muted')}
+                >
+                  Meus planos personalizados
+                </button>
+              </div>
+
+              {subJornada === 'jornada' && paciente && (
+                <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                  <JornadaPacienteCard pacienteId={paciente.id} />
+                </Suspense>
+              )}
+
+              {/* MEUS PLANOS PERSONALIZADOS — treino (com gifs/exercícios),
+                  nutricional e outros, gerados do MyID + questionários + exames.
+                  A seção já traz a trava de premium e a geração de cada plano. */}
+              {subJornada === 'planos' && (
+                <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                  <PlanoPersonalizadoSection />
+                </Suspense>
+              )}
+            </>
           )}
 
           {/* Onboarding — primeiros passos (some quando tudo feito) */}
