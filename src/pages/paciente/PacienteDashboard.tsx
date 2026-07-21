@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -94,6 +95,18 @@ export default function PacienteDashboard() {
   const notifications = usePacienteNotifications(user?.id);
   const { isFree, isInTrial, trialDiasRestantes, emCarencia, bloqueadoClinico, diasRestantesCarencia } = useWellnessAccess();
   const [profissional, setProfissional] = useState<{ nome?: string; whatsapp?: string }>({});
+
+  // Nº de exames presenciais do cliente (bioimpedância, pisada, dinamometria) —
+  // para o passo "Exames presenciais" do checklist.
+  const { data: nExames = 0 } = useQuery({
+    queryKey: ['exames-presenciais-count', paciente?.id],
+    enabled: !!paciente?.id,
+    queryFn: async () => {
+      const { count } = await (supabase as any).from('exames_presenciais')
+        .select('id', { count: 'exact', head: true }).eq('paciente_id', paciente!.id);
+      return count || 0;
+    },
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -275,35 +288,29 @@ export default function PacienteDashboard() {
     return 'Boa noite';
   };
 
-  // Onboarding — 3 passos iniciais: MyID primeiro, depois o histórico clínico.
-  // "Contar sua história" NÃO é passo — é o card fixo logo abaixo (áudio ou texto).
+  // Checklist "Primeiros passos".
+  //  - Histórico CLÍNICO = perguntas de doenças/cirurgias/traumas → alimenta o avatar.
+  //  - Histórico de SAÚDE = relato da dor atual (voz/texto), o "contar sua história".
   const historicoFeito = !!(paciente as any)?.historico_clinico;
-  const onboardingSteps = [
-    {
-      // Conta o MyID CONCLUÍDO de verdade (antes olhava avaliacoes_identidade,
-      // que nem sempre existe para conta de autocadastro — o passo nunca marcava)
-      done: myidConcluido,
-      label: 'Completar avaliação MyID',
-      sub: 'Descubra seu perfil de saúde',
-      path: '/paciente/questionarios',
-      Icon: Fingerprint,
-    },
-    {
-      done: historicoFeito,
-      label: 'Responder histórico clínico',
-      sub: 'Fraturas, cirurgias, medicações e condições',
-      path: '/paciente/questionarios?foco=historico',
-      Icon: ClipboardList,
-    },
-    {
-      done: stats.consultas > 0,
-      label: 'Participar da 1ª consulta',
-      sub: 'Acompanhe sua evolução com o profissional',
-      path: '/paciente/agenda',
-      Icon: CalendarDays,
-    },
+  const cadastroCompleto = (paciente as any)?.cadastro_status !== 'pendente_paciente';
+  const questFree = isFree && !isInTrial;
+  const questionariosOk = myidConcluido && stats.pendentes === 0 && !proxInstrumento;
+
+  // Núcleo (o que o cliente faz sozinho) — só ele decide se o onboarding acabou.
+  const passosNucleo = [
+    { done: cadastroCompleto, label: 'Cadastro completo', sub: 'Seus dados básicos', path: '/paciente/perfil' },
+    { done: myidConcluido, label: 'Avaliação MyID', sub: 'Descubra seu perfil de saúde', path: '/paciente/questionarios' },
+    { done: historicoFeito, label: 'Histórico clínico', sub: 'Doenças, cirurgias e traumas — monta seu avatar', path: '/paciente/questionarios?foco=historico' },
+    { done: historiaContada, label: 'Histórico de saúde', sub: 'Conte sua dor atual, por voz ou texto', path: '/paciente/historia' },
   ];
-  const onboardingCompleto = onboardingSteps.every(s => s.done);
+  // Extras — aparecem no checklist, mas não travam o "completo" (questionários são
+  // Premium; exames são feitos com o profissional).
+  const passosExtras = [
+    { done: questionariosOk, label: 'Questionários', sub: questFree ? 'PAR-Q+, nutricional, físico — no Premium' : 'PAR-Q+, nutricional e físico', path: questFree ? '/paciente/plano' : '/paciente/questionarios?foco=plano' },
+    { done: nExames > 0, label: 'Exames presenciais', sub: 'Bioimpedância, pisada, dinamometria — com seu profissional', path: '/paciente/exames' },
+  ];
+  const onboardingSteps = [...passosNucleo, ...passosExtras];
+  const onboardingCompleto = passosNucleo.every(s => s.done);
   const proxPasso = onboardingSteps.findIndex(s => !s.done);
 
   // Onboarding pronto → o Início abre direto na Jornada (uso diário). Enquanto
