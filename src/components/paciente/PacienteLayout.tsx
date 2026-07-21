@@ -35,14 +35,15 @@ const navItems = [
   { path: '/paciente/profissionais', label: 'Encontrar profissional', shortLabel: 'Profiss.', icon: Users,          badgeKey: null, premium: false },
   { path: '/paciente/avatar',        label: 'Meu Avatar Clínico',   shortLabel: 'Avatar',   icon: Activity,        badgeKey: null, premium: false },
   { path: '/paciente/plano-ia',      label: 'Meu Plano (IA)',       shortLabel: 'Plano',    icon: Sparkles,        badgeKey: null, premium: false },
+  { path: '/paciente/exames',        label: 'Exames',               shortLabel: 'Exames',   icon: ClipboardList,   badgeKey: null, premium: false },
 ];
 
 // Bottom nav: Início, Agenda, Treinos, Diário, +Mais
 const MOBILE_PRIMARY = [0, 5, 4, 2]; // indices in navItems
-// Items in "Mais" sheet (all others) — avatar is index 12
-const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12];
+// Items in "Mais" sheet (all others) — avatar is index 12, exames index 13
+const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12, 13];
 // Agrupamento do sheet "Mais": saúde em cima, conta embaixo — menos carga visual
-const GRUPO_SAUDE = new Set(['/paciente/saude', '/paciente/evolucao', '/paciente/questionarios', '/paciente/avatar', '/paciente/plano-ia']);
+const GRUPO_SAUDE = new Set(['/paciente/saude', '/paciente/evolucao', '/paciente/questionarios', '/paciente/avatar', '/paciente/plano-ia', '/paciente/exames']);
 
 interface Props {
   children: ReactNode;

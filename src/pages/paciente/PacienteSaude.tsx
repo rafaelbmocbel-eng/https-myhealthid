@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, LayoutDashboard, Moon, Droplets, Scale, UtensilsCrossed, Activity, Watch, Mic, ClipboardList } from 'lucide-react';
+import { Loader2, LayoutDashboard, Moon, Droplets, Scale, UtensilsCrossed, Activity, Watch, Mic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
@@ -14,7 +14,6 @@ import MetricsManualForm from '@/components/saude/MetricsManualForm';
 import HealthSyncCard from '@/components/paciente/HealthSyncCard';
 import WearablePhotoCard from '@/components/paciente/WearablePhotoCard';
 import PacienteRelatoVoz from '@/components/paciente/PacienteRelatoVoz';
-import ExamesPresenciaisCard from '@/components/presencial/ExamesPresenciaisCard';
 import { useHealthData } from '@/hooks/useHealthData';
 import type { HealthSyncResult } from '@/hooks/useHealthSync';
 import { usePacientePortal } from '@/hooks/usePacientePortal';
@@ -73,7 +72,6 @@ export default function PacienteSaude() {
     { value: 'water', label: 'Água', icon: Droplets },
     { value: 'food', label: 'Alimentação', icon: UtensilsCrossed },
     { value: 'body', label: 'Corpo', icon: Scale },
-    { value: 'exames', label: 'Exames', icon: ClipboardList },
     { value: 'manual', label: 'Manual', icon: Activity },
   ];
 
@@ -144,10 +142,6 @@ export default function PacienteSaude() {
 
             <TabsContent value="body" className="mt-3">
               <BodyCompositionForm current={health.latestBody} onSave={health.upsertBody} />
-            </TabsContent>
-
-            <TabsContent value="exames" className="mt-3">
-              {paciente && <ExamesPresenciaisCard pacienteId={paciente.id} soLeitura defaultAberto />}
             </TabsContent>
 
             <TabsContent value="manual" className="mt-3">
