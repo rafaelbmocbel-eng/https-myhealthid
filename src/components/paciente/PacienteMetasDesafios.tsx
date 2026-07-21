@@ -38,6 +38,7 @@ interface MissaoSaude {
   titulo: string;
   descricao: string;
   acaoImediata: string;
+  comoFazer?: string[]; // passo a passo para técnicas que o cliente não domina
   categoria: 'urgente' | 'importante' | 'oportunidade' | 'positivo';
   lossPoints: number;
   xpRecompensa: number;
@@ -108,6 +109,11 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
       id: 'missao-nutricao', icon: Apple, titulo: 'Comer melhor',
       descricao: 'Pequenas trocas na alimentação fazem diferença.',
       acaoImediata: 'Evite ultraprocessados nas próximas 3 refeições.',
+      comoFazer: [
+        'Ultraprocessados são: refrigerante, salgadinho, biscoito recheado, embutidos (salsicha, presunto), macarrão instantâneo e congelados prontos.',
+        'Troque por: fruta, castanhas, iogurte natural e comida feita em casa.',
+        'Dica do rótulo: quanto menos ingredientes e nomes estranhos, melhor.',
+      ],
       categoria: 'oportunidade', lossPoints: perdaNUT.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-green-700 dark:text-green-400', bgClass: 'bg-green-50 dark:bg-green-950/30', borderClass: 'border-green-200 dark:border-green-800/50',
     });
@@ -118,6 +124,13 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
       id: 'missao-respiracao', icon: Brain, titulo: 'Acalmar a mente',
       descricao: 'Sua cabeça está sob pressão — vale uma pausa.',
       acaoImediata: 'Faça 5 minutos de respiração lenta antes de dormir.',
+      comoFazer: [
+        'Sente ou deite confortável e feche os olhos.',
+        'Inspire pelo nariz contando até 4.',
+        'Segure o ar contando até 4.',
+        'Solte devagar pela boca contando até 6.',
+        'Repita por 5 minutos, sem pressa — se distrair, é só voltar a contar.',
+      ],
       categoria: 'urgente', lossPoints: perdaP.perda_pontos, xpRecompensa: 15, completavel: true,
       colorClass: 'text-purple-700 dark:text-purple-400', bgClass: 'bg-purple-50 dark:bg-purple-950/30', borderClass: 'border-purple-200 dark:border-purple-800/50',
     });
@@ -128,6 +141,13 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
       id: 'missao-ergonomia', icon: Monitor, titulo: 'Cuidar da postura',
       descricao: 'Muito tempo na mesma posição cansa o corpo.',
       acaoImediata: 'A cada 50 min, levante e alongue por 2 minutos.',
+      comoFazer: [
+        'Levante da cadeira e fique em pé.',
+        'Pescoço: incline a cabeça para cada lado e segure 10 segundos.',
+        'Ombros: gire para trás 10 vezes.',
+        'Coluna: estenda os braços para cima e alongue o tronco.',
+        'Ande um pouco antes de voltar a sentar.',
+      ],
       categoria: perdaERG.gatilho_critico ? 'urgente' : 'oportunidade',
       lossPoints: perdaERG.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-violet-700 dark:text-violet-400', bgClass: 'bg-violet-50 dark:bg-violet-950/30', borderClass: 'border-violet-200 dark:border-violet-800/50',
@@ -149,6 +169,12 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
       id: 'missao-dor', icon: AlertTriangle, titulo: 'Aliviar a dor',
       descricao: 'Sua dor está alta hoje — vamos cuidar dela.',
       acaoImediata: 'Aplique gelo ou faça relaxamento por 15 minutos.',
+      comoFazer: [
+        'Gelo: enrole em um pano (nunca direto na pele) e aplique 15 minutos no local que dói.',
+        'Relaxamento: deite, feche os olhos e respire devagar.',
+        'Relaxe cada parte do corpo, dos pés à cabeça, uma de cada vez.',
+        'Se a dor piorar ou não passar, fale com o seu profissional.',
+      ],
       categoria: 'urgente', lossPoints: perdaD.perda_pontos, xpRecompensa: 20, completavel: true,
       colorClass: 'text-red-700 dark:text-red-400', bgClass: 'bg-red-50 dark:bg-red-950/30', borderClass: 'border-red-200 dark:border-red-800/50',
     });
@@ -614,6 +640,26 @@ export default function PacienteMetasDesafios({ pacienteId, soLeitura = false }:
                           <p className={cn("text-[10px] font-medium", isDone ? 'text-emerald-600' : 'text-foreground/70')}>
                             {isDone ? '✅ Feito hoje!' : `👉 ${missao.acaoImediata}`}
                           </p>
+
+                          {/* Passo a passo para técnicas que o cliente pode não
+                              saber fazer (respiração, relaxamento, alongamento…).
+                              stopPropagation para não marcar a missão ao abrir. */}
+                          {!isDone && missao.comoFazer && missao.comoFazer.length > 0 && (
+                            <details className="mt-1.5" onClick={(e) => e.stopPropagation()}>
+                              <summary className="cursor-pointer list-none inline-flex items-center gap-1 text-[10px] font-bold text-primary select-none">
+                                <Lightbulb className="h-3 w-3" /> Como fazer
+                                <ChevronDown className="h-3 w-3" />
+                              </summary>
+                              <ol className="mt-1.5 space-y-1 pl-0.5">
+                                {missao.comoFazer.map((passo, i) => (
+                                  <li key={i} className="flex gap-1.5 text-[10px] text-muted-foreground leading-snug">
+                                    <span className="font-bold text-primary shrink-0">{i + 1}.</span>
+                                    <span>{passo}</span>
+                                  </li>
+                                ))}
+                              </ol>
+                            </details>
+                          )}
 
                         </div>
                       </div>
