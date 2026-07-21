@@ -389,6 +389,50 @@ export default function PacienteDashboard() {
             </Suspense>
           )}
 
+          {/* MEUS PLANOS (IA) — treino personal, nutricional e futuros, gerados
+              dos formulários. Botões que FUNCIONAM: premium abre o plano, free
+              vai para o upgrade. Substitui os botões que não faziam nada. */}
+          {aba === 'jornada' && (
+            <V i={2}>
+              <Card className="border-primary/20">
+                <CardContent className="p-4 space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Meus planos {questFree && <span className="ml-1 text-[10px] text-violet-600">💎 Premium</span>}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground -mt-1">
+                    Feitos pela IA a partir do seu MyID, histórico, questionários e exames.
+                  </p>
+                  {[
+                    { nome: 'Treino personal', sub: 'Treino montado para você', cor: 'sky' },
+                    { nome: 'Plano nutricional', sub: 'Alimentação para os seus objetivos', cor: 'emerald' },
+                    { nome: 'Plano de tratamento', sub: 'Fisioterapia e cuidados — e outros no futuro', cor: 'violet' },
+                  ].map((p) => (
+                    <button
+                      key={p.nome}
+                      onClick={() => navigate(questFree ? '/paciente/plano' : '/paciente/plano-ia')}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors"
+                    >
+                      <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+                        p.cor === 'sky' ? 'bg-sky-500/10 text-sky-600' : p.cor === 'emerald' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-violet-500/10 text-violet-600')}>
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">
+                          {p.nome}
+                          {questFree && <span className="ml-1.5 text-[10px] font-bold text-violet-600">🔒</span>}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {questFree ? `${p.sub} — disponível no Premium` : p.sub}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+                </CardContent>
+              </Card>
+            </V>
+          )}
+
           {/* Onboarding — primeiros passos (some quando tudo feito) */}
           {aba === 'passos' && !onboardingCompleto && (
             <V i={1}>
@@ -474,44 +518,9 @@ export default function PacienteDashboard() {
                       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                     </button>
                   )}
-
-                  <button onClick={() => navigate('/paciente/dicas')}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
-                    <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 flex items-center justify-center shrink-0">
-                      <Sparkles className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">Minha jornada</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {nDicas > 0
-                          ? `Plano de hoje, metas e ${nDicas} dicas do seu MyID`
-                          : 'Plano de hoje, metas e dicas feitas do seu MyID'}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </button>
-
-                  <button
-                    onClick={() => navigate(isFree && !isInTrial ? '/paciente/plano' : '/paciente/questionarios?foco=plano')}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
-                    <div className="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center shrink-0">
-                      <ClipboardList className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">
-                        Treino personalizado
-                        {isFree && !isInTrial && <span className="ml-1.5 text-[10px] font-bold text-violet-600">💎 Premium</span>}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {isFree && !isInTrial
-                          ? '🔒 Monte seu plano nutricional, seu treino e tratamento personalizado'
-                          : 'Monte seu plano nutricional, seu treino e tratamento personalizado'}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </button>
-                  {/* A Jornada (plano de hoje + metas + gamificação) mora dentro
-                      da página "Exercícios & dicas da IA" (botão acima). */}
+                  {/* "Minha jornada" e "Treino personalizado" saíram daqui para
+                      não duplicar: a Jornada é uma aba própria e os planos de IA
+                      ficam na aba Jornada ("Meus planos"). */}
                 </CardContent>
               </Card>
             </V>
