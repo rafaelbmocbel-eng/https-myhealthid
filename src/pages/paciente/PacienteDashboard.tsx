@@ -309,7 +309,7 @@ export default function PacienteDashboard() {
   // Extras — aparecem no checklist, mas não travam o "completo" (questionários são
   // Premium; exames são feitos com o profissional).
   const passosExtras = [
-    { done: questionariosOk, label: 'Questionários', sub: questFree ? 'PAR-Q+, nutricional, físico — no Premium' : 'PAR-Q+, nutricional e físico', path: questFree ? '/paciente/plano' : '/paciente/questionarios?foco=plano' },
+    { done: questionariosOk, label: 'Questionários', sub: questFree ? 'PAR-Q+, nutricional, físico — no Premium' : (proxInstrumento ? `Próximo: ${proxInstrumento.sigla} — ${proxInstrumento.nome}` : 'PAR-Q+, nutricional e físico'), path: questFree ? '/paciente/plano' : '/paciente/questionarios?foco=plano' },
     { done: nExames > 0, label: 'Exames presenciais', sub: 'Bioimpedância, pisada, dinamometria — com seu profissional', path: '/paciente/exames' },
   ];
   const onboardingSteps = [...passosNucleo, ...passosExtras];
@@ -468,51 +468,10 @@ export default function PacienteDashboard() {
             </V>
           )}
 
-          {/* "Contar sua história" (História da Doença Atual) saiu daqui e agora
-              mora dentro de "Responder histórico clínico". */}
-
-          {/* 🎯 PRÓXIMOS PASSOS DA AVALIAÇÃO — o funil pós-MyID */}
-          {aba === 'passos' && myidConcluido && (
-            <V i={1}>
-              <Card className="border-primary/25">
-                <CardContent className="p-4 space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                    Sua avaliação gerou isto para você
-                  </p>
-                  {/* Os focos (oportunidade/atenção) e "Ver meu resultado
-                      completo" saíram daqui: os focos já aparecem no gráfico MyID
-                      abaixo e o "Ver resultado" foi para baixo do gráfico — sem
-                      duplicar o resultado. */}
-
-                  {/* O próximo questionário que o MyID apontou — tudo importante
-                      fica aqui dentro; free vê que o próximo é do Premium */}
-                  {proxInstrumento && (
-                    <button
-                      onClick={() => navigate(isFree && !isInTrial ? '/paciente/plano' : '/paciente/questionarios?foco=plano')}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:bg-muted/40 text-left transition-colors">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                        <ClipboardList className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold">
-                          Próximo questionário: {proxInstrumento.sigla}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {isFree && !isInTrial
-                            ? `🔒 ${proxInstrumento.nome} — o MyID apontou este, disponível no Premium`
-                            : `${proxInstrumento.nome} — o seu MyID apontou este como o próximo passo`}
-                        </p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    </button>
-                  )}
-                  {/* "Minha jornada" e "Treino personalizado" saíram daqui para
-                      não duplicar: a Jornada é uma aba própria e os planos de IA
-                      ficam na aba Jornada ("Meus planos"). */}
-                </CardContent>
-              </Card>
-            </V>
-          )}
+          {/* O card "Sua avaliação gerou isto" (próximo questionário / jornada /
+              treino) saiu daqui: era redundante. Questionários e exames já são
+              passos do checklist acima; a Jornada e os planos ficam na aba
+              Jornada. */}
 
           {/* Sem terapeuta vinculado: convite ao marketplace (fluxo aprovado —
               premium terá o avatar montado por um profissional) */}
