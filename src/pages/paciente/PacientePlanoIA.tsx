@@ -112,7 +112,7 @@ export function PlanoPersonalizadoSection() {
         const plano = (res.data as any)?.plano;
         if (plano) {
           await (supabase as any).from('planos_ia_cliente').upsert(
-            { paciente_id: pacienteId, tipo: 'treino', titulo: plano.titulo || 'Meu treino (IA)', conteudo: { ...plano, baseadoEm } },
+            { paciente_id: pacienteId, tipo: 'treino', titulo: plano.titulo || 'Meu treino personalizado', conteudo: { ...plano, baseadoEm } },
             { onConflict: 'paciente_id,tipo' });
         }
       }
@@ -138,7 +138,7 @@ export function PlanoPersonalizadoSection() {
         const plano = (res.data as any)?.plano;
         if (plano) {
           await (supabase as any).from('planos_ia_cliente').upsert(
-            { paciente_id: pacienteId, tipo: 'nutricao', titulo: plano.titulo || 'Meu plano alimentar (IA)', conteudo: plano },
+            { paciente_id: pacienteId, tipo: 'nutricao', titulo: plano.titulo || 'Meu plano alimentar personalizado', conteudo: plano },
             { onConflict: 'paciente_id,tipo' });
         }
       }
@@ -162,7 +162,7 @@ export function PlanoPersonalizadoSection() {
             <div className="flex items-start gap-2 p-3 rounded-xl bg-muted/50 border border-border/40">
               <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
               <p className="text-[11px] text-muted-foreground">
-                Estes planos são uma <strong>sugestão de apoio</strong> gerada por IA a partir da sua avaliação — <strong>não substituem</strong> a orientação do seu profissional de saúde. Converse com ele antes de mudanças importantes.
+                Estes planos são uma <strong>sugestão de apoio personalizada</strong> a partir do seu MyID, questionários e exames — <strong>não substituem</strong> a orientação do seu profissional de saúde. Converse com ele antes de mudanças importantes.
               </p>
             </div>
 
@@ -179,7 +179,7 @@ export function PlanoPersonalizadoSection() {
                       <Wand2 className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold">Montar meu plano com IA</p>
+                      <p className="text-sm font-bold">Montar meu plano personalizado</p>
                       <p className="text-[11px] text-muted-foreground">
                         Treino e alimentação sob medida, a partir do seu MyID, questionários e anamnese.
                       </p>
@@ -216,7 +216,7 @@ export function PlanoPersonalizadoSection() {
                   </div>
                   <h2 className="text-base font-black">Monte seu treino e nutrição sob medida</h2>
                   <p className="text-xs text-white/85 mt-1 max-w-sm mx-auto">
-                    Criar seu próprio plano com IA faz parte do <strong>Premium</strong>. Você continua vendo tudo o que seu profissional montar para você aqui.
+                    Criar seu próprio plano personalizado faz parte do <strong>Premium</strong>. Você continua vendo tudo o que seu profissional montar para você aqui.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2 justify-center mt-3">
                     <Button variant="secondary" className="gap-1.5 bg-white text-primary hover:bg-white/90 border-0"

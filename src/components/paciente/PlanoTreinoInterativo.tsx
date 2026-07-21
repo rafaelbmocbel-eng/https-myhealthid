@@ -121,7 +121,7 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold truncate flex items-center gap-1.5">
               {titulo || 'Meu Treino'}
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">IA</span>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">Personalizado</span>
             </p>
             {conteudo?.resumo && <p className="text-[11px] text-muted-foreground line-clamp-2">{conteudo.resumo}</p>}
           </div>

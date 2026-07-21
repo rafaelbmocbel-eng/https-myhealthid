@@ -362,9 +362,15 @@ export default function PatientIntegratedDashboard({
   const softenForPatient = (txt: string) => {
     if (!txt) return txt;
     return txt
-      .replace(/SITUAÇÃO CRÍTICA/gi, 'Índice alto')
-      .replace(/CRÍTICO/gi, 'Índice alto')
-      .replace(/CRITICO/gi, 'Índice alto');
+      // "crítico" e "severo" passam ideia forte de problema — para o cliente
+      // usamos uma linguagem que convida ao cuidado, sem alarmar.
+      .replace(/CR[IÍ]TICO[\s-]*SEVER[OA]/gi, 'Requer acompanhamento')
+      .replace(/SITUAÇÃO CRÍTICA/gi, 'Requer atenção')
+      .replace(/CR[IÍ]TIC[OA]/gi, 'Requer atenção')
+      .replace(/\bSEVER[OA]S?\b/gi, '')
+      .replace(/🆘/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
   };
   const classificacaoDisplay = isProfessional ? classificacao : softenForPatient(classificacao);
   const labelDisplay = isProfessional ? (label || classificacao) : softenForPatient(label || classificacao);
@@ -621,7 +627,7 @@ export default function PatientIntegratedDashboard({
                               <li key={z.nome} className={cn('flex gap-2', aqui ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                                 <span className="shrink-0">{z.emoji}</span>
                                 <span>
-                                  {z.faixa} · {z.nome} — {z.desc}
+                                  {z.faixa} · {isProfessional ? z.nome : softenForPatient(z.nome)} — {z.desc}
                                   {aqui && <span className="text-primary"> ← você está aqui</span>}
                                 </span>
                               </li>
@@ -747,8 +753,9 @@ export default function PatientIntegratedDashboard({
                 </CardContent>
               </Card>
 
-              {/* 3 cards de leitura simples — semáforo */}
-              {insights && (
+              {/* 3 cards de leitura simples — semáforo. Só para o profissional;
+                  o cliente vê a leitura amigável no texto acima e no gráfico. */}
+              {isProfessional && insights && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                     <div className="flex items-center gap-2 mb-2">

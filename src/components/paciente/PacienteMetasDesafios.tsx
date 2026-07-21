@@ -15,7 +15,6 @@ import { subDays } from 'date-fns';
 import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
 import { gerarInsightsClinicosMyID, type ClinicalInsightResult } from '@/utils/myid/clinicalInsights';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';
-import { Link } from 'react-router-dom';
 import { useHaptics } from '@/hooks/useHaptics';
 
 // ── Interfaces ─────────────────────────────────────────────────────
@@ -779,45 +778,8 @@ export default function PacienteMetasDesafios({ pacienteId, soLeitura = false }:
         </div>
       )}
 
-      {/* ── ATALHOS FIXOS — cada card SEMPRE leva ao mesmo lugar ── */}
-      {typeof window !== 'undefined' && window.location.pathname.startsWith('/paciente/') && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-          <Card className="overflow-hidden">
-            <Link to="/paciente/exercicios" className="block p-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
-                  <Dumbbell className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold">Treinos</p>
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    Prescritos pelo seu profissional
-                  </p>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              </div>
-            </Link>
-          </Card>
-          <Card className="overflow-hidden">
-            <Link to="/paciente/questionarios?foco=plano" className="block p-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                  <Heart className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold">Treino personalizado</p>
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    {planoTreinoIA || planoAlimIA
-                      ? `Treino e nutrição prontos${planoAlimIA?.calorias_alvo ? ` · ${planoAlimIA.calorias_alvo} kcal` : ''} — toque para ver`
-                      : 'Treino com GIFs + nutrição personalizados'}
-                  </p>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              </div>
-            </Link>
-          </Card>
-        </div>
-      )}
+      {/* Os atalhos "Treinos" e "Treino personalizado" saíram daqui: os planos
+          agora ficam na sub-aba "Meus planos personalizados" da Jornada. */}
 
       {/* ── PLANO DE AÇÃO POR FASES (Clinical Insights) ── */}
       {insights && (
