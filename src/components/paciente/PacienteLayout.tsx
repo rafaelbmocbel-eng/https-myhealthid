@@ -4,8 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
   LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, TrendingUp,
-  Dumbbell, Wallet, Watch, Ticket, MessageSquare, MoreHorizontal, X,
-  ChevronRight, Lock, Users, Activity, Sparkles, Lightbulb, ArrowLeft,
+  Wallet, Watch, Ticket, MessageSquare, MoreHorizontal, X,
+  ChevronRight, Lock, Users, Activity, Sparkles, Lightbulb, ArrowLeft, LayoutGrid,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
@@ -26,7 +26,7 @@ const navItems = [
   { path: '/paciente/saude',     label: 'Saúde',                 shortLabel: 'Saúde',    icon: Watch,           badgeKey: null, premium: false },
   { path: '/paciente/diario',    label: 'Diário',                shortLabel: 'Diário',   icon: Heart,           badgeKey: 'diario' as const, premium: false },
   { path: '/paciente/evolucao',  label: 'Evolução e Prontuários',shortLabel: 'Evolução', icon: TrendingUp,      badgeKey: null, premium: false },
-  { path: '/paciente/exercicios',label: 'Treinos',               shortLabel: 'Treinos',  icon: Dumbbell,        badgeKey: null, premium: false },
+  { path: '/paciente/exercicios',label: 'Acesso rápido',         shortLabel: 'Acesso',   icon: LayoutGrid,      badgeKey: null, premium: false },
   { path: '/paciente/agenda',    label: 'Agenda',                shortLabel: 'Agenda',   icon: CalendarDays,    badgeKey: 'agenda' as const, premium: false },
   { path: '/paciente/questionarios',label:'Questionários',       shortLabel: 'Quest.',   icon: ClipboardList,   badgeKey: 'questionarios' as const, premium: false },
   { path: '/paciente/pagamentos',label: 'Pagamentos',            shortLabel: 'Pagam.',   icon: Wallet,          badgeKey: 'pagamentos' as const, premium: false },

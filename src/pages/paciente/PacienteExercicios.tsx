@@ -14,7 +14,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import {
   Loader2, Dumbbell, Check, ChevronDown, ChevronUp,
   Play, Clock, Flame, AlertCircle, Star, X, SkipForward,
-  Sparkles, Heart, CalendarDays, Activity, ClipboardList, Rocket, ChevronRight,
+  Sparkles, Heart, CalendarDays, Activity, ClipboardList, Rocket, ChevronRight, LayoutGrid,
 } from 'lucide-react';
 import { format, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -234,10 +234,10 @@ export default function PacienteExercicios() {
           {/* Header */}
           <div>
             <h1 className="h-page flex items-center gap-2">
-              <Dumbbell className="h-5 w-5 text-primary" />
-              Treinos
+              <LayoutGrid className="h-5 w-5 text-primary" />
+              Acesso rápido
             </h1>
-            <p className="text-xs text-muted-foreground">Treinos prescritos pelo seu profissional</p>
+            <p className="text-xs text-muted-foreground">Tudo o que você mais usa em um lugar</p>
           </div>
 
           {/* Active session modal */}
@@ -498,48 +498,37 @@ export default function PacienteExercicios() {
             );
           })}
 
-          {/* Sem treino ainda: em vez de uma tela vazia, guia o cliente e dá
-              acesso rápido ao que ele mais usa (mais importante primeiro). */}
-          {treinos.length === 0 && (
-            <div className="space-y-4">
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <Dumbbell className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-foreground">Seu treino aparece aqui</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Quando seu profissional publicar um treino — ou quando você montar o seu — ele fica aqui. Enquanto isso, comece por onde importa:
-                  </p>
-                </CardContent>
-              </Card>
-
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Acesso rápido</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {([
-                  { nome: 'Meu plano personalizado', sub: 'Treino e nutrição sob medida', to: '/paciente/questionarios?foco=plano', Icon: Sparkles, cor: 'text-primary bg-primary/10' },
-                  { nome: 'Minha jornada', sub: 'Plano de hoje e missões', to: '/paciente/dashboard', Icon: Rocket, cor: 'text-violet-600 bg-violet-500/10' },
-                  { nome: 'Diário de saúde', sub: 'Registre como você está', to: '/paciente/diario', Icon: Heart, cor: 'text-rose-600 bg-rose-500/10' },
-                  { nome: 'Minha agenda', sub: 'Suas consultas', to: '/paciente/agenda', Icon: CalendarDays, cor: 'text-sky-600 bg-sky-500/10' },
-                  { nome: 'Meus exames', sub: 'Bioimpedância, pisada e mais', to: '/paciente/exames', Icon: Activity, cor: 'text-teal-600 bg-teal-500/10' },
-                  { nome: 'Questionários', sub: 'Responder e ver histórico', to: '/paciente/questionarios', Icon: ClipboardList, cor: 'text-emerald-600 bg-emerald-500/10' },
-                ]).map((a) => (
-                  <button
-                    key={a.nome}
-                    onClick={() => navigate(a.to)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-card hover:bg-muted/40 text-left transition-colors active:scale-[0.99]"
-                  >
-                    <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', a.cor)}>
-                      <a.Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{a.nome}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{a.sub}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </button>
-                ))}
-              </div>
+          {/* Acesso rápido — sempre visível, com o que o cliente mais usa (mais
+              importante primeiro). Os treinos publicados aparecem acima quando
+              existirem. */}
+          <div className="space-y-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Acesso rápido</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {([
+                { nome: 'Meu plano personalizado', sub: 'Treino e nutrição sob medida', to: '/paciente/questionarios?foco=plano', Icon: Sparkles, cor: 'text-primary bg-primary/10' },
+                { nome: 'Minha jornada', sub: 'Plano de hoje e missões', to: '/paciente/dashboard', Icon: Rocket, cor: 'text-violet-600 bg-violet-500/10' },
+                { nome: 'Diário de saúde', sub: 'Registre como você está', to: '/paciente/diario', Icon: Heart, cor: 'text-rose-600 bg-rose-500/10' },
+                { nome: 'Minha agenda', sub: 'Suas consultas', to: '/paciente/agenda', Icon: CalendarDays, cor: 'text-sky-600 bg-sky-500/10' },
+                { nome: 'Meus exames', sub: 'Bioimpedância, pisada e mais', to: '/paciente/exames', Icon: Activity, cor: 'text-teal-600 bg-teal-500/10' },
+                { nome: 'Questionários', sub: 'Responder e ver histórico', to: '/paciente/questionarios', Icon: ClipboardList, cor: 'text-emerald-600 bg-emerald-500/10' },
+              ]).map((a) => (
+                <button
+                  key={a.nome}
+                  onClick={() => navigate(a.to)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-card hover:bg-muted/40 text-left transition-colors active:scale-[0.99]"
+                >
+                  <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', a.cor)}>
+                    <a.Icon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{a.nome}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{a.sub}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
+              ))}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Player de vídeo do exercício */}
