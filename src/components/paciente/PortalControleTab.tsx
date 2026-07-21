@@ -9,8 +9,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar, Dumbbell, Heart, MessageCircle, DollarSign,
-  CalendarDays, ClipboardList, ExternalLink, Loader2, Smartphone,
-  TrendingUp, Trophy, Apple, Bell, GraduationCap, Stethoscope
+  CalendarDays, ClipboardList, Activity, ExternalLink, Loader2, Smartphone,
+  TrendingUp, Trophy, Apple, Bell, GraduationCap, Stethoscope, Rocket
 } from 'lucide-react';
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
@@ -255,39 +255,8 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         <RelatorioAvaliacaoCard pacienteId={pacienteId} pacienteNome={pacienteNome} pacienteTelefone={telefone} />
       </Suspense>
 
-      {/* QUESTIONÁRIOS RESPONDIDOS — uma linha só, abre ao clicar. Histórico do
-          que o cliente respondeu (nutrição, fisioterapia, personal, etc.). */}
-      <details className="rounded-xl border border-border/40 bg-card group">
-        <summary className="cursor-pointer select-none px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-          <ClipboardList className="h-4 w-4 text-violet-600" /> Questionários respondidos (histórico) — toque para abrir
-        </summary>
-        <div className="px-3 pb-3">
-          <Suspense fallback={null}>
-            <QuestionariosClinicosCard pacienteId={pacienteId} />
-          </Suspense>
-        </div>
-      </details>
-
-      {/* EXAMES PRESENCIAIS — espelho do que o cliente vê na aba de exames
-          (bioimpedância, dinamometria, baropodometria, teste de pisada). */}
-      <div className="px-0">
-        <Suspense fallback={null}>
-          <ExamesPresenciaisCard pacienteId={pacienteId} soLeitura />
-        </Suspense>
-      </div>
-
-      {/* MINHA JORNADA — espelho exato do que o cliente vê e cumpre no portal
-          (plano de hoje, metas da semana, gamificação e dicas do MyID). */}
-      <details className="rounded-xl border border-border/40 bg-card">
-        <summary className="cursor-pointer select-none px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-          🚀 Minha jornada — plano de hoje, metas e dicas (o que o cliente vê) — toque para abrir
-        </summary>
-        <div className="px-3 pb-3">
-          <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-            <JornadaPacienteCard pacienteId={pacienteId} soLeitura />
-          </Suspense>
-        </div>
-      </details>
+      {/* Questionários, Exames e Jornada foram para a lista única abaixo, como
+          itens do mesmo estilo — layout uniforme, sem uns maiores que outros. */}
 
       {/* Espelho do portal — uma lista só (sem cards duplicando os mesmos números) */}
       <Card className="p-2">
@@ -327,23 +296,24 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* (Dever de Casa e Exercícios da IA agora vivem em "Minha jornada"
               acima — espelho exato do que o cliente vê e cumpre.) */}
 
-          {/* Plano IA — o que o cliente gerou (referência) + criar/editar aqui
-              (treino com GIFs + nutrição) e LIBERAR pro portal */}
-          <AccordionItem value="plano-ia">
+          {/* PLANOS — um item por tipo. Cada card já mostra os botões de CRIAR
+              quando não há plano, e a versão editável (com GIFs) quando existe.
+              Só o terapeuta edita cada parte e libera ao portal. */}
+          <AccordionItem value="plano-treino">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> 💎 Planos de tratamento · fisio · treino (GIFs) · nutrição ({data.planosTreino.length + data.planosAlim.length + (geradoCliente?.treinoIA ? 1 : 0) + (geradoCliente?.nutricaoIA ? 1 : 0)})</div>
+              <div className="flex items-center gap-2"><Dumbbell className="icon-sm text-blue-600" /> Treino personalizado (GIFs)</div>
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3 px-1 pb-2">
-                {/* O que o CLIENTE montou sozinho — referência, recolhível */}
+                {/* Referência: o que o cliente montou sozinho — usar como base */}
                 {(geradoCliente?.treinoIA || geradoCliente?.nutricaoIA) && (
                   <details className="rounded-lg border border-primary/20 bg-primary/5">
                     <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-bold text-primary flex items-center gap-1.5">
-                      <Dumbbell className="h-3.5 w-3.5" /> Plano que o cliente montou (IA) — toque para ver
+                      <Dumbbell className="h-3.5 w-3.5" /> Plano que o cliente montou — usar como base
                     </summary>
                     <div className="p-2">
                       <p className="text-[10px] text-muted-foreground mb-2">
-                        Gerado pelo próprio cliente no portal. Use como base: copie para o seu gerador, ajuste tudo e <strong>Libere</strong> a sua versão.
+                        Feito pelo próprio cliente. Use como base: copie, ajuste tudo e <strong>Libere</strong> a sua versão.
                       </p>
                       <div className="flex flex-wrap gap-2 mb-2">
                         {geradoCliente?.treinoIA && (
@@ -370,15 +340,76 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                     </div>
                   </details>
                 )}
-                <p className="text-[10px] text-muted-foreground px-1">
-                  Gere o plano de treino (usa MyID + seus exercícios em GIF) e o plano nutricional (usa MyID + bioimpedância + anamnese). Depois toque em <strong>Liberar</strong> para enviar ao portal do cliente.
-                </p>
                 <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                   <PlanoTreinoCard pacienteId={pacienteId} />
                   <DiretrizTreinoCard pacienteId={pacienteId} />
+                </Suspense>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="plano-nutri">
+            <AccordionTrigger className="text-xs font-bold py-2 px-2">
+              <div className="flex items-center gap-2"><Apple className="icon-sm text-emerald-600" /> Nutrição</div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-3 px-1 pb-2">
+                <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                   <PlanoAlimentarCard pacienteId={pacienteId} />
                   <DiretrizNutricionalCard pacienteId={pacienteId} />
+                </Suspense>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="plano-fisio">
+            <AccordionTrigger className="text-xs font-bold py-2 px-2">
+              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> Fisioterapia / Tratamento</div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-3 px-1 pb-2">
+                <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                   <DiretrizLenteCard pacienteId={pacienteId} />
+                </Suspense>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Espelho do que o cliente vê/cumpre — mesma lista uniforme */}
+          <AccordionItem value="jornada">
+            <AccordionTrigger className="text-xs font-bold py-2 px-2">
+              <div className="flex items-center gap-2"><Rocket className="icon-sm text-violet-600" /> Jornada (o que o cliente cumpre)</div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="px-1 pb-2">
+                <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                  <JornadaPacienteCard pacienteId={pacienteId} soLeitura />
+                </Suspense>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="quest">
+            <AccordionTrigger className="text-xs font-bold py-2 px-2">
+              <div className="flex items-center gap-2"><ClipboardList className="icon-sm text-violet-600" /> Questionários respondidos</div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="px-1 pb-2">
+                <Suspense fallback={null}>
+                  <QuestionariosClinicosCard pacienteId={pacienteId} />
+                </Suspense>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="exames">
+            <AccordionTrigger className="text-xs font-bold py-2 px-2">
+              <div className="flex items-center gap-2"><Activity className="icon-sm text-teal-600" /> Exames presenciais</div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="px-1 pb-2">
+                <Suspense fallback={null}>
+                  <ExamesPresenciaisCard pacienteId={pacienteId} soLeitura defaultAberto />
                 </Suspense>
               </div>
             </AccordionContent>
