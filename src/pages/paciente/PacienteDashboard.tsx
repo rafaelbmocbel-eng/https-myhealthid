@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
   CalendarDays, ChevronRight,
@@ -16,6 +17,7 @@ import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
 const MyIDResult = lazy(() => import('@/components/myid/MyIDResult').then(m => ({ default: m.MyIDResult })));
+const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
 import EvolucaoAoVivoResultado from '@/components/paciente/EvolucaoAoVivoResultado';
 import MyIDPDFButton from '@/components/paciente/MyIDPDFButton';
 import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
@@ -83,6 +85,9 @@ export default function PacienteDashboard() {
   const [myidConcluido, setMyidConcluido] = useState(false);
   const [lastMyId, setLastMyId] = useState<any>(null);
   const [nDicas, setNDicas] = useState(0);
+  // Início em 3 abas: Passos (o que fazer) · Jornada (gamificação IA) · Resultados.
+  const [aba, setAba] = useState<'passos' | 'jornada' | 'resultados'>('passos');
+  const [abaTocada, setAbaTocada] = useState(false);
   const [focos, setFocos] = useState<{ oportunidade: string; atencao: string | null } | null>(null);
   const [proxInstrumento, setProxInstrumento] = useState<{ nome: string; sigla: string } | null>(null);
 
@@ -301,6 +306,12 @@ export default function PacienteDashboard() {
   const onboardingCompleto = onboardingSteps.every(s => s.done);
   const proxPasso = onboardingSteps.findIndex(s => !s.done);
 
+  // Onboarding pronto → o Início abre direto na Jornada (uso diário). Enquanto
+  // há passos, abre em "Passos". Respeita a escolha manual do usuário.
+  useEffect(() => {
+    if (!abaTocada) setAba(onboardingCompleto ? 'jornada' : 'passos');
+  }, [onboardingCompleto, abaTocada]);
+
   if (loading) {
     return (
       <ProtectedPatientRoute>
@@ -352,8 +363,27 @@ export default function PacienteDashboard() {
             </div>
           </V>
 
+          {/* Início em 3 abas: Passos (o que fazer) · Jornada (gamificação da IA,
+              completa para free e premium) · Resultados (MyID, avatar, planos —
+              as regras de tier ficam nos próprios blocos). */}
+          <Tabs value={aba} onValueChange={(v) => { setAbaTocada(true); setAba(v as typeof aba); }}>
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="passos">Passos</TabsTrigger>
+              <TabsTrigger value="jornada">Jornada</TabsTrigger>
+              <TabsTrigger value="resultados">Resultados</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* JORNADA — plano de hoje, metas, missões e insights da IA (mesma
+              regra de sempre: completa para free e premium). */}
+          {aba === 'jornada' && paciente && (
+            <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+              <JornadaPacienteCard pacienteId={paciente.id} />
+            </Suspense>
+          )}
+
           {/* Onboarding — primeiros passos (some quando tudo feito) */}
-          {!onboardingCompleto && (
+          {aba === 'passos' && !onboardingCompleto && (
             <V i={1}>
               <Card className="border-primary/20 bg-primary/[0.03]">
                 <CardContent className="p-4">
@@ -403,7 +433,7 @@ export default function PacienteDashboard() {
               mora dentro de "Responder histórico clínico". */}
 
           {/* 🎯 PRÓXIMOS PASSOS DA AVALIAÇÃO — o funil pós-MyID */}
-          {myidConcluido && (
+          {aba === 'passos' && myidConcluido && (
             <V i={1}>
               <Card className="border-primary/25">
                 <CardContent className="p-4 space-y-2">
@@ -482,7 +512,7 @@ export default function PacienteDashboard() {
 
           {/* Sem terapeuta vinculado: convite ao marketplace (fluxo aprovado —
               premium terá o avatar montado por um profissional) */}
-          {paciente && !(paciente as any).terapeuta_id && (
+          {aba === 'passos' && paciente && !(paciente as any).terapeuta_id && (
             <V i={1}>
               <button
                 onClick={() => navigate('/paciente/profissionais')}
@@ -564,7 +594,7 @@ export default function PacienteDashboard() {
           )}
 
           {/* Questionários pendentes */}
-          {stats.pendentes > 0 && (
+          {aba === 'passos' && stats.pendentes > 0 && (
             <V i={5}>
               <Card
                 className="border-primary/30 bg-primary/5 cursor-pointer hover:shadow-sm transition-shadow"
@@ -587,7 +617,7 @@ export default function PacienteDashboard() {
           )}
 
           {/* Prompt MyID — reavaliação mensal (1ª vez já fica coberta pelo checklist de onboarding) */}
-          {showMyIdPrompt && stats.pendentes === 0 && (myIdPromptType === 'monthly' || onboardingCompleto) && (
+          {aba === 'passos' && showMyIdPrompt && stats.pendentes === 0 && (myIdPromptType === 'monthly' || onboardingCompleto) && (
             <V i={6}>
               <Card className="border-0 shadow-md overflow-hidden"
                 style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)' }}
@@ -625,7 +655,7 @@ export default function PacienteDashboard() {
 
           {/* Dashboard MyID (gráfico + evolução) */}
           <V i={7}>
-            {paciente && (
+            {aba === 'resultados' && paciente && (
               <Suspense fallback={
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -638,7 +668,7 @@ export default function PacienteDashboard() {
 
           {/* Meu resultado completo — já ABERTO logo abaixo do gráfico MyID
               (versão completa/em linguagem simples do que o gráfico resume) */}
-          {myidConcluido && paciente && lastMyId?.resultado_processado && (
+          {aba === 'resultados' && myidConcluido && paciente && lastMyId?.resultado_processado && (
             <V i={7}>
               <div className="space-y-1">
                 <p className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
@@ -660,7 +690,8 @@ export default function PacienteDashboard() {
             </V>
           )}
 
-          {/* Recompensas */}
+          {/* Recompensas — parte da Jornada */}
+          {aba === 'jornada' && (
           <V i={12}>
             <button
               onClick={() => navigate('/paciente/recompensas')}
@@ -676,9 +707,10 @@ export default function PacienteDashboard() {
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
           </V>
+          )}
 
           {/* Upgrade Wellness — mostrado depois do valor, não antes */}
-          {isFree && (
+          {aba === 'resultados' && isFree && (
             <V i={12}>
               <Card
                 className="border-0 shadow-md overflow-hidden cursor-pointer"
@@ -708,12 +740,14 @@ export default function PacienteDashboard() {
           )}
 
           {/* PDF MyID */}
+          {aba === 'resultados' && (
           <V i={13}>
             <MyIDPDFButton />
           </V>
+          )}
 
           {/* Outras consultas */}
-          {proximasConsultas.length > 1 && (
+          {aba === 'resultados' && proximasConsultas.length > 1 && (
             <V i={14}>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-sm font-bold text-foreground">Outras consultas</h2>
