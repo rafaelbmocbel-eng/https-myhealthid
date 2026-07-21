@@ -9,8 +9,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar, Dumbbell, Heart, MessageCircle, DollarSign,
-  CalendarDays, ClipboardList, Activity, ExternalLink, Loader2, Smartphone,
-  TrendingUp, Trophy, Apple, Ruler, Bell, GraduationCap, Stethoscope
+  CalendarDays, ClipboardList, ExternalLink, Loader2, Smartphone,
+  TrendingUp, Trophy, Apple, Bell, GraduationCap, Stethoscope
 } from 'lucide-react';
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
@@ -443,82 +443,11 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           </AccordionItem>
 
 
-          {/* Wearables */}
-          <AccordionItem value="health">
-            <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Activity className="icon-sm text-cyan-600" /> Wearables / Saúde ({data.health.length})</div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ScrollArea className="h-64">
-                <div className="space-y-1.5 pr-2">
-                  {data.health.map((h: any) => (
-                    <div key={h.id} className="border rounded-lg p-2 text-[11px]">
-                      <div className="font-semibold">{format(parseISO(h.date), 'dd/MM/yyyy', { locale: ptBR })}</div>
-                      <div className="grid grid-cols-3 gap-1 mt-1 text-[10px] text-muted-foreground">
-                        {h.steps != null && <div>👣 {h.steps}</div>}
-                        {h.heart_rate_avg != null && <div>❤️ {h.heart_rate_avg}bpm</div>}
-                        {h.calories_burned != null && <div>🔥 {h.calories_burned}kcal</div>}
-                        {h.distance_km != null && <div>📍 {h.distance_km}km</div>}
-                        {h.active_minutes != null && <div>⏱ {h.active_minutes}min</div>}
-                        {h.spo2_avg != null && <div>O₂ {h.spo2_avg}%</div>}
-                      </div>
-                    </div>
-                  ))}
-                  {data.health.length === 0 && <p className="text-[11px] text-muted-foreground italic px-2">Sem dados</p>}
-                </div>
-              </ScrollArea>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Refeições */}
-          <AccordionItem value="meals">
-            <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Apple className="icon-sm text-orange-600" /> Refeições ({data.meals.length})</div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ScrollArea className="h-64">
-                <div className="space-y-1.5 pr-2">
-                  {data.meals.map((m: any) => (
-                    <div key={m.id} className="border rounded-lg p-2 text-[11px]">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold capitalize">{m.meal_type}</span>
-                        <span className="text-[10px] text-muted-foreground">{format(parseISO(m.date), 'dd/MM', { locale: ptBR })}</span>
-                      </div>
-                      {m.description && <div className="text-[10px] text-muted-foreground">{m.description}</div>}
-                      {m.calories && <div className="text-[10px]">🔥 {m.calories} kcal</div>}
-                    </div>
-                  ))}
-                  {data.meals.length === 0 && <p className="text-[11px] text-muted-foreground italic px-2">Sem refeições</p>}
-                </div>
-              </ScrollArea>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Composição */}
-          <AccordionItem value="body">
-            <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Ruler className="icon-sm text-teal-600" /> Composição corporal ({data.body.length})</div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ScrollArea className="h-64">
-                <div className="space-y-1.5 pr-2">
-                  {data.body.map((b: any) => (
-                    <div key={b.id} className="border rounded-lg p-2 text-[11px]">
-                      <div className="font-semibold">{format(parseISO(b.date), 'dd/MM/yyyy', { locale: ptBR })}</div>
-                      <div className="grid grid-cols-3 gap-1 mt-1 text-[10px] text-muted-foreground">
-                        {b.weight_kg && <div>Peso: <b className="text-foreground">{b.weight_kg}kg</b></div>}
-                        {b.bmi && <div>IMC: <b className="text-foreground">{b.bmi}</b></div>}
-                        {b.body_fat_pct && <div>Gord: <b className="text-foreground">{b.body_fat_pct}%</b></div>}
-                        {b.muscle_mass_kg && <div>Mús: <b className="text-foreground">{b.muscle_mass_kg}kg</b></div>}
-                        {b.waist_cm && <div>Cint: <b className="text-foreground">{b.waist_cm}cm</b></div>}
-                      </div>
-                    </div>
-                  ))}
-                  {data.body.length === 0 && <p className="text-[11px] text-muted-foreground italic px-2">Sem registros</p>}
-                </div>
-              </ScrollArea>
-            </AccordionContent>
-          </AccordionItem>
+          {/* "Wearables / Saúde" saiu daqui: o wearable já tem o card dedicado
+              "Monitor Wearable" no perfil — evita dois botões iguais.
+              "Refeições" saiu (não é mais usado). "Composição corporal" saiu
+              daqui: agora vive dentro de "Exames presenciais" (preenchido quando
+              a bioimpedância é feita). */}
 
           {/* Eventos */}
           <AccordionItem value="eventos">
