@@ -296,15 +296,20 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* (Dever de Casa e Exercícios da IA agora vivem em "Minha jornada"
               acima — espelho exato do que o cliente vê e cumpre.) */}
 
-          {/* PLANOS — um item por tipo. Cada card já mostra os botões de CRIAR
-              quando não há plano, e a versão editável (com GIFs) quando existe.
-              Só o terapeuta edita cada parte e libera ao portal. */}
-          <AccordionItem value="plano-treino">
+          {/* PLANOS — UM lugar só para criar/gerar todos os planos (personal,
+              nutrição, fisioterapia e futuros). A edição e a troca de qualquer
+              parte ficam na página do plano (o botão de ver — a visão tipo PDF,
+              que dá pra compartilhar). */}
+          <AccordionItem value="planos">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Dumbbell className="icon-sm text-blue-600" /> Treino personalizado (GIFs)</div>
+              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> Planos (treino, nutrição, fisioterapia)</div>
             </AccordionTrigger>
             <AccordionContent>
-              <div className="space-y-3 px-1 pb-2">
+              <div className="space-y-4 px-1 pb-2">
+                <p className="text-[10px] text-muted-foreground px-1">
+                  Crie aqui os planos que o cliente ainda não tem. Para <strong>editar ou trocar qualquer parte</strong>, abra a visão do plano (o botão de ver 👁️) — é lá, na página que dá pra compartilhar, que você ajusta tudo.
+                </p>
+
                 {/* Referência: o que o cliente montou sozinho — usar como base */}
                 {(geradoCliente?.treinoIA || geradoCliente?.nutricaoIA) && (
                   <details className="rounded-lg border border-primary/20 bg-primary/5">
@@ -340,35 +345,13 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                     </div>
                   </details>
                 )}
+
+                {/* Criar/gerar cada plano — treino, nutrição e fisioterapia */}
                 <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                   <PlanoTreinoCard pacienteId={pacienteId} />
                   <DiretrizTreinoCard pacienteId={pacienteId} />
-                </Suspense>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="plano-nutri">
-            <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Apple className="icon-sm text-emerald-600" /> Nutrição</div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-3 px-1 pb-2">
-                <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                   <PlanoAlimentarCard pacienteId={pacienteId} />
                   <DiretrizNutricionalCard pacienteId={pacienteId} />
-                </Suspense>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="plano-fisio">
-            <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-purple-600" /> Fisioterapia / Tratamento</div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-3 px-1 pb-2">
-                <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                   <DiretrizLenteCard pacienteId={pacienteId} />
                 </Suspense>
               </div>
