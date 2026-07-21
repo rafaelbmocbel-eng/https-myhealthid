@@ -33,8 +33,8 @@ const navItems = [
   { path: '/paciente/eventos',   label: 'Eventos',               shortLabel: 'Eventos',  icon: Ticket,          badgeKey: null, premium: false },
   { path: '/paciente/perfil',    label: 'Perfil',                shortLabel: 'Perfil',   icon: User,            badgeKey: null, premium: false },
   { path: '/paciente/profissionais', label: 'Encontrar profissional', shortLabel: 'Profiss.', icon: Users,          badgeKey: null, premium: false },
-  { path: '/paciente/avatar',        label: 'Meu Avatar Clínico',   shortLabel: 'Avatar',   icon: Activity,        badgeKey: null, premium: false },
-  { path: '/paciente/plano-ia',      label: 'Meu Plano (IA)',       shortLabel: 'Plano',    icon: Sparkles,        badgeKey: null, premium: false },
+  { path: '/paciente/avatar',        label: 'Avatar clínico',       shortLabel: 'Avatar',   icon: Activity,        badgeKey: null, premium: false },
+  { path: '/paciente/plano-ia',      label: 'Meu plano',            shortLabel: 'Plano',    icon: Sparkles,        badgeKey: null, premium: false },
   { path: '/paciente/exames',        label: 'Exames',               shortLabel: 'Exames',   icon: ClipboardList,   badgeKey: null, premium: false },
 ];
 
@@ -298,14 +298,14 @@ export default function PacienteLayout({ children }: Props) {
                           key={item.path}
                           onClick={() => navigate(item.path)}
                           className={cn(
-                            'flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.97] text-left',
+                            'flex items-center gap-2.5 px-3 py-3 min-h-[52px] rounded-xl text-sm font-medium transition-all active:scale-[0.97] text-left',
                             active
                               ? 'bg-primary text-primary-foreground shadow-sm'
                               : 'bg-muted/60 text-foreground hover:bg-muted',
                           )}
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
-                          <span className="flex-1 truncate text-sm">{item.label}</span>
+                          <span className="flex-1 text-[13px] leading-tight">{item.label}</span>
                           {item.premium && isFree && (
                             <Lock className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
                           )}
