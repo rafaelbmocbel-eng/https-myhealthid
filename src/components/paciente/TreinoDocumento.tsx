@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { Dumbbell, ShieldCheck, ImageOff, Salad } from 'lucide-react';
+import { Dumbbell, ShieldCheck, ImageOff, Salad, Plus, Trash2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
-// Documento do treino (estilo PDF, mas com GIFs ANIMANDO). Puro presentational —
-// usado na página logada (/paciente/treino-completo) e na pública (/treino/:token).
-// Deixa CLARO que o treino é individual, montado a partir dos questionários
-// específicos do cliente (o perfil vem em conteudo.baseadoEm).
+// Documento do treino (estilo PDF, mas com GIFs ANIMANDO). Usado na página logada
+// (/paciente/treino-completo), na pública (/treino/:token) e no portal do
+// profissional. Deixa CLARO que o treino é individual, montado a partir dos
+// questionários específicos do cliente (o perfil vem em conteudo.baseadoEm).
+//
+// Modo EDIÇÃO: quando `editando` é true, os campos dos planos (treino e nutrição)
+// viram inputs no lugar — dá pra alterar todas as características AQUI na página.
+// O componente bolha o objeto inteiro atualizado via onConteudoChange/onNutricaoChange;
+// quem salva é a página (tem o supabase e os ids). Sem as props de edição, segue
+// 100% somente-leitura (público e portal não mudam).
 
 export interface BaseadoEm {
   objetivo?: string;
@@ -19,9 +25,32 @@ interface Props {
   titulo?: string | null;
   conteudo: any; // { resumo, baseadoEm?, fases: [...], observacoes_gerais }
   nutricao?: any; // { titulo, resumo, calorias_totais, macros, refeicoes: [...], orientacoes, lista_compras }
+  editando?: boolean;
+  onTituloChange?: (v: string) => void;
+  onConteudoChange?: (novo: any) => void;
+  onNutricaoChange?: (novo: any) => void;
 }
 
-export default function TreinoDocumento({ nome, titulo, conteudo, nutricao }: Props) {
+const clone = (o: any) => JSON.parse(JSON.stringify(o ?? {}));
+
+// Input inline que "imita" o texto do documento — fundo âmbar suave no modo edição.
+// Definido FORA do componente pai: se ficasse dentro do render, cada tecla criaria
+// um tipo novo e o input perderia o foco a cada caractere.
+function EI({ value, onChange, className, placeholder }: { value: any; onChange: (v: string) => void; className?: string; placeholder?: string }) {
+  return (
+    <input
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={`bg-[#fffbeb] border border-[#fde68a] rounded px-1.5 py-0.5 outline-none focus:border-[#2563eb] text-[#212529] ${className || ''}`}
+    />
+  );
+}
+
+export default function TreinoDocumento({
+  nome, titulo, conteudo, nutricao, editando,
+  onTituloChange, onConteudoChange, onNutricaoChange,
+}: Props) {
   const fases: any[] = Array.isArray(conteudo?.fases) ? conteudo.fases : [];
   const refeicoes: any[] = Array.isArray(nutricao?.refeicoes) ? nutricao.refeicoes
     : Array.isArray(nutricao?.meals) ? nutricao.meals : [];
@@ -30,7 +59,11 @@ export default function TreinoDocumento({ nome, titulo, conteudo, nutricao }: Pr
   const [quebrados, setQuebrados] = useState<Set<string>>(new Set());
   const marcarQuebrado = (url: string) => setQuebrados((s) => new Set(s).add(url));
 
-  const renderExercicio = (ex: any, ei: number) => {
+  // Aplica uma mutação no clone do plano e bolha o objeto inteiro pra página.
+  const updC = (mut: (d: any) => void) => { const d = clone(conteudo); mut(d); onConteudoChange?.(d); };
+  const updN = (mut: (d: any) => void) => { const d = clone(nutricao); mut(d); onNutricaoChange?.(d); };
+
+  const renderExercicio = (ex: any, ei: number, si: number, fi: number) => {
     const quebrado = ex.gif_url && quebrados.has(ex.gif_url);
     return (
       <div key={ei} className="flex gap-3 rounded-lg border border-[#e1e4eb] p-3 break-inside-avoid">
@@ -48,31 +81,70 @@ export default function TreinoDocumento({ nome, titulo, conteudo, nutricao }: Pr
           <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-lg bg-[#eef1f8] flex items-center justify-center shrink-0 text-lg font-bold text-[#2563eb]">{ei + 1}</div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-[#212529]">{ex.nome || 'Exercício'}</p>
-          <p className="text-[13px] font-bold text-[#2563eb] mt-0.5">
-            {[ex.series && ex.reps ? `${ex.series}×${ex.reps}` : ex.series, ex.carga, ex.descanso_s && `${ex.descanso_s}s descanso`].filter(Boolean).join('  ·  ')}
-          </p>
-          {(ex.orientacoes || ex.obs) && (
-            <p className="text-xs text-[#6e7482] mt-1 leading-relaxed">
-              {ex.orientacoes && <><strong className="text-[#212529]">Execução:</strong> {ex.orientacoes} </>}
-              {ex.obs}
-            </p>
+          {editando ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <EI value={ex.nome} placeholder="Exercício" className="text-sm font-semibold flex-1 w-full"
+                  onChange={(v) => updC((d) => { d.fases[fi].sessoes[si].exercicios[ei].nome = v; })} />
+                <button title="Remover exercício" className="shrink-0 p-1 rounded hover:bg-red-50"
+                  onClick={() => updC((d) => { d.fases[fi].sessoes[si].exercicios.splice(ei, 1); })}>
+                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5 items-center text-[13px]">
+                <EI value={ex.series} placeholder="séries" className="w-14 text-center"
+                  onChange={(v) => updC((d) => { d.fases[fi].sessoes[si].exercicios[ei].series = v; })} />
+                <span className="text-[#6e7482]">×</span>
+                <EI value={ex.reps} placeholder="reps" className="w-16 text-center"
+                  onChange={(v) => updC((d) => { d.fases[fi].sessoes[si].exercicios[ei].reps = v; })} />
+                <EI value={ex.carga} placeholder="carga" className="w-20 text-center"
+                  onChange={(v) => updC((d) => { d.fases[fi].sessoes[si].exercicios[ei].carga = v; })} />
+                <EI value={ex.descanso_s} placeholder="descanso s" className="w-20 text-center"
+                  onChange={(v) => updC((d) => { d.fases[fi].sessoes[si].exercicios[ei].descanso_s = v; })} />
+              </div>
+              <EI value={ex.orientacoes} placeholder="Execução / orientações" className="text-xs w-full"
+                onChange={(v) => updC((d) => { d.fases[fi].sessoes[si].exercicios[ei].orientacoes = v; })} />
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-[#212529]">{ex.nome || 'Exercício'}</p>
+              <p className="text-[13px] font-bold text-[#2563eb] mt-0.5">
+                {[ex.series && ex.reps ? `${ex.series}×${ex.reps}` : ex.series, ex.carga, ex.descanso_s && `${ex.descanso_s}s descanso`].filter(Boolean).join('  ·  ')}
+              </p>
+              {(ex.orientacoes || ex.obs) && (
+                <p className="text-xs text-[#6e7482] mt-1 leading-relaxed">
+                  {ex.orientacoes && <><strong className="text-[#212529]">Execução:</strong> {ex.orientacoes} </>}
+                  {ex.obs}
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>
     );
   };
 
-  const renderSessao = (s: any, si: number) => (
+  const renderSessao = (s: any, si: number, fi: number) => (
     <div key={si} className="space-y-2">
-      <h3 className="text-sm font-bold text-[#1e2952] pt-1">
-        {s.nome || `Treino ${si + 1}`}{s.duracao_min ? ` · ~${s.duracao_min} min` : ''}
-      </h3>
-      {s.aquecimento && <p className="text-xs text-[#6e7482]"><strong>Aquecimento:</strong> {s.aquecimento}</p>}
+      {editando ? (
+        <EI value={s.nome} placeholder={`Treino ${si + 1}`} className="text-sm font-bold w-full"
+          onChange={(v) => updC((d) => { d.fases[fi].sessoes[si].nome = v; })} />
+      ) : (
+        <h3 className="text-sm font-bold text-[#1e2952] pt-1">
+          {s.nome || `Treino ${si + 1}`}{s.duracao_min ? ` · ~${s.duracao_min} min` : ''}
+        </h3>
+      )}
+      {s.aquecimento && !editando && <p className="text-xs text-[#6e7482]"><strong>Aquecimento:</strong> {s.aquecimento}</p>}
       <div className="space-y-2">
-        {(Array.isArray(s.exercicios) ? s.exercicios : []).map(renderExercicio)}
+        {(Array.isArray(s.exercicios) ? s.exercicios : []).map((ex: any, ei: number) => renderExercicio(ex, ei, si, fi))}
       </div>
-      {s.desaquecimento && <p className="text-xs text-[#6e7482]"><strong>Desaquecimento:</strong> {s.desaquecimento}</p>}
+      {editando && (
+        <button className="w-full flex items-center justify-center gap-1 text-xs text-[#2563eb] border border-dashed border-[#c7d2fe] rounded-lg py-1.5 hover:bg-[#eef2ff]"
+          onClick={() => updC((d) => { (d.fases[fi].sessoes[si].exercicios ||= []).push({ nome: '', series: '', reps: '', carga: '', descanso_s: '', orientacoes: '' }); })}>
+          <Plus className="h-3.5 w-3.5" /> Adicionar exercício
+        </button>
+      )}
+      {s.desaquecimento && !editando && <p className="text-xs text-[#6e7482]"><strong>Desaquecimento:</strong> {s.desaquecimento}</p>}
     </div>
   );
 
@@ -97,35 +169,62 @@ export default function TreinoDocumento({ nome, titulo, conteudo, nutricao }: Pr
           {fases.map((f, fi) => (
             <TabsContent key={fi} value={String(fi)} className="space-y-3 mt-3">
               <div className="rounded-lg bg-[#2563eb] text-white px-3 py-2 flex items-center justify-between">
-                <span className="text-sm font-bold">{f.nome || `Fase ${fi + 1}`}</span>
-                {f.semanas && <span className="text-xs text-blue-100">{f.semanas} semanas</span>}
+                {editando ? (
+                  <EI value={f.nome} placeholder={`Fase ${fi + 1}`} className="text-sm font-bold flex-1 w-full !bg-white/90"
+                    onChange={(v) => updC((d) => { d.fases[fi].nome = v; })} />
+                ) : (
+                  <span className="text-sm font-bold">{f.nome || `Fase ${fi + 1}`}</span>
+                )}
+                {f.semanas && !editando && <span className="text-xs text-blue-100">{f.semanas} semanas</span>}
               </div>
-              {f.objetivo && <p className="text-xs text-[#6e7482]">{f.objetivo}</p>}
-              {(Array.isArray(f.sessoes) ? f.sessoes : []).map(renderSessao)}
+              {editando ? (
+                <EI value={f.objetivo} placeholder="Objetivo da fase" className="text-xs w-full"
+                  onChange={(v) => updC((d) => { d.fases[fi].objetivo = v; })} />
+              ) : (
+                f.objetivo && <p className="text-xs text-[#6e7482]">{f.objetivo}</p>
+              )}
+              {(Array.isArray(f.sessoes) ? f.sessoes : []).map((s: any, si: number) => renderSessao(s, si, fi))}
             </TabsContent>
           ))}
         </Tabs>
       )}
-      {conteudo?.observacoes_gerais && (
+      {editando ? (
         <div className="border-t border-[#e1e4eb] pt-3">
           <h3 className="text-sm font-bold text-[#1e2952] mb-1">Observações</h3>
-          <p className="text-xs text-[#6e7482]">{conteudo.observacoes_gerais}</p>
+          <EI value={conteudo?.observacoes_gerais} placeholder="Observações gerais do treino" className="text-xs w-full"
+            onChange={(v) => updC((d) => { d.observacoes_gerais = v; })} />
         </div>
+      ) : (
+        conteudo?.observacoes_gerais && (
+          <div className="border-t border-[#e1e4eb] pt-3">
+            <h3 className="text-sm font-bold text-[#1e2952] mb-1">Observações</h3>
+            <p className="text-xs text-[#6e7482]">{conteudo.observacoes_gerais}</p>
+          </div>
+        )
       )}
     </div>
   );
 
   // Conteúdo da NUTRIÇÃO — calorias/macros do dia, refeições e lista de compras.
-  const nutricaoView = temNutricao ? (
+  const nutricaoView = (temNutricao || editando) ? (
     <div className="space-y-4">
-      {(nutricao.titulo || nutricao.resumo) && (
-        <div>
-          {nutricao.titulo && <h3 className="text-base font-bold text-[#1e2952]">{nutricao.titulo}</h3>}
-          {nutricao.resumo && <p className="text-xs text-[#6e7482] mt-0.5">{nutricao.resumo}</p>}
+      {editando ? (
+        <div className="space-y-1.5">
+          <EI value={nutricao?.titulo} placeholder="Título do plano alimentar" className="text-base font-bold w-full"
+            onChange={(v) => updN((d) => { d.titulo = v; })} />
+          <EI value={nutricao?.resumo} placeholder="Resumo (opcional)" className="text-xs w-full"
+            onChange={(v) => updN((d) => { d.resumo = v; })} />
         </div>
+      ) : (
+        (nutricao.titulo || nutricao.resumo) && (
+          <div>
+            {nutricao.titulo && <h3 className="text-base font-bold text-[#1e2952]">{nutricao.titulo}</h3>}
+            {nutricao.resumo && <p className="text-xs text-[#6e7482] mt-0.5">{nutricao.resumo}</p>}
+          </div>
+        )
       )}
-      {/* Metas do dia */}
-      {(nutricao.calorias_totais || nutricao.macros) && (
+      {/* Metas do dia (somente-leitura — vêm do cálculo da IA) */}
+      {!editando && (nutricao.calorias_totais || nutricao.macros) && (
         <div className="grid grid-cols-4 gap-2">
           {[
             { l: 'kcal/dia', v: nutricao.calorias_totais },
@@ -144,25 +243,67 @@ export default function TreinoDocumento({ nome, titulo, conteudo, nutricao }: Pr
         const itens: any[] = Array.isArray(r.itens) ? r.itens : Array.isArray(r.alimentos) ? r.alimentos : [];
         return (
           <div key={ri} className="rounded-lg border border-[#e1e4eb] overflow-hidden">
-            <div className="px-3 py-2 bg-[#f0fdf4] flex items-center justify-between">
-              <span className="text-sm font-bold text-[#166534]">{r.nome || r.refeicao || `Refeição ${ri + 1}`}</span>
-              <span className="text-[11px] text-[#6e7482]">{[r.horario || r.hora, r.calorias && `${r.calorias} kcal`].filter(Boolean).join(' · ')}</span>
+            <div className="px-3 py-2 bg-[#f0fdf4] flex items-center justify-between gap-2">
+              {editando ? (
+                <>
+                  <EI value={r.nome || r.refeicao} placeholder={`Refeição ${ri + 1}`} className="text-sm font-bold flex-1 w-full"
+                    onChange={(v) => updN((d) => { d.refeicoes[ri].nome = v; })} />
+                  <EI value={r.horario || r.hora} placeholder="horário" className="text-[11px] w-16"
+                    onChange={(v) => updN((d) => { d.refeicoes[ri].horario = v; })} />
+                  <button title="Remover refeição" className="shrink-0 p-1 rounded hover:bg-red-50"
+                    onClick={() => updN((d) => { d.refeicoes.splice(ri, 1); })}>
+                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm font-bold text-[#166534]">{r.nome || r.refeicao || `Refeição ${ri + 1}`}</span>
+                  <span className="text-[11px] text-[#6e7482]">{[r.horario || r.hora, r.calorias && `${r.calorias} kcal`].filter(Boolean).join(' · ')}</span>
+                </>
+              )}
             </div>
             <div className="p-2.5 space-y-1">
               {itens.map((it: any, ii: number) => (
-                <div key={ii} className="flex items-center justify-between gap-2 text-[12.5px]">
-                  <span className="text-[#212529]">{it.alimento || it.nome || String(it)}</span>
-                  <span className="text-[#6e7482] whitespace-nowrap shrink-0">
-                    {[it.porcao || it.porção, it.kcal && `${it.kcal} kcal`].filter(Boolean).join(' · ')}
-                  </span>
-                </div>
+                editando ? (
+                  <div key={ii} className="flex items-center gap-1.5">
+                    <EI value={it.alimento || it.nome} placeholder="Alimento" className="text-[12.5px] flex-1 w-full"
+                      onChange={(v) => updN((d) => { d.refeicoes[ri].itens[ii].alimento = v; })} />
+                    <EI value={it.porcao || it['porção']} placeholder="porção" className="text-[11px] w-20"
+                      onChange={(v) => updN((d) => { d.refeicoes[ri].itens[ii].porcao = v; })} />
+                    <EI value={it.kcal} placeholder="kcal" className="text-[11px] w-14"
+                      onChange={(v) => updN((d) => { d.refeicoes[ri].itens[ii].kcal = v; })} />
+                    <button title="Remover alimento" className="shrink-0 p-1 rounded hover:bg-red-50"
+                      onClick={() => updN((d) => { d.refeicoes[ri].itens.splice(ii, 1); })}>
+                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                    </button>
+                  </div>
+                ) : (
+                  <div key={ii} className="flex items-center justify-between gap-2 text-[12.5px]">
+                    <span className="text-[#212529]">{it.alimento || it.nome || String(it)}</span>
+                    <span className="text-[#6e7482] whitespace-nowrap shrink-0">
+                      {[it.porcao || it['porção'], it.kcal && `${it.kcal} kcal`].filter(Boolean).join(' · ')}
+                    </span>
+                  </div>
+                )
               ))}
-              {r.substituicoes && <p className="text-[11px] text-[#6e7482] pt-1 border-t border-[#e1e4eb] mt-1"><strong>Trocas:</strong> {r.substituicoes}</p>}
+              {editando && (
+                <button className="w-full flex items-center justify-center gap-1 text-[11px] text-[#166534] border border-dashed border-emerald-300 rounded py-1 hover:bg-[#f0fdf4]"
+                  onClick={() => updN((d) => { (d.refeicoes[ri].itens ||= []).push({ alimento: '', porcao: '', kcal: '' }); })}>
+                  <Plus className="h-3 w-3" /> Adicionar alimento
+                </button>
+              )}
+              {r.substituicoes && !editando && <p className="text-[11px] text-[#6e7482] pt-1 border-t border-[#e1e4eb] mt-1"><strong>Trocas:</strong> {r.substituicoes}</p>}
             </div>
           </div>
         );
       })}
-      {Array.isArray(nutricao.orientacoes) && nutricao.orientacoes.length > 0 && (
+      {editando && (
+        <button className="w-full flex items-center justify-center gap-1 text-sm text-[#166534] border border-dashed border-emerald-300 rounded-lg py-2 hover:bg-[#f0fdf4]"
+          onClick={() => updN((d) => { (d.refeicoes ||= []).push({ nome: 'Nova refeição', horario: '', itens: [] }); })}>
+          <Plus className="h-4 w-4" /> Adicionar refeição
+        </button>
+      )}
+      {!editando && Array.isArray(nutricao.orientacoes) && nutricao.orientacoes.length > 0 && (
         <div className="rounded-lg border border-[#e1e4eb] p-3">
           <h4 className="text-sm font-bold text-[#1e2952] mb-1">Orientações</h4>
           <ul className="list-disc list-inside text-xs text-[#6e7482] space-y-0.5">
@@ -170,7 +311,7 @@ export default function TreinoDocumento({ nome, titulo, conteudo, nutricao }: Pr
           </ul>
         </div>
       )}
-      {Array.isArray(nutricao.lista_compras) && nutricao.lista_compras.length > 0 && (
+      {!editando && Array.isArray(nutricao.lista_compras) && nutricao.lista_compras.length > 0 && (
         <div className="rounded-lg border border-[#e1e4eb] p-3">
           <h4 className="text-sm font-bold text-[#1e2952] mb-1">Lista de compras</h4>
           <div className="flex flex-wrap gap-1.5">
@@ -183,6 +324,8 @@ export default function TreinoDocumento({ nome, titulo, conteudo, nutricao }: Pr
     </div>
   ) : null;
 
+  const mostrarTabs = temNutricao || editando;
+
   return (
     <div className="bg-white text-[#212529] rounded-xl overflow-hidden shadow-sm print:shadow-none print:rounded-none">
       {/* Cabeçalho */}
@@ -192,8 +335,14 @@ export default function TreinoDocumento({ nome, titulo, conteudo, nutricao }: Pr
       </div>
 
       <div className="px-5 sm:px-6 py-5 space-y-5">
-        {titulo && <h2 className="text-lg font-bold text-[#1e2952]">{titulo}</h2>}
-        {conteudo?.resumo && <p className="text-sm text-[#6e7482] -mt-3">{conteudo.resumo}</p>}
+        {editando ? (
+          <input value={titulo ?? ''} onChange={(e) => onTituloChange?.(e.target.value)}
+            placeholder="Título do plano"
+            className="text-lg font-bold text-[#1e2952] w-full bg-[#fffbeb] border border-[#fde68a] rounded px-2 py-1 outline-none focus:border-[#2563eb]" />
+        ) : (
+          titulo && <h2 className="text-lg font-bold text-[#1e2952]">{titulo}</h2>
+        )}
+        {conteudo?.resumo && !editando && <p className="text-sm text-[#6e7482] -mt-3">{conteudo.resumo}</p>}
 
         {/* Painel: treino INDIVIDUAL, baseado nos questionários do cliente */}
         <div className="rounded-xl border border-[#c7d2fe] bg-[#eef2ff] px-4 py-3">
@@ -226,8 +375,8 @@ export default function TreinoDocumento({ nome, titulo, conteudo, nutricao }: Pr
           )}
         </div>
 
-        {/* Abas de topo Treino | Nutrição (só quando há plano nutricional) */}
-        {temNutricao ? (
+        {/* Abas de topo Treino | Nutrição (aparecem quando há nutrição ou no modo edição) */}
+        {mostrarTabs ? (
           <Tabs defaultValue="treino" className="w-full">
             <TabsList className="w-full grid grid-cols-2 h-auto p-1 bg-[#eef1f8]">
               <TabsTrigger value="treino" className="text-sm gap-1.5 data-[state=active]:bg-[#2563eb] data-[state=active]:text-white">

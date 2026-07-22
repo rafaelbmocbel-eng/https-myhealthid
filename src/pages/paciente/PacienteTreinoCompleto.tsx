@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Printer, FileDown, Loader2, Dumbbell, Share2 } from 'lucide-react';
+import { ArrowLeft, Printer, FileDown, Loader2, Dumbbell, Share2, Pencil, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import TreinoDocumento from '@/components/paciente/TreinoDocumento';
 
@@ -19,8 +19,17 @@ export default function PacienteTreinoCompleto() {
   const [pacienteId, setPacienteId] = useState<string | null>(null);
   const [plano, setPlano] = useState<{ titulo?: string; conteudo: any; share_token?: string | null } | null>(null);
   const [nutricao, setNutricao] = useState<any>(null);
+  const [temNutricaoRow, setTemNutricaoRow] = useState(false);
   const [baixando, setBaixando] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
+
+  // Edição inline: o cliente/profissional edita todas as características do plano
+  // aqui na própria página e salva de volta em planos_ia_cliente.
+  const [editando, setEditando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [draftTitulo, setDraftTitulo] = useState<string>('');
+  const [draftConteudo, setDraftConteudo] = useState<any>(null);
+  const [draftNutricao, setDraftNutricao] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -33,10 +42,54 @@ export default function PacienteTreinoCompleto() {
         .select('tipo, titulo, conteudo, share_token').eq('paciente_id', pac.id);
       const rows = (data || []) as any[];
       setPlano(rows.find((r) => r.tipo === 'treino') || null);
-      setNutricao(rows.find((r) => r.tipo === 'nutricao')?.conteudo || null);
+      const nut = rows.find((r) => r.tipo === 'nutricao');
+      setNutricao(nut?.conteudo || null);
+      setTemNutricaoRow(Boolean(nut));
       setLoading(false);
     })();
   }, [user]);
+
+  const iniciarEdicao = () => {
+    setDraftTitulo(plano?.titulo || '');
+    setDraftConteudo(JSON.parse(JSON.stringify(plano?.conteudo || {})));
+    setDraftNutricao(nutricao ? JSON.parse(JSON.stringify(nutricao)) : { refeicoes: [] });
+    setEditando(true);
+  };
+
+  const cancelarEdicao = () => setEditando(false);
+
+  const salvarEdicao = async () => {
+    if (!pacienteId || !plano) return;
+    setSalvando(true);
+    try {
+      const { error: e1 } = await (supabase as any).from('planos_ia_cliente')
+        .update({ titulo: draftTitulo || 'Meu plano de treino', conteudo: draftConteudo })
+        .eq('paciente_id', pacienteId).eq('tipo', 'treino');
+      if (e1) throw e1;
+
+      const temRefeicoes = Array.isArray(draftNutricao?.refeicoes) && draftNutricao.refeicoes.length > 0;
+      if (temNutricaoRow) {
+        const { error: e2 } = await (supabase as any).from('planos_ia_cliente')
+          .update({ conteudo: draftNutricao }).eq('paciente_id', pacienteId).eq('tipo', 'nutricao');
+        if (e2) throw e2;
+      } else if (temRefeicoes) {
+        // Cliente adicionou nutrição pela primeira vez — cria a linha.
+        const { error: e3 } = await (supabase as any).from('planos_ia_cliente')
+          .insert({ paciente_id: pacienteId, tipo: 'nutricao', titulo: draftNutricao?.titulo || 'Meu plano alimentar', conteudo: draftNutricao });
+        if (e3) throw e3;
+        setTemNutricaoRow(true);
+      }
+
+      setPlano({ ...plano, titulo: draftTitulo, conteudo: draftConteudo });
+      setNutricao(temRefeicoes ? draftNutricao : null);
+      setEditando(false);
+      toast.success('Plano atualizado');
+    } catch (err: any) {
+      toast.error(err?.message || 'Não consegui salvar agora.');
+    } finally {
+      setSalvando(false);
+    }
+  };
 
   const compartilhar = async () => {
     if (!plano || !pacienteId) return;
@@ -89,22 +142,38 @@ export default function PacienteTreinoCompleto() {
               <ArrowLeft className="h-4 w-4" /> Voltar
             </button>
             <div className="ml-auto flex items-center gap-2">
-              <Button size="sm" className="gap-1.5" disabled={compartilhando || !plano} onClick={compartilhar}>
-                {compartilhando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Compartilhar
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.print()}>
-                <Printer className="h-4 w-4" /> Imprimir
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" disabled={baixando || !plano} onClick={baixarPdf}>
-                {baixando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} PDF
-              </Button>
+              {editando ? (
+                <>
+                  <Button size="sm" className="gap-1.5" disabled={salvando} onClick={salvarEdicao}>
+                    {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={salvando} onClick={cancelarEdicao}>
+                    <X className="h-4 w-4" /> Cancelar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={!plano} onClick={iniciarEdicao}>
+                    <Pencil className="h-4 w-4" /> Editar
+                  </Button>
+                  <Button size="sm" className="gap-1.5" disabled={compartilhando || !plano} onClick={compartilhar}>
+                    {compartilhando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Compartilhar
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.print()}>
+                    <Printer className="h-4 w-4" /> Imprimir
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={baixando || !plano} onClick={baixarPdf}>
+                    {baixando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} PDF
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
 
         {loading ? (
           <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : !plano || fases.length === 0 ? (
+        ) : !editando && (!plano || fases.length === 0) ? (
           <div className="max-w-2xl mx-auto p-8 text-center">
             <Dumbbell className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm font-medium text-muted-foreground">Você ainda não tem um treino gerado.</p>
@@ -112,7 +181,21 @@ export default function PacienteTreinoCompleto() {
           </div>
         ) : (
           <div className="max-w-2xl mx-auto my-4 print:my-0">
-            <TreinoDocumento nome={nome} titulo={plano.titulo} conteudo={plano.conteudo} nutricao={nutricao} />
+            {editando && (
+              <p className="text-xs text-center text-muted-foreground mb-2 px-4">
+                Modo edição — altere qualquer campo dos planos e toque em <strong>Salvar</strong>.
+              </p>
+            )}
+            <TreinoDocumento
+              nome={nome}
+              titulo={editando ? draftTitulo : plano?.titulo}
+              conteudo={editando ? draftConteudo : plano?.conteudo}
+              nutricao={editando ? draftNutricao : nutricao}
+              editando={editando}
+              onTituloChange={setDraftTitulo}
+              onConteudoChange={setDraftConteudo}
+              onNutricaoChange={setDraftNutricao}
+            />
           </div>
         )}
       </div>
