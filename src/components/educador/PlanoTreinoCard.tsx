@@ -186,9 +186,10 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
                 onClick={() => liberar(p.id, !p.aprovado)}>
                 {p.aprovado ? 'Ocultar' : 'Liberar'}
               </Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setVerPlano(p)}><Eye className="icon-xs" /></Button>
-              {/* Botão de editar (✏️) escondido: a edição/troca de partes fica na
-                  visão do plano (👁️) — evita formas de edição duplicadas. */}
+              <Button size="icon" variant="ghost" className="h-7 w-7" title="Ver plano" onClick={() => setVerPlano(p)}><Eye className="icon-xs" /></Button>
+              {/* Editar plano: troca de exercício (com busca na biblioteca), carga,
+                  fase, séries/reps — o editor único do plano. */}
+              <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar plano" onClick={() => setEditarPlano(p)}><Pencil className="icon-xs" /></Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => apagar(p.id)}><Trash2 className="icon-xs text-destructive" /></Button>
             </div>
           </div>

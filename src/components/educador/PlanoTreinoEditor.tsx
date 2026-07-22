@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Plus, Trash2, Save } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import SeletorExercicios, { type ExercicioEscolhido } from './SeletorExercicios';
 
@@ -23,8 +23,8 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
   const [titulo, setTitulo] = useState<string>(plano.titulo || '');
   // deep clone para editar sem mexer no original até salvar
   const [est, setEst] = useState<any>(() => JSON.parse(JSON.stringify(plano.estrutura || {})));
-  // Qual sessão (fase/sessão) está escolhendo exercício na biblioteca.
-  const [seletor, setSeletor] = useState<{ fi: number; si: number } | null>(null);
+  // Seletor da biblioteca. Sem `ei` = adicionar; com `ei` = TROCAR aquele exercício.
+  const [seletor, setSeletor] = useState<{ fi: number; si: number; ei?: number } | null>(null);
 
   const fases: any[] = Array.isArray(est.fases) ? est.fases : [];
 
@@ -48,6 +48,19 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
         descanso_s: ex.descanso_s ?? 45,
         obs: '',
       });
+    });
+  // Troca o exercício por outro da biblioteca, mantendo a programação que o
+  // profissional já definiu (séries, reps, carga, descanso, observação).
+  const trocarExDaBiblioteca = (fi: number, si: number, ei: number, ex: ExercicioEscolhido) =>
+    atualizar((d) => {
+      const cur = d.fases[fi].sessoes[si].exercicios[ei] || {};
+      d.fases[fi].sessoes[si].exercicios[ei] = {
+        ...cur,
+        id: ex.id,
+        nome: ex.nome || '',
+        gif_url: ex.gif_url || undefined,
+        orientacoes: ex.orientacoes || undefined,
+      };
     });
   const setSessaoNome = (fi: number, si: number, valor: string) =>
     atualizar((d) => { d.fases[fi].sessoes[si].nome = valor; });
@@ -98,6 +111,9 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
                       <div className="flex items-center gap-1.5">
                         <Input className="h-8 text-sm flex-1" placeholder="Exercício" value={ex.nome || ''}
                           onChange={(e) => setExField(fi, si, ei, 'nome', e.target.value)} />
+                        <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Trocar exercício (buscar na biblioteca)" onClick={() => setSeletor({ fi, si, ei })}>
+                          <Repeat className="h-3.5 w-3.5 text-primary" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => removerEx(fi, si, ei)}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
@@ -138,7 +154,11 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
       <SeletorExercicios
         open={!!seletor}
         onOpenChange={(o) => { if (!o) setSeletor(null); }}
-        onPick={(ex) => { if (seletor) addExDaBiblioteca(seletor.fi, seletor.si, ex); }}
+        onPick={(ex) => {
+          if (!seletor) return;
+          if (seletor.ei != null) trocarExDaBiblioteca(seletor.fi, seletor.si, seletor.ei, ex);
+          else addExDaBiblioteca(seletor.fi, seletor.si, ex);
+        }}
       />
     </Dialog>
   );
