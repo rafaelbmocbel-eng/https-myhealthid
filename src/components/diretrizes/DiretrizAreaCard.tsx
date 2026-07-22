@@ -25,13 +25,14 @@ export interface DiretrizAreaProps {
   descricaoGerar: string;
   placeholderObjetivo: string;
   autoGerar?: boolean;
+  ocultarGerador?: boolean;
 }
 
 // MOLDE ÚNICO "profissional cria → cliente recebe" das diretrizes por área
 // (nutrição, educação física, ...). A IA gera o rascunho dos dados clínicos;
 // aqui o profissional revisa fase a fase e envia ao portal do cliente.
 export default function DiretrizAreaCard({
-  pacienteId, area, nomeCard, funcaoIA, Icone, corIcone, descricaoVazio, descricaoGerar, placeholderObjetivo, autoGerar,
+  pacienteId, area, nomeCard, funcaoIA, Icone, corIcone, descricaoVazio, descricaoGerar, placeholderObjetivo, autoGerar, ocultarGerador,
 }: DiretrizAreaProps) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -120,13 +121,20 @@ export default function DiretrizAreaCard({
             <Icone className={`icon-sm ${corIcone} shrink-0`} />
             {nomeCard}
           </CardTitle>
-          <Button size="sm" variant={diretriz ? 'outline' : 'default'} onClick={() => setOpen(true)}>
-            <Sparkles className="icon-sm mr-1" /> {diretriz ? 'Regerar' : 'Gerar com IA'}
-          </Button>
+          {/* No modo "Montar todos", esconde o gerar/regerar individual — quem gera é o botão único.
+              Mantém o "Regerar" quando já existe diretriz (é gestão do que já foi criado). */}
+          {(!ocultarGerador || diretriz) && (
+            <Button size="sm" variant={diretriz ? 'outline' : 'default'} onClick={() => setOpen(true)}>
+              <Sparkles className="icon-sm mr-1" /> {diretriz ? 'Regerar' : 'Gerar com IA'}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {!diretriz ? (
-            <p className="text-sm text-muted-foreground py-3 text-center">{descricaoVazio}</p>
+            <p className="text-sm text-muted-foreground py-3 text-center flex items-center justify-center gap-1.5">
+              {gerar.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {gerar.isPending ? 'Montando…' : descricaoVazio}
+            </p>
           ) : (
             <div className="flex items-center gap-2 p-2 rounded-md border border-border/40">
               <div className="flex-1 min-w-0">

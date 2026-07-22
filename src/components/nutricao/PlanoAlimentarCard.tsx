@@ -16,14 +16,14 @@ import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import { format, parseISO } from 'date-fns';
 
-interface Props { pacienteId: string; autoGerar?: boolean; }
+interface Props { pacienteId: string; autoGerar?: boolean; ocultarGerador?: boolean; }
 
 const OBJETIVOS = [
   'Emagrecimento', 'Hipertrofia', 'Manutenção', 'Reeducação alimentar',
   'Performance esportiva', 'Ganho de peso', 'Controle glicêmico', 'Controle pressórico',
 ];
 
-export default function PlanoAlimentarCard({ pacienteId, autoGerar }: Props) {
+export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerador }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const chancela = usePodeChancelar('nutricao');
@@ -157,16 +157,21 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar }: Props) {
             <Apple className="icon-sm text-emerald-600 shrink-0" />
             Plano Alimentar
           </CardTitle>
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Plus className="icon-sm mr-1" /> Novo
-          </Button>
+          {!ocultarGerador && (
+            <Button size="sm" onClick={() => setOpen(true)}>
+              <Plus className="icon-sm mr-1" /> Novo
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
           {planos.length > 0 && !chancela.loading && !chancela.pode && (
             <p className="text-[11px] text-amber-600 dark:text-amber-400 text-center">🔒 {chancela.motivo}</p>
           )}
           {planos.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum plano gerado ainda.</p>
+            <p className="text-sm text-muted-foreground py-4 text-center flex items-center justify-center gap-1.5">
+              {gerar.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {gerar.isPending ? 'Montando o plano alimentar…' : 'Nenhum plano gerado ainda.'}
+            </p>
           ) : (
             planos.map((p: any) => (
               <div key={p.id} className="flex items-center gap-2 p-2 rounded-md border border-border/40">

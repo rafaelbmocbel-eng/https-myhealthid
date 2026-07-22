@@ -2,10 +2,12 @@ import { ClipboardList } from 'lucide-react';
 import DiretrizAreaCard from '@/components/diretrizes/DiretrizAreaCard';
 
 // Diretriz nutricional: instância do molde único de diretrizes por área.
-export default function DiretrizNutricionalCard({ pacienteId }: { pacienteId: string }) {
+export default function DiretrizNutricionalCard({ pacienteId, autoGerar, ocultarGerador }: { pacienteId: string; autoGerar?: boolean; ocultarGerador?: boolean }) {
   return (
     <DiretrizAreaCard
       pacienteId={pacienteId}
+      autoGerar={autoGerar}
+      ocultarGerador={ocultarGerador}
       area="nutricao"
       nomeCard="Diretriz Nutricional"
       funcaoIA="gerar-diretriz-nutricional"

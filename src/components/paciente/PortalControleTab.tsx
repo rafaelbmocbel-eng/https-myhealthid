@@ -155,7 +155,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
       const [
         dailyLogs, execucoes, prescricoes, agendamentos, pagamentos,
         chat, eventoInscricoes, healthData, respostas, meals, body, notif,
-        dicasIA, planosTreino, planosAlim
+        dicasIA, planosTreino, planosAlim, diretrizes
       ] = await Promise.all([
         sb.from('daily_logs').select('*').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(60),
         sb.from('studio_execucoes').select('id, created_at, treino_id, exercicios_executados, duracao_total_segundos').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(60),
@@ -172,6 +172,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         sb.from('paciente_dicas').select('dicas, gerado_em, terapeuta_id').eq('paciente_id', pacienteId).maybeSingle(),
         sb.from('planos_treino').select('id, created_at, aprovado, estrutura').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
         sb.from('planos_alimentares').select('id, created_at, aprovado, calorias_alvo').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
+        sb.from('diretrizes_profissionais').select('area').eq('paciente_id', pacienteId),
       ]);
 
       return {
@@ -191,6 +192,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         dicasIAErro: dicasIA.error?.message || null,
         planosTreino: (planosTreino.data || []) as any[],
         planosAlim: (planosAlim.data || []) as any[],
+        diretrizes: (diretrizes.data || []) as { area: string }[],
       };
     },
     enabled: !!user,
@@ -215,6 +217,16 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const chatNaoLido = data.chat.filter((c: any) => c.remetente === 'paciente' && !c.lida).length;
   const respostasPendentes = data.respostas.filter((r: any) => r.status !== 'concluida').length;
   const totalAtividade = data.dailyLogs.length + data.execucoes.length + data.health.length + data.chat.length + data.meals.length;
+
+  // Planos: um botão único monta o que ainda falta. Enquanto faltar algo (plano de
+  // treino, nutrição, diretriz de treino ou nutricional), mostra o botão; os cards
+  // individuais não exibem gerador próprio (evita "vários botões").
+  const areasDiretriz = new Set((data.diretrizes || []).map((d) => d.area));
+  const faltaPlanos =
+    data.planosTreino.length === 0 ||
+    data.planosAlim.length === 0 ||
+    !areasDiretriz.has('educacao_fisica') ||
+    !areasDiretriz.has('nutricao');
 
   const copyLink = () => {
     if (!portalUrl) return;
@@ -311,14 +323,15 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                   Crie aqui os planos que o cliente ainda não tem. Para <strong>editar ou trocar qualquer parte</strong>, abra a visão do plano (o botão de ver 👁️) — é lá, na página que dá pra compartilhar, que você ajusta tudo.
                 </p>
 
-                {/* Botão único: monta treino + nutrição + fisioterapia de uma vez.
-                    Só aparece na 1ª vez (quando ainda não há nenhum plano). */}
-                {!gerarTodos && data.planosTreino.length === 0 && data.planosAlim.length === 0 && (
+                {/* Botão ÚNICO: monta de uma vez o que ainda falta (treino, nutrição,
+                    diretrizes e fisioterapia). Enquanto faltar algo, é o único caminho —
+                    os cards abaixo não mostram gerador próprio. */}
+                {!gerarTodos && faltaPlanos && (
                   <Button className="w-full gap-1.5" onClick={() => setGerarTodos(true)}>
                     <Sparkles className="icon-sm" /> Montar todos os planos (treino, nutrição e fisioterapia)
                   </Button>
                 )}
-                {gerarTodos && (data.planosTreino.length === 0 || data.planosAlim.length === 0) && (
+                {gerarTodos && faltaPlanos && (
                   <p className="text-[11px] text-primary text-center flex items-center justify-center gap-1.5">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> Montando seus planos… isso leva alguns segundos.
                   </p>
@@ -360,13 +373,14 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                   </details>
                 )}
 
-                {/* Criar/gerar cada plano — treino, nutrição e fisioterapia */}
+                {/* Cards dos planos — enquanto falta algo, exibem só o que já existe
+                    (sem gerador próprio); a criação vem do botão único acima. */}
                 <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-                  <PlanoTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} />
-                  <DiretrizTreinoCard pacienteId={pacienteId} />
-                  <PlanoAlimentarCard pacienteId={pacienteId} autoGerar={gerarTodos} />
-                  <DiretrizNutricionalCard pacienteId={pacienteId} />
-                  <DiretrizLenteCard pacienteId={pacienteId} autoGerar={gerarTodos} />
+                  <PlanoTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                  <DiretrizTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                  <PlanoAlimentarCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                  <DiretrizNutricionalCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                  <DiretrizLenteCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
                 </Suspense>
               </div>
             </AccordionContent>

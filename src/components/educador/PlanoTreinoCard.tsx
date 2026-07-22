@@ -15,9 +15,9 @@ import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import PlanoTreinoEditor from './PlanoTreinoEditor';
 
-interface Props { pacienteId: string; autoGerar?: boolean; }
+interface Props { pacienteId: string; autoGerar?: boolean; ocultarGerador?: boolean; }
 
-export default function PlanoTreinoCard({ pacienteId, autoGerar }: Props) {
+export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const chancela = usePodeChancelar('treino');
@@ -133,7 +133,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {(planos.length === 0 || mostrarGerador) && (
+        {(planos.length === 0 || mostrarGerador) && !ocultarGerador && (
         <>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -182,8 +182,16 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar }: Props) {
         </>
         )}
 
+        {/* Modo "Montar todos": sem plano ainda, mostra só um aviso — a geração vem do botão único acima */}
+        {ocultarGerador && planos.length === 0 && (
+          <p className="text-sm text-muted-foreground py-3 text-center flex items-center justify-center gap-1.5">
+            {gerarMut.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {gerarMut.isPending ? 'Montando o plano de treino…' : 'Ainda não gerado.'}
+          </p>
+        )}
+
         {/* Já existe plano e o gerador está escondido: opção discreta de gerar outro */}
-        {planos.length > 0 && !mostrarGerador && (
+        {planos.length > 0 && !mostrarGerador && !ocultarGerador && (
           <Button size="sm" variant="ghost" className="w-full h-8 text-[11px] gap-1.5 text-muted-foreground" onClick={() => setMostrarGerador(true)}>
             <Sparkles className="icon-xs" /> Gerar outro plano
           </Button>
