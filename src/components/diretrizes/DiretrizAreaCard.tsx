@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Sparkles, Loader2, Eye, Send, EyeOff } from 'lucide-react';
+import { Sparkles, Loader2, Eye, Send, EyeOff, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import DiretrizTecnicasEditor from './DiretrizTecnicasEditor';
 import { format, parseISO } from 'date-fns';
 import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar, type AreaChancela } from '@/hooks/usePodeChancelar';
@@ -37,6 +38,7 @@ export default function DiretrizAreaCard({
   const [view, setView] = useState(false);
   const [objetivo, setObjetivo] = useState('');
   const [obs, setObs] = useState('');
+  const [editarTec, setEditarTec] = useState(false);
   // A chancela (enviar ao portal) é do profissional habilitado pela área.
   const AREA_CHANCELA: Record<string, AreaChancela> = {
     nutricao: 'nutricao',
@@ -136,8 +138,11 @@ export default function DiretrizAreaCard({
               {diretriz.enviada_portal
                 ? <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">No portal</Badge>
                 : <Badge variant="outline" className="text-xs">Rascunho</Badge>}
-              <Button variant="ghost" size="icon" onClick={() => setView(true)}>
+              <Button variant="ghost" size="icon" title="Ver" onClick={() => setView(true)}>
                 <Eye className="icon-sm" />
+              </Button>
+              <Button variant="ghost" size="icon" title="Editar técnicas" onClick={() => setEditarTec(true)}>
+                <Pencil className="icon-sm" />
               </Button>
               <Button variant={diretriz.enviada_portal ? 'ghost' : 'default'} size="sm" className="h-8 text-xs px-2.5"
                 onClick={() => enviarPortal.mutate(!diretriz.enviada_portal)}
@@ -238,6 +243,10 @@ export default function DiretrizAreaCard({
           )}
         </DialogContent>
       </Dialog>
+
+      {editarTec && diretriz && (
+        <DiretrizTecnicasEditor diretriz={diretriz} area={area} pacienteId={pacienteId} onClose={() => setEditarTec(false)} />
+      )}
     </>
   );
 }
