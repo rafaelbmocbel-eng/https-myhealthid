@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar, Dumbbell, Heart, MessageCircle, DollarSign,
@@ -373,14 +374,30 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                   </details>
                 )}
 
-                {/* Cards dos planos — enquanto falta algo, exibem só o que já existe
-                    (sem gerador próprio); a criação vem do botão único acima. */}
+                {/* UMA caixa só com abas: Treino · Nutrição · Fisio/Clínico. Cada aba
+                    reúne o plano + a diretriz daquela área. A criação vem do botão único
+                    acima; aqui é só ver/editar/liberar o que já existe. */}
                 <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-                  <PlanoTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
-                  <DiretrizTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
-                  <PlanoAlimentarCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
-                  <DiretrizNutricionalCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
-                  <DiretrizLenteCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                  <Tabs defaultValue="treino" className="w-full">
+                    <TabsList className="w-full grid grid-cols-3 h-auto p-1">
+                      <TabsTrigger value="treino" className="text-xs gap-1"><Dumbbell className="h-3.5 w-3.5" /> Treino</TabsTrigger>
+                      <TabsTrigger value="nutricao" className="text-xs gap-1"><Apple className="h-3.5 w-3.5" /> Nutrição</TabsTrigger>
+                      <TabsTrigger value="clinico" className="text-xs gap-1"><Activity className="h-3.5 w-3.5" /> Fisio/Clínico</TabsTrigger>
+                    </TabsList>
+                    {/* forceMount: mantém as abas montadas (as inativas ficam ocultas)
+                        para o "Montar todos" gerar tudo de uma vez, não só a aba visível. */}
+                    <TabsContent forceMount value="treino" className="space-y-3 mt-3 data-[state=inactive]:hidden">
+                      <PlanoTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                      <DiretrizTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                    </TabsContent>
+                    <TabsContent forceMount value="nutricao" className="space-y-3 mt-3 data-[state=inactive]:hidden">
+                      <PlanoAlimentarCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                      <DiretrizNutricionalCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                    </TabsContent>
+                    <TabsContent forceMount value="clinico" className="space-y-3 mt-3 data-[state=inactive]:hidden">
+                      <DiretrizLenteCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                    </TabsContent>
+                  </Tabs>
                 </Suspense>
               </div>
             </AccordionContent>
