@@ -29,6 +29,9 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
   const [restricoes, setRestricoes] = useState('');
   const [verPlano, setVerPlano] = useState<any | null>(null);
   const [editarPlano, setEditarPlano] = useState<any | null>(null);
+  // O formulário de gerar só aparece quando NÃO há plano (primeira vez). Depois
+  // some — fica só o plano compartilhável — com um "gerar outro" discreto.
+  const [mostrarGerador, setMostrarGerador] = useState(false);
 
   const { data: planos = [] } = useQuery({
     queryKey: ['planos-treino', pacienteId],
@@ -113,6 +116,8 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {(planos.length === 0 || mostrarGerador) && (
+        <>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Objetivo</label>
@@ -157,9 +162,14 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
         <p className="text-[10px] text-muted-foreground text-center -mt-1">
           A IA usa a avaliação presencial (avatar clínico + queixa), o MyID e os questionários respondidos. Depois é só editar e liberar.
         </p>
+        </>
+        )}
 
-        {planos.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-4">Nenhum plano gerado.</p>
+        {/* Já existe plano e o gerador está escondido: opção discreta de gerar outro */}
+        {planos.length > 0 && !mostrarGerador && (
+          <Button size="sm" variant="ghost" className="w-full h-8 text-[11px] gap-1.5 text-muted-foreground" onClick={() => setMostrarGerador(true)}>
+            <Sparkles className="icon-xs" /> Gerar outro plano
+          </Button>
         )}
 
         {planos.length > 0 && !chancela.loading && !chancela.pode && (
