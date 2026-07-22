@@ -32,6 +32,9 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
   // O formulário de gerar só aparece quando NÃO há plano (primeira vez). Depois
   // some — fica só o plano compartilhável — com um "gerar outro" discreto.
   const [mostrarGerador, setMostrarGerador] = useState(false);
+  // Mostra só UM plano (o liberado, ou o mais recente); os rascunhos antigos
+  // ficam recolhidos para não parecer duplicado.
+  const [verOutros, setVerOutros] = useState(false);
 
   const { data: planos = [] } = useQuery({
     queryKey: ['planos-treino', pacienteId],
@@ -108,6 +111,11 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
     qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
   };
 
+  // Um plano em destaque (liberado ou o mais recente); o resto fica recolhido.
+  const principal = planos.find((p: any) => p.aprovado) || planos[0] || null;
+  const outros = planos.filter((p: any) => p !== principal);
+  const planosVisiveis = principal ? [principal, ...(verOutros ? outros : [])] : [];
+
   return (
     <Card className="rounded-xl border-border/40 shadow-xs">
       <CardHeader className="pb-3">
@@ -176,7 +184,7 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
           <p className="text-[11px] text-amber-600 dark:text-amber-400 text-center -mt-1">🔒 {chancela.motivo}</p>
         )}
 
-        {planos.map((p: any) => (
+        {planosVisiveis.map((p: any) => (
           <div key={p.id} className="p-3 rounded-lg border border-border/40 space-y-1">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
@@ -204,6 +212,15 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
             </div>
           </div>
         ))}
+
+        {outros.length > 0 && (
+          <button
+            onClick={() => setVerOutros(v => !v)}
+            className="w-full text-center text-[11px] font-semibold text-muted-foreground py-1 rounded-lg hover:bg-muted/40"
+          >
+            {verOutros ? 'Ocultar rascunhos antigos' : `Ver outros ${outros.length} rascunho${outros.length > 1 ? 's' : ''}`}
+          </button>
+        )}
       </CardContent>
 
       <Dialog open={!!verPlano} onOpenChange={(o) => !o && setVerPlano(null)}>
