@@ -16,13 +16,14 @@ const LENTE_DIRETRIZ: Partial<Record<PerfilProfissional, {
   dentista: { area: 'odontologia', nome: 'Plano de Tratamento (Odontologia)', Icone: Smile, cor: 'text-teal-600', objetivoPh: 'ex: adequação do meio bucal e reabilitação' },
 };
 
-export default function DiretrizLenteCard({ pacienteId }: { pacienteId: string }) {
+export default function DiretrizLenteCard({ pacienteId, autoGerar }: { pacienteId: string; autoGerar?: boolean }) {
   const { data: lente } = useLenteAtiva();
   const cfg = lente ? LENTE_DIRETRIZ[lente.id] : undefined;
   if (!cfg) return null;
   return (
     <DiretrizAreaCard
       pacienteId={pacienteId}
+      autoGerar={autoGerar}
       area={cfg.area}
       nomeCard={cfg.nome}
       funcaoIA="gerar-diretriz-clinica"

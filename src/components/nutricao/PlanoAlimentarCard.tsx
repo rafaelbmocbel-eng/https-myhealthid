@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,14 +15,14 @@ import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import { format, parseISO } from 'date-fns';
 
-interface Props { pacienteId: string; }
+interface Props { pacienteId: string; autoGerar?: boolean; }
 
 const OBJETIVOS = [
   'Emagrecimento', 'Hipertrofia', 'Manutenção', 'Reeducação alimentar',
   'Performance esportiva', 'Ganho de peso', 'Controle glicêmico', 'Controle pressórico',
 ];
 
-export default function PlanoAlimentarCard({ pacienteId }: Props) {
+export default function PlanoAlimentarCard({ pacienteId, autoGerar }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const chancela = usePodeChancelar('nutricao');
@@ -118,6 +118,15 @@ export default function PlanoAlimentarCard({ pacienteId }: Props) {
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao gerar'),
   });
+
+  // "Montar todos os planos": gera a nutrição UMA vez quando ainda não há plano.
+  const autoDisparado = useRef(false);
+  useEffect(() => {
+    if (autoGerar && !autoDisparado.current && planos.length === 0 && !gerar.isPending) {
+      autoDisparado.current = true;
+      gerar.mutate();
+    }
+  }, [autoGerar, planos.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const excluir = useMutation({
     mutationFn: async (id: string) => {

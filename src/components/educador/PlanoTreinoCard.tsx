@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,9 +15,9 @@ import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import PlanoTreinoEditor from './PlanoTreinoEditor';
 
-interface Props { pacienteId: string; }
+interface Props { pacienteId: string; autoGerar?: boolean; }
 
-export default function PlanoTreinoCard({ pacienteId }: Props) {
+export default function PlanoTreinoCard({ pacienteId, autoGerar }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const chancela = usePodeChancelar('treino');
@@ -94,6 +94,15 @@ export default function PlanoTreinoCard({ pacienteId }: Props) {
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao gerar plano'),
   });
+
+  // "Montar todos os planos": dispara a geração UMA vez quando ainda não há plano.
+  const autoDisparado = useRef(false);
+  useEffect(() => {
+    if (autoGerar && !autoDisparado.current && planos.length === 0 && !gerarMut.isPending) {
+      autoDisparado.current = true;
+      gerarMut.mutate();
+    }
+  }, [autoGerar, planos.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const apagar = async (id: string) => {
     if (!confirm('Apagar este plano?')) return;

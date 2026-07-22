@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar, Dumbbell, Heart, MessageCircle, DollarSign,
   CalendarDays, ClipboardList, Activity, ExternalLink, Loader2, Smartphone,
-  TrendingUp, Trophy, Apple, Bell, GraduationCap, Stethoscope, Rocket
+  TrendingUp, Trophy, Apple, Bell, GraduationCap, Stethoscope, Rocket, Sparkles
 } from 'lucide-react';
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
@@ -45,6 +45,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const [gerandoDicas, setGerandoDicas] = useState(false);
   const [dicasRecemGeradas, setDicasRecemGeradas] = useState<any[] | null>(null);
   const [usandoBase, setUsandoBase] = useState<null | 'treino' | 'nutricao'>(null);
+  const [gerarTodos, setGerarTodos] = useState(false);
 
   // Gera (ou regenera) as dicas IA deste paciente na hora — e mostra o motivo
   // se a IA não conseguir (ex.: sem MyID concluído, sem evidência, erro).
@@ -310,6 +311,19 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                   Crie aqui os planos que o cliente ainda não tem. Para <strong>editar ou trocar qualquer parte</strong>, abra a visão do plano (o botão de ver 👁️) — é lá, na página que dá pra compartilhar, que você ajusta tudo.
                 </p>
 
+                {/* Botão único: monta treino + nutrição + fisioterapia de uma vez.
+                    Só aparece na 1ª vez (quando ainda não há nenhum plano). */}
+                {!gerarTodos && data.planosTreino.length === 0 && data.planosAlim.length === 0 && (
+                  <Button className="w-full gap-1.5" onClick={() => setGerarTodos(true)}>
+                    <Sparkles className="icon-sm" /> Montar todos os planos (treino, nutrição e fisioterapia)
+                  </Button>
+                )}
+                {gerarTodos && (data.planosTreino.length === 0 || data.planosAlim.length === 0) && (
+                  <p className="text-[11px] text-primary text-center flex items-center justify-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Montando seus planos… isso leva alguns segundos.
+                  </p>
+                )}
+
                 {/* Referência: o que o cliente montou sozinho — usar como base */}
                 {(geradoCliente?.treinoIA || geradoCliente?.nutricaoIA) && (
                   <details className="rounded-lg border border-primary/20 bg-primary/5">
@@ -348,11 +362,11 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
 
                 {/* Criar/gerar cada plano — treino, nutrição e fisioterapia */}
                 <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-                  <PlanoTreinoCard pacienteId={pacienteId} />
+                  <PlanoTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} />
                   <DiretrizTreinoCard pacienteId={pacienteId} />
-                  <PlanoAlimentarCard pacienteId={pacienteId} />
+                  <PlanoAlimentarCard pacienteId={pacienteId} autoGerar={gerarTodos} />
                   <DiretrizNutricionalCard pacienteId={pacienteId} />
-                  <DiretrizLenteCard pacienteId={pacienteId} />
+                  <DiretrizLenteCard pacienteId={pacienteId} autoGerar={gerarTodos} />
                 </Suspense>
               </div>
             </AccordionContent>

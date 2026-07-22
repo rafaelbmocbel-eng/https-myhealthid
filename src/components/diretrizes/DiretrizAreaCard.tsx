@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react';
+import { useState, useEffect, useRef, type ComponentType } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,13 +23,14 @@ export interface DiretrizAreaProps {
   descricaoVazio: string;
   descricaoGerar: string;
   placeholderObjetivo: string;
+  autoGerar?: boolean;
 }
 
 // MOLDE ÚNICO "profissional cria → cliente recebe" das diretrizes por área
 // (nutrição, educação física, ...). A IA gera o rascunho dos dados clínicos;
 // aqui o profissional revisa fase a fase e envia ao portal do cliente.
 export default function DiretrizAreaCard({
-  pacienteId, area, nomeCard, funcaoIA, Icone, corIcone, descricaoVazio, descricaoGerar, placeholderObjetivo,
+  pacienteId, area, nomeCard, funcaoIA, Icone, corIcone, descricaoVazio, descricaoGerar, placeholderObjetivo, autoGerar,
 }: DiretrizAreaProps) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -80,6 +81,15 @@ export default function DiretrizAreaCard({
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao gerar'),
   });
+
+  // "Montar todos os planos": gera a diretriz UMA vez quando ainda não existe.
+  const autoDisparado = useRef(false);
+  useEffect(() => {
+    if (autoGerar && !autoDisparado.current && !diretriz && !gerar.isPending) {
+      autoDisparado.current = true;
+      gerar.mutate();
+    }
+  }, [autoGerar, diretriz]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const enviarPortal = useMutation({
     mutationFn: async (enviar: boolean) => {
