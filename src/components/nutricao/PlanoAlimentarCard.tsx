@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Apple, Sparkles, Loader2, Trash2, Eye, Plus } from 'lucide-react';
+import { Apple, Sparkles, Loader2, Trash2, Eye, Plus, Pencil } from 'lucide-react';
+import PlanoDietaEditor from './PlanoDietaEditor';
 import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
@@ -28,6 +29,7 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar }: Props) {
   const chancela = usePodeChancelar('nutricao');
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<any | null>(null);
+  const [editar, setEditar] = useState<any | null>(null);
   const [form, setForm] = useState({
     objetivo: 'Emagrecimento',
     calorias_alvo: '',
@@ -183,8 +185,11 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar }: Props) {
                   title={!p.aprovado && !chancela.pode ? chancela.motivo : (chancela.viaClinica ? chancela.motivo : undefined)}>
                   {p.aprovado ? 'Ocultar' : 'Liberar'}
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setView(p.plano)}>
+                <Button variant="ghost" size="icon" title="Ver plano" onClick={() => setView(p.plano)}>
                   <Eye className="icon-sm" />
+                </Button>
+                <Button variant="ghost" size="icon" title="Editar refeições" onClick={() => setEditar(p)}>
+                  <Pencil className="icon-sm" />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => excluir.mutate(p.id)}>
                   <Trash2 className="icon-sm text-destructive" />
@@ -280,6 +285,10 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar }: Props) {
           )}
         </DialogContent>
       </Dialog>
+
+      {editar && (
+        <PlanoDietaEditor plano={editar} pacienteId={pacienteId} onClose={() => setEditar(null)} />
+      )}
     </>
   );
 }
