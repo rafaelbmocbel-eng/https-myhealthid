@@ -28,7 +28,7 @@ export default defineConfig(() => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/rbzmojurvypksubeigbt\.supabase\.co\/.*/i,
+            urlPattern: /^https:\/\/zxulglbcxehqplxainmz\.supabase\.co\/.*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "supabase-api",
