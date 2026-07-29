@@ -29,6 +29,7 @@ import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPortalUrl } from '@/utils/linkUrls';
 import { useToast } from '@/hooks/use-toast';
+import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 
 interface Props {
   pacienteId: string;
@@ -54,6 +55,9 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const [salvandoPlano, setSalvandoPlano] = useState(false);
   const [draftTreino, setDraftTreino] = useState<any>(null);
   const [draftNutri, setDraftNutri] = useState<any>(null);
+  // Trava de liberação: só o profissional habilitado (ou clínica) libera cada área.
+  const chancelaTreino = usePodeChancelar('treino');
+  const chancelaNutri = usePodeChancelar('nutricao');
 
   // Gera (ou regenera) as dicas IA deste paciente na hora — e mostra o motivo
   // se a IA não conseguir (ex.: sem MyID concluído, sem evidência, erro).
@@ -156,40 +160,87 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
     },
   });
 
-  // Abre a edição do plano do cliente na própria página bonita.
+  // Plano do PROFISSIONAL em vigor para a página bonita: o liberado (aprovado) ou,
+  // se não houver, o rascunho mais recente. É o que o profissional vê/edita.
+  const profTreino = () => (data?.planosTreino || []).find((p: any) => p.aprovado) || data?.planosTreino?.[0] || null;
+  const profNutri = () => (data?.planosAlim || []).find((p: any) => p.aprovado) || data?.planosAlim?.[0] || null;
+
+  // Conteúdo a mostrar: rascunho em edição > plano do profissional > plano do cliente.
+  const treinoParaMostrar = () => profTreino()?.estrutura || geradoCliente?.treinoIA?.conteudo || { fases: [] };
+  const nutriParaMostrar = () => profNutri()?.plano || geradoCliente?.nutricaoIA || null;
+
+  // Abre a edição partindo do plano em vigor (do profissional, ou do que o cliente montou).
   const iniciarEdicaoPlano = () => {
-    setDraftTreino(geradoCliente?.treinoIA?.conteudo ? JSON.parse(JSON.stringify(geradoCliente.treinoIA.conteudo)) : { fases: [] });
-    setDraftNutri(geradoCliente?.nutricaoIA ? JSON.parse(JSON.stringify(geradoCliente.nutricaoIA)) : { refeicoes: [] });
+    setDraftTreino(JSON.parse(JSON.stringify(treinoParaMostrar())));
+    const nut = nutriParaMostrar();
+    setDraftNutri(nut ? JSON.parse(JSON.stringify(nut)) : { refeicoes: [] });
     setEditandoPlano(true);
   };
 
-  // Salva as alterações do profissional de volta no plano do cliente (planos_ia_cliente).
+  // Salva como RASCUNHO do profissional (planos_treino/planos_alimentares, aprovado=false).
+  // O cliente NÃO vê até o profissional Liberar. Cria a linha se ainda não existir.
   const salvarEdicaoPlano = async () => {
+    if (!user) return;
     setSalvandoPlano(true);
+    const sb: any = supabase;
     try {
-      if (geradoCliente?.treinoIA) {
-        const { error } = await (supabase as any).from('planos_ia_cliente')
-          .update({ conteudo: draftTreino }).eq('paciente_id', pacienteId).eq('tipo', 'treino');
-        if (error) throw error;
+      const temTreino = Array.isArray(draftTreino?.fases) && draftTreino.fases.length > 0;
+      if (temTreino) {
+        const pt = profTreino();
+        if (pt?.id) {
+          // Salvar sempre vira rascunho (aprovado=false): edição nunca chega ao
+          // cliente sem passar pelo Liberar.
+          const { error } = await sb.from('planos_treino').update({ estrutura: draftTreino, titulo: draftTreino?.titulo || pt.titulo, aprovado: false }).eq('id', pt.id);
+          if (error) throw error;
+        } else {
+          const fases = draftTreino.fases;
+          const duracao = fases.reduce((s: number, f: any) => s + (Number(f.semanas) || 0), 0) || 8;
+          const freq = fases.reduce((mx: number, f: any) => Math.max(mx, Array.isArray(f.sessoes) ? f.sessoes.length : 0), 0) || 3;
+          const { error } = await sb.from('planos_treino').insert({
+            terapeuta_id: user.id, paciente_id: pacienteId,
+            titulo: draftTreino?.titulo || geradoCliente?.treinoIA?.titulo || 'Plano de treino',
+            objetivo: 'saude', nivel: 'iniciante',
+            frequencia_semanal: freq, duracao_semanas: duracao,
+            estrutura: draftTreino, aprovado: false,
+          });
+          if (error) throw error;
+        }
       }
       const temNutri = Array.isArray(draftNutri?.refeicoes) && draftNutri.refeicoes.length > 0;
-      if (geradoCliente?.nutricaoIA) {
-        const { error } = await (supabase as any).from('planos_ia_cliente')
-          .update({ conteudo: draftNutri }).eq('paciente_id', pacienteId).eq('tipo', 'nutricao');
-        if (error) throw error;
-      } else if (temNutri) {
-        const { error } = await (supabase as any).from('planos_ia_cliente')
-          .insert({ paciente_id: pacienteId, tipo: 'nutricao', titulo: draftNutri?.titulo || 'Plano alimentar', conteudo: draftNutri });
-        if (error) throw error;
+      if (temNutri) {
+        const pn = profNutri();
+        if (pn?.id) {
+          const { error } = await sb.from('planos_alimentares').update({ plano: draftNutri, titulo: draftNutri?.titulo || pn.titulo, aprovado: false }).eq('id', pn.id);
+          if (error) throw error;
+        } else {
+          const { error } = await sb.from('planos_alimentares').insert({
+            paciente_id: pacienteId, terapeuta_id: user.id,
+            titulo: draftNutri?.titulo || 'Plano alimentar',
+            objetivo: 'Reeducação alimentar',
+            calorias_alvo: draftNutri?.calorias_totais || null,
+            macros_alvo: draftNutri?.macros || null,
+            plano: draftNutri, ativo: true, aprovado: false,
+          });
+          if (error) throw error;
+        }
       }
-      toast({ title: 'Plano atualizado ✅' });
-      qc.invalidateQueries({ queryKey: ['portal-cliente-gerado', pacienteId] });
+      toast({ title: 'Rascunho salvo ✅', description: 'O cliente só vê depois que você Liberar.' });
+      qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
       setEditandoPlano(false);
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message || String(e), variant: 'destructive' });
     } finally {
       setSalvandoPlano(false);
     }
+  };
+
+  // Libera (ou oculta) o plano do profissional para o cliente. Aprovar exige chancela.
+  const liberarPlano = async (tabela: 'planos_treino' | 'planos_alimentares', id: string, aprovar: boolean, podeChancelar: boolean, motivo: string) => {
+    if (aprovar && !podeChancelar) { toast({ title: motivo, variant: 'destructive' }); return; }
+    const { error } = await (supabase as any).from(tabela).update({ aprovado: aprovar }).eq('id', id);
+    if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+    toast({ title: aprovar ? '📲 Liberado para o cliente' : 'Ocultado do cliente' });
+    qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
   };
 
   const { data, isLoading } = useQuery({
@@ -214,8 +265,8 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         sb.from('body_composition').select('*').eq('paciente_id', pacienteId).order('date', { ascending: false }).limit(20),
         sb.from('notificacoes').select('id, titulo, mensagem, lida, created_at, tipo').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(30),
         sb.from('paciente_dicas').select('dicas, gerado_em, terapeuta_id').eq('paciente_id', pacienteId).maybeSingle(),
-        sb.from('planos_treino').select('id, created_at, aprovado, estrutura').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
-        sb.from('planos_alimentares').select('id, created_at, aprovado, calorias_alvo').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
+        sb.from('planos_treino').select('id, created_at, aprovado, estrutura, titulo').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
+        sb.from('planos_alimentares').select('id, created_at, aprovado, calorias_alvo, titulo, plano').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(5),
         sb.from('diretrizes_profissionais').select('area').eq('paciente_id', pacienteId),
       ]);
 
@@ -271,6 +322,11 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
     data.planosAlim.length === 0 ||
     !areasDiretriz.has('educacao_fisica') ||
     !areasDiretriz.has('nutricao');
+
+  // Plano do profissional em vigor (aprovado ou rascunho) + o que mostrar na página bonita.
+  const ptv = profTreino();
+  const pnv = profNutri();
+  const temAlgumPlano = Boolean(ptv || pnv || geradoCliente?.treinoIA || geradoCliente?.nutricaoIA);
 
   const copyLink = () => {
     if (!portalUrl) return;
@@ -381,20 +437,20 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                   </p>
                 )}
 
-                {/* A PÁGINA principal: "Plano que o cliente montou". É aqui, na página
-                    bonita, que o profissional VÊ e EDITA o plano direto — todas as
-                    edições ficam nesta página. */}
-                {(geradoCliente?.treinoIA || geradoCliente?.nutricaoIA) && (
+                {/* A PÁGINA principal: aqui, na página bonita, o profissional VÊ, EDITA e
+                    LIBERA o plano. Editar cria/atualiza um RASCUNHO do profissional
+                    (escondido do cliente); o cliente só vê depois de "Liberar". */}
+                {temAlgumPlano && (
                   <div className="rounded-lg border border-primary/20 bg-primary/5 p-2">
                     <div className="px-1 py-1 flex items-center justify-between gap-2 flex-wrap">
                       <span className="text-[11px] font-bold text-primary flex items-center gap-1.5">
-                        <Dumbbell className="h-3.5 w-3.5" /> Plano que o cliente montou
+                        <Dumbbell className="h-3.5 w-3.5" /> Meu Plano de Treino
                       </span>
                       <div className="flex items-center gap-1.5">
                         {editandoPlano ? (
                           <>
                             <Button size="sm" className="h-7 text-[11px] gap-1.5" disabled={salvandoPlano} onClick={salvarEdicaoPlano}>
-                              {salvandoPlano ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Salvar
+                              {salvandoPlano ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Salvar rascunho
                             </Button>
                             <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" disabled={salvandoPlano} onClick={() => setEditandoPlano(false)}>
                               <X className="h-3 w-3" /> Cancelar
@@ -407,17 +463,50 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                         )}
                       </div>
                     </div>
-                    {editandoPlano && (
+
+                    {/* Liberar para o cliente — por área, com a trava de segurança */}
+                    {!editandoPlano && (ptv || pnv) && (
+                      <div className="flex flex-wrap gap-1.5 px-1 mb-2">
+                        {ptv && (
+                          <Button size="sm" variant={ptv.aprovado ? 'ghost' : 'default'} className="h-7 text-[11px] gap-1.5"
+                            disabled={!ptv.aprovado && (chancelaTreino.loading || !chancelaTreino.pode)}
+                            title={!ptv.aprovado && !chancelaTreino.pode ? chancelaTreino.motivo : undefined}
+                            onClick={() => liberarPlano('planos_treino', ptv.id, !ptv.aprovado, chancelaTreino.pode, chancelaTreino.motivo)}>
+                            <Dumbbell className="h-3 w-3" /> {ptv.aprovado ? 'Ocultar treino' : 'Liberar treino'}
+                          </Button>
+                        )}
+                        {pnv && (
+                          <Button size="sm" variant={pnv.aprovado ? 'ghost' : 'default'} className="h-7 text-[11px] gap-1.5"
+                            disabled={!pnv.aprovado && (chancelaNutri.loading || !chancelaNutri.pode)}
+                            title={!pnv.aprovado && !chancelaNutri.pode ? chancelaNutri.motivo : undefined}
+                            onClick={() => liberarPlano('planos_alimentares', pnv.id, !pnv.aprovado, chancelaNutri.pode, chancelaNutri.motivo)}>
+                            <Apple className="h-3 w-3" /> {pnv.aprovado ? 'Ocultar nutrição' : 'Liberar nutrição'}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
+                    {!editandoPlano && (
                       <p className="text-[10px] text-muted-foreground px-1 mb-2">
-                        Modo edição — ajuste qualquer característica do plano (treino e nutrição) e toque em <strong>Salvar</strong>.
+                        {(ptv && !ptv.aprovado) || (pnv && !pnv.aprovado)
+                          ? '📝 Rascunho — o cliente ainda NÃO vê. Toque em Liberar para enviar.'
+                          : (ptv?.aprovado || pnv?.aprovado)
+                            ? '✅ Liberado — o cliente já vê este plano.'
+                            : 'Plano que o cliente montou. Toque em Editar para criar a sua versão.'}
                       </p>
                     )}
+                    {editandoPlano && (
+                      <p className="text-[10px] text-muted-foreground px-1 mb-2">
+                        Modo edição — ajuste qualquer característica (treino e nutrição). Ao salvar vira <strong>rascunho</strong>; o cliente só vê depois de Liberar.
+                      </p>
+                    )}
+
                     <Suspense fallback={<div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                       <TreinoDocumento
                         nome={pacienteNome}
-                        titulo={geradoCliente?.treinoIA?.titulo}
-                        conteudo={editandoPlano ? draftTreino : (geradoCliente?.treinoIA?.conteudo || {})}
-                        nutricao={editandoPlano ? draftNutri : geradoCliente?.nutricaoIA}
+                        titulo={editandoPlano ? draftTreino?.titulo : (ptv?.titulo || geradoCliente?.treinoIA?.titulo)}
+                        conteudo={editandoPlano ? draftTreino : treinoParaMostrar()}
+                        nutricao={editandoPlano ? draftNutri : nutriParaMostrar()}
                         editando={editandoPlano}
                         onConteudoChange={setDraftTreino}
                         onNutricaoChange={setDraftNutri}
