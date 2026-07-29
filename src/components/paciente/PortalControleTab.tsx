@@ -11,7 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar, Dumbbell, Heart, MessageCircle, DollarSign,
   CalendarDays, ClipboardList, Activity, ExternalLink, Loader2, Smartphone,
-  TrendingUp, Trophy, Apple, Bell, GraduationCap, Stethoscope, Rocket, Sparkles
+  TrendingUp, Trophy, Apple, Bell, GraduationCap, Stethoscope, Rocket, Sparkles,
+  Pencil, Save, X
 } from 'lucide-react';
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
@@ -47,6 +48,12 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const [dicasRecemGeradas, setDicasRecemGeradas] = useState<any[] | null>(null);
   const [usandoBase, setUsandoBase] = useState<null | 'treino' | 'nutricao'>(null);
   const [gerarTodos, setGerarTodos] = useState(false);
+  // Edição do plano do cliente DENTRO da página bonita (a "Plano que o cliente montou").
+  // O profissional ajusta o plano direto ali e salva de volta em planos_ia_cliente.
+  const [editandoPlano, setEditandoPlano] = useState(false);
+  const [salvandoPlano, setSalvandoPlano] = useState(false);
+  const [draftTreino, setDraftTreino] = useState<any>(null);
+  const [draftNutri, setDraftNutri] = useState<any>(null);
 
   // Gera (ou regenera) as dicas IA deste paciente na hora — e mostra o motivo
   // se a IA não conseguir (ex.: sem MyID concluído, sem evidência, erro).
@@ -148,6 +155,42 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
       };
     },
   });
+
+  // Abre a edição do plano do cliente na própria página bonita.
+  const iniciarEdicaoPlano = () => {
+    setDraftTreino(geradoCliente?.treinoIA?.conteudo ? JSON.parse(JSON.stringify(geradoCliente.treinoIA.conteudo)) : { fases: [] });
+    setDraftNutri(geradoCliente?.nutricaoIA ? JSON.parse(JSON.stringify(geradoCliente.nutricaoIA)) : { refeicoes: [] });
+    setEditandoPlano(true);
+  };
+
+  // Salva as alterações do profissional de volta no plano do cliente (planos_ia_cliente).
+  const salvarEdicaoPlano = async () => {
+    setSalvandoPlano(true);
+    try {
+      if (geradoCliente?.treinoIA) {
+        const { error } = await (supabase as any).from('planos_ia_cliente')
+          .update({ conteudo: draftTreino }).eq('paciente_id', pacienteId).eq('tipo', 'treino');
+        if (error) throw error;
+      }
+      const temNutri = Array.isArray(draftNutri?.refeicoes) && draftNutri.refeicoes.length > 0;
+      if (geradoCliente?.nutricaoIA) {
+        const { error } = await (supabase as any).from('planos_ia_cliente')
+          .update({ conteudo: draftNutri }).eq('paciente_id', pacienteId).eq('tipo', 'nutricao');
+        if (error) throw error;
+      } else if (temNutri) {
+        const { error } = await (supabase as any).from('planos_ia_cliente')
+          .insert({ paciente_id: pacienteId, tipo: 'nutricao', titulo: draftNutri?.titulo || 'Plano alimentar', conteudo: draftNutri });
+        if (error) throw error;
+      }
+      toast({ title: 'Plano atualizado ✅' });
+      qc.invalidateQueries({ queryKey: ['portal-cliente-gerado', pacienteId] });
+      setEditandoPlano(false);
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setSalvandoPlano(false);
+    }
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['portal-controle-full', pacienteId],
@@ -338,40 +381,49 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                   </p>
                 )}
 
-                {/* Referência: o que o cliente montou sozinho — usar como base */}
+                {/* A PÁGINA principal: "Plano que o cliente montou". É aqui, na página
+                    bonita, que o profissional VÊ e EDITA o plano direto — todas as
+                    edições ficam nesta página. */}
                 {(geradoCliente?.treinoIA || geradoCliente?.nutricaoIA) && (
-                  <details className="rounded-lg border border-primary/20 bg-primary/5">
-                    <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-bold text-primary flex items-center gap-1.5">
-                      <Dumbbell className="h-3.5 w-3.5" /> Plano que o cliente montou — usar como base
-                    </summary>
-                    <div className="p-2">
-                      <p className="text-[10px] text-muted-foreground mb-2">
-                        Feito pelo próprio cliente. Use como base: copie, ajuste tudo e <strong>Libere</strong> a sua versão.
-                      </p>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {geradoCliente?.treinoIA && (
-                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" disabled={usandoBase !== null} onClick={() => usarComoBase('treino')}>
-                            {usandoBase === 'treino' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Dumbbell className="h-3 w-3" />}
-                            Usar treino como base
-                          </Button>
-                        )}
-                        {geradoCliente?.nutricaoIA && (
-                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" disabled={usandoBase !== null} onClick={() => usarComoBase('nutricao')}>
-                            {usandoBase === 'nutricao' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Apple className="h-3 w-3" />}
-                            Usar nutrição como base
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-2">
+                    <div className="px-1 py-1 flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                        <Dumbbell className="h-3.5 w-3.5" /> Plano que o cliente montou
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {editandoPlano ? (
+                          <>
+                            <Button size="sm" className="h-7 text-[11px] gap-1.5" disabled={salvandoPlano} onClick={salvarEdicaoPlano}>
+                              {salvandoPlano ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Salvar
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" disabled={salvandoPlano} onClick={() => setEditandoPlano(false)}>
+                              <X className="h-3 w-3" /> Cancelar
+                            </Button>
+                          </>
+                        ) : (
+                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" onClick={iniciarEdicaoPlano}>
+                            <Pencil className="h-3 w-3" /> Editar plano
                           </Button>
                         )}
                       </div>
-                      <Suspense fallback={<div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-                        <TreinoDocumento
-                          nome={pacienteNome}
-                          titulo={geradoCliente?.treinoIA?.titulo}
-                          conteudo={geradoCliente?.treinoIA?.conteudo || {}}
-                          nutricao={geradoCliente?.nutricaoIA}
-                        />
-                      </Suspense>
                     </div>
-                  </details>
+                    {editandoPlano && (
+                      <p className="text-[10px] text-muted-foreground px-1 mb-2">
+                        Modo edição — ajuste qualquer característica do plano (treino e nutrição) e toque em <strong>Salvar</strong>.
+                      </p>
+                    )}
+                    <Suspense fallback={<div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                      <TreinoDocumento
+                        nome={pacienteNome}
+                        titulo={geradoCliente?.treinoIA?.titulo}
+                        conteudo={editandoPlano ? draftTreino : (geradoCliente?.treinoIA?.conteudo || {})}
+                        nutricao={editandoPlano ? draftNutri : geradoCliente?.nutricaoIA}
+                        editando={editandoPlano}
+                        onConteudoChange={setDraftTreino}
+                        onNutricaoChange={setDraftNutri}
+                      />
+                    </Suspense>
+                  </div>
                 )}
 
                 {/* UMA caixa só com abas: Treino · Nutrição · Fisio/Clínico. Cada aba
