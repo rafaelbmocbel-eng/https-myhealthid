@@ -356,7 +356,7 @@ Deno.serve(async (req) => {
 
   try {
     try { await requireUser(req); } catch (r) { return r as Response; }
-    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional, patientContext, jobId } = await req.json();
+    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional, patientContext, jobId, appendAudio } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
@@ -454,11 +454,16 @@ Deno.serve(async (req) => {
 
     // ───────────────────────────────────────────────────────────────
     // PASS 1 — Transcrição literal (preserva fala completa, sem resumir)
-    // Só executa quando há áudio E não há transcrição manual prévia válida.
+    // Executa quando há áudio E (não há texto prévio) OU (é um COMPLEMENTO:
+    // appendAudio=true — o áudio é conteúdo NOVO a somar ao texto existente).
+    // Sem isto, ao "Complementar com áudio" a transcrição vinha com o texto
+    // antigo + "(áudio anexado)", o áudio novo era descartado e os achados
+    // não mudavam.
     // ───────────────────────────────────────────────────────────────
     let faithfulTranscript = hasText ? String(transcript).trim() : "";
+    let audioTranscrito = false;
 
-    if (hasAudio && !hasText) {
+    if (hasAudio && (!hasText || appendAudio)) {
       try {
         const pass1Ctrl = new AbortController();
         const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 270_000);
@@ -489,7 +494,11 @@ Deno.serve(async (req) => {
           const tData = await transcribeRes.json();
           const txt = tData?.choices?.[0]?.message?.content;
           if (typeof txt === "string" && txt.trim().length > 0) {
-            faithfulTranscript = txt.trim();
+            const novo = txt.trim();
+            // Complemento: soma a transcrição do áudio novo ao texto existente
+            // (sem perder o que já havia). Fluxo normal só-áudio: substitui.
+            faithfulTranscript = (hasText && appendAudio) ? `${faithfulTranscript}\n\n${novo}` : novo;
+            audioTranscrito = true;
             console.log(`[voice-assessment] Faithful transcript ok (${faithfulTranscript.length} chars)`);
           } else {
             console.warn("[voice-assessment] Pass 1 returned no text content");
@@ -586,7 +595,9 @@ Deno.serve(async (req) => {
     // PASS 2 — Avaliação clínica estruturada
     // ───────────────────────────────────────────────────────────────
     const userContent: any[] = [];
-    const attachAudioToPass2 = hasAudio && !faithfulTranscript;
+    // Anexa o áudio à análise quando não há transcrição OU quando é um complemento
+    // cujo áudio não pôde ser transcrito (fallback: o modelo ao menos ouve o áudio novo).
+    const attachAudioToPass2 = hasAudio && (!faithfulTranscript || (appendAudio && !audioTranscrito));
 
     if (attachAudioToPass2) {
       userContent.push({

@@ -59,6 +59,9 @@ export async function reprocessarComplemento(
   if (input.audioBase64) {
     body.audioBase64 = input.audioBase64;
     body.audioMimeType = input.audioMimeType || 'audio/webm';
+    // Complemento: o áudio é conteúdo NOVO — a edge function precisa transcrevê-lo e
+    // somar ao texto existente (senão o áudio é descartado e os achados não mudam).
+    body.appendAudio = true;
   }
 
   const { data, error } = await supabase.functions.invoke('voice-assessment', { body });

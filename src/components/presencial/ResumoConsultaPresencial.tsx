@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, Stethoscope, Wand2, AlertCircle, Loader2, Mic } from 'lucide-react';
+import { Sparkles, Stethoscope, Wand2, AlertCircle, Loader2, Mic, Plus } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import { REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -310,8 +310,31 @@ export default function ResumoConsultaPresencial({
         </div>
       )}
 
+      {/* Já existe avaliação: oferece INICIAR UMA NOVA (separada), além de complementar */}
+      {!loadingAval && latestAval && !mostrarNovoRegistro && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 gap-1.5 w-full sm:w-auto"
+          onClick={() => setMostrarNovoRegistro(true)}
+        >
+          <Plus className="h-4 w-4 shrink-0" />
+          Nova avaliação
+        </Button>
+      )}
+
       {!loadingAval && (!latestAval || mostrarNovoRegistro) && (
         <div className="space-y-2">
+          {latestAval && mostrarNovoRegistro && (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold text-primary inline-flex items-center gap-1">
+                <Mic className="icon-xs shrink-0" /> Nova avaliação
+              </p>
+              <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setMostrarNovoRegistro(false)}>
+                Cancelar
+              </Button>
+            </div>
+          )}
           <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
             <Sparkles className="icon-xs shrink-0" />
             A IA estrutura a avaliação e atualiza o Avatar Clínico automaticamente.
@@ -321,7 +344,7 @@ export default function ResumoConsultaPresencial({
             serviceType={serviceType}
             pacienteId={pacienteId}
             patientName={patientName}
-            onAssessmentComplete={onAssessmentComplete}
+            onAssessmentComplete={() => { setMostrarNovoRegistro(false); onAssessmentComplete?.(); }}
             onPainExtracted={mostraAvatar ? handlePainExtracted : undefined}
             painRegionsCatalog={mostraAvatar ? painRegionsCatalog : undefined}
             perfilProfissional={lente?.id}
