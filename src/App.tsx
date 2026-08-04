@@ -32,6 +32,7 @@ const DashboardPreview = lazyWithRetry(() => import("./pages/DashboardPreview"))
 
 const Agenda = lazyWithRetry(() => import("./pages/Agenda"));
 const Pacientes = lazyWithRetry(() => import("./pages/Pacientes"));
+const ControleCassi = lazyWithRetry(() => import("./pages/ControleCassi"));
 const PacientePerfil = lazyWithRetry(() => import("./pages/PacientePerfil"));
 const AvaliacaoPublica = lazyWithRetry(() => import("./pages/AvaliacaoPublica"));
 const AgendaPublica = lazyWithRetry(() => import("./pages/AgendaPublica"));
@@ -165,6 +166,7 @@ const App = () => (
                 <Route path="/agenda" element={<ProfessionalGuard><Agenda /></ProfessionalGuard>} />
                 <Route path="/hoje" element={<ProfessionalGuard><Hoje /></ProfessionalGuard>} />
                 <Route path="/pacientes" element={<ProfessionalGuard><Pacientes /></ProfessionalGuard>} />
+                <Route path="/controle-cassi" element={<ProfessionalGuard><ControleCassi /></ProfessionalGuard>} />
                 <Route path="/pendencias" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/vitrine" element={<ProfessionalGuard><Vitrine /></ProfessionalGuard>} />
                 <Route path="/pacientes/:id" element={<ProfessionalGuard><PacientePerfil /></ProfessionalGuard>} />

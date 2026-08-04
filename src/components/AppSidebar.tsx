@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   CalendarDays, Users,
   Settings, LogOut, User, MessageCircle,
-  Sun, DollarSign, Store, Dumbbell, type LucideIcon,
+  Sun, DollarSign, Store, Dumbbell, ClipboardList, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,7 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },
   { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign },
+  { label: 'Controle CASSI', href: '/controle-cassi', icon: ClipboardList },
   { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true, separatorAfter: true },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
