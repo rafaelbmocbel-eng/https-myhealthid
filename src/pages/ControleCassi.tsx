@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
@@ -19,6 +19,7 @@ interface Paciente { id: string; nome: string; sobrenome: string | null; }
 // Rascunho do formulário de guia.
 interface DraftGuia {
   id?: string;
+  matricula: string;
   numero_guia: string;
   data_pedido: string;
   data_resposta: string;
@@ -38,6 +39,7 @@ export default function ControleCassi() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
+  const [view, setView] = useState<'painel' | 'planilha'>('painel');
 
   // Pacientes CASSI do profissional.
   const { data: pacientes = [], isLoading: loadingPac } = useQuery({
@@ -62,12 +64,12 @@ export default function ControleCassi() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('guias_cassi')
-        .select('*')
+        .select('*, pacientes(nome, sobrenome)')
         .eq('terapeuta_id', user!.id)
         .order('data_pedido', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as GuiaCassi[];
+      return (data || []) as Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
     },
     enabled: !!user,
   });
@@ -100,12 +102,27 @@ export default function ControleCassi() {
             <ClipboardList className="h-4 w-4 text-primary" />
             <span className="text-sm font-bold">Controle CASSI</span>
           </div>
+          <div className="ml-auto flex items-center gap-1 rounded-lg bg-muted p-0.5">
+            <button onClick={() => setView('painel')}
+              className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'painel' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+              Painel
+            </button>
+            <button onClick={() => setView('planilha')}
+              className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'planilha' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+              Planilha
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto p-3 space-y-4">
+      <div className={`${view === 'planilha' ? 'max-w-5xl' : 'max-w-3xl'} mx-auto p-3 space-y-4`}>
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : view === 'planilha' ? (
+          <PlanilhaGuias
+            guias={guias}
+            onAbrir={(g) => setEditando({ paciente: { id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null }, guia: g })}
+          />
         ) : pacientes.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -199,6 +216,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
   const base = guia || ultimaGuia;
   const [d, setD] = useState<DraftGuia>(() => ({
     id: guia?.id,
+    matricula: (guia ?? base)?.matricula || '',
     numero_guia: guia?.numero_guia || '',
     data_pedido: guia?.data_pedido || hojeISO(),
     data_resposta: guia?.data_resposta || '',
@@ -286,6 +304,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
       const sb: any = supabase;
       const codigos = CODIGOS_CASSI.filter((c) => d.codigos.includes(c.codigo)).map((c) => ({ codigo: c.codigo, descricao: c.descricao }));
       const payload = {
+        matricula: d.matricula || null,
         numero_guia: d.numero_guia || null,
         data_pedido: d.data_pedido || hojeISO(),
         data_resposta: d.data_resposta || null,
@@ -345,6 +364,10 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Nº da guia</label>
               <Input value={d.numero_guia} onChange={(e) => set('numero_guia', e.target.value)} placeholder="ex: 123456" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Matrícula</label>
+              <Input value={d.matricula} onChange={(e) => set('matricula', e.target.value)} placeholder="matrícula CASSI" />
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Responsável técnico</label>
@@ -487,5 +510,119 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type GuiaComPaciente = GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } };
+
+const GUIA_STATUS_CLS: Record<GuiaStatus, string> = {
+  aguardando: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  ativa: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  finalizada: 'bg-muted text-muted-foreground',
+  cancelada: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+};
+
+function fmtData(d: string | null): string {
+  if (!d) return '—';
+  const [y, m, dd] = d.slice(0, 10).split('-');
+  return `${dd}/${m}/${y}`;
+}
+
+// Visão PANORÂMICA — todas as guias em tabela, com busca, filtro de status e CSV.
+function PlanilhaGuias({ guias, onAbrir }: { guias: GuiaComPaciente[]; onAbrir: (g: GuiaComPaciente) => void }) {
+  const [busca, setBusca] = useState('');
+  const [statusFiltro, setStatusFiltro] = useState<'todos' | GuiaStatus>('todos');
+
+  const nomeDe = (g: GuiaComPaciente) => `${g.pacientes?.nome || ''} ${g.pacientes?.sobrenome || ''}`.trim() || '—';
+  const codigosDe = (g: GuiaComPaciente) => (g.codigos || []).map((c) => c.codigo).join(', ');
+
+  const filtradas = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return guias.filter((g) => {
+      if (statusFiltro !== 'todos' && g.status !== statusFiltro) return false;
+      if (!q) return true;
+      return nomeDe(g).toLowerCase().includes(q) || (g.matricula || '').toLowerCase().includes(q);
+    });
+  }, [guias, busca, statusFiltro]);
+
+  const exportarCSV = () => {
+    const header = ['Paciente', 'Matrícula', 'Status', 'Códigos', 'Autorização', 'Avaliação', 'Realizadas', 'Autorizadas'];
+    const cell = (v: unknown) => {
+      const s = String(v ?? '');
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const linhas = filtradas.map((g) => [
+      nomeDe(g), g.matricula || '', g.status, codigosDe(g),
+      fmtData(g.data_resposta), fmtData(g.data_pedido),
+      g.sessoes_realizadas, g.sessoes_autorizadas,
+    ]);
+    const csv = [header, ...linhas].map((r) => r.map(cell).join(';')).join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `guias-cassi-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h1 className="text-lg font-bold">Planilha</h1>
+          <p className="text-[11px] text-muted-foreground">Todas as guias em tabela. Busque, filtre e exporte.</p>
+        </div>
+        <Button size="sm" className="gap-1.5" onClick={exportarCSV} disabled={filtradas.length === 0}>
+          <Download className="h-4 w-4" /> Exportar CSV
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <Input className="h-9 flex-1 min-w-[180px]" placeholder="Buscar paciente ou matrícula…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <Select value={statusFiltro} onValueChange={(v) => setStatusFiltro(v as 'todos' | GuiaStatus)}>
+          <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os status</SelectItem>
+            <SelectItem value="aguardando">Aguardando</SelectItem>
+            <SelectItem value="ativa">Ativa</SelectItem>
+            <SelectItem value="finalizada">Finalizada</SelectItem>
+            <SelectItem value="cancelada">Cancelada</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-[12px] text-muted-foreground shrink-0">{filtradas.length} guia(s)</span>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-border/50 bg-background">
+        <table className="w-full text-[12.5px]">
+          <thead className="bg-muted/50 text-[10px] uppercase text-muted-foreground">
+            <tr>
+              <th className="text-left font-semibold px-3 py-2">Paciente</th>
+              <th className="text-left font-semibold px-3 py-2">Matrícula</th>
+              <th className="text-left font-semibold px-3 py-2">Status</th>
+              <th className="text-left font-semibold px-3 py-2">Códigos</th>
+              <th className="text-left font-semibold px-3 py-2 whitespace-nowrap">Sessões</th>
+              <th className="text-left font-semibold px-3 py-2 whitespace-nowrap">Autorização</th>
+              <th className="text-left font-semibold px-3 py-2 whitespace-nowrap">Avaliação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtradas.length === 0 ? (
+              <tr><td colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma guia.</td></tr>
+            ) : filtradas.map((g) => (
+              <tr key={g.id} className="border-t border-border/40 hover:bg-muted/30 cursor-pointer" onClick={() => onAbrir(g)}>
+                <td className="px-3 py-2 font-medium">{nomeDe(g)}</td>
+                <td className="px-3 py-2 tabular-nums text-muted-foreground whitespace-nowrap">{g.matricula || '—'}</td>
+                <td className="px-3 py-2"><Badge className={`text-[10px] ${GUIA_STATUS_CLS[g.status]}`}>{g.status}</Badge></td>
+                <td className="px-3 py-2 whitespace-nowrap">{codigosDe(g) || '—'}</td>
+                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{g.sessoes_realizadas}/{g.sessoes_autorizadas}</td>
+                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{fmtData(g.data_resposta)}</td>
+                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{fmtData(g.data_pedido)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

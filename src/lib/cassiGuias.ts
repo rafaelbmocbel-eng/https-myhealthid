@@ -21,6 +21,7 @@ export type GuiaStatus = 'aguardando' | 'ativa' | 'finalizada' | 'cancelada';
 export interface GuiaCassi {
   id: string;
   paciente_id: string;
+  matricula: string | null;
   numero_guia: string | null;
   data_pedido: string;
   data_resposta: string | null;
