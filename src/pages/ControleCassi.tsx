@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { gerarDatasSessoes } from '@/lib/feriados';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle } from 'lucide-react';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
@@ -214,6 +215,71 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
   const toggleCodigo = (codigo: string) =>
     setD((p) => ({ ...p, codigos: p.codigos.includes(codigo) ? p.codigos.filter((c) => c !== codigo) : [...p.codigos, codigo] }));
 
+  const qc = useQueryClient();
+
+  // Fase 2 — sessões (agendamentos REAIS) ligadas a esta guia.
+  const { data: sessoes = [] } = useQuery({
+    queryKey: ['guia-sessoes', guia?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('agendamentos')
+        .select('id, data_inicio, status').eq('guia_cassi_id', guia!.id)
+        .order('data_inicio', { ascending: true });
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; data_inicio: string; status: string }>;
+    },
+    enabled: !!guia?.id,
+  });
+
+  // Contagem por DIAS DISTINTOS (1 dia = 1 sessão), como o PDF exige.
+  const geradas = useMemo(() => new Set(sessoes.map((s) => s.data_inicio.slice(0, 10))).size, [sessoes]);
+  const realizadas = useMemo(() => {
+    const agora = Date.now();
+    return new Set(
+      sessoes.filter((s) => new Date(s.data_inicio).getTime() < agora && s.status !== 'cancelado')
+        .map((s) => s.data_inicio.slice(0, 10)),
+    ).size;
+  }, [sessoes]);
+
+  const [gerForm, setGerForm] = useState({ inicio: guia?.data_resposta || guia?.data_pedido || hojeISO(), horario: '08:00' });
+
+  const gerarAgenda = useMutation({
+    mutationFn: async () => {
+      if (!user || !guia?.id) throw new Error('Salve a guia antes de gerar a agenda.');
+      const faltam = Math.max(0, (guia.sessoes_autorizadas || 0) - geradas);
+      if (faltam <= 0) throw new Error('Todas as sessões autorizadas já estão na agenda.');
+      const [hh, mm] = (gerForm.horario || '08:00').split(':').map((n) => parseInt(n, 10));
+      const datas = gerarDatasSessoes(new Date(`${gerForm.inicio}T00:00:00`), faltam, [1, 3, 5]);
+      const rows = datas.map((dt) => {
+        const ini = new Date(dt); ini.setHours(hh || 8, mm || 0, 0, 0);
+        const fim = new Date(ini.getTime() + 45 * 60000);
+        return {
+          terapeuta_id: user.id, paciente_id: paciente.id,
+          data_inicio: ini.toISOString(), data_fim: fim.toISOString(),
+          status: 'confirmado', tipo_atendimento: 'retorno',
+          titulo: `Sessão CASSI${guia.numero_guia ? ` · guia ${guia.numero_guia}` : ''}`,
+          guia_cassi_id: guia.id, cor: '#0ea5e9',
+        };
+      });
+      const { error } = await (supabase as any).from('agendamentos').insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success('Agenda de sessões gerada'); qc.invalidateQueries({ queryKey: ['guia-sessoes', guia?.id] }); },
+    onError: (e: any) => toast.error(e.message || 'Erro ao gerar agenda'),
+  });
+
+  // Mantém a contagem de realizadas (datas que já passaram) sincronizada na guia,
+  // para o selo de status ficar correto. O ref evita repetir a mesma escrita.
+  const sincRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (guia?.id && geradas > 0 && realizadas !== guia.sessoes_realizadas && sincRef.current !== realizadas) {
+      sincRef.current = realizadas;
+      (supabase as any).from('guias_cassi')
+        .update({ sessoes_realizadas: realizadas, updated_at: new Date().toISOString() })
+        .eq('id', guia.id)
+        .then(() => qc.invalidateQueries({ queryKey: ['guias-cassi'] }));
+    }
+  }, [realizadas, geradas, guia?.id, guia?.sessoes_realizadas, qc]);
+
   const salvar = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
@@ -224,7 +290,8 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
         data_pedido: d.data_pedido || hojeISO(),
         data_resposta: d.data_resposta || null,
         sessoes_autorizadas: Number(d.sessoes_autorizadas) || 0,
-        sessoes_realizadas: Number(d.sessoes_realizadas) || 0,
+        // Se há sessões na agenda, a contagem de realizadas vem delas (automática).
+        sessoes_realizadas: geradas > 0 ? realizadas : (Number(d.sessoes_realizadas) || 0),
         diagnostico: d.diagnostico || null,
         responsavel_tecnico: d.responsavel_tecnico || null,
         codigos,
@@ -262,7 +329,8 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     onError: (e: any) => toast.error(e.message || 'Erro ao excluir'),
   });
 
-  const restantes = sessoesRestantes({ sessoes_autorizadas: Number(d.sessoes_autorizadas) || 0, sessoes_realizadas: Number(d.sessoes_realizadas) || 0 });
+  const realizadasEfetivas = geradas > 0 ? realizadas : (Number(d.sessoes_realizadas) || 0);
+  const restantes = sessoesRestantes({ sessoes_autorizadas: Number(d.sessoes_autorizadas) || 0, sessoes_realizadas: realizadasEfetivas });
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -297,8 +365,13 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sessões realizadas</label>
-              <Input type="number" min={0} value={d.sessoes_realizadas} onChange={(e) => set('sessoes_realizadas', parseInt(e.target.value) || 0)} />
-              <p className="text-[10px] text-muted-foreground mt-0.5">Restam {restantes}</p>
+              <Input type="number" min={0}
+                value={geradas > 0 ? realizadas : d.sessoes_realizadas}
+                disabled={geradas > 0}
+                onChange={(e) => set('sessoes_realizadas', parseInt(e.target.value) || 0)} />
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {geradas > 0 ? 'Conta automática pela agenda · ' : ''}Restam {restantes}
+              </p>
             </div>
           </div>
 
@@ -341,6 +414,61 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Observações</label>
             <Textarea rows={2} value={d.observacoes} onChange={(e) => set('observacoes', e.target.value)} />
           </div>
+
+          {/* Agenda de sessões (fase 2) — só para guia já salva */}
+          {editandoExistente ? (
+            <div className="rounded-lg border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/20 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-sky-600" />
+                <span className="text-sm font-bold text-sky-800 dark:text-sky-300">Agenda de sessões</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {geradas} de {d.sessoes_autorizadas} na agenda · <strong>{realizadas} realizadas</strong>. As sessões viram
+                agendamentos reais (aparecem na Agenda) e as realizadas contam sozinhas pelas datas que já passaram.
+              </p>
+
+              {geradas < (Number(d.sessoes_autorizadas) || 0) && (
+                <div className="flex flex-wrap items-end gap-2">
+                  <div>
+                    <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Início</label>
+                    <Input type="date" className="h-8" value={gerForm.inicio} onChange={(e) => setGerForm((p) => ({ ...p, inicio: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Horário</label>
+                    <Input type="time" className="h-8 w-24" value={gerForm.horario} onChange={(e) => setGerForm((p) => ({ ...p, horario: e.target.value }))} />
+                  </div>
+                  <Button size="sm" className="h-8 gap-1.5" disabled={gerarAgenda.isPending} onClick={() => gerarAgenda.mutate()}>
+                    {gerarAgenda.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="h-3.5 w-3.5" />}
+                    Gerar {Math.max(0, (Number(d.sessoes_autorizadas) || 0) - geradas)} sessões (seg/qua/sex)
+                  </Button>
+                </div>
+              )}
+
+              {sessoes.length > 0 && (
+                <div className="max-h-40 overflow-y-auto space-y-1 pt-1">
+                  {sessoes.map((s) => {
+                    const passou = new Date(s.data_inicio).getTime() < Date.now() && s.status !== 'cancelado';
+                    return (
+                      <div key={s.id} className="flex items-center gap-2 text-[12px]">
+                        {passou
+                          ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          : <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                        <span className={passou ? 'text-foreground' : 'text-muted-foreground'}>
+                          {new Date(s.data_inicio).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                          {' · '}{new Date(s.data_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {s.status === 'cancelado' && <span className="text-[10px] text-destructive">cancelada</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground rounded-lg border border-dashed border-border/60 p-2">
+              💡 Salve a guia e reabra em <strong>Ver guia</strong> para gerar a agenda de sessões (dias úteis).
+            </p>
+          )}
 
           <div className="flex gap-2 pt-1">
             {editandoExistente && (
