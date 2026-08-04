@@ -27,6 +27,7 @@ import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { comprimirImagem } from '@/lib/comprimirImagem';
 import { toast } from 'sonner';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -469,9 +470,12 @@ function ChatPanel({ conversa, userId, onBack, onCadastrar, onExcluir }: { conve
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Não autenticado');
-      const ext  = file.name.split('.').pop() || (mediaType === 'image' ? 'jpg' : 'pdf');
+      // Imagem: comprime antes de subir (documento/PDF sobe intacto). Reduz o peso
+      // no Storage — as mídias do Zap ficam guardadas e antes iam em resolução cheia.
+      const enviarBlob: Blob = mediaType === 'image' ? await comprimirImagem(file, 1280) : file;
+      const ext  = mediaType === 'image' ? 'jpg' : (file.name.split('.').pop() || 'pdf');
       const path = `${user.id}/${conversa.id}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('whatsapp-media').upload(path, file, { upsert: false });
+      const { error: upErr } = await supabase.storage.from('whatsapp-media').upload(path, enviarBlob, { upsert: false, contentType: mediaType === 'image' ? 'image/jpeg' : file.type || undefined });
       if (upErr) throw upErr;
       const { data: { publicUrl } } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
       const caption = texto.trim() || undefined;

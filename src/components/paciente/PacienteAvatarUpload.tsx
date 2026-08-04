@@ -5,6 +5,7 @@ import { Camera, Loader2, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { comprimirImagem } from '@/lib/comprimirImagem';
 
 interface Props {
   /** id usado como pasta no bucket: user.id (paciente) ou paciente.id (profissional) */
@@ -50,11 +51,13 @@ export default function PacienteAvatarUpload({
     }
     setLoading(true);
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const path = `${folderId}/avatar-${Date.now()}.${ext}`;
+      // Comprime e usa um caminho FIXO (avatar.jpg): o upsert sobrescreve a foto
+      // anterior em vez de deixar um arquivo novo a cada troca (antes acumulava).
+      const blob = await comprimirImagem(file);
+      const path = `${folderId}/avatar.jpg`;
       const { error: upErr } = await supabase.storage
         .from('paciente-avatars')
-        .upload(path, file, { upsert: true, cacheControl: '3600' });
+        .upload(path, blob, { upsert: true, cacheControl: '3600', contentType: 'image/jpeg' });
       if (upErr) throw upErr;
       const { data } = supabase.storage.from('paciente-avatars').getPublicUrl(path);
       const publicUrl = `${data.publicUrl}?v=${Date.now()}`;

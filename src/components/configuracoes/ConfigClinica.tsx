@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { comprimirImagem } from '@/lib/comprimirImagem';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -78,12 +79,14 @@ export default function ConfigClinica() {
     }
     setUploadingLogo(true);
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
-      const path = `${user.id}/logo-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('clinica-assets').upload(path, file, { upsert: true });
+      // Comprime e usa caminho FIXO (logo.jpg): sobrescreve o logo anterior em vez
+      // de deixar um arquivo novo a cada troca. Cache-bust no ?v= para atualizar na tela.
+      const blob = await comprimirImagem(file, 512);
+      const path = `${user.id}/logo.jpg`;
+      const { error: upErr } = await supabase.storage.from('clinica-assets').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
       if (upErr) throw upErr;
       const { data: urlData } = supabase.storage.from('clinica-assets').getPublicUrl(path);
-      update('logo_url', urlData.publicUrl);
+      update('logo_url', `${urlData.publicUrl}?v=${Date.now()}`);
       toast({ title: 'Logo enviado! Salve as configurações para confirmar.' });
     } catch (e: any) {
       toast({ title: 'Erro ao enviar logo', description: e.message, variant: 'destructive' });
