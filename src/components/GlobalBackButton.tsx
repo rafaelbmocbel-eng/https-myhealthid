@@ -27,6 +27,7 @@ const HIDDEN_PREFIXES = [
   '/evento/',
   '/cadastro/',
   '/pacientes/', // perfil já tem botão voltar no header do card
+  '/controle-cassi', // já tem "Voltar" no header próprio
 ];
 
 /**

@@ -93,7 +93,7 @@ export default function ControleCassi() {
 
   return (
     <div className="min-h-[100dvh] bg-muted/30">
-      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur border-b border-border/50">
+      <div className="sticky top-0 z-20 bg-background/90 backdrop-blur border-b border-border/50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="max-w-3xl mx-auto px-3 py-2.5 flex items-center gap-2">
           <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Voltar
