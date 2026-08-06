@@ -26,6 +26,7 @@ import {
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { CODIGOS_CASSI } from '@/lib/cassiGuias';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { exportToCsv } from '@/utils/exportCsv';
 import { shareBoasVindas, shareLembreteRetorno, sharePosAlta, waUrl } from '@/utils/whatsapp';
@@ -111,6 +112,8 @@ interface FormData {
   tipo_pagamento: TipoPagamento;
   plano_saude: string;
   convenio_id: string;
+  carteirinha: string;
+  codigos_cassi: string[];
   lgpd_aceite: boolean;
   contato_emergencia_nome: string;
   contato_emergencia_telefone: string;
@@ -131,6 +134,8 @@ const emptyForm: FormData = {
   tipo_pagamento: 'particular',
   plano_saude: '',
   convenio_id: '',
+  carteirinha: '',
+  codigos_cassi: [],
   lgpd_aceite: false,
   contato_emergencia_nome: '',
   contato_emergencia_telefone: '',
@@ -537,6 +542,8 @@ export default function Pacientes() {
       tipo_pagamento: ((p as any).tipo_pagamento as TipoPagamento) || 'particular',
       plano_saude: (p as any).plano_saude || '',
       convenio_id: (p as any).convenio_id || '',
+      carteirinha: (p as any).carteirinha || '',
+      codigos_cassi: Array.isArray((p as any).codigos_cassi) ? (p as any).codigos_cassi : [],
       lgpd_aceite: !!(p as any).lgpd_aceite_em,
       contato_emergencia_nome: (p as any).contato_emergencia_nome || '',
       contato_emergencia_telefone: (p as any).contato_emergencia_telefone || '',
@@ -591,6 +598,9 @@ export default function Pacientes() {
         tipo_pagamento: form.tipo_pagamento,
         convenio_id: convenioSel?.id || null,
         plano_saude: convenioSel?.nome || null,
+        // CASSI: carteirinha + códigos habituais (também editáveis pelo Controle CASSI).
+        carteirinha: /cassi/i.test(convenioSel?.nome || '') ? (form.carteirinha.trim() || null) : null,
+        codigos_cassi: /cassi/i.test(convenioSel?.nome || '') ? form.codigos_cassi : [],
       };
       if (!modal.paciente) {
         payload.origem = form.origem_lead || 'cadastro_manual';
@@ -1468,6 +1478,32 @@ export default function Pacientes() {
                   <p className="text-[10px] text-muted-foreground">
                     O valor e o repasse desse paciente serão preenchidos automaticamente em cada sessão.
                   </p>
+
+                  {/* CASSI: carteirinha + códigos habituais (também editáveis no Controle CASSI) */}
+                  {/cassi/i.test(convenios.find((c: any) => c.id === form.convenio_id)?.nome || '') && (
+                    <div className="pt-2 mt-2 space-y-2 border-t border-border/40">
+                      <div>
+                        <Label className="text-xs">Carteirinha CASSI</Label>
+                        <Input value={form.carteirinha} onChange={e => setForm(f => ({ ...f, carteirinha: e.target.value }))} placeholder="nº da carteirinha" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Códigos habituais</Label>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {CODIGOS_CASSI.map(c => {
+                            const on = form.codigos_cassi.includes(c.codigo);
+                            return (
+                              <button type="button" key={c.codigo}
+                                onClick={() => setForm(f => ({ ...f, codigos_cassi: on ? f.codigos_cassi.filter(x => x !== c.codigo) : [...f.codigos_cassi, c.codigo] }))}
+                                className={cn('text-[11px] px-2 py-1 rounded-full border', on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground')}>
+                                {c.codigo} · {c.descricao}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">Pré-preenchem as guias novas deste cliente no Controle CASSI.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

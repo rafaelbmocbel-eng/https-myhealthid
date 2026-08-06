@@ -14,7 +14,7 @@ import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertT
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -49,7 +49,7 @@ export default function ControleCassi() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         .eq('plano_saude', 'CASSI')
@@ -136,7 +136,7 @@ export default function ControleCassi() {
         ) : view === 'planilha' ? (
           <PlanilhaGuias
             guias={guias}
-            onAbrir={(g) => setEditando({ paciente: { id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null, email: null, telefone: null, carteirinha: null }, guia: g })}
+            onAbrir={(g) => setEditando({ paciente: { id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null, email: null, telefone: null, carteirinha: null, codigos_cassi: [] }, guia: g })}
           />
         ) : (
           <>
@@ -280,7 +280,8 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     sessoes_realizadas: guia?.sessoes_realizadas ?? 0,
     diagnostico: (guia ?? base)?.diagnostico || '',
     responsavel_tecnico: (guia ?? base)?.responsavel_tecnico || '',
-    codigos: (guia ?? base)?.codigos?.map((c) => c.codigo) || ['012'],
+    codigos: (guia ?? base)?.codigos?.map((c) => c.codigo)
+      || (paciente.codigos_cassi?.length ? paciente.codigos_cassi : ['012']),
     status: guia?.status || 'aguardando',
     observacoes: guia?.observacoes || '',
   }));
@@ -698,7 +699,9 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
     email: paciente?.email || '',
     telefone: paciente?.telefone || '',
   }));
+  const [codigos, setCodigos] = useState<string[]>(paciente?.codigos_cassi || []);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const toggleCod = (c: string) => setCodigos((p) => p.includes(c) ? p.filter((x) => x !== c) : [...p, c]);
 
   const salvar = useMutation({
     mutationFn: async () => {
@@ -711,6 +714,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
         carteirinha: f.carteirinha.trim() || null,
         email: f.email.trim() || null,
         telefone: f.telefone.replace(/\D/g, '') || null,
+        codigos_cassi: codigos,
       };
       if (editando) {
         const { error } = await sb.from('pacientes').update(payload).eq('id', paciente!.id);
@@ -749,6 +753,20 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Carteirinha CASSI</label>
             <Input value={f.carteirinha} onChange={(e) => set('carteirinha', e.target.value)} placeholder="nº da carteirinha" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Códigos habituais</label>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {CODIGOS_CASSI.map((c) => {
+                const on = codigos.includes(c.codigo);
+                return (
+                  <button type="button" key={c.codigo} onClick={() => toggleCod(c.codigo)}
+                    className={`text-[11px] px-2 py-1 rounded-full border ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
+                    {c.codigo} · {c.descricao}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
