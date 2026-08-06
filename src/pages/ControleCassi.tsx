@@ -10,11 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -40,14 +40,16 @@ export default function ControleCassi() {
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
   const [view, setView] = useState<'painel' | 'planilha'>('painel');
+  const [busca, setBusca] = useState('');
+  const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
 
   // Pacientes CASSI do profissional.
   const { data: pacientes = [], isLoading: loadingPac } = useQuery({
     queryKey: ['cassi-pacientes', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome')
+        .select('id, nome, sobrenome, email, telefone, carteirinha')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         .eq('plano_saude', 'CASSI')
@@ -88,6 +90,19 @@ export default function ControleCassi() {
     }), [pacientes, guiaPorPaciente]);
 
   const pedidosDoMes = useMemo(() => linhas.filter((l) => precisaNovaGuia(l.guia)), [linhas]);
+  const guiasAtivas = useMemo(() => guias.filter((g) => g.status === 'ativa').length, [guias]);
+
+  // Filtro de busca (nome, carteirinha ou telefone).
+  const linhasFiltradas = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    if (!q) return linhas;
+    return linhas.filter((l) => {
+      const p = l.paciente;
+      return `${p.nome} ${p.sobrenome || ''}`.toLowerCase().includes(q)
+        || (p.carteirinha || '').toLowerCase().includes(q)
+        || (p.telefone || '').toLowerCase().includes(q);
+    });
+  }, [linhas, busca]);
 
   const loading = loadingPac || loadingGuias;
 
@@ -121,25 +136,45 @@ export default function ControleCassi() {
         ) : view === 'planilha' ? (
           <PlanilhaGuias
             guias={guias}
-            onAbrir={(g) => setEditando({ paciente: { id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null }, guia: g })}
+            onAbrir={(g) => setEditando({ paciente: { id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null, email: null, telefone: null, carteirinha: null }, guia: g })}
           />
-        ) : pacientes.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Nenhum paciente com plano CASSI.</p>
-            <p className="text-[11px] mt-1">Marque o paciente como CASSI no cadastro para ele aparecer aqui.</p>
-          </div>
         ) : (
           <>
-            {/* Pedidos do mês — fila de quem precisa de guia nova */}
-            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <span className="text-sm font-bold text-amber-800 dark:text-amber-300">Pedidos do mês ({pedidosDoMes.length})</span>
+            {/* Resumo + ações (a "primeira página") */}
+            <div className="rounded-xl border border-border/50 bg-background p-3 space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-5">
+                  <div>
+                    <p className="text-2xl font-black tabular-nums leading-none">{pacientes.length}</p>
+                    <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Clientes CASSI</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black tabular-nums leading-none text-emerald-600">{guiasAtivas}</p>
+                    <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Guias ativas</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black tabular-nums leading-none text-amber-600">{pedidosDoMes.length}</p>
+                    <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Pedir guia</p>
+                  </div>
+                </div>
+                <Button size="sm" className="gap-1.5" onClick={() => setCadastro('novo')}>
+                  <UserPlus className="h-4 w-4" /> Cadastrar cliente
+                </Button>
               </div>
-              {pedidosDoMes.length === 0 ? (
-                <p className="text-[12px] text-amber-700/80 dark:text-amber-400/80">Nenhum pedido pendente. Tudo em dia. ✅</p>
-              ) : (
+              <div className="relative">
+                <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <Input className="h-9 pl-8" placeholder="Encontrar cliente (nome, carteirinha ou telefone)…"
+                  value={busca} onChange={(e) => setBusca(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Pedidos do mês — fila de quem precisa de guia nova */}
+            {pedidosDoMes.length > 0 && (
+              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm font-bold text-amber-800 dark:text-amber-300">Pedidos do mês ({pedidosDoMes.length})</span>
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {pedidosDoMes.map((l) => (
                     <button key={l.paciente.id}
@@ -149,40 +184,50 @@ export default function ControleCassi() {
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Lista de pacientes CASSI com status da guia */}
-            <div className="space-y-2">
-              {linhas.map(({ paciente, guia, status }) => (
-                <div key={paciente.id} className="rounded-xl border border-border/50 bg-background p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <Badge className={`text-[10px] ${status.cls}`}>{status.label}</Badge>
+            {/* Lista de pacientes CASSI */}
+            {linhasFiltradas.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-8">Nenhum cliente encontrado.</p>
+            ) : (
+              <div className="space-y-2">
+                {linhasFiltradas.map(({ paciente, guia, status }) => (
+                  <div key={paciente.id} className="rounded-xl border border-border/50 bg-background p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <Badge className={`text-[10px] ${status.cls}`}>{status.label}</Badge>
+                          {guia && (
+                            <span className="text-[11px] text-muted-foreground tabular-nums">
+                              {guia.sessoes_realizadas}/{guia.sessoes_autorizadas} sessões
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
+                          {paciente.carteirinha && <span className="inline-flex items-center gap-1"><CreditCard className="h-3 w-3" /> {paciente.carteirinha}</span>}
+                          {paciente.telefone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {paciente.telefone}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => setCadastro(paciente)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
                         {guia && (
-                          <span className="text-[11px] text-muted-foreground tabular-nums">
-                            {guia.sessoes_realizadas}/{guia.sessoes_autorizadas} sessões
-                            {guia.numero_guia ? ` · guia ${guia.numero_guia}` : ''}
-                          </span>
+                          <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia })}>
+                            <FileText className="h-3.5 w-3.5" /> Ver guia
+                          </Button>
                         )}
+                        <Button size="sm" variant={guia ? 'outline' : 'default'} className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia: null })}>
+                          <Plus className="h-3.5 w-3.5" /> Nova guia
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {guia && (
-                        <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia })}>
-                          <FileText className="h-3.5 w-3.5" /> Ver guia
-                        </Button>
-                      )}
-                      <Button size="sm" variant={guia ? 'outline' : 'default'} className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia: null })}>
-                        <Plus className="h-3.5 w-3.5" /> Nova guia
-                      </Button>
-                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -196,6 +241,17 @@ export default function ControleCassi() {
           onSaved={() => {
             qc.invalidateQueries({ queryKey: ['guias-cassi', user?.id] });
             setEditando(null);
+          }}
+        />
+      )}
+
+      {cadastro && (
+        <PacienteCassiEditor
+          paciente={cadastro === 'novo' ? null : cadastro}
+          onClose={() => setCadastro(null)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+            setCadastro(null);
           }}
         />
       )}
@@ -624,5 +680,95 @@ function PlanilhaGuias({ guias, onAbrir }: { guias: GuiaComPaciente[]; onAbrir: 
         </table>
       </div>
     </div>
+  );
+}
+
+// Cadastro/edição rápida de um cliente CASSI (nome, carteirinha, e-mail, telefone).
+function PacienteCassiEditor({ paciente, onClose, onSaved }: {
+  paciente: Paciente | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { user } = useAuth();
+  const editando = !!paciente;
+  const [f, setF] = useState(() => ({
+    nome: paciente?.nome || '',
+    sobrenome: paciente?.sobrenome || '',
+    carteirinha: paciente?.carteirinha || '',
+    email: paciente?.email || '',
+    telefone: paciente?.telefone || '',
+  }));
+  const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
+
+  const salvar = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Sem sessão');
+      if (!f.nome.trim()) throw new Error('Informe o nome.');
+      const sb: any = supabase;
+      const payload = {
+        nome: f.nome.trim(),
+        sobrenome: f.sobrenome.trim() || '',
+        carteirinha: f.carteirinha.trim() || null,
+        email: f.email.trim() || null,
+        telefone: f.telefone.replace(/\D/g, '') || null,
+      };
+      if (editando) {
+        const { error } = await sb.from('pacientes').update(payload).eq('id', paciente!.id);
+        if (error) throw error;
+      } else {
+        const { error } = await sb.from('pacientes').insert({
+          ...payload,
+          terapeuta_id: user.id,
+          plano_saude: 'CASSI',
+          ativo: true,
+          cadastro_status: 'completo',
+          tipo_conta: 'clinico',
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { toast.success(editando ? 'Cadastro atualizado' : 'Cliente cadastrado'); onSaved(); },
+    onError: (e: any) => toast.error(e.message || 'Erro ao salvar'),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md w-[95vw]">
+        <DialogHeader><DialogTitle className="text-base">{editando ? 'Editar cadastro' : 'Cadastrar cliente CASSI'}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Nome</label>
+              <Input value={f.nome} onChange={(e) => set('nome', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sobrenome</label>
+              <Input value={f.sobrenome} onChange={(e) => set('sobrenome', e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Carteirinha CASSI</label>
+            <Input value={f.carteirinha} onChange={(e) => set('carteirinha', e.target.value)} placeholder="nº da carteirinha" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Telefone</label>
+              <Input value={f.telefone} onChange={(e) => set('telefone', e.target.value)} placeholder="DDD + número" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">E-mail</label>
+              <Input value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="para o portal" />
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Entra como CASSI, ativo. Os códigos da guia você define ao criar a guia.</p>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
+            <Button className="flex-1 gap-1.5" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
+              {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
