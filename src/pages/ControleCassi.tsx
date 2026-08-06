@@ -52,7 +52,10 @@ export default function ControleCassi() {
         .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
-        .eq('plano_saude', 'CASSI')
+        // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
+        // (independe de maiúscula/minúscula/grafia). Antes era .eq('CASSI') exato,
+        // que escondia clientes gravados como "Cassi", via convênio, etc.
+        .ilike('plano_saude', '%cassi%')
         .order('nome', { ascending: true });
       if (error) throw error;
       return (data || []) as Paciente[];
