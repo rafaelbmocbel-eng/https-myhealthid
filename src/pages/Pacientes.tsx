@@ -598,10 +598,14 @@ export default function Pacientes() {
         tipo_pagamento: form.tipo_pagamento,
         convenio_id: convenioSel?.id || null,
         plano_saude: convenioSel?.nome || null,
-        // CASSI: carteirinha + códigos habituais (também editáveis pelo Controle CASSI).
-        carteirinha: /cassi/i.test(convenioSel?.nome || '') ? (form.carteirinha.trim() || null) : null,
-        codigos_cassi: /cassi/i.test(convenioSel?.nome || '') ? form.codigos_cassi : [],
       };
+      // CASSI: carteirinha + códigos habituais (também editáveis pelo Controle
+      // CASSI). Só entram no payload quando o cliente é CASSI — o cadastro comum
+      // não toca nessas colunas.
+      if (/cassi/i.test(convenioSel?.nome || '')) {
+        payload.carteirinha = form.carteirinha.trim() || null;
+        payload.codigos_cassi = form.codigos_cassi;
+      }
       if (!modal.paciente) {
         payload.origem = form.origem_lead || 'cadastro_manual';
       } else if (form.origem_lead) {
