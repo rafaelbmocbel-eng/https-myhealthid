@@ -35,23 +35,35 @@ interface DraftGuia {
 const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 interface CodigoCfg { codigo: string; descricao: string; valor: number; }
+interface ResponsavelCfg { nome: string; percentual: number; }
 
-// Configuração CASSI do profissional (códigos com valor + imposto por guia).
-// Se ainda não configurou, cai nos códigos padrão com valor 0.
+// Configuração CASSI do profissional (códigos com valor + imposto por guia +
+// responsáveis/repasse). Se ainda não configurou, cai nos códigos padrão com valor 0.
 function useCassiConfig() {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['cassi-config', user?.id],
     queryFn: async () => {
       const { data } = await (supabase as any).from('cassi_config')
-        .select('codigos, imposto_por_guia').eq('terapeuta_id', user!.id).maybeSingle();
+        .select('codigos, imposto_por_guia, responsaveis').eq('terapeuta_id', user!.id).maybeSingle();
       const codigos: CodigoCfg[] = Array.isArray(data?.codigos) && data.codigos.length
         ? data.codigos
         : CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
-      return { codigos, imposto_por_guia: Number(data?.imposto_por_guia || 0) };
+      const responsaveis: ResponsavelCfg[] = Array.isArray(data?.responsaveis) ? data.responsaveis : [];
+      return { codigos, responsaveis, imposto_por_guia: Number(data?.imposto_por_guia || 0) };
     },
     enabled: !!user,
   });
+}
+
+const fmtBRL = (v: number) => `R$ ${(Number(v) || 0).toFixed(2).replace('.', ',')}`;
+// Valor bruto de uma guia num mês: 144 (avaliação) conta 1x; os demais códigos por
+// sessão realizada. `valorDe` resolve o valor de cada código pela config.
+function brutoGuia(codigos: Array<{ codigo: string }>, sessoes: number, valorDe: (c: string) => number): number {
+  const cods = (codigos || []).map((c) => c.codigo);
+  const porSessao = cods.filter((c) => c !== '144').reduce((s, c) => s + valorDe(c), 0);
+  const av = cods.includes('144') && sessoes >= 1 ? valorDe('144') : 0;
+  return sessoes * porSessao + av;
 }
 
 export default function ControleCassi() {
@@ -59,7 +71,7 @@ export default function ControleCassi() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
-  const [view, setView] = useState<'painel' | 'planilha'>('painel');
+  const [view, setView] = useState<'painel' | 'planilha' | 'financeiro'>('painel');
   const [busca, setBusca] = useState('');
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
@@ -152,6 +164,10 @@ export default function ControleCassi() {
                 className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'planilha' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                 Planilha
               </button>
+              <button onClick={() => setView('financeiro')}
+                className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'financeiro' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+                Mês
+              </button>
             </div>
             <Button size="icon" variant="ghost" className="h-8 w-8" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
               <Settings className="h-4 w-4" />
@@ -160,9 +176,11 @@ export default function ControleCassi() {
         </div>
       </div>
 
-      <div className={`${view === 'planilha' ? 'max-w-5xl' : 'max-w-3xl'} mx-auto p-3 space-y-4`}>
+      <div className={`${view === 'painel' ? 'max-w-3xl' : 'max-w-5xl'} mx-auto p-3 space-y-4`}>
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : view === 'financeiro' ? (
+          <FinanceiroCassi />
         ) : view === 'planilha' ? (
           <PlanilhaGuias
             guias={guias}
@@ -838,12 +856,14 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const { data: cfg, isLoading } = useCassiConfig();
   const [codigos, setCodigos] = useState<CodigoCfg[]>([]);
   const [imposto, setImposto] = useState('0');
+  const [responsaveis, setResponsaveis] = useState<ResponsavelCfg[]>([]);
   const [pronto, setPronto] = useState(false);
 
   useEffect(() => {
     if (cfg && !pronto) {
       setCodigos(cfg.codigos.map((c) => ({ ...c })));
       setImposto(String(cfg.imposto_por_guia || 0));
+      setResponsaveis((cfg.responsaveis || []).map((r) => ({ ...r })));
       setPronto(true);
     }
   }, [cfg, pronto]);
@@ -853,15 +873,23 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const addCod = () => setCodigos((p) => [...p, { codigo: '', descricao: '', valor: 0 }]);
   const rmCod = (i: number) => setCodigos((p) => p.filter((_, idx) => idx !== i));
 
+  const setResp = (i: number, campo: keyof ResponsavelCfg, v: string) =>
+    setResponsaveis((p) => p.map((r, idx) => idx === i ? { ...r, [campo]: campo === 'percentual' ? (parseFloat(v.replace(',', '.')) || 0) : v } : r));
+  const addResp = () => setResponsaveis((p) => [...p, { nome: '', percentual: 0 }]);
+  const rmResp = (i: number) => setResponsaveis((p) => p.filter((_, idx) => idx !== i));
+
   const salvar = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
       const limpos = codigos.filter((c) => c.codigo.trim())
         .map((c) => ({ codigo: c.codigo.trim(), descricao: c.descricao.trim(), valor: Number(c.valor) || 0 }));
+      const respLimpos = responsaveis.filter((r) => r.nome.trim())
+        .map((r) => ({ nome: r.nome.trim(), percentual: Number(r.percentual) || 0 }));
       const { error } = await (supabase as any).from('cassi_config').upsert({
         terapeuta_id: user.id,
         codigos: limpos,
         imposto_por_guia: parseFloat(imposto.replace(',', '.')) || 0,
+        responsaveis: respLimpos,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'terapeuta_id' });
       if (error) throw error;
@@ -905,6 +933,28 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Imposto por guia (R$)</label>
               <Input className="h-9 w-32" value={imposto} onChange={(e) => setImposto(e.target.value)} inputMode="decimal" placeholder="0,00" />
               <p className="text-[10px] text-muted-foreground mt-0.5">Descontado de cada guia no cálculo do mês.</p>
+            </div>
+
+            <div>
+              <p className="text-sm font-bold mb-0.5">Responsáveis e repasse</p>
+              <p className="text-[11px] text-muted-foreground mb-2">Quem atende e quanto (%) recebe do líquido das guias sob sua responsabilidade. O nome deve bater com o "Responsável técnico" da guia.</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground px-0.5">
+                  <span className="flex-1">Nome</span><span className="w-24">Repasse %</span><span className="w-7" />
+                </div>
+                {responsaveis.map((r, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <Input className="h-8 flex-1 text-sm" value={r.nome} onChange={(e) => setResp(i, 'nome', e.target.value)} placeholder="Nome do responsável" />
+                    <Input className="h-8 w-24 text-sm tabular-nums" value={String(r.percentual)} onChange={(e) => setResp(i, 'percentual', e.target.value)} placeholder="0" inputMode="decimal" />
+                    <Button size="icon" variant="ghost" className="h-8 w-7 shrink-0" title="Remover" onClick={() => rmResp(i)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button size="sm" variant="outline" className="mt-2 h-8 gap-1 w-full" onClick={addResp}>
+                <Plus className="h-3.5 w-3.5" /> Adicionar responsável
+              </Button>
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -1021,5 +1071,284 @@ function PedidosDialog({ linhas, onClose, onNovaGuia }: {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── Fase 4: Cálculo do mês ────────────────────────────────────────────────
+// Fechamento financeiro: para o mês escolhido, conta as sessões REALIZADAS na
+// agenda de cada cliente CASSI (concluídas/confirmadas até hoje), multiplica
+// pelos valores dos códigos da guia, desconta o imposto por guia e agrupa por
+// responsável técnico aplicando o % de repasse. O "atendido" da agenda vira
+// sessão faturada automaticamente — sem digitar de novo.
+const MESES_PT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const mesAtualISO = () => new Date().toISOString().slice(0, 7); // YYYY-MM
+
+function FinanceiroCassi() {
+  const { user } = useAuth();
+  const { data: cfg } = useCassiConfig();
+  const [mes, setMes] = useState<string>(() => mesAtualISO());
+
+  // Clientes CASSI (mesma query/cache do painel).
+  const { data: pacientes = [] } = useQuery({
+    queryKey: ['cassi-pacientes', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('pacientes')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi')
+        .eq('terapeuta_id', user!.id).eq('ativo', true).ilike('plano_saude', '%cassi%')
+        .order('nome', { ascending: true });
+      if (error) throw error;
+      return (data || []) as Paciente[];
+    },
+    enabled: !!user,
+  });
+
+  // Guias (mesma query/cache do painel).
+  const { data: guias = [] } = useQuery({
+    queryKey: ['guias-cassi', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('guias_cassi').select('*, pacientes(nome, sobrenome)')
+        .eq('terapeuta_id', user!.id)
+        .order('data_pedido', { ascending: false }).order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
+    },
+    enabled: !!user,
+  });
+
+  // Agendamentos do mês (com folga de ±1 dia p/ fuso; classificamos pelo mês local).
+  const { data: agendamentos = [], isLoading } = useQuery({
+    queryKey: ['cassi-agendamentos-mes', user?.id, mes],
+    queryFn: async () => {
+      const [ano, m] = mes.split('-').map(Number);
+      const de = new Date(ano, m - 1, 0).toISOString();       // último dia do mês anterior
+      const ate = new Date(ano, m, 2).toISOString();          // 2º dia do mês seguinte
+      const { data, error } = await (supabase as any)
+        .from('agendamentos')
+        .select('id, paciente_id, data_inicio, status')
+        .eq('terapeuta_id', user!.id)
+        .gte('data_inicio', de).lt('data_inicio', ate);
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; paciente_id: string | null; data_inicio: string; status: string }>;
+    },
+    enabled: !!user,
+  });
+
+  const calc = useMemo(() => {
+    const [ano, m] = mes.split('-').map(Number);
+    const agora = Date.now();
+    const cassiIds = new Set(pacientes.map((p) => p.id));
+    const nomePac = new Map(pacientes.map((p) => [p.id, `${p.nome} ${p.sobrenome || ''}`.trim()]));
+    const codigosPac = new Map(pacientes.map((p) => [p.id, p.codigos_cassi || []]));
+
+    // Guia mais recente por paciente (para códigos/responsável).
+    const guiaPorPac = new Map<string, GuiaCassi>();
+    for (const g of guias) if (!guiaPorPac.has(g.paciente_id)) guiaPorPac.set(g.paciente_id, g);
+
+    // Conta sessões realizadas no mês local, por paciente CASSI.
+    const sessoesPorPac = new Map<string, number>();
+    for (const a of agendamentos) {
+      if (!a.paciente_id || !cassiIds.has(a.paciente_id)) continue;
+      if (a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
+      const d = new Date(a.data_inicio);
+      if (d.getFullYear() !== ano || d.getMonth() !== m - 1) continue; // mês local
+      if (d.getTime() > agora) continue; // ainda não aconteceu
+      sessoesPorPac.set(a.paciente_id, (sessoesPorPac.get(a.paciente_id) || 0) + 1);
+    }
+
+    const valorDe = (c: string) => cfg?.codigos.find((x) => x.codigo === c)?.valor || 0;
+    const imposto = cfg?.imposto_por_guia || 0;
+
+    const linhas = [...sessoesPorPac.entries()]
+      .filter(([, n]) => n > 0)
+      .map(([pid, sessoes]) => {
+        const guia = guiaPorPac.get(pid) || null;
+        const codigos = guia?.codigos?.length
+          ? guia.codigos
+          : (codigosPac.get(pid)?.length ? codigosPac.get(pid)!.map((c) => ({ codigo: c })) : [{ codigo: '012' }]);
+        const bruto = brutoGuia(codigos, sessoes, valorDe);
+        const liquido = Math.max(0, bruto - imposto);
+        return {
+          pid,
+          nome: nomePac.get(pid) || 'Cliente',
+          responsavel: (guia?.responsavel_tecnico || '').trim(),
+          sessoes, bruto, imposto, liquido,
+        };
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    const totBruto = linhas.reduce((s, l) => s + l.bruto, 0);
+    const totImposto = linhas.reduce((s, l) => s + l.imposto, 0);
+    const totLiquido = linhas.reduce((s, l) => s + l.liquido, 0);
+    const totSessoes = linhas.reduce((s, l) => s + l.sessoes, 0);
+
+    // Repasse por responsável (casa nome com a config, sem acento/caixa).
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const pctDe = (nome: string) => {
+      const r = (cfg?.responsaveis || []).find((x) => norm(x.nome) === norm(nome));
+      return r ? r.percentual : null;
+    };
+    const porResp = new Map<string, { nome: string; liquido: number; sessoes: number; pct: number | null }>();
+    for (const l of linhas) {
+      const key = l.responsavel || '—';
+      const cur = porResp.get(key) || { nome: l.responsavel || 'Sem responsável', liquido: 0, sessoes: 0, pct: pctDe(l.responsavel) };
+      cur.liquido += l.liquido;
+      cur.sessoes += l.sessoes;
+      porResp.set(key, cur);
+    }
+    const repasses = [...porResp.values()].map((r) => ({
+      ...r,
+      repasse: r.pct != null ? r.liquido * (r.pct / 100) : 0,
+    })).sort((a, b) => b.liquido - a.liquido);
+    const totRepasse = repasses.reduce((s, r) => s + r.repasse, 0);
+
+    return { linhas, totBruto, totImposto, totLiquido, totSessoes, repasses, totRepasse, ficaComVoce: totLiquido - totRepasse };
+  }, [mes, pacientes, guias, agendamentos, cfg]);
+
+  const irMes = (delta: number) => {
+    const [ano, m] = mes.split('-').map(Number);
+    const d = new Date(ano, m - 1 + delta, 1);
+    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const baixarCSV = () => {
+    const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const linhas = [
+      ['Cliente', 'Responsável', 'Sessões', 'Bruto', 'Imposto', 'Líquido'],
+      ...calc.linhas.map((l) => [l.nome, l.responsavel || '—', l.sessoes, l.bruto.toFixed(2), l.imposto.toFixed(2), l.liquido.toFixed(2)]),
+      [],
+      ['TOTAL', '', calc.totSessoes, calc.totBruto.toFixed(2), calc.totImposto.toFixed(2), calc.totLiquido.toFixed(2)],
+    ];
+    const csv = linhas.map((r) => r.map(esc).join(';')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cassi-${mes}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const [ano, m] = mes.split('-').map(Number);
+  const semValores = !cfg?.codigos.some((c) => c.valor > 0);
+
+  return (
+    <div className="space-y-4">
+      {/* Seletor de mês */}
+      <div className="rounded-xl border border-border/50 bg-background p-3 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(-1)} title="Mês anterior">‹</Button>
+          <div className="text-center min-w-[9rem]">
+            <p className="text-sm font-bold capitalize leading-none">{MESES_PT[m - 1]} {ano}</p>
+            <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Cálculo do mês</p>
+          </div>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(1)} title="Próximo mês">›</Button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Input type="month" value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
+          <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={calc.linhas.length === 0} onClick={baixarCSV}>
+            <Download className="h-3.5 w-3.5" /> CSV
+          </Button>
+        </div>
+      </div>
+
+      {semValores && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 text-[12px] text-amber-800 dark:text-amber-300">
+          Defina os valores dos códigos em <b>Configurações</b> (ícone de engrenagem) para o cálculo somar corretamente.
+        </div>
+      )}
+
+      {/* Resumo */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {[
+          { label: 'Sessões', valor: String(calc.totSessoes), cls: '' },
+          { label: 'Bruto', valor: fmtBRL(calc.totBruto), cls: '' },
+          { label: 'Imposto', valor: `− ${fmtBRL(calc.totImposto)}`, cls: 'text-rose-600' },
+          { label: 'Líquido', valor: fmtBRL(calc.totLiquido), cls: 'text-emerald-600' },
+        ].map((c) => (
+          <div key={c.label} className="rounded-xl border border-border/50 bg-background p-3">
+            <p className={`text-lg font-black tabular-nums leading-none ${c.cls}`}>{c.valor}</p>
+            <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">{c.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : calc.linhas.length === 0 ? (
+        <p className="text-center text-sm text-muted-foreground py-10">
+          Nenhuma sessão concluída na agenda neste mês.<br />
+          <span className="text-[12px]">Marque as sessões como <b>atendido</b> na Agenda para elas entrarem no cálculo.</span>
+        </p>
+      ) : (
+        <>
+          {/* Por cliente */}
+          <div className="rounded-xl border border-border/50 bg-background overflow-hidden">
+            <div className="px-3 py-2 border-b border-border/50 bg-muted/30">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Por cliente</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase text-muted-foreground">
+                    <th className="text-left font-medium px-3 py-1.5">Cliente</th>
+                    <th className="text-center font-medium px-2 py-1.5">Sessões</th>
+                    <th className="text-right font-medium px-2 py-1.5">Bruto</th>
+                    <th className="text-right font-medium px-2 py-1.5">Imposto</th>
+                    <th className="text-right font-medium px-3 py-1.5">Líquido</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calc.linhas.map((l) => (
+                    <tr key={l.pid} className="border-t border-border/40">
+                      <td className="px-3 py-2">
+                        <p className="font-medium truncate">{l.nome}</p>
+                        {l.responsavel && <p className="text-[10px] text-muted-foreground">{l.responsavel}</p>}
+                      </td>
+                      <td className="text-center tabular-nums px-2 py-2">{l.sessoes}</td>
+                      <td className="text-right tabular-nums px-2 py-2">{fmtBRL(l.bruto)}</td>
+                      <td className="text-right tabular-nums px-2 py-2 text-rose-600">{l.imposto ? `− ${fmtBRL(l.imposto)}` : '—'}</td>
+                      <td className="text-right tabular-nums px-3 py-2 font-semibold text-emerald-700 dark:text-emerald-400">{fmtBRL(l.liquido)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Repasse por responsável */}
+          {calc.repasses.length > 0 && (
+            <div className="rounded-xl border border-border/50 bg-background overflow-hidden">
+              <div className="px-3 py-2 border-b border-border/50 bg-muted/30 flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Repasse por responsável</p>
+                <p className="text-[11px] text-muted-foreground">Fica com você: <b className="text-foreground">{fmtBRL(calc.ficaComVoce)}</b></p>
+              </div>
+              <div className="divide-y divide-border/40">
+                {calc.repasses.map((r) => (
+                  <div key={r.nome} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{r.nome}</p>
+                      <p className="text-[11px] text-muted-foreground tabular-nums">
+                        {r.sessoes} sessão(ões) · líquido {fmtBRL(r.liquido)}
+                        {r.pct == null && <span className="text-amber-600"> · sem % configurado</span>}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold tabular-nums text-violet-700 dark:text-violet-400">{fmtBRL(r.repasse)}</p>
+                      {r.pct != null && <p className="text-[10px] text-muted-foreground">{r.pct}% de repasse</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="text-[11px] text-muted-foreground text-center px-4">
+            Contamos como sessão realizada os agendamentos <b>atendidos/confirmados</b> na Agenda até hoje. Cancelados, faltas e horários bloqueados não entram.
+          </p>
+        </>
+      )}
+    </div>
   );
 }
