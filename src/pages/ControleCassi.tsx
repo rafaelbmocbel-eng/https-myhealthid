@@ -650,7 +650,9 @@ function PlanilhaGuias({ guias, onAbrir }: { guias: GuiaComPaciente[]; onAbrir: 
             <SelectItem value="cancelada">Cancelada</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-[12px] text-muted-foreground shrink-0">{filtradas.length} guia(s)</span>
+        <span className="text-[12px] text-muted-foreground shrink-0 tabular-nums">
+          {filtradas.length} guia(s) · {new Set(filtradas.map((g) => g.paciente_id)).size} cliente(s)
+        </span>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border/50 bg-background">
