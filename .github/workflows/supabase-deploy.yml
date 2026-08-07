@@ -19,8 +19,12 @@ jobs:
         with:
           version: latest
 
-      - name: Link project
-        run: supabase link --project-ref "zxulglbcxehqplxainmz"
+      # `supabase link` chama "get api keys" e o CLI (versão latest) quebra ao
+      # validar o formato de data das novas chaves de API (SchemaError inserted_at).
+      # O link não é essencial: db push usa --db-url e functions deploy usa
+      # --project-ref. Deixamos não-fatal para o deploy seguir mesmo assim.
+      - name: Link project (best-effort)
+        run: supabase link --project-ref "zxulglbcxehqplxainmz" || echo "link falhou (bug de schema das api keys no CLI) — seguindo com --db-url/--project-ref"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
@@ -43,7 +47,7 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
       - name: Deploy edge functions
-        run: supabase functions deploy
+        run: supabase functions deploy --project-ref "zxulglbcxehqplxainmz"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_ID: zxulglbcxehqplxainmz
