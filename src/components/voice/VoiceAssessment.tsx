@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { audioParaWav, blobParaBase64 } from '@/lib/audioParaWav';
 import { useAuth } from '@/contexts/AuthContext';
 import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock, Sparkles, Tag, Layers, Users, Wand2, Target, Trash2, Volume2 } from 'lucide-react';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
@@ -556,16 +557,26 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const goToReview = () => {
+  const goToReview = async () => {
     if (!audioBase64 && transcript.trim().length < 20 && editedTranscript.trim().length < 20) {
       toast({ title: 'Conteúdo insuficiente', description: 'Grave áudio ou digite/cole a transcrição.', variant: 'destructive' });
       return;
     }
 
-    // In append mode, just return the captured data without processing
+    // In append mode, just return the captured data without processing.
+    // Converte o áudio para WAV (o iPhone grava mp4/AAC, rejeitado pelo modelo).
     if (appendMode && onAppendCapture) {
       const combinedText = [editedTranscript.trim(), transcript.trim()].filter(Boolean).join('\n\n');
-      onAppendCapture(combinedText, audioBase64 || undefined, audioMimeType);
+      let apB64 = audioBase64 || undefined;
+      let apMime = audioMimeType;
+      if (audioBlob) {
+        try {
+          const wav = await audioParaWav(audioBlob);
+          apB64 = await blobParaBase64(wav);
+          apMime = 'audio/wav';
+        } catch (e) { console.warn('[voice] conversão WAV (complemento) falhou', e); }
+      }
+      onAppendCapture(combinedText, apB64, apMime);
       return;
     }
 
@@ -742,11 +753,29 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         } catch { /* contexto histórico é melhor-esforço */ }
       }
 
+      // Converte o áudio para WAV antes de enviar: o iPhone grava mp4/AAC, que o
+      // Gemini rejeita ("Formato de áudio não aceito"). WAV o modelo sempre aceita.
+      let envBase64 = audioBase64;
+      let envBlob = audioBlob;
+      let envMime = audioMimeType;
+      let converteu = false;
+      if (audioBlob) {
+        try {
+          const wav = await audioParaWav(audioBlob);
+          envBlob = wav;
+          envMime = 'audio/wav';
+          envBase64 = await blobParaBase64(wav);
+          converteu = true;
+        } catch (e) {
+          console.warn('[voice] conversão p/ WAV falhou, usando áudio original', e);
+        }
+      }
+
       // Áudio longo (>90s gravado OU >3.5MB base64) → signedUrl para evitar timeout
       const isLongAudio = recordingTime > 90;
       const mins = Math.round(recordingTime / 60);
-      if (audioBase64 && (isLongAudio || audioBase64.length > 3.5 * 1024 * 1024)) {
-        if (!audioBlob) {
+      if (envBase64 && (isLongAudio || envBase64.length > 3.5 * 1024 * 1024)) {
+        if (!envBlob) {
           toast({
             title: 'Áudio não disponível',
             description: 'O áudio é muito longo para envio direto e não pode ser recuperado deste rascunho. Grave novamente.',
@@ -761,16 +790,16 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
             ? `Áudio de ${mins} min sendo carregado. Aguarde ${mins >= 7 ? '3-5 min' : mins >= 4 ? '2-3 min' : '1-2 min'} enquanto a IA transcreve e analisa.`
             : 'O áudio está sendo carregado para processamento.',
         });
-        // Reaproveita o upload feito em segundo plano logo após a gravação
-        // (URL assinada vale 1h) — corta minutos de espera no áudio longo.
+        // Reaproveita o upload em segundo plano só se NÃO convertemos (o pré-upload
+        // é do mp4 original). Se convertemos, sobe o WAV.
         const pre = preUploadRef.current;
-        const preValido = pre && (Date.now() - pre.ts) < 50 * 60 * 1000;
-        const signedUrl = preValido ? pre!.url : await uploadAudioToStorage(audioBlob);
+        const preValido = !converteu && pre && (Date.now() - pre.ts) < 50 * 60 * 1000;
+        const signedUrl = preValido ? pre!.url : await uploadAudioToStorage(envBlob, envMime);
         body.signedUrl = signedUrl;
-        body.audioMimeType = audioMimeType;
-      } else if (audioBase64) {
-        body.audioBase64 = audioBase64;
-        body.audioMimeType = audioMimeType;
+        body.audioMimeType = envMime;
+      } else if (envBase64) {
+        body.audioBase64 = envBase64;
+        body.audioMimeType = envMime;
       }
 
       if (text.length >= 20) {
