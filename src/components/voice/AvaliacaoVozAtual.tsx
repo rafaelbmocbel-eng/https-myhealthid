@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, FileText, Mic, Plus } from 'lucide-react';
+import { Loader2, FileText, Mic, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,7 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
 
   const { data: latest, isLoading } = useQuery({
     queryKey: ['avaliacao-voz-latest', pacienteId, user?.id],
@@ -85,6 +86,24 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     }
   };
 
+  const excluirAvaliacao = async () => {
+    if (!latest) return;
+    if (!confirm('Excluir esta avaliação por voz? Esta ação não pode ser desfeita.')) return;
+    setExcluindo(true);
+    try {
+      // Remove as notas de prontuário ligadas a esta avaliação (melhor-esforço).
+      try { await (supabase as any).from('notas_prontuario').delete().eq('referencia_id', latest.id); } catch { /* ok */ }
+      const { error } = await (supabase as any).from('avaliacoes_voz').delete().eq('id', latest.id);
+      if (error) throw error;
+      invalidarCachesAvaliacaoVoz(qc, pacienteId);
+      toast({ title: 'Avaliação excluída' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-6">
@@ -108,25 +127,38 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
           </span>
         </div>
         {hasResult && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setAddOpen(true)}
-            disabled={reprocessing}
-            className="h-8 gap-1.5"
-          >
-            {reprocessing ? (
-              <>
-                <Loader2 className="icon-xs animate-spin" />
-                Reprocessando...
-              </>
-            ) : (
-              <>
-                <Plus className="icon-xs" />
-                Complementar com áudio ou texto
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAddOpen(true)}
+              disabled={reprocessing || excluindo}
+              className="h-8 gap-1.5"
+            >
+              {reprocessing ? (
+                <>
+                  <Loader2 className="icon-xs animate-spin" />
+                  Reprocessando...
+                </>
+              ) : (
+                <>
+                  <Plus className="icon-xs" />
+                  Complementar com áudio ou texto
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={excluirAvaliacao}
+              disabled={excluindo || reprocessing}
+              className="h-8 gap-1.5 text-destructive hover:text-destructive"
+              title="Excluir esta avaliação"
+            >
+              {excluindo ? <Loader2 className="icon-xs animate-spin" /> : <Trash2 className="icon-xs" />}
+              Excluir
+            </Button>
+          </div>
         )}
       </div>
 
