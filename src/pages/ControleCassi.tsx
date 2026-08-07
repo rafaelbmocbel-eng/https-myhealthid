@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
@@ -63,6 +63,7 @@ export default function ControleCassi() {
   const [busca, setBusca] = useState('');
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [pedidosOpen, setPedidosOpen] = useState(false);
 
   // Pacientes CASSI do profissional.
   const { data: pacientes = [], isLoading: loadingPac } = useQuery({
@@ -197,23 +198,16 @@ export default function ControleCassi() {
               </div>
             </div>
 
-            {/* Pedidos do mês — fila de quem precisa de guia nova */}
+            {/* Pedidos do mês — botão que abre a lista com seleção + gerar texto */}
             {pedidosDoMes.length > 0 && (
-              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <span className="text-sm font-bold text-amber-800 dark:text-amber-300">Pedidos do mês ({pedidosDoMes.length})</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {pedidosDoMes.map((l) => (
-                    <button key={l.paciente.id}
-                      onClick={() => setEditando({ paciente: l.paciente, guia: null })}
-                      className="text-[12px] px-2.5 py-1 rounded-full bg-white dark:bg-background border border-amber-300 dark:border-amber-700 font-medium hover:bg-amber-100 dark:hover:bg-amber-900/30">
-                      {l.paciente.nome} {l.paciente.sobrenome || ''} · {l.status.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <button onClick={() => setPedidosOpen(true)}
+                className="w-full rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                <span className="text-sm font-bold text-amber-800 dark:text-amber-300 flex-1 text-left">
+                  Pedidos do mês — {pedidosDoMes.length} cliente(s) para nova guia
+                </span>
+                <span className="text-[11px] text-amber-700 dark:text-amber-400 shrink-0">abrir ›</span>
+              </button>
             )}
 
             {/* Lista de pacientes CASSI */}
@@ -286,6 +280,14 @@ export default function ControleCassi() {
       )}
 
       {configOpen && <ConfigCassiDialog onClose={() => setConfigOpen(false)} />}
+
+      {pedidosOpen && (
+        <PedidosDialog
+          linhas={pedidosDoMes}
+          onClose={() => setPedidosOpen(false)}
+          onNovaGuia={(pac) => { setPedidosOpen(false); setEditando({ paciente: pac, guia: null }); }}
+        />
+      )}
     </div>
   );
 }
@@ -913,6 +915,110 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Pedidos do mês — lista dos clientes elegíveis (precisam de guia nova). O
+// profissional marca quem vai pro pedido, ajusta carteirinha/diagnóstico/códigos
+// (máx. 3) e gera um texto pronto para copiar (nome, carteirinha, diagnóstico, códigos).
+interface ItemPedido {
+  id: string; nome: string; sel: boolean;
+  carteirinha: string; diagnostico: string; codigos: string[];
+}
+function PedidosDialog({ linhas, onClose, onNovaGuia }: {
+  linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>;
+  onClose: () => void;
+  onNovaGuia: (p: Paciente) => void;
+}) {
+  const { data: cfg } = useCassiConfig();
+  const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
+
+  const [itens, setItens] = useState<ItemPedido[]>(() => linhas.map((l) => ({
+    id: l.paciente.id,
+    nome: `${l.paciente.nome} ${l.paciente.sobrenome || ''}`.trim(),
+    sel: true,
+    carteirinha: l.paciente.carteirinha || '',
+    diagnostico: l.guia?.diagnostico || '',
+    codigos: (l.paciente.codigos_cassi?.length ? l.paciente.codigos_cassi : (l.guia?.codigos?.map((c) => c.codigo) || [])).slice(0, 3),
+  })));
+
+  const upd = (id: string, patch: Partial<ItemPedido>) =>
+    setItens((p) => p.map((it) => it.id === id ? { ...it, ...patch } : it));
+  const toggleCod = (id: string, cod: string) =>
+    setItens((p) => p.map((it) => {
+      if (it.id !== id) return it;
+      if (it.codigos.includes(cod)) return { ...it, codigos: it.codigos.filter((c) => c !== cod) };
+      if (it.codigos.length >= 3) { toast.error('Máximo de 3 códigos por pedido'); return it; }
+      return { ...it, codigos: [...it.codigos, cod] };
+    }));
+
+  const selecionados = itens.filter((i) => i.sel);
+  const texto = selecionados.map((i) =>
+    `${i.nome}\nCarteirinha: ${i.carteirinha || '—'}\nDiagnóstico: ${i.diagnostico || '—'}\nCódigos: ${i.codigos.join(', ') || '—'}`
+  ).join('\n\n———\n\n');
+
+  const copiar = async () => {
+    try { await navigator.clipboard.writeText(texto); toast.success('Texto copiado!'); }
+    catch { toast.error('Não consegui copiar — selecione e copie manualmente.'); }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg w-[95vw] max-h-[92vh] overflow-y-auto">
+        <DialogHeader><DialogTitle className="text-base">Pedidos do mês — nova guia</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <p className="text-[11px] text-muted-foreground">
+            Marque quem vai entrar no pedido e ajuste carteirinha, diagnóstico e códigos (até 3). No fim, copie o texto pronto.
+          </p>
+
+          <div className="space-y-2">
+            {itens.map((it) => (
+              <div key={it.id} className={`rounded-lg border p-2.5 ${it.sel ? 'border-primary/40 bg-primary/5' : 'border-border/50 opacity-70'}`}>
+                <div className="flex items-start gap-2">
+                  <button onClick={() => upd(it.id, { sel: !it.sel })} className="mt-0.5 shrink-0" title={it.sel ? 'Tirar do pedido' : 'Incluir no pedido'}>
+                    {it.sel ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
+                  </button>
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <p className="text-sm font-semibold truncate">{it.nome}</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Input className="h-8 text-xs" value={it.carteirinha} onChange={(e) => upd(it.id, { carteirinha: e.target.value })} placeholder="Carteirinha" />
+                      <Input className="h-8 text-xs" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="Diagnóstico" />
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {codigosDisp.map((c) => {
+                        const on = it.codigos.includes(c.codigo);
+                        return (
+                          <button key={c.codigo} type="button" onClick={() => toggleCod(it.id, c.codigo)}
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full border ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
+                            {c.codigo}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <Button size="sm" variant="ghost" className="h-7 text-[11px] shrink-0" onClick={() => onNovaGuia(linhas.find((l) => l.paciente.id === it.id)!.paciente)}>
+                    Criar guia
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Texto do pedido — pronto para copiar */}
+          <div className="rounded-lg border border-border/50 bg-muted/30 p-2.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Texto do pedido ({selecionados.length})</span>
+              <Button size="sm" className="h-7 gap-1.5 text-[11px]" disabled={selecionados.length === 0} onClick={copiar}>
+                <Copy className="h-3.5 w-3.5" /> Copiar
+              </Button>
+            </div>
+            <Textarea readOnly value={texto} rows={Math.min(12, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />
+          </div>
+
+          <Button variant="outline" className="w-full" onClick={onClose}>Fechar</Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
