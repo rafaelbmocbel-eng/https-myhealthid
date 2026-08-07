@@ -755,17 +755,20 @@ export default function Pacientes() {
     const cmpNome = (a: Paciente, b: Paciente) =>
       `${a.nome || ''} ${a.sobrenome || ''}`.trim()
         .localeCompare(`${b.nome || ''} ${b.sobrenome || ''}`.trim(), 'pt-BR', { sensitivity: 'base', numeric: true });
+    const agora = Date.now();
+    const UMA_HORA = 3600_000;
+    // Cadastrado na última 1h (por created_at → persiste após recarregar) ou
+    // acabado de criar (pin imediato). Depois de 1h volta à ordem normal.
+    const ehRecente = (p: Paciente) =>
+      recentlyAddedIds.includes(p.id) || (agora - new Date(p.created_at).getTime() < UMA_HORA);
     return [...list].sort((a, b) => {
       // Durante a busca, resultado sempre em ordem alfabética pura.
       if (q) return cmpNome(a, b);
-      // Fora da busca, recém-adicionados aparecem no topo por alguns instantes.
-      const aRecent = recentlyAddedIds.indexOf(a.id);
-      const bRecent = recentlyAddedIds.indexOf(b.id);
-      if (aRecent !== -1 || bRecent !== -1) {
-        if (aRecent === -1) return 1;
-        if (bRecent === -1) return -1;
-        return aRecent - bRecent;
-      }
+      // Fora da busca, recém-cadastrados (1h) no topo, o mais novo primeiro.
+      const aRec = ehRecente(a);
+      const bRec = ehRecente(b);
+      if (aRec !== bRec) return aRec ? -1 : 1;
+      if (aRec && bRec) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (sortBy === 'nome') return cmpNome(a, b);
       if (sortBy === 'created_at') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (sortBy === 'ultimo_agendamento') {
