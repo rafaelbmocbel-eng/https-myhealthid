@@ -440,17 +440,21 @@ Deno.serve(async (req) => {
 
     const contextInfo = `SERVIÇO: ${serviceLabel}\nPACIENTE: ${patientName || 'Não informado'}, ${patientAge || '?'} anos, Sexo: ${patientSex || '?'}${patientContext ? `\n\n${patientContext}` : ''}`;
 
-    // Normalize mime once (used by both passes)
-    let audioFormat = "webm";
+    // Formatos candidatos para o Gemini, em ordem de tentativa. O iOS grava
+    // audio/mp4 (AAC), que o Gemini REJEITA rotulado como "mp4" — mas aceita
+    // "aac". Como a dupla container/codec varia por aparelho, tentamos vários.
+    let audioFormats: string[] = ["webm"];
     if (hasAudio) {
       const cleanMime = (audioMimeTypeToUse || "audio/webm").split(";")[0].toLowerCase().trim();
-      if (cleanMime.includes("webm")) audioFormat = "webm";
-      else if (cleanMime.includes("mp4") || cleanMime.includes("m4a") || cleanMime.includes("aac")) audioFormat = "mp4";
-      else if (cleanMime.includes("mpeg") || cleanMime.includes("mp3")) audioFormat = "mp3";
-      else if (cleanMime.includes("wav")) audioFormat = "wav";
-      else if (cleanMime.includes("ogg")) audioFormat = "ogg";
-      console.log(`[voice-assessment] Audio: mime=${cleanMime} -> format=${audioFormat}, base64Len=${audioBase64ToUse.length}`);
+      if (cleanMime.includes("webm")) audioFormats = ["webm", "ogg", "aac"];
+      else if (cleanMime.includes("mp4") || cleanMime.includes("m4a") || cleanMime.includes("aac")) audioFormats = ["aac", "mp3", "mp4", "webm"];
+      else if (cleanMime.includes("mpeg") || cleanMime.includes("mp3")) audioFormats = ["mp3", "aac"];
+      else if (cleanMime.includes("wav")) audioFormats = ["wav", "mp3"];
+      else if (cleanMime.includes("ogg")) audioFormats = ["ogg", "webm"];
+      else audioFormats = ["aac", "mp3", "webm", "ogg", "wav"];
+      console.log(`[voice-assessment] Audio: mime=${cleanMime} -> candidatos=[${audioFormats.join(",")}], base64Len=${audioBase64ToUse.length}`);
     }
+    const audioFormat = audioFormats[0]; // usado no Pass 2 (fallback quando anexa áudio)
 
     // ───────────────────────────────────────────────────────────────
     // PASS 1 — Transcrição literal (preserva fala completa, sem resumir)
@@ -464,50 +468,61 @@ Deno.serve(async (req) => {
     let audioTranscrito = false;
 
     if (hasAudio && (!hasText || appendAudio)) {
-      try {
-        const pass1Ctrl = new AbortController();
-        const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 270_000);
-        const transcribeRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-          method: "POST",
-          signal: pass1Ctrl.signal,
-          headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "gemini-2.5-flash",
-            messages: [
-              {
-                role: "system",
-                content: `Você é um transcritor clínico fiel. Transcreva o áudio em PT-BR mantendo CADA fala, na íntegra, sem resumir, sem omitir muletas, sem reordenar. Use parágrafos curtos para mudanças de fala. NÃO adicione comentários, títulos ou interpretações — apenas a transcrição literal completa.\n\nContexto da sessão (apenas para referência — NÃO inclua na transcrição):\n${contextInfo}`,
-              },
-              {
-                role: "user",
-                content: [
-                  { type: "input_audio", input_audio: { data: audioBase64ToUse, format: audioFormat } },
-                  { type: "text", text: "Transcreva o áudio inteiro fielmente, palavra por palavra, em PT-BR." },
-                ],
-              },
-            ],
-          }),
-        });
-        clearTimeout(pass1Timer);
+      // Tenta cada formato candidato; um 400 (formato rejeitado) passa para o
+      // próximo. Assim o áudio do iOS (mp4/AAC) é aceito como "aac".
+      for (const fmt of audioFormats) {
+        try {
+          const pass1Ctrl = new AbortController();
+          const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 270_000);
+          const transcribeRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+            method: "POST",
+            signal: pass1Ctrl.signal,
+            headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "gemini-2.5-flash",
+              messages: [
+                {
+                  role: "system",
+                  content: `Você é um transcritor clínico fiel. Transcreva o áudio em PT-BR mantendo CADA fala, na íntegra, sem resumir, sem omitir muletas, sem reordenar. Use parágrafos curtos para mudanças de fala. NÃO adicione comentários, títulos ou interpretações — apenas a transcrição literal completa.\n\nContexto da sessão (apenas para referência — NÃO inclua na transcrição):\n${contextInfo}`,
+                },
+                {
+                  role: "user",
+                  content: [
+                    { type: "input_audio", input_audio: { data: audioBase64ToUse, format: fmt } },
+                    { type: "text", text: "Transcreva o áudio inteiro fielmente, palavra por palavra, em PT-BR." },
+                  ],
+                },
+              ],
+            }),
+          });
+          clearTimeout(pass1Timer);
 
-        if (transcribeRes.ok) {
-          const tData = await transcribeRes.json();
-          const txt = tData?.choices?.[0]?.message?.content;
-          if (typeof txt === "string" && txt.trim().length > 0) {
-            const novo = txt.trim();
-            // Complemento: soma a transcrição do áudio novo ao texto existente
-            // (sem perder o que já havia). Fluxo normal só-áudio: substitui.
-            faithfulTranscript = (hasText && appendAudio) ? `${faithfulTranscript}\n\n${novo}` : novo;
-            audioTranscrito = true;
-            console.log(`[voice-assessment] Faithful transcript ok (${faithfulTranscript.length} chars)`);
+          if (transcribeRes.ok) {
+            const tData = await transcribeRes.json();
+            const txt = tData?.choices?.[0]?.message?.content;
+            if (typeof txt === "string" && txt.trim().length > 0) {
+              const novo = txt.trim();
+              // Complemento: soma a transcrição do áudio novo ao texto existente
+              // (sem perder o que já havia). Fluxo normal só-áudio: substitui.
+              faithfulTranscript = (hasText && appendAudio) ? `${faithfulTranscript}\n\n${novo}` : novo;
+              audioTranscrito = true;
+              console.log(`[voice-assessment] Pass 1 ok com formato "${fmt}" (${faithfulTranscript.length} chars)`);
+            } else {
+              console.warn(`[voice-assessment] Pass 1 (${fmt}) sem conteúdo de texto`);
+            }
+            break; // deu certo (mesmo sem texto) — não tenta outros formatos
+          } else if (transcribeRes.status === 400) {
+            const errTxt = await transcribeRes.text().catch(() => "");
+            console.warn(`[voice-assessment] Pass 1 formato "${fmt}" rejeitado (400): ${errTxt.slice(0, 160)} — tentando próximo`);
+            continue; // formato não aceito → tenta o próximo candidato
           } else {
-            console.warn("[voice-assessment] Pass 1 returned no text content");
+            console.warn(`[voice-assessment] Pass 1 falhou (${transcribeRes.status}); fallback single-pass`);
+            break;
           }
-        } else {
-          console.warn(`[voice-assessment] Pass 1 transcription failed (${transcribeRes.status}); falling back to single-pass`);
+        } catch (err) {
+          console.warn("[voice-assessment] Pass 1 threw; fallback:", err);
+          break;
         }
-      } catch (err) {
-        console.warn("[voice-assessment] Pass 1 transcription threw; falling back:", err);
       }
     }
 
