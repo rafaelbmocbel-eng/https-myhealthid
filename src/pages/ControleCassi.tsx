@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
@@ -34,6 +34,26 @@ interface DraftGuia {
 
 const hojeISO = () => new Date().toISOString().slice(0, 10);
 
+interface CodigoCfg { codigo: string; descricao: string; valor: number; }
+
+// Configuração CASSI do profissional (códigos com valor + imposto por guia).
+// Se ainda não configurou, cai nos códigos padrão com valor 0.
+function useCassiConfig() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['cassi-config', user?.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('cassi_config')
+        .select('codigos, imposto_por_guia').eq('terapeuta_id', user!.id).maybeSingle();
+      const codigos: CodigoCfg[] = Array.isArray(data?.codigos) && data.codigos.length
+        ? data.codigos
+        : CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
+      return { codigos, imposto_por_guia: Number(data?.imposto_por_guia || 0) };
+    },
+    enabled: !!user,
+  });
+}
+
 export default function ControleCassi() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -42,6 +62,7 @@ export default function ControleCassi() {
   const [view, setView] = useState<'painel' | 'planilha'>('painel');
   const [busca, setBusca] = useState('');
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
 
   // Pacientes CASSI do profissional.
   const { data: pacientes = [], isLoading: loadingPac } = useQuery({
@@ -120,15 +141,20 @@ export default function ControleCassi() {
             <ClipboardList className="h-4 w-4 text-primary" />
             <span className="text-sm font-bold">Controle CASSI</span>
           </div>
-          <div className="ml-auto flex items-center gap-1 rounded-lg bg-muted p-0.5">
-            <button onClick={() => setView('painel')}
-              className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'painel' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
-              Painel
-            </button>
-            <button onClick={() => setView('planilha')}
-              className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'planilha' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
-              Planilha
-            </button>
+          <div className="ml-auto flex items-center gap-1.5">
+            <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5">
+              <button onClick={() => setView('painel')}
+                className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'painel' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+                Painel
+              </button>
+              <button onClick={() => setView('planilha')}
+                className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'planilha' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+                Planilha
+              </button>
+            </div>
+            <Button size="icon" variant="ghost" className="h-8 w-8" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
+              <Settings className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
@@ -258,6 +284,8 @@ export default function ControleCassi() {
           }}
         />
       )}
+
+      {configOpen && <ConfigCassiDialog onClose={() => setConfigOpen(false)} />}
     </div>
   );
 }
@@ -294,6 +322,8 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     setD((p) => ({ ...p, codigos: p.codigos.includes(codigo) ? p.codigos.filter((c) => c !== codigo) : [...p.codigos, codigo] }));
 
   const qc = useQueryClient();
+  const { data: cfg } = useCassiConfig();
+  const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
 
   // Fase 2 — sessões (agendamentos REAIS) ligadas a esta guia.
   const { data: sessoes = [] } = useQuery({
@@ -362,7 +392,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
       const sb: any = supabase;
-      const codigos = CODIGOS_CASSI.filter((c) => d.codigos.includes(c.codigo)).map((c) => ({ codigo: c.codigo, descricao: c.descricao }));
+      const codigos = codigosDisp.filter((c) => d.codigos.includes(c.codigo)).map((c) => ({ codigo: c.codigo, descricao: c.descricao }));
       const payload = {
         matricula: d.matricula || null,
         numero_guia: d.numero_guia || null,
@@ -466,12 +496,12 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Códigos</label>
             <div className="flex flex-wrap gap-1.5 mt-1">
-              {CODIGOS_CASSI.map((c) => {
+              {codigosDisp.map((c) => {
                 const ativo = d.codigos.includes(c.codigo);
                 return (
                   <button key={c.codigo} type="button" onClick={() => toggleCodigo(c.codigo)}
                     className={`text-[11px] px-2 py-1 rounded-full border ${ativo ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
-                    {c.codigo} · {c.descricao}{c.apenasPrimeiroDia ? ' (1º dia)' : ''}
+                    {c.codigo} · {c.descricao}
                   </button>
                 );
               })}
@@ -696,6 +726,8 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
   onSaved: () => void;
 }) {
   const { user } = useAuth();
+  const { data: cfg } = useCassiConfig();
+  const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
   const editando = !!paciente;
   const [f, setF] = useState(() => ({
     nome: paciente?.nome || '',
@@ -762,7 +794,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Códigos habituais</label>
             <div className="flex flex-wrap gap-1.5 mt-1">
-              {CODIGOS_CASSI.map((c) => {
+              {codigosDisp.map((c) => {
                 const on = codigos.includes(c.codigo);
                 return (
                   <button type="button" key={c.codigo} onClick={() => toggleCod(c.codigo)}
@@ -791,6 +823,96 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
             </Button>
           </div>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Configurações CASSI — códigos usados (com valor) e imposto por guia. Base do
+// cálculo do mês (fase 4). Design enxuto: uma linha por código.
+function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: cfg, isLoading } = useCassiConfig();
+  const [codigos, setCodigos] = useState<CodigoCfg[]>([]);
+  const [imposto, setImposto] = useState('0');
+  const [pronto, setPronto] = useState(false);
+
+  useEffect(() => {
+    if (cfg && !pronto) {
+      setCodigos(cfg.codigos.map((c) => ({ ...c })));
+      setImposto(String(cfg.imposto_por_guia || 0));
+      setPronto(true);
+    }
+  }, [cfg, pronto]);
+
+  const setCod = (i: number, campo: keyof CodigoCfg, v: string) =>
+    setCodigos((p) => p.map((c, idx) => idx === i ? { ...c, [campo]: campo === 'valor' ? (parseFloat(v.replace(',', '.')) || 0) : v } : c));
+  const addCod = () => setCodigos((p) => [...p, { codigo: '', descricao: '', valor: 0 }]);
+  const rmCod = (i: number) => setCodigos((p) => p.filter((_, idx) => idx !== i));
+
+  const salvar = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Sem sessão');
+      const limpos = codigos.filter((c) => c.codigo.trim())
+        .map((c) => ({ codigo: c.codigo.trim(), descricao: c.descricao.trim(), valor: Number(c.valor) || 0 }));
+      const { error } = await (supabase as any).from('cassi_config').upsert({
+        terapeuta_id: user.id,
+        codigos: limpos,
+        imposto_por_guia: parseFloat(imposto.replace(',', '.')) || 0,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'terapeuta_id' });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success('Configuração salva'); qc.invalidateQueries({ queryKey: ['cassi-config', user?.id] }); onClose(); },
+    onError: (e: any) => toast.error(e.message || 'Erro ao salvar'),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg w-[95vw] max-h-[92vh] overflow-y-auto">
+        <DialogHeader><DialogTitle className="text-base">Configurações CASSI</DialogTitle></DialogHeader>
+        {isLoading || !pronto ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-bold mb-0.5">Códigos e valores</p>
+              <p className="text-[11px] text-muted-foreground mb-2">Os códigos que você usa e quanto vale cada um — entram nas guias e no cálculo do mês.</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground px-0.5">
+                  <span className="w-14">Código</span><span className="flex-1">Descrição</span><span className="w-20">Valor R$</span><span className="w-7" />
+                </div>
+                {codigos.map((c, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <Input className="h-8 w-14 text-sm" value={c.codigo} onChange={(e) => setCod(i, 'codigo', e.target.value)} placeholder="000" />
+                    <Input className="h-8 flex-1 text-sm" value={c.descricao} onChange={(e) => setCod(i, 'descricao', e.target.value)} placeholder="descrição" />
+                    <Input className="h-8 w-20 text-sm tabular-nums" value={String(c.valor)} onChange={(e) => setCod(i, 'valor', e.target.value)} placeholder="0,00" inputMode="decimal" />
+                    <Button size="icon" variant="ghost" className="h-8 w-7 shrink-0" title="Remover" onClick={() => rmCod(i)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button size="sm" variant="outline" className="mt-2 h-8 gap-1 w-full" onClick={addCod}>
+                <Plus className="h-3.5 w-3.5" /> Adicionar código
+              </Button>
+            </div>
+
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Imposto por guia (R$)</label>
+              <Input className="h-9 w-32" value={imposto} onChange={(e) => setImposto(e.target.value)} inputMode="decimal" placeholder="0,00" />
+              <p className="text-[10px] text-muted-foreground mt-0.5">Descontado de cada guia no cálculo do mês.</p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
+              <Button className="flex-1 gap-1.5" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
+                {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
