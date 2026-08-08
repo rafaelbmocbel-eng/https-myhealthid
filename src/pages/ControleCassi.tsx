@@ -154,12 +154,56 @@ export default function ControleCassi() {
     enabled: !!user,
   });
 
+  // Sessões (agendamentos) ligadas às guias — o Controle reflete a AGENDA ao
+  // vivo, sem depender de abrir cada guia. (Mesma queryKey do Relatório/Envios.)
+  const { data: agSessoes = [] } = useQuery({
+    queryKey: ['cassi-ags-guia', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('agendamentos')
+        .select('guia_cassi_id, data_inicio, status, tipo_atendimento')
+        .eq('terapeuta_id', user!.id).not('guia_cassi_id', 'is', null);
+      if (error) throw error;
+      return (data || []) as Array<{ guia_cassi_id: string; data_inicio: string; status: string; tipo_atendimento?: string }>;
+    },
+    enabled: !!user,
+  });
+
+  // Por guia: dias de tratamento gerados na agenda e quantos já foram realizados
+  // (passados e não cancelados/faltados). A avaliação é dia extra e não conta.
+  const realPorGuia = useMemo(() => {
+    const agora = Date.now();
+    const ger = new Map<string, Set<string>>();
+    const rea = new Map<string, Set<string>>();
+    for (const a of agSessoes) {
+      if (!a.guia_cassi_id || a.tipo_atendimento === 'avaliacao' || a.status === 'cancelado') continue;
+      const dt = new Date(a.data_inicio);
+      const ymd = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      if (!ger.has(a.guia_cassi_id)) ger.set(a.guia_cassi_id, new Set());
+      ger.get(a.guia_cassi_id)!.add(ymd);
+      if (dt.getTime() < agora && a.status !== 'faltou' && a.status !== 'bloqueado' && a.status !== 'pendente') {
+        if (!rea.has(a.guia_cassi_id)) rea.set(a.guia_cassi_id, new Set());
+        rea.get(a.guia_cassi_id)!.add(ymd);
+      }
+    }
+    const m = new Map<string, { geradas: number; realizadas: number }>();
+    for (const id of new Set([...ger.keys(), ...rea.keys()])) {
+      m.set(id, { geradas: ger.get(id)?.size || 0, realizadas: rea.get(id)?.size || 0 });
+    }
+    return m;
+  }, [agSessoes]);
+
+  // Guias com a contagem de realizadas vinda da Agenda (quando há sessões geradas).
+  const guiasEff = useMemo(() => guias.map((g) => {
+    const r = realPorGuia.get(g.id);
+    return r && r.geradas > 0 ? { ...g, sessoes_realizadas: r.realizadas } : g;
+  }), [guias, realPorGuia]);
+
   // Guia mais recente por paciente.
   const guiaPorPaciente = useMemo(() => {
     const m = new Map<string, GuiaCassi>();
-    for (const g of guias) if (!m.has(g.paciente_id)) m.set(g.paciente_id, g);
+    for (const g of guiasEff) if (!m.has(g.paciente_id)) m.set(g.paciente_id, g);
     return m;
-  }, [guias]);
+  }, [guiasEff]);
 
   const linhas = useMemo(() =>
     pacientes.map((p) => {
@@ -170,7 +214,7 @@ export default function ControleCassi() {
   const pedidosDoMes = useMemo(() => linhas.filter((l) =>
     precisaNovaGuia(l.guia) || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes)
   ), [linhas]);
-  const guiasAtivasLista = useMemo(() => guias.filter((g) => g.status === 'ativa'), [guias]);
+  const guiasAtivasLista = useMemo(() => guiasEff.filter((g) => g.status === 'ativa'), [guiasEff]);
   const guiasAtivas = guiasAtivasLista.length;
 
   // Paciente por id (para montar o objeto ao abrir/editar guia a partir da linha da guia).
@@ -251,7 +295,7 @@ export default function ControleCassi() {
           />
         ) : view === 'planilha' ? (
           <PlanilhaGuias
-            guias={guias}
+            guias={guiasEff}
             onAbrir={(g) => setEditando({ paciente: { id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null, email: null, telefone: null, carteirinha: null, codigos_cassi: [] }, guia: g })}
           />
         ) : (
@@ -504,12 +548,12 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
 
   // Contagem por DIAS DISTINTOS (1 dia = 1 sessão). A avaliação é um dia extra e
   // NÃO entra na contagem dos dias de tratamento.
-  const soTratamento = useMemo(() => sessoes.filter((s) => s.tipo_atendimento !== 'avaliacao'), [sessoes]);
+  const soTratamento = useMemo(() => sessoes.filter((s) => s.tipo_atendimento !== 'avaliacao' && s.status !== 'cancelado'), [sessoes]);
   const geradas = useMemo(() => new Set(soTratamento.map((s) => s.data_inicio.slice(0, 10))).size, [soTratamento]);
   const realizadas = useMemo(() => {
     const agora = Date.now();
     return new Set(
-      soTratamento.filter((s) => new Date(s.data_inicio).getTime() < agora && s.status !== 'cancelado')
+      soTratamento.filter((s) => new Date(s.data_inicio).getTime() < agora && s.status !== 'faltou' && s.status !== 'bloqueado' && s.status !== 'pendente')
         .map((s) => s.data_inicio.slice(0, 10)),
     ).size;
   }, [soTratamento]);
