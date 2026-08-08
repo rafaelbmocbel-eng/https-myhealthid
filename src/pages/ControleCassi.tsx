@@ -1661,26 +1661,64 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   const colsTrat = cods.filter((c) => c.codigo !== '144');
   const columns = [...(colAval ? [colAval] : []), ...colsTrat];
 
+  // Agendamentos ligados a guias — para saber em que mês cada guia foi concluída.
+  const { data: ags = [] } = useQuery({
+    queryKey: ['cassi-ags-guia', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('agendamentos')
+        .select('guia_cassi_id, data_inicio, status, tipo_atendimento')
+        .eq('terapeuta_id', user!.id).not('guia_cassi_id', 'is', null);
+      if (error) throw error;
+      return (data || []) as Array<{ guia_cassi_id: string; data_inicio: string; status: string; tipo_atendimento?: string }>;
+    },
+    enabled: !!user,
+  });
+
+  // Mês de produção de cada guia = mês da ÚLTIMA sessão de tratamento realizada
+  // (a guia "fechou" nesse mês). Sem agenda, cai na data de resposta/pedido.
+  const mesFimPorGuia = useMemo(() => {
+    const agora = Date.now();
+    const ultima = new Map<string, string>(); // guiaId -> maior data local YYYY-MM-DD
+    for (const a of ags) {
+      if (!a.guia_cassi_id || a.tipo_atendimento === 'avaliacao') continue;
+      if (a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
+      const dt = new Date(a.data_inicio);
+      if (dt.getTime() > agora) continue;
+      const ymd = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      const cur = ultima.get(a.guia_cassi_id);
+      if (!cur || ymd > cur) ultima.set(a.guia_cassi_id, ymd);
+    }
+    return ultima;
+  }, [ags]);
+  const mesProducao = (g: GuiaCassi) => {
+    const fim = mesFimPorGuia.get(g.id);
+    if (fim) return fim.slice(0, 7);
+    if (g.data_resposta) return g.data_resposta.slice(0, 7);
+    if (g.data_pedido) return g.data_pedido.slice(0, 7);
+    return '';
+  };
+
   const candidatas = useMemo(
-    () => guias.filter((g) => g.status !== 'cancelada')
+    () => guias.filter((g) => g.status !== 'cancelada' && somaGuia(g.codigos, valorDe) > 0)
       .sort((a, b) => `${a.pacientes?.nome || ''}`.localeCompare(`${b.pacientes?.nome || ''}`, 'pt-BR')),
-    [guias],
+    [guias, valorDe],
   );
 
+  // Seleção automática: guias cujo mês de produção = mês do relatório.
+  const autoSel = useMemo(() => {
+    const s = new Set<string>();
+    for (const g of candidatas) if (mesProducao(g) === mesRel) s.add(g.id);
+    return s;
+  }, [candidatas, mesRel, mesFimPorGuia]);
+
   const [sel, setSel] = useState<Set<string>>(new Set());
-  const [selReady, setSelReady] = useState(false);
+  const autoSig = useMemo(() => [...autoSel].sort().join(','), [autoSel]);
+  const lastSig = useRef<string | null>(null);
   useEffect(() => {
-    if (!selReady && cfg && guias.length >= 0 && cods.length) {
-      const s = new Set<string>();
-      for (const g of guias) {
-        if (g.status === 'cancelada') continue;
-        if (somaGuia(g.codigos, valorDe) <= 0) continue;
-        if (g.status === 'ativa' || g.status === 'finalizada') s.add(g.id);
-      }
-      setSel(s);
-      setSelReady(true);
-    }
-  }, [cfg, guias, selReady, cods.length, valorDe]);
+    // Reaplica a seleção automática quando muda o mês ou quando os dados chegam
+    // (o conteúdo do auto muda). Ajustes manuais valem até isso acontecer.
+    if (lastSig.current !== autoSig) { lastSig.current = autoSig; setSel(new Set(autoSel)); }
+  }, [autoSig, autoSel]);
   const toggle = (id: string) => setSel((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const qtd = (g: GuiaCassi, cod: string) => Number((g.codigos || []).find((c) => c.codigo === cod)?.sessoes) || 0;
@@ -1732,17 +1770,32 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
           )}
 
           <div>
-            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1">Guias no relatório ({rows.length})</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Guias no relatório ({rows.length})</p>
+              <button className="text-[11px] text-primary" onClick={() => setSel(new Set(autoSel))}>Selecionar automático</button>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-1.5">
+              Selecionadas automaticamente as guias que <b>fecharam</b> em {MESES_PT[m - 1]} {ano}. Desmarque/marque se precisar.
+            </p>
             <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-border/50 p-1.5">
               {candidatas.length === 0 ? (
                 <p className="text-[12px] text-muted-foreground text-center py-3">Nenhuma guia para listar.</p>
-              ) : candidatas.map((g) => (
-                <label key={g.id} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-muted/50 cursor-pointer">
-                  <input type="checkbox" checked={sel.has(g.id)} onChange={() => toggle(g.id)} className="h-4 w-4 accent-primary" />
-                  <span className="text-[12px] flex-1 truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</span>
-                  <span className="text-[11px] text-muted-foreground tabular-nums">{fmtBRL(somaGuia(g.codigos, valorDe))}</span>
-                </label>
-              ))}
+              ) : candidatas.map((g) => {
+                const mp = mesProducao(g);
+                const doMes = mp === mesRel;
+                return (
+                  <label key={g.id} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-muted/50 cursor-pointer">
+                    <input type="checkbox" checked={sel.has(g.id)} onChange={() => toggle(g.id)} className="h-4 w-4 accent-primary" />
+                    <span className="text-[12px] flex-1 truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</span>
+                    {!doMes && mp && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {(() => { const [ya, ma] = mp.split('-').map(Number); return `${MESES_PT[ma - 1]?.slice(0, 3)}/${String(ya).slice(2)}`; })()}
+                      </span>
+                    )}
+                    <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{fmtBRL(somaGuia(g.codigos, valorDe))}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         </div>
