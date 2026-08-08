@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gerarDatasSessoes } from '@/lib/feriados';
@@ -34,7 +34,7 @@ interface DraftGuia {
 
 const hojeISO = () => new Date().toISOString().slice(0, 10);
 
-interface CodigoCfg { codigo: string; descricao: string; valor: number; }
+interface CodigoCfg { codigo: string; descricao: string; valor: number; codigo_oficial?: string; }
 interface ResponsavelCfg { nome: string; percentual: number; }
 
 // Configuração CASSI do profissional (códigos com valor + imposto por guia +
@@ -45,7 +45,7 @@ function useCassiConfig() {
     queryKey: ['cassi-config', user?.id],
     queryFn: async () => {
       const { data } = await (supabase as any).from('cassi_config')
-        .select('codigos, imposto_por_guia, imposto_percentual, minha_parte_percentual, responsaveis').eq('terapeuta_id', user!.id).maybeSingle();
+        .select('codigos, imposto_por_guia, imposto_percentual, minha_parte_percentual, responsaveis, nome_clinica, nome_profissional, cidade').eq('terapeuta_id', user!.id).maybeSingle();
       const codigos: CodigoCfg[] = Array.isArray(data?.codigos) && data.codigos.length
         ? data.codigos
         : CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
@@ -55,6 +55,9 @@ function useCassiConfig() {
         imposto_por_guia: Number(data?.imposto_por_guia || 0),
         imposto_percentual: Number(data?.imposto_percentual || 0),
         minha_parte_percentual: Number(data?.minha_parte_percentual || 0),
+        nome_clinica: (data?.nome_clinica as string) || '',
+        nome_profissional: (data?.nome_profissional as string) || '',
+        cidade: (data?.cidade as string) || '',
       };
     },
     enabled: !!user,
@@ -79,6 +82,12 @@ function brutoGuia(codigos: Array<{ codigo: string; sessoes?: number }>, sessoes
     }
   }
   return total;
+}
+
+// Soma da guia para o RELATÓRIO de produção: cada código pela sua quantidade
+// autorizada (144 = 1). É o "Soma" da linha no arquivo entregue à clínica.
+function somaGuia(codigos: Array<{ codigo: string; sessoes?: number }>, valorDe: (c: string) => number): number {
+  return (codigos || []).reduce((s, c) => s + (Number(c.sessoes) || 0) * valorDe(c.codigo), 0);
 }
 
 export default function ControleCassi() {
@@ -1026,6 +1035,9 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const [impostoPct, setImpostoPct] = useState('0');
   const [minhaParte, setMinhaParte] = useState('0');
   const [responsaveis, setResponsaveis] = useState<ResponsavelCfg[]>([]);
+  const [nomeClinica, setNomeClinica] = useState('');
+  const [nomeProf, setNomeProf] = useState('');
+  const [cidade, setCidade] = useState('');
   const [pronto, setPronto] = useState(false);
 
   useEffect(() => {
@@ -1034,6 +1046,9 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
       setImpostoPct(String(cfg.imposto_percentual || 0));
       setMinhaParte(String(cfg.minha_parte_percentual || 0));
       setResponsaveis((cfg.responsaveis || []).map((r) => ({ ...r })));
+      setNomeClinica(cfg.nome_clinica || '');
+      setNomeProf(cfg.nome_profissional || '');
+      setCidade(cfg.cidade || '');
       setPronto(true);
     }
   }, [cfg, pronto]);
@@ -1052,7 +1067,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
       const limpos = codigos.filter((c) => c.codigo.trim())
-        .map((c) => ({ codigo: c.codigo.trim(), descricao: c.descricao.trim(), valor: Number(c.valor) || 0 }));
+        .map((c) => ({ codigo: c.codigo.trim(), descricao: c.descricao.trim(), valor: Number(c.valor) || 0, codigo_oficial: (c.codigo_oficial || '').trim() }));
       const respLimpos = responsaveis.filter((r) => r.nome.trim())
         .map((r) => ({ nome: r.nome.trim(), percentual: Number(r.percentual) || 0 }));
       const { error } = await (supabase as any).from('cassi_config').upsert({
@@ -1062,6 +1077,9 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
         imposto_percentual: parseFloat(impostoPct.replace(',', '.')) || 0,
         minha_parte_percentual: parseFloat(minhaParte.replace(',', '.')) || 0,
         responsaveis: respLimpos,
+        nome_clinica: nomeClinica.trim(),
+        nome_profissional: nomeProf.trim(),
+        cidade: cidade.trim(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'terapeuta_id' });
       if (error) throw error;
@@ -1080,19 +1098,24 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
           <div className="space-y-4">
             <div>
               <p className="text-sm font-bold mb-0.5">Códigos e valores</p>
-              <p className="text-[11px] text-muted-foreground mb-2">Os códigos que você usa e quanto vale cada um — entram nas guias e no cálculo do mês.</p>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground px-0.5">
-                  <span className="w-14">Código</span><span className="flex-1">Descrição</span><span className="w-20">Valor R$</span><span className="w-7" />
-                </div>
+              <p className="text-[11px] text-muted-foreground mb-2">Os códigos que você usa, o código oficial (aparece no relatório) e quanto vale cada um.</p>
+              <div className="space-y-2">
                 {codigos.map((c, i) => (
-                  <div key={i} className="flex items-center gap-1.5">
-                    <Input className="h-8 w-14 text-sm" value={c.codigo} onChange={(e) => setCod(i, 'codigo', e.target.value)} placeholder="000" />
-                    <Input className="h-8 flex-1 text-sm" value={c.descricao} onChange={(e) => setCod(i, 'descricao', e.target.value)} placeholder="descrição" />
-                    <Input className="h-8 w-20 text-sm tabular-nums" value={String(c.valor)} onChange={(e) => setCod(i, 'valor', e.target.value)} placeholder="0,00" inputMode="decimal" />
-                    <Button size="icon" variant="ghost" className="h-8 w-7 shrink-0" title="Remover" onClick={() => rmCod(i)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
+                  <div key={i} className="rounded-lg border border-border/50 p-2 space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Input className="h-8 w-16 text-sm" value={c.codigo} onChange={(e) => setCod(i, 'codigo', e.target.value)} placeholder="000" />
+                      <Input className="h-8 flex-1 text-sm" value={c.descricao} onChange={(e) => setCod(i, 'descricao', e.target.value)} placeholder="descrição" />
+                      <Button size="icon" variant="ghost" className="h-8 w-7 shrink-0" title="Remover" onClick={() => rmCod(i)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Input className="h-8 flex-1 text-sm tabular-nums" value={c.codigo_oficial || ''} onChange={(e) => setCod(i, 'codigo_oficial', e.target.value)} placeholder="código oficial (ex: 50000012)" />
+                      <div className="flex items-center gap-1 w-28">
+                        <span className="text-[11px] text-muted-foreground">R$</span>
+                        <Input className="h-8 text-sm tabular-nums" value={String(c.valor)} onChange={(e) => setCod(i, 'valor', e.target.value)} placeholder="0,00" inputMode="decimal" />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1134,6 +1157,27 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
               <Button size="sm" variant="outline" className="mt-2 h-8 gap-1 w-full" onClick={addResp}>
                 <Plus className="h-3.5 w-3.5" /> Adicionar responsável
               </Button>
+            </div>
+
+            <div>
+              <p className="text-sm font-bold mb-0.5">Dados do relatório</p>
+              <p className="text-[11px] text-muted-foreground mb-2">Aparecem no cabeçalho e na assinatura do relatório de produção entregue à clínica.</p>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Clínica</label>
+                    <Input className="h-9" value={nomeClinica} onChange={(e) => setNomeClinica(e.target.value)} placeholder="ex: MoviMED" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Cidade</label>
+                    <Input className="h-9" value={cidade} onChange={(e) => setCidade(e.target.value)} placeholder="ex: Belém" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Seu nome (assinatura)</label>
+                  <Input className="h-9" value={nomeProf} onChange={(e) => setNomeProf(e.target.value)} placeholder="ex: Rafael Marcus Braga Mocbel" />
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -1279,6 +1323,7 @@ function FinanceiroCassi() {
   const { user } = useAuth();
   const { data: cfg } = useCassiConfig();
   const [mes, setMes] = useState<string>(() => mesAtualISO());
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
 
   // Clientes CASSI (mesma query/cache do painel).
   const { data: pacientes = [] } = useQuery({
@@ -1458,8 +1503,13 @@ function FinanceiroCassi() {
           <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={calc.linhas.length === 0} onClick={baixarCSV}>
             <Download className="h-3.5 w-3.5" /> CSV
           </Button>
+          <Button size="sm" className="h-8 gap-1.5" onClick={() => setRelatorioOpen(true)}>
+            <FileText className="h-3.5 w-3.5" /> Relatório
+          </Button>
         </div>
       </div>
+
+      {relatorioOpen && <RelatorioProducao mes={mes} onClose={() => setRelatorioOpen(false)} />}
 
       {semValores && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 text-[12px] text-amber-800 dark:text-amber-300">
@@ -1581,5 +1631,183 @@ function FinanceiroCassi() {
         </>
       )}
     </div>
+  );
+}
+
+// ── Relatório de produção (o arquivo entregue à clínica no fim do mês) ─────────
+// Uma linha por guia, com a quantidade de cada código e a soma. Total, desconto
+// do imposto (%) e a sua parte (%). Pronto para imprimir / salvar em PDF.
+function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void }) {
+  const { user } = useAuth();
+  const { data: cfg } = useCassiConfig();
+  const [mesRel, setMesRel] = useState(mes);
+
+  const { data: guias = [] } = useQuery({
+    queryKey: ['guias-cassi', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('guias_cassi').select('*, pacientes(nome, sobrenome)')
+        .eq('terapeuta_id', user!.id)
+        .order('data_pedido', { ascending: false }).order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
+    },
+    enabled: !!user,
+  });
+
+  const cods = cfg?.codigos || [];
+  const valorDe = (c: string) => cods.find((x) => x.codigo === c)?.valor || 0;
+  const colAval = cods.find((c) => c.codigo === '144');
+  const colsTrat = cods.filter((c) => c.codigo !== '144');
+  const columns = [...(colAval ? [colAval] : []), ...colsTrat];
+
+  const candidatas = useMemo(
+    () => guias.filter((g) => g.status !== 'cancelada')
+      .sort((a, b) => `${a.pacientes?.nome || ''}`.localeCompare(`${b.pacientes?.nome || ''}`, 'pt-BR')),
+    [guias],
+  );
+
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [selReady, setSelReady] = useState(false);
+  useEffect(() => {
+    if (!selReady && cfg && guias.length >= 0 && cods.length) {
+      const s = new Set<string>();
+      for (const g of guias) {
+        if (g.status === 'cancelada') continue;
+        if (somaGuia(g.codigos, valorDe) <= 0) continue;
+        if (g.status === 'ativa' || g.status === 'finalizada') s.add(g.id);
+      }
+      setSel(s);
+      setSelReady(true);
+    }
+  }, [cfg, guias, selReady, cods.length, valorDe]);
+  const toggle = (id: string) => setSel((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  const qtd = (g: GuiaCassi, cod: string) => Number((g.codigos || []).find((c) => c.codigo === cod)?.sessoes) || 0;
+  const rows = candidatas.filter((g) => sel.has(g.id));
+  const bruto = rows.reduce((s, g) => s + somaGuia(g.codigos, valorDe), 0);
+  const imp = cfg?.imposto_percentual || 0;
+  const aposImp = bruto * (1 - imp / 100);
+  const minha = cfg?.minha_parte_percentual || 0;
+  const suaParte = aposImp * (minha / 100);
+
+  const [ano, m] = mesRel.split('-').map(Number);
+  const mesNome = (MESES_PT[m - 1] || '').toUpperCase();
+  const hoje = new Date();
+  const dataAssin = `${cfg?.cidade ? cfg.cidade + ', ' : ''}${String(hoje.getDate()).padStart(2, '0')} de ${MESES_PT[hoje.getMonth()]} de ${hoje.getFullYear()}`;
+
+  const th: CSSProperties = { background: '#12314a', color: '#fff', border: '1px solid #0b2136', padding: '6px 8px', fontWeight: 700, fontSize: 12, textAlign: 'center' };
+  const td: CSSProperties = { border: '1px solid #cbd5e1', padding: '6px 8px', fontSize: 12 };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl w-[96vw] max-h-[92vh] overflow-y-auto">
+        <style>{`@media print {
+          body * { visibility: hidden !important; }
+          #relatorio-print, #relatorio-print * { visibility: visible !important; }
+          #relatorio-print { position: absolute !important; left: 0; top: 0; width: 100%; max-height: none !important; overflow: visible !important; }
+          .no-print { display: none !important; }
+        }`}</style>
+
+        <DialogHeader className="no-print">
+          <DialogTitle className="text-base">Relatório de produção — entregar à clínica</DialogTitle>
+        </DialogHeader>
+
+        {/* Controles (não saem na impressão) */}
+        <div className="no-print space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Mês do relatório</label>
+              <Input type="month" value={mesRel} onChange={(e) => e.target.value && setMesRel(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
+            </div>
+            <Button size="sm" className="h-8 gap-1.5 ml-auto mt-4" onClick={() => window.print()}>
+              <Download className="h-3.5 w-3.5" /> Imprimir / Salvar PDF
+            </Button>
+          </div>
+
+          {(!cfg?.nome_clinica || !cods.some((c) => c.valor > 0)) && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-2.5 text-[11px] text-amber-800 dark:text-amber-300">
+              Preencha em <b>Configurações</b>: nome da clínica, cidade, seu nome, os valores e o código oficial de cada código, o imposto (%) e a sua parte (%).
+            </div>
+          )}
+
+          <div>
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-1">Guias no relatório ({rows.length})</p>
+            <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-border/50 p-1.5">
+              {candidatas.length === 0 ? (
+                <p className="text-[12px] text-muted-foreground text-center py-3">Nenhuma guia para listar.</p>
+              ) : candidatas.map((g) => (
+                <label key={g.id} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-muted/50 cursor-pointer">
+                  <input type="checkbox" checked={sel.has(g.id)} onChange={() => toggle(g.id)} className="h-4 w-4 accent-primary" />
+                  <span className="text-[12px] flex-1 truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</span>
+                  <span className="text-[11px] text-muted-foreground tabular-nums">{fmtBRL(somaGuia(g.codigos, valorDe))}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Relatório imprimível */}
+        <div id="relatorio-print" style={{ background: '#fff', color: '#111', padding: 16 }}>
+          <div style={{ textAlign: 'center', marginBottom: 8 }}>
+            {cfg?.nome_clinica && <p style={{ fontSize: 22, fontWeight: 800, letterSpacing: 1 }}>{cfg.nome_clinica}</p>}
+            <p style={{ fontSize: 14, fontWeight: 700, marginTop: 6 }}>RELATÓRIO FINANCEIRO DOS CONVÊNIOS — MÊS DE {mesNome}</p>
+            {cfg?.nome_profissional && <p style={{ fontSize: 13, fontWeight: 700 }}>FISIOTERAPEUTA {cfg.nome_profissional.toUpperCase()}</p>}
+            <p style={{ fontSize: 20, fontWeight: 800, marginTop: 8 }}>CASSI</p>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, textAlign: 'left' }}>Nome do Paciente</th>
+                {columns.map((c) => (
+                  <th key={c.codigo} style={th}>
+                    {c.codigo === '144' ? 'Avaliação' : 'Código'}<br />({c.codigo_oficial || c.codigo})
+                  </th>
+                ))}
+                <th style={th}>Soma</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr><td style={{ ...td, textAlign: 'center' }} colSpan={columns.length + 2}>Selecione as guias acima.</td></tr>
+              ) : rows.map((g) => (
+                <tr key={g.id}>
+                  <td style={td}>{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</td>
+                  {columns.map((c) => (
+                    <td key={c.codigo} style={{ ...td, textAlign: 'center' }}>{qtd(g, c.codigo)}</td>
+                  ))}
+                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtBRL(somaGuia(g.codigos, valorDe))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 240, border: '2px solid #7a6a1e', padding: 10 }}>
+              <p style={{ fontSize: 13, fontWeight: 800 }}>VALOR TOTAL:</p>
+              <p style={{ fontSize: 13 }}>{fmtBRL(bruto)} − {imp}%: {fmtBRL(aposImp)}</p>
+            </div>
+            <div style={{ flex: 1, minWidth: 240, border: '2px solid #7a6a1e', padding: 10 }}>
+              <p style={{ fontSize: 13, fontWeight: 800 }}>VALOR COM A PORCENTAGEM ({minha}%):</p>
+              <p style={{ fontSize: 13 }}>{fmtBRL(suaParte)}</p>
+            </div>
+          </div>
+
+          <p style={{ textAlign: 'right', fontWeight: 700, marginTop: 28 }}>{dataAssin}</p>
+          <div style={{ textAlign: 'center', marginTop: 40 }}>
+            <div style={{ borderTop: '1px solid #111', width: 300, margin: '0 auto' }} />
+            {cfg?.nome_profissional && <p style={{ fontWeight: 700, marginTop: 4 }}>{cfg.nome_profissional}</p>}
+          </div>
+        </div>
+
+        <div className="no-print flex gap-2">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Fechar</Button>
+          <Button className="flex-1 gap-1.5" onClick={() => window.print()}>
+            <Download className="h-4 w-4" /> Imprimir / Salvar PDF
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
