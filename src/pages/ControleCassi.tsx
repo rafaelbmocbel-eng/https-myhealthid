@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
@@ -72,6 +72,9 @@ export default function ControleCassi() {
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
   const [view, setView] = useState<'painel' | 'planilha' | 'financeiro'>('painel');
+  // Sub-aba do painel: guias ativas (padrão, "em linha" com controle de sessões)
+  // ou a lista completa de pacientes.
+  const [aba, setAba] = useState<'ativas' | 'pacientes'>('ativas');
   const [busca, setBusca] = useState('');
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
@@ -127,7 +130,24 @@ export default function ControleCassi() {
     }), [pacientes, guiaPorPaciente]);
 
   const pedidosDoMes = useMemo(() => linhas.filter((l) => precisaNovaGuia(l.guia)), [linhas]);
-  const guiasAtivas = useMemo(() => guias.filter((g) => g.status === 'ativa').length, [guias]);
+  const guiasAtivasLista = useMemo(() => guias.filter((g) => g.status === 'ativa'), [guias]);
+  const guiasAtivas = guiasAtivasLista.length;
+
+  // Paciente por id (para montar o objeto ao abrir/editar guia a partir da linha da guia).
+  const pacienteById = useMemo(() => new Map(pacientes.map((p) => [p.id, p])), [pacientes]);
+  const pacDaGuia = (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }): Paciente =>
+    pacienteById.get(g.paciente_id) || {
+      id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null,
+      email: null, telefone: null, carteirinha: null, codigos_cassi: [],
+    };
+
+  // Guias ativas filtradas pela busca (por nome do paciente).
+  const ativasFiltradas = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    if (!q) return guiasAtivasLista;
+    return guiasAtivasLista.filter((g) =>
+      `${g.pacientes?.nome || ''} ${g.pacientes?.sobrenome || ''}`.toLowerCase().includes(q));
+  }, [guiasAtivasLista, busca]);
 
   // Filtro de busca (nome, carteirinha ou telefone).
   const linhasFiltradas = useMemo(() => {
@@ -188,86 +208,137 @@ export default function ControleCassi() {
           />
         ) : (
           <>
-            {/* Resumo + ações (a "primeira página") */}
+            {/* Resumo + navegação (a "primeira página"). Os números são botões:
+                Clientes → lista de pacientes; Guias ativas → guias em linha;
+                Pedir guia → abre a lista com a mensagem pronta pro WhatsApp. */}
             <div className="rounded-xl border border-border/50 bg-background p-3 space-y-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-5">
-                  <div>
-                    <p className="text-2xl font-black tabular-nums leading-none">{pacientes.length}</p>
-                    <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Clientes CASSI</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black tabular-nums leading-none text-emerald-600">{guiasAtivas}</p>
-                    <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Guias ativas</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black tabular-nums leading-none text-amber-600">{pedidosDoMes.length}</p>
-                    <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Pedir guia</p>
-                  </div>
-                </div>
-                <Button size="sm" className="gap-1.5" onClick={() => setCadastro('novo')}>
-                  <UserPlus className="h-4 w-4" /> Cadastrar cliente
-                </Button>
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => setAba('pacientes')}
+                  className={`rounded-lg border p-2 text-left transition-colors ${aba === 'pacientes' ? 'border-primary/50 bg-primary/5' : 'border-border/50 hover:bg-muted/50'}`}>
+                  <p className="text-2xl font-black tabular-nums leading-none">{pacientes.length}</p>
+                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Pacientes</p>
+                </button>
+                <button onClick={() => setAba('ativas')}
+                  className={`rounded-lg border p-2 text-left transition-colors ${aba === 'ativas' ? 'border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20' : 'border-border/50 hover:bg-muted/50'}`}>
+                  <p className="text-2xl font-black tabular-nums leading-none text-emerald-600">{guiasAtivas}</p>
+                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Guias ativas</p>
+                </button>
+                <button onClick={() => setPedidosOpen(true)} disabled={pedidosDoMes.length === 0}
+                  className={`rounded-lg border p-2 text-left transition-colors ${pedidosDoMes.length > 0 ? 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/30' : 'border-border/50 opacity-60'}`}>
+                  <p className="text-2xl font-black tabular-nums leading-none text-amber-600">{pedidosDoMes.length}</p>
+                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Pedir guia ›</p>
+                </button>
               </div>
-              <div className="relative">
-                <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <Input className="h-9 pl-8" placeholder="Encontrar cliente (nome, carteirinha ou telefone)…"
-                  value={busca} onChange={(e) => setBusca(e.target.value)} />
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <Input className="h-9 pl-8" placeholder="Encontrar cliente (nome, carteirinha ou telefone)…"
+                    value={busca} onChange={(e) => setBusca(e.target.value)} />
+                </div>
+                <Button size="sm" className="gap-1.5 h-9 shrink-0" onClick={() => setCadastro('novo')}>
+                  <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Cadastrar cliente</span>
+                </Button>
               </div>
             </div>
 
-            {/* Pedidos do mês — botão que abre a lista com seleção + gerar texto */}
+            {/* Pedidos do mês — banner-atalho pra mensagem do WhatsApp */}
             {pedidosDoMes.length > 0 && (
               <button onClick={() => setPedidosOpen(true)}
                 className="w-full rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
                 <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
                 <span className="text-sm font-bold text-amber-800 dark:text-amber-300 flex-1 text-left">
-                  Pedidos do mês — {pedidosDoMes.length} cliente(s) para nova guia
+                  Pacientes para nova guia — {pedidosDoMes.length} · mensagem pronta pro WhatsApp
                 </span>
                 <span className="text-[11px] text-amber-700 dark:text-amber-400 shrink-0">abrir ›</span>
               </button>
             )}
 
-            {/* Lista de pacientes CASSI */}
-            {linhasFiltradas.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-8">Nenhum cliente encontrado.</p>
-            ) : (
-              <div className="space-y-2">
-                {linhasFiltradas.map(({ paciente, guia, status }) => (
-                  <div key={paciente.id} className="rounded-xl border border-border/50 bg-background p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <Badge className={`text-[10px] ${status.cls}`}>{status.label}</Badge>
-                          {guia && (
-                            <span className="text-[11px] text-muted-foreground tabular-nums">
-                              {guia.sessoes_realizadas}/{guia.sessoes_autorizadas} sessões
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
-                          {paciente.carteirinha && <span className="inline-flex items-center gap-1"><CreditCard className="h-3 w-3" /> {paciente.carteirinha}</span>}
-                          {paciente.telefone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {paciente.telefone}</span>}
+            {aba === 'ativas' ? (
+              /* Guias ativas "em linha" — controle de sessões */
+              ativasFiltradas.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-8">
+                  Nenhuma guia ativa{busca ? ' para esta busca' : ''}.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {ativasFiltradas.map((g) => {
+                    const aut = g.sessoes_autorizadas || 0;
+                    const real = g.sessoes_realizadas || 0;
+                    const restantes = Math.max(0, aut - real);
+                    const pct = aut > 0 ? Math.min(100, Math.round((real / aut) * 100)) : 0;
+                    return (
+                      <div key={g.id} className="rounded-xl border border-border/50 bg-background px-3 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
+                                <div className={`h-full ${restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{real}/{aut} sessões</span>
+                              {restantes <= 2 && (
+                                <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                  {restantes === 0 ? 'acabou' : `faltam ${restantes}`}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente: pacDaGuia(g), guia: g })}>
+                              <FileText className="h-3.5 w-3.5" /> Ver guia
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente: pacDaGuia(g), guia: null })}>
+                              <Plus className="h-3.5 w-3.5" /> Nova guia
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => setCadastro(paciente)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        {guia && (
-                          <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia })}>
-                            <FileText className="h-3.5 w-3.5" /> Ver guia
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              /* Lista completa de pacientes CASSI */
+              linhasFiltradas.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-8">Nenhum cliente encontrado.</p>
+              ) : (
+                <div className="space-y-2">
+                  {linhasFiltradas.map(({ paciente, guia, status }) => (
+                    <div key={paciente.id} className="rounded-xl border border-border/50 bg-background p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <Badge className={`text-[10px] ${status.cls}`}>{status.label}</Badge>
+                            {guia && (
+                              <span className="text-[11px] text-muted-foreground tabular-nums">
+                                {guia.sessoes_realizadas}/{guia.sessoes_autorizadas} sessões
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
+                            {paciente.carteirinha && <span className="inline-flex items-center gap-1"><CreditCard className="h-3 w-3" /> {paciente.carteirinha}</span>}
+                            {paciente.telefone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {paciente.telefone}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => setCadastro(paciente)}>
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        )}
-                        <Button size="sm" variant={guia ? 'outline' : 'default'} className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia: null })}>
-                          <Plus className="h-3.5 w-3.5" /> Nova guia
-                        </Button>
+                          {guia && (
+                            <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia })}>
+                              <FileText className="h-3.5 w-3.5" /> Ver guia
+                            </Button>
+                          )}
+                          <Button size="sm" variant={guia ? 'outline' : 'default'} className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia: null })}>
+                            <Plus className="h-3.5 w-3.5" /> Nova guia
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )
             )}
           </>
         )}
@@ -1005,13 +1076,21 @@ function PedidosDialog({ linhas, onClose, onNovaGuia }: {
     }));
 
   const selecionados = itens.filter((i) => i.sel);
-  const texto = selecionados.map((i) =>
-    `${i.nome}\nCarteirinha: ${i.carteirinha || '—'}\nDiagnóstico: ${i.diagnostico || '—'}\nCódigos: ${i.codigos.join(', ') || '—'}`
-  ).join('\n\n———\n\n');
+  // Mensagem pronta pro WhatsApp (usa *negrito* do WhatsApp e lista numerada).
+  const texto = [
+    `*Solicitação de novas guias CASSI* (${selecionados.length} cliente${selecionados.length === 1 ? '' : 's'})`,
+    '',
+    ...selecionados.map((i, idx) =>
+      `${idx + 1}. *${i.nome}*\nCarteirinha: ${i.carteirinha || '—'}\nDiagnóstico: ${i.diagnostico || '—'}\nCódigos: ${i.codigos.join(', ') || '—'}`
+    ),
+  ].join('\n');
 
   const copiar = async () => {
     try { await navigator.clipboard.writeText(texto); toast.success('Texto copiado!'); }
     catch { toast.error('Não consegui copiar — selecione e copie manualmente.'); }
+  };
+  const enviarWhatsApp = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
   };
 
   return (
@@ -1059,10 +1138,15 @@ function PedidosDialog({ linhas, onClose, onNovaGuia }: {
           {/* Texto do pedido — pronto para copiar */}
           <div className="rounded-lg border border-border/50 bg-muted/30 p-2.5 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Texto do pedido ({selecionados.length})</span>
-              <Button size="sm" className="h-7 gap-1.5 text-[11px]" disabled={selecionados.length === 0} onClick={copiar}>
-                <Copy className="h-3.5 w-3.5" /> Copiar
-              </Button>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Mensagem do pedido ({selecionados.length})</span>
+              <div className="flex items-center gap-1.5">
+                <Button size="sm" variant="outline" className="h-7 gap-1.5 text-[11px]" disabled={selecionados.length === 0} onClick={copiar}>
+                  <Copy className="h-3.5 w-3.5" /> Copiar
+                </Button>
+                <Button size="sm" className="h-7 gap-1.5 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white" disabled={selecionados.length === 0} onClick={enviarWhatsApp}>
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                </Button>
+              </div>
             </div>
             <Textarea readOnly value={texto} rows={Math.min(12, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />
           </div>
