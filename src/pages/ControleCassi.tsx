@@ -90,12 +90,26 @@ function somaGuia(codigos: Array<{ codigo: string; sessoes?: number }>, valorDe:
   return (codigos || []).reduce((s, c) => s + (Number(c.sessoes) || 0) * valorDe(c.codigo), 0);
 }
 
+// Projeta a data de TÉRMINO da guia (10ª sessão) contando dias úteis corridos
+// (seg–sex) a partir da resposta da CASSI (ou do pedido). Regra: a guia só é
+// debitada no mês em que essa data cair — se passar do fim do mês, vai pro
+// próximo. Retorna 'YYYY-MM-DD' ou null se faltar data/sessões.
+function projetarFimGuia(guia: { data_resposta?: string | null; data_pedido?: string | null; sessoes_autorizadas?: number }): string | null {
+  const inicioStr = guia.data_resposta || guia.data_pedido;
+  const n = guia.sessoes_autorizadas || 0;
+  if (!inicioStr || n <= 0) return null;
+  const datas = gerarDatasSessoes(new Date(`${inicioStr}T00:00:00`), n, [1, 2, 3, 4, 5]);
+  const ultima = datas[datas.length - 1];
+  if (!ultima) return null;
+  return `${ultima.getFullYear()}-${String(ultima.getMonth() + 1).padStart(2, '0')}-${String(ultima.getDate()).padStart(2, '0')}`;
+}
+
 export default function ControleCassi() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
-  const [view, setView] = useState<'painel' | 'planilha' | 'financeiro'>('painel');
+  const [view, setView] = useState<'painel' | 'planilha' | 'financeiro' | 'envios'>('painel');
   // Sub-aba do painel: guias ativas (padrão, "em linha" com controle de sessões)
   // ou a lista completa de pacientes.
   const [aba, setAba] = useState<'ativas' | 'pacientes'>('ativas');
@@ -192,7 +206,7 @@ export default function ControleCassi() {
   return (
     <div className="min-h-[100dvh] bg-muted/30">
       <div className="sticky top-0 z-20 bg-background/90 backdrop-blur border-b border-border/50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="max-w-3xl mx-auto px-3 py-2.5 flex items-center gap-2">
+        <div className="max-w-3xl mx-auto px-3 py-2.5 flex items-center gap-2 flex-wrap">
           <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </button>
@@ -209,6 +223,10 @@ export default function ControleCassi() {
               <button onClick={() => setView('planilha')}
                 className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'planilha' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                 Planilha
+              </button>
+              <button onClick={() => setView('envios')}
+                className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'envios' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+                Envios
               </button>
               <button onClick={() => setView('financeiro')}
                 className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'financeiro' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
@@ -227,6 +245,10 @@ export default function ControleCassi() {
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : view === 'financeiro' ? (
           <FinanceiroCassi />
+        ) : view === 'envios' ? (
+          <EnviosCassi
+            onAbrir={(g) => setEditando({ paciente: { id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null, email: null, telefone: null, carteirinha: null, codigos_cassi: [] }, guia: g })}
+          />
         ) : view === 'planilha' ? (
           <PlanilhaGuias
             guias={guias}
@@ -1677,13 +1699,11 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   // Mês de produção de cada guia = mês da ÚLTIMA sessão de tratamento realizada
   // (a guia "fechou" nesse mês). Sem agenda, cai na data de resposta/pedido.
   const mesFimPorGuia = useMemo(() => {
-    const agora = Date.now();
-    const ultima = new Map<string, string>(); // guiaId -> maior data local YYYY-MM-DD
+    const ultima = new Map<string, string>(); // guiaId -> maior data local YYYY-MM-DD (agendada ou realizada)
     for (const a of ags) {
       if (!a.guia_cassi_id || a.tipo_atendimento === 'avaliacao') continue;
-      if (a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
+      if (a.status === 'cancelado') continue;
       const dt = new Date(a.data_inicio);
-      if (dt.getTime() > agora) continue;
       const ymd = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
       const cur = ultima.get(a.guia_cassi_id);
       if (!cur || ymd > cur) ultima.set(a.guia_cassi_id, ymd);
@@ -1691,11 +1711,8 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
     return ultima;
   }, [ags]);
   const mesProducao = (g: GuiaCassi) => {
-    const fim = mesFimPorGuia.get(g.id);
-    if (fim) return fim.slice(0, 7);
-    if (g.data_resposta) return g.data_resposta.slice(0, 7);
-    if (g.data_pedido) return g.data_pedido.slice(0, 7);
-    return '';
+    const fim = mesFimPorGuia.get(g.id) || projetarFimGuia(g);
+    return fim ? fim.slice(0, 7) : '';
   };
 
   const candidatas = useMemo(
@@ -1862,5 +1879,154 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── Aba "Envios": guias que serão enviadas (debitadas) em cada mês ────────────
+// A guia entra no mês em que a 10ª sessão (dias úteis corridos) TERMINA. Se
+// passar do fim do mês, cai no próximo. Projeta o fim mesmo sem agenda gerada.
+function EnviosCassi({ onAbrir }: {
+  onAbrir: (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }) => void;
+}) {
+  const { user } = useAuth();
+  const { data: cfg } = useCassiConfig();
+  const [mes, setMes] = useState<string>(() => mesAtualISO());
+
+  const { data: guias = [], isLoading } = useQuery({
+    queryKey: ['guias-cassi', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('guias_cassi').select('*, pacientes(nome, sobrenome)')
+        .eq('terapeuta_id', user!.id)
+        .order('data_pedido', { ascending: false }).order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
+    },
+    enabled: !!user,
+  });
+
+  const { data: ags = [] } = useQuery({
+    queryKey: ['cassi-ags-guia', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('agendamentos')
+        .select('guia_cassi_id, data_inicio, status, tipo_atendimento')
+        .eq('terapeuta_id', user!.id).not('guia_cassi_id', 'is', null);
+      if (error) throw error;
+      return (data || []) as Array<{ guia_cassi_id: string; data_inicio: string; status: string; tipo_atendimento?: string }>;
+    },
+    enabled: !!user,
+  });
+
+  // Data de término real por guia (última sessão de tratamento agendada/realizada).
+  const fimRealPorGuia = useMemo(() => {
+    const ultima = new Map<string, string>();
+    for (const a of ags) {
+      if (!a.guia_cassi_id || a.tipo_atendimento === 'avaliacao') continue;
+      if (a.status === 'cancelado') continue;
+      const dt = new Date(a.data_inicio);
+      const ymd = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      const cur = ultima.get(a.guia_cassi_id);
+      if (!cur || ymd > cur) ultima.set(a.guia_cassi_id, ymd);
+    }
+    return ultima;
+  }, [ags]);
+  const fimGuia = (g: GuiaCassi) => fimRealPorGuia.get(g.id) || projetarFimGuia(g);
+
+  const valorDe = (c: string) => cfg?.codigos.find((x) => x.codigo === c)?.valor || 0;
+
+  const lista = useMemo(() =>
+    guias.filter((g) => g.status !== 'cancelada')
+      .map((g) => ({ g, fim: fimGuia(g) }))
+      .filter((x): x is { g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }; fim: string } => !!x.fim && x.fim.slice(0, 7) === mes)
+      .sort((a, b) => (a.fim < b.fim ? -1 : a.fim > b.fim ? 1 : 0)),
+    [guias, fimRealPorGuia, mes]);
+
+  const totalBruto = lista.reduce((s, x) => s + somaGuia(x.g.codigos, valorDe), 0);
+
+  const irMes = (delta: number) => {
+    const [a, m] = mes.split('-').map(Number);
+    const d = new Date(a, m - 1 + delta, 1);
+    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+  const [ano, m] = mes.split('-').map(Number);
+  const ehMesAtual = mes === mesAtualISO();
+
+  return (
+    <div className="space-y-4">
+      {/* Navegação de mês */}
+      <div className="rounded-xl border border-border/50 bg-background p-3 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(-1)} title="Mês anterior">‹</Button>
+          <div className="text-center min-w-[9rem]">
+            <p className="text-sm font-bold capitalize leading-none">{MESES_PT[m - 1]} {ano}</p>
+            <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Guias a enviar</p>
+          </div>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(1)} title="Próximo mês">›</Button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {ehMesAtual && (
+            <Button size="sm" variant="outline" className="h-8" onClick={() => irMes(1)}>Próximo mês ›</Button>
+          )}
+          <Input type="month" value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
+        </div>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground px-1">
+        A guia entra no mês em que a <b>10ª sessão</b> (dias úteis corridos) termina. Se passar do fim do mês, ela cai no <b>próximo</b>.
+      </p>
+
+      {/* Resumo */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-border/50 bg-background p-3">
+          <p className="text-2xl font-black tabular-nums leading-none">{lista.length}</p>
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">Guias a enviar</p>
+        </div>
+        <div className="rounded-xl border border-border/50 bg-background p-3">
+          <p className="text-2xl font-black tabular-nums leading-none">{fmtBRL(totalBruto)}</p>
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">Bruto do mês</p>
+        </div>
+      </div>
+
+      {/* Lista */}
+      {isLoading ? (
+        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : lista.length === 0 ? (
+        <p className="text-center text-sm text-muted-foreground py-10">
+          Nenhuma guia termina em {MESES_PT[m - 1]} {ano}.<br />
+          <span className="text-[12px]">Use ‹ › para ver outros meses.</span>
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {lista.map(({ g, fim }) => {
+            const aut = g.sessoes_autorizadas || 0;
+            const real = g.sessoes_realizadas || 0;
+            const completa = aut > 0 && real >= aut;
+            const projetada = !fimRealPorGuia.has(g.id); // fim veio da projeção (sem agenda)
+            const [, fm, fd] = fim.split('-');
+            return (
+              <button key={g.id} onClick={() => onAbrir(g)}
+                className="w-full text-left rounded-xl border border-border/50 bg-background px-3 py-2.5 hover:bg-muted/40 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-[11px] text-muted-foreground tabular-nums">{real}/{aut} sessões</span>
+                      <span className="text-[11px] text-muted-foreground">·</span>
+                      <span className="text-[11px] text-muted-foreground">termina {fd}/{fm}{projetada ? ' (previsto)' : ''}</span>
+                      {completa ? (
+                        <Badge className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">completa</Badge>
+                      ) : (
+                        <Badge className="text-[10px] bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">em andamento</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums shrink-0">{fmtBRL(somaGuia(g.codigos, valorDe))}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
