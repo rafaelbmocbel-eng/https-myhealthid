@@ -114,6 +114,7 @@ interface FormData {
   convenio_id: string;
   carteirinha: string;
   codigos_cassi: string[];
+  guias_por_mes: number;
   lgpd_aceite: boolean;
   contato_emergencia_nome: string;
   contato_emergencia_telefone: string;
@@ -136,6 +137,7 @@ const emptyForm: FormData = {
   convenio_id: '',
   carteirinha: '',
   codigos_cassi: [],
+  guias_por_mes: 1,
   lgpd_aceite: false,
   contato_emergencia_nome: '',
   contato_emergencia_telefone: '',
@@ -544,6 +546,7 @@ export default function Pacientes() {
       convenio_id: (p as any).convenio_id || '',
       carteirinha: (p as any).carteirinha || '',
       codigos_cassi: Array.isArray((p as any).codigos_cassi) ? (p as any).codigos_cassi : [],
+      guias_por_mes: Number((p as any).guias_por_mes) >= 2 ? 2 : 1,
       lgpd_aceite: !!(p as any).lgpd_aceite_em,
       contato_emergencia_nome: (p as any).contato_emergencia_nome || '',
       contato_emergencia_telefone: (p as any).contato_emergencia_telefone || '',
@@ -605,6 +608,7 @@ export default function Pacientes() {
       if (/cassi/i.test(convenioSel?.nome || '')) {
         payload.carteirinha = form.carteirinha.trim() || null;
         payload.codigos_cassi = form.codigos_cassi;
+        payload.guias_por_mes = form.guias_por_mes;
       }
       if (!modal.paciente) {
         payload.origem = form.origem_lead || 'cadastro_manual';
@@ -1508,6 +1512,19 @@ export default function Pacientes() {
                           })}
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-1">Pré-preenchem as guias novas deste cliente no Controle CASSI.</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Guias por mês</Label>
+                        <div className="flex gap-1.5 mt-1">
+                          {[1, 2].map(n => (
+                            <button type="button" key={n}
+                              onClick={() => setForm(f => ({ ...f, guias_por_mes: n }))}
+                              className={cn('flex-1 text-[12px] py-1.5 rounded-lg border font-medium', form.guias_por_mes === n ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground')}>
+                              {n} guia{n > 1 ? 's' : ''}/mês
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">2/mês: o Controle CASSI avisa pra pedir a próxima guia ~13 dias após a resposta da CASSI.</p>
                       </div>
                     </div>
                   )}

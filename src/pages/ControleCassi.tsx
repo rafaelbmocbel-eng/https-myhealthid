@@ -12,9 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
+import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, venceuPrazoProximaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -86,7 +86,7 @@ export default function ControleCassi() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
@@ -129,7 +129,9 @@ export default function ControleCassi() {
       return { paciente: p, guia, status: statusPaciente(guia) };
     }), [pacientes, guiaPorPaciente]);
 
-  const pedidosDoMes = useMemo(() => linhas.filter((l) => precisaNovaGuia(l.guia)), [linhas]);
+  const pedidosDoMes = useMemo(() => linhas.filter((l) =>
+    precisaNovaGuia(l.guia) || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes)
+  ), [linhas]);
   const guiasAtivasLista = useMemo(() => guias.filter((g) => g.status === 'ativa'), [guias]);
   const guiasAtivas = guiasAtivasLista.length;
 
@@ -138,7 +140,7 @@ export default function ControleCassi() {
   const pacDaGuia = (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }): Paciente =>
     pacienteById.get(g.paciente_id) || {
       id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null,
-      email: null, telefone: null, carteirinha: null, codigos_cassi: [],
+      email: null, telefone: null, carteirinha: null, codigos_cassi: [], guias_por_mes: 1,
     };
 
   // Guias ativas filtradas pela busca (por nome do paciente).
@@ -266,17 +268,28 @@ export default function ControleCassi() {
                     const real = g.sessoes_realizadas || 0;
                     const restantes = Math.max(0, aut - real);
                     const pct = aut > 0 ? Math.min(100, Math.round((real / aut) * 100)) : 0;
+                    const pac = pacienteById.get(g.paciente_id);
+                    const prazoVenceu = venceuPrazoProximaGuia(g, pac?.guias_por_mes);
                     return (
-                      <div key={g.id} className="rounded-xl border border-border/50 bg-background px-3 py-2.5">
+                      <div key={g.id} className={`rounded-xl border bg-background px-3 py-2.5 ${prazoVenceu ? 'border-rose-300 dark:border-rose-900' : 'border-border/50'}`}>
                         <div className="flex items-center gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</p>
-                            <div className="flex items-center gap-2 mt-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-semibold truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</p>
+                              {(pac?.guias_por_mes || 1) >= 2 && (
+                                <span className="text-[9px] uppercase font-bold text-violet-600 border border-violet-300 dark:border-violet-800 rounded px-1 shrink-0">2/mês</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                               <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
                                 <div className={`h-full ${restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
                               </div>
                               <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{real}/{aut} sessões</span>
-                              {restantes <= 2 && (
+                              {prazoVenceu ? (
+                                <Badge className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
+                                  Pedir próxima guia
+                                </Badge>
+                              ) : restantes <= 2 && (
                                 <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                                   {restantes === 0 ? 'acabou' : `faltam ${restantes}`}
                                 </Badge>
@@ -408,6 +421,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     observacoes: guia?.observacoes || '',
   }));
 
+  const [duasPorMes, setDuasPorMes] = useState<boolean>((paciente.guias_por_mes || 1) >= 2);
   const set = <K extends keyof DraftGuia>(k: K, v: DraftGuia[K]) => setD((p) => ({ ...p, [k]: v }));
   const toggleCodigo = (codigo: string) =>
     setD((p) => ({ ...p, codigos: p.codigos.includes(codigo) ? p.codigos.filter((c) => c !== codigo) : [...p.codigos, codigo] }));
@@ -515,8 +529,16 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
         });
         if (error) throw error;
       }
+      // Modificador de guias/mês do cliente (só grava se mudou).
+      if (duasPorMes !== ((paciente.guias_por_mes || 1) >= 2)) {
+        await sb.from('pacientes').update({ guias_por_mes: duasPorMes ? 2 : 1 }).eq('id', paciente.id);
+      }
     },
-    onSuccess: () => { toast.success(editandoExistente ? 'Guia atualizada' : 'Guia criada'); onSaved(); },
+    onSuccess: () => {
+      toast.success(editandoExistente ? 'Guia atualizada' : 'Guia criada');
+      qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+      onSaved();
+    },
     onError: (e: any) => toast.error(e.message || 'Erro ao salvar'),
   });
 
@@ -611,6 +633,17 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
                   <SelectItem value="cancelada">Cancelada</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Guias por mês</label>
+              <div className="flex gap-1.5 mt-1">
+                {[1, 2].map((n) => (
+                  <button type="button" key={n} onClick={() => setDuasPorMes(n === 2)}
+                    className={`flex-1 text-[12px] py-1.5 rounded-lg border font-medium ${(duasPorMes ? 2 : 1) === n ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
+                    {n}/mês
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -828,6 +861,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
     telefone: paciente?.telefone || '',
   }));
   const [codigos, setCodigos] = useState<string[]>(paciente?.codigos_cassi || []);
+  const [guiasPorMes, setGuiasPorMes] = useState<number>(paciente?.guias_por_mes && paciente.guias_por_mes >= 2 ? 2 : 1);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
   const toggleCod = (c: string) => setCodigos((p) => p.includes(c) ? p.filter((x) => x !== c) : [...p, c]);
 
@@ -843,6 +877,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
         email: f.email.trim() || null,
         telefone: f.telefone.replace(/\D/g, '') || null,
         codigos_cassi: codigos,
+        guias_por_mes: guiasPorMes,
       };
       if (editando) {
         const { error } = await sb.from('pacientes').update(payload).eq('id', paciente!.id);
@@ -895,6 +930,18 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
                 );
               })}
             </div>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Guias por mês</label>
+            <div className="flex gap-1.5 mt-1">
+              {[1, 2].map((n) => (
+                <button type="button" key={n} onClick={() => setGuiasPorMes(n)}
+                  className={`flex-1 text-[12px] py-1.5 rounded-lg border font-medium ${guiasPorMes === n ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
+                  {n} guia{n > 1 ? 's' : ''}/mês
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-0.5">2/mês avisa pra pedir a próxima guia ~13 dias após a resposta da CASSI.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>

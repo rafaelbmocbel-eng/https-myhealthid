@@ -91,3 +91,20 @@ export function precisaNovaGuia(guia: GuiaCassi | null): boolean {
   const s = statusPaciente(guia);
   return s.key === 'pedir_nova' || s.key === 'sem_guia';
 }
+
+// Prazo p/ pedir a PRÓXIMA guia do cliente de 2 guias/mês: ~13 dias corridos
+// (≈10 dias úteis de sessões) contados a partir da resposta da CASSI. Antes disso
+// o cliente segue "ativo" normalmente; vencido, entra em "Pedir guia".
+export const PRAZO_PROXIMA_GUIA_DIAS = 13;
+
+export function venceuPrazoProximaGuia(
+  guia: GuiaCassi | null,
+  guiasPorMes: number | null | undefined,
+): boolean {
+  if (!guia || (guiasPorMes || 1) < 2) return false;
+  if (guia.status !== 'ativa') return false;
+  if (!guia.data_resposta) return false;
+  const resp = new Date(`${guia.data_resposta}T00:00:00`).getTime();
+  if (Number.isNaN(resp)) return false;
+  return (Date.now() - resp) / 86400000 >= PRAZO_PROXIMA_GUIA_DIAS;
+}
