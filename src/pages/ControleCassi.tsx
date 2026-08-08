@@ -1363,6 +1363,9 @@ function FinanceiroCassi() {
 
   const [ano, m] = mes.split('-').map(Number);
   const semValores = !cfg?.codigos.some((c) => c.valor > 0);
+  // A CASSI paga a clínica ~3 meses depois das guias entregues no mês.
+  const dRec = new Date(ano, m - 1 + 3, 1);
+  const mesRecebimento = `${MESES_PT[dRec.getMonth()]} ${dRec.getFullYear()}`;
 
   return (
     <div className="space-y-4">
@@ -1404,6 +1407,15 @@ function FinanceiroCassi() {
           </div>
         ))}
       </div>
+
+      {calc.totLiquido > 0 && (
+        <div className="rounded-xl border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/20 p-3 flex items-center gap-2">
+          <CalendarClock className="h-4 w-4 text-sky-600 shrink-0" />
+          <p className="text-[12px] text-sky-800 dark:text-sky-300">
+            A CASSI paga a clínica ~3 meses depois. Previsão deste fechamento: <b className="capitalize">{mesRecebimento}</b>.
+          </p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
