@@ -45,12 +45,17 @@ function useCassiConfig() {
     queryKey: ['cassi-config', user?.id],
     queryFn: async () => {
       const { data } = await (supabase as any).from('cassi_config')
-        .select('codigos, imposto_por_guia, responsaveis').eq('terapeuta_id', user!.id).maybeSingle();
+        .select('codigos, imposto_por_guia, imposto_percentual, minha_parte_percentual, responsaveis').eq('terapeuta_id', user!.id).maybeSingle();
       const codigos: CodigoCfg[] = Array.isArray(data?.codigos) && data.codigos.length
         ? data.codigos
         : CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
       const responsaveis: ResponsavelCfg[] = Array.isArray(data?.responsaveis) ? data.responsaveis : [];
-      return { codigos, responsaveis, imposto_por_guia: Number(data?.imposto_por_guia || 0) };
+      return {
+        codigos, responsaveis,
+        imposto_por_guia: Number(data?.imposto_por_guia || 0),
+        imposto_percentual: Number(data?.imposto_percentual || 0),
+        minha_parte_percentual: Number(data?.minha_parte_percentual || 0),
+      };
     },
     enabled: !!user,
   });
@@ -1018,14 +1023,16 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const { data: cfg, isLoading } = useCassiConfig();
   const [codigos, setCodigos] = useState<CodigoCfg[]>([]);
-  const [imposto, setImposto] = useState('0');
+  const [impostoPct, setImpostoPct] = useState('0');
+  const [minhaParte, setMinhaParte] = useState('0');
   const [responsaveis, setResponsaveis] = useState<ResponsavelCfg[]>([]);
   const [pronto, setPronto] = useState(false);
 
   useEffect(() => {
     if (cfg && !pronto) {
       setCodigos(cfg.codigos.map((c) => ({ ...c })));
-      setImposto(String(cfg.imposto_por_guia || 0));
+      setImpostoPct(String(cfg.imposto_percentual || 0));
+      setMinhaParte(String(cfg.minha_parte_percentual || 0));
       setResponsaveis((cfg.responsaveis || []).map((r) => ({ ...r })));
       setPronto(true);
     }
@@ -1051,7 +1058,9 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
       const { error } = await (supabase as any).from('cassi_config').upsert({
         terapeuta_id: user.id,
         codigos: limpos,
-        imposto_por_guia: parseFloat(imposto.replace(',', '.')) || 0,
+        imposto_por_guia: 0, // migrado para percentual
+        imposto_percentual: parseFloat(impostoPct.replace(',', '.')) || 0,
+        minha_parte_percentual: parseFloat(minhaParte.replace(',', '.')) || 0,
         responsaveis: respLimpos,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'terapeuta_id' });
@@ -1092,10 +1101,17 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
               </Button>
             </div>
 
-            <div>
-              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Imposto por guia (R$)</label>
-              <Input className="h-9 w-32" value={imposto} onChange={(e) => setImposto(e.target.value)} inputMode="decimal" placeholder="0,00" />
-              <p className="text-[10px] text-muted-foreground mt-0.5">Descontado de cada guia no cálculo do mês.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Imposto por guia (%)</label>
+                <Input className="h-9" value={impostoPct} onChange={(e) => setImpostoPct(e.target.value)} inputMode="decimal" placeholder="ex: 14" />
+                <p className="text-[10px] text-muted-foreground mt-0.5">Descontado do bruto de cada guia.</p>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sua parte (%)</label>
+                <Input className="h-9" value={minhaParte} onChange={(e) => setMinhaParte(e.target.value)} inputMode="decimal" placeholder="ex: 45" />
+                <p className="text-[10px] text-muted-foreground mt-0.5">Do líquido (após imposto). O resto fica com a clínica.</p>
+              </div>
             </div>
 
             <div>
@@ -1335,7 +1351,8 @@ function FinanceiroCassi() {
     }
 
     const valorDe = (c: string) => cfg?.codigos.find((x) => x.codigo === c)?.valor || 0;
-    const imposto = cfg?.imposto_por_guia || 0;
+    const impostoPct = cfg?.imposto_percentual || 0;
+    const impostoFixo = cfg?.imposto_por_guia || 0;
 
     const linhas = [...sessoesPorPac.entries()]
       .filter(([, n]) => n > 0)
@@ -1345,6 +1362,8 @@ function FinanceiroCassi() {
           ? guia.codigos
           : (codigosPac.get(pid)?.length ? codigosPac.get(pid)!.map((c) => ({ codigo: c })) : [{ codigo: '012' }]);
         const bruto = brutoGuia(codigos, sessoes, valorDe);
+        // Imposto por guia: percentual do bruto (novo) ou o valor fixo antigo.
+        const imposto = impostoPct > 0 ? bruto * (impostoPct / 100) : impostoFixo;
         const liquido = Math.max(0, bruto - imposto);
         return {
           pid,
@@ -1380,7 +1399,16 @@ function FinanceiroCassi() {
     })).sort((a, b) => b.liquido - a.liquido);
     const totRepasse = repasses.reduce((s, r) => s + r.repasse, 0);
 
-    return { linhas, totBruto, totImposto, totLiquido, totSessoes, repasses, totRepasse, ficaComVoce: totLiquido - totRepasse };
+    // Divisão principal: sua parte (% do líquido) e o que fica com a clínica.
+    const minhaPct = cfg?.minha_parte_percentual || 0;
+    const suaParte = totLiquido * (minhaPct / 100);
+    const parteClinica = totLiquido - suaParte;
+
+    return {
+      linhas, totBruto, totImposto, totLiquido, totSessoes, impostoPct,
+      minhaPct, suaParte, parteClinica,
+      repasses, totRepasse, ficaComVoce: totLiquido - totRepasse,
+    };
   }, [mes, pacientes, guias, agendamentos, cfg]);
 
   const irMes = (delta: number) => {
@@ -1444,8 +1472,8 @@ function FinanceiroCassi() {
         {[
           { label: 'Sessões', valor: String(calc.totSessoes), cls: '' },
           { label: 'Bruto', valor: fmtBRL(calc.totBruto), cls: '' },
-          { label: 'Imposto', valor: `− ${fmtBRL(calc.totImposto)}`, cls: 'text-rose-600' },
-          { label: 'Líquido', valor: fmtBRL(calc.totLiquido), cls: 'text-emerald-600' },
+          { label: `Imposto${calc.impostoPct ? ` (${calc.impostoPct}%)` : ''}`, valor: `− ${fmtBRL(calc.totImposto)}`, cls: 'text-rose-600' },
+          { label: 'Líquido', valor: fmtBRL(calc.totLiquido), cls: '' },
         ].map((c) => (
           <div key={c.label} className="rounded-xl border border-border/50 bg-background p-3">
             <p className={`text-lg font-black tabular-nums leading-none ${c.cls}`}>{c.valor}</p>
@@ -1453,6 +1481,20 @@ function FinanceiroCassi() {
           </div>
         ))}
       </div>
+
+      {/* Divisão: sua parte × clínica */}
+      {calc.totLiquido > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 p-3">
+            <p className="text-2xl font-black tabular-nums leading-none text-emerald-700 dark:text-emerald-400">{fmtBRL(calc.suaParte)}</p>
+            <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">Sua parte{calc.minhaPct ? ` · ${calc.minhaPct}%` : ''}</p>
+          </div>
+          <div className="rounded-xl border border-border/50 bg-background p-3">
+            <p className="text-2xl font-black tabular-nums leading-none">{fmtBRL(calc.parteClinica)}</p>
+            <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">Clínica</p>
+          </div>
+        </div>
+      )}
 
       {calc.totLiquido > 0 && (
         <div className="rounded-xl border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/20 p-3 flex items-center gap-2">
@@ -1507,7 +1549,7 @@ function FinanceiroCassi() {
           </div>
 
           {/* Repasse por responsável */}
-          {calc.repasses.length > 0 && (
+          {(cfg?.responsaveis?.length || 0) > 0 && calc.repasses.length > 0 && (
             <div className="rounded-xl border border-border/50 bg-background overflow-hidden">
               <div className="px-3 py-2 border-b border-border/50 bg-muted/30 flex items-center justify-between">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Repasse por responsável</p>
