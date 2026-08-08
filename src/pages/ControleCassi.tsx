@@ -57,13 +57,23 @@ function useCassiConfig() {
 }
 
 const fmtBRL = (v: number) => `R$ ${(Number(v) || 0).toFixed(2).replace('.', ',')}`;
-// Valor bruto de uma guia num mês: 144 (avaliação) conta 1x; os demais códigos por
-// sessão realizada. `valorDe` resolve o valor de cada código pela config.
-function brutoGuia(codigos: Array<{ codigo: string }>, sessoes: number, valorDe: (c: string) => number): number {
-  const cods = (codigos || []).map((c) => c.codigo);
-  const porSessao = cods.filter((c) => c !== '144').reduce((s, c) => s + valorDe(c), 0);
-  const av = cods.includes('144') && sessoes >= 1 ? valorDe('144') : 0;
-  return sessoes * porSessao + av;
+// Valor bruto de uma guia num mês. Soma código a código:
+//  - 144 (avaliação) é um dia EXTRA separado → cobra 1x (se houve ≥1 sessão);
+//  - códigos de tratamento cobram por dia de tratamento, limitado à quantidade
+//    autorizada de CADA código (um código pode ter passado com menos, ou "não
+//    passado" = 0). Se o código não tem quantidade própria, usa os dias do mês.
+// `valorDe` resolve o valor de cada código pela config.
+function brutoGuia(codigos: Array<{ codigo: string; sessoes?: number }>, sessoes: number, valorDe: (c: string) => number): number {
+  let total = 0;
+  for (const c of (codigos || [])) {
+    if (c.codigo === '144') {
+      if ((c.sessoes ?? 1) >= 1 && sessoes >= 1) total += valorDe('144');
+    } else {
+      const cap = c.sessoes != null ? c.sessoes : sessoes;
+      total += valorDe(c.codigo) * Math.max(0, Math.min(sessoes, cap));
+    }
+  }
+  return total;
 }
 
 export default function ControleCassi() {
@@ -422,9 +432,22 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
   }));
 
   const [duasPorMes, setDuasPorMes] = useState<boolean>((paciente.guias_por_mes || 1) >= 2);
+  // Quantidade de sessões autorizada POR código (144 = 1 dia extra de avaliação).
+  const [sesCod, setSesCod] = useState<Record<string, number>>(() => {
+    const src = (guia ?? base)?.codigos;
+    const m: Record<string, number> = {};
+    if (src?.length) for (const c of src) m[c.codigo] = c.sessoes ?? (c.codigo === '144' ? 1 : (guia?.sessoes_autorizadas || 10));
+    return m;
+  });
   const set = <K extends keyof DraftGuia>(k: K, v: DraftGuia[K]) => setD((p) => ({ ...p, [k]: v }));
-  const toggleCodigo = (codigo: string) =>
-    setD((p) => ({ ...p, codigos: p.codigos.includes(codigo) ? p.codigos.filter((c) => c !== codigo) : [...p.codigos, codigo] }));
+  const toggleCodigo = (codigo: string) => {
+    const has = d.codigos.includes(codigo);
+    if (!has && !(codigo in sesCod)) {
+      setSesCod((s) => ({ ...s, [codigo]: codigo === '144' ? 1 : (Number(d.sessoes_autorizadas) || 10) }));
+    }
+    setD((p) => ({ ...p, codigos: has ? p.codigos.filter((c) => c !== codigo) : [...p.codigos, codigo] }));
+  };
+  const setQtd = (cod: string, v: string) => setSesCod((s) => ({ ...s, [cod]: Math.max(0, parseInt(v) || 0) }));
 
   const qc = useQueryClient();
   const { data: cfg } = useCassiConfig();
@@ -435,23 +458,25 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     queryKey: ['guia-sessoes', guia?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from('agendamentos')
-        .select('id, data_inicio, status').eq('guia_cassi_id', guia!.id)
+        .select('id, data_inicio, status, tipo_atendimento').eq('guia_cassi_id', guia!.id)
         .order('data_inicio', { ascending: true });
       if (error) throw error;
-      return (data || []) as Array<{ id: string; data_inicio: string; status: string }>;
+      return (data || []) as Array<{ id: string; data_inicio: string; status: string; tipo_atendimento?: string }>;
     },
     enabled: !!guia?.id,
   });
 
-  // Contagem por DIAS DISTINTOS (1 dia = 1 sessão), como o PDF exige.
-  const geradas = useMemo(() => new Set(sessoes.map((s) => s.data_inicio.slice(0, 10))).size, [sessoes]);
+  // Contagem por DIAS DISTINTOS (1 dia = 1 sessão). A avaliação é um dia extra e
+  // NÃO entra na contagem dos dias de tratamento.
+  const soTratamento = useMemo(() => sessoes.filter((s) => s.tipo_atendimento !== 'avaliacao'), [sessoes]);
+  const geradas = useMemo(() => new Set(soTratamento.map((s) => s.data_inicio.slice(0, 10))).size, [soTratamento]);
   const realizadas = useMemo(() => {
     const agora = Date.now();
     return new Set(
-      sessoes.filter((s) => new Date(s.data_inicio).getTime() < agora && s.status !== 'cancelado')
+      soTratamento.filter((s) => new Date(s.data_inicio).getTime() < agora && s.status !== 'cancelado')
         .map((s) => s.data_inicio.slice(0, 10)),
     ).size;
-  }, [sessoes]);
+  }, [soTratamento]);
 
   const [gerForm, setGerForm] = useState({ inicio: guia?.data_resposta || guia?.data_pedido || hojeISO(), horario: '08:00' });
 
@@ -461,16 +486,22 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
       const faltam = Math.max(0, (guia.sessoes_autorizadas || 0) - geradas);
       if (faltam <= 0) throw new Error('Todas as sessões autorizadas já estão na agenda.');
       const [hh, mm] = (gerForm.horario || '08:00').split(':').map((n) => parseInt(n, 10));
-      const datas = gerarDatasSessoes(new Date(`${gerForm.inicio}T00:00:00`), faltam, [1, 3, 5]);
-      const rows = datas.map((dt) => {
+      // Avaliação (144) é um dia EXTRA no começo. Tratamento em dias úteis seguidos
+      // (seg–sex), pra caber 2 guias no mês.
+      const temAvaliacao = (guia.codigos || []).some((c) => c.codigo === '144') || d.codigos.includes('144');
+      const incluiAval = temAvaliacao && geradas === 0;
+      const total = faltam + (incluiAval ? 1 : 0);
+      const datas = gerarDatasSessoes(new Date(`${gerForm.inicio}T00:00:00`), total, [1, 2, 3, 4, 5]);
+      const rows = datas.map((dt, idx) => {
+        const aval = incluiAval && idx === 0;
         const ini = new Date(dt); ini.setHours(hh || 8, mm || 0, 0, 0);
         const fim = new Date(ini.getTime() + 45 * 60000);
         return {
           terapeuta_id: user.id, paciente_id: paciente.id,
           data_inicio: ini.toISOString(), data_fim: fim.toISOString(),
-          status: 'confirmado', tipo_atendimento: 'retorno',
-          titulo: `Sessão CASSI${guia.numero_guia ? ` · guia ${guia.numero_guia}` : ''}`,
-          guia_cassi_id: guia.id, cor: '#0ea5e9',
+          status: 'confirmado', tipo_atendimento: aval ? 'avaliacao' : 'retorno',
+          titulo: `${aval ? 'Avaliação' : 'Sessão'} CASSI${guia.numero_guia ? ` · guia ${guia.numero_guia}` : ''}`,
+          guia_cassi_id: guia.id, cor: aval ? '#8b5cf6' : '#0ea5e9',
         };
       });
       const { error } = await (supabase as any).from('agendamentos').insert(rows);
@@ -497,7 +528,8 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
       const sb: any = supabase;
-      const codigos = codigosDisp.filter((c) => d.codigos.includes(c.codigo)).map((c) => ({ codigo: c.codigo, descricao: c.descricao }));
+      const codigos = codigosDisp.filter((c) => d.codigos.includes(c.codigo))
+        .map((c) => ({ codigo: c.codigo, descricao: c.descricao, sessoes: c.codigo === '144' ? 1 : (sesCod[c.codigo] ?? 0) }));
       const payload = {
         matricula: d.matricula || null,
         numero_guia: d.numero_guia || null,
@@ -586,8 +618,9 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
               <p className="text-[10px] text-muted-foreground mt-0.5">Vazio = aguardando CASSI</p>
             </div>
             <div>
-              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sessões autorizadas</label>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Dias de tratamento</label>
               <Input type="number" min={0} value={d.sessoes_autorizadas} onChange={(e) => set('sessoes_autorizadas', parseInt(e.target.value) || 0)} />
+              <p className="text-[10px] text-muted-foreground mt-0.5">Sem contar a avaliação</p>
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sessões realizadas</label>
@@ -607,18 +640,30 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
           </div>
 
           <div>
-            <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Códigos</label>
-            <div className="flex flex-wrap gap-1.5 mt-1">
+            <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Códigos e sessões autorizadas</label>
+            <div className="space-y-1.5 mt-1">
               {codigosDisp.map((c) => {
                 const ativo = d.codigos.includes(c.codigo);
+                const ev = c.codigo === '144';
                 return (
-                  <button key={c.codigo} type="button" onClick={() => toggleCodigo(c.codigo)}
-                    className={`text-[11px] px-2 py-1 rounded-full border ${ativo ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
-                    {c.codigo} · {c.descricao}
-                  </button>
+                  <div key={c.codigo} className="flex items-center gap-2">
+                    <button type="button" onClick={() => toggleCodigo(c.codigo)}
+                      className={`text-[11px] px-2 py-1.5 rounded-lg border flex-1 text-left ${ativo ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
+                      {c.codigo} · {c.descricao}{ev ? ' · avaliação' : ''}
+                    </button>
+                    {ativo && (ev ? (
+                      <span className="text-[11px] text-muted-foreground w-[5.5rem] text-right shrink-0">1 dia extra</span>
+                    ) : (
+                      <div className="flex items-center gap-1 w-[5.5rem] shrink-0">
+                        <Input type="number" min={0} className="h-8 text-sm tabular-nums" value={sesCod[c.codigo] ?? ''} onChange={(e) => setQtd(c.codigo, e.target.value)} />
+                        <span className="text-[10px] text-muted-foreground">sess.</span>
+                      </div>
+                    ))}
+                  </div>
                 );
               })}
             </div>
+            <p className="text-[10px] text-muted-foreground mt-1">Quantidade por código. Se um código não passou, deixe <b>0</b> ou desmarque. A avaliação (144) é um dia extra separado.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -676,7 +721,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
                   </div>
                   <Button size="sm" className="h-8 gap-1.5" disabled={gerarAgenda.isPending} onClick={() => gerarAgenda.mutate()}>
                     {gerarAgenda.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="h-3.5 w-3.5" />}
-                    Gerar {Math.max(0, (Number(d.sessoes_autorizadas) || 0) - geradas)} sessões (seg/qua/sex)
+                    Gerar {Math.max(0, (Number(d.sessoes_autorizadas) || 0) - geradas)} sessões (dias úteis)
                   </Button>
                 </div>
               )}
@@ -1257,11 +1302,11 @@ function FinanceiroCassi() {
       const ate = new Date(ano, m, 2).toISOString();          // 2º dia do mês seguinte
       const { data, error } = await (supabase as any)
         .from('agendamentos')
-        .select('id, paciente_id, data_inicio, status')
+        .select('id, paciente_id, data_inicio, status, tipo_atendimento')
         .eq('terapeuta_id', user!.id)
         .gte('data_inicio', de).lt('data_inicio', ate);
       if (error) throw error;
-      return (data || []) as Array<{ id: string; paciente_id: string | null; data_inicio: string; status: string }>;
+      return (data || []) as Array<{ id: string; paciente_id: string | null; data_inicio: string; status: string; tipo_atendimento?: string }>;
     },
     enabled: !!user,
   });
@@ -1281,6 +1326,7 @@ function FinanceiroCassi() {
     const sessoesPorPac = new Map<string, number>();
     for (const a of agendamentos) {
       if (!a.paciente_id || !cassiIds.has(a.paciente_id)) continue;
+      if (a.tipo_atendimento === 'avaliacao') continue; // dia extra, não é dia de tratamento
       if (a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
       const d = new Date(a.data_inicio);
       if (d.getFullYear() !== ano || d.getMonth() !== m - 1) continue; // mês local

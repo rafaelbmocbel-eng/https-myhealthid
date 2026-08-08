@@ -36,12 +36,12 @@ export function ehDiaUtil(d: Date): boolean {
 }
 
 // Gera `quantidade` datas de sessão a partir de `inicio`, apenas em dias úteis e
-// nos dias da semana escolhidos (default seg/qua/sex = [1,3,5]). Retorna Date[]
+// nos dias da semana escolhidos (default seg–sex = [1,2,3,4,5]). Retorna Date[]
 // com hora zerada — quem chama define o horário do atendimento.
 export function gerarDatasSessoes(
   inicio: Date,
   quantidade: number,
-  diasSemana: number[] = [1, 3, 5],
+  diasSemana: number[] = [1, 2, 3, 4, 5],
 ): Date[] {
   const datas: Date[] = [];
   const cursor = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
