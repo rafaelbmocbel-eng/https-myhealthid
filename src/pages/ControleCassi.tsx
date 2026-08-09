@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, venceuPrazoProximaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
+import { getPortalUrl } from '@/utils/linkUrls';
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; portal_token?: string | null; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -117,6 +118,7 @@ export default function ControleCassi() {
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [pedidosOpen, setPedidosOpen] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(false);
 
   // Pacientes CASSI do profissional.
   const { data: pacientes = [], isLoading: loadingPac } = useQuery({
@@ -124,7 +126,7 @@ export default function ControleCassi() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, portal_token')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
@@ -331,6 +333,10 @@ export default function ControleCassi() {
                   <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Cadastrar cliente</span>
                 </Button>
               </div>
+              <button onClick={() => setPortalOpen(true)}
+                className="w-full rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/20 p-2.5 flex items-center justify-center gap-2 text-sm font-medium text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
+                <MessageCircle className="h-4 w-4" /> Enviar portal do cliente (WhatsApp)
+              </button>
             </div>
 
             {/* Pedidos do mês — banner-atalho pra mensagem do WhatsApp */}
@@ -472,6 +478,8 @@ export default function ControleCassi() {
       )}
 
       {configOpen && <ConfigCassiDialog onClose={() => setConfigOpen(false)} />}
+
+      {portalOpen && <PortalEnvioDialog pacientes={pacientes} onClose={() => setPortalOpen(false)} />}
 
       {pedidosOpen && (
         <PedidosDialog
@@ -2174,5 +2182,97 @@ function EnviosCassi({ onAbrir }: {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Enviar portal do cliente (em massa, pelo WhatsApp) ────────────────────────
+// Cada cliente recebe o LINK PESSOAL dele (getPortalUrl com o portal_token), que
+// vincula pelo token — funciona com ou sem e-mail no cadastro. Um botão por
+// cliente abre a conversa no WhatsApp já com a mensagem e o link.
+function PortalEnvioDialog({ pacientes, onClose }: { pacientes: Paciente[]; onClose: () => void }) {
+  const { data: cfg } = useCassiConfig();
+  const clinica = cfg?.nome_clinica?.trim();
+  const [busca, setBusca] = useState('');
+  const [enviados, setEnviados] = useState<Set<string>>(new Set());
+
+  const lista = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return pacientes.filter((p) => !q || `${p.nome} ${p.sobrenome || ''}`.toLowerCase().includes(q));
+  }, [pacientes, busca]);
+
+  const semLink = pacientes.filter((p) => !p.portal_token).length;
+  const semTel = pacientes.filter((p) => !(p.telefone || '').replace(/\D/g, '')).length;
+
+  const msgDe = (p: Paciente, url: string) =>
+    `Olá ${p.nome}! ${clinica ? `Aqui é da ${clinica}. ` : ''}Esse é o seu acesso ao Portal do Paciente:\n${url}\n\nÉ só abrir, cadastrar seu e-mail e criar uma senha para entrar. 🙂`;
+
+  const enviarWhats = (p: Paciente, url: string) => {
+    const tel = (p.telefone || '').replace(/\D/g, '');
+    const num = tel.length >= 12 ? tel : `55${tel}`; // adiciona DDI 55 se veio sem
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msgDe(p, url))}`, '_blank');
+    setEnviados((s) => new Set(s).add(p.id));
+  };
+  const copiar = async (url: string) => {
+    try { await navigator.clipboard.writeText(url); toast.success('Link copiado!'); }
+    catch { toast.error('Não consegui copiar — selecione e copie manualmente.'); }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg w-[95vw] max-h-[92vh] overflow-y-auto">
+        <DialogHeader><DialogTitle className="text-base">Enviar portal do cliente</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <p className="text-[11px] text-muted-foreground">
+            Cada cliente recebe o <b>link pessoal</b> dele — funciona mesmo sem e-mail no cadastro (o vínculo é pelo link).
+            Toque em <b>WhatsApp</b> pra abrir a conversa com a mensagem pronta.
+          </p>
+          {(semLink > 0 || semTel > 0) && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-2 text-[11px] text-amber-800 dark:text-amber-300">
+              {semTel > 0 && <>· {semTel} cliente(s) <b>sem telefone</b> (dá pra copiar o link e enviar por outro meio).<br /></>}
+              {semLink > 0 && <>· {semLink} cliente(s) <b>sem link</b> gerado (abra e salve o cadastro dele uma vez).</>}
+            </div>
+          )}
+          <div className="relative">
+            <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Input className="h-9 pl-8" placeholder="Filtrar por nome…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          </div>
+          <div className="space-y-1.5 max-h-[58vh] overflow-y-auto">
+            {lista.length === 0 ? (
+              <p className="text-[12px] text-muted-foreground text-center py-6">Nenhum cliente.</p>
+            ) : lista.map((p) => {
+              const url = p.portal_token ? getPortalUrl(p.portal_token) : '';
+              const tel = (p.telefone || '').replace(/\D/g, '');
+              return (
+                <div key={p.id} className="rounded-lg border border-border/50 p-2.5 flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                      {p.nome} {p.sobrenome || ''}
+                      {enviados.has(p.id) && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {tel ? p.telefone : 'sem telefone'} · {p.email ? 'com e-mail' : 'sem e-mail'}
+                    </p>
+                  </div>
+                  {url ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button size="sm" disabled={!tel} onClick={() => enviarWhats(p, url)}
+                        className="h-8 gap-1.5 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Copiar link" onClick={() => copiar(url)}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground shrink-0">sem link</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <Button variant="outline" className="w-full" onClick={onClose}>Fechar</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
