@@ -34,6 +34,7 @@ import { useEquipe } from '@/hooks/useEquipe';
 import { useConvenios } from '@/hooks/useConvenios';
 import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
 import { getBaseUrl } from '@/utils/linkUrls';
+import EnviarPortalDialog from '@/components/paciente/EnviarPortalDialog';
 
 const FinanceiroGeral = lazy(() => import('@/components/paciente/FinanceiroGeral'));
 const FinanceiroPage = lazy(() => import('@/pages/Financeiro'));
@@ -246,6 +247,7 @@ export default function Pacientes() {
   const [modal, setModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [linkModal, setLinkModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [quickModal, setQuickModal] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(false);
   const [quickForm, setQuickForm] = useState({ nome: '', sobrenome: '', email: '', telefone: '', lgpd_aceite: false });
   const [shareModal, setShareModal] = useState<{ open: boolean; nome?: string; telefone?: string; url?: string }>({ open: false });
   const [form, setForm] = useState<FormData>(emptyForm);
@@ -820,7 +822,10 @@ export default function Pacientes() {
                     <MoreHorizontal className="icon-sm" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem disabled={pacientes.length === 0} onClick={() => setPortalOpen(true)}>
+                    <MessageCircle className="icon-sm mr-2" /> Enviar portal (WhatsApp)
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     disabled={filtered.length === 0}
                     onClick={() => {
@@ -1680,6 +1685,16 @@ export default function Pacientes() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {portalOpen && (
+        <EnviarPortalDialog
+          pacientes={pacientes.map((p: any) => ({
+            id: p.id, nome: p.nome, sobrenome: p.sobrenome,
+            telefone: p.telefone, email: p.email, portal_token: p.portal_token,
+          }))}
+          onClose={() => setPortalOpen(false)}
+        />
+      )}
 
     </AppLayout>
   );
