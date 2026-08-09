@@ -109,7 +109,7 @@ export default function ControleCassi() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
-  const [view, setView] = useState<'painel' | 'planilha' | 'financeiro' | 'envios'>('painel');
+  const [view, setView] = useState<'ativas' | 'outro' | 'pedir' | 'faturamento'>('ativas');
   // Sub-aba do painel: guias ativas (padrão, "em linha" com controle de sessões)
   // ou a lista completa de pacientes.
   const [aba, setAba] = useState<'ativas' | 'pacientes'>('ativas');
@@ -287,23 +287,16 @@ export default function ControleCassi() {
             <span className="text-sm font-bold">Controle CASSI</span>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
-            <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5">
-              <button onClick={() => setView('painel')}
-                className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'painel' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
-                Painel
-              </button>
-              <button onClick={() => setView('planilha')}
-                className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'planilha' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
-                Planilha
-              </button>
-              <button onClick={() => setView('envios')}
-                className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'envios' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
-                Envios
-              </button>
-              <button onClick={() => setView('financeiro')}
-                className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === 'financeiro' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
-                Mês
-              </button>
+            <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-wrap">
+              {([['ativas', 'Ativas'], ['outro', 'Outro mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
+                <button key={v} onClick={() => setView(v)}
+                  className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+                  {label}
+                  {v === 'pedir' && pedidosDoMes.length > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[15px] h-[15px] px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold align-middle">{pedidosDoMes.length}</span>
+                  )}
+                </button>
+              ))}
             </div>
             <Button size="icon" variant="ghost" className="h-8 w-8" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
               <Settings className="h-4 w-4" />
@@ -312,69 +305,29 @@ export default function ControleCassi() {
         </div>
       </div>
 
-      <div className={`${view === 'painel' ? 'max-w-3xl' : 'max-w-5xl'} mx-auto p-3 space-y-4`}>
+      <div className={`${view === 'outro' || view === 'faturamento' ? 'max-w-5xl' : 'max-w-3xl'} mx-auto p-3 space-y-4`}>
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : view === 'financeiro' ? (
+        ) : view === 'faturamento' ? (
           <FinanceiroCassi />
-        ) : view === 'envios' ? (
-          <EnviosCassi
-            onAbrir={(g) => setEditando({ paciente: { id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null, email: null, telefone: null, carteirinha: null, codigos_cassi: [] }, guia: g })}
-          />
-        ) : view === 'planilha' ? (
-          <PlanilhaGuias
-            guias={guiasEff}
-            onAbrir={(g) => setEditando({ paciente: { id: g.paciente_id, nome: g.pacientes?.nome || 'Paciente', sobrenome: g.pacientes?.sobrenome ?? null, email: null, telefone: null, carteirinha: null, codigos_cassi: [] }, guia: g })}
-          />
-        ) : (
+        ) : view === 'outro' ? (
+          <EnviosCassi onAbrir={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} />
+        ) : view === 'pedir' ? (
           <>
-            {/* Resumo + navegação (a "primeira página"). Os números são botões:
-                Clientes → lista de pacientes; Guias ativas → guias em linha;
-                Pedir guia → abre a lista com a mensagem pronta pro WhatsApp. */}
-            <div className="rounded-xl border border-border/50 bg-background p-3 space-y-3">
-              {/* Só duas navegações; "Pedir guia" tem um espaço único (o banner abaixo). */}
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setAba('pacientes')}
-                  className={`rounded-lg border p-2 text-left transition-colors ${aba === 'pacientes' ? 'border-primary/50 bg-primary/5' : 'border-border/50 hover:bg-muted/50'}`}>
-                  <p className="text-2xl font-black tabular-nums leading-none">{pacientes.length}</p>
-                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Pacientes</p>
-                </button>
-                <button onClick={() => setAba('ativas')}
-                  className={`rounded-lg border p-2 text-left transition-colors ${aba === 'ativas' ? 'border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20' : 'border-border/50 hover:bg-muted/50'}`}>
-                  <p className="text-2xl font-black tabular-nums leading-none text-emerald-600">{guiasAtivas}</p>
-                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Guias ativas</p>
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <Input className="h-9 pl-8" placeholder="Encontrar cliente (nome, carteirinha ou telefone)…"
-                    value={busca} onChange={(e) => setBusca(e.target.value)} />
-                </div>
-                <Button size="sm" className="gap-1.5 h-9 shrink-0" onClick={() => setCadastro('novo')}>
-                  <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Cadastrar cliente</span>
-                </Button>
-              </div>
-            </div>
-
-            {/* Central de pedidos — onde se pede guia nova (monta e envia no WhatsApp) */}
-            {pedidosDoMes.length > 0 && (
+            {pedidosDoMes.length > 0 ? (
               <button onClick={() => setPedidosOpen(true)}
                 className="w-full rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
                 <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
                 <span className="flex-1 text-left">
-                  <span className="block text-sm font-bold text-amber-800 dark:text-amber-300">
-                    Pedir guia — {pedidosDoMes.length} cliente(s)
-                  </span>
-                  <span className="block text-[11px] text-amber-700 dark:text-amber-400">
-                    Toque pra montar o pedido, enviar no WhatsApp e dar baixa.
-                  </span>
+                  <span className="block text-sm font-bold text-amber-800 dark:text-amber-300">Pedir guia — {pedidosDoMes.length} cliente(s)</span>
+                  <span className="block text-[11px] text-amber-700 dark:text-amber-400">Toque pra montar o pedido (nome, carteirinha, códigos, diagnóstico), enviar no WhatsApp e dar baixa.</span>
                 </span>
                 <span className="text-[11px] text-amber-700 dark:text-amber-400 shrink-0">abrir ›</span>
               </button>
-            )}
+            ) : guiasPedidas.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-10">Ninguém precisa de guia nova agora. 🎉</p>
+            ) : null}
 
-            {/* Guias já pedidas — aguardando a CASSI liberar (deram baixa) */}
             {guiasPedidas.length > 0 && (
               <div className="rounded-xl border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/20 overflow-hidden">
                 <div className="px-3 py-2 flex items-center gap-2 border-b border-sky-200/60 dark:border-sky-900/60">
@@ -401,64 +354,26 @@ export default function ControleCassi() {
                 </div>
               </div>
             )}
-
-            {aba === 'ativas' ? (
-              /* Guias ativas "em linha" — controle de sessões */
-              ativasFiltradas.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-8">
-                  Nenhuma guia ativa{busca ? ' para esta busca' : ''}.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {ativasFiltradas.map((g) => {
-                    const aut = g.sessoes_autorizadas || 0;
-                    const real = g.sessoes_realizadas || 0;
-                    const restantes = Math.max(0, aut - real);
-                    const pct = aut > 0 ? Math.min(100, Math.round((real / aut) * 100)) : 0;
-                    const pac = pacienteById.get(g.paciente_id);
-                    const prazoVenceu = venceuPrazoProximaGuia(g, pac?.guias_por_mes);
-                    return (
-                      <div key={g.id} className={`rounded-xl border bg-background px-3 py-2.5 ${prazoVenceu ? 'border-rose-300 dark:border-rose-900' : 'border-border/50'}`}>
-                        <div className="flex items-center gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-semibold truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</p>
-                              {(pac?.guias_por_mes || 1) >= 2 && (
-                                <span className="text-[9px] uppercase font-bold text-violet-600 border border-violet-300 dark:border-violet-800 rounded px-1 shrink-0">2/mês</span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
-                                <div className={`h-full ${restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
-                              </div>
-                              <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{real}/{aut} sessões</span>
-                              {prazoVenceu ? (
-                                <Badge className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
-                                  Pedir próxima guia
-                                </Badge>
-                              ) : restantes <= 2 && (
-                                <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                                  {restantes === 0 ? 'acabou' : `faltam ${restantes}`}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente: pacDaGuia(g), guia: g })}>
-                              <FileText className="h-3.5 w-3.5" /> Ver guia
-                            </Button>
-                            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente: pacDaGuia(g), guia: null })}>
-                              <Plus className="h-3.5 w-3.5" /> Nova guia
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+          </>
+        ) : (
+          /* Ativas do mês (home): procurar cliente + cadastrar; a lista mostra os
+             resultados da busca (todos os clientes) ou as guias ativas. */
+          <>
+            <div className="rounded-xl border border-border/50 bg-background p-3">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <Input className="h-9 pl-8" placeholder="Procurar cliente (nome, carteirinha ou telefone)…"
+                    value={busca} onChange={(e) => setBusca(e.target.value)} />
                 </div>
-              )
-            ) : (
-              /* Lista completa de pacientes CASSI */
+                <Button size="sm" className="gap-1.5 h-9 shrink-0" onClick={() => setCadastro('novo')}>
+                  <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Cadastrar cliente</span>
+                </Button>
+              </div>
+              {busca && <p className="text-[11px] text-muted-foreground mt-2">{linhasFiltradas.length} cliente(s) encontrado(s)</p>}
+            </div>
+
+            {busca ? (
               linhasFiltradas.length === 0 ? (
                 <p className="text-center text-sm text-muted-foreground py-8">Nenhum cliente encontrado.</p>
               ) : (
@@ -479,9 +394,7 @@ export default function ControleCassi() {
                               <Badge className="text-[10px] bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">guia pedida</Badge>
                             )}
                             {guia && (
-                              <span className="text-[11px] text-muted-foreground tabular-nums">
-                                {guia.sessoes_realizadas}/{guia.sessoes_autorizadas} sessões
-                              </span>
+                              <span className="text-[11px] text-muted-foreground tabular-nums">{guia.sessoes_realizadas}/{guia.sessoes_autorizadas} sessões</span>
                             )}
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
@@ -505,6 +418,56 @@ export default function ControleCassi() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )
+            ) : (
+              guiasAtivasLista.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-8">
+                  Nenhuma guia ativa. Use a busca acima pra achar um cliente e criar a guia.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {guiasAtivasLista.map((g) => {
+                    const aut = g.sessoes_autorizadas || 0;
+                    const real = g.sessoes_realizadas || 0;
+                    const restantes = Math.max(0, aut - real);
+                    const pct = aut > 0 ? Math.min(100, Math.round((real / aut) * 100)) : 0;
+                    const pac = pacienteById.get(g.paciente_id);
+                    const prazoVenceu = venceuPrazoProximaGuia(g, pac?.guias_por_mes);
+                    return (
+                      <div key={g.id} className={`rounded-xl border bg-background px-3 py-2.5 ${prazoVenceu ? 'border-rose-300 dark:border-rose-900' : 'border-border/50'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-semibold truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</p>
+                              {(pac?.guias_por_mes || 1) >= 2 && (
+                                <span className="text-[9px] uppercase font-bold text-violet-600 border border-violet-300 dark:border-violet-800 rounded px-1 shrink-0">2/mês</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
+                                <div className={`h-full ${restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{real}/{aut} sessões</span>
+                              {prazoVenceu ? (
+                                <Badge className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">Pedir próxima guia</Badge>
+                              ) : restantes <= 2 && (
+                                <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{restantes === 0 ? 'acabou' : `faltam ${restantes}`}</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente: pacDaGuia(g), guia: g })}>
+                              <FileText className="h-3.5 w-3.5" /> Ver guia
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente: pacDaGuia(g), guia: null })}>
+                              <Plus className="h-3.5 w-3.5" /> Nova guia
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )
             )}
