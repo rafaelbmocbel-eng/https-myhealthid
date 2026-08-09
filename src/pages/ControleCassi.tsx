@@ -315,11 +315,11 @@ export default function ControleCassi() {
                   <p className="text-2xl font-black tabular-nums leading-none text-emerald-600">{guiasAtivas}</p>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Guias ativas</p>
                 </button>
-                <button onClick={() => setPedidosOpen(true)} disabled={pedidosDoMes.length === 0}
-                  className={`rounded-lg border p-2 text-left transition-colors ${pedidosDoMes.length > 0 ? 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/30' : 'border-border/50 opacity-60'}`}>
+                {/* Indicador (não clicável): o botão que abre a lista é o banner abaixo. */}
+                <div className={`rounded-lg border p-2 text-left ${pedidosDoMes.length > 0 ? 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20' : 'border-border/50'}`}>
                   <p className="text-2xl font-black tabular-nums leading-none text-amber-600">{pedidosDoMes.length}</p>
-                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Pedir guia ›</p>
-                </button>
+                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Pedir guia</p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
