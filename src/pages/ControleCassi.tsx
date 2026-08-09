@@ -14,7 +14,7 @@ import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertT
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, venceuPrazoProximaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -124,7 +124,7 @@ export default function ControleCassi() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
@@ -211,9 +211,37 @@ export default function ControleCassi() {
       return { paciente: p, guia, status: statusPaciente(guia) };
     }), [pacientes, guiaPorPaciente]);
 
+  // "Pedido aberto" = já demos baixa (solicitamos) e a guia nova ainda não chegou
+  // (nenhuma guia com data_pedido >= a data da solicitação).
+  const pedidoAberto = (p: Paciente): boolean => {
+    const sol = p.guia_solicitada_em ? p.guia_solicitada_em.slice(0, 10) : null;
+    if (!sol) return false;
+    const ultimo = guiaPorPaciente.get(p.id)?.data_pedido || null;
+    return !ultimo || ultimo < sol;
+  };
+  // Precisa pedir guia (sem guia / acabando / 2ª guia do mês) E ainda não foi pedida.
   const pedidosDoMes = useMemo(() => linhas.filter((l) =>
-    precisaNovaGuia(l.guia) || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes)
-  ), [linhas]);
+    (precisaNovaGuia(l.guia) || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes))
+    && !pedidoAberto(l.paciente)
+  ), [linhas, guiaPorPaciente]);
+  // Guias já pedidas, aguardando a CASSI liberar.
+  const guiasPedidas = useMemo(() => linhas.filter((l) => pedidoAberto(l.paciente)), [linhas, guiaPorPaciente]);
+
+  // Dar baixa: marca que a(s) guia(s) foram pedidas → saem de "Pedir guia".
+  const darBaixaPedidos = async (ids: string[]) => {
+    if (!ids.length) return;
+    const { error } = await (supabase as any).from('pacientes')
+      .update({ guia_solicitada_em: new Date().toISOString() }).in('id', ids);
+    if (error) { toast.error('Erro ao dar baixa: ' + error.message); return; }
+    toast.success(`${ids.length} pedido(s) registrado(s)`);
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
+  const desfazerPedido = async (id: string) => {
+    const { error } = await (supabase as any).from('pacientes')
+      .update({ guia_solicitada_em: null }).eq('id', id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
   const guiasAtivasLista = useMemo(() => guiasEff.filter((g) => g.status === 'ativa'), [guiasEff]);
   const guiasAtivas = guiasAtivasLista.length;
 
@@ -333,16 +361,49 @@ export default function ControleCassi() {
               </div>
             </div>
 
-            {/* Pedidos do mês — banner-atalho pra mensagem do WhatsApp */}
+            {/* Central de pedidos — onde se pede guia nova (monta e envia no WhatsApp) */}
             {pedidosDoMes.length > 0 && (
               <button onClick={() => setPedidosOpen(true)}
                 className="w-full rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
                 <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                <span className="text-sm font-bold text-amber-800 dark:text-amber-300 flex-1 text-left">
-                  Pacientes para nova guia — {pedidosDoMes.length} · mensagem pronta pro WhatsApp
+                <span className="flex-1 text-left">
+                  <span className="block text-sm font-bold text-amber-800 dark:text-amber-300">
+                    Pedir guia — {pedidosDoMes.length} cliente(s)
+                  </span>
+                  <span className="block text-[11px] text-amber-700 dark:text-amber-400">
+                    Toque pra montar o pedido, enviar no WhatsApp e dar baixa.
+                  </span>
                 </span>
                 <span className="text-[11px] text-amber-700 dark:text-amber-400 shrink-0">abrir ›</span>
               </button>
+            )}
+
+            {/* Guias já pedidas — aguardando a CASSI liberar (deram baixa) */}
+            {guiasPedidas.length > 0 && (
+              <div className="rounded-xl border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/20 overflow-hidden">
+                <div className="px-3 py-2 flex items-center gap-2 border-b border-sky-200/60 dark:border-sky-900/60">
+                  <CalendarClock className="h-4 w-4 text-sky-600 shrink-0" />
+                  <span className="text-sm font-bold text-sky-800 dark:text-sky-300">Guias pedidas — aguardando CASSI ({guiasPedidas.length})</span>
+                </div>
+                <div className="divide-y divide-sky-200/50 dark:divide-sky-900/50">
+                  {guiasPedidas.map(({ paciente }) => (
+                    <div key={paciente.id} className="flex items-center gap-2 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
+                        {paciente.guia_solicitada_em && (
+                          <p className="text-[11px] text-muted-foreground">pedida em {fmtData(paciente.guia_solicitada_em.slice(0, 10))}</p>
+                        )}
+                      </div>
+                      <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px] shrink-0" onClick={() => setEditando({ paciente, guia: null })}>
+                        <Plus className="h-3.5 w-3.5" /> Registrar guia
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 text-[11px] text-muted-foreground shrink-0" onClick={() => desfazerPedido(paciente.id)}>
+                        desfazer
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {aba === 'ativas' ? (
@@ -410,9 +471,17 @@ export default function ControleCassi() {
                     <div key={paciente.id} className="rounded-xl border border-border/50 bg-background p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
+                          <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+                            {paciente.nome} {paciente.sobrenome || ''}
+                            {(paciente.guias_por_mes || 1) >= 2 && (
+                              <span className="text-[9px] uppercase font-bold text-violet-600 border border-violet-300 dark:border-violet-800 rounded px-1 shrink-0">2/mês</span>
+                            )}
+                          </p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <Badge className={`text-[10px] ${status.cls}`}>{status.label}</Badge>
+                            {pedidoAberto(paciente) && (
+                              <Badge className="text-[10px] bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">guia pedida</Badge>
+                            )}
                             {guia && (
                               <span className="text-[11px] text-muted-foreground tabular-nums">
                                 {guia.sessoes_realizadas}/{guia.sessoes_autorizadas} sessões
@@ -478,6 +547,7 @@ export default function ControleCassi() {
           linhas={pedidosDoMes}
           onClose={() => setPedidosOpen(false)}
           onNovaGuia={(pac) => { setPedidosOpen(false); setEditando({ paciente: pac, guia: null }); }}
+          onDarBaixa={async (ids) => { await darBaixaPedidos(ids); setPedidosOpen(false); }}
         />
       )}
     </div>
@@ -1368,13 +1438,25 @@ interface ItemPedido {
   id: string; nome: string; sel: boolean;
   carteirinha: string; diagnostico: string; codigos: string[];
 }
-function PedidosDialog({ linhas, onClose, onNovaGuia }: {
+function PedidosDialog({ linhas, onClose, onNovaGuia, onDarBaixa }: {
   linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>;
   onClose: () => void;
   onNovaGuia: (p: Paciente) => void;
+  onDarBaixa: (ids: string[]) => Promise<void> | void;
 }) {
   const { data: cfg } = useCassiConfig();
   const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
+  const [dandoBaixa, setDandoBaixa] = useState(false);
+
+  // Motivo de cada cliente estar na lista (sem guia / acabando / 2ª guia do mês).
+  const motivos = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const l of linhas) {
+      m.set(l.paciente.id, venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes)
+        ? '2ª guia do mês' : statusPaciente(l.guia).label);
+    }
+    return m;
+  }, [linhas]);
 
   const [itens, setItens] = useState<ItemPedido[]>(() => linhas.map((l) => ({
     id: l.paciente.id,
@@ -1430,7 +1512,14 @@ function PedidosDialog({ linhas, onClose, onNovaGuia }: {
                     {it.sel ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
                   </button>
                   <div className="min-w-0 flex-1 space-y-1.5">
-                    <p className="text-sm font-semibold truncate">{it.nome}</p>
+                    <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+                      {it.nome}
+                      {motivos.get(it.id) && (
+                        <span className={`text-[9px] uppercase font-bold rounded px-1 shrink-0 ${motivos.get(it.id) === '2ª guia do mês' ? 'text-violet-700 bg-violet-100 dark:bg-violet-900/30' : 'text-amber-700 bg-amber-100 dark:bg-amber-900/30'}`}>
+                          {motivos.get(it.id)}
+                        </span>
+                      )}
+                    </p>
                     <div className="grid grid-cols-2 gap-1.5">
                       <Input className="h-8 text-xs" value={it.carteirinha} onChange={(e) => upd(it.id, { carteirinha: e.target.value })} placeholder="Carteirinha" />
                       <Input className="h-8 text-xs" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="Diagnóstico" />
@@ -1470,6 +1559,23 @@ function PedidosDialog({ linhas, onClose, onNovaGuia }: {
             </div>
             <Textarea readOnly value={texto} rows={Math.min(12, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />
           </div>
+
+          {/* Dar baixa: depois de enviar, marca os selecionados como "guia pedida" */}
+          <Button
+            className="w-full gap-1.5"
+            disabled={selecionados.length === 0 || dandoBaixa}
+            onClick={async () => {
+              setDandoBaixa(true);
+              try { await onDarBaixa(selecionados.map((i) => i.id)); }
+              finally { setDandoBaixa(false); }
+            }}
+          >
+            {dandoBaixa ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            Dar baixa ({selecionados.length}) — marcar como pedidas
+          </Button>
+          <p className="text-[10px] text-muted-foreground text-center -mt-1">
+            Elas saem daqui e vão pra "Guias pedidas — aguardando CASSI".
+          </p>
 
           <Button variant="outline" className="w-full" onClick={onClose}>Fechar</Button>
         </div>
