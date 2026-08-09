@@ -116,7 +116,6 @@ export default function ControleCassi() {
   const [busca, setBusca] = useState('');
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
-  const [pedidosOpen, setPedidosOpen] = useState(false);
 
   // Pacientes CASSI do profissional.
   const { data: pacientes = [], isLoading: loadingPac } = useQuery({
@@ -315,15 +314,11 @@ export default function ControleCassi() {
         ) : view === 'pedir' ? (
           <>
             {pedidosDoMes.length > 0 ? (
-              <button onClick={() => setPedidosOpen(true)}
-                className="w-full rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
-                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                <span className="flex-1 text-left">
-                  <span className="block text-sm font-bold text-amber-800 dark:text-amber-300">Pedir guia — {pedidosDoMes.length} cliente(s)</span>
-                  <span className="block text-[11px] text-amber-700 dark:text-amber-400">Toque pra montar o pedido (nome, carteirinha, códigos, diagnóstico), enviar no WhatsApp e dar baixa.</span>
-                </span>
-                <span className="text-[11px] text-amber-700 dark:text-amber-400 shrink-0">abrir ›</span>
-              </button>
+              <PedirGuiasPanel
+                linhas={pedidosDoMes}
+                onNovaGuia={(pac) => setEditando({ paciente: pac, guia: null })}
+                onDarBaixa={darBaixaPedidos}
+              />
             ) : guiasPedidas.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-10">Ninguém precisa de guia nova agora. 🎉</p>
             ) : null}
@@ -500,15 +495,6 @@ export default function ControleCassi() {
       )}
 
       {configOpen && <ConfigCassiDialog onClose={() => setConfigOpen(false)} />}
-
-      {pedidosOpen && (
-        <PedidosDialog
-          linhas={pedidosDoMes}
-          onClose={() => setPedidosOpen(false)}
-          onNovaGuia={(pac) => { setPedidosOpen(false); setEditando({ paciente: pac, guia: null }); }}
-          onDarBaixa={async (ids) => { await darBaixaPedidos(ids); setPedidosOpen(false); }}
-        />
-      )}
     </div>
   );
 }
@@ -1397,15 +1383,15 @@ interface ItemPedido {
   id: string; nome: string; sel: boolean;
   carteirinha: string; diagnostico: string; codigos: string[];
 }
-function PedidosDialog({ linhas, onClose, onNovaGuia, onDarBaixa }: {
+function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
   linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>;
-  onClose: () => void;
   onNovaGuia: (p: Paciente) => void;
   onDarBaixa: (ids: string[]) => Promise<void> | void;
 }) {
   const { data: cfg } = useCassiConfig();
   const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
   const [dandoBaixa, setDandoBaixa] = useState(false);
+  const [verTexto, setVerTexto] = useState(false);
 
   // Motivo de cada cliente estar na lista (sem guia / acabando / 2ª guia do mês).
   const motivos = useMemo(() => {
@@ -1417,14 +1403,25 @@ function PedidosDialog({ linhas, onClose, onNovaGuia, onDarBaixa }: {
     return m;
   }, [linhas]);
 
-  const [itens, setItens] = useState<ItemPedido[]>(() => linhas.map((l) => ({
+  const novoItem = (l: { paciente: Paciente; guia: GuiaCassi | null }): ItemPedido => ({
     id: l.paciente.id,
     nome: `${l.paciente.nome} ${l.paciente.sobrenome || ''}`.trim(),
     sel: true,
     carteirinha: l.paciente.carteirinha || l.guia?.matricula || '',
     diagnostico: l.guia?.diagnostico || '',
     codigos: (l.paciente.codigos_cassi?.length ? l.paciente.codigos_cassi : (l.guia?.codigos?.map((c) => c.codigo) || [])).slice(0, 3),
-  })));
+  });
+  const [itens, setItens] = useState<ItemPedido[]>(() => linhas.map(novoItem));
+  // Mantém os itens em sincronia com a lista (ex.: depois de dar baixa), preservando
+  // as edições dos que continuam.
+  const idsKey = linhas.map((l) => l.paciente.id).join(',');
+  useEffect(() => {
+    setItens((prev) => {
+      const byId = new Map(prev.map((i) => [i.id, i]));
+      return linhas.map((l) => byId.get(l.paciente.id) || novoItem(l));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
 
   const upd = (id: string, patch: Partial<ItemPedido>) =>
     setItens((p) => p.map((it) => it.id === id ? { ...it, ...patch } : it));
@@ -1438,7 +1435,6 @@ function PedidosDialog({ linhas, onClose, onNovaGuia, onDarBaixa }: {
 
   const selecionados = itens.filter((i) => i.sel);
   const semCarteirinha = selecionados.filter((i) => !i.carteirinha.trim()).length;
-  // Mensagem pronta pro WhatsApp (usa *negrito* do WhatsApp e lista numerada).
   const texto = [
     `*Solicitação de novas guias CASSI* (${selecionados.length} cliente${selecionados.length === 1 ? '' : 's'})`,
     '',
@@ -1451,116 +1447,112 @@ function PedidosDialog({ linhas, onClose, onNovaGuia, onDarBaixa }: {
     try { await navigator.clipboard.writeText(texto); toast.success('Texto copiado!'); }
     catch { toast.error('Não consegui copiar — selecione e copie manualmente.'); }
   };
-  const enviarWhatsApp = () => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
-  };
+  const enviarWhatsApp = () => window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+
+  const label = (t: string) => <label className="text-[10px] uppercase text-muted-foreground tracking-wide">{t}</label>;
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg w-[95vw] max-h-[92vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="text-base">Pedidos do mês — nova guia</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <p className="text-[11px] text-muted-foreground">
-            Marque quem vai entrar no pedido e ajuste carteirinha, diagnóstico e códigos (até 3). No fim, copie o texto pronto.
-          </p>
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="text-base font-bold">Montar pedido</h2>
+        <span className="text-[12px] text-muted-foreground">{selecionados.length} selecionado(s)</span>
+      </div>
 
-          <div className="space-y-2">
-            {itens.map((it) => (
-              <div key={it.id} className={`rounded-lg border p-2.5 ${it.sel ? 'border-primary/40 bg-primary/5' : 'border-border/50 opacity-70'}`}>
-                <div className="flex items-start gap-2">
-                  <button onClick={() => upd(it.id, { sel: !it.sel })} className="mt-0.5 shrink-0" title={it.sel ? 'Tirar do pedido' : 'Incluir no pedido'}>
-                    {it.sel ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5 text-muted-foreground" />}
-                  </button>
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <p className="text-sm font-semibold truncate flex items-center gap-1.5">
-                      {it.nome}
-                      {motivos.get(it.id) && (
-                        <span className={`text-[9px] uppercase font-bold rounded px-1 shrink-0 ${motivos.get(it.id) === '2ª guia do mês' ? 'text-violet-700 bg-violet-100 dark:bg-violet-900/30' : 'text-amber-700 bg-amber-100 dark:bg-amber-900/30'}`}>
-                          {motivos.get(it.id)}
-                        </span>
-                      )}
-                    </p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <Input
-                        className={`h-8 text-xs ${it.sel && !it.carteirinha.trim() ? 'border-rose-400 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/20' : ''}`}
-                        value={it.carteirinha}
-                        onChange={(e) => upd(it.id, { carteirinha: e.target.value })}
-                        placeholder="Carteirinha (nº CASSI)" />
-                      <Input className="h-8 text-xs" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="Diagnóstico" />
-                    </div>
-                    {it.sel && !it.carteirinha.trim() && (
-                      <p className="text-[10px] text-rose-600">Sem carteirinha — preencha o nº do cartão CASSI pra pedir.</p>
-                    )}
-                    <div className="flex flex-wrap gap-1">
+      {/* Cards dos clientes — campos empilhados (sem cortar na tela) */}
+      <div className="space-y-2.5">
+        {itens.map((it) => {
+          const semCart = it.sel && !it.carteirinha.trim();
+          return (
+            <div key={it.id} className={`rounded-xl border transition-colors ${it.sel ? (semCart ? 'border-rose-300 dark:border-rose-800 bg-rose-50/30 dark:bg-rose-950/10' : 'border-primary/40 bg-primary/5') : 'border-border/50'}`}>
+              <button onClick={() => upd(it.id, { sel: !it.sel })} className="w-full flex items-center gap-2.5 p-3 text-left">
+                {it.sel ? <CheckCircle2 className="h-5 w-5 text-primary shrink-0" /> : <Circle className="h-5 w-5 text-muted-foreground shrink-0" />}
+                <span className="text-sm font-semibold flex-1 min-w-0 truncate">{it.nome}</span>
+                {motivos.get(it.id) && (
+                  <span className={`text-[9px] uppercase font-bold rounded px-1.5 py-0.5 shrink-0 ${motivos.get(it.id) === '2ª guia do mês' ? 'text-violet-700 bg-violet-100 dark:bg-violet-900/30' : 'text-amber-700 bg-amber-100 dark:bg-amber-900/30'}`}>
+                    {motivos.get(it.id)}
+                  </span>
+                )}
+              </button>
+
+              {it.sel && (
+                <div className="px-3 pb-3 space-y-2.5">
+                  <div>
+                    {label('Carteirinha (nº do cartão CASSI)')}
+                    <Input
+                      className={`h-9 mt-0.5 ${semCart ? 'border-rose-400 dark:border-rose-700' : ''}`}
+                      value={it.carteirinha}
+                      onChange={(e) => upd(it.id, { carteirinha: e.target.value })}
+                      placeholder="ex.: 000000000000" />
+                    {semCart && <p className="text-[10px] text-rose-600 mt-0.5">Preencha o nº do cartão CASSI pra poder pedir.</p>}
+                  </div>
+                  <div>
+                    {label('Diagnóstico')}
+                    <Input className="h-9 mt-0.5" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="diagnóstico médico" />
+                  </div>
+                  <div>
+                    {label('Códigos (até 3)')}
+                    <div className="flex flex-wrap gap-1.5 mt-1">
                       {codigosDisp.map((c) => {
                         const on = it.codigos.includes(c.codigo);
                         return (
                           <button key={c.codigo} type="button" onClick={() => toggleCod(it.id, c.codigo)}
-                            className={`text-[10px] px-1.5 py-0.5 rounded-full border ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
+                            className={`text-[12px] px-2.5 py-1 rounded-full border font-medium ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
                             {c.codigo}
                           </button>
                         );
                       })}
                     </div>
                   </div>
-                  <Button size="sm" variant="ghost" className="h-7 text-[11px] shrink-0" onClick={() => onNovaGuia(linhas.find((l) => l.paciente.id === it.id)!.paciente)}>
-                    Criar guia
-                  </Button>
+                  <button className="text-[11px] text-muted-foreground underline underline-offset-2" onClick={() => onNovaGuia(linhas.find((l) => l.paciente.id === it.id)!.paciente)}>
+                    ou registrar a guia manualmente
+                  </button>
                 </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Texto do pedido — pronto para copiar */}
-          <div className="rounded-lg border border-border/50 bg-muted/30 p-2.5 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Mensagem do pedido ({selecionados.length})</span>
-              <div className="flex items-center gap-1.5">
-                <Button size="sm" variant="outline" className="h-7 gap-1.5 text-[11px]" disabled={selecionados.length === 0} onClick={copiar}>
-                  <Copy className="h-3.5 w-3.5" /> Copiar
-                </Button>
-                <Button size="sm" className="h-7 gap-1.5 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white" disabled={selecionados.length === 0} onClick={enviarWhatsApp}>
-                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-                </Button>
-              </div>
+              )}
             </div>
-            <Textarea readOnly value={texto} rows={Math.min(12, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />
-          </div>
+          );
+        })}
+      </div>
 
-          {semCarteirinha > 0 && (
-            <p className="text-[11px] text-rose-600 text-center">
-              {semCarteirinha} selecionado(s) <b>sem carteirinha</b> — preencha o nº do cartão CASSI antes de dar baixa.
-            </p>
-          )}
-          {/* Dar baixa: salva carteirinha/códigos no cadastro e marca como "guia pedida" */}
-          <Button
-            className="w-full gap-1.5"
-            disabled={selecionados.length === 0 || semCarteirinha > 0 || dandoBaixa}
-            onClick={async () => {
-              setDandoBaixa(true);
-              try {
-                // Salva no cadastro a carteirinha (= matrícula) e os códigos ajustados,
-                // pra ficarem "cadastrados" pro próximo pedido.
-                await Promise.all(selecionados.map((i) => {
-                  const payload: any = { codigos_cassi: i.codigos };
-                  if (i.carteirinha.trim()) payload.carteirinha = i.carteirinha.trim();
-                  return (supabase as any).from('pacientes').update(payload).eq('id', i.id);
-                }));
-                await onDarBaixa(selecionados.map((i) => i.id));
-              } finally { setDandoBaixa(false); }
-            }}
-          >
-            {dandoBaixa ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-            Dar baixa ({selecionados.length}) — marcar como pedidas
+      {/* Ações */}
+      <div className="rounded-xl border border-border/50 bg-muted/20 p-3 space-y-2 sticky bottom-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="gap-1.5" disabled={selecionados.length === 0} onClick={copiar}>
+            <Copy className="h-4 w-4" /> Copiar
           </Button>
-          <p className="text-[10px] text-muted-foreground text-center -mt-1">
-            Salva a carteirinha no cadastro e move pra "Guias pedidas — aguardando CASSI".
-          </p>
-
-          <Button variant="outline" className="w-full" onClick={onClose}>Fechar</Button>
+          <Button className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={selecionados.length === 0} onClick={enviarWhatsApp}>
+            <MessageCircle className="h-4 w-4" /> WhatsApp
+          </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+        {semCarteirinha > 0 && (
+          <p className="text-[11px] text-rose-600 text-center">
+            {semCarteirinha} sem carteirinha — preencha antes de dar baixa.
+          </p>
+        )}
+        <Button
+          className="w-full gap-1.5"
+          disabled={selecionados.length === 0 || semCarteirinha > 0 || dandoBaixa}
+          onClick={async () => {
+            setDandoBaixa(true);
+            try {
+              await Promise.all(selecionados.map((i) => {
+                const payload: any = { codigos_cassi: i.codigos };
+                if (i.carteirinha.trim()) payload.carteirinha = i.carteirinha.trim();
+                return (supabase as any).from('pacientes').update(payload).eq('id', i.id);
+              }));
+              await onDarBaixa(selecionados.map((i) => i.id));
+              toast.success('Baixa registrada — foram pra "aguardando CASSI".');
+            } finally { setDandoBaixa(false); }
+          }}
+        >
+          {dandoBaixa ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          Dar baixa ({selecionados.length})
+        </Button>
+        <button className="w-full text-[11px] text-muted-foreground" onClick={() => setVerTexto((v) => !v)}>
+          {verTexto ? 'ocultar mensagem' : 'ver a mensagem que vai no WhatsApp'}
+        </button>
+        {verTexto && <Textarea readOnly value={texto} rows={Math.min(10, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />}
+      </div>
+    </div>
   );
 }
 
