@@ -310,6 +310,32 @@ export default function PacienteLogin() {
     }
   };
 
+  // Entrar/cadastrar com Google (sem senha). Preserva o token do portal na volta
+  // (via query em redirectTo) pra vincular o paciente à ficha certa; sem token,
+  // o vínculo acontece pelo e-mail do Google (link_patient_user_by_email).
+  const handleGoogle = async () => {
+    setSubmitting(true);
+    try {
+      const redirect = new URL('/paciente/login', window.location.origin);
+      redirect.searchParams.set('portal', '1');
+      if (portalToken) redirect.searchParams.set('token', portalToken);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: redirect.toString() },
+      });
+      if (error) throw error;
+      // A página redireciona para o Google; a volta cai aqui já autenticado.
+    } catch (err: any) {
+      console.error('[Portal] Erro no login Google:', err);
+      toast({
+        title: 'Não foi possível entrar com Google',
+        description: err?.message || 'Tente novamente em instantes.',
+        variant: 'destructive',
+      });
+      setSubmitting(false);
+    }
+  };
+
   if (authLoading || linking) {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-3 px-6 text-center">
@@ -578,6 +604,28 @@ export default function PacienteLogin() {
               )}
             </Button>
           </form>
+
+          {/* Entrar com Google (sem senha) */}
+          <div className="flex items-center gap-3 my-4">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[11px] text-muted-foreground">ou</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleGoogle}
+            disabled={submitting}
+            className="w-full h-11 rounded-xl font-semibold text-sm gap-2.5 bg-background"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62Z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z" />
+              <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z" />
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.47.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z" />
+            </svg>
+            Continuar com Google
+          </Button>
 
           {/* Switch tab footer */}
           <p className="text-center text-xs text-muted-foreground mt-5">
