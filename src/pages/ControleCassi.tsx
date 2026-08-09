@@ -645,6 +645,11 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
       if (duasPorMes !== ((paciente.guias_por_mes || 1) >= 2)) {
         await sb.from('pacientes').update({ guias_por_mes: duasPorMes ? 2 : 1 }).eq('id', paciente.id);
       }
+      // Carteirinha = matrícula: se o cadastro está sem carteirinha, completa com
+      // a matrícula da guia (não sobrescreve uma já preenchida).
+      if (d.matricula.trim() && !(paciente.carteirinha || '').trim()) {
+        await sb.from('pacientes').update({ carteirinha: d.matricula.trim() }).eq('id', paciente.id);
+      }
     },
     onSuccess: () => {
       toast.success(editandoExistente ? 'Guia atualizada' : 'Guia criada');
@@ -1375,7 +1380,7 @@ function PedidosDialog({ linhas, onClose, onNovaGuia }: {
     id: l.paciente.id,
     nome: `${l.paciente.nome} ${l.paciente.sobrenome || ''}`.trim(),
     sel: true,
-    carteirinha: l.paciente.carteirinha || '',
+    carteirinha: l.paciente.carteirinha || l.guia?.matricula || '',
     diagnostico: l.guia?.diagnostico || '',
     codigos: (l.paciente.codigos_cassi?.length ? l.paciente.codigos_cassi : (l.guia?.codigos?.map((c) => c.codigo) || [])).slice(0, 3),
   })));
