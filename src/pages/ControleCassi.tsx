@@ -990,6 +990,40 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
   const toggleCod = (c: string) => setCodigos((p) => p.includes(c) ? p.filter((x) => x !== c) : [...p, c]);
 
+  // Modo de cadastro (só ao criar): novo do zero, ou buscar um paciente que já
+  // está no app (não-CASSI) e marcá-lo como cliente CASSI.
+  const [modo, setModo] = useState<'novo' | 'existente'>('novo');
+  const [busca, setBusca] = useState('');
+  const [alvoId, setAlvoId] = useState<string | null>(null);
+  const termo = busca.trim().replace(/[%,()]/g, '').trim();
+
+  const { data: achados = [], isFetching } = useQuery({
+    queryKey: ['cassi-buscar-paciente', user?.id, termo],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('pacientes')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, plano_saude, guias_por_mes')
+        .eq('terapeuta_id', user!.id).eq('ativo', true)
+        .or(`nome.ilike.%${termo}%,sobrenome.ilike.%${termo}%`)
+        .order('nome', { ascending: true }).limit(30);
+      if (error) throw error;
+      // Tira quem já é CASSI (já aparece no Controle).
+      return (data || []).filter((p: any) => !/cassi/i.test(String(p.plano_saude || '')));
+    },
+    enabled: !!user && !editando && modo === 'existente' && termo.length >= 2,
+  });
+
+  const resetNovo = () => {
+    setF({ nome: '', sobrenome: '', carteirinha: '', email: '', telefone: '' });
+    setCodigos([]); setGuiasPorMes(1); setAlvoId(null);
+  };
+  const escolher = (p: any) => {
+    setF({ nome: p.nome || '', sobrenome: p.sobrenome || '', carteirinha: p.carteirinha || '', email: p.email || '', telefone: p.telefone || '' });
+    setCodigos(Array.isArray(p.codigos_cassi) ? p.codigos_cassi : []);
+    setGuiasPorMes(Number(p.guias_por_mes) >= 2 ? 2 : 1);
+    setAlvoId(p.id);
+  };
+
   const salvar = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
@@ -1007,6 +1041,10 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
       if (editando) {
         const { error } = await sb.from('pacientes').update(payload).eq('id', paciente!.id);
         if (error) throw error;
+      } else if (alvoId) {
+        // Converte um paciente já existente em cliente CASSI.
+        const { error } = await sb.from('pacientes').update({ ...payload, plano_saude: 'CASSI' }).eq('id', alvoId);
+        if (error) throw error;
       } else {
         const { error } = await sb.from('pacientes').insert({
           ...payload,
@@ -1019,15 +1057,72 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
         if (error) throw error;
       }
     },
-    onSuccess: () => { toast.success(editando ? 'Cadastro atualizado' : 'Cliente cadastrado'); onSaved(); },
+    onSuccess: () => { toast.success(editando ? 'Cadastro atualizado' : alvoId ? 'Cliente adicionado ao CASSI' : 'Cliente cadastrado'); onSaved(); },
     onError: (e: any) => toast.error(e.message || 'Erro ao salvar'),
   });
 
+  const buscando = !editando && modo === 'existente' && !alvoId;
+  const titulo = editando ? 'Editar cadastro' : alvoId ? 'Adicionar ao CASSI' : 'Cadastrar cliente CASSI';
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md w-[95vw]">
-        <DialogHeader><DialogTitle className="text-base">{editando ? 'Editar cadastro' : 'Cadastrar cliente CASSI'}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-md w-[95vw] max-h-[92vh] overflow-y-auto">
+        <DialogHeader><DialogTitle className="text-base">{titulo}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          {!editando && (
+            <div className="flex gap-1.5">
+              <button type="button" onClick={resetNovo}
+                className={`flex-1 text-[12px] py-1.5 rounded-lg border font-medium ${modo === 'novo' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}
+                style={{ opacity: modo === 'novo' ? 1 : undefined }}>
+                Novo cliente
+              </button>
+              <button type="button" onClick={() => { setModo('existente'); setAlvoId(null); }}
+                className={`flex-1 text-[12px] py-1.5 rounded-lg border font-medium ${modo === 'existente' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
+                Buscar no app
+              </button>
+            </div>
+          )}
+
+          {buscando ? (
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <Input className="h-9 pl-8" placeholder="Buscar paciente por nome…" value={busca} onChange={(e) => setBusca(e.target.value)} autoFocus />
+              </div>
+              {termo.length < 2 ? (
+                <p className="text-[12px] text-muted-foreground text-center py-4">Digite ao menos 2 letras para buscar clientes já cadastrados no app.</p>
+              ) : isFetching ? (
+                <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : achados.length === 0 ? (
+                <p className="text-[12px] text-muted-foreground text-center py-4">Ninguém encontrado com esse nome (ou já é CASSI).</p>
+              ) : (
+                <div className="space-y-1 max-h-60 overflow-y-auto">
+                  {achados.map((p: any) => (
+                    <button key={p.id} type="button" onClick={() => escolher(p)}
+                      className="w-full text-left rounded-lg border border-border/50 px-2.5 py-2 hover:bg-muted/50 flex items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{p.nome} {p.sobrenome || ''}</p>
+                        {(p.telefone || p.plano_saude) && (
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {p.plano_saude ? `Plano: ${p.plano_saude}` : ''}{p.plano_saude && p.telefone ? ' · ' : ''}{p.telefone || ''}
+                          </p>
+                        )}
+                      </div>
+                      <Plus className="h-4 w-4 text-primary shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Button variant="outline" className="w-full" onClick={onClose}>Cancelar</Button>
+            </div>
+          ) : (
+          <>
+          {alvoId && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-2 flex items-center gap-2">
+              <p className="text-[12px] flex-1">Marcando <b>{f.nome} {f.sobrenome}</b> (já no app) como cliente CASSI.</p>
+              <button type="button" className="text-[11px] text-primary shrink-0" onClick={() => setAlvoId(null)}>trocar</button>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Nome</label>
@@ -1078,13 +1173,15 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
               <Input value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="para o portal" />
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground">Entra como CASSI, ativo. Os códigos da guia você define ao criar a guia.</p>
+          <p className="text-[10px] text-muted-foreground">{alvoId ? 'Passa a ser CASSI e aparece no Controle. Mantém o histórico e o cadastro que já tinha no app.' : 'Entra como CASSI, ativo. Os códigos da guia você define ao criar a guia.'}</p>
           <div className="flex gap-2 pt-1">
             <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
             <Button className="flex-1 gap-1.5" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
               {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
             </Button>
           </div>
+          </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
