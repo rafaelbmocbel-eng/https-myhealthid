@@ -1809,6 +1809,42 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   const { user } = useAuth();
   const { data: cfg } = useCassiConfig();
   const [mesRel, setMesRel] = useState(mes);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+
+  // Gera um PDF de verdade do relatório (html2canvas + jsPDF) e baixa. Multipágina
+  // se passar de uma folha A4. As libs são importadas sob demanda.
+  const baixarPdf = async () => {
+    const el = document.getElementById('relatorio-print');
+    if (!el) return;
+    setGerandoPdf(true);
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'), import('jspdf'),
+      ]);
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const img = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * pw) / canvas.width;
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(img, 'JPEG', 0, position, pw, imgH);
+      heightLeft -= ph;
+      while (heightLeft > 0) {
+        position -= ph;
+        pdf.addPage();
+        pdf.addImage(img, 'JPEG', 0, position, pw, imgH);
+        heightLeft -= ph;
+      }
+      pdf.save(`relatorio-cassi-${mesRel}.pdf`);
+    } catch (e: any) {
+      toast.error('Não consegui gerar o PDF — use "Imprimir" e salve como PDF.');
+      console.error('[Relatorio] PDF falhou:', e);
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
 
   const { data: guias = [] } = useQuery({
     queryKey: ['guias-cassi', user?.id],
@@ -1921,9 +1957,14 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Mês do relatório</label>
               <Input type="month" value={mesRel} onChange={(e) => e.target.value && setMesRel(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
             </div>
-            <Button size="sm" className="h-8 gap-1.5 ml-auto mt-4" onClick={() => window.print()}>
-              <Download className="h-3.5 w-3.5" /> Imprimir / Salvar PDF
-            </Button>
+            <div className="ml-auto mt-4 flex items-center gap-1.5">
+              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => window.print()}>
+                <FileText className="h-3.5 w-3.5" /> Imprimir
+              </Button>
+              <Button size="sm" className="h-8 gap-1.5" disabled={gerandoPdf} onClick={baixarPdf}>
+                {gerandoPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Baixar PDF
+              </Button>
+            </div>
           </div>
 
           {(!cfg?.nome_clinica || !cods.some((c) => c.valor > 0)) && (
@@ -2019,8 +2060,11 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
 
         <div className="no-print flex gap-2">
           <Button variant="outline" className="flex-1" onClick={onClose}>Fechar</Button>
-          <Button className="flex-1 gap-1.5" onClick={() => window.print()}>
-            <Download className="h-4 w-4" /> Imprimir / Salvar PDF
+          <Button variant="outline" className="flex-1 gap-1.5" onClick={() => window.print()}>
+            <FileText className="h-4 w-4" /> Imprimir
+          </Button>
+          <Button className="flex-1 gap-1.5" disabled={gerandoPdf} onClick={baixarPdf}>
+            {gerandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Baixar PDF
           </Button>
         </div>
       </DialogContent>
