@@ -756,8 +756,8 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
               <Input value={d.numero_guia} onChange={(e) => set('numero_guia', e.target.value)} placeholder="ex: 123456" />
             </div>
             <div>
-              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Matrícula</label>
-              <Input value={d.matricula} onChange={(e) => set('matricula', e.target.value)} placeholder="matrícula CASSI" />
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Carteirinha (matrícula)</label>
+              <Input value={d.matricula} onChange={(e) => set('matricula', e.target.value)} placeholder="nº do cartão CASSI" />
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Responsável técnico</label>
@@ -960,7 +960,7 @@ function PlanilhaGuias({ guias, onAbrir }: { guias: GuiaComPaciente[]; onAbrir: 
   }, [guias, busca, statusFiltro]);
 
   const exportarCSV = () => {
-    const header = ['Paciente', 'Matrícula', 'Status', 'Códigos', 'Autorização', 'Avaliação', 'Realizadas', 'Autorizadas'];
+    const header = ['Paciente', 'Carteirinha', 'Status', 'Códigos', 'Autorização', 'Avaliação', 'Realizadas', 'Autorizadas'];
     const cell = (v: unknown) => {
       const s = String(v ?? '');
       return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -993,7 +993,7 @@ function PlanilhaGuias({ guias, onAbrir }: { guias: GuiaComPaciente[]; onAbrir: 
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Input className="h-9 flex-1 min-w-[180px]" placeholder="Buscar paciente ou matrícula…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <Input className="h-9 flex-1 min-w-[180px]" placeholder="Buscar paciente ou carteirinha…" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <Select value={statusFiltro} onValueChange={(v) => setStatusFiltro(v as 'todos' | GuiaStatus)}>
           <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -1014,7 +1014,7 @@ function PlanilhaGuias({ guias, onAbrir }: { guias: GuiaComPaciente[]; onAbrir: 
           <thead className="bg-muted/50 text-[10px] uppercase text-muted-foreground">
             <tr>
               <th className="text-left font-semibold px-3 py-2">Paciente</th>
-              <th className="text-left font-semibold px-3 py-2">Matrícula</th>
+              <th className="text-left font-semibold px-3 py-2">Carteirinha</th>
               <th className="text-left font-semibold px-3 py-2">Status</th>
               <th className="text-left font-semibold px-3 py-2">Códigos</th>
               <th className="text-left font-semibold px-3 py-2 whitespace-nowrap">Sessões</th>
@@ -1478,6 +1478,7 @@ function PedidosDialog({ linhas, onClose, onNovaGuia, onDarBaixa }: {
     }));
 
   const selecionados = itens.filter((i) => i.sel);
+  const semCarteirinha = selecionados.filter((i) => !i.carteirinha.trim()).length;
   // Mensagem pronta pro WhatsApp (usa *negrito* do WhatsApp e lista numerada).
   const texto = [
     `*Solicitação de novas guias CASSI* (${selecionados.length} cliente${selecionados.length === 1 ? '' : 's'})`,
@@ -1521,9 +1522,16 @@ function PedidosDialog({ linhas, onClose, onNovaGuia, onDarBaixa }: {
                       )}
                     </p>
                     <div className="grid grid-cols-2 gap-1.5">
-                      <Input className="h-8 text-xs" value={it.carteirinha} onChange={(e) => upd(it.id, { carteirinha: e.target.value })} placeholder="Carteirinha" />
+                      <Input
+                        className={`h-8 text-xs ${it.sel && !it.carteirinha.trim() ? 'border-rose-400 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/20' : ''}`}
+                        value={it.carteirinha}
+                        onChange={(e) => upd(it.id, { carteirinha: e.target.value })}
+                        placeholder="Carteirinha (nº CASSI)" />
                       <Input className="h-8 text-xs" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="Diagnóstico" />
                     </div>
+                    {it.sel && !it.carteirinha.trim() && (
+                      <p className="text-[10px] text-rose-600">Sem carteirinha — preencha o nº do cartão CASSI pra pedir.</p>
+                    )}
                     <div className="flex flex-wrap gap-1">
                       {codigosDisp.map((c) => {
                         const on = it.codigos.includes(c.codigo);
@@ -1560,21 +1568,34 @@ function PedidosDialog({ linhas, onClose, onNovaGuia, onDarBaixa }: {
             <Textarea readOnly value={texto} rows={Math.min(12, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />
           </div>
 
-          {/* Dar baixa: depois de enviar, marca os selecionados como "guia pedida" */}
+          {semCarteirinha > 0 && (
+            <p className="text-[11px] text-rose-600 text-center">
+              {semCarteirinha} selecionado(s) <b>sem carteirinha</b> — preencha o nº do cartão CASSI antes de dar baixa.
+            </p>
+          )}
+          {/* Dar baixa: salva carteirinha/códigos no cadastro e marca como "guia pedida" */}
           <Button
             className="w-full gap-1.5"
-            disabled={selecionados.length === 0 || dandoBaixa}
+            disabled={selecionados.length === 0 || semCarteirinha > 0 || dandoBaixa}
             onClick={async () => {
               setDandoBaixa(true);
-              try { await onDarBaixa(selecionados.map((i) => i.id)); }
-              finally { setDandoBaixa(false); }
+              try {
+                // Salva no cadastro a carteirinha (= matrícula) e os códigos ajustados,
+                // pra ficarem "cadastrados" pro próximo pedido.
+                await Promise.all(selecionados.map((i) => {
+                  const payload: any = { codigos_cassi: i.codigos };
+                  if (i.carteirinha.trim()) payload.carteirinha = i.carteirinha.trim();
+                  return (supabase as any).from('pacientes').update(payload).eq('id', i.id);
+                }));
+                await onDarBaixa(selecionados.map((i) => i.id));
+              } finally { setDandoBaixa(false); }
             }}
           >
             {dandoBaixa ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
             Dar baixa ({selecionados.length}) — marcar como pedidas
           </Button>
           <p className="text-[10px] text-muted-foreground text-center -mt-1">
-            Elas saem daqui e vão pra "Guias pedidas — aguardando CASSI".
+            Salva a carteirinha no cadastro e move pra "Guias pedidas — aguardando CASSI".
           </p>
 
           <Button variant="outline" className="w-full" onClick={onClose}>Fechar</Button>
