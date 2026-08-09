@@ -332,7 +332,8 @@ export default function ControleCassi() {
                 Clientes → lista de pacientes; Guias ativas → guias em linha;
                 Pedir guia → abre a lista com a mensagem pronta pro WhatsApp. */}
             <div className="rounded-xl border border-border/50 bg-background p-3 space-y-3">
-              <div className="grid grid-cols-3 gap-2">
+              {/* Só duas navegações; "Pedir guia" tem um espaço único (o banner abaixo). */}
+              <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => setAba('pacientes')}
                   className={`rounded-lg border p-2 text-left transition-colors ${aba === 'pacientes' ? 'border-primary/50 bg-primary/5' : 'border-border/50 hover:bg-muted/50'}`}>
                   <p className="text-2xl font-black tabular-nums leading-none">{pacientes.length}</p>
@@ -343,11 +344,6 @@ export default function ControleCassi() {
                   <p className="text-2xl font-black tabular-nums leading-none text-emerald-600">{guiasAtivas}</p>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Guias ativas</p>
                 </button>
-                {/* Indicador (não clicável): o botão que abre a lista é o banner abaixo. */}
-                <div className={`rounded-lg border p-2 text-left ${pedidosDoMes.length > 0 ? 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20' : 'border-border/50'}`}>
-                  <p className="text-2xl font-black tabular-nums leading-none text-amber-600">{pedidosDoMes.length}</p>
-                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Pedir guia</p>
-                </div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
@@ -1484,7 +1480,7 @@ function PedidosDialog({ linhas, onClose, onNovaGuia, onDarBaixa }: {
     `*Solicitação de novas guias CASSI* (${selecionados.length} cliente${selecionados.length === 1 ? '' : 's'})`,
     '',
     ...selecionados.map((i, idx) =>
-      `${idx + 1}. *${i.nome}*\nCarteirinha: ${i.carteirinha || '—'}\nDiagnóstico: ${i.diagnostico || '—'}\nCódigos: ${i.codigos.join(', ') || '—'}`
+      `${idx + 1}. *${i.nome}*\nCarteirinha: ${i.carteirinha || '—'}\nCódigos: ${i.codigos.join(', ') || '—'}\nDiagnóstico: ${i.diagnostico || '—'}`
     ),
   ].join('\n');
 
