@@ -2634,6 +2634,30 @@ function ClientesCassi({ pacientes, guias, onCadastro, onGuia, onDefinirGuiasMes
     return m;
   }, [guias]);
 
+  // Guias fechadas por mês (mês de término projetado) — base pra detectar 2/mês.
+  const guiasPorMesMap = (gs: GuiaCassi[]) => {
+    const porMes = new Map<string, number>();
+    for (const g of gs) {
+      if (g.status === 'cancelada') continue;
+      const fim = projetarFimGuia(g);
+      const mm = fim ? fim.slice(0, 7) : (g.data_resposta || g.data_pedido || '').slice(0, 7);
+      if (mm) porMes.set(mm, (porMes.get(mm) || 0) + 1);
+    }
+    return porMes;
+  };
+
+  // Resumo: quantos fazem 2/mês (detectado pelos dados) e quantos estão marcados.
+  const resumo = useMemo(() => {
+    let fazem2 = 0, marcados2 = 0;
+    for (const p of pacientes) {
+      if (p.cassi_encerrado_em) continue;
+      if ((p.guias_por_mes || 1) >= 2) marcados2++;
+      const max = Math.max(0, ...[...guiasPorMesMap(guiasPorPac.get(p.id) || []).values()]);
+      if (max >= 2) fazem2++;
+    }
+    return { fazem2, marcados2 };
+  }, [pacientes, guiasPorPac]);
+
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return pacientes
@@ -2659,8 +2683,18 @@ function ClientesCassi({ pacientes, guias, onCadastro, onGuia, onDefinirGuiasMes
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-border/50 bg-background p-3">
+          <p className="text-2xl font-black tabular-nums leading-none">{lista.length}</p>
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">Clientes</p>
+        </div>
+        <div className="rounded-xl border border-violet-200 dark:border-violet-900 bg-violet-50/60 dark:bg-violet-950/20 p-3">
+          <p className="text-2xl font-black tabular-nums leading-none text-violet-700 dark:text-violet-400">{resumo.fazem2}</p>
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">Fazem 2/mês{resumo.marcados2 !== resumo.fazem2 ? ` · ${resumo.marcados2} marcados` : ''}</p>
+        </div>
+      </div>
       <p className="text-[11px] text-muted-foreground px-1">
-        {lista.length} cliente(s) · {mes ? `sessões feitas em ${mesLabel}` : 'total de sessões já feitas'}
+        {mes ? `Sessões feitas em ${mesLabel}` : 'Total de sessões já feitas'} · ordem alfabética
       </p>
 
       <div className="space-y-2">
@@ -2673,13 +2707,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onGuia, onDefinirGuiasMes
           const marcado = (p.guias_por_mes || 1) >= 2;
           const mesFeitas = sessoesMesPorPac.get(p.id) || 0;
           // Detecta pelos DADOS: quantas guias fecham por mês (histórico e no mês selecionado).
-          const porMes = new Map<string, number>();
-          for (const g of gs) {
-            if (g.status === 'cancelada') continue;
-            const fim = projetarFimGuia(g);
-            const mm = fim ? fim.slice(0, 7) : (g.data_resposta || g.data_pedido || '').slice(0, 7);
-            if (mm) porMes.set(mm, (porMes.get(mm) || 0) + 1);
-          }
+          const porMes = guiasPorMesMap(gs);
           const maxNoMes = porMes.size ? Math.max(...porMes.values()) : 0;
           const noMesSel = mes ? (porMes.get(mes) || 0) : 0;
           const detecta2 = maxNoMes >= 2; // já fez 2 guias num mesmo mês
