@@ -224,6 +224,11 @@ export default function ControleCassi() {
     toast.success('Cliente reativado');
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
+  const definirGuiasMes = async (id: string, n: number) => {
+    const { error } = await (supabase as any).from('pacientes').update({ guias_por_mes: n }).eq('id', id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
 
   const linhas = useMemo(() =>
     pacientesAtivos.map((p) => {
@@ -336,6 +341,7 @@ export default function ControleCassi() {
             guias={guiasEff}
             onCadastro={(p) => setCadastro(p)}
             onGuia={(p, g) => setEditando({ paciente: p, guia: g })}
+            onDefinirGuiasMes={definirGuiasMes}
           />
         ) : view === 'faturamento' ? (
           <FinanceiroCassi />
@@ -2573,11 +2579,12 @@ function RelatorioSnapshotView({ dados, onClose }: { dados: any; onClose: () => 
 }
 
 // ── Aba "Clientes": diretório completo (alfabético, busca, por mês) ───────────
-function ClientesCassi({ pacientes, guias, onCadastro, onGuia }: {
+function ClientesCassi({ pacientes, guias, onCadastro, onGuia, onDefinirGuiasMes }: {
   pacientes: Paciente[];
   guias: Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
   onCadastro: (p: Paciente) => void;
   onGuia: (paciente: Paciente, guia: GuiaCassi | null) => void;
+  onDefinirGuiasMes: (id: string, n: number) => void;
 }) {
   const { user } = useAuth();
   const [busca, setBusca] = useState('');
@@ -2663,8 +2670,19 @@ function ClientesCassi({ pacientes, guias, onCadastro, onGuia }: {
           const ultima = gs[0] || null;
           const totalFeitas = gs.reduce((s, g) => s + (g.sessoes_realizadas || 0), 0);
           const ativo = !p.cassi_encerrado_em;
-          const dois = (p.guias_por_mes || 1) >= 2;
+          const marcado = (p.guias_por_mes || 1) >= 2;
           const mesFeitas = sessoesMesPorPac.get(p.id) || 0;
+          // Detecta pelos DADOS: quantas guias fecham por mês (histórico e no mês selecionado).
+          const porMes = new Map<string, number>();
+          for (const g of gs) {
+            if (g.status === 'cancelada') continue;
+            const fim = projetarFimGuia(g);
+            const mm = fim ? fim.slice(0, 7) : (g.data_resposta || g.data_pedido || '').slice(0, 7);
+            if (mm) porMes.set(mm, (porMes.get(mm) || 0) + 1);
+          }
+          const maxNoMes = porMes.size ? Math.max(...porMes.values()) : 0;
+          const noMesSel = mes ? (porMes.get(mes) || 0) : 0;
+          const detecta2 = maxNoMes >= 2; // já fez 2 guias num mesmo mês
           return (
             <div key={p.id} className="rounded-xl border border-border/50 bg-background p-3">
               <div className="flex items-center justify-between gap-2">
@@ -2674,15 +2692,27 @@ function ClientesCassi({ pacientes, guias, onCadastro, onGuia }: {
                     <Badge className={`text-[10px] ${ativo ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
                       {ativo ? 'Ativo' : 'Encerrado'}
                     </Badge>
-                    <Badge className={`text-[10px] ${dois ? 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300' : 'bg-muted text-muted-foreground'}`}>
-                      {dois ? '2 guias/mês' : '1 guia/mês'}
-                    </Badge>
+                    {/* Definir guias/mês (1 ou 2) — rápido */}
+                    <span className="inline-flex items-center rounded-full border border-border overflow-hidden">
+                      {[1, 2].map((n) => (
+                        <button key={n} onClick={() => onDefinirGuiasMes(p.id, n)}
+                          className={`text-[10px] px-2 py-0.5 font-bold ${marcado === (n === 2) ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:bg-muted'}`}>
+                          {n}
+                        </button>
+                      ))}
+                      <span className="text-[9px] text-muted-foreground px-1.5">guia/mês</span>
+                    </span>
+                    {detecta2 && (
+                      <span className="text-[9px] uppercase font-bold text-violet-700 bg-violet-100 dark:bg-violet-900/30 rounded px-1" title="Já fechou 2 guias num mesmo mês">
+                        faz 2/mês{!marcado ? ' — marcar?' : ''}
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-1 tabular-nums">
                     {ativa ? <span>Guia ativa: <b className="text-foreground">{ativa.sessoes_realizadas}/{ativa.sessoes_autorizadas}</b></span> : <span>Sem guia ativa</span>}
                     {mes
-                      ? <span> · em {mesLabel}: <b className="text-foreground">{mesFeitas}</b> sessões</span>
-                      : <span> · total feitas: <b className="text-foreground">{totalFeitas}</b></span>}
+                      ? <span> · {mesLabel}: <b className="text-foreground">{mesFeitas}</b> sessões · <b className="text-foreground">{noMesSel}</b> guia(s)</span>
+                      : <span> · total feitas: <b className="text-foreground">{totalFeitas}</b> · máx <b className="text-foreground">{maxNoMes}</b> guia(s)/mês</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
