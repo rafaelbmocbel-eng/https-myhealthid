@@ -90,6 +90,15 @@ function somaGuia(codigos: Array<{ codigo: string; sessoes?: number }>, valorDe:
   return (codigos || []).reduce((s, c) => s + (Number(c.sessoes) || 0) * valorDe(c.codigo), 0);
 }
 
+// Dias de tratamento da guia = campo "sessoes_autorizadas"; se ficou 0, usa a
+// MAIOR quantidade entre os códigos de tratamento (o profissional às vezes só
+// preenche a qtd nos códigos). Assim o controle de sessões (X/Y) sempre aparece.
+function diasTratGuia(g: { sessoes_autorizadas?: number; codigos?: Array<{ codigo: string; sessoes?: number }> }): number {
+  if (g.sessoes_autorizadas && g.sessoes_autorizadas > 0) return g.sessoes_autorizadas;
+  const trat = (g.codigos || []).filter((c) => c.codigo !== '144').map((c) => Number(c.sessoes) || 0);
+  return trat.length ? Math.max(...trat) : 0;
+}
+
 // Projeta a data de TÉRMINO da guia (10ª sessão) contando dias úteis corridos
 // (seg–sex) a partir da resposta da CASSI (ou do pedido). Regra: a guia só é
 // debitada no mês em que essa data cair — se passar do fim do mês, vai pro
@@ -485,7 +494,7 @@ export default function ControleCassi() {
                               <Badge className="text-[10px] bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">guia pedida</Badge>
                             )}
                             {guia && (
-                              <span className="text-[11px] text-muted-foreground tabular-nums">{guia.sessoes_realizadas}/{guia.sessoes_autorizadas} sessões</span>
+                              <span className="text-[11px] text-muted-foreground tabular-nums">{guia.sessoes_realizadas}/{diasTratGuia(guia)} sessões</span>
                             )}
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
@@ -527,7 +536,7 @@ export default function ControleCassi() {
               ) : (
                 <div className="grid gap-2 lg:grid-cols-2">
                   {rosterEsteMes.map(({ paciente, guia }) => {
-                    const aut = guia?.sessoes_autorizadas || 0;
+                    const aut = guia ? diasTratGuia(guia) : 0;
                     const real = guia?.sessoes_realizadas || 0;
                     const restantes = Math.max(0, aut - real);
                     const pct = aut > 0 ? Math.min(100, Math.round((real / aut) * 100)) : 0;
@@ -778,12 +787,14 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
       const sb: any = supabase;
       const codigos = codigosDisp.filter((c) => d.codigos.includes(c.codigo))
         .map((c) => ({ codigo: c.codigo, descricao: c.descricao, sessoes: c.codigo === '144' ? 1 : (sesCod[c.codigo] ?? 0) }));
+      // Dias de tratamento: usa o campo; se ficou 0, deriva da maior qtd dos códigos.
+      const maxTrat = Math.max(0, ...codigos.filter((c) => c.codigo !== '144').map((c) => Number(c.sessoes) || 0));
       const payload = {
         matricula: d.matricula || null,
         numero_guia: d.numero_guia || null,
         data_pedido: d.data_pedido || hojeISO(),
         data_resposta: d.data_resposta || null,
-        sessoes_autorizadas: Number(d.sessoes_autorizadas) || 0,
+        sessoes_autorizadas: (Number(d.sessoes_autorizadas) || 0) || maxTrat,
         // Se há sessões na agenda, a contagem de realizadas vem delas (automática).
         sessoes_realizadas: geradas > 0 ? realizadas : (Number(d.sessoes_realizadas) || 0),
         diagnostico: d.diagnostico || null,
@@ -2832,7 +2843,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                     )}
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-1 tabular-nums">
-                    {ativa ? <span>Guia ativa: <b className="text-foreground">{ativa.sessoes_realizadas}/{ativa.sessoes_autorizadas}</b></span> : <span>Sem guia ativa</span>}
+                    {ativa ? <span>Guia ativa: <b className="text-foreground">{ativa.sessoes_realizadas}/{diasTratGuia(ativa)}</b></span> : <span>Sem guia ativa</span>}
                     {mes
                       ? <span> · {mesLabel}: <b className="text-foreground">{mesFeitas}</b> sessões · <b className="text-foreground">{noMesSel}</b> guia(s)</span>
                       : <span> · total feitas: <b className="text-foreground">{totalFeitas}</b> · máx <b className="text-foreground">{maxNoMes}</b> guia(s)/mês</span>}
