@@ -276,14 +276,29 @@ export default function ControleCassi() {
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
   const guiasAtivasLista = useMemo(() => guiasEff.filter((g) => g.status === 'ativa'), [guiasEff]);
-  // Aba "Ativas": só as guias ativas que fecham no MÊS VIGENTE (mês de término).
+  // Aba "Este mês": mês vigente + mês passado (pra carregar os pacientes que
+  // continuam). Um por paciente (guia mais recente).
   const mesVigente = mesAtualISO();
-  const guiasAtivasMes = useMemo(() => guiasAtivasLista.filter((g) => {
+  const mesAnterior = useMemo(() => {
+    const [a, m] = mesVigente.split('-').map(Number);
+    const d = new Date(a, m - 2, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, [mesVigente]);
+  const prodMesGuia = (g: GuiaCassi) => {
     const fim = projetarFimGuia(g);
-    const mm = fim ? fim.slice(0, 7) : (g.data_resposta || g.data_pedido || '').slice(0, 7);
-    return mm === mesVigente;
-  }), [guiasAtivasLista, mesVigente]);
-  const guiasAtivas = guiasAtivasMes.length;
+    return fim ? fim.slice(0, 7) : (g.data_resposta || g.data_pedido || '').slice(0, 7);
+  };
+  // Roster do mês: cliente ativo com guia ATIVA fechando este mês, ou cuja guia
+  // mais recente fechou no mês passado (carrega pra continuar este mês).
+  const rosterEsteMes = useMemo(() => linhas.filter((l) => {
+    const g = l.guia;
+    if (!g) return false;
+    const pm = prodMesGuia(g);
+    if (g.status === 'ativa' && pm === mesVigente) return true;
+    if (pm === mesAnterior) return true;
+    return false;
+  }), [linhas, mesVigente, mesAnterior]);
+  const guiasAtivas = rosterEsteMes.length;
   // Clientes marcados como 2 guias/mês (controle explícito de quem usa 2/mês).
   const clientes2mes = useMemo(() => linhas.filter((l) => (l.paciente.guias_por_mes || 1) >= 2), [linhas]);
 
@@ -330,7 +345,7 @@ export default function ControleCassi() {
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-wrap">
-              {([['clientes', 'Clientes'], ['ativas', 'Ativas'], ['outro', 'Outro mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
+              {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['outro', 'Outro mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
                 <button key={v} onClick={() => setView(v)}
                   className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                   {label}
@@ -416,7 +431,7 @@ export default function ControleCassi() {
                     value={busca} onChange={(e) => setBusca(e.target.value)} />
                 </div>
                 <Button size="sm" className="gap-1.5 h-9 shrink-0" onClick={() => setCadastro('novo')}>
-                  <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Cadastrar cliente</span>
+                  <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Adicionar cliente</span>
                 </Button>
               </div>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -482,47 +497,60 @@ export default function ControleCassi() {
                 </div>
               )
             ) : (
-              guiasAtivasMes.length === 0 ? (
+              rosterEsteMes.length === 0 ? (
                 <p className="text-center text-sm text-muted-foreground py-8">
-                  Nenhuma guia ativa fechando neste mês. Veja outros meses em <b>Outro mês</b> ou o quadro geral em <b>Clientes</b>.
+                  Ninguém em tratamento neste mês ainda. Crie guias na aba <b>Clientes</b> ou use <b>Adicionar cliente</b>.
                 </p>
               ) : (
                 <div className="grid gap-2 lg:grid-cols-2">
-                  {guiasAtivasMes.map((g) => {
-                    const aut = g.sessoes_autorizadas || 0;
-                    const real = g.sessoes_realizadas || 0;
+                  {rosterEsteMes.map(({ paciente, guia }) => {
+                    const aut = guia?.sessoes_autorizadas || 0;
+                    const real = guia?.sessoes_realizadas || 0;
                     const restantes = Math.max(0, aut - real);
                     const pct = aut > 0 ? Math.min(100, Math.round((real / aut) * 100)) : 0;
-                    const pac = pacienteById.get(g.paciente_id);
-                    const prazoVenceu = venceuPrazoProximaGuia(g, pac?.guias_por_mes);
+                    const ativa = guia?.status === 'ativa';
+                    const carregado = !ativa || prodMesGuia(guia!) === mesAnterior;
+                    const prazoVenceu = venceuPrazoProximaGuia(guia, paciente.guias_por_mes);
                     return (
-                      <div key={g.id} className={`rounded-xl border bg-background px-3 py-2.5 ${prazoVenceu ? 'border-rose-300 dark:border-rose-900' : 'border-border/50'}`}>
+                      <div key={paciente.id} className={`rounded-xl border bg-background px-3 py-2.5 ${prazoVenceu ? 'border-rose-300 dark:border-rose-900' : 'border-border/50'}`}>
                         <div className="flex items-center gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-semibold truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</p>
-                              {(pac?.guias_por_mes || 1) >= 2 && (
+                              <p className="text-sm font-semibold truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
+                              {(paciente.guias_por_mes || 1) >= 2 && (
                                 <span className="text-[9px] uppercase font-bold text-violet-600 border border-violet-300 dark:border-violet-800 rounded px-1 shrink-0">2/mês</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
-                                <div className={`h-full ${restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+                            {ativa && prodMesGuia(guia!) === mesVigente ? (
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
+                                  <div className={`h-full ${restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{real}/{aut} sessões</span>
+                                {prazoVenceu ? (
+                                  <Badge className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">Pedir próxima guia</Badge>
+                                ) : restantes <= 2 && (
+                                  <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{restantes === 0 ? 'acabou' : `faltam ${restantes}`}</Badge>
+                                )}
                               </div>
-                              <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{real}/{aut} sessões</span>
-                              {prazoVenceu ? (
-                                <Badge className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">Pedir próxima guia</Badge>
-                              ) : restantes <= 2 && (
-                                <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{restantes === 0 ? 'acabou' : `faltam ${restantes}`}</Badge>
-                              )}
-                            </div>
+                            ) : (
+                              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+                                Do mês passado — criar guia deste mês
+                              </p>
+                            )}
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente: pacDaGuia(g), guia: g })}>
-                              <FileText className="h-3.5 w-3.5" /> Ver guia
-                            </Button>
-                            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente: pacDaGuia(g), guia: null })}>
+                            {guia && (
+                              <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia })}>
+                                <FileText className="h-3.5 w-3.5" /> Ver guia
+                              </Button>
+                            )}
+                            <Button size="sm" variant={carregado ? 'default' : 'outline'} className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia: null })}>
                               <Plus className="h-3.5 w-3.5" /> Nova guia
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" title="Retirar deste mês (não continua)"
+                              onClick={() => { if (confirm(`Retirar "${paciente.nome} ${paciente.sobrenome || ''}" deste mês? (encerra — dá pra reativar depois)`)) encerrarCliente(paciente.id, 'Retirado do mês'); }}>
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
