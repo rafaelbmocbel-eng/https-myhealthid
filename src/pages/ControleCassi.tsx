@@ -14,7 +14,7 @@ import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertT
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, venceuPrazoProximaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -116,6 +116,7 @@ export default function ControleCassi() {
   const [busca, setBusca] = useState('');
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [verEncerrados, setVerEncerrados] = useState(false);
 
   // Pacientes CASSI do profissional.
   const { data: pacientes = [], isLoading: loadingPac } = useQuery({
@@ -123,7 +124,7 @@ export default function ControleCassi() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
@@ -204,11 +205,30 @@ export default function ControleCassi() {
     return m;
   }, [guiasEff]);
 
+  // Ativos = não encerrados. Encerrados ficam de fora das listas (mas dá pra ver/reativar).
+  const pacientesAtivos = useMemo(() => pacientes.filter((p) => !p.cassi_encerrado_em), [pacientes]);
+  const encerrados = useMemo(() => pacientes.filter((p) => !!p.cassi_encerrado_em), [pacientes]);
+
+  const encerrarCliente = async (id: string, motivo: string) => {
+    const { error } = await (supabase as any).from('pacientes')
+      .update({ cassi_encerrado_em: new Date().toISOString(), cassi_encerrado_motivo: motivo || null }).eq('id', id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    toast.success('Cliente encerrado');
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
+  const reativarCliente = async (id: string) => {
+    const { error } = await (supabase as any).from('pacientes')
+      .update({ cassi_encerrado_em: null, cassi_encerrado_motivo: null }).eq('id', id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    toast.success('Cliente reativado');
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
+
   const linhas = useMemo(() =>
-    pacientes.map((p) => {
+    pacientesAtivos.map((p) => {
       const guia = guiaPorPaciente.get(p.id) || null;
       return { paciente: p, guia, status: statusPaciente(guia) };
-    }), [pacientes, guiaPorPaciente]);
+    }), [pacientesAtivos, guiaPorPaciente]);
 
   // "Pedido aberto" = já demos baixa (solicitamos) e a guia nova ainda não chegou
   // (nenhuma guia com data_pedido >= a data da solicitação).
@@ -466,6 +486,30 @@ export default function ControleCassi() {
                 </div>
               )
             )}
+
+            {/* Encerrados — quem não continua (viagem, alta, desistência). Dá pra reativar. */}
+            {encerrados.length > 0 && (
+              <div className="pt-1">
+                <button onClick={() => setVerEncerrados((v) => !v)} className="text-[12px] text-muted-foreground hover:text-foreground">
+                  {verEncerrados ? 'ocultar' : 'ver'} encerrados ({encerrados.length})
+                </button>
+                {verEncerrados && (
+                  <div className="space-y-1.5 mt-2">
+                    {encerrados.map((p) => (
+                      <div key={p.id} className="rounded-lg border border-border/50 bg-muted/20 p-2.5 flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{p.nome} {p.sobrenome || ''}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            encerrado{p.cassi_encerrado_motivo ? ` · ${p.cassi_encerrado_motivo}` : ''}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline" className="h-8 text-[12px] shrink-0" onClick={() => reativarCliente(p.id)}>Reativar</Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -491,6 +535,8 @@ export default function ControleCassi() {
             qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
             setCadastro(null);
           }}
+          onEncerrar={async (id, motivo) => { await encerrarCliente(id, motivo); setCadastro(null); }}
+          onReativar={async (id) => { await reativarCliente(id); setCadastro(null); }}
         />
       )}
 
@@ -989,15 +1035,19 @@ function PlanilhaGuias({ guias, onAbrir }: { guias: GuiaComPaciente[]; onAbrir: 
 }
 
 // Cadastro/edição rápida de um cliente CASSI (nome, carteirinha, e-mail, telefone).
-function PacienteCassiEditor({ paciente, onClose, onSaved }: {
+function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativar }: {
   paciente: Paciente | null;
   onClose: () => void;
   onSaved: () => void;
+  onEncerrar?: (id: string, motivo: string) => Promise<void> | void;
+  onReativar?: (id: string) => Promise<void> | void;
 }) {
   const { user } = useAuth();
   const { data: cfg } = useCassiConfig();
   const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
   const editando = !!paciente;
+  const encerrado = !!paciente?.cassi_encerrado_em;
+  const [motivoEnc, setMotivoEnc] = useState('Alta (ficou bom)');
   const [f, setF] = useState(() => ({
     nome: paciente?.nome || '',
     sobrenome: paciente?.sobrenome || '',
@@ -1200,6 +1250,34 @@ function PacienteCassiEditor({ paciente, onClose, onSaved }: {
               {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
             </Button>
           </div>
+
+          {/* Encerrar / reativar acompanhamento (só ao editar um cliente existente) */}
+          {editando && paciente && (
+            <div className="pt-2 mt-1 border-t border-border/40">
+              {encerrado ? (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Encerrado{paciente.cassi_encerrado_motivo ? ` · ${paciente.cassi_encerrado_motivo}` : ''}. Não aparece nas listas.
+                  </p>
+                  <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={() => onReativar?.(paciente.id)}>Reativar</Button>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Encerrar acompanhamento (sai das listas)</label>
+                  <div className="flex items-center gap-1.5">
+                    <select value={motivoEnc} onChange={(e) => setMotivoEnc(e.target.value)}
+                      className="h-9 flex-1 rounded-md border border-input bg-background px-2 text-sm">
+                      {['Alta (ficou bom)', 'Viagem', 'Desistiu / não continua', 'Mudou de cidade', 'Outro'].map((mo) => <option key={mo} value={mo}>{mo}</option>)}
+                    </select>
+                    <Button size="sm" variant="ghost" className="h-9 text-destructive hover:text-destructive shrink-0"
+                      onClick={() => { if (confirm('Encerrar o acompanhamento CASSI deste cliente? Ele sai das listas mas o histórico fica guardado.')) onEncerrar?.(paciente.id, motivoEnc); }}>
+                      Encerrar
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           </>
           )}
         </div>
