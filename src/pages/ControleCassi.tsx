@@ -14,7 +14,7 @@ import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertT
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, venceuPrazoProximaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -117,6 +117,7 @@ export default function ControleCassi() {
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [verEncerrados, setVerEncerrados] = useState(false);
+  const [filtro2mes, setFiltro2mes] = useState(false);
 
   // Pacientes CASSI do profissional.
   const { data: pacientes = [], isLoading: loadingPac } = useQuery({
@@ -124,7 +125,7 @@ export default function ControleCassi() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo, cassi_diagnostico')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
@@ -263,6 +264,8 @@ export default function ControleCassi() {
   };
   const guiasAtivasLista = useMemo(() => guiasEff.filter((g) => g.status === 'ativa'), [guiasEff]);
   const guiasAtivas = guiasAtivasLista.length;
+  // Clientes marcados como 2 guias/mês (controle explícito de quem usa 2/mês).
+  const clientes2mes = useMemo(() => linhas.filter((l) => (l.paciente.guias_por_mes || 1) >= 2), [linhas]);
 
   // Paciente por id (para montar o objeto ao abrir/editar guia a partir da linha da guia).
   const pacienteById = useMemo(() => new Map(pacientes.map((p) => [p.id, p])), [pacientes]);
@@ -385,15 +388,27 @@ export default function ControleCassi() {
                   <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Cadastrar cliente</span>
                 </Button>
               </div>
-              {busca && <p className="text-[11px] text-muted-foreground mt-2">{linhasFiltradas.length} cliente(s) encontrado(s)</p>}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <button onClick={() => setFiltro2mes((v) => !v)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${filtro2mes ? 'bg-violet-600 text-white border-violet-600' : 'bg-background border-border text-muted-foreground'}`}>
+                  2 guias/mês ({clientes2mes.length})
+                </button>
+                {filtro2mes ? (
+                  <span className="text-[11px] text-muted-foreground">só clientes de 2/mês · toque no lápis pra mudar de 1↔2</span>
+                ) : busca ? (
+                  <span className="text-[11px] text-muted-foreground">{linhasFiltradas.length} encontrado(s)</span>
+                ) : null}
+              </div>
             </div>
 
-            {busca ? (
-              linhasFiltradas.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-8">Nenhum cliente encontrado.</p>
+            {(filtro2mes || busca) ? (
+              (filtro2mes ? clientes2mes : linhasFiltradas).length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-8">
+                  {filtro2mes ? 'Nenhum cliente marcado como 2 guias/mês. Abra um cliente (lápis) e mude pra 2/mês.' : 'Nenhum cliente encontrado.'}
+                </p>
               ) : (
                 <div className="space-y-2">
-                  {linhasFiltradas.map(({ paciente, guia, status }) => (
+                  {(filtro2mes ? clientes2mes : linhasFiltradas).map(({ paciente, guia, status }) => (
                     <div key={paciente.id} className="rounded-xl border border-border/50 bg-background p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -564,7 +579,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     data_resposta: guia?.data_resposta || '',
     sessoes_autorizadas: guia?.sessoes_autorizadas ?? 0,
     sessoes_realizadas: guia?.sessoes_realizadas ?? 0,
-    diagnostico: (guia ?? base)?.diagnostico || '',
+    diagnostico: guia?.diagnostico || paciente.cassi_diagnostico || base?.diagnostico || '',
     responsavel_tecnico: (guia ?? base)?.responsavel_tecnico || '',
     codigos: (guia ?? base)?.codigos?.map((c) => c.codigo)
       || (paciente.codigos_cassi?.length ? paciente.codigos_cassi : ['012']),
@@ -710,6 +725,10 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
       // a matrícula da guia (não sobrescreve uma já preenchida).
       if (d.matricula.trim() && !(paciente.carteirinha || '').trim()) {
         await sb.from('pacientes').update({ carteirinha: d.matricula.trim() }).eq('id', paciente.id);
+      }
+      // Diagnóstico fica fixo no cadastro (só muda quando o profissional muda).
+      if (d.diagnostico.trim() && d.diagnostico.trim() !== (paciente.cassi_diagnostico || '').trim()) {
+        await sb.from('pacientes').update({ cassi_diagnostico: d.diagnostico.trim() }).eq('id', paciente.id);
       }
     },
     onSuccess: () => {
@@ -1052,6 +1071,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     nome: paciente?.nome || '',
     sobrenome: paciente?.sobrenome || '',
     carteirinha: paciente?.carteirinha || '',
+    diagnostico: paciente?.cassi_diagnostico || '',
     email: paciente?.email || '',
     telefone: paciente?.telefone || '',
   }));
@@ -1103,6 +1123,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         nome: f.nome.trim(),
         sobrenome: f.sobrenome.trim() || '',
         carteirinha: f.carteirinha.trim() || null,
+        cassi_diagnostico: f.diagnostico.trim() || null,
         email: f.email.trim() || null,
         telefone: f.telefone.replace(/\D/g, '') || null,
         codigos_cassi: codigos,
@@ -1205,7 +1226,11 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
           </div>
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Carteirinha CASSI</label>
-            <Input value={f.carteirinha} onChange={(e) => set('carteirinha', e.target.value)} placeholder="nº da carteirinha" />
+            <Input value={f.carteirinha} onChange={(e) => set('carteirinha', e.target.value)} placeholder="nº do cartão CASSI" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Diagnóstico médico</label>
+            <Input value={f.diagnostico} onChange={(e) => set('diagnostico', e.target.value)} placeholder="fica fixo — pré-preenche os pedidos" />
           </div>
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Códigos habituais</label>
@@ -1486,7 +1511,7 @@ function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
     nome: `${l.paciente.nome} ${l.paciente.sobrenome || ''}`.trim(),
     sel: true,
     carteirinha: l.paciente.carteirinha || l.guia?.matricula || '',
-    diagnostico: l.guia?.diagnostico || '',
+    diagnostico: l.paciente.cassi_diagnostico || l.guia?.diagnostico || '',
     codigos: (l.paciente.codigos_cassi?.length ? l.paciente.codigos_cassi : (l.guia?.codigos?.map((c) => c.codigo) || [])).slice(0, 3),
   });
   const [itens, setItens] = useState<ItemPedido[]>(() => linhas.map(novoItem));
@@ -1615,6 +1640,7 @@ function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
               await Promise.all(selecionados.map((i) => {
                 const payload: any = { codigos_cassi: i.codigos };
                 if (i.carteirinha.trim()) payload.carteirinha = i.carteirinha.trim();
+                if (i.diagnostico.trim()) payload.cassi_diagnostico = i.diagnostico.trim();
                 return (supabase as any).from('pacientes').update(payload).eq('id', i.id);
               }));
               await onDarBaixa(selecionados.map((i) => i.id));
