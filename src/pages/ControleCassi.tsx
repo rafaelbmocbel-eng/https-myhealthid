@@ -14,7 +14,7 @@ import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertT
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, venceuPrazoProximaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -125,7 +125,7 @@ export default function ControleCassi() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo, cassi_diagnostico')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo, cassi_diagnostico, cassi_confirmado_mes')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
@@ -291,6 +291,7 @@ export default function ControleCassi() {
   // Roster do mês: cliente ativo com guia ATIVA fechando este mês, ou cuja guia
   // mais recente fechou no mês passado (carrega pra continuar este mês).
   const rosterEsteMes = useMemo(() => linhas.filter((l) => {
+    if (l.paciente.cassi_confirmado_mes === mesVigente) return true; // confirmado neste mês
     const g = l.guia;
     if (!g) return false;
     const pm = prodMesGuia(g);
@@ -299,6 +300,20 @@ export default function ControleCassi() {
     return false;
   }), [linhas, mesVigente, mesAnterior]);
   const guiasAtivas = rosterEsteMes.length;
+
+  // Confirmar (1 clique) que o cliente tem guia ativa neste mês — mesmo com guia
+  // de mês anterior (3 meses pra debitar). Marca o mês confirmado no cadastro.
+  const confirmarGuiaMes = async (id: string) => {
+    const { error } = await (supabase as any).from('pacientes').update({ cassi_confirmado_mes: mesVigente }).eq('id', id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    toast.success('Guia confirmada neste mês');
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
+  const desconfirmarGuiaMes = async (id: string) => {
+    const { error } = await (supabase as any).from('pacientes').update({ cassi_confirmado_mes: null }).eq('id', id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
   // Clientes marcados como 2 guias/mês (controle explícito de quem usa 2/mês).
   const clientes2mes = useMemo(() => linhas.filter((l) => (l.paciente.guias_por_mes || 1) >= 2), [linhas]);
 
@@ -508,11 +523,12 @@ export default function ControleCassi() {
                     const real = guia?.sessoes_realizadas || 0;
                     const restantes = Math.max(0, aut - real);
                     const pct = aut > 0 ? Math.min(100, Math.round((real / aut) * 100)) : 0;
-                    const ativa = guia?.status === 'ativa';
-                    const carregado = !ativa || prodMesGuia(guia!) === mesAnterior;
+                    const confirmado = paciente.cassi_confirmado_mes === mesVigente;
+                    const ativaEsteMes = guia?.status === 'ativa' && prodMesGuia(guia) === mesVigente;
+                    const ok = confirmado || ativaEsteMes; // tem guia ativa neste mês
                     const prazoVenceu = venceuPrazoProximaGuia(guia, paciente.guias_por_mes);
                     return (
-                      <div key={paciente.id} className={`rounded-xl border bg-background px-3 py-2.5 ${prazoVenceu ? 'border-rose-300 dark:border-rose-900' : 'border-border/50'}`}>
+                      <div key={paciente.id} className={`rounded-xl border px-3 py-2.5 ${ok ? 'border-emerald-300 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/10' : prazoVenceu ? 'border-rose-300 dark:border-rose-900 bg-background' : 'border-amber-300 dark:border-amber-900 bg-amber-50/30 dark:bg-amber-950/10'}`}>
                         <div className="flex items-center gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5">
@@ -520,8 +536,9 @@ export default function ControleCassi() {
                               {(paciente.guias_por_mes || 1) >= 2 && (
                                 <span className="text-[9px] uppercase font-bold text-violet-600 border border-violet-300 dark:border-violet-800 rounded px-1 shrink-0">2/mês</span>
                               )}
+                              {confirmado && <span className="text-[9px] uppercase font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">confirmado</span>}
                             </div>
-                            {ativa && prodMesGuia(guia!) === mesVigente ? (
+                            {ok && guia && aut > 0 ? (
                               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                 <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
                                   <div className={`h-full ${restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
@@ -533,19 +550,27 @@ export default function ControleCassi() {
                                   <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{restantes === 0 ? 'acabou' : `faltam ${restantes}`}</Badge>
                                 )}
                               </div>
+                            ) : ok ? (
+                              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">Guia ativa confirmada neste mês</p>
                             ) : (
-                              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
-                                Do mês passado — criar guia deste mês
-                              </p>
+                              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">Do mês passado — confirme se a guia está ativa</p>
                             )}
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
+                            {!ok && (
+                              <Button size="sm" className="h-8 gap-1.5 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => confirmarGuiaMes(paciente.id)}>
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Confirmar
+                              </Button>
+                            )}
+                            {confirmado && (
+                              <Button size="sm" variant="ghost" className="h-8 text-[11px] text-muted-foreground" onClick={() => desconfirmarGuiaMes(paciente.id)}>desfazer</Button>
+                            )}
                             {guia && (
                               <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia })}>
                                 <FileText className="h-3.5 w-3.5" /> Ver guia
                               </Button>
                             )}
-                            <Button size="sm" variant={carregado ? 'default' : 'outline'} className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia: null })}>
+                            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia: null })}>
                               <Plus className="h-3.5 w-3.5" /> Nova guia
                             </Button>
                             <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" title="Retirar deste mês (não continua)"
