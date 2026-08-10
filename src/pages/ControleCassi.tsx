@@ -276,7 +276,14 @@ export default function ControleCassi() {
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
   const guiasAtivasLista = useMemo(() => guiasEff.filter((g) => g.status === 'ativa'), [guiasEff]);
-  const guiasAtivas = guiasAtivasLista.length;
+  // Aba "Ativas": só as guias ativas que fecham no MÊS VIGENTE (mês de término).
+  const mesVigente = mesAtualISO();
+  const guiasAtivasMes = useMemo(() => guiasAtivasLista.filter((g) => {
+    const fim = projetarFimGuia(g);
+    const mm = fim ? fim.slice(0, 7) : (g.data_resposta || g.data_pedido || '').slice(0, 7);
+    return mm === mesVigente;
+  }), [guiasAtivasLista, mesVigente]);
+  const guiasAtivas = guiasAtivasMes.length;
   // Clientes marcados como 2 guias/mês (controle explícito de quem usa 2/mês).
   const clientes2mes = useMemo(() => linhas.filter((l) => (l.paciente.guias_por_mes || 1) >= 2), [linhas]);
 
@@ -475,13 +482,13 @@ export default function ControleCassi() {
                 </div>
               )
             ) : (
-              guiasAtivasLista.length === 0 ? (
+              guiasAtivasMes.length === 0 ? (
                 <p className="text-center text-sm text-muted-foreground py-8">
-                  Nenhuma guia ativa. Use a busca acima pra achar um cliente e criar a guia.
+                  Nenhuma guia ativa fechando neste mês. Veja outros meses em <b>Outro mês</b> ou o quadro geral em <b>Clientes</b>.
                 </p>
               ) : (
                 <div className="grid gap-2 lg:grid-cols-2">
-                  {guiasAtivasLista.map((g) => {
+                  {guiasAtivasMes.map((g) => {
                     const aut = g.sessoes_autorizadas || 0;
                     const real = g.sessoes_realizadas || 0;
                     const restantes = Math.max(0, aut - real);
