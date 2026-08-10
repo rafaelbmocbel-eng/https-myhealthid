@@ -403,6 +403,7 @@ export default function ControleCassi() {
             onExcluir={excluirCliente}
             onAtivar={reativarCliente}
             onConfirmarMes={confirmarGuiaMes}
+            onPedirGuia={() => setView('pedir')}
             mesVigente={mesVigente}
           />
         ) : view === 'faturamento' ? (
@@ -589,6 +590,11 @@ export default function ControleCassi() {
                             )}
                             {confirmado && (
                               <Button size="sm" variant="ghost" className="h-8 text-[11px] text-muted-foreground" onClick={() => desconfirmarGuiaMes(paciente.id)}>desfazer</Button>
+                            )}
+                            {precisaPedido && (
+                              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px] text-amber-700 border-amber-300 dark:border-amber-800" title="Ir para Pedir guias" onClick={() => setView('pedir')}>
+                                <AlertTriangle className="h-3.5 w-3.5" /> Pedir guia
+                              </Button>
                             )}
                             {guia && (
                               <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia })}>
@@ -1680,54 +1686,44 @@ function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
         <span className="text-[12px] text-muted-foreground">{selecionados.length} selecionado(s)</span>
       </div>
 
-      {/* Cards dos clientes — campos empilhados (sem cortar na tela) */}
-      <div className="space-y-2.5">
+      {/* Cards dos clientes — compactos */}
+      <div className="space-y-1.5">
         {itens.map((it) => {
           const semCart = it.sel && !it.carteirinha.trim();
           return (
-            <div key={it.id} className={`rounded-xl border transition-colors ${it.sel ? (semCart ? 'border-rose-300 dark:border-rose-800 bg-rose-50/30 dark:bg-rose-950/10' : 'border-primary/40 bg-primary/5') : 'border-border/50'}`}>
-              <button onClick={() => upd(it.id, { sel: !it.sel })} className="w-full flex items-center gap-2.5 p-3 text-left">
-                {it.sel ? <CheckCircle2 className="h-5 w-5 text-primary shrink-0" /> : <Circle className="h-5 w-5 text-muted-foreground shrink-0" />}
+            <div key={it.id} className={`rounded-lg border transition-colors ${it.sel ? (semCart ? 'border-rose-300 dark:border-rose-800 bg-rose-50/30 dark:bg-rose-950/10' : 'border-primary/40 bg-primary/5') : 'border-border/50'}`}>
+              <button onClick={() => upd(it.id, { sel: !it.sel })} className="w-full flex items-center gap-2 px-2.5 py-2 text-left">
+                {it.sel ? <CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
                 <span className="text-sm font-semibold flex-1 min-w-0 truncate">{it.nome}</span>
                 {motivos.get(it.id) && (
-                  <span className={`text-[9px] uppercase font-bold rounded px-1.5 py-0.5 shrink-0 ${motivos.get(it.id) === '2ª guia do mês' ? 'text-violet-700 bg-violet-100 dark:bg-violet-900/30' : 'text-amber-700 bg-amber-100 dark:bg-amber-900/30'}`}>
+                  <span className={`text-[9px] uppercase font-bold rounded px-1 shrink-0 ${motivos.get(it.id) === '2ª guia do mês' ? 'text-violet-700 bg-violet-100 dark:bg-violet-900/30' : 'text-amber-700 bg-amber-100 dark:bg-amber-900/30'}`}>
                     {motivos.get(it.id)}
                   </span>
                 )}
               </button>
 
               {it.sel && (
-                <div className="px-3 pb-3 space-y-2.5">
-                  <div>
-                    {label('Carteirinha (nº do cartão CASSI)')}
-                    <Input
-                      className={`h-9 mt-0.5 ${semCart ? 'border-rose-400 dark:border-rose-700' : ''}`}
-                      value={it.carteirinha}
-                      onChange={(e) => upd(it.id, { carteirinha: e.target.value })}
-                      placeholder="ex.: 000000000000" />
-                    {semCart && <p className="text-[10px] text-rose-600 mt-0.5">Preencha o nº do cartão CASSI pra poder pedir.</p>}
+                <div className="px-2.5 pb-2.5 space-y-1.5">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <Input className={`h-8 text-xs ${semCart ? 'border-rose-400 dark:border-rose-700' : ''}`}
+                      value={it.carteirinha} onChange={(e) => upd(it.id, { carteirinha: e.target.value })} placeholder="Carteirinha (nº CASSI)" />
+                    <Input className="h-8 text-xs" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="Diagnóstico" />
                   </div>
-                  <div>
-                    {label('Diagnóstico')}
-                    <Input className="h-9 mt-0.5" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="diagnóstico médico" />
+                  {semCart && <p className="text-[10px] text-rose-600">Sem carteirinha — preencha pra poder pedir.</p>}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {codigosDisp.map((c) => {
+                      const on = it.codigos.includes(c.codigo);
+                      return (
+                        <button key={c.codigo} type="button" onClick={() => toggleCod(it.id, c.codigo)}
+                          className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
+                          {c.codigo}
+                        </button>
+                      );
+                    })}
+                    <button className="text-[10px] text-muted-foreground underline underline-offset-2 ml-auto" onClick={() => onNovaGuia(linhas.find((l) => l.paciente.id === it.id)!.paciente)}>
+                      registrar manual
+                    </button>
                   </div>
-                  <div>
-                    {label('Códigos (até 3)')}
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {codigosDisp.map((c) => {
-                        const on = it.codigos.includes(c.codigo);
-                        return (
-                          <button key={c.codigo} type="button" onClick={() => toggleCod(it.id, c.codigo)}
-                            className={`text-[12px] px-2.5 py-1 rounded-full border font-medium ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
-                            {c.codigo}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <button className="text-[11px] text-muted-foreground underline underline-offset-2" onClick={() => onNovaGuia(linhas.find((l) => l.paciente.id === it.id)!.paciente)}>
-                    ou registrar a guia manualmente
-                  </button>
                 </div>
               )}
             </div>
@@ -2685,7 +2681,7 @@ function RelatorioSnapshotView({ dados, onClose }: { dados: any; onClose: () => 
 }
 
 // ── Aba "Clientes": diretório completo (alfabético, busca, por mês) ───────────
-function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinirGuiasMes, onExcluir, onAtivar, onConfirmarMes, mesVigente }: {
+function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinirGuiasMes, onExcluir, onAtivar, onConfirmarMes, onPedirGuia, mesVigente }: {
   pacientes: Paciente[];
   guias: Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
   onCadastro: (p: Paciente) => void;
@@ -2695,6 +2691,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
   onExcluir: (id: string) => void;
   onAtivar: (id: string) => void;
   onConfirmarMes: (id: string) => void;
+  onPedirGuia: () => void;
   mesVigente: string;
 }) {
   const { user } = useAuth();
@@ -2874,9 +2871,15 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                   <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => onCadastro(p)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => onGuia(p, ativa || ultima)}>
-                    <FileText className="h-3.5 w-3.5" /> Guia
-                  </Button>
+                  {gs.length === 0 ? (
+                    <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px] text-amber-700 border-amber-300 dark:border-amber-800" title="Pedir guia (vai pra aba Pedir guias)" onClick={onPedirGuia}>
+                      <AlertTriangle className="h-3.5 w-3.5" /> Pedir guia
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => onGuia(p, ativa || ultima)}>
+                      <FileText className="h-3.5 w-3.5" /> Guia
+                    </Button>
+                  )}
                   <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Excluir cliente (duplicado/erro)"
                     onClick={() => { if (confirm(`Excluir "${p.nome} ${p.sobrenome || ''}" do Controle CASSI? Use para tirar duplicados/erros.`)) onExcluir(p.id); }}>
                     <Trash2 className="h-3.5 w-3.5" />
