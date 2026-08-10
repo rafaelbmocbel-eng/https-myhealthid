@@ -494,6 +494,14 @@ export default function ControleCassi() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {paciente.cassi_confirmado_mes === mesVigente ? (
+                            <span className="text-[11px] font-bold text-emerald-700 px-1">no mês ✓</span>
+                          ) : (
+                            <Button size="sm" className="h-8 gap-1.5 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white" title="Adicionar a Este mês"
+                              onClick={() => confirmarGuiaMes(paciente.id)}>
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Este mês
+                            </Button>
+                          )}
                           <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => setCadastro(paciente)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -538,7 +546,7 @@ export default function ControleCassi() {
                               )}
                               {confirmado && <span className="text-[9px] uppercase font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">confirmado</span>}
                             </div>
-                            {ok && guia && aut > 0 ? (
+                            {guia && aut > 0 ? (
                               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                 <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
                                   <div className={`h-full ${restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
@@ -551,7 +559,7 @@ export default function ControleCassi() {
                                 )}
                               </div>
                             ) : ok ? (
-                              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">Guia ativa confirmada neste mês</p>
+                              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">Guia ativa confirmada — registre a guia (nº e sessões) pra controlar aqui</p>
                             ) : (
                               <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">Do mês passado — confirme se a guia está ativa</p>
                             )}
