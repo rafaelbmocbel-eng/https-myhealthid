@@ -301,6 +301,9 @@ export default function ControleCassi() {
   // mais recente fechou no mês passado (carrega pra continuar este mês).
   const rosterEsteMes = useMemo(() => linhas.filter((l) => {
     if (l.paciente.cassi_confirmado_mes === mesVigente) return true; // confirmado neste mês
+    // Cliente de 2 guias/mês que precisa de pedido: sempre aparece aqui.
+    const p2 = (l.paciente.guias_por_mes || 1) >= 2;
+    if (p2 && (precisaNovaGuia(l.guia) || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes))) return true;
     const g = l.guia;
     if (!g) return false;
     const pm = prodMesGuia(g);
@@ -399,6 +402,8 @@ export default function ControleCassi() {
             onDefinirGuiasMes={definirGuiasMes}
             onExcluir={excluirCliente}
             onAtivar={reativarCliente}
+            onConfirmarMes={confirmarGuiaMes}
+            mesVigente={mesVigente}
           />
         ) : view === 'faturamento' ? (
           <FinanceiroCassi />
@@ -544,6 +549,7 @@ export default function ControleCassi() {
                     const ativaEsteMes = guia?.status === 'ativa' && prodMesGuia(guia) === mesVigente;
                     const ok = confirmado || ativaEsteMes; // tem guia ativa neste mês
                     const prazoVenceu = venceuPrazoProximaGuia(guia, paciente.guias_por_mes);
+                    const precisaPedido = (paciente.guias_por_mes || 1) >= 2 && !ok && (precisaNovaGuia(guia) || prazoVenceu);
                     return (
                       <div key={paciente.id} className={`rounded-xl border px-3 py-2.5 ${ok ? 'border-emerald-300 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/10' : prazoVenceu ? 'border-rose-300 dark:border-rose-900 bg-background' : 'border-amber-300 dark:border-amber-900 bg-amber-50/30 dark:bg-amber-950/10'}`}>
                         <div className="flex items-center gap-3">
@@ -567,6 +573,8 @@ export default function ControleCassi() {
                                   <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{restantes === 0 ? 'acabou' : `faltam ${restantes}`}</Badge>
                                 )}
                               </div>
+                            ) : precisaPedido ? (
+                              <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-1 font-medium">Cliente 2/mês — precisa de nova guia (monte em "Pedir guias")</p>
                             ) : ok ? (
                               <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">Guia ativa confirmada — registre a guia (nº e sessões) pra controlar aqui</p>
                             ) : (
@@ -2686,6 +2694,8 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
   onDefinirGuiasMes: (id: string, n: number) => void;
   onExcluir: (id: string) => void;
   onAtivar: (id: string) => void;
+  onConfirmarMes: (id: string) => void;
+  mesVigente: string;
 }) {
   const { user } = useAuth();
   const [busca, setBusca] = useState('');
@@ -2850,9 +2860,15 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {!ativo && (
+                  {!ativo ? (
                     <Button size="sm" variant="outline" className="h-8 text-[12px] gap-1 text-emerald-700 border-emerald-300 dark:border-emerald-800" onClick={() => onAtivar(p.id)}>
                       <CheckCircle2 className="h-3.5 w-3.5" /> Ativar
+                    </Button>
+                  ) : p.cassi_confirmado_mes === mesVigente ? (
+                    <span className="text-[11px] font-bold text-emerald-700 px-1" title="Já está em Este mês">no mês ✓</span>
+                  ) : (
+                    <Button size="sm" className="h-8 text-[12px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" title="Ativar guia — aparece em Este mês" onClick={() => onConfirmarMes(p.id)}>
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Este mês
                     </Button>
                   )}
                   <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => onCadastro(p)}>
