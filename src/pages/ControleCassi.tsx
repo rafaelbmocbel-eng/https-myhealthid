@@ -2685,7 +2685,7 @@ function RelatorioSnapshotView({ dados, onClose }: { dados: any; onClose: () => 
 }
 
 // ── Aba "Clientes": diretório completo (alfabético, busca, por mês) ───────────
-function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinirGuiasMes, onExcluir, onAtivar }: {
+function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinirGuiasMes, onExcluir, onAtivar, onConfirmarMes, mesVigente }: {
   pacientes: Paciente[];
   guias: Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
   onCadastro: (p: Paciente) => void;
