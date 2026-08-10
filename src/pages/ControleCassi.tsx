@@ -1570,6 +1570,20 @@ function FinanceiroCassi() {
   const { data: cfg } = useCassiConfig();
   const [mes, setMes] = useState<string>(() => mesAtualISO());
   const [relatorioOpen, setRelatorioOpen] = useState(false);
+  const [verSnap, setVerSnap] = useState<any | null>(null);
+
+  // Relatórios salvos (snapshots congelados).
+  const { data: salvos = [] } = useQuery({
+    queryKey: ['relatorios-cassi', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('relatorios_cassi').select('id, mes, titulo, dados, criado_em')
+        .eq('terapeuta_id', user!.id).order('mes', { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; mes: string; titulo: string; dados: any; criado_em: string }>;
+    },
+    enabled: !!user,
+  });
 
   // Clientes CASSI (mesma query/cache do painel).
   const { data: pacientes = [] } = useQuery({
@@ -1876,6 +1890,31 @@ function FinanceiroCassi() {
           </p>
         </>
       )}
+
+      {/* Relatórios salvos (snapshots congelados) */}
+      {salvos.length > 0 && (
+        <div className="rounded-xl border border-border/50 bg-background overflow-hidden">
+          <div className="px-3 py-2 border-b border-border/50 bg-muted/30">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Relatórios salvos</p>
+          </div>
+          <div className="divide-y divide-border/40">
+            {salvos.map((r) => (
+              <button key={r.id} onClick={() => setVerSnap(r.dados)} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/40 text-left">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{r.titulo || r.mes}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    sua parte {fmtBRL(r.dados?.sua_parte || 0)} · {Array.isArray(r.dados?.rows) ? r.dados.rows.length : 0} linhas
+                  </p>
+                </div>
+                <span className="text-[11px] text-primary shrink-0">abrir ›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {verSnap && <RelatorioSnapshotView dados={verSnap} onClose={() => setVerSnap(null)} />}
     </div>
   );
 }
@@ -2011,6 +2050,33 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   const hoje = new Date();
   const dataAssin = `${cfg?.cidade ? cfg.cidade + ', ' : ''}${String(hoje.getDate()).padStart(2, '0')} de ${MESES_PT[hoje.getMonth()]} de ${hoje.getFullYear()}`;
 
+  const qc = useQueryClient();
+  const [salvando, setSalvando] = useState(false);
+  // Salva o relatório atual como snapshot congelado (substitui o do mesmo mês).
+  const salvarSnapshot = async () => {
+    if (!user || rows.length === 0) return;
+    setSalvando(true);
+    try {
+      const dados = {
+        nome_clinica: cfg?.nome_clinica || '',
+        nome_profissional: cfg?.nome_profissional || '',
+        cidade: cfg?.cidade || '',
+        mes_label: mesNome,
+        data_assinatura: `${String(hoje.getDate()).padStart(2, '0')} de ${MESES_PT[hoje.getMonth()]} de ${hoje.getFullYear()}`,
+        columns: columns.map((c) => ({ codigo: c.codigo, oficial: c.codigo_oficial || c.codigo, label: c.codigo === '144' ? 'Avaliação' : 'Código' })),
+        rows: rows.map((g) => ({ nome: `${g.pacientes?.nome || ''} ${g.pacientes?.sobrenome || ''}`.trim(), q: columns.map((c) => qtd(g, c.codigo)), soma: somaGuia(g.codigos, valorDe) })),
+        total_bruto: bruto, imposto_pct: imp, apos_imposto: aposImp, minha_pct: minha, sua_parte: suaParte,
+      };
+      const titulo = `${(MESES_PT[m - 1] || '').replace(/^./, (ch) => ch.toUpperCase())}/${ano}`;
+      await (supabase as any).from('relatorios_cassi').delete().eq('terapeuta_id', user.id).eq('mes', mesRel);
+      const { error } = await (supabase as any).from('relatorios_cassi').insert({ terapeuta_id: user.id, mes: mesRel, titulo, dados });
+      if (error) throw error;
+      toast.success('Relatório salvo!');
+      qc.invalidateQueries({ queryKey: ['relatorios-cassi', user.id] });
+    } catch (e: any) { toast.error(e.message || 'Erro ao salvar'); }
+    finally { setSalvando(false); }
+  };
+
   const th: CSSProperties = { background: '#12314a', color: '#fff', border: '1px solid #0b2136', padding: '6px 8px', fontWeight: 700, fontSize: 12, textAlign: 'center' };
   const td: CSSProperties = { border: '1px solid #cbd5e1', padding: '6px 8px', fontSize: 12 };
 
@@ -2036,6 +2102,9 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
               <Input type="month" value={mesRel} onChange={(e) => e.target.value && setMesRel(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
             </div>
             <div className="ml-auto mt-4 flex items-center gap-1.5">
+              <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={salvando || rows.length === 0} onClick={salvarSnapshot}>
+                {salvando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Salvar
+              </Button>
               <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => window.print()}>
                 <FileText className="h-3.5 w-3.5" /> Imprimir
               </Button>
@@ -2296,5 +2365,98 @@ function EnviosCassi({ onAbrir }: {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Visualizador de um relatório SALVO (snapshot congelado) ───────────────────
+function RelatorioSnapshotView({ dados, onClose }: { dados: any; onClose: () => void }) {
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+  const cols: Array<{ codigo: string; oficial?: string; label?: string }> = Array.isArray(dados?.columns) ? dados.columns : [];
+  const rows: Array<{ nome: string; q: number[]; soma: number }> = Array.isArray(dados?.rows) ? dados.rows : [];
+  const th: CSSProperties = { background: '#12314a', color: '#fff', border: '1px solid #0b2136', padding: '6px 8px', fontWeight: 700, fontSize: 12, textAlign: 'center' };
+  const td: CSSProperties = { border: '1px solid #cbd5e1', padding: '6px 8px', fontSize: 12 };
+
+  const baixarPdf = async () => {
+    const el = document.getElementById('relatorio-snap-print');
+    if (!el) return;
+    setGerandoPdf(true);
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const img = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * pw) / canvas.width;
+      let heightLeft = imgH; let position = 0;
+      pdf.addImage(img, 'JPEG', 0, position, pw, imgH); heightLeft -= ph;
+      while (heightLeft > 0) { position -= ph; pdf.addPage(); pdf.addImage(img, 'JPEG', 0, position, pw, imgH); heightLeft -= ph; }
+      pdf.save(`relatorio-cassi-${dados?.mes_label || 'salvo'}.pdf`);
+    } catch (e) { toast.error('Não consegui gerar o PDF — use "Imprimir".'); console.error(e); }
+    finally { setGerandoPdf(false); }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl w-[96vw] max-h-[92vh] overflow-y-auto">
+        <style>{`@media print {
+          body * { visibility: hidden !important; }
+          #relatorio-snap-print, #relatorio-snap-print * { visibility: visible !important; }
+          #relatorio-snap-print { position: absolute !important; left: 0; top: 0; width: 100%; max-height: none !important; overflow: visible !important; }
+          .no-print { display: none !important; }
+        }`}</style>
+        <DialogHeader className="no-print"><DialogTitle className="text-base">Relatório salvo — {dados?.mes_label}</DialogTitle></DialogHeader>
+
+        <div id="relatorio-snap-print" style={{ background: '#fff', color: '#111', padding: 16 }}>
+          <div style={{ textAlign: 'center', marginBottom: 8 }}>
+            {dados?.nome_clinica && <p style={{ fontSize: 22, fontWeight: 800, letterSpacing: 1 }}>{dados.nome_clinica}</p>}
+            <p style={{ fontSize: 14, fontWeight: 700, marginTop: 6 }}>RELATÓRIO FINANCEIRO DOS CONVÊNIOS — MÊS DE {dados?.mes_label}</p>
+            {dados?.nome_profissional && <p style={{ fontSize: 13, fontWeight: 700 }}>FISIOTERAPEUTA {String(dados.nome_profissional).toUpperCase()}</p>}
+            <p style={{ fontSize: 20, fontWeight: 800, marginTop: 8 }}>CASSI</p>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, textAlign: 'left' }}>Nome do Paciente</th>
+                {cols.map((c, i) => (<th key={i} style={th}>{c.label || 'Código'}<br />({c.oficial || c.codigo})</th>))}
+                <th style={th}>Soma</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i}>
+                  <td style={td}>{r.nome}</td>
+                  {cols.map((_, j) => (<td key={j} style={{ ...td, textAlign: 'center' }}>{r.q?.[j] ?? 0}</td>))}
+                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtBRL(r.soma)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 240, border: '2px solid #7a6a1e', padding: 10 }}>
+              <p style={{ fontSize: 13, fontWeight: 800 }}>VALOR TOTAL:</p>
+              <p style={{ fontSize: 13 }}>{fmtBRL(dados?.total_bruto || 0)} − {dados?.imposto_pct || 0}%: {fmtBRL(dados?.apos_imposto || 0)}</p>
+            </div>
+            <div style={{ flex: 1, minWidth: 240, border: '2px solid #7a6a1e', padding: 10 }}>
+              <p style={{ fontSize: 13, fontWeight: 800 }}>VALOR COM A PORCENTAGEM ({dados?.minha_pct || 0}%):</p>
+              <p style={{ fontSize: 13 }}>{fmtBRL(dados?.sua_parte || 0)}</p>
+            </div>
+          </div>
+          <p style={{ textAlign: 'right', fontWeight: 700, marginTop: 28 }}>{dados?.cidade ? dados.cidade + ', ' : ''}{dados?.data_assinatura}</p>
+          <div style={{ textAlign: 'center', marginTop: 40 }}>
+            <div style={{ borderTop: '1px solid #111', width: 300, margin: '0 auto' }} />
+            {dados?.nome_profissional && <p style={{ fontWeight: 700, marginTop: 4 }}>{dados.nome_profissional}</p>}
+          </div>
+        </div>
+
+        <div className="no-print flex gap-2">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Fechar</Button>
+          <Button variant="outline" className="flex-1 gap-1.5" onClick={() => window.print()}><FileText className="h-4 w-4" /> Imprimir</Button>
+          <Button className="flex-1 gap-1.5" disabled={gerandoPdf} onClick={baixarPdf}>
+            {gerandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Baixar PDF
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
