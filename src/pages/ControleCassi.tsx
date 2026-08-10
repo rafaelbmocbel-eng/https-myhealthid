@@ -229,6 +229,14 @@ export default function ControleCassi() {
     if (error) { toast.error('Erro: ' + error.message); return; }
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
+  // Excluir cliente (remove do controle — pra duplicados/erros). Soft delete: some
+  // das listas mas não apaga o histórico do banco.
+  const excluirCliente = async (id: string) => {
+    const { error } = await (supabase as any).from('pacientes').update({ ativo: false }).eq('id', id);
+    if (error) { toast.error('Erro ao excluir: ' + error.message); return; }
+    toast.success('Cliente excluído do controle');
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
 
   const linhas = useMemo(() =>
     pacientesAtivos.map((p) => {
@@ -343,6 +351,8 @@ export default function ControleCassi() {
             onNovo={() => setCadastro('novo')}
             onGuia={(p, g) => setEditando({ paciente: p, guia: g })}
             onDefinirGuiasMes={definirGuiasMes}
+            onExcluir={excluirCliente}
+            onAtivar={reativarCliente}
           />
         ) : view === 'faturamento' ? (
           <FinanceiroCassi />
@@ -1099,6 +1109,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   const [modo, setModo] = useState<'novo' | 'existente'>('novo');
   const [busca, setBusca] = useState('');
   const [alvoId, setAlvoId] = useState<string | null>(null);
+  const [alvoEncerrado, setAlvoEncerrado] = useState(false); // alvo é CASSI encerrado (reativar)
   const termo = busca.trim().replace(/[%,()]/g, '').trim();
 
   const { data: achados = [], isFetching } = useQuery({
@@ -1106,26 +1117,28 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, plano_saude, guias_por_mes')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, plano_saude, guias_por_mes, cassi_encerrado_em')
         .eq('terapeuta_id', user!.id).eq('ativo', true)
         .or(`nome.ilike.%${termo}%,sobrenome.ilike.%${termo}%`)
         .order('nome', { ascending: true }).limit(30);
       if (error) throw error;
-      // Tira quem já é CASSI (já aparece no Controle).
-      return (data || []).filter((p: any) => !/cassi/i.test(String(p.plano_saude || '')));
+      // Mostra: não-CASSI (pra adicionar) e CASSI ENCERRADO (pra reativar). Tira só
+      // os CASSI ativos (esses já aparecem no Controle).
+      return (data || []).filter((p: any) => !/cassi/i.test(String(p.plano_saude || '')) || !!p.cassi_encerrado_em);
     },
     enabled: !!user && !editando && modo === 'existente' && termo.length >= 2,
   });
 
   const resetNovo = () => {
-    setF({ nome: '', sobrenome: '', carteirinha: '', email: '', telefone: '' });
-    setCodigos([]); setGuiasPorMes(1); setAlvoId(null);
+    setF({ nome: '', sobrenome: '', carteirinha: '', diagnostico: '', email: '', telefone: '' });
+    setCodigos([]); setGuiasPorMes(1); setAlvoId(null); setAlvoEncerrado(false);
   };
   const escolher = (p: any) => {
-    setF({ nome: p.nome || '', sobrenome: p.sobrenome || '', carteirinha: p.carteirinha || '', email: p.email || '', telefone: p.telefone || '' });
+    setF({ nome: p.nome || '', sobrenome: p.sobrenome || '', carteirinha: p.carteirinha || '', diagnostico: p.cassi_diagnostico || '', email: p.email || '', telefone: p.telefone || '' });
     setCodigos(Array.isArray(p.codigos_cassi) ? p.codigos_cassi : []);
     setGuiasPorMes(Number(p.guias_por_mes) >= 2 ? 2 : 1);
     setAlvoId(p.id);
+    setAlvoEncerrado(!!p.cassi_encerrado_em);
   };
 
   const salvar = useMutation({
@@ -1147,8 +1160,10 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         const { error } = await sb.from('pacientes').update(payload).eq('id', paciente!.id);
         if (error) throw error;
       } else if (alvoId) {
-        // Converte um paciente já existente em cliente CASSI.
-        const { error } = await sb.from('pacientes').update({ ...payload, plano_saude: 'CASSI' }).eq('id', alvoId);
+        // Converte (não-CASSI) ou reativa (CASSI encerrado) um paciente existente.
+        const upd: any = { ...payload, plano_saude: 'CASSI' };
+        if (alvoEncerrado) { upd.cassi_encerrado_em = null; upd.cassi_encerrado_motivo = null; }
+        const { error } = await sb.from('pacientes').update(upd).eq('id', alvoId);
         if (error) throw error;
       } else {
         const { error } = await sb.from('pacientes').insert({
@@ -1162,12 +1177,12 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         if (error) throw error;
       }
     },
-    onSuccess: () => { toast.success(editando ? 'Cadastro atualizado' : alvoId ? 'Cliente adicionado ao CASSI' : 'Cliente cadastrado'); onSaved(); },
+    onSuccess: () => { toast.success(editando ? 'Cadastro atualizado' : alvoId ? (alvoEncerrado ? 'Cliente reativado' : 'Cliente adicionado ao CASSI') : 'Cliente cadastrado'); onSaved(); },
     onError: (e: any) => toast.error(e.message || 'Erro ao salvar'),
   });
 
   const buscando = !editando && modo === 'existente' && !alvoId;
-  const titulo = editando ? 'Editar cadastro' : alvoId ? 'Adicionar ao CASSI' : 'Cadastrar cliente CASSI';
+  const titulo = editando ? 'Editar cadastro' : alvoId ? (alvoEncerrado ? 'Reativar cliente' : 'Adicionar ao CASSI') : 'Cadastrar cliente CASSI';
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -1202,20 +1217,23 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
                 <p className="text-[12px] text-muted-foreground text-center py-4">Ninguém encontrado com esse nome (ou já é CASSI).</p>
               ) : (
                 <div className="space-y-1 max-h-60 overflow-y-auto">
-                  {achados.map((p: any) => (
-                    <button key={p.id} type="button" onClick={() => escolher(p)}
-                      className="w-full text-left rounded-lg border border-border/50 px-2.5 py-2 hover:bg-muted/50 flex items-center gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{p.nome} {p.sobrenome || ''}</p>
-                        {(p.telefone || p.plano_saude) && (
+                  {achados.map((p: any) => {
+                    const enc = !!p.cassi_encerrado_em;
+                    return (
+                      <button key={p.id} type="button" onClick={() => escolher(p)}
+                        className="w-full text-left rounded-lg border border-border/50 px-2.5 py-2 hover:bg-muted/50 flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{p.nome} {p.sobrenome || ''}</p>
                           <p className="text-[11px] text-muted-foreground truncate">
-                            {p.plano_saude ? `Plano: ${p.plano_saude}` : ''}{p.plano_saude && p.telefone ? ' · ' : ''}{p.telefone || ''}
+                            {enc ? 'CASSI encerrado — reativar' : p.plano_saude ? `Plano: ${p.plano_saude}` : ''}{(enc || p.plano_saude) && p.telefone ? ' · ' : ''}{p.telefone || ''}
                           </p>
-                        )}
-                      </div>
-                      <Plus className="h-4 w-4 text-primary shrink-0" />
-                    </button>
-                  ))}
+                        </div>
+                        {enc
+                          ? <span className="text-[10px] font-bold text-emerald-700 shrink-0">reativar</span>
+                          : <Plus className="h-4 w-4 text-primary shrink-0" />}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
               <Button variant="outline" className="w-full" onClick={onClose}>Cancelar</Button>
@@ -1224,7 +1242,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
           <>
           {alvoId && (
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-2 flex items-center gap-2">
-              <p className="text-[12px] flex-1">Marcando <b>{f.nome} {f.sobrenome}</b> (já no app) como cliente CASSI.</p>
+              <p className="text-[12px] flex-1">{alvoEncerrado ? <>Reativando <b>{f.nome} {f.sobrenome}</b> — volta pras listas do Controle.</> : <>Marcando <b>{f.nome} {f.sobrenome}</b> (já no app) como cliente CASSI.</>}</p>
               <button type="button" className="text-[11px] text-primary shrink-0" onClick={() => setAlvoId(null)}>trocar</button>
             </div>
           )}
@@ -2580,13 +2598,15 @@ function RelatorioSnapshotView({ dados, onClose }: { dados: any; onClose: () => 
 }
 
 // ── Aba "Clientes": diretório completo (alfabético, busca, por mês) ───────────
-function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinirGuiasMes }: {
+function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinirGuiasMes, onExcluir, onAtivar }: {
   pacientes: Paciente[];
   guias: Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
   onCadastro: (p: Paciente) => void;
   onNovo: () => void;
   onGuia: (paciente: Paciente, guia: GuiaCassi | null) => void;
   onDefinirGuiasMes: (id: string, n: number) => void;
+  onExcluir: (id: string) => void;
+  onAtivar: (id: string) => void;
 }) {
   const { user } = useAuth();
   const [busca, setBusca] = useState('');
@@ -2751,11 +2771,20 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {!ativo && (
+                    <Button size="sm" variant="outline" className="h-8 text-[12px] gap-1 text-emerald-700 border-emerald-300 dark:border-emerald-800" onClick={() => onAtivar(p.id)}>
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Ativar
+                    </Button>
+                  )}
                   <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => onCadastro(p)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => onGuia(p, ativa || ultima)}>
                     <FileText className="h-3.5 w-3.5" /> Guia
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Excluir cliente (duplicado/erro)"
+                    onClick={() => { if (confirm(`Excluir "${p.nome} ${p.sobrenome || ''}" do Controle CASSI? Use para tirar duplicados/erros.`)) onExcluir(p.id); }}>
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
