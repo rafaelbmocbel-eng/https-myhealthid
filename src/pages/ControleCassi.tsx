@@ -340,6 +340,7 @@ export default function ControleCassi() {
             pacientes={pacientes}
             guias={guiasEff}
             onCadastro={(p) => setCadastro(p)}
+            onNovo={() => setCadastro('novo')}
             onGuia={(p, g) => setEditando({ paciente: p, guia: g })}
             onDefinirGuiasMes={definirGuiasMes}
           />
@@ -2579,10 +2580,11 @@ function RelatorioSnapshotView({ dados, onClose }: { dados: any; onClose: () => 
 }
 
 // ── Aba "Clientes": diretório completo (alfabético, busca, por mês) ───────────
-function ClientesCassi({ pacientes, guias, onCadastro, onGuia, onDefinirGuiasMes }: {
+function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinirGuiasMes }: {
   pacientes: Paciente[];
   guias: Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
   onCadastro: (p: Paciente) => void;
+  onNovo: () => void;
   onGuia: (paciente: Paciente, guia: GuiaCassi | null) => void;
   onDefinirGuiasMes: (id: string, n: number) => void;
 }) {
@@ -2672,9 +2674,14 @@ function ClientesCassi({ pacientes, guias, onCadastro, onGuia, onDefinirGuiasMes
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-border/50 bg-background p-3 space-y-2">
-        <div className="relative">
-          <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <Input className="h-9 pl-8" placeholder="Procurar cliente (nome ou carteirinha)…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Input className="h-9 pl-8" placeholder="Procurar cliente (nome ou carteirinha)…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          </div>
+          <Button size="sm" className="gap-1.5 h-9 shrink-0" onClick={onNovo}>
+            <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Cadastrar cliente</span>
+          </Button>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-[11px] text-muted-foreground shrink-0">Sessões do mês:</label>
