@@ -305,7 +305,7 @@ export default function ControleCassi() {
   return (
     <div className="min-h-[100dvh] bg-muted/30">
       <div className="sticky top-0 z-20 bg-background/90 backdrop-blur border-b border-border/50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="max-w-3xl mx-auto px-3 py-2.5 flex items-center gap-2 flex-wrap">
+        <div className="max-w-5xl mx-auto px-3 py-2.5 flex items-center gap-2 flex-wrap">
           <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </button>
@@ -332,7 +332,7 @@ export default function ControleCassi() {
         </div>
       </div>
 
-      <div className={`${view === 'outro' || view === 'faturamento' ? 'max-w-5xl' : 'max-w-3xl'} mx-auto p-3 space-y-4`}>
+      <div className="max-w-5xl mx-auto p-3 space-y-4">
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : view === 'clientes' ? (
@@ -420,7 +420,7 @@ export default function ControleCassi() {
                   {filtro2mes ? 'Nenhum cliente marcado como 2 guias/mês. Abra um cliente (lápis) e mude pra 2/mês.' : 'Nenhum cliente encontrado.'}
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="grid gap-2 lg:grid-cols-2">
                   {(filtro2mes ? clientes2mes : linhasFiltradas).map(({ paciente, guia, status }) => (
                     <div key={paciente.id} className="rounded-xl border border-border/50 bg-background p-3">
                       <div className="flex items-center justify-between gap-2">
@@ -469,7 +469,7 @@ export default function ControleCassi() {
                   Nenhuma guia ativa. Use a busca acima pra achar um cliente e criar a guia.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="grid gap-2 lg:grid-cols-2">
                   {guiasAtivasLista.map((g) => {
                     const aut = g.sessoes_autorizadas || 0;
                     const real = g.sessoes_realizadas || 0;
@@ -2450,7 +2450,7 @@ function EnviosCassi({ onAbrir }: {
           <span className="text-[12px]">Use ‹ › para ver outros meses.</span>
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="grid gap-2 lg:grid-cols-2">
           {lista.map(({ g, fim }) => {
             const aut = g.sessoes_autorizadas || 0;
             const real = g.sessoes_realizadas || 0;
@@ -2697,7 +2697,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onGuia, onDefinirGuiasMes
         {mes ? `Sessões feitas em ${mesLabel}` : 'Total de sessões já feitas'} · ordem alfabética
       </p>
 
-      <div className="space-y-2">
+      <div className="grid gap-2 lg:grid-cols-2">
         {lista.map((p) => {
           const gs = guiasPorPac.get(p.id) || [];
           const ativa = gs.find((g) => g.status === 'ativa') || null;
