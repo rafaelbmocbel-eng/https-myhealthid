@@ -109,7 +109,7 @@ export default function ControleCassi() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
-  const [view, setView] = useState<'ativas' | 'outro' | 'pedir' | 'faturamento'>('ativas');
+  const [view, setView] = useState<'clientes' | 'ativas' | 'outro' | 'pedir' | 'faturamento'>('ativas');
   // Sub-aba do painel: guias ativas (padrão, "em linha" com controle de sessões)
   // ou a lista completa de pacientes.
   const [aba, setAba] = useState<'ativas' | 'pacientes'>('ativas');
@@ -310,7 +310,7 @@ export default function ControleCassi() {
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-wrap">
-              {([['ativas', 'Ativas'], ['outro', 'Outro mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
+              {([['clientes', 'Clientes'], ['ativas', 'Ativas'], ['outro', 'Outro mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
                 <button key={v} onClick={() => setView(v)}
                   className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                   {label}
@@ -330,6 +330,13 @@ export default function ControleCassi() {
       <div className={`${view === 'outro' || view === 'faturamento' ? 'max-w-5xl' : 'max-w-3xl'} mx-auto p-3 space-y-4`}>
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : view === 'clientes' ? (
+          <ClientesCassi
+            pacientes={pacientes}
+            guias={guiasEff}
+            onCadastro={(p) => setCadastro(p)}
+            onGuia={(p, g) => setEditando({ paciente: p, guia: g })}
+          />
         ) : view === 'faturamento' ? (
           <FinanceiroCassi />
         ) : view === 'outro' ? (
@@ -2562,5 +2569,136 @@ function RelatorioSnapshotView({ dados, onClose }: { dados: any; onClose: () => 
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── Aba "Clientes": diretório completo (alfabético, busca, por mês) ───────────
+function ClientesCassi({ pacientes, guias, onCadastro, onGuia }: {
+  pacientes: Paciente[];
+  guias: Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
+  onCadastro: (p: Paciente) => void;
+  onGuia: (paciente: Paciente, guia: GuiaCassi | null) => void;
+}) {
+  const { user } = useAuth();
+  const [busca, setBusca] = useState('');
+  const [mes, setMes] = useState(''); // '' = total (todos os meses)
+
+  // Sessões no mês escolhido, por paciente (só busca quando um mês é selecionado).
+  const { data: ags = [] } = useQuery({
+    queryKey: ['cassi-clientes-ags-mes', user?.id, mes],
+    queryFn: async () => {
+      const [ano, m] = mes.split('-').map(Number);
+      const de = new Date(ano, m - 1, 0).toISOString();
+      const ate = new Date(ano, m, 2).toISOString();
+      const { data, error } = await (supabase as any).from('agendamentos')
+        .select('paciente_id, data_inicio, status, tipo_atendimento')
+        .eq('terapeuta_id', user!.id).gte('data_inicio', de).lt('data_inicio', ate);
+      if (error) throw error;
+      return (data || []) as Array<{ paciente_id: string | null; data_inicio: string; status: string; tipo_atendimento?: string }>;
+    },
+    enabled: !!user && !!mes,
+  });
+
+  const sessoesMesPorPac = useMemo(() => {
+    const out = new Map<string, number>();
+    if (!mes) return out;
+    const [ano, mm] = mes.split('-').map(Number);
+    const agora = Date.now();
+    const sets = new Map<string, Set<string>>();
+    for (const a of ags) {
+      if (!a.paciente_id || a.tipo_atendimento === 'avaliacao') continue;
+      if (a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
+      const d = new Date(a.data_inicio);
+      if (d.getFullYear() !== ano || d.getMonth() !== mm - 1 || d.getTime() > agora) continue;
+      const ymd = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!sets.has(a.paciente_id)) sets.set(a.paciente_id, new Set());
+      sets.get(a.paciente_id)!.add(ymd);
+    }
+    for (const [id, s] of sets) out.set(id, s.size);
+    return out;
+  }, [ags, mes]);
+
+  const guiasPorPac = useMemo(() => {
+    const m = new Map<string, Array<GuiaCassi>>();
+    for (const g of guias) {
+      if (!m.has(g.paciente_id)) m.set(g.paciente_id, []);
+      m.get(g.paciente_id)!.push(g);
+    }
+    return m;
+  }, [guias]);
+
+  const lista = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return pacientes
+      .filter((p) => !q || `${p.nome} ${p.sobrenome || ''}`.toLowerCase().includes(q)
+        || (p.carteirinha || '').toLowerCase().includes(q))
+      .sort((a, b) => `${a.nome} ${a.sobrenome || ''}`.localeCompare(`${b.nome} ${b.sobrenome || ''}`, 'pt-BR'));
+  }, [pacientes, busca]);
+
+  const [mAno, mMes] = mes ? mes.split('-').map(Number) : [0, 0];
+  const mesLabel = mes ? `${MESES_PT[mMes - 1]}/${String(mAno).slice(2)}` : '';
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-border/50 bg-background p-3 space-y-2">
+        <div className="relative">
+          <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <Input className="h-9 pl-8" placeholder="Procurar cliente (nome ou carteirinha)…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-[11px] text-muted-foreground shrink-0">Sessões do mês:</label>
+          <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
+          {mes && <button className="text-[11px] text-primary" onClick={() => setMes('')}>ver total</button>}
+        </div>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground px-1">
+        {lista.length} cliente(s) · {mes ? `sessões feitas em ${mesLabel}` : 'total de sessões já feitas'}
+      </p>
+
+      <div className="space-y-2">
+        {lista.map((p) => {
+          const gs = guiasPorPac.get(p.id) || [];
+          const ativa = gs.find((g) => g.status === 'ativa') || null;
+          const ultima = gs[0] || null;
+          const totalFeitas = gs.reduce((s, g) => s + (g.sessoes_realizadas || 0), 0);
+          const ativo = !p.cassi_encerrado_em;
+          const dois = (p.guias_por_mes || 1) >= 2;
+          const mesFeitas = sessoesMesPorPac.get(p.id) || 0;
+          return (
+            <div key={p.id} className="rounded-xl border border-border/50 bg-background p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate">{p.nome} {p.sobrenome || ''}</p>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <Badge className={`text-[10px] ${ativo ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
+                      {ativo ? 'Ativo' : 'Encerrado'}
+                    </Badge>
+                    <Badge className={`text-[10px] ${dois ? 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300' : 'bg-muted text-muted-foreground'}`}>
+                      {dois ? '2 guias/mês' : '1 guia/mês'}
+                    </Badge>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-1 tabular-nums">
+                    {ativa ? <span>Guia ativa: <b className="text-foreground">{ativa.sessoes_realizadas}/{ativa.sessoes_autorizadas}</b></span> : <span>Sem guia ativa</span>}
+                    {mes
+                      ? <span> · em {mesLabel}: <b className="text-foreground">{mesFeitas}</b> sessões</span>
+                      : <span> · total feitas: <b className="text-foreground">{totalFeitas}</b></span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => onCadastro(p)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => onGuia(p, ativa || ultima)}>
+                    <FileText className="h-3.5 w-3.5" /> Guia
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {lista.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">Nenhum cliente.</p>}
+      </div>
+    </div>
   );
 }
