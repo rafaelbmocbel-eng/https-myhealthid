@@ -555,11 +555,18 @@ export default function ControleCassi() {
                       <div key={paciente.id} className={`rounded-xl border px-3 py-2.5 ${ok ? 'border-emerald-300 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/10' : prazoVenceu ? 'border-rose-300 dark:border-rose-900 bg-background' : 'border-amber-300 dark:border-amber-900 bg-amber-50/30 dark:bg-amber-950/10'}`}>
                         <div className="flex items-center gap-3">
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="text-sm font-semibold truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
-                              {(paciente.guias_por_mes || 1) >= 2 && (
-                                <span className="text-[9px] uppercase font-bold text-violet-600 border border-violet-300 dark:border-violet-800 rounded px-1 shrink-0">2/mês</span>
-                              )}
+                              {/* Guias/mês (1 ou 2) — controle fica aqui, no mês vigente */}
+                              <span className="inline-flex items-center rounded-full border border-border overflow-hidden shrink-0">
+                                {[1, 2].map((n) => (
+                                  <button key={n} onClick={() => definirGuiasMes(paciente.id, n)}
+                                    className={`text-[10px] px-2 py-0.5 font-bold ${(paciente.guias_por_mes || 1) === n ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:bg-muted'}`}>
+                                    {n}
+                                  </button>
+                                ))}
+                                <span className="text-[9px] text-muted-foreground px-1.5">guia/mês</span>
+                              </span>
                               {confirmado && <span className="text-[9px] uppercase font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">confirmado</span>}
                             </div>
                             {guia && aut > 0 ? (
@@ -2796,18 +2803,8 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl border border-border/50 bg-background p-3">
-          <p className="text-2xl font-black tabular-nums leading-none">{lista.length}</p>
-          <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">Clientes</p>
-        </div>
-        <div className="rounded-xl border border-violet-200 dark:border-violet-900 bg-violet-50/60 dark:bg-violet-950/20 p-3">
-          <p className="text-2xl font-black tabular-nums leading-none text-violet-700 dark:text-violet-400">{resumo.fazem2}</p>
-          <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">Fazem 2/mês{resumo.marcados2 !== resumo.fazem2 ? ` · ${resumo.marcados2} marcados` : ''}</p>
-        </div>
-      </div>
       <p className="text-[11px] text-muted-foreground px-1">
-        {mes ? `Sessões feitas em ${mesLabel}` : 'Total de sessões já feitas'} · ordem alfabética
+        {lista.length} cliente(s) · {mes ? `sessões feitas em ${mesLabel}` : 'total de sessões já feitas'} · ordem alfabética
       </p>
 
       <div className="grid gap-2 lg:grid-cols-2">
@@ -2833,21 +2830,6 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                     <Badge className={`text-[10px] ${ativo ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
                       {ativo ? 'Ativo' : 'Encerrado'}
                     </Badge>
-                    {/* Definir guias/mês (1 ou 2) — rápido */}
-                    <span className="inline-flex items-center rounded-full border border-border overflow-hidden">
-                      {[1, 2].map((n) => (
-                        <button key={n} onClick={() => onDefinirGuiasMes(p.id, n)}
-                          className={`text-[10px] px-2 py-0.5 font-bold ${marcado === (n === 2) ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:bg-muted'}`}>
-                          {n}
-                        </button>
-                      ))}
-                      <span className="text-[9px] text-muted-foreground px-1.5">guia/mês</span>
-                    </span>
-                    {detecta2 && (
-                      <span className="text-[9px] uppercase font-bold text-violet-700 bg-violet-100 dark:bg-violet-900/30 rounded px-1" title="Já fechou 2 guias num mesmo mês">
-                        faz 2/mês{!marcado ? ' — marcar?' : ''}
-                      </span>
-                    )}
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-1 tabular-nums">
                     {ativa ? <span>Guia ativa: <b className="text-foreground">{ativa.sessoes_realizadas}/{diasTratGuia(ativa)}</b></span> : <span>Sem guia ativa</span>}
