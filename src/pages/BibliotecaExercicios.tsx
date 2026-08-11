@@ -224,6 +224,7 @@ export default function BibliotecaExercicios() {
     const lista = [...pares.values()];
     setPack({ done: 0, total: lista.length });
     let ok = 0, duplicados = 0, falhas = 0, comPar = 0;
+    let primeiroErro = '';
 
     const subir = async (f: { name: string; blob: Blob }, i: number, sufixo: string) => {
       const ext = f.name.split('.').pop() || 'gif';
@@ -254,16 +255,18 @@ export default function BibliotecaExercicios() {
         } as any);
         if (insErr) throw insErr;
         ok++;
-      } catch (e) {
+      } catch (e: any) {
         // Antes o erro era descartado — impossível diagnosticar (RLS, cota…).
         console.error('[BibliotecaExercicios] falha ao subir GIF:', par?.base, e);
+        if (!primeiroErro) primeiroErro = e?.message || String(e);
         falhas++;
       }
       setPack({ done: i + 1, total: lista.length });
     }
     setPack(null);
-    setPackInfo(`✅ ${ok} exercícios criados${comPar ? ` (${comPar} com avatar M+F)` : ''}${duplicados ? ` · ${duplicados} já existiam` : ''}${falhas ? ` · ${falhas} falharam` : ''}`);
-    toast.success(`${ok} exercício(s) adicionado(s)`);
+    setPackInfo(`✅ ${ok} exercícios criados${comPar ? ` (${comPar} com avatar M+F)` : ''}${duplicados ? ` · ${duplicados} já existiam` : ''}${falhas ? ` · ${falhas} falharam` : ''}${falhas && primeiroErro ? ` — motivo: ${primeiroErro}` : ''}`);
+    if (ok > 0) toast.success(`${ok} exercício(s) adicionado(s)`);
+    if (falhas > 0) toast.error(`${falhas} falharam${primeiroErro ? `: ${primeiroErro}` : ''}`, { duration: 12000 });
     carregar();
   };
 
