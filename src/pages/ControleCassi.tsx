@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, type CSSProperties } from 'react';
+import { useState, useMemo, useEffect, useRef, type CSSProperties, type FocusEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gerarDatasSessoes } from '@/lib/feriados';
@@ -1592,10 +1592,16 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data: cfg, isLoading } = useCassiConfig();
-  const [codigos, setCodigos] = useState<CodigoCfg[]>([]);
-  const [impostoPct, setImpostoPct] = useState('0');
-  const [minhaParte, setMinhaParte] = useState('0');
-  const [responsaveis, setResponsaveis] = useState<ResponsavelCfg[]>([]);
+  // Campos numéricos ficam como TEXTO enquanto edita (aceita vírgula e vazio);
+  // só viram número ao salvar. Assim dá pra digitar "57,07" sem a fração sumir.
+  type CodigoEdit = { codigo: string; descricao: string; codigo_oficial?: string; valor: string };
+  type RespEdit = { nome: string; percentual: string };
+  const numStr = (n?: number | null) => (n ? String(n).replace('.', ',') : '');
+  const selecionar = (e: FocusEvent<HTMLInputElement>) => e.currentTarget.select();
+  const [codigos, setCodigos] = useState<CodigoEdit[]>([]);
+  const [impostoPct, setImpostoPct] = useState('');
+  const [minhaParte, setMinhaParte] = useState('');
+  const [responsaveis, setResponsaveis] = useState<RespEdit[]>([]);
   const [nomeClinica, setNomeClinica] = useState('');
   const [nomeProf, setNomeProf] = useState('');
   const [cidade, setCidade] = useState('');
@@ -1603,34 +1609,35 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     if (cfg && !pronto) {
-      setCodigos(cfg.codigos.map((c) => ({ ...c })));
-      setImpostoPct(String(cfg.imposto_percentual || 0));
-      setMinhaParte(String(cfg.minha_parte_percentual || 0));
-      setResponsaveis((cfg.responsaveis || []).map((r) => ({ ...r })));
+      setCodigos(cfg.codigos.map((c) => ({ codigo: c.codigo, descricao: c.descricao, codigo_oficial: c.codigo_oficial, valor: numStr(c.valor) })));
+      setImpostoPct(numStr(cfg.imposto_percentual));
+      setMinhaParte(numStr(cfg.minha_parte_percentual));
+      setResponsaveis((cfg.responsaveis || []).map((r) => ({ nome: r.nome, percentual: numStr(r.percentual) })));
       setNomeClinica(cfg.nome_clinica || '');
       setNomeProf(cfg.nome_profissional || '');
       setCidade(cfg.cidade || '');
       setPronto(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg, pronto]);
 
-  const setCod = (i: number, campo: keyof CodigoCfg, v: string) =>
-    setCodigos((p) => p.map((c, idx) => idx === i ? { ...c, [campo]: campo === 'valor' ? (parseFloat(v.replace(',', '.')) || 0) : v } : c));
-  const addCod = () => setCodigos((p) => [...p, { codigo: '', descricao: '', valor: 0 }]);
+  const setCod = (i: number, campo: keyof CodigoEdit, v: string) =>
+    setCodigos((p) => p.map((c, idx) => idx === i ? { ...c, [campo]: v } : c));
+  const addCod = () => setCodigos((p) => [...p, { codigo: '', descricao: '', valor: '' }]);
   const rmCod = (i: number) => setCodigos((p) => p.filter((_, idx) => idx !== i));
 
-  const setResp = (i: number, campo: keyof ResponsavelCfg, v: string) =>
-    setResponsaveis((p) => p.map((r, idx) => idx === i ? { ...r, [campo]: campo === 'percentual' ? (parseFloat(v.replace(',', '.')) || 0) : v } : r));
-  const addResp = () => setResponsaveis((p) => [...p, { nome: '', percentual: 0 }]);
+  const setResp = (i: number, campo: keyof RespEdit, v: string) =>
+    setResponsaveis((p) => p.map((r, idx) => idx === i ? { ...r, [campo]: v } : r));
+  const addResp = () => setResponsaveis((p) => [...p, { nome: '', percentual: '' }]);
   const rmResp = (i: number) => setResponsaveis((p) => p.filter((_, idx) => idx !== i));
 
   const salvar = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
       const limpos = codigos.filter((c) => c.codigo.trim())
-        .map((c) => ({ codigo: c.codigo.trim(), descricao: c.descricao.trim(), valor: Number(c.valor) || 0, codigo_oficial: (c.codigo_oficial || '').trim() }));
+        .map((c) => ({ codigo: c.codigo.trim(), descricao: c.descricao.trim(), valor: parseFloat(String(c.valor).replace(',', '.')) || 0, codigo_oficial: (c.codigo_oficial || '').trim() }));
       const respLimpos = responsaveis.filter((r) => r.nome.trim())
-        .map((r) => ({ nome: r.nome.trim(), percentual: Number(r.percentual) || 0 }));
+        .map((r) => ({ nome: r.nome.trim(), percentual: parseFloat(String(r.percentual).replace(',', '.')) || 0 }));
       const { error } = await (supabase as any).from('cassi_config').upsert({
         terapeuta_id: user.id,
         codigos: limpos,
@@ -1674,7 +1681,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
                       <Input className="h-8 flex-1 text-sm tabular-nums" value={c.codigo_oficial || ''} onChange={(e) => setCod(i, 'codigo_oficial', e.target.value)} placeholder="código oficial (ex: 50000012)" />
                       <div className="flex items-center gap-1 w-28">
                         <span className="text-[11px] text-muted-foreground">R$</span>
-                        <Input className="h-8 text-sm tabular-nums" value={String(c.valor)} onChange={(e) => setCod(i, 'valor', e.target.value)} placeholder="0,00" inputMode="decimal" />
+                        <Input className="h-8 text-sm tabular-nums" value={c.valor} onChange={(e) => setCod(i, 'valor', e.target.value)} onFocus={selecionar} placeholder="0,00" inputMode="decimal" />
                       </div>
                     </div>
                   </div>
@@ -1688,12 +1695,12 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Imposto por guia (%)</label>
-                <Input className="h-9" value={impostoPct} onChange={(e) => setImpostoPct(e.target.value)} inputMode="decimal" placeholder="ex: 14" />
+                <Input className="h-9" value={impostoPct} onChange={(e) => setImpostoPct(e.target.value)} onFocus={selecionar} inputMode="decimal" placeholder="ex: 14" />
                 <p className="text-[10px] text-muted-foreground mt-0.5">Descontado do bruto de cada guia.</p>
               </div>
               <div>
                 <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sua parte (%)</label>
-                <Input className="h-9" value={minhaParte} onChange={(e) => setMinhaParte(e.target.value)} inputMode="decimal" placeholder="ex: 45" />
+                <Input className="h-9" value={minhaParte} onChange={(e) => setMinhaParte(e.target.value)} onFocus={selecionar} inputMode="decimal" placeholder="ex: 45" />
                 <p className="text-[10px] text-muted-foreground mt-0.5">Do líquido (após imposto). O resto fica com a clínica.</p>
               </div>
             </div>
@@ -1708,7 +1715,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
                 {responsaveis.map((r, i) => (
                   <div key={i} className="flex items-center gap-1.5">
                     <Input className="h-8 flex-1 text-sm" value={r.nome} onChange={(e) => setResp(i, 'nome', e.target.value)} placeholder="Nome do responsável" />
-                    <Input className="h-8 w-24 text-sm tabular-nums" value={String(r.percentual)} onChange={(e) => setResp(i, 'percentual', e.target.value)} placeholder="0" inputMode="decimal" />
+                    <Input className="h-8 w-24 text-sm tabular-nums" value={r.percentual} onChange={(e) => setResp(i, 'percentual', e.target.value)} onFocus={selecionar} placeholder="0" inputMode="decimal" />
                     <Button size="icon" variant="ghost" className="h-8 w-7 shrink-0" title="Remover" onClick={() => rmResp(i)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
