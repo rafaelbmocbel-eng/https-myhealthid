@@ -976,9 +976,15 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
   const realizadasEfetivas = geradas > 0 ? realizadas : (Number(d.sessoes_realizadas) || 0);
   const restantes = sessoesRestantes({ sessoes_autorizadas: Number(d.sessoes_autorizadas) || 0, sessoes_realizadas: realizadasEfetivas });
 
+  // Evita perder o que foi digitado ao tocar fora / apertar Esc sem querer.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const snapInicial = useMemo(() => JSON.stringify({ d, sesCod, duasPorMes }), []);
+  const alterado = JSON.stringify({ d, sesCod, duasPorMes }) !== snapInicial;
+  const tentarFechar = () => { if (!alterado || confirm('Sair sem salvar? As informações da guia não salvas serão perdidas.')) onClose(); };
+
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg w-[95vw] max-h-[92vh] overflow-y-auto">
+    <Dialog open onOpenChange={(o) => { if (!o) tentarFechar(); }}>
+      <DialogContent onInteractOutside={(e) => e.preventDefault()} className="max-w-lg w-[95vw] max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base">
             {editandoExistente ? 'Guia' : 'Nova guia'} — {paciente.nome} {paciente.sobrenome || ''}
@@ -1150,7 +1156,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
             )}
-            <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
+            <Button variant="outline" className="flex-1" onClick={tentarFechar}>Cancelar</Button>
             <Button className="flex-1 gap-1.5" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
               {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar
@@ -1385,9 +1391,15 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   const buscando = !editando && modo === 'existente' && !alvoId;
   const titulo = editando ? 'Editar cadastro' : alvoId ? (alvoEncerrado ? 'Reativar cliente' : 'Adicionar ao CASSI') : 'Cadastrar cliente CASSI';
 
+  // Evita perder o cadastro digitado ao tocar fora / apertar Esc sem querer.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const snapInicial = useMemo(() => JSON.stringify({ f, codigos, guiasPorMes, alvoId }), []);
+  const alterado = JSON.stringify({ f, codigos, guiasPorMes, alvoId }) !== snapInicial;
+  const tentarFechar = () => { if (!alterado || confirm('Sair sem salvar? As informações preenchidas serão perdidas.')) onClose(); };
+
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md w-[95vw] max-h-[92vh] overflow-y-auto">
+    <Dialog open onOpenChange={(o) => { if (!o) tentarFechar(); }}>
+      <DialogContent onInteractOutside={(e) => e.preventDefault()} className="max-w-md w-[95vw] max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle className="text-base">{titulo}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           {!editando && (
@@ -1437,7 +1449,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
                   })}
                 </div>
               )}
-              <Button variant="outline" className="w-full" onClick={onClose}>Cancelar</Button>
+              <Button variant="outline" className="w-full" onClick={tentarFechar}>Cancelar</Button>
             </div>
           ) : (
           <>
@@ -1503,7 +1515,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
           </div>
           <p className="text-[10px] text-muted-foreground">{alvoId ? 'Passa a ser CASSI e aparece no Controle. Mantém o histórico e o cadastro que já tinha no app.' : 'Entra como CASSI, ativo. Os códigos da guia você define ao criar a guia.'}</p>
           <div className="flex gap-2 pt-1">
-            <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
+            <Button variant="outline" className="flex-1" onClick={tentarFechar}>Cancelar</Button>
             <Button className="flex-1 gap-1.5" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
               {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
             </Button>
