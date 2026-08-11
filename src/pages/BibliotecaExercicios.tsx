@@ -15,6 +15,8 @@ import { classificarExercicio, SEGMENTOS, FUNCOES, type Segmento, type Funcao } 
 
 interface Exercicio {
   id: string;
+  terapeuta_id: string;
+  compartilhado?: boolean;
   nome: string;
   grupo_muscular: string | null;
   orientacoes: string | null;
@@ -83,10 +85,11 @@ export default function BibliotecaExercicios() {
 
   const carregar = async () => {
     if (!user) return;
+    // Biblioteca compartilhada: mostra os seus + os que outros profissionais
+    // deixaram compartilhados (a RLS já filtra own OR compartilhado).
     const { data } = await supabase
       .from('biblioteca_exercicios')
       .select('*')
-      .eq('terapeuta_id', user.id)
       .eq('ativo', true)
       .order('nome', { ascending: true });
     setLista((data || []) as Exercicio[]);
@@ -483,7 +486,9 @@ export default function BibliotecaExercicios() {
               <div key={seg}>
                 <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">{seg} ({lista.length})</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {lista.map(ex => (
+                  {lista.map(ex => {
+                    const meu = ex.terapeuta_id === user?.id;
+                    return (
                     <Card key={ex.id} className="overflow-hidden group">
                       <div className="relative aspect-square bg-muted/40 flex items-center justify-center overflow-hidden">
                         {ex.gif_url
@@ -502,23 +507,30 @@ export default function BibliotecaExercicios() {
                         <p className="text-xs font-semibold truncate">{ex.nome}</p>
                         {ex.grupo_muscular && <p className="text-[10px] text-muted-foreground truncate">{ex.grupo_muscular}</p>}
                         <div className="flex items-center gap-1 mt-1.5">
-                          <Button size="sm" variant="outline" className="h-7 flex-1 text-[11px] px-2"
-                            onClick={() => setEdit({
-                              id: ex.id, nome: ex.nome, grupo_muscular: ex.grupo_muscular || '', orientacoes: ex.orientacoes || '',
-                              gif_url: ex.gif_url || '', equipamento: ex.equipamento || '',
-                              series_padrao: ex.series_padrao ?? 3, repeticoes_padrao: ex.repeticoes_padrao ?? 12,
-                              descanso_padrao_segundos: ex.descanso_padrao_segundos ?? 45,
-                            })}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-7 px-2 text-destructive hover:text-destructive"
-                            onClick={() => remover(ex.id)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          {meu ? (
+                            <>
+                              <Button size="sm" variant="outline" className="h-7 flex-1 text-[11px] px-2"
+                                onClick={() => setEdit({
+                                  id: ex.id, nome: ex.nome, grupo_muscular: ex.grupo_muscular || '', orientacoes: ex.orientacoes || '',
+                                  gif_url: ex.gif_url || '', equipamento: ex.equipamento || '',
+                                  series_padrao: ex.series_padrao ?? 3, repeticoes_padrao: ex.repeticoes_padrao ?? 12,
+                                  descanso_padrao_segundos: ex.descanso_padrao_segundos ?? 45,
+                                })}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-destructive hover:text-destructive"
+                                onClick={() => remover(ex.id)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground italic w-full text-center py-1">de outro profissional</span>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}

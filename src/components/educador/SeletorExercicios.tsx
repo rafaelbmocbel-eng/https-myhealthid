@@ -39,9 +39,11 @@ export default function SeletorExercicios({ open, onOpenChange, onPick }: Props)
     queryKey: ['biblioteca-seletor', user?.id],
     enabled: !!user?.id && open,
     queryFn: async () => {
+      // Biblioteca compartilhada: os seus + os compartilhados por outros
+      // profissionais (a RLS filtra own OR compartilhado).
       const { data } = await (supabase as any).from('biblioteca_exercicios')
         .select('id, nome, grupo_muscular, gif_url, orientacoes, series_padrao, repeticoes_padrao, descanso_padrao_segundos')
-        .eq('terapeuta_id', user!.id).eq('ativo', true).order('nome');
+        .eq('ativo', true).order('nome');
       return (data || []).map((e: any) => ({ ...e, ...classificarExercicio(e.nome, e.grupo_muscular) }));
     },
   });
