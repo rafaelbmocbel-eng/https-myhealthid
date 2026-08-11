@@ -362,19 +362,24 @@ export default function ControleCassi() {
   return (
     <div className="min-h-[100dvh] bg-muted/30">
       <div className="sticky top-0 z-20 bg-background/90 backdrop-blur border-b border-border/50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="max-w-5xl mx-auto px-3 py-2.5 flex items-center gap-2 flex-wrap">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Voltar
-          </button>
-          <div className="ml-2 flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-primary" />
-            <span className="text-sm font-bold">Controle CASSI</span>
+        <div className="max-w-5xl mx-auto px-3 py-2.5 flex flex-col gap-2 md:flex-row md:items-center">
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" /> Voltar
+            </button>
+            <div className="ml-1 flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-primary" />
+              <span className="text-sm font-bold">Controle CASSI</span>
+            </div>
+            <Button size="icon" variant="ghost" className="ml-auto h-8 w-8 md:hidden" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
+              <Settings className="h-4 w-4" />
+            </Button>
           </div>
-          <div className="ml-auto flex items-center gap-1.5">
-            <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-wrap">
+          <div className="md:ml-auto flex items-center gap-1.5 min-w-0">
+            <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['outro', 'Outro mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
                 <button key={v} onClick={() => setView(v)}
-                  className={`text-[12px] px-2.5 py-1 rounded-md font-medium ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+                  className={`text-[12px] px-2.5 py-1 rounded-md font-medium whitespace-nowrap shrink-0 ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                   {label}
                   {v === 'pedir' && pedidosDoMes.length > 0 && (
                     <span className="ml-1 inline-flex items-center justify-center min-w-[15px] h-[15px] px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold align-middle">{pedidosDoMes.length}</span>
@@ -382,7 +387,7 @@ export default function ControleCassi() {
                 </button>
               ))}
             </div>
-            <Button size="icon" variant="ghost" className="h-8 w-8" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
+            <Button size="icon" variant="ghost" className="hidden md:inline-flex h-8 w-8" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
               <Settings className="h-4 w-4" />
             </Button>
           </div>
@@ -486,7 +491,7 @@ export default function ControleCassi() {
                 <div className="grid gap-2 lg:grid-cols-2">
                   {(filtro2mes ? clientes2mes : linhasFiltradas).map(({ paciente, guia, status }) => (
                     <div key={paciente.id} className="rounded-xl border border-border/50 bg-background p-3">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold truncate flex items-center gap-1.5">
                             {paciente.nome} {paciente.sobrenome || ''}
@@ -508,7 +513,7 @@ export default function ControleCassi() {
                             {paciente.telefone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {paciente.telefone}</span>}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
                           {paciente.cassi_confirmado_mes === mesVigente ? (
                             <span className="text-[11px] font-bold text-emerald-700 px-1">no mês ✓</span>
                           ) : (
@@ -553,7 +558,7 @@ export default function ControleCassi() {
                     const precisaPedido = (paciente.guias_por_mes || 1) >= 2 && !ok && (precisaNovaGuia(guia) || prazoVenceu);
                     return (
                       <div key={paciente.id} className={`rounded-xl border px-3 py-2.5 ${ok ? 'border-emerald-300 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/10' : prazoVenceu ? 'border-rose-300 dark:border-rose-900 bg-background' : 'border-amber-300 dark:border-amber-900 bg-amber-50/30 dark:bg-amber-950/10'}`}>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="text-sm font-semibold truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
@@ -589,7 +594,7 @@ export default function ControleCassi() {
                               <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">Do mês passado — confirme se a guia está ativa</p>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
                             {!ok && (
                               <Button size="sm" className="h-8 gap-1.5 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => confirmarGuiaMes(paciente.id)}>
                                 <CheckCircle2 className="h-3.5 w-3.5" /> Confirmar
@@ -2823,7 +2828,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
           const detecta2 = maxNoMes >= 2; // já fez 2 guias num mesmo mês
           return (
             <div key={p.id} className="rounded-xl border border-border/50 bg-background p-3">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold truncate">{p.nome} {p.sobrenome || ''}</p>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -2838,7 +2843,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                       : <span> · total feitas: <b className="text-foreground">{totalFeitas}</b> · máx <b className="text-foreground">{maxNoMes}</b> guia(s)/mês</span>}
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
                   {!ativo ? (
                     <Button size="sm" variant="outline" className="h-8 text-[12px] gap-1 text-emerald-700 border-emerald-300 dark:border-emerald-800" onClick={() => onAtivar(p.id)}>
                       <CheckCircle2 className="h-3.5 w-3.5" /> Ativar
