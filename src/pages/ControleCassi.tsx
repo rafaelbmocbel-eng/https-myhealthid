@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, venceuPrazoProximaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
@@ -127,6 +128,8 @@ export default function ControleCassi() {
   const [configOpen, setConfigOpen] = useState(false);
   const [verEncerrados, setVerEncerrados] = useState(false);
   const [filtro2mes, setFiltro2mes] = useState(false);
+  // Filtro do painel de ações do "Este mês": foca em quem precisa de atenção.
+  const [focoMes, setFocoMes] = useState<'todos' | 'guia' | 'acabando' | 'confirmar'>('todos');
 
   // Pacientes CASSI do profissional.
   const { data: pacientes = [], isLoading: loadingPac } = useQuery({
@@ -377,7 +380,7 @@ export default function ControleCassi() {
           </div>
           <div className="md:ml-auto flex items-center gap-1.5 min-w-0">
             <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['outro', 'Outro mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
+              {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['outro', 'Fechamentos'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
                 <button key={v} onClick={() => setView(v)}
                   className={`text-[12px] px-2.5 py-1 rounded-md font-medium whitespace-nowrap shrink-0 ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                   {label}
@@ -395,6 +398,15 @@ export default function ControleCassi() {
       </div>
 
       <div className="max-w-5xl mx-auto p-3 space-y-4">
+        {!loading && (
+          <p className="text-[12px] text-muted-foreground -mb-1 px-0.5">
+            {view === 'clientes' ? 'Todos os clientes CASSI — buscar, cadastrar e ativar no mês.'
+              : view === 'ativas' ? `${MESES_PT[Number(mesVigente.slice(5, 7)) - 1]}/${mesVigente.slice(2, 4)} · quem está em tratamento neste mês.`
+              : view === 'outro' ? 'Guias que fecham em outros meses.'
+              : view === 'pedir' ? 'Monte e envie os pedidos de novas guias.'
+              : 'Cálculo do mês e relatórios de produção.'}
+          </p>
+        )}
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : view === 'clientes' ? (
@@ -544,89 +556,173 @@ export default function ControleCassi() {
                 <p className="text-center text-sm text-muted-foreground py-8">
                   Ninguém em tratamento neste mês ainda. Crie guias na aba <b>Clientes</b> ou use <b>Adicionar cliente</b>.
                 </p>
-              ) : (
-                <div className="grid gap-2 lg:grid-cols-2">
-                  {rosterEsteMes.map(({ paciente, guia }) => {
-                    const aut = guia ? diasTratGuia(guia) : 0;
-                    const real = guia?.sessoes_realizadas || 0;
-                    const restantes = Math.max(0, aut - real);
-                    const pct = aut > 0 ? Math.min(100, Math.round((real / aut) * 100)) : 0;
-                    const confirmado = paciente.cassi_confirmado_mes === mesVigente;
-                    const ativaEsteMes = guia?.status === 'ativa' && prodMesGuia(guia) === mesVigente;
-                    const ok = confirmado || ativaEsteMes; // tem guia ativa neste mês
-                    const prazoVenceu = venceuPrazoProximaGuia(guia, paciente.guias_por_mes);
-                    const precisaPedido = (paciente.guias_por_mes || 1) >= 2 && !ok && (precisaNovaGuia(guia) || prazoVenceu);
-                    return (
-                      <div key={paciente.id} className={`rounded-xl border px-3 py-2.5 ${ok ? 'border-emerald-300 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/10' : prazoVenceu ? 'border-rose-300 dark:border-rose-900 bg-background' : 'border-amber-300 dark:border-amber-900 bg-amber-50/30 dark:bg-amber-950/10'}`}>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-sm font-semibold truncate">{paciente.nome} {paciente.sobrenome || ''}</p>
-                              {/* Guias/mês (1 ou 2) — controle fica aqui, no mês vigente */}
-                              <span className="inline-flex items-center rounded-full border border-border overflow-hidden shrink-0">
-                                {[1, 2].map((n) => (
-                                  <button key={n} onClick={() => definirGuiasMes(paciente.id, n)}
-                                    className={`text-[10px] px-2 py-0.5 font-bold ${(paciente.guias_por_mes || 1) === n ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:bg-muted'}`}>
-                                    {n}
-                                  </button>
-                                ))}
-                                <span className="text-[9px] text-muted-foreground px-1.5">guia/mês</span>
-                              </span>
-                              {confirmado && <span className="text-[9px] uppercase font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">confirmado</span>}
-                            </div>
-                            {guia && aut > 0 ? (
-                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
-                                  <div className={`h-full ${restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+              ) : (() => {
+                // Decora cada linha com o estado semântico pra colorir, ordenar e contar.
+                const linhasMes = rosterEsteMes.map(({ paciente, guia }) => {
+                  const aut = guia ? diasTratGuia(guia) : 0;
+                  const real = guia?.sessoes_realizadas || 0;
+                  const restantes = Math.max(0, aut - real);
+                  const pct = aut > 0 ? Math.min(100, Math.round((real / aut) * 100)) : 0;
+                  const confirmado = paciente.cassi_confirmado_mes === mesVigente;
+                  const ativaEsteMes = guia?.status === 'ativa' && prodMesGuia(guia) === mesVigente;
+                  const ok = confirmado || ativaEsteMes;
+                  const prazoVenceu = venceuPrazoProximaGuia(guia, paciente.guias_por_mes);
+                  const precisaPedido = (paciente.guias_por_mes || 1) >= 2 && !ok && (precisaNovaGuia(guia) || prazoVenceu);
+                  const acabando = !precisaPedido && !!guia && aut > 0 && restantes <= 2;
+                  const estado: 'guia' | 'acabando' | 'confirmar' | 'ok' =
+                    precisaPedido ? 'guia' : acabando ? 'acabando' : ok ? 'ok' : 'confirmar';
+                  const fimISO = guia ? projetarFimGuia(guia) : null;
+                  return { paciente, guia, aut, real, restantes, pct, confirmado, ok, prazoVenceu, precisaPedido, estado, fimISO };
+                });
+                const nGuia = linhasMes.filter((l) => l.estado === 'guia').length;
+                const nAcab = linhasMes.filter((l) => l.estado === 'acabando').length;
+                const nConf = linhasMes.filter((l) => l.estado === 'confirmar').length;
+                const ordem = { guia: 0, acabando: 1, confirmar: 2, ok: 3 };
+                const filtradas = (focoMes === 'todos' ? linhasMes : linhasMes.filter((l) => l.estado === focoMes))
+                  .slice().sort((a, b) => ordem[a.estado] - ordem[b.estado]);
+
+                const chips = [
+                  { key: 'guia' as const, n: nGuia, icon: '⚠', label: 'precisam de guia', tone: 'danger' },
+                  { key: 'acabando' as const, n: nAcab, icon: '⏳', label: 'acabando sessões', tone: 'warn' },
+                  { key: 'confirmar' as const, n: nConf, icon: '☐', label: 'a confirmar', tone: 'neutral' },
+                ];
+
+                return (
+                  <div className="space-y-3">
+                    {/* Painel de ações — o que precisa de atenção agora */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {chips.map((c) => {
+                        const active = focoMes === c.key;
+                        const toneCls = c.tone === 'danger'
+                          ? 'border-rose-200 dark:border-rose-900/70 bg-rose-50/70 dark:bg-rose-950/20'
+                          : c.tone === 'warn'
+                          ? 'border-amber-200 dark:border-amber-900/70 bg-amber-50/70 dark:bg-amber-950/20'
+                          : 'border-border/60 bg-background';
+                        const numCls = c.tone === 'danger' ? 'text-rose-600 dark:text-rose-400'
+                          : c.tone === 'warn' ? 'text-amber-600 dark:text-amber-400' : 'text-foreground';
+                        return (
+                          <button key={c.key} onClick={() => setFocoMes(active ? 'todos' : c.key)}
+                            className={`rounded-xl border p-2.5 text-left transition-all ${toneCls} ${active ? 'ring-2 ring-primary/50' : 'hover:brightness-[0.99]'}`}>
+                            <span className={`block text-lg font-black tabular-nums leading-none ${numCls}`}>{c.icon} {c.n}</span>
+                            <span className="block text-[10.5px] text-muted-foreground font-semibold mt-1 leading-tight">{c.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {focoMes !== 'todos' && (
+                      <button onClick={() => setFocoMes('todos')} className="text-[12px] text-primary font-medium">← ver todos ({linhasMes.length})</button>
+                    )}
+
+                    {filtradas.length === 0 ? (
+                      <p className="text-center text-sm text-muted-foreground py-6">Ninguém nesse grupo agora. 🎉</p>
+                    ) : (
+                      <div className="grid gap-2 lg:grid-cols-2">
+                        {filtradas.map((l) => {
+                          const { paciente, guia } = l;
+                          const stripe = l.estado === 'guia' ? 'before:bg-rose-500'
+                            : l.estado === 'acabando' ? 'before:bg-amber-500'
+                            : l.estado === 'ok' ? 'before:bg-emerald-500' : 'before:bg-slate-400';
+                          const fim = l.fimISO ? `${l.fimISO.slice(8, 10)}/${l.fimISO.slice(5, 7)}` : null;
+                          const gpm = paciente.guias_por_mes || 1;
+                          const nome = `${paciente.nome} ${paciente.sobrenome || ''}`.trim();
+                          // Ação principal do card — só uma, conforme o estado.
+                          const primary = l.precisaPedido ? (
+                            <Button size="sm" className="w-full h-9 gap-1.5 text-[13px] bg-rose-600 hover:bg-rose-700 text-white" onClick={() => setView('pedir')}>
+                              <AlertTriangle className="h-4 w-4" /> Pedir guia
+                            </Button>
+                          ) : !l.ok ? (
+                            <Button size="sm" className="w-full h-9 gap-1.5 text-[13px] bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => confirmarGuiaMes(paciente.id)}>
+                              <CheckCircle2 className="h-4 w-4" /> Confirmar
+                            </Button>
+                          ) : guia ? (
+                            <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px]" onClick={() => setEditando({ paciente, guia })}>
+                              <FileText className="h-4 w-4" /> Ver guia
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px]" onClick={() => setEditando({ paciente, guia: null })}>
+                              <Plus className="h-4 w-4" /> Nova guia
+                            </Button>
+                          );
+                          return (
+                            <div key={paciente.id} className={`relative overflow-hidden rounded-xl border border-border/60 bg-background pl-4 pr-3 py-2.5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${stripe}`}>
+                              <div className="flex items-start gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="text-[15px] font-bold truncate leading-tight">{nome}</p>
+                                    {gpm >= 2 && <span className="text-[9px] uppercase font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/30 rounded px-1 shrink-0">2/mês</span>}
+                                    {l.confirmado && <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">confirmada</span>}
+                                  </div>
+                                  {guia && l.aut > 0 ? (
+                                    <>
+                                      <div className="flex items-center gap-2 mt-1.5">
+                                        <div className="h-1.5 flex-1 max-w-[170px] rounded-full bg-muted overflow-hidden">
+                                          <div className={`h-full ${l.restantes <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${l.pct}%` }} />
+                                        </div>
+                                        <span className="text-[14px] font-extrabold tabular-nums shrink-0">{l.real}/{l.aut}</span>
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground mt-1">
+                                        {l.prazoVenceu ? 'Hora de pedir a próxima guia'
+                                          : fim ? `termina ~${fim}${l.restantes <= 2 ? ` · faltam ${l.restantes}` : ''}`
+                                          : `${l.restantes} sessões restantes`}
+                                      </p>
+                                    </>
+                                  ) : l.precisaPedido ? (
+                                    <p className="text-[12px] text-rose-700 dark:text-rose-300 mt-1 font-medium">Precisa de nova guia — monte em “Pedir guias”</p>
+                                  ) : l.ok ? (
+                                    <p className="text-[12px] text-emerald-700 dark:text-emerald-400 mt-1">Guia confirmada — registre nº e sessões pra acompanhar</p>
+                                  ) : (
+                                    <p className="text-[12px] text-muted-foreground mt-1">Do mês passado — confirme se a guia está ativa</p>
+                                  )}
                                 </div>
-                                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{real}/{aut} sessões</span>
-                                {prazoVenceu ? (
-                                  <Badge className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">Pedir próxima guia</Badge>
-                                ) : restantes <= 2 && (
-                                  <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{restantes === 0 ? 'acabou' : `faltam ${restantes}`}</Badge>
-                                )}
+                                {/* Menu com as ações secundárias — menos botão à vista, menos erro */}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground shrink-0" title="Mais ações">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-56">
+                                    <DropdownMenuLabel className="text-[11px] truncate">{nome}</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {guia && (
+                                      <DropdownMenuItem onClick={() => setEditando({ paciente, guia })}>
+                                        <FileText className="h-3.5 w-3.5 mr-2" /> Ver guia
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => setEditando({ paciente, guia: null })}>
+                                      <Plus className="h-3.5 w-3.5 mr-2" /> Nova guia
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setView('pedir')}>
+                                      <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Pedir guia
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setCadastro(paciente)}>
+                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Editar cadastro
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => definirGuiasMes(paciente.id, gpm >= 2 ? 1 : 2)}>
+                                      <CreditCard className="h-3.5 w-3.5 mr-2" /> Mudar para {gpm >= 2 ? '1' : '2'} guia/mês
+                                    </DropdownMenuItem>
+                                    {l.confirmado && (
+                                      <DropdownMenuItem onClick={() => desconfirmarGuiaMes(paciente.id)}>
+                                        <Circle className="h-3.5 w-3.5 mr-2" /> Desfazer confirmação
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive"
+                                      onClick={() => { if (confirm(`Retirar "${nome}" deste mês? (encerra — dá pra reativar depois)`)) encerrarCliente(paciente.id, 'Retirado do mês'); }}>
+                                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Retirar deste mês
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
-                            ) : precisaPedido ? (
-                              <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-1 font-medium">Cliente 2/mês — precisa de nova guia (monte em "Pedir guias")</p>
-                            ) : ok ? (
-                              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">Guia ativa confirmada — registre a guia (nº e sessões) pra controlar aqui</p>
-                            ) : (
-                              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">Do mês passado — confirme se a guia está ativa</p>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
-                            {!ok && (
-                              <Button size="sm" className="h-8 gap-1.5 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => confirmarGuiaMes(paciente.id)}>
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Confirmar
-                              </Button>
-                            )}
-                            {confirmado && (
-                              <Button size="sm" variant="ghost" className="h-8 text-[11px] text-muted-foreground" onClick={() => desconfirmarGuiaMes(paciente.id)}>desfazer</Button>
-                            )}
-                            {precisaPedido && (
-                              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px] text-amber-700 border-amber-300 dark:border-amber-800" title="Ir para Pedir guias" onClick={() => setView('pedir')}>
-                                <AlertTriangle className="h-3.5 w-3.5" /> Pedir guia
-                              </Button>
-                            )}
-                            {guia && (
-                              <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia })}>
-                                <FileText className="h-3.5 w-3.5" /> Ver guia
-                              </Button>
-                            )}
-                            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => setEditando({ paciente, guia: null })}>
-                              <Plus className="h-3.5 w-3.5" /> Nova guia
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" title="Retirar deste mês (não continua)"
-                              onClick={() => { if (confirm(`Retirar "${paciente.nome} ${paciente.sobrenome || ''}" deste mês? (encerra — dá pra reativar depois)`)) encerrarCliente(paciente.id, 'Retirado do mês'); }}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
+                              <div className="mt-2.5">{primary}</div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
-              )
+                    )}
+                  </div>
+                );
+              })()
             )}
 
             {/* Encerrados — quem não continua (viagem, alta, desistência). Dá pra reativar. */}
