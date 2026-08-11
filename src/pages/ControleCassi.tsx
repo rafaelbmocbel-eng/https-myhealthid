@@ -2043,6 +2043,69 @@ function FinanceiroCassi() {
     };
   }, [mes, pacientes, guias, agendamentos, cfg]);
 
+  // Agendamentos dos últimos 6 meses (janela mais larga) — só pro mini-gráfico.
+  const { data: agsTrend = [] } = useQuery({
+    queryKey: ['cassi-ags-trend', user?.id, mes],
+    queryFn: async () => {
+      const [ano, m] = mes.split('-').map(Number);
+      const de = new Date(ano, m - 6, 1).toISOString();
+      const ate = new Date(ano, m, 2).toISOString();
+      const { data, error } = await (supabase as any)
+        .from('agendamentos')
+        .select('paciente_id, data_inicio, status, tipo_atendimento')
+        .eq('terapeuta_id', user!.id)
+        .gte('data_inicio', de).lt('data_inicio', ate);
+      if (error) throw error;
+      return (data || []) as Array<{ paciente_id: string | null; data_inicio: string; status: string; tipo_atendimento?: string }>;
+    },
+    enabled: !!user,
+  });
+
+  // Tendência da "sua parte" nos últimos 6 meses (mesma lógica do cálculo do mês).
+  const tendencia = useMemo(() => {
+    const [ya, ma] = mes.split('-').map(Number);
+    const agora = Date.now();
+    const cassiIds = new Set(pacientes.map((p) => p.id));
+    const codigosPac = new Map(pacientes.map((p) => [p.id, p.codigos_cassi || []]));
+    const guiaPorPac = new Map<string, GuiaCassi>();
+    for (const g of guias) if (!guiaPorPac.has(g.paciente_id)) guiaPorPac.set(g.paciente_id, g);
+    const valorDe = (c: string) => cfg?.codigos.find((x) => x.codigo === c)?.valor || 0;
+    const impostoPct = cfg?.imposto_percentual || 0;
+    const impostoFixo = cfg?.imposto_por_guia || 0;
+    const minhaPct = cfg?.minha_parte_percentual || 0;
+
+    const meses = [] as Array<{ y: number; m: number; label: string; sess: Map<string, number> }>;
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(ya, ma - 1 - i, 1);
+      meses.push({ y: d.getFullYear(), m: d.getMonth(), label: MESES_PT[d.getMonth()].slice(0, 3), sess: new Map() });
+    }
+    const idxDe = (y: number, mo: number) => meses.findIndex((x) => x.y === y && x.m === mo);
+    for (const a of agsTrend) {
+      if (!a.paciente_id || !cassiIds.has(a.paciente_id)) continue;
+      if (a.tipo_atendimento === 'avaliacao') continue;
+      if (a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
+      const d = new Date(a.data_inicio);
+      if (d.getTime() > agora) continue;
+      const k = idxDe(d.getFullYear(), d.getMonth());
+      if (k < 0) continue;
+      meses[k].sess.set(a.paciente_id, (meses[k].sess.get(a.paciente_id) || 0) + 1);
+    }
+    return meses.map((mm) => {
+      let liquido = 0;
+      for (const [pid, sessoes] of mm.sess) {
+        if (sessoes <= 0) continue;
+        const guia = guiaPorPac.get(pid) || null;
+        const codigos = guia?.codigos?.length
+          ? guia.codigos
+          : (codigosPac.get(pid)?.length ? codigosPac.get(pid)!.map((c) => ({ codigo: c })) : [{ codigo: '012' }]);
+        const bruto = brutoGuia(codigos, sessoes, valorDe);
+        const imposto = impostoPct > 0 ? bruto * (impostoPct / 100) : impostoFixo;
+        liquido += Math.max(0, bruto - imposto);
+      }
+      return { label: mm.label, suaParte: liquido * (minhaPct / 100) };
+    });
+  }, [agsTrend, pacientes, guias, cfg, mes]);
+
   const irMes = (delta: number) => {
     const [ano, m] = mes.split('-').map(Number);
     const d = new Date(ano, m - 1 + delta, 1);
@@ -2141,6 +2204,33 @@ function FinanceiroCassi() {
           </p>
         </div>
       )}
+
+      {/* Tendência: sua parte nos últimos 6 meses */}
+      {tendencia.some((t) => t.suaParte > 0) && (() => {
+        const max = Math.max(...tendencia.map((t) => t.suaParte), 1);
+        const kbrl = (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1).replace('.', ',')}k` : String(Math.round(v));
+        return (
+          <div className="rounded-xl border border-border/50 bg-background p-3">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Sua parte · últimos 6 meses</p>
+            <div className="mt-3 flex items-end gap-2">
+              {tendencia.map((t, i) => {
+                const atual = i === tendencia.length - 1;
+                const h = Math.round((t.suaParte / max) * 100);
+                return (
+                  <div key={i} className="flex-1 min-w-0 flex flex-col items-center gap-1">
+                    <span className={`text-[9.5px] tabular-nums ${atual ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}>{t.suaParte > 0 ? kbrl(t.suaParte) : '—'}</span>
+                    <div className="w-full h-16 flex items-end" title={fmtBRL(t.suaParte)}>
+                      <div className={`w-full rounded-t-md ${atual ? 'bg-emerald-500' : 'bg-emerald-500/35'}`} style={{ height: `${Math.max(t.suaParte > 0 ? 4 : 0, h)}%` }} />
+                    </div>
+                    <span className={`text-[10px] capitalize ${atual ? 'font-bold text-foreground' : 'text-muted-foreground'}`}>{t.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[10.5px] text-muted-foreground mt-2">Valores em R$ (k = mil). Barra verde = mês selecionado.</p>
+          </div>
+        );
+      })()}
 
       {isLoading ? (
         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
@@ -2911,6 +3001,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
       <div className="grid gap-2 lg:grid-cols-2">
         {lista.map((p) => {
           const gs = guiasPorPac.get(p.id) || [];
+          const nome = `${p.nome} ${p.sobrenome || ''}`.trim();
           const ativa = gs.find((g) => g.status === 'ativa') || null;
           const ultima = gs[0] || null;
           const totalFeitas = gs.reduce((s, g) => s + (g.sessoes_realizadas || 0), 0);
@@ -2923,51 +3014,78 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
           const noMesSel = mes ? (porMes.get(mes) || 0) : 0;
           const detecta2 = maxNoMes >= 2; // já fez 2 guias num mesmo mês
           return (
-            <div key={p.id} className="rounded-xl border border-border/50 bg-background p-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+            <div key={p.id} className={`relative overflow-hidden rounded-xl border border-border/60 bg-background pl-4 pr-3 py-2.5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${ativo ? 'before:bg-emerald-500' : 'before:bg-slate-400'}`}>
+              <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate">{p.nome} {p.sobrenome || ''}</p>
-                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <Badge className={`text-[10px] ${ativo ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
-                      {ativo ? 'Ativo' : 'Encerrado'}
-                    </Badge>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="text-[15px] font-bold truncate leading-tight">{nome}</p>
+                    {!ativo && <span className="text-[9px] uppercase font-bold text-muted-foreground bg-muted rounded px-1 shrink-0">encerrado</span>}
+                    {marcado && <span className="text-[9px] uppercase font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/30 rounded px-1 shrink-0">2/mês</span>}
+                    {ativo && p.cassi_confirmado_mes === mesVigente && <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">no mês ✓</span>}
                   </div>
-                  <div className="text-[11px] text-muted-foreground mt-1 tabular-nums">
-                    {ativa ? <span>Guia ativa: <b className="text-foreground">{ativa.sessoes_realizadas}/{diasTratGuia(ativa)}</b></span> : <span>Sem guia ativa</span>}
+                  <div className="text-[11.5px] text-muted-foreground mt-1 tabular-nums">
+                    {ativa ? <span>Guia ativa <b className="text-foreground">{ativa.sessoes_realizadas}/{diasTratGuia(ativa)}</b></span> : <span>Sem guia ativa</span>}
                     {mes
                       ? <span> · {mesLabel}: <b className="text-foreground">{mesFeitas}</b> sessões · <b className="text-foreground">{noMesSel}</b> guia(s)</span>
-                      : <span> · total feitas: <b className="text-foreground">{totalFeitas}</b> · máx <b className="text-foreground">{maxNoMes}</b> guia(s)/mês</span>}
+                      : <span> · total <b className="text-foreground">{totalFeitas}</b> · máx <b className="text-foreground">{maxNoMes}</b>/mês</span>}
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
-                  {!ativo ? (
-                    <Button size="sm" variant="outline" className="h-8 text-[12px] gap-1 text-emerald-700 border-emerald-300 dark:border-emerald-800" onClick={() => onAtivar(p.id)}>
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Ativar
+                {/* Menu com as ações secundárias */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground shrink-0" title="Mais ações">
+                      <MoreVertical className="h-4 w-4" />
                     </Button>
-                  ) : p.cassi_confirmado_mes === mesVigente ? (
-                    <span className="text-[11px] font-bold text-emerald-700 px-1" title="Já está em Este mês">no mês ✓</span>
-                  ) : (
-                    <Button size="sm" className="h-8 text-[12px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" title="Ativar guia — aparece em Este mês" onClick={() => onConfirmarMes(p.id)}>
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Este mês
-                    </Button>
-                  )}
-                  <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => onCadastro(p)}>
-                    <Pencil className="h-3.5 w-3.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="text-[11px] truncate">{nome}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => onCadastro(p)}>
+                      <Pencil className="h-3.5 w-3.5 mr-2" /> Editar cadastro
+                    </DropdownMenuItem>
+                    {gs.length === 0 ? (
+                      <DropdownMenuItem onClick={onPedirGuia}>
+                        <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Pedir guia
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem onClick={() => onGuia(p, ativa || ultima)}>
+                        <FileText className="h-3.5 w-3.5 mr-2" /> Ver guia
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => onGuia(p, null)}>
+                      <Plus className="h-3.5 w-3.5 mr-2" /> Nova guia
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDefinirGuiasMes(p.id, marcado ? 1 : 2)}>
+                      <CreditCard className="h-3.5 w-3.5 mr-2" /> Mudar para {marcado ? '1' : '2'} guia/mês
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive focus:text-destructive"
+                      onClick={() => { if (confirm(`Excluir "${nome}" do Controle CASSI? Use para tirar duplicados/erros.`)) onExcluir(p.id); }}>
+                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir cliente
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="mt-2.5">
+                {!ativo ? (
+                  <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-emerald-700 border-emerald-300 dark:border-emerald-800" onClick={() => onAtivar(p.id)}>
+                    <CheckCircle2 className="h-4 w-4" /> Ativar cliente
                   </Button>
-                  {gs.length === 0 ? (
-                    <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px] text-amber-700 border-amber-300 dark:border-amber-800" title="Pedir guia (vai pra aba Pedir guias)" onClick={onPedirGuia}>
-                      <AlertTriangle className="h-3.5 w-3.5" /> Pedir guia
+                ) : p.cassi_confirmado_mes === mesVigente ? (
+                  gs.length === 0 ? (
+                    <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-amber-700 border-amber-300 dark:border-amber-800" onClick={onPedirGuia}>
+                      <AlertTriangle className="h-4 w-4" /> Pedir guia
                     </Button>
                   ) : (
-                    <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" onClick={() => onGuia(p, ativa || ultima)}>
-                      <FileText className="h-3.5 w-3.5" /> Guia
+                    <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px]" onClick={() => onGuia(p, ativa || ultima)}>
+                      <FileText className="h-4 w-4" /> Ver guia
                     </Button>
-                  )}
-                  <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Excluir cliente (duplicado/erro)"
-                    onClick={() => { if (confirm(`Excluir "${p.nome} ${p.sobrenome || ''}" do Controle CASSI? Use para tirar duplicados/erros.`)) onExcluir(p.id); }}>
-                    <Trash2 className="h-3.5 w-3.5" />
+                  )
+                ) : (
+                  <Button size="sm" className="w-full h-9 gap-1.5 text-[13px] bg-emerald-600 hover:bg-emerald-700 text-white" title="Ativar guia — aparece em Este mês" onClick={() => onConfirmarMes(p.id)}>
+                    <CheckCircle2 className="h-4 w-4" /> Colocar em Este mês
                   </Button>
-                </div>
+                )}
               </div>
             </div>
           );
