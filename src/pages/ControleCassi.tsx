@@ -167,35 +167,65 @@ export default function ControleCassi() {
     enabled: !!user,
   });
 
-  // Sessões (agendamentos) ligadas às guias — o Controle reflete a AGENDA ao
-  // vivo, sem depender de abrir cada guia. (Mesma queryKey do Relatório/Envios.)
+  // Sessões da AGENDA por paciente CASSI — o Controle reflete a agenda ao vivo,
+  // contando tanto as sessões geradas pela guia quanto os agendamentos criados
+  // direto na Agenda (sem precisar abrir a guia).
   const { data: agSessoes = [] } = useQuery({
-    queryKey: ['cassi-ags-guia', user?.id],
+    queryKey: ['cassi-ags-sessoes', user?.id, pacientes.map((p) => p.id).join(',')],
     queryFn: async () => {
+      const desde = new Date();
+      desde.setMonth(desde.getMonth() - 8);
+      const ids = pacientes.map((p) => p.id);
       const { data, error } = await (supabase as any).from('agendamentos')
-        .select('guia_cassi_id, data_inicio, status, tipo_atendimento')
-        .eq('terapeuta_id', user!.id).not('guia_cassi_id', 'is', null);
+        .select('paciente_id, guia_cassi_id, data_inicio, status, tipo_atendimento')
+        .eq('terapeuta_id', user!.id)
+        .in('paciente_id', ids)
+        .gte('data_inicio', desde.toISOString());
       if (error) throw error;
-      return (data || []) as Array<{ guia_cassi_id: string; data_inicio: string; status: string; tipo_atendimento?: string }>;
+      return (data || []) as Array<{ paciente_id: string | null; guia_cassi_id: string | null; data_inicio: string; status: string; tipo_atendimento?: string }>;
     },
-    enabled: !!user,
+    enabled: !!user && pacientes.length > 0,
   });
 
-  // Por guia: dias de tratamento gerados na agenda e quantos já foram realizados
-  // (passados e não cancelados/faltados). A avaliação é dia extra e não conta.
+  // Por guia: dias de tratamento na agenda e quantos já foram realizados (passados,
+  // não cancelados/faltados). A avaliação é dia extra e não conta. Agendamentos sem
+  // vínculo de guia são atribuídos à guia ativa do paciente naquela data — assim o
+  // que é marcado direto na Agenda também conta aqui.
   const realPorGuia = useMemo(() => {
     const agora = Date.now();
+    // Guias por paciente, ordenadas pela data de início (resposta/pedido).
+    const guiasPorPac = new Map<string, Array<{ id: string; inicioMs: number }>>();
+    for (const g of guias) {
+      const iniStr = g.data_resposta || g.data_pedido;
+      if (!iniStr) continue;
+      const inicioMs = new Date(`${iniStr}T00:00:00`).getTime();
+      if (!guiasPorPac.has(g.paciente_id)) guiasPorPac.set(g.paciente_id, []);
+      guiasPorPac.get(g.paciente_id)!.push({ id: g.id, inicioMs });
+    }
+    for (const arr of guiasPorPac.values()) arr.sort((a, b) => a.inicioMs - b.inicioMs);
+    // Qual guia estava ativa para o paciente numa certa data (a última que começou até ali).
+    const guiaNaData = (pacienteId: string, dMs: number): string | null => {
+      const arr = guiasPorPac.get(pacienteId);
+      if (!arr || !arr.length) return null;
+      let escolhida: string | null = null;
+      for (const g of arr) { if (g.inicioMs <= dMs) escolhida = g.id; else break; }
+      return escolhida || arr[0].id; // antes da 1ª guia → atribui à 1ª
+    };
+
     const ger = new Map<string, Set<string>>();
     const rea = new Map<string, Set<string>>();
     for (const a of agSessoes) {
-      if (!a.guia_cassi_id || a.tipo_atendimento === 'avaliacao' || a.status === 'cancelado') continue;
+      if (!a.paciente_id || a.tipo_atendimento === 'avaliacao' || a.status === 'cancelado') continue;
       const dt = new Date(a.data_inicio);
+      const dMs = dt.getTime();
+      const gid = a.guia_cassi_id || guiaNaData(a.paciente_id, dMs);
+      if (!gid) continue;
       const ymd = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-      if (!ger.has(a.guia_cassi_id)) ger.set(a.guia_cassi_id, new Set());
-      ger.get(a.guia_cassi_id)!.add(ymd);
-      if (dt.getTime() < agora && a.status !== 'faltou' && a.status !== 'bloqueado' && a.status !== 'pendente') {
-        if (!rea.has(a.guia_cassi_id)) rea.set(a.guia_cassi_id, new Set());
-        rea.get(a.guia_cassi_id)!.add(ymd);
+      if (!ger.has(gid)) ger.set(gid, new Set());
+      ger.get(gid)!.add(ymd);
+      if (dMs < agora && a.status !== 'faltou' && a.status !== 'bloqueado' && a.status !== 'pendente') {
+        if (!rea.has(gid)) rea.set(gid, new Set());
+        rea.get(gid)!.add(ymd);
       }
     }
     const m = new Map<string, { geradas: number; realizadas: number }>();
@@ -203,7 +233,7 @@ export default function ControleCassi() {
       m.set(id, { geradas: ger.get(id)?.size || 0, realizadas: rea.get(id)?.size || 0 });
     }
     return m;
-  }, [agSessoes]);
+  }, [agSessoes, guias]);
 
   // Guias com a contagem de realizadas vinda da Agenda (quando há sessões geradas).
   const guiasEff = useMemo(() => guias.map((g) => {
