@@ -167,79 +167,11 @@ export default function ControleCassi() {
     enabled: !!user,
   });
 
-  // Sessões da AGENDA por paciente CASSI — o Controle reflete a agenda ao vivo,
-  // contando tanto as sessões geradas pela guia quanto os agendamentos criados
-  // direto na Agenda (sem precisar abrir a guia).
-  const { data: agSessoes = [] } = useQuery({
-    queryKey: ['cassi-ags-sessoes', user?.id, pacientes.map((p) => p.id).join(',')],
-    queryFn: async () => {
-      const desde = new Date();
-      desde.setMonth(desde.getMonth() - 8);
-      const ids = pacientes.map((p) => p.id);
-      const { data, error } = await (supabase as any).from('agendamentos')
-        .select('paciente_id, guia_cassi_id, data_inicio, status, tipo_atendimento')
-        .eq('terapeuta_id', user!.id)
-        .in('paciente_id', ids)
-        .gte('data_inicio', desde.toISOString());
-      if (error) throw error;
-      return (data || []) as Array<{ paciente_id: string | null; guia_cassi_id: string | null; data_inicio: string; status: string; tipo_atendimento?: string }>;
-    },
-    enabled: !!user && pacientes.length > 0,
-  });
-
-  // Por guia: dias de tratamento na agenda e quantos já foram realizados (passados,
-  // não cancelados/faltados). A avaliação é dia extra e não conta. Agendamentos sem
-  // vínculo de guia são atribuídos à guia ativa do paciente naquela data — assim o
-  // que é marcado direto na Agenda também conta aqui.
-  const realPorGuia = useMemo(() => {
-    const agora = Date.now();
-    // Guias por paciente, ordenadas pela data de início (resposta/pedido).
-    const guiasPorPac = new Map<string, Array<{ id: string; inicioMs: number }>>();
-    for (const g of guias) {
-      const iniStr = g.data_resposta || g.data_pedido;
-      if (!iniStr) continue;
-      const inicioMs = new Date(`${iniStr}T00:00:00`).getTime();
-      if (!guiasPorPac.has(g.paciente_id)) guiasPorPac.set(g.paciente_id, []);
-      guiasPorPac.get(g.paciente_id)!.push({ id: g.id, inicioMs });
-    }
-    for (const arr of guiasPorPac.values()) arr.sort((a, b) => a.inicioMs - b.inicioMs);
-    // Qual guia estava ativa para o paciente numa certa data (a última que começou até ali).
-    const guiaNaData = (pacienteId: string, dMs: number): string | null => {
-      const arr = guiasPorPac.get(pacienteId);
-      if (!arr || !arr.length) return null;
-      let escolhida: string | null = null;
-      for (const g of arr) { if (g.inicioMs <= dMs) escolhida = g.id; else break; }
-      return escolhida || arr[0].id; // antes da 1ª guia → atribui à 1ª
-    };
-
-    const ger = new Map<string, Set<string>>();
-    const rea = new Map<string, Set<string>>();
-    for (const a of agSessoes) {
-      if (!a.paciente_id || a.tipo_atendimento === 'avaliacao' || a.status === 'cancelado') continue;
-      const dt = new Date(a.data_inicio);
-      const dMs = dt.getTime();
-      const gid = a.guia_cassi_id || guiaNaData(a.paciente_id, dMs);
-      if (!gid) continue;
-      const ymd = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-      if (!ger.has(gid)) ger.set(gid, new Set());
-      ger.get(gid)!.add(ymd);
-      if (dMs < agora && a.status !== 'faltou' && a.status !== 'bloqueado' && a.status !== 'pendente') {
-        if (!rea.has(gid)) rea.set(gid, new Set());
-        rea.get(gid)!.add(ymd);
-      }
-    }
-    const m = new Map<string, { geradas: number; realizadas: number }>();
-    for (const id of new Set([...ger.keys(), ...rea.keys()])) {
-      m.set(id, { geradas: ger.get(id)?.size || 0, realizadas: rea.get(id)?.size || 0 });
-    }
-    return m;
-  }, [agSessoes, guias]);
-
-  // Guias com a contagem de realizadas vinda da Agenda (quando há sessões geradas).
-  const guiasEff = useMemo(() => guias.map((g) => {
-    const r = realPorGuia.get(g.id);
-    return r && r.geradas > 0 ? { ...g, sessoes_realizadas: r.realizadas } : g;
-  }), [guias, realPorGuia]);
+  // A contagem de sessões de cada guia é o valor salvo na própria guia (controle
+  // manual, editável em "Ver guia"). Dentro da guia dá pra puxar a contagem da
+  // Agenda com um toque — mas ela nunca sobrescreve sozinha, pra você manter o
+  // controle. Evita também contar sessões antigas de outras guias por engano.
+  const guiasEff = guias;
 
   // Guia mais recente por paciente.
   const guiaPorPaciente = useMemo(() => {
@@ -887,6 +819,39 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     ).size;
   }, [soTratamento]);
 
+  // Sessões desta guia que estão na AGENDA do paciente (inclui as marcadas direto
+  // na Agenda, não só as geradas pela guia). Conta só dentro da janela da guia
+  // (do início até o fim previsto), pra não misturar sessões de outras guias.
+  const { data: agPaciente = [] } = useQuery({
+    queryKey: ['guia-ag-paciente', paciente.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('agendamentos')
+        .select('data_inicio, status, tipo_atendimento')
+        .eq('terapeuta_id', user!.id).eq('paciente_id', paciente.id)
+        .order('data_inicio', { ascending: true });
+      if (error) throw error;
+      return (data || []) as Array<{ data_inicio: string; status: string; tipo_atendimento?: string }>;
+    },
+    enabled: !!user && !!paciente.id,
+  });
+
+  const realizadasAgenda = useMemo(() => {
+    const inicioStr = d.data_resposta || d.data_pedido;
+    if (!inicioStr) return 0;
+    const inicioMs = new Date(`${inicioStr}T00:00:00`).getTime();
+    const fimISO = projetarFimGuia({ data_resposta: inicioStr, sessoes_autorizadas: Number(d.sessoes_autorizadas) || 0 });
+    const fimMs = fimISO ? new Date(`${fimISO}T23:59:59`).getTime() : inicioMs + 90 * 86400000;
+    const agora = Date.now();
+    const dias = new Set<string>();
+    for (const a of agPaciente) {
+      if (a.tipo_atendimento === 'avaliacao' || a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
+      const t = new Date(a.data_inicio).getTime();
+      if (t < inicioMs || t > fimMs || t > agora) continue;
+      dias.add(a.data_inicio.slice(0, 10));
+    }
+    return dias.size;
+  }, [agPaciente, d.data_resposta, d.data_pedido, d.sessoes_autorizadas]);
+
   const [gerForm, setGerForm] = useState({ inicio: guia?.data_resposta || guia?.data_pedido || hojeISO(), horario: '08:00' });
 
   const gerarAgenda = useMutation({
@@ -920,19 +885,6 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     onError: (e: any) => toast.error(e.message || 'Erro ao gerar agenda'),
   });
 
-  // Mantém a contagem de realizadas (datas que já passaram) sincronizada na guia,
-  // para o selo de status ficar correto. O ref evita repetir a mesma escrita.
-  const sincRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (guia?.id && geradas > 0 && realizadas !== guia.sessoes_realizadas && sincRef.current !== realizadas) {
-      sincRef.current = realizadas;
-      (supabase as any).from('guias_cassi')
-        .update({ sessoes_realizadas: realizadas, updated_at: new Date().toISOString() })
-        .eq('id', guia.id)
-        .then(() => qc.invalidateQueries({ queryKey: ['guias-cassi'] }));
-    }
-  }, [realizadas, geradas, guia?.id, guia?.sessoes_realizadas, qc]);
-
   const salvar = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
@@ -947,8 +899,8 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
         data_pedido: d.data_pedido || hojeISO(),
         data_resposta: d.data_resposta || null,
         sessoes_autorizadas: (Number(d.sessoes_autorizadas) || 0) || maxTrat,
-        // Se há sessões na agenda, a contagem de realizadas vem delas (automática).
-        sessoes_realizadas: geradas > 0 ? realizadas : (Number(d.sessoes_realizadas) || 0),
+        // Contagem manual — você controla. Dá pra puxar da agenda com um toque.
+        sessoes_realizadas: Number(d.sessoes_realizadas) || 0,
         diagnostico: d.diagnostico || null,
         responsavel_tecnico: d.responsavel_tecnico || null,
         codigos,
@@ -1051,12 +1003,18 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sessões realizadas</label>
               <Input type="number" min={0}
-                value={geradas > 0 ? realizadas : d.sessoes_realizadas}
-                disabled={geradas > 0}
+                value={d.sessoes_realizadas}
+                onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => set('sessoes_realizadas', parseInt(e.target.value) || 0)} />
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {geradas > 0 ? 'Conta automática pela agenda · ' : ''}Restam {restantes}
-              </p>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span className="text-[10px] text-muted-foreground">Restam {restantes}</span>
+                {realizadasAgenda > 0 && realizadasAgenda !== Number(d.sessoes_realizadas) && (
+                  <button type="button" onClick={() => set('sessoes_realizadas', realizadasAgenda)}
+                    className="text-[10px] font-medium text-sky-700 dark:text-sky-300 underline underline-offset-2">
+                    Agenda: {realizadasAgenda} — usar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1132,7 +1090,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
               </div>
               <p className="text-[11px] text-muted-foreground">
                 {geradas} de {d.sessoes_autorizadas} na agenda · <strong>{realizadas} realizadas</strong>. As sessões viram
-                agendamentos reais (aparecem na Agenda) e as realizadas contam sozinhas pelas datas que já passaram.
+                agendamentos reais (aparecem na Agenda). Pra usar essa contagem no controle, toque em <strong>“usar”</strong> ao lado de “Sessões realizadas”.
               </p>
 
               {geradas < (Number(d.sessoes_autorizadas) || 0) && (
