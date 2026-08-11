@@ -374,6 +374,18 @@ export default function BibliotecaExercicios() {
           </Button>
         </div>
 
+        {!loading && (
+          <p className="text-xs text-muted-foreground -mt-1">
+            <b className="text-foreground tabular-nums">{lista.length}</b> exercício(s) na biblioteca
+            {(() => {
+              const meus = lista.filter((e) => e.terapeuta_id === user?.id).length;
+              const outros = lista.length - meus;
+              return outros > 0 ? <> · {meus} seus · {outros} de outros profissionais</> : null;
+            })()}
+            {busca || segAtivo !== 'Todos' || funAtivo !== 'Todas' ? <> · <b className="text-foreground tabular-nums">{filtradas.length}</b> no filtro atual</> : null}
+          </p>
+        )}
+
         {/* Filtros por categoria — segmento e função */}
         <div className="space-y-1.5">
           <div className="flex flex-wrap gap-1.5">
