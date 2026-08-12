@@ -677,9 +677,6 @@ export default function ControleCassi() {
                                     <DropdownMenuItem onClick={() => setView('pedir')}>
                                       <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Pedir guia
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setCadastro(paciente)}>
-                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Editar cadastro
-                                    </DropdownMenuItem>
                                     {l.confirmado && (
                                       <DropdownMenuItem onClick={() => desconfirmarGuiaMes(paciente.id)}>
                                         <Circle className="h-3.5 w-3.5 mr-2" /> Desfazer confirmação
@@ -750,6 +747,7 @@ export default function ControleCassi() {
           onClose={() => setCadastro(null)}
           onSaved={() => {
             qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+            qc.invalidateQueries({ queryKey: ['guias-cassi', user?.id] });
             setCadastro(null);
           }}
           onEncerrar={async (id, motivo) => { await encerrarCliente(id, motivo); setCadastro(null); }}
@@ -1313,6 +1311,9 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     diagnostico: paciente?.cassi_diagnostico || '',
     email: paciente?.email || '',
     telefone: paciente?.telefone || '',
+    // Dados da 1ª guia (só no cadastro novo) — usados pra criar a guia vigente.
+    data_resposta: '',
+    sessoes: '',
   }));
   const [codigos, setCodigos] = useState<string[]>(paciente?.codigos_cassi || []);
   const [guiasPorMes, setGuiasPorMes] = useState<number>(paciente?.guias_por_mes && paciente.guias_por_mes >= 2 ? 2 : 1);
@@ -1345,11 +1346,11 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   });
 
   const resetNovo = () => {
-    setF({ nome: '', sobrenome: '', carteirinha: '', diagnostico: '', email: '', telefone: '' });
+    setF({ nome: '', sobrenome: '', carteirinha: '', diagnostico: '', email: '', telefone: '', data_resposta: '', sessoes: '' });
     setCodigos([]); setGuiasPorMes(1); setAlvoId(null); setAlvoEncerrado(false);
   };
   const escolher = (p: any) => {
-    setF({ nome: p.nome || '', sobrenome: p.sobrenome || '', carteirinha: p.carteirinha || '', diagnostico: p.cassi_diagnostico || '', email: p.email || '', telefone: p.telefone || '' });
+    setF({ nome: p.nome || '', sobrenome: p.sobrenome || '', carteirinha: p.carteirinha || '', diagnostico: p.cassi_diagnostico || '', email: p.email || '', telefone: p.telefone || '', data_resposta: '', sessoes: '' });
     setCodigos(Array.isArray(p.codigos_cassi) ? p.codigos_cassi : []);
     setGuiasPorMes(Number(p.guias_por_mes) >= 2 ? 2 : 1);
     setAlvoId(p.id);
@@ -1371,6 +1372,38 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         codigos_cassi: codigos,
         guias_por_mes: guiasPorMes,
       };
+      // Cria a guia vigente a partir do cadastro (carteirinha, códigos, sessões,
+      // data de resposta, diagnóstico) e coloca o cliente em "Este mês".
+      const nSess = Number(f.sessoes) || 0;
+      const querGuia = !editando && codigos.length > 0 && nSess > 0;
+      const criarGuiaVigente = async (pacienteId: string) => {
+        // Fecha guias abertas anteriores (viram histórico) antes de abrir a nova.
+        await sb.from('guias_cassi').update({ status: 'finalizada', updated_at: new Date().toISOString() })
+          .eq('paciente_id', pacienteId).eq('terapeuta_id', user.id).in('status', ['aguardando', 'ativa']);
+        const guiaCodigos = codigos.map((c) => ({
+          codigo: c,
+          descricao: codigosDisp.find((x) => x.codigo === c)?.descricao || '',
+          sessoes: c === '144' ? 1 : nSess,
+        }));
+        const { error: gErr } = await sb.from('guias_cassi').insert({
+          terapeuta_id: user.id,
+          paciente_id: pacienteId,
+          matricula: f.carteirinha.trim() || null,
+          numero_guia: null,
+          data_pedido: hojeISO(),
+          data_resposta: f.data_resposta || null,
+          sessoes_autorizadas: nSess,
+          sessoes_realizadas: 0,
+          diagnostico: f.diagnostico.trim() || null,
+          responsavel_tecnico: null,
+          codigos: guiaCodigos,
+          status: f.data_resposta ? 'ativa' : 'aguardando',
+          observacoes: null,
+        });
+        if (gErr) throw gErr;
+        await sb.from('pacientes').update({ cassi_confirmado_mes: mesAtualISO() }).eq('id', pacienteId);
+      };
+
       if (editando) {
         const { error } = await sb.from('pacientes').update(payload).eq('id', paciente!.id);
         if (error) throw error;
@@ -1380,19 +1413,24 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         if (alvoEncerrado) { upd.cassi_encerrado_em = null; upd.cassi_encerrado_motivo = null; }
         const { error } = await sb.from('pacientes').update(upd).eq('id', alvoId);
         if (error) throw error;
+        if (querGuia) await criarGuiaVigente(alvoId);
       } else {
-        const { error } = await sb.from('pacientes').insert({
+        const { data: novo, error } = await sb.from('pacientes').insert({
           ...payload,
           terapeuta_id: user.id,
           plano_saude: 'CASSI',
           ativo: true,
           cadastro_status: 'completo',
           tipo_conta: 'clinico',
-        });
+        }).select('id').single();
         if (error) throw error;
+        if (querGuia && novo?.id) await criarGuiaVigente(novo.id);
       }
     },
-    onSuccess: () => { toast.success(editando ? 'Cadastro atualizado' : alvoId ? (alvoEncerrado ? 'Cliente reativado' : 'Cliente adicionado ao CASSI') : 'Cliente cadastrado'); onSaved(); },
+    onSuccess: () => {
+      toast.success(editando ? 'Cadastro atualizado' : (Number(f.sessoes) > 0 && codigos.length > 0) ? 'Cliente e guia cadastrados — em Este mês' : alvoId ? (alvoEncerrado ? 'Cliente reativado' : 'Cliente adicionado ao CASSI') : 'Cliente cadastrado');
+      onSaved();
+    },
     onError: (e: any) => toast.error(e.message || 'Erro ao salvar'),
   });
 
@@ -1499,6 +1537,24 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
               })}
             </div>
           </div>
+          {!editando && (
+            <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 space-y-2">
+              <p className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">Dados da 1ª guia (opcional)</p>
+              <p className="text-[10px] text-muted-foreground -mt-1">Preencha e o cliente já entra em <b>Este mês</b> com a guia criada (carteirinha, códigos, sessões, data e diagnóstico). Dá pra editar depois em “Ver guia”.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Data resposta CASSI</label>
+                  <Input type="date" value={f.data_resposta} onChange={(e) => set('data_resposta', e.target.value)} />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Vazio = aguardando</p>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Quantidade de sessões</label>
+                  <Input type="number" min={0} inputMode="numeric" value={f.sessoes} onChange={(e) => set('sessoes', e.target.value)} onFocus={(e) => e.currentTarget.select()} placeholder="ex: 10" />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Dias de tratamento</p>
+                </div>
+              </div>
+            </div>
+          )}
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Guias por mês</label>
             <div className="flex gap-1.5 mt-1">
