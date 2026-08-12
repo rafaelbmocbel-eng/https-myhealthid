@@ -1412,9 +1412,13 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     setMergendo(true);
     const sb: any = supabase;
     try {
-      await sb.from('guias_cassi').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
-      await sb.from('agendamentos').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
-      await sb.from('pacientes').update({
+      // As escritas do Supabase não lançam — checamos .error e ABORTAMOS antes de
+      // apagar o duplicado, pra nunca perder a guia por uma falha no meio.
+      const g = await sb.from('guias_cassi').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
+      if (g.error) throw g.error;
+      const a = await sb.from('agendamentos').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
+      if (a.error) throw a.error;
+      const p = await sb.from('pacientes').update({
         plano_saude: 'CASSI',
         carteirinha: (paciente.carteirinha || '').trim() || alvo.carteirinha || null,
         codigos_cassi: (paciente.codigos_cassi?.length ? paciente.codigos_cassi : (alvo.codigos_cassi || [])),
@@ -1423,11 +1427,14 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         cassi_confirmado_mes: paciente.cassi_confirmado_mes || null,
         cassi_encerrado_em: null, cassi_encerrado_motivo: null,
       }).eq('id', alvo.id);
-      await sb.from('pacientes').update({ ativo: false }).eq('id', paciente.id);
+      if (p.error) throw p.error;
+      // Só remove o duplicado depois que tudo acima deu certo.
+      const d = await sb.from('pacientes').update({ ativo: false }).eq('id', paciente.id);
+      if (d.error) throw d.error;
       toast.success('Cadastros juntados — duplicado removido');
       onSaved();
     } catch (e: any) {
-      toast.error('Erro ao juntar: ' + (e.message || e));
+      toast.error('Erro ao juntar (nada foi apagado): ' + (e.message || e));
     } finally {
       setMergendo(false);
     }
