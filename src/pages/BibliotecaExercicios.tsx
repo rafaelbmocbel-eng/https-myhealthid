@@ -17,6 +17,7 @@ interface Exercicio {
   id: string;
   terapeuta_id: string;
   compartilhado?: boolean;
+  nome_original?: string | null;
   nome: string;
   grupo_muscular: string | null;
   orientacoes: string | null;
@@ -47,6 +48,43 @@ export default function BibliotecaExercicios() {
   const [verificando, setVerificando] = useState(false);
   const [progVerif, setProgVerif] = useState({ done: 0, total: 0 });
   const [quebrados, setQuebrados] = useState<{ id: string; nome: string; campo: 'gif_url' | 'gif_url_fem'; url: string }[] | null>(null);
+  const [removendoDup, setRemovendoDup] = useState(false);
+
+  // Remove exercícios duplicados (mesmo nome), mantendo 1 de cada — o mais completo.
+  const removerDuplicados = async () => {
+    const norm = (s?: string | null) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+    const score = (e: Exercicio) => (e.gif_url_fem ? 4 : 0) + (e.gif_url ? 2 : 0) + ((e.orientacoes || '').length > 0 ? 1 : 0);
+    const meus = lista.filter((e) => e.terapeuta_id === user?.id);
+    const grupos = new Map<string, Exercicio[]>();
+    for (const e of meus) {
+      const key = norm(e.nome_original || e.nome);
+      if (!key) continue;
+      if (!grupos.has(key)) grupos.set(key, []);
+      grupos.get(key)!.push(e);
+    }
+    const remover: string[] = [];
+    for (const arr of grupos.values()) {
+      if (arr.length < 2) continue;
+      arr.sort((a, b) => score(b) - score(a)); // mantém o mais completo (índice 0)
+      remover.push(...arr.slice(1).map((e) => e.id));
+    }
+    if (remover.length === 0) { toast.info('Nenhum exercício duplicado encontrado. 🎉'); return; }
+    if (!confirm(`Encontrei ${remover.length} exercício(s) duplicado(s). Remover os extras? (mantém 1 de cada — o mais completo)`)) return;
+    setRemovendoDup(true);
+    try {
+      for (let i = 0; i < remover.length; i += 100) {
+        const lote = remover.slice(i, i + 100);
+        const { error } = await supabase.from('biblioteca_exercicios').update({ ativo: false }).in('id', lote);
+        if (error) throw error;
+      }
+      toast.success(`${remover.length} duplicado(s) removido(s)`);
+      carregar();
+    } catch (e: any) {
+      toast.error('Erro ao remover: ' + (e.message || e));
+    } finally {
+      setRemovendoDup(false);
+    }
+  };
 
   // Verifica se um GIF/imagem carrega de fato (roda no navegador do profissional,
   // que tem acesso à rede). Timeout evita travar em URL lenta.
@@ -452,6 +490,11 @@ export default function BibliotecaExercicios() {
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-amber-300 bg-amber-50 text-amber-700 text-xs font-medium hover:bg-amber-100 shrink-0 whitespace-nowrap disabled:opacity-50">
             {verificando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageOff className="h-4 w-4" />}
             {verificando ? `Verificando… ${progVerif.done}/${progVerif.total}` : 'Verificar GIFs quebrados'}
+          </button>
+          <button type="button" onClick={removerDuplicados} disabled={removendoDup || !!pack}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-rose-300 bg-rose-50 text-rose-700 text-xs font-medium hover:bg-rose-100 shrink-0 whitespace-nowrap disabled:opacity-50">
+            {removendoDup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            {removendoDup ? 'Removendo…' : 'Remover duplicados'}
           </button>
         </div>
 

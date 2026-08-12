@@ -24,17 +24,17 @@ export const SEGMENTOS: Segmento[] = ['Membros inferiores', 'Membros superiores'
 export const FUNCOES: Funcao[] = ['Força', 'Mobilidade', 'Alongamento', 'Funcional', 'Cardio', 'Equilíbrio'];
 
 const SEG_RULES: [RegExp, Segmento][] = [
-  [/burpee|thruster|clean|snatch|corpo todo|full[ -]?body|swing/i, 'Corpo todo'],
-  [/squat|lunge|\bleg\b|calf|glut|hip|deadlift|agachamen|afundo|avanço|perna|panturril|gl[uú]te|quadril|coxa|posterior|adutor|abdutor|joelho|tornozelo/i, 'Membros inferiores'],
-  [/push[ -]?up|bench|chest|\bdip\b|pull[ -]?up|chin[ -]?up|\brow\b|\bback\b|\blat\b|shoulder|overhead|raise|curl|bicep|tricep|supino|rosca|ombro|peito|costas|tr[ií]ceps|b[ií]ceps|remada|puxada|desenvolvimento|punho|cotovelo/i, 'Membros superiores'],
-  [/plank|crunch|sit[ -]?up|\bab\b|core|twist|mountain|prancha|abdômen|abdominal|abdomin|lombar|obl[ií]quo|tronco|coluna|cervical|paravertebr/i, 'Tronco / Core'],
+  [/burpee|thruster|clean|snatch|corpo todo|full[ -]?body|swing|polichinelo|arranco|levantamento ol[ií]mpico/i, 'Corpo todo'],
+  [/squat|lunge|\bleg\b|calf|glut|hip|deadlift|agachamen|afundo|avanço|passada|perna|panturril|gl[uú]te|quadril|coxa|posterior|adutor|abdutor|joelho|tornozelo|terra|stiff|extensora|flexora|leg[ -]?press|cadeira (extensora|flexora|abdutora|adutora)|elevaç[aã]o de quadril|elevaç[aã]o p[eé]lvica|ponte de gl[uú]te/i, 'Membros inferiores'],
+  [/push[ -]?up|bench|chest|\bdip\b|pull[ -]?up|chin[ -]?up|\brow\b|\bback\b|\blat\b|shoulder|overhead|raise|curl|bicep|tricep|supino|rosca|ombro|peito|costas|tr[ií]ceps|b[ií]ceps|remada|puxada|desenvolvimento|punho|cotovelo|flex[aã]o de bra[çc]o|mergulho|barra fixa|barra supinada|elevaç[aã]o lateral|elevaç[aã]o frontal|crucifixo|voador|paralelas|face[ -]?pull|encolhimento|trap[eé]zio/i, 'Membros superiores'],
+  [/plank|crunch|sit[ -]?up|\bab\b|core|twist|mountain|prancha|abdômen|abdominal|abdomin|lombar|obl[ií]quo|tronco|coluna|cervical|paravertebr|escalador|abdominal russa|\brussa\b|superman/i, 'Tronco / Core'],
 ];
 
 const FUN_RULES: [RegExp, Funcao][] = [
   [/stretch|along|flexibil/i, 'Alongamento'],
   [/mobil|mobility|articular|amplitude|adm\b/i, 'Mobilidade'],
-  [/balance|equil[ií]br|proprio|unipodal|bosu|instab/i, 'Equilíbrio'],
-  [/cardio|jump|\brun\b|running|burpee|jack|high[ -]?knee|corrida|pular|salto|aer[óo]b|hiit|escada/i, 'Cardio'],
+  [/balance|equil[ií]br|proprio|unipodal|bosu|instab|prancha lateral/i, 'Equilíbrio'],
+  [/cardio|jump|\brun\b|running|burpee|jack|high[ -]?knee|corrida|pular|salto|aer[óo]b|hiit|escada|polichinelo|escalador|corda/i, 'Cardio'],
   [/functional|funcional|carry|farmer|agilidad|kettlebell|swing|arremesso|arrast|carreg/i, 'Funcional'],
 ];
 
