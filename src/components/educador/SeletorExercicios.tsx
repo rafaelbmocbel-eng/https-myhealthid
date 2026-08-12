@@ -40,11 +40,17 @@ export default function SeletorExercicios({ open, onOpenChange, onPick }: Props)
     enabled: !!user?.id && open,
     queryFn: async () => {
       // Biblioteca compartilhada: os seus + os compartilhados por outros
-      // profissionais (a RLS filtra own OR compartilhado).
-      const { data } = await (supabase as any).from('biblioteca_exercicios')
-        .select('id, nome, grupo_muscular, gif_url, orientacoes, series_padrao, repeticoes_padrao, descanso_padrao_segundos')
-        .eq('ativo', true).order('nome');
-      return (data || []).map((e: any) => ({ ...e, ...classificarExercicio(e.nome, e.grupo_muscular) }));
+      // profissionais (a RLS filtra own OR compartilhado). Busca em páginas
+      // porque o Supabase limita a 1000 linhas por consulta.
+      let todos: any[] = [];
+      for (let from = 0; from < 50000; from += 1000) {
+        const { data } = await (supabase as any).from('biblioteca_exercicios')
+          .select('id, nome, grupo_muscular, gif_url, orientacoes, series_padrao, repeticoes_padrao, descanso_padrao_segundos')
+          .eq('ativo', true).order('nome').range(from, from + 999);
+        todos = todos.concat(data || []);
+        if (!data || data.length < 1000) break;
+      }
+      return todos.map((e: any) => ({ ...e, ...classificarExercicio(e.nome, e.grupo_muscular) }));
     },
   });
 

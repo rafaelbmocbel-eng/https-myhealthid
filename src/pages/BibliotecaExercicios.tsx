@@ -85,14 +85,24 @@ export default function BibliotecaExercicios() {
 
   const carregar = async () => {
     if (!user) return;
-    // Biblioteca compartilhada: mostra os seus + os que outros profissionais
-    // deixaram compartilhados (a RLS já filtra own OR compartilhado).
-    const { data } = await supabase
-      .from('biblioteca_exercicios')
-      .select('*')
-      .eq('ativo', true)
-      .order('nome', { ascending: true });
-    setLista((data || []) as Exercicio[]);
+    // Biblioteca compartilhada: mostra os seus + os compartilhados (a RLS filtra
+    // own OR compartilhado). O Supabase devolve no máximo 1000 linhas por consulta,
+    // então buscamos em PÁGINAS até trazer todos — senão os exercícios além do
+    // 1000º não apareceriam (era esse o bug de "não entram").
+    const size = 1000;
+    let todos: Exercicio[] = [];
+    for (let from = 0; from < 50000; from += size) {
+      const { data, error } = await supabase
+        .from('biblioteca_exercicios')
+        .select('*')
+        .eq('ativo', true)
+        .order('nome', { ascending: true })
+        .range(from, from + size - 1);
+      if (error) { toast.error('Erro ao carregar: ' + error.message); break; }
+      todos = todos.concat((data || []) as Exercicio[]);
+      if (!data || data.length < size) break;
+    }
+    setLista(todos);
     setLoading(false);
   };
 
@@ -216,10 +226,16 @@ export default function BibliotecaExercicios() {
       pares.set(base, par);
     }
 
-    // Evita duplicar em re-envios: pula o que já existe pelo nome original
-    const { data: existentes } = await supabase.from('biblioteca_exercicios')
-      .select('nome_original').eq('terapeuta_id', user.id).eq('ativo', true);
-    const jaTem = new Set((existentes || []).map((e: any) => (e.nome_original || '').toLowerCase()).filter(Boolean));
+    // Evita duplicar em re-envios: pula o que já existe pelo nome original.
+    // Busca em páginas (o Supabase limita a 1000 por consulta).
+    const jaTem = new Set<string>();
+    for (let from = 0; from < 50000; from += 1000) {
+      const { data: existentes } = await supabase.from('biblioteca_exercicios')
+        .select('nome_original').eq('terapeuta_id', user.id).eq('ativo', true)
+        .range(from, from + 999);
+      (existentes || []).forEach((e: any) => { const n = (e.nome_original || '').toLowerCase(); if (n) jaTem.add(n); });
+      if (!existentes || existentes.length < 1000) break;
+    }
 
     const lista = [...pares.values()];
     setPack({ done: 0, total: lista.length });
