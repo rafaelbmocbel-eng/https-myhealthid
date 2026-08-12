@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, venceuPrazoProximaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
+import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
 interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; }
 
@@ -226,10 +226,10 @@ export default function ControleCassi() {
     const ultimo = guiaPorPaciente.get(p.id)?.data_pedido || null;
     return !ultimo || ultimo < sol;
   };
-  // Precisa pedir guia (sem guia / acabando / 2ª guia do mês) E ainda não foi pedida.
+  // Precisa pedir guia (faltam ≤ 2 sessões / guia usada / sem guia) E ainda não
+  // foi pedida. Baseado nas sessões (tempo hábil), não em prazo fixo de calendário.
   const pedidosDoMes = useMemo(() => linhas.filter((l) =>
-    (precisaNovaGuia(l.guia) || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes))
-    && !pedidoAberto(l.paciente)
+    precisaNovaGuia(l.guia) && !pedidoAberto(l.paciente)
   ), [linhas, guiaPorPaciente]);
   // Guias já pedidas, aguardando a CASSI liberar.
   const guiasPedidas = useMemo(() => linhas.filter((l) => pedidoAberto(l.paciente)), [linhas, guiaPorPaciente]);
@@ -266,9 +266,9 @@ export default function ControleCassi() {
   // mais recente fechou no mês passado (carrega pra continuar este mês).
   const rosterEsteMes = useMemo(() => linhas.filter((l) => {
     if (l.paciente.cassi_confirmado_mes === mesVigente) return true; // confirmado neste mês
-    // Cliente de 2 guias/mês que precisa de pedido: sempre aparece aqui.
+    // Cliente de 2 guias/mês que precisa de pedido (faltam ≤ 2 sessões): aparece aqui.
     const p2 = (l.paciente.guias_por_mes || 1) >= 2;
-    if (p2 && (precisaNovaGuia(l.guia) || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes))) return true;
+    if (p2 && precisaNovaGuia(l.guia)) return true;
     const g = l.guia;
     if (!g) return false;
     const pm = prodMesGuia(g);
@@ -528,18 +528,17 @@ export default function ControleCassi() {
                   const confirmado = paciente.cassi_confirmado_mes === mesVigente;
                   const ativaEsteMes = guia?.status === 'ativa' && prodMesGuia(guia) === mesVigente;
                   const ok = confirmado || ativaEsteMes;
-                  const prazoVenceu = venceuPrazoProximaGuia(guia, paciente.guias_por_mes);
                   const guiaAcabou = !!guia && aut > 0 && real >= aut;
-                  // Regra do pedido: só aparece "Pedir guia" quando FALTAM ≤ 2 sessões
-                  // pra terminar a guia vigente (dá tempo hábil de pedir a próxima).
-                  // Pra 2/mês (sequencial) vale o mesmo, ou o prazo dos ~13 dias.
-                  const faltamPoucas = !!guia && aut > 0 && restantes <= 2;
-                  const precisaPedido = (paciente.guias_por_mes || 1) >= 2 && !ok && (precisaNovaGuia(guia) || prazoVenceu);
-                  const precisaPedir = precisaPedido || faltamPoucas;
+                  // Regra do pedido (tempo hábil): pela contagem de sessões, não por
+                  // calendário fixo. Aparece "Pedir guia" quando FALTAM ≤ 2 sessões da
+                  // guia vigente (ou ela já acabou). Vale igual pra 1/mês e 2/mês —
+                  // como é sequencial, quem faz rápido pede 2 no mês; quem faz devagar,
+                  // ~3 em 2 meses. Sem prazo de 13 dias, que atropelava os mais lentos.
+                  const precisaPedir = !!guia && precisaNovaGuia(guia);
                   const estado: 'guia' | 'confirmar' | 'ok' =
                     precisaPedir ? 'guia' : ok ? 'ok' : 'confirmar';
                   const fimISO = guia ? projetarFimGuia(guia) : null;
-                  return { paciente, guia, aut, real, restantes, pct, confirmado, ok, prazoVenceu, precisaPedido, precisaPedir, guiaAcabou, estado, fimISO };
+                  return { paciente, guia, aut, real, restantes, pct, confirmado, ok, precisaPedir, guiaAcabou, estado, fimISO };
                 });
                 const nGuia = linhasMes.filter((l) => l.estado === 'guia').length;
                 const nConf = linhasMes.filter((l) => l.estado === 'confirmar').length;
@@ -647,7 +646,7 @@ export default function ControleCassi() {
                                           : `${l.restantes} sessões restantes`}
                                       </p>
                                     </>
-                                  ) : l.precisaPedido ? (
+                                  ) : l.precisaPedir ? (
                                     <p className="text-[12px] text-rose-700 dark:text-rose-300 mt-1 font-medium">Precisa de nova guia — monte em “Pedir guias”</p>
                                   ) : l.ok ? (
                                     <p className="text-[12px] text-emerald-700 dark:text-emerald-400 mt-1">Guia confirmada — registre nº e sessões pra acompanhar</p>
@@ -1811,12 +1810,12 @@ function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
   const [dandoBaixa, setDandoBaixa] = useState(false);
   const [verTexto, setVerTexto] = useState(false);
 
-  // Motivo de cada cliente estar na lista (sem guia / acabando / 2ª guia do mês).
+  // Motivo de cada cliente estar na lista (sem guia / faltam poucas / 2/mês).
   const motivos = useMemo(() => {
     const m = new Map<string, string>();
     for (const l of linhas) {
-      m.set(l.paciente.id, venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes)
-        ? '2ª guia do mês' : statusPaciente(l.guia).label);
+      m.set(l.paciente.id, (l.paciente.guias_por_mes || 1) >= 2
+        ? 'cliente 2/mês' : statusPaciente(l.guia).label);
     }
     return m;
   }, [linhas]);
