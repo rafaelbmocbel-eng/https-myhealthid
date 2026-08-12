@@ -529,12 +529,16 @@ export default function ControleCassi() {
                   const ativaEsteMes = guia?.status === 'ativa' && prodMesGuia(guia) === mesVigente;
                   const ok = confirmado || ativaEsteMes;
                   const prazoVenceu = venceuPrazoProximaGuia(guia, paciente.guias_por_mes);
+                  // Guia vigente terminou (sessões concluídas) → precisa pedir a próxima,
+                  // seja 1/mês ou 2/mês (2/mês é sequencial: a próxima entra quando esta acaba).
+                  const guiaAcabou = !!guia && aut > 0 && real >= aut;
                   const precisaPedido = (paciente.guias_por_mes || 1) >= 2 && !ok && (precisaNovaGuia(guia) || prazoVenceu);
-                  const acabando = !precisaPedido && !!guia && aut > 0 && restantes <= 2;
+                  const precisaPedir = precisaPedido || guiaAcabou;
+                  const acabando = !precisaPedir && !!guia && aut > 0 && restantes <= 2;
                   const estado: 'guia' | 'acabando' | 'confirmar' | 'ok' =
-                    precisaPedido ? 'guia' : acabando ? 'acabando' : ok ? 'ok' : 'confirmar';
+                    precisaPedir ? 'guia' : acabando ? 'acabando' : ok ? 'ok' : 'confirmar';
                   const fimISO = guia ? projetarFimGuia(guia) : null;
-                  return { paciente, guia, aut, real, restantes, pct, confirmado, ok, prazoVenceu, precisaPedido, estado, fimISO };
+                  return { paciente, guia, aut, real, restantes, pct, confirmado, ok, prazoVenceu, precisaPedido, precisaPedir, guiaAcabou, estado, fimISO };
                 });
                 const nGuia = linhasMes.filter((l) => l.estado === 'guia').length;
                 const nAcab = linhasMes.filter((l) => l.estado === 'acabando').length;
@@ -588,7 +592,7 @@ export default function ControleCassi() {
                           const gpm = paciente.guias_por_mes || 1;
                           const nome = `${paciente.nome} ${paciente.sobrenome || ''}`.trim();
                           // Ação principal do card — só uma, conforme o estado.
-                          const primary = l.precisaPedido ? (
+                          const primary = l.precisaPedir ? (
                             <Button size="sm" className="w-full h-9 gap-1.5 text-[13px] bg-rose-600 hover:bg-rose-700 text-white" onClick={() => setView('pedir')}>
                               <AlertTriangle className="h-4 w-4" /> Pedir guia
                             </Button>
@@ -622,8 +626,9 @@ export default function ControleCassi() {
                                         </div>
                                         <span className="text-[14px] font-extrabold tabular-nums shrink-0">{l.real}/{l.aut}</span>
                                       </div>
-                                      <p className="text-[11px] text-muted-foreground mt-1">
-                                        {l.prazoVenceu ? 'Hora de pedir a próxima guia'
+                                      <p className={`text-[11px] mt-1 ${l.guiaAcabou ? 'text-rose-700 dark:text-rose-300 font-medium' : 'text-muted-foreground'}`}>
+                                        {l.guiaAcabou ? 'Guia concluída — peça a próxima'
+                                          : l.prazoVenceu ? 'Hora de pedir a próxima guia'
                                           : fim ? `termina ~${fim}${l.restantes <= 2 ? ` · faltam ${l.restantes}` : ''}`
                                           : `${l.restantes} sessões restantes`}
                                       </p>
@@ -923,6 +928,9 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
           ...payload,
         });
         if (error) throw error;
+        // A nova guia é a vigente → já coloca o cliente em "Este mês" (a antiga
+        // acabou de virar histórico acima). Fica editável por lá normalmente.
+        await sb.from('pacientes').update({ cassi_confirmado_mes: mesAtualISO() }).eq('id', paciente.id);
       }
       // Modificador de guias/mês do cliente (só grava se mudou).
       if (duasPorMes !== ((paciente.guias_por_mes || 1) >= 2)) {
