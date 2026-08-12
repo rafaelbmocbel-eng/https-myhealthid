@@ -594,7 +594,6 @@ export default function ControleCassi() {
                         {filtradas.map((l) => {
                           const { paciente, guia } = l;
                           const stripe = l.estado === 'guia' ? 'before:bg-rose-500'
-                            : l.estado === 'acabando' ? 'before:bg-amber-500'
                             : l.estado === 'ok' ? 'before:bg-emerald-500' : 'before:bg-slate-400';
                           const fim = l.fimISO ? `${l.fimISO.slice(8, 10)}/${l.fimISO.slice(5, 7)}` : null;
                           // Guia atravessa o mês: termina num mês depois do que começou.
@@ -1393,7 +1392,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     queryFn: async () => {
       const t = mergeBusca.trim().replace(/[%,()]/g, '');
       const { data } = await (supabase as any).from('pacientes')
-        .select('id, nome, sobrenome, carteirinha, codigos_cassi, cassi_diagnostico, plano_saude')
+        .select('id, nome, sobrenome, carteirinha, codigos_cassi, cassi_diagnostico, guias_por_mes, cassi_confirmado_mes, plano_saude')
         .eq('terapeuta_id', user!.id).eq('ativo', true).neq('id', paciente!.id)
         .or(`nome.ilike.%${t}%,sobrenome.ilike.%${t}%`)
         .order('nome', { ascending: true }).limit(10);
@@ -1423,8 +1422,10 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         carteirinha: (paciente.carteirinha || '').trim() || alvo.carteirinha || null,
         codigos_cassi: (paciente.codigos_cassi?.length ? paciente.codigos_cassi : (alvo.codigos_cassi || [])),
         cassi_diagnostico: paciente.cassi_diagnostico || alvo.cassi_diagnostico || null,
-        guias_por_mes: paciente.guias_por_mes || 1,
-        cassi_confirmado_mes: paciente.cassi_confirmado_mes || null,
+        // Não rebaixar o que fica: prefere o maior guias/mês e mantém a confirmação
+        // do mês se qualquer um dos dois estiver confirmado.
+        guias_por_mes: Math.max(paciente.guias_por_mes || 1, alvo.guias_por_mes || 1),
+        cassi_confirmado_mes: paciente.cassi_confirmado_mes || alvo.cassi_confirmado_mes || null,
         cassi_encerrado_em: null, cassi_encerrado_motivo: null,
       }).eq('id', alvo.id);
       if (p.error) throw p.error;
@@ -1451,12 +1452,21 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     setAlvoId(p.id);
     setAlvoEncerrado(!!p.cassi_encerrado_em);
   };
-  // Vincula ao cadastro que já existe (evita duplicar), mantendo os dados da guia
-  // que o profissional já digitou.
+  // Vincula ao cadastro que já existe (evita duplicar). Carrega TODOS os dados do
+  // paciente no formulário (email, telefone, diagnóstico, códigos, guias/mês) —
+  // senão o update ao salvar zeraria os campos que ficaram em branco. Mantém só os
+  // dados da 1ª guia que o profissional acabou de digitar.
   const vincularExistente = (p: any) => {
+    setF((prev) => ({
+      nome: p.nome || '', sobrenome: p.sobrenome ?? '',
+      carteirinha: p.carteirinha || '', diagnostico: p.cassi_diagnostico || '',
+      email: p.email || '', telefone: p.telefone || '',
+      data_resposta: prev.data_resposta, sessoes: prev.sessoes,
+    }));
+    setCodigos(Array.isArray(p.codigos_cassi) ? p.codigos_cassi : []);
+    setGuiasPorMes(Number(p.guias_por_mes) >= 2 ? 2 : 1);
     setAlvoId(p.id);
     setAlvoEncerrado(!!p.cassi_encerrado_em);
-    setF((prev) => ({ ...prev, nome: p.nome || prev.nome, sobrenome: p.sobrenome ?? '', carteirinha: prev.carteirinha.trim() || p.carteirinha || '' }));
   };
 
   const salvar = useMutation({
