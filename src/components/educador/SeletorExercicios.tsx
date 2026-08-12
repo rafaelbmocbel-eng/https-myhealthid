@@ -95,23 +95,29 @@ export default function SeletorExercicios({ open, onOpenChange, onPick }: Props)
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input className="pl-8" placeholder="Buscar por nome ou grupo…" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
-          {/* Filtro por SEGMENTO */}
-          <div className="flex flex-wrap gap-1.5">
-            {(['Todos', ...SEGMENTOS] as const).map((s) => (
-              <button key={s} onClick={() => setSegAtivo(s as any)}
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${segAtivo === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
-                {s}
-              </button>
-            ))}
+          {/* Filtro por REGIÃO DO CORPO */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Região do corpo</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(['Todos', ...SEGMENTOS] as const).map((s) => (
+                <button key={s} onClick={() => setSegAtivo(s as any)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${segAtivo === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-          {/* Filtro por FUNÇÃO */}
-          <div className="flex flex-wrap gap-1.5">
-            {(['Todas', ...FUNCOES] as const).map((f) => (
-              <button key={f} onClick={() => setFunAtivo(f as any)}
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${funAtivo === f ? 'bg-accent text-accent-foreground border-accent' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
-                {f}
-              </button>
-            ))}
+          {/* Filtro por TIPO DE EXERCÍCIO */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Tipo de exercício</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(['Todas', ...FUNCOES] as const).map((f) => (
+                <button key={f} onClick={() => setFunAtivo(f as any)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${funAtivo === f ? 'bg-accent text-accent-foreground border-accent' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
+                  {f}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

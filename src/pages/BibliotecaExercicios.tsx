@@ -443,23 +443,29 @@ export default function BibliotecaExercicios() {
           </p>
         )}
 
-        {/* Filtros por categoria — segmento e função */}
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap gap-1.5">
-            {(['Todos', ...SEGMENTOS] as const).map(s => (
-              <button key={s} onClick={() => setSegAtivo(s as any)}
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${segAtivo === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
-                {s}
-              </button>
-            ))}
+        {/* Filtros por categoria — região do corpo e tipo de exercício */}
+        <div className="space-y-2">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Região do corpo</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(['Todos', ...SEGMENTOS] as const).map(s => (
+                <button key={s} onClick={() => setSegAtivo(s as any)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${segAtivo === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {(['Todas', ...FUNCOES] as const).map(f => (
-              <button key={f} onClick={() => setFunAtivo(f as any)}
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${funAtivo === f ? 'bg-accent text-accent-foreground border-accent' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
-                {f}
-              </button>
-            ))}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Tipo de exercício</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(['Todas', ...FUNCOES] as const).map(f => (
+                <button key={f} onClick={() => setFunAtivo(f as any)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${funAtivo === f ? 'bg-accent text-accent-foreground border-accent' : 'border-border/60 text-muted-foreground hover:bg-muted/40'}`}>
+                  {f}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

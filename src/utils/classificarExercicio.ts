@@ -8,7 +8,7 @@
 export type Segmento =
   | 'Membros inferiores'
   | 'Membros superiores'
-  | 'Tronco / Core'
+  | 'Abdômen / Core'
   | 'Corpo todo'
   | 'Outros';
 
@@ -20,14 +20,14 @@ export type Funcao =
   | 'Cardio'
   | 'Equilíbrio';
 
-export const SEGMENTOS: Segmento[] = ['Membros inferiores', 'Membros superiores', 'Tronco / Core', 'Corpo todo', 'Outros'];
+export const SEGMENTOS: Segmento[] = ['Membros inferiores', 'Membros superiores', 'Abdômen / Core', 'Corpo todo', 'Outros'];
 export const FUNCOES: Funcao[] = ['Força', 'Mobilidade', 'Alongamento', 'Funcional', 'Cardio', 'Equilíbrio'];
 
 const SEG_RULES: [RegExp, Segmento][] = [
   [/burpee|thruster|clean|snatch|corpo todo|full[ -]?body|swing|polichinelo|arranco|levantamento ol[ií]mpico/i, 'Corpo todo'],
   [/squat|lunge|\bleg\b|calf|glut|hip|deadlift|agachamen|afundo|avanço|passada|perna|panturril|gl[uú]te|quadril|coxa|posterior|adutor|abdutor|joelho|tornozelo|terra|stiff|extensora|flexora|leg[ -]?press|cadeira (extensora|flexora|abdutora|adutora)|elevaç[aã]o de quadril|elevaç[aã]o p[eé]lvica|ponte de gl[uú]te/i, 'Membros inferiores'],
   [/push[ -]?up|bench|chest|\bdip\b|pull[ -]?up|chin[ -]?up|\brow\b|\bback\b|\blat\b|shoulder|overhead|raise|curl|bicep|tricep|supino|rosca|ombro|peito|costas|tr[ií]ceps|b[ií]ceps|remada|puxada|desenvolvimento|punho|cotovelo|flex[aã]o de bra[çc]o|mergulho|barra fixa|barra supinada|elevaç[aã]o lateral|elevaç[aã]o frontal|crucifixo|voador|paralelas|face[ -]?pull|encolhimento|trap[eé]zio/i, 'Membros superiores'],
-  [/plank|crunch|sit[ -]?up|\bab\b|core|twist|mountain|prancha|abdômen|abdominal|abdomin|lombar|obl[ií]quo|tronco|coluna|cervical|paravertebr|escalador|abdominal russa|\brussa\b|superman/i, 'Tronco / Core'],
+  [/plank|crunch|sit[ -]?up|\bab\b|core|twist|mountain|prancha|abdômen|abdominal|abdomin|lombar|obl[ií]quo|tronco|coluna|cervical|paravertebr|escalador|abdominal russa|\brussa\b|superman/i, 'Abdômen / Core'],
 ];
 
 const FUN_RULES: [RegExp, Funcao][] = [
