@@ -1348,6 +1348,8 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   const [busca, setBusca] = useState('');
   const [alvoId, setAlvoId] = useState<string | null>(null);
   const [alvoEncerrado, setAlvoEncerrado] = useState(false); // alvo é CASSI encerrado (reativar)
+  const [mergeBusca, setMergeBusca] = useState(''); // juntar duplicado com cadastro existente
+  const [mergendo, setMergendo] = useState(false);
   const termo = busca.trim().replace(/[%,()]/g, '').trim();
 
   const { data: achados = [], isFetching } = useQuery({
@@ -1367,6 +1369,70 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     enabled: !!user && !editando && modo === 'existente' && termo.length >= 2,
   });
 
+  // Anti-duplicação: no modo "Novo", checa se já existe alguém com esse nome no
+  // app (pra não criar cadastro repetido — o certo é vincular ao que já existe).
+  const nomeBusca = `${f.nome} ${f.sobrenome}`.trim();
+  const { data: possiveisDup = [] } = useQuery({
+    queryKey: ['cassi-dup-check', user?.id, nomeBusca.toLowerCase()],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('pacientes')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, plano_saude, cassi_diagnostico, guias_por_mes, cassi_encerrado_em')
+        .eq('terapeuta_id', user!.id).eq('ativo', true)
+        .ilike('nome', `${f.nome.trim()}%`)
+        .order('nome', { ascending: true }).limit(6);
+      return (data || []) as any[];
+    },
+    enabled: !!user && !editando && modo === 'novo' && !alvoId && f.nome.trim().length >= 3,
+  });
+
+  // Candidatos pra JUNTAR (quando este cliente é um duplicado) — outros cadastros
+  // ativos do profissional, exceto este.
+  const { data: mergeCandidatos = [] } = useQuery({
+    queryKey: ['cassi-merge-cand', user?.id, paciente?.id, mergeBusca.trim().toLowerCase()],
+    queryFn: async () => {
+      const t = mergeBusca.trim().replace(/[%,()]/g, '');
+      const { data } = await (supabase as any).from('pacientes')
+        .select('id, nome, sobrenome, carteirinha, codigos_cassi, cassi_diagnostico, plano_saude')
+        .eq('terapeuta_id', user!.id).eq('ativo', true).neq('id', paciente!.id)
+        .or(`nome.ilike.%${t}%,sobrenome.ilike.%${t}%`)
+        .order('nome', { ascending: true }).limit(10);
+      return (data || []) as any[];
+    },
+    enabled: !!user && editando && !!paciente && mergeBusca.trim().length >= 2,
+  });
+
+  // Junta este cadastro (duplicado) no que já existe: move guias e agenda, copia
+  // os dados CASSI e remove o duplicado. Mantém avaliação/histórico do que fica.
+  const juntarCadastros = async (alvo: any) => {
+    if (!paciente || !user) return;
+    const nomeDup = `${paciente.nome} ${paciente.sobrenome || ''}`.trim();
+    const nomeAlvo = `${alvo.nome} ${alvo.sobrenome || ''}`.trim();
+    if (!confirm(`Juntar "${nomeDup}" com "${nomeAlvo}"?\n\nA guia e os dados CASSI vão para "${nomeAlvo}" (que mantém avaliação, agenda e histórico). Este cadastro duplicado é removido. Não dá pra desfazer.`)) return;
+    setMergendo(true);
+    const sb: any = supabase;
+    try {
+      await sb.from('guias_cassi').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
+      await sb.from('agendamentos').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
+      await sb.from('pacientes').update({
+        plano_saude: 'CASSI',
+        carteirinha: (paciente.carteirinha || '').trim() || alvo.carteirinha || null,
+        codigos_cassi: (paciente.codigos_cassi?.length ? paciente.codigos_cassi : (alvo.codigos_cassi || [])),
+        cassi_diagnostico: paciente.cassi_diagnostico || alvo.cassi_diagnostico || null,
+        guias_por_mes: paciente.guias_por_mes || 1,
+        cassi_confirmado_mes: paciente.cassi_confirmado_mes || null,
+        cassi_encerrado_em: null, cassi_encerrado_motivo: null,
+      }).eq('id', alvo.id);
+      await sb.from('pacientes').update({ ativo: false }).eq('id', paciente.id);
+      toast.success('Cadastros juntados — duplicado removido');
+      onSaved();
+    } catch (e: any) {
+      toast.error('Erro ao juntar: ' + (e.message || e));
+    } finally {
+      setMergendo(false);
+    }
+  };
+
   const resetNovo = () => {
     setF({ nome: '', sobrenome: '', carteirinha: '', diagnostico: '', email: '', telefone: '', data_resposta: '', sessoes: '' });
     setCodigos([]); setGuiasPorMes(1); setAlvoId(null); setAlvoEncerrado(false);
@@ -1377,6 +1443,13 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     setGuiasPorMes(Number(p.guias_por_mes) >= 2 ? 2 : 1);
     setAlvoId(p.id);
     setAlvoEncerrado(!!p.cassi_encerrado_em);
+  };
+  // Vincula ao cadastro que já existe (evita duplicar), mantendo os dados da guia
+  // que o profissional já digitou.
+  const vincularExistente = (p: any) => {
+    setAlvoId(p.id);
+    setAlvoEncerrado(!!p.cassi_encerrado_em);
+    setF((prev) => ({ ...prev, nome: p.nome || prev.nome, sobrenome: p.sobrenome ?? '', carteirinha: prev.carteirinha.trim() || p.carteirinha || '' }));
   };
 
   const salvar = useMutation({
@@ -1537,6 +1610,22 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
               <Input value={f.sobrenome} onChange={(e) => set('sobrenome', e.target.value)} />
             </div>
           </div>
+          {/* Anti-duplicação: já existe alguém com esse nome no app → vincular. */}
+          {!alvoId && possiveisDup.length > 0 && (
+            <div className="rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-2.5 space-y-1.5">
+              <p className="text-[12px] font-medium text-amber-800 dark:text-amber-300">⚠ Já existe esse paciente no app. Vincule pra não duplicar:</p>
+              {possiveisDup.map((p) => (
+                <button key={p.id} type="button" onClick={() => vincularExistente(p)}
+                  className="w-full flex items-center justify-between gap-2 rounded-md border border-amber-300/70 dark:border-amber-800 bg-background px-2.5 py-1.5 text-left hover:bg-amber-100/50 dark:hover:bg-amber-900/20">
+                  <span className="text-[12px] font-medium truncate">{p.nome} {p.sobrenome || ''}
+                    {/cassi/i.test(String(p.plano_saude || '')) && <span className="ml-1 text-[9px] uppercase font-bold text-violet-600">já CASSI</span>}
+                  </span>
+                  <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 shrink-0">Vincular →</span>
+                </button>
+              ))}
+              <p className="text-[10px] text-muted-foreground">Vincular mantém a avaliação, agenda e histórico que o paciente já tem no app.</p>
+            </div>
+          )}
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Carteirinha CASSI</label>
             <Input value={f.carteirinha} onChange={(e) => set('carteirinha', e.target.value)} placeholder="nº do cartão CASSI" />
@@ -1616,6 +1705,29 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
               {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
             </Button>
           </div>
+
+          {/* Juntar duplicado com o cadastro que já existe no app */}
+          {editando && paciente && (
+            <div className="pt-2 mt-1 border-t border-border/40 space-y-1.5">
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Está duplicado? Juntar com o cadastro certo</label>
+              <p className="text-[10px] text-muted-foreground">Escolha o cadastro que já existe no app (com avaliação/agenda). A guia e os dados CASSI vão pra ele e este duplicado é removido.</p>
+              <Input value={mergeBusca} onChange={(e) => setMergeBusca(e.target.value)} placeholder="Buscar o cadastro certo pelo nome…" className="h-9" />
+              {mergeCandidatos.length > 0 && (
+                <div className="space-y-1">
+                  {mergeCandidatos.map((c) => (
+                    <button key={c.id} type="button" disabled={mergendo} onClick={() => juntarCadastros(c)}
+                      className="w-full flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-left hover:bg-muted/40 disabled:opacity-50">
+                      <span className="text-[12px] font-medium truncate">
+                        {c.nome} {c.sobrenome || ''}
+                        {/cassi/i.test(String(c.plano_saude || '')) && <span className="ml-1 text-[9px] uppercase font-bold text-violet-600">CASSI</span>}
+                      </span>
+                      <span className="text-[11px] font-semibold text-primary shrink-0">{mergendo ? '…' : 'Juntar aqui →'}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Encerrar / reativar acompanhamento (só ao editar um cliente existente) */}
           {editando && paciente && (
