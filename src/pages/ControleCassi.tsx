@@ -529,34 +529,33 @@ export default function ControleCassi() {
                   const ativaEsteMes = guia?.status === 'ativa' && prodMesGuia(guia) === mesVigente;
                   const ok = confirmado || ativaEsteMes;
                   const prazoVenceu = venceuPrazoProximaGuia(guia, paciente.guias_por_mes);
-                  // Guia vigente terminou (sessões concluídas) → precisa pedir a próxima,
-                  // seja 1/mês ou 2/mês (2/mês é sequencial: a próxima entra quando esta acaba).
                   const guiaAcabou = !!guia && aut > 0 && real >= aut;
+                  // Regra do pedido: só aparece "Pedir guia" quando FALTAM ≤ 2 sessões
+                  // pra terminar a guia vigente (dá tempo hábil de pedir a próxima).
+                  // Pra 2/mês (sequencial) vale o mesmo, ou o prazo dos ~13 dias.
+                  const faltamPoucas = !!guia && aut > 0 && restantes <= 2;
                   const precisaPedido = (paciente.guias_por_mes || 1) >= 2 && !ok && (precisaNovaGuia(guia) || prazoVenceu);
-                  const precisaPedir = precisaPedido || guiaAcabou;
-                  const acabando = !precisaPedir && !!guia && aut > 0 && restantes <= 2;
-                  const estado: 'guia' | 'acabando' | 'confirmar' | 'ok' =
-                    precisaPedir ? 'guia' : acabando ? 'acabando' : ok ? 'ok' : 'confirmar';
+                  const precisaPedir = precisaPedido || faltamPoucas;
+                  const estado: 'guia' | 'confirmar' | 'ok' =
+                    precisaPedir ? 'guia' : ok ? 'ok' : 'confirmar';
                   const fimISO = guia ? projetarFimGuia(guia) : null;
                   return { paciente, guia, aut, real, restantes, pct, confirmado, ok, prazoVenceu, precisaPedido, precisaPedir, guiaAcabou, estado, fimISO };
                 });
                 const nGuia = linhasMes.filter((l) => l.estado === 'guia').length;
-                const nAcab = linhasMes.filter((l) => l.estado === 'acabando').length;
                 const nConf = linhasMes.filter((l) => l.estado === 'confirmar').length;
-                const ordem = { guia: 0, acabando: 1, confirmar: 2, ok: 3 };
+                const ordem = { guia: 0, confirmar: 1, ok: 2 };
                 const filtradas = (focoMes === 'todos' ? linhasMes : linhasMes.filter((l) => l.estado === focoMes))
                   .slice().sort((a, b) => ordem[a.estado] - ordem[b.estado]);
 
                 const chips = [
                   { key: 'guia' as const, n: nGuia, icon: '⚠', label: 'precisam de guia', tone: 'danger' },
-                  { key: 'acabando' as const, n: nAcab, icon: '⏳', label: 'acabando sessões', tone: 'warn' },
                   { key: 'confirmar' as const, n: nConf, icon: '☐', label: 'a confirmar', tone: 'neutral' },
                 ];
 
                 return (
                   <div className="space-y-3">
                     {/* Painel de ações — o que precisa de atenção agora */}
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {chips.map((c) => {
                         const active = focoMes === c.key;
                         const toneCls = c.tone === 'danger'
@@ -641,10 +640,10 @@ export default function ControleCassi() {
                                         </div>
                                         <span className="text-[14px] font-extrabold tabular-nums shrink-0">{l.real}/{l.aut}</span>
                                       </div>
-                                      <p className={`text-[11px] mt-1 ${l.guiaAcabou ? 'text-rose-700 dark:text-rose-300 font-medium' : 'text-muted-foreground'}`}>
+                                      <p className={`text-[11px] mt-1 ${l.precisaPedir ? 'text-rose-700 dark:text-rose-300 font-medium' : 'text-muted-foreground'}`}>
                                         {l.guiaAcabou ? 'Guia concluída — peça a próxima'
-                                          : l.prazoVenceu ? 'Hora de pedir a próxima guia'
-                                          : fim ? `termina ~${fim}${l.restantes <= 2 ? ` · faltam ${l.restantes}` : ''}`
+                                          : l.precisaPedir ? `Faltam ${l.restantes} — peça a próxima guia`
+                                          : fim ? `termina ~${fim}`
                                           : `${l.restantes} sessões restantes`}
                                       </p>
                                     </>
@@ -3088,8 +3087,8 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
           const nome = `${p.nome} ${p.sobrenome || ''}`.trim();
           const ativa = gs.find((g) => g.status === 'ativa') || null;
           const ultima = gs[0] || null;
-          // Guia vigente acabou (ou não existe) → precisa pedir a próxima.
-          const precisaPedir = !ativa || (ativa.sessoes_realizadas || 0) >= diasTratGuia(ativa);
+          // Faltam ≤ 2 sessões (ou não há guia) → precisa pedir a próxima.
+          const precisaPedir = !ativa || (diasTratGuia(ativa) - (ativa.sessoes_realizadas || 0)) <= 2;
           const totalFeitas = gs.reduce((s, g) => s + (g.sessoes_realizadas || 0), 0);
           const ativo = !p.cassi_encerrado_em;
           const marcado = (p.guias_por_mes || 1) >= 2;

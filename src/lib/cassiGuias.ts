@@ -86,10 +86,12 @@ export function statusPaciente(guia: GuiaCassi | null): StatusPaciente {
   return { key: 'ativa', label: 'Guia ativa', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300', restantes };
 }
 
-// Precisa de guia nova (para a fila "Pedidos do mês").
+// Precisa de guia nova (para a fila "Pedidos do mês"). Vale quando faltam ≤ 2
+// sessões (pedir_nova), quando a guia foi toda usada (pronta_entregar) e quando
+// não há guia (sem_guia) — assim há tempo hábil de pedir a próxima.
 export function precisaNovaGuia(guia: GuiaCassi | null): boolean {
   const s = statusPaciente(guia);
-  return s.key === 'pedir_nova' || s.key === 'sem_guia';
+  return s.key === 'pedir_nova' || s.key === 'sem_guia' || s.key === 'pronta_entregar';
 }
 
 // Prazo p/ pedir a PRÓXIMA guia do cliente de 2 guias/mês: ~13 dias corridos
