@@ -2902,6 +2902,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
   const { user } = useAuth();
   const [busca, setBusca] = useState('');
   const [mes, setMes] = useState(''); // '' = total (todos os meses)
+  const [histCliente, setHistCliente] = useState<Paciente | null>(null); // histórico de guias aberto
 
   // Sessões no mês escolhido, por paciente (só busca quando um mês é selecionado).
   const { data: ags = [] } = useQuery({
@@ -3011,6 +3012,8 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
           const nome = `${p.nome} ${p.sobrenome || ''}`.trim();
           const ativa = gs.find((g) => g.status === 'ativa') || null;
           const ultima = gs[0] || null;
+          // Guia vigente acabou (ou não existe) → precisa pedir a próxima.
+          const precisaPedir = !ativa || (ativa.sessoes_realizadas || 0) >= diasTratGuia(ativa);
           const totalFeitas = gs.reduce((s, g) => s + (g.sessoes_realizadas || 0), 0);
           const ativo = !p.cassi_encerrado_em;
           const marcado = (p.guias_por_mes || 1) >= 2;
@@ -3050,18 +3053,23 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                     <DropdownMenuItem onClick={() => onCadastro(p)}>
                       <Pencil className="h-3.5 w-3.5 mr-2" /> Editar cadastro
                     </DropdownMenuItem>
-                    {gs.length === 0 ? (
+                    {precisaPedir ? (
                       <DropdownMenuItem onClick={onPedirGuia}>
                         <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Pedir guia
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem onClick={() => onGuia(p, ativa || ultima)}>
-                        <FileText className="h-3.5 w-3.5 mr-2" /> Ver guia
+                        <FileText className="h-3.5 w-3.5 mr-2" /> Ver guia (vigente)
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={() => onGuia(p, null)}>
                       <Plus className="h-3.5 w-3.5 mr-2" /> Nova guia
                     </DropdownMenuItem>
+                    {gs.length > 0 && (
+                      <DropdownMenuItem onClick={() => setHistCliente(p)}>
+                        <ClipboardList className="h-3.5 w-3.5 mr-2" /> Histórico de guias ({gs.length})
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => onDefinirGuiasMes(p.id, marcado ? 1 : 2)}>
                       <CreditCard className="h-3.5 w-3.5 mr-2" /> Mudar para {marcado ? '1' : '2'} guia/mês
                     </DropdownMenuItem>
@@ -3079,7 +3087,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                     <CheckCircle2 className="h-4 w-4" /> Ativar cliente
                   </Button>
                 ) : p.cassi_confirmado_mes === mesVigente ? (
-                  gs.length === 0 ? (
+                  precisaPedir ? (
                     <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-amber-700 border-amber-300 dark:border-amber-800" onClick={onPedirGuia}>
                       <AlertTriangle className="h-4 w-4" /> Pedir guia
                     </Button>
@@ -3099,6 +3107,51 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
         })}
         {lista.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">Nenhum cliente.</p>}
       </div>
+
+      {/* Histórico de guias do cliente — ver todas, editar só ao clicar em "Editar" */}
+      {histCliente && (() => {
+        const gsHist = (guiasPorPac.get(histCliente.id) || []).slice()
+          .sort((a, b) => (b.data_resposta || b.data_pedido || '').localeCompare(a.data_resposta || a.data_pedido || ''));
+        const nomeH = `${histCliente.nome} ${histCliente.sobrenome || ''}`.trim();
+        return (
+          <Dialog open onOpenChange={(o) => !o && setHistCliente(null)}>
+            <DialogContent className="max-w-md w-[95vw] max-h-[92vh] overflow-y-auto">
+              <DialogHeader><DialogTitle className="text-base">Histórico de guias — {nomeH}</DialogTitle></DialogHeader>
+              <p className="text-[11px] text-muted-foreground -mt-1">A guia atual fica em <b>Este mês</b>. Aqui ficam todas as guias — a antiga vira histórico quando você cria uma nova. Clique em <b>Editar</b> para alterar uma delas.</p>
+              <div className="space-y-2 mt-1">
+                {gsHist.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">Nenhuma guia ainda.</p>
+                ) : gsHist.map((g, i) => {
+                  const aut = diasTratGuia(g);
+                  const real = g.sessoes_realizadas || 0;
+                  const fim = projetarFimGuia(g);
+                  const vigente = g.status === 'ativa';
+                  return (
+                    <div key={g.id} className={`rounded-lg border p-2.5 ${vigente ? 'border-emerald-300 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/10' : 'border-border/60'}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">
+                            {g.numero_guia ? `Guia ${g.numero_guia}` : `Guia ${gsHist.length - i}`}
+                            {vigente && <span className="ml-1.5 text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 align-middle">vigente</span>}
+                            {g.status === 'cancelada' && <span className="ml-1.5 text-[9px] uppercase font-bold text-muted-foreground align-middle">cancelada</span>}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {g.data_resposta ? fmtData(g.data_resposta) : g.data_pedido ? fmtData(g.data_pedido) : '—'}{fim ? ` → ${fmtData(fim)}` : ''} · <b className="text-foreground tabular-nums">{real}/{aut}</b> sessões
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline" className="h-8 text-[12px] gap-1.5 shrink-0"
+                          onClick={() => { onGuia(histCliente, g); setHistCliente(null); }}>
+                          <Pencil className="h-3.5 w-3.5" /> Editar
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
