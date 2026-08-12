@@ -615,7 +615,22 @@ export default function ControleCassi() {
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <p className="text-[15px] font-bold truncate leading-tight">{nome}</p>
-                                    {gpm >= 2 && <span className="text-[9px] uppercase font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/30 rounded px-1 shrink-0">2/mês</span>}
+                                    {/* Controle 1↔2 guia/mês da guia vigente — aqui em "Este mês". Pede confirmação pra não trocar sem querer. */}
+                                    <span className="inline-flex items-center rounded-full border border-border overflow-hidden shrink-0">
+                                      {[1, 2].map((n) => (
+                                        <button key={n} onClick={() => {
+                                          if (gpm === n) return;
+                                          const msg = n === 2
+                                            ? `Marcar "${nome}" como 2 guias/mês? A 2ª guia é pedida quando a 1ª acabar.`
+                                            : `Voltar "${nome}" para 1 guia/mês?`;
+                                          if (confirm(msg)) definirGuiasMes(paciente.id, n);
+                                        }}
+                                          className={`text-[10px] px-2 py-0.5 font-bold ${gpm === n ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:bg-muted'}`}>
+                                          {n}
+                                        </button>
+                                      ))}
+                                      <span className="text-[9px] text-muted-foreground px-1.5">guia/mês</span>
+                                    </span>
                                     {l.confirmado && <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">confirmada</span>}
                                   </div>
                                   {guia && l.aut > 0 ? (
@@ -664,9 +679,6 @@ export default function ControleCassi() {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => setCadastro(paciente)}>
                                       <Pencil className="h-3.5 w-3.5 mr-2" /> Editar cadastro
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => definirGuiasMes(paciente.id, gpm >= 2 ? 1 : 2)}>
-                                      <CreditCard className="h-3.5 w-3.5 mr-2" /> Mudar para {gpm >= 2 ? '1' : '2'} guia/mês
                                     </DropdownMenuItem>
                                     {l.confirmado && (
                                       <DropdownMenuItem onClick={() => desconfirmarGuiaMes(paciente.id)}>
