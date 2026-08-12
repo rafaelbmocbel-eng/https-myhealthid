@@ -114,6 +114,16 @@ function projetarFimGuia(guia: { data_resposta?: string | null; data_pedido?: st
   return `${ultima.getFullYear()}-${String(ultima.getMonth() + 1).padStart(2, '0')}-${String(ultima.getDate()).padStart(2, '0')}`;
 }
 
+// Projeção do término (dias úteis) a partir de um início + nº de sessões, e se a
+// guia ATRAVESSA o mês (não fecha nos dias úteis do mês em que começou). Serve
+// pra avisar quando o cliente começa tarde (ex.: dia 23) e a guia vai pro mês seguinte.
+function projecaoGuia(inicioStr: string | null | undefined, sessoes: number): { fimISO: string | null; atravessa: boolean } {
+  if (!inicioStr || sessoes <= 0) return { fimISO: null, atravessa: false };
+  const fimISO = projetarFimGuia({ data_resposta: inicioStr, sessoes_autorizadas: sessoes });
+  const atravessa = !!fimISO && fimISO.slice(0, 7) > inicioStr.slice(0, 7);
+  return { fimISO, atravessa };
+}
+
 export default function ControleCassi() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -587,6 +597,9 @@ export default function ControleCassi() {
                             : l.estado === 'acabando' ? 'before:bg-amber-500'
                             : l.estado === 'ok' ? 'before:bg-emerald-500' : 'before:bg-slate-400';
                           const fim = l.fimISO ? `${l.fimISO.slice(8, 10)}/${l.fimISO.slice(5, 7)}` : null;
+                          // Guia atravessa o mês: termina num mês depois do que começou.
+                          const inicioMes = (guia?.data_resposta || guia?.data_pedido || '').slice(0, 7);
+                          const atravessa = !!l.fimISO && !!inicioMes && l.fimISO.slice(0, 7) > inicioMes;
                           const gpm = paciente.guias_por_mes || 1;
                           const nome = `${paciente.nome} ${paciente.sobrenome || ''}`.trim();
                           // Ação principal do card — só uma, conforme o estado.
@@ -639,10 +652,10 @@ export default function ControleCassi() {
                                         </div>
                                         <span className="text-[14px] font-extrabold tabular-nums shrink-0">{l.real}/{l.aut}</span>
                                       </div>
-                                      <p className={`text-[11px] mt-1 ${l.precisaPedir ? 'text-rose-700 dark:text-rose-300 font-medium' : 'text-muted-foreground'}`}>
+                                      <p className={`text-[11px] mt-1 ${l.precisaPedir ? 'text-rose-700 dark:text-rose-300 font-medium' : atravessa ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
                                         {l.guiaAcabou ? 'Guia concluída — peça a próxima'
                                           : l.precisaPedir ? `Faltam ${l.restantes} — peça a próxima guia`
-                                          : fim ? `termina ~${fim}`
+                                          : fim ? `${atravessa ? 'atravessa o mês · ' : ''}termina ~${fim}`
                                           : `${l.restantes} sessões restantes`}
                                       </p>
                                     </>
@@ -1033,6 +1046,17 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
               </div>
             </div>
           </div>
+
+          {(() => {
+            const { fimISO, atravessa } = projecaoGuia(d.data_resposta, Number(d.sessoes_autorizadas) || 0);
+            if (!fimISO) return null;
+            const fimBR = `${fimISO.slice(8, 10)}/${fimISO.slice(5, 7)}`;
+            return (
+              <p className={`text-[11px] -mt-1 ${atravessa ? 'text-amber-700 dark:text-amber-400 font-medium' : 'text-muted-foreground'}`}>
+                {atravessa ? `⚠ Não fecha no mês em que começou — termina ~${fimBR} (atravessa o mês, em dias úteis).` : `Termina ~${fimBR} (em dias úteis, sessões seguidas).`}
+              </p>
+            );
+          })()}
 
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Diagnóstico</label>
@@ -1551,6 +1575,16 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
                   <p className="text-[10px] text-muted-foreground mt-0.5">Dias de tratamento</p>
                 </div>
               </div>
+              {(() => {
+                const { fimISO, atravessa } = projecaoGuia(f.data_resposta, Number(f.sessoes) || 0);
+                if (!fimISO) return null;
+                const fimBR = `${fimISO.slice(8, 10)}/${fimISO.slice(5, 7)}`;
+                return (
+                  <p className={`text-[10.5px] ${atravessa ? 'text-amber-700 dark:text-amber-400 font-medium' : 'text-muted-foreground'}`}>
+                    {atravessa ? `⚠ Não fecha neste mês — termina ~${fimBR} (atravessa o mês).` : `Termina ~${fimBR} (em dias úteis).`}
+                  </p>
+                );
+              })()}
             </div>
           )}
           <div>
