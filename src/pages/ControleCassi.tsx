@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
@@ -545,10 +545,11 @@ export default function ControleCassi() {
                   // como é sequencial, quem faz rápido pede 2 no mês; quem faz devagar,
                   // ~3 em 2 meses. Sem prazo de 13 dias, que atropelava os mais lentos.
                   const precisaPedir = !!guia && precisaNovaGuia(guia);
+                  const jaPedido = pedidoAberto(paciente); // guia já solicitada, aguardando CASSI
                   const estado: 'guia' | 'confirmar' | 'ok' =
                     precisaPedir ? 'guia' : ok ? 'ok' : 'confirmar';
                   const fimISO = guia ? projetarFimGuia(guia) : null;
-                  return { paciente, guia, aut, real, restantes, pct, confirmado, ok, precisaPedir, guiaAcabou, estado, fimISO };
+                  return { paciente, guia, aut, real, restantes, pct, confirmado, ok, precisaPedir, jaPedido, guiaAcabou, estado, fimISO };
                 });
                 const nGuia = linhasMes.filter((l) => l.estado === 'guia').length;
                 const nConf = linhasMes.filter((l) => l.estado === 'confirmar').length;
@@ -602,7 +603,11 @@ export default function ControleCassi() {
                           const gpm = paciente.guias_por_mes || 1;
                           const nome = `${paciente.nome} ${paciente.sobrenome || ''}`.trim();
                           // Ação principal do card — só uma, conforme o estado.
-                          const primary = l.precisaPedir ? (
+                          const primary = l.precisaPedir && l.jaPedido ? (
+                            <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-sky-700 border-sky-300 dark:border-sky-800" onClick={() => setView('pedir')}>
+                              <CalendarClock className="h-4 w-4" /> Guia pedida — aguardando
+                            </Button>
+                          ) : l.precisaPedir ? (
                             <Button size="sm" className="w-full h-9 gap-1.5 text-[13px] bg-rose-600 hover:bg-rose-700 text-white" onClick={() => setView('pedir')}>
                               <AlertTriangle className="h-4 w-4" /> Pedir guia
                             </Button>
@@ -651,8 +656,9 @@ export default function ControleCassi() {
                                         </div>
                                         <span className="text-[14px] font-extrabold tabular-nums shrink-0">{l.real}/{l.aut}</span>
                                       </div>
-                                      <p className={`text-[11px] mt-1 ${l.precisaPedir ? 'text-rose-700 dark:text-rose-300 font-medium' : atravessa ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
-                                        {l.guiaAcabou ? 'Guia concluída — peça a próxima'
+                                      <p className={`text-[11px] mt-1 ${l.jaPedido ? 'text-sky-700 dark:text-sky-300' : l.precisaPedir ? 'text-rose-700 dark:text-rose-300 font-medium' : atravessa ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
+                                        {l.jaPedido ? 'Guia pedida — aguardando CASSI'
+                                          : l.guiaAcabou ? 'Guia concluída — peça a próxima'
                                           : l.precisaPedir ? `Faltam ${l.restantes} — peça a próxima guia`
                                           : fim ? `${atravessa ? 'atravessa o mês · ' : ''}termina ~${fim}`
                                           : `${l.restantes} sessões restantes`}
@@ -1972,6 +1978,7 @@ function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
   const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
   const [dandoBaixa, setDandoBaixa] = useState(false);
   const [verTexto, setVerTexto] = useState(false);
+  const [ocultos, setOcultos] = useState<Set<string>>(() => new Set()); // retirados da lista
 
   // Motivo de cada cliente estar na lista (sem guia / faltam poucas / 2/mês).
   const motivos = useMemo(() => {
@@ -2013,7 +2020,9 @@ function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
       return { ...it, codigos: [...it.codigos, cod] };
     }));
 
-  const selecionados = itens.filter((i) => i.sel);
+  const retirar = (id: string) => setOcultos((s) => new Set(s).add(id));
+  const visiveis = itens.filter((it) => !ocultos.has(it.id));
+  const selecionados = visiveis.filter((i) => i.sel);
   const semCarteirinha = selecionados.filter((i) => !i.carteirinha.trim()).length;
   const texto = [
     `*Solicitação de novas guias CASSI* (${selecionados.length} cliente${selecionados.length === 1 ? '' : 's'})`,
@@ -2040,19 +2049,27 @@ function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
 
       {/* Cards dos clientes — compactos */}
       <div className="space-y-1.5">
-        {itens.map((it) => {
+        {visiveis.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground py-6">Nenhum cliente na lista de pedidos. 🎉</p>
+        )}
+        {visiveis.map((it) => {
           const semCart = it.sel && !it.carteirinha.trim();
           return (
             <div key={it.id} className={`rounded-lg border transition-colors ${it.sel ? (semCart ? 'border-rose-300 dark:border-rose-800 bg-rose-50/30 dark:bg-rose-950/10' : 'border-primary/40 bg-primary/5') : 'border-border/50'}`}>
-              <button onClick={() => upd(it.id, { sel: !it.sel })} className="w-full flex items-center gap-2 px-2.5 py-2 text-left">
-                {it.sel ? <CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
-                <span className="text-sm font-semibold flex-1 min-w-0 truncate">{it.nome}</span>
-                {motivos.get(it.id) && (
-                  <span className={`text-[9px] uppercase font-bold rounded px-1 shrink-0 ${motivos.get(it.id) === '2ª guia do mês' ? 'text-violet-700 bg-violet-100 dark:bg-violet-900/30' : 'text-amber-700 bg-amber-100 dark:bg-amber-900/30'}`}>
-                    {motivos.get(it.id)}
-                  </span>
-                )}
-              </button>
+              <div className="flex items-center">
+                <button onClick={() => upd(it.id, { sel: !it.sel })} className="flex-1 min-w-0 flex items-center gap-2 px-2.5 py-2 text-left">
+                  {it.sel ? <CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
+                  <span className="text-sm font-semibold flex-1 min-w-0 truncate">{it.nome}</span>
+                  {motivos.get(it.id) && (
+                    <span className={`text-[9px] uppercase font-bold rounded px-1 shrink-0 ${motivos.get(it.id) === '2ª guia do mês' ? 'text-violet-700 bg-violet-100 dark:bg-violet-900/30' : 'text-amber-700 bg-amber-100 dark:bg-amber-900/30'}`}>
+                      {motivos.get(it.id)}
+                    </span>
+                  )}
+                </button>
+                <button onClick={() => retirar(it.id)} title="Retirar da lista" className="px-2 py-2 text-muted-foreground hover:text-destructive shrink-0">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
               {it.sel && (
                 <div className="px-2.5 pb-2.5 space-y-1.5">
