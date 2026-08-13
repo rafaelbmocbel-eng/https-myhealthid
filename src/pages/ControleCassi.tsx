@@ -130,6 +130,10 @@ export default function ControleCassi() {
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
   const [view, setView] = useState<'clientes' | 'ativas' | 'outro' | 'pedir' | 'faturamento'>('ativas');
+  // Cliente específico levado ao "Pedir guias" ao clicar "Pedir guia" num card
+  // (pra montar o pedido só dele, não de todos). null = montar de todos.
+  const [pedirFoco, setPedirFoco] = useState<string | null>(null);
+  const irPedir = (id: string | null) => { setPedirFoco(id); setView('pedir'); };
   // Sub-aba do painel: guias ativas (padrão, "em linha" com controle de sessões)
   // ou a lista completa de pacientes.
   const [aba, setAba] = useState<'ativas' | 'pacientes'>('ativas');
@@ -353,7 +357,7 @@ export default function ControleCassi() {
           <div className="md:ml-auto flex items-center gap-1.5 min-w-0">
             <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['outro', 'Fechamentos'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
-                <button key={v} onClick={() => setView(v)}
+                <button key={v} onClick={() => { if (v === 'pedir') setPedirFoco(null); setView(v); }}
                   className={`text-[12px] px-2.5 py-1 rounded-md font-medium whitespace-nowrap shrink-0 ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                   {label}
                   {v === 'pedir' && pedidosDoMes.length > 0 && (
@@ -392,7 +396,7 @@ export default function ControleCassi() {
             onExcluir={excluirCliente}
             onAtivar={reativarCliente}
             onConfirmarMes={confirmarGuiaMes}
-            onPedirGuia={() => setView('pedir')}
+            onPedirGuia={(id) => irPedir(id)}
             mesVigente={mesVigente}
           />
         ) : view === 'faturamento' ? (
@@ -404,6 +408,7 @@ export default function ControleCassi() {
             {pedidosDoMes.length > 0 ? (
               <PedirGuiasPanel
                 linhas={pedidosDoMes}
+                foco={pedirFoco}
                 onNovaGuia={(pac) => setEditando({ paciente: pac, guia: null })}
                 onDarBaixa={darBaixaPedidos}
               />
@@ -604,11 +609,11 @@ export default function ControleCassi() {
                           const nome = `${paciente.nome} ${paciente.sobrenome || ''}`.trim();
                           // Ação principal do card — só uma, conforme o estado.
                           const primary = l.precisaPedir && l.jaPedido ? (
-                            <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-sky-700 border-sky-300 dark:border-sky-800" onClick={() => setView('pedir')}>
+                            <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-sky-700 border-sky-300 dark:border-sky-800" onClick={() => irPedir(null)}>
                               <CalendarClock className="h-4 w-4" /> Guia pedida — aguardando
                             </Button>
                           ) : l.precisaPedir ? (
-                            <Button size="sm" className="w-full h-9 gap-1.5 text-[13px] bg-rose-600 hover:bg-rose-700 text-white" onClick={() => setView('pedir')}>
+                            <Button size="sm" className="w-full h-9 gap-1.5 text-[13px] bg-rose-600 hover:bg-rose-700 text-white" onClick={() => irPedir(paciente.id)}>
                               <AlertTriangle className="h-4 w-4" /> Pedir guia
                             </Button>
                           ) : !l.ok ? (
@@ -690,7 +695,7 @@ export default function ControleCassi() {
                                     <DropdownMenuItem onClick={() => setEditando({ paciente, guia: null })}>
                                       <Plus className="h-3.5 w-3.5 mr-2" /> Nova guia
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setView('pedir')}>
+                                    <DropdownMenuItem onClick={() => irPedir(paciente.id)}>
                                       <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Pedir guia
                                     </DropdownMenuItem>
                                     {l.confirmado && (
@@ -1969,8 +1974,9 @@ interface ItemPedido {
   id: string; nome: string; sel: boolean;
   carteirinha: string; diagnostico: string; codigos: string[];
 }
-function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
+function PedirGuiasPanel({ linhas, foco, onNovaGuia, onDarBaixa }: {
   linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>;
+  foco?: string | null; // se veio de "Pedir guia" de um cliente, pré-seleciona só ele
   onNovaGuia: (p: Paciente) => void;
   onDarBaixa: (ids: string[]) => Promise<void> | void;
 }) {
@@ -1993,7 +1999,8 @@ function PedirGuiasPanel({ linhas, onNovaGuia, onDarBaixa }: {
   const novoItem = (l: { paciente: Paciente; guia: GuiaCassi | null }): ItemPedido => ({
     id: l.paciente.id,
     nome: `${l.paciente.nome} ${l.paciente.sobrenome || ''}`.trim(),
-    sel: true,
+    // Se clicou "Pedir guia" de um cliente específico, marca só ele; senão, todos.
+    sel: foco ? l.paciente.id === foco : true,
     carteirinha: l.paciente.carteirinha || l.guia?.matricula || '',
     diagnostico: l.paciente.cassi_diagnostico || l.guia?.diagnostico || '',
     codigos: (l.paciente.codigos_cassi?.length ? l.paciente.codigos_cassi : (l.guia?.codigos?.map((c) => c.codigo) || [])).slice(0, 3),
@@ -3150,7 +3157,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
   onExcluir: (id: string) => void;
   onAtivar: (id: string) => void;
   onConfirmarMes: (id: string) => void;
-  onPedirGuia: () => void;
+  onPedirGuia: (id: string) => void;
   mesVigente: string;
 }) {
   const { user } = useAuth();
@@ -3308,7 +3315,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                       <Pencil className="h-3.5 w-3.5 mr-2" /> Editar cadastro
                     </DropdownMenuItem>
                     {precisaPedir ? (
-                      <DropdownMenuItem onClick={onPedirGuia}>
+                      <DropdownMenuItem onClick={() => onPedirGuia(p.id)}>
                         <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Pedir guia
                       </DropdownMenuItem>
                     ) : (
@@ -3342,7 +3349,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                   </Button>
                 ) : p.cassi_confirmado_mes === mesVigente ? (
                   precisaPedir ? (
-                    <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-amber-700 border-amber-300 dark:border-amber-800" onClick={onPedirGuia}>
+                    <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-amber-700 border-amber-300 dark:border-amber-800" onClick={() => onPedirGuia(p.id)}>
                       <AlertTriangle className="h-4 w-4" /> Pedir guia
                     </Button>
                   ) : (
