@@ -129,7 +129,7 @@ export default function ControleCassi() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
-  const [view, setView] = useState<'clientes' | 'ativas' | 'outro' | 'pedir' | 'faturamento'>('ativas');
+  const [view, setView] = useState<'clientes' | 'ativas' | 'pedir' | 'faturamento'>('ativas');
   // Cliente específico levado ao "Pedir guias" ao clicar "Pedir guia" num card
   // (pra montar o pedido só dele, não de todos). null = montar de todos.
   const [pedirFoco, setPedirFoco] = useState<string | null>(null);
@@ -356,7 +356,7 @@ export default function ControleCassi() {
           </div>
           <div className="md:ml-auto flex items-center gap-1.5 min-w-0">
             <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['outro', 'Fechamentos'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
+              {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
                 <button key={v} onClick={() => { if (v === 'pedir') setPedirFoco(null); setView(v); }}
                   className={`text-[12px] px-2.5 py-1 rounded-md font-medium whitespace-nowrap shrink-0 ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                   {label}
@@ -378,7 +378,6 @@ export default function ControleCassi() {
           <p className="text-[12px] text-muted-foreground -mb-1 px-0.5">
             {view === 'clientes' ? 'Todos os clientes CASSI — buscar, cadastrar e ativar no mês.'
               : view === 'ativas' ? `${MESES_PT[Number(mesVigente.slice(5, 7)) - 1]}/${mesVigente.slice(2, 4)} · quem está em tratamento neste mês.`
-              : view === 'outro' ? 'Guias que fecham em outros meses.'
               : view === 'pedir' ? 'Monte e envie os pedidos de novas guias.'
               : 'Cálculo do mês e relatórios de produção.'}
           </p>
@@ -400,9 +399,7 @@ export default function ControleCassi() {
             mesVigente={mesVigente}
           />
         ) : view === 'faturamento' ? (
-          <FinanceiroCassi />
-        ) : view === 'outro' ? (
-          <EnviosCassi onAbrir={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} />
+          <FinanceiroCassi onAbrirGuia={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} />
         ) : view === 'pedir' ? (
           <>
             {pedidosDoMes.length > 0 ? (
@@ -2160,7 +2157,9 @@ function PedirGuiasPanel({ linhas, foco, onNovaGuia, onDarBaixa }: {
 const MESES_PT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const mesAtualISO = () => new Date().toISOString().slice(0, 7); // YYYY-MM
 
-function FinanceiroCassi() {
+function FinanceiroCassi({ onAbrirGuia }: {
+  onAbrirGuia: (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }) => void;
+}) {
   const { user } = useAuth();
   const { data: cfg } = useCassiConfig();
   const [mes, setMes] = useState<string>(() => mesAtualISO());
@@ -2599,6 +2598,9 @@ function FinanceiroCassi() {
         </div>
       )}
 
+      {/* Guias que fecham neste mês (antiga aba "Fechamentos") — usa o mesmo mês. */}
+      <EnviosCassi mes={mes} onAbrir={onAbrirGuia} />
+
       {verSnap && <RelatorioSnapshotView dados={verSnap} onClose={() => setVerSnap(null)} />}
     </div>
   );
@@ -2907,12 +2909,12 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
 // ── Aba "Envios": guias que serão enviadas (debitadas) em cada mês ────────────
 // A guia entra no mês em que a 10ª sessão (dias úteis corridos) TERMINA. Se
 // passar do fim do mês, cai no próximo. Projeta o fim mesmo sem agenda gerada.
-function EnviosCassi({ onAbrir }: {
+function EnviosCassi({ mes, onAbrir }: {
+  mes: string; // controlado pelo Faturamento (mesmo seletor de mês)
   onAbrir: (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }) => void;
 }) {
   const { user } = useAuth();
   const { data: cfg } = useCassiConfig();
-  const [mes, setMes] = useState<string>(() => mesAtualISO());
 
   const { data: guias = [], isLoading } = useQuery({
     queryKey: ['guias-cassi', user?.id],
@@ -2964,34 +2966,11 @@ function EnviosCassi({ onAbrir }: {
     [guias, fimRealPorGuia, mes]);
 
   const totalBruto = lista.reduce((s, x) => s + somaGuia(x.g.codigos, valorDe), 0);
-
-  const irMes = (delta: number) => {
-    const [a, m] = mes.split('-').map(Number);
-    const d = new Date(a, m - 1 + delta, 1);
-    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  };
   const [ano, m] = mes.split('-').map(Number);
-  const ehMesAtual = mes === mesAtualISO();
 
   return (
-    <div className="space-y-4">
-      {/* Navegação de mês */}
-      <div className="rounded-xl border border-border/50 bg-background p-3 flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(-1)} title="Mês anterior">‹</Button>
-          <div className="text-center min-w-[9rem]">
-            <p className="text-sm font-bold capitalize leading-none">{MESES_PT[m - 1]} {ano}</p>
-            <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Guias a enviar</p>
-          </div>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(1)} title="Próximo mês">›</Button>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {ehMesAtual && (
-            <Button size="sm" variant="outline" className="h-8" onClick={() => irMes(1)}>Próximo mês ›</Button>
-          )}
-          <Input type="month" value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
-        </div>
-      </div>
+    <div className="space-y-3 pt-2 border-t border-border/40">
+      <p className="text-sm font-bold">Guias que fecham em {MESES_PT[m - 1]} {ano}</p>
 
       <p className="text-[11px] text-muted-foreground px-1">
         A guia entra no mês em que a <b>10ª sessão</b> (dias úteis corridos) termina. Se passar do fim do mês, ela cai no <b>próximo</b>.
