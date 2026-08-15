@@ -15,10 +15,37 @@ const CHUNK_PATTERNS = [
 const RELOAD_KEY = "myhealthid.root-boundary-reload";
 
 /**
+ * Recarrega limpando o service worker e os caches ANTES — senão o SW continua
+ * servindo a versão velha do cache e o reload cai no mesmo erro (loop infinito
+ * na tela "Recarregando…"). Limpar SW+caches garante que a versão nova carregue.
+ */
+async function limparCacheEReload() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister().catch(() => {})));
+    }
+  } catch { /* ignore */ }
+  try {
+    if (typeof caches !== "undefined") {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k).catch(() => {})));
+    }
+  } catch { /* ignore */ }
+  // querystring anti-cache pra furar qualquer cache de HTTP também
+  try {
+    const u = new URL(window.location.href);
+    u.searchParams.set("_v", String(Date.now()));
+    window.location.replace(u.toString());
+    return;
+  } catch { /* ignore */ }
+  window.location.reload();
+}
+
+/**
  * Captura erros de render (incluindo React.lazy resolvendo chunk stale após
- * deploy / restart do Vite) e força um reload único por janela de 30s.
- * Sem essa guarda, a tela fica branca porque o erro é catched pelo React e
- * o handler de window.error em main.tsx nunca dispara.
+ * deploy) e força UM reload limpando o cache, por janela de 30s. Sem a limpeza
+ * do SW, a tela fica presa em "Recarregando…".
  */
 export default class RootErrorBoundary extends Component<{ children: ReactNode }, State> {
   state: State = { error: null };
@@ -35,7 +62,7 @@ export default class RootErrorBoundary extends Component<{ children: ReactNode }
       const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
       if (Date.now() - last > 30_000) {
         sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
-        window.location.reload();
+        limparCacheEReload();
       }
     } catch { /* ignore */ }
   }
@@ -50,7 +77,7 @@ export default class RootErrorBoundary extends Component<{ children: ReactNode }
             Detectamos uma versão desatualizada. Se a tela não atualizar sozinha, clique abaixo.
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => limparCacheEReload()}
             style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}
           >
             Recarregar
