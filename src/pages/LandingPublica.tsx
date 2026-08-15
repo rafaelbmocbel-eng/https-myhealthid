@@ -2,6 +2,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
 import LogoIcon from '@/components/LogoIcon';
+import logoBranco from '@/assets/logo-myhealthid-branco.png';
 import {
   ArrowRight, ShieldCheck, Sparkles, CalendarDays,
   MessageSquare, Activity, Lock, CheckCircle2,
@@ -291,19 +292,16 @@ export default function LandingPublica() {
             <a href="#profissionais" className="hover:text-foreground transition-colors">Profissionais</a>
             <a href="#precos"        className="hover:text-foreground transition-colors">Planos</a>
           </nav>
+          {/* Duas entradas claras e equilibradas: Cliente e Profissional. */}
           <div className="flex items-center gap-2">
             <Link to="/paciente/login"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors">
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
-              Paciente
+              Cliente
             </Link>
             <Link to="/auth"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/8 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/15 transition-colors">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
               ⚕ Profissional
-            </Link>
-            <Link to="/auth?modo=cadastro"
-              className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
-              Começar grátis <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         </div>
@@ -314,7 +312,11 @@ export default function LandingPublica() {
         <div className="pointer-events-none absolute inset-0 -z-10" style={{
           background: 'radial-gradient(ellipse 70% 55% at 72% 35%, hsl(var(--primary) / 0.09), transparent 65%), radial-gradient(ellipse 50% 40% at 15% 80%, color-mix(in srgb, #059669 5%, transparent), transparent 55%)',
         }} />
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 pt-12 sm:pt-16 pb-14 sm:pb-24">
+          {/* A página começa com a marca */}
+          <div className="mb-12 flex justify-center">
+            <img src={logoBranco} alt="My Health ID — Sua saúde, sua identidade." className="w-full max-w-sm sm:max-w-md h-auto" loading="eager" />
+          </div>
           <div className="grid grid-cols-1 gap-12 items-center lg:grid-cols-2">
             <div>
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs text-muted-foreground">
@@ -334,8 +336,8 @@ export default function LandingPublica() {
                   Começar como profissional <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link to="/paciente/login"
-                  className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors">
-                  Sou paciente
+                  className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/50 px-5 py-2.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors">
+                  Sou cliente
                 </Link>
               </div>
               <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
