@@ -9,7 +9,6 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import LogoIcon from '@/components/LogoIcon';
-import logoFull from '@/assets/logo-myhealthid-full.webp';
 
 export default function Auth() {
   const { user, signIn, signUp, loading } = useAuth();
@@ -68,10 +67,11 @@ export default function Auth() {
         style={{ background: 'linear-gradient(160deg, hsl(213 55% 16%) 0%, hsl(213 55% 8%) 100%)' }}
       >
         <div className="flex items-center gap-3">
-          <div className="bg-white/95 rounded-xl px-3 py-2 shadow-lg">
-            <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
+          <LogoIcon size={44} />
+          <div>
+            <p className="text-white font-bold text-lg leading-none">My Health ID</p>
+            <p className="text-xs text-white/50 mt-1">Plataforma Clínica Inteligente</p>
           </div>
-          <div className="text-xs text-white/50">Plataforma Clínica Inteligente</div>
         </div>
         <div>
           <h2 className="text-4xl font-black text-white leading-tight mb-4">
@@ -101,8 +101,9 @@ export default function Auth() {
       {/* Right panel – form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="mb-8 lg:hidden flex justify-center">
-            <img src={logoFull} alt="My Health ID" className="w-auto h-20 sm:h-24 object-contain" />
+          <div className="mb-8 lg:hidden flex items-center justify-center gap-2.5">
+            <LogoIcon size={52} />
+            <span className="text-2xl font-black text-foreground">My Health ID</span>
           </div>
 
           <h1 className="text-2xl font-black text-foreground mb-1">
