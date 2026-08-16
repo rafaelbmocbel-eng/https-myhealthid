@@ -130,10 +130,14 @@ export default function ControleCassi() {
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
   const [view, setView] = useState<'clientes' | 'ativas' | 'pedir' | 'faturamento'>('ativas');
-  // Cliente específico levado ao "Pedir guias" ao clicar "Pedir guia" num card
-  // (pra montar o pedido só dele, não de todos). null = montar de todos.
-  const [pedirFoco, setPedirFoco] = useState<string | null>(null);
-  const irPedir = (id: string | null) => { setPedirFoco(id); setView('pedir'); };
+  // Clientes específicos levados ao "Pedir guias" ao clicar "Pedir guia" num card.
+  // Acumula: cada clique ADICIONA o cliente ao destaque, sem tirar os anteriores.
+  // Conjunto vazio = montar o pedido de todos.
+  const [pedirFoco, setPedirFoco] = useState<Set<string>>(() => new Set());
+  const irPedir = (id: string | null) => {
+    if (id) setPedirFoco((prev) => new Set(prev).add(id));
+    setView('pedir');
+  };
   // Sub-aba do painel: guias ativas (padrão, "em linha" com controle de sessões)
   // ou a lista completa de pacientes.
   const [aba, setAba] = useState<'ativas' | 'pacientes'>('ativas');
@@ -357,7 +361,7 @@ export default function ControleCassi() {
           <div className="md:ml-auto flex items-center gap-1.5 min-w-0">
             <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
-                <button key={v} onClick={() => { if (v === 'pedir') setPedirFoco(null); setView(v); }}
+                <button key={v} onClick={() => { if (v === 'pedir') setPedirFoco(new Set()); setView(v); }}
                   className={`text-[12px] px-2.5 py-1 rounded-md font-medium whitespace-nowrap shrink-0 ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                   {label}
                   {v === 'pedir' && pedidosDoMes.length > 0 && (
@@ -599,6 +603,11 @@ export default function ControleCassi() {
                           const stripe = l.estado === 'guia' ? 'before:bg-rose-500'
                             : l.estado === 'ok' ? 'before:bg-emerald-500' : 'before:bg-slate-400';
                           const fim = l.fimISO ? `${l.fimISO.slice(8, 10)}/${l.fimISO.slice(5, 7)}` : null;
+                          // Data de resposta da CASSI da guia atual — mostrada quando precisa
+                          // pedir nova, pra saber "de quando" é a guia que está acabando.
+                          const respCassi = guia?.data_resposta
+                            ? `${guia.data_resposta.slice(8, 10)}/${guia.data_resposta.slice(5, 7)}`
+                            : null;
                           // Guia atravessa o mês: termina num mês depois do que começou.
                           const inicioMes = (guia?.data_resposta || guia?.data_pedido || '').slice(0, 7);
                           const atravessa = !!l.fimISO && !!inicioMes && l.fimISO.slice(0, 7) > inicioMes;
@@ -664,6 +673,9 @@ export default function ControleCassi() {
                                           : l.precisaPedir ? `Faltam ${l.restantes} — peça a próxima guia`
                                           : fim ? `${atravessa ? 'atravessa o mês · ' : ''}termina ~${fim}`
                                           : `${l.restantes} sessões restantes`}
+                                        {(l.precisaPedir || l.jaPedido || l.guiaAcabou) && respCassi && (
+                                          <span className="text-muted-foreground font-normal"> · guia de {respCassi}</span>
+                                        )}
                                       </p>
                                     </>
                                   ) : l.precisaPedir ? (
@@ -1973,7 +1985,7 @@ interface ItemPedido {
 }
 function PedirGuiasPanel({ linhas, foco, onNovaGuia, onDarBaixa }: {
   linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>;
-  foco?: string | null; // se veio de "Pedir guia" de um cliente, pré-seleciona só ele
+  foco?: Set<string>; // clientes vindos de "Pedir guia" — pré-seleciona esses (vazio = todos)
   onNovaGuia: (p: Paciente) => void;
   onDarBaixa: (ids: string[]) => Promise<void> | void;
 }) {
@@ -1996,8 +2008,8 @@ function PedirGuiasPanel({ linhas, foco, onNovaGuia, onDarBaixa }: {
   const novoItem = (l: { paciente: Paciente; guia: GuiaCassi | null }): ItemPedido => ({
     id: l.paciente.id,
     nome: `${l.paciente.nome} ${l.paciente.sobrenome || ''}`.trim(),
-    // Se clicou "Pedir guia" de um cliente específico, marca só ele; senão, todos.
-    sel: foco ? l.paciente.id === foco : true,
+    // Se clicou "Pedir guia" de clientes específicos, marca só esses; senão, todos.
+    sel: foco && foco.size ? foco.has(l.paciente.id) : true,
     carteirinha: l.paciente.carteirinha || l.guia?.matricula || '',
     diagnostico: l.paciente.cassi_diagnostico || l.guia?.diagnostico || '',
     codigos: (l.paciente.codigos_cassi?.length ? l.paciente.codigos_cassi : (l.guia?.codigos?.map((c) => c.codigo) || [])).slice(0, 3),
