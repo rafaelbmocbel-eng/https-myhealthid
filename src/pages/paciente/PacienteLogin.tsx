@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Loader2, Heart, Activity, Calendar, Dumbbell, LineChart, ShieldCheck, Sparkles, Lock, Mail, User as UserIcon } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Heart, Activity, Calendar, Dumbbell, LineChart, ShieldCheck, Sparkles, Lock, Mail, User as UserIcon, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
 import logoFull from '@/assets/logo-myhealthid-full.webp';
@@ -30,6 +30,11 @@ export default function PacienteLogin() {
   const signOutAttempted = useRef(false);
   const [demorandoMuito, setDemorandoMuito] = useState(false);
   const [profissionalConflito, setProfissionalConflito] = useState(false);
+  // Logou, mas o e-mail/link não bateu com nenhum cadastro. Em vez de virar
+  // "avulso" na vitrine sem querer, mostramos uma escolha clara: já sou cliente
+  // (usar o link pessoal) vs. sou novo (encontrar profissional na vitrine).
+  const [naoVinculado, setNaoVinculado] = useState(false);
+  const [criandoNovo, setCriandoNovo] = useState(false);
 
   // Se o carregamento inicial demorar demais, avisa o paciente em vez de deixar o spinner vago.
   useEffect(() => {
@@ -151,30 +156,42 @@ export default function PacienteLogin() {
           return;
         }
 
-        // Create standalone patient record
-        const nome = user!.user_metadata?.nome || user!.email?.split('@')[0] || 'Paciente';
-        const { error: insertError } = await supabase
-          .from('portal_pacientes')
-          .insert({ user_id: user!.id, nome, email: user!.email });
-
-        if (!insertError) {
-          navigate('/paciente/profissionais', { replace: true });
-        } else {
-          toast({
-            title: 'Conta não vinculada',
-            description: 'Seu e-mail não está vinculado a nenhum paciente. Verifique se usou o mesmo e-mail informado ao seu terapeuta.',
-            variant: 'destructive',
-          });
-          linkAttempted.current = false;
-          setLinking(false);
-          setSubmitting(false);
-        }
+        // Não achou vínculo por token nem por e-mail e ainda não é avulso.
+        // NÃO cria conta avulsa automaticamente — pergunta o que a pessoa é,
+        // pra não desconectar da ficha real um cliente já cadastrado que só
+        // errou o e-mail (o caso comum: cliente CASSI cadastrado sem e-mail).
+        setNaoVinculado(true);
+        setLinking(false);
+        setSubmitting(false);
+        linkAttempted.current = false;
       }
     } catch (err) {
       console.error('[Portal] Erro:', err);
       linkAttempted.current = false;
       setLinking(false);
       setSubmitting(false);
+    }
+  };
+
+  // "Sou novo por aqui" — cria a conta avulsa (sem terapeuta) e leva à vitrine
+  // pra encontrar um profissional. Só acontece por escolha explícita, nunca
+  // automático, pra não sequestrar quem já é cliente de alguém.
+  const criarContaNovoCliente = async () => {
+    if (!user) return;
+    setCriandoNovo(true);
+    const nome = user.user_metadata?.nome || user.email?.split('@')[0] || 'Paciente';
+    const { error: insertError } = await supabase
+      .from('portal_pacientes')
+      .insert({ user_id: user.id, nome, email: user.email });
+    if (!insertError) {
+      navigate('/paciente/profissionais', { replace: true });
+    } else {
+      setCriandoNovo(false);
+      toast({
+        title: 'Não foi possível continuar',
+        description: 'Ocorreu um erro ao criar sua conta. Tente novamente em instantes.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -379,6 +396,54 @@ export default function PacienteLogin() {
           </Button>
           <Button variant="outline" onClick={() => navigate('/inicio-app', { replace: true })}>
             Voltar ao app profissional
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (naoVinculado) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-6 px-6 py-10 text-center">
+        <div className="bg-white/95 rounded-xl px-3 py-2 shadow-md">
+          <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
+        </div>
+        <div className="space-y-2 max-w-sm">
+          <p className="text-lg font-black text-foreground">Não encontramos seu cadastro</p>
+          <p className="text-sm text-muted-foreground">
+            O e-mail <b>{user?.email}</b> ainda não está ligado a nenhuma ficha.
+          </p>
+        </div>
+
+        {/* Caminho recomendado pra quem já é cliente: link pessoal do terapeuta */}
+        <div className="w-full max-w-sm rounded-xl border border-primary/20 bg-primary/5 p-4 text-left space-y-1.5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <p className="text-sm font-bold text-foreground">Seu terapeuta já te cadastrou?</p>
+          </div>
+          <p className="text-[12px] text-muted-foreground leading-snug">
+            Use o <b>link pessoal</b> que ele te enviou no WhatsApp — ele abre direto na sua ficha,
+            mesmo que seu cadastro esteja sem e-mail. Se não tiver o link, é só pedir pra ele.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3 w-full max-w-sm">
+          <Button onClick={criarContaNovoCliente} disabled={criandoNovo} className="gap-2">
+            {criandoNovo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Sou novo — encontrar um profissional
+          </Button>
+          <Button
+            variant="outline"
+            disabled={criandoNovo}
+            onClick={async () => {
+              await signOut();
+              setNaoVinculado(false);
+              linkAttempted.current = false;
+              signOutAttempted.current = false;
+              setTab('login');
+            }}
+          >
+            Sair e tentar com outro e-mail
           </Button>
         </div>
       </div>
@@ -640,12 +705,21 @@ export default function PacienteLogin() {
             </button>
           </p>
 
-          {portalToken && (
+          {portalToken ? (
             <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
               <Sparkles className="icon-sm text-primary shrink-0 mt-0.5" />
               <p className="text-[11px] text-muted-foreground leading-snug">
                 <strong className="text-foreground">Link de convite detectado.</strong> Sua conta
                 será vinculada automaticamente ao seu terapeuta.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-muted/50 border border-border/60">
+              <MessageCircle className="icon-sm text-muted-foreground shrink-0 mt-0.5" />
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                <strong className="text-foreground">Seu terapeuta te cadastrou?</strong> Entre pelo
+                <b> link pessoal</b> que ele enviou no WhatsApp — assim você cai direto na sua ficha,
+                mesmo sem e-mail no cadastro.
               </p>
             </div>
           )}
