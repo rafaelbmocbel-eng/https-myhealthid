@@ -14,7 +14,7 @@ import PlanoDietaEditor from './PlanoDietaEditor';
 import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 
 interface Props { pacienteId: string; autoGerar?: boolean; ocultarGerador?: boolean; }
 

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Shield, FileCheck, CheckCircle2, Loader2 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 const TERMO_LGPD_PADRAO = `TERMO DE CONSENTIMENTO PARA TRATAMENTO DE DADOS PESSOAIS

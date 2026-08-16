@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { Download, Share2, Sparkles, Loader2, Copy, RefreshCw, ChevronDown } from 'lucide-react';
 import { getBaseUrl } from '@/utils/linkUrls';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 
 interface Props {
   pacienteId: string;

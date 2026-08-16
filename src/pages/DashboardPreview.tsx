@@ -5,7 +5,7 @@ import {
   ArrowRight, Users, CalendarDays, ClipboardList, CheckCircle2, XCircle,
   UserX, Shield, AlignCenter, UserPlus, Stethoscope, FlaskConical,
 } from 'lucide-react';
-import { format, subMinutes, subHours, subDays } from 'date-fns';
+import { format, subMinutes, subHours, subDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 /**

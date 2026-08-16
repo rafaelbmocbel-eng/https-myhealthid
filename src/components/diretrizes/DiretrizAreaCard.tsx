@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Sparkles, Loader2, Eye, Send, EyeOff, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import DiretrizTecnicasEditor from './DiretrizTecnicasEditor';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar, type AreaChancela } from '@/hooks/usePodeChancelar';
 

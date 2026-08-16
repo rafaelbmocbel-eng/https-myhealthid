@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, FileCode, Download, Settings, Package, Trash2, FileText } from 'lucide-react';
 import { useConvenios } from '@/hooks/useConvenios';
 import { buildTissLoteXml, downloadXml } from '@/utils/tissXml';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 
 const TABLE = (n: string) => supabase.from(n as any);
 

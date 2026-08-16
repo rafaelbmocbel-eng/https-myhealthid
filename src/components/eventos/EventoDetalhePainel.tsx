@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Users, UserPlus, UserCheck, Copy, ChevronRight, DollarSign, CheckCircle2, XCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { getBaseUrl } from '@/utils/linkUrls';

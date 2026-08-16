@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThumbsUp, ThumbsDown, Meh, Loader2, Heart } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 interface Props {

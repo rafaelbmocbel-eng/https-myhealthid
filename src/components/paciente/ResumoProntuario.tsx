@@ -5,7 +5,7 @@ import { getMyIDInterpretation } from "@/utils/myidCalculations";
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, differenceInYears } from 'date-fns';
+import { format, parseISO, differenceInYears } from '@/lib/dateSafe';
 import { FileText, Activity, Zap, Award } from 'lucide-react';
 
 interface Props {

@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, MapPin, Clock, DollarSign, Pencil, FileText, Archive, Video, Repeat, Lock, Globe, RotateCcw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { getBaseUrl } from '@/utils/linkUrls';

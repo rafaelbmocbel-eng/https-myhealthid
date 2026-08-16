@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Lock, Loader2 } from 'lucide-react';
-import { eachDayOfInterval, parseISO, format, getDay, setHours, setMinutes } from 'date-fns';
+import { eachDayOfInterval, parseISO, format, getDay, setHours, setMinutes } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 

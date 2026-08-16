@@ -12,7 +12,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Calendar, Clock, MapPin, Users, CheckCircle2, Loader2, Ticket, Video, Repeat } from 'lucide-react';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';

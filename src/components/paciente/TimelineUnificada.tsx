@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Calendar, DollarSign, FileText, StickyNote, Activity } from "lucide-react";
-import { format } from "date-fns";
+import { format } from "@/lib/dateSafe";
 import { ptBR } from "date-fns/locale";
 
 type Evento = {

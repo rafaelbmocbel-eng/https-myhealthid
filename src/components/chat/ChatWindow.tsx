@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Send, Bot, User, Loader2, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import ChatSlotPicker from './ChatSlotPicker';

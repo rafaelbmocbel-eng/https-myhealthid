@@ -11,7 +11,7 @@ import {
   Monitor, Brain, Shield, AlertTriangle, Lightbulb,
   ChevronDown, ChevronUp, Sparkles, ArrowRight
 } from 'lucide-react';
-import { subDays } from 'date-fns';
+import { subDays } from '@/lib/dateSafe';
 import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
 import { gerarInsightsClinicosMyID, type ClinicalInsightResult } from '@/utils/myid/clinicalInsights';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';

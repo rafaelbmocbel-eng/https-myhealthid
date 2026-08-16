@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays } from '@/lib/dateSafe';
 import { AlertTriangle, MessageCircle, ChevronDown, ChevronUp, UserX } from 'lucide-react';
 import { shareReativacao } from '@/utils/whatsapp';
 import { useToast } from '@/hooks/use-toast';

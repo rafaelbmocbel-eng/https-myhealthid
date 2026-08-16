@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Flame, CheckCircle2, Zap, TrendingUp } from 'lucide-react';
-import { subDays } from 'date-fns';
+import { subDays } from '@/lib/dateSafe';
 
 interface Props { pacienteId: string; }
 

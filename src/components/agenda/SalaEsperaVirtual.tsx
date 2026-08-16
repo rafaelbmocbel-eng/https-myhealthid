@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DoorOpen, CheckCircle2, Clock, Loader2, User } from 'lucide-react';
 import { useSalaEspera } from '@/hooks/useListaEspera';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 

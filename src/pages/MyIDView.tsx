@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ShieldCheck, Lock, Activity } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import LogoIcon from '@/components/LogoIcon';
 

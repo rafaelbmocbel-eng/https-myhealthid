@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { startOfDay, endOfDay, format, isToday, isTomorrow } from 'date-fns';
+import { startOfDay, endOfDay, format, isToday, isTomorrow } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import {
   CalendarDays, MessageCircle, ArrowRight, Clock,

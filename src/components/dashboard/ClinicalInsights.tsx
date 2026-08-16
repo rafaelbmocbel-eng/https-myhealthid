@@ -8,7 +8,7 @@ import {
   AlertTriangle, TrendingDown, CalendarX, CalendarCheck, Cake, Activity, Users, Loader2,
   DollarSign, Repeat, Filter,
 } from 'lucide-react';
-import { differenceInDays, parseISO, format, addDays, isWithinInterval } from 'date-fns';
+import { differenceInDays, parseISO, format, addDays, isWithinInterval } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import DashboardFilters, { DEFAULT_FILTERS, DashboardFilterState, periodToDate, inPeriod } from './DashboardFilters';

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { isToday, parseISO } from 'date-fns';
+import { isToday, parseISO } from '@/lib/dateSafe';
 
 interface PacienteNotifications {
   pendingQuestionarios: number;

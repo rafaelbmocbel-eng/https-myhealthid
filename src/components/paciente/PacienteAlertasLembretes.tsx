@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   CalendarDays, Heart, Bell, ChevronRight,
 } from 'lucide-react';
-import { format, parseISO, differenceInHours } from 'date-fns';
+import { format, parseISO, differenceInHours } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 interface Alerta {

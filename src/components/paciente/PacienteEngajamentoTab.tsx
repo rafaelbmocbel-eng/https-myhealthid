@@ -9,7 +9,7 @@ import {
   TrendingUp, TrendingDown, Minus, Calendar, Loader2,
   CheckCircle2, XCircle, SmilePlus
 } from 'lucide-react';
-import { format, parseISO, subDays, differenceInDays } from 'date-fns';
+import { format, parseISO, subDays, differenceInDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,

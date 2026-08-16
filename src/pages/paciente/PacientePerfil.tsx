@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PortalErrorState from '@/components/paciente/PortalErrorState';

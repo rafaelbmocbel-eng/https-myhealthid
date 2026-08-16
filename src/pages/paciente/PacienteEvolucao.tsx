@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, TrendingUp, TrendingDown, Minus, Zap, Brain, Target, Flame, AlertTriangle, ChevronRight, FileText } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 const EvolucaoFisicaCard = lazy(() => import('@/components/evolucao/EvolucaoFisicaCard'));
 const RelatorioAvaliacaoView = lazy(() => import('@/components/paciente/RelatorioAvaliacaoView'));
 import { ptBR } from 'date-fns/locale';

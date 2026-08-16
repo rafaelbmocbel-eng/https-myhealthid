@@ -13,7 +13,7 @@ import {
   Loader2, Plus, Search, Trash2, Check, Dumbbell,
   TrendingUp, MessageSquare, X, Sparkles
 } from 'lucide-react';
-import { format, parseISO, subDays } from 'date-fns';
+import { format, parseISO, subDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { scoresDoResultado } from '@/utils/myid/scores';
 

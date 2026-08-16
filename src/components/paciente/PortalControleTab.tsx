@@ -25,7 +25,7 @@ const ExamesPresenciaisCard = lazy(() => import('@/components/presencial/ExamesP
 const TreinoDocumento = lazy(() => import('@/components/paciente/TreinoDocumento'));
 const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
 import AvatarClinicoCard from '../avatar/AvatarClinicoCard';
-import { format, parseISO, subDays } from 'date-fns';
+import { format, parseISO, subDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { getPortalUrl } from '@/utils/linkUrls';
 import { useToast } from '@/hooks/use-toast';

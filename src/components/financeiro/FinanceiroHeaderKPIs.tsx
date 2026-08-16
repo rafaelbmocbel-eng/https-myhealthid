@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRepasseConfig } from '@/hooks/useRepasseConfig';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths } from '@/lib/dateSafe';
 import { DollarSign, Receipt, Percent, TrendingUp, TrendingDown, Minus, Wallet } from 'lucide-react';
 
 const FALLBACK_PCT = 0.4;

@@ -13,7 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
 } from 'recharts';
-import { differenceInYears, parseISO, format } from 'date-fns';
+import { differenceInYears, parseISO, format } from '@/lib/dateSafe';
 import DashboardFilters, { DEFAULT_FILTERS, DashboardFilterState, periodToDate, sexoMatch, ageInFaixa } from './DashboardFilters';
 
 const PALETTE = ['hsl(var(--primary))', 'hsl(var(--accent))', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];

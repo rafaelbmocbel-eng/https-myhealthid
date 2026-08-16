@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, MessageCircle, Check, X, Loader2, Clock } from 'lucide-react';
 import { useListaEspera, ItemListaEspera } from '@/hooks/useListaEspera';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 

@@ -14,7 +14,7 @@ import HistoricoClinicoCard from '@/components/paciente/HistoricoClinicoCard';
 import QuestionariosClinicosSection from '@/components/paciente/QuestionariosClinicosSection';
 import EvolucaoAoVivoResultado from '@/components/paciente/EvolucaoAoVivoResultado';
 import { PlanoPersonalizadoSection } from '@/pages/paciente/PacientePlanoIA';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
 

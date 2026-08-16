@@ -23,7 +23,7 @@ import { useWhatsappTemplates, useWhatsappNotas, useGlobalMessageSearch, useAtri
 import { buildTemplateContext, aplicarVariaveis, TEMPLATE_VARIAVEIS } from '@/utils/whatsappTemplateVars';
 import { WaBubblePreview } from '@/components/whatsapp/WaBubblePreview';
 import { formatPhoneNumber } from '@/utils/whatsapp';
-import { format, isToday, isYesterday, isSameDay } from 'date-fns';
+import { format, isToday, isYesterday, isSameDay } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';

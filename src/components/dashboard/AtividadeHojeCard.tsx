@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { UserPlus, ClipboardCheck, Mic, CalendarCheck, Loader2 } from 'lucide-react';
-import { format, isToday } from 'date-fns';
+import { format, isToday } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 

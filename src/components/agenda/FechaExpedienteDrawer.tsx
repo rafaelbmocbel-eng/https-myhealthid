@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, parseISO, isToday, isBefore, differenceInMinutes } from 'date-fns';
+import { format, parseISO, isToday, isBefore, differenceInMinutes } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import {
   CheckCircle2, X, UserPlus, Clock, ClipboardCheck,

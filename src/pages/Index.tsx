@@ -17,7 +17,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { getBaseUrl } from '@/utils/linkUrls';
 import { PageTransition, StaggerContainer, StaggerItem, FadeIn } from '@/components/PageTransition';

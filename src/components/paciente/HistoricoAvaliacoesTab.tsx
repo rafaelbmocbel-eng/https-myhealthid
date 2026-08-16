@@ -2,7 +2,7 @@ import { useState, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, parse, parseISO } from 'date-fns';
+import { format, parse, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { Fingerprint, Mic, FileText, ChevronDown, Loader2, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';

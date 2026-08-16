@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, AlertTriangle, Users, MessageCircle, BarChart3, ShoppingCart, Loader2 } from 'lucide-react';
-import { format, startOfMonth, parseISO } from 'date-fns';
+import { format, startOfMonth, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';

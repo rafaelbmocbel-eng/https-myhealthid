@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { startOfWeek } from 'date-fns';
+import { startOfWeek } from '@/lib/dateSafe';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

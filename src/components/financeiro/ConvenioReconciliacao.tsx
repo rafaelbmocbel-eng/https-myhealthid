@@ -17,7 +17,7 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from '@/components/ui/accordion';
 import { toast } from 'sonner';
-import { format, differenceInCalendarDays } from 'date-fns';
+import { format, differenceInCalendarDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { Building2, CheckCircle2, Clock, AlertTriangle, FileCheck2 } from 'lucide-react';
 import { SectionTitle } from '@/components/ui/section-title';

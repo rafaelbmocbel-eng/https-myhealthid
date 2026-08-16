@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, Circle, TrendingUp, Calendar, AlertTriangle } from 'lucide-react';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 interface Props {

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Award, Sparkles, Loader2, Eye, EyeOff, Send, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { erroDaFuncao } from '@/lib/fnError';
 
 interface Props { pacienteId: string; pacienteNome?: string; pacienteTelefone?: string | null; }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { Brain, Plus, TrendingUp, Loader2, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';

@@ -22,7 +22,7 @@ import {
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints, CalendarPlus,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, DollarSign, Package, Target, LayoutDashboard, Smartphone,
 } from 'lucide-react';
-import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
+import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';

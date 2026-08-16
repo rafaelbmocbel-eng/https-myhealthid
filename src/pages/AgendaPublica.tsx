@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { shareViaWhatsApp } from '@/utils/whatsapp';
 import { Button } from '@/components/ui/button';
 import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
-import { format, addDays, startOfWeek, isSameDay, isAfter, parseISO, addMinutes, differenceInDays } from 'date-fns';
+import { format, addDays, startOfWeek, isSameDay, isAfter, parseISO, addMinutes, differenceInDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { useUtmCapture } from '@/hooks/useUtmCapture';

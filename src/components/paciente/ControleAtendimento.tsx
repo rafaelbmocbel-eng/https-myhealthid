@@ -14,7 +14,7 @@ import {
   CheckCircle2, XCircle, ChevronLeft, ChevronRight, History,
   Star, StickyNote, Trash2,
 } from 'lucide-react';
-import { format, parseISO, isToday, isSameDay, addDays } from 'date-fns';
+import { format, parseISO, isToday, isSameDay, addDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';

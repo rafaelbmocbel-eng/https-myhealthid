@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, differenceInYears } from 'date-fns';
+import { format, parseISO, differenceInYears } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { FileText, Award } from 'lucide-react';
 import { getMyIDInterpretation } from '@/utils/myidCalculations';

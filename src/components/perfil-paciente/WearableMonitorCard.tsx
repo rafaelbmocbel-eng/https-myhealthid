@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { Watch, AlertTriangle, TrendingDown, Heart, Moon, WifiOff, CheckCircle2, Footprints } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 interface Props {

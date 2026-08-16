@@ -3,7 +3,7 @@ import { FileText, TrendingUp, TrendingDown, Minus, BarChart3, ArrowRight, Calen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,

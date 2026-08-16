@@ -6,7 +6,7 @@ import { Loader2, MessageCircle, Send, CheckCircle2, ChevronLeft, ChevronRight }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { format, addDays, isBefore, startOfDay, parseISO, setHours, setMinutes, addMinutes, isAfter } from 'date-fns';
+import { format, addDays, isBefore, startOfDay, parseISO, setHours, setMinutes, addMinutes, isAfter } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { gerarPixQrCodeDataUrl, gerarPixPayload } from '@/utils/pixQrCode';
 import logoMyHealthId from '@/assets/logo-my-health-id.jpg';

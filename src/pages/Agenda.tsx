@@ -4,7 +4,7 @@ import {
   addDays, addWeeks, addMonths, subWeeks, subMonths, subDays,
   isSameDay, isToday, parseISO, getHours, getMinutes, setHours, setMinutes,
   differenceInMinutes, eachDayOfInterval, isSameMonth,
-} from 'date-fns';
+} from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,

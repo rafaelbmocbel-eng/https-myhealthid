@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import { addLogoToDoc } from './pdfLogoHelper';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 export type TipoDocumento =

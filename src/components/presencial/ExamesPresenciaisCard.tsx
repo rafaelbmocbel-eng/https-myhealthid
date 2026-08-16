@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Activity, ChevronDown, Plus, Trash2, Loader2, Camera, Stethoscope } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { cn } from '@/lib/utils';
 import { EXAMES_PRESENCIAIS, tipoExame, resumoExame, resumoCurto, gruposDoExame } from '@/lib/examesPresenciais';
 

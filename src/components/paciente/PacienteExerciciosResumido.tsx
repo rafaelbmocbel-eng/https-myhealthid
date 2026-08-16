@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Dumbbell, ChevronRight, Clock, Play, CheckCircle2
 } from 'lucide-react';
-import { subDays } from 'date-fns';
+import { subDays } from '@/lib/dateSafe';
 
 interface TreinoResumido {
   id: string;

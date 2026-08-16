@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useLayoutConfig } from '@/contexts/LayoutConfigContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, parseISO, parse } from 'date-fns';
+import { format, parseISO, parse } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

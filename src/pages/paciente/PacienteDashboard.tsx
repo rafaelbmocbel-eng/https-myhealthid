@@ -11,7 +11,7 @@ import {
   Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles, Clock,
   CheckCircle2, Circle,
 } from 'lucide-react';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';

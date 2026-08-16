@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 const ControleAtendimento = lazy(() => import('@/components/paciente/ControleAtendimento'));
-import { differenceInDays, format, formatDistanceToNow, addDays, addMonths, isFuture, isPast } from 'date-fns';
+import { differenceInDays, format, formatDistanceToNow, addDays, addMonths, isFuture, isPast } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';

@@ -16,7 +16,7 @@ import {
   Play, Clock, Flame, AlertCircle, Star, X, SkipForward,
   Sparkles, Heart, CalendarDays, Activity, ClipboardList, Rocket, ChevronRight, LayoutGrid,
 } from 'lucide-react';
-import { format, parseISO, isToday } from 'date-fns';
+import { format, parseISO, isToday } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';

@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Store, Eye, X, Plus, Loader2, ExternalLink, CheckCircle2, XCircle, Monitor, Building2, Globe, AlertTriangle, ShieldCheck, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { usePlanoAtivo } from '@/hooks/usePlanoAtivo';
 

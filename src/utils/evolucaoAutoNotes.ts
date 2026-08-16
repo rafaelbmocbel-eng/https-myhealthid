@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 /**

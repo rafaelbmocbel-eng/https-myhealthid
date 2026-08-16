@@ -23,7 +23,7 @@ import {
   Plus, Search, ShoppingCart, CheckCircle, Clock, XCircle, Trash2, Loader2,
   User, Tag, DollarSign, CreditCard, Check, ChevronsUpDown, UserCheck,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 

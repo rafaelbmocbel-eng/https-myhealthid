@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ClipboardCheck, AlertTriangle, ChevronDown } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { cn } from '@/lib/utils';
 import { INSTRUMENTOS, CLASSIFICACAO_LABEL, type InstrumentoId } from '@/lib/instrumentosClinicos';
 

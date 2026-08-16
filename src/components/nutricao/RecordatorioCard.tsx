@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { UtensilsCrossed, Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 
 interface Props { pacienteId: string; }
 

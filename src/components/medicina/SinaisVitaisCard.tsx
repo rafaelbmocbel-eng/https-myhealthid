@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Activity, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useSinaisVitais, type NovoSinalVital } from '@/hooks/useSinaisVitais';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 interface Props {

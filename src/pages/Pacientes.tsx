@@ -23,7 +23,7 @@ import {
   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download, BarChart3,
   DollarSign, MessageSquare, MoreHorizontal, Bell, Store, ShieldCheck, UserCheck,
 } from 'lucide-react';
-import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
+import { format, parseISO, differenceInDays, formatDistanceToNow } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { CODIGOS_CASSI } from '@/lib/cassiGuias';

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sparkles } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 // Dicas locais baseadas em achados clínicos (fallback quando sem notificação)

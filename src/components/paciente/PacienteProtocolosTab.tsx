@@ -15,7 +15,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { PDFProtocolo } from '@/utils/pdfGenerator';

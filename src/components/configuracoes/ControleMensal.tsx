@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Users, DollarSign, Percent, Download, Loader2, FileText } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/utils/exportCsv';
 

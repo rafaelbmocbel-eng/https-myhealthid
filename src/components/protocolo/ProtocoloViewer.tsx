@@ -9,7 +9,7 @@ import {
   Clock, ListChecks, Pencil,
 } from 'lucide-react';
 import { useState } from 'react';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import ProtocoloScores from './ProtocoloScores';
 import ProtocoloTratamento from './ProtocoloTratamento';

@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { formatPhoneNumber } from '@/utils/whatsapp';
-import { formatDistanceToNow, isToday } from 'date-fns';
+import { formatDistanceToNow, isToday } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';

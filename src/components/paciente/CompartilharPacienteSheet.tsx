@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { getBaseUrl } from '@/utils/linkUrls';
 import { waUrl } from '@/utils/whatsapp';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { cn } from '@/lib/utils';
 
 interface Props {

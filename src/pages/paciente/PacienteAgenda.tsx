@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarDays, Clock, Loader2, CheckCircle2, ExternalLink, XCircle, AlertCircle, Plus } from 'lucide-react';
-import { format, parseISO, addMinutes, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, addMinutes, startOfDay, endOfDay } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import PacienteLayout from '@/components/paciente/PacienteLayout';

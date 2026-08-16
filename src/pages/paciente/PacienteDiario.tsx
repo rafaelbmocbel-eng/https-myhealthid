@@ -13,7 +13,7 @@ import {
   Loader2, Plus, Smile, Frown, Meh, Moon, Zap, Activity,
   TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Check
 } from 'lucide-react';
-import { format, parseISO, subDays, isToday, startOfDay } from 'date-fns';
+import { format, parseISO, subDays, isToday, startOfDay } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
 import {

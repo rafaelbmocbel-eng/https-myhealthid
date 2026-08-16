@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, Clock, Loader2, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import { format, addDays, startOfDay, setHours, setMinutes, isBefore, isAfter } from 'date-fns';
+import { format, addDays, startOfDay, setHours, setMinutes, isBefore, isAfter } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';

@@ -12,7 +12,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Progress } from '@/components/ui/progress';
 import { Package, Plus, Edit, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 
 const PACOTES_PREDEFINIDOS = [
   { label: '5 sessões', total: 5 },

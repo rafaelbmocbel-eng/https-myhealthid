@@ -6,7 +6,7 @@ import { useEquipe } from '@/hooks/useEquipe';
 import { useRepasseConfig } from '@/hooks/useRepasseConfig';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, BarChart3, Loader2, PieChart as PieIcon } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,

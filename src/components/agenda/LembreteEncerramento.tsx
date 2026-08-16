@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format, parseISO, isToday } from 'date-fns';
+import { format, parseISO, isToday } from '@/lib/dateSafe';
 import {
   CheckCircle2, X, UserPlus, Loader2, Sunset,
   Clock, ClipboardCheck, ChevronDown, ChevronUp,

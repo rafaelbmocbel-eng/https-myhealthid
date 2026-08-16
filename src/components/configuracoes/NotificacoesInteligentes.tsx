@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Sparkles, Bell, Clock, MessageSquare, Loader2, Save, History, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 const DIMENSAO_LABEL: Record<string, string> = {

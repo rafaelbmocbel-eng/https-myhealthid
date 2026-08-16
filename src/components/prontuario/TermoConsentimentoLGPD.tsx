@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 const TERMO_LGPD_PADRAO = `TERMO DE CONSENTIMENTO PARA TRATAMENTO DE DADOS PESSOAIS

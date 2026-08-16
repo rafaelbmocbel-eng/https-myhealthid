@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 interface Linha {

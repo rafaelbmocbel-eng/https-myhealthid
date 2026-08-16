@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { differenceInDays, format } from 'date-fns';
+import { differenceInDays, format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl, getBaseUrl, getPortalUrl } from '@/utils/linkUrls';
