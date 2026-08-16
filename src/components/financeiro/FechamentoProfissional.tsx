@@ -79,9 +79,11 @@ export default function FechamentoProfissional() {
           repasse = valor * (percentual / 100);
         }
       }
+      // Data da sessão pode vir ausente/inválida — evita crash "Invalid time value".
+      const dt = s.data_sessao ? new Date(`${s.data_sessao}T12:00:00`) : null;
       return {
         id: s.id,
-        data: new Date(s.data_sessao + 'T12:00:00'),
+        data: dt && !isNaN(dt.getTime()) ? dt : null,
         paciente: `${s.pacientes?.nome || ''} ${s.pacientes?.sobrenome || ''}`.trim() || '—',
         tipo: tipo(s),
         convenio: convNome(s),
@@ -118,7 +120,7 @@ export default function FechamentoProfissional() {
       profissional: profissionalNome,
       periodo: label,
       linhas: linhas.map((l) => ({
-        data: format(l.data, 'dd/MM'),
+        data: l.data ? format(l.data, 'dd/MM') : '—',
         paciente: l.paciente,
         tipo: l.tipo,
         convenio: l.convenio,
@@ -245,7 +247,7 @@ export default function FechamentoProfissional() {
             <div className="max-h-96 overflow-y-auto divide-y">
               {linhas.map((l) => (
                 <div key={l.id} className="grid grid-cols-12 px-3 py-2 text-xs items-center">
-                  <div className="col-span-2 text-muted-foreground">{format(l.data, 'dd/MM')}</div>
+                  <div className="col-span-2 text-muted-foreground">{l.data ? format(l.data, 'dd/MM') : '—'}</div>
                   <div className="col-span-4 truncate font-medium">{l.paciente}</div>
                   <div className="col-span-3 flex items-center gap-1 min-w-0">
                     {l.tipo === 'plano' ? (

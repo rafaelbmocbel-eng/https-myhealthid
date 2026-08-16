@@ -29,15 +29,15 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
 
       <Tabs defaultValue="mensal" className="w-full">
 
-        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8">
-          <TabsTrigger value="mensal">Mensal</TabsTrigger>
-          <TabsTrigger value="receber">A Receber</TabsTrigger>
-          <TabsTrigger value="despesas">Despesas</TabsTrigger>
-          <TabsTrigger value="analise">Análise</TabsTrigger>
-          <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
-          <TabsTrigger value="convenios">Convênios</TabsTrigger>
-          <TabsTrigger value="repasses">Repasses</TabsTrigger>
-          <TabsTrigger value="tiss">TISS</TabsTrigger>
+        <TabsList className="flex w-full justify-start gap-1 overflow-x-auto flex-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <TabsTrigger className="shrink-0" value="mensal">Mensal</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="receber">A Receber</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="despesas">Despesas</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="analise">Análise</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="fechamento">Fechamento</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="convenios">Convênios</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="repasses">Repasses</TabsTrigger>
+          <TabsTrigger className="shrink-0" value="tiss">TISS</TabsTrigger>
         </TabsList>
 
         <TabsContent value="mensal" className="space-y-4 sm:space-y-5 mt-4">
