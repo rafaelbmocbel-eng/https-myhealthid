@@ -20,7 +20,12 @@ export default function PacienteLogin() {
   const portalToken = routeToken ?? searchParams.get('token');
   const isPortalLink = Boolean(routeToken) || searchParams.get('portal') === '1';
 
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+  // Quem chega pelo link de convite quase sempre é PRIMEIRO acesso: precisa
+  // CRIAR a senha (Cadastrar), não "Entrar". Por isso o link já abre em Cadastrar
+  // — evita o erro "Invalid login credentials" de tentar logar sem ter conta.
+  const [tab, setTab] = useState<'login' | 'register'>(
+    (Boolean(routeToken) || searchParams.get('token') || searchParams.get('portal') === '1') ? 'register' : 'login',
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
@@ -232,7 +237,19 @@ export default function PacienteLogin() {
     if (tab === 'login') {
       const { error } = await signIn(form.email, form.password);
       if (error) {
-        toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' });
+        // "Invalid login credentials" = e-mail/senha não conferem OU a conta
+        // ainda não existe. No primeiro acesso pelo link, o caminho é Cadastrar.
+        const invalido = (error.message || '').toLowerCase().includes('invalid login');
+        if (invalido) {
+          toast({
+            title: 'É seu primeiro acesso?',
+            description: 'Toque em "Cadastrar" para criar sua senha. Se já tem conta, confira o e-mail e a senha.',
+            variant: 'destructive',
+          });
+          setTab('register');
+        } else {
+          toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' });
+        }
         setSubmitting(false);
         linkAttempted.current = false;
       }
@@ -244,7 +261,11 @@ export default function PacienteLogin() {
             password: form.password,
             options: {
               data: { nome: form.nome, is_patient: true },
-              emailRedirectTo: `${window.location.origin}/paciente/login`,
+              // Preserva o token na volta da confirmação de e-mail, senão o
+              // vínculo por token se perde (crítico p/ cliente cadastrado sem e-mail).
+              emailRedirectTo: portalToken
+                ? `${window.location.origin}/paciente/login?portal=1&token=${encodeURIComponent(portalToken)}`
+                : `${window.location.origin}/paciente/login`,
             },
           })
         );
@@ -545,12 +566,16 @@ export default function PacienteLogin() {
               <Heart className="h-7 w-7 text-primary-foreground" fill="currentColor" />
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-              {tab === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta'}
+              {tab === 'login'
+                ? 'Bem-vindo de volta'
+                : isPortalLink ? 'Crie sua senha de acesso' : 'Crie sua conta'}
             </h1>
             <p className="text-muted-foreground text-xs sm:text-sm mt-1.5 px-2">
               {tab === 'login'
-                ? 'Entre com o e-mail informado ao seu terapeuta.'
-                : 'Use o mesmo e-mail que seu terapeuta cadastrou.'}
+                ? 'Já tem conta? Entre com seu e-mail e senha.'
+                : isPortalLink
+                  ? 'Primeiro acesso: escolha um e-mail e crie uma senha. O link já te liga ao seu terapeuta.'
+                  : 'Use o mesmo e-mail que seu terapeuta cadastrou.'}
             </p>
           </div>
 
