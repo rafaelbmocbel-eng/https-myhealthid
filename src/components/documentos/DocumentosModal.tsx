@@ -16,6 +16,7 @@ import {
   type TerapeutaInfo,
   type PacienteInfo,
 } from '@/utils/pdfDocumentos';
+import { corpoPadraoDocumento } from '@/utils/documentosTexto';
 
 interface Props {
   open: boolean;
@@ -85,6 +86,11 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
   const [terapeuta, setTerapeuta] = useState<TerapeutaInfo | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Corpo do documento editável + data de emissão (todos os tipos de texto)
+  const [dataEmissao, setDataEmissao] = useState(new Date().toISOString().split('T')[0]);
+  const [corpo, setCorpo] = useState('');
+  const [corpoEditado, setCorpoEditado] = useState(false);
 
   // Form fields (todos os tipos)
   const [data, setData] = useState(new Date().toISOString().split('T')[0]);
@@ -221,7 +227,8 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo, paciente.id, user]);
 
-  const buildDados = () => {
+  // Campos estruturados (sem o corpo/emissão) — alimentam o texto padrão.
+  const buildDadosBase = () => {
     let dados: any = {};
     switch (tipo) {
       case 'comparecimento':
@@ -272,6 +279,31 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     return dados;
   };
 
+  const isTextoDoc = !!tipo && tipo !== 'laudo_cinetico';
+
+  // Dados finais enviados ao gerador: campos + data de emissão + corpo editado
+  // (só sobrescreve o texto padrão quando o usuário mexeu no texto à mão).
+  const buildDados = () => {
+    const base = buildDadosBase();
+    const extra: any = { dataEmissao };
+    if (isTextoDoc && corpoEditado && corpo.trim()) extra.corpo = corpo;
+    return { ...base, ...extra };
+  };
+
+  // Mantém o campo de texto em sincronia com os campos estruturados enquanto o
+  // usuário NÃO editou o texto manualmente. Assim ele vê o texto que vai sair e
+  // pode assumir a edição a qualquer momento (WYSIWYG de verdade).
+  useEffect(() => {
+    if (!isTextoDoc || !terapeuta || corpoEditado) return;
+    const txt = corpoPadraoDocumento(tipo!, { paciente, terapeuta }, buildDadosBase());
+    setCorpo(txt || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    tipo, terapeuta, paciente, corpoEditado,
+    data, horaEntrada, horaSaida, diasAfastamento, cid, motivo,
+    desde, finalidade, observacoes, valor, referente, formaPagamento, numeroSessoes,
+  ]);
+
   const handlePreview = async () => {
     if (!tipo || !terapeuta) return;
     setPreviewLoading(true);
@@ -302,6 +334,9 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
+    // Ao trocar de tipo, volta o texto a acompanhar os campos.
+    setCorpo('');
+    setCorpoEditado(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo]);
 
@@ -318,6 +353,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     profissao, queixaPrincipal, hma, hpp, medicamentos, exameFisico, testesEspeciais,
     diagnosticoFuncional, cidPrincipal, cifCodigos, objetivos, conduta,
     frequenciaSugerida, prognostico, myidData,
+    corpo, corpoEditado, dataEmissao,
   ]);
 
   const handleGerar = async () => {
@@ -387,6 +423,11 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               <Button variant="ghost" size="sm" className="ml-auto h-7 text-xs" onClick={() => setTipo(null)}>
                 Trocar
               </Button>
+            </div>
+
+            <div>
+              <Label htmlFor="demissao">Data de emissão (rodapé)</Label>
+              <Input id="demissao" type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
             </div>
 
             {tipo === 'comparecimento' && (
@@ -568,6 +609,36 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
                     <Input id="prog" value={prognostico} onChange={(e) => setPrognostico(e.target.value)} placeholder="Ex: Bom em 6-8 semanas" />
                   </div>
                 </div>
+              </div>
+            )}
+
+            {isTextoDoc && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor="corpo">Texto do documento (editável)</Label>
+                  {corpoEditado && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px] gap-1"
+                      onClick={() => setCorpoEditado(false)}
+                    >
+                      Restaurar texto padrão
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  id="corpo"
+                  rows={8}
+                  value={corpo}
+                  onChange={(e) => { setCorpo(e.target.value); setCorpoEditado(true); }}
+                  className="text-sm leading-relaxed"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {corpoEditado
+                    ? 'Você está editando o texto à mão. Os campos acima não vão mais sobrescrever.'
+                    : 'Os campos acima preenchem este texto. Pode editar livremente aqui — assim que digitar, o texto passa a ser o seu.'}
+                </p>
               </div>
             )}
 

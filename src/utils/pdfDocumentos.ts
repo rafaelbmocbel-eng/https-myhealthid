@@ -2,6 +2,13 @@ import jsPDF from 'jspdf';
 import { addLogoToDoc } from './pdfLogoHelper';
 import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
+import {
+  fmtDate,
+  fmtCurrency,
+  pacienteLine,
+  parseDataLocal,
+  corpoPadraoDocumento,
+} from './documentosTexto';
 
 export type TipoDocumento =
   | 'comparecimento'
@@ -38,14 +45,21 @@ export interface PacienteInfo {
   rg?: string | null;
 }
 
-export interface DocComparecimentoData {
+// Campos comuns a todos os documentos de texto corrido: corpo editável pelo
+// usuário (se vier, substitui o texto padrão) e data de emissão editável.
+export interface DocTextoComum {
+  corpo?: string;        // texto do corpo já editado pelo usuário (opcional)
+  dataEmissao?: string;  // ISO date da emissão (opcional; padrão = hoje)
+}
+
+export interface DocComparecimentoData extends DocTextoComum {
   data: string;          // ISO date
   horaEntrada: string;   // HH:mm
   horaSaida: string;     // HH:mm
   acompanhante?: string;
 }
 
-export interface DocAtestadoFisioData {
+export interface DocAtestadoFisioData extends DocTextoComum {
   diasAfastamento: number;
   dataInicio: string;    // ISO date
   cid?: string;
@@ -54,13 +68,13 @@ export interface DocAtestadoFisioData {
   cifDescricao?: string;
 }
 
-export interface DocDeclaracaoData {
+export interface DocDeclaracaoData extends DocTextoComum {
   desde: string;         // ISO date
   finalidade?: string;   // empresa/escola/seguro
   observacoes?: string;
 }
 
-export interface DocReciboData {
+export interface DocReciboData extends DocTextoComum {
   valor: number;
   referente: string;
   formaPagamento?: string;
@@ -68,6 +82,7 @@ export interface DocReciboData {
 }
 
 export interface DocLaudoCineticoData {
+  dataEmissao?: string;    // ISO date da emissão (opcional; padrão = hoje)
   // Identificação extra
   dataNascimento?: string | null;
   sexo?: string | null;
@@ -104,23 +119,6 @@ interface BaseInput {
 const PRIMARY: [number, number, number] = [28, 55, 83];
 const TEXT: [number, number, number] = [30, 30, 46];
 const MUTED: [number, number, number] = [107, 114, 128];
-
-function fmtDate(iso: string): string {
-  try {
-    return format(new Date(iso), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-  } catch {
-    return iso;
-  }
-}
-
-function fmtCurrency(v: number): string {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function valorPorExtenso(v: number): string {
-  // Simplificado — para produção ideal usar lib. Aqui retorna texto direto.
-  return `(${fmtCurrency(v)})`;
-}
 
 async function drawHeader(doc: jsPDF, clinica?: ClinicaInfo | null) {
   const margin = 20;
@@ -179,20 +177,41 @@ function drawBody(doc: jsPDF, text: string, y: number): number {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   const margin = 25;
-  const lines = doc.splitTextToSize(text, 210 - margin * 2);
-  doc.text(lines, margin, y, { align: 'justify', maxWidth: 210 - margin * 2 });
-  return y + lines.length * 6;
+  const maxW = 210 - margin * 2;
+  const lineH = 6;
+  let cursor = y;
+
+  // Renderiza parágrafo a parágrafo. O 'justify' do jsPDF estica TODAS as linhas
+  // até a largura máxima — inclusive a última e curta linha do parágrafo, o que
+  // criava aquele "sessão     de     fisioterapia" cheio de buracos. Aqui só as
+  // linhas "cheias" são justificadas; a última de cada parágrafo fica à esquerda.
+  const paragrafos = String(text).split('\n');
+  for (const par of paragrafos) {
+    if (par.trim() === '') { cursor += lineH; continue; } // linha em branco = espaçamento
+    const linhas: string[] = doc.splitTextToSize(par, maxW);
+    linhas.forEach((ln, i) => {
+      const ehUltima = i === linhas.length - 1;
+      if (ehUltima) {
+        doc.text(ln, margin, cursor);
+      } else {
+        doc.text(ln, margin, cursor, { align: 'justify', maxWidth: maxW });
+      }
+      cursor += lineH;
+    });
+  }
+  return cursor;
 }
 
-async function drawFooter(doc: jsPDF, terapeuta: TerapeutaInfo, clinica?: ClinicaInfo | null) {
+async function drawFooter(doc: jsPDF, terapeuta: TerapeutaInfo, clinica?: ClinicaInfo | null, dataEmissao?: string) {
   const yBase = 240;
   const margin = 25;
-  // Local e data
+  // Local e data — data de emissão editável (padrão = hoje).
   const cidade = clinica?.cidade ? `${clinica.cidade}${clinica.uf ? '/' + clinica.uf : ''}, ` : '';
+  const dEmissao = dataEmissao ? parseDataLocal(dataEmissao) : new Date();
   doc.setTextColor(...TEXT);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  doc.text(`${cidade}${format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}.`, 105, yBase, { align: 'center' });
+  doc.text(`${cidade}${format(dEmissao, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}.`, 105, yBase, { align: 'center' });
 
   // Linha de assinatura
   doc.setDrawColor(...TEXT);
@@ -216,14 +235,6 @@ async function drawFooter(doc: jsPDF, terapeuta: TerapeutaInfo, clinica?: Clinic
   doc.text('feito por My Health ID', 105, 285, { align: 'center' });
 }
 
-function pacienteLine(p: PacienteInfo): string {
-  const nome = `${p.nome}${p.sobrenome ? ' ' + p.sobrenome : ''}`;
-  const docs: string[] = [];
-  if (p.cpf) docs.push(`CPF ${p.cpf}`);
-  if (p.rg) docs.push(`RG ${p.rg}`);
-  return docs.length ? `${nome} (${docs.join(', ')})` : nome;
-}
-
 // ============ GENERATORS ============
 
 export async function gerarComparecimento(input: BaseInput & { dados: DocComparecimentoData }): Promise<jsPDF> {
@@ -231,10 +242,12 @@ export async function gerarComparecimento(input: BaseInput & { dados: DocCompare
   await drawHeader(doc, input.clinica);
   let y = drawTitle(doc, 'Atestado de Comparecimento', 50);
 
-  const text = `Atesto, para os devidos fins, que ${pacienteLine(input.paciente)} compareceu a esta unidade de atendimento no dia ${fmtDate(input.dados.data)}, no horário das ${input.dados.horaEntrada} às ${input.dados.horaSaida}, para realização de sessão de ${input.terapeuta.especialidade || 'fisioterapia'}.${input.dados.acompanhante ? `\n\nAcompanhado(a) por: ${input.dados.acompanhante}.` : ''}\n\nO presente atestado é emitido a pedido do interessado para comprovação de comparecimento, não justificando, por si só, ausência ou afastamento de atividades laborais ou escolares.`;
+  const text = input.dados.corpo?.trim()
+    ? input.dados.corpo
+    : corpoPadraoDocumento('comparecimento', input, input.dados)!;
 
   y = drawBody(doc, text, y + 4);
-  await drawFooter(doc, input.terapeuta, input.clinica);
+  await drawFooter(doc, input.terapeuta, input.clinica, input.dados.dataEmissao);
   return doc;
 }
 
@@ -243,10 +256,12 @@ export async function gerarAtestadoFisio(input: BaseInput & { dados: DocAtestado
   await drawHeader(doc, input.clinica);
   let y = drawTitle(doc, 'Atestado Fisioterapêutico', 50);
 
-  const text = `Atesto, para os devidos fins, que ${pacienteLine(input.paciente)} encontra-se sob tratamento fisioterapêutico, necessitando de afastamento de suas atividades habituais (laborais e/ou escolares) por um período de ${input.dados.diasAfastamento} (${input.dados.diasAfastamento === 1 ? 'um' : input.dados.diasAfastamento} dia${input.dados.diasAfastamento > 1 ? 's' : ''}), a contar de ${fmtDate(input.dados.dataInicio)}.${input.dados.cid ? `\n\nCID: ${input.dados.cid}` : ''}${input.dados.motivo ? `\n\nMotivo clínico: ${input.dados.motivo}` : ''}${input.dados.cif ? `\n\nCIF (Classificação Internacional de Funcionalidade): ${input.dados.cif}${input.dados.cifDescricao ? ` — ${input.dados.cifDescricao}` : ''}` : ''}\n\nEmitido em conformidade com a Resolução COFFITO nº 414/2012 e nº 464/2016.`;
+  const text = input.dados.corpo?.trim()
+    ? input.dados.corpo
+    : corpoPadraoDocumento('atestado_fisio', input, input.dados)!;
 
   y = drawBody(doc, text, y + 4);
-  await drawFooter(doc, input.terapeuta, input.clinica);
+  await drawFooter(doc, input.terapeuta, input.clinica, input.dados.dataEmissao);
   return doc;
 }
 
@@ -255,10 +270,12 @@ export async function gerarDeclaracaoTratamento(input: BaseInput & { dados: DocD
   await drawHeader(doc, input.clinica);
   let y = drawTitle(doc, 'Declaração de Tratamento', 50);
 
-  const text = `Declaro, para os devidos fins, que ${pacienteLine(input.paciente)} encontra-se em acompanhamento ${input.terapeuta.especialidade ? `de ${input.terapeuta.especialidade.toLowerCase()}` : 'fisioterapêutico'} nesta unidade desde ${fmtDate(input.dados.desde)}, realizando sessões de forma regular conforme plano terapêutico estabelecido.${input.dados.finalidade ? `\n\nFinalidade desta declaração: ${input.dados.finalidade}.` : ''}${input.dados.observacoes ? `\n\nObservações: ${input.dados.observacoes}` : ''}\n\nA presente declaração é emitida a pedido do interessado, sem detalhamento de informações clínicas, em respeito ao sigilo profissional.`;
+  const text = input.dados.corpo?.trim()
+    ? input.dados.corpo
+    : corpoPadraoDocumento('declaracao_tratamento', input, input.dados)!;
 
   y = drawBody(doc, text, y + 4);
-  await drawFooter(doc, input.terapeuta, input.clinica);
+  await drawFooter(doc, input.terapeuta, input.clinica, input.dados.dataEmissao);
   return doc;
 }
 
@@ -277,10 +294,12 @@ export async function gerarRecibo(input: BaseInput & { dados: DocReciboData }): 
   doc.text(`Valor: ${fmtCurrency(input.dados.valor)}`, 105, y + 9, { align: 'center' });
   y += 22;
 
-  const text = `Recebi de ${pacienteLine(input.paciente)} a importância de ${fmtCurrency(input.dados.valor)} ${valorPorExtenso(input.dados.valor)}, referente a ${input.dados.referente}${input.dados.numeroSessoes ? ` (${input.dados.numeroSessoes} sessões)` : ''}${input.dados.formaPagamento ? `, paga por ${input.dados.formaPagamento}` : ''}.\n\nPara maior clareza, firmo o presente recibo, dando plena, geral e irrevogável quitação do valor recebido.`;
+  const text = input.dados.corpo?.trim()
+    ? input.dados.corpo
+    : corpoPadraoDocumento('recibo', input, input.dados)!;
 
   y = drawBody(doc, text, y);
-  await drawFooter(doc, input.terapeuta, input.clinica);
+  await drawFooter(doc, input.terapeuta, input.clinica, input.dados.dataEmissao);
   return doc;
 }
 
@@ -451,7 +470,7 @@ export async function gerarLaudoCinetico(input: BaseInput & { dados: DocLaudoCin
 
   // Assinatura na última página
   y = ensureSpace(doc, y, 50);
-  await drawFooter(doc, input.terapeuta, input.clinica);
+  await drawFooter(doc, input.terapeuta, input.clinica, input.dados.dataEmissao);
   return doc;
 }
 
