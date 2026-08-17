@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Download, Loader2, Calendar, ClipboardCheck, FileCheck, Receipt, Stethoscope, Sparkles, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import { FileText, Download, Loader2, Calendar, ClipboardCheck, FileCheck, Receipt, Stethoscope, Sparkles, Eye, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -16,7 +16,7 @@ import {
   type TerapeutaInfo,
   type PacienteInfo,
 } from '@/utils/pdfDocumentos';
-import { corpoPadraoDocumento } from '@/utils/documentosTexto';
+import { corpoPadraoDocumento, fmtDate } from '@/utils/documentosTexto';
 
 interface Props {
   open: boolean;
@@ -30,6 +30,17 @@ const TIPOS: { value: TipoDocumento; label: string; icon: any; desc: string }[] 
   { value: 'atestado_fisio', label: 'Atestado Fisioterapêutico', icon: ClipboardCheck, desc: 'Justifica afastamento de atividades por X dias.' },
   { value: 'declaracao_tratamento', label: 'Declaração de Tratamento', icon: FileCheck, desc: 'Confirma acompanhamento (sem dados clínicos).' },
   
+];
+
+// Patologias mais comuns na fisioterapia — atalho pra inserir no texto do documento.
+const PATOLOGIAS_COMUNS = [
+  'Lombalgia', 'Lombociatalgia', 'Hérnia de disco lombar', 'Cervicalgia',
+  'Cervicobraquialgia', 'Tendinite do supraespinhal (ombro)', 'Bursite de ombro',
+  'Capsulite adesiva (ombro congelado)', 'Epicondilite lateral (cotovelo)',
+  'Síndrome do túnel do carpo', 'Gonartrose (joelho)', 'Condromalácia patelar',
+  'Pós-operatório de joelho', 'Entorse de tornozelo', 'Fascite plantar',
+  'Escoliose', 'Cervicalgia postural', 'Fibromialgia', 'Coxartrose (quadril)',
+  'Lesão do manguito rotador',
 ];
 
 // CIF (Classificação Internacional de Funcionalidade) — sugestão por palavras-chave do motivo
@@ -76,6 +87,77 @@ function sugerirCIF(motivo: string): { cif: string; desc: string } | null {
   }
   // Sempre retorna algo quando há motivo descrito
   return CIF_FALLBACK;
+}
+
+// Pré-visualização em HTML fiel ao PDF — funciona no celular (o iframe de PDF
+// não renderiza em navegador mobile). Mostra o MESMO texto (corpo) que sai no
+// PDF, então é WYSIWYG de verdade.
+function DocumentoPreviewHTML({
+  clinica, terapeuta, paciente, titulo, corpo, dataEmissao,
+}: {
+  clinica: ClinicaInfo | null;
+  terapeuta: TerapeutaInfo;
+  paciente: PacienteInfo;
+  titulo: string;
+  corpo: string;
+  dataEmissao: string;
+}) {
+  const nomeClinica = clinica?.razao_social || 'MY HEALTH ID';
+  const endParts = [
+    clinica?.endereco,
+    clinica?.cidade ? `${clinica.cidade}${clinica.uf ? '/' + clinica.uf : ''}` : null,
+    clinica?.cep ? `CEP ${clinica.cep}` : null,
+  ].filter(Boolean);
+  const linha1 = [clinica?.cnpj ? `CNPJ ${clinica.cnpj}` : null, endParts.join(', ') || null].filter(Boolean).join(' · ');
+  const contato = [
+    clinica?.telefone,
+    clinica?.email_clinica,
+    clinica?.horario_funcionamento ? `Atend.: ${clinica.horario_funcionamento}` : null,
+  ].filter(Boolean).join(' · ');
+  const cidade = clinica?.cidade ? `${clinica.cidade}${clinica.uf ? '/' + clinica.uf : ''}, ` : '';
+  const nomeTer = `${terapeuta.nome}${terapeuta.sobrenome ? ' ' + terapeuta.sobrenome : ''}`;
+  const reg = [terapeuta.especialidade, terapeuta.registro].filter(Boolean).join(' · ');
+  const paragrafos = String(corpo || '').split('\n');
+
+  return (
+    <div className="bg-white text-[#1e1e2e] rounded-md shadow-sm mx-auto w-full max-w-[520px] px-6 py-6 sm:px-8 sm:py-8 text-[13px] leading-relaxed">
+      {/* Cabeçalho */}
+      <div className="flex items-start gap-3 pb-2 border-b-2 border-[#1c3753]">
+        {clinica?.logo_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={clinica.logo_url} alt="" className="h-12 w-12 object-contain shrink-0" />
+        )}
+        <div className="min-w-0">
+          <div className="text-[#1c3753] font-bold text-base leading-tight">{nomeClinica}</div>
+          {linha1 && <div className="text-[10px] text-gray-500 mt-0.5">{linha1}</div>}
+          {contato && <div className="text-[10px] text-gray-500">{contato}</div>}
+        </div>
+      </div>
+
+      {/* Título */}
+      <h3 className="text-center text-[#1c3753] font-bold text-sm uppercase tracking-wide mt-5 mb-4">
+        {titulo}
+      </h3>
+
+      {/* Corpo */}
+      <div className="space-y-2 text-justify">
+        {paragrafos.map((p, i) =>
+          p.trim() === ''
+            ? <div key={i} className="h-2" />
+            : <p key={i}>{p}</p>,
+        )}
+      </div>
+
+      {/* Rodapé */}
+      <div className="mt-16 text-center">
+        <p>{cidade}{fmtDate(dataEmissao)}.</p>
+        <div className="mx-auto mt-10 w-56 border-t border-[#1e1e2e]" />
+        <p className="font-bold mt-1">{nomeTer}</p>
+        {reg && <p className="text-[11px] text-gray-500">{reg}</p>}
+        <p className="text-[8px] text-gray-400 mt-6">feito por My Health ID</p>
+      </div>
+    </div>
+  );
 }
 
 export default function DocumentosModal({ open, onOpenChange, paciente }: Props) {
@@ -304,6 +386,13 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     desde, finalidade, observacoes, valor, referente, formaPagamento, numeroSessoes,
   ]);
 
+  // Insere uma patologia comum no fim do texto (o usuário edita/reposiciona depois).
+  const inserirPatologia = (p: string) => {
+    if (!p) return;
+    setCorpo((c) => `${(c || '').trimEnd()}\n\nObservação clínica: ${p}.`);
+    setCorpoEditado(true);
+  };
+
   const handlePreview = async () => {
     if (!tipo || !terapeuta) return;
     setPreviewLoading(true);
@@ -334,27 +423,46 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
-    // Ao trocar de tipo, volta o texto a acompanhar os campos.
-    setCorpo('');
+    // Ao trocar de tipo, apenas solta a edição manual — NÃO limpa o texto aqui.
+    // (Limpar apagava o texto que o efeito de sincronização preenche no mesmo
+    // render, deixando a caixa vazia.) O sync repõe o texto padrão do novo tipo.
     setCorpoEditado(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo]);
 
-  // Auto-preview debounced: regenera quando qualquer campo do form muda
+  // Auto-preview (PDF em iframe) SÓ para o Laudo — que é estruturado e não tem
+  // uma pré-visualização HTML. Os documentos de texto usam a prévia HTML abaixo,
+  // que renderiza no celular (iframe de PDF não abre em navegador mobile).
   useEffect(() => {
-    if (!tipo || !terapeuta) return;
+    if (tipo !== 'laudo_cinetico' || !terapeuta) return;
     const t = setTimeout(() => { handlePreview(); }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     tipo, terapeuta, clinica,
-    data, horaEntrada, horaSaida, diasAfastamento, cid, motivo,
-    desde, finalidade, observacoes, valor, referente, formaPagamento, numeroSessoes,
     profissao, queixaPrincipal, hma, hpp, medicamentos, exameFisico, testesEspeciais,
     diagnosticoFuncional, cidPrincipal, cifCodigos, objetivos, conduta,
-    frequenciaSugerida, prognostico, myidData,
-    corpo, corpoEditado, dataEmissao,
+    frequenciaSugerida, prognostico, myidData, dataEmissao,
   ]);
+
+  // Gera o PDF de verdade e abre em nova aba (útil no celular pra ver/imprimir
+  // o arquivo final — a prévia HTML já mostra o conteúdo ao vivo).
+  const handleAbrirPdf = async () => {
+    if (!tipo || !terapeuta) return;
+    setPreviewLoading(true);
+    try {
+      const { gerarDocumento } = await import('@/utils/pdfDocumentos');
+      const doc = await gerarDocumento(tipo, { clinica, terapeuta, paciente }, buildDados());
+      const url = URL.createObjectURL(doc.output('blob'));
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err: any) {
+      console.error('Erro ao abrir PDF:', err);
+      toast({ title: 'Erro ao abrir PDF', description: err.message, variant: 'destructive' });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   const handleGerar = async () => {
     if (!tipo || !terapeuta || !user) return;
@@ -614,18 +722,31 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
 
             {isTextoDoc && (
               <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1 gap-2">
                   <Label htmlFor="corpo">Texto do documento (editável)</Label>
-                  {corpoEditado && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[11px] gap-1"
-                      onClick={() => setCorpoEditado(false)}
-                    >
-                      Restaurar texto padrão
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <Select value="" onValueChange={inserirPatologia}>
+                      <SelectTrigger className="h-7 text-[11px] w-auto gap-1 px-2">
+                        <Sparkles className="h-3 w-3 text-primary" />
+                        <SelectValue placeholder="Patologia" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {PATOLOGIAS_COMUNS.map((p) => (
+                          <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {corpoEditado && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-[11px] gap-1 px-2"
+                        onClick={() => setCorpoEditado(false)}
+                      >
+                        Restaurar padrão
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <Textarea
                   id="corpo"
@@ -642,34 +763,42 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               </div>
             )}
 
-            {previewUrl && (
+            {/* Prévia HTML (fiel ao PDF) — documentos de texto. Renderiza no celular. */}
+            {isTextoDoc && terapeuta && (
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-2 bg-muted/60 border-b border-border text-xs font-medium">
+                  <Eye className="icon-sm text-primary" />
+                  Pré-visualização
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto p-3 bg-neutral-200/60 dark:bg-neutral-800">
+                  <DocumentoPreviewHTML
+                    clinica={clinica}
+                    terapeuta={terapeuta}
+                    paciente={paciente}
+                    titulo={TIPO_DOCUMENTO_LABEL[tipo!]}
+                    corpo={corpo}
+                    dataEmissao={dataEmissao}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Laudo é estruturado (sem corpo de texto) — mantém a prévia em PDF. */}
+            {tipo === 'laudo_cinetico' && previewUrl && (
               <div className="rounded-xl border border-border overflow-hidden bg-muted/30">
                 <div className="flex items-center justify-between px-3 py-2 bg-muted/60 border-b border-border">
                   <div className="flex items-center gap-2 text-xs font-medium">
                     <Eye className="icon-sm text-primary" />
-                    Pré-visualização (atualize após editar)
+                    Pré-visualização
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs gap-1"
-                      onClick={() => previewUrl && window.open(previewUrl, '_blank')}
-                    >
-                      <ExternalLink className="icon-sm" /> Abrir
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        if (previewUrl) URL.revokeObjectURL(previewUrl);
-                        setPreviewUrl(null);
-                      }}
-                    >
-                      <EyeOff className="icon-sm mr-1" /> Fechar
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => previewUrl && window.open(previewUrl, '_blank')}
+                  >
+                    <ExternalLink className="icon-sm" /> Abrir em nova aba
+                  </Button>
                 </div>
                 <iframe
                   src={previewUrl}
@@ -683,11 +812,11 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={handlePreview}
+                onClick={tipo === 'laudo_cinetico' ? handlePreview : handleAbrirPdf}
                 disabled={previewLoading || gerando}
               >
-                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                {previewUrl ? 'Atualizar pré-visualização' : 'Pré-visualizar'}
+                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ExternalLink className="h-4 w-4 mr-2" />}
+                {tipo === 'laudo_cinetico' ? 'Atualizar pré-visualização' : 'Abrir PDF'}
               </Button>
               <Button
                 className="flex-1 bg-gradient-to-r from-primary to-accent text-primary-foreground"
