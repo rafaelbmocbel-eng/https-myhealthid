@@ -40,6 +40,10 @@ export default function PacienteLogin() {
   // (usar o link pessoal) vs. sou novo (encontrar profissional na vitrine).
   const [naoVinculado, setNaoVinculado] = useState(false);
   const [criandoNovo, setCriandoNovo] = useState(false);
+  // Entrou no link do portal com uma conta que é de PROFISSIONAL (ex.: escolheu
+  // a própria conta Google). Antes o app só deslogava em silêncio (parecia loop);
+  // agora mostramos um aviso claro pedindo pra usar a conta do cliente.
+  const [avisoProfissional, setAvisoProfissional] = useState(false);
 
   // Se o carregamento inicial demorar demais, avisa o paciente em vez de deixar o spinner vago.
   useEffect(() => {
@@ -67,6 +71,7 @@ export default function PacienteLogin() {
           linkAttempted.current = false;
           setLinking(false);
           setSubmitting(false);
+          setAvisoProfissional(true); // mostra aviso claro em vez de loop silencioso
           await signOut();
           return;
         }
@@ -108,14 +113,11 @@ export default function PacienteLogin() {
 
       if (profile) {
         if (isPortalLink) {
-          await signOut();
           linkAttempted.current = false;
           setLinking(false);
           setSubmitting(false);
-          toast({
-            title: 'Acesso exclusivo do portal',
-            description: 'Entre com a conta do paciente para continuar.',
-          });
+          setAvisoProfissional(true); // aviso claro em vez de só um toast que some
+          await signOut();
         } else {
           // Profissional acessando login do paciente — mostra tela de escolha
           setLinking(false);
@@ -389,6 +391,43 @@ export default function PacienteLogin() {
             </Button>
           </>
         )}
+      </div>
+    );
+  }
+
+  if (avisoProfissional) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-6 px-6 py-10 text-center">
+        <div className="bg-white/95 rounded-xl px-3 py-2 shadow-md">
+          <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
+        </div>
+        <div className="space-y-2 max-w-sm">
+          <p className="text-lg font-black text-foreground">Essa é uma conta de profissional</p>
+          <p className="text-sm text-muted-foreground">
+            Este link é do <b>portal do cliente</b>. A conta que você escolheu é de
+            <b> profissional</b> — por isso não dá pra entrar por aqui.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Toque abaixo e, na tela do Google, <b>escolha (ou adicione) a conta do cliente</b> —
+            não a sua conta de profissional.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <Button
+            onClick={() => {
+              setAvisoProfissional(false);
+              signOutAttempted.current = false;
+              linkAttempted.current = false;
+              setTab('register');
+            }}
+          >
+            Entrar com a conta do cliente
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground max-w-xs">
+          Dica: no teste, use uma conta Google diferente da sua, ou crie a conta do cliente
+          com e-mail e senha aqui mesmo.
+        </p>
       </div>
     );
   }
