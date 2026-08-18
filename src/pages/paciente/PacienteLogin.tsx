@@ -62,43 +62,18 @@ export default function PacienteLogin() {
     }
   }, [portalToken]);
 
-  // If portal link (portal=1) and user is logged in as professional, sign them out first
+  // Depois de autenticar, resolve o vínculo. IMPORTANTE: não bloqueamos mais só
+  // porque existe uma linha em `profiles` — o trigger do banco cria `profiles`
+  // pra todo usuário sem is_patient=true, então o login por Google de um CLIENTE
+  // também ganha uma (falsa) linha de profissional. Por isso o handlePostLogin
+  // tenta vincular o paciente PRIMEIRO e só considera "profissional" no fim.
   useEffect(() => {
-    if (!authReady || authLoading || !user || signOutAttempted.current) return;
-
-    if (isPortalLink) {
-      const checkAndSignOut = async () => {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) console.warn('[Portal] Falha ao verificar sessão profissional:', error);
-
-        if (profile) {
-          signOutAttempted.current = true;
-          linkAttempted.current = false;
-          setLinking(false);
-          setSubmitting(false);
-          setAvisoProfissional(true); // mostra aviso claro em vez de loop silencioso
-          await signOut();
-          return;
-        }
-
-        if (!linkAttempted.current) {
-          linkAttempted.current = true;
-          handlePostLogin();
-        }
-      };
-      checkAndSignOut();
-    } else {
-      if (!linkAttempted.current) {
-        linkAttempted.current = true;
-        handlePostLogin();
-      }
+    if (!authReady || authLoading || !user) return;
+    if (!linkAttempted.current) {
+      linkAttempted.current = true;
+      handlePostLogin();
     }
-  }, [authLoading, authReady, isPortalLink, signOut, user]);
+  }, [authLoading, authReady, isPortalLink, user]);
 
   useEffect(() => {
     if (!authReady || authLoading || user || !isPortalLink) return;
@@ -112,32 +87,15 @@ export default function PacienteLogin() {
     setLinking(true);
 
     try {
-      // Sempre verifica se é profissional primeiro — independente de isPortalLink
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Marca o usuário como paciente (o login por Google não seta isso; sem
+      // isso o trigger do banco trata todo cliente como profissional).
+      const marcarComoPaciente = async () => {
+        if (user.user_metadata?.is_patient === true) return;
+        try { await supabase.auth.updateUser({ data: { is_patient: true } }); } catch { /* nb */ }
+      };
 
-      if (profileError) console.warn('[Portal] Falha ao validar perfil antes do vínculo:', profileError);
-
-      if (profile) {
-        if (isPortalLink) {
-          linkAttempted.current = false;
-          setLinking(false);
-          setSubmitting(false);
-          setAvisoProfissional(true); // aviso claro em vez de só um toast que some
-          await signOut();
-        } else {
-          // Profissional acessando login do paciente — mostra tela de escolha
-          setLinking(false);
-          setProfissionalConflito(true);
-        }
-        return;
-      }
-
-      // Token do link: da rota/URL OU o que guardamos ao entrar (resiste à perda
-      // do ?token na volta do Google).
+      // 1) VÍNCULO POR TOKEN primeiro — o link do portal manda. Token da URL ou
+      //    o guardado (resiste à perda do ?token na volta do Google).
       let tokenParaVincular: string | null = portalToken ?? null;
       if (!tokenParaVincular) {
         try { tokenParaVincular = localStorage.getItem('mh_portal_token'); } catch { /* nb */ }
@@ -147,48 +105,74 @@ export default function PacienteLogin() {
         if (error) console.warn('[Portal] Falha ao vincular via token:', error);
         else if (data) {
           try { localStorage.removeItem('mh_portal_token'); } catch { /* nb */ }
+          await marcarComoPaciente();
           navigate('/paciente/dashboard', { replace: true });
           return;
         }
       }
 
-      const { data: linkedByEmail, error: emailError } = await supabase.rpc('link_patient_user_by_email');
-      if (emailError) console.warn('[Portal] Falha ao vincular via email:', emailError);
-      else if (linkedByEmail) {
+      // 2) Já é paciente vinculado (user_id na ficha)?
+      const { data: paciente } = await supabase
+        .from('pacientes')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (paciente) {
+        await marcarComoPaciente();
         navigate('/paciente/dashboard', { replace: true });
         return;
       }
 
-      const { data: paciente } = await supabase
-        .from('pacientes')
+      // 3) Vínculo por e-mail (cadastro com o mesmo e-mail).
+      const { data: linkedByEmail, error: emailError } = await supabase.rpc('link_patient_user_by_email');
+      if (emailError) console.warn('[Portal] Falha ao vincular via email:', emailError);
+      else if (linkedByEmail) {
+        await marcarComoPaciente();
+        navigate('/paciente/dashboard', { replace: true });
+        return;
+      }
+
+      // 4) Paciente avulso (sem terapeuta)?
+      const { data: portalPaciente } = await supabase
+        .from('portal_pacientes')
         .select('id')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (portalPaciente) {
+        await marcarComoPaciente();
+        navigate('/paciente/profissionais', { replace: true });
+        return;
+      }
+
+      // 5) Não vinculou por nenhum caminho. AGORA sim, se tem perfil de
+      //    profissional (e NÃO é paciente), trata como profissional. Como a
+      //    linha em `profiles` pode ser falsa (trigger), só bloqueia quem não é
+      //    paciente por nenhuma via — que é o caso de um profissional de verdade.
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
         .maybeSingle();
 
-      if (paciente) {
-        navigate('/paciente/dashboard', { replace: true });
-      } else {
-        // Check if already a standalone patient
-        const { data: portalPaciente } = await supabase
-          .from('portal_pacientes')
-          .select('id')
-          .eq('user_id', user!.id)
-          .maybeSingle();
-
-        if (portalPaciente) {
-          navigate('/paciente/profissionais', { replace: true });
-          return;
+      if (profile && user.user_metadata?.is_patient !== true) {
+        if (isPortalLink) {
+          linkAttempted.current = false;
+          setLinking(false);
+          setSubmitting(false);
+          setAvisoProfissional(true);
+          await signOut();
+        } else {
+          setLinking(false);
+          setProfissionalConflito(true);
         }
-
-        // Não achou vínculo por token nem por e-mail e ainda não é avulso.
-        // NÃO cria conta avulsa automaticamente — pergunta o que a pessoa é,
-        // pra não desconectar da ficha real um cliente já cadastrado que só
-        // errou o e-mail (o caso comum: cliente CASSI cadastrado sem e-mail).
-        setNaoVinculado(true);
-        setLinking(false);
-        setSubmitting(false);
-        linkAttempted.current = false;
+        return;
       }
+
+      // 6) Ninguém reconhecido: mostra a escolha clara (sou novo / outro e-mail).
+      setNaoVinculado(true);
+      setLinking(false);
+      setSubmitting(false);
+      linkAttempted.current = false;
     } catch (err) {
       console.error('[Portal] Erro:', err);
       linkAttempted.current = false;
