@@ -365,7 +365,13 @@ export default function PacienteLogin() {
       if (portalToken) redirect.searchParams.set('token', portalToken);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: redirect.toString() },
+        options: {
+          redirectTo: redirect.toString(),
+          // Força o Google a SEMPRE perguntar qual conta usar (não auto-seleciona
+          // a última). Essencial pra quem gerencia mais de um cliente no mesmo
+          // celular (ex.: um pai com contas de filhos) poder trocar de conta.
+          queryParams: { prompt: 'select_account' },
+        },
       });
       if (error) throw error;
       // A página redireciona para o Google; a volta cai aqui já autenticado.
