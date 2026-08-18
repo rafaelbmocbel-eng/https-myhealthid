@@ -52,6 +52,16 @@ export default function PacienteLogin() {
     return () => clearTimeout(timer);
   }, [authLoading, linking]);
 
+  // Guarda o token do link assim que a pessoa cai no portal. Motivo: no login por
+  // Google (OAuth do Supabase) o parâmetro ?token pode se perder na volta, e aí o
+  // vínculo por token não acontece e o paciente "volta pro login". Guardando aqui,
+  // recuperamos o token depois mesmo que a URL perca o parâmetro.
+  useEffect(() => {
+    if (portalToken) {
+      try { localStorage.setItem('mh_portal_token', portalToken); } catch { /* storage indisponível */ }
+    }
+  }, [portalToken]);
+
   // If portal link (portal=1) and user is logged in as professional, sign them out first
   useEffect(() => {
     if (!authReady || authLoading || !user || signOutAttempted.current) return;
@@ -126,10 +136,17 @@ export default function PacienteLogin() {
         return;
       }
 
-      if (portalToken) {
-        const { data, error } = await supabase.rpc('link_patient_user_by_token', { p_token: portalToken });
+      // Token do link: da rota/URL OU o que guardamos ao entrar (resiste à perda
+      // do ?token na volta do Google).
+      let tokenParaVincular: string | null = portalToken ?? null;
+      if (!tokenParaVincular) {
+        try { tokenParaVincular = localStorage.getItem('mh_portal_token'); } catch { /* nb */ }
+      }
+      if (tokenParaVincular) {
+        const { data, error } = await supabase.rpc('link_patient_user_by_token', { p_token: tokenParaVincular });
         if (error) console.warn('[Portal] Falha ao vincular via token:', error);
         else if (data) {
+          try { localStorage.removeItem('mh_portal_token'); } catch { /* nb */ }
           navigate('/paciente/dashboard', { replace: true });
           return;
         }
@@ -177,6 +194,9 @@ export default function PacienteLogin() {
       linkAttempted.current = false;
       setLinking(false);
       setSubmitting(false);
+      // Nunca cair de volta no formulário em silêncio (parecia "loop"): se está
+      // autenticado mas algo falhou no vínculo, mostra a tela de escolha clara.
+      if (user) setNaoVinculado(true);
     }
   };
 
