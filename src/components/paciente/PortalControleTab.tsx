@@ -47,6 +47,11 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const qc = useQueryClient();
   const [gerandoDicas, setGerandoDicas] = useState(false);
   const [dicasRecemGeradas, setDicasRecemGeradas] = useState<any[] | null>(null);
+  // Alguns clientes (cadastros antigos/importados) ficaram SEM portal_token, então
+  // o link do portal não aparecia em lugar nenhum. Aqui o profissional gera o link
+  // na hora — vale pra qualquer cliente sem token.
+  const [tokenGerado, setTokenGerado] = useState<string | null>(null);
+  const [gerandoToken, setGerandoToken] = useState(false);
   const [usandoBase, setUsandoBase] = useState<null | 'treino' | 'nutricao'>(null);
   const [gerarTodos, setGerarTodos] = useState(false);
   // Edição do plano do cliente DENTRO da página bonita (a "Plano que o cliente montou").
@@ -302,7 +307,28 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
     );
   }
 
-  const portalUrl = portalToken ? getPortalUrl(portalToken) : '';
+  // Token efetivo: o que veio do cadastro OU o que acabamos de gerar aqui.
+  const tokenEfetivo = portalToken || tokenGerado;
+  const portalUrl = tokenEfetivo ? getPortalUrl(tokenEfetivo) : '';
+
+  // Gera e salva um portal_token pro cliente que estava sem link.
+  const gerarTokenPortal = async () => {
+    setGerandoToken(true);
+    try {
+      const novo = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+      const { error } = await supabase.from('pacientes').update({ portal_token: novo }).eq('id', pacienteId);
+      if (error) throw error;
+      setTokenGerado(novo);
+      // Atualiza o perfil pra o token novo fluir pros outros lugares (aba, botão do topo).
+      qc.invalidateQueries({ queryKey: ['paciente', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
+      toast({ title: 'Link do portal criado! 🔗', description: 'Agora é só enviar ou copiar.' });
+    } catch (e: any) {
+      toast({ title: 'Não consegui criar o link', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setGerandoToken(false);
+    }
+  };
   const diarioSemana = data.dailyLogs.filter((l: any) => l.created_at >= since7).length;
   const execSemana = data.execucoes.filter((e: any) => e.created_at >= since7).length;
   const prescricoesAtivas = data.prescricoes.filter((p: any) => p.ativa).length;
@@ -350,18 +376,43 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
     <div className="space-y-4">
       {/* Ações do portal — linha compacta (enviar acesso). O "Dever de Casa"
           virou o Plano Fisioterápico, dentro do acordeão de planos. */}
-      <div className="flex flex-wrap gap-2">
-        {portalToken && telefone && (
-          <button onClick={sendWhatsApp} className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-success/10 text-success text-xs font-semibold hover:bg-success/20 border border-success/20">
-            <MessageCircle className="h-3.5 w-3.5" /> Enviar portal
+      {!tokenEfetivo ? (
+        // Cliente sem link ainda — gera na hora.
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-start gap-2 min-w-0 flex-1">
+            <Smartphone className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+            <p className="text-[12px] text-muted-foreground leading-snug">
+              Este cliente ainda <b className="text-foreground">não tem link de acesso</b> ao portal. Gere o link
+              pessoal dele (funciona com ou sem e-mail no cadastro).
+            </p>
+          </div>
+          <Button size="sm" className="gap-1.5 shrink-0" disabled={gerandoToken} onClick={gerarTokenPortal}>
+            {gerandoToken ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Gerar link de acesso
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {telefone && (
+              <button onClick={sendWhatsApp} className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-success/10 text-success text-xs font-semibold hover:bg-success/20 border border-success/20">
+                <MessageCircle className="h-3.5 w-3.5" /> Enviar portal
+              </button>
+            )}
+            <button onClick={copyLink} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border/60 text-muted-foreground text-xs font-semibold hover:bg-muted/40">
+              <ExternalLink className="h-3.5 w-3.5" /> Copiar link
+            </button>
+          </div>
+          {/* Mostra o link em texto pra o profissional ver/copiar manualmente também. */}
+          <button
+            onClick={copyLink}
+            title="Toque para copiar"
+            className="w-full text-left text-[11px] text-muted-foreground bg-muted/40 border border-border/50 rounded-lg px-2.5 py-1.5 truncate"
+          >
+            {portalUrl}
           </button>
-        )}
-        {portalToken && (
-          <button onClick={copyLink} title="Copiar link do portal" className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border/60 text-muted-foreground text-xs font-semibold hover:bg-muted/40">
-            <ExternalLink className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Relatório de Avaliação — pontos fortes e a melhorar, gerado do MyID */}
       <Suspense fallback={null}>

@@ -614,6 +614,9 @@ export default function Pacientes() {
       }
       if (!modal.paciente) {
         payload.origem = form.origem_lead || 'cadastro_manual';
+        // Todo cliente novo já nasce com link de acesso ao portal — assim nunca
+        // fica sem link (o cadastro rápido já fazia; o cadastro completo faltava).
+        payload.portal_token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
       } else if (form.origem_lead) {
         payload.origem = form.origem_lead;
       }
