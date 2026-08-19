@@ -31,7 +31,7 @@ const CSS = `
 /* Segurança responsiva: deixa filhos de grid/flex encolherem e nada estoura a largura */
 .clh img,.clh svg{max-width:100%}
 .clh .hero-grid>*,.clh .avatar-grid>*,.clh .tiers>*,.clh .steps>*,.clh .dim-group>*,.clh .connect>*,.clh .pro-band>*,.clh .features-grid>*,.clh .app-band>*{min-width:0}
-.clh h1,.clh h2,.clh h3,.clh h4{font-family:var(--display); font-weight:700; line-height:1.06; text-wrap:balance; margin:0; color:var(--navy)}
+.clh h1,.clh h2,.clh h3,.clh h4{font-family:var(--display); font-weight:700; line-height:1.07; letter-spacing:-.025em; text-wrap:balance; margin:0; color:var(--navy)}
 .clh p{margin:0}
 .clh a{color:inherit; text-decoration:none}
 .clh .wrap{max-width:1120px; margin-inline:auto; padding-inline:22px}
@@ -60,7 +60,7 @@ const CSS = `
 .clh .hero-center{display:flex; flex-direction:column; align-items:center; text-align:center; gap:26px; padding:44px 0 60px}
 .clh .hero-logo{width:100%; max-width:360px; height:auto}
 .clh .hero-copy{max-width:640px; display:flex; flex-direction:column; align-items:center}
-.clh .hero h1{font-size:clamp(34px,5.4vw,56px); font-weight:700; letter-spacing:-.02em; margin:14px 0 0}
+.clh .hero h1{font-size:clamp(34px,5vw,52px); font-weight:700; margin:14px 0 0}
 .clh .hero h1 .glow{color:var(--cyan)}
 .clh .hero .lede{color:var(--muted); font-size:clamp(16px,2vw,19px); max-width:52ch; margin-top:18px}
 .clh .cta-row{display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; justify-content:center}
@@ -77,7 +77,7 @@ const CSS = `
 
 .clh section{padding:70px 0}
 .clh .sec-head{max-width:56ch}
-.clh .sec-head h2{font-size:clamp(26px,3.6vw,38px); letter-spacing:-.02em; margin-top:12px}
+.clh .sec-head h2{font-size:clamp(26px,3.4vw,36px); margin-top:12px}
 .clh .sec-head p{color:var(--muted); margin-top:12px; font-size:17px}
 
 .clh .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:40px; counter-reset:s}
