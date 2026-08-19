@@ -7,6 +7,7 @@ import {
   ArrowRight, ShieldCheck, Sparkles, CalendarDays,
   MessageSquare, Activity, Lock, CheckCircle2,
   Mic, LayoutDashboard, ClipboardList,
+  FileText, DollarSign, FlaskConical,
 } from 'lucide-react';
 import { useState } from 'react';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
@@ -193,9 +194,11 @@ const beneficiosPro = [
   { icon: Mic,           titulo: 'Avaliação por Voz com IA',            texto: 'Grave a consulta e a IA estrutura o SOAP, diagnóstico, achados clínicos e diretriz de tratamento — em segundos, sem digitar nada.' },
   { icon: ClipboardList, titulo: 'Diretriz de Tratamento por Fases',    texto: 'Plano em 4 fases — Alívio, Carga Progressiva, Retorno Funcional e Manutenção — gerado com base em evidências clínicas.' },
   { icon: ClipboardList, titulo: 'Prontuário Inteligente',              texto: 'SOAP, red flags, CIF, hipóteses diagnósticas e evolução do paciente — organizados, editáveis e sincronizados em tempo real.' },
-  { icon: CalendarDays,  titulo: 'Agenda com Controle de Expediente',   texto: 'Confirmação de atendimentos, painel de fechamento de dia e registro de pacientes avulsos — tudo na mesma tela.' },
-  { icon: Activity,      titulo: 'Avatar Clínico do Paciente',          texto: 'Mapa anatômico 3D atualizado automaticamente com os achados de cada avaliação. Evolução visual e rastreável sessão a sessão.' },
-  { icon: MessageSquare, titulo: 'Proposta Comercial em PDF',           texto: 'Transforme a diretriz em uma proposta profissional para clínicas e convênios — gerada automaticamente com 1 clique.' },
+  { icon: CalendarDays,  titulo: 'Agenda com auto-agendamento',         texto: 'O cliente agenda pelo portal nos horários com vaga — e você aceita ou não. Defina a quantidade de pacientes por horário, confirme atendimentos e feche o dia na mesma tela.' },
+  { icon: Activity,      titulo: 'Avatar Clínico do Paciente',          texto: 'Mapa anatômico por sistemas atualizado automaticamente com os achados de cada avaliação. Evolução visual e rastreável sessão a sessão.' },
+  { icon: DollarSign,    titulo: 'Venda com a Diretriz de Tratamento',  texto: 'A diretriz vira proposta de tratamento e financeira — em PDF, com 1 clique — pra fechar pacotes com o paciente, clínicas e convênios.' },
+  { icon: FileText,      titulo: 'Pacote de Documentos editáveis',      texto: 'Atestados de comparecimento, atestados fisioterapêuticos, declarações, recibos e laudos cinético-funcionais — com pré-visualização e texto totalmente editável.' },
+  { icon: FlaskConical,  titulo: 'Insights baseados em evidência',      texto: 'Sugestões e dicas geradas a partir de artigos científicos, ligadas às dimensões do MyID de cada paciente.' },
 ];
 
 const beneficiosPac = [

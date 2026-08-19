@@ -1,7 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
-import { Fingerprint, Activity, Users, Dumbbell, Sparkles, Lightbulb, TrendingUp, MessageCircle } from 'lucide-react';
+import { Fingerprint, Activity, Users, Dumbbell, Sparkles, Lightbulb, TrendingUp, MessageCircle, ClipboardList, Apple, Trophy } from 'lucide-react';
 import logoMark from '@/assets/logo-myhealthid-mark.png';
 import logoBranco from '@/assets/logo-myhealthid-branco.png';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
@@ -190,9 +190,12 @@ const PRESSAO = [
 
 // Funcionalidades REAIS do portal do cliente (src/pages/paciente/*).
 const FEATURES: { Icon: typeof Activity; t: string; d: string }[] = [
+  { Icon: Trophy, t: 'Sua jornada', d: 'Cumpra missões, ganhe XP e suba de nível conforme cuida da sua saúde.' },
+  { Icon: Dumbbell, t: 'Treinos em GIF', d: 'Exercícios com GIFs e vídeos, séries, carga e feedback de dor — do seu jeito.' },
+  { Icon: ClipboardList, t: 'Diretriz de tratamento', d: 'Seu plano por fases — do alívio à alta — com objetivos que você entende.' },
+  { Icon: Apple, t: 'Plano nutricional', d: 'Plano alimentar personalizado, montado no acompanhamento.' },
+  { Icon: Sparkles, t: 'Meu Plano (IA)', d: 'Treino, nutrição e dicas gerados com IA — no acompanhamento.' },
   { Icon: Activity, t: 'Diário de saúde', d: 'Registre dor, humor, energia e sono — e veja sua evolução no tempo.' },
-  { Icon: Dumbbell, t: 'Exercícios & treinos', d: 'Programa personalizado com vídeos, séries e carga — feito pra você.' },
-  { Icon: Sparkles, t: 'Meu Plano (IA)', d: 'Treino, nutrição e dicas montados com IA — no acompanhamento.' },
   { Icon: Lightbulb, t: 'Dicas de saúde', d: 'Dicas personalizadas geradas a partir do seu MyID.' },
   { Icon: TrendingUp, t: 'Sua evolução', d: 'Acompanhe sua melhora em números, cores e ao longo do tempo.' },
   { Icon: MessageCircle, t: 'Chat com seu profissional', d: 'Converse com quem cuida de você, direto no app — no acompanhamento.' },
