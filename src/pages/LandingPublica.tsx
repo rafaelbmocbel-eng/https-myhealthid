@@ -25,6 +25,9 @@ const CSS = `
   line-height:1.6; font-size:17px; -webkit-font-smoothing:antialiased;
 }
 .clh *{box-sizing:border-box}
+/* Segurança responsiva: deixa filhos de grid/flex encolherem e nada estoura a largura */
+.clh img,.clh svg{max-width:100%}
+.clh .hero-grid>*,.clh .avatar-grid>*,.clh .tiers>*,.clh .steps>*,.clh .dim-group>*,.clh .connect>*,.clh .pro-band>*{min-width:0}
 .clh h1,.clh h2,.clh h3,.clh h4{font-family:var(--display); font-weight:700; line-height:1.06; text-wrap:balance; margin:0; color:var(--navy)}
 .clh p{margin:0}
 .clh a{color:inherit; text-decoration:none}
@@ -88,7 +91,7 @@ const CSS = `
 
 /* Avatar */
 .clh .avatar-grid{display:grid; grid-template-columns:1.15fr .85fr; gap:40px; align-items:center; margin-top:8px}
-.clh .avatar-stage{background:linear-gradient(180deg,#fff,var(--surface-2)); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); padding:22px}
+.clh .avatar-stage{background:linear-gradient(180deg,#fff,var(--surface-2)); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); padding:22px; min-width:0; overflow:hidden}
 
 .clh .tiers{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:42px}
 .clh .tier{border:1px solid var(--line); border-radius:16px; padding:28px; background:var(--surface); display:flex; flex-direction:column; box-shadow:var(--shadow)}

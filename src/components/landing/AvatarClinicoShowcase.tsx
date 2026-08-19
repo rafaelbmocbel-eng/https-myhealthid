@@ -51,19 +51,19 @@ export default function AvatarClinicoShowcase() {
           </div>
         </div>
 
-        {/* Fileira de ícones de sistemas */}
-        <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '4px', marginBottom: '4px' }}>
+        {/* Fileira de ícones de sistemas — quebra linha no mobile (nada colado na borda) */}
+        <div style={{ display: 'flex', gap: '7px', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '100%', marginBottom: '8px' }}>
           {SISTEMAS.map((s) => (
-            <div key={s.key} title={s.label} style={{ position: 'relative', flex: 'none', width: '30px', height: '30px', borderRadius: '9px', border: '1px solid #E2EAEE', background: '#fff', display: 'grid', placeItems: 'center', color: s.ativo ? s.cor : '#b6c2ca' }}>
-              <s.Icon size={15} strokeWidth={2} />
+            <div key={s.key} title={s.label} style={{ position: 'relative', flex: 'none', width: '34px', height: '34px', borderRadius: '10px', border: '1px solid #E2EAEE', background: '#fff', display: 'grid', placeItems: 'center', color: s.ativo ? s.cor : '#b6c2ca' }}>
+              <s.Icon size={16} strokeWidth={2} />
               {s.ativo && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '7px', height: '7px', borderRadius: '50%', background: AMBER, border: '1.5px solid #fff' }} />}
             </div>
           ))}
         </div>
 
         {/* Corpo + achados */}
-        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <svg viewBox="0 0 220 420" width="180" height="344" style={{ flex: 'none' }} aria-label="Avatar Clínico — mapa corporal">
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '100%' }}>
+          <svg viewBox="0 0 220 420" width="180" height="344" style={{ flex: 'none', maxWidth: '100%' }} aria-label="Avatar Clínico — mapa corporal">
             {/* sombra */}
             <ellipse cx="110" cy="410" rx="52" ry="6" fill="#0E1B26" opacity="0.06" />
             {/* pernas */}
@@ -88,7 +88,7 @@ export default function AvatarClinicoShowcase() {
           </svg>
 
           {/* Cards de achados */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, minWidth: '170px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: '1 1 150px', minWidth: 0 }}>
             {ACHADOS.map((a) => (
               <div key={a.label} style={{ border: '1px solid #a855f733', borderRadius: '12px', background: '#fff', padding: '10px 12px', boxShadow: '0 2px 10px -6px rgba(11,31,51,.25)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '3px' }}>
