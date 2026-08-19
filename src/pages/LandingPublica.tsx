@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
+import { Fingerprint, Activity, Users } from 'lucide-react';
 import logoMark from '@/assets/logo-myhealthid-mark.png';
 import logoBranco from '@/assets/logo-myhealthid-branco.png';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
@@ -80,10 +81,10 @@ const CSS = `
 .clh .sec-head p{color:var(--muted); margin-top:12px; font-size:17px}
 
 .clh .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:40px; counter-reset:s}
-.clh .step{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px; box-shadow:var(--shadow)}
-.clh .step .n{counter-increment:s; font-family:var(--mono); font-weight:600; font-size:13px; color:var(--cyan); letter-spacing:.1em}
-.clh .step .n::before{content:"0" counter(s)}
-.clh .step h3{font-size:19px; margin:12px 0 8px; letter-spacing:-.01em}
+.clh .step{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px; box-shadow:var(--shadow); transition:border-color .2s, box-shadow .2s}
+.clh .step:hover{border-color:color-mix(in srgb,var(--cyan) 35%, transparent)}
+.clh .step-ic{width:44px; height:44px; border-radius:12px; background:var(--cyan-soft); color:var(--cyan); display:grid; place-items:center}
+.clh .step h3{font-size:19px; margin:14px 0 8px; letter-spacing:-.01em}
 .clh .step p{color:var(--muted); font-size:15px}
 
 .clh .dims{background:var(--surface-2); border-block:1px solid var(--line)}
@@ -242,9 +243,9 @@ export default function LandingPublica() {
             <p>Você começa sozinho, no seu tempo. O MyID transforma como você se sente num retrato que faz sentido — e te mostra o próximo passo.</p>
           </div>
           <div className="steps">
-            <div className="step"><div className="n" /><h3>Responda o MyID</h3><p>Um questionário guiado sobre sua dor, seu corpo e sua rotina. Sem jargão, do seu jeito.</p></div>
-            <div className="step"><div className="n" /><h3>Receba seu retrato</h3><p>Suas 11 dimensões em cores e números, com sua devolutiva e dicas geradas pra você.</p></div>
-            <div className="step"><div className="n" /><h3>Vá além com um profissional</h3><p>Conecte-se a um profissional pra ter resultados mais completos: avatar montado, achados revisados e acompanhamento.</p></div>
+            <div className="step"><div className="step-ic"><Fingerprint size={20} /></div><h3>Responda o MyID</h3><p>Um questionário guiado sobre sua dor, seu corpo e sua rotina. Sem jargão, do seu jeito.</p></div>
+            <div className="step"><div className="step-ic"><Activity size={20} /></div><h3>Receba seu retrato</h3><p>Suas 11 dimensões em cores e números, com sua devolutiva e dicas geradas pra você.</p></div>
+            <div className="step"><div className="step-ic"><Users size={20} /></div><h3>Vá além com um profissional</h3><p>Conecte-se a um profissional pra ter resultados mais completos: avatar montado, achados revisados e acompanhamento.</p></div>
           </div>
         </div>
       </section>
