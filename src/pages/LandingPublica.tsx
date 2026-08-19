@@ -1,7 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
-import { Fingerprint, Activity, Users } from 'lucide-react';
+import { Fingerprint, Activity, Users, Dumbbell, Sparkles, Lightbulb, TrendingUp, MessageCircle } from 'lucide-react';
 import logoMark from '@/assets/logo-myhealthid-mark.png';
 import logoBranco from '@/assets/logo-myhealthid-branco.png';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
@@ -30,7 +30,7 @@ const CSS = `
 .clh *{box-sizing:border-box}
 /* Segurança responsiva: deixa filhos de grid/flex encolherem e nada estoura a largura */
 .clh img,.clh svg{max-width:100%}
-.clh .hero-grid>*,.clh .avatar-grid>*,.clh .tiers>*,.clh .steps>*,.clh .dim-group>*,.clh .connect>*,.clh .pro-band>*{min-width:0}
+.clh .hero-grid>*,.clh .avatar-grid>*,.clh .tiers>*,.clh .steps>*,.clh .dim-group>*,.clh .connect>*,.clh .pro-band>*,.clh .features-grid>*,.clh .app-band>*{min-width:0}
 .clh h1,.clh h2,.clh h3,.clh h4{font-family:var(--display); font-weight:700; line-height:1.06; text-wrap:balance; margin:0; color:var(--navy)}
 .clh p{margin:0}
 .clh a{color:inherit; text-decoration:none}
@@ -95,6 +95,22 @@ const CSS = `
 .clh .dim h3{font-size:15px; letter-spacing:-.01em}
 .clh .dim p{color:var(--muted); font-size:12.5px; margin-top:4px}
 
+/* Features do cliente (mesmo estilo dos cards do profissional) */
+.clh .features-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:38px}
+.clh .feat{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:var(--shadow); transition:border-color .2s, box-shadow .2s}
+.clh .feat:hover{border-color:color-mix(in srgb,var(--cyan) 35%, transparent)}
+.clh .feat-ic{width:42px; height:42px; border-radius:11px; background:var(--cyan-soft); color:var(--cyan); display:grid; place-items:center; margin-bottom:14px}
+.clh .feat h3{font-size:16px; letter-spacing:-.01em}
+.clh .feat p{color:var(--muted); font-size:14px; margin-top:6px; line-height:1.55}
+
+/* Faixa "baixe o app" */
+.clh .app-band{background:linear-gradient(160deg,var(--navy) 0%,#0E2942 100%); color:#EAF3F7; border-radius:22px; padding:32px 34px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; box-shadow:var(--shadow)}
+.clh .app-band h3{color:#fff; font-size:23px; letter-spacing:-.01em}
+.clh .app-band p{color:#9DB4C4; margin-top:6px; font-size:15px}
+.clh .app-btns{display:flex; gap:12px; flex-wrap:wrap}
+.clh .app-btn{display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; font-weight:600; font-size:14px; padding:11px 18px; border-radius:12px; transition:background .2s}
+.clh .app-btn:hover{background:rgba(255,255,255,.16)}
+
 /* Avatar */
 .clh .avatar-grid{display:grid; grid-template-columns:1.15fr .85fr; gap:40px; align-items:center; margin-top:8px}
 .clh .avatar-stage{background:linear-gradient(180deg,#fff,var(--surface-2)); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); padding:22px; min-width:0; overflow:hidden}
@@ -136,6 +152,7 @@ const CSS = `
   .clh .hero-center{gap:22px; padding:32px 0 48px}
   .clh .hero-logo{max-width:280px}
   .clh .steps{grid-template-columns:1fr}
+  .clh .features-grid{grid-template-columns:1fr}
   .clh .dim-group{grid-template-columns:1fr; gap:22px}
   .clh .dim-grid{grid-template-columns:1fr 1fr}
   .clh .avatar-grid{grid-template-columns:1fr; gap:24px}
@@ -169,6 +186,16 @@ const PRESSAO = [
   ['Cabeça e emoções', 'Medo de movimento, estresse, expectativa.'],
   ['Mudanças recentes', 'Gatilhos que antecederam o quadro.'],
   ['Sinais do corpo', 'Sinais sistêmicos e histórico relevante.'],
+];
+
+// Funcionalidades REAIS do portal do cliente (src/pages/paciente/*).
+const FEATURES: { Icon: typeof Activity; t: string; d: string }[] = [
+  { Icon: Activity, t: 'Diário de saúde', d: 'Registre dor, humor, energia e sono — e veja sua evolução no tempo.' },
+  { Icon: Dumbbell, t: 'Exercícios & treinos', d: 'Programa personalizado com vídeos, séries e carga — feito pra você.' },
+  { Icon: Sparkles, t: 'Meu Plano (IA)', d: 'Treino, nutrição e dicas montados com IA — no acompanhamento.' },
+  { Icon: Lightbulb, t: 'Dicas de saúde', d: 'Dicas personalizadas geradas a partir do seu MyID.' },
+  { Icon: TrendingUp, t: 'Sua evolução', d: 'Acompanhe sua melhora em números, cores e ao longo do tempo.' },
+  { Icon: MessageCircle, t: 'Chat com seu profissional', d: 'Converse com quem cuida de você, direto no app — no acompanhamento.' },
 ];
 
 export default function LandingPublica() {
@@ -305,6 +332,25 @@ export default function LandingPublica() {
         </div>
       </section>
 
+      <section className="dims" id="app-features">
+        <div className="wrap">
+          <div className="sec-head">
+            <div className="eyebrow">No app</div>
+            <h2>Muito além de um número.</h2>
+            <p>Depois do MyID, o app vira seu companheiro de saúde no dia a dia — tudo num lugar só, com a linguagem que você entende.</p>
+          </div>
+          <div className="features-grid">
+            {FEATURES.map(({ Icon, t, d }) => (
+              <div className="feat" key={t}>
+                <div className="feat-ic"><Icon size={20} /></div>
+                <h3>{t}</h3>
+                <p>{d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section id="planos">
         <div className="wrap">
           <div className="sec-head">
@@ -327,7 +373,7 @@ export default function LandingPublica() {
             </div>
 
             <div className="tier feature">
-              <span className="badge">Completo</span>
+              <span className="badge">Recomendado</span>
               <div className="kicker">Com um profissional ou Premium</div>
               <div className="price">Mais completo</div>
               <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Com um profissional de verdade por trás, seu retrato vira acompanhamento.</p>
@@ -352,6 +398,21 @@ export default function LandingPublica() {
               <p>Ao se ligar a um profissional, seu MyID fica <b>mais completo</b>: avatar montado, achados revisados e acompanhamento de verdade. Encontre fisioterapeutas e profissionais de saúde que entendem o seu retrato — sem sair do app.</p>
             </div>
             <Link className="btn btn-emerald" to="/portaldocliente/vitrine">Encontrar um profissional</Link>
+          </div>
+        </div>
+      </section>
+
+      <section id="app" style={{ paddingTop: 0 }}>
+        <div className="wrap">
+          <div className="app-band">
+            <div>
+              <h3>Leve seu MyID no bolso.</h3>
+              <p>Baixe o app e acompanhe sua saúde onde estiver — no celular ou no navegador.</p>
+            </div>
+            <div className="app-btns">
+              <a className="app-btn" href="#app">🍎 App Store</a>
+              <a className="app-btn" href="#app">▶ Google Play</a>
+            </div>
           </div>
         </div>
       </section>
