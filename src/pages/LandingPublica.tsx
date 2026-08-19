@@ -112,6 +112,8 @@ const CSS = `
 .clh .app-btns{display:flex; gap:12px; flex-wrap:wrap}
 .clh .app-btn{display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; font-weight:600; font-size:14px; padding:11px 18px; border-radius:12px; transition:background .2s}
 .clh .app-btn:hover{background:rgba(255,255,255,.16)}
+.clh .app-btn-soon{cursor:default; opacity:.7; font-weight:500}
+.clh .app-btn-soon:hover{background:rgba(255,255,255,.08)}
 
 /* Avatar */
 .clh .avatar-grid{display:grid; grid-template-columns:1.15fr .85fr; gap:40px; align-items:center; margin-top:8px}
@@ -412,11 +414,11 @@ export default function LandingPublica() {
           <div className="app-band">
             <div>
               <h3>Leve seu MyID no bolso.</h3>
-              <p>Baixe o app e acompanhe sua saúde onde estiver — no celular ou no navegador.</p>
+              <p>Use agora pelo navegador — no celular ou no computador. Os apps para iPhone e Android estão a caminho.</p>
             </div>
             <div className="app-btns">
-              <a className="app-btn" href="#app">🍎 App Store</a>
-              <a className="app-btn" href="#app">▶ Google Play</a>
+              <span className="app-btn app-btn-soon" aria-disabled="true">🍎 App Store · Em breve</span>
+              <span className="app-btn app-btn-soon" aria-disabled="true">▶ Google Play · Em breve</span>
             </div>
           </div>
         </div>

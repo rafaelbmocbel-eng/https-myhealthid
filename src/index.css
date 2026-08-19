@@ -200,6 +200,8 @@
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     scroll-behavior: auto;
+    /* Âncoras (#como, #dims, #planos…) não param embaixo do header fixo (~64px) */
+    scroll-padding-top: 80px;
     /* Não usar height fixo aqui — impede scroll no Chrome desktop */
   }
 
@@ -234,6 +236,18 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     touch-action: pan-y;
+  }
+
+  /* Acessibilidade: respeita "reduzir movimento" do sistema (sensibilidade
+     vestibular). Neutraliza animações/transições no app inteiro sem removê-las
+     do código. Mantém 1 frame pra que estados finais (ex.: fade-in) apareçam. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   /* Remove delay de 300ms no tap sem bloquear scroll */

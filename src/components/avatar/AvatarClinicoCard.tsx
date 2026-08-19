@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye, TrendingUp, Clock, History, AlertTriangle, CheckCircle2, ArrowRight, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
@@ -386,11 +387,17 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const meta = (ev as any).metadata || {};
       const rejeicoes = [...(meta.rejeicoes || []), { terapeuta_id: user.id, data: new Date().toISOString() }];
       const revisado_por_ids = [...(meta.revisado_por_ids || []), user.id];
-      await (supabase as any)
+      const { error } = await (supabase as any)
         .from('eventos_clinicos_anatomicos')
         .update({ metadata: { ...meta, rejeicoes, revisado_por_ids } })
         .eq('id', ev.id);
+      if (error) throw error;
       qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
+    } catch (e) {
+      // Falha ao rejeitar (rede/RLS): avisa o profissional em vez de dessincronizar
+      // a UI em silêncio (o invalidateQueries acima não roda se der erro).
+      console.error('Erro ao rejeitar achado do histórico:', e);
+      toast.error('Não foi possível rejeitar o achado. Tente novamente.');
     } finally {
       setRejeicaoLoading(null);
     }
@@ -429,16 +436,17 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === LS_DOT_OFFSETS) {
-        try { setSavedOrganOffsets(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
+        // valor corrompido no localStorage: ignora e mantém o estado atual
+        try { setSavedOrganOffsets(e.newValue ? JSON.parse(e.newValue) : {}); } catch { /* ignora JSON inválido */ }
       }
       if (e.key === LS_SCALES) {
-        try { setSavedOrganScales(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
+        try { setSavedOrganScales(e.newValue ? JSON.parse(e.newValue) : {}); } catch { /* ignora JSON inválido */ }
       }
       if (e.key === 'organ-labels-calibrado') {
-        try { setSavedOrganLabels(e.newValue ? JSON.parse(e.newValue) : {}); } catch {}
+        try { setSavedOrganLabels(e.newValue ? JSON.parse(e.newValue) : {}); } catch { /* ignora JSON inválido */ }
       }
       if (e.key === 'organ-hidden-calibrado') {
-        try { setSavedOrganHidden(new Set(e.newValue ? JSON.parse(e.newValue) : [])); } catch {}
+        try { setSavedOrganHidden(new Set(e.newValue ? JSON.parse(e.newValue) : [])); } catch { /* ignora JSON inválido */ }
       }
     };
     window.addEventListener('storage', onStorage);
