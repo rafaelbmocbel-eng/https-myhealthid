@@ -10,8 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
-import { BodyView } from '@/components/presencial/Body3DAvatar';
-import { DEMO_RINGS, DEMO_MYID, DEMO_AVATAR_POINTS } from './landingDemo';
+import { DEMO_RINGS, DEMO_MYID } from './landingDemo';
 
 // ── MyID ring data (demo values) ─────────────────────────────────────────────
 const MYID_DIMS = [
@@ -564,9 +563,9 @@ export default function LandingProfissional() {
             {/* Body Avatar visual + finding cards */}
             <div className="flex flex-col items-center gap-4">
               <div className="flex items-start gap-5">
-                {/* Body silhouette — avatar clínico REAL do app */}
-                <div className="text-foreground shrink-0 w-[190px]">
-                  <BodyView view="front" points={DEMO_AVATAR_POINTS} selected={null} onSelect={() => {}} />
+                {/* Avatar Clínico por sistemas (achados codificados por cor de sistema) */}
+                <div className="text-foreground shrink-0">
+                  <BodyAvatarVisual />
                 </div>
 
                 {/* Finding cards — cor do sistema no label e na borda */}

@@ -3,8 +3,8 @@ import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
 import logoMark from '@/assets/logo-myhealthid-mark.png';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
-import { BodyView } from '@/components/presencial/Body3DAvatar';
-import { DEMO_RINGS, DEMO_MYID, DEMO_AVATAR_POINTS } from './landingDemo';
+import AvatarClinicoShowcase from '@/components/landing/AvatarClinicoShowcase';
+import { DEMO_RINGS, DEMO_MYID } from './landingDemo';
 
 // Home pública FOCADA NO CLIENTE (B2C), fundo claro. O profissional tem o site
 // próprio em /profissional. Conceito: a impressão digital = "sua identidade
@@ -79,21 +79,16 @@ const CSS = `
 .clh .step p{color:var(--muted); font-size:15px}
 
 .clh .dims{background:var(--surface-2); border-block:1px solid var(--line)}
-.clh .dim-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:36px}
-.clh .dim{border:1px solid var(--line); border-radius:14px; padding:18px; background:var(--surface)}
-.clh .dim .code{font-family:var(--mono); font-size:12px; color:var(--cyan); letter-spacing:.08em; font-weight:600}
-.clh .dim h3{font-size:16px; margin-top:8px; letter-spacing:-.01em}
-.clh .dim p{color:var(--muted); font-size:13px; margin-top:4px}
+.clh .dim-group{display:grid; grid-template-columns:1fr 1fr; gap:28px; margin-top:32px}
+.clh .col-tag{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; font-weight:600}
+.clh .dim-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px}
+.clh .dim{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--surface)}
+.clh .dim h3{font-size:15px; letter-spacing:-.01em}
+.clh .dim p{color:var(--muted); font-size:12.5px; margin-top:4px}
 
 /* Avatar */
-.clh .avatar-grid{display:grid; grid-template-columns:.9fr 1.1fr; gap:40px; align-items:center; margin-top:8px}
-.clh .avatar-stage{position:relative; background:linear-gradient(180deg,#fff,var(--surface-2)); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); padding:18px; max-width:360px; margin-inline:auto; width:100%}
-.clh .avatar-stage img{width:100%; height:auto; display:block; mix-blend-mode:multiply}
-.clh .marker{position:absolute; transform:translate(-50%,-50%); display:flex; align-items:center; gap:7px}
-.clh .marker .pin{width:14px; height:14px; border-radius:50%; border:2.5px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.clh .marker .lbl{font-family:var(--mono); font-size:10.5px; font-weight:600; background:#fff; border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:2px 8px; box-shadow:0 2px 8px rgba(0,0,0,.08); white-space:nowrap}
-@keyframes clhPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.25);opacity:.75}}
-.clh .marker .pin{animation:clhPulse 2.4s ease-in-out infinite}
+.clh .avatar-grid{display:grid; grid-template-columns:1.15fr .85fr; gap:40px; align-items:center; margin-top:8px}
+.clh .avatar-stage{background:linear-gradient(180deg,#fff,var(--surface-2)); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); padding:22px}
 
 .clh .tiers{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:42px}
 .clh .tier{border:1px solid var(--line); border-radius:16px; padding:28px; background:var(--surface); display:flex; flex-direction:column; box-shadow:var(--shadow)}
@@ -132,6 +127,7 @@ const CSS = `
   .clh .hero-grid{grid-template-columns:1fr; gap:28px; padding:44px 0 52px}
   .clh .myid-card{order:-1}
   .clh .steps{grid-template-columns:1fr}
+  .clh .dim-group{grid-template-columns:1fr; gap:22px}
   .clh .dim-grid{grid-template-columns:1fr 1fr}
   .clh .avatar-grid{grid-template-columns:1fr; gap:24px}
   .clh .tiers{grid-template-columns:1fr}
@@ -147,15 +143,22 @@ const Check = ({ c }: { c: string }) => (
   </svg>
 );
 
-const DIMS = [
-  ['N', 'Neuro', 'Sensibilização e sinais do sistema nervoso.'],
-  ['I', 'Inflamatório', 'Sinais de inflamação e irritação de tecidos.'],
-  ['F', 'Funcional', 'O que a dor te impede de fazer no dia a dia.'],
-  ['C', 'Comportamental', 'Sono, estresse e hábitos que alimentam a dor.'],
-  ['P', 'Postural', 'Padrões de postura e movimento.'],
-  ['E', 'Estrutural', 'Aspectos articulares e músculo-esqueléticos.'],
-  ['R', 'Recuperação', 'Como seu corpo se restabelece e responde.'],
-  ['D', 'Dor', 'Intensidade, tipo e ritmo da sua dor.'],
+// As dimensões REAIS do MyID (rótulos amigáveis do app — MyIDFingerprint).
+// Lê-se do centro pra fora: CAPACIDADE (o que te sustenta) × DEMANDA (o que pressiona).
+const CAPACIDADE = [
+  ['Sono e energia', 'Como você descansa e se recupera.'],
+  ['Vida pessoal', 'Trabalho, família e finanças.'],
+  ['Movimento', 'Seu nível de atividade física.'],
+  ['Hidratação', 'Como seu corpo está hidratado.'],
+  ['Alimentação', 'A qualidade da sua nutrição.'],
+  ['Postura', 'Ergonomia e hábitos posturais.'],
+];
+const DEMANDA = [
+  ['Dor', 'Intensidade, tipo e regiões afetadas.'],
+  ['Atividades', 'O que a dor te impede de fazer no dia.'],
+  ['Emoções', 'Medo de movimento, estresse, expectativa.'],
+  ['Mudanças', 'Gatilhos recentes que antecederam o quadro.'],
+  ['Sinais do corpo', 'Sinais sistêmicos e histórico relevante.'],
 ];
 
 export default function LandingPublica() {
@@ -170,7 +173,7 @@ export default function LandingPublica() {
     <div className="clh">
       <Helmet>
         <title>My Health ID — Sua saúde, sua identidade</title>
-        <meta name="description" content="Faça seu MyID grátis: entenda o que está por trás da sua dor em 8 dimensões, veja seu Avatar Clínico, receba dicas personalizadas e encontre o profissional certo." />
+        <meta name="description" content="Faça seu MyID grátis: entenda o que está por trás da sua dor em 11 dimensões, veja seu Avatar Clínico, receba dicas personalizadas e encontre o profissional certo." />
       </Helmet>
       <style>{CSS}</style>
 
@@ -198,7 +201,7 @@ export default function LandingPublica() {
           <div>
             <div className="eyebrow">MyID · sua identidade clínica</div>
             <h1>Descubra o que está por trás da <span className="glow">sua dor</span>.</h1>
-            <p className="lede">O MyID mapeia sua saúde em 8 dimensões e te devolve um retrato claro — com dicas personalizadas e o caminho pro profissional certo.</p>
+            <p className="lede">O MyID mapeia sua saúde em 11 dimensões e te devolve um retrato claro — com dicas personalizadas e o caminho pro profissional certo.</p>
             <div className="cta-row">
               <Link className="btn btn-emerald" to="/paciente/login">Fazer meu MyID grátis</Link>
               <Link className="btn btn-ghost" to="/demo">Ver como funciona</Link>
@@ -227,7 +230,7 @@ export default function LandingPublica() {
           </div>
           <div className="steps">
             <div className="step"><div className="n" /><h3>Responda o MyID</h3><p>Um questionário guiado sobre sua dor, seu corpo e sua rotina. Sem jargão, do seu jeito.</p></div>
-            <div className="step"><div className="n" /><h3>Receba seu retrato</h3><p>Suas 8 dimensões em cores e números, com seu Avatar Clínico e dicas geradas pra você.</p></div>
+            <div className="step"><div className="n" /><h3>Receba seu retrato</h3><p>Suas 11 dimensões em cores e números, com seu Avatar Clínico e dicas geradas pra você.</p></div>
             <div className="step"><div className="n" /><h3>Conecte com um profissional</h3><p>Leve seu MyID a qualquer profissional de saúde — ou encontre um pela nossa vitrine.</p></div>
           </div>
         </div>
@@ -237,18 +240,31 @@ export default function LandingPublica() {
         <div className="wrap">
           <div className="sec-head">
             <div className="eyebrow">O que o MyID enxerga</div>
-            <h2>Sua dor não é um número só. São 8 dimensões.</h2>
-            <p>Dor raramente tem uma causa única. O MyID separa o que costuma vir misturado — pra você e pro seu profissional agirem no lugar certo.</p>
+            <h2>Sua dor não é um número só. São 11 dimensões.</h2>
+            <p>O MyID é biopsicossocial: ele pesa o equilíbrio entre a <b>capacidade</b> (o que te sustenta) e a <b>demanda</b> (o que está te pressionando) — e mostra qual dimensão está puxando mais. Resultado: um retrato de 0 a 100 (quanto maior, melhor).</p>
           </div>
-          <div className="dim-grid">
-            {DIMS.map(([code, title, desc]) => (
-              <div className="dim" key={code}>
-                <div className="code">{code}</div>
-                <h3>{title}</h3>
-                <p>{desc}</p>
+
+          <div className="dim-group">
+            <div className="dim-col">
+              <div className="col-tag" style={{ color: 'var(--emerald)' }}>Capacidade · o que te sustenta</div>
+              <div className="dim-grid">
+                {CAPACIDADE.map(([title, desc]) => (
+                  <div className="dim" key={title}><h3>{title}</h3><p>{desc}</p></div>
+                ))}
               </div>
-            ))}
+            </div>
+            <div className="dim-col">
+              <div className="col-tag" style={{ color: '#EF4444' }}>Demanda · o que pressiona</div>
+              <div className="dim-grid">
+                {DEMANDA.map(([title, desc]) => (
+                  <div className="dim" key={title}><h3>{title}</h3><p>{desc}</p></div>
+                ))}
+              </div>
+            </div>
           </div>
+          <p style={{ color: 'var(--muted)', fontSize: '13px', marginTop: '18px' }}>
+            + <b>Medicação</b> — ajusta o cálculo conforme o que você usa. Escala de <b>Excelente</b> a <b>Crítico Severo</b>.
+          </p>
         </div>
       </section>
 
@@ -256,19 +272,19 @@ export default function LandingPublica() {
         <div className="wrap">
           <div className="sec-head">
             <div className="eyebrow">Avatar Clínico</div>
-            <h2>Seu corpo, mapeado.</h2>
-            <p>O MyID monta seu Avatar Clínico — um mapa do seu corpo com os achados que precisam de atenção. Fica fácil pra você entender e pro seu profissional cuidar do lugar certo.</p>
+            <h2>A memória do seu corpo.</h2>
+            <p>Cada achado fica registrado no mapa anatômico, organizado por <b>sistema do corpo</b> (musculoesquelético, nervoso, circulatório, digestório…) — e evolui a cada avaliação.</p>
           </div>
           <div className="avatar-grid">
             <div className="avatar-stage">
-              <BodyView view="front" points={DEMO_AVATAR_POINTS} selected={null} onSelect={() => {}} />
+              <AvatarClinicoShowcase />
             </div>
             <div>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <li style={{ display: 'flex', gap: '10px' }}><Check c="var(--emerald)" /> <span><b>Achados destacados no corpo</b> — onde está o que precisa de cuidado.</span></li>
-                <li style={{ display: 'flex', gap: '10px' }}><Check c="var(--emerald)" /> <span><b>Revisado por um profissional</b> (no Premium) — nada de autodiagnóstico.</span></li>
-                <li style={{ display: 'flex', gap: '10px' }}><Check c="var(--emerald)" /> <span><b>Evolui com você</b> — o avatar acompanha sua melhora ao longo do tempo.</span></li>
-                <li style={{ display: 'flex', gap: '10px' }}><Check c="var(--emerald)" /> <span><b>Interdisciplinar</b> — qualquer profissional de saúde entende o seu mapa.</span></li>
+                <li style={{ display: 'flex', gap: '10px' }}><Check c="var(--emerald)" /> <span><b>Achados por sistema do corpo</b> — cada queixa no lugar e no sistema certo.</span></li>
+                <li style={{ display: 'flex', gap: '10px' }}><Check c="var(--emerald)" /> <span><b>Evolui com o tratamento</b> — de <i>ativo</i> a <i>em tratamento</i> e <i>resolvido</i>, ao longo do tempo.</span></li>
+                <li style={{ display: 'flex', gap: '10px' }}><Check c="var(--emerald)" /> <span><b>Montado por um profissional</b> (no Premium) — os achados são revisados antes de entrar no seu mapa.</span></li>
+                <li style={{ display: 'flex', gap: '10px' }}><Check c="var(--emerald)" /> <span><b>Interdisciplinar</b> — seu mapa vai com você pra qualquer profissional de saúde, sem perder contexto.</span></li>
               </ul>
             </div>
           </div>
@@ -297,7 +313,7 @@ export default function LandingPublica() {
             </div>
 
             <div className="tier feature">
-              <span className="badge">Premium</span>
+              <span className="badge">Premium · em breve</span>
               <div className="kicker">Acompanhado</div>
               <div className="price">Sob acompanhamento</div>
               <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Seu retrato vira um plano, montado por gente de verdade.</p>
@@ -308,7 +324,7 @@ export default function LandingPublica() {
                 <li><Check c="var(--cyan)" /> Planos de treino, dicas e nutrição personalizados</li>
               </ul>
               <p className="note">Os planos não substituem um profissional. Planos mais elaborados pedem acompanhamento presencial.</p>
-              <Link className="btn btn-ghost" to="/paciente/login" style={{ marginTop: '16px' }}>Conhecer o Premium</Link>
+              <Link className="btn btn-ghost" to="/paciente/login" style={{ marginTop: '16px' }}>Entrar na lista de espera</Link>
             </div>
           </div>
         </div>
