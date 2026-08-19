@@ -299,7 +299,7 @@ export default function LandingPublica() {
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
               Cliente
             </Link>
-            <Link to="/auth"
+            <Link to="/profissional"
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
               ⚕ Profissional
             </Link>

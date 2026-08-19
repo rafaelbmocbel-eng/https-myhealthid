@@ -156,6 +156,10 @@ const App = () => (
                 <Route path="/index" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/inicio" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/auth" element={<Auth />} />
+                {/* Porta dedicada do PROFISSIONAL — URL própria pra guardar nos favoritos,
+                    separada da entrada do cliente (/paciente/login). */}
+                <Route path="/profissional" element={<Auth />} />
+                <Route path="/pro" element={<Navigate to="/profissional" replace />} />
                 <Route path="/auth/confirm" element={<AuthConfirm />} />
                 <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                 <Route path="/nova-senha" element={<NovaSenha />} />
