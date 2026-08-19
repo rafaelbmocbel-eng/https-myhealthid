@@ -2,6 +2,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
+import logoMark from '@/assets/logo-myhealthid-mark.png';
 
 // Home pública FOCADA NO CLIENTE (B2C). O profissional tem o site próprio em
 // /profissional. Conceito: a impressão digital = "sua identidade clínica" (MyID).
@@ -38,7 +39,7 @@ const CSS = `
 .clh header{position:sticky; top:0; z-index:20; background:color-mix(in srgb,var(--bg) 86%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line)}
 .clh .nav{display:flex; align-items:center; gap:20px; height:64px}
 .clh .brand{display:flex; align-items:center; gap:10px; font-family:var(--display); font-weight:800; font-size:18px; letter-spacing:-.01em}
-.clh .brand .mark{width:26px; height:26px; flex:none}
+.clh .brand .mark{width:30px; height:30px; flex:none; object-fit:contain}
 .clh .nav .links{display:flex; gap:22px; margin-left:14px; font-size:14.5px; color:var(--muted); font-weight:500}
 .clh .nav .links a:hover{color:var(--ink)}
 .clh .nav .right{margin-left:auto; display:flex; align-items:center; gap:14px}
@@ -242,13 +243,7 @@ export default function LandingPublica() {
       <header>
         <div className="wrap nav">
           <a className="brand" href="/">
-            <svg className="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <circle cx="16" cy="16" r="15" stroke="var(--cyan-deep)" strokeWidth="1.4" opacity=".5" />
-              <path d="M16 6c5 0 8 4 8 8s-1.5 8-1.5 8" stroke="var(--cyan)" strokeWidth="1.6" strokeLinecap="round" />
-              <path d="M16 9.5c3.2 0 5 2.4 5 5.2 0 3-1 6.3-1 6.3" stroke="var(--cyan)" strokeWidth="1.6" strokeLinecap="round" opacity=".8" />
-              <path d="M16 13c1.7 0 2.4 1.3 2.4 2.8 0 2-.7 4.7-.7 4.7" stroke="var(--cyan)" strokeWidth="1.6" strokeLinecap="round" opacity=".6" />
-              <path d="M11 22c1-3 1.2-6 1-8.4C11.7 9.4 13.4 7 16 7" stroke="var(--emerald)" strokeWidth="1.6" strokeLinecap="round" opacity=".9" />
-            </svg>
+            <img className="mark" src={logoMark} alt="" aria-hidden="true" />
             My Health ID
           </a>
           <nav className="links">
