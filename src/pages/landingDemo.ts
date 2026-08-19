@@ -10,9 +10,10 @@ export const DEMO_RINGS = getMyIDFingerprintData(DEMO_SCORES);
 // MyID_score é 0–100 (maior = melhor). 68 = um exemplo saudável/moderado.
 export const DEMO_MYID = 68;
 
-// Marcadores de exemplo pro Avatar Clínico (posição em % sobre a imagem do corpo).
-export const DEMO_AVATAR_MARKERS: { top: number; left: number; label: string; color: string }[] = [
-  { top: 30, left: 63, label: 'Ombro D', color: '#F59E0B' },
-  { top: 46, left: 42, label: 'Lombar', color: '#EF4444' },
-  { top: 70, left: 57, label: 'Joelho E', color: '#8B5CF6' },
-];
+// Achados de exemplo pro Avatar Clínico REAL (BodyView): região -> intensidade 0-10.
+export const DEMO_AVATAR_POINTS: Record<string, number> = {
+  pescoco: 5,
+  ombro_d: 7,
+  abdomen: 3,
+  joelho_e: 6,
+};

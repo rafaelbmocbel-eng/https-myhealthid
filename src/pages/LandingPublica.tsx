@@ -2,9 +2,9 @@ import { Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
 import logoMark from '@/assets/logo-myhealthid-mark.png';
-import avatarFrente from '@/assets/avatar-humano-frente.png';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
-import { DEMO_RINGS, DEMO_MYID, DEMO_AVATAR_MARKERS } from './landingDemo';
+import { BodyView } from '@/components/presencial/Body3DAvatar';
+import { DEMO_RINGS, DEMO_MYID, DEMO_AVATAR_POINTS } from './landingDemo';
 
 // Home pública FOCADA NO CLIENTE (B2C), fundo claro. O profissional tem o site
 // próprio em /profissional. Conceito: a impressão digital = "sua identidade
@@ -261,13 +261,7 @@ export default function LandingPublica() {
           </div>
           <div className="avatar-grid">
             <div className="avatar-stage">
-              <img src={avatarFrente} alt="Avatar Clínico — mapa do corpo" />
-              {DEMO_AVATAR_MARKERS.map((m) => (
-                <div className="marker" key={m.label} style={{ top: `${m.top}%`, left: `${m.left}%` }}>
-                  <span className="pin" style={{ background: m.color }} />
-                  <span className="lbl">{m.label}</span>
-                </div>
-              ))}
+              <BodyView view="front" points={DEMO_AVATAR_POINTS} selected={null} onSelect={() => {}} />
             </div>
             <div>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>

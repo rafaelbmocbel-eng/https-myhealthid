@@ -573,7 +573,7 @@ interface Props {
   onStructuresChange?: (s: RegionStructState) => void;
 }
 
-function BodyView({
+export function BodyView({
   view,
   points,
   selected,
