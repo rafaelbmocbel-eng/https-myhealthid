@@ -143,21 +143,22 @@ const Check = ({ c }: { c: string }) => (
   </svg>
 );
 
-// As dimensões REAIS do MyID (rótulos amigáveis do app — MyIDFingerprint).
-// Lê-se do centro pra fora: CAPACIDADE (o que te sustenta) × DEMANDA (o que pressiona).
-const CAPACIDADE = [
+// As dimensões REAIS do MyID (rótulos exatos do app — MyIDFingerprint).
+// Anéis internos = SUSTENTO (o que te sustenta) · Anéis externos = PRESSÃO.
+// São 11 dimensões; a Medicação (MED) é um valor EXTRA que ajusta o cálculo.
+const SUSTENTO = [
   ['Sono e energia', 'Como você descansa e se recupera.'],
   ['Vida pessoal', 'Trabalho, família e finanças.'],
   ['Movimento', 'Seu nível de atividade física.'],
   ['Hidratação', 'Como seu corpo está hidratado.'],
   ['Alimentação', 'A qualidade da sua nutrição.'],
-  ['Postura', 'Ergonomia e hábitos posturais.'],
+  ['Postura no dia', 'Ergonomia e hábitos posturais.'],
 ];
-const DEMANDA = [
+const PRESSAO = [
   ['Dor', 'Intensidade, tipo e regiões afetadas.'],
-  ['Atividades', 'O que a dor te impede de fazer no dia.'],
-  ['Emoções', 'Medo de movimento, estresse, expectativa.'],
-  ['Mudanças', 'Gatilhos recentes que antecederam o quadro.'],
+  ['Suas atividades do dia', 'O que a dor te impede de fazer.'],
+  ['Cabeça e emoções', 'Medo de movimento, estresse, expectativa.'],
+  ['Mudanças recentes', 'Gatilhos que antecederam o quadro.'],
   ['Sinais do corpo', 'Sinais sistêmicos e histórico relevante.'],
 ];
 
@@ -241,29 +242,29 @@ export default function LandingPublica() {
           <div className="sec-head">
             <div className="eyebrow">O que o MyID enxerga</div>
             <h2>Sua dor não é um número só. São 11 dimensões.</h2>
-            <p>O MyID é biopsicossocial: ele pesa o equilíbrio entre a <b>capacidade</b> (o que te sustenta) e a <b>demanda</b> (o que está te pressionando) — e mostra qual dimensão está puxando mais. Resultado: um retrato de 0 a 100 (quanto maior, melhor).</p>
+            <p>O MyID é biopsicossocial: ele pesa o equilíbrio entre o que te <b>sustenta</b> (sono, vida pessoal, movimento, hidratação, alimentação, postura) e o que te <b>pressiona</b> (dor, atividades, emoções, mudanças, sinais do corpo) — e mostra qual está puxando mais. Um retrato de 0 a 100 (quanto maior, melhor).</p>
           </div>
 
           <div className="dim-group">
             <div className="dim-col">
-              <div className="col-tag" style={{ color: 'var(--emerald)' }}>Capacidade · o que te sustenta</div>
+              <div className="col-tag" style={{ color: 'var(--emerald)' }}>Anéis internos · Sustento</div>
               <div className="dim-grid">
-                {CAPACIDADE.map(([title, desc]) => (
+                {SUSTENTO.map(([title, desc]) => (
                   <div className="dim" key={title}><h3>{title}</h3><p>{desc}</p></div>
                 ))}
               </div>
             </div>
             <div className="dim-col">
-              <div className="col-tag" style={{ color: '#EF4444' }}>Demanda · o que pressiona</div>
+              <div className="col-tag" style={{ color: '#EF4444' }}>Anéis externos · Pressão</div>
               <div className="dim-grid">
-                {DEMANDA.map(([title, desc]) => (
+                {PRESSAO.map(([title, desc]) => (
                   <div className="dim" key={title}><h3>{title}</h3><p>{desc}</p></div>
                 ))}
               </div>
             </div>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: '13px', marginTop: '18px' }}>
-            + <b>Medicação</b> — ajusta o cálculo conforme o que você usa. Escala de <b>Excelente</b> a <b>Crítico Severo</b>.
+            + <b>Medicação</b> — um valor <b>extra</b> que ajusta o cálculo conforme o que você usa. Escala de <b>Excelente</b> a <b>Crítico Severo</b>.
           </p>
         </div>
       </section>
