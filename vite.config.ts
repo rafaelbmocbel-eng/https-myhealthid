@@ -83,15 +83,34 @@ export default defineConfig(() => ({
     cssMinify: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-supabase': ['@supabase/supabase-js'],
-          'vendor-query': ['@tanstack/react-query'],
-          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@radix-ui/react-dropdown-menu'],
-          'vendor-charts': ['recharts'],
-          'vendor-pdf': ['jspdf', 'html2canvas'],
-          'vendor-motion': ['framer-motion'],
-          'vendor-date': ['date-fns'],
+        manualChunks(id) {
+          // Isola os helpers de interop CJS (commonjsHelpers, tslib) num chunk
+          // próprio e minúsculo. Sem isto, o Rollup os hospeda dentro do 1º chunk
+          // pesado que precisa deles (vendor-pdf/vendor-charts); como o entry
+          // importa o helper, isso cria uma aresta estática entry→vendor-pesado
+          // que força o modulepreload de ~1MB de PDF+charts em TODA página,
+          // inclusive na landing pública que não usa nenhum dos dois.
+          // Helpers e micro-utils usados no app INTEIRO (inclusive no código que
+          // carrega logo de cara): interop CJS, tslib, preload-helper do Vite e o
+          // clsx/tailwind-merge do cn(). Se ficarem hospedados dentro de um vendor
+          // pesado (pdf/charts), o entry passa a importar dele e força o preload
+          // desse vendor em toda página. Isolá-los aqui quebra essa aresta.
+          if (
+            id.includes('commonjsHelpers') || id.includes('tslib') ||
+            id.includes('preload-helper') || id.includes('/clsx/') ||
+            id.includes('tailwind-merge')
+          ) return 'vendor-helpers';
+          if (!id.includes('node_modules')) return; // código do app: split por rota (React.lazy) fica intacto
+          // Específicos ANTES do catch genérico de "react" (senão @tanstack/react-query,
+          // @radix-ui/react-* etc. cairiam no vendor-react por conterem "react").
+          if (id.includes('@supabase')) return 'vendor-supabase';
+          if (id.includes('@tanstack/react-query')) return 'vendor-query';
+          if (id.includes('@radix-ui')) return 'vendor-ui';
+          if (id.includes('recharts')) return 'vendor-charts';
+          if (id.includes('jspdf') || id.includes('html2canvas')) return 'vendor-pdf';
+          if (id.includes('framer-motion')) return 'vendor-motion';
+          if (id.includes('date-fns')) return 'vendor-date';
+          if (id.includes('react-router') || id.includes('react-dom') || id.includes('/react/') || id.includes('scheduler')) return 'vendor-react';
         },
       },
     },
