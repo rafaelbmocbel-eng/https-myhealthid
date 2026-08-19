@@ -20,10 +20,12 @@ const CSS = `
   --bg:#F7FAFB; --surface:#FFFFFF; --surface-2:#EDF3F5;
   --ink:#0E1B26; --muted:#57697A; --line:#E2EAEE;
   --shadow:0 20px 44px -28px rgba(11,31,51,.28);
-  /* Mesma tipografia da página do profissional (Inter) — capricho consistente */
-  --display:'Inter',system-ui,sans-serif;
-  --body:'Inter',system-ui,sans-serif;
-  --mono:'Inter',system-ui,sans-serif;
+  /* MESMA pilha de fontes da página do profissional (Tailwind font-sans) —
+     idêntica ao que o Tailwind emite (keywords genéricas SEM aspas) pra que,
+     quando o Inter ainda não carregou, o fallback seja igual nas duas páginas. */
+  --display:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif;
+  --body:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif;
+  --mono:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif;
   background:var(--bg); color:var(--ink); font-family:var(--body);
   line-height:1.6; font-size:17px; -webkit-font-smoothing:antialiased;
 }
