@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
 import logoMark from '@/assets/logo-myhealthid-mark.png';
+import logoMarkBranco from '@/assets/logo-myhealthid-mark-branco.png';
 
 // Home pública FOCADA NO CLIENTE (B2C). O profissional tem o site próprio em
 // /profissional. Conceito: a impressão digital = "sua identidade clínica" (MyID).
@@ -377,8 +378,11 @@ export default function LandingPublica() {
       <footer>
         <div className="wrap foot">
           <div style={{ maxWidth: '260px' }}>
-            <div className="brand">My Health ID</div>
-            <p style={{ color: 'var(--band-muted)', fontSize: '14px', marginTop: '10px' }}>Sua identidade clínica digital. Entenda sua saúde, do seu jeito.</p>
+            <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+              <img src={logoMarkBranco} alt="" aria-hidden="true" style={{ width: '26px', height: '26px', objectFit: 'contain' }} />
+              My Health ID
+            </div>
+            <p style={{ color: 'var(--band-muted)', fontSize: '14px', marginTop: '10px' }}>Sua saúde, sua identidade. Entenda sua saúde, do seu jeito.</p>
           </div>
           <div className="col">
             <h4>Cliente</h4>
