@@ -19,9 +19,10 @@ const CSS = `
   --bg:#F7FAFB; --surface:#FFFFFF; --surface-2:#EDF3F5;
   --ink:#0E1B26; --muted:#57697A; --line:#E2EAEE;
   --shadow:0 20px 44px -28px rgba(11,31,51,.28);
-  --display:'Bricolage Grotesque','Inter',system-ui,sans-serif;
+  /* Mesma tipografia da página do profissional (Inter) — capricho consistente */
+  --display:'Inter',system-ui,sans-serif;
   --body:'Inter',system-ui,sans-serif;
-  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --mono:'Inter',system-ui,sans-serif;
   background:var(--bg); color:var(--ink); font-family:var(--body);
   line-height:1.6; font-size:17px; -webkit-font-smoothing:antialiased;
 }
@@ -33,7 +34,7 @@ const CSS = `
 .clh p{margin:0}
 .clh a{color:inherit; text-decoration:none}
 .clh .wrap{max-width:1120px; margin-inline:auto; padding-inline:22px}
-.clh .eyebrow{font-family:var(--mono); font-weight:600; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--cyan)}
+.clh .eyebrow{font-family:var(--body); font-weight:700; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--cyan)}
 
 .clh header{position:sticky; top:0; z-index:20; background:color-mix(in srgb,var(--bg) 88%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line)}
 .clh .nav{display:flex; align-items:center; gap:20px; height:64px}
