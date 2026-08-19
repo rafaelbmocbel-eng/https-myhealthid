@@ -230,8 +230,8 @@ export default function LandingPublica() {
           </div>
           <div className="steps">
             <div className="step"><div className="n" /><h3>Responda o MyID</h3><p>Um questionário guiado sobre sua dor, seu corpo e sua rotina. Sem jargão, do seu jeito.</p></div>
-            <div className="step"><div className="n" /><h3>Receba seu retrato</h3><p>Suas 11 dimensões em cores e números, com seu Avatar Clínico e dicas geradas pra você.</p></div>
-            <div className="step"><div className="n" /><h3>Conecte com um profissional</h3><p>Leve seu MyID a qualquer profissional de saúde — ou encontre um pela nossa vitrine.</p></div>
+            <div className="step"><div className="n" /><h3>Receba seu retrato</h3><p>Suas 11 dimensões em cores e números, com sua devolutiva e dicas geradas pra você.</p></div>
+            <div className="step"><div className="n" /><h3>Vá além com um profissional</h3><p>Conecte-se a um profissional pra ter resultados mais completos: avatar montado, achados revisados e acompanhamento.</p></div>
           </div>
         </div>
       </section>
@@ -296,16 +296,16 @@ export default function LandingPublica() {
           <div className="sec-head">
             <div className="eyebrow">Planos</div>
             <h2>Comece de graça. Vá além quando quiser.</h2>
-            <p>O essencial é gratuito pra sempre. O Premium entra quando você quer um acompanhamento montado por um profissional.</p>
+            <p>Você faz o MyID <b>sozinho e grátis</b> e já recebe seu retrato + dicas. Quer resultados <b>mais completos</b> — avatar montado, planos e acompanhamento? Aí você se <b>conecta a um profissional</b> ou entra no <b>Premium</b>.</p>
           </div>
           <div className="tiers">
             <div className="tier">
-              <div className="kicker">Grátis</div>
+              <div className="kicker">Grátis · sozinho</div>
               <div className="price">R$ 0</div>
-              <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Pra você se conhecer e começar.</p>
+              <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Faça sem profissional. Um retrato essencial pra você se conhecer e começar.</p>
               <ul>
-                <li><Check c="var(--emerald)" /> Avaliação MyID completa</li>
-                <li><Check c="var(--emerald)" /> Relatório de avaliação (devolutiva)</li>
+                <li><Check c="var(--emerald)" /> Avaliação MyID (versão essencial)</li>
+                <li><Check c="var(--emerald)" /> Seu retrato e devolutiva</li>
                 <li><Check c="var(--emerald)" /> Dicas de saúde geradas por IA</li>
                 <li><Check c="var(--emerald)" /> Vitrine para encontrar um profissional</li>
               </ul>
@@ -313,18 +313,18 @@ export default function LandingPublica() {
             </div>
 
             <div className="tier feature">
-              <span className="badge">Premium · em breve</span>
-              <div className="kicker">Acompanhado</div>
-              <div className="price">Sob acompanhamento</div>
-              <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Seu retrato vira um plano, montado por gente de verdade.</p>
+              <span className="badge">Completo</span>
+              <div className="kicker">Com um profissional ou Premium</div>
+              <div className="price">Mais completo</div>
+              <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Com um profissional de verdade por trás, seu retrato vira acompanhamento.</p>
               <ul>
-                <li><Check c="var(--cyan)" /> Tudo do plano grátis</li>
+                <li><Check c="var(--cyan)" /> Tudo do plano grátis, com resultados mais completos</li>
                 <li><Check c="var(--cyan)" /> Avatar Clínico montado por um profissional</li>
                 <li><Check c="var(--cyan)" /> Questionários baseados em evidência científica</li>
                 <li><Check c="var(--cyan)" /> Planos de treino, dicas e nutrição personalizados</li>
               </ul>
-              <p className="note">Os planos não substituem um profissional. Planos mais elaborados pedem acompanhamento presencial.</p>
-              <Link className="btn btn-ghost" to="/paciente/login" style={{ marginTop: '16px' }}>Entrar na lista de espera</Link>
+              <p className="note">Ligue-se a um profissional agora. O <b>Premium</b> (self-service) vem em breve. Os planos não substituem um profissional — os mais elaborados pedem acompanhamento presencial.</p>
+              <Link className="btn btn-ghost" to="/portaldocliente/vitrine" style={{ marginTop: '16px' }}>Encontrar um profissional</Link>
             </div>
           </div>
         </div>
@@ -334,8 +334,8 @@ export default function LandingPublica() {
         <div className="wrap">
           <div className="connect">
             <div className="txt">
-              <h3>Ainda não tem um profissional?</h3>
-              <p>A gente te conecta. Encontre fisioterapeutas e profissionais de saúde que entendem o seu MyID — e continue seu cuidado com quem é do seu lado.</p>
+              <h3>Conecte-se a um profissional e vá além.</h3>
+              <p>Ao se ligar a um profissional, seu MyID fica <b>mais completo</b>: avatar montado, achados revisados e acompanhamento de verdade. Encontre fisioterapeutas e profissionais de saúde que entendem o seu retrato — sem sair do app.</p>
             </div>
             <Link className="btn btn-emerald" to="/portaldocliente/vitrine">Encontrar um profissional</Link>
           </div>
