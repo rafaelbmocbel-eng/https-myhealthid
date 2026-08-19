@@ -9,6 +9,8 @@ import {
   Mic, LayoutDashboard, ClipboardList,
 } from 'lucide-react';
 import { useState } from 'react';
+import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
+import { DEMO_RINGS, DEMO_MYID } from './landingDemo';
 
 // ── MyID ring data (demo values) ─────────────────────────────────────────────
 const MYID_DIMS = [
@@ -432,9 +434,11 @@ export default function LandingProfissional() {
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
           <div className="grid grid-cols-1 gap-14 items-center lg:grid-cols-2">
 
-            {/* 3D rings visualization */}
+            {/* MyID de verdade (o gráfico do app) */}
             <div className="flex flex-col items-center gap-6 order-2 lg:order-1">
-              <MyIDRingsVisual />
+              <div className="w-full max-w-[420px]">
+                <MyIDFingerprint rings={DEMO_RINGS} myidScore={DEMO_MYID} />
+              </div>
 
               {/* Dimension legend */}
               <div className="grid grid-cols-3 gap-x-5 gap-y-2 sm:grid-cols-4">
