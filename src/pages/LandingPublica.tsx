@@ -2,6 +2,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
 import logoMark from '@/assets/logo-myhealthid-mark.png';
+import logoBranco from '@/assets/logo-myhealthid-branco.png';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import AvatarClinicoShowcase from '@/components/landing/AvatarClinicoShowcase';
 import { DEMO_RINGS, DEMO_MYID } from './landingDemo';
@@ -52,15 +53,18 @@ const CSS = `
 .clh .btn-sm{padding:8px 14px; font-size:14px; border-radius:10px}
 
 .clh .hero{position:relative; overflow:hidden; border-bottom:1px solid var(--line); background:
-  radial-gradient(120% 120% at 85% 0%, var(--cyan-soft) 0%, transparent 55%),
+  radial-gradient(120% 90% at 50% 0%, var(--cyan-soft) 0%, transparent 55%),
   linear-gradient(180deg, #FFFFFF 0%, var(--bg) 100%)}
-.clh .hero-grid{display:grid; grid-template-columns:1.02fr .98fr; gap:40px; align-items:center; padding:64px 0 72px}
-.clh .hero h1{font-size:clamp(38px,6vw,60px); font-weight:700; letter-spacing:-.02em; margin:16px 0 0}
+.clh .hero-center{display:flex; flex-direction:column; align-items:center; text-align:center; gap:26px; padding:44px 0 60px}
+.clh .hero-logo{width:100%; max-width:360px; height:auto}
+.clh .hero-copy{max-width:640px; display:flex; flex-direction:column; align-items:center}
+.clh .hero h1{font-size:clamp(34px,5.4vw,56px); font-weight:700; letter-spacing:-.02em; margin:14px 0 0}
 .clh .hero h1 .glow{color:var(--cyan)}
-.clh .hero .lede{color:var(--muted); font-size:clamp(16px,2vw,19px); max-width:34ch; margin-top:20px}
-.clh .cta-row{display:flex; flex-wrap:wrap; gap:12px; margin-top:30px}
-.clh .trust{display:flex; align-items:center; gap:10px; margin-top:20px; color:var(--muted); font-size:13.5px; font-family:var(--mono)}
+.clh .hero .lede{color:var(--muted); font-size:clamp(16px,2vw,19px); max-width:52ch; margin-top:18px}
+.clh .cta-row{display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; justify-content:center}
+.clh .trust{display:flex; align-items:center; gap:10px; margin-top:18px; color:var(--muted); font-size:13.5px; font-family:var(--mono)}
 .clh .dot{width:6px; height:6px; border-radius:50%; background:var(--emerald)}
+.clh .hero-center .myid-card{width:100%; max-width:440px}
 
 /* Cartão do gráfico MyID */
 .clh .myid-card{background:var(--surface); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); padding:20px 16px 10px; position:relative}
@@ -127,8 +131,8 @@ const CSS = `
 .clh .legal{border-top:1px solid var(--line); padding:16px 0; font-size:12.5px; color:var(--muted); display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; font-family:var(--mono)}
 
 @media (max-width:860px){
-  .clh .hero-grid{grid-template-columns:1fr; gap:28px; padding:44px 0 52px}
-  .clh .myid-card{order:-1}
+  .clh .hero-center{gap:22px; padding:32px 0 48px}
+  .clh .hero-logo{max-width:280px}
   .clh .steps{grid-template-columns:1fr}
   .clh .dim-group{grid-template-columns:1fr; gap:22px}
   .clh .dim-grid{grid-template-columns:1fr 1fr}
@@ -201,18 +205,11 @@ export default function LandingPublica() {
       </header>
 
       <div className="hero">
-        <div className="wrap hero-grid">
-          <div>
-            <div className="eyebrow">MyID · sua identidade clínica</div>
-            <h1>Descubra o que está por trás da <span className="glow">sua dor</span>.</h1>
-            <p className="lede">O MyID mapeia sua saúde em 11 dimensões e te devolve um retrato claro — com dicas personalizadas e o caminho pro profissional certo.</p>
-            <div className="cta-row">
-              <Link className="btn btn-emerald" to="/paciente/login">Fazer meu MyID grátis</Link>
-              <Link className="btn btn-ghost" to="/demo">Ver como funciona</Link>
-            </div>
-            <div className="trust"><span className="dot" /> Leva ~10 minutos · Dados protegidos pela LGPD</div>
-          </div>
+        <div className="wrap hero-center">
+          {/* A página começa com a marca */}
+          <img className="hero-logo" src={logoBranco} alt="My Health ID — Sua saúde, sua identidade." loading="eager" />
 
+          {/* Logo depois, os círculos do MyID */}
           <div className="myid-card">
             <div className="cap">
               <span className="t">Seu retrato MyID</span>
@@ -221,6 +218,17 @@ export default function LandingPublica() {
             <div className="fp-wrap">
               <MyIDFingerprint rings={DEMO_RINGS} myidScore={DEMO_MYID} />
             </div>
+          </div>
+
+          <div className="hero-copy">
+            <div className="eyebrow">MyID · sua identidade clínica</div>
+            <h1>Descubra o que está por trás da <span className="glow">sua dor</span>.</h1>
+            <p className="lede">O MyID mapeia sua saúde em 11 dimensões e te devolve um retrato claro — com dicas personalizadas e o caminho pro profissional certo.</p>
+            <div className="cta-row">
+              <Link className="btn btn-emerald" to="/paciente/login">Fazer meu MyID grátis</Link>
+              <Link className="btn btn-ghost" to="/demo">Ver como funciona</Link>
+            </div>
+            <div className="trust"><span className="dot" /> Leva ~10 minutos · Dados protegidos pela LGPD</div>
           </div>
         </div>
       </div>
