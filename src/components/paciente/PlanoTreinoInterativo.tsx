@@ -87,13 +87,15 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
     setBaixandoPdf(true);
     try {
       const [{ data: pac }, { data: nutRow }] = await Promise.all([
-        supabase.from('pacientes').select('nome, sobrenome').eq('id', pacienteId).maybeSingle(),
+        supabase.from('pacientes').select('nome, sobrenome, terapeuta_id').eq('id', pacienteId).maybeSingle(),
         (supabase as any).from('planos_ia_cliente').select('conteudo').eq('paciente_id', pacienteId).eq('tipo', 'nutricao').maybeSingle(),
       ]);
       const nome = pac ? `${pac.nome || ''} ${pac.sobrenome || ''}`.trim() : ((user?.user_metadata?.nome as string) || 'Paciente');
       const { gerarPDFPlanoTreino } = await import('@/utils/pdfPlanoTreino');
       const { downloadPDFBlob } = await import('@/utils/pdfMyIDPaciente');
-      const blob = await gerarPDFPlanoTreino({ pacienteNome: nome, titulo, conteudo, nutricao: (nutRow as any)?.conteudo || null });
+      const { carregarBrandingClinica } = await import('@/utils/pdfBranding');
+      const branding = await carregarBrandingClinica((pac as any)?.terapeuta_id);
+      const blob = await gerarPDFPlanoTreino({ pacienteNome: nome, titulo, ...branding, conteudo, nutricao: (nutRow as any)?.conteudo || null });
       const filename = `Meu_Treino_${new Date().toISOString().slice(0, 10)}.pdf`;
       const file = new File([blob], filename, { type: 'application/pdf' });
       const navAny = navigator as any;

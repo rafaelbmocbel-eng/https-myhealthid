@@ -116,9 +116,13 @@ export default function MyIDPDFButton() {
 
       // 2. Lazy import the heavy PDF generator
       const { gerarPDFMyIDPaciente, downloadPDFBlob } = await import('@/utils/pdfMyIDPaciente');
+      const { carregarBrandingClinica } = await import('@/utils/pdfBranding');
+      // Branding vem da clínica do TERAPEUTA do paciente (não do próprio usuário).
+      const branding = await carregarBrandingClinica(pac.terapeuta_id);
       const blob = await gerarPDFMyIDPaciente({
         pacienteNome: pac.nome,
         profissionalNome: prof ? [prof.nome, prof.sobrenome].filter(Boolean).join(' ') : undefined,
+        ...branding,
         dataAvaliacao: avaliacao.updated_at,
         myidScore,
         classificacao,

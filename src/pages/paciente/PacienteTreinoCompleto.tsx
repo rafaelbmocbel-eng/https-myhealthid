@@ -125,7 +125,11 @@ export default function PacienteTreinoCompleto() {
     try {
       const { gerarPDFPlanoTreino } = await import('@/utils/pdfPlanoTreino');
       const { downloadPDFBlob } = await import('@/utils/pdfMyIDPaciente');
-      const blob = await gerarPDFPlanoTreino({ pacienteNome: nome || 'Paciente', titulo: plano.titulo, conteudo: plano.conteudo, nutricao });
+      const { carregarBrandingClinica } = await import('@/utils/pdfBranding');
+      // Branding vem do terapeuta do paciente (o usuário aqui é o paciente).
+      const { data: pacTer } = await supabase.from('pacientes').select('terapeuta_id').eq('user_id', user!.id).maybeSingle();
+      const branding = await carregarBrandingClinica((pacTer as any)?.terapeuta_id);
+      const blob = await gerarPDFPlanoTreino({ pacienteNome: nome || 'Paciente', titulo: plano.titulo, ...branding, conteudo: plano.conteudo, nutricao });
       downloadPDFBlob(blob, `Meu_Treino_${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally { setBaixando(false); }
   };

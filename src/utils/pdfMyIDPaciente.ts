@@ -9,7 +9,7 @@
  */
 import jsPDF from 'jspdf';
 import { addLogoToDoc } from './pdfLogoHelper';
-import { drawFingerprintMark } from './pdfFingerprintWatermark';
+import { drawFingerprintMark, drawClinicLogo } from './pdfFingerprintWatermark';
 
 // Paleta Serene (alinhada com o portal do paciente)
 const NAVY = [28, 55, 83] as const;
@@ -46,6 +46,8 @@ const HIGHER_IS_WORSE = new Set(['D', 'P', 'I', 'N', 'MED']);
 export interface PDFMyIDPacienteData {
   pacienteNome: string;
   profissionalNome?: string;
+  clinicaNome?: string;
+  clinicaLogoUrl?: string;
   dataAvaliacao: string; // ISO ou pt-BR
   myidScore: number;     // 0-100 (positivo)
   classificacao: string; // ÓTIMO/BOM/MODERADO/ALERTA/CRÍTICO
@@ -83,7 +85,7 @@ function paintBackground(doc: jsPDF) {
   doc.rect(0, 0, 210, 297, 'F');
 }
 
-async function drawHeader(doc: jsPDF, title: string, subtitle: string) {
+async function drawHeader(doc: jsPDF, data: PDFMyIDPacienteData, title: string, subtitle: string) {
   // top band
   doc.setFillColor(...color(NAVY));
   doc.rect(0, 0, 210, 28, 'F');
@@ -99,16 +101,25 @@ async function drawHeader(doc: jsPDF, title: string, subtitle: string) {
   doc.setFontSize(9);
   doc.setTextColor(...color(SOFT));
   doc.text(subtitle, 32, 20);
+
+  // Co-branding da clínica no topo-direito das páginas internas
+  if (data.clinicaLogoUrl) {
+    await drawClinicLogo(doc, data.clinicaLogoUrl, 170, 6, 26, 14);
+  }
 }
 
-function drawFooter(doc: jsPDF, page: number, total: number) {
+function drawFooter(doc: jsPDF, page: number, total: number, clinicaNome?: string) {
   doc.setDrawColor(...color(SOFT));
   doc.setLineWidth(0.2);
   doc.line(14, 287, 196, 287);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...color(MUTED));
-  doc.text('MY HEALTH ID • Seu mapa de saúde, em uma página.', 14, 292);
+  // Se a clínica tem marca própria, ela assina; o app fica como crédito discreto.
+  const credito = clinicaNome
+    ? `${clinicaNome} • por My Health ID`
+    : 'MY HEALTH ID • Seu mapa de saúde, em uma página.';
+  doc.text(credito, 14, 292);
   doc.text(`Página ${page} de ${total}`, 196, 292, { align: 'right' });
 }
 
@@ -346,13 +357,19 @@ async function drawCover(doc: jsPDF, data: PDFMyIDPacienteData, dataFmt: string)
   doc.setFillColor(...color(NAVY));
   doc.rect(0, 0, 210, 297, 'F');
 
-  // Logo top
+  // Co-branding: a impressão digital gigante É o conteúdo do MyID (fica de herói).
+  // A marca do app segue no topo-esquerdo (é o produto MyID) e, se a clínica tem
+  // logo, ela aparece no topo-direito — "MyID por [clínica]".
   try { await addLogoToDoc(doc, 14, 12, 16); } catch { /* ignore */ }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(...color(SOFT));
   doc.text('MY HEALTH ID', 34, 22);
+
+  if (data.clinicaLogoUrl) {
+    await drawClinicLogo(doc, data.clinicaLogoUrl, 166, 10, 30, 15);
+  }
 
   // Big fingerprint centered — the hero
   const fpSize = 140;
@@ -408,7 +425,7 @@ export async function gerarPDFMyIDPaciente(data: PDFMyIDPacienteData): Promise<B
   doc.addPage();
   paintBackground(doc);
 
-  await drawHeader(doc, `Olá, ${data.pacienteNome.split(' ')[0] || data.pacienteNome}`,
+  await drawHeader(doc, data, `Olá, ${data.pacienteNome.split(' ')[0] || data.pacienteNome}`,
     `Seu resultado MyID • ${dataFmt}`);
 
   let y = 38;
@@ -434,7 +451,7 @@ export async function gerarPDFMyIDPaciente(data: PDFMyIDPacienteData): Promise<B
   const total = doc.getNumberOfPages();
   for (let i = 2; i <= total; i++) {
     doc.setPage(i);
-    drawFooter(doc, i, total);
+    drawFooter(doc, i, total, data.clinicaNome);
   }
 
   return doc.output('blob');

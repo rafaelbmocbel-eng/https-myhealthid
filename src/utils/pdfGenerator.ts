@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { addLogoToDoc } from './pdfLogoHelper';
+import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
 export interface PDFTecnica {
   nome: string;
@@ -11,6 +12,8 @@ export interface PDFTecnica {
 export interface PDFProtocolo {
   pacienteNome: string;
   terapeutaNome: string;
+  clinicaNome?: string;
+  clinicaLogoUrl?: string;
   dataEmissao: string;
   classificacao: string;
   idFinal: number;
@@ -70,16 +73,20 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
   doc.setFillColor(...VERMELHO);
   doc.rect(0, 0, W, 55, 'F');
 
-  // Real app logo
-  await addLogoToDoc(doc, margin, 8, 14);
+  // Marca do topo: logo da clínica quando existir (plaque), senão a do app.
+  if (data.clinicaLogoUrl) {
+    await drawClinicLogo(doc, data.clinicaLogoUrl, margin, 7, 30, 15);
+  } else {
+    await addLogoToDoc(doc, margin, 8, 14);
+  }
 
   doc.setTextColor(...BRANCO);
-  doc.setFontSize(22);
+  doc.setFontSize(data.clinicaLogoUrl ? 15 : 22);
   doc.setFont('helvetica', 'bold');
-  doc.text('MY HEALTH ID', margin + 18, 20);
+  doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), margin + (data.clinicaLogoUrl ? 34 : 18), 20);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text('Diretriz de Tratamento Personalizada', margin + 18, 28);
+  doc.text('Diretriz de Tratamento Personalizada', margin + (data.clinicaLogoUrl ? 34 : 18), 28);
 
   doc.setFontSize(9);
   doc.setTextColor(255, 200, 200);
@@ -366,13 +373,25 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
 
   // ── RODAPÉ ────────────────────────────────────────────────────────────────
   const totalPages = (doc as any).internal.getNumberOfPages();
+
+  // Timbre: logo da clínica como marca-d'água clara por cima do conteúdo.
+  if (data.clinicaLogoUrl) {
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      await drawLogoWatermark(doc, data.clinicaLogoUrl, W / 2, 165, 90, 0.05);
+    }
+  }
+
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFillColor(245, 245, 250);
     doc.rect(0, 286, W, 11, 'F');
     doc.setFontSize(7);
     doc.setTextColor(...CINZA_MEDIO);
-    doc.text('My Health ID · Diretriz Personalizada · Documento confidencial', margin, 293);
+    const credito = data.clinicaNome
+      ? `${data.clinicaNome} · por My Health ID · Documento confidencial`
+      : 'My Health ID · Diretriz Personalizada · Documento confidencial';
+    doc.text(credito, margin, 293);
     doc.text(`Página ${i} de ${totalPages}`, W - margin, 293, { align: 'right' });
   }
 

@@ -225,9 +225,12 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
       }));
 
       const scores = protocolo.scores_avaliacao || {};
+      const { carregarBrandingClinica } = await import('@/utils/pdfBranding');
+      const branding = await carregarBrandingClinica(user?.id);
       const pdfData: PDFProtocolo = {
         pacienteNome,
         terapeutaNome: `${profile?.nome || ''} ${profile?.sobrenome || ''}`.trim() || 'Terapeuta',
+        ...branding,
         dataEmissao: format(new Date(), 'dd/MM/yyyy', { locale: ptBR }),
         classificacao: scores['classificacao'] || 'MODERADO',
         idFinal: scores['idFinal'] || 0,

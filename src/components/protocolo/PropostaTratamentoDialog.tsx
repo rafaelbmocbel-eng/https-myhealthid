@@ -8,7 +8,6 @@ import { Loader2, Share2, FileDown, Sparkles, Plus, X, Eye, Pencil } from 'lucid
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   open: boolean;
@@ -163,24 +162,12 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
     try {
       const { gerarPDFPropostaTratamento, downloadPDFBlob } = await import('@/utils/pdfPropostaTratamento');
 
-      // Branding da clínica: logo (subida em Configurações) + nome/razão social.
-      // Preferimos config_clinica sobre o profile — é onde o profissional edita
-      // a identidade que vai nos documentos. Sem logo, o gerador cai na marca do app.
-      let clinicaLogoUrl: string | undefined;
-      let clinicaNome: string | undefined = (profile as any)?.nome_clinica || undefined;
-      if (user) {
-        const { data: cfg } = await (supabase as any)
-          .from('config_clinica')
-          .select('logo_url, razao_social')
-          .eq('terapeuta_id', user.id)
-          .maybeSingle();
-        if (cfg) {
-          clinicaLogoUrl = cfg.logo_url || undefined;
-          // razao_social (nome da clínica em Configurações) tem prioridade sobre
-          // o nome_clinica do profile, mas só se estiver preenchido.
-          clinicaNome = cfg.razao_social || clinicaNome;
-        }
-      }
+      // Branding da clínica (logo + razão social, editados em Configurações).
+      // Helper compartilhado por todos os PDFs. Sem logo → marca do app discreta.
+      const { carregarBrandingClinica } = await import('@/utils/pdfBranding');
+      const branding = await carregarBrandingClinica(user?.id);
+      const clinicaLogoUrl = branding.clinicaLogoUrl;
+      const clinicaNome = branding.clinicaNome || (profile as any)?.nome_clinica || undefined;
       const fasesLimpas = fases.map(f => ({
         ...f,
         focos: f.focos.map(x => x.trim()).filter(Boolean),

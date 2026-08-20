@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import type { EvolucaoRecord } from '@/hooks/useEvolucaoPaciente';
+import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
 // ── Colors ────────────────────────────────────────────────────────
 const NAVY = [28, 55, 83] as const;
@@ -124,6 +125,8 @@ function drawRadarDual(
 export interface PDFEvolucaoData {
   pacienteNome: string;
   terapeutaNome: string;
+  clinicaNome?: string;
+  clinicaLogoUrl?: string;
   dataEmissao: string;
   evolucoes: EvolucaoRecord[];
 }
@@ -157,7 +160,12 @@ export async function gerarPDFEvolucao(data: PDFEvolucaoData): Promise<void> {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(180, 200, 225);
-  doc.text('MY HEALTH ID · Acompanhamento Longitudinal', M, 26);
+  doc.text(`${data.clinicaNome || 'MY HEALTH ID'} · Acompanhamento Longitudinal`, M, 26);
+
+  // Logo da clínica no vão entre o título e o badge de ID
+  if (data.clinicaLogoUrl) {
+    await drawClinicLogo(doc, data.clinicaLogoUrl, 116, 5, 32, 15);
+  }
   doc.setFontSize(8);
   doc.text(`${data.dataEmissao}  ·  Terapeuta: ${data.terapeutaNome}`, M, 33);
 
@@ -404,13 +412,24 @@ export async function gerarPDFEvolucao(data: PDFEvolucaoData): Promise<void> {
   // FOOTER
   // ═════════════════════════════════════════════════════
   const totalPages = (doc as any).internal.getNumberOfPages();
+
+  if (data.clinicaLogoUrl) {
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      await drawLogoWatermark(doc, data.clinicaLogoUrl, W / 2, 165, 90, 0.05);
+    }
+  }
+
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFillColor(245, 245, 250);
     doc.rect(0, 286, W, 11, 'F');
     doc.setFontSize(7);
     doc.setTextColor(...GRAY);
-    doc.text('My Health ID · Relatório de Evolução · Documento confidencial', M, 293);
+    const credito = data.clinicaNome
+      ? `${data.clinicaNome} · por My Health ID · Documento confidencial`
+      : 'My Health ID · Relatório de Evolução · Documento confidencial';
+    doc.text(credito, M, 293);
     doc.text(`Página ${i} de ${totalPages}`, W - M, 293, { align: 'right' });
   }
 

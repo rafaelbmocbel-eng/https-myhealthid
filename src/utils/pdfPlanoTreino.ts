@@ -8,10 +8,13 @@
  * rede), o exercício entra sem imagem — o PDF nunca falha por causa de um GIF.
  */
 import jsPDF from 'jspdf';
+import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
 export interface PlanoTreinoPDFData {
   pacienteNome: string;
   titulo?: string | null;
+  clinicaNome?: string;
+  clinicaLogoUrl?: string;
   conteudo: any; // { resumo, fases: [{ nome, semanas, objetivo, sessoes: [...] }], observacoes_gerais }
   nutricao?: any; // { titulo, resumo, calorias_totais, macros, refeicoes: [...], orientacoes, lista_compras }
 }
@@ -95,6 +98,10 @@ export async function gerarPDFPlanoTreino(data: PlanoTreinoPDFData): Promise<Blo
   doc.text('Meu Plano de Treino', MARGIN, 13);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(210, 218, 235);
   doc.text(`${data.pacienteNome} · ${new Date().toLocaleDateString('pt-BR')}`, MARGIN, 20);
+  // Logo da clínica no topo-direito da faixa
+  if (data.clinicaLogoUrl) {
+    await drawClinicLogo(doc, data.clinicaLogoUrl, PAGE_W - MARGIN - 30, 6, 30, 14);
+  }
   y = 34;
 
   if (data.titulo) { paragrafo(data.titulo, MARGIN, CONTENT_W, 12, NAVY, true); y += 1; }
@@ -227,5 +234,15 @@ export async function gerarPDFPlanoTreino(data: PlanoTreinoPDFData): Promise<Blo
   }
 
   footer();
+
+  // Timbre: logo da clínica como marca-d'água clara em todas as páginas.
+  if (data.clinicaLogoUrl) {
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      await drawLogoWatermark(doc, data.clinicaLogoUrl, PAGE_W / 2, 160, 90, 0.05);
+    }
+  }
+
   return doc.output('blob');
 }

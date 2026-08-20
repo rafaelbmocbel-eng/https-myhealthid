@@ -8,6 +8,7 @@ import {
   BarChart, Bar, Cell,
 } from 'recharts';
 import type { EvolucaoRecord } from '@/hooks/useEvolucaoPaciente';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 
@@ -94,6 +95,7 @@ export function detectarEstagnacao(evolucoes: EvolucaoRecord[], janela = 3): boo
 }
 
 export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNome }: Props) {
+  const { user } = useAuth();
   const [exportando, setExportando] = useState(false);
   const [visibleDims, setVisibleDims] = useState<Set<string>>(new Set());
   const toggleDim = (key: string) => setVisibleDims(prev => {
@@ -106,9 +108,12 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
     setExportando(true);
     try {
       const { gerarPDFEvolucao } = await import('@/utils/pdfEvolucaoGenerator');
+      const { carregarBrandingClinica } = await import('@/utils/pdfBranding');
+      const branding = await carregarBrandingClinica(user?.id);
       await gerarPDFEvolucao({
         pacienteNome: pacienteNome || 'Paciente',
         terapeutaNome: terapeutaNome || 'Terapeuta',
+        ...branding,
         dataEmissao: new Date().toLocaleDateString('pt-BR'),
         evolucoes,
       });

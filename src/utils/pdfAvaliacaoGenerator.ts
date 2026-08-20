@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { addLogoToDoc } from './pdfLogoHelper';
+import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
 export interface PDFEstiloVidaItem {
   label: string;
@@ -22,6 +23,8 @@ export interface PDFTratamentoTecnica {
 export interface PDFAvaliacaoData {
   pacienteNome: string;
   terapeutaNome: string;
+  clinicaNome?: string;
+  clinicaLogoUrl?: string;
   dataAvaliacao: string;
   idFinal: number;
   classificacao: string;
@@ -211,14 +214,22 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
   doc.setFillColor(...GOLD);
   doc.rect(0, 48, W, 2, 'F');
 
-  // Logo & Title
-  await drawLogo(doc, M, 10, 16);
-  doc.setTextColor(...WHITE);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MY HEALTH', M + 20, 18);
-  doc.setTextColor(...GOLD);
-  doc.text('ID', M + 62, 18);
+  // Logo & Title — logo da clínica quando existir; senão a marca do app.
+  if (data.clinicaLogoUrl) {
+    await drawClinicLogo(doc, data.clinicaLogoUrl, M, 8, 32, 16);
+    doc.setTextColor(...WHITE);
+    doc.setFontSize(15);
+    doc.setFont('helvetica', 'bold');
+    doc.text((data.clinicaNome || '').toUpperCase(), M + 36, 18);
+  } else {
+    await drawLogo(doc, M, 10, 16);
+    doc.setTextColor(...WHITE);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MY HEALTH', M + 20, 18);
+    doc.setTextColor(...GOLD);
+    doc.text('ID', M + 62, 18);
+  }
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
@@ -337,7 +348,7 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
   doc.setTextColor(...WHITE);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('MY HEALTH ID', M, 8);
+  doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), M, 8);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.text(`Análise Detalhada  ·  ${data.pacienteNome}`, W - M, 8, { align: 'right' });
@@ -527,7 +538,7 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
   doc.setTextColor(...WHITE);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('MY HEALTH ID', M, 8);
+  doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), M, 8);
   doc.text(`Plano de Tratamento  ·  ${data.pacienteNome}`, W - M, 8, { align: 'right' });
 
   y = 20;
@@ -674,7 +685,7 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
     doc.setTextColor(...WHITE);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text('MY HEALTH ID', M, 8);
+    doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), M, 8);
     doc.text(`Diretriz de Tratamento  ·  ${data.pacienteNome}`, W - M, 8, { align: 'right' });
 
     y = 20;
@@ -999,6 +1010,15 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
 
   // ── Footer on all pages ──
   const totalPages = (doc as any).internal.getNumberOfPages();
+
+  // Timbre: logo da clínica como marca-d'água clara em todas as páginas.
+  if (data.clinicaLogoUrl) {
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      await drawLogoWatermark(doc, data.clinicaLogoUrl, W / 2, 165, 90, 0.05);
+    }
+  }
+
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFillColor(...NAVY);
@@ -1006,9 +1026,14 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
     doc.setFontSize(6);
     doc.setTextColor(180, 200, 225);
     doc.setFont('helvetica', 'bold');
-    doc.text('MY HEALTH ID', M, 292);
+    const marca = (data.clinicaNome || 'MY HEALTH ID').toUpperCase();
+    doc.text(marca, M, 292);
+    const off = doc.getTextWidth(marca) + 3;
     doc.setFont('helvetica', 'normal');
-    doc.text('·  Relatório de Avaliação  ·  Documento confidencial', M + 18, 292);
+    const resto = data.clinicaNome
+      ? '·  por My Health ID  ·  Documento confidencial'
+      : '·  Relatório de Avaliação  ·  Documento confidencial';
+    doc.text(resto, M + off, 292);
     doc.text(`Página ${i} de ${totalPages}`, W - M, 292, { align: 'right' });
   }
 

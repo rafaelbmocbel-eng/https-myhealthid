@@ -1,6 +1,8 @@
 import jsPDF from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import { addLogoToDoc } from './pdfLogoHelper';
+import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
+import { carregarBrandingClinica } from './pdfBranding';
 
 // Colors
 const NAVY = [28, 55, 83] as const;
@@ -47,7 +49,7 @@ function drawBar(doc: jsPDF, x: number, y: number, w: number, h: number, pct: nu
   }
 }
 
-function drawPageHeader(doc: jsPDF, subtitle: string, pacienteNome: string) {
+function drawPageHeader(doc: jsPDF, subtitle: string, pacienteNome: string, clinicaNome?: string) {
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, 210, 12, 'F');
   doc.setFillColor(...GOLD);
@@ -55,7 +57,7 @@ function drawPageHeader(doc: jsPDF, subtitle: string, pacienteNome: string) {
   doc.setTextColor(...WHITE);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('MY HEALTH ID', 14, 8);
+  doc.text((clinicaNome || 'MY HEALTH ID').toUpperCase(), 14, 8);
   doc.setFont('helvetica', 'normal');
   doc.text(`${subtitle}  ·  ${pacienteNome}`, 196, 8, { align: 'right' });
 }
@@ -101,6 +103,14 @@ export async function gerarPDFRespostaCompleta({ avaliacao, pacienteId, terapeut
 
   const protocolo = protocolos?.[0] || null;
 
+  // ── Branding da clínica (logo + nome do terapeuta do paciente) ──
+  const { data: pacRow } = await (supabase as any)
+    .from('pacientes')
+    .select('terapeuta_id')
+    .eq('id', pacienteId)
+    .maybeSingle();
+  const { clinicaNome, clinicaLogoUrl } = await carregarBrandingClinica((pacRow as any)?.terapeuta_id);
+
   // ═══════════════════════════════════════════════════════
   // PAGE 1 — CAPA
   // ═══════════════════════════════════════════════════════
@@ -109,20 +119,28 @@ export async function gerarPDFRespostaCompleta({ avaliacao, pacienteId, terapeut
   doc.setFillColor(...GOLD);
   doc.rect(0, 55, W, 2, 'F');
 
-  // Logo area — real app logo
-  await addLogoToDoc(doc, M, 10, 16);
-
-  doc.setTextColor(...WHITE);
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MY HEALTH', M + 20, 18);
-  doc.setTextColor(...GOLD);
-  doc.text('ID', M + 64, 18);
+  // Marca do topo: logo da clínica quando existir; senão a marca do app.
+  const brandX = clinicaLogoUrl ? M + 36 : M + 20;
+  if (clinicaLogoUrl) {
+    await drawClinicLogo(doc, clinicaLogoUrl, M, 8, 32, 16);
+    doc.setTextColor(...WHITE);
+    doc.setFontSize(15);
+    doc.setFont('helvetica', 'bold');
+    doc.text((clinicaNome || '').toUpperCase(), brandX, 18);
+  } else {
+    await addLogoToDoc(doc, M, 10, 16);
+    doc.setTextColor(...WHITE);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MY HEALTH', M + 20, 18);
+    doc.setTextColor(...GOLD);
+    doc.text('ID', M + 64, 18);
+  }
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(180, 200, 225);
-  doc.text('Resposta Completa — Avaliação Integrada', M + 20, 26);
+  doc.text('Resposta Completa — Avaliação Integrada', brandX, 26);
 
   doc.setFontSize(8);
   doc.text(`${dataAvaliacao}  ·  Terapeuta: ${terapeutaNome}`, M + 20, 34);
@@ -426,7 +444,7 @@ export async function gerarPDFRespostaCompleta({ avaliacao, pacienteId, terapeut
   // SECTION 3 — DIRETRIZ DE TRATAMENTO
   // ═══════════════════════════════════════════════════════
   doc.addPage();
-  drawPageHeader(doc, 'Diretriz de Tratamento', avaliacao.pacienteNome);
+  drawPageHeader(doc, 'Diretriz de Tratamento', avaliacao.pacienteNome, clinicaNome);
   y = 20;
 
   doc.setTextColor(...DARK);
@@ -603,6 +621,15 @@ export async function gerarPDFRespostaCompleta({ avaliacao, pacienteId, terapeut
 
   // ── Footer on all pages ──
   const totalPages = (doc as any).internal.getNumberOfPages();
+
+  // Timbre: logo da clínica como marca-d'água clara em todas as páginas.
+  if (clinicaLogoUrl) {
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      await drawLogoWatermark(doc, clinicaLogoUrl, W / 2, 165, 90, 0.05);
+    }
+  }
+
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFillColor(...NAVY);
@@ -610,9 +637,14 @@ export async function gerarPDFRespostaCompleta({ avaliacao, pacienteId, terapeut
     doc.setFontSize(6);
     doc.setTextColor(180, 200, 225);
     doc.setFont('helvetica', 'bold');
-    doc.text('MY HEALTH ID', M, 292);
+    const marca = (clinicaNome || 'MY HEALTH ID').toUpperCase();
+    doc.text(marca, M, 292);
+    const off = doc.getTextWidth(marca) + 3;
     doc.setFont('helvetica', 'normal');
-    doc.text('·  Resposta Completa  ·  Documento confidencial', M + 18, 292);
+    const resto = clinicaNome
+      ? '·  por My Health ID  ·  Documento confidencial'
+      : '·  Resposta Completa  ·  Documento confidencial';
+    doc.text(resto, M + off, 292);
     doc.text(`Página ${i} de ${totalPages}`, W - M, 292, { align: 'right' });
   }
 
