@@ -458,9 +458,9 @@ export default function LandingPublica() {
           </div>
           <div className="col">
             <h4>Confiança</h4>
-            <a href="#">Privacidade (LGPD)</a>
-            <a href="#">Termos de uso</a>
-            <a href="#">Segurança dos dados</a>
+            <Link to="/privacidade">Privacidade (LGPD)</Link>
+            <Link to="/termos">Termos de uso</Link>
+            <Link to="/privacidade">Segurança dos dados</Link>
           </div>
         </div>
         <div className="wrap legal">

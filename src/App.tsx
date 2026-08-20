@@ -25,6 +25,8 @@ const Index = lazyWithRetry(() => import("./pages/Index"));
 const LandingPublica = lazyWithRetry(() => import("./pages/LandingPublica"));
 const LandingProfissional = lazyWithRetry(() => import("./pages/LandingProfissional"));
 const DemoMyID = lazyWithRetry(() => import("./pages/DemoMyID"));
+const Privacidade = lazyWithRetry(() => import("./pages/Privacidade"));
+const Termos = lazyWithRetry(() => import("./pages/Termos"));
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const MyIDResponder = lazyWithRetry(() => import("./pages/MyIDResponder"));
@@ -161,6 +163,8 @@ const App = () => (
                     separada da home do cliente. O login em si fica em /auth. */}
                 <Route path="/profissional" element={<LandingProfissional />} />
                 <Route path="/pro" element={<Navigate to="/profissional" replace />} />
+                <Route path="/privacidade" element={<Privacidade />} />
+                <Route path="/termos" element={<Termos />} />
                 <Route path="/auth/confirm" element={<AuthConfirm />} />
                 <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                 <Route path="/nova-senha" element={<NovaSenha />} />

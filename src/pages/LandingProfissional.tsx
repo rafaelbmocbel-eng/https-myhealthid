@@ -923,8 +923,8 @@ export default function LandingProfissional() {
             <span>© {new Date().getFullYear()} My Health ID · LGPD compliant</span>
           </div>
           <div className="flex items-center gap-4 flex-wrap justify-center">
-            <a href="#" className="hover:text-foreground">Termos de uso</a>
-            <a href="#" className="hover:text-foreground">Privacidade</a>
+            <Link to="/termos" className="hover:text-foreground">Termos de uso</Link>
+            <Link to="/privacidade" className="hover:text-foreground">Privacidade</Link>
             <Link to="/auth" className="hover:text-foreground">Profissional</Link>
             <Link to="/paciente/login" className="hover:text-foreground">Paciente</Link>
             <a href="mailto:contato@myhealthid.com.br" className="hover:text-foreground">Contato</a>
