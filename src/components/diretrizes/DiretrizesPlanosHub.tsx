@@ -110,34 +110,37 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
   );
 
   return (
-    <Tabs defaultValue="fisio" className="w-full">
-      <TabsList className="w-full grid grid-cols-3 h-auto p-1">
-        <TabsTrigger value="fisio" className="text-xs gap-1.5 py-2"><Activity className="h-3.5 w-3.5" /> Fisioterapia</TabsTrigger>
-        <TabsTrigger value="treino" className="text-xs gap-1.5 py-2"><Dumbbell className="h-3.5 w-3.5" /> Reabilitação/Treino</TabsTrigger>
-        <TabsTrigger value="nutricao" className="text-xs gap-1.5 py-2"><Apple className="h-3.5 w-3.5" /> Nutrição</TabsTrigger>
-      </TabsList>
+    <div className="space-y-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Planejamento por especialidade</p>
+      <Tabs defaultValue="fisio" className="w-full">
+        <TabsList className="w-full grid grid-cols-3 h-auto p-1">
+          <TabsTrigger value="fisio" className="text-xs gap-1.5 py-2"><Activity className="h-3.5 w-3.5" /> Fisioterápico</TabsTrigger>
+          <TabsTrigger value="nutricao" className="text-xs gap-1.5 py-2"><Apple className="h-3.5 w-3.5" /> Nutricional</TabsTrigger>
+          <TabsTrigger value="treino" className="text-xs gap-1.5 py-2"><Dumbbell className="h-3.5 w-3.5" /> Personal</TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="fisio" className="mt-4">
-        <Suspense fallback={Fallback}>
-          <PacienteProtocolosTab pacienteId={pacienteId} pacienteNome={pacienteNome} tipo="identidade" />
-        </Suspense>
-      </TabsContent>
+        <TabsContent value="fisio" className="mt-4">
+          <Suspense fallback={Fallback}>
+            <PacienteProtocolosTab pacienteId={pacienteId} pacienteNome={pacienteNome} tipo="identidade" />
+          </Suspense>
+        </TabsContent>
 
-      <TabsContent value="treino" className="mt-4 space-y-3">
-        {geradoCliente?.treinoIA && clienteRef('treino', geradoCliente.treinoIA.titulo)}
-        <Suspense fallback={Fallback}>
-          <PlanoTreinoCard pacienteId={pacienteId} />
-          <DiretrizTreinoCard pacienteId={pacienteId} />
-        </Suspense>
-      </TabsContent>
+        <TabsContent value="nutricao" className="mt-4 space-y-3">
+          {geradoCliente?.nutricaoIA && clienteRef('nutricao', geradoCliente.nutricaoIA.titulo)}
+          <Suspense fallback={Fallback}>
+            <PlanoAlimentarCard pacienteId={pacienteId} />
+            <DiretrizNutricionalCard pacienteId={pacienteId} />
+          </Suspense>
+        </TabsContent>
 
-      <TabsContent value="nutricao" className="mt-4 space-y-3">
-        {geradoCliente?.nutricaoIA && clienteRef('nutricao', geradoCliente.nutricaoIA.titulo)}
-        <Suspense fallback={Fallback}>
-          <PlanoAlimentarCard pacienteId={pacienteId} />
-          <DiretrizNutricionalCard pacienteId={pacienteId} />
-        </Suspense>
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="treino" className="mt-4 space-y-3">
+          {geradoCliente?.treinoIA && clienteRef('treino', geradoCliente.treinoIA.titulo)}
+          <Suspense fallback={Fallback}>
+            <PlanoTreinoCard pacienteId={pacienteId} />
+            <DiretrizTreinoCard pacienteId={pacienteId} />
+          </Suspense>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
