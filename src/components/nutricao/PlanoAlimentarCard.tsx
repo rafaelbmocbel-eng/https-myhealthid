@@ -139,13 +139,22 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
   });
 
   const aprovar = useMutation({
-    mutationFn: async ({ id, aprovado }: { id: string; aprovado: boolean }) => {
+    mutationFn: async ({ plano, aprovado }: { plano: any; aprovado: boolean }) => {
       // Chancela: só o Nutricionista (ou a clínica que o tenha) libera. Ocultar é livre.
       if (aprovado && !chancela.pode) throw new Error(chancela.motivo);
-      const { error } = await (supabase as any).from('planos_alimentares').update({ aprovado }).eq('id', id);
+      const { error } = await (supabase as any).from('planos_alimentares').update({ aprovado }).eq('id', plano.id);
       if (error) throw error;
     },
-    onSuccess: (_d, v) => { toast.success(v.aprovado ? 'Liberado para o paciente' : 'Ocultado do paciente'); qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] }); },
+    onSuccess: async (_d, v) => {
+      toast.success(v.aprovado ? 'Liberado para o paciente' : 'Ocultado do paciente');
+      qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] });
+      // Ao LIBERAR, registra no prontuário/evolução do cliente.
+      if (v.aprovado && v.plano?.terapeuta_id) {
+        const { registrarNotaPlanoLiberado } = await import('@/utils/notaPlanoLiberado');
+        await registrarNotaPlanoLiberado({ pacienteId, terapeutaId: v.plano.terapeuta_id, area: 'nutricao', titulo: v.plano.titulo, planoId: v.plano.id });
+        qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      }
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -185,7 +194,7 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
                   ? <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Liberado</Badge>
                   : <Badge variant="outline" className="text-xs">Rascunho</Badge>}
                 <Button variant={p.aprovado ? 'ghost' : 'default'} size="sm" className="h-8 text-xs px-2.5"
-                  onClick={() => aprovar.mutate({ id: p.id, aprovado: !p.aprovado })}
+                  onClick={() => aprovar.mutate({ plano: p, aprovado: !p.aprovado })}
                   disabled={aprovar.isPending || (!p.aprovado && (chancela.loading || !chancela.pode))}
                   title={!p.aprovado && !chancela.pode ? chancela.motivo : (chancela.viaClinica ? chancela.motivo : undefined)}>
                   {p.aprovado ? 'Ocultar' : 'Liberar'}

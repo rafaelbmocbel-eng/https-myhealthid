@@ -19,6 +19,17 @@ const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/Diretri
 
 const Fallback = <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
+// Deixa explícito o fluxo Rascunho → Liberado (é quando o cliente passa a ver).
+function HintLiberar() {
+  return (
+    <p className="text-[11px] text-muted-foreground bg-muted/40 border border-border/50 rounded-lg px-3 py-2">
+      <span className="font-semibold text-foreground">Rascunho</span> = só você vê. Clique em{' '}
+      <span className="font-semibold text-emerald-700 dark:text-emerald-400">Liberar</span> para o cliente ver no
+      portal — ao liberar, o plano também entra no prontuário/evolução dele.
+    </p>
+  );
+}
+
 interface Props {
   pacienteId: string;
   pacienteNome: string;
@@ -127,6 +138,7 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
 
         <TabsContent value="nutricao" className="mt-4 space-y-3">
           {geradoCliente?.nutricaoIA && clienteRef('nutricao', geradoCliente.nutricaoIA.titulo)}
+          <HintLiberar />
           <Suspense fallback={Fallback}>
             <PlanoAlimentarCard pacienteId={pacienteId} />
             <DiretrizNutricionalCard pacienteId={pacienteId} />
@@ -135,6 +147,7 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
 
         <TabsContent value="treino" className="mt-4 space-y-3">
           {geradoCliente?.treinoIA && clienteRef('treino', geradoCliente.treinoIA.titulo)}
+          <HintLiberar />
           <Suspense fallback={Fallback}>
             <PlanoTreinoCard pacienteId={pacienteId} />
             <DiretrizTreinoCard pacienteId={pacienteId} />

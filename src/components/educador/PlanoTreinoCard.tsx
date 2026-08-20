@@ -110,14 +110,20 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
     qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
   };
 
-  const liberar = async (id: string, aprovado: boolean) => {
+  const liberar = async (plano: any, aprovado: boolean) => {
     // Chancela = só o profissional habilitado (ou a clínica que o tenha) libera.
     // Ocultar (aprovado=false) é sempre permitido.
     if (aprovado && !chancela.pode) { toast.error(chancela.motivo); return; }
-    const { error } = await (supabase as any).from('planos_treino').update({ aprovado }).eq('id', id);
+    const { error } = await (supabase as any).from('planos_treino').update({ aprovado }).eq('id', plano.id);
     if (error) return toast.error(error.message);
     toast.success(aprovado ? 'Liberado para o paciente' : 'Ocultado do paciente');
     qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+    // Ao LIBERAR, registra no prontuário/evolução do cliente.
+    if (aprovado && plano.terapeuta_id) {
+      const { registrarNotaPlanoLiberado } = await import('@/utils/notaPlanoLiberado');
+      await registrarNotaPlanoLiberado({ pacienteId, terapeutaId: plano.terapeuta_id, area: 'treino', titulo: plano.titulo, planoId: plano.id });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+    }
   };
 
   // Um plano em destaque (liberado ou o mais recente); o resto fica recolhido.
@@ -218,7 +224,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
               <Button size="sm" variant={p.aprovado ? 'ghost' : 'default'} className="h-7 text-[11px] px-2 shrink-0"
                 disabled={!p.aprovado && (chancela.loading || !chancela.pode)}
                 title={!p.aprovado && !chancela.pode ? chancela.motivo : (chancela.viaClinica ? chancela.motivo : undefined)}
-                onClick={() => liberar(p.id, !p.aprovado)}>
+                onClick={() => liberar(p, !p.aprovado)}>
                 {p.aprovado ? 'Ocultar' : 'Liberar'}
               </Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" title="Ver plano" onClick={() => setVerPlano(p)}><Eye className="icon-xs" /></Button>

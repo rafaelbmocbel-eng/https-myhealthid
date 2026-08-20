@@ -246,6 +246,15 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
     toast({ title: aprovar ? '📲 Liberado para o cliente' : 'Ocultado do cliente' });
     qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
+    // Ao LIBERAR, registra no prontuário/evolução do cliente.
+    if (aprovar && user) {
+      const area = tabela === 'planos_treino' ? 'treino' : 'nutricao';
+      const lista = tabela === 'planos_treino' ? (data?.planosTreino || []) : (data?.planosAlim || []);
+      const titulo = (lista as any[]).find((p) => p.id === id)?.titulo;
+      const { registrarNotaPlanoLiberado } = await import('@/utils/notaPlanoLiberado');
+      await registrarNotaPlanoLiberado({ pacienteId, terapeutaId: user.id, area, titulo, planoId: id });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+    }
   };
 
   const { data, isLoading } = useQuery({
