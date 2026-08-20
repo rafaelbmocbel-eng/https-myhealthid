@@ -45,6 +45,12 @@ export async function gerarPropostaPdfDeHtml(
       }
     : null;
 
+  // Durante a captura, apaga a background-image da caixa da logo pra ela NÃO
+  // ficar rasterizada (borrada) por baixo da logo nítida que sobrepomos depois
+  // — senão aparecem duas logos, uma por cima da outra. Restaura em seguida.
+  const logoElBg = logoEl ? logoEl.style.backgroundImage : '';
+  if (logoEl && opts?.logo) logoEl.style.backgroundImage = 'none';
+
   const canvas = await html2canvas(root, {
     scale: SCALE,
     backgroundColor: '#ffffff',
@@ -53,6 +59,8 @@ export async function gerarPropostaPdfDeHtml(
     imageTimeout: 15000,
     windowWidth: root.scrollWidth,
   });
+
+  if (logoEl && opts?.logo) logoEl.style.backgroundImage = logoElBg;
 
   const cw = canvas.width;
   const ch = canvas.height;
@@ -64,10 +72,8 @@ export async function gerarPropostaPdfDeHtml(
   // Se couber em até 2 páginas, usa largura cheia. Se passar, encolhe
   // proporcional (com margens laterais) pra caber exatamente em 2 páginas.
   let placedWmm = A4_W_MM;
-  let targetPages = pagesFull;
   if (pagesFull > MAX_PAGES) {
     placedWmm = (MAX_PAGES * A4_H_MM) * (cw / ch); // faz a altura total = 2×297mm
-    targetPages = MAX_PAGES;
   }
   const offsetXmm = (A4_W_MM - placedWmm) / 2;
   const mmPerPx = placedWmm / cw;
@@ -79,20 +85,40 @@ export async function gerarPropostaPdfDeHtml(
     .filter((v) => v > 0 && v <= ch)
     .sort((a, b) => a - b);
 
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-  let start = 0;
-  let pageIdx = 0;
-
-  while (start < ch - 1 && pageIdx < targetPages) {
-    const isLastAllowed = pageIdx === targetPages - 1;
-    let end = start + pageHpx;
-    if (end >= ch || isLastAllowed) {
-      end = ch; // última página leva o resto
+  // Cortes das páginas — SEMPRE em fronteira de card ([data-block]), nunca no
+  // meio. Preferência: se cabe em 2 páginas, escolhe a quebra mais perto do meio
+  // que deixe AS DUAS páginas cheias e sem estourar (equilíbrio). Se não houver
+  // fronteira válida, cai na quebra limpa gulosa (enche a 1ª ao máximo).
+  const cuts: number[] = [];
+  const tol = pageHpx + 2;
+  if (ch <= tol) {
+    // cabe em 1 página
+  } else {
+    const validos = breaks.filter((b) => b <= tol && ch - b <= tol);
+    if (validos.length) {
+      const mid = ch / 2;
+      const split = validos.reduce((best, b) => (Math.abs(b - mid) < Math.abs(best - mid) ? b : best), validos[0]);
+      cuts.push(split);
     } else {
-      const fit = breaks.filter((b) => b > start + 8 && b <= end).pop();
-      if (fit) end = fit;
+      // guloso limpo (pode passar de 2 páginas em propostas muito longas)
+      let pageStart = 0;
+      let lastFit = 0;
+      for (const b of breaks) {
+        if (b - pageStart > tol) {
+          if (lastFit > pageStart + 2) { cuts.push(lastFit); pageStart = lastFit; }
+          else { cuts.push(pageStart + pageHpx); pageStart += pageHpx; }
+        }
+        lastFit = b;
+      }
     }
+  }
 
+  const bounds = [0, ...cuts, ch];
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+
+  for (let pageIdx = 0; pageIdx < bounds.length - 1; pageIdx++) {
+    const start = bounds[pageIdx];
+    const end = bounds[pageIdx + 1];
     const sliceH = Math.max(1, Math.round(end - start));
     const slice = document.createElement('canvas');
     slice.width = cw;
@@ -128,9 +154,6 @@ export async function gerarPropostaPdfDeHtml(
         pdf.addImage(opts.logo.dataUrl, 'PNG', lx, ly, lw, lh);
       }
     }
-
-    start = end;
-    pageIdx += 1;
   }
 
   return pdf.output('blob');

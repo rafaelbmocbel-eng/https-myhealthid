@@ -478,8 +478,9 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
 
         {/* Documento off-screen para captura em PDF (largura fixa ~ A4).
             Sempre montado enquanto o dialog está aberto, independente da aba. */}
-        <div aria-hidden style={{ position: 'fixed', left: -99999, top: 0, width: 600, background: '#fff', pointerEvents: 'none' }}>
-          <div ref={printRef} style={{ width: 600, background: '#fff' }}>
+        {/* Largura maior (780px) = fonte efetiva menor no A4 = layout mais compacto. */}
+        <div aria-hidden style={{ position: 'fixed', left: -99999, top: 0, width: 780, background: '#fff', pointerEvents: 'none' }}>
+          <div ref={printRef} style={{ width: 780, background: '#fff' }}>
             <PropostaDocumento {...docProps} />
           </div>
         </div>

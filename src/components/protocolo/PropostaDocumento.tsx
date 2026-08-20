@@ -54,7 +54,7 @@ export default function PropostaDocumento(props: PropostaDocumentoData) {
   return (
     <div className="bg-white text-slate-900" style={{ width: '100%' }}>
       {/* Capa */}
-      <div data-block className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 text-center">
+      <div data-block className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 text-center">
         {clinicaLogoDataUrl ? (
           // background-image p/ o preview; no PDF a logo é sobreposta nítida (data-logo)
           <div
@@ -79,7 +79,7 @@ export default function PropostaDocumento(props: PropostaDocumentoData) {
       </div>
 
       {/* Diagnóstico */}
-      <div data-block className="p-5 space-y-3">
+      <div data-block className="px-4 pt-3 pb-2 space-y-2">
         {(queixa || classificacao) && (
           <div className="border-l-2 border-amber-500 pl-3">
             <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Seu quadro</p>
@@ -97,12 +97,12 @@ export default function PropostaDocumento(props: PropostaDocumentoData) {
       </div>
 
       {/* Fases */}
-      <div className="px-5 pb-2">
-        <p className="text-[11px] uppercase tracking-wider font-bold text-slate-900 mb-2">Seu plano em {fases.length} fases</p>
+      <div className="px-4 pb-1.5">
+        <p className="text-[11px] uppercase tracking-wider font-bold text-slate-900 mb-1.5">Seu plano em {fases.length} fases</p>
       </div>
-      <div className="px-5 pb-3 space-y-2">
+      <div className="px-4 pb-2 space-y-1.5">
         {fases.map((f, i) => (
-          <div key={i} data-block className={cn('border border-slate-200 rounded-md p-3 border-l-4', FASE_BORDER[i] || 'border-l-slate-400')}>
+          <div key={i} data-block className={cn('border border-slate-200 rounded-md p-2.5 border-l-4', FASE_BORDER[i] || 'border-l-slate-400')}>
             <div className="flex items-baseline gap-2">
               <span className={cn('text-2xl font-bold leading-none', i === 0 ? 'text-rose-500' : i === 1 ? 'text-amber-500' : 'text-emerald-500')}>
                 {f.numero}
@@ -114,7 +114,7 @@ export default function PropostaDocumento(props: PropostaDocumentoData) {
             </div>
             {f.objetivo && <p className="text-xs italic text-slate-700 mt-1">"{f.objetivo}"</p>}
             {f.focos.filter(Boolean).length > 0 && (
-              <ul className="mt-2 space-y-0.5">
+              <ul className="mt-1.5 space-y-0.5">
                 {f.focos.filter(Boolean).map((foco, j) => (
                   <li key={j} className="text-xs text-slate-700 flex gap-1.5">
                     <span className={cn(i === 0 ? 'text-rose-500' : i === 1 ? 'text-amber-500' : 'text-emerald-500')}>•</span>
@@ -129,9 +129,9 @@ export default function PropostaDocumento(props: PropostaDocumentoData) {
 
       {/* Manutenção */}
       {temManut && (
-        <div data-block className="px-5 pb-5">
-          <p className="text-[11px] uppercase tracking-wider font-bold text-slate-900 mb-2">Plano de Manutenção (pós-alta)</p>
-          <div className="border-l-4 border-emerald-500 bg-emerald-50 rounded-md p-3 space-y-2">
+        <div data-block className="px-4 pb-3">
+          <p className="text-[11px] uppercase tracking-wider font-bold text-slate-900 mb-1.5">Plano de Manutenção (pós-alta)</p>
+          <div className="border-l-4 border-emerald-500 bg-emerald-50 rounded-md p-2.5 space-y-1.5">
             {manut.mensagemPaciente && <p className="text-xs italic text-slate-700">"{manut.mensagemPaciente}"</p>}
             {manut.frequenciaReavaliacao && (
               <p className="text-xs text-slate-700"><strong>Reavaliação:</strong> {manut.frequenciaReavaliacao}</p>
@@ -159,9 +159,9 @@ export default function PropostaDocumento(props: PropostaDocumentoData) {
       )}
 
       {/* Investimento */}
-      <div data-block className="px-5 pb-5">
-        <p className="text-[11px] uppercase tracking-wider font-bold text-slate-900 mb-2">Seu investimento</p>
-        <div className="bg-slate-900 text-white rounded-md p-4 text-center">
+      <div data-block className="px-4 pb-3">
+        <p className="text-[11px] uppercase tracking-wider font-bold text-slate-900 mb-1.5">Seu investimento</p>
+        <div className="bg-slate-900 text-white rounded-md p-3.5 text-center">
           <p className="text-[10px] uppercase tracking-wider text-amber-300">{numeroSessoes} sessões · {duracao}</p>
           {desconto > 0 && <p className="text-xs text-slate-400 line-through mt-1">{brl(numeroSessoes * valorSessao)}</p>}
           <p className="text-3xl font-bold mt-1">{brl(total)}</p>
@@ -171,7 +171,7 @@ export default function PropostaDocumento(props: PropostaDocumentoData) {
       </div>
 
       {/* CTA */}
-      <div data-block className="bg-amber-50 border-t border-amber-200 p-5 text-center">
+      <div data-block className="bg-amber-50 border-t border-amber-200 p-4 text-center">
         <p className="text-xs text-slate-800 leading-relaxed">{mensagem}</p>
         {telefone && (
           <div className="mt-3 inline-block bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-full">
