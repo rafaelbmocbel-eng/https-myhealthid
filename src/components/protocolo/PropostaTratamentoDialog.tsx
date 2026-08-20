@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Loader2, Share2, FileDown, Sparkles, Plus, X, Eye, Pencil } from 'lucid
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import PropostaDocumento, { type PropostaDocumentoData } from './PropostaDocumento';
 
 interface Props {
   open: boolean;
@@ -130,6 +131,44 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
 
   const profissionalNome = profile ? [profile.nome, (profile as any).sobrenome].filter(Boolean).join(' ') : undefined;
 
+  // ---- branding da clínica (logo já em data URL, sem CORS, pro html2canvas) ----
+  const [clinicaNome, setClinicaNome] = useState<string | undefined>(undefined);
+  const [clinicaLogoDataUrl, setClinicaLogoDataUrl] = useState<string | undefined>(undefined);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let vivo = true;
+    (async () => {
+      const { carregarBrandingClinica } = await import('@/utils/pdfBranding');
+      const b = await carregarBrandingClinica(user?.id);
+      if (!vivo) return;
+      setClinicaNome(b.clinicaNome || (profile as any)?.nome_clinica || undefined);
+      if (b.clinicaLogoUrl) {
+        const { loadImageForPDF } = await import('@/utils/pdfFingerprintWatermark');
+        const img = await loadImageForPDF(b.clinicaLogoUrl);
+        if (vivo && img) setClinicaLogoDataUrl(img.dataUrl);
+      }
+    })();
+    return () => { vivo = false; };
+  }, [open, user?.id, profile]);
+
+  // Props únicas do documento — mesmas na pré-visualização e no PDF.
+  const docProps: PropostaDocumentoData = {
+    pacienteNome,
+    profissionalNome,
+    clinicaNome,
+    clinicaLogoDataUrl,
+    queixa: queixa.trim() || undefined,
+    classificacao: classificacao.trim() || undefined,
+    resumoClinico: resumoClinico.trim() || undefined,
+    prognostico: prognostico.trim() || undefined,
+    fases: fases.map(f => ({ numero: f.numero, titulo: f.titulo, semanas: f.semanas, objetivo: f.objetivo, focos: f.focos })),
+    manut,
+    numeroSessoes, duracao, frequencia, valorSessao, desconto, formaPagamento, total,
+    mensagem, telefone: telefone || undefined, validadeDias,
+  };
+
   // ---- helpers fases ----
   const updFase = (i: number, patch: Partial<FaseEd>) => {
     setFases(prev => prev.map((f, idx) => idx === i ? { ...f, ...patch } : f));
@@ -160,46 +199,21 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
   const handleGerar = async (modo: 'share' | 'download') => {
     setLoading(true);
     try {
-      const { gerarPDFPropostaTratamento, downloadPDFBlob } = await import('@/utils/pdfPropostaTratamento');
+      // O PDF é o MESMO documento da pré-visualização (PropostaDocumento),
+      // capturado do HTML off-screen e paginado sem cortar cards.
+      if (!printRef.current) throw new Error('Documento não pronto. Tente novamente.');
+      // dá um tempo pro layout/imagem da logo assentarem antes de capturar
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      const { gerarPropostaPdfDeHtml } = await import('@/utils/pdfPropostaHtml');
+      const blob = await gerarPropostaPdfDeHtml(printRef.current);
 
-      // Branding da clínica (logo + razão social, editados em Configurações).
-      // Helper compartilhado por todos os PDFs. Sem logo → marca do app discreta.
-      const { carregarBrandingClinica } = await import('@/utils/pdfBranding');
-      const branding = await carregarBrandingClinica(user?.id);
-      const clinicaLogoUrl = branding.clinicaLogoUrl;
-      const clinicaNome = branding.clinicaNome || (profile as any)?.nome_clinica || undefined;
-      const fasesLimpas = fases.map(f => ({
-        ...f,
-        focos: f.focos.map(x => x.trim()).filter(Boolean),
-        tecnicas: (f.tecnicas || []).filter(t => t.tecnica && t.tecnica.trim()),
-      }));
-
-      const manutLimpa = {
-        mensagemPaciente: manut.mensagemPaciente.trim() || undefined,
-        rotinaMinima: manut.rotinaMinima.map((x: string) => x.trim()).filter(Boolean),
-        frequenciaReavaliacao: manut.frequenciaReavaliacao.trim() || undefined,
-        sinaisParaRetornar: manut.sinaisParaRetornar.map((x: string) => x.trim()).filter(Boolean),
-        habitosChave: manut.habitosChave.map((x: string) => x.trim()).filter(Boolean),
+      const downloadPDFBlob = (b: Blob, name: string) => {
+        const url = URL.createObjectURL(b);
+        const a = document.createElement('a');
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
       };
-
-      const blob = await gerarPDFPropostaTratamento({
-        pacienteNome,
-        profissionalNome,
-        profissionalRegistro: (profile as any)?.registro_profissional || (profile as any)?.registro || undefined,
-        clinicaNome,
-        clinicaLogoUrl,
-        queixaPrincipal: queixa.trim() || undefined,
-        classificacao: classificacao.trim() || undefined,
-        resumoClinico: resumoClinico.trim() || undefined,
-        prognostico: prognostico.trim() || undefined,
-        fases: fasesLimpas,
-        manutencao: manutLimpa,
-        myidEnhancements: protocolo?.scores_avaliacao?.myid_enhancements || undefined,
-        pacote: { numeroSessoes, frequencia, duracao, valorSessao, desconto, formaPagamento },
-        ctaTelefone: telefone || undefined,
-        ctaMensagem: mensagem,
-        validadeDias,
-      });
 
       const filename = `Proposta_${pacienteNome.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
       const file = new File([blob], filename, { type: 'application/pdf' });
@@ -427,130 +441,10 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
               </section>
             </div>
           ) : (
-            /* ============ PREVIEW ============ */
+            /* ============ PREVIEW (mesmo componente do PDF) ============ */
             <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-3 sm:p-6">
               <div className="mx-auto bg-white text-slate-900 shadow-lg rounded-md overflow-hidden" style={{ maxWidth: 560 }}>
-                {/* Capa */}
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 text-center">
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-amber-300 mb-2">Proposta de Tratamento</p>
-                  <p className="text-2xl font-semibold tracking-tight">{pacienteNome}</p>
-                  {profissionalNome && (
-                    <p className="text-xs text-slate-300 mt-3">Preparado por {profissionalNome}</p>
-                  )}
-                </div>
-
-                {/* Diagnóstico */}
-                <div className="p-5 space-y-3">
-                  {(queixa || classificacao) && (
-                    <div className="border-l-2 border-amber-500 pl-3">
-                      <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Seu quadro</p>
-                      <p className="text-sm font-semibold text-slate-900">{queixa || '—'}</p>
-                      {classificacao && <p className="text-xs text-slate-600">{classificacao}</p>}
-                    </div>
-                  )}
-                  {resumoClinico && (
-                    <p className="text-xs text-slate-700 leading-relaxed">{resumoClinico}</p>
-                  )}
-                  {prognostico && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-md p-2">
-                      <p className="text-[10px] uppercase tracking-wider text-emerald-700 font-semibold">Prognóstico</p>
-                      <p className="text-xs text-emerald-900">{prognostico}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Fases */}
-                <div className="px-5 pb-5">
-                  <p className="text-[11px] uppercase tracking-wider font-bold text-slate-900 mb-2">Seu plano em {fases.length} fases</p>
-                  <div className="space-y-2">
-                    {fases.map((f, i) => (
-                      <div key={i} className={cn('border border-slate-200 rounded-md p-3 border-l-4', FASE_BORDER[i] || 'border-l-slate-400')}>
-                        <div className="flex items-baseline gap-2">
-                          <span className={cn('text-2xl font-bold leading-none',
-                            i === 0 ? 'text-rose-500' : i === 1 ? 'text-amber-500' : 'text-emerald-500')}>
-                            {f.numero}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-900">{f.titulo}</p>
-                            {f.semanas && <p className="text-[10px] text-slate-500">Semanas {f.semanas}</p>}
-                          </div>
-                        </div>
-                        {f.objetivo && <p className="text-xs italic text-slate-700 mt-1">"{f.objetivo}"</p>}
-                        {f.focos.filter(Boolean).length > 0 && (
-                          <ul className="mt-2 space-y-0.5">
-                            {f.focos.filter(Boolean).map((foco, j) => (
-                              <li key={j} className="text-xs text-slate-700 flex gap-1.5">
-                                <span className={cn(
-                                  i === 0 ? 'text-rose-500' : i === 1 ? 'text-amber-500' : 'text-emerald-500'
-                                )}>•</span>
-                                {foco}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Manutenção */}
-                {(manut.mensagemPaciente || manut.frequenciaReavaliacao ||
-                  manut.rotinaMinima.length > 0 || manut.habitosChave.length > 0 || manut.sinaisParaRetornar.length > 0) && (
-                  <div className="px-5 pb-5">
-                    <p className="text-[11px] uppercase tracking-wider font-bold text-slate-900 mb-2">Plano de Manutenção (pós-alta)</p>
-                    <div className="border-l-4 border-emerald-500 bg-emerald-50 rounded-md p-3 space-y-2">
-                      {manut.mensagemPaciente && (
-                        <p className="text-xs italic text-slate-700">"{manut.mensagemPaciente}"</p>
-                      )}
-                      {manut.frequenciaReavaliacao && (
-                        <p className="text-xs text-slate-700"><strong>Reavaliação:</strong> {manut.frequenciaReavaliacao}</p>
-                      )}
-                      {[
-                        { k: 'rotinaMinima', label: 'Rotina mínima' },
-                        { k: 'habitosChave', label: 'Hábitos-chave' },
-                        { k: 'sinaisParaRetornar', label: 'Voltar ao profissional se' },
-                      ].map(({ k, label }) => {
-                        const items = (manut[k as keyof typeof manut] as string[]).filter(Boolean);
-                        if (items.length === 0) return null;
-                        return (
-                          <div key={k}>
-                            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-800">{label}</p>
-                            <ul className="space-y-0.5">
-                              {items.map((it, i) => (
-                                <li key={i} className="text-xs text-slate-700 flex gap-1.5"><span className="text-emerald-600">•</span>{it}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Investimento */}
-                <div className="px-5 pb-5">
-                  <p className="text-[11px] uppercase tracking-wider font-bold text-slate-900 mb-2">Seu investimento</p>
-                  <div className="bg-slate-900 text-white rounded-md p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-amber-300">{numeroSessoes} sessões · {duracao}</p>
-                    {desconto > 0 && (
-                      <p className="text-xs text-slate-400 line-through mt-1">{brl(numeroSessoes * valorSessao)}</p>
-                    )}
-                    <p className="text-3xl font-bold mt-1">{brl(total)}</p>
-                    <p className="text-[11px] text-slate-300 mt-1">{brl(total / Math.max(1, numeroSessoes))} por sessão · {frequencia}</p>
-                  </div>
-                  <p className="text-[11px] text-slate-600 mt-2 text-center">{formaPagamento}</p>
-                </div>
-
-                {/* CTA */}
-                <div className="bg-amber-50 border-t border-amber-200 p-5 text-center">
-                  <p className="text-xs text-slate-800 leading-relaxed">{mensagem}</p>
-                  {telefone && (
-                    <div className="mt-3 inline-block bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-full">
-                      WhatsApp: {telefone}
-                    </div>
-                  )}
-                  <p className="text-[10px] text-slate-500 mt-3">Proposta válida por {validadeDias} dias</p>
-                </div>
+                <PropostaDocumento {...docProps} />
               </div>
             </div>
           )}
@@ -578,6 +472,14 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
               Enviar WhatsApp
             </Button>
           </DialogFooter>
+        </div>
+
+        {/* Documento off-screen para captura em PDF (largura fixa ~ A4).
+            Sempre montado enquanto o dialog está aberto, independente da aba. */}
+        <div aria-hidden style={{ position: 'fixed', left: -99999, top: 0, width: 600, background: '#fff', pointerEvents: 'none' }}>
+          <div ref={printRef} style={{ width: 600, background: '#fff' }}>
+            <PropostaDocumento {...docProps} />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
