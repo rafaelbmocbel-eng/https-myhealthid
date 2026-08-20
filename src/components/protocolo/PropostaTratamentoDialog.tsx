@@ -8,6 +8,7 @@ import { Loader2, Share2, FileDown, Sparkles, Plus, X, Eye, Pencil } from 'lucid
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   open: boolean;
@@ -42,7 +43,7 @@ const FASE_COLORS = ['bg-rose-500', 'bg-amber-500', 'bg-emerald-500'];
 const FASE_BORDER = ['border-l-rose-500', 'border-l-amber-500', 'border-l-emerald-500'];
 
 export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo, pacienteId, pacienteNome }: Props) {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<'editar' | 'preview'>('editar');
@@ -161,6 +162,25 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
     setLoading(true);
     try {
       const { gerarPDFPropostaTratamento, downloadPDFBlob } = await import('@/utils/pdfPropostaTratamento');
+
+      // Branding da clínica: logo (subida em Configurações) + nome/razão social.
+      // Preferimos config_clinica sobre o profile — é onde o profissional edita
+      // a identidade que vai nos documentos. Sem logo, o gerador cai na marca do app.
+      let clinicaLogoUrl: string | undefined;
+      let clinicaNome: string | undefined = (profile as any)?.nome_clinica || undefined;
+      if (user) {
+        const { data: cfg } = await (supabase as any)
+          .from('config_clinica')
+          .select('logo_url, razao_social')
+          .eq('terapeuta_id', user.id)
+          .maybeSingle();
+        if (cfg) {
+          clinicaLogoUrl = cfg.logo_url || undefined;
+          // razao_social (nome da clínica em Configurações) tem prioridade sobre
+          // o nome_clinica do profile, mas só se estiver preenchido.
+          clinicaNome = cfg.razao_social || clinicaNome;
+        }
+      }
       const fasesLimpas = fases.map(f => ({
         ...f,
         focos: f.focos.map(x => x.trim()).filter(Boolean),
@@ -179,7 +199,8 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
         pacienteNome,
         profissionalNome,
         profissionalRegistro: (profile as any)?.registro_profissional || (profile as any)?.registro || undefined,
-        clinicaNome: (profile as any)?.nome_clinica || undefined,
+        clinicaNome,
+        clinicaLogoUrl,
         queixaPrincipal: queixa.trim() || undefined,
         classificacao: classificacao.trim() || undefined,
         resumoClinico: resumoClinico.trim() || undefined,

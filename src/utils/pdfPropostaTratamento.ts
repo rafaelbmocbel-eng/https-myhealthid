@@ -3,7 +3,7 @@
  * Layout em 2 páginas com aproveitamento total do espaço.
  */
 import jsPDF from 'jspdf';
-import { drawFingerprintWatermark, drawFingerprintMark } from './pdfFingerprintWatermark';
+import { drawFingerprintWatermark, drawFingerprintMark, drawClinicLogo } from './pdfFingerprintWatermark';
 
 // Paleta Serene
 const NAVY = [28, 55, 83] as const;
@@ -85,6 +85,7 @@ export interface PDFPropostaData {
   profissionalNome?: string;
   profissionalRegistro?: string;
   clinicaNome?: string;
+  clinicaLogoUrl?: string;
   queixaPrincipal?: string;
   classificacao?: string;
   resumoClinico?: string;
@@ -142,13 +143,22 @@ async function drawHero(doc: jsPDF, data: PDFPropostaData): Promise<number> {
   doc.rect(0, HERO_H, 210, 0.8, 'F');
   doc.rect(0, 0, 3, HERO_H, 'F');
 
-  await drawFingerprintWatermark(doc, 130, -10, 90, 0.07);
-  await drawFingerprintMark(doc, 180, 11, 12);
+  // Marca do topo: se a clínica subiu a logo dela (Configurações), ela vira a
+  // marca principal (plaque no canto) e o app fica discreto (selo no rodapé).
+  // Sem logo da clínica: mostra a impressão digital do app, mas menor/lateral.
+  let logoDrawn = false;
+  if (data.clinicaLogoUrl) {
+    logoDrawn = await drawClinicLogo(doc, data.clinicaLogoUrl, 166, 6, 32, 17);
+  }
+  if (!logoDrawn) {
+    await drawFingerprintWatermark(doc, 130, -10, 90, 0.07);
+    await drawFingerprintMark(doc, 182, 11, 11);
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(...c(GOLD));
-  label(doc, (data.clinicaNome || 'MY HEALTH ID').toUpperCase(), 22, 12);
+  label(doc, (data.clinicaNome || data.profissionalNome || 'MY HEALTH ID').toUpperCase(), 22, 12);
 
   doc.setFontSize(6.5);
   doc.setTextColor(200, 195, 180);
@@ -477,8 +487,14 @@ async function drawPage2Header(doc: jsPDF, data: PDFPropostaData): Promise<numbe
   doc.rect(0, H, 210, 0.8, 'F');
   doc.rect(0, 0, 3, H, 'F');
 
-  await drawFingerprintWatermark(doc, 140, -8, 70, 0.06);
-  await drawFingerprintMark(doc, 188, 18, 10);
+  let logo2 = false;
+  if (data.clinicaLogoUrl) {
+    logo2 = await drawClinicLogo(doc, data.clinicaLogoUrl, 172, 4, 28, 15);
+  }
+  if (!logo2) {
+    await drawFingerprintWatermark(doc, 140, -8, 70, 0.06);
+    await drawFingerprintMark(doc, 189, 16, 9);
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
@@ -730,6 +746,12 @@ function drawFooter(doc: jsPDF, page: number, total: number, data: PDFPropostaDa
     `${data.profissionalNome || ''}${data.profissionalRegistro ? ' · ' + data.profissionalRegistro : ''}`,
     22, 290
   );
+  // Selo discreto do app (fica "por My Health ID" mesmo quando a clínica usa a
+  // própria logo no topo — o app aparece de forma sutil, não como marca principal).
+  doc.setFontSize(6);
+  doc.setTextColor(...c(MUTED));
+  doc.text('por My Health ID', 105, 290, { align: 'center' });
+  doc.setFontSize(7);
   doc.text(`${page} / ${total}`, 188, 290, { align: 'right' });
 }
 
