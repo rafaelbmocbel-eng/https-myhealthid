@@ -67,9 +67,11 @@ const urlImageCache = new Map<string, { dataUrl: string; w: number; h: number }>
 
 export async function loadImageForPDF(
   url: string,
+  opts?: { grayscale?: boolean },
 ): Promise<{ dataUrl: string; w: number; h: number } | null> {
   if (!url) return null;
-  const cached = urlImageCache.get(url);
+  const cacheKey = opts?.grayscale ? `gray:${url}` : url;
+  const cached = urlImageCache.get(cacheKey);
   if (cached) return cached;
   try {
     const img = new Image();
@@ -82,14 +84,49 @@ export async function loadImageForPDF(
     const canvas = document.createElement('canvas');
     canvas.width = img.naturalWidth || img.width;
     canvas.height = img.naturalHeight || img.height;
-    canvas.getContext('2d')!.drawImage(img, 0, 0);
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    if (opts?.grayscale) {
+      // Dessatura pra a marca-d'água (timbre) não brigar com o texto do corpo.
+      const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const px = d.data;
+      for (let i = 0; i < px.length; i += 4) {
+        const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        px[i] = px[i + 1] = px[i + 2] = g;
+      }
+      ctx.putImageData(d, 0, 0);
+    }
     const out = { dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height };
-    urlImageCache.set(url, out);
+    urlImageCache.set(cacheKey, out);
     return out;
   } catch {
     // CORS/404/imagem inválida — quem chama usa a marca do app como fallback
     return null;
   }
+}
+
+/**
+ * Timbre: logo da clínica como marca-d'água suave (dessaturada, baixa opacidade)
+ * centrada em (cx, cy) com largura-alvo targetW. Fica ATRÁS do conteúdo, então
+ * chame antes de desenhar o corpo. Silenciosa se a imagem não carregar.
+ */
+export async function drawLogoWatermark(
+  doc: jsPDF,
+  url: string,
+  cx: number,
+  cy: number,
+  targetW: number,
+  opacity = 0.05,
+): Promise<void> {
+  const img = await loadImageForPDF(url, { grayscale: true });
+  if (!img) return;
+  const w = targetW;
+  const h = (img.h / img.w) * targetW;
+  const anyDoc = doc as any;
+  const gs = anyDoc.GState ? new anyDoc.GState({ opacity }) : null;
+  if (gs && anyDoc.setGState) anyDoc.setGState(gs);
+  doc.addImage(img.dataUrl, 'PNG', cx - w / 2, cy - h / 2, w, h);
+  if (gs && anyDoc.setGState) anyDoc.setGState(new anyDoc.GState({ opacity: 1 }));
 }
 
 /**

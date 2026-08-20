@@ -3,7 +3,7 @@
  * Layout em 2 páginas com aproveitamento total do espaço.
  */
 import jsPDF from 'jspdf';
-import { drawFingerprintWatermark, drawFingerprintMark, drawClinicLogo } from './pdfFingerprintWatermark';
+import { drawFingerprintWatermark, drawFingerprintMark, drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
 // Paleta Serene
 const NAVY = [28, 55, 83] as const;
@@ -777,6 +777,18 @@ export async function gerarPDFPropostaTratamento(rawData: PDFPropostaData): Prom
   drawCTA(doc, y2, data);
 
   const total = doc.getNumberOfPages();
+
+  // Timbre (papel timbrado): logo da clínica como marca-d'água clara desenhada
+  // POR CIMA do conteúdo, uniforme — assim os cards brancos não a escondem e
+  // ela aparece como marca-d'água de verdade, não como mancha entre elementos.
+  // Só abaixo do cabeçalho navy (cy no miolo do corpo) pra não sujar o topo.
+  if (data.clinicaLogoUrl) {
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      await drawLogoWatermark(doc, data.clinicaLogoUrl, 105, 170, 90, 0.05);
+    }
+  }
+
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     drawFooter(doc, i, total, data);
