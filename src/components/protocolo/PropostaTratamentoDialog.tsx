@@ -133,7 +133,9 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
 
   // ---- branding da clínica (logo já em data URL, sem CORS, pro html2canvas) ----
   const [clinicaNome, setClinicaNome] = useState<string | undefined>(undefined);
-  const [clinicaLogoDataUrl, setClinicaLogoDataUrl] = useState<string | undefined>(undefined);
+  // Guarda a logo COM dimensões — usadas pra sobrepor a logo nítida no PDF.
+  const [clinicaLogo, setClinicaLogo] = useState<{ dataUrl: string; w: number; h: number } | undefined>(undefined);
+  const clinicaLogoDataUrl = clinicaLogo?.dataUrl;
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -147,7 +149,7 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
       if (b.clinicaLogoUrl) {
         const { loadImageForPDF } = await import('@/utils/pdfFingerprintWatermark');
         const img = await loadImageForPDF(b.clinicaLogoUrl);
-        if (vivo && img) setClinicaLogoDataUrl(img.dataUrl);
+        if (vivo && img) setClinicaLogo(img);
       }
     })();
     return () => { vivo = false; };
@@ -205,7 +207,7 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
       // dá um tempo pro layout/imagem da logo assentarem antes de capturar
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
       const { gerarPropostaPdfDeHtml } = await import('@/utils/pdfPropostaHtml');
-      const blob = await gerarPropostaPdfDeHtml(printRef.current);
+      const blob = await gerarPropostaPdfDeHtml(printRef.current, { logo: clinicaLogo });
 
       const downloadPDFBlob = (b: Blob, name: string) => {
         const url = URL.createObjectURL(b);

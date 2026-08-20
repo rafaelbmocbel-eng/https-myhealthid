@@ -56,8 +56,9 @@ export default function PropostaDocumento(props: PropostaDocumentoData) {
       {/* Capa */}
       <div data-block className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 text-center">
         {clinicaLogoDataUrl ? (
-          // background-image (não <img>) renderiza de forma mais confiável no html2canvas
+          // background-image p/ o preview; no PDF a logo é sobreposta nítida (data-logo)
           <div
+            data-logo
             className="mx-auto mb-3 bg-white rounded-lg"
             style={{
               width: 168,
