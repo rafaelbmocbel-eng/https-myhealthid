@@ -45,7 +45,7 @@ import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 // Conteúdo de abas/sheets/modais — só carrega quando o usuário abre.
 // Mantém o chunk inicial do perfil pequeno (DocumentosModal sozinho puxa jspdf+html2canvas).
 const PacienteDashboardIdentidade = lazy(() => import('@/components/paciente/PacienteDashboardIdentidade'));
-const PacienteProtocolosTab = lazy(() => import('@/components/paciente/PacienteProtocolosTab'));
+const DiretrizesPlanosHub = lazy(() => import('@/components/diretrizes/DiretrizesPlanosHub'));
 const ResumoConsultaPresencial = lazy(() => import('@/components/presencial/ResumoConsultaPresencial'));
 const AvaliacaoVozAtual = lazy(() => import('@/components/voice/AvaliacaoVozAtual'));
 const QuestionariosClinicosCard = lazy(() => import('@/components/paciente/QuestionariosClinicosCard'));
@@ -1201,10 +1201,9 @@ export default function PacientePerfil() {
           {/* TAB: DIRETRIZES E TRATAMENTOS */}
           <TabsContent value="diretrizes" className="mt-4 space-y-6">
             <Suspense fallback={LazyFallback}>
-              <PacienteProtocolosTab
+              <DiretrizesPlanosHub
                 pacienteId={id!}
                 pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-                tipo="identidade"
               />
             </Suspense>
           </TabsContent>
