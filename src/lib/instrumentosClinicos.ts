@@ -3,7 +3,7 @@
 // correspondente indica necessidade — nada de bateria fixa duplicando perguntas.
 // Escores e classificações seguem os pontos de corte da literatura.
 
-export type InstrumentoId = 'parq' | 'psfs' | 'sbst' | 'isi' | 'phq4';
+export type InstrumentoId = 'parq' | 'psfs' | 'sbst' | 'isi' | 'phq4' | 'ipaq' | 'pss10' | 'nmq' | 'whoqol';
 
 export interface PerguntaInstrumento {
   id: string;
@@ -38,6 +38,29 @@ const FREQ_0_3 = [
   { valor: 1, rotulo: 'Vários dias' },
   { valor: 2, rotulo: 'Mais da metade dos dias' },
   { valor: 3, rotulo: 'Quase todos os dias' },
+];
+
+// PSS-10: 0 Nunca … 4 Sempre (itens 4,5,7,8 invertidos)
+const PSS_ESC = [
+  { valor: 0, rotulo: 'Nunca' },
+  { valor: 1, rotulo: 'Quase nunca' },
+  { valor: 2, rotulo: 'Às vezes' },
+  { valor: 3, rotulo: 'Com frequência' },
+  { valor: 4, rotulo: 'Muito frequentemente' },
+];
+
+// IPAQ (triagem): dias por semana em faixas
+const DIAS_SEM = [
+  { valor: 0, rotulo: 'Nenhum dia' },
+  { valor: 1, rotulo: '1 a 2 dias' },
+  { valor: 2, rotulo: '3 a 4 dias' },
+  { valor: 3, rotulo: '5 dias ou mais' },
+];
+const HORAS_SENTADO = [
+  { valor: 0, rotulo: 'Menos de 4h' },
+  { valor: 1, rotulo: '4 a 6h' },
+  { valor: 2, rotulo: '6 a 8h' },
+  { valor: 3, rotulo: 'Mais de 8h' },
 ];
 
 export const INSTRUMENTOS: Record<InstrumentoId, Instrumento> = {
@@ -167,6 +190,87 @@ export const INSTRUMENTOS: Record<InstrumentoId, Instrumento> = {
       return { escore: total, classificacao };
     },
   },
+
+  // Escala de Estresse Percebido (Cohen) — 10 itens. Itens 4,5,7,8 invertidos.
+  // Total 0–40: 0–13 baixo, 14–26 moderado, 27–40 alto.
+  pss10: {
+    id: 'pss10',
+    nome: 'Estresse Percebido',
+    sigla: 'PSS-10',
+    descricao: 'Dez perguntas sobre como você se sentiu no último mês.',
+    tempoEstimado: '3 min',
+    perguntas: [
+      { id: 'q1', texto: 'No último mês, com que frequência você ficou chateado(a) por causa de algo que aconteceu inesperadamente?', opcoes: PSS_ESC },
+      { id: 'q2', texto: 'Sentiu que não conseguia controlar as coisas importantes da sua vida?', opcoes: PSS_ESC },
+      { id: 'q3', texto: 'Sentiu-se nervoso(a) e estressado(a)?', opcoes: PSS_ESC },
+      { id: 'q4', texto: 'Sentiu-se confiante na sua capacidade de lidar com seus problemas pessoais?', opcoes: PSS_ESC },
+      { id: 'q5', texto: 'Sentiu que as coisas estavam acontecendo do seu jeito?', opcoes: PSS_ESC },
+      { id: 'q6', texto: 'Percebeu que não conseguia dar conta de tudo o que tinha para fazer?', opcoes: PSS_ESC },
+      { id: 'q7', texto: 'Conseguiu controlar as irritações da sua vida?', opcoes: PSS_ESC },
+      { id: 'q8', texto: 'Sentiu que tinha as coisas sob controle?', opcoes: PSS_ESC },
+      { id: 'q9', texto: 'Ficou irritado(a) por coisas que estavam fora do seu controle?', opcoes: PSS_ESC },
+      { id: 'q10', texto: 'Sentiu que as dificuldades se acumulavam a ponto de você não conseguir superá-las?', opcoes: PSS_ESC },
+    ],
+    pontuar: (r) => {
+      const inv = (v: number) => 4 - (v || 0);
+      const total =
+        (r.q1 || 0) + (r.q2 || 0) + (r.q3 || 0) + inv(r.q4) + inv(r.q5) +
+        (r.q6 || 0) + inv(r.q7) + inv(r.q8) + (r.q9 || 0) + (r.q10 || 0);
+      const classificacao = total <= 13 ? 'estresse_baixo' : total <= 26 ? 'estresse_moderado' : 'estresse_alto';
+      return { escore: total, classificacao };
+    },
+  },
+
+  // Questionário Nórdico de Sintomas Musculoesqueléticos (NMQ) — presença de
+  // dor/desconforto por região nos últimos 12 meses. Escore = nº de regiões.
+  nmq: {
+    id: 'nmq',
+    nome: 'Sintomas Musculoesqueléticos',
+    sigla: 'Nórdico',
+    descricao: 'Nos últimos 12 meses, você teve dor, formigamento ou desconforto em cada região?',
+    tempoEstimado: '2 min',
+    perguntas: [
+      { id: 'pescoco', texto: 'Pescoço', opcoes: SIM_NAO },
+      { id: 'ombros', texto: 'Ombros', opcoes: SIM_NAO },
+      { id: 'cotovelos', texto: 'Cotovelos', opcoes: SIM_NAO },
+      { id: 'punhos', texto: 'Punhos / mãos', opcoes: SIM_NAO },
+      { id: 'torax', texto: 'Parte superior das costas (torácica)', opcoes: SIM_NAO },
+      { id: 'lombar', texto: 'Parte inferior das costas (lombar)', opcoes: SIM_NAO },
+      { id: 'quadril', texto: 'Quadril / coxas', opcoes: SIM_NAO },
+      { id: 'joelhos', texto: 'Joelhos', opcoes: SIM_NAO },
+      { id: 'tornozelos', texto: 'Tornozelos / pés', opcoes: SIM_NAO },
+    ],
+    pontuar: (r) => {
+      const n = Object.values(r).reduce((s, v) => s + (v || 0), 0);
+      const classificacao = n === 0 ? 'sem_queixa' : n <= 2 ? 'localizado' : 'difuso';
+      return { escore: n, classificacao };
+    },
+  },
+
+  // Nível de Atividade Física — triagem baseada no IPAQ curto (estimativa por
+  // faixas; a versão contínua completa calcula METs por minuto).
+  ipaq: {
+    id: 'ipaq',
+    nome: 'Nível de Atividade Física',
+    sigla: 'IPAQ (triagem)',
+    descricao: 'Quatro perguntas sobre sua semana típica de atividade física.',
+    tempoEstimado: '2 min',
+    perguntas: [
+      { id: 'vig', texto: 'Em quantos dias você faz atividade VIGOROSA (correr, nadar forte, carregar peso)?', opcoes: DIAS_SEM },
+      { id: 'mod', texto: 'Em quantos dias você faz atividade MODERADA (pedalar leve, dança, faxina pesada)?', opcoes: DIAS_SEM },
+      { id: 'cam', texto: 'Em quantos dias você caminha por pelo menos 10 minutos seguidos?', opcoes: DIAS_SEM },
+      { id: 'sent', texto: 'Em um dia comum, quanto tempo você passa sentado(a)?', opcoes: HORAS_SENTADO },
+    ],
+    pontuar: (r) => {
+      // Proxy simples: vigorosa pesa mais; tempo sentado reduz.
+      const ativ = (r.vig || 0) * 3 + (r.mod || 0) * 2 + (r.cam || 0);
+      const classificacao =
+        (r.vig || 0) >= 2 || ativ >= 9 ? 'ativo'
+        : ativ >= 4 ? 'pouco_ativo'
+        : 'sedentario';
+      return { escore: ativ, classificacao };
+    },
+  },
 };
 
 export const CLASSIFICACAO_LABEL: Record<string, string> = {
@@ -186,6 +290,22 @@ export const CLASSIFICACAO_LABEL: Record<string, string> = {
   leve: 'Sintomas leves',
   moderado: 'Sintomas moderados',
   grave: 'Sintomas graves',
+  // PSS-10
+  estresse_baixo: 'Estresse baixo',
+  estresse_moderado: 'Estresse moderado',
+  estresse_alto: 'Estresse alto',
+  // Nórdico
+  sem_queixa: 'Sem queixas musculoesqueléticas',
+  localizado: 'Sintomas localizados',
+  difuso: 'Sintomas em várias regiões',
+  // IPAQ
+  ativo: 'Fisicamente ativo',
+  pouco_ativo: 'Pouco ativo',
+  sedentario: 'Sedentário',
+  // WHOQOL-bref
+  qv_baixa: 'Qualidade de vida baixa',
+  qv_moderada: 'Qualidade de vida moderada',
+  qv_boa: 'Qualidade de vida boa',
 };
 
 // ── Motor adaptativo: o MyID decide quais instrumentos pedir ────────────────
@@ -195,10 +315,17 @@ export function instrumentosRecomendados(scores: Record<string, number> | null):
   const lista: InstrumentoId[] = ['parq', 'psfs']; // núcleo premium: segurança + metas
   if (!scores) return lista;
   const n = (k: string) => Number(scores[k]);
-  if (!Number.isNaN(n('D')) && n('D') >= 6) lista.push('sbst');
-  if (!Number.isNaN(n('R')) && n('R') <= 5) lista.push('isi');
-  if (!Number.isNaN(n('P')) && n('P') >= 6) lista.push('phq4');
-  return lista;
+  const alto = (k: string) => !Number.isNaN(n(k)) && n(k) >= 6; // D/P/I/N: alto = pior
+  const baixo = (k: string) => !Number.isNaN(n(k)) && n(k) <= 5; // R/AF/ERG/C: baixo = pior
+  if (n('D') >= 6) lista.push('sbst');
+  if (n('R') <= 5) lista.push('isi');
+  if (n('P') >= 6) lista.push('phq4');
+  // Novos instrumentos
+  if (baixo('AF')) lista.push('ipaq');                 // pouco movimento
+  if (alto('P') || alto('I')) lista.push('pss10');     // emoções / mudanças (estresse)
+  if (alto('D') || baixo('ERG')) lista.push('nmq');    // dor / postura
+  // remove duplicados preservando ordem
+  return Array.from(new Set(lista));
 }
 
 export const MOTIVO_RECOMENDACAO: Record<InstrumentoId, string> = {
@@ -207,4 +334,8 @@ export const MOTIVO_RECOMENDACAO: Record<InstrumentoId, string> = {
   sbst: 'Seu MyID indicou dor relevante — isto calibra a conduta',
   isi: 'Seu MyID indicou sono prejudicado — isto aprofunda a avaliação',
   phq4: 'Seu MyID indicou sobrecarga emocional — isto ajuda a cuidar de você',
+  ipaq: 'Seu MyID indicou pouco movimento — mede seu nível de atividade física',
+  pss10: 'Seu MyID indicou tensão/mudanças — mede seu estresse percebido',
+  nmq: 'Seu MyID indicou dor/postura — mapeia sintomas por região do corpo',
+  whoqol: 'Visão geral da sua qualidade de vida em várias áreas',
 };
