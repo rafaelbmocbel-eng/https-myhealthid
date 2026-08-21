@@ -1,13 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useLenteAtiva, type PerfilProfissional } from './useLenteAtiva';
 import { useClinicaContext } from './useClinicaContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 // A CHANCELA (liberar/enviar um plano ao paciente) é ato do profissional
 // habilitado: plano de treino/personal → Educador Físico; plano nutricional →
-// Nutricionista; plano de fisioterapia → Fisioterapeuta. Gerar rascunho é livre;
-// só a LIBERAÇÃO exige o profissional certo — ou uma clínica que tenha esse
-// profissional ativo lá dentro (a clínica dá a chancela pela sua equipe).
+// Nutricionista; plano de reabilitação/fisioterapia → Fisioterapeuta; plano
+// médico/medicamentoso → Médico. Gerar rascunho é livre; só a LIBERAÇÃO exige o
+// profissional certo — CADA profissional libera apenas a SUA área (inclusive
+// dentro de uma clínica com vários profissionais). Exceção: a(s) conta(s)
+// super-admin (do dono do produto) liberam qualquer área.
+
+// Super-admin global (libera todas as áreas). Editar aqui para adicionar contas.
+const SUPER_ADMINS = ['rafaelbmocbel@gmail.com'];
 export type AreaChancela =
   | 'treino' | 'nutricao' | 'fisioterapia'
   | 'medicina' | 'psicologia' | 'terapia_ocupacional' | 'odontologia';
@@ -41,41 +45,29 @@ export interface Chancela {
 }
 
 export function usePodeChancelar(area: AreaChancela): Chancela {
+  const { user } = useAuth();
   const { data: lente, isLoading: lLoading } = useLenteAtiva();
-  const { clinica, isSolo, loading: cLoading } = useClinicaContext();
+  const { isSolo, loading: cLoading } = useClinicaContext();
   const exigido = PERFIL_EXIGIDO[area];
-  const clinicaId = clinica?.id;
 
-  // A clínica ativa tem ALGUM profissional do tipo exigido, ativo?
-  // Lê só clinica_membros (legível dentro da clínica) — a coluna perfil_profissional
-  // do membro é a fonte; se estiver vazia, o fallback é o próprio perfil.
-  const { data: clinicaTem, isLoading: qLoading } = useQuery({
-    queryKey: ['clinica-tem-perfil', clinicaId, exigido],
-    enabled: !!clinicaId,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data } = await (supabase as any).from('clinica_membros')
-        .select('perfil_profissional')
-        .eq('clinica_id', clinicaId).eq('status', 'ativo');
-      return (data || []).some((m: any) => m.perfil_profissional === exigido);
-    },
-  });
+  // Super-admin (conta do dono do produto): libera qualquer área.
+  const isSuperAdmin = !!user?.email && SUPER_ADMINS.includes(user.email.toLowerCase());
 
-  const loading = lLoading || cLoading || (!!clinicaId && qLoading);
+  const loading = lLoading || cLoading;
+  // Cada profissional libera apenas a área da SUA especialidade (mesmo dentro de
+  // uma clínica: o nutricionista libera nutrição, o fisio libera reabilitação…).
   const ehProprio = lente?.id === exigido;
-  const viaClinica = !ehProprio && clinicaTem === true;
-  const pode = ehProprio || viaClinica;
+  const pode = isSuperAdmin || ehProprio;
 
   let motivo = '';
-  if (pode && viaClinica) {
-    motivo = `Liberado pela clínica (tem ${LABEL[area]} ativo na equipe).`;
+  if (pode && isSuperAdmin && !ehProprio) {
+    motivo = 'Liberado (conta administradora).';
   } else if (!pode) {
-    motivo = clinicaId
-      ? `Só um ${LABEL[area]} pode liberar este plano — nenhum ativo na clínica.`
-      : isSolo
-        ? `Só um ${LABEL[area]} pode liberar este plano. Ajuste seu perfil em Configurações se for o caso.`
-        : `Só um ${LABEL[area]} pode liberar este plano.`;
+    motivo = isSolo
+      ? `Só um ${LABEL[area]} pode liberar este plano. Ajuste seu perfil profissional em Configurações se for o caso.`
+      : `Só um ${LABEL[area]} pode liberar — cada profissional libera a sua própria área.`;
   }
 
-  return { pode, motivo, loading, labelExigido: LABEL[area], viaClinica };
+  // viaClinica mantido por compatibilidade (não é mais usado para conceder chancela).
+  return { pode, motivo, loading, labelExigido: LABEL[area], viaClinica: false };
 }
