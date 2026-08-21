@@ -2,29 +2,50 @@ import { lazy, Suspense, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Activity, Dumbbell, Apple, Loader2, Copy, UserCheck } from 'lucide-react';
+import { Activity, Dumbbell, Apple, Stethoscope, Brain, Smile, Loader2, Copy, UserCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useLenteAtiva } from '@/hooks/useLenteAtiva';
 
-// Hub da aba "Diretrizes" do profissional: reúne, em 3 sub-abas, a produção de
-// Fisioterapia (diretriz existente), Reabilitação/Treino e Nutrição — usando os
-// MESMOS componentes e tabelas que o Portal já usa (planos_treino /
-// planos_alimentares), então o que se edita aqui aparece lá e vice-versa.
+// Hub da aba "Diretriz" do profissional: um "Planejamento por especialidade"
+// com uma sub-aba por área da saúde. Cada área usa a IA para produzir a diretriz/
+// plano a partir da avaliação (presencial/voz) + MyID + questionários, e tudo
+// segue para o portal do cliente (após liberar) usando as MESMAS tabelas/motores
+// que o app já tem — nada de backend novo.
 const PacienteProtocolosTab = lazy(() => import('@/components/paciente/PacienteProtocolosTab'));
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
 const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
 const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
+const DiretrizAreaCard = lazy(() => import('@/components/diretrizes/DiretrizAreaCard'));
 
 const Fallback = <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+// Áreas clínicas genéricas (médico, psicólogo, dentista) — mesma engine
+// (gerar-diretriz-clinica → diretrizes_profissionais).
+const AREAS_CLINICAS = [
+  { value: 'medicina', label: 'Médico', Icone: Stethoscope, cor: 'text-sky-600', nome: 'Diretriz de Tratamento (Médica)', ph: 'ex: controle pressórico e metabólico' },
+  { value: 'psicologia', label: 'Psicólogo', Icone: Brain, cor: 'text-violet-600', nome: 'Plano Terapêutico (Psicologia)', ph: 'ex: reduzir sintomas de ansiedade' },
+  { value: 'odontologia', label: 'Dentista', Icone: Smile, cor: 'text-teal-600', nome: 'Plano de Tratamento (Odontologia)', ph: 'ex: adequação do meio bucal e reabilitação' },
+];
+
+// Perfil do profissional logado -> sub-aba que abre por padrão.
+const LENTE_TAB: Record<string, string> = {
+  fisioterapeuta: 'fisio',
+  nutricionista: 'nutricao',
+  educador_fisico: 'treino',
+  medico: 'medicina',
+  psicologo: 'psicologia',
+  dentista: 'odontologia',
+};
 
 // Deixa explícito o fluxo Rascunho → Liberado (é quando o cliente passa a ver).
 function HintLiberar() {
   return (
     <p className="text-[11px] text-muted-foreground bg-muted/40 border border-border/50 rounded-lg px-3 py-2">
       <span className="font-semibold text-foreground">Rascunho</span> = só você vê. Clique em{' '}
-      <span className="font-semibold text-emerald-700 dark:text-emerald-400">Liberar</span> para o cliente ver no
+      <span className="font-semibold text-emerald-700 dark:text-emerald-400">Liberar/Enviar</span> para o cliente ver no
       portal — ao liberar, o plano também entra no prontuário/evolução dele.
     </p>
   );
@@ -39,7 +60,10 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { data: lente } = useLenteAtiva();
   const [usandoBase, setUsandoBase] = useState<null | 'treino' | 'nutricao'>(null);
+
+  const defaultTab = (lente && LENTE_TAB[lente.id]) || 'fisio';
 
   // O que o CLIENTE montou sozinho no portal (planos_ia_cliente) — read-only aqui.
   const { data: geradoCliente } = useQuery({
@@ -123,11 +147,14 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
   return (
     <div className="space-y-3">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Planejamento por especialidade</p>
-      <Tabs defaultValue="fisio" className="w-full">
-        <TabsList className="w-full grid grid-cols-3 h-auto p-1">
-          <TabsTrigger value="fisio" className="text-xs gap-1.5 py-2"><Activity className="h-3.5 w-3.5" /> Fisioterápico</TabsTrigger>
-          <TabsTrigger value="nutricao" className="text-xs gap-1.5 py-2"><Apple className="h-3.5 w-3.5" /> Nutricional</TabsTrigger>
-          <TabsTrigger value="treino" className="text-xs gap-1.5 py-2"><Dumbbell className="h-3.5 w-3.5" /> Personal</TabsTrigger>
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className="w-full grid grid-cols-3 sm:grid-cols-6 h-auto p-1 gap-0.5">
+          <TabsTrigger value="fisio" className="text-[11px] gap-1 py-2 flex-col sm:flex-row"><Activity className="h-3.5 w-3.5" /> Reabilitação</TabsTrigger>
+          <TabsTrigger value="nutricao" className="text-[11px] gap-1 py-2 flex-col sm:flex-row"><Apple className="h-3.5 w-3.5" /> Nutricional</TabsTrigger>
+          <TabsTrigger value="treino" className="text-[11px] gap-1 py-2 flex-col sm:flex-row"><Dumbbell className="h-3.5 w-3.5" /> Personal</TabsTrigger>
+          <TabsTrigger value="medicina" className="text-[11px] gap-1 py-2 flex-col sm:flex-row"><Stethoscope className="h-3.5 w-3.5" /> Médico</TabsTrigger>
+          <TabsTrigger value="psicologia" className="text-[11px] gap-1 py-2 flex-col sm:flex-row"><Brain className="h-3.5 w-3.5" /> Psicólogo</TabsTrigger>
+          <TabsTrigger value="odontologia" className="text-[11px] gap-1 py-2 flex-col sm:flex-row"><Smile className="h-3.5 w-3.5" /> Dentista</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fisio" className="mt-4">
@@ -153,6 +180,25 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
             <DiretrizTreinoCard pacienteId={pacienteId} />
           </Suspense>
         </TabsContent>
+
+        {AREAS_CLINICAS.map((a) => (
+          <TabsContent key={a.value} value={a.value} className="mt-4 space-y-3">
+            <HintLiberar />
+            <Suspense fallback={Fallback}>
+              <DiretrizAreaCard
+                pacienteId={pacienteId}
+                area={a.value}
+                nomeCard={a.nome}
+                funcaoIA="gerar-diretriz-clinica"
+                Icone={a.Icone}
+                corIcone={a.cor}
+                descricaoVazio="Gere a diretriz de tratamento a partir da avaliação presencial, do MyID e dos questionários respondidos."
+                descricaoGerar="A IA usa a avaliação presencial (achados + suas observações), o MyID e os questionários. Depois é só revisar e enviar ao portal."
+                placeholderObjetivo={a.ph}
+              />
+            </Suspense>
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
