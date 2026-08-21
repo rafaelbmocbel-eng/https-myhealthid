@@ -63,8 +63,9 @@ function color(c: C3) { return [c[0], c[1], c[2]] as [number, number, number]; }
 function classColor(cls: string): C3 {
   const k = (cls || '').toUpperCase();
   if (k.includes('ÓTIM') || k.includes('OTIM') || k.includes('BOM')) return GREEN;
-  if (k.includes('CRÍT') || k.includes('CRIT')) return RED;
-  if (k.includes('ALERT')) return RED;
+  // 'ATENÇÃO'/'ATENÇÃO PRIORITÁRIA' (nomes suavizados) e legados 'CRÍTICO'/'ALERTA'
+  if (k.includes('PRIORIT') || k.includes('CRÍT') || k.includes('CRIT')) return RED;
+  if (k.includes('ATEN') || k.includes('ALERT')) return RED;
   return AMBER;
 }
 

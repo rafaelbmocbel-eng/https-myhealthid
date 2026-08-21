@@ -239,7 +239,7 @@ export default function MyIDFormulaDisplay({
         <div className="inline-flex items-center gap-2 bg-muted/30 px-4 py-2 rounded-full border border-border/50">
           <Info className="w-3 h-3 text-muted-foreground" />
           <p className="text-[10px] text-muted-foreground font-medium leading-none">
-            MyID-100 = 100 - <strong>Σ Perdas por dimensão</strong> — Quanto maior, melhor. v2.0
+            MyID = 100 - <strong>Σ Perdas por dimensão</strong> — Quanto maior, melhor.
           </p>
         </div>
       </div>

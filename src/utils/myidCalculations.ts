@@ -316,8 +316,8 @@ export function getMyIDSeverityColor(classificacao: string): string {
     case 'EXCELENTE': return 'text-emerald-600 bg-emerald-50 border-emerald-200';
     case 'BOM': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
     case 'MODERADO': return 'text-amber-600 bg-amber-50 border-amber-200';
-    case 'CRÍTICO': return 'text-red-600 bg-red-50 border-red-200';
-    case 'CRÍTICO SEVERO': return 'text-red-900 bg-red-100 border-red-400';
+    case 'ATENÇÃO': case 'CRÍTICO': return 'text-red-600 bg-red-50 border-red-200';
+    case 'ATENÇÃO PRIORITÁRIA': case 'CRÍTICO SEVERO': return 'text-red-900 bg-red-100 border-red-400';
     default: return 'text-muted-foreground bg-muted border-border';
   }
 }

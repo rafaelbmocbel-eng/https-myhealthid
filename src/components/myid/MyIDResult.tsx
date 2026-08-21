@@ -408,7 +408,7 @@ function ClienteView({ result, rawData, pacienteId, terapeutaId, avaliacaoId, pe
           própria. */}
       <div className="text-center">
         <p className="text-[10px] text-muted-foreground/40 font-mono">
-          {new Date().toLocaleDateString()} · MyID-100 v2.0
+          {new Date().toLocaleDateString()} · MyID
         </p>
       </div>
     </div>
@@ -426,7 +426,7 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
   const top4 = perdasItems.slice(0, 4);
   const [openEnc, setOpenEnc] = useState<string | null>(null);
 
-  const statusLabel = myidScoreValue >= 85 ? 'EXCELENTE' : myidScoreValue >= 70 ? 'BOM' : myidScoreValue >= 50 ? 'MODERADO' : myidScoreValue >= 30 ? 'CRÍTICO' : 'CRÍTICO SEVERO';
+  const statusLabel = myidScoreValue >= 85 ? 'EXCELENTE' : myidScoreValue >= 70 ? 'BOM' : myidScoreValue >= 50 ? 'MODERADO' : myidScoreValue >= 30 ? 'ATENÇÃO' : 'ATENÇÃO PRIORITÁRIA';
   const statusCor = myidScoreValue >= 85 ? '#10b981' : myidScoreValue >= 70 ? '#f59e0b' : myidScoreValue >= 50 ? '#f97316' : myidScoreValue >= 30 ? '#ef4444' : '#7f1d1d';
 
   const maxPerda = Math.max(...perdasItems.map((i: PerdaItem) => i.perda), 1);
@@ -466,7 +466,7 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
             <div key={dim} className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
               <span className="text-xs font-semibold">{DIMENSION_LABELS[dim] || dim}</span>
-              <Badge variant="destructive" className="text-[9px] h-3.5 ml-auto">CRÍTICO</Badge>
+              <Badge variant="destructive" className="text-[9px] h-3.5 ml-auto">ATENÇÃO</Badge>
             </div>
           ))}
           {driverDim && (

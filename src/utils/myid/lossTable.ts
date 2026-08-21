@@ -286,10 +286,12 @@ export function calcularPerdaMedicamentos(meds: {
 export function classificarMyID100(score: number, temGatilhoCritico?: boolean): {
   nome: string; cor: string; emoji: string;
 } {
+  // Nomes suavizados para o paciente (evitar "crítico" — gera preocupação
+  // exacerbada). A severidade segue sinalizada pela cor e pela nota.
   if (score <= 29) {
-    return { nome: 'CRÍTICO SEVERO', cor: '#7F1D1D', emoji: '🆘' };
+    return { nome: 'ATENÇÃO PRIORITÁRIA', cor: '#7F1D1D', emoji: '🔴' };
   } else if (score <= 49) {
-    return { nome: 'CRÍTICO', cor: '#DC2626', emoji: '🔴' };
+    return { nome: 'ATENÇÃO', cor: '#DC2626', emoji: '🟠' };
   } else if (score <= 69) {
     return { nome: 'MODERADO', cor: '#F59E0B', emoji: '🟠' };
   } else if (score <= 84) {

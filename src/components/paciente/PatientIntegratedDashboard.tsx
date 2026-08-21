@@ -619,8 +619,8 @@ export default function PatientIntegratedDashboard({
                             { emoji: '🟢', faixa: '85–100', nome: 'Excelente', desc: 'corpo em equilíbrio, siga assim', min: 85, max: 200 },
                             { emoji: '🟡', faixa: '70–84', nome: 'Bom', desc: 'vai bem, com pequenos ajustes a fazer', min: 70, max: 84 },
                             { emoji: '🟠', faixa: '50–69', nome: 'Moderado', desc: 'alguns hábitos estão pesando, hora de agir', min: 50, max: 69 },
-                            { emoji: '🔴', faixa: '30–49', nome: 'Crítico', desc: 'seu corpo pede cuidado com prioridade', min: 30, max: 49 },
-                            { emoji: '🆘', faixa: '0–29', nome: 'Crítico severo', desc: 'fale com seu profissional o quanto antes', min: 0, max: 29 },
+                            { emoji: '🟠', faixa: '30–49', nome: 'Atenção', desc: 'seu corpo pede cuidado com prioridade', min: 30, max: 49 },
+                            { emoji: '🔴', faixa: '0–29', nome: 'Atenção prioritária', desc: 'vale conversar com seu profissional', min: 0, max: 29 },
                           ].map((z) => {
                             const aqui = Math.round(myidScore) >= z.min && Math.round(myidScore) <= z.max;
                             return (
