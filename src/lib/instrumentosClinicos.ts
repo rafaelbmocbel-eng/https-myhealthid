@@ -63,6 +63,20 @@ const HORAS_SENTADO = [
   { valor: 3, rotulo: 'Mais de 8h' },
 ];
 
+// WHOQOL-bref — âncoras 1..5 por tipo de pergunta (itens 3,4,26 invertidos).
+const WQ_AVAL = [
+  { valor: 1, rotulo: 'Muito ruim' }, { valor: 2, rotulo: 'Ruim' }, { valor: 3, rotulo: 'Nem ruim nem boa' }, { valor: 4, rotulo: 'Boa' }, { valor: 5, rotulo: 'Muito boa' },
+];
+const WQ_SATISF = [
+  { valor: 1, rotulo: 'Muito insatisfeito(a)' }, { valor: 2, rotulo: 'Insatisfeito(a)' }, { valor: 3, rotulo: 'Nem satisfeito nem insatisfeito' }, { valor: 4, rotulo: 'Satisfeito(a)' }, { valor: 5, rotulo: 'Muito satisfeito(a)' },
+];
+const WQ_QUANTO = [
+  { valor: 1, rotulo: 'Nada' }, { valor: 2, rotulo: 'Muito pouco' }, { valor: 3, rotulo: 'Mais ou menos' }, { valor: 4, rotulo: 'Bastante' }, { valor: 5, rotulo: 'Extremamente' },
+];
+const WQ_FREQ_NEG = [
+  { valor: 1, rotulo: 'Nunca' }, { valor: 2, rotulo: 'Algumas vezes' }, { valor: 3, rotulo: 'Frequentemente' }, { valor: 4, rotulo: 'Muito frequentemente' }, { valor: 5, rotulo: 'Sempre' },
+];
+
 export const INSTRUMENTOS: Record<InstrumentoId, Instrumento> = {
   parq: {
     id: 'parq',
@@ -271,6 +285,61 @@ export const INSTRUMENTOS: Record<InstrumentoId, Instrumento> = {
       return { escore: ativ, classificacao };
     },
   },
+
+  // WHOQOL-bref (OMS) — 26 itens, 4 domínios (físico, psicológico, relações
+  // sociais, ambiente) + 2 gerais. Itens q3, q4 e q26 são invertidos. Escore
+  // resumido = média dos 24 itens de domínio transformada para 0–100.
+  // Obs.: redação dos itens segue a versão em português do WHOQOL-bref — revise
+  // com a versão oficial antes de uso clínico formal.
+  whoqol: {
+    id: 'whoqol',
+    nome: 'Qualidade de Vida',
+    sigla: 'WHOQOL-bref',
+    descricao: '26 perguntas sobre como você tem se sentido nas duas últimas semanas.',
+    tempoEstimado: '8 min',
+    perguntas: [
+      { id: 'q1', texto: 'Como você avaliaria sua qualidade de vida?', opcoes: WQ_AVAL },
+      { id: 'q2', texto: 'Quão satisfeito(a) você está com a sua saúde?', opcoes: WQ_SATISF },
+      { id: 'q3', texto: 'Em que medida a dor (física) impede você de fazer o que precisa?', opcoes: WQ_QUANTO },
+      { id: 'q4', texto: 'O quanto você precisa de tratamento médico para levar a vida diária?', opcoes: WQ_QUANTO },
+      { id: 'q5', texto: 'O quanto você aproveita a vida?', opcoes: WQ_QUANTO },
+      { id: 'q6', texto: 'Em que medida você acha que a sua vida tem sentido?', opcoes: WQ_QUANTO },
+      { id: 'q7', texto: 'O quanto você consegue se concentrar?', opcoes: WQ_QUANTO },
+      { id: 'q8', texto: 'Quão seguro(a) você se sente na sua vida diária?', opcoes: WQ_QUANTO },
+      { id: 'q9', texto: 'Quão saudável é o seu ambiente físico (clima, barulho, poluição)?', opcoes: WQ_QUANTO },
+      { id: 'q10', texto: 'Você tem energia suficiente para o seu dia a dia?', opcoes: WQ_QUANTO },
+      { id: 'q11', texto: 'Você é capaz de aceitar a sua aparência física?', opcoes: WQ_QUANTO },
+      { id: 'q12', texto: 'Você tem dinheiro suficiente para satisfazer suas necessidades?', opcoes: WQ_QUANTO },
+      { id: 'q13', texto: 'Quão disponíveis estão as informações que você precisa no dia a dia?', opcoes: WQ_QUANTO },
+      { id: 'q14', texto: 'Em que medida você tem oportunidades de lazer?', opcoes: WQ_QUANTO },
+      { id: 'q15', texto: 'Quão bem você é capaz de se locomover?', opcoes: WQ_AVAL },
+      { id: 'q16', texto: 'Quão satisfeito(a) você está com o seu sono?', opcoes: WQ_SATISF },
+      { id: 'q17', texto: 'Quão satisfeito(a) com sua capacidade de fazer as atividades do dia a dia?', opcoes: WQ_SATISF },
+      { id: 'q18', texto: 'Quão satisfeito(a) com sua capacidade para o trabalho?', opcoes: WQ_SATISF },
+      { id: 'q19', texto: 'Quão satisfeito(a) você está consigo mesmo(a)?', opcoes: WQ_SATISF },
+      { id: 'q20', texto: 'Quão satisfeito(a) com suas relações pessoais?', opcoes: WQ_SATISF },
+      { id: 'q21', texto: 'Quão satisfeito(a) com sua vida sexual?', opcoes: WQ_SATISF },
+      { id: 'q22', texto: 'Quão satisfeito(a) com o apoio dos seus amigos?', opcoes: WQ_SATISF },
+      { id: 'q23', texto: 'Quão satisfeito(a) com as condições do lugar onde mora?', opcoes: WQ_SATISF },
+      { id: 'q24', texto: 'Quão satisfeito(a) com o acesso aos serviços de saúde?', opcoes: WQ_SATISF },
+      { id: 'q25', texto: 'Quão satisfeito(a) com o seu meio de transporte?', opcoes: WQ_SATISF },
+      { id: 'q26', texto: 'Com que frequência você tem sentimentos negativos (mau humor, ansiedade, desânimo)?', opcoes: WQ_FREQ_NEG },
+    ],
+    pontuar: (r) => {
+      const inv = (v: number) => 6 - (v || 0); // itens q3, q4, q26
+      // 24 itens de domínio (exclui q1/q2 gerais)
+      const itens: number[] = [];
+      for (let i = 3; i <= 26; i++) {
+        const v = r[`q${i}`] || 0;
+        itens.push(i === 3 || i === 4 || i === 26 ? inv(v) : v);
+      }
+      const respondidos = itens.filter((v) => v > 0);
+      const media = respondidos.length ? respondidos.reduce((s, v) => s + v, 0) / respondidos.length : 0;
+      const escore = Math.round(((media - 1) / 4) * 100); // 0–100 (maior = melhor)
+      const classificacao = escore < 50 ? 'qv_baixa' : escore < 70 ? 'qv_moderada' : 'qv_boa';
+      return { escore, classificacao };
+    },
+  },
 };
 
 export const CLASSIFICACAO_LABEL: Record<string, string> = {
@@ -324,6 +393,7 @@ export function instrumentosRecomendados(scores: Record<string, number> | null):
   if (baixo('AF')) lista.push('ipaq');                 // pouco movimento
   if (alto('P') || alto('I')) lista.push('pss10');     // emoções / mudanças (estresse)
   if (alto('D') || baixo('ERG')) lista.push('nmq');    // dor / postura
+  if (baixo('C')) lista.push('whoqol');                // vida pessoal / qualidade de vida
   // remove duplicados preservando ordem
   return Array.from(new Set(lista));
 }
