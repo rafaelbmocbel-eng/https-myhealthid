@@ -1764,7 +1764,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
 
         {/* ── DIRETRIZ DE TRATAMENTO EM 3 FASES ── */}
         {assessment.diretriz_tratamento && (
-          <SectionCard icon={CheckCircle2} title="🎯 Diretriz de Tratamento — 3 Fases" sectionKey="diretriz" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
+          <SectionCard icon={CheckCircle2} title="🎯 Plano de Reabilitação Cinético-Funcional — 3 Fases" sectionKey="diretriz" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
             <div className="space-y-4">
               {[
                 { key: 'fase_1_alivio', label: 'FASE 1 — Alívio & Proteção', color: 'border-l-amber-500' },

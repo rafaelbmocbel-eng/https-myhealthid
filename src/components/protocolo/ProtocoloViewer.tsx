@@ -405,7 +405,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
         <div className="flex items-start justify-between">
           <div>
             <div className="text-xs opacity-70 uppercase tracking-widest mb-1">
-              Diretriz de Tratamento Baseada em Evidências
+              Plano de Reabilitação Cinético-Funcional
             </div>
             <h1 className="text-xl font-bold">{protocolo.titulo}</h1>
             <p className="text-sm opacity-80 mt-1">{protocolo.duracao_total} · {protocolo.frequencia}</p>

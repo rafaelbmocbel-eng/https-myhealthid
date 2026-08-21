@@ -135,7 +135,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
     <Card className="rounded-xl border-border/40 shadow-xs">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold flex items-center gap-2">
-          <Dumbbell className="icon-sm text-primary" /> Plano de Treino (IA)
+          <Dumbbell className="icon-sm text-primary" /> Plano de Treino
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">

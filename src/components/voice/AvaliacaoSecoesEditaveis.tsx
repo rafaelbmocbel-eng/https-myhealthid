@@ -145,7 +145,7 @@ const SECOES: SecaoDef[] = [
     },
   },
   {
-    key: 'diretriz', titulo: 'Diretriz de Tratamento', emoji: '🧭', Icon: ListChecks,
+    key: 'diretriz', titulo: 'Plano de Reabilitação Cinético-Funcional', emoji: '🧭', Icon: ListChecks,
     builder: (r) => {
       const d = r?.diretriz_tratamento;
       if (!d || typeof d !== 'object') return '';

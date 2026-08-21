@@ -164,7 +164,7 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <Apple className="icon-sm text-emerald-600 shrink-0" />
-            Plano Alimentar
+            Plano Nutricional
           </CardTitle>
           {!ocultarGerador && (
             <Button size="sm" onClick={() => setOpen(true)}>
