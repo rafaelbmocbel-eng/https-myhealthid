@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import { format, parseISO } from '@/lib/dateSafe';
+import RevisorSeguranca from '@/components/planos/RevisorSeguranca';
 
 interface Props { pacienteId: string; autoGerar?: boolean; ocultarGerador?: boolean; }
 
@@ -183,7 +184,8 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
             </p>
           ) : (
             planos.map((p: any) => (
-              <div key={p.id} className="flex items-center gap-2 p-2 rounded-md border border-border/40">
+              <div key={p.id} className="p-2 rounded-md border border-border/40">
+                <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{p.titulo}</p>
                   <p className="text-xs text-muted-foreground">
@@ -208,6 +210,8 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
                 <Button variant="ghost" size="icon" onClick={() => excluir.mutate(p.id)}>
                   <Trash2 className="icon-sm text-destructive" />
                 </Button>
+                </div>
+                <RevisorSeguranca pacienteId={pacienteId} tipo="nutricao" plano={p.plano} />
               </div>
             ))
           )}

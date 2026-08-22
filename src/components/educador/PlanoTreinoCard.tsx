@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import PlanoTreinoEditor from './PlanoTreinoEditor';
+import RevisorSeguranca from '@/components/planos/RevisorSeguranca';
 
 interface Props { pacienteId: string; autoGerar?: boolean; ocultarGerador?: boolean; }
 
@@ -233,6 +234,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
               <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar plano" onClick={() => setEditarPlano(p)}><Pencil className="icon-xs" /></Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => apagar(p.id)}><Trash2 className="icon-xs text-destructive" /></Button>
             </div>
+            <RevisorSeguranca pacienteId={pacienteId} tipo="treino" plano={p.estrutura} />
           </div>
         ))}
 
