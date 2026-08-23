@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatBRL } from '@/lib/formatBRL';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,8 +48,7 @@ function bucketOf(dias: number): Bucket {
   return '90+';
 }
 
-const fmtBRL = (v: number) =>
-  `R$ ${v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+const fmtBRL = formatBRL;
 
 export default function AReceber() {
   const { user } = useAuth();

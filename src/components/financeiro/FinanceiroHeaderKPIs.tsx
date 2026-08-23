@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { formatBRL0 } from '@/lib/formatBRL';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -105,7 +106,7 @@ export default function FinanceiroHeaderKPIs() {
     return { atual, anterior };
   }, [data, getRepasse, periodos]);
 
-  const fmt = (v: number) => `R$ ${v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+  const fmt = formatBRL0;
 
   const delta = (a: number, b: number) => {
     if (b === 0 && a === 0) return null;

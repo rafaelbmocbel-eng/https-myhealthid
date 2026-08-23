@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatBRL } from '@/lib/formatBRL';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,7 +53,7 @@ export default function BreakdownVisual() {
     },
   });
 
-  const fmt = (v: number) => `R$ ${v.toFixed(0)}`;
+  const fmt = formatBRL;
 
   const repasseOf = (s: any) => {
     const valor = Number(s.valor_cobrado) || 0;

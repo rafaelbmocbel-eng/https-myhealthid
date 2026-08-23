@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { formatBRL } from '@/lib/formatBRL';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -94,7 +95,7 @@ export default function TissManager() {
                         </span>
                       </div>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {g.convenios?.nome || '—'} · {format(new Date(g.data_atendimento), 'dd/MM/yyyy')} · R$ {Number(g.valor_total).toFixed(2)}
+                        {g.convenios?.nome || '—'} · {format(new Date(g.data_atendimento), 'dd/MM/yyyy')} · {formatBRL(g.valor_total)}
                       </p>
                     </div>
                     <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={async () => {
@@ -131,7 +132,7 @@ export default function TissManager() {
                         <span className="text-xs font-semibold">{l.convenios?.nome || '—'}</span>
                       </div>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Comp. {l.competencia} · {l.qtd_guias} guias · R$ {Number(l.valor_total).toFixed(2)}
+                        Comp. {l.competencia} · {l.qtd_guias} guias · {formatBRL(l.valor_total)}
                       </p>
                     </div>
                     <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => {
@@ -447,7 +448,7 @@ function NovoLoteDialog({ convenios, guias, config, onCreated }: any) {
           </div>
           <p className="text-xs text-muted-foreground">
             <FileText className="icon-xs inline mr-1" />
-            {guiasDoConvenio.length} guia(s) disponível(is) — Total R$ {guiasDoConvenio.reduce((s: number, g: any) => s + Number(g.valor_total), 0).toFixed(2)}
+            {guiasDoConvenio.length} guia(s) disponível(is) — Total {formatBRL(guiasDoConvenio.reduce((s: number, g: any) => s + Number(g.valor_total), 0))}
           </p>
         </div>
         <DialogFooter>
@@ -501,7 +502,7 @@ function TussCodigosManager({ convenios }: any) {
         {codigos.map((c) => (
           <div key={c.id} className="flex items-center justify-between border rounded p-2 text-xs">
             <span><b>{c.codigo}</b> — {c.descricao}</span>
-            <span className="text-muted-foreground">{c.convenios?.nome || '—'} · R$ {Number(c.valor).toFixed(2)}</span>
+            <span className="text-muted-foreground">{c.convenios?.nome || '—'} · {formatBRL(c.valor)}</span>
           </div>
         ))}
         {codigos.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Nenhum código cadastrado.</p>}

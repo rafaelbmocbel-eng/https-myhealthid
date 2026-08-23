@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatBRL } from '@/lib/formatBRL';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -156,7 +157,7 @@ export default function SessoesSemValor({ mesOffset }: Props) {
                     <SelectItem value="particular">Particular</SelectItem>
                     {convenios.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.nome}{c.valor_padrao != null ? ` — R$ ${Number(c.valor_padrao).toFixed(2)}` : ''}
+                        {c.nome}{c.valor_padrao != null ? ` — ${formatBRL(c.valor_padrao)}` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

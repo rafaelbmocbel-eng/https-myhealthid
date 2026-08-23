@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatBRL } from '@/lib/formatBRL';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,7 +59,7 @@ export default function FechamentoProfissional() {
     },
   });
 
-  const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+  const fmt = formatBRL;
 
   const tipo = (s: any): 'particular' | 'plano' =>
     s.convenio_id ? 'plano' : s.pacientes?.tipo_pagamento === 'plano' ? 'plano' : 'particular';

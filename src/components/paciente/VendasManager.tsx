@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { formatBRL } from '@/lib/formatBRL';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -203,7 +204,7 @@ export default function VendasManager() {
     };
   }, [vendas]);
 
-  const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+  const fmt = formatBRL;
   const valorTotal = form.quantidade * form.valor_unitario;
   const pacienteSel = pacientes.find(p => p.id === form.paciente_id);
 

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatBRL } from '@/lib/formatBRL';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,8 +50,7 @@ const CATEGORIAS = [
 
 const catMeta = (v: string) => CATEGORIAS.find((c) => c.value === v) || CATEGORIAS[CATEGORIAS.length - 1];
 
-const fmtBRL = (v: number) =>
-  `R$ ${v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+const fmtBRL = formatBRL;
 
 const emptyForm = (): Partial<Despesa> => ({
   descricao: '',

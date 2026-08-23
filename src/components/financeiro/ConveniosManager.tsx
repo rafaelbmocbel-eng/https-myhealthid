@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatBRL } from '@/lib/formatBRL';
 import { useConvenios, type Convenio } from '@/hooks/useConvenios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +54,7 @@ export default function ConveniosManager() {
                   {c.codigo_tuss && <Badge variant="outline" className="text-micro">{c.codigo_tuss}</Badge>}
                 </div>
                 <div className="text-micro text-muted-foreground mt-0.5">
-                  {c.valor_padrao != null ? `R$ ${Number(c.valor_padrao).toFixed(2)} / sessão` : 'Sem valor padrão'}
+                  {c.valor_padrao != null ? `${formatBRL(c.valor_padrao)} / sessão` : 'Sem valor padrão'}
                   {' · '}Repasse em {c.prazo_repasse_dias ?? 30} dias
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatBRL } from '@/lib/formatBRL';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -139,7 +140,7 @@ export default function PacoteSessoesManager({ pacienteId, compact = false }: Pa
             <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary rounded-full transition-all"
-                style={{ width: `${Math.min(100, (pacoteAtivo.sessoes_utilizadas / pacoteAtivo.total_sessoes) * 100)}%` }}
+                style={{ width: `${Math.min(100, pacoteAtivo.total_sessoes ? (pacoteAtivo.sessoes_utilizadas / pacoteAtivo.total_sessoes) * 100 : 0)}%` }}
               />
             </div>
           </>
@@ -185,7 +186,7 @@ export default function PacoteSessoesManager({ pacienteId, compact = false }: Pa
       )}
 
       {pacotes.map((p: any) => {
-        const pct = Math.min(100, (p.sessoes_utilizadas / p.total_sessoes) * 100);
+        const pct = Math.min(100, p.total_sessoes ? (p.sessoes_utilizadas / p.total_sessoes) * 100 : 0);
         const isAtivo = p.status === 'ativo';
         return (
           <Card key={p.id} className={!isAtivo ? 'opacity-60' : ''}>
@@ -203,7 +204,7 @@ export default function PacoteSessoesManager({ pacienteId, compact = false }: Pa
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(p)}>
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6 text-emerald-600" onClick={() => finalizarMutation.mutate(p.id)} title="Finalizar">
+                      <Button size="icon" variant="ghost" disabled={finalizarMutation.isPending} className="h-6 w-6 text-emerald-600" onClick={() => finalizarMutation.mutate(p.id)} aria-label="Finalizar pacote" title="Finalizar">
                         <CheckCircle2 className="h-3 w-3" />
                       </Button>
                     </>
@@ -212,7 +213,7 @@ export default function PacoteSessoesManager({ pacienteId, compact = false }: Pa
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mb-1.5">
                 <span className="font-bold text-foreground text-sm">{p.sessoes_utilizadas}/{p.total_sessoes} sessões</span>
-                {p.valor_total && <span>R$ {Number(p.valor_total).toFixed(2)}</span>}
+                {p.valor_total && <span>{formatBRL(p.valor_total)}</span>}
                 {p.data_inicio && <span>Início: {format(parseISO(p.data_inicio), 'dd/MM/yy')}</span>}
               </div>
               <Progress value={pct} className="h-2" />
