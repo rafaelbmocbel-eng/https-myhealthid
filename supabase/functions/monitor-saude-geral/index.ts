@@ -53,7 +53,7 @@ async function enviarAlerta(assunto: string, html: string) {
     await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: "Guardião My Health ID <noreply@metodoidentidade.app>", to: [to], subject: assunto, html }),
+      body: JSON.stringify({ from: "Guardião My Health ID <noreply@myhealthid.com.br>", to: [to], subject: assunto, html }),
     });
   } catch (e) { console.error("[monitor-geral] alerta falhou:", e); }
 }

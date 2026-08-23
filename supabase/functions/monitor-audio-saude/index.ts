@@ -59,7 +59,7 @@ async function enviarAlertaEmail(assunto: string, htmlCorpo: string) {
       method: "POST",
       headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "Guardião de Áudio <noreply@metodoidentidade.app>",
+        from: "Guardião de Áudio <noreply@myhealthid.com.br>",
         to: [destino],
         subject: assunto,
         html: htmlCorpo,

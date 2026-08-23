@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'MY HEALTH ID <noreply@metodoidentidade.app>',
+        from: 'My Health ID <noreply@myhealthid.com.br>',
         to: [profile.email],
         subject: '✨ Diretriz IA aguardando sua aprovação',
         html,

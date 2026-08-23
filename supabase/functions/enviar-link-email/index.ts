@@ -135,7 +135,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Método Identidade <noreply@metodoidentidade.app>',
+        from: 'My Health ID <noreply@myhealthid.com.br>',
         to: [patientEmail],
         subject: tpl.subject,
         html,
