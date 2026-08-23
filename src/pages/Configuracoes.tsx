@@ -293,7 +293,6 @@ export default function Configuracoes() {
 function LinksUnificados({ form, setForm }: { form: ConfigAgenda; setForm: (fn: any) => void }) {
   const slug = form.slug || '';
   const cadastroLink = slug ? `${getBaseUrl()}/cadastro/${slug}` : '';
-  const { toast } = useToast();
 
   return (
     <>
@@ -359,13 +358,13 @@ function CopyableLink({ url, label }: { url: string; label: string }) {
         <p className="text-xs font-medium truncate text-primary">{url}</p>
       </div>
       <div className="flex gap-1 shrink-0">
-        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => {
+        <Button size="sm" variant="ghost" aria-label="Copiar link" title="Copiar link" className="h-8 w-8 p-0" onClick={() => {
           navigator.clipboard.writeText(url);
           toast({ title: 'Link copiado! 📋' });
         }}>
           <Copy className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => window.open(url, '_blank')}>
+        <Button size="sm" variant="ghost" aria-label="Abrir link" title="Abrir link" className="h-8 w-8 p-0" onClick={() => window.open(url, '_blank')}>
           <ExternalLink className="h-4 w-4" />
         </Button>
       </div>

@@ -210,6 +210,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Mobile bottom navigation */}
       {isMobile && !mobileOpen && !isHomePage && <MobileBottomNav />}
+
+      {/* Ações rápidas (FAB) no celular — no desktop elas ficam no header (QuickActions) */}
+      {isMobile && !mobileOpen && !hideQuickActionsFab && <MobileQuickActionsFab />}
     </div>
   );
 }

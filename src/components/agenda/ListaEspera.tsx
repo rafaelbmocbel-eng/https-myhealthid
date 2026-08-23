@@ -195,11 +195,11 @@ function ItemCard({ item, posicao, onNotificar, onRemover }: {
           onClick={() => onNotificar({ id: item.id, telefone: item.telefone, nome: nome })}>
           <MessageCircle className="h-3 w-3" /> Notificar no WhatsApp
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-emerald-600"
+        <Button size="sm" variant="ghost" aria-label="Marcar como agendou" title="Marcar como agendou" className="h-7 px-2 text-[11px] text-emerald-600"
           onClick={() => onRemover({ id: item.id, status: 'agendou' })}>
           <Check className="h-3 w-3" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+        <Button size="sm" variant="ghost" aria-label="Marcar como desistiu" title="Marcar como desistiu" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive"
           onClick={() => onRemover({ id: item.id, status: 'desistiu' })}>
           <X className="h-3 w-3" />
         </Button>

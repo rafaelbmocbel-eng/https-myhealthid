@@ -65,7 +65,7 @@ function useCassiConfig() {
   });
 }
 
-const fmtBRL = (v: number) => `R$ ${(Number(v) || 0).toFixed(2).replace('.', ',')}`;
+const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 // Valor bruto de uma guia num mês. Soma código a código:
 //  - 144 (avaliação) é um dia EXTRA separado → cobra 1x (se houve ≥1 sessão);
 //  - códigos de tratamento cobram por dia de tratamento, limitado à quantidade

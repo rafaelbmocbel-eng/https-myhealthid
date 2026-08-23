@@ -209,6 +209,14 @@ export default function Agenda() {
   const [paymentModal, setPaymentModal] = useState<{ open: boolean; patientId: string; agendamentoId?: string; valor: string; data: string; sessaoId?: string }>({
     open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
   });
+  const [savingPayment, setSavingPayment] = useState(false);
+  // Trava de duplo-clique nos botões dos agendamentos pendentes (recusar/confirmar).
+  const [pendenteBusy, setPendenteBusy] = useState<string | null>(null);
+  const runPendente = async (id: string, fn: (id: string) => any) => {
+    if (pendenteBusy) return;
+    setPendenteBusy(id);
+    try { await fn(id); } finally { setPendenteBusy(null); }
+  };
   const [voiceSessionModal, setVoiceSessionModal] = useState<{ open: boolean; agendamento?: Agendamento }>({ open: false });
   const gridRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -1296,7 +1304,7 @@ export default function Agenda() {
                 const pac = pacientes.find(p => p.id === ag.paciente_id);
                 const dataInicio = parseISO(ag.data_inicio);
                 return (
-                  <div key={ag.id} className="flex items-center justify-between gap-3 bg-white dark:bg-card rounded-lg border border-amber-200 dark:border-amber-800 px-3 py-2">
+                  <div key={ag.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white dark:bg-card rounded-lg border border-amber-200 dark:border-amber-800 px-3 py-2">
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
                         {ag.paciente_id && (
@@ -1308,14 +1316,14 @@ export default function Agenda() {
                         {format(dataInicio, "EEEE, d 'de' MMM 'às' HH:mm", { locale: ptBR })}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleRecusar(ag.id)}>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+                      <Button size="sm" variant="outline" disabled={pendenteBusy === ag.id} className="h-8 text-xs border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => runPendente(ag.id, handleRecusar)}>
                         <X className="h-3 w-3 mr-1" /> Recusar
                       </Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleConfirmar(ag.id)}>
+                      <Button size="sm" variant="outline" disabled={pendenteBusy === ag.id} className="h-8 text-xs" onClick={() => runPendente(ag.id, handleConfirmar)}>
                         <CheckCircle2 className="h-3 w-3 mr-1" /> Confirmar
                       </Button>
-                      <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleConfirmarWhatsApp(ag.id)} title="Confirma e abre WhatsApp com mensagem pronta">
+                      <Button size="sm" disabled={pendenteBusy === ag.id} className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => runPendente(ag.id, handleConfirmarWhatsApp)} title="Confirma e abre WhatsApp com mensagem pronta">
                         <MessageCircle className="h-3 w-3 mr-1" /> Confirmar + WhatsApp
                       </Button>
                     </div>
@@ -2371,6 +2379,8 @@ export default function Agenda() {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
                 <Input
                   type="number"
+                  inputMode="decimal"
+                  step="0.01"
                   className="pl-9"
                   value={paymentModal.valor}
                   onChange={e => setPaymentModal(prev => ({ ...prev, valor: e.target.value }))}
@@ -2387,7 +2397,10 @@ export default function Agenda() {
             </div>
             <Button
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11"
+              disabled={savingPayment}
               onClick={async () => {
+                if (savingPayment) return;
+                setSavingPayment(true);
                 try {
                   // Check if session already exists for this appointment
                   let sessaoId = paymentModal.sessaoId;
@@ -2425,14 +2438,16 @@ export default function Agenda() {
                     await updateAgendamento(paymentModal.agendamentoId, { status: 'concluido' });
                   }
 
-                  toast({ title: 'Pagamento registrado! 💵', description: `R$ ${paymentModal.valor} recebido com sucesso.` });
+                  toast({ title: 'Pagamento registrado! 💵', description: `${(Number(paymentModal.valor) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} recebido com sucesso.` });
                   setPaymentModal(prev => ({ ...prev, open: false }));
                 } catch (err: any) {
                   toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
+                } finally {
+                  setSavingPayment(false);
                 }
               }}
             >
-              Confirmar Recebimento
+              {savingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirmar Recebimento'}
             </Button>
           </div>
         </DialogContent>

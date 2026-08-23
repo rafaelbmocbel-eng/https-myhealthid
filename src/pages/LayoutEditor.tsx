@@ -12,7 +12,7 @@ import {
   ArrowLeftRight, Activity, Target, ClipboardList,
   Smartphone, FileText, Fingerprint, Stethoscope, Rocket,
   LayoutTemplate, Rows, Columns, Maximize2, Minimize2,
-  CreditCard, ShieldAlert, Bell,
+  CreditCard, ShieldAlert, Bell, Loader2,
 } from 'lucide-react';
 import {
   DEFAULT_LAYOUT_CONFIG,
@@ -186,24 +186,25 @@ function TabRow({ tab, index, total, onChange, onMove }: {
       tab.visivel ? 'border-border/50 bg-background' : 'border-border/20 bg-muted/30 opacity-50',
     )}>
       <div className="flex flex-col gap-0.5 shrink-0">
-        <button type="button" disabled={index === 0} onClick={() => onMove(index, index - 1)}
-          className="p-0.5 rounded hover:bg-muted disabled:opacity-20">
-          <ChevronUp className="w-3 h-3 text-muted-foreground" />
+        <button type="button" aria-label="Mover para cima" disabled={index === 0} onClick={() => onMove(index, index - 1)}
+          className="p-1.5 rounded hover:bg-muted disabled:opacity-20 inline-flex items-center justify-center">
+          <ChevronUp className="w-4 h-4 text-muted-foreground" />
         </button>
-        <button type="button" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}
-          className="p-0.5 rounded hover:bg-muted disabled:opacity-20">
-          <ChevronDown className="w-3 h-3 text-muted-foreground" />
+        <button type="button" aria-label="Mover para baixo" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}
+          className="p-1.5 rounded hover:bg-muted disabled:opacity-20 inline-flex items-center justify-center">
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
         </button>
       </div>
       <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
       <Input
         value={tab.label}
         onChange={e => onChange({ ...tab, label: e.target.value })}
-        className="h-7 text-sm flex-1 min-w-0 border-0 bg-transparent px-1 focus-visible:ring-0 focus-visible:bg-muted/40 rounded"
+        className="h-9 text-sm flex-1 min-w-0 border-0 bg-transparent px-1 focus-visible:ring-0 focus-visible:bg-muted/40 rounded"
         placeholder={tab.defaultLabel}
       />
-      <button type="button" onClick={() => onChange({ ...tab, visivel: !tab.visivel })}
-        className="shrink-0 text-muted-foreground hover:text-foreground">
+      <button type="button" aria-label={tab.visivel ? 'Ocultar aba' : 'Mostrar aba'} title={tab.visivel ? 'Ocultar aba' : 'Mostrar aba'}
+        onClick={() => onChange({ ...tab, visivel: !tab.visivel })}
+        className="shrink-0 h-9 w-9 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted">
         {tab.visivel ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
       </button>
     </div>
@@ -260,6 +261,9 @@ export default function LayoutEditor() {
   const [draft, setDraft] = useState<LayoutConfig>(() => JSON.parse(JSON.stringify(saved)));
   // Sync draft once Supabase finishes loading the real stored config.
   const syncedRef = useRef(false);
+  // Sincroniza o draft uma única vez quando o config real termina de carregar.
+  // Depende só de `loading` de propósito (guardado por syncedRef) — não reagir a `saved`.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!loading && !syncedRef.current) {
       syncedRef.current = true;
@@ -268,10 +272,17 @@ export default function LayoutEditor() {
   }, [loading]);
 
   const isDirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const [saving, setSaving] = useState(false);
 
   async function handleSave() {
-    await save(draft);
-    toast({ title: 'Layout salvo!', description: 'Mudanças visíveis para todos em toda a plataforma.' });
+    if (saving) return;
+    setSaving(true);
+    try {
+      await save(draft);
+      toast({ title: 'Layout salvo!', description: 'Mudanças visíveis para todos em toda a plataforma.' });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleReset() {
@@ -576,10 +587,10 @@ export default function LayoutEditor() {
       {/* ── Salvar flutuante ─────────────────────────────────────────────── */}
       {isDirty && (
         <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none px-4">
-          <Button size="lg" onClick={handleSave}
+          <Button size="lg" onClick={handleSave} disabled={saving}
             className="pointer-events-auto shadow-xl gap-2 rounded-2xl w-full max-w-xs">
-            <Save className="w-4 h-4" />
-            Salvar alterações
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? 'Salvando…' : 'Salvar alterações'}
           </Button>
         </div>
       )}

@@ -163,7 +163,7 @@ export default function ControleMensal() {
     };
   }, [filtradas, getRepasse, REPASSE_PCT]);
 
-  const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+  const fmt = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const handleExport = () => {
     const rows = filtradas.map((s: any) => {

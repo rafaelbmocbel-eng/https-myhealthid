@@ -41,6 +41,8 @@ export default function QuickActions() {
           <TooltipTrigger asChild>
             <button
               onClick={() => handleClick(a)}
+              aria-label={a.hint}
+              title={a.hint}
               className={cn(
                 'h-8 w-8 md:h-9 md:w-9 rounded-lg flex items-center justify-center',
                 'text-muted-foreground hover:text-primary hover:bg-primary/5',
