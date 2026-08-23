@@ -3,14 +3,13 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-const DISMISS_KEY = 'mhid.audio-health-dismissed-id';
+const DISMISS_KEY = 'mhid.health-dismissed-id';
 
 /**
- * Banner global de status do pipeline de áudio (transcrição/Gemini).
- * Só aparece quando o último health-check do Guardião de Áudio FALHOU —
- * avisa o profissional que a avaliação por áudio pode estar fora do ar,
- * para ele usar texto enquanto isso. Dispensável por incidente (some quando
- * o serviço volta; reaparece se um novo incidente ocorrer).
+ * Banner global de status das funções do app (Guardião Geral).
+ * Só aparece quando o último health-check geral FALHOU — avisa o profissional
+ * que alguma função (IA/áudio/etc.) pode estar instável. Dispensável por
+ * incidente (some quando normaliza; reaparece num novo incidente).
  */
 export default function AudioHealthBanner() {
   const [dismissedId, setDismissedId] = useState<string | null>(null);
@@ -25,6 +24,7 @@ export default function AudioHealthBanner() {
       const { data, error } = await supabase
         .from('audio_health_checks')
         .select('id, ok, checked_at')
+        .eq('component', 'saude-geral')
         .order('checked_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -50,9 +50,9 @@ export default function AudioHealthBanner() {
       <div className="flex items-center gap-2 min-w-0">
         <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
         <span className="truncate">
-          <strong className="font-semibold text-destructive">Transcrição por áudio instável</strong>{' '}
+          <strong className="font-semibold text-destructive">Alguma função do app está instável</strong>{' '}
           <span className="text-muted-foreground">
-            — o motor de áudio está fora do ar no momento. Se precisar avaliar agora, use a entrada por <strong>texto</strong>; a equipe já foi avisada.
+            — uma dependência (IA, áudio ou serviço) está fora do ar no momento. Recursos com IA podem falhar temporariamente; a equipe já foi avisada e está acompanhando.
           </span>
         </span>
       </div>
