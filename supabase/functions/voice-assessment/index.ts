@@ -658,20 +658,23 @@ Deno.serve(async (req) => {
     } catch (fetchErr) {
       clearTimeout(pass2Timer);
       const isTimeout = fetchErr instanceof Error && fetchErr.name === "AbortError";
-      return new Response(JSON.stringify({ error: isTimeout
+      const msgErro = isTimeout
         ? "A IA demorou demais para responder. Tente com um áudio mais curto ou cole a transcrição como texto."
-        : `Falha de rede ao chamar a IA: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`
-      }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        : `Falha de rede ao chamar a IA: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`;
+      await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: msgErro });
+      return new Response(JSON.stringify({ error: msgErro }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     clearTimeout(pass2Timer);
 
     if (!response.ok) {
       if (response.status === 429) {
+        await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: "Limite de requisições excedido (429)." });
         return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
+        await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: "Créditos de IA insuficientes (402)." });
         return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -687,6 +690,10 @@ Deno.serve(async (req) => {
       else if (response.status === 400) userMsg = "Formato de áudio não aceito pelo modelo. Tente novamente ou use a transcrição em texto.";
       else if (response.status >= 500) userMsg = "Servidor de IA temporariamente indisponível. Tente novamente em instantes.";
 
+      await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, {
+        status: "failed",
+        error_message: `${userMsg} [Gemini ${response.status}] ${t.slice(0, 300)}`,
+      });
       return new Response(JSON.stringify({ error: userMsg, details: t.slice(0, 500) }), {
         status: response.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

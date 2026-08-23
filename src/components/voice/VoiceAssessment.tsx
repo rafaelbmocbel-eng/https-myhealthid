@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { audioParaWav, blobParaBase64 } from '@/lib/audioParaWav';
+import { iniciarCapturaPCM, type PcmCapture } from '@/lib/pcmRecorder';
 import { useAuth } from '@/contexts/AuthContext';
 import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock, Sparkles, Tag, Layers, Users, Wand2, Target, Trash2, Volume2 } from 'lucide-react';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
@@ -187,6 +188,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  // Captura PCM em paralelo ao MediaRecorder → WAV 16kHz (formato que o Gemini
+  // aceita), evitando o decode de webm/opus que falha em áudios longos.
+  const pcmCaptureRef = useRef<PcmCapture | null>(null);
+  const pcmWavRef = useRef<Blob | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
 
   const draftKey = `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
@@ -453,6 +458,15 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         analyserRef.current = analyser;
         const source = audioCtx.createMediaStreamSource(stream);
         source.connect(analyser);
+        // Captura PCM no mesmo source → WAV 16kHz mono na hora de processar,
+        // sem passar pelo decodeAudioData (que quebra webm/opus longo).
+        pcmWavRef.current = null;
+        try {
+          pcmCaptureRef.current = iniciarCapturaPCM(audioCtx, source);
+        } catch (e) {
+          pcmCaptureRef.current = null;
+          console.warn('[VoiceAssessment] captura PCM indisponível, usará conversão pós-gravação:', e);
+        }
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         const updateLevel = () => {
           analyser.getByteFrequencyData(dataArray);
@@ -495,6 +509,17 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
+    }
+    // Encerra a captura PCM e guarda o WAV ANTES de fechar o contexto.
+    if (pcmCaptureRef.current) {
+      try {
+        const wav = pcmCaptureRef.current.samples > 0 ? pcmCaptureRef.current.stop() : null;
+        pcmWavRef.current = wav;
+      } catch (e) {
+        pcmWavRef.current = null;
+        console.warn('[VoiceAssessment] falha ao finalizar captura PCM:', e);
+      }
+      pcmCaptureRef.current = null;
     }
     if (audioCtxRef.current) {
       audioCtxRef.current.close().catch(() => { /* noop */ });
@@ -569,12 +594,20 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       const combinedText = [editedTranscript.trim(), transcript.trim()].filter(Boolean).join('\n\n');
       let apB64 = audioBase64 || undefined;
       let apMime = audioMimeType;
-      if (audioBlob) {
+      // Preferir o WAV capturado direto do microfone; senão converter o blob.
+      // Nunca repassar opus/webm (o Gemini recusa) — se não der WAV, vai sem áudio.
+      if (pcmWavRef.current && pcmWavRef.current.size > 44) {
+        apB64 = await blobParaBase64(pcmWavRef.current);
+        apMime = 'audio/wav';
+      } else if (audioBlob) {
         try {
           const wav = await audioParaWav(audioBlob);
           apB64 = await blobParaBase64(wav);
           apMime = 'audio/wav';
-        } catch (e) { console.warn('[voice] conversão WAV (complemento) falhou', e); }
+        } catch (e) {
+          console.warn('[voice] conversão WAV (complemento) falhou — segue sem áudio', e);
+          apB64 = undefined;
+        }
       }
       onAppendCapture(combinedText, apB64, apMime);
       return;
@@ -753,13 +786,23 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         } catch { /* contexto histórico é melhor-esforço */ }
       }
 
-      // Converte o áudio para WAV antes de enviar: o iPhone grava mp4/AAC, que o
-      // Gemini rejeita ("Formato de áudio não aceito"). WAV o modelo sempre aceita.
+      // O áudio precisa chegar ao Gemini em WAV: o navegador grava webm/opus (e o
+      // iPhone mp4/AAC), que o Gemini REJEITA (400). Caminho preferido: o WAV
+      // capturado direto do microfone durante a gravação (pcmWavRef) — não passa
+      // pelo decodeAudioData, que falha em webm/opus longo. Fallback: converter o
+      // blob gravado (upload de arquivo / rascunho restaurado). Se NADA der WAV,
+      // NÃO enviamos opus (falha garantida) — avisamos e paramos.
       let envBase64 = audioBase64;
       let envBlob = audioBlob;
       let envMime = audioMimeType;
       let converteu = false;
-      if (audioBlob) {
+      if (pcmWavRef.current && pcmWavRef.current.size > 44) {
+        const wav = pcmWavRef.current;
+        envBlob = wav;
+        envMime = 'audio/wav';
+        envBase64 = await blobParaBase64(wav);
+        converteu = true;
+      } else if (audioBlob) {
         try {
           const wav = await audioParaWav(audioBlob);
           envBlob = wav;
@@ -767,8 +810,27 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           envBase64 = await blobParaBase64(wav);
           converteu = true;
         } catch (e) {
-          console.warn('[voice] conversão p/ WAV falhou, usando áudio original', e);
+          console.warn('[voice] conversão p/ WAV falhou', e);
         }
+      }
+
+      // Se há áudio mas não conseguimos WAV: NUNCA enviar o formato original
+      // (opus/webm), que o Gemini recusa. Sem texto suficiente → aborta com aviso;
+      // com texto → segue só com o texto e descarta o áudio não convertido.
+      const temTextoSuficiente = text.length >= 20;
+      if (audioBlob && !converteu) {
+        if (!temTextoSuficiente) {
+          toast({
+            title: 'Não consegui preparar este áudio',
+            description: 'Não foi possível converter a gravação para um formato aceito. Grave novamente ou digite/cole a avaliação como texto.',
+            variant: 'destructive',
+          });
+          setIsProcessing(false);
+          return;
+        }
+        // Segue só com texto — não anexa o áudio em formato não aceito.
+        envBase64 = null;
+        envBlob = null;
       }
 
       // Áudio longo (>90s gravado OU >3.5MB base64) → signedUrl para evitar timeout
@@ -1135,6 +1197,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     setEditedTranscript('');
     setAudioBase64(null);
     setAudioBlob(null);
+    pcmWavRef.current = null;
     setAssessment(null);
     setIsSaved(false);
     setRecordingTime(0);
@@ -1452,7 +1515,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 placeholder="Texto da transcrição..."
               />
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => { setAudioBase64(null); setAudioBlob(null); setTranscript(''); setRecordingTime(0); setStep('record'); }}>
+                <Button size="sm" variant="outline" onClick={() => { setAudioBase64(null); setAudioBlob(null); pcmWavRef.current = null; setTranscript(''); setRecordingTime(0); setStep('record'); }}>
                   <Mic className="h-4 w-4 mr-1" />Gravar Mais Áudio
                 </Button>
                 <Button
@@ -2149,6 +2212,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                       const base64 = result.split(',')[1];
                       setAudioBase64(base64);
                       setAudioBlob(file);
+                      pcmWavRef.current = null; // arquivo enviado usa a conversão pós-upload
                       setAudioMimeType(file.type || 'audio/mpeg');
                       // estimate duration display via file size
                       setRecordingTime(0);
