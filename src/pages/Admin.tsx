@@ -21,6 +21,22 @@ const fmtInt = (n: number) => n.toLocaleString('pt-BR');
 // Cores de série (harmônicas com o tema; a acentuação usa a --primary).
 const CORES = ['hsl(190 85% 45%)', 'hsl(213 70% 45%)', 'hsl(160 60% 42%)', 'hsl(35 90% 55%)', 'hsl(280 55% 58%)', 'hsl(0 70% 60%)'];
 
+const ESPECIALIDADE_LABEL: Record<string, string> = {
+  fisioterapeuta: 'Fisioterapeuta', educador_fisico: 'Educador Físico', nutricionista: 'Nutricionista',
+  psicologo: 'Psicólogo', medico: 'Médico', dentista: 'Dentista', terapeuta_ocupacional: 'Terapeuta Ocupacional',
+};
+const labelEsp = (e: string) => ESPECIALIDADE_LABEL[e] || (e ? e.charAt(0).toUpperCase() + e.slice(1).replace(/_/g, ' ') : '—');
+
+function StatusAssinatura({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    ativa: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+    trial: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    cancelada: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  };
+  const cls = map[status] || 'bg-muted text-muted-foreground';
+  return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cls}`}>{status}</span>;
+}
+
 function Kpi({ icon: Icon, label, valor, sub, tom = 'default' }: {
   icon: any; label: string; valor: string; sub?: string; tom?: 'default' | 'good' | 'warn';
 }) {
@@ -60,6 +76,8 @@ export default function Admin() {
   const [precos, setPrecos] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState<string | null>(null);
   const [confirmarRemover, setConfirmarRemover] = useState<string | null>(null);
+  const [busca, setBusca] = useState('');
+  const [filtroEsp, setFiltroEsp] = useState<string>('todas');
 
   if (!isSuper) return <Navigate to="/hoje" replace />;
 
@@ -111,6 +129,13 @@ export default function Admin() {
   const especialidadeData = data.profissionais.por_especialidade.map((e) => ({ nome: e.especialidade, total: e.total }));
   const planoData = data.assinaturas_profissionais.por_plano.map((p) => ({ nome: p.nome, mrr: p.mrr, ativas: p.ativas }));
   const formaData = data.vendas.por_forma_pagamento.map((f) => ({ nome: f.forma, valor: f.valor }));
+
+  const buscaLower = busca.trim().toLowerCase();
+  const profFiltrados = data.profissionais_lista.filter((p) => {
+    if (filtroEsp !== 'todas' && p.especialidade !== filtroEsp) return false;
+    if (!buscaLower) return true;
+    return [p.nome, p.email, p.cidade, p.uf, p.clinica, p.telefone].some((v) => (v || '').toLowerCase().includes(buscaLower));
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-10">
@@ -192,6 +217,62 @@ export default function Admin() {
           </ResponsiveContainer>
         </ChartCard>
       </div>
+
+      {/* Profissionais — quem são, de onde são, plano/status */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Profissionais ({fmtInt(profFiltrados.length)}{filtroEsp !== 'todas' || busca ? ` de ${fmtInt(data.profissionais_lista.length)}` : ''})</CardTitle>
+            <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome, e-mail, cidade…" className="h-8 w-full sm:w-64 text-sm" />
+          </div>
+          {/* Filtro por valência (especialidade) */}
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            <button onClick={() => setFiltroEsp('todas')} className={`text-[11px] px-2.5 py-1 rounded-full border ${filtroEsp === 'todas' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>Todas ({fmtInt(data.profissionais_lista.length)})</button>
+            {data.profissionais.por_especialidade.map((e) => (
+              <button key={e.especialidade} onClick={() => setFiltroEsp(e.especialidade)} className={`text-[11px] px-2.5 py-1 rounded-full border ${filtroEsp === e.especialidade ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>
+                {labelEsp(e.especialidade)} ({fmtInt(e.total)})
+              </button>
+            ))}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto max-h-[28rem] overflow-y-auto">
+            <table className="w-full text-sm min-w-[720px]">
+              <thead className="sticky top-0 bg-card">
+                <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                  <th className="py-2 pr-3">Profissional</th>
+                  <th className="py-2 pr-3">Valência</th>
+                  <th className="py-2 pr-3">De onde</th>
+                  <th className="py-2 pr-3">Plano</th>
+                  <th className="py-2 pr-3">Assinatura</th>
+                  <th className="py-2 pr-3">Cadastro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {profFiltrados.map((p) => (
+                  <tr key={p.id} className="border-b border-border/50 align-top">
+                    <td className="py-2 pr-3">
+                      <div className="font-medium">{p.nome}</div>
+                      <div className="text-[11px] text-muted-foreground">{p.email || '—'}{p.telefone ? ` · ${p.telefone}` : ''}</div>
+                      {p.crefito && <div className="text-[10px] text-muted-foreground">{p.crefito}</div>}
+                    </td>
+                    <td className="py-2 pr-3">{labelEsp(p.especialidade)}</td>
+                    <td className="py-2 pr-3">
+                      {p.cidade || p.uf ? <span>{[p.cidade, p.uf].filter(Boolean).join(' / ')}</span> : <span className="text-muted-foreground">—</span>}
+                      {p.clinica && <div className="text-[11px] text-muted-foreground">{p.clinica}</div>}
+                    </td>
+                    <td className="py-2 pr-3">{p.plano}</td>
+                    <td className="py-2 pr-3"><StatusAssinatura status={p.status_assinatura} /></td>
+                    <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{p.cadastrado_em ? new Date(p.cadastrado_em).toLocaleDateString('pt-BR') : '—'}</td>
+                  </tr>
+                ))}
+                {profFiltrados.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-muted-foreground text-xs">Nenhum profissional encontrado.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">"De onde" vem da configuração da clínica (cidade/UF) de cada profissional — fica vazio para quem ainda não preencheu.</p>
+        </CardContent>
+      </Card>
 
       {/* Planos (gerenciar preço/ativo) */}
       <Card>

@@ -92,20 +92,22 @@ Deno.serve(async (req) => {
     const umAnoAtras = new Date(Date.now() - 365 * 24 * 3600_000).toISOString();
 
     const [
-      clinicasRes, membrosRes, profilesRes, assinRes, planosRes, wellnessRes, vendasRes,
+      clinicasRes, membrosRes, profilesRes, assinRes, planosRes, wellnessRes, vendasRes, configRes,
     ] = await Promise.all([
       admin.from("clinicas").select("id, nome, ativa, limite_profissionais, dono_user_id, created_at"),
       admin.from("clinica_membros").select("clinica_id, user_id"),
-      admin.from("profiles").select("id, perfil_profissional, created_at"),
+      admin.from("profiles").select("id, user_id, nome, sobrenome, email, telefone, perfil_profissional, especialidade, crefito, created_at"),
       admin.from("assinaturas").select("id, user_id, plano_id, status, origem, data_inicio, data_fim, created_at"),
       admin.from("planos").select("id, nome, descricao, preco_mensal, ativo, stripe_price_id, created_at").order("preco_mensal", { ascending: true }),
       admin.from("wellness_assinaturas").select("id, status, provider, valor_mensal, data_inicio, proxima_cobranca, created_at"),
       admin.from("vendas").select("valor_total, forma_pagamento, status, data_venda").gte("data_venda", umAnoAtras),
+      admin.from("config_clinica").select("terapeuta_id, cidade, uf, razao_social"),
     ]);
 
     const clinicas = clinicasRes.data || [];
     const membros = membrosRes.data || [];
     const profiles = profilesRes.data || [];
+    const configs = configRes.data || [];
     const assinaturas = assinRes.data || [];
     const planos = planosRes.data || [];
     const wellness = wellnessRes.data || [];
@@ -137,6 +139,41 @@ Deno.serve(async (req) => {
       ativos: assinAtivasUserIds.size, // com assinatura ativa
       por_especialidade: Object.entries(porEspecialidade).map(([k, v]) => ({ especialidade: k, total: v })).sort((a, b) => b.total - a.total),
     };
+
+    // ── Lista de profissionais (quem são, de onde são, plano/status) ──
+    const configByTerapeuta: Record<string, any> = {};
+    configs.forEach((c: any) => { configByTerapeuta[c.terapeuta_id] = c; });
+    // Melhor assinatura por usuário: prioriza 'ativa', senão a mais recente.
+    const assinByUser: Record<string, any> = {};
+    assinaturas.forEach((a: any) => {
+      const cur = assinByUser[a.user_id];
+      if (!cur) { assinByUser[a.user_id] = a; return; }
+      if (a.status === "ativa" && cur.status !== "ativa") { assinByUser[a.user_id] = a; return; }
+      if ((a.data_inicio || a.created_at) > (cur.data_inicio || cur.created_at) && !(cur.status === "ativa" && a.status !== "ativa")) {
+        assinByUser[a.user_id] = a;
+      }
+    });
+    const profissionaisLista = profiles.map((p: any) => {
+      const cfg = configByTerapeuta[p.user_id];
+      const assin = assinByUser[p.user_id];
+      const plano = assin ? planoById[assin.plano_id] : null;
+      const nomeCompleto = [p.nome, p.sobrenome].filter(Boolean).join(" ").trim() || "(sem nome)";
+      return {
+        id: p.user_id,
+        nome: nomeCompleto,
+        email: p.email || "",
+        telefone: p.telefone || "",
+        especialidade: p.perfil_profissional || "fisioterapeuta",
+        especialidade_texto: p.especialidade || "",
+        crefito: p.crefito || "",
+        cidade: cfg?.cidade || "",
+        uf: cfg?.uf || "",
+        clinica: cfg?.razao_social || "",
+        plano: plano?.nome || "—",
+        status_assinatura: assin?.status || "sem assinatura",
+        cadastrado_em: p.created_at,
+      };
+    }).sort((a, b) => (b.cadastrado_em || "").localeCompare(a.cadastrado_em || ""));
 
     // ── Assinaturas de profissionais ──
     const assinPorStatus: Record<string, number> = {};
@@ -201,6 +238,7 @@ Deno.serve(async (req) => {
       },
       clinicas: clinicasResumo,
       profissionais: profissionaisResumo,
+      profissionais_lista: profissionaisLista,
       assinaturas_profissionais: {
         por_status: assinPorStatus,
         mrr: Math.round(mrrProfissionais * 100) / 100,

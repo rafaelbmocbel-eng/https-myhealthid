@@ -12,6 +12,12 @@ export interface AdminMetrics {
   };
   clinicas: { total: number; ativas: number; lista: Array<{ id: string; nome: string; ativa: boolean; profissionais: number; limite: number }> };
   profissionais: { total: number; ativos: number; por_especialidade: Array<{ especialidade: string; total: number }> };
+  profissionais_lista: Array<{
+    id: string; nome: string; email: string; telefone: string;
+    especialidade: string; especialidade_texto: string; crefito: string;
+    cidade: string; uf: string; clinica: string;
+    plano: string; status_assinatura: string; cadastrado_em: string;
+  }>;
   assinaturas_profissionais: { por_status: Record<string, number>; mrr: number; por_plano: Array<{ nome: string; ativas: number; mrr: number }> };
   assinaturas_alunos: { por_status: Record<string, number>; mrr: number; inadimplentes: number };
   evolucao_mensal: Array<{ mes: string; profissionais: number; alunos: number }>;
