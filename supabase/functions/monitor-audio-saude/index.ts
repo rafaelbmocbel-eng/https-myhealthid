@@ -132,7 +132,60 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ── Check 2: PONTA A PONTA pela própria voice-assessment ──────────────
+  // Testa a função inteira (auth-bypass de health-check + geração clínica
+  // estruturada), não só o motor Gemini. Usa um transcript curto (o motor de
+  // áudio já é coberto pelo Check 1), exercitando o Pass 2 de forma determinística.
+  let e2eOk = false, e2eHttp = 0, e2eErr: string | null = null, e2eSkipped = false;
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const CRON_SECRET = Deno.env.get("CRON_SECRET");
+  if (!GEMINI_API_KEY) {
+    e2eSkipped = true; e2eErr = "e2e pulado (sem GEMINI_API_KEY)";
+  } else if (!SUPABASE_URL || !SERVICE_KEY || !CRON_SECRET) {
+    // Sem config não dá pra rodar o e2e — PULA (não é falha do serviço, não alarma).
+    e2eSkipped = true; e2eErr = "e2e pulado (falta SUPABASE_URL/SERVICE_ROLE/CRON_SECRET)";
+  } else {
+    try {
+      const ctrl2 = new AbortController();
+      const t2 = setTimeout(() => ctrl2.abort(), 110_000);
+      const r2 = await fetch(`${SUPABASE_URL}/functions/v1/voice-assessment`, {
+        method: "POST",
+        signal: ctrl2.signal,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_KEY}`,
+          "x-healthcheck": CRON_SECRET,
+        },
+        body: JSON.stringify({
+          healthcheck: true,
+          transcript: "Health-check: paciente relata dor lombar mecânica há 3 meses, piora ao sentar, sem irradiação.",
+          perfilProfissional: "fisioterapeuta",
+        }),
+      });
+      clearTimeout(t2);
+      e2eHttp = r2.status;
+      if (r2.ok) {
+        const d = await r2.json().catch(() => null);
+        if (d && d.assessment) e2eOk = true;
+        else e2eErr = `200 sem 'assessment' (resposta inesperada): ${JSON.stringify(d).slice(0, 200)}`;
+      } else {
+        const b = await r2.text().catch(() => "");
+        e2eErr = `voice-assessment ${r2.status}: ${b.slice(0, 300)}`;
+      }
+    } catch (e) {
+      e2eErr = `Exceção e2e: ${(e as Error)?.message || String(e)}`;
+    }
+  }
+
   const latencia = Date.now() - inicio;
+
+  // Resultado combinado: o pipeline está "verde" se o motor está OK e a função
+  // está OK (ou foi PULADA por falta de config — pular não é falha do serviço).
+  const overallOk = ok && (e2eSkipped || e2eOk);
+  const overallErr =
+    [erro ? `motor: ${erro}` : null, e2eErr ? `função(${e2eHttp || "-"}): ${e2eErr}` : null]
+      .filter(Boolean).join(" | ") || null;
 
   // Estado anterior (para detectar transição e evitar spam de alerta).
   const { data: anterior } = await admin
@@ -143,50 +196,55 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const estadoAnterior: boolean | null = anterior ? anterior.ok : null;
 
-  // Grava o resultado deste check.
+  // Grava o resultado deste check (pipeline completo).
   await admin.from("audio_health_checks").insert({
-    component: "gemini-audio",
-    ok, http_status: httpStatus || null, latency_ms: latencia, error: erro, sample: amostra,
+    component: "audio-pipeline",
+    ok: overallOk, http_status: httpStatus || null, latency_ms: latencia, error: overallErr, sample: amostra,
   });
 
-  // Alertas por transição.
+  // Alertas por transição (no pipeline completo: motor + função).
   const agoraBRT = new Date(Date.now() - 3 * 3600_000).toISOString().replace("T", " ").slice(0, 16);
-  if (!ok && estadoAnterior !== false) {
+  if (!overallOk && estadoAnterior !== false) {
     // caiu agora (antes estava ok, ou é o primeiro check e já falhou)
     await enviarAlertaEmail(
       "🔴 Áudio fora do ar — avaliação por áudio pode não funcionar",
       `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;color:#0f172a">
         <h2 style="color:#b91c1c;margin:0 0 8px">Pipeline de áudio falhou</h2>
-        <p>O health-check do motor de transcrição (Gemini) <b>falhou</b>. Funções que dependem de áudio — incluindo a <b>avaliação presencial por áudio</b> e a transcrição de WhatsApp — podem estar fora do ar.</p>
+        <p>O health-check do pipeline de áudio <b>falhou</b> (motor de transcrição e/ou a função de avaliação). Funções que dependem de áudio — incluindo a <b>avaliação presencial por áudio</b> e a transcrição de WhatsApp — podem estar fora do ar.</p>
         <table style="border-collapse:collapse;margin:10px 0">
           <tr><td style="padding:2px 10px 2px 0;color:#64748b">Quando</td><td><b>${agoraBRT} (BRT)</b></td></tr>
-          <tr><td style="padding:2px 10px 2px 0;color:#64748b">HTTP</td><td>${httpStatus || "—"}</td></tr>
-          <tr><td style="padding:2px 10px 2px 0;color:#64748b">Erro</td><td><code>${(erro || "").replace(/</g, "&lt;")}</code></td></tr>
+          <tr><td style="padding:2px 10px 2px 0;color:#64748b">Motor (Gemini)</td><td>${ok ? "OK" : "FALHOU"}</td></tr>
+          <tr><td style="padding:2px 10px 2px 0;color:#64748b">Função (voice-assessment)</td><td>${e2eSkipped ? "PULADO" : e2eOk ? "OK" : "FALHOU"}</td></tr>
+          <tr><td style="padding:2px 10px 2px 0;color:#64748b">Erro</td><td><code>${(overallErr || "").replace(/</g, "&lt;")}</code></td></tr>
           <tr><td style="padding:2px 10px 2px 0;color:#64748b">Latência</td><td>${latencia} ms</td></tr>
         </table>
         <p style="color:#64748b">Você recebe este e-mail uma vez por incidente (não a cada verificação). Um novo e-mail chega quando o serviço voltar.</p>
       </div>`,
     );
-  } else if (ok && estadoAnterior === false) {
+  } else if (overallOk && estadoAnterior === false) {
     // voltou ao normal
     await enviarAlertaEmail(
-      "✅ Áudio normalizado — transcrição voltou a funcionar",
+      "✅ Áudio normalizado — avaliação por áudio voltou a funcionar",
       `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;color:#0f172a">
         <h2 style="color:#15803d;margin:0 0 8px">Pipeline de áudio recuperado</h2>
-        <p>O motor de transcrição voltou a responder normalmente em <b>${agoraBRT} (BRT)</b> (latência ${latencia} ms).</p>
+        <p>O pipeline de áudio (motor + função) voltou a responder normalmente em <b>${agoraBRT} (BRT)</b> (latência ${latencia} ms).</p>
       </div>`,
     );
   }
 
   return new Response(JSON.stringify({
-    ok,
+    ok: overallOk,
+    motor_ok: ok,
+    funcao_ok: e2eOk,
+    funcao_pulada: e2eSkipped,
     http_status: httpStatus || null,
+    e2e_http_status: e2eHttp || null,
     latency_ms: latencia,
-    error: erro,
+    error: overallErr,
     sample: amostra,
     estado_anterior: estadoAnterior,
-    diagnostico: ok
-      ? "Motor de áudio OK — endpoint aceitou o áudio e respondeu."
-      : "Motor de áudio FALHOU — veja 'error' para a causa real (400=formato/endpoint, 401/403=chave, 429=quota, 5xx=Google).",
+    diagnostico: overallOk
+      ? "Pipeline de áudio OK — motor Gemini e função voice-assessment responderam."
+      : "Pipeline de áudio FALHOU — veja 'error'. motor_ok/funcao_ok indicam em qual metade (400=formato, 401/403=chave, 429=quota, 5xx=Google; função pode falhar no Pass 2/estruturação).",
   }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });

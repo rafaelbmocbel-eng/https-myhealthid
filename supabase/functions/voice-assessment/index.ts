@@ -354,8 +354,16 @@ Deno.serve(async (req) => {
   const SUPABASE_URL_J = Deno.env.get("SUPABASE_URL") ?? "";
   const SERVICE_KEY_J  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+  // Modo health-check do Guardião de Áudio: exercita a função de ponta a ponta
+  // sem usuário logado. Só é aceito com o header x-healthcheck === CRON_SECRET
+  // (segredo do servidor), e nunca toca dados de paciente (sem pacienteId/jobId).
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const isHealthcheck = !!cronSecret && req.headers.get("x-healthcheck") === cronSecret;
+
   try {
-    try { await requireUser(req); } catch (r) { return r as Response; }
+    if (!isHealthcheck) {
+      try { await requireUser(req); } catch (r) { return r as Response; }
+    }
     const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional, patientContext, jobId, appendAudio } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
