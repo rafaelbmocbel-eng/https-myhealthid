@@ -65,6 +65,27 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Ação de escrita: remover um plano descontinuado ──
+    if (action === "delete_plano") {
+      const { id } = body;
+      if (!id) return new Response(JSON.stringify({ error: "id do plano ausente" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Trava de segurança: nunca remove um plano com assinatura ATIVA.
+      const { count, error: cErr } = await admin
+        .from("assinaturas")
+        .select("id", { count: "exact", head: true })
+        .eq("plano_id", id)
+        .eq("status", "ativa");
+      if (cErr) throw cErr;
+      if ((count || 0) > 0) {
+        return new Response(JSON.stringify({ error: `Não dá pra remover: há ${count} assinatura(s) ativa(s) neste plano. Migre-as antes.` }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error } = await admin.from("planos").delete().eq("id", id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── Leitura: agrega tudo ──
     const nowIso = new Date().toISOString();
     const meses = ultimos12Meses(nowIso);

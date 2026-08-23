@@ -10,9 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
-import { useAdminMetrics, atualizarPlano } from '@/hooks/useAdminMetrics';
+import { useAdminMetrics, atualizarPlano, removerPlano } from '@/hooks/useAdminMetrics';
 import {
-  Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign,
+  Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2,
 } from 'lucide-react';
 
 const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -59,8 +59,23 @@ export default function Admin() {
   const qc = useQueryClient();
   const [precos, setPrecos] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState<string | null>(null);
+  const [confirmarRemover, setConfirmarRemover] = useState<string | null>(null);
 
   if (!isSuper) return <Navigate to="/hoje" replace />;
+
+  const removerPlanoHandler = async (id: string) => {
+    setSalvando(id);
+    try {
+      await removerPlano(id);
+      await qc.invalidateQueries({ queryKey: ['admin-metrics'] });
+      toast({ title: 'Plano removido' });
+    } catch (e: any) {
+      toast({ title: 'Não foi possível remover', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSalvando(null);
+      setConfirmarRemover(null);
+    }
+  };
 
   const salvarPlano = async (id: string, ativoAtual: boolean, novoAtivo?: boolean) => {
     setSalvando(id);
@@ -217,6 +232,18 @@ export default function Admin() {
                         <Button size="sm" variant="ghost" className="h-8 text-xs ml-1" disabled={salvando === p.id} onClick={() => salvarPlano(p.id, p.ativo, !p.ativo)}>
                           {p.ativo ? 'Desativar' : 'Ativar'}
                         </Button>
+                        {confirmarRemover === p.id ? (
+                          <>
+                            <Button size="sm" variant="destructive" className="h-8 text-xs ml-1" disabled={salvando === p.id} onClick={() => removerPlanoHandler(p.id)}>
+                              {salvando === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Confirmar'}
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-8 text-xs ml-1" disabled={salvando === p.id} onClick={() => setConfirmarRemover(null)}>Cancelar</Button>
+                          </>
+                        ) : (
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 ml-1 text-muted-foreground hover:text-destructive" title="Remover plano" onClick={() => setConfirmarRemover(p.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   );

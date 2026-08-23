@@ -43,3 +43,24 @@ export async function atualizarPlano(patch: { id: string; nome?: string; preco_m
   if ((data as any)?.error) throw new Error((data as any).error);
   return data;
 }
+
+/** Remove um plano descontinuado (trava: recusa se houver assinatura ativa). */
+export async function removerPlano(id: string) {
+  const { data, error } = await supabase.functions.invoke('admin-metrics', {
+    body: { action: 'delete_plano', id },
+  });
+  if (error) {
+    // supabase-js embrulha não-2xx; tenta extrair a mensagem real do corpo.
+    let msg = error.message;
+    try {
+      const ctx = (error as any).context;
+      if (ctx && typeof ctx.json === 'function') {
+        const b = await ctx.json();
+        if (b?.error) msg = b.error;
+      }
+    } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data;
+}
