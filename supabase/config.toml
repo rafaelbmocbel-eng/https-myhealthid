@@ -33,3 +33,6 @@ verify_jwt = false
 
 [functions.wearable-alert-monitor]
 verify_jwt = false
+
+[functions.monitor-audio-saude]
+verify_jwt = false

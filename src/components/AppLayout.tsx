@@ -26,6 +26,7 @@ import QuickActions from './QuickActions';
 import ThemeToggle from './ThemeToggle';
 import NotificationCenter from './NotificationCenter';
 import TrialBanner from './TrialBanner';
+import AudioHealthBanner from './AudioHealthBanner';
 import AppFooter from './AppFooter';
 
 import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
@@ -189,6 +190,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         <TrialBanner />
+        <AudioHealthBanner />
 
         <main
           className={cn(
