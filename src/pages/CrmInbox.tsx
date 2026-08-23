@@ -1102,7 +1102,7 @@ function TemplatesManager({ open, onOpenChange }: { open: boolean; onOpenChange:
                     onClick={() => setEdit({ id: t.id, atalho: t.atalho, titulo: t.titulo, conteudo: t.conteudo })}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-1.5 text-destructive hover:text-destructive"
+                  <Button size="sm" variant="ghost" aria-label="Remover" title="Remover" disabled={remover.isPending} className="h-7 px-1.5 text-destructive hover:text-destructive"
                     onClick={async () => { await remover.mutateAsync(t.id); toast.success('Removido'); }}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -1181,7 +1181,7 @@ function NotasButton({ conversaId }: { conversaId: string }) {
         <div className="mt-4 space-y-3">
           <div className="flex gap-2">
             <Textarea placeholder="Nota privada sobre este contato..." value={nova} onChange={e => setNova(e.target.value)} rows={2} />
-            <Button size="sm" onClick={async () => { if (nova.trim()) { await adicionar.mutateAsync(nova.trim()); setNova(''); } }}>
+            <Button size="sm" aria-label="Adicionar nota" title="Adicionar nota" disabled={adicionar.isPending} onClick={async () => { if (nova.trim()) { await adicionar.mutateAsync(nova.trim()); setNova(''); } }}>
               <Plus className="h-4 w-4" />
             </Button>
           </div>

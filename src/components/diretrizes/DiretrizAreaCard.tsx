@@ -237,7 +237,7 @@ export default function DiretrizAreaCard({
                 )}
                 {diretriz && !diretriz.enviada_portal && (
                   <>
-                    <Button className="w-full" disabled={chancela.loading || !chancela.pode}
+                    <Button className="w-full" disabled={chancela.loading || !chancela.pode || enviarPortal.isPending}
                       onClick={() => { enviarPortal.mutate(true); setView(false); }}>
                       <Send className="icon-sm mr-2" /> Revisei — enviar ao portal do cliente
                     </Button>
