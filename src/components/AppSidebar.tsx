@@ -3,10 +3,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   CalendarDays, Users,
   Settings, LogOut, User, MessageCircle,
-  Sun, DollarSign, Store, Dumbbell, ClipboardList, type LucideIcon,
+  Sun, DollarSign, Store, Dumbbell, ClipboardList, TrendingUp, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
@@ -43,7 +44,12 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
   const { servicos } = useServicosAtivos();
   const { pendingCount: vitrinePending } = useVitrineNotifications();
 
-  const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
+  const isSuperAdmin = useIsSuperAdmin();
+  const visibleItems = [
+    ...NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]),
+    // Painel administrativo (vendas/uso) — só o dono do produto vê.
+    ...(isSuperAdmin ? [{ label: 'Admin', href: '/admin', icon: TrendingUp } as typeof NAV_ITEMS[number]] : []),
+  ];
 
   const isActive = (href: string) =>
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);

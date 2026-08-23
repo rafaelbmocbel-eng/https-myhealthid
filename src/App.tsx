@@ -41,6 +41,7 @@ const AvaliacaoPublica = lazyWithRetry(() => import("./pages/AvaliacaoPublica"))
 const AgendaPublica = lazyWithRetry(() => import("./pages/AgendaPublica"));
 const Configuracoes = lazyWithRetry(() => import("./pages/Configuracoes"));
 const MinhaClinica = lazyWithRetry(() => import("./pages/MinhaClinica"));
+const Admin = lazyWithRetry(() => import("./pages/Admin"));
 const AceitarConviteClinica = lazyWithRetry(() => import("./pages/AceitarConviteClinica"));
 const LayoutEditor = lazyWithRetry(() => import("./pages/LayoutEditor"));
 const EditarPaciente = lazyWithRetry(() => import("./pages/EditarPaciente"));
@@ -202,6 +203,7 @@ const App = () => (
                 <Route path="/portaldocliente/completar/:token" element={<CompletarCadastro />} />
                 <Route path="/configuracoes" element={<ProfessionalGuard><Configuracoes /></ProfessionalGuard>} />
                 <Route path="/clinica" element={<ProfessionalGuard><MinhaClinica /></ProfessionalGuard>} />
+                <Route path="/admin" element={<ProfessionalGuard><Admin /></ProfessionalGuard>} />
                 <Route path="/clinica/convite/:token" element={<AceitarConviteClinica />} />
                 <Route path="/configuracoes/exportar" element={<ProfessionalGuard><ExportarDados /></ProfessionalGuard>} />
                 <Route path="/configuracoes/layout" element={<ProfessionalGuard><LayoutEditor /></ProfessionalGuard>} />
