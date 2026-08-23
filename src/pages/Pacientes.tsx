@@ -463,9 +463,9 @@ export default function Pacientes() {
       // 🔵 Recorrente: has 3+ sessions
       if (totalSessoes >= 3) return 'recorrente';
 
-      // 🟢 Cliente novo: cadastrado há menos de 60 dias, tem alguma sessão ou avaliação
+      // 🟢 Cliente novo: cadastrado há até 30 dias, tem alguma sessão ou avaliação
       const diasCadastro = differenceInDays(new Date(), new Date(createdAt));
-      if (diasCadastro <= 60 && (hasAvaliacao || hasAgendamento || totalSessoes > 0)) return 'novo';
+      if (diasCadastro <= 30 && (hasAvaliacao || hasAgendamento || totalSessoes > 0)) return 'novo';
 
       // 🟡 Lead: sem sessões, sem avaliação
       return 'lead';

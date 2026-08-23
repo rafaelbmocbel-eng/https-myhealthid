@@ -32,7 +32,10 @@ export default function PacienteFinanceiroTab({ pacienteId, pacienteNome }: Prop
   const [statusPag, setStatusPag] = useState('pendente');
 
   const { data: pagamentos = [], isLoading } = useQuery({
-    queryKey: ['pagamentos-perfil', pacienteId],
+    // Chave própria (lista completa). O perfil usa 'pagamentos-perfil-resumo'
+    // com colunas mínimas — chaves separadas evitam colisão de cache (a query
+    // magra do perfil não pode sobrescrever as colunas desta lista).
+    queryKey: ['pagamentos-perfil-full', pacienteId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pagamentos_paciente')
@@ -64,7 +67,8 @@ export default function PacienteFinanceiroTab({ pacienteId, pacienteNome }: Prop
       setValor('');
       setStatusPag('pendente');
       setShowForm(false);
-      qc.invalidateQueries({ queryKey: ['pagamentos-perfil', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['pagamentos-perfil-full', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['pagamentos-perfil-resumo', pacienteId] });
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
     } finally {
@@ -81,7 +85,8 @@ export default function PacienteFinanceiroTab({ pacienteId, pacienteNome }: Prop
         .eq('id', pagId);
       if (error) throw error;
       toast({ title: newStatus === 'confirmado' ? 'Marcado como pago ✅' : 'Marcado como pendente' });
-      qc.invalidateQueries({ queryKey: ['pagamentos-perfil', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['pagamentos-perfil-full', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['pagamentos-perfil-resumo', pacienteId] });
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
     }

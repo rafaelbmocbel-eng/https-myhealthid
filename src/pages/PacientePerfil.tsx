@@ -331,7 +331,7 @@ export default function PacientePerfil() {
   });
 
   const { data: pagamentosPac = [] } = useQuery({
-    queryKey: ['pagamentos-perfil', id],
+    queryKey: ['pagamentos-perfil-resumo', id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pagamentos_paciente')
@@ -486,29 +486,12 @@ export default function PacientePerfil() {
     if (!confirm(`EXCLUIR DEFINITIVAMENTE ${paciente.nome} ${paciente.sobrenome}?\n\nIsso apagará TODO o histórico, avaliações, agendamentos e links deste paciente. Esta ação é IRREVERSÍVEL.`)) return;
 
     try {
-      const pId = paciente.id;
-      // Deleção em Cascata
-      await supabase.from('links_avaliacao').delete().eq('paciente_id', pId);
-      await supabase.from('links_agenda_paciente').delete().eq('paciente_id', pId);
-
-      const { data: protos } = await supabase.from('protocolos').select('id').eq('paciente_id', pId);
-      if (protos && protos.length > 0) {
-        const pIds = protos.map(x => x.id);
-        await supabase.from('protocolo_tratamentos').delete().in('protocolo_id', pIds);
-        await supabase.from('protocolos').delete().eq('paciente_id', pId);
-      }
-
-      await supabase.from('respostas_avaliacao_paciente').delete().eq('paciente_id', pId);
-      await supabase.from('avaliacoes_identidade').delete().eq('paciente_id', pId);
-      await supabase.from('avaliacoes_cob_zero').delete().eq('paciente_id', pId);
-      await supabase.from('studio_medidas').delete().eq('paciente_id', pId);
-      await supabase.from('myid_avaliacoes').delete().eq('paciente_id', pId);
-      await supabase.from('agendamentos').delete().eq('paciente_id', pId);
-      await supabase.from('paciente_servicos').delete().eq('paciente_id', pId);
-
-      const { error } = await supabase.from('pacientes').delete().eq('id', pId);
+      // Exclusão ATÔMICA via RPC (mesma usada na lista de Pacientes) — evita a
+      // cascata manual não-atômica que podia deixar o paciente meio apagado.
+      const { error } = await (supabase as any).rpc('excluir_paciente_completo', { p_paciente_id: paciente.id });
       if (error) throw error;
 
+      await qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       toast({ title: 'Paciente excluído definitivamente' });
       navigate('/pacientes');
     } catch (e: any) {
