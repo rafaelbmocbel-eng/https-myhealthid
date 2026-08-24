@@ -45,3 +45,6 @@ verify_jwt = false
 
 [functions.monitor-ia-uso]
 verify_jwt = false
+
+[functions.resumo-parceiro]
+verify_jwt = false

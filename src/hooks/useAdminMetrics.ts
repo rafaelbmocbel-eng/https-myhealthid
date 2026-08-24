@@ -25,17 +25,21 @@ export interface AdminMetrics {
   assinaturas_profissionais: { por_status: Record<string, number>; mrr: number; por_plano: Array<{ nome: string; ativas: number; mrr: number }> };
   assinaturas_alunos: { por_status: Record<string, number>; mrr: number; inadimplentes: number };
   evolucao_mensal: Array<{ mes: string; profissionais: number; alunos: number }>;
-  vendas: { receita_12m: number; por_forma_pagamento: Array<{ forma: string; qtd: number; valor: number }> };
+  periodo?: string;
+  vendas: { receita_12m: number; receita_periodo?: number; novos_profissionais?: number; novos_alunos?: number; por_forma_pagamento: Array<{ forma: string; qtd: number; valor: number }> };
   planos: Array<{ id: string; nome: string; descricao: string | null; preco_mensal: number; ativo: boolean; stripe_price_id: string | null; modulos: string[] }>;
   formas_pagamento: string[];
   cortesias: Array<{ user_id: string; email: string; plano_id: string; plano: string; status: string; data_fim: string | null }>;
+  parceiro_links?: Array<{ id: string; token: string; label: string; ativo: boolean; created_at: string }>;
 }
 
-export function useAdminMetrics() {
+export type PeriodoAdmin = 'mes' | 'trimestre' | 'ano' | '12m';
+
+export function useAdminMetrics(periodo: PeriodoAdmin = '12m') {
   return useQuery({
-    queryKey: ['admin-metrics'],
+    queryKey: ['admin-metrics', periodo],
     queryFn: async (): Promise<AdminMetrics> => {
-      const { data, error } = await supabase.functions.invoke('admin-metrics', { body: {} });
+      const { data, error } = await supabase.functions.invoke('admin-metrics', { body: { periodo } });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       return data as AdminMetrics;
@@ -43,6 +47,30 @@ export function useAdminMetrics() {
     staleTime: 60_000,
     retry: false,
   });
+}
+
+/** Cria um link read-only de parceiro. Retorna o token gerado. */
+export async function criarLinkParceiro(label: string) {
+  const { data, error } = await supabase.functions.invoke('admin-metrics', {
+    body: { action: 'criar_link_parceiro', label },
+  });
+  if (error) {
+    let msg = error.message;
+    try { const ctx = (error as any).context; if (ctx?.json) { const b = await ctx.json(); if (b?.error) msg = b.error; } } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data as { ok: boolean; token: string };
+}
+
+/** Revoga (desativa) um link de parceiro. */
+export async function revogarLinkParceiro(id: string) {
+  const { data, error } = await supabase.functions.invoke('admin-metrics', {
+    body: { action: 'revogar_link_parceiro', id },
+  });
+  if (error) throw error;
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data;
 }
 
 /** Atualiza um plano (preço/nome/ativo) via admin-metrics. */

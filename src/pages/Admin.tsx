@@ -10,11 +10,18 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
-import { useAdminMetrics, atualizarPlano, removerPlano, concederPlano, revogarCortesia, grandfatherTodos } from '@/hooks/useAdminMetrics';
+import { useAdminMetrics, atualizarPlano, removerPlano, concederPlano, revogarCortesia, grandfatherTodos, criarLinkParceiro, revogarLinkParceiro, type PeriodoAdmin } from '@/hooks/useAdminMetrics';
 import { MODULOS_CATALOGO, MODULOS_KEYS } from '@/lib/modulosPlano';
 import {
-  Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2, Layers, Check, Gift, X,
+  Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2, Layers, Check, Gift, X, Link2, Copy,
 } from 'lucide-react';
+
+const PERIODOS: { valor: PeriodoAdmin; rotulo: string }[] = [
+  { valor: 'mes', rotulo: 'Este mês' },
+  { valor: 'trimestre', rotulo: 'Trimestre' },
+  { valor: 'ano', rotulo: 'Este ano' },
+  { valor: '12m', rotulo: '12 meses' },
+];
 
 const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtInt = (n: number) => n.toLocaleString('pt-BR');
@@ -71,7 +78,8 @@ const tooltipStyle = {
 
 export default function Admin() {
   const isSuper = useIsSuperAdmin();
-  const { data, isLoading, error, refetch, isFetching } = useAdminMetrics();
+  const [periodo, setPeriodo] = useState<PeriodoAdmin>('12m');
+  const { data, isLoading, error, refetch, isFetching } = useAdminMetrics(periodo);
   const { toast } = useToast();
   const qc = useQueryClient();
   const [precos, setPrecos] = useState<Record<string, string>>({});
@@ -92,6 +100,10 @@ export default function Admin() {
   const [gfPlano, setGfPlano] = useState('');
   const [gfConfirmar, setGfConfirmar] = useState(false);
   const [gfRodando, setGfRodando] = useState(false);
+  // Links de parceiro
+  const [parceiroLabel, setParceiroLabel] = useState('');
+  const [criandoLink, setCriandoLink] = useState(false);
+  const [copiado, setCopiado] = useState<string | null>(null);
 
   if (!isSuper) return <Navigate to="/hoje" replace />;
 
@@ -121,6 +133,40 @@ export default function Admin() {
       toast({ title: 'Não consegui aplicar', description: e?.message, variant: 'destructive' });
     } finally {
       setGfRodando(false);
+    }
+  };
+  const urlParceiro = (token: string) => `${window.location.origin}/parceiro/${token}`;
+  const criarLink = async () => {
+    if (!parceiroLabel.trim()) { toast({ title: 'Dê um nome ao link', variant: 'destructive' }); return; }
+    setCriandoLink(true);
+    try {
+      await criarLinkParceiro(parceiroLabel.trim());
+      await qc.invalidateQueries({ queryKey: ['admin-metrics'] });
+      toast({ title: 'Link criado 🔗', description: parceiroLabel.trim() });
+      setParceiroLabel('');
+    } catch (e: any) {
+      toast({ title: 'Não consegui criar', description: e?.message, variant: 'destructive' });
+    } finally {
+      setCriandoLink(false);
+    }
+  };
+  const copiarLink = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(urlParceiro(token));
+      setCopiado(token);
+      setTimeout(() => setCopiado((c) => (c === token ? null : c)), 2000);
+    } catch {
+      // clipboard pode falhar em contexto sem permissão — mostra o link para copiar à mão
+      toast({ title: 'Copie o link', description: urlParceiro(token) });
+    }
+  };
+  const revogarLink = async (id: string, label: string) => {
+    try {
+      await revogarLinkParceiro(id);
+      await qc.invalidateQueries({ queryKey: ['admin-metrics'] });
+      toast({ title: 'Link revogado', description: label });
+    } catch (e: any) {
+      toast({ title: 'Erro ao revogar', description: e?.message, variant: 'destructive' });
     }
   };
   const revogar = async (c: { user_id: string; plano_id: string; email: string }) => {
@@ -216,9 +262,19 @@ export default function Admin() {
           <h1 className="text-2xl font-black flex items-center gap-2"><TrendingUp className="h-6 w-6 text-primary" /> Painel Administrativo</h1>
           <p className="text-sm text-muted-foreground">Vendas, uso e assinaturas do app · atualizado {new Date(data.gerado_em).toLocaleString('pt-BR')}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
+            {PERIODOS.map((p) => (
+              <button key={p.valor} onClick={() => setPeriodo(p.valor)}
+                className={`text-xs font-medium px-2.5 py-1 rounded-md transition-colors ${periodo === p.valor ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                {p.rotulo}
+              </button>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -228,7 +284,7 @@ export default function Admin() {
         <Kpi icon={Users} label="Profissionais ativos" valor={fmtInt(r.profissionais_ativos)} sub={`${fmtInt(r.profissionais_total)} cadastrados`} />
         <Kpi icon={GraduationCap} label="Alunos ativos" valor={fmtInt(r.alunos_ativos)} sub={`${fmtInt(r.alunos_total)} no total`} />
         <Kpi icon={AlertTriangle} label="Inadimplentes" valor={fmtInt(r.inadimplentes)} sub="assinaturas de alunos" tom={r.inadimplentes > 0 ? 'warn' : 'default'} />
-        <Kpi icon={CreditCard} label="Vendas (12m)" valor={fmtBRL(r.receita_vendas_12m)} sub="registradas por profissionais" />
+        <Kpi icon={CreditCard} label={`Vendas (${PERIODOS.find((p) => p.valor === periodo)?.rotulo})`} valor={fmtBRL(data.vendas.receita_periodo ?? r.receita_vendas_12m)} sub={`${fmtInt(data.vendas.novos_profissionais ?? 0)} novos pro · ${fmtInt(data.vendas.novos_alunos ?? 0)} novos alunos`} />
       </div>
 
       {/* Gráficos */}
@@ -537,6 +593,44 @@ export default function Admin() {
                 ))}
               </div>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Links read-only para parceiros de vendas */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2"><Link2 className="h-4 w-4 text-primary" /> Links para parceiros (resumo read-only)</CardTitle>
+          <p className="text-[11px] text-muted-foreground mt-1">Gera um link público com o <b>resumo de negócio</b> (faturamento, nº de clínicas, profissionais e alunos). <b>Não</b> dá acesso ao app nem mostra nenhum dado de paciente. Revogável a qualquer momento.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Nome do parceiro / campanha</label>
+              <Input value={parceiroLabel} onChange={(e) => setParceiroLabel(e.target.value)} placeholder="Ex.: João (afiliado)" className="h-9 text-sm" />
+            </div>
+            <Button size="sm" className="h-9 gap-1.5" onClick={criarLink} disabled={criandoLink}>
+              {criandoLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />} Gerar link
+            </Button>
+          </div>
+
+          {(data.parceiro_links || []).filter((l) => l.ativo).length > 0 ? (
+            <div className="space-y-1">
+              {(data.parceiro_links || []).filter((l) => l.ativo).map((l) => (
+                <div key={l.id} className="flex items-center gap-2 text-sm rounded-md border border-border/40 px-2.5 py-1.5">
+                  <span className="font-medium shrink-0">{l.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground font-mono">/parceiro/{l.token.slice(0, 12)}…</span>
+                  <button onClick={() => copiarLink(l.token)} title="Copiar link" className="h-7 px-2 inline-flex items-center gap-1 rounded-md text-muted-foreground hover:text-foreground shrink-0">
+                    {copiado === l.token ? <><Check className="h-3.5 w-3.5 text-emerald-600" /> <span className="text-[11px]">Copiado</span></> : <><Copy className="h-3.5 w-3.5" /> <span className="text-[11px]">Copiar</span></>}
+                  </button>
+                  <button onClick={() => revogarLink(l.id, l.label)} title="Revogar" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive shrink-0">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">Nenhum link ativo. Crie um acima para compartilhar o resumo com um parceiro.</p>
           )}
         </CardContent>
       </Card>

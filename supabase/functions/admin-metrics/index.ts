@@ -136,13 +136,42 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Ação: CRIAR link read-only para parceiro ──
+    if (action === "criar_link_parceiro") {
+      const label = String(body?.label || "").trim();
+      if (!label) return new Response(JSON.stringify({ error: "Dê um nome ao link (ex.: nome do parceiro)." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const bytes = new Uint8Array(24);
+      crypto.getRandomValues(bytes);
+      const tokenGerado = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const { error } = await admin.from("parceiro_links").insert({ token: tokenGerado, label, ativo: true });
+      if (error) throw error;
+      return new Response(JSON.stringify({ ok: true, token: tokenGerado }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Ação: REVOGAR link de parceiro ──
+    if (action === "revogar_link_parceiro") {
+      const { id } = body;
+      if (!id) return new Response(JSON.stringify({ error: "id do link ausente" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { error } = await admin.from("parceiro_links").update({ ativo: false }).eq("id", id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── Leitura: agrega tudo ──
     const nowIso = new Date().toISOString();
     const meses = ultimos12Meses(nowIso);
+    // Filtro de período (afeta VENDAS e "novos no período"). MRR é sempre o atual.
+    const periodo = String(body?.periodo || "12m");
+    const agoraMs = Date.now();
+    const dNow = new Date(agoraMs);
+    let inicioPeriodoIso = new Date(agoraMs - 365 * 24 * 3600_000).toISOString();
+    if (periodo === "mes") inicioPeriodoIso = new Date(Date.UTC(dNow.getUTCFullYear(), dNow.getUTCMonth(), 1)).toISOString();
+    else if (periodo === "trimestre") inicioPeriodoIso = new Date(Date.UTC(dNow.getUTCFullYear(), dNow.getUTCMonth() - 2, 1)).toISOString();
+    else if (periodo === "ano") inicioPeriodoIso = new Date(Date.UTC(dNow.getUTCFullYear(), 0, 1)).toISOString();
     const umAnoAtras = new Date(Date.now() - 365 * 24 * 3600_000).toISOString();
 
     const [
-      clinicasRes, membrosRes, profilesRes, assinRes, planosRes, wellnessRes, vendasRes, configRes,
+      clinicasRes, membrosRes, profilesRes, assinRes, planosRes, wellnessRes, vendasRes, configRes, parceiroLinksRes,
     ] = await Promise.all([
       admin.from("clinicas").select("id, nome, ativa, limite_profissionais, dono_user_id, created_at"),
       admin.from("clinica_membros").select("clinica_id, user_id"),
@@ -152,6 +181,7 @@ Deno.serve(async (req) => {
       admin.from("wellness_assinaturas").select("id, status, provider, valor_mensal, data_inicio, proxima_cobranca, created_at"),
       admin.from("vendas").select("valor_total, forma_pagamento, status, data_venda").gte("data_venda", umAnoAtras),
       admin.from("config_clinica").select("terapeuta_id, cidade, uf, razao_social"),
+      admin.from("parceiro_links").select("id, token, label, ativo, created_at").order("created_at", { ascending: false }),
     ]);
 
     const clinicas = clinicasRes.data || [];
@@ -253,17 +283,21 @@ Deno.serve(async (req) => {
       alunos: wellness.filter((w: any) => ymd(w.data_inicio || w.created_at) === mes).length,
     }));
 
-    // ── Vendas (registradas pelos profissionais) ──
+    // ── Vendas (registradas pelos profissionais) — escopadas ao período ──
     const STATUS_PAGO = new Set(["pago", "concluido", "concluída", "concluida", "quitado"]);
-    const vendasPagas = vendas.filter((v: any) => STATUS_PAGO.has(String(v.status || "").toLowerCase()));
+    const vendasNoPeriodo = vendas.filter((v: any) => (v.data_venda || "") >= inicioPeriodoIso);
+    const vendasPagas = vendasNoPeriodo.filter((v: any) => STATUS_PAGO.has(String(v.status || "").toLowerCase()));
     const receitaVendas = vendasPagas.reduce((s: number, v: any) => s + Number(v.valor_total || 0), 0);
     const porFormaPagamento: Record<string, { qtd: number; valor: number }> = {};
-    vendas.forEach((v: any) => {
+    vendasNoPeriodo.forEach((v: any) => {
       const f = v.forma_pagamento || "—";
       if (!porFormaPagamento[f]) porFormaPagamento[f] = { qtd: 0, valor: 0 };
       porFormaPagamento[f].qtd += 1;
       porFormaPagamento[f].valor += Number(v.valor_total || 0);
     });
+    // Novos no período (assinaturas e alunos iniciados na janela).
+    const novosProfissionaisPeriodo = assinaturas.filter((a: any) => (a.data_inicio || a.created_at || "") >= inicioPeriodoIso).length;
+    const novosAlunosPeriodo = wellness.filter((w: any) => (w.data_inicio || w.created_at || "") >= inicioPeriodoIso).length;
 
     // ── Formas/provedores de pagamento em uso ──
     const provedores = new Set<string>();
@@ -342,14 +376,19 @@ Deno.serve(async (req) => {
         mrr: Math.round(mrrAlunos * 100) / 100,
         inadimplentes,
       },
+      periodo,
       evolucao_mensal: novasPorMes,
       vendas: {
         receita_12m: Math.round(receitaVendas * 100) / 100,
+        receita_periodo: Math.round(receitaVendas * 100) / 100,
+        novos_profissionais: novosProfissionaisPeriodo,
+        novos_alunos: novosAlunosPeriodo,
         por_forma_pagamento: Object.entries(porFormaPagamento).map(([forma, v]) => ({ forma, ...v, valor: Math.round(v.valor * 100) / 100 })).sort((a, b) => b.valor - a.valor),
       },
       planos: planos.map((p: any) => ({ id: p.id, nome: p.nome, descricao: p.descricao, preco_mensal: Number(p.preco_mensal || 0), ativo: p.ativo, stripe_price_id: p.stripe_price_id, modulos: Array.isArray(p.modulos) ? p.modulos : [] })),
       formas_pagamento: Array.from(provedores).sort(),
       cortesias,
+      parceiro_links: (parceiroLinksRes.data || []).map((l: any) => ({ id: l.id, token: l.token, label: l.label, ativo: l.ativo, created_at: l.created_at })),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (e) {

@@ -48,6 +48,7 @@ const LayoutEditor = lazyWithRetry(() => import("./pages/LayoutEditor"));
 const EditarPaciente = lazyWithRetry(() => import("./pages/EditarPaciente"));
 const CrmHub = lazyWithRetry(() => import("./pages/CrmHub"));
 const FunilPublico = lazyWithRetry(() => import("./pages/FunilPublico"));
+const ParceiroResumo = lazyWithRetry(() => import("./pages/ParceiroResumo"));
 const Eventos = lazyWithRetry(() => import("./pages/Eventos"));
 const EventoPublico = lazyWithRetry(() => import("./pages/EventoPublico"));
 const TreinoPublico = lazyWithRetry(() => import("./pages/TreinoPublico"));
@@ -188,6 +189,7 @@ const App = () => (
                 <Route path="/myid/responder/:token" element={<MyIDResponder />} />
                 <Route path="/myid/ver/:token" element={<MyIDView />} />
                 <Route path="/funil/:slug" element={<FunilPublico />} />
+                <Route path="/parceiro/:token" element={<ParceiroResumo />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 
                 <Route path="/crm" element={<ProfessionalGuard><ModuloGuard modulo="crm"><CrmHub /></ModuloGuard></ProfessionalGuard>} />
