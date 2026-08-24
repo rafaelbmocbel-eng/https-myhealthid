@@ -21,5 +21,9 @@ export const MODULOS_CATALOGO: Record<string, string> = {
 /** Lista de chaves na ordem do catálogo. */
 export const MODULOS_KEYS = Object.keys(MODULOS_CATALOGO);
 
+// Base GRÁTIS: o que fica liberado para quem NÃO tem assinatura ativa.
+// O restante das funcionalidades exige um plano que as inclua.
+export const MODULOS_FREE: string[] = ['agenda', 'pacientes', 'myid', 'prontuario'];
+
 /** Rótulo amigável de um módulo (cai na própria chave se não catalogado). */
 export const rotuloModulo = (k: string): string => MODULOS_CATALOGO[k] ?? k;

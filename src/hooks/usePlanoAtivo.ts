@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { MODULOS_FREE } from "@/lib/modulosPlano";
 
 export interface PlanoAtivo {
   plano_id: string;
@@ -43,7 +44,8 @@ export function usePlanoAtivo() {
  * Se não houver plano ativo (assinatura ainda não obrigatória), libera tudo.
  */
 export function temAcessoModulo(plano: PlanoAtivo | null | undefined, modulo: string): boolean {
-  if (!plano) return true; // modo legado / sem cobrança ainda
+  // Sem assinatura ativa → só a BASE GRÁTIS (agenda, pacientes, myid, prontuário).
+  if (!plano) return MODULOS_FREE.includes(modulo);
   return Array.isArray(plano.modulos) && plano.modulos.includes(modulo);
 }
 

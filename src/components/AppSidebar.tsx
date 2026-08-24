@@ -12,21 +12,22 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
+import { usePlanoAtivo, temAcessoModulo } from '@/hooks/usePlanoAtivo';
 import { useVitrineNotifications } from '@/hooks/useVitrineNotifications';
 
 type ServiceKey = 'eventos';
 
 // UMA home só: "Hoje". O painel clínico completo (/inicio-app) é alcançado
 // pelos tiles da própria Hoje — não concorre mais no menu.
-const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; separatorAfter?: boolean }[] = [
+const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; modulo?: string; separatorAfter?: boolean }[] = [
   { label: 'Hoje', href: '/hoje', icon: Sun },
-  { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
-  { label: 'Pacientes', href: '/pacientes', icon: Users },
+  { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true, modulo: 'agenda' },
+  { label: 'Pacientes', href: '/pacientes', icon: Users, modulo: 'pacientes' },
   { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },
-  { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true },
-  { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign },
+  { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true, modulo: 'crm' },
+  { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign, modulo: 'financeiro_avancado' },
   { label: 'Controle CASSI', href: '/controle-cassi', icon: ClipboardList },
-  { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true, separatorAfter: true },
+  { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true, separatorAfter: true, modulo: 'funil_vendas' },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 
@@ -45,8 +46,13 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
   const { pendingCount: vitrinePending } = useVitrineNotifications();
 
   const isSuperAdmin = useIsSuperAdmin();
+  const { data: plano } = usePlanoAtivo();
   const visibleItems = [
-    ...NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]),
+    ...NAV_ITEMS.filter(item =>
+      (!item.serviceKey || servicos[item.serviceKey]) &&
+      // Esconde funcionalidades que o plano do usuário não libera (gating).
+      (!item.modulo || temAcessoModulo(plano, item.modulo))
+    ),
     // Painel administrativo (vendas/uso) — só o dono do produto vê.
     ...(isSuperAdmin ? [{ label: 'Admin', href: '/admin', icon: TrendingUp } as typeof NAV_ITEMS[number]] : []),
   ];

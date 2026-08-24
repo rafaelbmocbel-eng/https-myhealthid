@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
+import { PlanoGate } from '@/components/planos/PlanoGate';
 import { PacienteSchema } from '@/lib/validations';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
@@ -898,7 +899,9 @@ export default function Pacientes() {
         {/* ── Tab Content ── */}
         {activeMainTab === 'financeiro' && (
           <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-            <FinanceiroPage embedded />
+            <PlanoGate feature="financeiro_avancado" title="Financeiro avançado" description="Conciliação, despesas, faturamento TISS e relatórios financeiros estão nos planos superiores.">
+              <FinanceiroPage embedded />
+            </PlanoGate>
           </Suspense>
         )}
 

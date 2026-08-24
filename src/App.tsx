@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Suspense } from "react";
 import ProfessionalGuard from "./components/PatientGuard";
+import ModuloGuard from "./components/planos/ModuloGuard";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import PortalErrorBoundary from "./components/paciente/PortalErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
@@ -178,7 +179,7 @@ const App = () => (
                 <Route path="/pacientes" element={<ProfessionalGuard><Pacientes /></ProfessionalGuard>} />
                 <Route path="/controle-cassi" element={<ProfessionalGuard><ControleCassi /></ProfessionalGuard>} />
                 <Route path="/pendencias" element={<Navigate to="/inicio-app" replace />} />
-                <Route path="/vitrine" element={<ProfessionalGuard><Vitrine /></ProfessionalGuard>} />
+                <Route path="/vitrine" element={<ProfessionalGuard><ModuloGuard modulo="funil_vendas"><Vitrine /></ModuloGuard></ProfessionalGuard>} />
                 <Route path="/pacientes/:id" element={<ProfessionalGuard><PacientePerfil /></ProfessionalGuard>} />
                 <Route path="/protocolos" element={<Navigate to="/pacientes" replace />} />
 
@@ -189,14 +190,14 @@ const App = () => (
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 
-                <Route path="/crm" element={<ProfessionalGuard><CrmHub /></ProfessionalGuard>} />
+                <Route path="/crm" element={<ProfessionalGuard><ModuloGuard modulo="crm"><CrmHub /></ModuloGuard></ProfessionalGuard>} />
                 <Route path="/crm/inbox" element={<Navigate to="/crm?tab=inbox" replace />} />
                 <Route path="/crm/automacoes" element={<Navigate to="/crm?tab=automacoes" replace />} />
                 <Route path="/crm/pipeline" element={<Navigate to="/crm?tab=pipeline" replace />} />
                 <Route path="/crm/cadencias" element={<Navigate to="/crm?tab=cadencias" replace />} />
                 <Route path="/crm/metricas" element={<Navigate to="/crm?tab=metricas" replace />} />
                 <Route path="/crm/trafego" element={<Navigate to="/crm?tab=trafego" replace />} />
-                <Route path="/eventos" element={<ProfessionalGuard><Eventos /></ProfessionalGuard>} />
+                <Route path="/eventos" element={<ProfessionalGuard><ModuloGuard modulo="eventos"><Eventos /></ModuloGuard></ProfessionalGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/treino/:token" element={<TreinoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
