@@ -129,7 +129,7 @@ export default function ControleCassi() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
-  const [view, setView] = useState<'clientes' | 'ativas' | 'pedir' | 'faturamento'>('ativas');
+  const [view, setView] = useState<'clientes' | 'ativas' | 'pedir' | 'faturamento' | 'planilha'>('ativas');
   // Clientes específicos levados ao "Pedir guias" ao clicar "Pedir guia" num card.
   // Acumula: cada clique ADICIONA o cliente ao destaque, sem tirar os anteriores.
   // Conjunto vazio = montar o pedido de todos.
@@ -402,7 +402,7 @@ export default function ControleCassi() {
           </div>
           <div className="md:ml-auto flex items-center gap-1.5 min-w-0">
             <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento']] as const).map(([v, label]) => (
+              {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento'], ['planilha', 'Planilha']] as const).map(([v, label]) => (
                 <button key={v} onClick={() => { if (v === 'pedir') setPedirFoco(new Set()); setView(v); }}
                   className={`text-[12px] px-2.5 py-1 rounded-md font-medium whitespace-nowrap shrink-0 ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                   {label}
@@ -425,6 +425,7 @@ export default function ControleCassi() {
             {view === 'clientes' ? 'Todos os clientes CASSI — buscar, cadastrar e ativar no mês.'
               : view === 'ativas' ? `${MESES_PT[Number(mesVigente.slice(5, 7)) - 1]}/${mesVigente.slice(2, 4)} · quem está em tratamento neste mês.`
               : view === 'pedir' ? 'Monte e envie os pedidos de novas guias.'
+              : view === 'planilha' ? 'Todas as guias — buscar, filtrar por status e exportar CSV.'
               : 'Cálculo do mês e relatórios de produção.'}
           </p>
         )}
@@ -444,6 +445,8 @@ export default function ControleCassi() {
             onPedirGuia={(id) => irPedir(id)}
             mesVigente={mesVigente}
           />
+        ) : view === 'planilha' ? (
+          <PlanilhaGuias guias={guiasEff} onAbrir={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} />
         ) : view === 'faturamento' ? (
           <FinanceiroCassi onAbrirGuia={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} />
         ) : view === 'pedir' ? (
