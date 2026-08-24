@@ -39,3 +39,6 @@ verify_jwt = false
 
 [functions.monitor-saude-geral]
 verify_jwt = false
+
+[functions.monitor-seguranca]
+verify_jwt = false
