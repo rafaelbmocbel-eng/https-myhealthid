@@ -41,8 +41,17 @@ function gerarWavBase64(): string {
 
 async function timed(nome: string, critico: boolean, fn: () => Promise<void>): Promise<CheckResult> {
   const t0 = Date.now();
-  try { await fn(); return { nome, ok: true, ms: Date.now() - t0, erro: null, critico }; }
-  catch (e) { return { nome, ok: false, ms: Date.now() - t0, erro: (e as Error)?.message?.slice(0, 300) || String(e), critico }; }
+  // Tenta 2x (retry após 2s) — evita alarme por blip transitório de API externa
+  // (rate-limit/500 momentâneo do Gemini). Só declara falha se as duas tentativas caírem.
+  let ultimoErro = "";
+  for (let tentativa = 0; tentativa < 2; tentativa++) {
+    try { await fn(); return { nome, ok: true, ms: Date.now() - t0, erro: null, critico }; }
+    catch (e) {
+      ultimoErro = (e as Error)?.message?.slice(0, 300) || String(e);
+      if (tentativa === 0) await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  return { nome, ok: false, ms: Date.now() - t0, erro: ultimoErro, critico };
 }
 
 async function enviarAlerta(assunto: string, html: string) {
