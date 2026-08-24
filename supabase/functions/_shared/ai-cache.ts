@@ -12,15 +12,15 @@ export async function getCachedDeterministic(
   try {
     const { data } = await admin
       .from("ai_response_cache")
-      .select("id, response_payload")
+      .select("id, response_payload, hit_count")
       .eq("function_name", functionName)
       .eq("prompt_hash", inputsHash)
       .maybeSingle();
     if (data?.response_payload) {
-      // hit count + timestamp (fire-and-forget)
+      // hit count + timestamp (fire-and-forget) — conta as chamadas de IA evitadas.
       admin
         .from("ai_response_cache")
-        .update({ hit_count: (data as any).hit_count ?? 1, last_hit_at: new Date().toISOString() })
+        .update({ hit_count: (Number((data as any).hit_count) || 0) + 1, last_hit_at: new Date().toISOString() })
         .eq("id", data.id)
         .then(() => {})
         .catch(() => {});

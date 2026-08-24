@@ -4,6 +4,8 @@
 // inclusive o que ficou em inglês ou misturado — e devolve um nome natural.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { getCachedDeterministic, saveCache, sha256Hex } from "../_shared/ai-cache.ts";
+import { logUsoIA } from "../_shared/log-ia.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,11 +47,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    let traduzidos = 0, falhas = 0;
+    let traduzidos = 0, falhas = 0, doCache = 0;
+    // Chave de cache por NOME de origem (determinística, reutilizável entre
+    // profissionais): a tradução de "dumbbell goblet squat" é sempre a mesma.
+    const chaveNome = async (e: { nome: string; nome_original: string | null }) =>
+      sha256Hex(`traduz-nome|v1|${(e.nome_original || e.nome).trim().toLowerCase()}`);
+
+    const aplicar = async (id: string, nome: string): Promise<boolean> => {
+      if (!nome || nome.length > 120) return false;
+      const { error: upErr } = await admin
+        .from("biblioteca_exercicios").update({ nome }).eq("id", id).eq("terapeuta_id", userId);
+      return !upErr;
+    };
+
     const LOTE = 80;
     for (let i = 0; i < todos.length; i += LOTE) {
       const lote = todos.slice(i, i + LOTE);
-      const listaTxt = lote
+
+      // 1) Resolve o que já está em cache; só o restante vai para a IA.
+      const pendentes: { id: string; nome: string; nome_original: string | null; _hash: string }[] = [];
+      for (const e of lote) {
+        const h = await chaveNome(e);
+        const cached = await getCachedDeterministic(admin, "traduzir-nome", h);
+        const nomePt = (cached?.nome_pt || "").trim();
+        if (nomePt) {
+          if (await aplicar(e.id, nomePt)) { traduzidos++; doCache++; } else falhas++;
+        } else {
+          pendentes.push({ ...e, _hash: h });
+        }
+      }
+      if (pendentes.length === 0) continue;
+
+      const hashById: Record<string, string> = {};
+      for (const p of pendentes) hashById[p.id] = p._hash;
+      const listaTxt = pendentes
         .map((e) => `${e.id} ||| ${e.nome_original || e.nome} ||| atual: ${e.nome}`)
         .join("\n");
       const userPrompt = `Exercícios (formato: id ||| nome original do arquivo ||| nome atual no app). Traduza a partir do nome ORIGINAL quando existir; senão, do atual.\n\n${listaTxt}\n\nRetorne o JSON com um item por id.`;
@@ -68,27 +99,27 @@ Deno.serve(async (req) => {
         });
         if (!aiRes.ok) throw new Error(`Gemini API: ${aiRes.status}`);
         const aiJson = await aiRes.json();
+        await logUsoIA("traduzir-biblioteca", "gemini-2.5-flash", aiJson?.usage);
         const content = aiJson.choices?.[0]?.message?.content || "{}";
         let parsed: any = {};
         try { parsed = JSON.parse(content); } catch { const m = content.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); }
         const itens: { id: string; nome_pt: string }[] = Array.isArray(parsed?.itens) ? parsed.itens : [];
-        const validos = new Set(lote.map((e) => e.id));
+        const validos = new Set(pendentes.map((e) => e.id));
         for (const it of itens) {
           const nome = (it?.nome_pt || "").trim();
           if (!it?.id || !validos.has(it.id) || !nome || nome.length > 120) continue;
-          const { error: upErr } = await admin
-            .from("biblioteca_exercicios")
-            .update({ nome })
-            .eq("id", it.id)
-            .eq("terapeuta_id", userId);
-          if (upErr) falhas++; else traduzidos++;
+          if (await aplicar(it.id, nome)) {
+            traduzidos++;
+            // Guarda a tradução por nome de origem para reuso futuro (todos os profissionais).
+            if (hashById[it.id]) await saveCache(admin, "traduzir-nome", hashById[it.id], { nome_pt: nome }, "gemini-2.5-flash");
+          } else falhas++;
         }
       } catch {
-        falhas += lote.length;
+        falhas += pendentes.length;
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, total: todos.length, traduzidos, falhas }), {
+    return new Response(JSON.stringify({ ok: true, total: todos.length, traduzidos, falhas, cache: doCache }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {

@@ -3,6 +3,7 @@
 // Output: { matches: [{ id, title, authors, journal, year, doi, url, evidence_level, similarity }] }
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireUser } from "../_shared/auth.ts";
+import { getCachedDeterministic, saveCache, sha256Hex } from "../_shared/ai-cache.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,27 +31,39 @@ Deno.serve(async (req) => {
     const limit: number = Math.min(Math.max(parseInt(body.limit ?? "5"), 1), 20);
     const minYear: number | null = body.minYear ? parseInt(body.minYear) : null;
 
-    // 1) Embed the query
-    const embRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/embeddings", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gemini-embedding-001",
-        input: query.slice(0, 8000),
-        dimensions: 1536,
-      }),
-    });
-    if (!embRes.ok) {
-      const txt = await embRes.text();
-      return new Response(JSON.stringify({ error: "embedding failed", detail: txt }), {
-        status: embRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+    // 1) Embed the query — com cache determinístico. O embedding de uma mesma
+    //    query é sempre igual; reusar evita pagar a chamada de novo (a busca em
+    //    si continua vindo do banco, sempre atual).
+    const embInput = query.slice(0, 8000);
+    const embHash = await sha256Hex(`gemini-embedding-001|1536|${embInput}`);
+    let queryEmbedding: number[] | null = null;
+    const cachedEmb = await getCachedDeterministic(supabase, "search-evidence-embed", embHash);
+    if (Array.isArray(cachedEmb?.embedding)) {
+      queryEmbedding = cachedEmb.embedding;
+    } else {
+      const embRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/embeddings", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gemini-embedding-001",
+          input: embInput,
+          dimensions: 1536,
+        }),
       });
+      if (!embRes.ok) {
+        const txt = await embRes.text();
+        return new Response(JSON.stringify({ error: "embedding failed", detail: txt }), {
+          status: embRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const embJson = await embRes.json();
+      queryEmbedding = embJson.data[0].embedding;
+      await saveCache(supabase, "search-evidence-embed", embHash, { embedding: queryEmbedding }, "gemini-embedding-001");
     }
-    const embJson = await embRes.json();
-    const queryEmbedding = embJson.data[0].embedding;
 
     // 2) Semantic search via RPC
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { data: matches, error } = await supabase.rpc("match_evidence", {
       query_embedding: queryEmbedding,
       match_count: limit,
