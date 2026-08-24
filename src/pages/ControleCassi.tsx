@@ -861,7 +861,14 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
   const [sesCod, setSesCod] = useState<Record<string, number>>(() => {
     const src = (guia ?? base)?.codigos;
     const m: Record<string, number> = {};
-    if (src?.length) for (const c of src) m[c.codigo] = c.sessoes ?? (c.codigo === '144' ? 1 : (guia?.sessoes_autorizadas || 10));
+    if (src?.length) {
+      for (const c of src) m[c.codigo] = c.sessoes ?? (c.codigo === '144' ? 1 : (guia?.sessoes_autorizadas || 10));
+    } else {
+      // Guia NOVA sem base: semeia os códigos já pré-marcados (paciente ou '012'),
+      // senão a guia era salva com 0 sessões e sumia do faturamento/relatório.
+      const iniciais = paciente.codigos_cassi?.length ? paciente.codigos_cassi : ['012'];
+      for (const cod of iniciais) m[cod] = cod === '144' ? 1 : (Number(guia?.sessoes_autorizadas) || 10);
+    }
     return m;
   });
   const set = <K extends keyof DraftGuia>(k: K, v: DraftGuia[K]) => setD((p) => ({ ...p, [k]: v }));
@@ -974,7 +981,9 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
       if (!user) throw new Error('Sem sessão');
       const sb: any = supabase;
       const codigos = codigosDisp.filter((c) => d.codigos.includes(c.codigo))
-        .map((c) => ({ codigo: c.codigo, descricao: c.descricao, sessoes: c.codigo === '144' ? 1 : (sesCod[c.codigo] ?? 0) }));
+        // Fallback: se o input por código nunca foi tocado, usa "Dias de tratamento"
+        // (nunca 0 silencioso, que zerava a guia no faturamento).
+        .map((c) => ({ codigo: c.codigo, descricao: c.descricao, sessoes: c.codigo === '144' ? 1 : (sesCod[c.codigo] ?? (Number(d.sessoes_autorizadas) || 0)) }));
       // Dias de tratamento: usa o campo; se ficou 0, deriva da maior qtd dos códigos.
       const maxTrat = Math.max(0, ...codigos.filter((c) => c.codigo !== '144').map((c) => Number(c.sessoes) || 0));
       const payload = {
@@ -2198,7 +2207,13 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
                         </button>
                       );
                     })}
-                    <button className="text-[10px] text-muted-foreground underline underline-offset-2 ml-auto" onClick={() => onNovaGuia(linhas.find((l) => l.paciente.id === it.id)!.paciente)}>
+                    <button className="text-[10px] text-muted-foreground underline underline-offset-2 ml-auto" onClick={() => {
+                      // Busca nas duas fontes: os flagados pelo sistema (linhas) E os
+                      // adicionados à mão pela busca (candidatos). Sem o `!` — clientes
+                      // manuais não estão em `linhas` e quebravam a tela aqui.
+                      const l = linhas.find((x) => x.paciente.id === it.id) ?? candidatos.find((x) => x.paciente.id === it.id);
+                      if (l) onNovaGuia(l.paciente);
+                    }}>
                       registrar manual
                     </button>
                   </div>
@@ -2230,14 +2245,18 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
           onClick={async () => {
             setDandoBaixa(true);
             try {
-              await Promise.all(selecionados.map((i) => {
+              // O client do Supabase não lança — resolve com { error }. Checa cada
+              // update: se algum falhar (RLS/coluna/rede), avisa e NÃO dá baixa.
+              const results = await Promise.all(selecionados.map((i) => {
                 const payload: any = { codigos_cassi: i.codigos };
                 if (i.carteirinha.trim()) payload.carteirinha = i.carteirinha.trim();
                 if (i.diagnostico.trim()) payload.cassi_diagnostico = i.diagnostico.trim();
                 return (supabase as any).from('pacientes').update(payload).eq('id', i.id);
               }));
+              const falha = results.find((r: any) => r?.error);
+              if (falha) { toast.error('Não consegui salvar os dados: ' + (falha.error.message || 'erro')); return; }
+              // onDarBaixa já emite o toast de sucesso (evita toast duplicado).
               await onDarBaixa(selecionados.map((i) => i.id));
-              toast.success('Baixa registrada — foram pra "aguardando CASSI".');
             } finally { setDandoBaixa(false); }
           }}
         >
