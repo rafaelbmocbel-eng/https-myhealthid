@@ -107,6 +107,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Ação: GRANDFATHER em massa — dá um plano a todo profissional sem assinatura ──
+    if (action === "grandfather_todos") {
+      const { plano_id } = body;
+      if (!plano_id) return new Response(JSON.stringify({ error: "Informe o plano." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const [{ data: profs }, { data: ativas }] = await Promise.all([
+        admin.from("profiles").select("user_id"),
+        admin.from("assinaturas").select("user_id").eq("status", "ativa"),
+      ]);
+      const comAtiva = new Set((ativas || []).map((a: any) => a.user_id));
+      const alvos = (profs || []).map((p: any) => p.user_id).filter((uid: string) => uid && !comAtiva.has(uid));
+      const nowIsoG = new Date().toISOString();
+      const rows = alvos.map((uid: string) => ({ user_id: uid, plano_id, status: "ativa", origem: "cortesia", data_inicio: nowIsoG, data_fim: null, updated_at: nowIsoG }));
+      if (rows.length) {
+        const { error } = await admin.from("assinaturas").upsert(rows, { onConflict: "user_id,plano_id" });
+        if (error) throw error;
+      }
+      return new Response(JSON.stringify({ ok: true, concedidos: rows.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── Ação: REVOGAR uma cortesia ──
     if (action === "revogar_plano") {
       const { user_id, plano_id } = body;

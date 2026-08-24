@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
-import { useAdminMetrics, atualizarPlano, removerPlano, concederPlano, revogarCortesia } from '@/hooks/useAdminMetrics';
+import { useAdminMetrics, atualizarPlano, removerPlano, concederPlano, revogarCortesia, grandfatherTodos } from '@/hooks/useAdminMetrics';
 import { MODULOS_CATALOGO, MODULOS_KEYS } from '@/lib/modulosPlano';
 import {
   Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2, Layers, Check, Gift, X,
@@ -88,6 +88,10 @@ export default function Admin() {
   const [cortesiaPlano, setCortesiaPlano] = useState('');
   const [cortesiaDias, setCortesiaDias] = useState('');
   const [liberando, setLiberando] = useState(false);
+  // Grandfather em massa
+  const [gfPlano, setGfPlano] = useState('');
+  const [gfConfirmar, setGfConfirmar] = useState(false);
+  const [gfRodando, setGfRodando] = useState(false);
 
   if (!isSuper) return <Navigate to="/hoje" replace />;
 
@@ -103,6 +107,20 @@ export default function Admin() {
       toast({ title: 'Não consegui liberar', description: e?.message, variant: 'destructive' });
     } finally {
       setLiberando(false);
+    }
+  };
+  const rodarGrandfather = async () => {
+    if (!gfPlano) { toast({ title: 'Selecione o plano', variant: 'destructive' }); return; }
+    setGfRodando(true);
+    try {
+      const res = await grandfatherTodos({ plano_id: gfPlano });
+      await qc.invalidateQueries({ queryKey: ['admin-metrics'] });
+      toast({ title: 'Grandfather concluído 🎁', description: `${res.concedidos} profissional(is) sem assinatura receberam o plano.` });
+      setGfConfirmar(false); setGfPlano('');
+    } catch (e: any) {
+      toast({ title: 'Não consegui aplicar', description: e?.message, variant: 'destructive' });
+    } finally {
+      setGfRodando(false);
     }
   };
   const revogar = async (c: { user_id: string; plano_id: string; email: string }) => {
@@ -472,6 +490,35 @@ export default function Admin() {
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground">Sem "dias" = acesso sem prazo. Com dias, expira automaticamente.</p>
+
+          {/* Grandfather em massa — mantém profissionais atuais com acesso total */}
+          <div className="border-t border-border/50 pt-3">
+            <p className="text-[11px] font-semibold text-muted-foreground mb-1">Grandfather em massa</p>
+            <p className="text-[10px] text-muted-foreground mb-2">Dá o plano escolhido, sem prazo, a <b>todos os profissionais que ainda não têm assinatura ativa</b>. Quem já paga ou já tem cortesia não é tocado. Use para não travar seus usuários atuais quando as funcionalidades por plano forem ativadas.</p>
+            <div className="flex flex-wrap gap-2 items-end">
+              <div>
+                <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Plano</label>
+                <select value={gfPlano} onChange={(e) => { setGfPlano(e.target.value); setGfConfirmar(false); }}
+                  className="h-9 text-sm rounded-md border border-input bg-background px-2 w-full sm:w-44 block">
+                  <option value="">Selecione…</option>
+                  {data.planos.filter((p) => p.ativo).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </div>
+              {!gfConfirmar ? (
+                <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => { if (!gfPlano) { toast({ title: 'Selecione o plano', variant: 'destructive' }); return; } setGfConfirmar(true); }}>
+                  <Gift className="h-4 w-4" /> Aplicar a todos
+                </Button>
+              ) : (
+                <div className="flex gap-2 items-center">
+                  <span className="text-[11px] text-amber-600 font-medium">Confirmar?</span>
+                  <Button size="sm" className="h-9 gap-1.5" onClick={rodarGrandfather} disabled={gfRodando}>
+                    {gfRodando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />} Sim, aplicar
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-9" onClick={() => setGfConfirmar(false)} disabled={gfRodando}>Cancelar</Button>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Cortesias ativas */}
           {data.cortesias.length > 0 && (

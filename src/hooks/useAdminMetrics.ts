@@ -75,6 +75,20 @@ export async function revogarCortesia(patch: { user_id: string; plano_id: string
   return data;
 }
 
+/** Concede um plano (cortesia) a TODOS os profissionais que ainda não têm assinatura ativa. */
+export async function grandfatherTodos(patch: { plano_id: string }) {
+  const { data, error } = await supabase.functions.invoke('admin-metrics', {
+    body: { action: 'grandfather_todos', ...patch },
+  });
+  if (error) {
+    let msg = error.message;
+    try { const ctx = (error as any).context; if (ctx?.json) { const b = await ctx.json(); if (b?.error) msg = b.error; } } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data as { ok: boolean; concedidos: number };
+}
+
 /** Remove um plano descontinuado (trava: recusa se houver assinatura ativa). */
 export async function removerPlano(id: string) {
   const { data, error } = await supabase.functions.invoke('admin-metrics', {
