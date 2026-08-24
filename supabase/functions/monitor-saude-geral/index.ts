@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     if (!GEMINI) throw new Error("GEMINI_API_KEY ausente");
     const r = await fetch(`${GEMINI_BASE}/chat/completions`, {
       method: "POST", signal: withTimeout(30_000), headers: geminiHeaders,
-      body: JSON.stringify({ model: "gemini-2.5-flash", messages: [{ role: "user", content: "Responda apenas: OK" }] }),
+      body: JSON.stringify({ model: "gemini-2.5-flash", messages: [{ role: "user", content: "Responda apenas: OK" }], max_tokens: 4 }),
     });
     if (!r.ok) throw new Error(`chat ${r.status}: ${(await r.text()).slice(0, 160)}`);
     const d = await r.json();
@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
           { type: "input_audio", input_audio: { data: gerarWavBase64(), format: "wav" } },
           { type: "text", text: "Transcreva." },
         ] }],
+        max_tokens: 8,
       }),
     });
     if (!r.ok) throw new Error(`audio ${r.status}: ${(await r.text()).slice(0, 160)}`);
@@ -129,18 +130,48 @@ Deno.serve(async (req) => {
     if (!Array.isArray(d?.choices)) throw new Error("audio 200 sem choices");
   }));
 
-  // 5. voice-assessment ponta a ponta (bypass de health-check) — só se houver CRON_SECRET
-  if (CRON_SECRET) {
-    checks.push(await timed("voice-assessment", true, async () => {
+  // 5. voice-assessment ponta a ponta — CARO (gera laudo completo). Roda 1×/dia
+  //    (tick das 06h UTC do cron de 6h), OU sob demanda com body {"e2e":true}.
+  //    Os outros 3 ticks já cobrem o caminho de áudio pelo probe 'gemini-audio'
+  //    acima; este e2e valida a função inteira (fila de jobs, RAG, wiring).
+  //    Tem componente e transição próprios ('voice-e2e') para não gerar um falso
+  //    "normalizado" nos ticks em que não roda.
+  let body: any = {};
+  try { body = await req.clone().json(); } catch { /* sem corpo */ }
+  const horaUtc = new Date().getUTCHours();
+  const rodarE2e = CRON_SECRET && (body?.e2e === true || horaUtc === 6);
+  if (rodarE2e) {
+    const e2e = await timed("voice-e2e", true, async () => {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/voice-assessment`, {
         method: "POST", signal: withTimeout(110_000),
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, "x-healthcheck": CRON_SECRET },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, "x-healthcheck": CRON_SECRET! },
         body: JSON.stringify({ healthcheck: true, transcript: "Health-check: dor lombar mecânica há 3 meses.", perfilProfissional: "fisioterapeuta" }),
       });
       if (!r.ok) throw new Error(`voice-assessment ${r.status}: ${(await r.text()).slice(0, 160)}`);
       const d = await r.json();
       if (!d?.assessment) throw new Error("voice-assessment 200 sem assessment");
-    }));
+    });
+    const { data: e2eAnt } = await admin.from("audio_health_checks")
+      .select("ok").eq("component", "voice-e2e").order("checked_at", { ascending: false }).limit(1).maybeSingle();
+    const e2eAntOk: boolean | null = e2eAnt ? e2eAnt.ok : null;
+    await admin.from("audio_health_checks").insert({
+      component: "voice-e2e", ok: e2e.ok, http_status: null, latency_ms: e2e.ms, error: e2e.erro, sample: `voice-e2e=${e2e.ok ? "ok" : "FALHOU"}(${e2e.ms}ms)`,
+    });
+    const agoraE2e = new Date(Date.now() - 3 * 3600_000).toISOString().replace("T", " ").slice(0, 16);
+    if (!e2e.ok && e2eAntOk !== false) {
+      await enviarAlerta("🔴 Avaliação por áudio (ponta a ponta) falhou — My Health ID",
+        `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;color:#0f172a">
+          <h2 style="color:#b91c1c;margin:0 0 8px">Guardião: voice-assessment ponta a ponta falhou</h2>
+          <p>O teste diário da avaliação por áudio completa falhou em <b>${agoraE2e} (BRT)</b>.</p>
+          <p style="color:#64748b">Erro: ${(e2e.erro || "").replace(/</g, "&lt;")}</p>
+        </div>`);
+    } else if (e2e.ok && e2eAntOk === false) {
+      await enviarAlerta("✅ Avaliação por áudio (ponta a ponta) normalizada — My Health ID",
+        `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;color:#0f172a">
+          <h2 style="color:#15803d;margin:0 0 8px">Guardião: voice-assessment ponta a ponta OK</h2>
+          <p>O teste diário da avaliação por áudio completa voltou a passar em <b>${agoraE2e} (BRT)</b>.</p>
+        </div>`);
+    }
   }
 
   // 6. Resend (config para os próprios alertas) — não-crítico
