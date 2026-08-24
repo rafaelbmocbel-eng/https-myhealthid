@@ -10,10 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
-import { useAdminMetrics, atualizarPlano, removerPlano } from '@/hooks/useAdminMetrics';
+import { useAdminMetrics, atualizarPlano, removerPlano, concederPlano, revogarCortesia } from '@/hooks/useAdminMetrics';
 import { MODULOS_CATALOGO, MODULOS_KEYS } from '@/lib/modulosPlano';
 import {
-  Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2, Layers, Check,
+  Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2, Layers, Check, Gift, X,
 } from 'lucide-react';
 
 const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -83,8 +83,37 @@ export default function Admin() {
   const [funcPlanoId, setFuncPlanoId] = useState<string | null>(null);
   const [modulosEdit, setModulosEdit] = useState<string[]>([]);
   const [salvandoFunc, setSalvandoFunc] = useState(false);
+  // Liberar plano por e-mail (cortesia / parceiros)
+  const [cortesiaEmail, setCortesiaEmail] = useState('');
+  const [cortesiaPlano, setCortesiaPlano] = useState('');
+  const [cortesiaDias, setCortesiaDias] = useState('');
+  const [liberando, setLiberando] = useState(false);
 
   if (!isSuper) return <Navigate to="/hoje" replace />;
+
+  const liberarCortesia = async () => {
+    if (!cortesiaEmail.trim() || !cortesiaPlano) { toast({ title: 'Informe e-mail e plano', variant: 'destructive' }); return; }
+    setLiberando(true);
+    try {
+      await concederPlano({ email: cortesiaEmail.trim(), plano_id: cortesiaPlano, dias: cortesiaDias ? Number(cortesiaDias) : undefined });
+      await qc.invalidateQueries({ queryKey: ['admin-metrics'] });
+      toast({ title: 'Plano liberado! 🎁', description: cortesiaEmail.trim() });
+      setCortesiaEmail(''); setCortesiaDias('');
+    } catch (e: any) {
+      toast({ title: 'Não consegui liberar', description: e?.message, variant: 'destructive' });
+    } finally {
+      setLiberando(false);
+    }
+  };
+  const revogar = async (c: { user_id: string; plano_id: string; email: string }) => {
+    try {
+      await revogarCortesia({ user_id: c.user_id, plano_id: c.plano_id });
+      await qc.invalidateQueries({ queryKey: ['admin-metrics'] });
+      toast({ title: 'Cortesia revogada', description: c.email });
+    } catch (e: any) {
+      toast({ title: 'Erro ao revogar', description: e?.message, variant: 'destructive' });
+    }
+  };
 
   const abrirFunc = (p: { id: string; modulos: string[] }) => {
     setFuncPlanoId(p.id);
@@ -410,6 +439,57 @@ export default function Admin() {
             </>
           ) : (
             <p className="text-xs text-muted-foreground">Selecione um plano acima para ver e editar o que ele libera.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Liberar plano por e-mail — cortesias / parceiros */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2"><Gift className="h-4 w-4 text-primary" /> Liberar plano por e-mail (parceiros / cortesias)</CardTitle>
+          <p className="text-[11px] text-muted-foreground mt-1">Dê um plano a um e-mail específico — parceiros de vendas, afiliados, ou para manter um profissional atual com acesso total (grandfather). A pessoa precisa já ter uma conta.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">E-mail</label>
+              <Input type="email" value={cortesiaEmail} onChange={(e) => setCortesiaEmail(e.target.value)} placeholder="parceiro@email.com" className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Plano</label>
+              <select value={cortesiaPlano} onChange={(e) => setCortesiaPlano(e.target.value)}
+                className="h-9 text-sm rounded-md border border-input bg-background px-2 w-full sm:w-44">
+                <option value="">Selecione…</option>
+                {data.planos.filter((p) => p.ativo).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Dias (opcional)</label>
+              <Input type="number" inputMode="numeric" value={cortesiaDias} onChange={(e) => setCortesiaDias(e.target.value)} placeholder="∞" className="h-9 text-sm w-full sm:w-24" />
+            </div>
+            <Button size="sm" className="h-9 gap-1.5" onClick={liberarCortesia} disabled={liberando}>
+              {liberando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />} Liberar
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Sem "dias" = acesso sem prazo. Com dias, expira automaticamente.</p>
+
+          {/* Cortesias ativas */}
+          {data.cortesias.length > 0 && (
+            <div className="border-t border-border/50 pt-2">
+              <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">Liberados por cortesia ({fmtInt(data.cortesias.length)})</p>
+              <div className="space-y-1 max-h-56 overflow-y-auto">
+                {data.cortesias.map((c) => (
+                  <div key={`${c.user_id}-${c.plano_id}`} className="flex items-center gap-2 text-sm rounded-md border border-border/40 px-2.5 py-1.5">
+                    <span className="min-w-0 flex-1 truncate">{c.email}</span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">{c.plano}</span>
+                    {c.data_fim && <span className="text-[10px] text-muted-foreground shrink-0">até {new Date(c.data_fim).toLocaleDateString('pt-BR')}</span>}
+                    <button onClick={() => revogar(c)} title="Revogar" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive shrink-0">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

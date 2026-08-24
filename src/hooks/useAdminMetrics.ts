@@ -24,6 +24,7 @@ export interface AdminMetrics {
   vendas: { receita_12m: number; por_forma_pagamento: Array<{ forma: string; qtd: number; valor: number }> };
   planos: Array<{ id: string; nome: string; descricao: string | null; preco_mensal: number; ativo: boolean; stripe_price_id: string | null; modulos: string[] }>;
   formas_pagamento: string[];
+  cortesias: Array<{ user_id: string; email: string; plano_id: string; plano: string; status: string; data_fim: string | null }>;
 }
 
 export function useAdminMetrics() {
@@ -44,6 +45,30 @@ export function useAdminMetrics() {
 export async function atualizarPlano(patch: { id: string; nome?: string; preco_mensal?: number; ativo?: boolean; modulos?: string[] }) {
   const { data, error } = await supabase.functions.invoke('admin-metrics', {
     body: { action: 'update_plano', ...patch },
+  });
+  if (error) throw error;
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data;
+}
+
+/** Libera um plano (cortesia/parceiro) para um e-mail. */
+export async function concederPlano(patch: { email: string; plano_id: string; dias?: number }) {
+  const { data, error } = await supabase.functions.invoke('admin-metrics', {
+    body: { action: 'conceder_plano', ...patch },
+  });
+  if (error) {
+    let msg = error.message;
+    try { const ctx = (error as any).context; if (ctx?.json) { const b = await ctx.json(); if (b?.error) msg = b.error; } } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data;
+}
+
+/** Revoga uma cortesia. */
+export async function revogarCortesia(patch: { user_id: string; plano_id: string }) {
+  const { data, error } = await supabase.functions.invoke('admin-metrics', {
+    body: { action: 'revogar_plano', ...patch },
   });
   if (error) throw error;
   if ((data as any)?.error) throw new Error((data as any).error);

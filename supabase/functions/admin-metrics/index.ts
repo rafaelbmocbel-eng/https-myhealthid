@@ -88,6 +88,35 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Ação: LIBERAR plano por e-mail (cortesia / parceiro) ──
+    if (action === "conceder_plano") {
+      const { email, plano_id, dias } = body;
+      if (!email || !plano_id) return new Response(JSON.stringify({ error: "Informe e-mail e plano." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: prof } = await admin.from("profiles").select("user_id").ilike("email", String(email).trim()).maybeSingle();
+      if (!prof?.user_id) {
+        return new Response(JSON.stringify({ error: "Nenhuma conta com esse e-mail. Peça para a pessoa criar a conta primeiro, depois libere." }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const data_fim = dias && Number(dias) > 0 ? new Date(Date.now() + Number(dias) * 86400000).toISOString() : null;
+      const { error } = await admin.from("assinaturas").upsert({
+        user_id: prof.user_id, plano_id, status: "ativa", origem: "cortesia",
+        data_inicio: new Date().toISOString(), data_fim, updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,plano_id" });
+      if (error) throw error;
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Ação: REVOGAR uma cortesia ──
+    if (action === "revogar_plano") {
+      const { user_id, plano_id } = body;
+      if (!user_id || !plano_id) return new Response(JSON.stringify({ error: "Dados incompletos." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { error } = await admin.from("assinaturas").delete()
+        .eq("user_id", user_id).eq("plano_id", plano_id).eq("origem", "cortesia");
+      if (error) throw error;
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── Leitura: agrega tudo ──
     const nowIso = new Date().toISOString();
     const meses = ultimos12Meses(nowIso);
@@ -223,6 +252,21 @@ Deno.serve(async (req) => {
     wellness.forEach((w: any) => { if (w.provider) provedores.add(`wellness:${w.provider}`); });
     Object.keys(porFormaPagamento).forEach((f) => provedores.add(`venda:${f}`));
 
+    // ── Cortesias (planos liberados por e-mail: parceiros/afiliados) ──
+    const emailByUser: Record<string, string> = {};
+    profiles.forEach((p: any) => { if (p.user_id) emailByUser[p.user_id] = p.email || ""; });
+    const cortesias = assinaturas
+      .filter((a: any) => a.origem === "cortesia")
+      .map((a: any) => ({
+        user_id: a.user_id,
+        email: emailByUser[a.user_id] || "(sem cadastro)",
+        plano_id: a.plano_id,
+        plano: planoById[a.plano_id]?.nome || "—",
+        status: a.status,
+        data_fim: a.data_fim,
+      }))
+      .sort((x, y) => x.email.localeCompare(y.email, "pt-BR"));
+
     return new Response(JSON.stringify({
       gerado_em: nowIso,
       resumo: {
@@ -258,6 +302,7 @@ Deno.serve(async (req) => {
       },
       planos: planos.map((p: any) => ({ id: p.id, nome: p.nome, descricao: p.descricao, preco_mensal: Number(p.preco_mensal || 0), ativo: p.ativo, stripe_price_id: p.stripe_price_id, modulos: Array.isArray(p.modulos) ? p.modulos : [] })),
       formas_pagamento: Array.from(provedores).sort(),
+      cortesias,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (e) {
