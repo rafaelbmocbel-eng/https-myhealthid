@@ -77,6 +77,7 @@ const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/Diretri
 const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
 const DiretrizLenteCard = lazy(() => import('@/components/diretrizes/DiretrizLenteCard'));
 const EvolucaoFisicaCard = lazy(() => import('@/components/evolucao/EvolucaoFisicaCard'));
+const AssistenteEvolucao = lazy(() => import('@/components/prontuario/AssistenteEvolucao'));
 const AvaliacoesVozHistorico = lazy(() => import('@/components/voice/AvaliacoesVozHistorico'));
 const EscalasPsicologiaCard = lazy(() => import('@/components/psicologia/EscalasPsicologiaCard'));
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
@@ -1194,6 +1195,9 @@ export default function PacientePerfil() {
           {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
             <Suspense fallback={LazyFallback}>
+              {/* Assistente de Evolução (IA): descreve a sessão → gera nota SOAP */}
+              {id && <AssistenteEvolucao pacienteId={id} />}
+
               {/* Evolução física: peso, gordura, músculo, PA, testes e adesão em gráficos */}
               {id && <EvolucaoFisicaCard pacienteId={id} />}
 
