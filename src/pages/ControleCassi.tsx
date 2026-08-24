@@ -251,6 +251,9 @@ export default function ControleCassi() {
   ), [linhas, guiaPorPaciente]);
   // Guias já pedidas, aguardando a CASSI liberar.
   const guiasPedidas = useMemo(() => linhas.filter((l) => pedidoAberto(l.paciente)), [linhas, guiaPorPaciente]);
+  // Candidatos para ADICIONAR manualmente ao pedido: qualquer cliente CASSI ativo
+  // que ainda não tem pedido em aberto (inclui os que o sistema não flagou sozinho).
+  const candidatosPedido = useMemo(() => linhas.filter((l) => !pedidoAberto(l.paciente)), [linhas, guiaPorPaciente]);
 
   // Dar baixa: marca que a(s) guia(s) foram pedidas → saem de "Pedir guia".
   const darBaixaPedidos = async (ids: string[]) => {
@@ -406,16 +409,13 @@ export default function ControleCassi() {
           <FinanceiroCassi onAbrirGuia={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} />
         ) : view === 'pedir' ? (
           <>
-            {pedidosDoMes.length > 0 ? (
-              <PedirGuiasPanel
-                linhas={pedidosDoMes}
-                foco={pedirFoco}
-                onNovaGuia={(pac) => setEditando({ paciente: pac, guia: null })}
-                onDarBaixa={darBaixaPedidos}
-              />
-            ) : guiasPedidas.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-10">Ninguém precisa de guia nova agora. 🎉</p>
-            ) : null}
+            <PedirGuiasPanel
+              linhas={pedidosDoMes}
+              candidatos={candidatosPedido}
+              foco={pedirFoco}
+              onNovaGuia={(pac) => setEditando({ paciente: pac, guia: null })}
+              onDarBaixa={darBaixaPedidos}
+            />
 
             {guiasPedidas.length > 0 && (
               <div className="rounded-xl border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/20 overflow-hidden">
@@ -1983,8 +1983,9 @@ interface ItemPedido {
   id: string; nome: string; sel: boolean;
   carteirinha: string; diagnostico: string; codigos: string[];
 }
-function PedirGuiasPanel({ linhas, foco, onNovaGuia, onDarBaixa }: {
+function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa }: {
   linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>;
+  candidatos?: Array<{ paciente: Paciente; guia: GuiaCassi | null }>; // todos os CASSI que dá pra adicionar manualmente
   foco?: Set<string>; // clientes vindos de "Pedir guia" — pré-seleciona esses (vazio = todos)
   onNovaGuia: (p: Paciente) => void;
   onDarBaixa: (ids: string[]) => Promise<void> | void;
@@ -1994,6 +1995,8 @@ function PedirGuiasPanel({ linhas, foco, onNovaGuia, onDarBaixa }: {
   const [dandoBaixa, setDandoBaixa] = useState(false);
   const [verTexto, setVerTexto] = useState(false);
   const [ocultos, setOcultos] = useState<Set<string>>(() => new Set()); // retirados da lista
+  const [manualIds, setManualIds] = useState<Set<string>>(() => new Set()); // adicionados à mão
+  const [buscaAdd, setBuscaAdd] = useState('');
 
   // Motivo de cada cliente estar na lista (sem guia / faltam poucas / 2/mês).
   const motivos = useMemo(() => {
@@ -2021,10 +2024,22 @@ function PedirGuiasPanel({ linhas, foco, onNovaGuia, onDarBaixa }: {
   useEffect(() => {
     setItens((prev) => {
       const byId = new Map(prev.map((i) => [i.id, i]));
-      return linhas.map((l) => byId.get(l.paciente.id) || novoItem(l));
+      const autoIds = new Set(linhas.map((l) => l.paciente.id));
+      const auto = linhas.map((l) => byId.get(l.paciente.id) || novoItem(l));
+      // Preserva os adicionados à mão que não estão na lista automática (não somem no refetch).
+      const manuais = prev.filter((i) => manualIds.has(i.id) && !autoIds.has(i.id));
+      return [...auto, ...manuais];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey]);
+
+  // Adiciona um cliente qualquer ao pedido (mesmo que o sistema não tenha flagado).
+  const adicionar = (l: { paciente: Paciente; guia: GuiaCassi | null }) => {
+    setManualIds((s) => new Set(s).add(l.paciente.id));
+    setOcultos((s) => { const n = new Set(s); n.delete(l.paciente.id); return n; });
+    setItens((p) => p.some((i) => i.id === l.paciente.id) ? p : [...p, { ...novoItem(l), sel: true }]);
+    setBuscaAdd('');
+  };
 
   const upd = (id: string, patch: Partial<ItemPedido>) =>
     setItens((p) => p.map((it) => it.id === id ? { ...it, ...patch } : it));
@@ -2040,6 +2055,16 @@ function PedirGuiasPanel({ linhas, foco, onNovaGuia, onDarBaixa }: {
   const visiveis = itens.filter((it) => !ocultos.has(it.id));
   const selecionados = visiveis.filter((i) => i.sel);
   const semCarteirinha = selecionados.filter((i) => !i.carteirinha.trim()).length;
+
+  // "Adicionar cliente": qualquer candidato que ainda não está na lista.
+  const idsNaLista = new Set(itens.filter((it) => !ocultos.has(it.id)).map((i) => i.id));
+  const buscaAddLower = buscaAdd.trim().toLowerCase();
+  const resultadosAdd = buscaAddLower
+    ? candidatos
+        .filter((l) => !idsNaLista.has(l.paciente.id))
+        .filter((l) => `${l.paciente.nome} ${l.paciente.sobrenome || ''} ${l.paciente.carteirinha || ''}`.toLowerCase().includes(buscaAddLower))
+        .slice(0, 8)
+    : [];
   const texto = [
     `*Solicitação de novas guias CASSI* (${selecionados.length} cliente${selecionados.length === 1 ? '' : 's'})`,
     '',
@@ -2061,6 +2086,35 @@ function PedirGuiasPanel({ linhas, foco, onNovaGuia, onDarBaixa }: {
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-base font-bold">Montar pedido</h2>
         <span className="text-[12px] text-muted-foreground">{selecionados.length} selecionado(s)</span>
+      </div>
+
+      {/* Adicionar qualquer cliente CASSI ao pedido (busca) */}
+      <div className="relative">
+        <Input
+          value={buscaAdd}
+          onChange={(e) => setBuscaAdd(e.target.value)}
+          placeholder="+ Adicionar cliente ao pedido (busque por nome ou carteirinha)"
+          className="h-9 text-sm"
+        />
+        {resultadosAdd.length > 0 && (
+          <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+            {resultadosAdd.map((l) => (
+              <button
+                key={l.paciente.id}
+                type="button"
+                onClick={() => adicionar(l)}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
+              >
+                <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="flex-1 min-w-0 truncate">{l.paciente.nome} {l.paciente.sobrenome || ''}</span>
+                {l.paciente.carteirinha && <span className="text-[11px] text-muted-foreground shrink-0">{l.paciente.carteirinha}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        {buscaAddLower && resultadosAdd.length === 0 && (
+          <p className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg px-3 py-2 text-xs text-muted-foreground">Nenhum cliente encontrado (ou já está na lista).</p>
+        )}
       </div>
 
       {/* Cards dos clientes — compactos */}
