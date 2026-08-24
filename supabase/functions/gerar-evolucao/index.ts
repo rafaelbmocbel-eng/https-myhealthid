@@ -12,19 +12,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM = `Você é um assistente de PRONTUÁRIO CLÍNICO. Recebe o relato rápido de uma SESSÃO de acompanhamento (fisioterapia/reabilitação, treino, nutrição ou clínica) e o CONTEXTO do paciente, e produz uma NOTA DE EVOLUÇÃO concisa, no formato SOAP, focada no PROGRESSO desde a última sessão.
+const SYSTEM = `Você é um assistente de PRONTUÁRIO CLÍNICO. Gera uma NOTA DE EVOLUÇÃO (SOAP curto) de uma sessão de acompanhamento, LIGADA À DIRETRIZ/CONDUTA vigente do paciente.
 
-Regras:
-- Seja CONCISO e clínico. Não invente achados: use só o que está no relato/contexto. Marque como "não informado" o que faltar.
-- Ligue a sessão de hoje ao histórico (avaliação, diagnóstico, evoluções anteriores) quando fizer sentido — é uma EVOLUÇÃO, não uma avaliação nova.
-- Português Brasileiro. Não prescreva nada fora do que o profissional relatou.
+REGRA DA CONDUTA (campo "plano"):
+- Se PRIMEIRA_VEZ = true (é a primeira sessão desta diretriz, ou a diretriz acabou de mudar numa reavaliação): escreva a CONDUTA/DIRETRIZ NA ÍNTEGRA no campo "plano" — todo o conteúdo da diretriz fornecida, organizado.
+- Se PRIMEIRA_VEZ = false: NÃO reescreva a diretriz. No campo "plano" escreva apenas: "Conduta mantida conforme diretriz '<título>' (<data>)." — e, se houver CONDUTA ADICIONAL informada pelo profissional, acrescente-a depois.
+- Se NÃO houver diretriz vigente fornecida: use o campo "plano" para a conduta que o profissional relatou hoje.
+- Sempre incorpore a CONDUTA ADICIONAL informada, quando houver.
+
+DEMAIS CAMPOS (subjetivo/objetivo/avaliacao): a partir do relato de hoje + contexto. Conciso, clínico, PT-BR. Não invente; marque "não informado" o que faltar. É uma EVOLUÇÃO (progresso desde a última sessão), não uma avaliação nova.
 
 Responda ESTRITAMENTE em JSON:
 {
-  "subjetivo": "relato do paciente hoje (queixa, percepção de melhora/piora)",
-  "objetivo": "o que foi observado/realizado (condutas, exercícios, testes)",
-  "avaliacao": "síntese do estado atual e comparação com a sessão anterior (1-2 frases)",
-  "plano": "conduta para a próxima sessão / orientações",
+  "subjetivo": "relato do paciente hoje (percepção de melhora/piora)",
+  "objetivo": "o que foi observado/realizado hoje",
+  "avaliacao": "síntese do estado atual vs sessão anterior (1-2 frases)",
+  "plano": "a CONDUTA seguindo a regra acima",
   "evolucao_dor": "Melhora" | "Estável" | "Piora" | "Não informado",
   "resumo": "1 frase resumindo a sessão"
 }`;
@@ -36,7 +39,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { paciente_id, transcript, perfilProfissional } = body || {};
+    const { paciente_id, transcript, perfilProfissional, conduta_adicional } = body || {};
     if (!transcript || String(transcript).trim().length < 10) {
       return new Response(JSON.stringify({ error: "Descreva a sessão com pelo menos algumas palavras." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -53,8 +56,11 @@ Deno.serve(async (req) => {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const foco: FocoPlano = perfilProfissional === "nutricionista" ? "nutricao" : perfilProfissional === "educador_fisico" ? "treino" : "clinica";
 
-    // Contexto clínico + evoluções recentes.
+    // Contexto clínico + evoluções recentes + diretriz vigente.
     let ctx = "";
+    let diretrizTexto = "";
+    let primeiraVez = true;
+    let diretrizMeta: { id: string; titulo: string; data: string; updated_at: string } | null = null;
     if (paciente_id) {
       try {
         const motores = await carregarMotoresClinicos(admin, paciente_id);
@@ -71,23 +77,76 @@ Deno.serve(async (req) => {
         if (p.length) ctx += "\n\n[Ficha]\n" + p.join("\n");
       }
       const { data: notas } = await admin.from("notas_prontuario")
-        .select("tipo, titulo, descricao, created_at")
+        .select("tipo, titulo, descricao, dados_extras, created_at")
         .eq("paciente_id", paciente_id)
         .in("tipo", ["evolucao", "fechamento_sessao", "soap_note", "avaliacao_presencial"])
-        .order("created_at", { ascending: false }).limit(4);
+        .order("created_at", { ascending: false }).limit(6);
       if (notas?.length) {
         ctx += "\n\n[Evoluções/notas anteriores (mais recente primeiro)]\n" +
-          notas.map((n: any) => `• ${new Date(n.created_at).toLocaleDateString("pt-BR")} (${n.tipo}): ${String(n.descricao).slice(0, 400)}`).join("\n");
+          notas.slice(0, 4).map((n: any) => `• ${new Date(n.created_at).toLocaleDateString("pt-BR")} (${n.tipo}): ${String(n.descricao).slice(0, 400)}`).join("\n");
+      }
+
+      // ── Diretriz/conduta VIGENTE — protocolo (fisio) ou diretriz_profissional (outras) ──
+      const [protoRes, dirRes] = await Promise.all([
+        admin.from("protocolos")
+          .select("id, titulo, objetivo_geral, hierarquia_terapeutica, duracao_total, frequencia, status, updated_at")
+          .eq("paciente_id", paciente_id).eq("status", "ativo")
+          .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+        admin.from("diretrizes_profissionais")
+          .select("id, area, titulo, objetivo, conteudo, updated_at")
+          .eq("paciente_id", paciente_id)
+          .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      const proto = protoRes.data as any;
+      const dir = dirRes.data as any;
+      // Escolhe a mais recente entre as duas fontes.
+      const usarProto = proto && (!dir || (proto.updated_at || "") >= (dir.updated_at || ""));
+      const fonte = usarProto ? proto : dir;
+      if (fonte) {
+        diretrizMeta = {
+          id: fonte.id,
+          titulo: fonte.titulo || (usarProto ? "Plano de Reabilitação" : "Diretriz"),
+          data: new Date(fonte.updated_at).toLocaleDateString("pt-BR"),
+          updated_at: fonte.updated_at,
+        };
+        // Texto da diretriz (para escrever na íntegra quando for a 1ª vez).
+        diretrizTexto = usarProto
+          ? [
+              `Título: ${proto.titulo || "—"}`,
+              proto.objetivo_geral ? `Objetivo: ${proto.objetivo_geral}` : "",
+              proto.duracao_total ? `Duração: ${proto.duracao_total} · Frequência: ${proto.frequencia || "—"}` : "",
+              proto.hierarquia_terapeutica ? `Conduta/hierarquia: ${JSON.stringify(proto.hierarquia_terapeutica).slice(0, 3000)}` : "",
+            ].filter(Boolean).join("\n")
+          : [
+              `Título: ${dir.titulo || "—"}`,
+              dir.objetivo ? `Objetivo: ${dir.objetivo}` : "",
+              dir.conteudo ? `Conteúdo: ${JSON.stringify(dir.conteudo).slice(0, 3000)}` : "",
+            ].filter(Boolean).join("\n");
+
+        // Primeira vez desta VERSÃO da diretriz? Procura uma evolução anterior que já
+        // referenciou este id + updated_at. Se achou, não é a primeira → "conduta mantida".
+        primeiraVez = !((notas || []).some((n: any) =>
+          n.tipo === "evolucao" &&
+          n.dados_extras?.diretriz_id === fonte.id &&
+          n.dados_extras?.diretriz_updated_at === fonte.updated_at
+        ));
       }
     }
 
+    const blocoDiretriz = diretrizMeta
+      ? `\n\n[Diretriz/conduta vigente] (título: "${diretrizMeta.titulo}", de ${diretrizMeta.data})\nPRIMEIRA_VEZ = ${primeiraVez}\n${primeiraVez ? "→ escreva esta diretriz NA ÍNTEGRA no campo 'plano':" : "→ NÃO reescreva; use 'Conduta mantida conforme diretriz ...'"}\n${diretrizTexto}`
+      : `\n\n[Diretriz/conduta vigente] Nenhuma diretriz registrada — use no 'plano' a conduta relatada hoje.`;
+    const blocoAdicional = (conduta_adicional && String(conduta_adicional).trim())
+      ? `\n\n[Conduta ADICIONAL informada pelo profissional — incorpore no 'plano']\n${String(conduta_adicional).slice(0, 2000)}`
+      : "";
+
     const userPrompt = `
-[Contexto do paciente]${ctx || "\n(sem contexto clínico registrado)"}
+[Contexto do paciente]${ctx || "\n(sem contexto clínico registrado)"}${blocoDiretriz}${blocoAdicional}
 
 [Relato da sessão de hoje — profissional]
 ${String(transcript).slice(0, 6000)}
 
-Gere a NOTA DE EVOLUÇÃO no JSON especificado.`.trim();
+Gere a NOTA DE EVOLUÇÃO no JSON especificado, seguindo a REGRA DA CONDUTA.`.trim();
 
     const ctrl = new AbortController();
     setTimeout(() => ctrl.abort(), 60_000);
@@ -124,6 +183,12 @@ Gere a NOTA DE EVOLUÇÃO no JSON especificado.`.trim();
       plano: out?.plano || "",
       evolucao_dor: out?.evolucao_dor || "Não informado",
       resumo: out?.resumo || "",
+      // Metadados da diretriz — o front salva em dados_extras p/ detectar "mantida" na próxima.
+      diretriz_id: diretrizMeta?.id || null,
+      diretriz_updated_at: diretrizMeta?.updated_at || null,
+      diretriz_titulo: diretrizMeta?.titulo || null,
+      primeira_vez: primeiraVez,
+      tem_diretriz: !!diretrizMeta,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (e) {

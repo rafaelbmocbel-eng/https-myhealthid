@@ -18,6 +18,8 @@ const DOR_OPCOES = ['Melhora', 'Estável', 'Piora', 'Não informado'] as const;
 interface Evolucao {
   subjetivo: string; objetivo: string; avaliacao: string; plano: string;
   evolucao_dor: string; resumo?: string;
+  diretriz_id?: string | null; diretriz_updated_at?: string | null; diretriz_titulo?: string | null;
+  primeira_vez?: boolean; tem_diretriz?: boolean;
 }
 
 /**
@@ -28,6 +30,7 @@ interface Evolucao {
 export default function AssistenteEvolucao({ pacienteId, onSuccess }: Props) {
   const [aberto, setAberto] = useState(false);
   const [relato, setRelato] = useState('');
+  const [condutaAdicional, setCondutaAdicional] = useState('');
   const [gerando, setGerando] = useState(false);
   const [ev, setEv] = useState<Evolucao | null>(null);
   const { adicionar, adicionando } = useNotasProntuario(pacienteId);
@@ -43,7 +46,12 @@ export default function AssistenteEvolucao({ pacienteId, onSuccess }: Props) {
     setGerando(true);
     try {
       const { data, error } = await supabase.functions.invoke('gerar-evolucao', {
-        body: { paciente_id: pacienteId, transcript: relato.trim(), perfilProfissional: lente?.id },
+        body: {
+          paciente_id: pacienteId,
+          transcript: relato.trim(),
+          perfilProfissional: lente?.id,
+          conduta_adicional: condutaAdicional.trim() || undefined,
+        },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -74,7 +82,7 @@ export default function AssistenteEvolucao({ pacienteId, onSuccess }: Props) {
         dadosExtras: { ...ev, origem: 'assistente_ia', relato: relato.trim() },
       });
       toast({ title: 'Evolução salva! ✅' });
-      setEv(null); setRelato(''); setAberto(false);
+      setEv(null); setRelato(''); setCondutaAdicional(''); setAberto(false);
       onSuccess?.();
     } catch (err: any) {
       toast({ title: 'Erro ao salvar', description: err?.message, variant: 'destructive' });
@@ -108,6 +116,9 @@ export default function AssistenteEvolucao({ pacienteId, onSuccess }: Props) {
 
       {!ev ? (
         <>
+          <p className="text-[11px] text-muted-foreground">
+            A IA usa a <strong>diretriz vigente</strong> do paciente: na 1ª sessão da conduta ela é registrada na íntegra; nas seguintes, vira <strong>"conduta mantida"</strong>. Ao reavaliar (nova diretriz), volta a registrar na íntegra.
+          </p>
           <div>
             <Label className="text-xs">Descreva a sessão de hoje (digite ou dite pelo teclado)</Label>
             <Textarea
@@ -118,6 +129,16 @@ export default function AssistenteEvolucao({ pacienteId, onSuccess }: Props) {
               placeholder="ex.: paciente relatou menos dor lombar, fizemos mobilização e fortalecimento de core, tolerou bem, orientei alongamento em casa..."
             />
           </div>
+          <div>
+            <Label className="text-xs">Acrescentar outra conduta (opcional)</Label>
+            <Textarea
+              value={condutaAdicional}
+              onChange={(e) => setCondutaAdicional(e.target.value)}
+              rows={2}
+              className="mt-1 text-xs"
+              placeholder="Só preencha se quiser somar uma conduta nova à diretriz de hoje (ex.: iniciar liberação miofascial)."
+            />
+          </div>
           <Button onClick={gerar} disabled={gerando} size="sm" className="w-full gap-2">
             {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
             {gerando ? 'Gerando evolução…' : 'Gerar evolução (IA)'}
@@ -126,6 +147,14 @@ export default function AssistenteEvolucao({ pacienteId, onSuccess }: Props) {
       ) : (
         <>
           {ev.resumo && <p className="text-[11px] text-muted-foreground italic">{ev.resumo}</p>}
+          {/* Selo do vínculo com a diretriz */}
+          {!ev.tem_diretriz ? (
+            <div className="text-[11px] rounded-md bg-muted/50 text-muted-foreground px-2 py-1">Sem diretriz vigente — a conduta veio do relato de hoje.</div>
+          ) : ev.primeira_vez ? (
+            <div className="text-[11px] rounded-md bg-primary/10 text-primary px-2 py-1 font-medium">1ª evolução desta conduta — diretriz "{ev.diretriz_titulo}" registrada na íntegra.</div>
+          ) : (
+            <div className="text-[11px] rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 px-2 py-1 font-medium">Conduta mantida — diretriz "{ev.diretriz_titulo}".</div>
+          )}
           {campo('S — Subjetivo', 'subjetivo')}
           {campo('O — Objetivo', 'objetivo')}
           {campo('A — Avaliação', 'avaliacao')}
