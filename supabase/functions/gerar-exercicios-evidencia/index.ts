@@ -4,6 +4,7 @@
 // profissional revisar — mesmo padrão das diretrizes.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logUsoIA } from "../_shared/log-ia.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,6 +95,7 @@ Retorne o JSON conforme o formato.`;
       throw new Error(`Gemini API: ${aiRes.status} ${txt.slice(0, 200)}`);
     }
     const aiJson = await aiRes.json();
+    await logUsoIA("gerar-exercicios-evidencia", "gemini-2.5-flash", aiJson?.usage);
     const content = aiJson.choices?.[0]?.message?.content || "{}";
     let parsed: any = {};
     try { parsed = JSON.parse(content); } catch {

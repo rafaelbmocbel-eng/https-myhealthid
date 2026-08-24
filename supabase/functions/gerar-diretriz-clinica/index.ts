@@ -6,6 +6,7 @@
 // diretrizes_profissionais na área da lente.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logUsoIA } from "../_shared/log-ia.ts";
 import { carregarMotoresClinicos, textoMyID, textoPresencial, textoQuestionarios } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
@@ -140,6 +141,7 @@ Deno.serve(async (req) => {
       throw new Error(`Gemini API: ${aiRes.status} ${txt.slice(0, 200)}`);
     }
     const aiJson = await aiRes.json();
+    await logUsoIA("gerar-diretriz-clinica", "gemini-2.5-flash", aiJson?.usage);
     const content = aiJson.choices?.[0]?.message?.content || "{}";
     let diretriz: any = {};
     try { diretriz = JSON.parse(content); } catch { const m = content.match(/\{[\s\S]*\}/); if (m) diretriz = JSON.parse(m[0]); }

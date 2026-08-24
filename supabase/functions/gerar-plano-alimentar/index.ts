@@ -2,6 +2,7 @@
 // evidências e no perfil clínico do paciente (MyID + história).
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logUsoIA } from "../_shared/log-ia.ts";
 import { carregarMotoresClinicos, textoMyID, textoPresencial, textoQuestionarios } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
@@ -145,6 +146,7 @@ Gere o plano alimentar completo em JSON conforme o formato. Baseie-se em diretri
       throw new Error(`Gemini API: ${aiRes.status} ${txt.slice(0, 200)}`);
     }
     const aiJson = await aiRes.json();
+    await logUsoIA("gerar-plano-alimentar", "gemini-2.5-flash", aiJson?.usage);
     const content = aiJson.choices?.[0]?.message?.content || "{}";
     let plano: any = {};
     try { plano = JSON.parse(content); } catch {

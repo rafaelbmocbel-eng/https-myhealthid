@@ -286,8 +286,36 @@ Deno.serve(async (req) => {
       }))
       .sort((x, y) => x.email.localeCompare(y.email, "pt-BR"));
 
+    // ── Uso e custo de IA (últimos 7 dias) + efetividade do cache ──
+    const desde7dIa = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+    const desde24hIa = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { data: usoRows } = await admin.from("ai_usage_log").select("function_name, est_cost_usd, created_at").gte("created_at", desde7dIa);
+    const porFnIa: Record<string, { n: number; usd: number }> = {};
+    let custo7dIa = 0, custo24hIa = 0, chamadas7d = 0;
+    for (const rr of usoRows || []) {
+      const usd = Number(rr.est_cost_usd || 0);
+      custo7dIa += usd; chamadas7d++;
+      if (rr.created_at >= desde24hIa) custo24hIa += usd;
+      const k = rr.function_name || "?";
+      porFnIa[k] = porFnIa[k] || { n: 0, usd: 0 };
+      porFnIa[k].n++; porFnIa[k].usd += usd;
+    }
+    let cacheHitsIa = 0;
+    try {
+      const { data: cacheRows } = await admin.from("ai_response_cache").select("hit_count");
+      cacheHitsIa = (cacheRows || []).reduce((s: number, c: any) => s + Number(c.hit_count || 0), 0);
+    } catch { /* tabela ausente em algum ambiente */ }
+    const aiUso = {
+      custo_7d_usd: Math.round(custo7dIa * 10000) / 10000,
+      custo_24h_usd: Math.round(custo24hIa * 10000) / 10000,
+      chamadas_7d: chamadas7d,
+      cache_hits: cacheHitsIa,
+      por_funcao: Object.entries(porFnIa).map(([funcao, v]) => ({ funcao, chamadas: v.n, custo_usd: Math.round(v.usd * 10000) / 10000 })).sort((a, b) => b.custo_usd - a.custo_usd).slice(0, 8),
+    };
+
     return new Response(JSON.stringify({
       gerado_em: nowIso,
+      ai_uso: aiUso,
       resumo: {
         mrr_total: Math.round((mrrProfissionais + mrrAlunos) * 100) / 100,
         mrr_profissionais: Math.round(mrrProfissionais * 100) / 100,

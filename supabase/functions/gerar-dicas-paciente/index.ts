@@ -3,6 +3,7 @@
 // evidence_library. Chamada automaticamente ao concluir o MyID. Salva 1 registro
 // por paciente em paciente_dicas.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logUsoIA } from "../_shared/log-ia.ts";
 import { isInternalCall, requireUser } from "../_shared/auth.ts";
 import { carregarScoresMyid } from "../_shared/motores-plano.ts";
 
@@ -114,6 +115,7 @@ Deno.serve(async (req) => {
     });
     if (!aiRes.ok) throw new Error(`Gemini API: ${aiRes.status}`);
     const aiJson = await aiRes.json();
+    await logUsoIA("gerar-dicas-paciente", "gemini-2.5-flash", aiJson?.usage);
     const content = aiJson.choices?.[0]?.message?.content || "{}";
     let parsed: any = {};
     try { parsed = JSON.parse(content); } catch { const m = content.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); }

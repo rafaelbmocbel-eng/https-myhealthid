@@ -3,6 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface AdminMetrics {
   gerado_em: string;
+  ai_uso?: {
+    custo_7d_usd: number; custo_24h_usd: number; chamadas_7d: number; cache_hits: number;
+    por_funcao: Array<{ funcao: string; chamadas: number; custo_usd: number }>;
+  };
   resumo: {
     mrr_total: number; mrr_profissionais: number; mrr_alunos: number;
     clinicas_ativas: number; clinicas_total: number;

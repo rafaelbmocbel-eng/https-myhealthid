@@ -1,5 +1,6 @@
 // deploy trigger 2026-07-04
 import { requireUser } from "../_shared/auth.ts";
+import { logUsoIA } from "../_shared/log-ia.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -709,6 +710,7 @@ Deno.serve(async (req) => {
     }
 
     const data = await response.json();
+    await logUsoIA("voice-assessment", "gemini-2.5-flash", data?.usage);
     const msg = data.choices?.[0]?.message;
     const toolCall = msg?.tool_calls?.[0];
     // Robustez: o endpoint OpenAI-compat do Gemini nem sempre honra o

@@ -5,6 +5,7 @@
 // Mesmo provedor (Gemini) e motores clínicos das outras funções.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logUsoIA } from "../_shared/log-ia.ts";
 import { carregarMotoresClinicos, textoMyID, textoPresencial, textoQuestionarios, type FocoPlano } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
@@ -169,6 +170,7 @@ Gere a NOTA DE EVOLUÇÃO no JSON especificado, seguindo a REGRA DA CONDUTA.`.tr
     }
 
     const aiJson = await aiRes.json();
+    await logUsoIA("gerar-evolucao", "gemini-2.5-flash", aiJson?.usage);
     const content = aiJson.choices?.[0]?.message?.content || "{}";
     let out: any = {};
     try { out = JSON.parse(content); } catch {

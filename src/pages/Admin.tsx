@@ -541,6 +541,56 @@ export default function Admin() {
         </CardContent>
       </Card>
 
+      {/* Custo / uso de IA — Guardião de Custo */}
+      {data.ai_uso && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><DollarSign className="h-4 w-4 text-primary" /> Custo de IA (Gemini)</CardTitle>
+            <p className="text-[11px] text-muted-foreground mt-1">Estimativa por tokens medidos no banco. O Guardião de Custo alerta por e-mail se o gasto de 24h passar do teto (variável AI_COST_ALERT_USD).</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-lg border border-border/50 px-3 py-2">
+                <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Últimas 24h</p>
+                <p className="text-lg font-black">US$ {data.ai_uso.custo_24h_usd.toFixed(2)}</p>
+              </div>
+              <div className="rounded-lg border border-border/50 px-3 py-2">
+                <p className="text-[10px] uppercase text-muted-foreground tracking-wide">7 dias</p>
+                <p className="text-lg font-black">US$ {data.ai_uso.custo_7d_usd.toFixed(2)}</p>
+              </div>
+              <div className="rounded-lg border border-border/50 px-3 py-2">
+                <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Chamadas (7d)</p>
+                <p className="text-lg font-black">{fmtInt(data.ai_uso.chamadas_7d)}</p>
+              </div>
+              <div className="rounded-lg border border-border/50 px-3 py-2">
+                <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Cache (chamadas evitadas)</p>
+                <p className="text-lg font-black text-emerald-600">{fmtInt(data.ai_uso.cache_hits)}</p>
+              </div>
+            </div>
+            {data.ai_uso.por_funcao.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="text-left text-xs text-muted-foreground border-b border-border">
+                    <th className="py-1.5 pr-3">Função</th><th className="py-1.5 pr-3">Chamadas (7d)</th><th className="py-1.5 pr-3">Custo (7d)</th>
+                  </tr></thead>
+                  <tbody>
+                    {data.ai_uso.por_funcao.map((f) => (
+                      <tr key={f.funcao} className="border-b border-border/30">
+                        <td className="py-1.5 pr-3">{f.funcao}</td>
+                        <td className="py-1.5 pr-3 tabular-nums">{fmtInt(f.chamadas)}</td>
+                        <td className="py-1.5 pr-3 tabular-nums">US$ {f.custo_usd.toFixed(4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">Ainda sem chamadas registradas — os números aparecem conforme o app usa a IA (instrumentação recém-ativada).</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Clínicas */}
         <Card>
