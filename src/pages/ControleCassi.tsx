@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
+import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
 
 interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; }
 
@@ -230,11 +230,45 @@ export default function ControleCassi() {
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
 
+  // Sessões REALIZADAS por guia, contadas AUTOMATICAMENTE da agenda (dias distintos
+  // de tratamento já passados, ignorando avaliação/falta/cancelado/bloqueado/pendente).
+  // É isso que faz "a agenda controlar as guias" sem precisar do botão "usar".
+  const { data: agsGuia = [] } = useQuery({
+    queryKey: ['cassi-ags-guia-controle', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('agendamentos')
+        .select('guia_cassi_id, data_inicio, status, tipo_atendimento')
+        .eq('terapeuta_id', user!.id).not('guia_cassi_id', 'is', null);
+      if (error) throw error;
+      return (data || []) as Array<{ guia_cassi_id: string; data_inicio: string; status: string; tipo_atendimento?: string }>;
+    },
+    enabled: !!user,
+  });
+  const realizadasAgendaPorGuia = useMemo(() => {
+    const agora = Date.now();
+    const naoConta = new Set(['cancelado', 'faltou', 'bloqueado', 'pendente']);
+    const dias = new Map<string, Set<string>>();
+    for (const a of agsGuia) {
+      if (!a.guia_cassi_id || a.tipo_atendimento === 'avaliacao' || naoConta.has(a.status)) continue;
+      if (new Date(a.data_inicio).getTime() >= agora) continue; // só sessões já passadas contam como realizadas
+      if (!dias.has(a.guia_cassi_id)) dias.set(a.guia_cassi_id, new Set());
+      dias.get(a.guia_cassi_id)!.add(a.data_inicio.slice(0, 10));
+    }
+    const m = new Map<string, number>();
+    for (const [gid, set] of dias) m.set(gid, set.size);
+    return m;
+  }, [agsGuia]);
+
   const linhas = useMemo(() =>
     pacientesAtivos.map((p) => {
-      const guia = guiaPorPaciente.get(p.id) || null;
+      const raw = guiaPorPaciente.get(p.id) || null;
+      // Contagem efetiva = maior entre o campo salvo e o que a agenda mostra
+      // (a agenda avança o número sozinha; o manual segue como piso/override).
+      const guia = raw
+        ? { ...raw, sessoes_realizadas: Math.max(raw.sessoes_realizadas || 0, realizadasAgendaPorGuia.get(raw.id) || 0) }
+        : null;
       return { paciente: p, guia, status: statusPaciente(guia) };
-    }), [pacientesAtivos, guiaPorPaciente]);
+    }), [pacientesAtivos, guiaPorPaciente, realizadasAgendaPorGuia]);
 
   // "Pedido aberto" = já demos baixa (solicitamos) e a guia nova ainda não chegou
   // (nenhuma guia com data_pedido >= a data da solicitação).
@@ -247,7 +281,12 @@ export default function ControleCassi() {
   // Precisa pedir guia (faltam ≤ 2 sessões / guia usada / sem guia) E ainda não
   // foi pedida. Baseado nas sessões (tempo hábil), não em prazo fixo de calendário.
   const pedidosDoMes = useMemo(() => linhas.filter((l) =>
-    precisaNovaGuia(l.guia) && !pedidoAberto(l.paciente)
+    (
+      // Regra por SESSÕES (agora automática via agenda): faltam ≤2 / usou todas / sem guia.
+      precisaNovaGuia(l.guia)
+      // Regra por TEMPO só para cliente de 2 guias/mês: vencidos os 13 dias, entra sozinho.
+      || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes)
+    ) && !pedidoAberto(l.paciente)
   ), [linhas, guiaPorPaciente]);
   // Guias já pedidas, aguardando a CASSI liberar.
   const guiasPedidas = useMemo(() => linhas.filter((l) => pedidoAberto(l.paciente)), [linhas, guiaPorPaciente]);
