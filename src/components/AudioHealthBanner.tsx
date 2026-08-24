@@ -2,16 +2,18 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 
 const DISMISS_KEY = 'mhid.health-dismissed-id';
 
 /**
  * Banner global de status das funções do app (Guardião Geral).
- * Só aparece quando o último health-check geral FALHOU — avisa o profissional
- * que alguma função (IA/áudio/etc.) pode estar instável. Dispensável por
- * incidente (some quando normaliza; reaparece num novo incidente).
+ * Só aparece quando o último health-check geral FALHOU. Restrito ao super-admin
+ * (dono do produto) — os demais profissionais não são alarmados por oscilação
+ * de bastidor. Dispensável por incidente (some quando normaliza).
  */
 export default function AudioHealthBanner() {
+  const isSuperAdmin = useIsSuperAdmin();
   const [dismissedId, setDismissedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,8 +37,10 @@ export default function AudioHealthBanner() {
     refetchInterval: 5 * 60 * 1000,
     staleTime: 4 * 60 * 1000,
     retry: false,
+    enabled: isSuperAdmin, // só o dono do produto consulta/vê
   });
 
+  if (!isSuperAdmin) return null;
   if (!data || data.ok) return null;
   if (dismissedId === data.id) return null;
 
