@@ -54,12 +54,14 @@ Deno.serve(async (req) => {
 
     // ── Ação de escrita: atualizar um plano (preço/nome/ativo) ──
     if (action === "update_plano") {
-      const { id, nome, preco_mensal, ativo } = body;
+      const { id, nome, preco_mensal, ativo, modulos } = body;
       if (!id) return new Response(JSON.stringify({ error: "id do plano ausente" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (typeof nome === "string") patch.nome = nome;
       if (preco_mensal != null && !Number.isNaN(Number(preco_mensal))) patch.preco_mensal = Number(preco_mensal);
       if (typeof ativo === "boolean") patch.ativo = ativo;
+      // Funcionalidades liberadas pelo plano (array de chaves de módulo).
+      if (Array.isArray(modulos)) patch.modulos = modulos.filter((m) => typeof m === "string");
       const { error } = await admin.from("planos").update(patch).eq("id", id);
       if (error) throw error;
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -98,7 +100,7 @@ Deno.serve(async (req) => {
       admin.from("clinica_membros").select("clinica_id, user_id"),
       admin.from("profiles").select("id, user_id, nome, sobrenome, email, telefone, perfil_profissional, especialidade, crefito, created_at"),
       admin.from("assinaturas").select("id, user_id, plano_id, status, origem, data_inicio, data_fim, created_at"),
-      admin.from("planos").select("id, nome, descricao, preco_mensal, ativo, stripe_price_id, created_at").order("preco_mensal", { ascending: true }),
+      admin.from("planos").select("id, nome, descricao, preco_mensal, ativo, stripe_price_id, modulos, created_at").order("preco_mensal", { ascending: true }),
       admin.from("wellness_assinaturas").select("id, status, provider, valor_mensal, data_inicio, proxima_cobranca, created_at"),
       admin.from("vendas").select("valor_total, forma_pagamento, status, data_venda").gte("data_venda", umAnoAtras),
       admin.from("config_clinica").select("terapeuta_id, cidade, uf, razao_social"),
@@ -254,7 +256,7 @@ Deno.serve(async (req) => {
         receita_12m: Math.round(receitaVendas * 100) / 100,
         por_forma_pagamento: Object.entries(porFormaPagamento).map(([forma, v]) => ({ forma, ...v, valor: Math.round(v.valor * 100) / 100 })).sort((a, b) => b.valor - a.valor),
       },
-      planos: planos.map((p: any) => ({ id: p.id, nome: p.nome, descricao: p.descricao, preco_mensal: Number(p.preco_mensal || 0), ativo: p.ativo, stripe_price_id: p.stripe_price_id })),
+      planos: planos.map((p: any) => ({ id: p.id, nome: p.nome, descricao: p.descricao, preco_mensal: Number(p.preco_mensal || 0), ativo: p.ativo, stripe_price_id: p.stripe_price_id, modulos: Array.isArray(p.modulos) ? p.modulos : [] })),
       formas_pagamento: Array.from(provedores).sort(),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 

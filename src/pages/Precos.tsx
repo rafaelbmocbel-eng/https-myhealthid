@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MODULOS_CATALOGO as FEATURES_LABEL } from "@/lib/modulosPlano";
 
 interface PlanoPublico {
   id: string;
@@ -16,23 +17,6 @@ interface PlanoPublico {
   destaque: boolean;
   ordem: number;
 }
-
-const FEATURES_LABEL: Record<string, string> = {
-  agenda: "Agenda completa com drag and drop",
-  pacientes: "Gestão ilimitada de pacientes",
-  myid: "Avaliação MyID v2.0 com 11 dimensões",
-  portal_paciente: "Portal do paciente gamificado (PWA)",
-  eventos: "Módulo de eventos com inscrições",
-  prontuario: "Prontuário eletrônico (SOAP)",
-  crm: "CRM completo de vendas e retenção",
-  funil_vendas: "Funil de vendas com chatbot público",
-  pacotes_sessoes: "Gestão de pacotes de sessões",
-  financeiro_avancado: "Financeiro avançado e conciliação",
-  relatorios: "Relatórios e dashboards",
-  multi_profissional: "Multi-profissional na mesma clínica",
-  painel_dono: "Painel do dono com visão consolidada",
-  comissoes: "Gestão de comissões por profissional",
-};
 
 export default function Precos() {
   useEffect(() => {

@@ -22,7 +22,7 @@ export interface AdminMetrics {
   assinaturas_alunos: { por_status: Record<string, number>; mrr: number; inadimplentes: number };
   evolucao_mensal: Array<{ mes: string; profissionais: number; alunos: number }>;
   vendas: { receita_12m: number; por_forma_pagamento: Array<{ forma: string; qtd: number; valor: number }> };
-  planos: Array<{ id: string; nome: string; descricao: string | null; preco_mensal: number; ativo: boolean; stripe_price_id: string | null }>;
+  planos: Array<{ id: string; nome: string; descricao: string | null; preco_mensal: number; ativo: boolean; stripe_price_id: string | null; modulos: string[] }>;
   formas_pagamento: string[];
 }
 
@@ -41,7 +41,7 @@ export function useAdminMetrics() {
 }
 
 /** Atualiza um plano (preço/nome/ativo) via admin-metrics. */
-export async function atualizarPlano(patch: { id: string; nome?: string; preco_mensal?: number; ativo?: boolean }) {
+export async function atualizarPlano(patch: { id: string; nome?: string; preco_mensal?: number; ativo?: boolean; modulos?: string[] }) {
   const { data, error } = await supabase.functions.invoke('admin-metrics', {
     body: { action: 'update_plano', ...patch },
   });

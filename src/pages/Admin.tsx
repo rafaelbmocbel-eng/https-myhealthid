@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 import { useAdminMetrics, atualizarPlano, removerPlano } from '@/hooks/useAdminMetrics';
+import { MODULOS_CATALOGO, MODULOS_KEYS } from '@/lib/modulosPlano';
 import {
-  Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2,
+  Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2, Layers, Check,
 } from 'lucide-react';
 
 const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -78,8 +79,32 @@ export default function Admin() {
   const [confirmarRemover, setConfirmarRemover] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [filtroEsp, setFiltroEsp] = useState<string>('todas');
+  // Editor de funcionalidades por plano
+  const [funcPlanoId, setFuncPlanoId] = useState<string | null>(null);
+  const [modulosEdit, setModulosEdit] = useState<string[]>([]);
+  const [salvandoFunc, setSalvandoFunc] = useState(false);
 
   if (!isSuper) return <Navigate to="/hoje" replace />;
+
+  const abrirFunc = (p: { id: string; modulos: string[] }) => {
+    setFuncPlanoId(p.id);
+    setModulosEdit(Array.isArray(p.modulos) ? [...p.modulos] : []);
+  };
+  const toggleMod = (k: string) =>
+    setModulosEdit((m) => m.includes(k) ? m.filter((x) => x !== k) : [...m, k]);
+  const salvarFunc = async () => {
+    if (!funcPlanoId) return;
+    setSalvandoFunc(true);
+    try {
+      await atualizarPlano({ id: funcPlanoId, modulos: modulosEdit });
+      await qc.invalidateQueries({ queryKey: ['admin-metrics'] });
+      toast({ title: 'Funcionalidades atualizadas' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSalvandoFunc(false);
+    }
+  };
 
   const removerPlanoHandler = async (id: string) => {
     setSalvando(id);
@@ -333,6 +358,59 @@ export default function Admin() {
               </tbody>
             </table>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Funcionalidades por plano — o que cada assinatura libera */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Funcionalidades por plano</CardTitle>
+          <p className="text-[11px] text-muted-foreground mt-1">Escolha um plano e marque o que ele libera. Vale para o gating do app (o que cada assinatura acessa) e para a página de Preços.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Seletor de plano */}
+          <div className="flex flex-wrap gap-1.5">
+            {data.planos.map((p) => (
+              <button key={p.id} onClick={() => abrirFunc(p)}
+                className={`text-[11px] px-2.5 py-1 rounded-full border ${funcPlanoId === p.id ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>
+                {p.nome} ({fmtInt((p.modulos || []).length)})
+              </button>
+            ))}
+          </div>
+
+          {funcPlanoId ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {MODULOS_KEYS.map((k) => {
+                  const on = modulosEdit.includes(k);
+                  return (
+                    <button key={k} type="button" onClick={() => toggleMod(k)}
+                      className={`flex items-start gap-2 text-left rounded-lg border px-2.5 py-2 transition-colors ${on ? 'border-primary/50 bg-primary/5' : 'border-border/60 hover:bg-muted/40'}`}>
+                      <span className={`mt-0.5 h-4 w-4 rounded flex items-center justify-center shrink-0 border ${on ? 'bg-primary border-primary text-primary-foreground' : 'border-border'}`}>
+                        {on && <Check className="h-3 w-3" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="text-xs font-medium block">{MODULOS_CATALOGO[k]}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{k}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <span className="text-[11px] text-muted-foreground">{fmtInt(modulosEdit.length)} de {fmtInt(MODULOS_KEYS.length)} liberadas</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setFuncPlanoId(null)} disabled={salvandoFunc}>Cancelar</Button>
+                  <Button size="sm" className="h-8 text-xs gap-1.5" onClick={salvarFunc} disabled={salvandoFunc}>
+                    {salvandoFunc ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    Salvar funcionalidades
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">Selecione um plano acima para ver e editar o que ele libera.</p>
+          )}
         </CardContent>
       </Card>
 
