@@ -42,7 +42,7 @@ function perdaDe(dim: string, score: number) {
   return { perda: banda.perda, critico: cfg.critico !== undefined && score >= cfg.critico };
 }
 
-function buildMyIDEnhancements(cs: any, myidScore: number, classificacao: string) {
+function buildMyIDEnhancements(cs: any, myidScore: number, classificacao: string, result?: any) {
   const scores: Record<string, number> = {
     D: Number(cs.D ?? cs.D_pain ?? 0),
     EFI: Number(cs.EFI ?? cs.EFI_functionality ?? 0),
@@ -52,21 +52,42 @@ function buildMyIDEnhancements(cs: any, myidScore: number, classificacao: string
     C: Number(cs.C ?? cs.C_context ?? 0),
     N: Number(cs.N ?? cs.N_noise ?? 0),
   };
+  const DIMS = ["D", "EFI", "P", "I", "R", "C", "N"];
   const perdas: Record<string, { perda: number; critico: boolean }> = {};
-  let driverKey = "D", maxPerda = 0;
-  for (const dim of Object.keys(scores)) {
-    // EFI é bem-estar/funcionalidade: menor valor = pior, por isso usa o déficit (10 - score), igual às capacidades.
-    const p = dim === "EFI" ? perdaDe(dim, 10 - scores[dim]) : perdaDe(dim, scores[dim]);
-    perdas[dim] = p;
-    const ajustada = p.perda * (p.critico ? 1.5 : 1);
-    if (ajustada > maxPerda) { maxPerda = ajustada; driverKey = dim; }
+  let driverKey = "D";
+
+  const appPerdas = result?.perdas_calculadas;
+  const appDriver = result?.myid_100?.driver_primario?.dimensao;
+  if (appPerdas && appDriver) {
+    // FONTE ÚNICA DA VERDADE: usa as perdas e o driver JÁ calculados pelo app
+    // (getFullResult). Evita a divergência de pesos/sinais de um segundo motor
+    // aqui — antes, sono (R) e contexto (C) saíam invertidos nas missões.
+    for (const dim of DIMS) {
+      const d = appPerdas[dim];
+      perdas[dim] = { perda: Number(d?.perda_pontos ?? 0), critico: !!d?.gatilho_critico };
+    }
+    driverKey = appDriver;
+  } else {
+    // Fallback (formato antigo sem perdas_calculadas): recomputa. Aqui EFI, R e C
+    // são capacidades (maior = melhor) → usam o déficit (10 - score).
+    let maxPerda = 0;
+    for (const dim of DIMS) {
+      const raw = (dim === "EFI" || dim === "R" || dim === "C") ? 10 - scores[dim] : scores[dim];
+      const p = perdaDe(dim, raw);
+      perdas[dim] = p;
+      const ajustada = p.perda * (p.critico ? 1.5 : 1);
+      if (ajustada > maxPerda) { maxPerda = ajustada; driverKey = dim; }
+    }
   }
+  // Garante que toda dimensão referenciada abaixo exista.
+  for (const dim of DIMS) if (!perdas[dim]) perdas[dim] = { perda: 0, critico: false };
+
   const di = DRIVER_INTERVENCOES[driverKey] || DRIVER_INTERVENCOES.D;
   const driver = {
     key: driverKey,
     label: DIM_LABELS[driverKey] || driverKey,
-    perda: perdas[driverKey].perda,
-    score: scores[driverKey],
+    perda: perdas[driverKey]?.perda ?? Number(result?.perdas_calculadas?.[driverKey]?.perda_pontos ?? 0),
+    score: scores[driverKey] ?? Number(cs[driverKey] ?? 0),
     intervencoes: di.intervencoes,
     encaminhamentos: di.encaminhamentos,
   };
@@ -485,7 +506,7 @@ Avaliação via MyID-100 v2.0. Dados completos no dashboard.`;
         .maybeSingle();
 
       if (protocoloAtivo?.id) {
-        const myidEnhancements = buildMyIDEnhancements(cs, myidScore, classificacao);
+        const myidEnhancements = buildMyIDEnhancements(cs, myidScore, classificacao, result);
         const novosScores = {
           ...(protocoloAtivo.scores_avaliacao || {}),
           myid_enhancements: myidEnhancements,

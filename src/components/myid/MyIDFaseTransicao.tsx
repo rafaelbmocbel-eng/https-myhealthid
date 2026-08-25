@@ -172,23 +172,23 @@ export function MyIDFaseTransicao({
         )}
       </div>
 
-      {typeof scoreParcial === 'number' && (
-        <div className="rounded-2xl border border-border/40 bg-card p-6 shadow-xs space-y-2">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Score parcial
-          </p>
-          <p className="text-4xl font-black text-primary">{Math.round(scoreParcial)}</p>
-          <p className="text-xs text-muted-foreground">
-            {preenchidas} de {totalDims} dimensões preenchidas
-          </p>
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
-            <div
-              className="h-full bg-primary transition-all duration-500"
-              style={{ width: `${(preenchidas / totalDims) * 100}%` }}
-            />
-          </div>
+      {/* Só progresso — sem "score parcial" numérico, que embutia perdas de
+          dimensões ainda não respondidas e podia assustar. O retrato vem da
+          impressão digital abaixo. */}
+      <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-xs space-y-2">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider">
+          Sua avaliação está montando
+        </p>
+        <p className="text-sm text-foreground">
+          <strong>{preenchidas}</strong> de {totalDims} dimensões preenchidas
+        </p>
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+          <div
+            className="h-full bg-primary transition-all duration-500"
+            style={{ width: `${(preenchidas / totalDims) * 100}%` }}
+          />
         </div>
-      )}
+      </div>
 
       {/* Partial Fingerprint preview */}
       {partialFingerprint && (
