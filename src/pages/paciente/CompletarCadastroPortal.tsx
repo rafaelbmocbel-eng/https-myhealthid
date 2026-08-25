@@ -290,7 +290,7 @@ function CompletarCadastroPortalInner() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Alergias</Label>
-              <Input value={form.alergias} onChange={e => setForm(f => ({ ...f, alergias: e.target.value }))} placeholder="Ex: AAS, frutos do mar..." className="text-[16px] sm:text-sm" />
+              <Input value={form.alergias} onChange={e => setForm(f => ({ ...f, alergias: e.target.value }))} placeholder="Ex: dipirona, camarão, poeira..." className="text-[16px] sm:text-sm" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Medicamentos em uso</Label>
@@ -298,7 +298,7 @@ function CompletarCadastroPortalInner() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Condições pré-existentes</Label>
-              <Input value={form.condicoes_preexistentes} onChange={e => setForm(f => ({ ...f, condicoes_preexistentes: e.target.value }))} placeholder="Ex: HAS, DM2..." className="text-[16px] sm:text-sm" />
+              <Input value={form.condicoes_preexistentes} onChange={e => setForm(f => ({ ...f, condicoes_preexistentes: e.target.value }))} placeholder="Ex: pressão alta, diabetes, asma..." className="text-[16px] sm:text-sm" />
             </div>
           </section>
 

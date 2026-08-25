@@ -292,7 +292,9 @@ export default function PacienteExercicios() {
                                   {done && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                                 </span>
                               </button>
-                              <div className="flex-1 min-w-0" onClick={() => toggleDone(ex)}>
+                              <div className="flex-1 min-w-0 cursor-pointer" role="button" tabIndex={0}
+                                onClick={() => toggleDone(ex)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDone(ex); } }}>
                                 <span className={cn('font-medium block truncate', done && 'line-through text-muted-foreground')}>
                                   {ex.nome_customizado || 'Exercício'}
                                 </span>
@@ -502,7 +504,7 @@ export default function PacienteExercicios() {
               importante primeiro). Os treinos publicados aparecem acima quando
               existirem. */}
           <div className="space-y-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Acesso rápido</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Atalhos</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {([
                 { nome: 'Meu plano personalizado', sub: 'Treino e nutrição sob medida', to: '/paciente/questionarios?foco=plano', Icon: Sparkles, cor: 'text-primary bg-primary/10' },

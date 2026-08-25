@@ -81,6 +81,7 @@ export default function PacienteDashboard() {
   const [proximasConsultas, setProximasConsultas] = useState<Agendamento[]>([]);
   const [stats, setStats] = useState({ avaliacoes: 0, consultas: 0, diarios: 0, pendentes: 0, vocais: 0 });
   const [loading, setLoading] = useState(true);
+  const [semVinculo, setSemVinculo] = useState(false);
   const [showMyIdPrompt, setShowMyIdPrompt] = useState(false);
   const [myIdPromptType, setMyIdPromptType] = useState<'first' | 'monthly'>('first');
   const [historiaContada, setHistoriaContada] = useState(false);
@@ -123,7 +124,9 @@ export default function PacienteDashboard() {
           .maybeSingle();
         if (pacError) throw pacError;
 
-        if (!pac) { return; }
+        // Cliente autocadastrado ainda sem vínculo com um profissional: em vez de
+        // um dashboard vazio e mudo, mostramos um convite para se conectar.
+        if (!pac) { setSemVinculo(true); return; }
 
         if ((pac as any).cadastro_status === 'pendente_paciente') {
           navigate('/paciente/completar-cadastro', { replace: true });
@@ -328,6 +331,29 @@ export default function PacienteDashboard() {
         <PacienteLayout>
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (semVinculo) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <div className="p-6 max-w-md mx-auto min-h-[60vh] flex flex-col items-center justify-center text-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold">Bem-vindo(a)! 👋</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Você ainda não está conectado(a) a um profissional. Encontre o seu para começar sua avaliação e seu acompanhamento.
+              </p>
+            </div>
+            <Button onClick={() => navigate('/paciente/profissionais')} className="gap-1.5">
+              <Sparkles className="h-4 w-4" /> Encontrar meu profissional
+            </Button>
           </div>
         </PacienteLayout>
       </ProtectedPatientRoute>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { formatBRL } from '@/lib/formatBRL';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -265,7 +266,7 @@ export default function PacientePagamentos() {
                       {s.descricao && <p className="text-xs text-muted-foreground">{s.descricao}</p>}
                     </div>
                     <span className="text-sm font-bold text-primary">
-                      R$ {s.valor.toFixed(2).replace('.', ',')}
+                      {formatBRL(s.valor)}
                     </span>
                   </button>
                 ))}
@@ -289,7 +290,7 @@ export default function PacientePagamentos() {
                   <CardTitle className="text-sm">{selectedServico.nome}</CardTitle>
                   <Button variant="ghost" size="sm" onClick={() => setSelectedServico(null)}>Voltar</Button>
                 </div>
-                <p className="text-lg font-bold text-primary">R$ {selectedServico.valor.toFixed(2).replace('.', ',')}</p>
+                <p className="text-lg font-bold text-primary">{formatBRL(selectedServico.valor)}</p>
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs text-muted-foreground mb-2">Escolha a forma de pagamento:</p>
@@ -334,7 +335,7 @@ export default function PacientePagamentos() {
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <p className="text-lg font-bold text-primary mb-3">
-                    R$ {selectedServico.valor.toFixed(2).replace('.', ',')}
+                    {formatBRL(selectedServico.valor)}
                   </p>
                   {generatingQr ? (
                     <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
@@ -344,7 +345,7 @@ export default function PacientePagamentos() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 px-3 py-2 bg-muted rounded-lg text-xs font-mono truncate">{config?.pix_chave}</div>
-                  <Button variant="outline" size="icon" onClick={copyPixKey}><Copy className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" onClick={copyPixKey} aria-label="Copiar chave PIX" title="Copiar chave PIX"><Copy className="h-4 w-4" /></Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground text-center">
                   Após pagar, clique em "Já paguei" para notificar seu profissional.
@@ -374,11 +375,11 @@ export default function PacientePagamentos() {
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <p className="text-lg font-bold text-primary mb-1">
-                    R$ {selectedServico.valor.toFixed(2).replace('.', ',')}
+                    {formatBRL(selectedServico.valor)}
                   </p>
                   {selectedServico.parcelas_max > 1 && (
                     <p className="text-xs text-muted-foreground">
-                      ou até {selectedServico.parcelas_max}x de R$ {(selectedServico.valor / selectedServico.parcelas_max).toFixed(2).replace('.', ',')}
+                      ou até {selectedServico.parcelas_max}x de {formatBRL(selectedServico.valor / selectedServico.parcelas_max)}
                     </p>
                   )}
                 </div>

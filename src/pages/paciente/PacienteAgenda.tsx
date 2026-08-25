@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 
 interface PacienteData {
@@ -77,15 +78,20 @@ export default function PacienteAgenda() {
   const [view, setView] = useState<'meus' | 'agendar'>('meus');
   const [confirmacao, setConfirmacao] = useState<'novo' | 'editar' | null>(null);
   const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null);
+  const [erroCarregar, setErroCarregar] = useState(false);
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [cancelandoId, setCancelandoId] = useState<string | null>(null);
 
   const fetchPatientAndConfig = useCallback(async () => {
     if (!user) return;
+    setErroCarregar(false);
     try {
-      const { data: pac } = await supabase
+      const { data: pac, error: pacErr } = await supabase
         .from('pacientes')
         .select('id, terapeuta_id')
         .eq('user_id', user.id)
         .maybeSingle();
+      if (pacErr) throw pacErr;
 
       if (!pac) return;
       setPaciente(pac);
@@ -104,6 +110,8 @@ export default function PacienteAgenda() {
       }
     } catch (e) {
       console.error('[PacienteAgenda] fetchPatientAndConfig error:', e);
+      // Falha de rede/servidor: marca erro para mostrar retry em vez de "vazio".
+      setErroCarregar(true);
     } finally {
       setLoading(false);
     }
@@ -319,7 +327,8 @@ export default function PacienteAgenda() {
   };
 
   const handleCancelar = async (agId: string) => {
-    if (!paciente) return;
+    if (!paciente || cancelandoId) return;
+    setCancelandoId(agId);
     const { error } = await supabase
       .from('agendamentos')
       .update({ status: 'cancelado' })
@@ -327,6 +336,7 @@ export default function PacienteAgenda() {
       .eq('paciente_id', paciente.id);
 
     if (error) {
+      setCancelandoId(null);
       toast({ title: 'Erro ao cancelar', description: error.message, variant: 'destructive' });
     } else {
       await supabase
@@ -346,6 +356,8 @@ export default function PacienteAgenda() {
       });
 
       toast({ title: 'Consulta cancelada' });
+      setCancelConfirmId(null);
+      setCancelandoId(null);
       fetchAgendamentos();
     }
   };
@@ -364,6 +376,16 @@ export default function PacienteAgenda() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (erroCarregar) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => { setLoading(true); fetchPatientAndConfig(); }} mensagem="Não consegui carregar sua agenda. Verifique sua internet e tente de novo." />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );
@@ -480,14 +502,36 @@ export default function PacienteAgenda() {
                                   >
                                     Editar horário
                                   </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="rounded-lg text-[11px] h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
-                                    onClick={() => handleCancelar(ag.id)}
-                                  >
-                                    Cancelar
-                                  </Button>
+                                  {cancelConfirmId === ag.id ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[11px] text-muted-foreground">Cancelar mesmo?</span>
+                                      <Button
+                                        variant="destructive" size="sm"
+                                        className="rounded-lg text-[11px] min-h-[40px] px-3"
+                                        disabled={cancelandoId === ag.id}
+                                        onClick={() => handleCancelar(ag.id)}
+                                      >
+                                        {cancelandoId === ag.id ? '...' : 'Sim, cancelar'}
+                                      </Button>
+                                      <Button
+                                        variant="ghost" size="sm"
+                                        className="rounded-lg text-[11px] min-h-[40px] px-3"
+                                        disabled={cancelandoId === ag.id}
+                                        onClick={() => setCancelConfirmId(null)}
+                                      >
+                                        Voltar
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="rounded-lg text-[11px] min-h-[40px] px-3 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                      onClick={() => setCancelConfirmId(ag.id)}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  )}
                                 </div>
                               )}
                               <div className="flex items-center gap-2">
