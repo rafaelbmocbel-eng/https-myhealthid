@@ -26,6 +26,22 @@ function detectarOrigem(txt: string | null): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Verificação do webhook da Meta (WhatsApp Cloud API): a Meta faz um GET com
+  // hub.mode/hub.verify_token/hub.challenge e espera o challenge de volta em
+  // texto puro. O verify_token é definido pelo dono da plataforma no secret
+  // WHATSAPP_META_VERIFY_TOKEN e digitado igual no painel da Meta.
+  if (req.method === "GET") {
+    const u = new URL(req.url);
+    const mode = u.searchParams.get("hub.mode");
+    const tokenQ = u.searchParams.get("hub.verify_token");
+    const challenge = u.searchParams.get("hub.challenge");
+    const expected = Deno.env.get("WHATSAPP_META_VERIFY_TOKEN");
+    if (mode === "subscribe" && expected && tokenQ === expected) {
+      return new Response(challenge ?? "", { status: 200, headers: { "Content-Type": "text/plain" } });
+    }
+    return new Response("forbidden", { status: 403 });
+  }
+
   // Segredo do webhook. Só é EXIGIDO se WHATSAPP_WEBHOOK_SECRET estiver
   // configurado no projeto — e nesse caso o zapi-conectar aponta a URL com
   // ?secret=... Se o segredo NÃO estiver configurado, o zapi-conectar aponta a
@@ -44,9 +60,36 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    console.log("[whatsapp-webhook] payload:", JSON.stringify(body).slice(0, 500));
+    const rawBody = await req.json();
+    console.log("[whatsapp-webhook] payload:", JSON.stringify(rawBody).slice(0, 500));
 
+    // Meta (WhatsApp Cloud API) tem formato próprio. Normaliza para o mesmo shape
+    // "estilo Z-API" que o resto da função já entende, e guarda o phone_number_id
+    // para rotear o terapeuta. Se não for Meta, segue com o corpo original.
+    let body: any = rawBody;
+    let metaPhoneNumberId: string | null = null;
+    if (rawBody?.object === "whatsapp_business_account") {
+      const value = rawBody.entry?.[0]?.changes?.[0]?.value;
+      metaPhoneNumberId = value?.metadata?.phone_number_id || null;
+      const m = value?.messages?.[0];
+      if (!m) {
+        // Sem mensagem (status de entrega/leitura, etc.) — ignora.
+        return new Response(JSON.stringify({ ok: true, ignored: "meta-sem-mensagem" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const contatoNome = value?.contacts?.[0]?.profile?.name || null;
+      body = { phone: m.from, fromMe: false, messageId: m.id, senderName: contatoNome, isGroup: false };
+      // Mídia na Cloud API vem como ID (precisa ser resolvida via Graph API com o
+      // token); nesta fase capturamos texto por completo e guardamos o media id.
+      if (m.type === "text") body.text = { message: m.text?.body };
+      else if (m.type === "image") body.image = { imageUrl: null, caption: m.image?.caption || null, mediaId: m.image?.id };
+      else if (m.type === "audio") body.audio = { audioUrl: null, mediaId: m.audio?.id };
+      else if (m.type === "video") body.video = { videoUrl: null, caption: m.video?.caption || null, mediaId: m.video?.id };
+      else if (m.type === "document") body.document = { documentUrl: null, fileName: m.document?.filename || null, mediaId: m.document?.id };
+      else if (m.type === "button") body.text = { message: m.button?.text || "" };
+      else if (m.type === "interactive") body.text = { message: m.interactive?.button_reply?.title || m.interactive?.list_reply?.title || "" };
+    }
 
     // Z-API envia eventos diversos; aceitamos os de mensagem (text, image, audio, etc.)
     // Estrutura típica: { phone, fromMe, messageId, text:{message}, image:{caption,imageUrl}, audio:{audioUrl}, ... }
@@ -102,7 +145,15 @@ Deno.serve(async (req) => {
     // entregaria a mensagem de um paciente para a clínica errada. Sem instância
     // reconhecida, a mensagem é registrada como não-roteada e descartada.
     let terapeuta_id: string | null = null;
-    if (instanceId) {
+    if (metaPhoneNumberId) {
+      // Meta: roteia pelo Phone Number ID da Cloud API (uma clínica por número).
+      const { data } = await admin
+        .from("config_clinica")
+        .select("terapeuta_id")
+        .eq("meta_phone_number_id", metaPhoneNumberId)
+        .maybeSingle();
+      terapeuta_id = data?.terapeuta_id ?? null;
+    } else if (instanceId) {
       const { data } = await admin
         .from("config_clinica")
         .select("terapeuta_id")
@@ -111,9 +162,9 @@ Deno.serve(async (req) => {
       terapeuta_id = data?.terapeuta_id ?? null;
     }
     if (!terapeuta_id) {
-      console.warn("[whatsapp-webhook] instância não reconhecida (não-roteada):", instanceId);
+      console.warn("[whatsapp-webhook] origem não reconhecida (não-roteada):", metaPhoneNumberId || instanceId);
       return new Response(
-        JSON.stringify({ ok: true, ignored: "instancia-nao-reconhecida", instanceId }),
+        JSON.stringify({ ok: true, ignored: "origem-nao-reconhecida", metaPhoneNumberId, instanceId }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

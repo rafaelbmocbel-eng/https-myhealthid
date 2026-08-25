@@ -35,6 +35,9 @@ type ConfigClinica = {
   evolution_base_url: string;
   evolution_instance: string;
   evolution_api_key: string;
+  meta_phone_number_id: string;
+  meta_access_token: string;
+  meta_waba_id: string;
 };
 
 const EMPTY: ConfigClinica = {
@@ -44,6 +47,7 @@ const EMPTY: ConfigClinica = {
   logo_url: '',
   zapi_instance_id: '', zapi_token: '', zapi_client_token: '', zapi_ativo: false,
   whatsapp_provider: 'zapi', evolution_base_url: '', evolution_instance: '', evolution_api_key: '',
+  meta_phone_number_id: '', meta_access_token: '', meta_waba_id: '',
 };
 
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -112,6 +116,9 @@ export default function ConfigClinica() {
         evolution_base_url: (data as any).evolution_base_url || '',
         evolution_instance: (data as any).evolution_instance || '',
         evolution_api_key: (data as any).evolution_api_key || '',
+        meta_phone_number_id: (data as any).meta_phone_number_id || '',
+        meta_access_token: (data as any).meta_access_token || '',
+        meta_waba_id: (data as any).meta_waba_id || '',
       });
     }
     setLoading(false);
@@ -311,7 +318,7 @@ export default function ConfigClinica() {
       </div>
 
       {/* Conexão em 1 clique (auto-provisionamento + QR) — só faz sentido no Z-API */}
-      {form.whatsapp_provider !== 'evolution' && (
+      {form.whatsapp_provider === 'zapi' && (
         <ConectarWhatsappCard
           jaConectado={!!(form.zapi_instance_id && form.zapi_token && form.zapi_ativo)}
           onConectado={carregar}
@@ -336,11 +343,44 @@ export default function ConfigClinica() {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="zapi">Z-API (padrão — mais fácil)</SelectItem>
+              <SelectItem value="meta">Meta — WhatsApp Cloud API (oficial)</SelectItem>
               <SelectItem value="evolution">Evolution API (self-host — mais barato)</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-[11px] text-muted-foreground mt-1">Z-API: paga por número, sem servidor. Evolution: você hospeda e roda vários números barato.</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Meta: API oficial do WhatsApp (número verificado, templates). Z-API: paga por número, sem servidor. Evolution: você hospeda vários números barato.</p>
         </div>
+
+        {form.whatsapp_provider === 'meta' && (
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs font-medium mb-1.5 block">Phone Number ID</Label>
+              <Input value={form.meta_phone_number_id} onChange={e => update('meta_phone_number_id', e.target.value)} placeholder="Ex: 123456789012345" />
+              <p className="text-[11px] text-muted-foreground mt-1">Em Meta for Developers → WhatsApp → API Setup, ao lado do número.</p>
+            </div>
+            <div>
+              <Label className="text-xs font-medium mb-1.5 block">Token de acesso (permanente)</Label>
+              <Input type="password" value={form.meta_access_token} onChange={e => update('meta_access_token', e.target.value)} placeholder="Token do Usuário do Sistema (não expira)" />
+              <p className="text-[11px] text-muted-foreground mt-1">Gere um token permanente por um Usuário do Sistema no Business Manager — o token temporário de teste expira em 24h.</p>
+            </div>
+            <div>
+              <Label className="text-xs font-medium mb-1.5 block">WABA ID (opcional)</Label>
+              <Input value={form.meta_waba_id} onChange={e => update('meta_waba_id', e.target.value)} placeholder="ID da conta do WhatsApp Business" />
+            </div>
+            <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
+              <p className="text-[11px] font-semibold text-muted-foreground">No painel da Meta, configure o Webhook com:</p>
+              <p className="text-[11px]"><b>URL de callback:</b> <code className="break-all">https://zxulglbcxehqplxainmz.supabase.co/functions/v1/whatsapp-webhook</code></p>
+              <p className="text-[11px]"><b>Token de verificação:</b> o mesmo valor do secret <code>WHATSAPP_META_VERIFY_TOKEN</code> do projeto.</p>
+              <p className="text-[11px]"><b>Campos:</b> assine <code>messages</code>.</p>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <Label className="text-xs font-medium cursor-pointer">Ativar envio via WhatsApp próprio</Label>
+              </div>
+              <Switch checked={form.zapi_ativo} onCheckedChange={v => update('zapi_ativo', v)} />
+            </div>
+          </div>
+        )}
 
         {form.whatsapp_provider === 'evolution' && (
           <div className="space-y-3">
@@ -367,7 +407,7 @@ export default function ConfigClinica() {
           </div>
         )}
 
-        {form.whatsapp_provider !== 'evolution' && (
+        {form.whatsapp_provider === 'zapi' && (
         <div className="space-y-3">
           <div>
             <Label className="text-xs font-medium mb-1.5 block">Instance ID</Label>

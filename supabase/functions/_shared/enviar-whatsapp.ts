@@ -14,10 +14,20 @@ interface WaConfig {
   evolution_base_url?: string | null;
   evolution_instance?: string | null;
   evolution_api_key?: string | null;
+  meta_phone_number_id?: string | null;
+  meta_access_token?: string | null;
+  meta_api_version?: string | null;
 }
 
 const COLS =
-  "whatsapp_provider, zapi_instance_id, zapi_token, zapi_client_token, evolution_base_url, evolution_instance, evolution_api_key";
+  "whatsapp_provider, zapi_instance_id, zapi_token, zapi_client_token, evolution_base_url, evolution_instance, evolution_api_key, meta_phone_number_id, meta_access_token, meta_api_version";
+
+/** Template para envio Meta FORA da janela de 24h (mensagem iniciada pela clínica). */
+export interface WaTemplate {
+  name: string;
+  language?: string; // ex.: 'pt_BR'
+  components?: unknown[]; // variáveis do template, quando houver
+}
 
 async function getConfig(admin: AdminClient, terapeuta_id: string): Promise<WaConfig | null> {
   const { data } = await admin
@@ -30,6 +40,70 @@ async function getConfig(admin: AdminClient, terapeuta_id: string): Promise<WaCo
 
 function isEvolution(cfg: WaConfig): boolean {
   return (cfg.whatsapp_provider || "zapi").toLowerCase() === "evolution";
+}
+function isMeta(cfg: WaConfig): boolean {
+  return (cfg.whatsapp_provider || "zapi").toLowerCase() === "meta";
+}
+
+// Janela de atendimento de 24h da Meta: mensagem de TEXTO LIVRE só pode ser
+// enviada se o contato mandou algo nas últimas 24h. Fora disso, só template
+// aprovado. Aqui checamos se há mensagem de ENTRADA recente para este número.
+async function dentroJanela24h(admin: AdminClient, terapeuta_id: string, num: string): Promise<boolean> {
+  try {
+    const tail = num.slice(-10);
+    const { data: conv } = await admin
+      .from("whatsapp_conversas").select("id")
+      .eq("terapeuta_id", terapeuta_id).ilike("telefone", `%${tail}`)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!conv) return false;
+    const desde = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { data: msg } = await admin
+      .from("whatsapp_mensagens_inbox").select("id")
+      .eq("conversa_id", (conv as { id: string }).id).eq("direcao", "entrada")
+      .gte("created_at", desde).limit(1).maybeSingle();
+    return !!msg;
+  } catch {
+    return false;
+  }
+}
+
+// Envio de texto pela Meta (WhatsApp Cloud API). Dentro das 24h manda texto
+// livre; fora, manda o template (se fornecido); sem template fora da janela,
+// não envia (retorna false) — a automação fica em espera até você criar o template.
+async function enviarMeta(
+  admin: AdminClient,
+  cfg: WaConfig,
+  terapeuta_id: string,
+  num: string,
+  message: string,
+  template?: WaTemplate,
+): Promise<boolean> {
+  if (!cfg.meta_phone_number_id || !cfg.meta_access_token) return false;
+  const ver = cfg.meta_api_version || "v21.0";
+  const url = `https://graph.facebook.com/${ver}/${cfg.meta_phone_number_id}/messages`;
+  const headers = { Authorization: `Bearer ${cfg.meta_access_token}`, "Content-Type": "application/json" };
+  const dentro = await dentroJanela24h(admin, terapeuta_id, num);
+
+  let payload: Record<string, unknown>;
+  if (dentro) {
+    payload = { messaging_product: "whatsapp", to: num, type: "text", text: { body: message, preview_url: true } };
+  } else if (template) {
+    payload = {
+      messaging_product: "whatsapp", to: num, type: "template",
+      template: { name: template.name, language: { code: template.language || "pt_BR" }, components: template.components || [] },
+    };
+  } else {
+    console.warn(`[wa-meta] fora da janela de 24h e sem template — não enviado (terapeuta ${terapeuta_id})`);
+    return false;
+  }
+  try {
+    const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+    if (!r.ok) console.warn(`[wa-meta] envio falhou ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    return r.ok;
+  } catch (e) {
+    console.warn("[wa-meta] erro de rede:", e);
+    return false;
+  }
 }
 
 // Interruptor geral (modo férias): quando a clínica pausa as automações,
@@ -51,13 +125,17 @@ export async function enviarWhatsapp(
   terapeuta_id: string,
   phone: string,
   message: string,
-  opts?: { manual?: boolean },
+  opts?: { manual?: boolean; template?: WaTemplate },
 ): Promise<boolean> {
   if (!opts?.manual && await automacoesPausadas(admin, terapeuta_id)) return false;
   const cfg = await getConfig(admin, terapeuta_id);
   if (!cfg) return false;
   const num = String(phone || "").replace(/\D/g, "");
   if (!num || !message) return false;
+
+  if (isMeta(cfg)) {
+    return await enviarMeta(admin, cfg, terapeuta_id, num, message, opts?.template);
+  }
 
   if (isEvolution(cfg)) {
     if (!cfg.evolution_base_url || !cfg.evolution_instance || !cfg.evolution_api_key) return false;
@@ -101,6 +179,34 @@ export async function enviarWhatsappMidia(
   if (!cfg) return false;
   const num = String(phone || "").replace(/\D/g, "");
   if (!num || !opts.mediaUrl) return false;
+
+  if (isMeta(cfg)) {
+    if (!cfg.meta_phone_number_id || !cfg.meta_access_token) return false;
+    // Mídia por link só sai DENTRO da janela de 24h; fora disso exigiria template
+    // de mídia aprovado (fica pra fase de templates).
+    if (!(await dentroJanela24h(admin, terapeuta_id, num))) {
+      console.warn("[wa-meta] mídia fora da janela de 24h — não enviada");
+      return false;
+    }
+    const ver = cfg.meta_api_version || "v21.0";
+    const url = `https://graph.facebook.com/${ver}/${cfg.meta_phone_number_id}/messages`;
+    const headers = { Authorization: `Bearer ${cfg.meta_access_token}`, "Content-Type": "application/json" };
+    const isImg = opts.mediaType === "image";
+    const payload: Record<string, unknown> = {
+      messaging_product: "whatsapp", to: num, type: isImg ? "image" : "document",
+      [isImg ? "image" : "document"]: isImg
+        ? { link: opts.mediaUrl, caption: opts.caption || undefined }
+        : { link: opts.mediaUrl, caption: opts.caption || undefined, filename: opts.fileName || "documento.pdf" },
+    };
+    try {
+      const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+      if (!r.ok) console.warn(`[wa-meta] mídia falhou ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      return r.ok;
+    } catch (e) {
+      console.warn("[wa-meta] mídia erro de rede:", e);
+      return false;
+    }
+  }
 
   if (isEvolution(cfg)) {
     if (!cfg.evolution_base_url || !cfg.evolution_instance || !cfg.evolution_api_key) return false;
