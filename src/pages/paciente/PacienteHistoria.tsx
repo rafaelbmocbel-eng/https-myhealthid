@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -57,7 +58,8 @@ export default function PacienteHistoria() {
   const [historia, setHistoria] = useState<HistoriaAtual>({ queixa: '', inicio: '', fatores: '', impacto: '' });
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'erro'>('idle');
+  const [erroCarregar, setErroCarregar] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
   const [activeVoice, setActiveVoice] = useState<keyof Omit<HistoriaAtual, 'atualizado_em'> | null>(null);
@@ -65,14 +67,16 @@ export default function PacienteHistoria() {
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isListening, startListening, stopListening, isSupported } = useSpeechToText();
 
-  useEffect(() => {
+  const carregar = async () => {
     if (!user) return;
-    (async () => {
-      const { data } = await (supabase as any)
+    setErroCarregar(false);
+    try {
+      const { data, error } = await (supabase as any)
         .from('pacientes')
         .select('id, queixa_principal, historia_atual')
         .eq('user_id', user.id)
         .maybeSingle();
+      if (error) throw error;
       if (data) {
         setPacienteId(data.id);
         const ha = data.historia_atual as HistoriaAtual | null;
@@ -84,9 +88,18 @@ export default function PacienteHistoria() {
           atualizado_em: ha?.atualizado_em,
         });
       }
-      setLoading(false);
       setLoaded(true);
-    })();
+    } catch (e) {
+      console.error('[PacienteHistoria] carregar error:', e);
+      setErroCarregar(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Auto-save debounced: atualiza pacientes diretamente
@@ -107,18 +120,21 @@ export default function PacienteHistoria() {
           impacto: historia.impacto.trim(),
           atualizado_em: now,
         };
-        await (supabase as any)
+        const { error: upErr } = await (supabase as any)
           .from('pacientes')
           .update({
             queixa_principal: historia.queixa.trim() || null,
             historia_atual: payload,
           })
           .eq('id', pacienteId);
+        if (upErr) throw upErr;
         setHistoria(h => ({ ...h, atualizado_em: now }));
         setSaveStatus('saved');
         savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2500);
-      } catch {
-        setSaveStatus('idle');
+      } catch (e) {
+        // Não fingir que salvou: sinaliza falha para o cliente tentar de novo.
+        console.error('[PacienteHistoria] auto-save falhou:', e);
+        setSaveStatus('erro');
       }
     }, 2500);
 
@@ -191,6 +207,16 @@ export default function PacienteHistoria() {
     );
   }
 
+  if (erroCarregar) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => { setLoading(true); carregar(); }} mensagem="Não consegui carregar sua história. Verifique sua internet e tente de novo." />
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
   const camposPreenchidos = CAMPOS.filter(c => historia[c.id].trim().length >= 3).length;
 
   return (
@@ -202,7 +228,7 @@ export default function PacienteHistoria() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="h-page flex items-center gap-2">
-                <Sparkles className="icon-md text-primary" /> História da Doença Atual
+                <Sparkles className="icon-md text-primary" /> Conte o que está acontecendo
               </h1>
               <p className="text-caption mt-0.5">
                 Suas respostas são salvas automaticamente. Edite quando quiser.
@@ -222,6 +248,11 @@ export default function PacienteHistoria() {
               {saveStatus === 'saved' && (
                 <span className="text-[11px] text-emerald-600 flex items-center gap-1">
                   ✓ Salvo
+                </span>
+              )}
+              {saveStatus === 'erro' && (
+                <span className="text-[11px] text-destructive flex items-center gap-1">
+                  ⚠ Não salvou — verifique a internet
                 </span>
               )}
             </div>
@@ -269,6 +300,7 @@ export default function PacienteHistoria() {
                         onClick={() => handleVoice(campo.id)}
                         className="absolute bottom-2 right-2 h-8 w-8 p-0 rounded-full"
                         title={isVoiceActive ? 'Parar gravação' : 'Usar voz'}
+                        aria-label={isVoiceActive ? 'Parar gravação' : 'Ditar por voz'}
                       >
                         {isVoiceActive
                           ? <MicOff className="h-3.5 w-3.5" />

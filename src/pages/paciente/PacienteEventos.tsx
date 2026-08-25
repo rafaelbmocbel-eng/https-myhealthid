@@ -18,6 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
+import { formatBRL } from '@/lib/formatBRL';
 
 interface Evento {
   id: string;
@@ -61,6 +63,7 @@ export default function PacienteEventos() {
   const { toast } = useToast();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erroCarregar, setErroCarregar] = useState(false);
   const [paciente, setPaciente] = useState<{ id: string; nome: string; email: string | null; telefone: string | null; terapeuta_id: string } | null>(null);
   const [inscricoes, setInscricoes] = useState<Set<string>>(new Set());
 
@@ -77,52 +80,60 @@ export default function PacienteEventos() {
   }, [user]);
 
   const loadData = async () => {
-    // Get patient info including terapeuta_id in one query
-    const { data: pac } = await supabase
-      .from('pacientes')
-      .select('id, nome, email, telefone, terapeuta_id')
-      .eq('user_id', user!.id)
-      .maybeSingle();
+    setErroCarregar(false);
+    try {
+      // Get patient info including terapeuta_id in one query
+      const { data: pac, error: pacErr } = await supabase
+        .from('pacientes')
+        .select('id, nome, email, telefone, terapeuta_id')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      if (pacErr) throw pacErr;
 
-    if (!pac) { setLoading(false); return; }
-    setPaciente(pac);
+      if (!pac) { setLoading(false); return; }
+      setPaciente(pac);
 
-    // Get active events from this therapist
-    const today = new Date().toISOString().split('T')[0];
-    const { data: evts } = await supabase
-      .from('eventos')
-        .select('id, titulo, descricao, descricao_formulario, data_evento, horario_inicio, horario_fim, local, vagas_max, cobrar_pagamento, valor, link_pagamento, categoria, link_video, recorrencia_grupo_id')
-      .eq('terapeuta_id', pac.terapeuta_id)
-      .eq('ativo', true)
-      .gte('data_evento', today)
-      .order('data_evento', { ascending: true });
+      // Get active events from this therapist
+      const today = new Date().toISOString().split('T')[0];
+      const { data: evts, error: evtErr } = await supabase
+        .from('eventos')
+          .select('id, titulo, descricao, descricao_formulario, data_evento, horario_inicio, horario_fim, local, vagas_max, cobrar_pagamento, valor, link_pagamento, categoria, link_video, recorrencia_grupo_id')
+        .eq('terapeuta_id', pac.terapeuta_id)
+        .eq('ativo', true)
+        .gte('data_evento', today)
+        .order('data_evento', { ascending: true });
+      if (evtErr) throw evtErr;
 
-    setEventos(evts || []);
+      setEventos(evts || []);
 
-    // Check which events the patient is already inscribed
-    if (evts && evts.length > 0) {
-      const { data: insc } = await supabase
-        .from('evento_inscricoes')
-        .select('evento_id')
-        .eq('paciente_id', pac.id)
-        .neq('status', 'cancelado');
+      // Check which events the patient is already inscribed
+      if (evts && evts.length > 0) {
+        const { data: insc } = await supabase
+          .from('evento_inscricoes')
+          .select('evento_id')
+          .eq('paciente_id', pac.id)
+          .neq('status', 'cancelado');
 
-      const inscSet = new Set((insc || []).map(i => i.evento_id));
-      setInscricoes(inscSet);
+        const inscSet = new Set((insc || []).map(i => i.evento_id));
+        setInscricoes(inscSet);
 
-      // Get vacancy counts using secure RPC (no PII exposed)
-      const vMap: Record<string, number> = {};
-      for (const ev of evts) {
-        if (ev.vagas_max) {
-          const { data: inscCount } = await supabase
-            .rpc('count_evento_inscricoes', { p_evento_id: ev.id });
-          vMap[ev.id] = ev.vagas_max - (Number(inscCount) || 0);
+        // Get vacancy counts using secure RPC (no PII exposed)
+        const vMap: Record<string, number> = {};
+        for (const ev of evts) {
+          if (ev.vagas_max) {
+            const { data: inscCount } = await supabase
+              .rpc('count_evento_inscricoes', { p_evento_id: ev.id });
+            vMap[ev.id] = ev.vagas_max - (Number(inscCount) || 0);
+          }
         }
+        setVagasMap(vMap);
       }
-      setVagasMap(vMap);
+    } catch (e) {
+      console.error('[PacienteEventos] loadData error:', e);
+      setErroCarregar(true);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const openInscricao = async (evento: Evento) => {
@@ -191,6 +202,8 @@ export default function PacienteEventos() {
             <div className="flex justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
+          ) : erroCarregar ? (
+            <PortalErrorState onRetry={() => { setLoading(true); loadData(); }} mensagem="Não consegui carregar os eventos. Verifique sua internet e tente de novo." />
           ) : eventos.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center text-muted-foreground">
@@ -266,7 +279,7 @@ export default function PacienteEventos() {
 
                       {ev.cobrar_pagamento && ev.valor > 0 && (
                         <div className="text-xs font-semibold text-primary">
-                          R$ {Number(ev.valor).toFixed(2)}
+                          {formatBRL(Number(ev.valor))}
                         </div>
                       )}
 

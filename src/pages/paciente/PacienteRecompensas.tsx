@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +20,7 @@ export default function PacienteRecompensas() {
 
   const { data: xpData } = usePacienteXP(pacienteId);
   const { catalogo, meusResgates, isLoading, resgatar, resgatando } = useRecompensasPaciente(pacienteId);
+  const [confirmResgateId, setConfirmResgateId] = useState<string | null>(null);
 
   const xp = xpData?.xp_total ?? 0;
   const nivel = xpData?.nivel_atual ?? 'bronze';
@@ -36,9 +38,11 @@ export default function PacienteRecompensas() {
     }
     try {
       await resgatar(id);
+      setConfirmResgateId(null);
       toast({ title: '🎉 Resgate solicitado!', description: `Você resgatou: ${titulo}` });
     } catch (e: any) {
-      toast({ title: 'Erro no resgate', description: e.message, variant: 'destructive' });
+      console.error('[PacienteRecompensas] resgate falhou:', e);
+      toast({ title: 'Não consegui concluir o resgate', description: 'Tente de novo em instantes.', variant: 'destructive' });
     }
   };
 
@@ -128,10 +132,23 @@ export default function PacienteRecompensas() {
                           <Badge className="bg-primary/10 text-primary border-0 gap-1">
                             <Sparkles className="w-3 h-3" />{r.xp_custo} XP
                           </Badge>
-                          <Button size="sm" disabled={!podeResgatar || resgatando}
-                            onClick={() => handleResgate(r.id, r.xp_custo, r.titulo)}>
-                            {!nivelOk ? <><Lock className="w-3 h-3 mr-1" />Bloqueado</> : 'Resgatar'}
-                          </Button>
+                          {confirmResgateId === r.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <Button size="sm" variant="destructive" className="h-8 text-[11px]" disabled={resgatando}
+                                onClick={() => handleResgate(r.id, r.xp_custo, r.titulo)}>
+                                Trocar {r.xp_custo} XP
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 text-[11px]" disabled={resgatando}
+                                onClick={() => setConfirmResgateId(null)}>
+                                Voltar
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button size="sm" disabled={!podeResgatar || resgatando}
+                              onClick={() => setConfirmResgateId(r.id)}>
+                              {!nivelOk ? <><Lock className="w-3 h-3 mr-1" />Bloqueado</> : 'Resgatar'}
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

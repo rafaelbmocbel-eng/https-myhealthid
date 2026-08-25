@@ -16,6 +16,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
+import { formatBRL0 } from '@/lib/formatBRL';
 
 type Terapeuta = {
   terapeuta_id: string;
@@ -76,7 +78,7 @@ export default function PacienteProfissionais() {
 
   const categoriaAtiva = searchParams.get('categoria') || 'Todos';
 
-  const { data: terapeutas = [], isLoading } = useQuery({
+  const { data: terapeutas = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['vitrine-terapeutas'],
     staleTime: 60_000,
     retry: 1,
@@ -254,6 +256,8 @@ export default function PacienteProfissionais() {
             <Loader2 className="h-7 w-7 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Carregando profissionais...</p>
           </div>
+        ) : isError ? (
+          <PortalErrorState onRetry={() => refetch()} mensagem="Não consegui carregar os profissionais. Verifique sua internet e tente de novo." />
         ) : filtrados.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
             <div className="text-4xl">🔍</div>
@@ -313,7 +317,7 @@ export default function PacienteProfissionais() {
                       {t.valor_sessao ? (
                         <p className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
                           <DollarSign className="h-3.5 w-3.5" />
-                          R$ {Number(t.valor_sessao).toFixed(0)}<span className="font-normal text-muted-foreground">/sessão</span>
+                          {formatBRL0(Number(t.valor_sessao))}<span className="font-normal text-muted-foreground">/sessão</span>
                         </p>
                       ) : (
                         <p className="text-[11px] text-muted-foreground">Consulte o valor</p>
@@ -325,7 +329,7 @@ export default function PacienteProfissionais() {
                       ) : (
                         <Button
                           size="sm"
-                          className="h-7 text-[11px] px-2.5 rounded-lg"
+                          className="h-9 text-xs px-3 rounded-lg"
                           onClick={() => setSelectedTerapeuta(t)}
                         >
                           Solicitar <ChevronRight className="h-3 w-3 ml-0.5" />

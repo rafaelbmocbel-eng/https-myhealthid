@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { formatBRL0 } from '@/lib/formatBRL';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -152,7 +153,7 @@ function ProfissionalCard({ t, onClick }: { t: Terapeuta; onClick: () => void })
           {t.valor_sessao ? (
             <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
               <DollarSign className="h-3.5 w-3.5" />
-              R$ {Number(t.valor_sessao).toFixed(0)}<span className="font-normal text-muted-foreground">/sessão</span>
+              {formatBRL0(Number(t.valor_sessao))}<span className="font-normal text-muted-foreground">/sessão</span>
             </p>
           ) : (
             <p className="text-[11px] text-muted-foreground">Consulte o valor</p>

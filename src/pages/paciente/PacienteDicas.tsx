@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,15 +29,18 @@ export default function PacienteDicas() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [erroCarregar, setErroCarregar] = useState(false);
   const [dicas, setDicas] = useState<Dica[]>([]);
   const [pessoais, setPessoais] = useState<Dica[]>([]);
   const [aberto, setAberto] = useState<string | null>(null);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const carregar = async () => {
     if (!user) return;
-    (async () => {
-      const { data: pac } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
+    setErroCarregar(false);
+    try {
+      const { data: pac, error: pacErr } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
+      if (pacErr) throw pacErr;
       if (pac) setPacienteId(pac.id);
       // 1) Dicas PERSONALIZADAS — geradas automaticamente pela IA quando o
       // MyID é concluído (MyID + história clínica + artigos científicos).
@@ -75,8 +79,17 @@ export default function PacienteDicas() {
         if (filtradas.length > 0) itens = filtradas;
       }
       setDicas(itens.slice(0, 30));
+    } catch (e) {
+      console.error('[PacienteDicas] carregar error:', e);
+      setErroCarregar(true);
+    } finally {
       setLoading(false);
-    })();
+    }
+  };
+
+  useEffect(() => {
+    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const grupos = useMemo(() => {
@@ -92,7 +105,7 @@ export default function PacienteDicas() {
     <ProtectedPatientRoute><PacienteLayout>
       <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
         <div>
-          <h1 className="h-page flex items-center gap-2"><Lightbulb className="h-5 w-5 text-primary" /> Exercícios &amp; dicas da IA</h1>
+          <h1 className="h-page flex items-center gap-2"><Lightbulb className="h-5 w-5 text-primary" /> Exercícios &amp; dicas do MyID</h1>
           <p className="text-xs text-muted-foreground">Sua Jornada e as dicas baseadas em evidência, escolhidas a partir da sua avaliação MyID.</p>
         </div>
 
@@ -109,6 +122,8 @@ export default function PacienteDicas() {
 
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : erroCarregar ? (
+          <PortalErrorState onRetry={() => { setLoading(true); carregar(); }} mensagem="Não consegui carregar suas dicas. Verifique sua internet e tente de novo." />
         ) : dicas.length === 0 && pessoais.length === 0 ? (
           <Card><CardContent className="p-8 text-center">
             <Lightbulb className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />

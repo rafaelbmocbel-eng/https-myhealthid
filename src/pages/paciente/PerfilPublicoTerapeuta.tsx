@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { formatBRL0 } from '@/lib/formatBRL';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -151,7 +152,7 @@ export default function PerfilPublicoTerapeuta() {
               {terapeuta.valor_sessao && (
                 <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1 font-semibold">
                   <DollarSign className="h-3.5 w-3.5" />
-                  R$ {Number(terapeuta.valor_sessao).toFixed(0)} por sessão
+                  {formatBRL0(Number(terapeuta.valor_sessao))} por sessão
                 </p>
               )}
             </div>

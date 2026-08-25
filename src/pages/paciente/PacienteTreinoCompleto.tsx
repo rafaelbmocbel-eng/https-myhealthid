@@ -131,6 +131,9 @@ export default function PacienteTreinoCompleto() {
       const branding = await carregarBrandingClinica((pacTer as any)?.terapeuta_id);
       const blob = await gerarPDFPlanoTreino({ pacienteNome: nome || 'Paciente', titulo: plano.titulo, ...branding, conteudo: plano.conteudo, nutricao });
       downloadPDFBlob(blob, `Meu_Treino_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (e) {
+      console.error('[PacienteTreinoCompleto] baixarPdf error:', e);
+      toast.error('Não consegui gerar o PDF agora. Tente de novo.');
     } finally { setBaixando(false); }
   };
 
