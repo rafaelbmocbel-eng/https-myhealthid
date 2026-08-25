@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,6 +83,7 @@ export default function PacienteExercicios() {
   const [exercicios, setExercicios] = useState<TreinoExercicio[]>([]);
   const [execucoes, setExecucoes] = useState<Execucao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erroCarregar, setErroCarregar] = useState(false);
   const [expandedTreino, setExpandedTreino] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [sessionDor, setSessionDor] = useState(0);
@@ -115,41 +117,49 @@ export default function PacienteExercicios() {
 
   const fetchData = async () => {
     if (!user) return;
-    const { data: pac } = await supabase
-      .from('pacientes')
-      .select('id, terapeuta_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    setErroCarregar(false);
+    try {
+      const { data: pac, error: pacErr } = await supabase
+        .from('pacientes')
+        .select('id, terapeuta_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (pacErr) throw pacErr;
 
-    if (!pac) { setLoading(false); return; }
-    setPacienteId(pac.id);
-    setTerapeutaId(pac.terapeuta_id);
+      if (!pac) { setLoading(false); return; }
+      setPacienteId(pac.id);
+      setTerapeutaId(pac.terapeuta_id);
 
-    const [treinosRes, execRes] = await Promise.all([
-      supabase.from('studio_treinos').select('id, titulo, objetivo, duracao_estimada, intensidade, frequencia, ordem')
-        .eq('paciente_id', pac.id).eq('publicado', true).eq('ativo', true)
-        .order('ordem', { ascending: true }),
-      supabase.from('studio_execucoes').select('*')
-        .eq('paciente_id', pac.id)
-        .order('data_execucao', { ascending: false }).limit(100),
-    ]);
+      const [treinosRes, execRes] = await Promise.all([
+        supabase.from('studio_treinos').select('id, titulo, objetivo, duracao_estimada, intensidade, frequencia, ordem')
+          .eq('paciente_id', pac.id).eq('publicado', true).eq('ativo', true)
+          .order('ordem', { ascending: true }),
+        supabase.from('studio_execucoes').select('*')
+          .eq('paciente_id', pac.id)
+          .order('data_execucao', { ascending: false }).limit(100),
+      ]);
+      if (treinosRes.error) throw treinosRes.error;
 
-    const treinosList = (treinosRes.data || []) as Treino[];
-    setTreinos(treinosList);
-    setExecucoes((execRes.data || []) as Execucao[]);
+      const treinosList = (treinosRes.data || []) as Treino[];
+      setTreinos(treinosList);
+      setExecucoes((execRes.data || []) as Execucao[]);
 
-    if (treinosList.length > 0) {
-      const ids = treinosList.map(t => t.id);
-      const { data: exData } = await supabase
-        .from('studio_treino_exercicios')
-        .select('*')
-        .in('treino_id', ids)
-        .order('ordem', { ascending: true });
-      setExercicios((exData || []) as TreinoExercicio[]);
-      setExpandedTreino(treinosList[0].id);
+      if (treinosList.length > 0) {
+        const ids = treinosList.map(t => t.id);
+        const { data: exData } = await supabase
+          .from('studio_treino_exercicios')
+          .select('*')
+          .in('treino_id', ids)
+          .order('ordem', { ascending: true });
+        setExercicios((exData || []) as TreinoExercicio[]);
+        setExpandedTreino(treinosList[0].id);
+      }
+    } catch (e) {
+      console.error('[PacienteExercicios] fetchData error:', e);
+      setErroCarregar(true);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, [user]);
@@ -222,6 +232,16 @@ export default function PacienteExercicios() {
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (erroCarregar) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => { setLoading(true); fetchData(); }} mensagem="Não consegui carregar seus treinos. Verifique sua internet e tente de novo." />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

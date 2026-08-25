@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatBRL } from '@/lib/formatBRL';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CreditCard, QrCode, ExternalLink, Copy, CheckCircle, Clock, Loader2 } from 'lucide-react';
@@ -47,6 +48,7 @@ export default function PacientePagamentos() {
   const [config, setConfig] = useState<FunilConfig | null>(null);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erroCarregar, setErroCarregar] = useState(false);
   const [selectedServico, setSelectedServico] = useState<ServicoFunil | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao' | null>(null);
   const [pixQr, setPixQr] = useState<string | null>(null);
@@ -134,12 +136,14 @@ export default function PacientePagamentos() {
 
   const loadData = async () => {
     setLoading(true);
+    setErroCarregar(false);
     try {
-      const { data: pac } = await supabase
+      const { data: pac, error: pacErr } = await supabase
         .from('pacientes')
         .select('id, terapeuta_id, nome, sobrenome')
         .eq('user_id', user!.id)
         .maybeSingle();
+      if (pacErr) throw pacErr;
       if (!pac) return;
       setPaciente(pac);
 
@@ -158,6 +162,9 @@ export default function PacientePagamentos() {
         .eq('paciente_id', pac.id)
         .order('created_at', { ascending: false });
       setPagamentos((pags as any[]) || []);
+    } catch (e) {
+      console.error('[PacientePagamentos] loadData error:', e);
+      setErroCarregar(true);
     } finally {
       setLoading(false);
     }
@@ -234,6 +241,16 @@ export default function PacientePagamentos() {
           <div className="flex items-center justify-center p-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (erroCarregar) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => loadData()} mensagem="Não consegui carregar seus pagamentos. Verifique sua internet e tente de novo." />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

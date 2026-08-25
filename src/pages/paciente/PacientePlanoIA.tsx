@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Loader2, Dumbbell, Salad, Lock, Sparkles, ChevronRight, Info, ClipboardList, Check, Wand2, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +23,7 @@ export function PlanoPersonalizadoSection() {
   const navigate = useNavigate();
   const { isFree, isPremium, isInTrial, isLoading: acLoading } = useWellnessAccess();
   const [loading, setLoading] = useState(true);
+  const [erroCarregar, setErroCarregar] = useState(false);
   const [treino, setTreino] = useState<any>(null);
   const [dieta, setDieta] = useState<any>(null);
   const [diretrizes, setDiretrizes] = useState<any[]>([]);
@@ -57,15 +59,27 @@ export function PlanoPersonalizadoSection() {
     setDietaIA(iaRows.find(r => r.tipo === 'nutricao') || null);
   };
 
-  useEffect(() => {
+  const carregarTudo = async () => {
     if (!user) { setLoading(false); return; }
-    (async () => {
-      const { data: pac } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
+    setLoading(true);
+    setErroCarregar(false);
+    try {
+      const { data: pac, error: pacErr } = await supabase.from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
+      if (pacErr) throw pacErr;
       if (!pac) { setLoading(false); return; }
       setPacienteId(pac.id);
       await carregar(pac.id);
+    } catch (e) {
+      console.error('[PlanoIA] carregar error:', e);
+      setErroCarregar(true);
+    } finally {
       setLoading(false);
-    })();
+    }
+  };
+
+  useEffect(() => {
+    carregarTudo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Gera o plano do cliente (treino e/ou nutrição) a partir do MyID +
@@ -154,6 +168,10 @@ export function PlanoPersonalizadoSection() {
 
   if (acLoading || loading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
+  if (erroCarregar) {
+    return <PortalErrorState onRetry={() => carregarTudo()} mensagem="Não consegui carregar seu plano. Verifique sua internet e tente de novo." />;
   }
 
   return (

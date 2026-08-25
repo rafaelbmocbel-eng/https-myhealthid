@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { gerarNotaDiario } from '@/utils/prontuarioAutoNotes';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -49,6 +50,7 @@ export default function PacienteDiario() {
   const [paciente, setPaciente] = useState<PacienteData | null>(null);
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erroCarregar, setErroCarregar] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showChart, setShowChart] = useState(false);
@@ -62,25 +64,33 @@ export default function PacienteDiario() {
 
   const fetchData = async () => {
     if (!user) return;
+    setErroCarregar(false);
+    try {
+      const { data: pac, error: pacErr } = await supabase
+        .from('pacientes')
+        .select('id, terapeuta_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (pacErr) throw pacErr;
 
-    const { data: pac } = await supabase
-      .from('pacientes')
-      .select('id, terapeuta_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+      if (!pac) { setLoading(false); return; }
+      setPaciente(pac);
 
-    if (!pac) { setLoading(false); return; }
-    setPaciente(pac);
+      const { data: logsData, error: logErr } = await supabase
+        .from('daily_logs')
+        .select('*')
+        .eq('paciente_id', pac.id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (logErr) throw logErr;
 
-    const { data: logsData } = await supabase
-      .from('daily_logs')
-      .select('*')
-      .eq('paciente_id', pac.id)
-      .order('created_at', { ascending: false })
-      .limit(30);
-
-    setLogs(logsData || []);
-    setLoading(false);
+      setLogs(logsData || []);
+    } catch (e) {
+      console.error('[PacienteDiario] fetchData error:', e);
+      setErroCarregar(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchData(); }, [user]);
@@ -172,6 +182,16 @@ export default function PacienteDiario() {
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (erroCarregar) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => { setLoading(true); fetchData(); }} mensagem="Não consegui carregar seu diário. Verifique sua internet e tente de novo." />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );
