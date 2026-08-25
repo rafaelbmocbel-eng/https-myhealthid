@@ -239,7 +239,9 @@ serve(async (req) => {
     // Extract scores from result
     const cs = result.component_scores || result.componentScores || {};
     const myidScore = result.MyID_score ?? result.myidScore ?? 0;
-    const classificacao = result.classification ?? result.classificacao ?? "N/A";
+    // getFullResult() emite a classificação em `status` (e em myid_100.classificacao),
+    // não em `classification`. Lê os dois formatos para não gravar "N/A".
+    const classificacao = result.status ?? result.myid_100?.classificacao ?? result.classification ?? result.classificacao ?? "N/A";
     const redFlags = result.red_flags_detected ?? result.redFlagsDetected ?? false;
     const redFlagAlerts = result.red_flag_alerts ?? result.redFlagAlerts ?? [];
 

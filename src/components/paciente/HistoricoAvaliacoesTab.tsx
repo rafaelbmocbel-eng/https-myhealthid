@@ -177,8 +177,9 @@ export default function HistoricoAvaliacoesTab({ pacienteId }: Props) {
               const id = `online-${m.id}`;
               const isOpen = expandedId === id;
               const r = m.resultado_processado as any;
-              const score = m.myid_score_parcial ? Math.round(Number(m.myid_score_parcial)) : (r?.myidScore ? Math.round(r.myidScore) : null);
-              const classificacao = r?.classificacao || r?.classification || r?.myidStatus || '—';
+              const scoreBruto = r?.MyID_score ?? r?.myidScore ?? r?.MyID;
+              const score = m.myid_score_parcial ? Math.round(Number(m.myid_score_parcial)) : (scoreBruto != null ? Math.round(Number(scoreBruto)) : null);
+              const classificacao = r?.status || r?.myid_100?.classificacao || r?.classificacao || r?.classification || r?.myidStatus || '—';
               const severityClass = getMyIDSeverityColor(classificacao);
               const date = format(parseISO(m.updated_at || m.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 

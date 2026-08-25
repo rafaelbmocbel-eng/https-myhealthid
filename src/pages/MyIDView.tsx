@@ -7,6 +7,7 @@ import { Loader2, ShieldCheck, Lock, Activity } from 'lucide-react';
 import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import LogoIcon from '@/components/LogoIcon';
+import { scoresDoResultado } from '@/utils/myid/scores';
 
 interface Resultado {
   id: string;
@@ -67,9 +68,11 @@ export default function MyIDView() {
   }
 
   const r = data.resultado_processado || {};
-  const scores = r.componentScores || r.scores || {};
-  const score = data.myid_score ?? r.myidScore ?? 0;
-  const classificacao = r.classificacao || r.classification || '—';
+  // Cobre os formatos: getFullResult() usa component_scores; versões antigas
+  // usaram scores/componentScores. Sem isto, todas as dimensões saíam 0.0.
+  const scores = scoresDoResultado(r) || {};
+  const score = data.myid_score ?? r.MyID_score ?? r.myidScore ?? 0;
+  const classificacao = data.classificacao || r.status || r.myid_100?.classificacao || r.classificacao || r.classification || '—';
   const narrativa = r.narrativa || r.narrative || r.resumo || null;
   const redFlags = r.red_flags_detected || r.redFlags;
 

@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { PublicTrackingPixels } from '@/components/tracking/PublicTrackingPixels';
 import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
-import type { MyIDResponses } from '@/utils/myid/calculator';
+import { MyIDCalculator, type MyIDResponses } from '@/utils/myid/calculator';
 
 const DRAFT_VERSION = 1;
 interface MyIDDraft {
@@ -85,15 +85,20 @@ export default function MyIDResponder() {
     }
   };
 
-  const handleComplete = async (data: any, fullResult: any): Promise<boolean> => {
+  const handleComplete = async (data: any, _fullResult: any): Promise<boolean> => {
     try {
+      // Usa o MESMO formato que o backend espera (component_scores, MyID_score,
+      // status, red_flags_detected) — igual ao AvaliacaoPublica. O objeto cru do
+      // PhasedFlow não tinha essas chaves e o complete-myid gravava score 0 e
+      // sem red flags.
+      const fullResult: any = new MyIDCalculator(data).getFullResult();
       // Save phase 4 first
       const dims = ['D', 'I', 'EFI', 'P', 'R', 'C', 'N'];
       await supabase.rpc('salvar_fase_myid', {
         p_token: token!,
         p_fase: 4,
         p_respostas: data,
-        p_score_parcial: fullResult.MyID,
+        p_score_parcial: fullResult.MyID_score,
         p_dimensoes: dims,
         p_red_flags: !!fullResult.red_flags_detected,
       });

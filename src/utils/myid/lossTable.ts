@@ -403,6 +403,19 @@ export const TEMPLATES_INTERPRETACAO: Record<string, { titulo: string; descricao
     descricao: 'Seu sistema está sob sobrecarga moderada. Intervenção ativa é recomendada.',
     recomendacao: 'Tratamento fisioterapêutico + ajustes de estilo de vida. Prognóstico bom com adesão.',
   },
+  // Chaves realmente retornadas por classificarMyID100 (nomes suavizados para o
+  // paciente). Antes faltavam → o caso mais grave ficava sem recomendação ou
+  // caía no texto de "moderado", subestimando a severidade.
+  'ATENÇÃO': {
+    titulo: '🟠 REQUER ATENÇÃO',
+    descricao: 'Seu sistema está sob sobrecarga importante. Intervenção ativa e acompanhamento próximo são recomendados.',
+    recomendacao: 'Abordagem multidisciplinar (fisio + apoio psicológico quando indicado). Foco no seu driver primário. Acompanhamento presencial recomendado.',
+  },
+  'ATENÇÃO PRIORITÁRIA': {
+    titulo: '🔴 ATENÇÃO PRIORITÁRIA',
+    descricao: 'Sinais de sobrecarga em várias frentes. Cuidar disso é prioridade agora.',
+    recomendacao: 'Intervenção multidisciplinar prioritária e acompanhamento presencial. Se houver sinais de alerta, procure avaliação médica.',
+  },
   CRÍTICO: {
     titulo: '🔴 SITUAÇÃO CRÍTICA',
     descricao: 'Seu sistema está em sobrecarga crítica. Intervenção urgente é necessária.',
