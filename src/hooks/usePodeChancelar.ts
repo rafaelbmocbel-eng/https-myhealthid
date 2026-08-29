@@ -16,18 +16,21 @@ export type AreaChancela =
   | 'treino' | 'nutricao' | 'fisioterapia'
   | 'medicina' | 'psicologia' | 'terapia_ocupacional' | 'odontologia';
 
-const PERFIL_EXIGIDO: Record<AreaChancela, PerfilProfissional> = {
-  treino: 'educador_fisico',
-  nutricao: 'nutricionista',
-  fisioterapia: 'fisioterapeuta',
-  medicina: 'medico',
-  psicologia: 'psicologo',
-  terapia_ocupacional: 'terapeuta_ocupacional',
-  odontologia: 'dentista',
+// Perfis que podem liberar cada área. Prescrição de exercício terapêutico é
+// competência tanto do Educador Físico quanto do Fisioterapeuta — por isso
+// 'treino' aceita os dois.
+const PERFIL_EXIGIDO: Record<AreaChancela, PerfilProfissional[]> = {
+  treino: ['educador_fisico', 'fisioterapeuta'],
+  nutricao: ['nutricionista'],
+  fisioterapia: ['fisioterapeuta'],
+  medicina: ['medico'],
+  psicologia: ['psicologo'],
+  terapia_ocupacional: ['terapeuta_ocupacional'],
+  odontologia: ['dentista'],
 };
 
 const LABEL: Record<AreaChancela, string> = {
-  treino: 'Educador Físico',
+  treino: 'Educador Físico ou Fisioterapeuta',
   nutricao: 'Nutricionista',
   fisioterapia: 'Fisioterapeuta',
   medicina: 'Médico(a)',
@@ -56,7 +59,7 @@ export function usePodeChancelar(area: AreaChancela): Chancela {
   const loading = lLoading || cLoading;
   // Cada profissional libera apenas a área da SUA especialidade (mesmo dentro de
   // uma clínica: o nutricionista libera nutrição, o fisio libera reabilitação…).
-  const ehProprio = lente?.id === exigido;
+  const ehProprio = !!lente?.id && exigido.includes(lente.id);
   const pode = isSuperAdmin || ehProprio;
 
   let motivo = '';
