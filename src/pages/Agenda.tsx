@@ -116,13 +116,13 @@ function MiniCalendar({
   return (
     <div className="clinical-card p-4 w-full select-none">
       <div className="flex items-center justify-between mb-3">
-        <button onClick={() => setNav(d => subMonths(d, 1))} className="p-1 rounded hover:bg-accent">
+        <button aria-label="Mês anterior" title="Mês anterior" onClick={() => setNav(d => subMonths(d, 1))} className="p-1 rounded hover:bg-accent">
           <ChevronLeft className="h-4 w-4" />
         </button>
         <span className="text-xs font-semibold capitalize">
           {format(nav, 'MMMM yyyy', { locale: ptBR })}
         </span>
-        <button onClick={() => setNav(d => addMonths(d, 1))} className="p-1 rounded hover:bg-accent">
+        <button aria-label="Próximo mês" title="Próximo mês" onClick={() => setNav(d => addMonths(d, 1))} className="p-1 rounded hover:bg-accent">
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
@@ -188,7 +188,7 @@ function getInitialAgendaDate(): Date {
 
 export default function Agenda() {
   const { user, loading: authLoading } = useAuth();
-  const { agendamentos, pacientes, config, loading, createAgendamento, createBatchAgendamentos, updateAgendamento, updateFutureAgendamentos, deleteAgendamento, deleteFutureAgendamentos, createPaciente, refresh } = useAgenda();
+  const { agendamentos, pacientes, config, loading, erro, createAgendamento, createBatchAgendamentos, updateAgendamento, updateFutureAgendamentos, deleteAgendamento, deleteFutureAgendamentos, createPaciente, refresh } = useAgenda();
   const { pendingCount, clearCount, refetch: refetchNotifications } = useAgendamentoNotifications();
   const { data: myidFreshnessMap } = useMyIDFreshnessMap(
     Array.from(new Set((agendamentos || []).map((a: any) => a.paciente_id).filter(Boolean) as string[])),
@@ -202,6 +202,8 @@ export default function Agenda() {
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [showNewPaciente, setShowNewPaciente] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [submittingPac, setSubmittingPac] = useState(false);
   const [newPacNome, setNewPacNome] = useState('');
   const [newPacEmail, setNewPacEmail] = useState('');
   const [newPacTel, setNewPacTel] = useState('');
@@ -658,6 +660,11 @@ export default function Agenda() {
   };
 
   const handleSave = async () => {
+    // Evita sessão com duração zero/negativa (some ou vira sliver de 28px na grade).
+    if (new Date(form.data_fim).getTime() <= new Date(form.data_inicio).getTime()) {
+      toast({ title: 'Horário inválido', description: 'O término precisa ser depois do início.', variant: 'destructive' });
+      return;
+    }
     setSubmitting(true);
     const pacienteIdFinal = form.paciente_id === 'bloqueio' ? undefined : (form.paciente_id || undefined);
     const pac = pacientes.find(p => p.id === pacienteIdFinal);
@@ -821,6 +828,7 @@ export default function Agenda() {
     }
     setSubmitting(true);
     await deleteAgendamento(modal.agendamento.id);
+    setConfirmDelete(false);
     setModal({ open: false });
     setSubmitting(false);
   };
@@ -884,10 +892,15 @@ export default function Agenda() {
   };
 
   const handleCreatePaciente = async () => {
-    if (!newPacNome.trim()) return;
-    const [nome, ...rest] = newPacNome.trim().split(' ');
-    const novo = await createPaciente({ nome, sobrenome: rest.join(' '), email: newPacEmail, telefone: newPacTel });
-    if (novo) { setForm(f => ({ ...f, paciente_id: novo.id })); setShowNewPaciente(false); setNewPacNome(''); setNewPacEmail(''); setNewPacTel(''); }
+    if (!newPacNome.trim() || submittingPac) return;
+    setSubmittingPac(true);
+    try {
+      const [nome, ...rest] = newPacNome.trim().split(' ');
+      const novo = await createPaciente({ nome, sobrenome: rest.join(' '), email: newPacEmail, telefone: newPacTel });
+      if (novo) { setForm(f => ({ ...f, paciente_id: novo.id })); setShowNewPaciente(false); setNewPacNome(''); setNewPacEmail(''); setNewPacTel(''); }
+    } finally {
+      setSubmittingPac(false);
+    }
   };
 
   const headerLabel = () => {
@@ -1002,7 +1015,15 @@ export default function Agenda() {
       toast({ title: 'Sem telefone', description: 'Este paciente não tem telefone cadastrado.', variant: 'destructive' });
       return;
     }
-    // 1. Confirma o agendamento
+    // Recorrente: a confirmação ainda depende do profissional escolher o escopo
+    // (apenas esta / esta e futuras). NÃO envia o WhatsApp nem mostra sucesso
+    // antes disso — senão o paciente recebe "confirmado" antes de o status mudar.
+    if (ag.recorrencia_grupo_id) {
+      await handleConfirmar(id); // abre o modal de escopo
+      toast({ title: 'Escolha o escopo', description: 'Confirme se vale só para esta sessão ou para as futuras; depois envie o WhatsApp.' });
+      return;
+    }
+    // 1. Confirma o agendamento (avulso)
     await handleConfirmar(id);
     // 2. Abre WhatsApp com mensagem pronta
     const dataFmt = format(parseISO(ag.data_inicio), "EEEE, d 'de' MMM 'às' HH:mm", { locale: ptBR });
@@ -1206,15 +1227,27 @@ export default function Agenda() {
     </AppLayout>
   );
 
+  // Falha ao carregar (rede/servidor): não mostrar um dia "vazio" — oferecer retry.
+  if (erro && agendamentos.length === 0) return (
+    <AppLayout>
+      <div className="container py-16 text-center text-muted-foreground">
+        <CalendarDays className="h-12 w-12 mx-auto mb-3 opacity-30" />
+        <p className="font-medium">Não consegui carregar a agenda</p>
+        <p className="text-sm mt-1">Verifique sua conexão e tente de novo.</p>
+        <Button variant="outline" className="mt-4" onClick={() => refresh()}>Tentar de novo</Button>
+      </div>
+    </AppLayout>
+  );
+
   return (
     <AppLayout>
       <div className="flex flex-col h-screen overflow-hidden">
         {/* Top toolbar */}
         <div className="border-b bg-card px-4 py-3 flex flex-wrap items-center gap-3 justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={navPrev}><ChevronLeft className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Anterior" title="Anterior" onClick={navPrev}><ChevronLeft className="h-4 w-4" /></Button>
             <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setCurrentDate(new Date())}>Hoje</Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={navNext}><ChevronRight className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Próximo" title="Próximo" onClick={navNext}><ChevronRight className="h-4 w-4" /></Button>
             <span className="font-semibold text-sm ml-1 capitalize hidden sm:block">{headerLabel()}</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -1386,7 +1419,7 @@ export default function Agenda() {
                   </div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs ring-2 ring-background">
-                      {proximaSessao.pacientes?.nome[0]}
+                      {proximaSessao.pacientes?.nome?.[0]}
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-bold truncate leading-tight">{proximaSessao.pacientes ? `${proximaSessao.pacientes.nome} ${proximaSessao.pacientes.sobrenome}` : proximaSessao.titulo}</div>
@@ -1397,9 +1430,11 @@ export default function Agenda() {
                     <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 px-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                       onClick={() => {
                         if (proximaSessao.pacientes?.telefone) {
-                          const tel = proximaSessao.pacientes.telefone.replace(/\D/g, '');
+                          const digits = proximaSessao.pacientes.telefone.replace(/\D/g, '');
+                          // Não duplicar o DDI: só prefixa 55 se o número não vier com país.
+                          const tel = digits.startsWith('55') ? digits : `55${digits}`;
                           const msg = encodeURIComponent(`Olá ${proximaSessao.pacientes.nome}, tudo bem? Estou aguardando você para nossa sessão hoje às ${format(parseISO(proximaSessao.data_inicio), 'HH:mm')}. Até já!`);
-                          window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
+                          window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
                         }
                       }}>
                       <MessageCircle className="h-3 w-3" /> WhatsApp
@@ -2066,7 +2101,9 @@ export default function Agenda() {
                   <Input placeholder="Nome completo *" value={newPacNome} onChange={e => setNewPacNome(e.target.value)} />
                   <Input placeholder="E-mail" value={newPacEmail} onChange={e => setNewPacEmail(e.target.value)} />
                   <Input placeholder="Telefone" value={newPacTel} onChange={e => setNewPacTel(e.target.value)} />
-                  <Button size="sm" className="w-full" onClick={handleCreatePaciente}>Cadastrar</Button>
+                  <Button size="sm" className="w-full gap-1.5" onClick={handleCreatePaciente} disabled={submittingPac || !newPacNome.trim()}>
+                    {submittingPac && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Cadastrar
+                  </Button>
                 </div>
               )}
             </div>
@@ -2352,11 +2389,22 @@ export default function Agenda() {
                 {modal.agendamento ? 'Salvar' : 'Agendar'}
               </Button>
               {modal.agendamento && (
-                <Button variant="destructive" size="icon" onClick={handleDelete} disabled={submitting}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                confirmDelete && !modal.agendamento.recorrencia_grupo_id ? (
+                  <>
+                    <Button variant="destructive" className="gap-1" onClick={handleDelete} disabled={submitting}>
+                      {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Sim, excluir
+                    </Button>
+                    <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={submitting}>Voltar</Button>
+                  </>
+                ) : (
+                  <Button variant="destructive" size="icon" aria-label="Excluir agendamento" title="Excluir agendamento"
+                    onClick={() => { if (modal.agendamento?.recorrencia_grupo_id) handleDelete(); else setConfirmDelete(true); }}
+                    disabled={submitting}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )
               )}
-              <Button variant="outline" size="icon" onClick={() => setModal({ open: false })}>
+              <Button variant="outline" size="icon" aria-label="Fechar" onClick={() => { setConfirmDelete(false); setModal({ open: false }); }}>
                 <X className="h-4 w-4" />
               </Button>
             </div>

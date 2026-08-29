@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ArrowLeft, User, Mail, Phone, Calendar, FileText, Activity,
-  CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
+  CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle, RefreshCw,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight, ChevronDown,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints, CalendarPlus,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, DollarSign, Package, Target, LayoutDashboard, Smartphone,
@@ -225,15 +225,16 @@ export default function PacientePerfil() {
     }
   };
 
-  const { data: paciente, isLoading: loadingPac } = useQuery({
+  const { data: paciente, isLoading: loadingPac, isError: erroPac, refetch: refetchPac } = useQuery({
     queryKey: ['paciente-perfil', id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pacientes')
         .select('*, paciente_servicos(id, servico, ativo)')
         .eq('id', id!)
-        .single();
-      if (error) throw error;
+        .maybeSingle();
+      if (error) throw error; // falha real de rede/servidor
+      if (!data) return null; // não existe → "paciente não encontrado" (não é erro)
       return {
         ...data,
         _servicos: (data.paciente_servicos || []).filter((s: any) => s.ativo).map((s: any) => s.servico) as string[],
@@ -409,6 +410,24 @@ export default function PacientePerfil() {
       <AppLayout>
         <div className="flex items-center justify-center h-96">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Falha de rede é diferente de "não existe": oferece recarregar em vez de dizer
+  // que o paciente sumiu.
+  if (erroPac) {
+    return (
+      <AppLayout>
+        <div className="container py-12 text-center text-muted-foreground">
+          <User className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">Não consegui carregar o paciente</p>
+          <p className="text-sm mt-1">Verifique sua conexão e tente de novo.</p>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <Button variant="outline" onClick={() => refetchPac()}><RefreshCw className="h-4 w-4 mr-2" /> Tentar de novo</Button>
+            <Button variant="ghost" onClick={() => navigate('/pacientes')}>Voltar</Button>
+          </div>
         </div>
       </AppLayout>
     );

@@ -65,6 +65,7 @@ export function useAgenda() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [config, setConfig] = useState<ConfigAgenda>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
   const refreshTimeoutRef = useRef<number | null>(null);
 
   const fetchAll = useCallback(async () => {
@@ -78,6 +79,7 @@ export function useAgenda() {
     }
 
     setLoading(true);
+    setErro(false);
 
     try {
       const [agResult, pacResult, cfgResult] = await withAuthLockRetry(async () => {
@@ -97,7 +99,9 @@ export function useAgenda() {
         return results;
       }, { maxAttempts: 4, baseDelayMs: 300 });
 
-      if (agResult.error) console.error('[useAgenda] agendamentos error:', agResult.error);
+      // Falha ao buscar os agendamentos: marca erro para a tela mostrar retry em
+      // vez de renderizar um dia inteiro "vazio".
+      if (agResult.error) { console.error('[useAgenda] agendamentos error:', agResult.error); setErro(true); }
       if (pacResult.error) console.error('[useAgenda] pacientes error:', pacResult.error);
       if (cfgResult.error) console.error('[useAgenda] config error:', cfgResult.error);
 
@@ -106,6 +110,7 @@ export function useAgenda() {
       if (cfgResult.data) setConfig(cfgResult.data as ConfigAgenda);
     } catch (error) {
       console.error('[useAgenda] fetchAll fatal error:', error);
+      setErro(true);
       toast({
         title: isAuthLockTimeoutError(error) ? 'Sessão ocupada em outra aba' : 'Erro ao carregar agenda',
         description: isAuthLockTimeoutError(error)
@@ -394,6 +399,7 @@ export function useAgenda() {
     pacientes,
     config,
     loading,
+    erro,
     createAgendamento,
     createBatchAgendamentos,
     updateAgendamento,
