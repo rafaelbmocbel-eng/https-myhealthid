@@ -19,6 +19,7 @@ const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTrei
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
 const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
 const DiretrizAreaCard = lazy(() => import('@/components/diretrizes/DiretrizAreaCard'));
+const DeverDeCasaDialog = lazy(() => import('@/components/paciente/DeverDeCasaDialog'));
 
 const Fallback = <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
@@ -62,6 +63,7 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
   const qc = useQueryClient();
   const { data: lente } = useLenteAtiva();
   const [usandoBase, setUsandoBase] = useState<null | 'treino' | 'nutricao'>(null);
+  const [treinoManualOpen, setTreinoManualOpen] = useState(false);
 
   const defaultTab = (lente && LENTE_TAB[lente.id]) || 'fisio';
 
@@ -175,9 +177,23 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
         <TabsContent value="treino" className="mt-4 space-y-3">
           {geradoCliente?.treinoIA && clienteRef('treino', geradoCliente.treinoIA.titulo)}
           <HintLiberar />
+          {/* Construtor MANUAL: escolhe exercícios da biblioteca, define séries/reps
+              e envia para a tela "Treinos" do paciente no portal. */}
+          <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={() => setTreinoManualOpen(true)}>
+            <Dumbbell className="h-4 w-4" /> Montar treino personalizado (exercício a exercício)
+          </Button>
           <Suspense fallback={Fallback}>
             <PlanoTreinoCard pacienteId={pacienteId} />
             <DiretrizTreinoCard pacienteId={pacienteId} />
+            {treinoManualOpen && (
+              <DeverDeCasaDialog
+                open={treinoManualOpen}
+                onOpenChange={setTreinoManualOpen}
+                pacienteId={pacienteId}
+                pacienteNome={pacienteNome}
+                terapeutaId={user?.id || ''}
+              />
+            )}
           </Suspense>
         </TabsContent>
 
