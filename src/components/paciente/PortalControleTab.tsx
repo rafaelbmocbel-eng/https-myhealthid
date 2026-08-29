@@ -23,6 +23,7 @@ const RelatorioAvaliacaoCard = lazy(() => import('@/components/paciente/Relatori
 const QuestionariosClinicosCard = lazy(() => import('@/components/paciente/QuestionariosClinicosCard'));
 const ExamesPresenciaisCard = lazy(() => import('@/components/presencial/ExamesPresenciaisCard'));
 const TreinoDocumento = lazy(() => import('@/components/paciente/TreinoDocumento'));
+const DeverDeCasaDialog = lazy(() => import('@/components/paciente/DeverDeCasaDialog'));
 const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
 import AvatarClinicoCard from '../avatar/AvatarClinicoCard';
 import { format, parseISO, subDays } from '@/lib/dateSafe';
@@ -47,6 +48,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const qc = useQueryClient();
   const [gerandoDicas, setGerandoDicas] = useState(false);
   const [dicasRecemGeradas, setDicasRecemGeradas] = useState<any[] | null>(null);
+  const [treinoDialogOpen, setTreinoDialogOpen] = useState(false);
   // Alguns clientes (cadastros antigos/importados) ficaram SEM portal_token, então
   // o link do portal não aparecia em lugar nenhum. Aqui o profissional gera o link
   // na hora — vale pra qualquer cliente sem token.
@@ -588,6 +590,11 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                     {/* forceMount: mantém as abas montadas (as inativas ficam ocultas)
                         para o "Montar todos" gerar tudo de uma vez, não só a aba visível. */}
                     <TabsContent forceMount value="treino" className="space-y-3 mt-3 data-[state=inactive]:hidden">
+                      {/* Construtor manual: escolhe exercícios da biblioteca, define séries/reps
+                          e envia para a tela "Treinos" do paciente (studio_treinos). */}
+                      <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={() => setTreinoDialogOpen(true)}>
+                        <Dumbbell className="h-4 w-4" /> Montar treino personalizado
+                      </Button>
                       <PlanoTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
                       <DiretrizTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
                     </TabsContent>
@@ -599,6 +606,15 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                       <DiretrizLenteCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
                     </TabsContent>
                   </Tabs>
+                  {treinoDialogOpen && (
+                    <DeverDeCasaDialog
+                      open={treinoDialogOpen}
+                      onOpenChange={setTreinoDialogOpen}
+                      pacienteId={pacienteId}
+                      pacienteNome={pacienteNome}
+                      terapeutaId={user?.id || ''}
+                    />
+                  )}
                 </Suspense>
               </div>
             </AccordionContent>

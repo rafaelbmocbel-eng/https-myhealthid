@@ -199,7 +199,7 @@ export default function MinhaClinica() {
                           <Button size="icon" variant="ghost" className="h-6 w-6" title="Copiar link" onClick={() => copiar(linkConvite(c.token))}>
                             <Copy className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-6 w-6" title="Cancelar convite" onClick={() => cancelarConvite.mutate(c.id)}>
+                          <Button size="icon" variant="ghost" className="h-6 w-6" title="Cancelar convite" aria-label="Cancelar convite" onClick={() => { if (confirm('Cancelar este convite? O link deixará de funcionar.')) cancelarConvite.mutate(c.id); }}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         </div>

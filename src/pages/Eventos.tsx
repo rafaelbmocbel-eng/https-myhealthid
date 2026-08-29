@@ -831,7 +831,11 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
 function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestionario, onEditEvento, onReativar }: {
   evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void; onEditQuestionario: () => void; onEditEvento: () => void; onReativar?: () => void;
 }) {
-  const isPast = new Date(evento.data_evento) < new Date(new Date().toDateString());
+  // Compara como string YYYY-MM-DD (data local) — evita o parse UTC de
+  // new Date('YYYY-MM-DD') que marcava o evento de HOJE como "Encerrado".
+  const _hoje = new Date();
+  const hojeStr = `${_hoje.getFullYear()}-${String(_hoje.getMonth() + 1).padStart(2, '0')}-${String(_hoje.getDate()).padStart(2, '0')}`;
+  const isPast = String(evento.data_evento).slice(0, 10) < hojeStr;
   return (
     <Card className="group hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -205,7 +206,7 @@ export default function VitrineConfig() {
             <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Assinatura necessária</p>
             <p className="text-xs text-amber-700 dark:text-amber-400 leading-snug mt-0.5">
               Você precisa de uma assinatura ativa para aparecer no marketplace de pacientes.{' '}
-              <a href="/precos" className="font-semibold underline">Ver planos</a>
+              <Link to="/precos" className="font-semibold underline">Ver planos</Link>
             </p>
           </div>
         </div>
@@ -218,7 +219,7 @@ export default function VitrineConfig() {
             <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Trial expirando em {diasRestantes} dia{diasRestantes !== 1 ? 's' : ''}</p>
             <p className="text-xs text-amber-700 dark:text-amber-400 leading-snug mt-0.5">
               Após o período trial, você sairá do marketplace automaticamente.{' '}
-              <a href="/precos" className="font-semibold underline">Assinar agora</a>
+              <Link to="/precos" className="font-semibold underline">Assinar agora</Link>
             </p>
           </div>
         </div>
