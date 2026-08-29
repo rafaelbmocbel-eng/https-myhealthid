@@ -41,3 +41,28 @@
   cliente (exceto o nível gratuito de dicas/devolutiva, que é geral e seguro).
 - Nomenclatura única: "Treinos" (prescritos), "Meu Plano (IA)" (premium),
   "Exercícios & dicas do MyID" (grátis); moeda única "XP".
+
+## Atualização (decisão do Rafael) — Aba única "Plano de tratamento"
+
+O portal do cliente passa a ter UMA aba **"Plano de tratamento"**
+(`/paciente/exercicios`) que reúne TODAS as áreas num só lugar:
+**Reabilitação, Personal (treino), Nutricional, Psicológico, Médico** — cada
+uma mostra o plano/diretriz que o profissional **confirmou/liberou** (via o hub
+"Diretrizes" na área do profissional). O treino interativo (marcar exercício
+feito, XP, player de sessão — tabela `studio_treinos`) é uma **seção dentro**
+dessa aba, não uma aba separada. As rotas antigas `/paciente/plano-ia` e
+"Acesso rápido" apontam para essa aba única.
+
+Onde o profissional cria: **Perfil do paciente → aba "Diretrizes"** (uma
+sub-aba por área). Cada área tem "Liberar/enviar ao portal" (o "confirmar"). O
+construtor manual de treino (exercício a exercício) fica na sub-aba **Personal**.
+
+Regras por tier (reforço):
+- **Free**: só o profissional cria o plano; o cliente apenas VÊ o que foi
+  liberado. Sem botão de gerar por IA.
+- **Premium**: além do que o profissional monta, o cliente pode GERAR o próprio
+  plano por IA a partir de MyID + questionários + anamnese.
+- **Free que respondeu todos os questionários**: o profissional pode montar o
+  plano completo com tudo que tem (avaliação presencial + MyID + formulários),
+  editar e confirmar — e aí aparece para o cliente na aba "Plano de tratamento".
+- Prescrever/liberar treino: Educador Físico **ou** Fisioterapeuta.

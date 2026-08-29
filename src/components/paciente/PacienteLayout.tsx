@@ -5,7 +5,7 @@ import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
   LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, TrendingUp,
   Wallet, Watch, Ticket, MessageSquare, MoreHorizontal, X,
-  ChevronRight, Lock, Users, Activity, Sparkles, Lightbulb, ArrowLeft, LayoutGrid,
+  ChevronRight, Lock, Users, Activity, Lightbulb, ArrowLeft,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
@@ -26,7 +26,7 @@ const navItems = [
   { path: '/paciente/saude',     label: 'Saúde',                 shortLabel: 'Saúde',    icon: Watch,           badgeKey: null, premium: false },
   { path: '/paciente/diario',    label: 'Diário',                shortLabel: 'Diário',   icon: Heart,           badgeKey: 'diario' as const, premium: false },
   { path: '/paciente/evolucao',  label: 'Evolução e Prontuários',shortLabel: 'Evolução', icon: TrendingUp,      badgeKey: null, premium: false },
-  { path: '/paciente/exercicios',label: 'Acesso rápido',         shortLabel: 'Acesso',   icon: LayoutGrid,      badgeKey: null, premium: false },
+  { path: '/paciente/exercicios',label: 'Plano de tratamento',   shortLabel: 'Plano',    icon: ClipboardList,   badgeKey: null, premium: false },
   { path: '/paciente/agenda',    label: 'Agenda',                shortLabel: 'Agenda',   icon: CalendarDays,    badgeKey: 'agenda' as const, premium: false },
   { path: '/paciente/questionarios',label:'Questionários',       shortLabel: 'Quest.',   icon: ClipboardList,   badgeKey: 'questionarios' as const, premium: false },
   { path: '/paciente/pagamentos',label: 'Pagamentos',            shortLabel: 'Pagam.',   icon: Wallet,          badgeKey: 'pagamentos' as const, premium: false },
@@ -34,16 +34,15 @@ const navItems = [
   { path: '/paciente/perfil',    label: 'Perfil',                shortLabel: 'Perfil',   icon: User,            badgeKey: null, premium: false },
   { path: '/paciente/profissionais', label: 'Encontrar profissional', shortLabel: 'Profiss.', icon: Users,          badgeKey: null, premium: false },
   { path: '/paciente/avatar',        label: 'Avatar clínico',       shortLabel: 'Avatar',   icon: Activity,        badgeKey: null, premium: false },
-  { path: '/paciente/plano-ia',      label: 'Meu plano',            shortLabel: 'Plano',    icon: Sparkles,        badgeKey: null, premium: false },
   { path: '/paciente/exames',        label: 'Exames',               shortLabel: 'Exames',   icon: ClipboardList,   badgeKey: null, premium: false },
 ];
 
-// Bottom nav: Início, Agenda, Treinos, Diário, +Mais
-const MOBILE_PRIMARY = [0, 5, 4, 2]; // indices in navItems
-// Items in "Mais" sheet (all others) — avatar is index 12, exames index 13
-const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12, 13];
+// Bottom nav: Início, Agenda, Plano, Diário, +Mais
+const MOBILE_PRIMARY = [0, 5, 4, 2]; // indices in navItems (4 = Plano de tratamento)
+// Items in "Mais" sheet (all others). Após remover "Meu plano", exames é o índice 12.
+const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12];
 // Agrupamento do sheet "Mais": saúde em cima, conta embaixo — menos carga visual
-const GRUPO_SAUDE = new Set(['/paciente/saude', '/paciente/evolucao', '/paciente/questionarios', '/paciente/avatar', '/paciente/plano-ia', '/paciente/exames']);
+const GRUPO_SAUDE = new Set(['/paciente/saude', '/paciente/evolucao', '/paciente/questionarios', '/paciente/avatar', '/paciente/exames']);
 
 interface Props {
   children: ReactNode;

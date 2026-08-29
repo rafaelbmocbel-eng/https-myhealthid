@@ -285,10 +285,10 @@ export function PlanoPersonalizadoSection() {
   );
 }
 
-// Rota antiga /paciente/plano-ia → o plano agora vive dentro de "Treino
-// personalizado". Redireciona para lá (um único lugar correto).
+// Rota antiga /paciente/plano-ia → o plano agora vive na aba unificada
+// "Plano de tratamento" (/paciente/exercicios). Redireciona para lá.
 export default function PacientePlanoIA() {
-  return <Navigate to="/paciente/questionarios?foco=plano" replace />;
+  return <Navigate to="/paciente/exercicios" replace />;
 }
 
 // Diretriz criada e revisada pelo PROFISSIONAL (por fases, com metas e

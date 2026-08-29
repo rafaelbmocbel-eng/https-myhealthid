@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
+import { PlanoPersonalizadoSection } from '@/pages/paciente/PacientePlanoIA';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -255,10 +256,22 @@ export default function PacienteExercicios() {
           <div>
             <h1 className="h-page flex items-center gap-2">
               <LayoutGrid className="h-5 w-5 text-primary" />
-              Acesso rápido
+              Plano de tratamento
             </h1>
-            <p className="text-xs text-muted-foreground">Tudo o que você mais usa em um lugar</p>
+            <p className="text-xs text-muted-foreground">Reabilitação, treino, nutrição e mais — tudo o que seu profissional montou (ou você gerou) em um lugar.</p>
           </div>
+
+          {/* Plano de tratamento unificado: diretrizes de TODAS as áreas
+              (reabilitação, personal, nutricional, psicológico, médico) + o
+              gerador premium. Free vê só o que o profissional liberou. */}
+          <PlanoPersonalizadoSection />
+
+          {treinos.length > 0 && (
+            <div className="flex items-center gap-2 pt-1">
+              <Dumbbell className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-bold">Seu treino de hoje</h2>
+            </div>
+          )}
 
           {/* Active session modal */}
           {activeSession && (
