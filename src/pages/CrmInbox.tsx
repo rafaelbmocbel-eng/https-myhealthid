@@ -460,7 +460,13 @@ function ChatPanel({ conversa, userId, onBack, onCadastrar, onExcluir }: { conve
     setTexto('');
     setReplyTo(null);
     if (taRef.current) { taRef.current.style.height = 'auto'; }
-    try { await enviar.mutateAsync({ conversa, texto: t }); } catch { setTexto(t); }
+    try { await enviar.mutateAsync({ conversa, texto: t }); }
+    catch (e: any) {
+      // Restaura o texto e AVISA — sem isso a mensagem "sumia" e o profissional
+      // não sabia se foi enviada.
+      setTexto(t);
+      toast.error(e?.message ? `Não consegui enviar: ${e.message}` : 'Não consegui enviar. Verifique a conexão e tente de novo.');
+    }
   }
 
   async function handleMediaUpload(file: File, mediaType: 'image' | 'document') {

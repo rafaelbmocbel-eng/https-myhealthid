@@ -391,7 +391,7 @@ function Comentarios() {
                 <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => toast.info('Abriria resposta')}>
                   Responder
                 </Button>
-                <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => toast.success('Marcado como lido')}>
+                <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => toast.info('Disponível quando você conectar o Instagram')}>
                   Marcar lido
                 </Button>
               </div>

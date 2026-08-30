@@ -24,22 +24,32 @@ export default function CrmCadencias({ embedded = false }: { embedded?: boolean 
   const [cadencias, setCadencias] = useState<any[]>([]);
   const [passosByCad, setPassosByCad] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
 
   async function carregar() {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: cads } = await supabase.from("crm_cadencias")
-      .select("*").eq("terapeuta_id", user.id).order("created_at");
-    setCadencias(cads || []);
-    if (cads?.length) {
-      const { data: passos } = await supabase.from("crm_cadencia_passos")
-        .select("*").in("cadencia_id", cads.map(c => c.id)).order("ordem");
-      const map: Record<string, any[]> = {};
-      (passos || []).forEach(p => { (map[p.cadencia_id] ||= []).push(p); });
-      setPassosByCad(map);
+    setErro(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: cads, error: e1 } = await supabase.from("crm_cadencias")
+        .select("*").eq("terapeuta_id", user.id).order("created_at");
+      if (e1) throw e1;
+      setCadencias(cads || []);
+      if (cads?.length) {
+        const { data: passos, error: e2 } = await supabase.from("crm_cadencia_passos")
+          .select("*").in("cadencia_id", cads.map(c => c.id)).order("ordem");
+        if (e2) throw e2;
+        const map: Record<string, any[]> = {};
+        (passos || []).forEach(p => { (map[p.cadencia_id] ||= []).push(p); });
+        setPassosByCad(map);
+      }
+    } catch (e) {
+      console.error('[CrmCadencias] carregar error:', e);
+      setErro(true);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
   useEffect(() => { carregar(); }, []);
 
@@ -98,6 +108,14 @@ export default function CrmCadencias({ embedded = false }: { embedded?: boolean 
       </div>
 
       {loading ? <div className="text-center py-12 text-muted-foreground">Carregando…</div> :
+        erro ? (
+          <Card className="p-8 text-center">
+            <Zap className="icon-xl text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground mb-1">Não consegui carregar suas cadências</p>
+            <p className="text-xs text-muted-foreground mb-4">Verifique a conexão e tente de novo.</p>
+            <Button variant="outline" onClick={carregar}>Tentar de novo</Button>
+          </Card>
+        ) :
         cadencias.length === 0 ? (
           <Card className="p-8 text-center">
             <Zap className="icon-xl text-muted-foreground mx-auto mb-2" />

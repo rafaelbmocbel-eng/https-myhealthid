@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Bot, Clock, Sparkles, Megaphone, Zap, AlertTriangle, BarChart3 } from "lucide-react";
+import { Bot, Clock, Sparkles, Megaphone, Zap, AlertTriangle, BarChart3, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +106,8 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
     abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
   });
   const [palavraNova, setPalavraNova] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [confirmDisparo, setConfirmDisparo] = useState<{ ids: string[]; agendadoDate: Date | null } | null>(null);
   const [nps, setNps] = useState<{ media: number; total: number } | null>(null);
 
   useEffect(() => {
@@ -285,32 +287,49 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
     if (agendado && (!agendadoDate || agendadoDate.getTime() <= Date.now())) {
       return toast.error("Data de agendamento deve ser no futuro");
     }
+    // Não envia direto: abre a confirmação mostrando para QUANTOS vai.
+    setConfirmDisparo({ ids, agendadoDate });
+  };
 
-    const { data: b, error } = await supabase.from("agente_broadcasts").insert({
-      terapeuta_id: user.id,
-      titulo: broadcast.titulo,
-      intencao: usaAB ? broadcast.variantes[0].texto : broadcast.intencao,
-      filtro: { segmento: broadcast.segmento },
-      paciente_ids: ids,
-      status: "agendado",
-      total: ids.length,
-      agendado_para: agendado ? agendadoDate!.toISOString() : null,
-      ab_variantes: usaAB ? broadcast.variantes : [],
-    } as any).select().single();
-    if (error || !b) return toast.error("Erro ao criar broadcast: " + (error?.message || ""));
+  // Executa o disparo/agendamento após a confirmação. Trava duplo clique.
+  const confirmarDisparo = async () => {
+    if (!confirmDisparo || enviando) return;
+    setEnviando(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const usaAB = broadcast.abAtivo && broadcast.variantes.length >= 2;
+      const { ids, agendadoDate } = confirmDisparo;
+      const agendado = !!agendadoDate;
+      const { data: b, error } = await supabase.from("agente_broadcasts").insert({
+        terapeuta_id: user.id,
+        titulo: broadcast.titulo,
+        intencao: usaAB ? broadcast.variantes[0].texto : broadcast.intencao,
+        filtro: { segmento: broadcast.segmento },
+        paciente_ids: ids,
+        status: "agendado",
+        total: ids.length,
+        agendado_para: agendado ? agendadoDate!.toISOString() : null,
+        ab_variantes: usaAB ? broadcast.variantes : [],
+      } as any).select().single();
+      if (error || !b) { toast.error("Erro ao criar broadcast: " + (error?.message || "")); return; }
 
-    if (agendado) {
-      toast.success(`Campanha agendada para ${agendadoDate!.toLocaleString("pt-BR")} — ${ids.length} paciente(s)`);
-    } else {
-      const { error: err2 } = await supabase.functions.invoke("agente-broadcast", { body: { broadcast_id: b.id } });
-      if (err2) return toast.error("Erro ao disparar: " + err2.message);
-      toast.success(`Broadcast enviando para ${ids.length} paciente(s) — 1 a cada 5s`);
+      if (agendado) {
+        toast.success(`Campanha agendada para ${agendadoDate!.toLocaleString("pt-BR")} — ${ids.length} paciente(s)`);
+      } else {
+        const { error: err2 } = await supabase.functions.invoke("agente-broadcast", { body: { broadcast_id: b.id } });
+        if (err2) { toast.error("Erro ao disparar: " + err2.message); return; }
+        toast.success(`Broadcast enviando para ${ids.length} paciente(s) — 1 a cada 5s`);
+      }
+      setConfirmDisparo(null);
+      setBroadcast({
+        titulo: "", intencao: "", segmento: "todos",
+        agendar: false, agendado_para: "",
+        abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
+      });
+    } finally {
+      setEnviando(false);
     }
-    setBroadcast({
-      titulo: "", intencao: "", segmento: "todos",
-      agendar: false, agendado_para: "",
-      abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
-    });
   };
 
   if (loading || !cfg) return <div className="p-6">Carregando…</div>;
@@ -738,9 +757,27 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               )}
             </div>
 
-            <Button onClick={dispararBroadcast}>
-              {broadcast.agendar ? "Agendar campanha" : "Disparar agora"}
-            </Button>
+            {confirmDisparo ? (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
+                <p className="text-sm font-medium">
+                  {confirmDisparo.agendadoDate
+                    ? `Agendar esta campanha para ${confirmDisparo.ids.length} paciente(s)?`
+                    : `Enviar agora para ${confirmDisparo.ids.length} paciente(s)? (1 envio a cada 5s)`}
+                </p>
+                <p className="text-[11px] text-muted-foreground">Isso envia mensagem real no WhatsApp. Não dá para desfazer.</p>
+                <div className="flex gap-2">
+                  <Button onClick={confirmarDisparo} disabled={enviando} className="gap-1.5">
+                    {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {confirmDisparo.agendadoDate ? "Confirmar agendamento" : "Confirmar envio"}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setConfirmDisparo(null)} disabled={enviando}>Cancelar</Button>
+                </div>
+              </div>
+            ) : (
+              <Button onClick={dispararBroadcast}>
+                {broadcast.agendar ? "Agendar campanha" : "Disparar agora"}
+              </Button>
+            )}
           </Card>
         </TabsContent>
       </Tabs>

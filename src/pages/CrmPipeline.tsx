@@ -381,7 +381,7 @@ export default function CrmPipeline({ embedded = false }: { embedded?: boolean }
                             {/* Menu mover (mobile-friendly) */}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0">
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" aria-label="Mover etapa / mais ações" title="Mover etapa / mais ações">
                                   <MoreVertical className="icon-xs" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -428,8 +428,8 @@ export default function CrmPipeline({ embedded = false }: { embedded?: boolean }
                               {l.ultima_mensagem_em && formatDistanceToNow(new Date(l.ultima_mensagem_em), { addSuffix: true, locale: ptBR })}
                             </span>
                             <div className="flex gap-1">
-                              <Link to={`/crm/inbox?conversa=${l.id}`}>
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                              <Link to={`/crm/inbox?conversa=${l.id}`} aria-label="Abrir conversa">
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Abrir conversa" title="Abrir conversa">
                                   <MessageCircle className="icon-xs" />
                                 </Button>
                               </Link>

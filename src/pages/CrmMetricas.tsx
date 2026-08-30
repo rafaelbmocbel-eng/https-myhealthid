@@ -13,8 +13,8 @@ const STAGE_LABELS: Record<Stage, string> = {
 };
 
 export default function CrmMetricas({ embedded = false }: { embedded?: boolean } = {}) {
-  const { data: origem } = useOrigemMetrics("30");
   const [periodo, setPeriodo] = useState<"7" | "30" | "90">("30");
+  const { data: origem } = useOrigemMetrics(periodo);
   const [stats, setStats] = useState<{
     porEstagio: Record<string, number>;
     conversao: { novoQualif: number; qualifAg: number; agFech: number; total: number };
