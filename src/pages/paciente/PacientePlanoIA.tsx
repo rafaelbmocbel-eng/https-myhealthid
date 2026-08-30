@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -250,37 +250,86 @@ export function PlanoPersonalizadoSection() {
               </Card>
             )}
 
-            {/* Diretrizes do profissional (nutrição, treino, ...) */}
-            {diretrizes.map((dir, i) => <DiretrizProfissionalView key={i} diretriz={dir} />)}
+            {/* Planos agrupados por ÁREA, cada um com seu cabeçalho. Cada seção
+                só aparece se tiver conteúdo liberado/gerado. */}
+            {(() => {
+              const usadas = new Set<string>();
+              const dirDe = (areas: string[]) => {
+                const list = diretrizes.filter((d: any) => areas.includes(d.area));
+                list.forEach((d: any) => usadas.add(d.area));
+                return list;
+              };
+              const reab = dirDe(['fisioterapia', 'reabilitacao', 'fisio']);
+              const personalDir = dirDe(['educacao_fisica']);
+              const nutriDir = dirDe(['nutricao']);
+              const psiDir = dirDe(['psicologia']);
+              const medDir = dirDe(['medicina']);
+              const odontoDir = dirDe(['odontologia']);
+              const outrasDir = diretrizes.filter((d: any) => !usadas.has(d.area));
 
-            {/* Plano de treino — profissional tem prioridade; senão, o da IA
-                (interativo: GIFs, como fazer, marcar feito, adaptar por incômodo) */}
-            <PlanoTreinoView treino={treino} />
-            {!treino && treinoIA && pacienteId && (
-              <PlanoTreinoInterativo
-                pacienteId={pacienteId}
-                titulo={treinoIA.titulo}
-                conteudo={treinoIA.conteudo}
-                onRegenerarComIncomodo={(nota) => gerarPlano('treino', nota)}
-                regenerando={gerando === 'treino'}
-              />
-            )}
+              const temPersonal = personalDir.length > 0 || !!treino || !!treinoIA;
+              const temNutri = nutriDir.length > 0 || !!dieta || !!dietaIA;
+              const vazio = !reab.length && !temPersonal && !temNutri && !psiDir.length && !medDir.length && !odontoDir.length && !outrasDir.length;
 
-            {/* Plano alimentar */}
-            <PlanoDietaView dieta={dieta} />
-            {!dieta && dietaIA && <PlanoDietaView dieta={{ titulo: dietaIA.titulo, plano: dietaIA.conteudo, calorias_alvo: dietaIA.conteudo?.calorias_totais }} ia />}
+              const mapDir = (list: any[]) => list.map((d, i) => <DiretrizProfissionalView key={i} diretriz={d} />);
 
-            {!treino && !dieta && !treinoIA && !dietaIA && diretrizes.length === 0 && (
-              <Card><CardContent className="p-8 text-center">
-                <Sparkles className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm font-medium text-muted-foreground">Nenhum plano ainda</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">
-                  {podeGerar
-                    ? 'Toque em "Gerar treino + nutrição" acima para montar o seu — ou seu profissional pode montar um.'
-                    : 'Seu profissional pode montar um plano sob medida para você. Assine o Premium para criar o seu com IA quando quiser.'}
-                </p>
-              </CardContent></Card>
-            )}
+              return (
+                <>
+                  {reab.length > 0 && <SecaoPlano titulo="🦴 Reabilitação">{mapDir(reab)}</SecaoPlano>}
+
+                  {temPersonal && (
+                    <SecaoPlano titulo="🏋️ Personal (treino)">
+                      {mapDir(personalDir)}
+                      <PlanoTreinoView treino={treino} />
+                      {!treino && treinoIA && pacienteId && (
+                        <PlanoTreinoInterativo
+                          pacienteId={pacienteId}
+                          titulo={treinoIA.titulo}
+                          conteudo={treinoIA.conteudo}
+                          onRegenerarComIncomodo={(nota) => gerarPlano('treino', nota)}
+                          regenerando={gerando === 'treino'}
+                        />
+                      )}
+                    </SecaoPlano>
+                  )}
+
+                  {temNutri && (
+                    <SecaoPlano titulo="🥗 Nutricional">
+                      {mapDir(nutriDir)}
+                      <PlanoDietaView dieta={dieta} />
+                      {!dieta && dietaIA && <PlanoDietaView dieta={{ titulo: dietaIA.titulo, plano: dietaIA.conteudo, calorias_alvo: dietaIA.conteudo?.calorias_totais }} ia />}
+                    </SecaoPlano>
+                  )}
+
+                  {psiDir.length > 0 && <SecaoPlano titulo="🧠 Psicológico">{mapDir(psiDir)}</SecaoPlano>}
+                  {medDir.length > 0 && <SecaoPlano titulo="🩺 Médico">{mapDir(medDir)}</SecaoPlano>}
+                  {odontoDir.length > 0 && <SecaoPlano titulo="🦷 Odontológico">{mapDir(odontoDir)}</SecaoPlano>}
+                  {outrasDir.length > 0 && <SecaoPlano titulo="📋 Outros planos">{mapDir(outrasDir)}</SecaoPlano>}
+
+                  {vazio && (
+                    <Card><CardContent className="p-8 text-center">
+                      <Sparkles className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-sm font-medium text-muted-foreground">Nenhum plano ainda</p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        {podeGerar
+                          ? 'Toque em "Gerar treino + nutrição" acima para montar o seu — ou seu profissional pode montar um.'
+                          : 'Seu profissional pode montar um plano sob medida para você. Assine o Premium para criar o seu com IA quando quiser.'}
+                      </p>
+                    </CardContent></Card>
+                  )}
+                </>
+              );
+            })()}
+    </div>
+  );
+}
+
+// Cabeçalho de seção por área na aba "Plano de tratamento".
+function SecaoPlano({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-black text-foreground/80 pt-1">{titulo}</h2>
+      {children}
     </div>
   );
 }
