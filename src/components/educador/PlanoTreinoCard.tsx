@@ -15,6 +15,7 @@ import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import PlanoTreinoEditor from './PlanoTreinoEditor';
 import RevisorSeguranca from '@/components/planos/RevisorSeguranca';
+import TreinoDocumento from '@/components/paciente/TreinoDocumento';
 
 interface Props { pacienteId: string; autoGerar?: boolean; ocultarGerador?: boolean; }
 
@@ -30,6 +31,11 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
   const [restricoes, setRestricoes] = useState('');
   const [verPlano, setVerPlano] = useState<any | null>(null);
   const [editarPlano, setEditarPlano] = useState<any | null>(null);
+  // Ver/editar o treino com GIFs (TreinoDocumento) direto no card.
+  const [editandoDoc, setEditandoDoc] = useState(false);
+  const [docConteudo, setDocConteudo] = useState<any>(null);
+  const [docTitulo, setDocTitulo] = useState<string>('');
+  const [salvandoDoc, setSalvandoDoc] = useState(false);
   // O formulário de gerar só aparece quando NÃO há plano (primeira vez). Depois
   // some — fica só o plano compartilhável — com um "gerar outro" discreto.
   const [mostrarGerador, setMostrarGerador] = useState(false);
@@ -109,6 +115,24 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
     if (!confirm('Apagar este plano?')) return;
     await (supabase as any).from('planos_treino').delete().eq('id', id);
     qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+  };
+
+  const salvarDoc = async () => {
+    if (!verPlano) return;
+    setSalvandoDoc(true);
+    try {
+      const { error } = await (supabase as any).from('planos_treino')
+        .update({ estrutura: docConteudo, titulo: docTitulo || verPlano.titulo })
+        .eq('id', verPlano.id);
+      if (error) throw error;
+      toast.success('Treino atualizado');
+      setEditandoDoc(false);
+      qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+    } catch (e: any) {
+      toast.error(e.message || 'Não consegui salvar');
+    } finally {
+      setSalvandoDoc(false);
+    }
   };
 
   const liberar = async (plano: any, aprovado: boolean) => {
@@ -228,7 +252,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
                 onClick={() => liberar(p, !p.aprovado)}>
                 {p.aprovado ? 'Ocultar' : 'Liberar'}
               </Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" title="Ver plano" onClick={() => setVerPlano(p)}><Eye className="icon-xs" /></Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" title="Ver treino (com GIFs)" onClick={() => { setVerPlano(p); setDocConteudo(p.estrutura || {}); setDocTitulo(p.titulo || ''); setEditandoDoc(false); }}><Eye className="icon-xs" /></Button>
               {/* Editar plano: troca de exercício (com busca na biblioteca), carga,
                   fase, séries/reps — o editor único do plano. */}
               <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar plano" onClick={() => setEditarPlano(p)}><Pencil className="icon-xs" /></Button>
@@ -248,55 +272,38 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
         )}
       </CardContent>
 
-      <Dialog open={!!verPlano} onOpenChange={(o) => !o && setVerPlano(null)}>
+      <Dialog open={!!verPlano} onOpenChange={(o) => { if (!o) { setVerPlano(null); setEditandoDoc(false); } }}>
         <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="text-base">{verPlano?.titulo}</DialogTitle></DialogHeader>
-          {verPlano && (() => {
-            const e = verPlano.estrutura || {};
-            return (
-              <div className="space-y-4 text-sm">
-                {e.resumo && <p className="text-foreground/80">{e.resumo}</p>}
-                {(e.fases || []).map((fase: any, i: number) => (
-                  <div key={i} className="rounded-lg border border-border/40 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold">{fase.nome}</div>
-                      <Badge variant="outline" className="text-[10px]">{fase.semanas} sem</Badge>
-                    </div>
-                    {fase.objetivo && <p className="text-xs text-muted-foreground">{fase.objetivo}</p>}
-                    {(fase.sessoes || []).map((s: any, j: number) => (
-                      <div key={j} className="rounded-md bg-muted/20 p-2 space-y-1.5">
-                        <div className="font-medium text-sm">{s.nome} {s.duracao_min && <span className="text-muted-foreground text-xs">· {s.duracao_min} min</span>}</div>
-                        {s.aquecimento && <div className="text-xs"><span className="text-muted-foreground">Aquecimento: </span>{s.aquecimento}</div>}
-                        <table className="w-full text-xs">
-                          <thead className="text-muted-foreground"><tr>
-                            <th className="text-left p-1">Exercício</th>
-                            <th className="text-left p-1">Séries × Reps</th>
-                            <th className="text-left p-1">Descanso</th>
-                          </tr></thead>
-                          <tbody>
-                            {(s.exercicios || []).map((ex: any, k: number) => (
-                              <tr key={k} className="border-t border-border/30">
-                                <td className="p-1 font-medium">{ex.nome}{ex.obs && <div className="text-[10px] text-muted-foreground">{ex.obs}</div>}</td>
-                                <td className="p-1">{ex.series} × {ex.reps} {ex.carga && <span className="text-muted-foreground">({ex.carga})</span>}</td>
-                                <td className="p-1">{ex.descanso_s ? `${ex.descanso_s}s` : '—'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        {s.desaquecimento && <div className="text-xs"><span className="text-muted-foreground">Desaquecimento: </span>{s.desaquecimento}</div>}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-                {e.observacoes_gerais && (
-                  <div className="rounded-md bg-muted/30 p-3 text-xs">
-                    <div className="font-semibold mb-1">Observações gerais</div>
-                    {e.observacoes_gerais}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+          <DialogHeader>
+            <DialogTitle className="text-base">{editandoDoc ? 'Editar treino' : (verPlano?.titulo || 'Treino')}</DialogTitle>
+          </DialogHeader>
+
+          {/* Ações: ver com GIFs, editar cada movimento, salvar */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {!editandoDoc ? (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditandoDoc(true)}>
+                <Pencil className="icon-xs" /> Editar movimentos
+              </Button>
+            ) : (
+              <>
+                <Button size="sm" className="gap-1.5" onClick={salvarDoc} disabled={salvandoDoc}>
+                  {salvandoDoc ? <Loader2 className="icon-xs animate-spin" /> : null} Salvar
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setDocConteudo(verPlano?.estrutura || {}); setDocTitulo(verPlano?.titulo || ''); setEditandoDoc(false); }} disabled={salvandoDoc}>Cancelar</Button>
+              </>
+            )}
+          </div>
+
+          {verPlano && (
+            <TreinoDocumento
+              nome=""
+              titulo={docTitulo}
+              conteudo={editandoDoc ? docConteudo : (verPlano.estrutura || {})}
+              editando={editandoDoc}
+              onTituloChange={setDocTitulo}
+              onConteudoChange={setDocConteudo}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

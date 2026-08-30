@@ -33,6 +33,18 @@ interface Props {
 
 const clone = (o: any) => JSON.parse(JSON.stringify(o ?? {}));
 
+// Limpa artefatos da geração/importação: ids crus [uuid], parênteses vazios "()"
+// e o sufixo "converted" que vinha da tradução da biblioteca. Só para EXIBIÇÃO —
+// o valor salvo não muda (no modo edição o profissional vê/ajusta o texto real).
+function limparRef(txt: any): string {
+  return String(txt ?? '')
+    .replace(/\[[0-9a-fA-F][0-9a-fA-F-]{7,}\]/g, '')
+    .replace(/\bconverted\b/gi, '')
+    .replace(/\(\s*\)/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 // Input inline que "imita" o texto do documento — fundo âmbar suave no modo edição.
 // Definido FORA do componente pai: se ficasse dentro do render, cada tecla criaria
 // um tipo novo e o input perderia o foco a cada caractere.
@@ -107,7 +119,7 @@ export default function TreinoDocumento({
             </div>
           ) : (
             <>
-              <p className="text-sm font-semibold text-[#212529]">{ex.nome || 'Exercício'}</p>
+              <p className="text-sm font-semibold text-[#212529]">{limparRef(ex.nome) || 'Exercício'}</p>
               <p className="text-[13px] font-bold text-[#2563eb] mt-0.5">
                 {[ex.series && ex.reps ? `${ex.series}×${ex.reps}` : ex.series, ex.carga, ex.descanso_s && `${ex.descanso_s}s descanso`].filter(Boolean).join('  ·  ')}
               </p>
@@ -134,7 +146,7 @@ export default function TreinoDocumento({
           {s.nome || `Treino ${si + 1}`}{s.duracao_min ? ` · ~${s.duracao_min} min` : ''}
         </h3>
       )}
-      {s.aquecimento && !editando && <p className="text-xs text-[#6e7482]"><strong>Aquecimento:</strong> {s.aquecimento}</p>}
+      {s.aquecimento && !editando && <p className="text-xs text-[#6e7482]"><strong>Aquecimento:</strong> {limparRef(s.aquecimento)}</p>}
       <div className="space-y-2">
         {(Array.isArray(s.exercicios) ? s.exercicios : []).map((ex: any, ei: number) => renderExercicio(ex, ei, si, fi))}
       </div>
