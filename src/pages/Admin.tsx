@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
-import { useAdminMetrics, atualizarPlano, removerPlano, concederPlano, revogarCortesia, grandfatherTodos, criarLinkParceiro, revogarLinkParceiro, type PeriodoAdmin } from '@/hooks/useAdminMetrics';
+import { useAdminMetrics, atualizarPlano, removerPlano, concederPlano, revogarCortesia, grandfatherTodos, criarLinkParceiro, revogarLinkParceiro, traduzirBibliotecaBatch, type PeriodoAdmin } from '@/hooks/useAdminMetrics';
 import { MODULOS_CATALOGO, MODULOS_KEYS } from '@/lib/modulosPlano';
 import {
   Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2, Layers, Check, Gift, X, Link2, Copy,
@@ -88,6 +88,7 @@ export default function Admin() {
   const [busca, setBusca] = useState('');
   const [filtroEsp, setFiltroEsp] = useState<string>('todas');
   // Editor de funcionalidades por plano
+  const [traduzindoBib, setTraduzindoBib] = useState(false);
   const [funcPlanoId, setFuncPlanoId] = useState<string | null>(null);
   const [modulosEdit, setModulosEdit] = useState<string[]>([]);
   const [salvandoFunc, setSalvandoFunc] = useState(false);
@@ -106,6 +107,18 @@ export default function Admin() {
   const [copiado, setCopiado] = useState<string | null>(null);
 
   if (!isSuper) return <Navigate to="/hoje" replace />;
+
+  const traduzirBib = async () => {
+    setTraduzindoBib(true);
+    try {
+      const r = await traduzirBibliotecaBatch();
+      toast({ title: 'Tradução da biblioteca', description: `${r.traduzidos} traduzidos nesta rodada · ${r.restantes} restantes.${r.restantes > 0 ? ' O robô continua de hora em hora (ou clique de novo).' : ' Tudo traduzido! 🎉'}` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao traduzir', description: e?.message, variant: 'destructive' });
+    } finally {
+      setTraduzindoBib(false);
+    }
+  };
 
   const liberarCortesia = async () => {
     if (!cortesiaEmail.trim() || !cortesiaPlano) { toast({ title: 'Informe e-mail e plano', variant: 'destructive' }); return; }
@@ -684,6 +697,20 @@ export default function Admin() {
           </CardContent>
         </Card>
       )}
+
+      {/* Ferramentas — tradução automática da biblioteca de exercícios */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Biblioteca de exercícios — tradução automática</CardTitle>
+          <p className="text-[11px] text-muted-foreground mt-1">Traduz os nomes dos exercícios (inglês → português de academia) para TODOS os profissionais. Roda sozinho de hora em hora; aqui você pode disparar na hora. Usa cache, então não re-cobra o que já traduziu.</p>
+        </CardHeader>
+        <CardContent>
+          <Button size="sm" className="gap-1.5" onClick={traduzirBib} disabled={traduzindoBib}>
+            {traduzindoBib ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {traduzindoBib ? 'Traduzindo…' : 'Traduzir agora (uma rodada)'}
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Clínicas */}

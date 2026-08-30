@@ -121,6 +121,18 @@ export async function grandfatherTodos(patch: { plano_id: string }) {
   return data as { ok: boolean; concedidos: number };
 }
 
+/** Dispara uma rodada da tradução automática da biblioteca de exercícios (super-admin). */
+export async function traduzirBibliotecaBatch() {
+  const { data, error } = await supabase.functions.invoke('traduzir-biblioteca-batch', { body: {} });
+  if (error) {
+    let msg = error.message;
+    try { const ctx = (error as any).context; if (ctx?.json) { const b = await ctx.json(); if (b?.error) msg = b.error; } } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data as { ok: boolean; traduzidos: number; falhas: number; restantes: number; processados: number };
+}
+
 /** Remove um plano descontinuado (trava: recusa se houver assinatura ativa). */
 export async function removerPlano(id: string) {
   const { data, error } = await supabase.functions.invoke('admin-metrics', {

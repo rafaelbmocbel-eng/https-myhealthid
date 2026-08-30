@@ -48,3 +48,6 @@ verify_jwt = false
 
 [functions.resumo-parceiro]
 verify_jwt = false
+
+[functions.traduzir-biblioteca-batch]
+verify_jwt = false
