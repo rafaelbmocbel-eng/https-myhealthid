@@ -34,6 +34,12 @@ interface DraftGuia {
 }
 
 const hojeISO = () => new Date().toISOString().slice(0, 10);
+// Chave de DIA em hora LOCAL (não UTC). Um agendamento gravado em toISOString()
+// (UTC) fazia sessões da noite caírem no dia seguinte — subcontando/duplicando.
+const diaLocalKey = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
 
 interface CodigoCfg { codigo: string; descricao: string; valor: number; codigo_oficial?: string; }
 interface ResponsavelCfg { nome: string; percentual: number; }
@@ -252,7 +258,7 @@ export default function ControleCassi() {
       if (!a.guia_cassi_id || a.tipo_atendimento === 'avaliacao' || naoConta.has(a.status)) continue;
       if (new Date(a.data_inicio).getTime() >= agora) continue; // só sessões já passadas contam como realizadas
       if (!dias.has(a.guia_cassi_id)) dias.set(a.guia_cassi_id, new Set());
-      dias.get(a.guia_cassi_id)!.add(a.data_inicio.slice(0, 10));
+      dias.get(a.guia_cassi_id)!.add(diaLocalKey(a.data_inicio));
     }
     const m = new Map<string, number>();
     for (const [gid, set] of dias) m.set(gid, set.size);
@@ -592,7 +598,11 @@ export default function ControleCassi() {
                   // guia vigente (ou ela já acabou). Vale igual pra 1/mês e 2/mês —
                   // como é sequencial, quem faz rápido pede 2 no mês; quem faz devagar,
                   // ~3 em 2 meses. Sem prazo de 13 dias, que atropelava os mais lentos.
-                  const precisaPedir = !!guia && precisaNovaGuia(guia);
+                  // 1/mês: por contagem de sessões (não atropela os lentos).
+                  // 2/mês: TAMBÉM pelo tempo — venceu 13 dias desde o aceite → pedir
+                  // a próxima (é o que faz "2 guias no mês" funcionar).
+                  const precisaPedir = !!guia && (precisaNovaGuia(guia)
+                    || ((paciente.guias_por_mes || 1) >= 2 && venceuPrazoProximaGuia(guia, paciente.guias_por_mes)));
                   const jaPedido = pedidoAberto(paciente); // guia já solicitada, aguardando CASSI
                   const estado: 'guia' | 'confirmar' | 'ok' =
                     precisaPedir ? 'guia' : ok ? 'ok' : 'confirmar';
@@ -715,8 +725,8 @@ export default function ControleCassi() {
                                           : l.precisaPedir ? `Faltam ${l.restantes} — peça a próxima guia`
                                           : fim ? `${atravessa ? 'atravessa o mês · ' : ''}termina ~${fim}`
                                           : `${l.restantes} sessões restantes`}
-                                        {(l.precisaPedir || l.jaPedido || l.guiaAcabou) && respCassi && (
-                                          <span className="text-muted-foreground font-normal"> · guia de {respCassi}</span>
+                                        {respCassi && (
+                                          <span className="text-muted-foreground font-normal"> · aceita {respCassi}</span>
                                         )}
                                       </p>
                                     </>
@@ -904,12 +914,12 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
   // Contagem por DIAS DISTINTOS (1 dia = 1 sessão). A avaliação é um dia extra e
   // NÃO entra na contagem dos dias de tratamento.
   const soTratamento = useMemo(() => sessoes.filter((s) => s.tipo_atendimento !== 'avaliacao' && s.status !== 'cancelado'), [sessoes]);
-  const geradas = useMemo(() => new Set(soTratamento.map((s) => s.data_inicio.slice(0, 10))).size, [soTratamento]);
+  const geradas = useMemo(() => new Set(soTratamento.map((s) => diaLocalKey(s.data_inicio))).size, [soTratamento]);
   const realizadas = useMemo(() => {
     const agora = Date.now();
     return new Set(
       soTratamento.filter((s) => new Date(s.data_inicio).getTime() < agora && s.status !== 'faltou' && s.status !== 'bloqueado' && s.status !== 'pendente')
-        .map((s) => s.data_inicio.slice(0, 10)),
+        .map((s) => diaLocalKey(s.data_inicio)),
     ).size;
   }, [soTratamento]);
 
@@ -941,7 +951,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
       if (a.tipo_atendimento === 'avaliacao' || a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
       const t = new Date(a.data_inicio).getTime();
       if (t < inicioMs || t > fimMs || t > agora) continue;
-      dias.add(a.data_inicio.slice(0, 10));
+      dias.add(diaLocalKey(a.data_inicio));
     }
     return dias.size;
   }, [agPaciente, d.data_resposta, d.data_pedido, d.sessoes_autorizadas]);
@@ -1000,7 +1010,11 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
         diagnostico: d.diagnostico || null,
         responsavel_tecnico: d.responsavel_tecnico || null,
         codigos,
-        status: d.status,
+        // Guia com data de resposta da CASSI = guia VIGENTE (ativa). Sem isso,
+        // ela nascia 'aguardando' e a aba Clientes/regra 2-mês a tratavam como
+        // inexistente ("Sem guia ativa / Pedir guia"). Escolha explícita de
+        // finalizada/cancelada é respeitada.
+        status: (d.data_resposta && d.status === 'aguardando') ? 'ativa' : d.status,
         observacoes: d.observacoes || null,
       };
 
@@ -3377,10 +3391,15 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
         {lista.map((p) => {
           const gs = guiasPorPac.get(p.id) || [];
           const nome = `${p.nome} ${p.sobrenome || ''}`.trim();
-          const ativa = gs.find((g) => g.status === 'ativa') || null;
           const ultima = gs[0] || null;
-          // Faltam ≤ 2 sessões (ou não há guia) → precisa pedir a próxima.
-          const precisaPedir = !ativa || (diasTratGuia(ativa) - (ativa.sessoes_realizadas || 0)) <= 2;
+          // Guia VIGENTE = a mais recente em aberto (ativa OU aguardando resposta
+          // da CASSI). Antes só reconhecia 'ativa', então guia recém-registrada
+          // aparecia como "sem guia".
+          const vigente = gs.find((g) => g.status === 'ativa' || g.status === 'aguardando') || null;
+          // Precisa pedir a próxima: faltam ≤ 2 sessões, não há guia, ou (2/mês)
+          // venceu o prazo de 13 dias desde o aceite.
+          const precisaPedir = !vigente || (diasTratGuia(vigente) - (vigente.sessoes_realizadas || 0)) <= 2
+            || venceuPrazoProximaGuia(vigente, p.guias_por_mes);
           const totalFeitas = gs.reduce((s, g) => s + (g.sessoes_realizadas || 0), 0);
           const ativo = !p.cassi_encerrado_em;
           const marcado = (p.guias_por_mes || 1) >= 2;
@@ -3401,7 +3420,9 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                     {ativo && p.cassi_confirmado_mes === mesVigente && <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">no mês ✓</span>}
                   </div>
                   <div className="text-[11.5px] text-muted-foreground mt-1 tabular-nums">
-                    {ativa ? <span>Guia ativa <b className="text-foreground">{ativa.sessoes_realizadas}/{diasTratGuia(ativa)}</b></span> : <span>Sem guia ativa</span>}
+                    {vigente
+                      ? <span>{vigente.status === 'aguardando' ? 'Aguardando CASSI' : 'Guia vigente'} <b className="text-foreground">{vigente.sessoes_realizadas}/{diasTratGuia(vigente)}</b>{vigente.data_resposta ? <> · aceita {fmtData(vigente.data_resposta)}</> : null}</span>
+                      : <span>Sem guia ativa</span>}
                     {mes
                       ? <span> · {mesLabel}: <b className="text-foreground">{mesFeitas}</b> sessões · <b className="text-foreground">{noMesSel}</b> guia(s)</span>
                       : <span> · total <b className="text-foreground">{totalFeitas}</b> · máx <b className="text-foreground">{maxNoMes}</b>/mês</span>}
