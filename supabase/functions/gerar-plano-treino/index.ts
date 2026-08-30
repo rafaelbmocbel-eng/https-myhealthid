@@ -22,8 +22,11 @@ PERIODIZAÇÃO (parte teórica — siga com rigor):
 - Parâmetros baseados em evidência por objetivo: força 3-6 reps/descanso 2-3min; hipertrofia 6-12 reps/descanso 60-90s; resistência/emagrecimento 12-20 reps ou circuitos/descanso 30-60s; iniciante e condições clínicas = progressão conservadora.
 - Frequência e nº de sessões por semana coerentes com a "Frequência" informada. Cada sessão com aquecimento específico e desaquecimento.
 
-PRIORIZE os exercícios da biblioteca do profissional (que têm demonstração em GIF para o paciente ver) sempre que cobrirem o objetivo — o paciente executa muito melhor vendo o movimento.
-Quando for fornecida uma lista de "Exercícios disponíveis no banco", você DEVE escolher APENAS exercícios dessa lista e preencher o campo "id" com o id EXATO da lista. NUNCA invente exercícios fora da lista nesse caso.
+Todos os exercícios da lista fornecida têm demonstração em GIF — o paciente executa muito melhor vendo o movimento.
+REGRAS ABSOLUTAS quando houver a lista "Exercícios disponíveis no banco":
+- Escolha EXCLUSIVAMENTE exercícios dessa lista e preencha "id" com o id EXATO. NUNCA invente um exercício fora da lista (exercício sem id da lista será DESCARTADO do plano).
+- "aquecimento" e "desaquecimento" são TEXTO CORRIDO simples (ex.: "5 min de caminhada leve") — NÃO cole ids nem o formato "[id] nome" da lista neles.
+- O campo "nome" pode ser preenchido, mas o sistema usa o nome oficial do banco pelo id.
 Retorne SOMENTE JSON neste formato (o campo "semanas" de cada fase é OBRIGATÓRIO e a soma deve bater com o total):
 {
   "titulo": "string curta",
@@ -97,34 +100,33 @@ Deno.serve(async (req) => {
       }
     }
     const BANK_COLS = "id, nome, grupo_muscular, gif_url, gif_url_fem, orientacoes, series_padrao, repeticoes_padrao, descanso_padrao_segundos";
+    // SÓ exercícios COM GIF entram na lista — o objetivo é que todo movimento do
+    // plano tenha demonstração animada e nome canônico da biblioteca.
     let bibData: any[] = [];
     {
       const { data } = await admin.from("biblioteca_exercicios")
-        .select(BANK_COLS).eq("terapeuta_id", bankOwner).eq("ativo", true).limit(250);
+        .select(BANK_COLS).eq("terapeuta_id", bankOwner).eq("ativo", true).not("gif_url", "is", null).limit(250);
       bibData = data || [];
     }
     if (bibData.length === 0) {
-      // Fallback: banco da plataforma — só exercícios com GIF, de qualquer profissional.
+      // Fallback: banco da plataforma — exercícios com GIF de qualquer profissional.
       const { data } = await admin.from("biblioteca_exercicios")
         .select(BANK_COLS).eq("ativo", true).not("gif_url", "is", null).limit(250);
       bibData = data || [];
     }
-    const { data: catData } = await admin.from("exercicios_biblioteca")
-      .select("id, nome, categoria").limit(250);
 
     // Se a paciente é mulher e o exercício tem a variante com avatar feminino,
     // entrega o GIF feminino.
     const prefereFem = /^f/i.test(String(sexo || ""));
     type Disp = { id: string; nome: string; grupo: string; gif_url: string | null; orientacoes: string | null; series?: number; reps?: number; descanso?: number };
-    const disponiveis: Disp[] = [
-      ...bibData.map((e) => ({
+    const disponiveis: Disp[] = bibData
+      .map((e) => ({
         id: e.id, nome: e.nome, grupo: e.grupo_muscular || "",
         gif_url: (prefereFem && e.gif_url_fem) ? e.gif_url_fem : (e.gif_url || null),
         orientacoes: e.orientacoes || null,
         series: e.series_padrao ?? undefined, reps: e.repeticoes_padrao ?? undefined, descanso: e.descanso_padrao_segundos ?? undefined,
-      })),
-      ...((catData || []) as any[]).map((e) => ({ id: e.id, nome: e.nome, grupo: e.categoria || "", gif_url: null, orientacoes: null })),
-    ];
+      }))
+      .filter((e) => !!e.gif_url); // garantia: nada sem GIF na lista
     const mapa = new Map(disponiveis.map((e) => [e.id, e]));
 
     const listaBlock = disponiveis.length
@@ -210,18 +212,27 @@ Gere o plano periodizado completo em JSON.`.trim();
     }
 
     // Enriquece cada exercício com o gif_url, o nome canônico e as ORIENTAÇÕES
-    // oficiais do banco (execução correta) — para o plano ficar bem explicado.
+    // oficiais do banco, e DESCARTA qualquer exercício que a IA tenha inventado
+    // (sem id válido da biblioteca) — assim todo movimento do plano tem GIF.
     if (disponiveis.length && plano?.fases) {
       for (const f of plano.fases || []) {
         for (const s of f.sessoes || []) {
-          for (const ex of s.exercicios || []) {
+          const originais = Array.isArray(s.exercicios) ? s.exercicios : [];
+          const validos: any[] = [];
+          for (const ex of originais) {
             const ref = ex?.id ? mapa.get(ex.id) : null;
-            if (ref) {
+            if (ref && ref.gif_url) {
               ex.nome = ref.nome;
               ex.gif_url = ref.gif_url;
-              if (ref.orientacoes) ex.orientacoes = ref.orientacoes;
+              if (ref.orientacoes && !ex.orientacoes) ex.orientacoes = ref.orientacoes;
+              validos.push(ex);
             }
+            // exercício sem id/GIF válido é descartado (não vai para o plano)
           }
+          s.exercicios = validos;
+          // Aquecimento como texto simples: remove refs de exercício [uuid] que a
+          // IA às vezes cola do formato da lista.
+          if (typeof s.aquecimento === "string") s.aquecimento = s.aquecimento.replace(/\[[0-9a-fA-F][0-9a-fA-F-]{7,}\]/g, "").replace(/\s{2,}/g, " ").trim();
         }
       }
     }
