@@ -726,6 +726,7 @@ export default function ControleCassi() {
                                         {l.jaPedido ? 'Guia pedida — aguardando CASSI'
                                           : l.guiaAcabou ? 'Guia concluída — peça a próxima'
                                           : l.precisaPedir ? `Faltam ${l.restantes} — peça a próxima guia`
+                                          : (l.fimISO && l.fimISO < hojeISO()) ? 'prazo previsto vencido — verifique / peça a próxima'
                                           : fim ? `${atravessa ? 'atravessa o mês · ' : ''}termina ~${fim}`
                                           : `${l.restantes} sessões restantes`}
                                         {respCassi && (
@@ -3485,7 +3486,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                         <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Pedir guia
                       </DropdownMenuItem>
                     ) : (
-                      <DropdownMenuItem onClick={() => onGuia(p, ativa || ultima)}>
+                      <DropdownMenuItem onClick={() => onGuia(p, vigente || ultima)}>
                         <FileText className="h-3.5 w-3.5 mr-2" /> Ver guia (vigente)
                       </DropdownMenuItem>
                     )}
@@ -3519,7 +3520,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                       <AlertTriangle className="h-4 w-4" /> Pedir guia
                     </Button>
                   ) : (
-                    <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px]" onClick={() => onGuia(p, ativa || ultima)}>
+                    <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px]" onClick={() => onGuia(p, vigente || ultima)}>
                       <FileText className="h-4 w-4" /> Ver guia
                     </Button>
                   )
