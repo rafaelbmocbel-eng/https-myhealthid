@@ -1010,11 +1010,12 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
         diagnostico: d.diagnostico || null,
         responsavel_tecnico: d.responsavel_tecnico || null,
         codigos,
-        // Guia com data de resposta da CASSI = guia VIGENTE (ativa). Sem isso,
-        // ela nascia 'aguardando' e a aba Clientes/regra 2-mês a tratavam como
-        // inexistente ("Sem guia ativa / Pedir guia"). Escolha explícita de
-        // finalizada/cancelada é respeitada.
-        status: (d.data_resposta && d.status === 'aguardando') ? 'ativa' : d.status,
+        // Guia já finalizada (histórico) NUNCA volta a ativa — trava permanente.
+        // Senão: guia com data de resposta da CASSI = VIGENTE (ativa), pois antes
+        // nascia 'aguardando' e a aba Clientes/regra 2-mês a ignoravam.
+        status: (editandoExistente && guia?.status === 'finalizada')
+          ? 'finalizada'
+          : ((d.data_resposta && d.status === 'aguardando') ? 'ativa' : d.status),
         observacoes: d.observacoes || null,
       };
 
@@ -1177,15 +1178,26 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Status da guia</label>
-              <Select value={d.status} onValueChange={(v) => set('status', v as GuiaStatus)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="aguardando">Aguardando</SelectItem>
-                  <SelectItem value="ativa">Ativa</SelectItem>
-                  <SelectItem value="finalizada">Finalizada</SelectItem>
-                  <SelectItem value="cancelada">Cancelada</SelectItem>
-                </SelectContent>
-              </Select>
+              {editandoExistente && guia?.status === 'finalizada' ? (
+                // Guia já usada = histórico permanente. Não volta a ativa; para
+                // reativar o cliente, registre uma GUIA NOVA.
+                <>
+                  <div className="h-10 flex items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                    Finalizada — histórico
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Guia já usada não volta a ativa. Para reativar o cliente, registre uma <b>guia nova</b>.</p>
+                </>
+              ) : (
+                <Select value={d.status} onValueChange={(v) => set('status', v as GuiaStatus)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aguardando">Aguardando</SelectItem>
+                    <SelectItem value="ativa">Ativa</SelectItem>
+                    <SelectItem value="finalizada">Finalizada</SelectItem>
+                    <SelectItem value="cancelada">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Guias por mês</label>
