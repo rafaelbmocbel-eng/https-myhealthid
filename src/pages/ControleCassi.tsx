@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical, X } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical, X, Archive } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
@@ -1069,6 +1069,22 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     onError: (e: any) => toast.error(e.message || 'Erro ao excluir'),
   });
 
+  // Arquivar = manda a guia vigente para o HISTÓRICO sem precisar registrar uma
+  // nova (ex.: cliente parou o tratamento no meio). Depois ela não reativa.
+  const arquivar = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from('guias_cassi')
+        .update({ status: 'finalizada', updated_at: new Date().toISOString() }).eq('id', guia!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Guia arquivada — foi para o histórico');
+      qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao arquivar'),
+  });
+
   const realizadasEfetivas = geradas > 0 ? realizadas : (Number(d.sessoes_realizadas) || 0);
   const restantes = sessoesRestantes({ sessoes_autorizadas: Number(d.sessoes_autorizadas) || 0, sessoes_realizadas: realizadasEfetivas });
 
@@ -1272,6 +1288,14 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             </p>
           )}
 
+          {editandoExistente && (guia?.status === 'ativa' || guia?.status === 'aguardando') && (
+            <Button variant="outline" className="w-full gap-1.5 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+              disabled={arquivar.isPending}
+              onClick={() => { if (confirm('Arquivar esta guia?\n\nEla vai para o histórico e o cliente sai de "vigente" (útil se o tratamento parou no meio). Não dá pra reativá-la depois — se precisar, registre uma guia nova.')) arquivar.mutate(); }}>
+              {arquivar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+              Arquivar guia (mandar pro histórico)
+            </Button>
+          )}
           <div className="flex gap-2 pt-1">
             {editandoExistente && (
               <Button variant="ghost" size="icon" className="shrink-0" title="Excluir guia"
