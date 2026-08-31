@@ -151,21 +151,24 @@ Deno.serve(async (req) => {
       const d = await r.json();
       if (!d?.assessment) throw new Error("voice-assessment 200 sem assessment");
     });
-    const { data: e2eAnt } = await admin.from("audio_health_checks")
-      .select("ok").eq("component", "voice-e2e").order("checked_at", { ascending: false }).limit(1).maybeSingle();
-    const e2eAntOk: boolean | null = e2eAnt ? e2eAnt.ok : null;
+    // Debounce igual ao geral: só alerta se o e2e falhar 2x seguidas (evita
+    // falso alarme por 503 transitório do Gemini no teste pesado da madrugada).
+    const { data: e2eUlt } = await admin.from("audio_health_checks")
+      .select("ok").eq("component", "voice-e2e").order("checked_at", { ascending: false }).limit(2);
+    const e2ePrev1: boolean | null = e2eUlt?.[0] ? e2eUlt[0].ok : null;
+    const e2ePrev2: boolean | null = e2eUlt?.[1] ? e2eUlt[1].ok : null;
     await admin.from("audio_health_checks").insert({
       component: "voice-e2e", ok: e2e.ok, http_status: null, latency_ms: e2e.ms, error: e2e.erro, sample: `voice-e2e=${e2e.ok ? "ok" : "FALHOU"}(${e2e.ms}ms)`,
     });
     const agoraE2e = new Date(Date.now() - 3 * 3600_000).toISOString().replace("T", " ").slice(0, 16);
-    if (!e2e.ok && e2eAntOk !== false) {
+    if (!e2e.ok && e2ePrev1 === false && e2ePrev2 !== false) {
       await enviarAlerta("🔴 Avaliação por áudio (ponta a ponta) falhou — My Health ID",
         `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;color:#0f172a">
           <h2 style="color:#b91c1c;margin:0 0 8px">Guardião: voice-assessment ponta a ponta falhou</h2>
           <p>O teste diário da avaliação por áudio completa falhou em <b>${agoraE2e} (BRT)</b>.</p>
           <p style="color:#64748b">Erro: ${(e2e.erro || "").replace(/</g, "&lt;")}</p>
         </div>`);
-    } else if (e2e.ok && e2eAntOk === false) {
+    } else if (e2e.ok && e2ePrev1 === false && e2ePrev2 === false) {
       await enviarAlerta("✅ Avaliação por áudio (ponta a ponta) normalizada — My Health ID",
         `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;color:#0f172a">
           <h2 style="color:#15803d;margin:0 0 8px">Guardião: voice-assessment ponta a ponta OK</h2>
@@ -186,17 +189,21 @@ Deno.serve(async (req) => {
   const sample = checks.map((c) => `${c.nome}=${c.ok ? "ok" : "FALHOU"}(${c.ms}ms)`).join(", ");
   const latenciaTotal = checks.reduce((s, c) => s + c.ms, 0);
 
-  // Estado anterior (transição) — última linha do resumo geral.
-  const { data: anterior } = await admin.from("audio_health_checks")
-    .select("ok").eq("component", "saude-geral").order("checked_at", { ascending: false }).limit(1).maybeSingle();
-  const estadoAnterior: boolean | null = anterior ? anterior.ok : null;
+  // Estados anteriores (2 últimas linhas) para DEBOUNCE: só alerta quando a falha
+  // PERSISTE em 2 checagens seguidas — assim um 503 passageiro do Gemini (modelo
+  // sobrecarregado) não vira e-mail, mas uma queda de verdade ainda avisa.
+  const { data: ultimos } = await admin.from("audio_health_checks")
+    .select("ok").eq("component", "saude-geral").order("checked_at", { ascending: false }).limit(2);
+  const prev1: boolean | null = ultimos?.[0] ? ultimos[0].ok : null; // mais recente
+  const prev2: boolean | null = ultimos?.[1] ? ultimos[1].ok : null; // anterior a esse
 
   await admin.from("audio_health_checks").insert({
     component: "saude-geral", ok: overallOk, http_status: null, latency_ms: latenciaTotal, error: resumoErro, sample,
   });
 
   const agoraBRT = new Date(Date.now() - 3 * 3600_000).toISOString().replace("T", " ").slice(0, 16);
-  if (!overallOk && estadoAnterior !== false) {
+  // Caiu = falhou agora E na anterior (2ª seguida), e não estava já em falha sustentada.
+  if (!overallOk && prev1 === false && prev2 !== false) {
     const linhas = checks.map((c) => `<tr><td style="padding:2px 10px 2px 0;color:#64748b">${c.nome}</td><td>${c.ok ? "✅ OK" : "🔴 FALHOU"}</td><td style="color:#64748b">${(c.erro || "").replace(/</g, "&lt;")}</td></tr>`).join("");
     await enviarAlerta("🔴 Alguma função crítica caiu — My Health ID",
       `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;color:#0f172a">
@@ -205,7 +212,7 @@ Deno.serve(async (req) => {
         <table style="border-collapse:collapse;margin:10px 0">${linhas}</table>
         <p style="color:#64748b">Você recebe este e-mail uma vez por incidente. Um novo chega quando tudo normalizar.</p>
       </div>`);
-  } else if (overallOk && estadoAnterior === false) {
+  } else if (overallOk && prev1 === false && prev2 === false) {
     await enviarAlerta("✅ Tudo normalizado — My Health ID",
       `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;color:#0f172a">
         <h2 style="color:#15803d;margin:0 0 8px">Guardião: dependências normalizadas</h2>
