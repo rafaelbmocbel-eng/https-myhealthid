@@ -33,7 +33,10 @@ interface DraftGuia {
   observacoes: string;
 }
 
-const hojeISO = () => new Date().toISOString().slice(0, 10);
+// "Hoje" no fuso de Brasília (não UTC): en-CA formata como YYYY-MM-DD.
+// Determinístico mesmo se o aparelho estiver em outro fuso.
+const _fmtBR = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+const hojeISO = () => _fmtBR.format(new Date()); // YYYY-MM-DD (BRT)
 // Chave de DIA em hora LOCAL (não UTC). Um agendamento gravado em toISOString()
 // (UTC) fazia sessões da noite caírem no dia seguinte — subcontando/duplicando.
 const diaLocalKey = (iso: string) => {
@@ -2332,7 +2335,7 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
 // responsável técnico aplicando o % de repasse. O "atendido" da agenda vira
 // sessão faturada automaticamente — sem digitar de novo.
 const MESES_PT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-const mesAtualISO = () => new Date().toISOString().slice(0, 7); // YYYY-MM
+const mesAtualISO = () => hojeISO().slice(0, 7); // YYYY-MM no fuso de Brasília
 
 function FinanceiroCassi({ onAbrirGuia }: {
   onAbrirGuia: (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }) => void;
