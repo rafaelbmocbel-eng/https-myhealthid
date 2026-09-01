@@ -5,6 +5,31 @@ import { useToast } from '@/hooks/use-toast';
 import { isAuthLockTimeoutError, withAuthLockRetry } from '@/lib/authLock';
 import { DEFAULT_SERVICOS } from '@/hooks/useServicosAtivos';
 
+// O PostgREST (Supabase) corta a resposta em 1000 linhas por requisição. Sem
+// paginar, o `.order('data_inicio')` trazia só os 1000 agendamentos MAIS ANTIGOS
+// e os futuros (ex.: recém-criados) simplesmente sumiam da agenda — o usuário
+// recriava e gerava duplicatas. Buscamos em páginas de 1000, em ordem
+// DECRESCENTE por data, para que — se algum dia houver um volume enorme — o teto
+// de segurança descarte o passado remoto, NUNCA o presente/futuro.
+const AGENDA_PAGE_SIZE = 1000;
+const AGENDA_MAX_ROWS = 6000; // ~teto de segurança (6 páginas)
+
+async function fetchAgendamentosPaged(userId: string) {
+  const acc: Agendamento[] = [];
+  for (let from = 0; from < AGENDA_MAX_ROWS; from += AGENDA_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('agendamentos')
+      .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)')
+      .eq('terapeuta_id', userId)
+      .order('data_inicio', { ascending: false })
+      .range(from, from + AGENDA_PAGE_SIZE - 1);
+    if (error) return { data: acc, error };
+    if (data?.length) acc.push(...(data as Agendamento[]));
+    if (!data || data.length < AGENDA_PAGE_SIZE) break;
+  }
+  return { data: acc, error: null };
+}
+
 export interface Paciente {
   id: string;
   nome: string;
@@ -84,11 +109,7 @@ export function useAgenda() {
     try {
       const [agResult, pacResult, cfgResult] = await withAuthLockRetry(async () => {
         const results = await Promise.all([
-          supabase
-            .from('agendamentos')
-            .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)')
-            .eq('terapeuta_id', user.id)
-            .order('data_inicio'),
+          fetchAgendamentosPaged(user.id),
           supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome'),
           supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle(),
         ]);
