@@ -15,9 +15,7 @@ import { useLenteAtiva } from '@/hooks/useLenteAtiva';
 // que o app já tem — nada de backend novo.
 const PacienteProtocolosTab = lazy(() => import('@/components/paciente/PacienteProtocolosTab'));
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
-const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
-const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
 const DiretrizAreaCard = lazy(() => import('@/components/diretrizes/DiretrizAreaCard'));
 const DeverDeCasaDialog = lazy(() => import('@/components/paciente/DeverDeCasaDialog'));
 
@@ -170,7 +168,6 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
           <HintLiberar />
           <Suspense fallback={Fallback}>
             <PlanoAlimentarCard pacienteId={pacienteId} />
-            <DiretrizNutricionalCard pacienteId={pacienteId} />
           </Suspense>
         </TabsContent>
 
@@ -184,7 +181,6 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
           </Button>
           <Suspense fallback={Fallback}>
             <PlanoTreinoCard pacienteId={pacienteId} />
-            <DiretrizTreinoCard pacienteId={pacienteId} />
             {treinoManualOpen && (
               <DeverDeCasaDialog
                 open={treinoManualOpen}

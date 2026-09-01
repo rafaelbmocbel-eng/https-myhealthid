@@ -73,8 +73,6 @@ const TestesFuncionaisCard = lazy(() => import('@/components/educador/TestesFunc
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
 const RecordatorioCard = lazy(() => import('@/components/nutricao/RecordatorioCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
-const DiretrizNutricionalCard = lazy(() => import('@/components/nutricao/DiretrizNutricionalCard'));
-const DiretrizTreinoCard = lazy(() => import('@/components/educador/DiretrizTreinoCard'));
 const DiretrizLenteCard = lazy(() => import('@/components/diretrizes/DiretrizLenteCard'));
 const EvolucaoFisicaCard = lazy(() => import('@/components/evolucao/EvolucaoFisicaCard'));
 const AssistenteEvolucao = lazy(() => import('@/components/prontuario/AssistenteEvolucao'));
@@ -1176,10 +1174,8 @@ export default function PacientePerfil() {
             {(temBloco(lenteAtiva, 'exames_presenciais') || temBloco(lenteAtiva, 'antropometria') || temBloco(lenteAtiva, 'testes_funcionais')) && id && <ExamesPresenciaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'testes_funcionais') && id && <TestesFuncionaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_treino') && id && <PlanoTreinoCard pacienteId={id} />}
-            {temBloco(lenteAtiva, 'plano_treino') && id && <DiretrizTreinoCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'recordatorio') && id && <RecordatorioCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
-            {temBloco(lenteAtiva, 'plano_alimentar') && id && <DiretrizNutricionalCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'diretriz_tratamento') && id && <DiretrizLenteCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'escalas_psicologia') && id && <EscalasPsicologiaCard pacienteId={id} />}
             {id && <QuestionariosClinicosCard pacienteId={id} />}
