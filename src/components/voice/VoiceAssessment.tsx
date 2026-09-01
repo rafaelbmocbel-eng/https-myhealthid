@@ -814,23 +814,13 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         }
       }
 
-      // Se há áudio mas não conseguimos WAV: NUNCA enviar o formato original
-      // (opus/webm), que o Gemini recusa. Sem texto suficiente → aborta com aviso;
-      // com texto → segue só com o texto e descarta o áudio não convertido.
-      const temTextoSuficiente = text.length >= 20;
+      // Se não conseguimos WAV, ANTES descartávamos o áudio (o Gemini recusa
+      // webm/opus). Agora o servidor transcreve com o Groq/Whisper, que aceita o
+      // formato NATIVO do aparelho (webm no Android, mp4/AAC no iOS). Então, se a
+      // conversão falhar, enviamos o áudio ORIGINAL — envBase64/envBlob/envMime já
+      // apontam para ele (audioBase64/audioBlob/audioMimeType). Nada a descartar.
       if (audioBlob && !converteu) {
-        if (!temTextoSuficiente) {
-          toast({
-            title: 'Não consegui preparar este áudio',
-            description: 'Não foi possível converter a gravação para um formato aceito. Grave novamente ou digite/cole a avaliação como texto.',
-            variant: 'destructive',
-          });
-          setIsProcessing(false);
-          return;
-        }
-        // Segue só com texto — não anexa o áudio em formato não aceito.
-        envBase64 = null;
-        envBlob = null;
+        console.info('[voice] WAV indisponível — enviando áudio original para transcrição no servidor (Groq).');
       }
 
       // Áudio longo (>90s gravado OU >3.5MB base64) → signedUrl para evitar timeout

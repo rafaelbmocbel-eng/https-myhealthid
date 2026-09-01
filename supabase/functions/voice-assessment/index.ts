@@ -8,6 +8,62 @@ const corsHeaders = {
 };
 
 // ──────────────────────────────────────────────────────────────────
+// TRANSCRIÇÃO VIA GROQ (Whisper) — caminho infalível de formato
+// ──────────────────────────────────────────────────────────────────
+// O Gemini recusa o webm/opus (Android) e é instável com o mp4/AAC (iOS). O
+// Whisper do Groq aceita TODOS esses containers direto (webm, mp4, m4a, ogg,
+// wav, mp3), então transcreve o áudio do jeito que o celular gravou — sem exigir
+// conversão frágil no aparelho. Recebe o áudio em base64 (como já trafega hoje),
+// remonta o arquivo e envia como multipart. Retorna a transcrição ou null (para
+// o chamador cair no fallback do Gemini). Tier gratuito do Groq cobre este uso.
+async function transcreverComGroq(
+  base64: string,
+  mime: string,
+  apiKey: string,
+): Promise<string | null> {
+  try {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+    const cleanMime = (mime || "audio/webm").split(";")[0].toLowerCase().trim();
+    const ext = cleanMime.includes("mp4") || cleanMime.includes("m4a") || cleanMime.includes("aac") ? "m4a"
+      : cleanMime.includes("mpeg") || cleanMime.includes("mp3") ? "mp3"
+      : cleanMime.includes("wav") ? "wav"
+      : cleanMime.includes("ogg") ? "ogg"
+      : "webm";
+
+    const form = new FormData();
+    form.append("file", new File([bytes], `audio.${ext}`, { type: cleanMime }));
+    // whisper-large-v3-turbo: rápido, ótimo em PT-BR e disponível no tier grátis.
+    form.append("model", "whisper-large-v3-turbo");
+    form.append("language", "pt");
+    form.append("response_format", "text");
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 120_000);
+    const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      console.warn(`[voice-assessment] Groq falhou (${res.status}): ${t.slice(0, 200)}`);
+      return null;
+    }
+    const txt = (await res.text()).trim();
+    return txt.length > 0 ? txt : null;
+  } catch (err) {
+    console.warn("[voice-assessment] Groq erro:", err);
+    return null;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
 // PERSONA CLÍNICA UNIFICADA — multidisciplinar baseada em evidência
 // ──────────────────────────────────────────────────────────────────
 const MULTIDISCIPLINARY_SYSTEM_PROMPT = `Você é o motor clínico do MY HEALTH ID. Integra raciocínio de fisioterapia musculoesquelética, neurociência da dor (IASP 2020), reabilitação esportiva, osteopatia, posturologia e medicina baseada em evidência.
@@ -477,9 +533,25 @@ Deno.serve(async (req) => {
     let audioTranscrito = false;
 
     if (hasAudio && (!hasText || appendAudio)) {
-      // Tenta cada formato candidato; um 400 (formato rejeitado) passa para o
-      // próximo. Assim o áudio do iOS (mp4/AAC) é aceito como "aac".
-      for (const fmt of audioFormats) {
+      // 1) PREFERÊNCIA: Groq/Whisper — aceita webm (Android) e mp4/AAC (iOS)
+      //    direto, resolvendo de vez o "Formato de áudio não aceito". Só cai no
+      //    Gemini se o Groq não estiver configurado (sem GROQ_API_KEY) ou falhar.
+      const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+      if (GROQ_API_KEY) {
+        const groqTxt = await transcreverComGroq(audioBase64ToUse, audioMimeTypeToUse, GROQ_API_KEY);
+        if (groqTxt) {
+          faithfulTranscript = (hasText && appendAudio) ? `${faithfulTranscript}\n\n${groqTxt}` : groqTxt;
+          audioTranscrito = true;
+          console.log(`[voice-assessment] Transcrição via Groq/Whisper ok (${faithfulTranscript.length} chars)`);
+        } else {
+          console.warn("[voice-assessment] Groq não transcreveu — fallback para Gemini input_audio");
+        }
+      }
+
+      // 2) FALLBACK: Gemini input_audio (comportamento anterior). Tenta cada
+      //    formato candidato; um 400 (formato rejeitado) passa para o próximo.
+      //    Assim o áudio do iOS (mp4/AAC) é aceito como "aac".
+      for (const fmt of (audioTranscrito ? [] : audioFormats)) {
         try {
           const pass1Ctrl = new AbortController();
           const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 270_000);
