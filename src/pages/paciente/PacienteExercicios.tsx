@@ -23,6 +23,7 @@ import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { hojeLocalISO } from '@/lib/dataLocal';
+import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 
 // Converte um link de vídeo (YouTube / Vimeo / arquivo direto) no formato certo
 // para exibir dentro do app.
@@ -254,6 +255,16 @@ export default function PacienteExercicios() {
       <ProtectedPatientRoute>
         <PacienteLayout>
           <PortalErrorState onRetry={() => { setLoading(true); fetchData(); }} mensagem="Não consegui carregar seus treinos. Verifique sua internet e tente de novo." />
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (!pacienteId) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalSemVinculoCard recurso="seus treinos" />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

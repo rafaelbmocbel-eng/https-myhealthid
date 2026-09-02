@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -368,6 +369,16 @@ export default function PacienteQuestionarios() {
   const pendentes = questionarios.filter(q => q.status !== 'concluido');
   const concluidos = questionarios.filter(q => q.status === 'concluido');
   const hasPending = pendentes.length > 0;
+
+  if (!loading && !pacienteId) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalSemVinculoCard recurso="os questionários" />
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
 
   return (
     <ProtectedPatientRoute>

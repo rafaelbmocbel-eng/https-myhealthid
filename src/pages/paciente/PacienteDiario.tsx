@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO, subDays, isToday, startOfDay } from '@/lib/dateSafe';
 import { hojeLocalISO } from '@/lib/dataLocal';
+import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -193,6 +194,16 @@ export default function PacienteDiario() {
       <ProtectedPatientRoute>
         <PacienteLayout>
           <PortalErrorState onRetry={() => { setLoading(true); fetchData(); }} mensagem="Não consegui carregar seu diário. Verifique sua internet e tente de novo." />
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (!paciente) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalSemVinculoCard recurso="o diário" />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

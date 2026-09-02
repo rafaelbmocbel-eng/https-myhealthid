@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatBRL } from '@/lib/formatBRL';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -251,6 +252,16 @@ export default function PacientePagamentos() {
       <ProtectedPatientRoute>
         <PacienteLayout>
           <PortalErrorState onRetry={() => loadData()} mensagem="Não consegui carregar seus pagamentos. Verifique sua internet e tente de novo." />
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (!paciente) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalSemVinculoCard recurso="os pagamentos" />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

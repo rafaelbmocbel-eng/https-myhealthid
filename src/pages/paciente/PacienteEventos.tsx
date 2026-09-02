@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { formatBRL } from '@/lib/formatBRL';
 import { hojeLocalISO } from '@/lib/dataLocal';
@@ -192,6 +193,16 @@ export default function PacienteEventos() {
       transition: { delay: i * 0.06, duration: 0.35 },
     }),
   };
+
+  if (!loading && !erroCarregar && !paciente) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalSemVinculoCard recurso="os eventos" />
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
 
   return (
     <ProtectedPatientRoute>
