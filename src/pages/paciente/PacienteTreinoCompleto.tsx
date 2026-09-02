@@ -184,7 +184,7 @@ export default function PacienteTreinoCompleto() {
           <div className="max-w-2xl mx-auto p-8 text-center">
             <Dumbbell className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm font-medium text-muted-foreground">Você ainda não tem um treino gerado.</p>
-            <Button className="mt-4" onClick={() => navigate('/paciente/questionarios?foco=plano')}>Montar meu treino</Button>
+            <Button className="mt-4" onClick={() => navigate('/paciente/exercicios')}>Montar meu treino</Button>
           </div>
         ) : (
           <div className="max-w-2xl mx-auto my-4 print:my-0">

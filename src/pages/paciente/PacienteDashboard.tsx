@@ -436,13 +436,19 @@ export default function PacienteDashboard() {
                 </Suspense>
               )}
 
-              {/* MEUS PLANOS PERSONALIZADOS — treino (com gifs/exercícios),
-                  nutricional e outros, gerados do MyID + questionários + exames.
-                  A seção já traz a trava de premium e a geração de cada plano. */}
+              {/* MEUS PLANOS PERSONALIZADOS — o plano agora "mora" em um único
+                  lugar (aba "Plano de tratamento"). Aqui fica só o atalho, para o
+                  cliente não encontrar o mesmo conteúdo em telas diferentes. */}
               {subJornada === 'planos' && (
-                <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-                  <PlanoPersonalizadoSection />
-                </Suspense>
+                <button
+                  onClick={() => navigate('/paciente/exercicios')}
+                  className="w-full rounded-xl border border-dashed p-6 text-center hover:bg-muted/40 transition-colors"
+                >
+                  <p className="text-sm font-bold text-foreground">Ver meus planos personalizados</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Seu treino, nutrição e tratamento ficam em "Plano de tratamento".
+                  </p>
+                </button>
               )}
             </>
           )}

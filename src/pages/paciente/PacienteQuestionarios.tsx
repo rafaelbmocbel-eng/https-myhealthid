@@ -14,7 +14,6 @@ import { MyIDResult } from '@/components/myid/MyIDResult';
 import HistoricoClinicoCard from '@/components/paciente/HistoricoClinicoCard';
 import QuestionariosClinicosSection from '@/components/paciente/QuestionariosClinicosSection';
 import EvolucaoAoVivoResultado from '@/components/paciente/EvolucaoAoVivoResultado';
-import { PlanoPersonalizadoSection } from '@/pages/paciente/PacientePlanoIA';
 import { format, parseISO, differenceInDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
@@ -345,9 +344,18 @@ export default function PacienteQuestionarios() {
                 {/* Questionários específicos que calibram o plano */}
                 <QuestionariosClinicosSection pacienteId={pacienteId} />
 
-                {/* O plano em si — treino IA + personal + nutrição — vive AQUI
-                    (o lugar correto). Gera, exibe e adapta na própria página. */}
-                <PlanoPersonalizadoSection />
+                {/* O plano em si (treino IA + personal + nutrição) agora vive em
+                    um único lugar: a aba "Plano de tratamento". Aqui ficam só os
+                    questionários que o calibram, com um atalho para vê-lo. */}
+                <button
+                  onClick={() => navigate('/paciente/exercicios')}
+                  className="w-full rounded-xl border border-dashed p-6 text-center hover:bg-muted/40 transition-colors"
+                >
+                  <p className="text-sm font-bold text-foreground">Ver meu plano de tratamento</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Seu treino, nutrição e tratamento personalizado ficam lá — já calibrados por estes questionários.
+                  </p>
+                </button>
 
                 {!terapeutaId && (
                   <button

@@ -16,7 +16,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import {
   Loader2, Dumbbell, Check, ChevronDown, ChevronUp,
   Play, Clock, Flame, AlertCircle, Star, X, SkipForward,
-  Sparkles, Heart, CalendarDays, Activity, ClipboardList, Rocket, ChevronRight, LayoutGrid,
+  Heart, CalendarDays, Activity, ClipboardList, Rocket, ChevronRight, LayoutGrid,
 } from 'lucide-react';
 import { format, parseISO, isToday } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
@@ -562,7 +562,6 @@ export default function PacienteExercicios() {
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Atalhos</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {([
-                { nome: 'Meu plano personalizado', sub: 'Treino e nutrição sob medida', to: '/paciente/questionarios?foco=plano', Icon: Sparkles, cor: 'text-primary bg-primary/10' },
                 { nome: 'Minha jornada', sub: 'Plano de hoje e missões', to: '/paciente/dashboard', Icon: Rocket, cor: 'text-violet-600 bg-violet-500/10' },
                 { nome: 'Diário de saúde', sub: 'Registre como você está', to: '/paciente/diario', Icon: Heart, cor: 'text-rose-600 bg-rose-500/10' },
                 { nome: 'Minha agenda', sub: 'Suas consultas', to: '/paciente/agenda', Icon: CalendarDays, cor: 'text-sky-600 bg-sky-500/10' },
