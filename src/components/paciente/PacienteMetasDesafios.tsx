@@ -16,6 +16,7 @@ import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/uti
 import { gerarInsightsClinicosMyID, type ClinicalInsightResult } from '@/utils/myid/clinicalInsights';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';
 import { useHaptics } from '@/hooks/useHaptics';
+import { hojeLocalISO } from '@/lib/dataLocal';
 
 // ── Interfaces ─────────────────────────────────────────────────────
 interface Meta {
@@ -322,7 +323,7 @@ export default function PacienteMetasDesafios({ pacienteId, soLeitura = false }:
     [myidData]
   );
 
-  const hojeStr = new Date().toISOString().split('T')[0];
+  const hojeStr = hojeLocalISO();
 
   // Fonte de verdade: check-ins do dia no banco (compartilhados entre paciente
   // e profissional). localStorage é apenas um espelho offline / fallback.

@@ -22,7 +22,7 @@ const DIMENSION_LABELS: Record<string, { nome: string; descricao: string; foco: 
 
 const BLOCO_PREFIX_BY_DIM: Record<string, string[]> = {
   D:   ['bloco_2_'], EFI: ['bloco_3_'], P:   ['bloco_4_'], I:   ['bloco_1_'],
-  R:   ['bloco_5a_', 'bloco_5b_', 'bloco_5c_'], C:   ['bloco_5c_'],
+  R:   ['bloco_5a_', 'bloco_5b_', 'bloco_5c_'], C:   ['bloco_5d_'],
   AF:  ['bloco_5e_'], HID: ['bloco_5f_'], NUT: ['bloco_5g_'], ERG: ['bloco_5h_'],
   N:   ['bloco_6_'], MED: ['bloco_6_'],
 };

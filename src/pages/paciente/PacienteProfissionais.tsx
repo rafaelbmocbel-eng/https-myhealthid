@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { selectTudoPaginado } from '@/lib/supabasePaginado';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -83,8 +84,14 @@ export default function PacienteProfissionais() {
     staleTime: 60_000,
     retry: 1,
     queryFn: async () => {
-      const { data, error } = await supabase.from('vitrine_terapeutas').select('*');
-      if (error) throw error;
+      // Paginado: a vitrine é uma lista GLOBAL de profissionais e é a que mais
+      // tende a passar de 1000 linhas conforme a plataforma cresce.
+      const data = await selectTudoPaginado((from, to) =>
+        // cast na origem (supabase as any): a view vitrine_terapeutas não está nos
+        // tipos gerados e a inferência profunda do PostgREST em .order()/.range()
+        // estoura o TS ("excessively deep"). O resultado é tratado como Terapeuta[].
+        (supabase as any).from('vitrine_terapeutas').select('*').order('terapeuta_id').range(from, to),
+      );
       return (data || []) as Terapeuta[];
     },
   });

@@ -6,6 +6,7 @@ import AppLayout from '@/components/AppLayout';
 import { SkeletonList } from '@/components/ui/skeleton-list';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { selectTudoPaginado } from '@/lib/supabasePaginado';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -318,12 +319,16 @@ export default function Pacientes() {
   const { data: todosAgendamentos = [] } = useQuery({
     queryKey: ['todos-agendamentos-pacientes', user?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('agendamentos')
-        .select('paciente_id, data_inicio, data_fim, status, tipo_atendimento, membro_equipe_id')
-        .eq('terapeuta_id', user!.id)
-        .order('data_inicio', { ascending: false });
-      return data || [];
+      // Paginado: sem isto, o teto de 1000 linhas do PostgREST cortava
+      // agendamentos e o "último agendamento" de parte dos pacientes sumia.
+      return await selectTudoPaginado((from, to) =>
+        supabase
+          .from('agendamentos')
+          .select('paciente_id, data_inicio, data_fim, status, tipo_atendimento, membro_equipe_id')
+          .eq('terapeuta_id', user!.id)
+          .order('data_inicio', { ascending: false })
+          .range(from, to),
+      );
     },
     enabled: !!user,
   });
@@ -357,12 +362,15 @@ export default function Pacientes() {
   const { data: agendamentosPorMembro = {} } = useQuery({
     queryKey: ['agendamentos-por-membro', user?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('agendamentos')
-        .select('paciente_id, membro_equipe_id')
-        .eq('terapeuta_id', user!.id)
-        .not('membro_equipe_id', 'is', null)
-        .not('paciente_id', 'is', null);
+      const data = await selectTudoPaginado((from, to) =>
+        supabase
+          .from('agendamentos')
+          .select('paciente_id, membro_equipe_id')
+          .eq('terapeuta_id', user!.id)
+          .not('membro_equipe_id', 'is', null)
+          .not('paciente_id', 'is', null)
+          .range(from, to),
+      );
       const map: Record<string, string[]> = {};
       (data || []).forEach((a: any) => {
         if (!map[a.membro_equipe_id]) map[a.membro_equipe_id] = [];
@@ -379,11 +387,15 @@ export default function Pacientes() {
   const { data: sessoes = [] } = useQuery({
     queryKey: ['pacientes-sessoes', user?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('controle_sessoes')
-        .select('paciente_id, status, valor_cobrado, forma_pagamento, data_sessao')
-        .eq('terapeuta_id', user!.id);
-      return data || [];
+      // Paginado: alimenta a classificação financeira (inadimplente/a pagar/
+      // recorrente) e os KPIs — cortar em 1000 linhas falseava tudo.
+      return await selectTudoPaginado((from, to) =>
+        supabase
+          .from('controle_sessoes')
+          .select('paciente_id, status, valor_cobrado, forma_pagamento, data_sessao')
+          .eq('terapeuta_id', user!.id)
+          .range(from, to),
+      );
     },
     enabled: !!user,
   });

@@ -255,7 +255,10 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         .not("data_nascimento", "is", null);
       const mes = new Date().getMonth() + 1;
       return (data || []).filter((p: any) => {
-        const m = new Date(p.data_nascimento).getMonth() + 1;
+        // data_nascimento é data-pura 'YYYY-MM-DD'; new Date(...) a interpreta em
+        // UTC e quem nasce no dia 1º cairia no mês anterior no Brasil. Lê o mês
+        // direto da string.
+        const m = Number(String(p.data_nascimento).slice(5, 7));
         return m === mes;
       }).map((p: any) => p.id);
     }

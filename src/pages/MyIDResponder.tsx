@@ -115,6 +115,10 @@ export default function MyIDResponder() {
             Authorization: `Bearer ${anonKey}`,
           },
           body: JSON.stringify({
+            // token_acesso é obrigatório: a chamada usa a anon key (sem JWT de
+            // terapeuta), então é o token da URL que autoriza o complete-myid.
+            // Sem ele, o backend retornava 401 e o MyID por fases nunca concluía.
+            token_acesso: token,
             avaliacao_id: evalData.id,
             result: fullResult,
             raw_data: data,

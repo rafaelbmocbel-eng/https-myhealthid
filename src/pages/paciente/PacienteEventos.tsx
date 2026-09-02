@@ -20,6 +20,7 @@ import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { formatBRL } from '@/lib/formatBRL';
+import { hojeLocalISO } from '@/lib/dataLocal';
 
 interface Evento {
   id: string;
@@ -94,7 +95,7 @@ export default function PacienteEventos() {
       setPaciente(pac);
 
       // Get active events from this therapist
-      const today = new Date().toISOString().split('T')[0];
+      const today = hojeLocalISO();
       const { data: evts, error: evtErr } = await supabase
         .from('eventos')
           .select('id, titulo, descricao, descricao_formulario, data_evento, horario_inicio, horario_fim, local, vagas_max, cobrar_pagamento, valor, link_pagamento, categoria, link_video, recorrencia_grupo_id')

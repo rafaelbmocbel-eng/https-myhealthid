@@ -15,6 +15,7 @@ import {
   TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Check
 } from 'lucide-react';
 import { format, parseISO, subDays, isToday, startOfDay } from '@/lib/dateSafe';
+import { hojeLocalISO } from '@/lib/dataLocal';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -114,7 +115,7 @@ export default function PacienteDiario() {
     });
     if (!error) {
       // XP REAL: +10 por dia de diário (deduplicado no banco)
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = hojeLocalISO();
       void (supabase as any).rpc('ganhar_xp', {
         p_paciente_id: paciente.id, p_chave: `diario:${hoje}`, p_xp: 10,
       });

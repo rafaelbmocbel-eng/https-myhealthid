@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { hojeLocalISO } from '@/lib/dataLocal';
 import { toast } from 'sonner';
 
 export interface ItemListaEspera {
@@ -80,7 +81,7 @@ export function useListaEspera() {
 
 export function useSalaEspera(terapeuta_id?: string) {
   const qc = useQueryClient();
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocalISO();
 
   const { data = [], isLoading } = useQuery({
     queryKey: ['sala_espera', hoje],

@@ -22,6 +22,7 @@ import { format, parseISO, isToday } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
+import { hojeLocalISO } from '@/lib/dataLocal';
 
 // Converte um link de vídeo (YouTube / Vimeo / arquivo direto) no formato certo
 // para exibir dentro do app.
@@ -195,7 +196,17 @@ export default function PacienteExercicios() {
   };
 
   const handleCompleteSession = async () => {
-    if (!activeSession || !pacienteId || !terapeutaId) return;
+    if (!activeSession) return;
+    // Sem vínculo com profissional (terapeuta_id nulo) o registro não pode ser
+    // salvo — antes o botão falhava em silêncio e o treino era perdido.
+    if (!pacienteId || !terapeutaId) {
+      toast({
+        title: 'Não foi possível registrar',
+        description: 'Reconecte-se ao seu profissional para registrar os treinos concluídos.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSubmitting(true);
 
     const { error } = await supabase.from('studio_execucoes').insert({
@@ -208,7 +219,7 @@ export default function PacienteExercicios() {
     });
     if (!error && pacienteId) {
       // XP REAL: +15 por dia com treino concluído (deduplicado no banco)
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = hojeLocalISO();
       void (supabase as any).rpc('ganhar_xp', {
         p_paciente_id: pacienteId, p_chave: `treino:${hoje}`, p_xp: 15,
       });

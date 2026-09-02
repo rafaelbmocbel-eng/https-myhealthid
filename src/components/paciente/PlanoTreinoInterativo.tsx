@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { startOfWeek } from '@/lib/dateSafe';
+import { hojeLocalISO } from '@/lib/dataLocal';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -23,7 +24,7 @@ interface Props {
   regenerando?: boolean;
 }
 
-const hojeStr = () => new Date().toISOString().split('T')[0];
+const hojeStr = () => hojeLocalISO();
 function sessaoKey(fi: number, si: number, nome: string) {
   return `f${fi}s${si}:${String(nome || '').toLowerCase().slice(0, 30)}`;
 }
