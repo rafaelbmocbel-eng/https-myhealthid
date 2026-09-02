@@ -350,18 +350,14 @@ export default function ControleCassi() {
   };
   // Roster do mês: cliente ativo com guia ATIVA fechando este mês, ou cuja guia
   // mais recente fechou no mês passado (carrega pra continuar este mês).
-  const rosterEsteMes = useMemo(() => linhas.filter((l) => {
-    if (l.paciente.cassi_confirmado_mes === mesVigente) return true; // confirmado neste mês
-    // Cliente de 2 guias/mês que precisa de pedido (faltam ≤ 2 sessões): aparece aqui.
-    const p2 = (l.paciente.guias_por_mes || 1) >= 2;
-    if (p2 && precisaNovaGuia(l.guia)) return true;
-    const g = l.guia;
-    if (!g) return false;
-    const pm = prodMesGuia(g);
-    if (g.status === 'ativa' && pm === mesVigente) return true;
-    if (pm === mesAnterior) return true;
-    return false;
-  }), [linhas, mesVigente, mesAnterior]);
+  // "Este mês" é uma lista CURADA pelo profissional: entra quem foi confirmado
+  // neste mês — ao criar a guia (auto) OU via "Colocar em Este mês" na aba
+  // Clientes. Dá pra retirar um cliente ou todos. Pedidos pendentes de quem NÃO
+  // está no mês aparecem na aba "Pedir guias".
+  const rosterEsteMes = useMemo(
+    () => linhas.filter((l) => l.paciente.cassi_confirmado_mes === mesVigente),
+    [linhas, mesVigente],
+  );
   const guiasAtivas = rosterEsteMes.length;
 
   // Confirmar (1 clique) que o cliente tem guia ativa neste mês — mesmo com guia
@@ -375,6 +371,17 @@ export default function ControleCassi() {
   const desconfirmarGuiaMes = async (id: string) => {
     const { error } = await (supabase as any).from('pacientes').update({ cassi_confirmado_mes: null }).eq('id', id);
     if (error) { toast.error('Erro: ' + error.message); return; }
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
+  // Retira TODOS de "Este mês" (limpa as confirmações do mês vigente). Não mexe
+  // nas guias — só tira da lista; você re-adiciona pela aba Clientes.
+  const retirarTodosDoMes = async () => {
+    const ids = rosterEsteMes.map((l) => l.paciente.id);
+    if (ids.length === 0) return;
+    if (!confirm(`Retirar todos os ${ids.length} clientes de "Este mês"?\n\nEles saem da lista do mês (as guias não são alteradas). Você re-adiciona pela aba Clientes.`)) return;
+    const { error } = await (supabase as any).from('pacientes').update({ cassi_confirmado_mes: null }).in('id', ids);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    toast.success('Todos retirados de Este mês');
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
   // Clientes marcados como 2 guias/mês (controle explícito de quem usa 2/mês).
@@ -664,6 +671,12 @@ export default function ControleCassi() {
                         );
                       })}
                     </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-muted-foreground">{linhasMes.length} no mês · adicione clientes pela aba <b>Clientes</b></span>
+                      {linhasMes.length > 0 && (
+                        <button onClick={retirarTodosDoMes} className="text-[11px] font-medium text-rose-600 dark:text-rose-400 hover:underline shrink-0">Retirar todos deste mês</button>
+                      )}
+                    </div>
                     {focoMes !== 'todos' && (
                       <button onClick={() => setFocoMes('todos')} className="text-[12px] text-primary font-medium">← ver todos ({linhasMes.length})</button>
                     )}
@@ -815,7 +828,7 @@ export default function ControleCassi() {
                                     </DropdownMenuItem>
                                     {l.confirmado && (
                                       <DropdownMenuItem onClick={() => desconfirmarGuiaMes(paciente.id)}>
-                                        <Circle className="h-3.5 w-3.5 mr-2" /> Desfazer confirmação
+                                        <Circle className="h-3.5 w-3.5 mr-2" /> Retirar de Este mês
                                       </DropdownMenuItem>
                                     )}
                                     <DropdownMenuSeparator />
