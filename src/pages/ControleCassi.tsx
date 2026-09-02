@@ -877,7 +877,9 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     matricula: (guia ?? base)?.matricula || '',
     numero_guia: guia?.numero_guia || '',
     data_pedido: guia?.data_pedido || hojeISO(),
-    data_resposta: guia?.data_resposta || '',
+    // Nova guia nasce ATIVA hoje (data_resposta = hoje) — no modo rápido isso deixa
+    // o cadastro em 1 toque; no modo completo dá pra limpar se ainda é "aguardando".
+    data_resposta: guia?.data_resposta || (!guia ? hojeISO() : ''),
     sessoes_autorizadas: guia?.sessoes_autorizadas ?? 0,
     sessoes_realizadas: guia?.sessoes_realizadas ?? 0,
     diagnostico: guia?.diagnostico || paciente.cassi_diagnostico || base?.diagnostico || '',
@@ -889,6 +891,10 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
   }));
 
   const [duasPorMes, setDuasPorMes] = useState<boolean>((paciente.guias_por_mes || 1) >= 2);
+  // Modo rápido: NOVA guia pede só DATA + CÓDIGOS. O resto (carteirinha,
+  // diagnóstico, responsável, 1/2 guias/mês) vem do cadastro do cliente e é
+  // editado na aba Clientes. A guia rápida nasce ATIVA na data informada.
+  const [modoRapido, setModoRapido] = useState(!editandoExistente);
   // Quantidade de sessões autorizada POR código (144 = 1 dia extra de avaliação).
   const [sesCod, setSesCod] = useState<Record<string, number>>(() => {
     const src = (guia ?? base)?.codigos;
@@ -1150,6 +1156,20 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          {modoRapido && (
+            <div className="space-y-1.5">
+              <div>
+                <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Data da guia</label>
+                <Input type="date" value={d.data_resposta || d.data_pedido}
+                  onChange={(e) => setD((p) => ({ ...p, data_pedido: e.target.value, data_resposta: e.target.value }))} />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Só <b>data</b> e <b>códigos</b> — carteirinha e diagnóstico vêm do cadastro do cliente (aba <b>Clientes</b>).
+                <button type="button" onClick={() => setModoRapido(false)} className="ml-1 text-primary font-medium underline underline-offset-2">Mostrar todos os campos</button>
+              </p>
+            </div>
+          )}
+          {!modoRapido && (<>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Nº da guia</label>
@@ -1210,6 +1230,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Diagnóstico</label>
             <Input value={d.diagnostico} onChange={(e) => set('diagnostico', e.target.value)} />
           </div>
+          </>)}
 
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Códigos e sessões autorizadas</label>
@@ -1238,6 +1259,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             <p className="text-[10px] text-muted-foreground mt-1">Quantidade por código. Se um código não passou, deixe <b>0</b> ou desmarque. A avaliação (144) é um dia extra separado.</p>
           </div>
 
+          {!modoRapido && (<>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Status da guia</label>
@@ -1279,6 +1301,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Observações</label>
             <Textarea rows={2} value={d.observacoes} onChange={(e) => set('observacoes', e.target.value)} />
           </div>
+          </>)}
 
           {/* Agenda de sessões (fase 2) — só para guia já salva */}
           {editandoExistente ? (
