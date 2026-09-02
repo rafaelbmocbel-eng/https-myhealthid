@@ -230,6 +230,23 @@ export default function ControleCassi() {
     if (error) { toast.error('Erro: ' + error.message); return; }
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
+  // Ação direta no card do ciclo físico (assinar/recolher/enviar) — sem abrir o
+  // editor. Enviar ao financeiro finaliza a guia (histórico).
+  const marcarFisicoGuia = async (id: string, patch: { assinatura?: AssinaturaGuia; recolhida?: boolean; enviada?: boolean }) => {
+    const upd: any = { updated_at: new Date().toISOString() };
+    if (patch.assinatura !== undefined) upd.assinatura = patch.assinatura;
+    if (patch.recolhida !== undefined) upd.recolhida_em = patch.recolhida ? hojeISO() : null;
+    if (patch.enviada !== undefined) {
+      upd.enviada_financeiro_em = patch.enviada ? hojeISO() : null;
+      if (patch.enviada) { upd.recolhida_em = hojeISO(); upd.status = 'finalizada'; }
+    }
+    const { error } = await (supabase as any).from('guias_cassi').update(upd).eq('id', id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    toast.success(patch.enviada ? 'Enviada ao financeiro — foi para o histórico'
+      : patch.recolhida ? 'Guia marcada como recolhida'
+      : 'Guia marcada como assinada');
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
   // Excluir cliente (remove do controle — pra duplicados/erros). Soft delete: some
   // das listas mas não apaga o histórico do banco.
   const excluirCliente = async (id: string) => {
@@ -735,12 +752,30 @@ export default function ControleCassi() {
                                           <span className="text-muted-foreground font-normal"> · aceita {respCassi}</span>
                                         )}
                                       </p>
-                                      {/* Passo FÍSICO — faz o card progredir depois de usar a guia:
-                                          assinar → recolher → enviar ao financeiro. Abre o editor. */}
-                                      {l.passo.key && l.passo.key !== 'enviada' && (
-                                        <button onClick={() => setEditando({ paciente, guia })}
-                                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900 px-2 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-300 hover:brightness-95">
-                                          <FileText className="h-3 w-3" /> {l.passo.label} →
+                                      {/* Passo FÍSICO — AÇÃO DIRETA no card (sem abrir o editor):
+                                          assinar → recolher → enviar ao financeiro. */}
+                                      {l.passo.key === 'assinar' && (
+                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                          <button onClick={() => marcarFisicoGuia(guia!.id, { assinatura: 'inteira' })}
+                                            className="inline-flex items-center gap-1 rounded-md bg-sky-600 text-white px-2 py-1 text-[11px] font-semibold hover:bg-sky-700">
+                                            <CheckCircle2 className="h-3 w-3" /> Assinada (completa)
+                                          </button>
+                                          <button onClick={() => marcarFisicoGuia(guia!.id, { assinatura: 'metade' })}
+                                            className="inline-flex items-center gap-1 rounded-md border border-sky-300 dark:border-sky-800 text-sky-700 dark:text-sky-300 px-2 py-1 text-[11px] font-semibold hover:bg-sky-50 dark:hover:bg-sky-950/30">
+                                            Pela metade
+                                          </button>
+                                        </div>
+                                      )}
+                                      {l.passo.key === 'recolher' && (
+                                        <button onClick={() => marcarFisicoGuia(guia!.id, { recolhida: true })}
+                                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-sky-600 text-white px-2 py-1 text-[11px] font-semibold hover:bg-sky-700">
+                                          <Archive className="h-3 w-3" /> Marcar recolhida
+                                        </button>
+                                      )}
+                                      {l.passo.key === 'enviar' && (
+                                        <button onClick={() => { if (confirm('Enviar esta guia ao financeiro?\n\nVai para o histórico e NÃO volta a ativa.')) marcarFisicoGuia(guia!.id, { enviada: true }); }}
+                                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-emerald-600 text-white px-2 py-1 text-[11px] font-semibold hover:bg-emerald-700">
+                                          <CheckCircle2 className="h-3 w-3" /> Enviar ao financeiro
                                         </button>
                                       )}
                                       {l.passo.key === 'enviada' && (
@@ -2738,6 +2773,35 @@ function FinanceiroCassi({ onAbrirGuia }: {
           </div>
         ))}
       </div>
+
+      {/* Guias enviadas ao financeiro no mês — rastreio do handoff físico. */}
+      {(() => {
+        const enviadas = guias.filter((g) => ((g as any).enviada_financeiro_em || '').slice(0, 7) === mes);
+        return (
+          <div className="rounded-xl border border-border/50 bg-background p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold flex items-center gap-1.5"><Archive className="h-4 w-4 text-sky-600" /> Guias enviadas ao financeiro</p>
+              <span className="text-[11px] text-muted-foreground">{enviadas.length} em {MESES_PT[m - 1]}</span>
+            </div>
+            {enviadas.length === 0 ? (
+              <p className="text-[12px] text-muted-foreground">Nenhuma guia enviada neste mês. Marque no card de <b>Este mês</b> (assinar → recolher → enviar).</p>
+            ) : (
+              <div className="space-y-1">
+                {enviadas.map((g) => (
+                  <button key={g.id} onClick={() => onAbrirGuia(g)}
+                    className="w-full flex items-center justify-between gap-2 rounded-lg border border-border/50 px-2.5 py-1.5 text-left hover:bg-muted/40">
+                    <span className="text-[13px] font-medium truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      {(g as any).assinatura === 'metade' && <span className="text-[9px] uppercase font-bold text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded px-1">metade</span>}
+                      <span className="text-[11px] text-muted-foreground tabular-nums">{fmtData((g as any).enviada_financeiro_em)}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Divisão: sua parte × clínica */}
       {calc.totLiquido > 0 && (
