@@ -161,7 +161,8 @@ export default function PacientePagamentos() {
         .from('pagamentos_paciente')
         .select('id, descricao, valor, forma_pagamento, status, created_at, comprovante_url')
         .eq('paciente_id', pac.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
       setPagamentos((pags as any[]) || []);
     } catch (e) {
       console.error('[PacientePagamentos] loadData error:', e);
