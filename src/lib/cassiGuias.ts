@@ -32,8 +32,37 @@ export interface GuiaCassi {
   codigos: Array<{ codigo: string; descricao?: string; sessoes?: number; status?: string }>;
   status: GuiaStatus;
   observacoes: string | null;
+  // Ciclo físico da guia (assinatura pelo paciente → recolher → financeiro).
+  assinatura?: AssinaturaGuia;
+  recolhida_em?: string | null;
+  enviada_financeiro_em?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// Assinatura física da guia pelo paciente.
+export type AssinaturaGuia = 'nao' | 'inteira' | 'metade';
+
+export interface PassoFisico {
+  // Próximo passo físico da guia; null = ainda em uso (não chegou nesse ponto).
+  key: 'assinar' | 'recolher' | 'enviar' | 'enviada' | null;
+  label: string;
+}
+
+// Onde a guia está no ciclo FÍSICO (assinar → recolher → enviar ao financeiro).
+// Independe de "pedir a próxima": uma guia pode estar em "recolher" e o cliente
+// já precisar pedir outra ao mesmo tempo.
+export function passoFisicoGuia(g: Pick<GuiaCassi, 'assinatura' | 'recolhida_em' | 'enviada_financeiro_em' | 'status' | 'sessoes_autorizadas' | 'sessoes_realizadas'>): PassoFisico {
+  if (g.enviada_financeiro_em) return { key: 'enviada', label: 'Enviada ao financeiro' };
+  if (g.assinatura && g.assinatura !== 'nao') {
+    if (!g.recolhida_em) return { key: 'recolher', label: 'Recolher guia assinada' };
+    return { key: 'enviar', label: 'Enviar ao financeiro' };
+  }
+  // Sessões esgotadas e ainda não assinada → pronta para assinar/recolher.
+  if (g.status !== 'cancelada' && g.sessoes_autorizadas > 0 && g.sessoes_realizadas >= g.sessoes_autorizadas) {
+    return { key: 'assinar', label: 'Assinar e recolher' };
+  }
+  return { key: null, label: '' };
 }
 
 export type StatusPacienteKey =

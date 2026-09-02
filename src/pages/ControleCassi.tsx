@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical, X, Archive } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, type GuiaCassi, type GuiaStatus } from '@/lib/cassiGuias';
+import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia } from '@/lib/cassiGuias';
 
 interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; }
 
@@ -1089,6 +1089,34 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     onError: (e: any) => toast.error(e.message || 'Erro ao arquivar'),
   });
 
+  // Ciclo FÍSICO da guia: assinada (inteira/metade) → recolhida → enviada ao
+  // financeiro. Ao enviar, a guia é finalizada (vira histórico e não volta).
+  const marcarFisico = useMutation({
+    mutationFn: async (patch: { assinatura?: AssinaturaGuia; recolhida?: boolean; enviada?: boolean }) => {
+      const upd: any = { updated_at: new Date().toISOString() };
+      if (patch.assinatura !== undefined) upd.assinatura = patch.assinatura;
+      if (patch.recolhida !== undefined) upd.recolhida_em = patch.recolhida ? hojeISO() : null;
+      if (patch.enviada !== undefined) {
+        upd.enviada_financeiro_em = patch.enviada ? hojeISO() : null;
+        if (patch.enviada) {
+          upd.recolhida_em = (guia as any)?.recolhida_em || hojeISO(); // enviar implica recolhida
+          upd.status = 'finalizada'; // enviada ao financeiro → histórico
+        }
+      }
+      const { error } = await (supabase as any).from('guias_cassi').update(upd).eq('id', guia!.id);
+      if (error) throw error;
+    },
+    onSuccess: (_res, patch) => {
+      toast.success(patch.enviada ? 'Guia enviada ao financeiro — foi para o histórico'
+        : patch.recolhida ? 'Guia marcada como recolhida'
+        : patch.assinatura === 'nao' ? 'Assinatura desmarcada'
+        : 'Guia marcada como assinada');
+      qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao atualizar a guia'),
+  });
+
   const realizadasEfetivas = geradas > 0 ? realizadas : (Number(d.sessoes_realizadas) || 0);
   const restantes = sessoesRestantes({ sessoes_autorizadas: Number(d.sessoes_autorizadas) || 0, sessoes_realizadas: realizadasEfetivas });
 
@@ -1290,6 +1318,49 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             <p className="text-[11px] text-muted-foreground rounded-lg border border-dashed border-border/60 p-2">
               💡 Salve a guia e reabra em <strong>Ver guia</strong> para gerar a agenda de sessões (dias úteis).
             </p>
+          )}
+
+          {editandoExistente && guia && (guia as any).status !== 'cancelada' && (
+            <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Assinatura e financeiro</p>
+              {/* Assinatura física pelo paciente */}
+              <div className="flex gap-2">
+                <Button size="sm" variant={(guia as any).assinatura === 'inteira' ? 'default' : 'outline'} className="flex-1 gap-1.5" disabled={marcarFisico.isPending}
+                  onClick={() => marcarFisico.mutate({ assinatura: (guia as any).assinatura === 'inteira' ? 'nao' : 'inteira' })}>
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Assinada (completa)
+                </Button>
+                <Button size="sm" variant={(guia as any).assinatura === 'metade' ? 'default' : 'outline'} className="flex-1 gap-1.5" disabled={marcarFisico.isPending}
+                  onClick={() => marcarFisico.mutate({ assinatura: (guia as any).assinatura === 'metade' ? 'nao' : 'metade' })}>
+                  Assinada pela metade
+                </Button>
+              </div>
+              {/* Recolher / enviar ao financeiro (só depois de assinada) */}
+              {(guia as any).assinatura && (guia as any).assinatura !== 'nao' && !(guia as any).enviada_financeiro_em && (
+                <div className="flex gap-2">
+                  {!(guia as any).recolhida_em ? (
+                    <Button size="sm" variant="outline" className="flex-1 gap-1.5" disabled={marcarFisico.isPending}
+                      onClick={() => marcarFisico.mutate({ recolhida: true })}>
+                      <Archive className="h-3.5 w-3.5" /> Marcar recolhida
+                    </Button>
+                  ) : (
+                    <span className="flex-1 text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Recolhida {fmtData((guia as any).recolhida_em)}
+                    </span>
+                  )}
+                  <Button size="sm" className="flex-1 gap-1.5 bg-sky-600 hover:bg-sky-700 text-white" disabled={marcarFisico.isPending}
+                    onClick={() => { if (confirm('Enviar esta guia ao financeiro?\n\nEla vai para o histórico e NÃO volta a ser guia ativa.')) marcarFisico.mutate({ enviada: true }); }}>
+                    Enviar ao financeiro
+                  </Button>
+                </div>
+              )}
+              {(guia as any).enviada_financeiro_em && (
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Enviada ao financeiro {fmtData((guia as any).enviada_financeiro_em)}
+                </p>
+              )}
+              {(() => { const p = passoFisicoGuia(guia as any); return p.key && p.key !== 'enviada'
+                ? <p className="text-[11px] text-muted-foreground">Próximo passo: <strong>{p.label}</strong></p> : null; })()}
+            </div>
           )}
 
           {editandoExistente && (guia?.status === 'ativa' || guia?.status === 'aguardando') && (
