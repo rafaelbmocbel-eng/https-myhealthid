@@ -347,7 +347,7 @@ export default function PacienteExercicios() {
                                 </span>
                               </div>
                               {ex.video_url && (
-                                <button onClick={() => setVideoUrl(ex.video_url)} title="Ver vídeo"
+                                <button onClick={() => setVideoUrl(ex.video_url)} title="Ver vídeo" aria-label="Ver vídeo do exercício"
                                   className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
                                   <Play className="h-4 w-4" />
                                 </button>
@@ -489,7 +489,7 @@ export default function PacienteExercicios() {
                               )}
                             </div>
                             {ex.video_url && (
-                              <button onClick={() => setVideoUrl(ex.video_url)} title="Ver vídeo"
+                              <button onClick={() => setVideoUrl(ex.video_url)} title="Ver vídeo" aria-label="Ver vídeo do exercício"
                                 className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 self-center">
                                 <Play className="h-4 w-4" />
                               </button>

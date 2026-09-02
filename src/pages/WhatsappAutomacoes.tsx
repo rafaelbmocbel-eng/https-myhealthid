@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { selectTudoPaginado } from "@/lib/supabasePaginado";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -196,9 +197,14 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
   };
 
   const resolverSegmento = async (userId: string, seg: string): Promise<string[]> => {
-    const base = supabase.from("pacientes").select("id").eq("terapeuta_id", userId).eq("ativo", true).not("telefone", "is", null);
+    // Paginado: lista de pacientes ativos com telefone, reusada em vários
+    // segmentos. Sem isto, o teto de 1000 do PostgREST deixava parte da base de
+    // fora do disparo em massa silenciosamente.
+    const listarBase = () => selectTudoPaginado((from, to) =>
+      supabase.from("pacientes").select("id").eq("terapeuta_id", userId).eq("ativo", true).not("telefone", "is", null).range(from, to),
+    );
     if (seg === "todos") {
-      const { data } = await base;
+      const data = await listarBase();
       return (data || []).map((p: any) => p.id);
     }
     if (seg === "sem_sessao_30d") {
@@ -206,11 +212,11 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
       const { data: ags } = await supabase.from("agendamentos")
         .select("paciente_id").eq("terapeuta_id", userId).gte("data_inicio", limite).not("paciente_id", "is", null);
       const ativos = new Set((ags || []).map((a: any) => a.paciente_id));
-      const { data: todos } = await base;
+      const todos = await listarBase();
       return (todos || []).map((p: any) => p.id).filter((id: string) => !ativos.has(id));
     }
     if (seg === "exercicio_pendente") {
-      const { data: todos } = await base;
+      const todos = await listarBase();
       const ids = (todos || []).map((p: any) => p.id);
       if (ids.length === 0) return [];
       const { data } = await (supabase as any).from("paciente_missoes")
@@ -224,7 +230,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
       return [...new Set((data || []).map((d: any) => d.paciente_id))].filter(Boolean) as string[];
     }
     if (seg === "myid_critico" || seg === "myid_moderado" || seg === "myid_saudavel") {
-      const { data: todos } = await base;
+      const todos = await listarBase();
       const ids = (todos || []).map((p: any) => p.id);
       if (!ids.length) return [];
       const { data } = await supabase.from("myid_avaliacoes")

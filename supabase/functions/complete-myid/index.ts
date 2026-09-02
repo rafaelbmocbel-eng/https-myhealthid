@@ -10,14 +10,17 @@ const corsHeaders = {
 // MyID Enhancements — driver primário + reforços por fase + missões
 // Reúso simplificado das tabelas de perda e intervenções
 // ═══════════════════════════════════════════════════════════
+// Pesos/bandas ALINHADOS à fonte da verdade (src/utils/myid/lossTable.ts).
+// Só é usada no fallback (payload legado sem perdas_calculadas); antes divergia
+// (ex.: P com peso 5 vs 16) e o driver primário saía errado nesses casos.
 const TABELA_PERDAS: Record<string, { peso: number; bandas: { min: number; max: number; perda: number }[]; critico?: number }> = {
-  D: { peso: 20, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 3, perda: 3 }, { min: 3, max: 5, perda: 8 }, { min: 5, max: 7, perda: 14 }, { min: 7, max: 11, perda: 20 }] },
-  EFI: { peso: 15, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 11, perda: 15 }] },
-  P: { peso: 5, bandas: [{ min: 0, max: 3, perda: 0 }, { min: 3, max: 5, perda: 2 }, { min: 5, max: 7, perda: 4 }, { min: 7, max: 11, perda: 5 }] },
-  I: { peso: 5, bandas: [{ min: 0, max: 0.5, perda: 0 }, { min: 0.5, max: 1.5, perda: 2 }, { min: 1.5, max: 2.5, perda: 4 }, { min: 2.5, max: 11, perda: 5 }] },
-  R: { peso: 15, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 11, perda: 15 }], critico: 7 },
-  C: { peso: 10, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4 }, { min: 4, max: 6, perda: 7 }, { min: 6, max: 11, perda: 10 }] },
-  N: { peso: 5, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 2, perda: 2 }, { min: 2, max: 3, perda: 4 }, { min: 3, max: 11, perda: 5 }] },
+  D: { peso: 18, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 3, perda: 2.7 }, { min: 3, max: 5, perda: 7.2 }, { min: 5, max: 7, perda: 12.6 }, { min: 7, max: 10.01, perda: 18 }] },
+  EFI: { peso: 8, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 2.7 }, { min: 4, max: 6, perda: 5.3 }, { min: 6, max: 8, perda: 6.9 }, { min: 8, max: 10.01, perda: 8 }] },
+  P: { peso: 16, bandas: [{ min: 0, max: 3, perda: 0 }, { min: 3, max: 5, perda: 4.8 }, { min: 5, max: 7, perda: 9.6 }, { min: 7, max: 10.01, perda: 16 }] },
+  I: { peso: 5, bandas: [{ min: 0, max: 0.5, perda: 0 }, { min: 0.5, max: 1.5, perda: 2 }, { min: 1.5, max: 2.5, perda: 4 }, { min: 2.5, max: 10.01, perda: 5 }] },
+  R: { peso: 14, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4.7 }, { min: 4, max: 6, perda: 9.3 }, { min: 6, max: 8, perda: 12.1 }, { min: 8, max: 10.01, perda: 14 }], critico: 6 },
+  C: { peso: 11, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4.4 }, { min: 4, max: 6, perda: 7.7 }, { min: 6, max: 10.01, perda: 11 }] },
+  N: { peso: 2, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 2, perda: 0.8 }, { min: 2, max: 3, perda: 1.6 }, { min: 3, max: 10.01, perda: 2 }], critico: 6 },
 };
 
 const DIM_LABELS: Record<string, string> = {

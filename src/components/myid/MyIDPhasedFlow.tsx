@@ -173,7 +173,11 @@ export function MyIDPhasedFlow({
         const myid = calc.calculateMyID();
         calc.interpretStatus();
         calc.determineClinicalPriority?.();
-        const fullResult = { ...calc.result, scores: calc.scores, perdas: calc.perdas };
+        // getFullResult() devolve o shape correto (MyID_score/component_scores/
+        // perdas_calculadas) que o complete-myid espera. Antes montava
+        // { ...result, scores, perdas } (chaves erradas) e só "funcionava" porque
+        // o MyIDResponder ignorava o argumento e recomputava.
+        const fullResult = calc.getFullResult();
 
         const ok = await onComplete(data, fullResult);
         if (!ok) {

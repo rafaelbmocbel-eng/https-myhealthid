@@ -171,21 +171,26 @@ export interface MyID100Result {
   driver_primario: DriverPrimario | null;
 }
 
-// Sum of all max weights = 105 (20+15+10+5+15+10+8+6+6+5+5 = 105)
+// Soma de todos os pesos_maximo = 105 (D18+EFI8+P16+I5+R14+C11+AF10+HID6+NUT7+ERG8+N2)
 const TOTAL_MAX_LOSS = 105;
 
+// Limiares alinhados às perdas REAIS de cada banda (perda_pontos vai de 0 ao
+// peso_maximo da dimensão). Antes estavam calibrados para pesos antigos e o rótulo
+// mais grave era inatingível (ex.: EFI perde no máx 8, mas "Limitação severa"
+// exigia >=15 → uma limitação máxima aparecia como "leve"). Cada chave é o valor
+// de perda da banda correspondente (ver TABELA_PERDAS acima).
 const INTERPRETACAO_MAP: Record<string, Record<string, string>> = {
-  D: { '0': 'Sem dor', '3': 'Dor leve', '8': 'Dor moderada', '14': 'Dor moderada-alta', '20': 'Dor severa' },
-  EFI: { '0': 'Função normal', '5': 'Limitação leve', '10': 'Limitação moderada', '13': 'Limitação significativa', '15': 'Limitação severa' },
-  P: { '0': 'Estável', '3': 'Kinesiofobia leve', '6': 'Kinesiofobia moderada', '10': 'Kinesiofobia alta' },
+  D: { '0': 'Sem dor', '2.7': 'Dor leve', '7.2': 'Dor moderada', '12.6': 'Dor moderada-alta', '18': 'Dor severa' },
+  EFI: { '0': 'Função normal', '2.7': 'Limitação leve', '5.3': 'Limitação moderada', '6.9': 'Limitação significativa', '8': 'Limitação severa' },
+  P: { '0': 'Estável', '4.8': 'Kinesiofobia leve', '9.6': 'Kinesiofobia moderada', '16': 'Kinesiofobia alta' },
   I: { '0': 'Sem mudanças', '2': 'Mudanças leves', '4': 'Mudanças moderadas', '5': 'Mudanças recentes significativas' },
-  R: { '0': 'Regulação ótima', '5': 'Desregulação leve', '10': 'Desregulação moderada', '13': 'Desregulação severa', '15': 'Desregulação crítica' },
-  C: { '0': 'Contexto favorável', '4': 'Estresse contextual leve', '7': 'Estressor moderado', '10': 'Contexto adverso' },
-  AF: { '0': 'Ativo', '3': 'Atividade insuficiente', '6': 'Inatividade moderada', '8': 'Inatividade crítica' },
+  R: { '0': 'Regulação ótima', '4.7': 'Desregulação leve', '9.3': 'Desregulação moderada', '12.1': 'Desregulação severa', '14': 'Desregulação crítica' },
+  C: { '0': 'Contexto favorável', '4.4': 'Estresse contextual leve', '7.7': 'Estressor moderado', '11': 'Contexto adverso' },
+  AF: { '0': 'Ativo', '3.8': 'Atividade insuficiente', '7.5': 'Inatividade moderada', '10': 'Inatividade crítica' },
   HID: { '0': 'Hidratação ótima', '2': 'Hidratação razoável', '4': 'Hidratação inadequada', '6': 'Desidratação' },
-  NUT: { '0': 'Nutrição ótima', '2': 'Nutrição razoável', '4': 'Nutrição inadequada', '6': 'Déficit nutricional' },
-  ERG: { '0': 'Ergonomia boa', '2': 'Ergonomia razoável', '4': 'Ergonomia ruim', '5': 'Ergonomia crítica' },
-  N: { '0': 'Ruído mínimo', '2': 'Ruído leve', '4': 'Ruído moderado', '5': 'Ruído alto' },
+  NUT: { '0': 'Nutrição ótima', '2.3': 'Nutrição razoável', '4.7': 'Nutrição inadequada', '7': 'Déficit nutricional' },
+  ERG: { '0': 'Ergonomia boa', '3.2': 'Ergonomia razoável', '6.4': 'Ergonomia ruim', '8': 'Ergonomia crítica' },
+  N: { '0': 'Ruído mínimo', '0.8': 'Ruído leve', '1.6': 'Ruído moderado', '2': 'Ruído alto' },
 };
 
 function getInterpretacao(dim: string, perda: number): string {

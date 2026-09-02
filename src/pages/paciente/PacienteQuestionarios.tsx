@@ -426,11 +426,17 @@ export default function PacienteQuestionarios() {
                           size="sm"
                           className="text-xs font-bold gap-1"
                           onClick={() => {
-                            if (q.status === 'pendente') {
-                              supabase.from('myid_avaliacoes').update({ status: 'em_andamento' }).eq('id', q.id);
-                            }
                             setActiveId(q.id);
                             setViewMode('answering');
+                            if (q.status === 'pendente') {
+                              // não bloqueia a UX, mas registra falha (antes era
+                              // fire-and-forget e o status ficava dessincronizado em silêncio)
+                              void supabase.from('myid_avaliacoes')
+                                .update({ status: 'em_andamento' }).eq('id', q.id)
+                                .then(({ error }) => {
+                                  if (error) console.warn('[questionarios] falha ao marcar em_andamento:', error.message);
+                                });
+                            }
                           }}
                         >
                           {q.status === 'em_andamento' ? 'Continuar' : 'Responder'}

@@ -248,7 +248,7 @@ export default function PacienteDiario() {
                 {/* Mood */}
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground block mb-2">
-                    Humor — {MOOD_LABELS[mood - 1]}
+                    Humor — {MOOD_LABELS[(mood || 3) - 1]}
                   </label>
                   <div className="flex justify-between gap-2">
                     {[1, 2, 3, 4, 5].map(v => (
@@ -289,7 +289,7 @@ export default function PacienteDiario() {
                 {/* Energy */}
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground block mb-2">
-                    Energia — {ENERGY_LABELS[energy - 1]}
+                    Energia — {ENERGY_LABELS[(energy || 3) - 1]}
                   </label>
                   <div className="flex justify-between gap-2">
                     {[1, 2, 3, 4, 5].map(v => (
@@ -413,7 +413,7 @@ export default function PacienteDiario() {
                             ? 'Hoje'
                             : format(parseISO(log.created_at), "EEEE, d MMM", { locale: ptBR })}
                         </span>
-                        <span className="text-xl">{MOOD_EMOJI[log.mood - 1]}</span>
+                        <span className="text-xl">{MOOD_EMOJI[(log.mood || 3) - 1]}</span>
                       </div>
                       <div className="flex gap-3 text-[10px] text-muted-foreground">
                         <span className={log.pain > 6 ? 'text-red-500 font-bold' : ''}>

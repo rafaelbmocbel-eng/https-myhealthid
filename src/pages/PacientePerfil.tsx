@@ -370,22 +370,6 @@ export default function PacientePerfil() {
 
   // (query 'tratamentos-perfil' removida — não era consumida em lugar nenhum)
 
-  // Calculate session metrics (must be before early returns)
-  const sessionMetrics = useMemo(() => {
-    let checks: Record<string, string> = {};
-    try {
-      checks = JSON.parse(localStorage.getItem('checks-all') || '{}');
-    } catch { /* localStorage corrompido — segue sem checks */ }
-
-    const atendidas = agendamentos.filter((ag: any) => checks[ag.id] === 'atendido').length;
-    const faltas = agendamentos.filter((ag: any) => checks[ag.id] === 'faltou').length;
-    return {
-      total: agendamentos.length,
-      atendidas,
-      faltas
-    };
-  }, [agendamentos]);
-
   const { data: ultimoScoreKpi } = useQuery({
     queryKey: ['score-kpi', id],
     queryFn: async () => {
@@ -515,11 +499,6 @@ export default function PacientePerfil() {
     } catch (e: any) {
       toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
     }
-  };
-
-  // Quick schedule
-  const agendarRapido = async () => {
-    navigate(`/agenda`);
   };
 
   // ── Editar paciente ─────────────────────────────────────────────────
