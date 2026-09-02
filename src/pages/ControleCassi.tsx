@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical, X, Archive } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia } from '@/lib/cassiGuias';
+import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
 
 interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; }
 
@@ -610,7 +610,9 @@ export default function ControleCassi() {
                   const estado: 'guia' | 'confirmar' | 'ok' =
                     precisaPedir ? 'guia' : ok ? 'ok' : 'confirmar';
                   const fimISO = guia ? projetarFimGuia(guia) : null;
-                  return { paciente, guia, aut, real, restantes, pct, confirmado, ok, precisaPedir, jaPedido, guiaAcabou, estado, fimISO };
+                  // Passo FÍSICO da guia (assinar → recolher → enviar ao financeiro).
+                  const passo: PassoFisico = guia ? passoFisicoGuia(guia as any) : { key: null, label: '' };
+                  return { paciente, guia, aut, real, restantes, pct, confirmado, ok, precisaPedir, jaPedido, guiaAcabou, estado, fimISO, passo };
                 });
                 const nGuia = linhasMes.filter((l) => l.estado === 'guia').length;
                 const nConf = linhasMes.filter((l) => l.estado === 'confirmar').length;
@@ -733,6 +735,19 @@ export default function ControleCassi() {
                                           <span className="text-muted-foreground font-normal"> · aceita {respCassi}</span>
                                         )}
                                       </p>
+                                      {/* Passo FÍSICO — faz o card progredir depois de usar a guia:
+                                          assinar → recolher → enviar ao financeiro. Abre o editor. */}
+                                      {l.passo.key && l.passo.key !== 'enviada' && (
+                                        <button onClick={() => setEditando({ paciente, guia })}
+                                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900 px-2 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-300 hover:brightness-95">
+                                          <FileText className="h-3 w-3" /> {l.passo.label} →
+                                        </button>
+                                      )}
+                                      {l.passo.key === 'enviada' && (
+                                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-1 flex items-center gap-1">
+                                          <CheckCircle2 className="h-3 w-3" /> Enviada ao financeiro
+                                        </p>
+                                      )}
                                     </>
                                   ) : l.precisaPedir ? (
                                     <p className="text-[12px] text-rose-700 dark:text-rose-300 mt-1 font-medium">Precisa de nova guia — monte em “Pedir guias”</p>
