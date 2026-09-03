@@ -119,15 +119,16 @@ export default function PacienteEventos() {
         const inscSet = new Set((insc || []).map(i => i.evento_id));
         setInscricoes(inscSet);
 
-        // Get vacancy counts using secure RPC (no PII exposed)
+        // Contagem de vagas via RPC segura (sem PII), em PARALELO — antes era um
+        // loop sequencial que deixava o carregamento lento com vários eventos.
+        const comVagas = evts.filter((ev) => ev.vagas_max);
+        const counts = await Promise.all(
+          comVagas.map((ev) => supabase.rpc('count_evento_inscricoes', { p_evento_id: ev.id })),
+        );
         const vMap: Record<string, number> = {};
-        for (const ev of evts) {
-          if (ev.vagas_max) {
-            const { data: inscCount } = await supabase
-              .rpc('count_evento_inscricoes', { p_evento_id: ev.id });
-            vMap[ev.id] = ev.vagas_max - (Number(inscCount) || 0);
-          }
-        }
+        comVagas.forEach((ev, i) => {
+          vMap[ev.id] = (ev.vagas_max as number) - (Number(counts[i]?.data) || 0);
+        });
         setVagasMap(vMap);
       }
     } catch (e) {

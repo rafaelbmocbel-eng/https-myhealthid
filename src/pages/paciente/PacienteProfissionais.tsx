@@ -120,12 +120,26 @@ export default function PacienteProfissionais() {
   const enviarSolicitacao = useMutation({
     mutationFn: async () => {
       if (!selectedTerapeuta || !user) throw new Error('Dados inválidos');
-      const { error } = await supabase.from('solicitacoes_conexao').insert({
+      const dados = { mensagem: mensagem.trim() || null };
+      const sb = supabase as any; // solicitacoes_conexao não está nos tipos gerados
+      const { error } = await sb.from('solicitacoes_conexao').insert({
         paciente_user_id: user.id,
         terapeuta_id: selectedTerapeuta.terapeuta_id,
-        mensagem: mensagem.trim() || null,
+        ...dados,
       });
-      if (error) throw error;
+      if (error) {
+        // Já existe uma solicitação (ex.: foi recusada antes) → reenviar = voltar
+        // a solicitação para "pendente" em vez de estourar unique constraint.
+        if ((error as any).code === '23505') {
+          const { error: upErr } = await sb.from('solicitacoes_conexao')
+            .update({ ...dados, status: 'pendente' })
+            .eq('paciente_user_id', user.id)
+            .eq('terapeuta_id', selectedTerapeuta.terapeuta_id);
+          if (upErr) throw upErr;
+          return;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({ title: 'Solicitação enviada!', description: 'O profissional receberá sua solicitação em breve.' });

@@ -180,7 +180,12 @@ export default function PacientePagamentos() {
   };
 
   const handleSelectPix = async () => {
-    if (!config?.pix_chave || !config?.pix_nome || !selectedServico) return;
+    if (!selectedServico) return;
+    // Antes o botão não respondia em silêncio quando faltava a chave/nome do PIX.
+    if (!config?.pix_chave || !config?.pix_nome) {
+      toast({ title: 'PIX indisponível', description: 'Seu profissional ainda não configurou o PIX. Fale com ele ou use o cartão.', variant: 'destructive' });
+      return;
+    }
     setPaymentMethod('pix');
     setGeneratingQr(true);
     try {
