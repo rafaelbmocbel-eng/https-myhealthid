@@ -223,7 +223,7 @@ export default function PacientePagamentos() {
       toast({ title: 'Pagamento registrado! ✅', description: 'Seu profissional será notificado para confirmar.' });
       loadData();
     } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+      console.error('[pagamentos]', e); toast({ title: 'Não consegui concluir', description: 'Tente de novo em instantes.', variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }

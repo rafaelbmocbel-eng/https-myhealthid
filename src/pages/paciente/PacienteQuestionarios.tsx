@@ -101,15 +101,18 @@ export default function PacienteQuestionarios() {
   const handleSaveProgress = async (data: any, step: number) => {
     if (!activeId) return;
     try {
-      await supabase.from('myid_avaliacoes').update({
+      const { error } = await supabase.from('myid_avaliacoes').update({
         respostas_brutas: { ...data, _savedStep: step },
         status: 'em_andamento',
         updated_at: new Date().toISOString(),
       }).eq('id', activeId);
-      
+      if (error) throw error;
       toast({ title: '💾 Progresso salvo', description: 'Você pode continuar depois.', duration: 2000 });
     } catch (err) {
+      // Antes o toast de sucesso aparecia mesmo em falha (o update não lança, só
+      // retorna {error}) — o cliente achava que pausou salvo e perdia respostas.
       console.warn('Erro ao salvar progresso:', err);
+      toast({ title: 'Não consegui salvar seu progresso agora', description: 'Sua conexão pode ter caído — tente pausar de novo em instantes.', variant: 'destructive', duration: 3500 });
     }
   };
 
@@ -366,7 +369,7 @@ export default function PacienteQuestionarios() {
                   </button>
                 )}
               </>
-            ) : null}
+            ) : <PortalSemVinculoCard recurso="seu plano de tratamento" />}
           </div>
         </PacienteLayout>
       </ProtectedPatientRoute>

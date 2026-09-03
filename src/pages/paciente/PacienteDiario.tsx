@@ -123,7 +123,7 @@ export default function PacienteDiario() {
     }
 
     if (error) {
-      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      console.error('[diario] salvar:', error); toast({ title: 'Erro ao salvar', description: 'Não consegui salvar seu registro. Tente de novo.', variant: 'destructive' });
     } else {
       // Auto-generate prontuário note
       gerarNotaDiario({

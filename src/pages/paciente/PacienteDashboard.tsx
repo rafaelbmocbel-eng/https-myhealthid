@@ -16,6 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
 const MyIDResult = lazy(() => import('@/components/myid/MyIDResult').then(m => ({ default: m.MyIDResult })));
 const JornadaPacienteCard = lazy(() => import('@/components/paciente/JornadaPacienteCard'));
@@ -82,6 +83,8 @@ export default function PacienteDashboard() {
   const [stats, setStats] = useState({ avaliacoes: 0, consultas: 0, diarios: 0, pendentes: 0, vocais: 0 });
   const [loading, setLoading] = useState(true);
   const [semVinculo, setSemVinculo] = useState(false);
+  const [erroCarregar, setErroCarregar] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [showMyIdPrompt, setShowMyIdPrompt] = useState(false);
   const [myIdPromptType, setMyIdPromptType] = useState<'first' | 'monthly'>('first');
   const [historiaContada, setHistoriaContada] = useState(false);
@@ -116,6 +119,7 @@ export default function PacienteDashboard() {
     if (!user) return;
 
     const fetchData = async () => {
+      setErroCarregar(false);
       try {
         const { data: pac, error: pacError } = await supabase
           .from('pacientes')
@@ -272,13 +276,14 @@ export default function PacienteDashboard() {
         }
       } catch (e) {
         console.error('[PacienteDashboard] fetchData error:', e);
+        setErroCarregar(true);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [user, navigate]);
+  }, [user, navigate, reloadKey]);
 
   // XP agora vem SÓ da carteira real (pacientes.xp_total), creditada pela
   // função ganhar_xp em missões/metas/diário/treino/desafios — sem recomputo
@@ -332,6 +337,16 @@ export default function PacienteDashboard() {
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (erroCarregar) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => { setErroCarregar(false); setLoading(true); setReloadKey((k) => k + 1); }} mensagem="Não consegui carregar seu início. Verifique sua internet e tente de novo." />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

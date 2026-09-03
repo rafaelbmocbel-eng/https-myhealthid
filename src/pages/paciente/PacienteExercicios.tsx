@@ -208,6 +208,10 @@ export default function PacienteExercicios() {
       });
       return;
     }
+    // Evita concluir (e ganhar XP) sem ter marcado nenhum exercício como feito.
+    if (doneEx.size === 0 && !confirm('Você não marcou nenhum exercício como feito. Concluir o treino mesmo assim?')) {
+      return;
+    }
     setSubmitting(true);
 
     const { error } = await supabase.from('studio_execucoes').insert({

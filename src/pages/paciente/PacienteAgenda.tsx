@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
+import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 
 interface PacienteData {
@@ -262,7 +263,7 @@ export default function PacienteAgenda() {
     });
 
     if (error) {
-      toast({ title: 'Erro ao agendar', description: error.message, variant: 'destructive' });
+      console.error('[agenda] agendar:', error); toast({ title: 'Erro ao agendar', description: 'Não consegui agendar agora. Tente de novo.', variant: 'destructive' });
     } else {
       setConfirmacao('novo');
       toast({ title: 'Agendado com sucesso! ✅', description: 'Aguarde a confirmação do seu terapeuta.' });
@@ -297,7 +298,7 @@ export default function PacienteAgenda() {
       .eq('paciente_id', paciente.id);
 
     if (error) {
-      toast({ title: 'Erro ao editar agendamento', description: error.message, variant: 'destructive' });
+      console.error('[agenda] editar:', error); toast({ title: 'Erro ao alterar', description: 'Não consegui alterar o horário. Tente de novo.', variant: 'destructive' });
     } else {
       // Update controle_sessoes if exists
       await supabase
@@ -337,7 +338,7 @@ export default function PacienteAgenda() {
 
     if (error) {
       setCancelandoId(null);
-      toast({ title: 'Erro ao cancelar', description: error.message, variant: 'destructive' });
+      console.error('[agenda] cancelar:', error); toast({ title: 'Erro ao cancelar', description: 'Não consegui cancelar agora. Tente de novo.', variant: 'destructive' });
     } else {
       await supabase
         .from('controle_sessoes')
@@ -386,6 +387,16 @@ export default function PacienteAgenda() {
       <ProtectedPatientRoute>
         <PacienteLayout>
           <PortalErrorState onRetry={() => { setLoading(true); fetchPatientAndConfig(); }} mensagem="Não consegui carregar sua agenda. Verifique sua internet e tente de novo." />
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  if (!paciente) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalSemVinculoCard recurso="a agenda" />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );
