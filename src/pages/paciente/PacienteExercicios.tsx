@@ -328,8 +328,8 @@ export default function PacienteExercicios() {
                           <Clock className="h-4 w-4 shrink-0" />
                           <span className="text-sm font-semibold">Descanso</span>
                           <span className="text-xl font-black tabular-nums ml-auto">{fmtTimer(restSec)}</span>
-                          <button onClick={() => setRestSec(s => (s ?? 0) + 15)} className="h-8 px-2 rounded-lg bg-white/20 text-xs font-bold shrink-0">+15s</button>
-                          <button onClick={() => setRestSec(null)} className="h-8 px-2.5 rounded-lg bg-white/20 text-xs font-bold flex items-center gap-1 shrink-0"><SkipForward className="h-3 w-3" /> Pular</button>
+                          <button onClick={() => setRestSec(s => (s ?? 0) + 15)} className="h-10 px-3 rounded-lg bg-white/20 text-xs font-bold shrink-0 active:scale-95">+15s</button>
+                          <button onClick={() => setRestSec(null)} className="h-10 px-3 rounded-lg bg-white/20 text-xs font-bold flex items-center gap-1 shrink-0 active:scale-95"><SkipForward className="h-3.5 w-3.5" /> Pular</button>
                         </div>
                       )}
 
@@ -362,13 +362,13 @@ export default function PacienteExercicios() {
                               </div>
                               {ex.video_url && (
                                 <button onClick={() => setVideoUrl(ex.video_url)} title="Ver vídeo" aria-label="Ver vídeo do exercício"
-                                  className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                  className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 active:scale-95">
                                   <Play className="h-4 w-4" />
                                 </button>
                               )}
                               {ex.descanso_segundos ? (
                                 <button onClick={() => setRestSec(ex.descanso_segundos!)} title="Iniciar descanso"
-                                  className="h-8 px-2 rounded-full bg-muted flex items-center gap-1 text-[10px] font-medium shrink-0">
+                                  className="h-10 px-3 rounded-full bg-muted flex items-center gap-1 text-[11px] font-medium shrink-0 active:scale-95">
                                   <Clock className="h-3 w-3" /> {ex.descanso_segundos}s
                                 </button>
                               ) : null}
