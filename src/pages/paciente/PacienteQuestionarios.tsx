@@ -221,7 +221,7 @@ export default function PacienteQuestionarios() {
     const savedStep = item?.respostas_brutas?._savedStep;
     return (
       <ProtectedPatientRoute>
-        <PacienteLayout>
+        <PacienteLayout hideVoltar>
           <div className="p-4 md:p-6 max-w-4xl mx-auto">
             <button
               onClick={() => { setActiveId(null); setViewMode('list'); }}
@@ -255,7 +255,7 @@ export default function PacienteQuestionarios() {
     const item = questionarios.find(q => q.id === activeId);
     return (
       <ProtectedPatientRoute>
-        <PacienteLayout>
+        <PacienteLayout hideVoltar>
           <div className="p-4 md:p-6 max-w-4xl mx-auto">
             <button
               onClick={() => {

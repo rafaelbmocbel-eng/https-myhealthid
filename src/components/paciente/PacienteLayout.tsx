@@ -45,9 +45,12 @@ const GRUPO_SAUDE = new Set(['/paciente/saude', '/paciente/evolucao', '/paciente
 
 interface Props {
   children: ReactNode;
+  // Esconde o "Voltar" global do layout em telas que já têm um "Voltar" próprio
+  // (ex.: resultado do questionário, com lógica de volta específica).
+  hideVoltar?: boolean;
 }
 
-export default function PacienteLayout({ children }: Props) {
+export default function PacienteLayout({ children, hideVoltar }: Props) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -158,7 +161,7 @@ export default function PacienteLayout({ children }: Props) {
         >
           {/* Voltar — em toda página do portal exceto o Início (a maioria não
               tinha). Volta no histórico; sem histórico, cai no Início. */}
-          {location.pathname !== '/paciente/dashboard' && (
+          {location.pathname !== '/paciente/dashboard' && !hideVoltar && (
             <div className="flex items-center gap-3 px-4 pt-3">
               <button
                 onClick={() => { if (window.history.length > 1) navigate(-1); else navigate('/paciente/dashboard'); }}

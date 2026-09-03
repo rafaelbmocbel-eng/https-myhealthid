@@ -17,7 +17,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import {
   Loader2, Dumbbell, Check, ChevronDown, ChevronUp,
   Play, Clock, Flame, AlertCircle, Star, X, SkipForward,
-  Heart, CalendarDays, Activity, ClipboardList, Rocket, ChevronRight, LayoutGrid,
+  Activity, ClipboardList, ChevronRight, LayoutGrid,
 } from 'lucide-react';
 import { format, parseISO, isToday } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
@@ -564,10 +564,10 @@ export default function PacienteExercicios() {
           <div className="space-y-3">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Atalhos</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* Só atalhos para áreas que NÃO estão na barra de baixo (evita
+                  redundância/navegação circular): Início, Agenda, Plano e Diário
+                  já são um toque na barra. */}
               {([
-                { nome: 'Minha jornada', sub: 'Plano de hoje e missões', to: '/paciente/dashboard', Icon: Rocket, cor: 'text-violet-600 bg-violet-500/10' },
-                { nome: 'Diário de saúde', sub: 'Registre como você está', to: '/paciente/diario', Icon: Heart, cor: 'text-rose-600 bg-rose-500/10' },
-                { nome: 'Minha agenda', sub: 'Suas consultas', to: '/paciente/agenda', Icon: CalendarDays, cor: 'text-sky-600 bg-sky-500/10' },
                 { nome: 'Meus exames', sub: 'Bioimpedância, pisada e mais', to: '/paciente/exames', Icon: Activity, cor: 'text-teal-600 bg-teal-500/10' },
                 { nome: 'Questionários', sub: 'Responder e ver histórico', to: '/paciente/questionarios', Icon: ClipboardList, cor: 'text-emerald-600 bg-emerald-500/10' },
               ]).map((a) => (
