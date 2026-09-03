@@ -666,7 +666,7 @@ export default function ControleCassi() {
                           <button key={c.key} onClick={() => setFocoMes(active ? 'todos' : c.key)}
                             className={`rounded-xl border p-2.5 text-left transition-all ${toneCls} ${active ? 'ring-2 ring-primary/50' : 'hover:brightness-[0.99]'}`}>
                             <span className={`block text-lg font-black tabular-nums leading-none ${numCls}`}>{c.icon} {c.n}</span>
-                            <span className="block text-[10.5px] text-muted-foreground font-semibold mt-1 leading-tight">{c.label}</span>
+                            <span className="block text-[11px] text-muted-foreground font-semibold mt-1 leading-tight">{c.label}</span>
                           </button>
                         );
                       })}
@@ -1560,7 +1560,7 @@ function PlanilhaGuias({ guias, onAbrir }: { guias: GuiaComPaciente[]; onAbrir: 
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border/50 bg-background">
-        <table className="w-full text-[12.5px]">
+        <table className="w-full text-[13px]">
           <thead className="bg-muted/50 text-[10px] uppercase text-muted-foreground">
             <tr>
               <th className="text-left font-semibold px-3 py-2">Paciente</th>
@@ -1968,7 +1968,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
                 if (!fimISO) return null;
                 const fimBR = `${fimISO.slice(8, 10)}/${fimISO.slice(5, 7)}`;
                 return (
-                  <p className={`text-[10.5px] ${atravessa ? 'text-amber-700 dark:text-amber-400 font-medium' : 'text-muted-foreground'}`}>
+                  <p className={`text-[11px] ${atravessa ? 'text-amber-700 dark:text-amber-400 font-medium' : 'text-muted-foreground'}`}>
                     {atravessa ? `⚠ Não fecha neste mês — termina ~${fimBR} (atravessa o mês).` : `Termina ~${fimBR} (em dias úteis).`}
                   </p>
                 );
@@ -2852,7 +2852,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
                 const h = Math.round((t.suaParte / max) * 100);
                 return (
                   <div key={i} className="flex-1 min-w-0 flex flex-col items-center gap-1">
-                    <span className={`text-[9.5px] tabular-nums ${atual ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}>{t.suaParte > 0 ? kbrl(t.suaParte) : '—'}</span>
+                    <span className={`text-[10px] tabular-nums ${atual ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}>{t.suaParte > 0 ? kbrl(t.suaParte) : '—'}</span>
                     <div className="w-full h-16 flex items-end" title={fmtBRL(t.suaParte)}>
                       <div className={`w-full rounded-t-md ${atual ? 'bg-emerald-500' : 'bg-emerald-500/35'}`} style={{ height: `${Math.max(t.suaParte > 0 ? 4 : 0, h)}%` }} />
                     </div>
@@ -2861,7 +2861,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
                 );
               })}
             </div>
-            <p className="text-[10.5px] text-muted-foreground mt-2">Valores em R$ (k = mil). Barra verde = mês selecionado.</p>
+            <p className="text-[11px] text-muted-foreground mt-2">Valores em R$ (k = mil). Barra verde = mês selecionado.</p>
           </div>
         );
       })()}
@@ -3645,7 +3645,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                     {marcado && <span className="text-[9px] uppercase font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/30 rounded px-1 shrink-0">2/mês</span>}
                     {ativo && p.cassi_confirmado_mes === mesVigente && <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">no mês ✓</span>}
                   </div>
-                  <div className="text-[11.5px] text-muted-foreground mt-1 tabular-nums">
+                  <div className="text-[12px] text-muted-foreground mt-1 tabular-nums">
                     {vigente
                       ? <span>{vigente.status === 'aguardando' ? 'Aguardando CASSI' : 'Guia vigente'} <b className="text-foreground">{vigente.sessoes_realizadas}/{diasTratGuia(vigente)}</b>{vigente.data_resposta ? <> · aceita {fmtData(vigente.data_resposta)}</> : null}</span>
                       : <span>Sem guia ativa</span>}

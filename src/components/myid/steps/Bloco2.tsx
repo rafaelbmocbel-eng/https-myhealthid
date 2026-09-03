@@ -36,7 +36,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                     <Label className="text-base font-bold text-foreground">Qual é a intensidade da sua dor agora (neste exato momento)?</Label>
                     <div className="px-2 pt-2">
                         <Slider
-                            defaultValue={[data.bloco_2_pain_now || 0]}
+                            value={[data.bloco_2_pain_now || 0]}
                             max={10}
                             step={1}
                             onValueChange={(v) => updateData({ bloco_2_pain_now: v[0] })}
@@ -53,7 +53,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                     <Label className="text-base font-bold text-foreground">Qual foi a pior intensidade da dor nos últimos 7 dias?</Label>
                     <div className="px-2 pt-2">
                         <Slider
-                            defaultValue={[data.bloco_2_pain_max || 0]}
+                            value={[data.bloco_2_pain_max || 0]}
                             max={10}
                             step={1}
                             onValueChange={(v) => updateData({ bloco_2_pain_max: v[0] })}

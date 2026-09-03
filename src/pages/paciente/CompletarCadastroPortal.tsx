@@ -32,6 +32,7 @@ function CompletarCadastroPortalInner() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [terapeutaNome, setTerapeutaNome] = useState<string>('');
+  const [cepErro, setCepErro] = useState(false);
 
   const [form, setForm] = useState({
     nome: '', sobrenome: '', telefone: '',
@@ -92,9 +93,12 @@ function CompletarCadastroPortalInner() {
     })();
   }, [user, navigate, editMode]);
 
-  const camposPreenchiveis = Object.entries(form).filter(([k]) => k !== 'lgpd_aceite');
-  const camposPreenchidos = camposPreenchiveis.filter(([, v]) => v !== '' && v !== false).length;
-  const progressoPercent = Math.round((camposPreenchidos / camposPreenchiveis.length) * 100);
+  // Progresso conta só o que é OBRIGATÓRIO (Nome + WhatsApp + LGPD). Antes dividia
+  // por todos os campos (endereço, emergência… opcionais) e mostrava ~30% mesmo
+  // com o essencial preenchido, passando sensação de "faltou muito".
+  const OBRIGATORIOS = ['nome', 'telefone'] as const;
+  const obrigOk = OBRIGATORIOS.filter((k) => String((form as any)[k] || '').trim() !== '').length + (form.lgpd_aceite ? 1 : 0);
+  const progressoPercent = Math.round((obrigOk / (OBRIGATORIOS.length + 1)) * 100);
 
   const buscarCEP = async (cep: string) => {
     const digits = cep.replace(/\D/g, '');
@@ -103,6 +107,7 @@ function CompletarCadastroPortalInner() {
       const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
       const j = await r.json();
       if (!j.erro) {
+        setCepErro(false);
         setForm(f => ({
           ...f,
           endereco: j.logradouro || f.endereco,
@@ -110,8 +115,10 @@ function CompletarCadastroPortalInner() {
           cidade: j.localidade || f.cidade,
           uf: j.uf || f.uf,
         }));
+      } else {
+        setCepErro(true); // CEP não encontrado — cliente preenche o endereço à mão
       }
-    } catch { /* silencioso */ }
+    } catch { setCepErro(true); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -252,6 +259,9 @@ function CompletarCadastroPortalInner() {
                 placeholder="00000-000"
                 className="text-[16px] sm:text-sm"
               />
+              {cepErro && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">Não encontramos esse CEP — pode preencher o endereço à mão.</p>
+              )}
             </div>
             <div className="grid grid-cols-[1fr_90px] gap-3">
               <div className="space-y-1">

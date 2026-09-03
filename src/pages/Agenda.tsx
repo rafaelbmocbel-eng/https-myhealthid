@@ -8,7 +8,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
-  Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
+  Lock, Clock, CheckCircle2, AlertCircle, Calendar, CalendarDays, MessageCircle,
   Smartphone, CreditCard, Info, DollarSign, Repeat, Mic, ClipboardCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -1552,14 +1552,14 @@ export default function Agenda() {
                                   <div
                                     key={ag.id}
                                     onClick={e => { e.stopPropagation(); openEdit(ag); }}
-                                    className={cn('text-[9px] font-semibold px-1 py-0.5 rounded truncate border-l-2', sc.bg, sc.border, sc.text)}
+                                    className={cn('text-[10px] font-semibold px-1 py-0.5 rounded truncate border-l-2', sc.bg, sc.border, sc.text)}
                                   >
                                     {format(parseISO(ag.data_inicio), 'HH:mm')} {label}
                                   </div>
                                 );
                               })}
                               {dayAgs.length > 3 && (
-                                <div className="text-[9px] text-muted-foreground pl-1">+{dayAgs.length - 3} mais</div>
+                                <div className="text-[10px] text-muted-foreground pl-1">+{dayAgs.length - 3} mais</div>
                               )}
                             </div>
                           </div>
@@ -1774,7 +1774,7 @@ export default function Agenda() {
                                 </div>
                               )}
                               {pos.height > 40 && layout.totalCols <= 3 && (
-                                <div className="text-[8px] opacity-70 truncate mt-0.5">
+                                <div className="text-[10px] opacity-80 truncate mt-0.5">
                                   {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
                                 </div>
                               )}
