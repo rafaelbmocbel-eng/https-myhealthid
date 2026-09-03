@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ganharXP } from '@/lib/ganharXP';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +68,7 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
         await (supabase as any).from('plano_ia_treino_feito')
           .upsert({ paciente_id: pacienteId, sessao_key: key, data: hojeStr() }, { onConflict: 'paciente_id,sessao_key,data' });
         // XP real (1x por sessão/dia)
-        void (supabase as any).rpc('ganhar_xp', { p_paciente_id: pacienteId, p_chave: `treino-ia:${key}:${hojeStr()}`, p_xp: 25 });
+        ganharXP(pacienteId, `treino-ia:${key}:${hojeStr()}`, 25);
       }
     },
     onSuccess: (_, { jaFeito }) => {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ganharXP } from '@/lib/ganharXP';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -382,9 +383,7 @@ export default function PacienteMetasDesafios({ pacienteId, soLeitura = false }:
               .upsert({ paciente_id: pacienteId, missao_key: id, data: hojeStr }, { onConflict: 'paciente_id,missao_key,data' });
             // XP REAL: credita a carteira uma única vez por missão/dia (chave única no banco)
             const xpMissao = missoesSaude.find(m => m.id === id)?.xpRecompensa || 10;
-            void (supabase as any).rpc('ganhar_xp', {
-              p_paciente_id: pacienteId, p_chave: `missao:${id}:${hojeStr}`, p_xp: xpMissao,
-            });
+            ganharXP(pacienteId, `missao:${id}:${hojeStr}`, xpMissao);
           }
         } catch { /* fallback: fica só no localStorage */ }
       })();
@@ -513,9 +512,7 @@ export default function PacienteMetasDesafios({ pacienteId, soLeitura = false }:
       seg.setDate(now.getDate() - ((now.getDay() + 6) % 7));
       const weekKey = seg.toISOString().split('T')[0];
       (soLeitura ? [] : metasList.filter(m => m.concluida)).forEach(m => {
-        void (supabase as any).rpc('ganhar_xp', {
-          p_paciente_id: pacienteId, p_chave: `meta:${m.id}:${weekKey}`, p_xp: m.xpRecompensa,
-        });
+        ganharXP(pacienteId, `meta:${m.id}:${weekKey}`, m.xpRecompensa);
       });
     };
 

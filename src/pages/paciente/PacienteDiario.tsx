@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { ganharXP } from '@/lib/ganharXP';
 import { gerarNotaDiario } from '@/utils/prontuarioAutoNotes';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
@@ -117,9 +118,7 @@ export default function PacienteDiario() {
     if (!error) {
       // XP REAL: +10 por dia de diário (deduplicado no banco)
       const hoje = hojeLocalISO();
-      void (supabase as any).rpc('ganhar_xp', {
-        p_paciente_id: paciente.id, p_chave: `diario:${hoje}`, p_xp: 10,
-      });
+      ganharXP(paciente.id, `diario:${hoje}`, 10);
     }
 
     if (error) {

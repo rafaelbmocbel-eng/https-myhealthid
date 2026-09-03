@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { ganharXP } from '@/lib/ganharXP';
 import { cn } from '@/lib/utils';
 import {
   Sparkles, Target, CheckCircle2, ChevronRight, Zap,
@@ -133,9 +134,7 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId, soLeitura = fa
     // XP REAL via ganhar_xp — idempotente (1x por dia) e sem corrida de escrita
     if (user?.id) {
       const hoje = new Date().toISOString().split('T')[0];
-      void (supabase as any).rpc('ganhar_xp', {
-        p_paciente_id: pacienteId, p_chave: `desafio:${hoje}`, p_xp: desafio.xp,
-      });
+      ganharXP(pacienteId, `desafio:${hoje}`, desafio.xp);
     }
   };
 

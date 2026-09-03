@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { ganharXP } from '@/lib/ganharXP';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
@@ -225,9 +226,7 @@ export default function PacienteExercicios() {
     if (!error && pacienteId) {
       // XP REAL: +15 por dia com treino concluído (deduplicado no banco)
       const hoje = hojeLocalISO();
-      void (supabase as any).rpc('ganhar_xp', {
-        p_paciente_id: pacienteId, p_chave: `treino:${hoje}`, p_xp: 15,
-      });
+      ganharXP(pacienteId, `treino:${hoje}`, 15);
     }
 
     if (error) {

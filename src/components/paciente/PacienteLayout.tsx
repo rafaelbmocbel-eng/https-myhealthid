@@ -5,11 +5,10 @@ import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
   LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, TrendingUp,
   Wallet, Watch, Ticket, MessageSquare, MoreHorizontal, X,
-  ChevronRight, Lock, Users, Activity, Lightbulb, ArrowLeft,
+  ChevronRight, Users, Activity, Lightbulb, ArrowLeft,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
-import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 import { cn } from '@/lib/utils';
 import {
   Breadcrumb,
@@ -53,7 +52,6 @@ export default function PacienteLayout({ children }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const notifications = usePacienteNotifications(user?.id);
-  const { isFree } = useWellnessAccess();
   const [maisOpen, setMaisOpen] = useState(false);
 
   const primaryItems = useMemo(() => MOBILE_PRIMARY.map(i => navItems[i]), []);
@@ -132,9 +130,6 @@ export default function PacienteLayout({ children }: Props) {
               >
                 <item.icon className="h-4 w-4 shrink-0" />
                 <span className="truncate flex-1">{item.label}</span>
-                {item.premium && isFree && (
-                  <Lock className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-primary-foreground/70' : 'text-muted-foreground/50')} />
-                )}
                 {badge > 0 && (
                   <span className={cn(
                     'min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold',
@@ -305,9 +300,6 @@ export default function PacienteLayout({ children }: Props) {
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1 text-[13px] leading-tight">{item.label}</span>
-                          {item.premium && isFree && (
-                            <Lock className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-                          )}
                           {badge > 0 && (
                             <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
                               {badge}
