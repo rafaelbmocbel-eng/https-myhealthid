@@ -266,6 +266,8 @@ export default function PacienteDiario() {
                       <button
                         key={v}
                         onClick={() => setMood(v)}
+                        aria-label={MOOD_LABELS[v - 1]}
+                        title={MOOD_LABELS[v - 1]}
                         className={`flex-1 py-2 rounded-xl text-center text-xl transition-all ${
                           mood === v
                             ? 'bg-primary/10 ring-2 ring-primary scale-110'
@@ -291,7 +293,7 @@ export default function PacienteDiario() {
                     step={1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+                  <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
                     <span>Sem dor</span>
                     <span>Máxima</span>
                   </div>
@@ -332,7 +334,7 @@ export default function PacienteDiario() {
                     step={0.5}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+                  <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
                     <span>0h</span>
                     <span>14h</span>
                   </div>
@@ -468,7 +470,7 @@ function SummaryMini({ icon, label, value, color }: { icon: React.ReactNode; lab
       <CardContent className="p-2 text-center">
         <div className={`mx-auto mb-0.5 ${color}`}>{icon}</div>
         <span className="text-sm font-black text-foreground block">{value}</span>
-        <span className="text-[9px] text-muted-foreground">{label}</span>
+        <span className="text-[11px] text-muted-foreground">{label}</span>
       </CardContent>
     </Card>
   );

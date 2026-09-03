@@ -116,7 +116,7 @@ export default function VitrineConfig() {
         vitrine_especialidades: data.vitrine_especialidades,
         vitrine_convenios: data.vitrine_convenios,
         vitrine_cidade: data.vitrine_cidade || null,
-        vitrine_valor_sessao: data.vitrine_valor_sessao ? parseFloat(data.vitrine_valor_sessao) : null,
+        vitrine_valor_sessao: data.vitrine_valor_sessao ? parseFloat(String(data.vitrine_valor_sessao).replace(',', '.')) : null,
         vitrine_foto_url: data.vitrine_foto_url || null,
         vitrine_modalidade: data.vitrine_modalidade,
       };
@@ -278,10 +278,10 @@ export default function VitrineConfig() {
         <div>
           <Label>Valor da sessão (R$)</Label>
           <Input
-            type="number"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={form.vitrine_valor_sessao}
+            onFocus={(e) => e.currentTarget.select()}
             onChange={(e) => setForm((f) => ({ ...f, vitrine_valor_sessao: e.target.value }))}
             placeholder="Ex: 150"
           />

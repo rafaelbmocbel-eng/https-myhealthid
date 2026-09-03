@@ -27,13 +27,13 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Sobre a sua dor</h2>
-                <p className="text-gray-500">Isso nos ajuda a entender a "natureza" da sua dor.</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Sobre a sua dor</h2>
+                <p className="text-muted-foreground">Isso nos ajuda a entender a "natureza" da sua dor.</p>
             </div>
 
             <div className="space-y-8">
                 <div className="space-y-4">
-                    <Label className="text-base font-bold text-gray-800">Qual é a intensidade da sua dor agora (neste exato momento)?</Label>
+                    <Label className="text-base font-bold text-foreground">Qual é a intensidade da sua dor agora (neste exato momento)?</Label>
                     <div className="px-2 pt-2">
                         <Slider
                             defaultValue={[data.bloco_2_pain_now || 0]}
@@ -41,16 +41,16 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                             step={1}
                             onValueChange={(v) => updateData({ bloco_2_pain_now: v[0] })}
                         />
-                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                        <div className="flex justify-between text-xs font-bold text-muted-foreground mt-2 uppercase tracking-wider">
                             <span>0 (Nenhuma Dor)</span>
                             <span>10 (Pior dor imaginável)</span>
                         </div>
                     </div>
-                    <div className="text-center font-black text-3xl text-primary mt-2">{data.bloco_2_pain_now || 0} <span className="text-xl text-gray-400 font-bold">/ 10</span></div>
+                    <div className="text-center font-black text-3xl text-primary mt-2">{data.bloco_2_pain_now || 0} <span className="text-xl text-muted-foreground font-bold">/ 10</span></div>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">Qual foi a pior intensidade da dor nos últimos 7 dias?</Label>
+                    <Label className="text-base font-bold text-foreground">Qual foi a pior intensidade da dor nos últimos 7 dias?</Label>
                     <div className="px-2 pt-2">
                         <Slider
                             defaultValue={[data.bloco_2_pain_max || 0]}
@@ -58,19 +58,19 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                             step={1}
                             onValueChange={(v) => updateData({ bloco_2_pain_max: v[0] })}
                         />
-                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                        <div className="flex justify-between text-xs font-bold text-muted-foreground mt-2 uppercase tracking-wider">
                             <span>0 (Nenhuma Dor)</span>
                             <span>10 (Pior dor imaginável)</span>
                         </div>
                     </div>
-                    <div className="text-center font-black text-3xl text-primary mt-2">{data.bloco_2_pain_max || 0} <span className="text-xl text-gray-400 font-bold">/ 10</span></div>
+                    <div className="text-center font-black text-3xl text-primary mt-2">{data.bloco_2_pain_max || 0} <span className="text-xl text-muted-foreground font-bold">/ 10</span></div>
                 </div>
 
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
-                        <Label className="text-base font-bold text-gray-800 flex items-center gap-2">Outros sintomas</Label>
-                        <p className="text-sm font-medium text-gray-700 mt-1">Por favor, responda com atenção.</p>
-                        <p className="text-sm text-gray-500 mt-1">Você apresentou algum destes sintomas nas últimas semanas, junto com a sua dor atual?</p>
+                        <Label className="text-base font-bold text-foreground flex items-center gap-2">Outros sintomas</Label>
+                        <p className="text-sm font-medium text-foreground mt-1">Por favor, responda com atenção.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Você apresentou algum destes sintomas nas últimas semanas, junto com a sua dor atual?</p>
                     </div>
 
                     <div className="space-y-3 bg-red-50/40 p-5 rounded-xl border border-red-100/50">
@@ -89,7 +89,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                                     checked={!!(data.bloco_2_red_flags?.[flag.id])}
                                     onCheckedChange={(c) => handleRedFlagChange(flag.id, !!c)}
                                 />
-                                <Label htmlFor={`rf-${flag.id}`} className={`font-semibold cursor-pointer text-sm leading-tight mt-0.5 ${flag.id === 'none' ? 'text-green-700' : 'text-gray-700'}`}>
+                                <Label htmlFor={`rf-${flag.id}`} className={`font-semibold cursor-pointer text-sm leading-tight mt-0.5 ${flag.id === 'none' ? 'text-green-700' : 'text-foreground'}`}>
                                     {flag.label}
                                 </Label>
                             </div>
@@ -99,8 +99,8 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
-                        <Label className="text-base font-bold text-gray-800">Com que frequência você sente dor?</Label>
-                        <p className="text-sm text-gray-500 mt-1">Qual a frequência com que a dor aparece?</p>
+                        <Label className="text-base font-bold text-foreground">Com que frequência você sente dor?</Label>
+                        <p className="text-sm text-muted-foreground mt-1">Qual a frequência com que a dor aparece?</p>
                     </div>
                     <RadioGroup
                         value={data.bloco_2_pain_frequency || ''}
@@ -128,8 +128,8 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
-                        <Label className="text-base font-bold text-gray-800">Quando a dor é pior?</Label>
-                        <p className="text-sm text-gray-500 mt-1">Em qual período do dia a dor costuma ser mais forte?</p>
+                        <Label className="text-base font-bold text-foreground">Quando a dor é pior?</Label>
+                        <p className="text-sm text-muted-foreground mt-1">Em qual período do dia a dor costuma ser mais forte?</p>
                     </div>
                     <RadioGroup
                         value={data.bloco_2_worst_time || ''}
@@ -146,8 +146,8 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
-                        <Label className="text-base font-bold text-gray-800">Qual é seu padrão temporal e mecânico?</Label>
-                        <p className="text-sm text-gray-500 mt-1">Como o seu corpo se comporta perante a dor? (Marque as aplicáveis)</p>
+                        <Label className="text-base font-bold text-foreground">Qual é seu padrão temporal e mecânico?</Label>
+                        <p className="text-sm text-muted-foreground mt-1">Como o seu corpo se comporta perante a dor? (Marque as aplicáveis)</p>
                     </div>
                     <div className="space-y-3 p-5 bg-muted/20 rounded-xl border border-muted/50">
                         {[
@@ -166,7 +166,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                                     <Label htmlFor={`pat-${pattern.id}`} className="font-bold cursor-pointer text-sm">
                                         {pattern.label}
                                     </Label>
-                                    <p className="text-xs text-gray-600 leading-tight">{pattern.desc}</p>
+                                    <p className="text-xs text-muted-foreground leading-tight">{pattern.desc}</p>
                                 </div>
                             </div>
                         ))}

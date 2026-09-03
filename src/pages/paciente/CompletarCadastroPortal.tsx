@@ -200,21 +200,21 @@ function CompletarCadastroPortalInner() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Nome *</Label>
-                <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} required className="text-[16px] sm:text-sm" />
+                <Input autoCapitalize="words" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} required className="text-[16px] sm:text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Sobrenome</Label>
-                <Input value={form.sobrenome} onChange={e => setForm(f => ({ ...f, sobrenome: e.target.value }))} className="text-[16px] sm:text-sm" />
+                <Input autoCapitalize="words" value={form.sobrenome} onChange={e => setForm(f => ({ ...f, sobrenome: e.target.value }))} className="text-[16px] sm:text-sm" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">WhatsApp *</Label>
-                <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: maskPhone(e.target.value) }))} required className="text-[16px] sm:text-sm" />
+                <Input type="tel" inputMode="tel" value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: maskPhone(e.target.value) }))} required className="text-[16px] sm:text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">CPF</Label>
-                <Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))} className="text-[16px] sm:text-sm" />
+                <Input inputMode="numeric" value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))} className="text-[16px] sm:text-sm" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -242,6 +242,7 @@ function CompletarCadastroPortalInner() {
             <div className="space-y-1">
               <Label className="text-xs">CEP</Label>
               <Input
+                inputMode="numeric"
                 value={form.cep}
                 onChange={e => {
                   const masked = maskCEP(e.target.value);
@@ -259,7 +260,7 @@ function CompletarCadastroPortalInner() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Nº</Label>
-                <Input value={form.endereco_numero} onChange={e => setForm(f => ({ ...f, endereco_numero: e.target.value }))} className="text-[16px] sm:text-sm" />
+                <Input inputMode="numeric" value={form.endereco_numero} onChange={e => setForm(f => ({ ...f, endereco_numero: e.target.value }))} className="text-[16px] sm:text-sm" />
               </div>
             </div>
             <div className="space-y-1">
@@ -307,7 +308,7 @@ function CompletarCadastroPortalInner() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Nome</Label>
-                <Input value={form.contato_emergencia_nome} onChange={e => setForm(f => ({ ...f, contato_emergencia_nome: e.target.value }))} className="text-[16px] sm:text-sm" />
+                <Input autoCapitalize="words" value={form.contato_emergencia_nome} onChange={e => setForm(f => ({ ...f, contato_emergencia_nome: e.target.value }))} className="text-[16px] sm:text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Parentesco</Label>
@@ -316,7 +317,7 @@ function CompletarCadastroPortalInner() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Telefone</Label>
-              <Input value={form.contato_emergencia_telefone} onChange={e => setForm(f => ({ ...f, contato_emergencia_telefone: maskPhone(e.target.value) }))} className="text-[16px] sm:text-sm" />
+              <Input type="tel" inputMode="tel" value={form.contato_emergencia_telefone} onChange={e => setForm(f => ({ ...f, contato_emergencia_telefone: maskPhone(e.target.value) }))} className="text-[16px] sm:text-sm" />
             </div>
           </section>
 

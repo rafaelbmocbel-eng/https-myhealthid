@@ -1225,7 +1225,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Carteirinha (matrícula)</label>
-              <Input value={d.matricula} onChange={(e) => set('matricula', e.target.value)} placeholder="nº do cartão CASSI" />
+              <Input inputMode="numeric" value={d.matricula} onChange={(e) => set('matricula', e.target.value)} placeholder="nº do cartão CASSI" />
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Responsável técnico</label>
@@ -1242,12 +1242,12 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Dias de tratamento</label>
-              <Input type="number" min={0} value={d.sessoes_autorizadas} onChange={(e) => set('sessoes_autorizadas', parseInt(e.target.value) || 0)} />
+              <Input type="number" inputMode="numeric" min={0} onFocus={(e) => e.currentTarget.select()} value={d.sessoes_autorizadas} onChange={(e) => set('sessoes_autorizadas', parseInt(e.target.value) || 0)} />
               <p className="text-[10px] text-muted-foreground mt-0.5">Sem contar a avaliação</p>
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sessões realizadas</label>
-              <Input type="number" min={0}
+              <Input type="number" inputMode="numeric" min={0}
                 value={d.sessoes_realizadas}
                 onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => set('sessoes_realizadas', parseInt(e.target.value) || 0)} />
@@ -1296,7 +1296,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
                       <span className="text-[11px] text-muted-foreground w-[5.5rem] text-right shrink-0">1 dia extra</span>
                     ) : (
                       <div className="flex items-center gap-1 w-[5.5rem] shrink-0">
-                        <Input type="number" min={0} className="h-8 text-sm tabular-nums" value={sesCod[c.codigo] ?? ''} onChange={(e) => setQtd(c.codigo, e.target.value)} />
+                        <Input type="number" inputMode="numeric" min={0} onFocus={(e) => e.currentTarget.select()} className="h-8 text-sm tabular-nums" value={sesCod[c.codigo] ?? ''} onChange={(e) => setQtd(c.codigo, e.target.value)} />
                         <span className="text-[10px] text-muted-foreground">sess.</span>
                       </div>
                     ))}
@@ -1927,7 +1927,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
           )}
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Carteirinha CASSI</label>
-            <Input value={f.carteirinha} onChange={(e) => set('carteirinha', e.target.value)} placeholder="nº do cartão CASSI" />
+            <Input inputMode="numeric" value={f.carteirinha} onChange={(e) => set('carteirinha', e.target.value)} placeholder="nº do cartão CASSI" />
           </div>
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Diagnóstico médico</label>
@@ -1990,11 +1990,11 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Telefone</label>
-              <Input value={f.telefone} onChange={(e) => set('telefone', e.target.value)} placeholder="DDD + número" />
+              <Input type="tel" inputMode="tel" value={f.telefone} onChange={(e) => set('telefone', e.target.value)} placeholder="DDD + número" />
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">E-mail</label>
-              <Input value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="para o portal" />
+              <Input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="para o portal" />
             </div>
           </div>
           <p className="text-[10px] text-muted-foreground">{alvoId ? 'Passa a ser CASSI e aparece no Controle. Mantém o histórico e o cadastro que já tinha no app.' : 'Entra como CASSI, ativo. Os códigos da guia você define ao criar a guia.'}</p>
@@ -2406,7 +2406,7 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
               {it.sel && (
                 <div className="px-2.5 pb-2.5 space-y-1.5">
                   <div className="grid grid-cols-2 gap-1.5">
-                    <Input className={`h-8 text-xs ${semCart ? 'border-rose-400 dark:border-rose-700' : ''}`}
+                    <Input inputMode="numeric" className={`h-8 text-xs ${semCart ? 'border-rose-400 dark:border-rose-700' : ''}`}
                       value={it.carteirinha} onChange={(e) => upd(it.id, { carteirinha: e.target.value })} placeholder="Carteirinha (nº CASSI)" />
                     <Input className="h-8 text-xs" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="Diagnóstico" />
                   </div>

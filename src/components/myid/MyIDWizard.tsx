@@ -187,7 +187,7 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
                 </div>
             )}
 
-            <Card className="border-0 shadow-none sm:border sm:shadow-sm sm:bg-white bg-transparent">
+            <Card className="border-0 shadow-none sm:border sm:shadow-sm sm:bg-card bg-transparent">
                 <CardContent className="p-0 sm:p-6 lg:p-8">
 
                     {step === 0 && (
@@ -197,13 +197,13 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                 </svg>
                             </div>
-                            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900">🔍 BEM-VINDO AO MyID</h1>
+                            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground">🔍 BEM-VINDO AO MyID</h1>
                             <p className="text-2xl font-semibold text-primary max-w-2xl mx-auto">
                                 Sua Impressão Digital Sistêmica Decodificada
                             </p>
-                            <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                            <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                                 Olá! Você está iniciando uma jornada de autoconhecimento profundo. <br /><br />
-                                O MyID é uma <strong className="text-gray-900">FOTOGRAFIA COMPLETA</strong> de como seu corpo processa carga, dor e recuperação NESTE EXATO MOMENTO.
+                                O MyID é uma <strong className="text-foreground">FOTOGRAFIA COMPLETA</strong> de como seu corpo processa carga, dor e recuperação NESTE EXATO MOMENTO.
                             </p>
 
                             {/* Fases */}
@@ -233,7 +233,7 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
                             <div className="bg-muted/30 p-6 rounded-xl text-left max-w-2xl mx-auto space-y-6 shadow-sm border border-muted">
                                 <div>
                                     <h3 className="font-bold text-lg text-primary mb-3">📌 O QUE VOCÊ VAI DESCOBRIR:</h3>
-                                    <ul className="space-y-2 text-sm text-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                                    <ul className="space-y-2 text-sm text-foreground grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                                         <li className="flex items-start gap-2"><span className="text-primary font-bold">✓</span> Quanto de "demanda" seu corpo está recebendo</li>
                                         <li className="flex items-start gap-2"><span className="text-primary font-bold">✓</span> Quanto de "capacidade de suporte" você tem</li>
                                         <li className="flex items-start gap-2"><span className="text-primary font-bold">✓</span> Como suas EMOÇÕES amplificam (ou reduzem) a dor</li>
@@ -253,21 +253,21 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
                                         <span className="text-2xl">⏱️</span>
                                         <div>
                                             <span className="block font-bold">TEMPO TOTAL:</span>
-                                            <span className="text-sm text-gray-600">10–12 minutos · pode pausar entre as fases</span>
+                                            <span className="text-sm text-muted-foreground">10–12 minutos · pode pausar entre as fases</span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-2xl">🔒</span>
                                         <div>
                                             <span className="block font-bold">PRIVACIDADE:</span>
-                                            <span className="text-sm text-gray-600">Seus dados são confidenciais e criptografados</span>
+                                            <span className="text-sm text-muted-foreground">Seus dados são confidenciais e criptografados</span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-2xl">📊</span>
                                         <div>
                                             <span className="block font-bold">RESULTADO:</span>
-                                            <span className="text-sm text-gray-600">Um número que fala TUDO sobre você</span>
+                                            <span className="text-sm text-muted-foreground">Um número que fala TUDO sobre você</span>
                                         </div>
                                     </div>
                                 </div>
@@ -283,12 +283,12 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
                                 </p>
                                 <div className="bg-red-50 p-3 rounded text-red-800 text-sm font-medium border border-red-100 flex items-start gap-3 mt-4">
                                     <span className="text-xl">⚠️</span>
-                                    <span>Se você estiver em crise, dor extrema, ou febre: <strong>PROCURE UM MÉDICO</strong>. Este questionário não substitui atendimento profissional urgênte.</span>
+                                    <span>Se você estiver em crise, dor extrema, ou febre: <strong>PROCURE UM MÉDICO</strong>. Este questionário não substitui atendimento profissional urgente.</span>
                                 </div>
                             </div>
 
                             <div className="pt-8 space-y-4">
-                                <h3 className="text-xl font-bold text-gray-800">🚀 VAMOS COMEÇAR?</h3>
+                                <h3 className="text-xl font-bold text-foreground">🚀 VAMOS COMEÇAR?</h3>
                                 <Button size="lg" className="w-full sm:w-auto text-lg px-12 h-14 rounded-full" onClick={handleNext}>
                                     INICIAR QUESTIONÁRIO
                                 </Button>

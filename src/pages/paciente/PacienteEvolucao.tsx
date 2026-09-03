@@ -396,7 +396,7 @@ export default function PacienteEvolucao() {
                       </Badge>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-2 italic">{projection.message}</p>
-                    <p className="text-[9px] text-muted-foreground/60 mt-1">{projection.disclaimer}</p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-1">{projection.disclaimer}</p>
                   </CardContent>
                 </Card>
               )}

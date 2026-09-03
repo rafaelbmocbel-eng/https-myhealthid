@@ -1240,7 +1240,7 @@ export default function Pacientes() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Telefone</Label>
-                <Input placeholder="(11) 98765-4321" value={form.telefone}
+                <Input type="tel" inputMode="tel" placeholder="(11) 98765-4321" value={form.telefone}
                   onChange={e => setForm(f => ({ ...f, telefone: maskPhone(e.target.value) }))}
                   maxLength={15} />
               </div>
@@ -1248,6 +1248,7 @@ export default function Pacientes() {
                 <Label>Data de Nascimento</Label>
                 <Input
                   type="text"
+                  inputMode="numeric"
                   placeholder="dd/mm/aaaa"
                   maxLength={10}
                   value={form.data_nascimento ? (() => {
@@ -1296,7 +1297,7 @@ export default function Pacientes() {
               </div>
               <div className="space-y-1">
                 <Label>CPF</Label>
-                <Input placeholder="123.456.789-00" value={form.cpf}
+                <Input inputMode="numeric" placeholder="123.456.789-00" value={form.cpf}
                   onChange={e => setForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))}
                   maxLength={14} />
               </div>
@@ -1308,7 +1309,7 @@ export default function Pacientes() {
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1 col-span-1">
                   <Label className="text-xs">CEP</Label>
-                  <Input placeholder="00000-000" value={form.cep}
+                  <Input inputMode="numeric" placeholder="00000-000" value={form.cep}
                     onChange={async e => {
                       const masked = maskCEP(e.target.value);
                       setForm(f => ({ ...f, cep: masked }));

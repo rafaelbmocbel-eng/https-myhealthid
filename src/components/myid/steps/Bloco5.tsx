@@ -27,16 +27,16 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Seu estilo de vida</h2>
-                <p className="text-gray-500">Sono, Nutrição, Hidratação e Ergonomia (Pilares de Recuperação)</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Seu estilo de vida</h2>
+                <p className="text-muted-foreground">Sono, Nutrição, Hidratação e Ergonomia (Pilares de Recuperação)</p>
             </div>
 
             {/* 5A: Sono */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5A. Sono (Quality Factor)</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary"> Sono</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">5A.1 Quantas horas você dorme por noite? (Ideal 7-9h)</Label>
+                    <Label className="font-semibold"> Quantas horas você dorme por noite? (Ideal 7-9h)</Label>
                     <Input
                         type="number"
                         inputMode="decimal"
@@ -49,7 +49,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">5A.2 Qual a qualidade do seu sono?</Label>
+                    <Label className="font-semibold"> Qual a qualidade do seu sono?</Label>
                     <RadioGroup
                         value={data.bloco_5a_quality?.toString() || ''}
                         onValueChange={(v) => updateData({ bloco_5a_quality: parseInt(v) })}
@@ -64,7 +64,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">5A.3 Com que frequência acorda na calada da noite e não consegue voltar a dormir?</Label>
+                    <Label className="font-semibold"> Com que frequência acorda na calada da noite e não consegue voltar a dormir?</Label>
                     <RadioGroup
                         value={data.bloco_5a_awake || ''}
                         onValueChange={(v) => updateData({ bloco_5a_awake: v })}
@@ -78,8 +78,8 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4 pt-4">
-                    <Label className="font-semibold">5A.4 Você tem algum distúrbio de sono diagnosticado ou suspeito?</Label>
-                    <p className="text-sm text-gray-500">Marque se você sofre frequentemente de algum destes problemas:</p>
+                    <Label className="font-semibold"> Você tem algum distúrbio de sono diagnosticado ou suspeito?</Label>
+                    <p className="text-sm text-muted-foreground">Marque se você sofre frequentemente de algum destes problemas:</p>
                     <div className="space-y-2">
                         {[
                             { id: 'insomnia', label: 'Insônia (dificuldade de pegar no sono ou se manter dormindo)' },
@@ -102,10 +102,10 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
             {/* 5B: Energia */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5B. Energia</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary"> Energia</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">5B.1 Acorda se sentindo cansado (sem energia) mesmo tendo dormido o suficiente?</Label>
+                    <Label className="font-semibold"> Acorda se sentindo cansado (sem energia) mesmo tendo dormido o suficiente?</Label>
                     <RadioGroup
                         value={data.bloco_5b_tired_awake || ''}
                         onValueChange={(v) => updateData({ bloco_5b_tired_awake: v })}
@@ -121,11 +121,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
             {/* 5C: Fatores Psicológicos */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5C. Fatores Psicológicos (Regulação Mental)</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary"> Fatores Psicológicos (Regulação Mental)</h3>
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Qual seu nível de estresse?</Label>
-                    <p className="text-sm text-gray-500">No seu dia a dia (trabalho, família, vida geral), quão estressado você se sente?</p>
+                    <p className="text-sm text-muted-foreground">No seu dia a dia (trabalho, família, vida geral), quão estressado você se sente?</p>
                     <div className="px-2 pt-2">
                         <Input
                             type="range"
@@ -134,17 +134,17 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             onChange={(e) => updateData({ bloco_5c_stress: parseInt(e.target.value) })}
                             className="w-full"
                         />
-                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                        <div className="flex justify-between text-xs font-bold text-muted-foreground mt-2 uppercase tracking-wider">
                             <span>0 (Totalmente Calmo)</span>
                             <span>10 (Estresse Máximo)</span>
                         </div>
-                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_stress || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_stress || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                     </div>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
                     <Label className="font-semibold text-base">Qual é o seu nível de ansiedade?</Label>
-                    <p className="text-sm text-gray-500">O quanto a ansiedade (preocupações com o futuro, agitação constante) afeta você?</p>
+                    <p className="text-sm text-muted-foreground">O quanto a ansiedade (preocupações com o futuro, agitação constante) afeta você?</p>
                     <div className="px-2 pt-2">
                         <Input
                             type="range"
@@ -153,17 +153,17 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             onChange={(e) => updateData({ bloco_5c_anxiety: parseInt(e.target.value) })}
                             className="w-full"
                         />
-                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                        <div className="flex justify-between text-xs font-bold text-muted-foreground mt-2 uppercase tracking-wider">
                             <span>0 (Nenhuma)</span>
                             <span>10 (Ansiedade Extrema)</span>
                         </div>
-                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_anxiety || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_anxiety || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                     </div>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
                     <Label className="font-semibold text-base">Sensação de controle</Label>
-                    <p className="text-sm text-gray-500">Você sente que tem controle sobre o estresse e as pressões da sua vida diária?</p>
+                    <p className="text-sm text-muted-foreground">Você sente que tem controle sobre o estresse e as pressões da sua vida diária?</p>
                     <RadioGroup
                         value={data.bloco_5c_control || ''}
                         onValueChange={(v) => updateData({ bloco_5c_control: v })}
@@ -179,11 +179,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
             {/* 5D: Contexto Social */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5D. Contexto Social</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary"> Contexto Social</h3>
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Estresse no trabalho</Label>
-                    <p className="text-sm text-gray-500">O quanto seu ambiente de trabalho é estressante?</p>
+                    <p className="text-sm text-muted-foreground">O quanto seu ambiente de trabalho é estressante?</p>
                     <div className="flex items-center space-x-2">
                         <Checkbox
                             id="work-stress-na"
@@ -201,18 +201,18 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                                 onChange={(e) => updateData({ bloco_5d_work_stress: parseInt(e.target.value) })}
                                 className="w-full"
                             />
-                            <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                            <div className="flex justify-between text-xs font-bold text-muted-foreground mt-2 uppercase tracking-wider">
                                 <span>0 (Nenhum estresse)</span>
                                 <span>10 (Estresse extremo)</span>
                             </div>
-                            <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_work_stress || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                            <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_work_stress || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                         </div>
                     )}
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
                     <Label className="font-semibold text-base">Conflitos familiares / pessoais</Label>
-                    <p className="text-sm text-gray-500">Tem tido conflitos familiares ou pessoais recentes?</p>
+                    <p className="text-sm text-muted-foreground">Tem tido conflitos familiares ou pessoais recentes?</p>
                     <div className="px-2 pt-2">
                         <Input
                             type="range"
@@ -221,17 +221,17 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             onChange={(e) => updateData({ bloco_5d_family_conflict: parseInt(e.target.value) })}
                             className="w-full"
                         />
-                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                        <div className="flex justify-between text-xs font-bold text-muted-foreground mt-2 uppercase tracking-wider">
                             <span>0 (Nenhum conflito)</span>
                             <span>10 (Conflitos intensos)</span>
                         </div>
-                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_family_conflict || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_family_conflict || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                     </div>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
                     <Label className="font-semibold text-base">Preocupação financeira</Label>
-                    <p className="text-sm text-gray-500">Sua situação financeira te gera preocupação?</p>
+                    <p className="text-sm text-muted-foreground">Sua situação financeira te gera preocupação?</p>
                     <div className="px-2 pt-2">
                         <Input
                             type="range"
@@ -240,11 +240,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             onChange={(e) => updateData({ bloco_5d_financial_worry: parseInt(e.target.value) })}
                             className="w-full"
                         />
-                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                        <div className="flex justify-between text-xs font-bold text-muted-foreground mt-2 uppercase tracking-wider">
                             <span>0 (Nenhuma preocupação)</span>
                             <span>10 (Preocupação extrema)</span>
                         </div>
-                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_financial_worry || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_financial_worry || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                     </div>
                 </div>
             </section>
@@ -255,7 +255,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Tempo sentado contínuo</Label>
-                    <p className="text-sm text-gray-500">Quantas horas por dia fica sentado direto?</p>
+                    <p className="text-sm text-muted-foreground">Quantas horas por dia fica sentado direto?</p>
                     <Input
                         type="number"
                         inputMode="decimal"
@@ -269,7 +269,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Estilo de vida geral</Label>
-                    <p className="text-sm text-gray-500">Qual o seu nível de estilo de vida atual?</p>
+                    <p className="text-sm text-muted-foreground">Qual o seu nível de estilo de vida atual?</p>
                     <RadioGroup
                         value={data.bloco_5e_lifestyle || ''}
                         onValueChange={(v) => updateData({ bloco_5e_lifestyle: v })}
@@ -285,7 +285,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Tipo de exercício que faz</Label>
-                    <p className="text-sm text-gray-500">Que tipo de exercício você pratica REGULARMENTE? (Marque TODOS que se aplicam)</p>
+                    <p className="text-sm text-muted-foreground">Que tipo de exercício você pratica REGULARMENTE? (Marque TODOS que se aplicam)</p>
                     <div className="space-y-2">
                         {[
                             { id: 'none', label: 'NENHUM / SEM EXERCÍCIO' },
@@ -309,7 +309,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Intensidade do exercício</Label>
-                    <p className="text-sm text-gray-500">Quando você se exercita, qual é a INTENSIDADE?</p>
+                    <p className="text-sm text-muted-foreground">Quando você se exercita, qual é a INTENSIDADE?</p>
                     <RadioGroup
                         value={data.bloco_5e_intensity || ''}
                         onValueChange={(v) => updateData({ bloco_5e_intensity: v })}
@@ -330,7 +330,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Ingestão de água diária</Label>
-                    <p className="text-sm text-gray-500">Quantos LITROS DE ÁGUA você bebe por dia? (Apenas água pura)</p>
+                    <p className="text-sm text-muted-foreground">Quantos LITROS DE ÁGUA você bebe por dia? (Apenas água pura)</p>
                     <Input
                         type="number"
                         inputMode="decimal"
@@ -344,7 +344,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Cor da urina</Label>
-                    <p className="text-sm text-gray-500">Qual é a COR da sua URINA na maior parte do dia?</p>
+                    <p className="text-sm text-muted-foreground">Qual é a COR da sua URINA na maior parte do dia?</p>
                     <RadioGroup
                         value={data.bloco_5f_urine_color || ''}
                         onValueChange={(v) => updateData({ bloco_5f_urine_color: v })}
@@ -359,7 +359,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Frequência de micção</Label>
-                    <p className="text-sm text-gray-500">Quantas vezes você URINA por dia? (Normal: 6-8 vezes)</p>
+                    <p className="text-sm text-muted-foreground">Quantas vezes você URINA por dia? (Normal: 6-8 vezes)</p>
                     <Input
                         type="number"
                         inputMode="numeric"
@@ -373,7 +373,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Sintomas de desidratação</Label>
-                    <p className="text-sm text-gray-500">Você sente com frequência algum disto?</p>
+                    <p className="text-sm text-muted-foreground">Você sente com frequência algum disto?</p>
                     <div className="space-y-2">
                         <div className="flex items-center space-x-2">
                             <Checkbox
@@ -409,7 +409,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Qualidade nutricional geral</Label>
-                    <p className="text-sm text-gray-500">Como você avalia a QUALIDADE da sua alimentação?</p>
+                    <p className="text-sm text-muted-foreground">Como você avalia a QUALIDADE da sua alimentação?</p>
                     <RadioGroup
                         value={data.bloco_5g_quality || ''}
                         onValueChange={(v) => updateData({ bloco_5g_quality: v })}
@@ -425,7 +425,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Frequência de frutas e verduras</Label>
-                    <p className="text-sm text-gray-500">Quantas PORÇÕES de frutas/verduras você come por dia?</p>
+                    <p className="text-sm text-muted-foreground">Quantas PORÇÕES de frutas/verduras você come por dia?</p>
                     <Input
                         type="number"
                         inputMode="numeric"
@@ -439,7 +439,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Ingestão de proteína</Label>
-                    <p className="text-sm text-gray-500">Você consome PROTEÍNA em TODAS as refeições?</p>
+                    <p className="text-sm text-muted-foreground">Você consome PROTEÍNA em TODAS as refeições?</p>
                     <RadioGroup
                         value={data.bloco_5g_protein || ''}
                         onValueChange={(v) => updateData({ bloco_5g_protein: v })}
@@ -454,7 +454,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Alimentos inflamatórios</Label>
-                    <p className="text-sm text-gray-500">Com que frequência você consome alimentos altamente inflamatórios? (Açúcar, fritura, álcool)</p>
+                    <p className="text-sm text-muted-foreground">Com que frequência você consome alimentos altamente inflamatórios? (Açúcar, fritura, álcool)</p>
                     <RadioGroup
                         value={data.bloco_5g_inflammatory || ''}
                         onValueChange={(v) => updateData({ bloco_5g_inflammatory: v })}
@@ -470,7 +470,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Deficiências nutricionais conhecidas</Label>
-                    <p className="text-sm text-gray-500">Você tem diagnóstico de alguma deficiência nutricional?</p>
+                    <p className="text-sm text-muted-foreground">Você tem diagnóstico de alguma deficiência nutricional?</p>
                     <RadioGroup
                         value={data.bloco_5g_deficiency || ''}
                         onValueChange={(v) => updateData({ bloco_5g_deficiency: v })}
@@ -490,7 +490,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Ergonomia no trabalho</Label>
-                    <p className="text-sm text-gray-500">Como é seu AMBIENTE DE TRABALHO? (Se trabalha em escritório)</p>
+                    <p className="text-sm text-muted-foreground">Como é seu AMBIENTE DE TRABALHO? (Se trabalha em escritório)</p>
                     <RadioGroup
                         value={data.bloco_5h_workspace || ''}
                         onValueChange={(v) => updateData({ bloco_5h_workspace: v })}
@@ -507,7 +507,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Tempo sentado contínuo</Label>
-                    <p className="text-sm text-gray-500">Qual é o MÁXIMO DE TEMPO que você fica sentado sem pausar?</p>
+                    <p className="text-sm text-muted-foreground">Qual é o MÁXIMO DE TEMPO que você fica sentado sem pausar?</p>
                     <div className="flex items-center gap-2">
                         <Input
                             type="number"
@@ -524,7 +524,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Posição de dormir</Label>
-                    <p className="text-sm text-gray-500">Como você DORME (posição habitual)?</p>
+                    <p className="text-sm text-muted-foreground">Como você DORME (posição habitual)?</p>
                     <RadioGroup
                         value={data.bloco_5h_sleep_position || ''}
                         onValueChange={(v) => updateData({ bloco_5h_sleep_position: v })}
@@ -539,7 +539,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Qualidade do colchão e travesseiro </Label>
-                    <p className="text-sm text-gray-500">Como está a QUALIDADE do seu colchão?</p>
+                    <p className="text-sm text-muted-foreground">Como está a QUALIDADE do seu colchão?</p>
                     <RadioGroup
                         value={data.bloco_5h_mattress || ''}
                         onValueChange={(v) => updateData({ bloco_5h_mattress: v })}
@@ -555,7 +555,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
                 <div className="space-y-4">
                     <Label className="font-semibold text-base">Hábitos posturais prejudiciais </Label>
-                    <p className="text-sm text-gray-500">Você faz algum destes hábitos que PREJUDICAM postura?</p>
+                    <p className="text-sm text-muted-foreground">Você faz algum destes hábitos que PREJUDICAM postura?</p>
                     <div className="space-y-2">
                         {[
                             { id: 'phone', label: 'MEXE NO TELEFONE (com pescoço inclinado para baixo)' },

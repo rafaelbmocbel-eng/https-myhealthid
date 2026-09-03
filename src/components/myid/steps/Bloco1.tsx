@@ -23,8 +23,8 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">O que mudou nos últimos 30 dias?</h2>
-                <p className="text-gray-500">
+                <h2 className="text-2xl font-bold text-foreground mb-2">O que mudou nos últimos 30 dias?</h2>
+                <p className="text-muted-foreground">
                     Seu corpo detecta MUDANÇAS como "ameaças potenciais".<br />
                     Seu corpo ADORA rotina. Quando algo muda, ele entra em alerta. Este bloco detecta o que disparou o problema.
                 </p>
@@ -32,8 +32,8 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
 
             <div className="space-y-8">
                 <div className="space-y-3">
-                    <Label className="text-base font-bold text-gray-800">Qual é sua queixa principal?</Label>
-                    <p className="text-sm text-gray-500 mb-2">Descreva brevemente o que te trouxe aqui:</p>
+                    <Label className="text-base font-bold text-foreground">Qual é sua queixa principal?</Label>
+                    <p className="text-sm text-muted-foreground mb-2">Descreva brevemente o que te trouxe aqui:</p>
                     <Input
                         placeholder="Ex: Dor nas costas ao acordar, dor no joelho ao correr, dor de cabeça constante..."
                         value={data.bloco_1_queixa || ''}
@@ -43,14 +43,14 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="text-base font-bold text-gray-800">Nas últimas 4 semanas, houve alguma destas mudanças?</Label>
-                    <p className="text-sm text-gray-500 mb-2">Marque TODAS que se aplicam:</p>
+                    <Label className="text-base font-bold text-foreground">Nas últimas 4 semanas, houve alguma destas mudanças?</Label>
+                    <p className="text-sm text-muted-foreground mb-2">Marque TODAS que se aplicam:</p>
                     <div className="space-y-3 bg-muted/20 p-4 rounded-xl border border-muted">
                         <div className="flex items-start space-x-3">
                             <Checkbox id="change-equip" checked={(data.bloco_1_changes || []).includes('equipment')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'equipment', !!c)} />
                             <div className="space-y-1 mt-0.5">
                                 <Label htmlFor="change-equip" className="font-bold cursor-pointer text-sm">Novo equipamento</Label>
-                                <p className="text-xs text-gray-500">Tênis novo, colchão novo, travesseiro novo, cadeira de trabalho nova, mochila nova, cinto, ou qualquer coisa que sua estrutura usa diariamente</p>
+                                <p className="text-xs text-muted-foreground">Tênis novo, colchão novo, travesseiro novo, cadeira de trabalho nova, mochila nova, cinto, ou qualquer coisa que sua estrutura usa diariamente</p>
                             </div>
                         </div>
 
@@ -58,7 +58,7 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
                             <Checkbox id="change-load" checked={(data.bloco_1_changes || []).includes('load')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'load', !!c)} />
                             <div className="space-y-1 mt-0.5">
                                 <Label htmlFor="change-load" className="font-bold cursor-pointer text-sm">Aumento de carga física</Label>
-                                <p className="text-xs text-gray-500">Começou novo treino, aumentou volume de exercício, novo trabalho mais pesado, competição próxima, aumento de horas na academia, ou atividade inusitada</p>
+                                <p className="text-xs text-muted-foreground">Começou novo treino, aumentou volume de exercício, novo trabalho mais pesado, competição próxima, aumento de horas na academia, ou atividade inusitada</p>
                             </div>
                         </div>
 
@@ -66,7 +66,7 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
                             <Checkbox id="change-posture" checked={(data.bloco_1_changes || []).includes('posture')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'posture', !!c)} />
                             <div className="space-y-1 mt-0.5">
                                 <Label htmlFor="change-posture" className="font-bold cursor-pointer text-sm">Mudança de postura / contexto</Label>
-                                <p className="text-xs text-gray-500">Mais tempo sentado, home office novo, viagem longa, mudança de casa, novo local de trabalho, posição diferente ao dormir</p>
+                                <p className="text-xs text-muted-foreground">Mais tempo sentado, home office novo, viagem longa, mudança de casa, novo local de trabalho, posição diferente ao dormir</p>
                             </div>
                         </div>
 
@@ -74,22 +74,22 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
                             <Checkbox id="change-scare" checked={(data.bloco_1_changes || []).includes('scare')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'scare', !!c)} />
                             <div className="space-y-1 mt-0.5">
                                 <Label htmlFor="change-scare" className="font-bold cursor-pointer text-sm">Susto físico / quase-lesão</Label>
-                                <p className="text-xs text-gray-500">Quase escorregou, movimento "em falso", sensação de "travada" súbita, queda leve, torcida que não evoluiu para lesão completa</p>
+                                <p className="text-xs text-muted-foreground">Quase escorregou, movimento "em falso", sensação de "travada" súbita, queda leve, torcida que não evoluiu para lesão completa</p>
                             </div>
                         </div>
 
                         <div className="flex items-start space-x-3 pt-2">
                             <Checkbox id="change-none" checked={(data.bloco_1_changes || []).includes('none')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'none', !!c)} />
                             <div className="space-y-1 mt-0.5">
-                                <Label htmlFor="change-none" className="font-bold cursor-pointer text-sm text-gray-500">Nenhuma mudança que eu note</Label>
-                                <p className="text-xs text-gray-400">Tudo estava normal e a dor apareceu "do nada"</p>
+                                <Label htmlFor="change-none" className="font-bold cursor-pointer text-sm text-muted-foreground">Nenhuma mudança que eu note</Label>
+                                <p className="text-xs text-muted-foreground">Tudo estava normal e a dor apareceu "do nada"</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="space-y-3">
-                    <Label className="text-base font-bold text-gray-800">Quando exatamente começou?</Label>
+                    <Label className="text-base font-bold text-foreground">Quando exatamente começou?</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="text-sm font-semibold">Tempo aproximado ou Data:</Label>
@@ -111,8 +111,8 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="text-base font-bold text-gray-800">Você já teve lesão parecida antes?</Label>
-                    <p className="text-sm text-gray-500 mb-2">Na mesma região ou lado oposto?</p>
+                    <Label className="text-base font-bold text-foreground">Você já teve lesão parecida antes?</Label>
+                    <p className="text-sm text-muted-foreground mb-2">Na mesma região ou lado oposto?</p>
                     <RadioGroup
                         className="space-y-2"
                         value={data.bloco_1_similar_injury === undefined ? '' : (data.bloco_1_similar_injury ? 'yes' : 'no')}
@@ -169,8 +169,8 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
                 </div>
 
                 <div className="space-y-4 border-t border-muted pt-6">
-                    <Label className="text-base font-bold text-gray-800">Você já fez reabilitação/fisioterapia antes?</Label>
-                    <p className="text-sm text-gray-500 mb-2">Para este problema ou problemas antigos?</p>
+                    <Label className="text-base font-bold text-foreground">Você já fez reabilitação/fisioterapia antes?</Label>
+                    <p className="text-sm text-muted-foreground mb-2">Para este problema ou problemas antigos?</p>
                     <RadioGroup
                         className="space-y-2"
                         value={data.bloco_1_did_physio === undefined ? '' : (data.bloco_1_did_physio ? 'yes' : 'no')}
