@@ -429,7 +429,13 @@ export default function PacienteEvolucao() {
                   <CardContent className="p-8 text-center">
                     <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm font-medium text-muted-foreground">Nenhum registro no prontuário</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">Os registros clínicos aparecerão aqui automaticamente.</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Os registros aparecem sozinhos conforme você usa o app.</p>
+                    <button
+                      onClick={() => { window.location.href = '/paciente/diario'; }}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold active:scale-95"
+                    >
+                      Comece pelo diário →
+                    </button>
                   </CardContent>
                 </Card>
               ) : (
