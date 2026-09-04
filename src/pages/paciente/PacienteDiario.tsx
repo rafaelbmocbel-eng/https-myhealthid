@@ -20,6 +20,8 @@ import { hojeLocalISO } from '@/lib/dataLocal';
 import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { useNavigate } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
@@ -49,6 +51,7 @@ const ENERGY_LABELS = ['Exausto', 'Cansado', 'Normal', 'Energizado', 'Muito ativ
 export default function PacienteDiario() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { estimateEnergyFromSteps } = useHealthSync();
   const [paciente, setPaciente] = useState<PacienteData | null>(null);
   const [logs, setLogs] = useState<DailyLog[]>([]);
@@ -134,7 +137,11 @@ export default function PacienteDiario() {
         sleepHours,
         notes: notes.trim() || undefined,
       });
-      toast({ title: 'Registro salvo! ✅', description: '+10 XP pelo registro diário' });
+      toast({
+        title: 'Registro salvo! ✅ +10 XP',
+        description: 'Seu plano de tratamento está te esperando.',
+        action: <ToastAction altText="Ver meu plano" onClick={() => navigate('/paciente/exercicios')}>Ver plano</ToastAction>,
+      });
       setShowForm(false);
       setMood(3); setPain(0); setEnergy(3); setSleepHours(7); setNotes('');
       fetchData();

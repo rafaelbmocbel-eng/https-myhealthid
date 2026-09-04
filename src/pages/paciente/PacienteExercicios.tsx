@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ToastAction } from '@/components/ui/toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ganharXP } from '@/lib/ganharXP';
@@ -232,7 +233,11 @@ export default function PacienteExercicios() {
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Treino concluído! 💪', description: '+15 XP pelo treino completo' });
+      toast({
+        title: 'Treino concluído! 💪',
+        description: 'Como seu corpo reagiu? Registre no diário.',
+        action: <ToastAction altText="Registrar no diário" onClick={() => navigate('/paciente/diario')}>Registrar</ToastAction>,
+      });
       setActiveSession(null);
       setDoneEx(new Set());
       setRestSec(null);
