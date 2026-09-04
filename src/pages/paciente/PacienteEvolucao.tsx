@@ -412,6 +412,12 @@ export default function PacienteEvolucao() {
                     <p className="text-xs text-muted-foreground/60 mt-1">
                       Quanto mais registros, mais precisa será sua evolução.
                     </p>
+                    <button
+                      onClick={() => { window.location.href = '/paciente/diario'; }}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold active:scale-95"
+                    >
+                      {logs.length === 0 ? 'Fazer meu primeiro registro →' : 'Registrar no diário →'}
+                    </button>
                   </CardContent>
                 </Card>
               )}

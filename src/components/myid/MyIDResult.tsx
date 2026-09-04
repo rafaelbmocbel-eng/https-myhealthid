@@ -472,7 +472,7 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
           {driverDim && (
             <div className="flex items-center gap-1.5 pt-1 border-t border-border/40">
               <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-              <span className="text-xs font-semibold text-primary">Driver primário: {DIMENSION_LABELS[driverDim] || driverDim}</span>
+              <span className="text-xs font-semibold text-primary">Seu principal foco: {DIMENSION_LABELS[driverDim] || driverDim}</span>
               <span className="text-[10px] text-muted-foreground ml-auto">{result?.myid_100?.driver_primario?.percentual_impacto?.toFixed(1)}% impacto</span>
             </div>
           )}
@@ -484,8 +484,7 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Activity className="h-4 w-4 text-muted-foreground" />
-              Perdas por dimensão
+              <Activity className="h-4 w-4 text-muted-foreground" />O que mais está pesando
               <span className="ml-auto text-xs font-normal text-muted-foreground">
                 total −{perdasItems.reduce((s: number, i: PerdaItem) => s + i.perda, 0)} pts
               </span>
@@ -516,7 +515,7 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
       <div>
         <p className="text-sm font-bold px-1 mb-2 flex items-center gap-2">
           <Stethoscope className="h-4 w-4 text-muted-foreground" />
-          Encaminhamentos baseados em evidência
+          Quem pode te ajudar
         </p>
         <div className="space-y-2">
           {top4.map((item: PerdaItem) => {

@@ -80,11 +80,17 @@ export default function PacienteAvatar() {
           {/* Avatar ou placeholders */}
           {semProfissional ? (
             <Card>
-              <CardContent className="p-8 text-center space-y-2">
+              <CardContent className="p-8 text-center space-y-3">
                 <p className="text-sm font-medium text-foreground">Você ainda não está vinculado a um profissional</p>
                 <p className="text-xs text-muted-foreground">
                   Quando seu profissional registrar condições e autorizar a visualização, elas aparecerão aqui.
                 </p>
+                <button
+                  onClick={() => { window.location.href = '/paciente/profissionais'; }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold active:scale-95"
+                >
+                  Encontrar meu profissional →
+                </button>
               </CardContent>
             </Card>
           ) : pacienteId ? (

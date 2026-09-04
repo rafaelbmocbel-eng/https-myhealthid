@@ -285,6 +285,21 @@ export default function PacienteQuestionarios() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Próximo passo após o MyID: completar o perfil com o histórico clínico
+                (é o que monta o avatar). Momento de maior ativação do fluxo. */}
+            {item?.resultado_processado && (
+              <button
+                onClick={() => { setActiveId(null); setViewMode('list'); navigate('/paciente/questionarios?foco=historico'); }}
+                className="w-full mt-3 rounded-xl bg-primary text-primary-foreground p-4 text-left flex items-center gap-3 active:scale-[0.99]"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">Complete seu perfil de saúde</p>
+                  <p className="text-xs opacity-90">Conte doenças, cirurgias e traumas que já teve — é o que monta seu avatar clínico.</p>
+                </div>
+                <span className="text-lg shrink-0">→</span>
+              </button>
+            )}
           </div>
         </PacienteLayout>
       </ProtectedPatientRoute>
@@ -408,7 +423,7 @@ export default function PacienteQuestionarios() {
                 <div>
                   <p className="text-sm font-medium text-foreground">Questionário MyID</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Descubra sua Identidade Sistêmica respondendo o questionário por etapas. São 6 blocos curtos — você pode pausar e continuar quando quiser.
+                    Descubra seu perfil de saúde respondendo o questionário por etapas. São 6 blocos curtos — você pode pausar e continuar quando quiser.
                   </p>
                 </div>
                 <Button
