@@ -324,6 +324,23 @@ export default function PacienteDashboard() {
   const onboardingCompleto = passosNucleo.every(s => s.done);
   const proxPasso = onboardingSteps.findIndex(s => !s.done);
 
+  // PRÓXIMA MELHOR AÇÃO — um único próximo passo, lido do estado do cliente, pra
+  // ele nunca ficar sem saber o que fazer. Ordem: onboarding → contexto do dia.
+  const proximaAcao: { titulo: string; sub: string; cta: string; path: string } | null = (() => {
+    if (!cadastroCompleto) return { titulo: 'Complete seu cadastro', sub: 'Seus dados básicos para começar', cta: 'Completar', path: '/paciente/perfil' };
+    if (!myidConcluido) return { titulo: 'Comece por aqui', sub: 'Descubra seu perfil de saúde com o MyID', cta: 'Fazer meu MyID', path: '/paciente/questionarios' };
+    if (!historicoFeito) return { titulo: 'Falta pouco!', sub: 'Conte seu histórico clínico — é o que monta seu avatar', cta: 'Contar histórico', path: '/paciente/questionarios?foco=historico' };
+    if (!historiaContada) return { titulo: 'Conte o que te incomoda', sub: 'Sua dor atual, por voz ou texto', cta: 'Contar minha história', path: '/paciente/historia' };
+    const prox = proximasConsultas[0];
+    if (prox) {
+      const horas = (parseISO(prox.data_inicio).getTime() - Date.now()) / 3600000;
+      if (horas > 0 && horas < 24) return { titulo: 'Sua consulta é em breve', sub: format(parseISO(prox.data_inicio), "EEE, d 'de' MMM · HH:mm", { locale: ptBR }), cta: 'Ver na agenda', path: '/paciente/agenda' };
+    }
+    if (!notifications.diarioHoje) return { titulo: 'Como você está hoje?', sub: 'Registre seu dia em menos de 1 minuto', cta: 'Registrar', path: '/paciente/diario' };
+    if (showMyIdPrompt && myIdPromptType === 'monthly') return { titulo: 'Hora de atualizar seu MyID', sub: 'Já faz um mês — veja como você evoluiu', cta: 'Atualizar', path: '/paciente/questionarios' };
+    return null; // tudo em dia → celebração
+  })();
+
   // Onboarding pronto → o Início abre direto na Jornada (uso diário). Enquanto
   // há passos, abre em "Passos". Respeita a escolha manual do usuário.
   useEffect(() => {
@@ -413,6 +430,35 @@ export default function PacienteDashboard() {
               )}
             </div>
           </V>
+
+          {/* PRÓXIMA MELHOR AÇÃO — um card no topo que sempre diz o que fazer
+              agora, para o cliente não se perder entre as abas. */}
+          {proximaAcao ? (
+            <button
+              onClick={() => navigate(proximaAcao.path)}
+              className="w-full rounded-2xl bg-primary text-primary-foreground p-4 flex items-center gap-3 text-left shadow-sm active:scale-[0.99]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">Seu próximo passo</p>
+                <p className="text-sm font-bold leading-tight">{proximaAcao.titulo}</p>
+                <p className="text-xs opacity-90 leading-tight mt-0.5">{proximaAcao.sub}</p>
+              </div>
+              <span className="text-xs font-bold shrink-0 whitespace-nowrap">{proximaAcao.cta} →</span>
+            </button>
+          ) : (
+            <div className="w-full rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20 p-4 flex items-center gap-3">
+              <span className="text-2xl shrink-0">🔥</span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Você está em dia!</p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                  {notifications.streak > 1 ? `${notifications.streak} dias de foco — continue assim!` : 'Tudo certo por hoje. Continue assim!'}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Início em 3 abas: Passos (o que fazer) · Jornada (gamificação da IA,
               completa para free e premium) · Resultados (MyID, avatar, planos —
