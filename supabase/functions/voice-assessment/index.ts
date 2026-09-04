@@ -714,49 +714,80 @@ Deno.serve(async (req) => {
       });
     }
 
-    const pass2Ctrl = new AbortController();
-    const pass2Timer = setTimeout(() => pass2Ctrl.abort(), 120_000);
-    let response: Response;
-    try {
-      response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-        method: "POST",
-        signal: pass2Ctrl.signal,
-        headers: {
-          Authorization: `Bearer ${GEMINI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gemini-2.5-flash",
-          temperature: 0,
-          messages: [
-            { role: "system", content: activeSystemPrompt },
-            { role: "user", content: userContent },
-          ],
-          tools: [TOOL_SCHEMA],
-          tool_choice: { type: "function", function: { name: "generate_clinical_assessment" } },
-        }),
-      });
-    } catch (fetchErr) {
+    // Quando o áudio já foi transcrito (Groq/Whisper), NÃO deixamos a transcrição
+    // se perder se a análise falhar (ex.: limite da IA). Devolvemos junto do erro
+    // para o app reaproveitar — o profissional não regrava a consulta inteira.
+    const transcricaoParcial = faithfulTranscript && faithfulTranscript.trim().length > 0
+      ? faithfulTranscript
+      : undefined;
+    const comTranscricao = (obj: Record<string, unknown>) =>
+      transcricaoParcial ? { ...obj, transcricao: transcricaoParcial } : obj;
+
+    // Pass 2 pode receber 429 (limite da IA compartilhada) ou 5xx transitório.
+    // Repetimos com backoff — muitos 429 de "requisições por minuto" já passam
+    // na 2ª/3ª tentativa (a espera cruza a janela do minuto). Timeout de áudio
+    // longo não melhora repetindo, então não é retentado.
+    const RETRIVEIS = new Set([429, 500, 502, 503]);
+    const MAX_TENTATIVAS = 3;
+    let response: Response | null = null;
+    let erroRede: unknown = null;
+    let timeoutOcorreu = false;
+
+    for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+      const pass2Ctrl = new AbortController();
+      const pass2Timer = setTimeout(() => pass2Ctrl.abort(), 120_000);
+      try {
+        response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+          method: "POST",
+          signal: pass2Ctrl.signal,
+          headers: {
+            Authorization: `Bearer ${GEMINI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gemini-2.5-flash",
+            temperature: 0,
+            messages: [
+              { role: "system", content: activeSystemPrompt },
+              { role: "user", content: userContent },
+            ],
+            tools: [TOOL_SCHEMA],
+            tool_choice: { type: "function", function: { name: "generate_clinical_assessment" } },
+          }),
+        });
+      } catch (fetchErr) {
+        clearTimeout(pass2Timer);
+        erroRede = fetchErr;
+        response = null;
+        timeoutOcorreu = fetchErr instanceof Error && fetchErr.name === "AbortError";
+        if (timeoutOcorreu || tentativa === MAX_TENTATIVAS) break;
+        await new Promise((r) => setTimeout(r, tentativa === 1 ? 8000 : 20000));
+        continue;
+      }
       clearTimeout(pass2Timer);
-      const isTimeout = fetchErr instanceof Error && fetchErr.name === "AbortError";
-      const msgErro = isTimeout
-        ? "A IA demorou demais para responder. Tente com um áudio mais curto ou cole a transcrição como texto."
-        : `Falha de rede ao chamar a IA: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`;
-      await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: msgErro });
-      return new Response(JSON.stringify({ error: msgErro }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!response || response.ok || !RETRIVEIS.has(response.status) || tentativa === MAX_TENTATIVAS) break;
+      console.warn(`[voice-assessment] Pass 2 status ${response.status} — tentativa ${tentativa}/${MAX_TENTATIVAS}, aguardando para repetir`);
+      await new Promise((r) => setTimeout(r, tentativa === 1 ? 8000 : 20000));
     }
-    clearTimeout(pass2Timer);
+
+    if (!response) {
+      const msgErro = timeoutOcorreu
+        ? "A IA demorou demais para responder. Tente com um áudio mais curto ou cole a transcrição como texto."
+        : `Falha de rede ao chamar a IA: ${erroRede instanceof Error ? erroRede.message : String(erroRede)}`;
+      await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: msgErro });
+      return new Response(JSON.stringify(comTranscricao({ error: msgErro })), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     if (!response.ok) {
       if (response.status === 429) {
         await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: "Limite de requisições excedido (429)." });
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }), {
+        return new Response(JSON.stringify(comTranscricao({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." })), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: "Créditos de IA insuficientes (402)." });
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
+        return new Response(JSON.stringify(comTranscricao({ error: "Créditos insuficientes. Adicione créditos ao workspace." })), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -775,7 +806,7 @@ Deno.serve(async (req) => {
         status: "failed",
         error_message: `${userMsg} [Gemini ${response.status}] ${t.slice(0, 300)}`,
       });
-      return new Response(JSON.stringify({ error: userMsg, details: t.slice(0, 500) }), {
+      return new Response(JSON.stringify(comTranscricao({ error: userMsg, details: t.slice(0, 500) })), {
         status: response.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

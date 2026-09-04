@@ -895,14 +895,21 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       if (error) {
         // supabase-js wraps non-2xx as FunctionsHttpError — try to read the JSON body for the real message
         let serverMessage = error.message;
+        let transcricaoRecuperada = '';
         try {
           const ctx = (error as any).context;
           if (ctx && typeof ctx.json === 'function') {
             const errBody = await ctx.json();
             if (errBody?.error) serverMessage = errBody.error;
+            // O servidor já transcreveu o áudio (Groq/Whisper) antes de falhar na
+            // análise (ex.: limite da IA). Ele devolve a transcrição para não
+            // perdermos a gravação — o usuário só reenvia o texto (bem mais leve).
+            if (typeof errBody?.transcricao === 'string') transcricaoRecuperada = errBody.transcricao.trim();
           }
         } catch { /* ignore */ }
-        throw new Error(serverMessage);
+        const e = new Error(serverMessage) as Error & { transcricaoRecuperada?: string };
+        if (transcricaoRecuperada.length > 0) e.transcricaoRecuperada = transcricaoRecuperada;
+        throw e;
       }
       if (data?.error) throw new Error(data.error);
 
@@ -1109,11 +1116,28 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       });
     } catch (err: any) {
       console.error('[VoiceAssessment] processAssessment error:', err);
-      toast({
-        title: 'Erro ao processar',
-        description: err?.message || 'Falha desconhecida. Tente novamente em instantes.',
-        variant: 'destructive',
-      });
+      const transcricaoRecuperada: string = err?.transcricaoRecuperada || '';
+      if (transcricaoRecuperada.length >= 20) {
+        // A gravação JÁ foi transcrita no servidor — não faça o profissional
+        // regravar 6+ minutos por causa de um limite momentâneo da IA. Mostra a
+        // transcrição para revisão e troca o áudio por texto: reenviar "Gerar
+        // Avaliação" agora manda só o texto (não re-transcreve, análise bem mais leve).
+        setEditedTranscript((prev) => (prev && prev.trim().length >= 20 ? prev : transcricaoRecuperada));
+        setAudioBase64(null);
+        setAudioBlob(null);
+        pcmWavRef.current = null;
+        setStep('review');
+        toast({
+          title: 'Transcrição preservada — é só gerar de novo',
+          description: `${err?.message || 'A IA está ocupada no momento.'} Sua transcrição está pronta abaixo; toque em "Gerar Avaliação" novamente em alguns instantes (agora envia só o texto).`,
+        });
+      } else {
+        toast({
+          title: 'Erro ao processar',
+          description: err?.message || 'Falha desconhecida. Tente novamente em instantes.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsProcessing(false);
       // Cleanup do áudio em audio-temp após processamento (sucesso ou erro)
