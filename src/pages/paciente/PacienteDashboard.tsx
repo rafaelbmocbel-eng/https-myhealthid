@@ -95,7 +95,6 @@ export default function PacienteDashboard() {
   const [aba, setAba] = useState<'passos' | 'jornada' | 'resultados'>('passos');
   const [abaTocada, setAbaTocada] = useState(false);
   // Sub-abas dentro da Jornada: as metas do dia OU os planos personalizados.
-  const [subJornada, setSubJornada] = useState<'jornada' | 'planos'>('jornada');
   const [focos, setFocos] = useState<{ oportunidade: string; atencao: string | null } | null>(null);
   const [proxInstrumento, setProxInstrumento] = useState<{ nome: string; sigla: string } | null>(null);
 
@@ -474,43 +473,19 @@ export default function PacienteDashboard() {
           {/* JORNADA — sub-abas: metas do dia OU planos personalizados */}
           {aba === 'jornada' && (
             <>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSubJornada('jornada')}
-                  className={cn('flex-1 rounded-xl px-3 py-2 text-xs font-bold transition-colors',
-                    subJornada === 'jornada' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/60 text-muted-foreground hover:bg-muted')}
-                >
-                  Jornada
-                </button>
-                <button
-                  onClick={() => setSubJornada('planos')}
-                  className={cn('flex-1 rounded-xl px-3 py-2 text-xs font-bold transition-colors',
-                    subJornada === 'planos' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/60 text-muted-foreground hover:bg-muted')}
-                >
-                  Meus planos personalizados
-                </button>
-              </div>
-
-              {subJornada === 'jornada' && paciente && (
+              {paciente && (
                 <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
                   <JornadaPacienteCard pacienteId={paciente.id} />
                 </Suspense>
               )}
-
-              {/* MEUS PLANOS PERSONALIZADOS — o plano agora "mora" em um único
-                  lugar (aba "Plano de tratamento"). Aqui fica só o atalho, para o
-                  cliente não encontrar o mesmo conteúdo em telas diferentes. */}
-              {subJornada === 'planos' && (
-                <button
-                  onClick={() => navigate('/paciente/exercicios')}
-                  className="w-full rounded-xl border border-dashed p-6 text-center hover:bg-muted/40 transition-colors"
-                >
-                  <p className="text-sm font-bold text-foreground">Ver meus planos personalizados</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Seu treino, nutrição e tratamento ficam em "Plano de tratamento".
-                  </p>
-                </button>
-              )}
+              {/* Atalho simples para o plano (que "mora" em "Plano de tratamento") —
+                  sem sub-aba dedicada só para redirecionar. */}
+              <button
+                onClick={() => navigate('/paciente/exercicios')}
+                className="w-full rounded-xl border border-dashed p-3 text-center text-xs font-medium text-muted-foreground hover:bg-muted/40 transition-colors"
+              >
+                Ver meus planos personalizados (treino, nutrição) →
+              </button>
             </>
           )}
 
