@@ -1662,46 +1662,28 @@ export default function Agenda() {
                     const dayAgs = getAgForDay(day);
                     const totalHeight = slots.length * SLOT_HEIGHT;
                     const overlapLayout = getOverlapLayout(dayAgs);
-                    // Group appointments by cluster for stacked rendering
-                    const STACK_THRESHOLD = 4; // Switch to stacked mode when 4+ overlap
+                    // Uma "turma" é um conjunto de agendamentos NO MESMO HORÁRIO de início
+                    // (ex.: 8 alunos às 09:00). NÃO é uma cadeia de sessões consecutivas que
+                    // apenas se encostam no tempo. Antes, o agrupamento usava sobreposição
+                    // transitiva (09:00↔09:30↔10:00↔10:30↔11:00), então uma manhã cheia de
+                    // atendimentos de 1h colapsava num único cartão rotulado pelo mais cedo —
+                    // e quem era das 10h/11h aparecia "caindo" nas 9h. Agrupamos por horário
+                    // de início: só vira cartão de turma quando 4+ começam no MESMO horário.
+                    const STACK_THRESHOLD = 4;
                     const activeAgs = dayAgs.filter(ag => ag.status !== 'cancelado');
 
-                    // Identify which appointments are in "dense" clusters (4+)
-                    const denseClusters: Set<string> = new Set();
+                    const porHorarioInicio = new Map<string, Agendamento[]>();
                     activeAgs.forEach(ag => {
-                      const layout = overlapLayout[ag.id];
-                      if (layout && layout.totalCols >= STACK_THRESHOLD) {
-                        denseClusters.add(ag.id);
-                      }
+                      const key = parseISO(ag.data_inicio).toISOString();
+                      const arr = porHorarioInicio.get(key);
+                      if (arr) arr.push(ag); else porHorarioInicio.set(key, [ag]);
                     });
 
-                    // For dense clusters, group by overlapping time ranges
                     const denseGroups: Map<string, Agendamento[]> = new Map();
                     const normalAgs: Agendamento[] = [];
-
-                    activeAgs.forEach(ag => {
-                      if (denseClusters.has(ag.id)) {
-                        // Find which group this belongs to (by checking overlap with existing groups)
-                        let foundGroup = false;
-                        for (const [key, group] of denseGroups) {
-                          const agS = parseISO(ag.data_inicio).getTime();
-                          const agE = parseISO(ag.data_fim).getTime();
-                          if (group.some(g => {
-                            const gS = parseISO(g.data_inicio).getTime();
-                            const gE = parseISO(g.data_fim).getTime();
-                            return agS < gE && agE > gS;
-                          })) {
-                            group.push(ag);
-                            foundGroup = true;
-                            break;
-                          }
-                        }
-                        if (!foundGroup) {
-                          denseGroups.set(ag.id, [ag]);
-                        }
-                      } else {
-                        normalAgs.push(ag);
-                      }
+                    porHorarioInicio.forEach((grupo, key) => {
+                      if (grupo.length >= STACK_THRESHOLD) denseGroups.set(key, grupo);
+                      else normalAgs.push(...grupo);
                     });
 
                     return (
