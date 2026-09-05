@@ -780,7 +780,11 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: "Limite de requisições excedido (429)." });
+        // Loga o corpo do 429 do Google — diz se é cota por-minuto, por-dia ou
+        // billing (RESOURCE_EXHAUSTED / quota metric), essencial para diagnóstico.
+        const body429 = await response.text().catch(() => "");
+        console.error("[voice-assessment] Gemini 429 body:", body429.slice(0, 800));
+        await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: `Limite de requisições excedido (429). ${body429.slice(0, 240)}` });
         return new Response(JSON.stringify(comTranscricao({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." })), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
