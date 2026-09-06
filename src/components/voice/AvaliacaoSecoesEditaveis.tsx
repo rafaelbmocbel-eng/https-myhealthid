@@ -15,7 +15,6 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
 import { cn } from '@/lib/utils';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 
@@ -744,61 +743,6 @@ function ResumoPretty({ texto }: { texto: string }) {
   return <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{texto}</p>;
 }
 
-function SoapResumoPretty({ resultado, transcricao, resumoClinico }: {
-  resultado: any;
-  transcricao?: string | null;
-  resumoClinico: string;
-}) {
-  const soap = buildSoapFromVoice(resultado, transcricao || undefined);
-
-  const saText = resumoClinico || soap.avaliacao || soap.subjectivo;
-
-  const redFlags = resultado?.red_flags || resultado?.redflags;
-  const hasRedFlags = Array.isArray(redFlags) && redFlags.length > 0;
-  const oText = [
-    resultado?.classificacao_severidade && `Classificação: ${resultado.classificacao_severidade}`,
-    hasRedFlags
-      ? `⚠️ Red flags: ${(redFlags as any[]).map((r: any) => r.descricao || r).join('; ')}`
-      : 'Sem red flags aparentes',
-  ].filter(Boolean).join(' · ');
-
-  const pLines = soap.plano.split('\n').filter(Boolean).slice(0, 3);
-  const pText = pLines.join('\n');
-
-  if (!saText && !oText && !pText) return null;
-
-  return (
-    <div className="space-y-2.5">
-      {saText && (
-        <div className="relative rounded-lg border border-border/30 px-3 py-2.5 bg-sky-500/[0.04] pl-4">
-          <div className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r-full bg-sky-400/60" />
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-1">
-            Subjetivo &amp; Avaliação
-          </p>
-          <p className="text-[12.5px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{saText}</p>
-        </div>
-      )}
-      {(oText || pText) && (
-        <div className="relative rounded-lg border border-border/30 px-3 py-2.5 bg-emerald-500/[0.04] pl-4 space-y-2">
-          <div className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r-full bg-emerald-400/60" />
-          {oText && (
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-0.5">Objetivo</p>
-              <p className="text-[12px] leading-snug text-foreground/80">{oText}</p>
-            </div>
-          )}
-          {pText && (
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400 mb-0.5">Plano</p>
-              <p className="text-[12px] leading-snug text-foreground/80 whitespace-pre-wrap">{pText}</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ---------- Diretriz compacta — cards por fase com layout igual à aba Diretrizes, porém resumidos ----------
 const FASES_COMPACTO = [
   { key: 'fase_1_alivio',  label: 'Fase 1 — Alívio & Proteção',    chipLabel: 'Fase 1',      chip: 'bg-red-500/10 text-red-700 border-red-500/20',             num: 'bg-red-500/10 text-red-600',             ring: 'from-red-400/60 to-red-500/10' },
@@ -1498,8 +1442,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         editadoManualmente
                           ? <DiretrizFases texto={textos[s.key]} />
                           : <DiretrizCompact diretriz={resultado?.diretriz_tratamento} />
-                      ) : s.key === 'soap' ? (
-                        <SoapPretty texto={textos[s.key]} />
                       ) : (
                         <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
                           {s.key === 'dor' ? (
@@ -1523,7 +1465,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                               ? <ResumoPretty texto={textos[s.key]} />
                               : <InsightsCompact data={resultado?.insights_baseados_evidencia} />
                           ) : s.key === 'resumo_clinico' ? (
-                            <SoapResumoPretty resultado={resultado} transcricao={transcricao} resumoClinico={textos[s.key]} />
+                            <ResumoPretty texto={textos[s.key]} />
                           ) : (
                             <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
                           )}
