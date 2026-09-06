@@ -146,6 +146,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioMimeType, setAudioMimeType] = useState<string>('audio/webm');
+  // "Usar só o texto": mesmo com áudio gravado, o profissional pode optar por
+  // enviar apenas o texto digitado (ex.: quando a IA de voz está indisponível
+  // ou ele prefere escrever). Não apaga o áudio — só não o envia.
+  const [ignorarAudio, setIgnorarAudio] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -792,17 +796,18 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       // pelo decodeAudioData, que falha em webm/opus longo. Fallback: converter o
       // blob gravado (upload de arquivo / rascunho restaurado). Se NADA der WAV,
       // NÃO enviamos opus (falha garantida) — avisamos e paramos.
-      let envBase64 = audioBase64;
-      let envBlob = audioBlob;
+      // "Usar só o texto": zera as fontes de áudio para nada ser enviado.
+      let envBase64 = ignorarAudio ? null : audioBase64;
+      let envBlob = ignorarAudio ? null : audioBlob;
       let envMime = audioMimeType;
       let converteu = false;
-      if (pcmWavRef.current && pcmWavRef.current.size > 44) {
+      if (!ignorarAudio && pcmWavRef.current && pcmWavRef.current.size > 44) {
         const wav = pcmWavRef.current;
         envBlob = wav;
         envMime = 'audio/wav';
         envBase64 = await blobParaBase64(wav);
         converteu = true;
-      } else if (audioBlob) {
+      } else if (!ignorarAudio && audioBlob) {
         try {
           const wav = await audioParaWav(audioBlob);
           envBlob = wav;
@@ -819,7 +824,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       // formato NATIVO do aparelho (webm no Android, mp4/AAC no iOS). Então, se a
       // conversão falhar, enviamos o áudio ORIGINAL — envBase64/envBlob/envMime já
       // apontam para ele (audioBase64/audioBlob/audioMimeType). Nada a descartar.
-      if (audioBlob && !converteu) {
+      if (!ignorarAudio && audioBlob && !converteu) {
         console.info('[voice] WAV indisponível — enviando áudio original para transcrição no servidor (Groq).');
       }
 
@@ -1989,7 +1994,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               <div>
                 <h3 className="font-bold text-lg">Revisar Transcrição</h3>
                 <p className="text-sm text-muted-foreground">
-                  {audioBase64
+                  {audioBase64 && !ignorarAudio
                     ? 'Áudio capturado! Adicione contexto ou anotações extras (opcional). A IA transcreverá o áudio automaticamente.'
                     : 'Corrija erros, adicione informações ou complete trechos antes de gerar a avaliação.'}
                 </p>
@@ -1997,27 +2002,34 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             </div>
 
             {audioBase64 && (
-              <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Áudio gravado ({formatTime(recordingTime)}) — será transcrito e analisado pela IA</span>
-              </div>
+              ignorarAudio ? (
+                <div className="flex items-center justify-between gap-2 mb-3 p-2 rounded-lg bg-muted text-muted-foreground text-sm">
+                  <span className="flex items-center gap-2"><Edit3 className="h-4 w-4 shrink-0" /> Usando só o texto — o áudio gravado não será enviado.</span>
+                  <button type="button" onClick={() => setIgnorarAudio(false)} className="text-xs font-semibold text-primary underline underline-offset-2 shrink-0">Usar o áudio</button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 mb-3 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm">
+                  <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 shrink-0" /> Áudio gravado ({formatTime(recordingTime)}) — será transcrito pela IA</span>
+                  <button type="button" onClick={() => setIgnorarAudio(true)} className="text-xs font-semibold underline underline-offset-2 shrink-0">Usar só o texto</button>
+                </div>
+              )
             )}
 
             <Textarea
               value={editedTranscript}
               onChange={(e) => setEditedTranscript(e.target.value)}
-              placeholder={audioBase64 ? "Notas adicionais (opcional)..." : "Revise e edite a transcrição..."}
+              placeholder={audioBase64 && !ignorarAudio ? "Notas adicionais (opcional)..." : "Digite ou cole a avaliação aqui..."}
               className="min-h-[200px] text-sm"
             />
             {editedTranscript && <p className="text-xs text-muted-foreground mt-1">{editedTranscript.split(/\s+/).filter(Boolean).length} palavras</p>}
 
             <div className="flex gap-2 mt-4">
-              <Button variant="outline" onClick={() => setStep('record')}>
+              <Button variant="outline" onClick={() => { setIgnorarAudio(false); setStep('record'); }}>
                 <RotateCcw className="h-4 w-4 mr-2" />Voltar
               </Button>
               <Button
                 onClick={processAssessment}
-                disabled={isProcessing || (!audioBase64 && editedTranscript.trim().length < 20)}
+                disabled={isProcessing || ((ignorarAudio || !audioBase64) && editedTranscript.trim().length < 20)}
                 className="bg-primary text-primary-foreground"
               >
                 {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analisando...</> : <><Brain className="h-4 w-4 mr-2" />Gerar Avaliação</>}
