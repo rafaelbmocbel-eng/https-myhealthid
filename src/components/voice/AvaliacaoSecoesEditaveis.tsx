@@ -743,6 +743,27 @@ function ResumoPretty({ texto }: { texto: string }) {
   return <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{texto}</p>;
 }
 
+// Cartão-resumo panorâmico da aba Clínico: severidade (num relance) + a
+// narrativa do resumo. NÃO repete red flags (aba Quadro/Dx) nem plano (aba
+// Tratamento) — cada dado num lugar só.
+function ResumoSoapCard({ texto, severidade }: { texto: string; severidade?: string | null }) {
+  const temTexto = !!texto?.trim();
+  if (!temTexto && !severidade) return null;
+  return (
+    <div className="relative rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3 bg-sky-500/[0.04] pl-4 space-y-2">
+      <div className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r-full bg-sky-400/60" />
+      {severidade && (
+        <span className="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-300">
+          {severidade}
+        </span>
+      )}
+      {temTexto && (
+        <p className="text-[12.5px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{texto}</p>
+      )}
+    </div>
+  );
+}
+
 // ---------- Diretriz compacta — cards por fase com layout igual à aba Diretrizes, porém resumidos ----------
 const FASES_COMPACTO = [
   { key: 'fase_1_alivio',  label: 'Fase 1 — Alívio & Proteção',    chipLabel: 'Fase 1',      chip: 'bg-red-500/10 text-red-700 border-red-500/20',             num: 'bg-red-500/10 text-red-600',             ring: 'from-red-400/60 to-red-500/10' },
@@ -1442,6 +1463,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         editadoManualmente
                           ? <DiretrizFases texto={textos[s.key]} />
                           : <DiretrizCompact diretriz={resultado?.diretriz_tratamento} />
+                      ) : s.key === 'resumo_clinico' ? (
+                        <ResumoSoapCard texto={textos[s.key]} severidade={resultado?.classificacao_severidade} />
                       ) : (
                         <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
                           {s.key === 'dor' ? (
@@ -1464,8 +1487,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                             editadoManualmente
                               ? <ResumoPretty texto={textos[s.key]} />
                               : <InsightsCompact data={resultado?.insights_baseados_evidencia} />
-                          ) : s.key === 'resumo_clinico' ? (
-                            <ResumoPretty texto={textos[s.key]} />
                           ) : (
                             <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
                           )}
