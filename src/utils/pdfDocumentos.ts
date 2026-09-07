@@ -202,8 +202,12 @@ function drawBody(doc: jsPDF, text: string, y: number): number {
   return cursor;
 }
 
-async function drawFooter(doc: jsPDF, terapeuta: TerapeutaInfo, clinica?: ClinicaInfo | null, dataEmissao?: string) {
-  const yBase = 240;
+async function drawFooter(doc: jsPDF, terapeuta: TerapeutaInfo, clinica?: ClinicaInfo | null, dataEmissao?: string, yStart?: number) {
+  // Documentos de texto curto usam a posição formal fixa (~240). Os estruturados
+  // (laudo) passam yStart: a assinatura FLUI logo após o conteúdo — sem empurrar
+  // uma página 2 quase vazia só com a assinatura.
+  let yBase = yStart != null ? Math.max(yStart + 14, 150) : 240;
+  if (yBase + 42 > 288) { doc.addPage(); yBase = 30; }
   const margin = 25;
   // Local e data — data de emissão editável (padrão = hoje).
   const cidade = clinica?.cidade ? `${clinica.cidade}${clinica.uf ? '/' + clinica.uf : ''}, ` : '';
@@ -468,9 +472,9 @@ export async function gerarLaudoCinetico(input: BaseInput & { dados: DocLaudoCin
     y = drawField(doc, 'Prognóstico', input.dados.prognostico, y);
   }
 
-  // Assinatura na última página
-  y = ensureSpace(doc, y, 50);
-  await drawFooter(doc, input.terapeuta, input.clinica, input.dados.dataEmissao);
+  // Assinatura flui logo após o conteúdo (evita página 2 quase vazia só com a
+  // assinatura). Se não couber, o próprio drawFooter abre nova página.
+  await drawFooter(doc, input.terapeuta, input.clinica, input.dados.dataEmissao, y);
   return doc;
 }
 
