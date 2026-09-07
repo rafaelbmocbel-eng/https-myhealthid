@@ -15,6 +15,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import NumberField from '@/components/ui/number-field';
 import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
@@ -199,11 +200,11 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
           </div>
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Freq./semana</label>
-            <Input type="number" min={1} max={7} value={freq} onChange={(e) => setFreq(parseInt(e.target.value) || 3)} />
+            <NumberField min={1} max={7} value={freq} onValueChange={setFreq} emptyValue={3} />
           </div>
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Duração (sem)</label>
-            <Input type="number" min={2} max={52} value={duracao} onChange={(e) => setDuracao(parseInt(e.target.value) || 12)} />
+            <NumberField min={2} max={52} value={duracao} onValueChange={setDuracao} emptyValue={12} />
           </div>
         </div>
         <Textarea placeholder="Restrições/lesões (opcional)" rows={2} value={restricoes} onChange={(e) => setRestricoes(e.target.value)} />
