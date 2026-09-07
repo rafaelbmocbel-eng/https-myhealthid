@@ -94,10 +94,14 @@ export default {
   				muted: 'hsl(var(--studio-muted))'
   			}
   		},
+  		// Raios canônicos do design system: controles (botões/inputs/abas) = md (12),
+  		// cards/containers = lg (16), chips pequenos = sm (8). xl/2xl ficam no default
+  		// do Tailwind (12/16) de propósito: são 655 usos legados que NÃO devem mudar
+  		// de tamanho num passe cego — a padronização visível é feita nos primitivos.
   		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			sm: 'calc(var(--radius) - 8px)',   // 8
+  			md: 'calc(var(--radius) - 4px)',   // 12
+  			lg: 'var(--radius)',               // 16
   		},
 		fontFamily: {
 			sans: [
