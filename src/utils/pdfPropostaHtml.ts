@@ -23,6 +23,10 @@ export async function gerarPropostaPdfDeHtml(
 ): Promise<Blob> {
   const html2canvas = (await import('html2canvas')).default;
 
+  // Espera as FONTES carregarem — sem isso o html2canvas captura com fonte de
+  // fallback e o texto sai "diferente do preview".
+  try { if ((document as any).fonts?.ready) await (document as any).fonts.ready; } catch { /* fonts API indisponível */ }
+
   // Espera imagens (se houver) carregarem/decodificarem antes de capturar.
   const imgs = Array.from(root.querySelectorAll('img'));
   await Promise.all(imgs.map((img) => {
@@ -128,10 +132,13 @@ export async function gerarPropostaPdfDeHtml(
     ctx.fillRect(0, 0, cw, sliceH);
     ctx.drawImage(canvas, 0, start, cw, sliceH, 0, 0, cw, sliceH);
 
-    const imgData = slice.toDataURL('image/jpeg', 0.95);
+    // PNG (sem perdas) em vez de JPEG: texto e bordas ficam NÍTIDOS, sem os
+    // artefatos/borrão do JPEG — a maior causa do PDF sair "menos bonito" que o
+    // preview. Propostas têm 1-2 páginas, então o arquivo continua leve.
+    const imgData = slice.toDataURL('image/png');
     const hMM = sliceH * mmPerPx;
     if (pageIdx > 0) pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', offsetXmm, 0, placedWmm, hMM);
+    pdf.addImage(imgData, 'PNG', offsetXmm, 0, placedWmm, hMM, undefined, 'FAST');
 
     // Sobrepõe a logo NÍTIDA (resolução original) se ela cair nesta página.
     if (logoBox && opts?.logo) {
