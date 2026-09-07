@@ -1,3 +1,4 @@
+// deploy trigger 2026-09-07
 // Gera a DIRETRIZ DE TRATAMENTO por LENTE (médico, psicólogo, terapeuta
 // ocupacional, dentista) — plano por fases com metas mensuráveis, orientações e
 // marcadores a acompanhar, a partir da AVALIAÇÃO PRESENCIAL (achados do avatar
