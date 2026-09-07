@@ -69,17 +69,22 @@ export async function gerarPropostaPdfDeHtml(
   const cw = canvas.width;
   const ch = canvas.height;
 
-  // Altura em mm se a largura ocupar a página inteira (210mm).
-  const fullHeightMM = (ch / cw) * A4_W_MM;
+  // Margem lateral (~2 cm de cada lado): a proposta fica centralizada e
+  // "emoldurada" na página, em vez de colada nas bordas.
+  const MARGIN_MM = 20;
+  const maxContentWmm = A4_W_MM - 2 * MARGIN_MM; // 170mm de área útil
+
+  // Altura em mm se a largura ocupar a área útil (com margens).
+  const fullHeightMM = (ch / cw) * maxContentWmm;
   const pagesFull = Math.max(1, Math.ceil(fullHeightMM / A4_H_MM));
 
-  // Se couber em até 2 páginas, usa largura cheia. Se passar, encolhe
-  // proporcional (com margens laterais) pra caber exatamente em 2 páginas.
-  let placedWmm = A4_W_MM;
+  // Se couber em até 2 páginas, usa a largura com margem. Se passar, encolhe
+  // proporcional (margens ficam ainda maiores) pra caber em 2 páginas.
+  let placedWmm = maxContentWmm;
   if (pagesFull > MAX_PAGES) {
-    placedWmm = (MAX_PAGES * A4_H_MM) * (cw / ch); // faz a altura total = 2×297mm
+    placedWmm = Math.min(maxContentWmm, (MAX_PAGES * A4_H_MM) * (cw / ch));
   }
-  const offsetXmm = (A4_W_MM - placedWmm) / 2;
+  const offsetXmm = (A4_W_MM - placedWmm) / 2; // centralizado
   const mmPerPx = placedWmm / cw;
   const pageHpx = Math.floor(A4_H_MM / mmPerPx);
 
