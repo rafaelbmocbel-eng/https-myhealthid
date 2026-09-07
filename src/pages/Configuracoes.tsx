@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import NotificationPreferences from '@/components/NotificationPreferences';
 import AppLayout from '@/components/AppLayout';
+import PageHeader from '@/components/ui/page-header';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, ConfigAgenda } from '@/hooks/useAgenda';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
@@ -90,12 +91,8 @@ export default function Configuracoes() {
   return (
     <AppLayout>
       <div className="container py-4 sm:py-6 max-w-2xl pb-32">
-        {/* Header */}
-        <div className="mb-5 sm:mb-7">
-          <div className="eyebrow-accent mb-1.5">Ajustes</div>
-          <h1 className="h-page">Configurações</h1>
-          <p className="text-caption mt-1">Clínica, agenda, equipe, links e avisos</p>
-        </div>
+        {/* Header padronizado (mesmo componente das demais telas) */}
+        <PageHeader eyebrow="Ajustes" title="Configurações" subtitle="Clínica, agenda, equipe, links e avisos" />
 
 
         {/* Tabs */}

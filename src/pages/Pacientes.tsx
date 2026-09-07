@@ -46,12 +46,14 @@ type MainTab = 'clientes' | 'financeiro';
 // ── Classificação automática de pacientes ───────────────────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
 
+// Cores com variante dark: sem isso os chips usavam fundo claro fixo (bg-*-100)
+// e "estouravam" no tema escuro. As classes dark: não mudam o tema claro.
 const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; color: string; bgColor: string; dot: string }[] = [
-  { key: 'lead', label: 'Lead', emoji: '🟡', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300', dot: 'hsl(45 90% 50%)' },
-  { key: 'novo', label: 'Cliente Novo', emoji: '🟢', color: 'text-emerald-700', bgColor: 'bg-emerald-100 border-emerald-300', dot: 'hsl(152 55% 42%)' },
-  { key: 'recorrente', label: 'Recorrente', emoji: '🔵', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300', dot: 'hsl(210 80% 52%)' },
-  { key: 'inadimplente', label: 'Inadimplente', emoji: '🔴', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300', dot: 'hsl(0 72% 55%)' },
-  { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300', dot: 'hsl(30 90% 52%)' },
+  { key: 'lead', label: 'Lead', emoji: '🟡', color: 'text-yellow-700 dark:text-yellow-300', bgColor: 'bg-yellow-100 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-800/40', dot: 'hsl(45 90% 50%)' },
+  { key: 'novo', label: 'Cliente Novo', emoji: '🟢', color: 'text-emerald-700 dark:text-emerald-300', bgColor: 'bg-emerald-100 border-emerald-300 dark:bg-emerald-900/20 dark:border-emerald-800/40', dot: 'hsl(152 55% 42%)' },
+  { key: 'recorrente', label: 'Recorrente', emoji: '🔵', color: 'text-blue-700 dark:text-blue-300', bgColor: 'bg-blue-100 border-blue-300 dark:bg-blue-900/20 dark:border-blue-800/40', dot: 'hsl(210 80% 52%)' },
+  { key: 'inadimplente', label: 'Inadimplente', emoji: '🔴', color: 'text-red-700 dark:text-red-300', bgColor: 'bg-red-100 border-red-300 dark:bg-red-900/20 dark:border-red-800/40', dot: 'hsl(0 72% 55%)' },
+  { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700 dark:text-orange-300', bgColor: 'bg-orange-100 border-orange-300 dark:bg-orange-900/20 dark:border-orange-800/40', dot: 'hsl(30 90% 52%)' },
 ];
 
 // ── Utilitários de máscara ──────────────────────────────────────────────────
