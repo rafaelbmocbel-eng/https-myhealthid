@@ -886,7 +886,7 @@ export default function Pacientes() {
 
         {/* ── Main Tabs — ícone + rótulo (antes eram só ícones, ambíguos) ──
             O Zap tem lugar próprio no menu; aqui ficam só Clientes e Financeiro. */}
-        <div className="flex gap-1 bg-muted/40 p-1 rounded-xl mb-5">
+        <div className="flex gap-1 bg-muted/40 p-1 rounded-lg mb-5">
           {([
             { id: 'clientes' as MainTab, label: 'Clientes', icon: Users },
             { id: 'financeiro' as MainTab, label: 'Financeiro', icon: DollarSign },
@@ -896,7 +896,7 @@ export default function Pacientes() {
               onClick={() => setActiveMainTab(tab.id)}
               aria-label={tab.label}
               className={cn(
-                'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all',
+                'flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all',
                 activeMainTab === tab.id
                   ? 'bg-background text-primary shadow-xs ring-1 ring-border/40'
                   : 'text-muted-foreground hover:text-foreground'

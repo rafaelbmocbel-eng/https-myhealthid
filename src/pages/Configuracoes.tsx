@@ -101,7 +101,7 @@ export default function Configuracoes() {
         {/* Tabs */}
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="w-full">
           <div className="sticky top-0 z-20 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2 mb-4 border-b border-border/40">
-            <TabsList className="h-auto flex flex-wrap gap-1 bg-secondary/60 p-1 rounded-xl w-full justify-start">
+            <TabsList className="h-auto flex flex-wrap gap-1 bg-muted/40 p-1 rounded-lg w-full justify-start">
               {TABS.map(t => {
                 const Icon = t.icon;
                 if (t.kind === 'link') {
@@ -110,7 +110,7 @@ export default function Configuracoes() {
                       key={t.id}
                       type="button"
                       onClick={() => navigate(t.to)}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-3 h-8 text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-md px-3 h-8 text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
                     >
                       <Icon className="icon-xs" />
                       <span className="text-xs sm:text-sm">{t.label}</span>
@@ -122,7 +122,7 @@ export default function Configuracoes() {
                   <TabsTrigger
                     key={t.id}
                     value={t.id}
-                    className="gap-1.5 rounded-lg px-3 h-8 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    className="gap-1.5 rounded-md px-3 h-8 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:ring-1 data-[state=active]:ring-border/40"
                   >
                     <Icon className="icon-xs" />
                     <span className="text-xs sm:text-sm">{t.label}</span>
