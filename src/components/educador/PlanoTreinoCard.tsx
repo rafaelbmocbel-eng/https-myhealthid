@@ -10,6 +10,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Dumbbell, Sparkles, Loader2, Eye, Trash2, Pencil } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
@@ -111,8 +116,8 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
     }
   }, [autoGerar, planos.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [apagarId, setApagarId] = useState<string | null>(null);
   const apagar = async (id: string) => {
-    if (!confirm('Apagar este plano?')) return;
     await (supabase as any).from('planos_treino').delete().eq('id', id);
     qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
   };
@@ -256,7 +261,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
               {/* Editar plano: troca de exercício (com busca na biblioteca), carga,
                   fase, séries/reps — o editor único do plano. */}
               <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar plano" onClick={() => setEditarPlano(p)}><Pencil className="icon-xs" /></Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => apagar(p.id)}><Trash2 className="icon-xs text-destructive" /></Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" title="Excluir plano" aria-label="Excluir plano" onClick={() => setApagarId(p.id)}><Trash2 className="icon-xs text-destructive" /></Button>
             </div>
             <RevisorSeguranca pacienteId={pacienteId} tipo="treino" plano={p.estrutura} />
           </div>
@@ -310,6 +315,26 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
       {editarPlano && (
         <PlanoTreinoEditor plano={editarPlano} pacienteId={pacienteId} onClose={() => setEditarPlano(null)} />
       )}
+
+      <AlertDialog open={!!apagarId} onOpenChange={(open) => !open && setApagarId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir plano de treino?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O plano será removido do paciente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (apagarId) apagar(apagarId); setApagarId(null); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -207,7 +207,7 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
                 <Button variant="ghost" size="icon" title="Editar refeições" onClick={() => setEditar(p)}>
                   <Pencil className="icon-sm" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => excluir.mutate(p.id)}>
+                <Button variant="ghost" size="icon" title="Excluir plano" aria-label="Excluir plano" onClick={() => excluir.mutate(p.id)}>
                   <Trash2 className="icon-sm text-destructive" />
                 </Button>
                 </div>

@@ -149,7 +149,7 @@ export default function DiretrizAreaCard({
               <Button variant="ghost" size="icon" title="Ver" onClick={() => setView(true)}>
                 <Eye className="icon-sm" />
               </Button>
-              <Button variant="ghost" size="icon" title="Editar técnicas" onClick={() => setEditarTec(true)}>
+              <Button variant="ghost" size="icon" title="Editar plano" aria-label="Editar plano" onClick={() => setEditarTec(true)}>
                 <Pencil className="icon-sm" />
               </Button>
               <Button variant={diretriz.enviada_portal ? 'ghost' : 'default'} size="sm" className="h-8 text-xs px-2.5"
@@ -200,6 +200,23 @@ export default function DiretrizAreaCard({
                       Fase {f.numero} — {f.titulo}
                       <span className="text-muted-foreground font-normal"> · {f.duracao_semanas} semanas{f.foco ? ` · ${f.foco}` : ''}</span>
                     </p>
+                    {(f.condutas || []).length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium mb-1">Condutas</p>
+                        <ul className="space-y-1 text-sm">
+                          {f.condutas.map((cd: string, i: number) => (
+                            <li key={i} className="flex gap-1.5"><span className="text-primary">▸</span><span>{cd}</span></li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {(f.exames_solicitar || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {f.exames_solicitar.map((ex: string, i: number) => (
+                          <Badge key={i} variant="secondary" className="text-[11px]">🧪 {ex}</Badge>
+                        ))}
+                      </div>
+                    )}
                     {(f.metas || []).length > 0 && (
                       <div>
                         <p className="text-xs font-medium mb-1">Metas</p>

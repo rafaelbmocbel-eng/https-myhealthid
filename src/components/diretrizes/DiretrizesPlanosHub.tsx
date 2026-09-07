@@ -94,7 +94,7 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
           terapeuta_id: user.id,
           paciente_id: pacienteId,
           titulo: `${t?.titulo || 'Treino do cliente'} (base do cliente)`,
-          objetivo: conteudo?.baseadoEm?.objetivo ? 'personalizado' : 'saude',
+          objetivo: 'saude', // valor válido do Select (evita objetivo fora do vocabulário)
           nivel: 'iniciante',
           frequencia_semanal: freq,
           duracao_semanas: duracao,

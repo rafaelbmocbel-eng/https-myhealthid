@@ -49,8 +49,9 @@ Se a área específica não estiver explícita, deduza pelos achados/queixa e tr
 function systemPrompt(area: string): string {
   const l = LENTES[area];
   return `${l.persona}
-Padrão de qualidade: diretriz digna de consultório — fases progressivas com duração definida, metas MENSURÁVEIS (com como medir), orientações práticas, marcadores a acompanhar com valores-alvo e reavaliação ao fim de cada fase.
-Baseie TUDO nos dados fornecidos. Os achados da AVALIAÇÃO PRESENCIAL e as observações do profissional têm PRIORIDADE. Não recomende nada fora do escopo da sua profissão.
+Padrão de qualidade: diretriz digna de consultório — fases progressivas com duração definida, CONDUTAS CONCRETAS (o que fazer/solicitar em cada fase), metas MENSURÁVEIS (com como medir), orientações práticas ao paciente, marcadores a acompanhar com valores-alvo e reavaliação ao fim de cada fase.
+IMPORTANTE — seja CONCRETO, não genérico: cada fase deve trazer "condutas" acionáveis (procedimentos, técnicas específicas, encaminhamentos, mudanças de hábito prescritas) e, quando aplicável, "exames_solicitar" (exames/avaliações a pedir). "condutas" é o que o PROFISSIONAL executa/prescreve; "orientacoes" é o que o PACIENTE deve fazer no dia a dia. Não repita a mesma coisa nos dois.
+Baseie TUDO nos dados fornecidos. Os achados da AVALIAÇÃO PRESENCIAL e as observações do profissional têm PRIORIDADE. Não recomende nada fora do escopo da sua profissão. NÃO prescreva doses de medicação — indique classe/linha de cuidado e sinalize o que decidir na consulta.
 Retorne SOMENTE JSON neste formato:
 {
   "titulo": "string curta",
@@ -58,8 +59,10 @@ Retorne SOMENTE JSON neste formato:
   "resumo_clinico": "string: o que os dados mostram e o que a diretriz ataca (3-4 linhas)",
   "fases": [
     { "numero": 1, "titulo": "string", "duracao_semanas": 4, "foco": "string curta",
+      "condutas": ["ação concreta que o profissional executa/prescreve nesta fase"],
+      "exames_solicitar": ["exame ou avaliação a solicitar (use [] se não houver)"],
       "metas": [ { "descricao": "string", "como_medir": "string" } ],
-      "orientacoes": ["string"],
+      "orientacoes": ["orientação prática ao paciente"],
       "marcadores": [ { "nome": "string", "atual": "valor atual se houver", "alvo": "string" } ],
       "reavaliacao": "o que repetir/medir ao fim da fase" }
   ],
