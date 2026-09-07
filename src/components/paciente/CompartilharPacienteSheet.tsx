@@ -22,13 +22,21 @@ interface Props {
   pacienteNome: string;
   pacienteTelefone?: string | null;
   terapeutaNome: string;
+  // Modo controlado (opcional): permite abrir a partir de fora (ex.: item de um
+  // menu ⋯). Se `hideTrigger`, não renderiza o botão próprio.
+  open?: boolean;
+  onOpenChange?: (o: boolean) => void;
+  hideTrigger?: boolean;
 }
 
 export default function CompartilharPacienteSheet({
   pacienteId, pacienteNome, pacienteTelefone, terapeutaNome,
+  open: openProp, onOpenChange, hideTrigger,
 }: Props) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [incluirMyID, setIncluirMyID] = useState(true);
   const [incluirAvatar, setIncluirAvatar] = useState(true);
   const [incluirDiretriz, setIncluirDiretriz] = useState(false);
@@ -180,17 +188,20 @@ export default function CompartilharPacienteSheet({
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        {/* Apenas ícone, sem texto */}
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-7 w-7 bg-background/80 backdrop-blur"
-          title="Compartilhar"
-        >
-          <Share2 className="h-3.5 w-3.5 text-primary" />
-        </Button>
-      </SheetTrigger>
+      {!hideTrigger && (
+        <SheetTrigger asChild>
+          {/* Apenas ícone, sem texto */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 bg-background/80 backdrop-blur"
+            title="Compartilhar"
+            aria-label="Compartilhar"
+          >
+            <Share2 className="h-4 w-4 text-primary" />
+          </Button>
+        </SheetTrigger>
+      )}
 
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col gap-0 p-0">
         <SheetHeader className="px-5 py-4 border-b shrink-0">

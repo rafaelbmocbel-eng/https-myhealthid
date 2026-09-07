@@ -15,12 +15,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   ArrowLeft, User, Mail, Phone, Calendar, FileText, Activity,
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle, RefreshCw,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight, ChevronDown,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints, CalendarPlus,
-  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, DollarSign, Package, Target, LayoutDashboard, Smartphone,
+  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, DollarSign, Package, Target, LayoutDashboard, Smartphone, MoreHorizontal, Share2,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
@@ -170,6 +171,7 @@ export default function PacientePerfil() {
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [compartilharOpen, setCompartilharOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     nome: '', sobrenome: '', email: '', telefone: '',
@@ -599,103 +601,85 @@ export default function PacientePerfil() {
               <div className="flex-1" />
 
               {/* Agendar — ação primária */}
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 gap-1 px-2 bg-background/80 backdrop-blur text-xs"
-                    onClick={() => navigate(`/agenda?novo=1&paciente=${id}`)}
-                  >
-                    <CalendarPlus className="h-3.5 w-3.5 text-primary" />
-                    <span className="hidden xs:inline font-semibold">Agendar</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Novo agendamento</TooltipContent>
-              </Tooltip>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 px-3 bg-background/80 backdrop-blur text-xs"
+                onClick={() => navigate(`/agenda?novo=1&paciente=${id}`)}
+              >
+                <CalendarPlus className="h-4 w-4 text-primary" />
+                <span className="hidden xs:inline font-semibold">Agendar</span>
+              </Button>
 
               {/* Portal — enviar link ao paciente */}
               {layoutCfg.header_portal && paciente.portal_token && (
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 gap-1 px-2 bg-background/80 backdrop-blur text-xs"
-                      onClick={() =>
-                        paciente.telefone
-                          ? window.open(
-                              waUrl(
-                                paciente.telefone,
-                                `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${getPortalUrl(paciente.portal_token!)}`,
-                              ),
-                              '_blank',
-                            )
-                          : (() => {
-                              navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!));
-                              toast({ title: 'Link do Portal copiado! 🔗' });
-                            })()
-                      }
-                    >
-                      <Smartphone className="h-3.5 w-3.5 text-violet-600" />
-                      <span className="hidden sm:inline font-semibold">Portal</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    {paciente.telefone ? 'Enviar link do portal via WhatsApp' : 'Copiar link do portal'}
-                  </TooltipContent>
-                </Tooltip>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 px-3 bg-background/80 backdrop-blur text-xs"
+                  onClick={() =>
+                    paciente.telefone
+                      ? window.open(
+                          waUrl(
+                            paciente.telefone,
+                            `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${getPortalUrl(paciente.portal_token!)}`,
+                          ),
+                          '_blank',
+                        )
+                      : (() => {
+                          navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!));
+                          toast({ title: 'Link do Portal copiado! 🔗' });
+                        })()
+                  }
+                >
+                  <Smartphone className="h-4 w-4 text-violet-600" />
+                  <span className="hidden sm:inline font-semibold">Portal</span>
+                </Button>
               )}
 
-              {/* Documentos */}
-              {layoutCfg.header_docs && (
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 gap-1 px-2 bg-background/80 backdrop-blur text-xs"
-                    onClick={() => setDocsModalOpen(true)}
-                  >
-                    <FileText className="h-3.5 w-3.5 text-primary" />
-                    <span className="hidden sm:inline font-semibold">Docs</span>
+              {/* Demais ações — menu ⋯ (topo mais limpo, alvos maiores) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" aria-label="Mais ações">
+                    <MoreHorizontal className="h-4 w-4" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Atestados, recibos, declarações</TooltipContent>
-              </Tooltip>
-              )}
-
-              {/* Compartilhar (MyID + Avatar + Resumo IA → WhatsApp) */}
-              {layoutCfg.header_identidade && (
-                <Suspense fallback={null}>
-                  <CompartilharPacienteSheet
-                    pacienteId={paciente.id}
-                    pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
-                    pacienteTelefone={paciente.telefone}
-                    terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
-                  />
-                </Suspense>
-              )}
-
-
-              {/* Editar e excluir — secundários */}
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted" onClick={openEdit}>
-                    <Edit className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Editar cadastro</TooltipContent>
-              </Tooltip>
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10" onClick={handleDeletePaciente}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">Excluir paciente</TooltipContent>
-              </Tooltip>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {layoutCfg.header_docs && (
+                    <DropdownMenuItem onClick={() => setDocsModalOpen(true)}>
+                      <FileText className="h-4 w-4 mr-2 text-primary" /> Documentos
+                    </DropdownMenuItem>
+                  )}
+                  {layoutCfg.header_identidade && (
+                    <DropdownMenuItem onClick={() => setCompartilharOpen(true)}>
+                      <Share2 className="h-4 w-4 mr-2 text-primary" /> Compartilhar
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={openEdit}>
+                    <Edit className="h-4 w-4 mr-2" /> Editar cadastro
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDeletePaciente} className="text-destructive focus:text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" /> Excluir paciente
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+
+            {/* Sheet de compartilhar controlado pelo menu ⋯ (sem botão próprio) */}
+            {layoutCfg.header_identidade && (
+              <Suspense fallback={null}>
+                <CompartilharPacienteSheet
+                  pacienteId={paciente.id}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                  pacienteTelefone={paciente.telefone}
+                  terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
+                  open={compartilharOpen}
+                  onOpenChange={setCompartilharOpen}
+                  hideTrigger
+                />
+              </Suspense>
+            )}
 
             {/* ── Linha 2: identidade do paciente ───────────────────────────── */}
             <div className="flex items-center gap-3">
