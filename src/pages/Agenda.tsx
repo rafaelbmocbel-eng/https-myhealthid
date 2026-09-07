@@ -9,9 +9,10 @@ import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
   Lock, Clock, CheckCircle2, AlertCircle, Calendar, CalendarDays, MessageCircle,
-  Smartphone, CreditCard, Info, DollarSign, Repeat, Mic, ClipboardCheck
+  Smartphone, CreditCard, Info, DollarSign, Repeat, Mic, ClipboardCheck, MoreHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import NumberField from '@/components/ui/number-field';
@@ -1263,31 +1264,8 @@ export default function Agenda() {
                 </button>
               ))}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/5"
-              title="Criar sessão para múltiplos alunos"
-              onClick={() => {
-                const base = currentDate;
-                setTurmaModal({
-                  open: true,
-                  selectedPacientes: [],
-                  titulo: '',
-                  data_inicio: format(base, "yyyy-MM-dd'T'HH:mm"),
-                  data_fim: format(new Date(base.getTime() + config.duracao_padrao * 60000), "yyyy-MM-dd'T'HH:mm"),
-                  tipo_atendimento: 'retorno',
-                });
-              }}
-            >
-              <Users className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Turma</span>
-            </Button>
             <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-9 px-3 rounded-xl shadow-md text-xs sm:text-sm" onClick={() => openNew()}>
               <Plus className="h-4 w-4" /> <span className="hidden xs:inline">Agendar</span>
-            </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs" onClick={() => setShowBloqueioLote(true)} title="Bloquear múltiplos dias (férias, feriados)">
-              <Lock className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Férias</span>
             </Button>
             <Suspense fallback={null}>
               <ListaEspera />
@@ -1323,6 +1301,32 @@ export default function Agenda() {
                 </Button>
               );
             })()}
+            {/* Ações menos frequentes no menu ⋯ (topo mais limpo) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9" aria-label="Mais ações">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => {
+                  const base = currentDate;
+                  setTurmaModal({
+                    open: true,
+                    selectedPacientes: [],
+                    titulo: '',
+                    data_inicio: format(base, "yyyy-MM-dd'T'HH:mm"),
+                    data_fim: format(new Date(base.getTime() + config.duracao_padrao * 60000), "yyyy-MM-dd'T'HH:mm"),
+                    tipo_atendimento: 'retorno',
+                  });
+                }}>
+                  <Users className="h-4 w-4 mr-2 text-primary" /> Turma (múltiplos alunos)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowBloqueioLote(true)}>
+                  <Lock className="h-4 w-4 mr-2" /> Férias / bloqueio de dias
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
