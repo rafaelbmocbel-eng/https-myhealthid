@@ -69,56 +69,46 @@ export async function gerarPropostaPdfDeHtml(
   const cw = canvas.width;
   const ch = canvas.height;
 
-  // Margem lateral (~1,5 cm de cada lado): a proposta fica centralizada e
-  // "emoldurada" na página, em vez de colada nas bordas.
+  // Margens de ~1,5 cm em TODAS as bordas: documento centralizado e "emoldurado",
+  // aproveitando a área útil de cima a baixo (sem sobra no meio da página).
   const MARGIN_MM = 15;
-  const maxContentWmm = A4_W_MM - 2 * MARGIN_MM; // 170mm de área útil
+  const usableWmm = A4_W_MM - 2 * MARGIN_MM; // 180mm
+  const usableHmm = A4_H_MM - 2 * MARGIN_MM; // 267mm
 
-  // Altura em mm se a largura ocupar a área útil (com margens).
-  const fullHeightMM = (ch / cw) * maxContentWmm;
-  const pagesFull = Math.max(1, Math.ceil(fullHeightMM / A4_H_MM));
+  // Altura natural do conteúdo se ocupar a largura útil.
+  const natHmm = (ch / cw) * usableWmm;
+  const pagesNat = Math.max(1, Math.ceil(natHmm / usableHmm));
 
-  // Se couber em até 2 páginas, usa a largura com margem. Se passar, encolhe
-  // proporcional (margens ficam ainda maiores) pra caber em 2 páginas.
-  let placedWmm = maxContentWmm;
-  if (pagesFull > MAX_PAGES) {
-    placedWmm = Math.min(maxContentWmm, (MAX_PAGES * A4_H_MM) * (cw / ch));
+  // Cabe em até MAX_PAGES na largura útil? usa 180mm. Se passar, encolhe
+  // proporcional (margens laterais crescem) pra caber em MAX_PAGES.
+  let placedWmm = usableWmm;
+  if (pagesNat > MAX_PAGES) {
+    placedWmm = Math.min(usableWmm, (MAX_PAGES * usableHmm) * (cw / ch));
   }
   const offsetXmm = (A4_W_MM - placedWmm) / 2; // centralizado
   const mmPerPx = placedWmm / cw;
-  const pageHpx = Math.floor(A4_H_MM / mmPerPx);
+  const usableHpx = Math.floor(usableHmm / mmPerPx); // conteúdo por página (px)
 
-  // Fronteiras seguras de quebra = base de cada [data-block] (px do canvas).
+  // Fronteiras de quebra = base de cada [data-block] (px do canvas).
   const breaks = (Array.from(root.querySelectorAll('[data-block]')) as HTMLElement[])
     .map((b) => (b.getBoundingClientRect().bottom - rootRect.top) * SCALE)
     .filter((v) => v > 0 && v <= ch)
     .sort((a, b) => a - b);
 
-  // Cortes das páginas — SEMPRE em fronteira de card ([data-block]), nunca no
-  // meio. Preferência: se cabe em 2 páginas, escolhe a quebra mais perto do meio
-  // que deixe AS DUAS páginas cheias e sem estourar (equilíbrio). Se não houver
-  // fronteira válida, cai na quebra limpa gulosa (enche a 1ª ao máximo).
+  // Quebra GULOSA: enche cada página até o ÚLTIMO card que ainda cabe na altura
+  // útil — a página é aproveitada de cima a baixo, nunca corta um card no meio.
   const cuts: number[] = [];
-  const tol = pageHpx + 2;
-  if (ch <= tol) {
-    // cabe em 1 página
-  } else {
-    const validos = breaks.filter((b) => b <= tol && ch - b <= tol);
-    if (validos.length) {
-      const mid = ch / 2;
-      const split = validos.reduce((best, b) => (Math.abs(b - mid) < Math.abs(best - mid) ? b : best), validos[0]);
-      cuts.push(split);
-    } else {
-      // guloso limpo (pode passar de 2 páginas em propostas muito longas)
-      let pageStart = 0;
-      let lastFit = 0;
-      for (const b of breaks) {
-        if (b - pageStart > tol) {
-          if (lastFit > pageStart + 2) { cuts.push(lastFit); pageStart = lastFit; }
-          else { cuts.push(pageStart + pageHpx); pageStart += pageHpx; }
-        }
-        lastFit = b;
+  const tol = usableHpx + 2;
+  if (ch > tol) {
+    let pageStart = 0;
+    let lastFit = 0;
+    for (const b of breaks) {
+      if (b - pageStart > tol) {
+        if (lastFit > pageStart + 2) { cuts.push(lastFit); pageStart = lastFit; }
+        else { cuts.push(pageStart + usableHpx); pageStart += usableHpx; }
+        lastFit = pageStart;
       }
+      if (b > lastFit) lastFit = b;
     }
   }
 
@@ -143,7 +133,7 @@ export async function gerarPropostaPdfDeHtml(
     const imgData = slice.toDataURL('image/png');
     const hMM = sliceH * mmPerPx;
     if (pageIdx > 0) pdf.addPage();
-    pdf.addImage(imgData, 'PNG', offsetXmm, 0, placedWmm, hMM, undefined, 'FAST');
+    pdf.addImage(imgData, 'PNG', offsetXmm, MARGIN_MM, placedWmm, hMM, undefined, 'FAST');
 
     // Sobrepõe a logo NÍTIDA (resolução original) se ela cair nesta página.
     if (logoBox && opts?.logo) {
@@ -160,7 +150,7 @@ export async function gerarPropostaPdfDeHtml(
         const lw = opts.logo.w * r;
         const lh = opts.logo.h * r;
         const boxXmm = offsetXmm + logoBox.left * SCALE * mmPerPx;
-        const boxYmm = (boxTopPx - start) * mmPerPx;
+        const boxYmm = MARGIN_MM + (boxTopPx - start) * mmPerPx;
         const lx = boxXmm + (boxWmm - lw) / 2;
         const ly = boxYmm + (boxHmm - lh) / 2;
         pdf.addImage(opts.logo.dataUrl, 'PNG', lx, ly, lw, lh);
