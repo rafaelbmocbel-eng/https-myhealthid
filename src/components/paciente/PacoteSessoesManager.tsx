@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -268,12 +269,12 @@ function PacoteDialog({ form, setForm, onSave, saving, isEditing }: {
               </Button>
             ))}
           </div>
-          <Input
-            type="number"
+          <NumberField
             inputMode="numeric"
             min={1}
-            value={form.total_sessoes || ''}
-            onChange={(e) => setForm({ ...form, total_sessoes: e.target.value === '' ? 0 : (parseInt(e.target.value) || 0) })}
+            emptyValue={0}
+            value={form.total_sessoes}
+            onValueChange={(n) => setForm({ ...form, total_sessoes: n })}
             placeholder="Ou digite um valor personalizado"
           />
         </div>

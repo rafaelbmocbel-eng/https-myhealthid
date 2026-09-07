@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Plus, Trash2, Save, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
@@ -125,8 +126,8 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
                           onChange={(e) => setExField(fi, si, ei, 'reps', e.target.value)} />
                         <Input className="h-8 text-xs" placeholder="Carga" value={ex.carga ?? ''}
                           onChange={(e) => setExField(fi, si, ei, 'carga', e.target.value)} />
-                        <Input className="h-8 text-xs" placeholder="Desc. (s)" value={ex.descanso_s ?? ''}
-                          onChange={(e) => setExField(fi, si, ei, 'descanso_s', Number(e.target.value) || e.target.value)} />
+                        <NumberField className="h-8 text-xs" placeholder="Desc. (s)" emptyValue={0} value={ex.descanso_s}
+                          onValueChange={(n) => setExField(fi, si, ei, 'descanso_s', n)} />
                       </div>
                       <Input className="h-8 text-xs" placeholder="Observação (execução, cuidado…)" value={ex.obs ?? ''}
                         onChange={(e) => setExField(fi, si, ei, 'obs', e.target.value)} />

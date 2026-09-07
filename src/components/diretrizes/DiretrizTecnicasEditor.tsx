@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Loader2, Plus, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -108,8 +109,8 @@ export default function DiretrizTecnicasEditor({ diretriz, area, pacienteId, onC
                 <div className="flex gap-1.5">
                   <Input className="h-8 text-sm flex-1" placeholder="Foco (ex.: controle da dor)" value={f.foco || ''}
                     onChange={(e) => setCampoFase(fi, 'foco', e.target.value)} />
-                  <Input type="number" min={1} className="h-8 text-sm w-24" placeholder="semanas"
-                    value={f.duracao_semanas ?? ''} onChange={(e) => setCampoFase(fi, 'duracao_semanas', Number(e.target.value) || 0)} />
+                  <NumberField min={1} emptyValue={1} className="h-8 text-sm w-24" placeholder="semanas"
+                    value={f.duracao_semanas} onValueChange={(n) => setCampoFase(fi, 'duracao_semanas', n)} />
                 </div>
               </div>
 

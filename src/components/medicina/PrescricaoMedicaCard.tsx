@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -384,7 +385,7 @@ export default function PrescricaoMedicaCard({ pacienteId }: Props) {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Dias</label>
-                <Input type="number" min={1} value={dias} onChange={(e) => setDias(parseInt(e.target.value) || 1)} />
+                <NumberField min={1} emptyValue={1} value={dias} onValueChange={(n) => setDias(n)} />
               </div>
               <div>
                 <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Início</label>
@@ -505,7 +506,7 @@ export default function PrescricaoMedicaCard({ pacienteId }: Props) {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Dias</label>
-                  <Input type="number" min={1} value={editAtestado.dias_afastamento || 1} onChange={(e) => setEditAtestado({ ...editAtestado, dias_afastamento: parseInt(e.target.value) || 1 })} />
+                  <NumberField min={1} emptyValue={1} value={editAtestado.dias_afastamento || 1} onValueChange={(n) => setEditAtestado({ ...editAtestado, dias_afastamento: n })} />
                 </div>
                 <div>
                   <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Início</label>

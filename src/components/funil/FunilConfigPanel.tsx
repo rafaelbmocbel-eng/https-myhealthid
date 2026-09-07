@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -323,23 +324,24 @@ const FunilConfigPanel = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-xs">Valor (R$)</Label>
-                      <Input
-                        type="number"
+                      <NumberField
+                        decimal
                         inputMode="decimal"
                         step="0.01"
-                        value={serv.valor ?? ''}
-                        onChange={(e) => updateServico(idx, 'valor', e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0))}
+                        emptyValue={0}
+                        value={serv.valor}
+                        onValueChange={(n) => updateServico(idx, 'valor', n)}
                       />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Parcelas Máx</Label>
-                      <Input
-                        type="number"
+                      <NumberField
                         inputMode="numeric"
                         min={1}
                         max={12}
-                        value={serv.parcelas_max ?? ''}
-                        onChange={(e) => updateServico(idx, 'parcelas_max', e.target.value === '' ? 1 : (parseInt(e.target.value) || 1))}
+                        emptyValue={1}
+                        value={serv.parcelas_max}
+                        onValueChange={(n) => updateServico(idx, 'parcelas_max', n)}
                       />
                     </div>
                   </div>

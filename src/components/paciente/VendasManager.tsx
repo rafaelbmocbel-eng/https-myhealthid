@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -458,10 +459,10 @@ export default function VendasManager() {
             <div className="grid grid-cols-3 gap-2">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Qtd</Label>
-                <Input
-                  type="number" inputMode="numeric" min={1}
-                  value={form.quantidade || ''}
-                  onChange={e => setForm(f => ({ ...f, quantidade: e.target.value === '' ? 1 : Math.max(1, Number(e.target.value) || 1) }))}
+                <NumberField
+                  inputMode="numeric" min={1} emptyValue={1}
+                  value={form.quantidade}
+                  onValueChange={(n) => setForm(f => ({ ...f, quantidade: n }))}
                 />
               </div>
               <div className="space-y-1.5">

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -236,13 +237,14 @@ export default function DespesasManager() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Valor (R$)</Label>
-                <Input
-                  type="number"
+                <NumberField
+                  decimal
                   inputMode="decimal"
                   step="0.01"
-                  min="0"
-                  value={form.valor || ''}
-                  onChange={(e) => setForm({ ...form, valor: e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value) || 0) })}
+                  min={0}
+                  emptyValue={0}
+                  value={form.valor}
+                  onValueChange={(n) => setForm({ ...form, valor: n })}
                 />
               </div>
               <div>

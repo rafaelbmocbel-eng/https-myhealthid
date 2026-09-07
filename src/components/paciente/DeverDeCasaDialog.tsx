@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -444,24 +445,24 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
                           <div className="grid grid-cols-2 gap-2 mb-2">
                             <div>
                               <label className="text-[9px] font-semibold text-muted-foreground uppercase">Séries</label>
-                              <Input
-                                type="number"
+                              <NumberField
                                 inputMode="numeric"
-                                min="1"
-                                value={s.series || ''}
-                                onChange={(e) => updateField(i, 'series', e.target.value === '' ? 1 : (parseInt(e.target.value) || 1))}
+                                min={1}
+                                emptyValue={1}
+                                value={s.series}
+                                onValueChange={(n) => updateField(i, 'series', n)}
                                 className="h-7 text-xs"
                                 style={{ fontSize: '16px' }}
                               />
                             </div>
                             <div>
                               <label className="text-[9px] font-semibold text-muted-foreground uppercase">Reps/Tempo</label>
-                              <Input
-                                type="number"
+                              <NumberField
                                 inputMode="numeric"
-                                min="1"
-                                value={s.repeticoes || ''}
-                                onChange={(e) => updateField(i, 'repeticoes', e.target.value === '' ? 1 : (parseInt(e.target.value) || 1))}
+                                min={1}
+                                emptyValue={1}
+                                value={s.repeticoes}
+                                onValueChange={(n) => updateField(i, 'repeticoes', n)}
                                 className="h-7 text-xs"
                                 style={{ fontSize: '16px' }}
                               />

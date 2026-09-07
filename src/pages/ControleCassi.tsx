@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -1242,15 +1243,15 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Dias de tratamento</label>
-              <Input type="number" inputMode="numeric" min={0} onFocus={(e) => e.currentTarget.select()} value={d.sessoes_autorizadas} onChange={(e) => set('sessoes_autorizadas', parseInt(e.target.value) || 0)} />
+              <NumberField inputMode="numeric" min={0} emptyValue={0} onFocus={(e) => e.currentTarget.select()} value={d.sessoes_autorizadas} onValueChange={(n) => set('sessoes_autorizadas', n)} />
               <p className="text-[10px] text-muted-foreground mt-0.5">Sem contar a avaliação</p>
             </div>
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sessões realizadas</label>
-              <Input type="number" inputMode="numeric" min={0}
+              <NumberField inputMode="numeric" min={0} emptyValue={0}
                 value={d.sessoes_realizadas}
                 onFocus={(e) => e.currentTarget.select()}
-                onChange={(e) => set('sessoes_realizadas', parseInt(e.target.value) || 0)} />
+                onValueChange={(n) => set('sessoes_realizadas', n)} />
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 <span className="text-[10px] text-muted-foreground">Restam {restantes}</span>
                 {realizadasAgenda > 0 && realizadasAgenda !== Number(d.sessoes_realizadas) && (

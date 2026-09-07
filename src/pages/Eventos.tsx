@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import NumberField from '@/components/ui/number-field';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -225,16 +226,16 @@ export default function Eventos() {
                         <>
                           <div>
                             <Label className="text-xs">A cada</Label>
-                            <Input type="number" min={1} max={12} value={recorrenciaIntervalo}
-                              onChange={e => setRecorrenciaIntervalo(Number(e.target.value) || 1)} />
+                            <NumberField min={1} max={12} emptyValue={1} value={recorrenciaIntervalo}
+                              onValueChange={(n) => setRecorrenciaIntervalo(n)} />
                             <p className="text-[10px] text-muted-foreground mt-1">
                               {recorrenciaTipo === 'semanal' ? 'semana(s)' : 'dia(s)'}
                             </p>
                           </div>
                           <div>
                             <Label className="text-xs">Total de eventos</Label>
-                            <Input type="number" min={2} max={52} value={recorrenciaOcorrencias}
-                              onChange={e => setRecorrenciaOcorrencias(Number(e.target.value) || 2)} />
+                            <NumberField min={2} max={52} emptyValue={2} value={recorrenciaOcorrencias}
+                              onValueChange={(n) => setRecorrenciaOcorrencias(n)} />
                             <p className="text-[10px] text-muted-foreground mt-1">máx. 52</p>
                           </div>
                         </>
