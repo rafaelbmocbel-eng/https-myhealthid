@@ -58,13 +58,15 @@ const VoiceAssessmentLazy = lazy(() => import('@/components/voice/VoiceAssessmen
 const SLOT_MINUTES = 60;
 const SLOT_HEIGHT = 80; // px per 60min slot
 
+// Cores dos status com variante dark: — antes usavam fundo claro fixo (bg-*-50)
+// que "estourava" no tema escuro. As classes dark: não mudam o tema claro.
 const STATUS_CONFIG: Record<string, { bg: string; border: string; text: string; icon: React.ReactNode; label: string }> = {
-  confirmado: { bg: 'bg-emerald-50', border: 'border-emerald-400', text: 'text-emerald-800', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Confirmado' },
-  pendente: { bg: 'bg-amber-50', border: 'border-amber-400', text: 'text-amber-800', icon: <AlertCircle className="h-3 w-3" />, label: 'Pendente' },
-  bloqueado: { bg: 'bg-slate-100', border: 'border-slate-400', text: 'text-slate-600', icon: <Lock className="h-3 w-3" />, label: 'Bloqueado' },
-  concluido: { bg: 'bg-blue-50', border: 'border-blue-400', text: 'text-blue-800', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Concluído' },
-  cancelado: { bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700', icon: <X className="h-3 w-3" />, label: 'Cancelado' },
-  faltou: { bg: 'bg-orange-50', border: 'border-orange-400', text: 'text-orange-800', icon: <Clock className="h-3 w-3" />, label: 'Faltou' },
+  confirmado: { bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-400 dark:border-emerald-700', text: 'text-emerald-800 dark:text-emerald-200', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Confirmado' },
+  pendente: { bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-400 dark:border-amber-700', text: 'text-amber-800 dark:text-amber-200', icon: <AlertCircle className="h-3 w-3" />, label: 'Pendente' },
+  bloqueado: { bg: 'bg-slate-100 dark:bg-slate-800/50', border: 'border-slate-400 dark:border-slate-600', text: 'text-slate-600 dark:text-slate-300', icon: <Lock className="h-3 w-3" />, label: 'Bloqueado' },
+  concluido: { bg: 'bg-blue-50 dark:bg-blue-950/40', border: 'border-blue-400 dark:border-blue-700', text: 'text-blue-800 dark:text-blue-200', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Concluído' },
+  cancelado: { bg: 'bg-red-50 dark:bg-red-950/40', border: 'border-red-300 dark:border-red-800', text: 'text-red-700 dark:text-red-300', icon: <X className="h-3 w-3" />, label: 'Cancelado' },
+  faltou: { bg: 'bg-orange-50 dark:bg-orange-950/40', border: 'border-orange-400 dark:border-orange-700', text: 'text-orange-800 dark:text-orange-200', icon: <Clock className="h-3 w-3" />, label: 'Faltou' },
 };
 
 const TIPO_LABELS: Record<string, string> = {
