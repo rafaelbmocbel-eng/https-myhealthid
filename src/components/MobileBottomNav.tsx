@@ -8,11 +8,14 @@ import { useHaptics } from '@/hooks/useHaptics';
 
 type ServiceKey = 'eventos';
 
-const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey }[] = [
+// `match`: prefixo usado pra detectar a aba ATIVA quando difere do href
+// (ex.: Zap navega pra /crm/inbox, que redireciona pra /crm?tab=inbox — o
+// pathname vira /crm, então o destaque precisa casar com /crm).
+const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; match?: string }[] = [
   { label: 'Hoje', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
-  { label: 'Zap', href: '/crm/inbox', icon: MessageCircle },
+  { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, match: '/crm' },
   { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true },
   { label: 'Config', href: '/configuracoes', icon: Settings },
 ];
@@ -37,7 +40,7 @@ export default function MobileBottomNav() {
       <ul className="flex items-stretch justify-around px-1 pt-1.5 pb-1.5">
         {visibleItems.map(item => {
           const Icon = item.icon;
-          const active = isActive(item.href);
+          const active = isActive(item.match ?? item.href);
           const showBadge = item.hasBadge && pendingCount > 0;
           const showVitrineBadge = item.vitrineBadge && vitrinePending > 0;
 

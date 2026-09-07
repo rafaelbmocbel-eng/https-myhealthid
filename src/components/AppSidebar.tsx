@@ -19,13 +19,16 @@ type ServiceKey = 'eventos';
 
 // UMA home só: "Hoje". O painel clínico completo (/inicio-app) é alcançado
 // pelos tiles da própria Hoje — não concorre mais no menu.
-const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; modulo?: string; separatorAfter?: boolean }[] = [
+const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; modulo?: string; separatorAfter?: boolean; match?: string; queryFlag?: string; queryExclude?: string }[] = [
   { label: 'Hoje', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true, modulo: 'agenda' },
-  { label: 'Pacientes', href: '/pacientes', icon: Users, modulo: 'pacientes' },
+  // Pacientes só fica ativo quando NÃO está na sub-aba financeira (senão colidia
+  // com o item "Financeiro", que abre /pacientes?tab=financeiro).
+  { label: 'Pacientes', href: '/pacientes', icon: Users, modulo: 'pacientes', queryExclude: 'tab=financeiro' },
   { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },
-  { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true, modulo: 'crm' },
-  { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign, modulo: 'financeiro_avancado' },
+  // Zap navega pra /crm/inbox (redireciona pra /crm?tab=inbox → pathname /crm).
+  { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true, modulo: 'crm', match: '/crm' },
+  { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign, modulo: 'financeiro_avancado', match: '/pacientes', queryFlag: 'tab=financeiro' },
   { label: 'Controle CASSI', href: '/controle-cassi', icon: ClipboardList },
   { label: 'Vitrine', href: '/vitrine', icon: Store, vitrineBadge: true, separatorAfter: true, modulo: 'funil_vendas' },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
@@ -57,8 +60,14 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
     ...(isSuperAdmin ? [{ label: 'Admin', href: '/admin', icon: TrendingUp } as typeof NAV_ITEMS[number]] : []),
   ];
 
-  const isActive = (href: string) =>
-    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
+  const isActive = (item: { href: string; match?: string; queryFlag?: string; queryExclude?: string }) => {
+    const base = item.match ?? item.href;
+    const pathOk = base === '/' ? location.pathname === '/' : location.pathname.startsWith(base);
+    if (!pathOk) return false;
+    if (item.queryFlag && !location.search.includes(item.queryFlag)) return false;
+    if (item.queryExclude && location.search.includes(item.queryExclude)) return false;
+    return true;
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -101,7 +110,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {visibleItems.map((item, idx) => {
           const Icon = item.icon;
-          const active = isActive(item.href);
+          const active = isActive(item);
           const showBadge = item.hasBadge && pendingCount > 0;
           const showVitrineBadge = item.vitrineBadge && vitrinePending > 0;
           const needsSep = item.separatorAfter && idx < visibleItems.length - 1;
