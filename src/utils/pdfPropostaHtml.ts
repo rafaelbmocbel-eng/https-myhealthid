@@ -69,9 +69,9 @@ export async function gerarPropostaPdfDeHtml(
   const cw = canvas.width;
   const ch = canvas.height;
 
-  // Margem lateral (~2 cm de cada lado): a proposta fica centralizada e
+  // Margem lateral (~1,5 cm de cada lado): a proposta fica centralizada e
   // "emoldurada" na página, em vez de colada nas bordas.
-  const MARGIN_MM = 20;
+  const MARGIN_MM = 15;
   const maxContentWmm = A4_W_MM - 2 * MARGIN_MM; // 170mm de área útil
 
   // Altura em mm se a largura ocupar a área útil (com margens).
