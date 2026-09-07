@@ -44,7 +44,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const hideQuickActionsFab = location.pathname.startsWith('/pacientes');
+  // Esconde o "+" de ações rápidas onde ele atrapalha: em Pacientes e no CRM/Zap
+  // (o FAB cobre o campo de mensagem do chat e suas ações não servem ali).
+  const hideQuickActionsFab = location.pathname.startsWith('/pacientes') || location.pathname.startsWith('/crm');
   const isHomePage = useMemo(() => location.pathname === '/hoje', [location.pathname]);
   // Páginas "imersivas" (estilo app/WhatsApp): ocupam toda a altura útil, sem
   // rodapé nem respiro ocioso. O conteúdo controla a própria rolagem.
