@@ -43,7 +43,7 @@ export default function HealthSyncCard({ onSyncComplete }: HealthSyncCardProps) 
 
   if (!isAvailable) {
     return (
-      <Card className="border-amber-200 bg-amber-50/50">
+      <Card className="border-amber-200 dark:border-amber-800/40 bg-amber-50/50 dark:bg-amber-950/40">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <Watch className="h-5 w-5 text-amber-500" />
@@ -79,7 +79,7 @@ export default function HealthSyncCard({ onSyncComplete }: HealthSyncCardProps) 
             <span className="text-xs font-bold text-foreground">Smartwatch</span>
           </div>
           {lastSync && (
-            <Badge variant="outline" className="text-[9px] text-green-600 border-green-200 bg-green-50">
+            <Badge variant="outline" className="text-[9px] text-green-600 border-green-200 dark:border-green-800/40 bg-green-50 dark:bg-green-950/40">
               Sincronizado
             </Badge>
           )}

@@ -576,9 +576,9 @@ export default function PacienteDashboard() {
           {/* Período de carência */}
           {emCarencia && (
             <V i={2}>
-              <Card className="border-amber-200 bg-amber-50">
+              <Card className="border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/40">
                 <CardContent className="p-4 flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/25 flex items-center justify-center shrink-0">
                     <Clock className="h-4 w-4 text-amber-700" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -728,7 +728,7 @@ export default function PacienteDashboard() {
               onClick={() => navigate('/paciente/recompensas')}
               className="w-full flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-gradient-to-r from-amber-50 to-yellow-50 hover:shadow-md transition-shadow text-left active:scale-[0.99]"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/25 flex items-center justify-center">
                 <Trophy className="w-5 h-5 text-amber-700" />
               </div>
               <div className="flex-1 min-w-0">
@@ -802,7 +802,7 @@ export default function PacienteDashboard() {
                         </p>
                       </div>
                       <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${
-                        ag.status === 'confirmado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        ag.status === 'confirmado' ? 'bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300'
                       }`}>
                         {ag.status === 'confirmado' ? '✓' : '⏳'}
                       </span>

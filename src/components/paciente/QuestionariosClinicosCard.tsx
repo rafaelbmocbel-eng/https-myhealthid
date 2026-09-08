@@ -43,11 +43,11 @@ export default function QuestionariosClinicosCard({ pacienteId }: { pacienteId: 
         >
           <ClipboardCheck className="icon-sm text-violet-600 shrink-0" />
           <span className="text-base font-semibold truncate">Questionários clínicos</span>
-          <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-violet-100 text-violet-700 text-[11px] font-bold shrink-0">
+          <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-violet-100 dark:bg-violet-900/25 text-violet-700 dark:text-violet-300 text-[11px] font-bold shrink-0">
             {itens.length}
           </span>
           {atencaoCount > 0 && (
-            <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold shrink-0">
+            <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300 text-[10px] font-bold shrink-0">
               <AlertTriangle className="h-3 w-3" /> {atencaoCount}
             </span>
           )}

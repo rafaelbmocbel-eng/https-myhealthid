@@ -82,7 +82,7 @@ export default class PortalErrorBoundary extends Component<Props, State> {
     return (
       <div className="min-h-screen min-h-[100dvh] flex flex-col items-center justify-center bg-background px-6 py-10">
         <div className="max-w-sm w-full text-center space-y-5">
-          <div className="mx-auto h-14 w-14 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+          <div className="mx-auto h-14 w-14 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 flex items-center justify-center">
             <AlertTriangle className="h-7 w-7 text-amber-600" />
           </div>
           <div className="space-y-1.5">

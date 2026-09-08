@@ -75,7 +75,7 @@ export default function DashboardParcial({ scoresParciais, onIniciarAvaliacao }:
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-bold text-sm text-foreground">Dashboard Parcial — Questionário Identidade Recebido</h3>
-              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
+              <Badge className="bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/40 text-[10px]">
                 Aguardando Estrutural
               </Badge>
             </div>

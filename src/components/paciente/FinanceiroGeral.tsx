@@ -161,7 +161,7 @@ export default function FinanceiroGeral() {
               {metrics.sessoesSemPagamento.slice(0, 20).map((s: any) => (
                 <div key={s.id} className="flex items-center justify-between p-2.5 rounded-lg border bg-red-50/30 dark:bg-red-950/10">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="h-7 w-7 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold shrink-0">
+                    <div className="h-7 w-7 rounded-full bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300 flex items-center justify-center text-xs font-bold shrink-0">
                       {s.pacientes?.nome?.[0] || '?'}
                     </div>
                     <div className="min-w-0">

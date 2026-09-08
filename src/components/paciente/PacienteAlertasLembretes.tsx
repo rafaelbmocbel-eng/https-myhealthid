@@ -122,8 +122,8 @@ export default function PacienteAlertasLembretes({ pacienteId }: Props) {
   };
 
   const urgBadgeMap = {
-    alta: 'bg-red-100 text-red-700 border-red-200',
-    media: 'bg-amber-100 text-amber-700 border-amber-200',
+    alta: 'bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40',
+    media: 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/40',
     baixa: 'bg-primary/10 text-primary border-primary/20',
   };
 

@@ -76,9 +76,9 @@ function extractScores(dados: any): Record<string, number> {
 function ScoreGaugeMini({ value, max = 10, label, color, subtitle }: { value: number; max?: number; label: string; color: string; subtitle?: string }) {
   const pct = Math.min((value / max) * 100, 100);
   const getLevel = (v: number) => {
-    if (v <= 3) return { text: 'Baixo', bg: 'bg-emerald-100 text-emerald-700' };
-    if (v <= 6) return { text: 'Moderado', bg: 'bg-amber-100 text-amber-700' };
-    return { text: 'Alto', bg: 'bg-red-100 text-red-700' };
+    if (v <= 3) return { text: 'Baixo', bg: 'bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300' };
+    if (v <= 6) return { text: 'Moderado', bg: 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300' };
+    return { text: 'Alto', bg: 'bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300' };
   };
   const level = getLevel(value);
   return (
@@ -185,8 +185,8 @@ function Bloco1Detail({ dados }: { dados: any }) {
                   {reg.tipos?.map((t: string) => (
                     <span key={t} className="text-[9px] bg-muted px-1.5 py-0.5 rounded-md font-medium">{t}</span>
                   ))}
-                  {reg.irradiacao && <span className="text-[9px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-md font-medium">Irradiação</span>}
-                  {reg.frequencia && <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md font-medium">{reg.frequencia}</span>}
+                  {reg.irradiacao && <span className="text-[9px] bg-orange-100 dark:bg-orange-900/25 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded-md font-medium">Irradiação</span>}
+                  {reg.frequencia && <span className="text-[9px] bg-blue-100 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-md font-medium">{reg.frequencia}</span>}
                 </div>
               </div>
             ))}
@@ -291,7 +291,7 @@ function Bloco4Detail({ dados }: { dados: any }) {
           })}
         </div>
         {(dados.scoreP ?? 0) > 7.5 && (
-          <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200">
+          <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40">
             <AlertTriangle className="icon-sm text-amber-600 shrink-0" />
             <span className="text-[10px] font-medium text-amber-700">Cinesiofobia acentuada — amplificador +2 no ID Final</span>
           </div>
@@ -391,7 +391,7 @@ function Bloco5Detail({ dados }: { dados: any }) {
         </div>
       </div>
       {(dados.scoreR ?? 0) > 8 && (
-        <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 border border-red-200">
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/40">
           <AlertTriangle className="icon-sm text-destructive shrink-0" />
           <span className="text-[10px] font-medium text-red-700">Regulação crítica (R {'>'} 8) — amplificador +3 no ID Final</span>
         </div>
@@ -719,9 +719,9 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
                         <span className="text-sm font-semibold">
                           {group.data ? format(parseISO(group.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : 'Data não disponível'}
                         </span>
-                        {group.completo && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] h-4">Completo</Badge>}
+                        {group.completo && <Badge className="bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40 text-[10px] h-4">Completo</Badge>}
                         {!group.completo && (
-                          <Badge variant="outline" className="text-[10px] h-4 text-amber-600 border-amber-200 bg-amber-50">
+                          <Badge variant="outline" className="text-[10px] h-4 text-amber-600 border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/40">
                             {group.blocosRecebidos.length}/6 etapas
                           </Badge>
                         )}
@@ -782,14 +782,14 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
                                       <span className="font-bold text-green-600">Modificáveis</span>
                                       <span>{terrenos.porcentagemMod}%</span>
                                     </div>
-                                    <Progress value={terrenos.porcentagemMod} className="h-1.5 bg-green-100" />
+                                    <Progress value={terrenos.porcentagemMod} className="h-1.5 bg-green-100 dark:bg-green-900/25" />
                                   </div>
                                   <div>
                                     <div className="flex justify-between text-[10px] mb-1">
                                       <span className="font-bold text-red-500">Fixos</span>
                                       <span>{terrenos.porcentagemNaoMod}%</span>
                                     </div>
-                                    <Progress value={terrenos.porcentagemNaoMod} className="h-1.5 bg-red-100" />
+                                    <Progress value={terrenos.porcentagemNaoMod} className="h-1.5 bg-red-100 dark:bg-red-900/25" />
                                   </div>
                                   <div className="pt-1">
                                     <Badge variant="outline" className="text-[10px] w-full justify-center py-1 border-primary/20 text-primary">

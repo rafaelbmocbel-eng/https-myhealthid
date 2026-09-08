@@ -210,7 +210,7 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
       </div>
 
       {estagnado && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-800">
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           <div>
             <span className="font-semibold">Possível platô terapêutico.</span> As últimas avaliações não mostraram variação clinicamente significativa
@@ -442,10 +442,10 @@ function SummaryCard({ label, value, icon, accent, subtitle }: {
 }) {
   const accentStyles: Record<string, string> = {
     primary: 'bg-primary/10 text-primary',
-    success: 'bg-emerald-50 text-emerald-600',
-    info: 'bg-blue-50 text-blue-600',
-    warning: 'bg-amber-50 text-amber-600',
-    danger: 'bg-red-50 text-red-500',
+    success: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600',
+    info: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600',
+    warning: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600',
+    danger: 'bg-red-50 dark:bg-red-950/40 text-red-500',
   };
 
   return (

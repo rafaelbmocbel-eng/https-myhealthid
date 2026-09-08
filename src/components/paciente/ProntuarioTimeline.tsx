@@ -277,7 +277,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
                               {format(parseISO(nota.created_at), 'HH:mm')}
                             </span>
                             {hasRedFlags && (
-                              <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] gap-1 rounded-lg">
+                              <Badge className="bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40 text-[10px] gap-1 rounded-lg">
                                 <AlertTriangle className="h-2.5 w-2.5" /> Red Flags
                               </Badge>
                             )}

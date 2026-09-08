@@ -39,10 +39,10 @@ interface DomainRisk {
 }
 
 const RISK_STYLES = {
-  baixo: { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-  moderado: { bar: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
-  alto: { bar: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' },
-  critico: { bar: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+  baixo: { bar: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-200 dark:border-emerald-800/40' },
+  moderado: { bar: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-200 dark:border-amber-800/40' },
+  alto: { bar: 'bg-orange-500', text: 'text-orange-700 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-950/40', border: 'border-orange-200 dark:border-orange-800/40' },
+  critico: { bar: 'bg-red-500', text: 'text-red-700 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-950/40', border: 'border-red-200 dark:border-red-800/40' },
 };
 
 function getDica(key: string, riskLevel: string): string {
@@ -197,8 +197,8 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
                 <div key={i} className={cn(
                   'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium',
                   isCritico
-                    ? 'border-red-200 bg-red-50 text-red-700'
-                    : 'border-amber-200 bg-amber-50 text-amber-700'
+                    ? 'border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
+                    : 'border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
                 )}>
                   <Icon className="h-3 w-3 shrink-0" />
                   <span className="font-semibold">{h.label}</span>

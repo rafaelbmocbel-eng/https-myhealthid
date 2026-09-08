@@ -231,7 +231,7 @@ export default function ProntuarioEstruturado({ notas, isLoading }: Props) {
           <div className="flex items-center gap-2 mb-2">
             <Brain className="h-4 w-4 text-violet-600" />
             <h3 className="text-sm font-black">Diretriz vigente</h3>
-            <Badge variant="outline" className="text-[9px] h-4 border-emerald-300 text-emerald-700 bg-emerald-50">Ativa</Badge>
+            <Badge variant="outline" className="text-[9px] h-4 border-emerald-300 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40">Ativa</Badge>
           </div>
           <div className="rounded-2xl border border-violet-200/60 bg-violet-500/[0.04] p-3.5">
             <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -274,7 +274,7 @@ export default function ProntuarioEstruturado({ notas, isLoading }: Props) {
                           {format(parseISO(nota.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </span>
                         {mantida && (
-                          <Badge variant="outline" className="text-[9px] h-4 border-emerald-300 text-emerald-700 bg-emerald-50">
+                          <Badge variant="outline" className="text-[9px] h-4 border-emerald-300 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40">
                             Conduta mantida
                           </Badge>
                         )}

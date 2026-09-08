@@ -14,13 +14,13 @@ export default function StatusClinicoBadge({ status, diasRestantesCarencia }: Pr
     ativo: {
       Icon: CheckCircle2,
       label: 'Ativo',
-      cls: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      cls: 'bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40',
       tip: 'Pacote ativo ou pagamento confirmado nos últimos 30 dias. Portal e atividades liberados.',
     },
     carencia: {
       Icon: Clock,
       label: `Carência ${diasRestantesCarencia ?? ''}d`.trim(),
-      cls: 'bg-amber-100 text-amber-700 border-amber-200',
+      cls: 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/40',
       tip: 'Sem pacote ativo. Portal segue aberto, mas você não pode criar exercícios, protocolos ou missões novas. Confirme um novo pagamento para liberar.',
     },
     bloqueado: {

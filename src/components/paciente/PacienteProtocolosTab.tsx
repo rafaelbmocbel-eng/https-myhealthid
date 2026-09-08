@@ -36,10 +36,10 @@ interface Props {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  ativo: { label: 'Ativo', color: 'bg-emerald-100 text-emerald-700' },
-  rascunho: { label: 'Rascunho IA', color: 'bg-amber-100 text-amber-700' },
-  concluido: { label: 'Concluído', color: 'bg-blue-100 text-blue-700' },
-  pausado: { label: 'Pausado', color: 'bg-amber-100 text-amber-700' },
+  ativo: { label: 'Ativo', color: 'bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300' },
+  rascunho: { label: 'Rascunho IA', color: 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300' },
+  concluido: { label: 'Concluído', color: 'bg-blue-100 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300' },
+  pausado: { label: 'Pausado', color: 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300' },
 };
 
 export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }: Props) {
@@ -560,7 +560,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
           <div className="flex items-center gap-2 mb-2">
             <Zap className="h-4 w-4 text-amber-500" />
             <span className="text-xs font-semibold text-muted-foreground uppercase">Prontas para Diretriz</span>
-            <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px]">{avaliacoesSemProtocolo.length}</Badge>
+            <Badge className="bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300 border-0 text-[10px]">{avaliacoesSemProtocolo.length}</Badge>
           </div>
           {avaliacoesSemProtocolo.map((av: any) => {
             const demandasCount = identificarDemandas({
@@ -568,7 +568,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
               F: av.score_f || 0, D: av.score_d || 0, R: av.score_r || 0, EFI: av.score_efi || 0,
             }).length;
             return (
-              <div key={av.id} className="border-l-4 border-amber-400 rounded-lg p-3 bg-amber-50/50 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+              <div key={av.id} className="border-l-4 border-amber-400 dark:border-amber-700 rounded-lg p-3 bg-amber-50/50 dark:bg-amber-950/40 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
                 <Activity className="h-4 w-4 text-amber-600 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -576,7 +576,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
                       {format(new Date(av.created_at), "dd/MM/yyyy", { locale: ptBR })}
                     </span>
                     <Badge variant="outline" className="text-[10px] h-4">ID {(av.dor_identidade || 0).toFixed(1)}</Badge>
-                    <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px]">{demandasCount} demandas</Badge>
+                    <Badge className="bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300 border-0 text-[10px]">{demandasCount} demandas</Badge>
                   </div>
                 </div>
                 <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-7 text-xs shadow-sm"

@@ -225,7 +225,7 @@ export default function PacienteDiario() {
               <p className="text-xs text-muted-foreground">Registre como você está se sentindo hoje</p>
             </div>
             {todayLogged && (
-              <Badge variant="outline" className="text-[10px] text-green-700 border-green-200 bg-green-50 gap-1">
+              <Badge variant="outline" className="text-[10px] text-green-700 dark:text-green-300 border-green-200 dark:border-green-800/40 bg-green-50 dark:bg-green-950/40 gap-1">
                 <Check className="h-3 w-3" /> Registrado hoje
               </Badge>
             )}

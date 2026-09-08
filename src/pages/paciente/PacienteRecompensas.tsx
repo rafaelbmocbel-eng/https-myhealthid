@@ -173,10 +173,10 @@ export default function PacienteRecompensas() {
                     </div>
                     <Badge variant="outline" className={cn(
                       'text-[10px]',
-                      r.status === 'entregue' && 'bg-green-100 text-green-700',
-                      r.status === 'solicitado' && 'bg-amber-100 text-amber-700',
-                      r.status === 'aprovado' && 'bg-blue-100 text-blue-700',
-                      r.status === 'cancelado' && 'bg-red-100 text-red-700',
+                      r.status === 'entregue' && 'bg-green-100 dark:bg-green-900/25 text-green-700 dark:text-green-300',
+                      r.status === 'solicitado' && 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300',
+                      r.status === 'aprovado' && 'bg-blue-100 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300',
+                      r.status === 'cancelado' && 'bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300',
                     )}>
                       {r.status === 'entregue' ? <Check className="w-3 h-3 mr-1" /> : <Clock className="w-3 h-3 mr-1" />}
                       {r.status}

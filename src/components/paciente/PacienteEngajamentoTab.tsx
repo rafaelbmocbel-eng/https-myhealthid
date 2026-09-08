@@ -137,8 +137,8 @@ export default function PacienteEngajamentoTab({ pacienteId, pacienteNome }: Pro
           {alerts.map((alert, i) => (
             <div key={i} className={`flex items-center gap-2 p-2.5 rounded-lg text-xs font-medium ${
               alert.severity === 'danger' ? 'bg-destructive/10 text-destructive' :
-              alert.severity === 'warning' ? 'bg-amber-50 text-amber-700' :
-              'bg-emerald-50 text-emerald-700'
+              alert.severity === 'warning' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' :
+              'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
             }`}>
               <alert.icon className="icon-sm shrink-0" />
               {alert.text}

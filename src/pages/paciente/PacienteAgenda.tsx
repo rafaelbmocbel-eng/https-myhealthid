@@ -407,7 +407,7 @@ export default function PacienteAgenda() {
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-lg font-black text-foreground">Agenda</h1>
+            <h1 className="h-page text-foreground">Agenda</h1>
             {view === 'meus' && (
               <Button
                 size="sm"

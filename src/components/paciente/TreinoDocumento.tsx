@@ -85,7 +85,7 @@ export default function TreinoDocumento({
             onError={() => marcarQuebrado(ex.gif_url)}
             className="h-32 w-32 sm:h-40 sm:w-40 rounded-lg object-cover border border-[#e1e4eb] shrink-0 bg-white" loading="lazy" />
         ) : ex.gif_url && quebrado ? (
-          <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-lg bg-red-50 border border-red-200 flex flex-col items-center justify-center shrink-0 text-center px-1">
+          <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/40 flex flex-col items-center justify-center shrink-0 text-center px-1">
             <ImageOff className="h-6 w-6 text-red-400 mb-1" />
             <span className="text-[10px] text-red-500 leading-tight">imagem indisponível</span>
           </div>
@@ -373,10 +373,10 @@ export default function TreinoDocumento({
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white text-[#1e2952] border border-[#c7d2fe]">🎯 {base.objetivo}</span>
               )}
               {base?.focoOportunidade && (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Oportunidade: {base.focoOportunidade}</span>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">Oportunidade: {base.focoOportunidade}</span>
               )}
               {base?.focoAtencao && (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Atenção: {base.focoAtencao}</span>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40">Atenção: {base.focoAtencao}</span>
               )}
               {(base?.questionarios || []).map((q, i) => (
                 <span key={i} className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white text-[#3730a3] border border-[#c7d2fe]">

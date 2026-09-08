@@ -124,7 +124,7 @@ export default function PacienteConsentimentoLGPD({ pacienteId, terapeutaId }: P
           <Shield className="h-4 w-4 text-primary" />
           Consentimento LGPD
           {termoAtivo && (
-            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] gap-1 ml-auto">
+            <Badge className="bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40 text-[10px] gap-1 ml-auto">
               <CheckCircle2 className="h-3 w-3" /> Aceito
             </Badge>
           )}

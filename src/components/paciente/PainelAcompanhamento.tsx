@@ -55,9 +55,9 @@ interface Props {
 
 const SERVICO_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   metodo_identidade: { label: 'Identidade', color: 'text-primary', bg: 'bg-primary/10' },
-  cob_zero: { label: 'Estrutural (legado)', color: 'text-blue-700', bg: 'bg-blue-100' },
-  studio_personal_id: { label: 'Studio', color: 'text-emerald-700', bg: 'bg-emerald-100' },
-  agenda_premium: { label: 'Agenda', color: 'text-amber-700', bg: 'bg-amber-100' },
+  cob_zero: { label: 'Estrutural (legado)', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100 dark:bg-blue-900/25' },
+  studio_personal_id: { label: 'Studio', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100 dark:bg-emerald-900/25' },
+  agenda_premium: { label: 'Agenda', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100 dark:bg-amber-900/25' },
 };
 
 type CicloTipo = 'mensal' | 'trimestral' | 'semestral' | 'anual';
@@ -672,7 +672,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
                               subtitle={`${format(new Date(ag.data_inicio), "dd/MM · HH:mm", { locale: ptBR })} – ${format(new Date(ag.data_fim), "HH:mm")}${ag.tipo_atendimento ? ` · ${ag.tipo_atendimento}` : ''}`}
                               subtitleColor="text-blue-600"
                               badge={ag.status === 'pendente' ? 'Pendente' : undefined}
-                              badgeColor={ag.status === 'pendente' ? 'bg-amber-100 text-amber-700' : undefined}
+                              badgeColor={ag.status === 'pendente' ? 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300' : undefined}
                               onNavigate={() => navigate(`/pacientes/${paciente.id}`)}
                             />
                           ))}

@@ -505,9 +505,9 @@ export default function PacienteQuestionarios() {
                   {concluidos.map((q, idx) => {
                     const sessionNumber = concluidos.length - idx;
                     return (
-                    <Card key={q.id} className={idx === 0 ? 'border-green-200' : ''}>
+                    <Card key={q.id} className={idx === 0 ? 'border-green-200 dark:border-green-800/40' : ''}>
                       <CardContent className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/25 flex items-center justify-center shrink-0">
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -539,7 +539,7 @@ export default function PacienteQuestionarios() {
                               Ver
                             </Button>
                           )}
-                          <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 text-[10px]">
+                          <Badge variant="outline" className="text-green-700 dark:text-green-300 border-green-200 dark:border-green-800/40 bg-green-50 dark:bg-green-950/40 text-[10px]">
                             #{sessionNumber}
                           </Badge>
                         </div>

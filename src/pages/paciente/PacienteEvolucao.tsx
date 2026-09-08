@@ -252,9 +252,9 @@ export default function PacienteEvolucao() {
                 <div className="space-y-2">
                   {alerts.map((alert, i) => (
                     <Card key={i} className={`${
-                      alert.type === 'critical' ? 'border-red-200 bg-red-50/50' :
-                      alert.type === 'warning' ? 'border-amber-200 bg-amber-50/50' :
-                      'border-emerald-200 bg-emerald-50/50'
+                      alert.type === 'critical' ? 'border-red-200 dark:border-red-800/40 bg-red-50/50 dark:bg-red-950/40' :
+                      alert.type === 'warning' ? 'border-amber-200 dark:border-amber-800/40 bg-amber-50/50 dark:bg-amber-950/40' :
+                      'border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/40'
                     }`}>
                       <CardContent className="p-3 flex items-start gap-2.5">
                         <span className="text-lg shrink-0">{alert.icon}</span>
@@ -334,9 +334,9 @@ export default function PacienteEvolucao() {
                       {correlations.map(c => (
                         <div key={c.dimension} className="flex items-start gap-3">
                           <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-black ${
-                            c.correlation > 0.6 ? 'bg-emerald-100 text-emerald-700' :
-                            c.correlation > 0.3 ? 'bg-amber-100 text-amber-700' :
-                            'bg-red-100 text-red-700'
+                            c.correlation > 0.6 ? 'bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300' :
+                            c.correlation > 0.3 ? 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300' :
+                            'bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300'
                           }`}>
                             {c.dimension}
                           </div>

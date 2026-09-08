@@ -315,11 +315,11 @@ export default function PacienteProfissionais() {
                     <p className="absolute bottom-2 left-3 text-[10px] font-bold text-white/90 drop-shadow">{mainEsp}</p>
                     <div className="absolute top-2 right-2">
                       {t.modalidade === 'online' ? (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600"><Monitor className="h-2.5 w-2.5" /> Online</span>
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/25 text-sky-600 dark:text-sky-300"><Monitor className="h-2.5 w-2.5" /> Online</span>
                       ) : t.modalidade === 'ambos' ? (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700"><Globe className="h-2.5 w-2.5" /> Presencial + Online</span>
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300"><Globe className="h-2.5 w-2.5" /> Presencial + Online</span>
                       ) : (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600"><Building2 className="h-2.5 w-2.5" /> Presencial</span>
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300"><Building2 className="h-2.5 w-2.5" /> Presencial</span>
                       )}
                     </div>
                   </div>

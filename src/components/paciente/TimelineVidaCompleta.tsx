@@ -305,7 +305,7 @@ function EventoCard({ evento: ev }: { evento: EventoTimeline }) {
       {/* Ponto na linha */}
       <div className={cn(
         'h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5 -ml-[3px] bg-background transition-transform group-hover:scale-125',
-        isNascimento ? 'border-rose-500 bg-rose-100' :
+        isNascimento ? 'border-rose-500 bg-rose-100 dark:bg-rose-900/25' :
         isHistoriaVida ? 'border-rose-400' :
         ev.tipo === 'sessao_concluida' ? 'border-emerald-500' :
         ev.tipo === 'diagnostico' ? 'border-red-500' :

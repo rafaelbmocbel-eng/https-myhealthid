@@ -34,11 +34,11 @@ export default function PacienteExames() {
   return (
     <ProtectedPatientRoute>
       <PacienteLayout>
-        <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-4">
+        <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-4">
           <div className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-teal-600" />
+            <ClipboardList className="h-5 w-5 text-primary" />
             <div>
-              <h1 className="text-lg font-black text-foreground">Exames</h1>
+              <h1 className="h-page text-foreground">Exames</h1>
               <p className="text-[11px] text-muted-foreground">Resultados dos exames feitos com o seu profissional.</p>
             </div>
           </div>

@@ -160,9 +160,9 @@ export default function ResumoProntuario({ pacienteId }: Props) {
                             <span className="text-xs font-bold text-muted-foreground uppercase">Status das Diretrizes</span>
                         </div>
                         {temMudanca || (p1 && !p2) ? (
-                            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0 text-[10px]">Mudanças Detectadas</Badge>
+                            <Badge className="bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300 hover:bg-amber-100 border-0 text-[10px]">Mudanças Detectadas</Badge>
                         ) : (
-                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0 text-[10px]">Conduta Mantida</Badge>
+                            <Badge className="bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border-0 text-[10px]">Conduta Mantida</Badge>
                         )}
                     </div>
 

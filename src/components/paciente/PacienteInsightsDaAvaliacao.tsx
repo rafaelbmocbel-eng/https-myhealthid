@@ -225,7 +225,7 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId, soLeitura = fa
         <div className="flex items-start gap-3">
           <div className={cn(
             'w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0',
-            desafioConcluido ? 'bg-emerald-100' : 'bg-primary/10',
+            desafioConcluido ? 'bg-emerald-100 dark:bg-emerald-900/25' : 'bg-primary/10',
           )}>
             {desafioConcluido ? '✅' : desafio.emoji}
           </div>
@@ -237,7 +237,7 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId, soLeitura = fa
               <span className={cn(
                 'text-[10px] font-bold px-2 py-0.5 rounded-full',
                 desafioConcluido
-                  ? 'bg-emerald-100 text-emerald-700'
+                  ? 'bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300'
                   : 'bg-primary/10 text-primary',
               )}>
                 +{desafio.xp} XP

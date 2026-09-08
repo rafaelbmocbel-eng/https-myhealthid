@@ -853,7 +853,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
                             className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
                             onClick={() => setExpandedVoiceId(isExpanded ? null : av.id)}
                           >
-                            <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                            <div className="h-10 w-10 rounded-full bg-violet-100 dark:bg-violet-900/25 flex items-center justify-center shrink-0">
                               <Mic className="h-5 w-5 text-violet-600" />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -878,7 +878,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
                             <div className="p-4 pt-0 space-y-3">
                               <div className="flex items-center justify-between gap-2 flex-wrap">
                                 <div className="flex items-center gap-2">
-                                  <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-[10px]">{av.servico || 'identidade'}</Badge>
+                                  <Badge className="bg-violet-100 dark:bg-violet-900/25 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/40 text-[10px]">{av.servico || 'identidade'}</Badge>
                                   {resultado?.classificacao_severidade && (
                                     <Badge variant="outline" className="text-[10px] h-4">{resultado.classificacao_severidade}</Badge>
                                   )}
