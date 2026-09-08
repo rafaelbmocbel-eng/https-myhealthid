@@ -3,10 +3,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, TrendingUp, TrendingDown, Minus, Zap, Brain, Target, Flame, AlertTriangle, ChevronRight, FileText } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Zap, Brain, Target, Flame, AlertTriangle, ChevronRight, FileText } from 'lucide-react';
 import { format, parseISO } from '@/lib/dateSafe';
 const EvolucaoFisicaCard = lazy(() => import('@/components/evolucao/EvolucaoFisicaCard'));
 const RelatorioAvaliacaoView = lazy(() => import('@/components/paciente/RelatorioAvaliacaoView'));
@@ -131,9 +132,7 @@ export default function PacienteEvolucao() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

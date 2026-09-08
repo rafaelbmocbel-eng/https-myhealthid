@@ -11,13 +11,14 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Clock, MapPin, Users, CheckCircle2, Loader2, Ticket, Video, Repeat } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, CheckCircle2, Ticket, Video, Repeat } from 'lucide-react';
 import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { formatBRL } from '@/lib/formatBRL';
@@ -212,9 +213,7 @@ export default function PacienteEventos() {
           <h1 className="h-page">Eventos</h1>
 
           {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
+            <PortalSkeleton />
           ) : erroCarregar ? (
             <PortalErrorState onRetry={() => { setLoading(true); loadData(); }} mensagem="Não consegui carregar os eventos. Verifique sua internet e tente de novo." />
           ) : eventos.length === 0 ? (

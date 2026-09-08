@@ -17,6 +17,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { formatBRL0 } from '@/lib/formatBRL';
 
@@ -273,10 +274,7 @@ export default function PacienteProfissionais() {
 
         {/* Lista */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Loader2 className="h-7 w-7 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Carregando profissionais...</p>
-          </div>
+          <PortalSkeleton />
         ) : isError ? (
           <PortalErrorState onRetry={() => refetch()} mensagem="Não consegui carregar os profissionais. Verifique sua internet e tente de novo." />
         ) : filtrados.length === 0 ? (

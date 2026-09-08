@@ -5,6 +5,7 @@ import { ganharXP } from '@/lib/ganharXP';
 import { gerarNotaDiario } from '@/utils/prontuarioAutoNotes';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -187,9 +188,7 @@ export default function PacienteDiario() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

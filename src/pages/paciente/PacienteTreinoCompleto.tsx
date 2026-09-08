@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Printer, FileDown, Loader2, Dumbbell, Share2, Pencil, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -179,7 +180,7 @@ export default function PacienteTreinoCompleto() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          <PortalSkeleton />
         ) : !editando && (!plano || fases.length === 0) ? (
           <div className="max-w-2xl mx-auto p-8 text-center">
             <Dumbbell className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />

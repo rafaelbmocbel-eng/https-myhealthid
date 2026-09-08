@@ -3,11 +3,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO } from '@/lib/dateSafe';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import PacienteConsentimentoLGPD from '@/components/paciente/PacienteConsentimentoLGPD';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Phone, Calendar, Pencil, Loader2 } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Pencil } from 'lucide-react';
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 import { usePacientePortal } from '@/hooks/usePacientePortal';
 
@@ -29,9 +30,7 @@ export default function PacientePerfil() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

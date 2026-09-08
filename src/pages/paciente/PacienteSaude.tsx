@@ -5,6 +5,7 @@ import { Loader2, LayoutDashboard, Moon, Droplets, Scale, UtensilsCrossed, Activ
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import HealthDashboardCards from '@/components/saude/HealthDashboardCards';
 import SleepLogForm from '@/components/saude/SleepLogForm';
 import WaterTracker from '@/components/saude/WaterTracker';
@@ -49,7 +50,7 @@ export default function PacienteSaude() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

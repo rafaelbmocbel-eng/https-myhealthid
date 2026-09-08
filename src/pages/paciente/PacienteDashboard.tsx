@@ -16,6 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
 const MyIDResult = lazy(() => import('@/components/myid/MyIDResult').then(m => ({ default: m.MyIDResult })));
@@ -350,9 +351,7 @@ export default function PacienteDashboard() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

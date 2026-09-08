@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -199,9 +200,7 @@ export default function PacienteHistoria() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

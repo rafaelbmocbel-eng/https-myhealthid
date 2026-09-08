@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
@@ -374,9 +375,7 @@ export default function PacienteAgenda() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

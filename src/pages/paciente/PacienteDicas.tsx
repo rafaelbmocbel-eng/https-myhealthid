@@ -4,11 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Lightbulb, ChevronDown, ChevronUp, ShieldAlert, Stethoscope, ChevronRight, Info } from 'lucide-react';
+import { Lightbulb, ChevronDown, ChevronUp, ShieldAlert, Stethoscope, ChevronRight, Info } from 'lucide-react';
 import { scoresDoResultado } from '@/utils/myid/scores';
 import JornadaPacienteCard from '@/components/paciente/JornadaPacienteCard';
 
@@ -121,7 +122,7 @@ export default function PacienteDicas() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          <PortalSkeleton />
         ) : erroCarregar ? (
           <PortalErrorState onRetry={() => { setLoading(true); carregar(); }} mensagem="Não consegui carregar suas dicas. Verifique sua internet e tente de novo." />
         ) : dicas.length === 0 && pessoais.length === 0 ? (

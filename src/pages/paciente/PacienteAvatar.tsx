@@ -1,9 +1,10 @@
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
 import { Card, CardContent } from '@/components/ui/card';
-import { Activity, Info, Loader2 } from 'lucide-react';
+import { Activity, Info } from 'lucide-react';
 import { usePacientePortal } from '@/hooks/usePacientePortal';
 
 const LEGENDA = [
@@ -23,9 +24,7 @@ export default function PacienteAvatar() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -354,9 +355,7 @@ export default function PacienteQuestionarios() {
               questionários calibram tudo com base no seu MyID.
             </p>
             {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
+              <PortalSkeleton />
             ) : pacienteId ? (
               <>
                 {/* Questionários específicos que calibram o plano */}
@@ -413,9 +412,7 @@ export default function PacienteQuestionarios() {
           <h1 className="h-page">Questionários</h1>
 
           {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
+            <PortalSkeleton />
           ) : questionarios.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center space-y-4">

@@ -1,6 +1,7 @@
-import { Loader2, ClipboardList } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import ExamesPresenciaisCard from '@/components/presencial/ExamesPresenciaisCard';
 import { usePacientePortal } from '@/hooks/usePacientePortal';
@@ -15,7 +16,7 @@ export default function PacienteExames() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

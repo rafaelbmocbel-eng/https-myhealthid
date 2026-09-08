@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatBRL } from '@/lib/formatBRL';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -245,9 +246,7 @@ export default function PacientePagamentos() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex items-center justify-center p-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );

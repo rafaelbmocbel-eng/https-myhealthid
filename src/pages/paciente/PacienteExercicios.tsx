@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ganharXP } from '@/lib/ganharXP';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { PlanoPersonalizadoSection } from '@/pages/paciente/PacientePlanoIA';
 import { Card, CardContent } from '@/components/ui/card';
@@ -250,9 +251,7 @@ export default function PacienteExercicios() {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <PortalSkeleton />
         </PacienteLayout>
       </ProtectedPatientRoute>
     );
