@@ -754,19 +754,25 @@ export default function Pacientes() {
   const filtered = useMemo(() => {
     // Busca insensível a acento e caixa: "joao" acha "João", "avila" acha "Ávila".
     const q = normalizarBusca(debouncedSearch);
+    // Relevância da busca (quanto menor, mais no topo):
+    //  0 = o NOME COMEÇA com o termo ("Maria ..." ao buscar "maria")
+    //  1 = alguma palavra do nome começa com o termo (nome do meio/sobrenome)
+    //  2 = casa em e-mail ou telefone (só com 2+ caracteres)
+    // -1 = não casa. Assim "Maria X" vem antes de "Eliude maria", em vez de a
+    // ordem alfabética pura jogar nomes do meio na frente.
+    const rankBusca = (p: Paciente): number => {
+      const full = normalizarBusca(`${p.nome || ''} ${p.sobrenome || ''}`);
+      if (full.startsWith(q)) return 0;
+      if (full.split(/\s+/).some(w => w.startsWith(q))) return 1;
+      if (q.length >= 2 && (normalizarBusca(p.email).includes(q) || (p.telefone || '').toLowerCase().includes(q))) return 2;
+      return -1;
+    };
+    const rankById = new Map<string, number>();
     const list = pacientes.filter(p => {
       if (q) {
-        const nome = normalizarBusca(p.nome);
-        const sobrenome = normalizarBusca(p.sobrenome);
-        const full = `${nome} ${sobrenome}`.trim();
-        // 1 letra: começar por ela em nome OU sobrenome
-        // 2+ chars: substring em nome completo, email ou telefone
-        const matchSearch = q.length === 1
-          ? nome.startsWith(q) || sobrenome.startsWith(q)
-          : full.includes(q)
-            || normalizarBusca(p.email).includes(q)
-            || (p.telefone || '').toLowerCase().includes(q);
-        if (!matchSearch) return false;
+        const r = rankBusca(p);
+        if (r < 0) return false;
+        rankById.set(p.id, r);
       }
       if (filterServico !== 'todos' && !getServicosForPaciente(p.id).includes(filterServico)) return false;
       if (['novo', 'recorrente', 'a_pagar'].includes(chip) && getClassificacao(p.id, p.created_at) !== chip) return false;
@@ -787,8 +793,14 @@ export default function Pacientes() {
     const ehRecente = (p: Paciente) =>
       recentlyAddedIds.includes(p.id) || (agora - new Date(p.created_at).getTime() < UMA_HORA);
     return [...list].sort((a, b) => {
-      // Durante a busca, resultado sempre em ordem alfabética pura.
-      if (q) return cmpNome(a, b);
+      // Durante a busca: primeiro por relevância (nome que começa com o termo no
+      // topo) e, dentro de cada grupo, ordem alfabética.
+      if (q) {
+        const ra = rankById.get(a.id) ?? 9;
+        const rb = rankById.get(b.id) ?? 9;
+        if (ra !== rb) return ra - rb;
+        return cmpNome(a, b);
+      }
       // Fora da busca, recém-cadastrados (1h) no topo, o mais novo primeiro.
       const aRec = ehRecente(a);
       const bRec = ehRecente(b);
