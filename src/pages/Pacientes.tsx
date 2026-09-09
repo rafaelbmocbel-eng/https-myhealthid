@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, normalizarBusca } from '@/lib/utils';
 import { CODIGOS_CASSI } from '@/lib/cassiGuias';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { exportToCsv } from '@/utils/exportCsv';
@@ -752,18 +752,19 @@ export default function Pacientes() {
   }, [pacientes, ultimosAgendamentos]);
 
   const filtered = useMemo(() => {
-    const q = debouncedSearch.trim().toLowerCase();
+    // Busca insensível a acento e caixa: "joao" acha "João", "avila" acha "Ávila".
+    const q = normalizarBusca(debouncedSearch);
     const list = pacientes.filter(p => {
       if (q) {
-        const nome = (p.nome || '').toLowerCase();
-        const sobrenome = (p.sobrenome || '').toLowerCase();
+        const nome = normalizarBusca(p.nome);
+        const sobrenome = normalizarBusca(p.sobrenome);
         const full = `${nome} ${sobrenome}`.trim();
         // 1 letra: começar por ela em nome OU sobrenome
         // 2+ chars: substring em nome completo, email ou telefone
         const matchSearch = q.length === 1
           ? nome.startsWith(q) || sobrenome.startsWith(q)
           : full.includes(q)
-            || (p.email || '').toLowerCase().includes(q)
+            || normalizarBusca(p.email).includes(q)
             || (p.telefone || '').toLowerCase().includes(q);
         if (!matchSearch) return false;
       }
@@ -977,8 +978,8 @@ export default function Pacientes() {
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-5">
-          <div className="relative flex-1 min-w-52">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-5">
+          <div className="relative w-full sm:flex-1 sm:min-w-52">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary pointer-events-none z-10" />
             <Input
               placeholder="Buscar paciente..."
@@ -989,7 +990,7 @@ export default function Pacientes() {
           </div>
           
           <Select value={sortBy} onValueChange={v => setSortBy(v as SortKey)}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <ArrowUpDown className="icon-sm mr-1.5" />
               <SelectValue />
             </SelectTrigger>
