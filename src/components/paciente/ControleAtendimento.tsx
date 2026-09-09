@@ -19,7 +19,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
-import { cn } from '@/lib/utils';
+import { cn, normalizarBusca } from '@/lib/utils';
 
 interface ControleAtendimentoProps {
   embedded?: boolean;
@@ -532,7 +532,7 @@ export default function ControleAtendimento({ embedded = false }: ControleAtendi
             <div className="space-y-0.5 max-h-40 overflow-y-auto">
               {patients
                 .filter((p: any) => !vipIds.includes(p.id))
-                .filter((p: any) => `${p.nome} ${p.sobrenome}`.toLowerCase().includes(vipSearch.toLowerCase()))
+                .filter((p: any) => normalizarBusca(`${p.nome} ${p.sobrenome}`).includes(normalizarBusca(vipSearch)))
                 .map((p: any) => (
                   <div key={p.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/40">
                     <button onClick={() => saveVip([...vipIds, p.id])} className="text-muted-foreground/20 hover:text-amber-500"><Star className="h-3 w-3" /></button>

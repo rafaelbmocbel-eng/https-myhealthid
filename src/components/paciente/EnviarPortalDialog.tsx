@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { normalizarBusca } from '@/lib/utils';
 import { Search, MessageCircle, Copy, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -28,8 +29,8 @@ export default function EnviarPortalDialog({ pacientes, nomeClinica, onClose }: 
   const [enviados, setEnviados] = useState<Set<string>>(new Set());
 
   const lista = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    return pacientes.filter((p) => !q || `${p.nome} ${p.sobrenome || ''}`.toLowerCase().includes(q));
+    const q = normalizarBusca(busca);
+    return pacientes.filter((p) => !q || normalizarBusca(`${p.nome} ${p.sobrenome || ''}`).includes(q));
   }, [pacientes, busca]);
 
   const semLink = pacientes.filter((p) => !p.portal_token).length;

@@ -28,7 +28,7 @@ import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, Agendamento, Paciente } from '@/hooks/useAgenda';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { cn, normalizarBusca } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { clearDraft } from '@/lib/draftStorage';
@@ -2649,8 +2649,8 @@ export default function Agenda() {
               <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
                 {pacientes
                   .filter(p => {
-                    const q = turmaPacSearch.toLowerCase();
-                    return !q || `${p.nome} ${p.sobrenome}`.toLowerCase().includes(q);
+                    const q = normalizarBusca(turmaPacSearch);
+                    return !q || normalizarBusca(`${p.nome} ${p.sobrenome}`).includes(q);
                   })
                   .map(p => {
                     const selected = turmaModal.selectedPacientes.includes(p.id);
@@ -2688,8 +2688,8 @@ export default function Agenda() {
                   })
                 }
                 {pacientes.filter(p => {
-                  const q = turmaPacSearch.toLowerCase();
-                  return !q || `${p.nome} ${p.sobrenome}`.toLowerCase().includes(q);
+                  const q = normalizarBusca(turmaPacSearch);
+                  return !q || normalizarBusca(`${p.nome} ${p.sobrenome}`).includes(q);
                 }).length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-4">Nenhum paciente encontrado</p>
                 )}

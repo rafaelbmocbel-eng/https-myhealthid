@@ -17,7 +17,7 @@ import { formatPhoneNumber } from '@/utils/whatsapp';
 import { formatDistanceToNow, isToday } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, normalizarBusca } from '@/lib/utils';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator,
@@ -126,10 +126,10 @@ export default function CrmPipeline({ embedded = false }: { embedded?: boolean }
   }, [leads]);
 
   const filtrados = useMemo(() => {
-    const q = busca.toLowerCase();
+    const q = normalizarBusca(busca);
     const now = Date.now();
     return leads.filter((l) => {
-      if (q && !((l.nome_contato || '').toLowerCase().includes(q) || l.telefone.includes(q))) return false;
+      if (q && !(normalizarBusca(l.nome_contato).includes(q) || l.telefone.includes(q))) return false;
       if (filtro === 'minha_vez' && l.ultima_direcao !== 'entrada') return false;
       if (filtro === 'sla' && !slaStatus(l.sla_responder_ate, l.ultima_direcao)) return false;
       if (filtro === 'parados') {

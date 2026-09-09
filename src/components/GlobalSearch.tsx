@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizarBusca } from '@/lib/utils';
 
 /* ─── Types ─── */
 type NavItem = {
@@ -83,7 +84,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
 export default function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [patients, setPatients] = useState<PatientResult[]>([]);
+  const [allPatients, setAllPatients] = useState<PatientResult[]>([]);
   const [eventos, setEventos] = useState<EventoResult[]>([]);
   const [agendamentos, setAgendamentos] = useState<AgendamentoResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,8 +104,10 @@ export default function GlobalSearch() {
     return () => document.removeEventListener('keydown', down);
   }, []);
 
-  /* Fetch recent patients when dialog opens (warm-up) */
-  const fetchRecentPatients = useCallback(async () => {
+  /* Carrega todos os clientes ativos ao abrir (são poucos) para filtrar/ordenar
+     no cliente — assim a busca ignora acento/caixa e é instantânea, sem depender
+     do ilike do Postgres (que é sensível a acento). */
+  const fetchAllPatients = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
       .from('pacientes')
@@ -112,13 +115,31 @@ export default function GlobalSearch() {
       .eq('terapeuta_id', user.id)
       .eq('ativo', true)
       .order('nome')
-      .limit(6);
-    setPatients(data || []);
+      .limit(1000);
+    setAllPatients(data || []);
   }, [user]);
 
   useEffect(() => {
-    if (open) fetchRecentPatients();
-  }, [open, fetchRecentPatients]);
+    if (open) fetchAllPatients();
+  }, [open, fetchAllPatients]);
+
+  /* Pacientes exibidos: filtro/ordem no cliente, insensível a acento e caixa. */
+  const patients = useMemo(() => {
+    const q = normalizarBusca(query);
+    const ordenados = [...allPatients].sort((a, b) =>
+      `${a.nome || ''} ${a.sobrenome || ''}`.trim()
+        .localeCompare(`${b.nome || ''} ${b.sobrenome || ''}`.trim(), 'pt-BR', { sensitivity: 'base', numeric: true })
+    );
+    if (!q) return ordenados.slice(0, 6);
+    const match = ordenados.filter(p => {
+      const nome = normalizarBusca(p.nome);
+      const sobrenome = normalizarBusca(p.sobrenome);
+      return q.length === 1
+        ? nome.startsWith(q) || sobrenome.startsWith(q)
+        : `${nome} ${sobrenome}`.trim().includes(q);
+    });
+    return match.slice(0, q.length === 1 ? 12 : 8);
+  }, [allPatients, query]);
 
   /* Search-as-you-type: dynamic data */
   useEffect(() => {
@@ -130,9 +151,12 @@ export default function GlobalSearch() {
     abortRef.current = controller;
 
     const q = query.trim();
+    // Pacientes são filtrados no cliente (useMemo). Aqui só buscamos eventos e
+    // agendamentos por título no servidor.
     if (q.length === 0) {
-      // Back to recent patients
-      fetchRecentPatients();
+      setEventos([]);
+      setAgendamentos([]);
+      setLoading(false);
       return;
     }
 
@@ -143,13 +167,7 @@ export default function GlobalSearch() {
 
     const timeout = setTimeout(async () => {
       try {
-        const [pac, evt, agd] = await Promise.all([
-          supabase.from('pacientes')
-            .select('id, nome, sobrenome')
-            .eq('terapeuta_id', user.id)
-            .or(`nome.ilike.${like},sobrenome.ilike.${like}`)
-            .order('nome')
-            .limit(q.length === 1 ? 12 : 8),
+        const [evt, agd] = await Promise.all([
           supabase.from('eventos')
             .select('id, titulo')
             .eq('terapeuta_id', user.id)
@@ -163,7 +181,6 @@ export default function GlobalSearch() {
             .limit(q.length === 1 ? 8 : 4),
         ]);
         if (!controller.signal.aborted) {
-          setPatients(pac.data || []);
           setEventos(evt.data || []);
           setAgendamentos(agd.data || []);
         }
@@ -176,7 +193,7 @@ export default function GlobalSearch() {
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [query, user, fetchRecentPatients]);
+  }, [query, user]);
 
   /* Static item filter */
   const grouped = useMemo(() => {

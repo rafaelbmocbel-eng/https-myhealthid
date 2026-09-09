@@ -25,7 +25,7 @@ import { WaBubblePreview } from '@/components/whatsapp/WaBubblePreview';
 import { formatPhoneNumber } from '@/utils/whatsapp';
 import { format, isToday, isYesterday, isSameDay } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, normalizarBusca } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { comprimirImagem } from '@/lib/comprimirImagem';
 import { toast } from 'sonner';
@@ -151,9 +151,9 @@ export default function CrmInbox({ embedded = false, mode = 'clientes' }: { embe
   } as Record<ViewKey, number>), [baseConv]);
 
   const filtradas = useMemo(() => baseConv.filter(c => {
-    const q = busca.toLowerCase().trim();
+    const q = normalizarBusca(busca);
     if (q) {
-      const matchMeta = (c.nome_contato || '').toLowerCase().includes(q) || c.telefone.includes(q);
+      const matchMeta = normalizarBusca(c.nome_contato).includes(q) || c.telefone.includes(q);
       const matchMsg  = q.length >= 3 && idsGlobais.includes(c.id);
       if (!matchMeta && !matchMsg) return false;
     }

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { normalizarBusca } from '@/lib/utils';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -154,12 +155,12 @@ export default function PacienteProfissionais() {
   });
 
   const filtrados = useMemo(() => {
-    const termo = busca.toLowerCase().trim();
+    const termo = normalizarBusca(busca);
     return terapeutas.filter((t) => {
       if (termo && !(
-        (t.nome_exibicao || '').toLowerCase().includes(termo) ||
-        (t.cidade || '').toLowerCase().includes(termo) ||
-        (t.especialidades || []).some(e => e.toLowerCase().includes(termo))
+        normalizarBusca(t.nome_exibicao).includes(termo) ||
+        normalizarBusca(t.cidade).includes(termo) ||
+        (t.especialidades || []).some(e => normalizarBusca(e).includes(termo))
       )) return false;
       if (categoriaAtiva !== 'Todos') {
         if (!(t.especialidades || []).some(e => e.toLowerCase().includes(categoriaAtiva.toLowerCase()))) return false;

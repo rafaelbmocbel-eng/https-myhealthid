@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type CSSProperties, type FocusEvent } from 'react';
+import { normalizarBusca } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gerarDatasSessoes } from '@/lib/feriados';
@@ -398,19 +399,19 @@ export default function ControleCassi() {
 
   // Guias ativas filtradas pela busca (por nome do paciente).
   const ativasFiltradas = useMemo(() => {
-    const q = busca.trim().toLowerCase();
+    const q = normalizarBusca(busca);
     if (!q) return guiasAtivasLista;
     return guiasAtivasLista.filter((g) =>
-      `${g.pacientes?.nome || ''} ${g.pacientes?.sobrenome || ''}`.toLowerCase().includes(q));
+      normalizarBusca(`${g.pacientes?.nome || ''} ${g.pacientes?.sobrenome || ''}`).includes(q));
   }, [guiasAtivasLista, busca]);
 
   // Filtro de busca (nome, carteirinha ou telefone).
   const linhasFiltradas = useMemo(() => {
-    const q = busca.trim().toLowerCase();
+    const q = normalizarBusca(busca);
     if (!q) return linhas;
     return linhas.filter((l) => {
       const p = l.paciente;
-      return `${p.nome} ${p.sobrenome || ''}`.toLowerCase().includes(q)
+      return normalizarBusca(`${p.nome} ${p.sobrenome || ''}`).includes(q)
         || (p.carteirinha || '').toLowerCase().includes(q)
         || (p.telefone || '').toLowerCase().includes(q);
     });
@@ -1502,11 +1503,11 @@ function PlanilhaGuias({ guias, onAbrir }: { guias: GuiaComPaciente[]; onAbrir: 
   const codigosDe = (g: GuiaComPaciente) => (g.codigos || []).map((c) => c.codigo).join(', ');
 
   const filtradas = useMemo(() => {
-    const q = busca.trim().toLowerCase();
+    const q = normalizarBusca(busca);
     return guias.filter((g) => {
       if (statusFiltro !== 'todos' && g.status !== statusFiltro) return false;
       if (!q) return true;
-      return nomeDe(g).toLowerCase().includes(q) || (g.matricula || '').toLowerCase().includes(q);
+      return normalizarBusca(nomeDe(g)).includes(q) || (g.matricula || '').toLowerCase().includes(q);
     });
   }, [guias, busca, statusFiltro]);
 
@@ -1641,12 +1642,16 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         .from('pacientes')
         .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, plano_saude, guias_por_mes, cassi_encerrado_em')
         .eq('terapeuta_id', user!.id).eq('ativo', true)
-        .or(`nome.ilike.%${termo}%,sobrenome.ilike.%${termo}%`)
-        .order('nome', { ascending: true }).limit(30);
+        .order('nome', { ascending: true }).limit(1000);
       if (error) throw error;
+      // Filtro por nome no cliente (insensível a acento/caixa: "joao" acha "João").
+      const t = normalizarBusca(termo);
       // Mostra: não-CASSI (pra adicionar) e CASSI ENCERRADO (pra reativar). Tira só
       // os CASSI ativos (esses já aparecem no Controle).
-      return (data || []).filter((p: any) => !/cassi/i.test(String(p.plano_saude || '')) || !!p.cassi_encerrado_em);
+      return (data || [])
+        .filter((p: any) => normalizarBusca(`${p.nome} ${p.sobrenome || ''}`).includes(t))
+        .filter((p: any) => !/cassi/i.test(String(p.plano_saude || '')) || !!p.cassi_encerrado_em)
+        .slice(0, 30);
     },
     enabled: !!user && !editando && modo === 'existente' && termo.length >= 2,
   });
@@ -1661,9 +1666,12 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         .from('pacientes')
         .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, plano_saude, cassi_diagnostico, guias_por_mes, cassi_encerrado_em')
         .eq('terapeuta_id', user!.id).eq('ativo', true)
-        .ilike('nome', `${f.nome.trim()}%`)
-        .order('nome', { ascending: true }).limit(6);
-      return (data || []) as any[];
+        .order('nome', { ascending: true }).limit(1000);
+      // Prefixo por nome no cliente (insensível a acento/caixa).
+      const alvo = normalizarBusca(f.nome);
+      return ((data || []) as any[])
+        .filter((p) => normalizarBusca(p.nome).startsWith(alvo))
+        .slice(0, 6);
     },
     enabled: !!user && !editando && modo === 'novo' && !alvoId && f.nome.trim().length >= 3,
   });
@@ -1673,13 +1681,15 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   const { data: mergeCandidatos = [] } = useQuery({
     queryKey: ['cassi-merge-cand', user?.id, paciente?.id, mergeBusca.trim().toLowerCase()],
     queryFn: async () => {
-      const t = mergeBusca.trim().replace(/[%,()]/g, '');
+      const t = normalizarBusca(mergeBusca);
       const { data } = await (supabase as any).from('pacientes')
         .select('id, nome, sobrenome, carteirinha, codigos_cassi, cassi_diagnostico, guias_por_mes, cassi_confirmado_mes, plano_saude')
         .eq('terapeuta_id', user!.id).eq('ativo', true).neq('id', paciente!.id)
-        .or(`nome.ilike.%${t}%,sobrenome.ilike.%${t}%`)
-        .order('nome', { ascending: true }).limit(10);
-      return (data || []) as any[];
+        .order('nome', { ascending: true }).limit(1000);
+      // Filtro por nome no cliente (insensível a acento/caixa).
+      return ((data || []) as any[])
+        .filter((p) => normalizarBusca(`${p.nome} ${p.sobrenome || ''}`).includes(t))
+        .slice(0, 10);
     },
     enabled: !!user && editando && !!paciente && mergeBusca.trim().length >= 2,
   });
@@ -2321,11 +2331,11 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
 
   // "Adicionar cliente": qualquer candidato que ainda não está na lista.
   const idsNaLista = new Set(itens.filter((it) => !ocultos.has(it.id)).map((i) => i.id));
-  const buscaAddLower = buscaAdd.trim().toLowerCase();
+  const buscaAddLower = normalizarBusca(buscaAdd);
   const resultadosAdd = buscaAddLower
     ? candidatos
         .filter((l) => !idsNaLista.has(l.paciente.id))
-        .filter((l) => `${l.paciente.nome} ${l.paciente.sobrenome || ''} ${l.paciente.carteirinha || ''}`.toLowerCase().includes(buscaAddLower))
+        .filter((l) => normalizarBusca(`${l.paciente.nome} ${l.paciente.sobrenome || ''} ${l.paciente.carteirinha || ''}`).includes(buscaAddLower))
         .slice(0, 8)
     : [];
   const texto = [
@@ -3581,9 +3591,9 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
   }, [pacientes, guiasPorPac]);
 
   const lista = useMemo(() => {
-    const q = busca.trim().toLowerCase();
+    const q = normalizarBusca(busca);
     return pacientes
-      .filter((p) => !q || `${p.nome} ${p.sobrenome || ''}`.toLowerCase().includes(q)
+      .filter((p) => !q || normalizarBusca(`${p.nome} ${p.sobrenome || ''}`).includes(q)
         || (p.carteirinha || '').toLowerCase().includes(q))
       .sort((a, b) => `${a.nome} ${a.sobrenome || ''}`.localeCompare(`${b.nome} ${b.sobrenome || ''}`, 'pt-BR'));
   }, [pacientes, busca]);

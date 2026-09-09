@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, normalizarBusca } from '@/lib/utils';
 
 type FormaPagamento = 'pix' | 'cartao' | 'dinheiro' | 'transferencia' | 'boleto' | 'link';
 type StatusVenda = 'pendente' | 'confirmado' | 'recusado';
@@ -358,7 +358,7 @@ export default function VendasManager() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command>
+                  <Command filter={(value, search) => normalizarBusca(value).includes(normalizarBusca(search)) ? 1 : 0}>
                     <CommandInput
                       placeholder="Buscar paciente..."
                       value={searchCliente}

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Check, ChevronsUpDown } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn, normalizarBusca } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
     Command,
@@ -47,6 +47,15 @@ export function PacienteSelect({
         return pacientes.find((p) => p.id === value);
     }, [pacientes, value]);
 
+    // Dropdown sempre em ordem alfabética pt-BR (insensível a acento/caixa).
+    const pacientesOrdenados = React.useMemo(
+        () => [...pacientes].sort((a, b) =>
+            `${a.nome || ""} ${a.sobrenome || ""}`.trim()
+                .localeCompare(`${b.nome || ""} ${b.sobrenome || ""}`.trim(), "pt-BR", { sensitivity: "base", numeric: true })
+        ),
+        [pacientes]
+    );
+
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
@@ -68,7 +77,10 @@ export function PacienteSelect({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl border-primary/20" align="start">
-                <Command className="rounded-lg border shadow-md">
+                <Command
+                    className="rounded-lg border shadow-md"
+                    filter={(value, search) => normalizarBusca(value).includes(normalizarBusca(search)) ? 1 : 0}
+                >
                     <CommandInput placeholder="Pesquisar paciente..." className="h-11" />
                     <CommandList className="max-h-[300px]">
                         <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
@@ -93,7 +105,7 @@ export function PacienteSelect({
                                     — Bloqueio de horário —
                                 </CommandItem>
                             )}
-                            {pacientes.map((p) => (
+                            {pacientesOrdenados.map((p) => (
                                 <CommandItem
                                     key={p.id}
                                     value={`${p.nome} ${p.sobrenome || ""}`.toLowerCase()}

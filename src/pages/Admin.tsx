@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { normalizarBusca } from '@/lib/utils';
 import { Navigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -261,11 +262,11 @@ export default function Admin() {
   const planoData = data.assinaturas_profissionais.por_plano.map((p) => ({ nome: p.nome, mrr: p.mrr, ativas: p.ativas }));
   const formaData = data.vendas.por_forma_pagamento.map((f) => ({ nome: f.forma, valor: f.valor }));
 
-  const buscaLower = busca.trim().toLowerCase();
+  const buscaLower = normalizarBusca(busca);
   const profFiltrados = data.profissionais_lista.filter((p) => {
     if (filtroEsp !== 'todas' && p.especialidade !== filtroEsp) return false;
     if (!buscaLower) return true;
-    return [p.nome, p.email, p.cidade, p.uf, p.clinica, p.telefone].some((v) => (v || '').toLowerCase().includes(buscaLower));
+    return [p.nome, p.email, p.cidade, p.uf, p.clinica, p.telefone].some((v) => normalizarBusca(v).includes(buscaLower));
   });
 
   return (
