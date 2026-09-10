@@ -131,14 +131,22 @@ export default function GlobalSearch() {
         .localeCompare(`${b.nome || ''} ${b.sobrenome || ''}`.trim(), 'pt-BR', { sensitivity: 'base', numeric: true })
     );
     if (!q) return ordenados.slice(0, 6);
-    const match = ordenados.filter(p => {
-      const nome = normalizarBusca(p.nome);
-      const sobrenome = normalizarBusca(p.sobrenome);
-      return q.length === 1
-        ? nome.startsWith(q) || sobrenome.startsWith(q)
-        : `${nome} ${sobrenome}`.trim().includes(q);
-    });
-    return match.slice(0, q.length === 1 ? 12 : 8);
+    // Relevância: nome que COMEÇA com o termo primeiro (0), depois alguma palavra
+    // do meio/sobrenome que começa com o termo (1). Buscar "Maria" traz os
+    // "Maria ..." antes de "Eliude maria". Ordem alfabética preservada dentro de
+    // cada grupo (a lista já vem ordenada e o sort por relevância é estável).
+    const rank = (p: PatientResult): number => {
+      const full = normalizarBusca(`${p.nome || ''} ${p.sobrenome || ''}`);
+      if (full.startsWith(q)) return 0;
+      if (full.split(/\s+/).some(w => w.startsWith(q))) return 1;
+      return -1;
+    };
+    return ordenados
+      .map(p => ({ p, r: rank(p) }))
+      .filter(x => x.r >= 0)
+      .sort((a, b) => a.r - b.r)
+      .map(x => x.p)
+      .slice(0, q.length === 1 ? 12 : 8);
   }, [allPatients, query]);
 
   /* Search-as-you-type: dynamic data */
