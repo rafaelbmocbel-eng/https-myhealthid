@@ -808,8 +808,8 @@ export default function ControleCassi() {
                                           <span className="text-muted-foreground font-normal"> · aceita {respCassi}</span>
                                         )}
                                       </p>
-                                      {/* Controle de DATA da 2ª guia (2/mês): 10º dia útil após o pedido.
-                                          Prioridade do Rafael — não perder o prazo de pedir a próxima. */}
+                                      {/* Controle de DATA da 2ª guia (2/mês): DATA do fim das 10 sessões.
+                                          Prioridade do Rafael — mostrar a data em si, não uma frase. */}
                                       {gpm >= 2 && !l.jaPedido && !l.precisaPedir && (() => {
                                         const dpISO = dataProximoPedido(guia, gpm);
                                         if (!dpISO) return null;
@@ -817,8 +817,7 @@ export default function ControleCassi() {
                                         const venceu = hojeISO() >= dpISO;
                                         return (
                                           <p className={`text-[11px] mt-0.5 font-medium ${venceu ? 'text-rose-700 dark:text-rose-300' : 'text-violet-700 dark:text-violet-300'}`}>
-                                            {venceu ? '⏰ Pedir a 2ª guia agora' : `📅 Pedir a 2ª guia em ${dpBR}`}
-                                            <span className="font-normal text-muted-foreground"> · 10º dia útil após o pedido</span>
+                                            {venceu ? `⏰ Pedir a 2ª guia — 10 sessões terminaram em ${dpBR}` : `📅 Pedir a 2ª guia em ${dpBR}`}
                                           </p>
                                         );
                                       })()}

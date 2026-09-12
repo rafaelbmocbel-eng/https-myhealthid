@@ -1,7 +1,7 @@
 // Regras de negócio do Controle de Guias CASSI (fase 1).
 // Contagem por dias distintos e amarração à agenda ficam para a fase 2 — aqui
 // `sessoes_realizadas` é informado pelo profissional.
-import { diaUtilApos } from '@/lib/feriados';
+import { gerarDatasSessoes } from '@/lib/feriados';
 
 export interface CodigoCassi {
   codigo: string;
@@ -128,19 +128,25 @@ export function precisaNovaGuia(guia: GuiaCassi | null): boolean {
 // quem importa a constante). A regra atual é por DIAS ÚTEIS — ver dataProximoPedido.
 export const PRAZO_PROXIMA_GUIA_DIAS = 13;
 
-// Data em que a PRÓXIMA guia deve ser PEDIDA.
-// Regra do Rafael para 2 guias/mês: 10º DIA ÚTIL após o PEDIDO da guia atual
-// (data_pedido) — assim dá tempo hábil de usar duas guias no mesmo mês.
-// 1 guia/mês não usa data fixa: segue pelas sessões (precisaNovaGuia). Retorna
-// 'YYYY-MM-DD' ou null.
+// Data em que a PRÓXIMA (2ª) guia deve ser PEDIDA, para cliente de 2 guias/mês.
+// Regra: é a DATA DO FIM DAS 10 SESSÕES — o app projeta o 10º dia útil de sessão
+// a partir do aceite da CASSI (ou, na falta, do pedido). Assim mostramos a DATA
+// em si (não uma frase). 1 guia/mês não usa data fixa (segue por sessões).
+// Retorna 'YYYY-MM-DD' ou null.
 export function dataProximoPedido(
   guia: GuiaCassi | null,
   guiasPorMes: number | null | undefined,
 ): string | null {
   if (!guia || (guiasPorMes || 1) < 2) return null;
   if (guia.status === 'cancelada') return null;
-  if (!guia.data_pedido) return null;
-  return diaUtilApos(guia.data_pedido.slice(0, 10), 10);
+  const inicio = (guia.data_resposta || guia.data_pedido || '').slice(0, 10);
+  if (!inicio) return null;
+  const base = new Date(`${inicio}T00:00:00`);
+  if (Number.isNaN(base.getTime())) return null;
+  const datas = gerarDatasSessoes(base, 10, [1, 2, 3, 4, 5]); // 10 sessões em dias úteis
+  const ult = datas[datas.length - 1];
+  if (!ult) return null;
+  return `${ult.getFullYear()}-${String(ult.getMonth() + 1).padStart(2, '0')}-${String(ult.getDate()).padStart(2, '0')}`;
 }
 
 // True quando já chegou (ou passou) a data de pedir a próxima guia do cliente de
