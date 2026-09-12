@@ -51,15 +51,19 @@ export interface MotoresClinicos {
   exames: ExamePresencial[];
   // Motor 2 — questionários clínicos validados respondidos (o "extra")
   questionarios: QuestionarioClinico[];
+  // Avaliação de voz/presencial editável (resultado jsonb, com as seções que o
+  // profissional edita à mão em _secoes.editadas). É a "descrição/mais
+  // informações" da avaliação — precisa alimentar a conduta.
+  avaliacaoVoz: unknown | null;
 }
 
 // Carrega os três motores para um paciente. Tolerante a tabelas/colunas
 // ausentes — cada peça que falhar volta vazia, sem derrubar a geração.
 export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Promise<MotoresClinicos> {
-  const vazio: MotoresClinicos = { scores: null, queixa: null, historia: null, condicoes: null, presencial: [], exames: [], questionarios: [] };
+  const vazio: MotoresClinicos = { scores: null, queixa: null, historia: null, condicoes: null, presencial: [], exames: [], questionarios: [], avaliacaoVoz: null };
   if (!pacienteId) return vazio;
 
-  const [myRes, pacRes, evRes, questRes, identRes, exRes] = await Promise.all([
+  const [myRes, pacRes, evRes, questRes, identRes, exRes, avRes] = await Promise.all([
     admin.from("myid_avaliacoes").select("resultado_processado")
       .eq("paciente_id", pacienteId).eq("status", "concluido")
       .order("updated_at", { ascending: false }).limit(1).maybeSingle()
@@ -84,6 +88,12 @@ export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Pr
     admin.from("exames_presenciais").select("tipo, data_exame, resumo, dados")
       .eq("paciente_id", pacienteId).order("data_exame", { ascending: false }).limit(20)
       .then((r: SB) => r).catch(() => ({ data: [] })),
+    // Avaliação de voz/presencial mais recente (inclui as seções editadas à mão
+    // pelo profissional em resultado._secoes.editadas). Tolerante: se a tabela/
+    // coluna não existir, volta vazio sem derrubar a geração.
+    admin.from("avaliacoes_voz").select("resultado, created_at")
+      .eq("paciente_id", pacienteId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+      .then((r: SB) => r).catch(() => ({ data: null })),
   ]);
 
   // MyID: o formato variou entre gerações (component_scores atual, componentScores,
@@ -130,7 +140,40 @@ export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Pr
     })),
     exames: [...ultExame.values()],
     questionarios: [...ultQuest.values()],
+    avaliacaoVoz: (avRes?.data?.resultado as SB) ?? null,
   };
+}
+
+// Rótulos das seções da avaliação de voz (mesmas chaves usadas no app).
+const SECAO_AVALIACAO_LABEL: Record<string, string> = {
+  resumo_clinico: "Resumo clínico",
+  dor: "Análise da dor",
+  funcionalidade: "Funcionalidade",
+  psicossocial: "Fatores psicossociais",
+  red_flags: "Red flags",
+  hipoteses: "Hipóteses diagnósticas",
+  cif: "Mapeamento CIF",
+  diretriz: "Plano de reabilitação (da avaliação)",
+  insights: "Insights",
+};
+
+// Texto da AVALIAÇÃO DE VOZ/PRESENCIAL, priorizando o que o profissional editou
+// à mão (resultado._secoes.editadas) e caindo para o resumo clínico base. É a
+// "descrição/mais informações" da avaliação — entra na conduta com prioridade.
+function formatAvaliacaoVoz(resultado: SB): string {
+  if (!resultado || typeof resultado !== "object") return "";
+  const partes: string[] = [];
+  const editadas = (resultado?._secoes?.editadas as SB) || {};
+  for (const [k, v] of Object.entries(editadas)) {
+    if (typeof v === "string" && v.trim()) {
+      partes.push(`${SECAO_AVALIACAO_LABEL[k] || k}: ${v.trim().slice(0, 600)}`);
+    }
+  }
+  if (!editadas.resumo_clinico && typeof resultado.resumo_clinico === "string" && resultado.resumo_clinico.trim()) {
+    partes.push(`Resumo clínico: ${resultado.resumo_clinico.trim().slice(0, 600)}`);
+  }
+  if (!partes.length) return "";
+  return partes.join("\n").slice(0, 2000);
 }
 
 // Formata os exames presenciais (bioimpedância, teste de pisada, …). Usa o
@@ -186,6 +229,10 @@ export function textoPresencial(m: MotoresClinicos, foco: FocoPlano): string {
   }
   if (m.exames.length) {
     partes.push(`Exames presenciais (bioimpedância, teste de pisada, … — considere estes números objetivos no plano):\n${formatExames(m.exames)}`);
+  }
+  const av = formatAvaliacaoVoz(m.avaliacaoVoz as SB);
+  if (av) {
+    partes.push(`Avaliação clínica registrada (texto do profissional — tem PRIORIDADE, incorpore diretamente na conduta):\n${av}`);
   }
   if (!partes.length) return "";
   return `\nAVALIAÇÃO PRESENCIAL (achados e observações do profissional — ${instrucaoPresencial(foco)}):\n${partes.join("\n")}`;

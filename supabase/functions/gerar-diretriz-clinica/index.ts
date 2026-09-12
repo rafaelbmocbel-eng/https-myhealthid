@@ -153,6 +153,15 @@ Deno.serve(async (req) => {
       throw new Error("A IA não retornou fases válidas — tente novamente");
     }
 
+    // PREVIEW: gera e devolve a sugestão SEM salvar — usado pelo botão "Atualizar
+    // com a avaliação", que deixa o profissional revisar antes de aplicar. Não
+    // sobrescreve o plano atual nem tira do portal.
+    if (body?.preview === true) {
+      return new Response(JSON.stringify({ ok: true, preview: true, diretriz, contexto }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { error: upErr } = await admin.from("diretrizes_profissionais").upsert({
       terapeuta_id: userId,
       paciente_id,

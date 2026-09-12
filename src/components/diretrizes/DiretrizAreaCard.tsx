@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Sparkles, Loader2, Eye, Send, EyeOff, Pencil } from 'lucide-react';
+import { Sparkles, Loader2, Eye, Send, EyeOff, Pencil, RefreshCw, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import DiretrizTecnicasEditor from './DiretrizTecnicasEditor';
 import { format, parseISO } from '@/lib/dateSafe';
@@ -28,6 +28,76 @@ export interface DiretrizAreaProps {
   ocultarGerador?: boolean;
 }
 
+// Renderiza o conteúdo de um plano/diretriz (objetivo, resumo, fases, alertas).
+// Reaproveitado tanto na revisão do plano salvo quanto na revisão da SUGESTÃO
+// gerada a partir da avaliação (botão "Atualizar com a avaliação").
+function PlanoConteudo({ c }: { c: any }) {
+  return (
+    <>
+      {c.objetivo && <p className="text-sm font-medium">{c.objetivo}</p>}
+      {c.resumo_clinico && <p className="text-sm text-muted-foreground italic">{c.resumo_clinico}</p>}
+      {(c.fases || []).map((f: any) => (
+        <div key={f.numero} className="rounded-lg border border-border/40 p-3 space-y-2">
+          <p className="font-semibold text-sm">
+            Fase {f.numero} — {f.titulo}
+            <span className="text-muted-foreground font-normal"> · {f.duracao_semanas} semanas{f.foco ? ` · ${f.foco}` : ''}</span>
+          </p>
+          {(f.condutas || []).length > 0 && (
+            <div>
+              <p className="text-xs font-medium mb-1">Condutas</p>
+              <ul className="space-y-1 text-sm">
+                {f.condutas.map((cd: string, i: number) => (
+                  <li key={i} className="flex gap-1.5"><span className="text-primary">▸</span><span>{cd}</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {(f.exames_solicitar || []).length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {f.exames_solicitar.map((ex: string, i: number) => (
+                <Badge key={i} variant="secondary" className="text-[11px]">🧪 {ex}</Badge>
+              ))}
+            </div>
+          )}
+          {(f.metas || []).length > 0 && (
+            <div>
+              <p className="text-xs font-medium mb-1">Metas</p>
+              <ul className="space-y-1 text-sm">
+                {f.metas.map((m: any, i: number) => (
+                  <li key={i}>🎯 {m.descricao} <span className="text-xs text-muted-foreground">({m.como_medir})</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {(f.marcadores || []).length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {f.marcadores.map((m: any, i: number) => (
+                <Badge key={i} variant="outline" className="text-[11px]">
+                  {m.nome}: {m.atual ? `${m.atual} → ` : ''}{m.alvo}
+                </Badge>
+              ))}
+            </div>
+          )}
+          {(f.orientacoes || []).length > 0 && (
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+              {f.orientacoes.map((o: string, i: number) => <li key={i}>{o}</li>)}
+            </ul>
+          )}
+          {f.reavaliacao && <p className="text-xs text-muted-foreground">🔁 Reavaliação: {f.reavaliacao}</p>}
+        </div>
+      ))}
+      {(c.alertas || []).length > 0 && (
+        <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-2.5">
+          <p className="text-xs font-medium mb-1">⚠️ Atenção do profissional</p>
+          <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5">
+            {c.alertas.map((a: string, i: number) => <li key={i}>{a}</li>)}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
 // MOLDE ÚNICO "profissional cria → cliente recebe" das diretrizes por área
 // (nutrição, educação física, ...). A IA gera o rascunho dos dados clínicos;
 // aqui o profissional revisa fase a fase e envia ao portal do cliente.
@@ -40,6 +110,12 @@ export default function DiretrizAreaCard({
   const [objetivo, setObjetivo] = useState('');
   const [obs, setObs] = useState('');
   const [editarTec, setEditarTec] = useState(false);
+  // Sugestão gerada a partir da avaliação (botão "Atualizar com a avaliação").
+  const [sugestao, setSugestao] = useState<any | null>(null);
+  const [revisar, setRevisar] = useState(false);
+  // "Atualizar com a avaliação" só nas diretrizes CLÍNICAS (motor que lê a
+  // avaliação de voz). Treino/nutrição usam outras funções.
+  const suportaAtualizarAvaliacao = funcaoIA === 'gerar-diretriz-clinica';
   // A chancela (enviar ao portal) é do profissional habilitado pela área.
   const AREA_CHANCELA: Record<string, AreaChancela> = {
     nutricao: 'nutricao',
@@ -93,6 +169,46 @@ export default function DiretrizAreaCard({
       gerar.mutate();
     }
   }, [autoGerar, diretriz]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Gera uma sugestão a partir da avaliação SEM salvar (preview) para revisão.
+  const atualizar = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke(funcaoIA, {
+        body: { paciente_id: pacienteId, area, preview: true },
+      });
+      if (error) throw await erroDaFuncao(error);
+      const d = data as any;
+      if (!d?.ok || !d?.diretriz) throw new Error(d?.error || 'Falha ao gerar');
+      return d.diretriz;
+    },
+    onSuccess: (d) => { setSugestao(d); setRevisar(true); },
+    onError: (e: any) => toast.error(e.message || 'Erro ao gerar'),
+  });
+
+  // Aplica a sugestão ao plano PRESERVANDO enviada_portal/status — não tira do
+  // portal e só roda quando o profissional confirma na revisão.
+  const aplicar = useMutation({
+    mutationFn: async () => {
+      if (!sugestao || !diretriz?.id) return;
+      const { error } = await (supabase as any).from('diretrizes_profissionais')
+        .update({
+          titulo: sugestao.titulo || diretriz.titulo,
+          objetivo: sugestao.objetivo ?? diretriz.objetivo ?? null,
+          conteudo: sugestao,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', diretriz.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(diretriz?.enviada_portal
+        ? 'Tratamento atualizado com a avaliação — já refletido no portal'
+        : 'Tratamento atualizado com a avaliação');
+      setRevisar(false); setSugestao(null);
+      qc.invalidateQueries({ queryKey: ['diretriz-prof', area, pacienteId] });
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao aplicar'),
+  });
 
   const enviarPortal = useMutation({
     mutationFn: async (enviar: boolean) => {
@@ -160,6 +276,14 @@ export default function DiretrizAreaCard({
               </Button>
             </div>
           )}
+          {diretriz && suportaAtualizarAvaliacao && (
+            <Button variant="outline" size="sm" className="w-full mt-2 h-8 text-xs gap-1.5"
+              onClick={() => atualizar.mutate()} disabled={atualizar.isPending}
+              title="Gera uma sugestão atualizada com a sua avaliação; você revisa antes de aplicar">
+              {atualizar.isPending ? <Loader2 className="icon-sm animate-spin" /> : <RefreshCw className="icon-sm" />}
+              {atualizar.isPending ? 'Gerando a partir da avaliação…' : 'Atualizar com a avaliação'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -192,66 +316,7 @@ export default function DiretrizAreaCard({
             <>
               <DialogHeader><DialogTitle>{c.titulo || diretriz?.titulo}</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                {c.objetivo && <p className="text-sm font-medium">{c.objetivo}</p>}
-                {c.resumo_clinico && <p className="text-sm text-muted-foreground italic">{c.resumo_clinico}</p>}
-                {(c.fases || []).map((f: any) => (
-                  <div key={f.numero} className="rounded-lg border border-border/40 p-3 space-y-2">
-                    <p className="font-semibold text-sm">
-                      Fase {f.numero} — {f.titulo}
-                      <span className="text-muted-foreground font-normal"> · {f.duracao_semanas} semanas{f.foco ? ` · ${f.foco}` : ''}</span>
-                    </p>
-                    {(f.condutas || []).length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium mb-1">Condutas</p>
-                        <ul className="space-y-1 text-sm">
-                          {f.condutas.map((cd: string, i: number) => (
-                            <li key={i} className="flex gap-1.5"><span className="text-primary">▸</span><span>{cd}</span></li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {(f.exames_solicitar || []).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {f.exames_solicitar.map((ex: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="text-[11px]">🧪 {ex}</Badge>
-                        ))}
-                      </div>
-                    )}
-                    {(f.metas || []).length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium mb-1">Metas</p>
-                        <ul className="space-y-1 text-sm">
-                          {f.metas.map((m: any, i: number) => (
-                            <li key={i}>🎯 {m.descricao} <span className="text-xs text-muted-foreground">({m.como_medir})</span></li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {(f.marcadores || []).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {f.marcadores.map((m: any, i: number) => (
-                          <Badge key={i} variant="outline" className="text-[11px]">
-                            {m.nome}: {m.atual ? `${m.atual} → ` : ''}{m.alvo}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                    {(f.orientacoes || []).length > 0 && (
-                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
-                        {f.orientacoes.map((o: string, i: number) => <li key={i}>{o}</li>)}
-                      </ul>
-                    )}
-                    {f.reavaliacao && <p className="text-xs text-muted-foreground">🔁 Reavaliação: {f.reavaliacao}</p>}
-                  </div>
-                ))}
-                {(c.alertas || []).length > 0 && (
-                  <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-2.5">
-                    <p className="text-xs font-medium mb-1">⚠️ Atenção do profissional</p>
-                    <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5">
-                      {c.alertas.map((a: string, i: number) => <li key={i}>{a}</li>)}
-                    </ul>
-                  </div>
-                )}
+                <PlanoConteudo c={c} />
                 {diretriz && !diretriz.enviada_portal && (
                   <>
                     <Button className="w-full" disabled={chancela.loading || !chancela.pode || enviarPortal.isPending}
@@ -263,6 +328,34 @@ export default function DiretrizAreaCard({
                     )}
                   </>
                 )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Revisar a SUGESTÃO gerada a partir da avaliação (não salva até aplicar) */}
+      <Dialog open={revisar} onOpenChange={(o) => { setRevisar(o); if (!o) setSugestao(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
+          {sugestao && (
+            <>
+              <DialogHeader><DialogTitle>Sugestão a partir da avaliação</DialogTitle></DialogHeader>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Gerada com base na sua avaliação atualizada. O plano atual
+                {diretriz?.enviada_portal ? ' (que está no portal)' : ''} só muda quando você aplicar.
+              </p>
+              <div className="space-y-4">
+                <PlanoConteudo c={sugestao} />
+                <div className="flex gap-2 sticky bottom-0 bg-background pt-2 -mx-6 px-6 border-t border-border/40">
+                  <Button variant="outline" className="flex-1" disabled={aplicar.isPending}
+                    onClick={() => { setRevisar(false); setSugestao(null); }}>
+                    Descartar
+                  </Button>
+                  <Button className="flex-1" onClick={() => aplicar.mutate()} disabled={aplicar.isPending}>
+                    {aplicar.isPending ? <Loader2 className="icon-sm mr-2 animate-spin" /> : <Check className="icon-sm mr-2" />}
+                    Aplicar ao plano
+                  </Button>
+                </div>
               </div>
             </>
           )}
