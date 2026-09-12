@@ -17,7 +17,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; cassi_pedir_guia?: boolean | null; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -166,7 +166,7 @@ export default function ControleCassi() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo, cassi_diagnostico, cassi_confirmado_mes')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo, cassi_diagnostico, cassi_confirmado_mes, cassi_pedir_guia')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
@@ -310,9 +310,11 @@ export default function ControleCassi() {
   // foi pedida. Baseado nas sessões (tempo hábil), não em prazo fixo de calendário.
   const pedidosDoMes = useMemo(() => linhas.filter((l) =>
     (
+      // Marcado "vou pedir" ao entrar em Este mês — vai direto pra cá.
+      l.paciente.cassi_pedir_guia === true
       // Regra por SESSÕES (agora automática via agenda): faltam ≤2 / usou todas / sem guia.
-      precisaNovaGuia(l.guia)
-      // Regra por TEMPO só para cliente de 2 guias/mês: vencidos os 13 dias, entra sozinho.
+      || precisaNovaGuia(l.guia)
+      // Regra por TEMPO para cliente de 2 guias/mês: no 10º dia útil após o pedido, entra sozinho.
       || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes)
     ) && !pedidoAberto(l.paciente)
   ), [linhas, guiaPorPaciente]);
@@ -326,7 +328,7 @@ export default function ControleCassi() {
   const darBaixaPedidos = async (ids: string[]) => {
     if (!ids.length) return;
     const { error } = await (supabase as any).from('pacientes')
-      .update({ guia_solicitada_em: new Date().toISOString() }).in('id', ids);
+      .update({ guia_solicitada_em: new Date().toISOString(), cassi_pedir_guia: false }).in('id', ids);
     if (error) { toast.error('Erro ao dar baixa: ' + error.message); return; }
     toast.success(`${ids.length} pedido(s) registrado(s)`);
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
@@ -364,10 +366,14 @@ export default function ControleCassi() {
 
   // Confirmar (1 clique) que o cliente tem guia ativa neste mês — mesmo com guia
   // de mês anterior (3 meses pra debitar). Marca o mês confirmado no cadastro.
-  const confirmarGuiaMes = async (id: string) => {
-    const { error } = await (supabase as any).from('pacientes').update({ cassi_confirmado_mes: mesVigente }).eq('id', id);
+  // Adiciona o cliente a "Este mês". `pedir=true` ("vou pedir") também o joga
+  // para a aba "Pedir guia" (marcador durável cassi_pedir_guia). `pedir=false`
+  // ("já tenho a guia") só confirma no mês e limpa qualquer pendência de pedido.
+  const confirmarGuiaMes = async (id: string, pedir = false) => {
+    const { error } = await (supabase as any).from('pacientes')
+      .update({ cassi_confirmado_mes: mesVigente, cassi_pedir_guia: pedir }).eq('id', id);
     if (error) { toast.error('Erro: ' + error.message); return; }
-    toast.success('Guia confirmada neste mês');
+    toast.success(pedir ? 'Adicionado — enviado para “Pedir guia”' : 'Guia confirmada neste mês');
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
   const desconfirmarGuiaMes = async (id: string) => {
@@ -571,6 +577,9 @@ export default function ControleCassi() {
                             {pedidoAberto(paciente) && (
                               <Badge className="text-[10px] bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">guia pedida</Badge>
                             )}
+                            {paciente.cassi_pedir_guia && !pedidoAberto(paciente) && (
+                              <Badge className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">vai pedir</Badge>
+                            )}
                             {guia && (
                               <span className="text-[11px] text-muted-foreground tabular-nums">{guia.sessoes_realizadas}/{diasTratGuia(guia)} sessões</span>
                             )}
@@ -584,10 +593,23 @@ export default function ControleCassi() {
                           {paciente.cassi_confirmado_mes === mesVigente ? (
                             <span className="text-[11px] font-bold text-emerald-700 px-1">no mês ✓</span>
                           ) : (
-                            <Button size="sm" className="h-8 gap-1.5 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white" title="Adicionar a Este mês"
-                              onClick={() => confirmarGuiaMes(paciente.id)}>
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Este mês
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" className="h-8 gap-1.5 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white" title="Adicionar a Este mês">
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Este mês
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel className="text-[11px]">Adicionar a Este mês</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => confirmarGuiaMes(paciente.id, false)}>
+                                  <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-600" /> Já tenho a guia
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => confirmarGuiaMes(paciente.id, true)}>
+                                  <AlertTriangle className="h-4 w-4 mr-2 text-rose-600" /> Vou pedir a guia
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
                           <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar cadastro" onClick={() => setCadastro(paciente)}>
                             <Pencil className="h-3.5 w-3.5" />
