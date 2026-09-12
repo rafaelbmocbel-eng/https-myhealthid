@@ -590,6 +590,25 @@ export default function ControleCassi() {
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
+                          {/* #3 — 1 guia/mês: se VIROU O MÊS (última guia é de mês anterior e
+                              nada pedido/confirmado neste mês), sugere pedir a guia do mês —
+                              com CONFIRMAÇÃO (não vai sozinho). */}
+                          {(() => {
+                            const umaGuiaMes = (paciente.guias_por_mes || 1) < 2;
+                            const gm = (guia?.data_pedido || guia?.data_resposta || '').slice(0, 7);
+                            const pediuEsteMes = gm === mesVigente || (paciente.guia_solicitada_em || '').slice(0, 7) === mesVigente;
+                            const sugere = umaGuiaMes && !!guia && !!gm && gm < mesVigente
+                              && !pediuEsteMes && !pedidoAberto(paciente) && !paciente.cassi_pedir_guia
+                              && paciente.cassi_confirmado_mes !== mesVigente;
+                            if (!sugere) return null;
+                            return (
+                              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px] border-amber-400 text-amber-700 dark:text-amber-300"
+                                title="Novo mês — confirmar o pedido da guia deste mês"
+                                onClick={() => { if (confirm(`Pedir a guia deste mês para ${paciente.nome} ${paciente.sobrenome || ''}?\n\nEle entra em “Este mês” e vai para a aba “Pedir guia”.`)) confirmarGuiaMes(paciente.id, true); }}>
+                                <CalendarClock className="h-3.5 w-3.5" /> Novo mês — pedir?
+                              </Button>
+                            );
+                          })()}
                           {paciente.cassi_confirmado_mes === mesVigente ? (
                             <span className="text-[11px] font-bold text-emerald-700 px-1">no mês ✓</span>
                           ) : (
