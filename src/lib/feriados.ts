@@ -55,3 +55,16 @@ export function gerarDatasSessoes(
   }
   return datas;
 }
+
+// N-ésimo dia útil ESTRITAMENTE após `inicioISO` (YYYY-MM-DD). Usado no CASSI:
+// a próxima guia (2/mês) é pedida no 10º dia útil após o PEDIDO da guia atual.
+// Retorna 'YYYY-MM-DD' ou null se a data de entrada for inválida.
+export function diaUtilApos(inicioISO: string, n: number): string | null {
+  if (!inicioISO || n <= 0) return null;
+  const base = new Date(`${inicioISO.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(base.getTime())) return null;
+  const dia1 = new Date(base.getFullYear(), base.getMonth(), base.getDate() + 1);
+  const datas = gerarDatasSessoes(dia1, n, [1, 2, 3, 4, 5]);
+  const ult = datas[datas.length - 1];
+  return ult ? iso(ult) : null;
+}

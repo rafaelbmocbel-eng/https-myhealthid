@@ -1,6 +1,7 @@
 // Regras de negócio do Controle de Guias CASSI (fase 1).
 // Contagem por dias distintos e amarração à agenda ficam para a fase 2 — aqui
 // `sessoes_realizadas` é informado pelo profissional.
+import { diaUtilApos } from '@/lib/feriados';
 
 export interface CodigoCassi {
   codigo: string;
@@ -123,19 +124,36 @@ export function precisaNovaGuia(guia: GuiaCassi | null): boolean {
   return s.key === 'pedir_nova' || s.key === 'sem_guia' || s.key === 'pronta_entregar';
 }
 
-// Prazo p/ pedir a PRÓXIMA guia do cliente de 2 guias/mês: ~13 dias corridos
-// (≈10 dias úteis de sessões) contados a partir da resposta da CASSI. Antes disso
-// o cliente segue "ativo" normalmente; vencido, entra em "Pedir guia".
+// Prazo p/ pedir a PRÓXIMA guia do cliente de 2 guias/mês (compat.: mantido para
+// quem importa a constante). A regra atual é por DIAS ÚTEIS — ver dataProximoPedido.
 export const PRAZO_PROXIMA_GUIA_DIAS = 13;
 
+// Data em que a PRÓXIMA guia deve ser PEDIDA.
+// Regra do Rafael para 2 guias/mês: 10º DIA ÚTIL após o PEDIDO da guia atual
+// (data_pedido) — assim dá tempo hábil de usar duas guias no mesmo mês.
+// 1 guia/mês não usa data fixa: segue pelas sessões (precisaNovaGuia). Retorna
+// 'YYYY-MM-DD' ou null.
+export function dataProximoPedido(
+  guia: GuiaCassi | null,
+  guiasPorMes: number | null | undefined,
+): string | null {
+  if (!guia || (guiasPorMes || 1) < 2) return null;
+  if (guia.status === 'cancelada') return null;
+  if (!guia.data_pedido) return null;
+  return diaUtilApos(guia.data_pedido.slice(0, 10), 10);
+}
+
+// True quando já chegou (ou passou) a data de pedir a próxima guia do cliente de
+// 2 guias/mês — aí ele entra automaticamente em "Pedir guia".
 export function venceuPrazoProximaGuia(
   guia: GuiaCassi | null,
   guiasPorMes: number | null | undefined,
 ): boolean {
   if (!guia || (guiasPorMes || 1) < 2) return false;
   if (guia.status !== 'ativa') return false;
-  if (!guia.data_resposta) return false;
-  const resp = new Date(`${guia.data_resposta}T00:00:00`).getTime();
-  if (Number.isNaN(resp)) return false;
-  return (Date.now() - resp) / 86400000 >= PRAZO_PROXIMA_GUIA_DIAS;
+  const alvo = dataProximoPedido(guia, guiasPorMes);
+  if (!alvo) return false;
+  const hoje = new Date();
+  const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+  return hojeISO >= alvo;
 }

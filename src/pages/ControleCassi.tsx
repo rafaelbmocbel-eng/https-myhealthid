@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical, X, Archive } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
+import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
 
 interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; }
 
@@ -767,6 +767,20 @@ export default function ControleCassi() {
                                           <span className="text-muted-foreground font-normal"> · aceita {respCassi}</span>
                                         )}
                                       </p>
+                                      {/* Controle de DATA da 2ª guia (2/mês): 10º dia útil após o pedido.
+                                          Prioridade do Rafael — não perder o prazo de pedir a próxima. */}
+                                      {gpm >= 2 && !l.jaPedido && !l.precisaPedir && (() => {
+                                        const dpISO = dataProximoPedido(guia, gpm);
+                                        if (!dpISO) return null;
+                                        const dpBR = `${dpISO.slice(8, 10)}/${dpISO.slice(5, 7)}`;
+                                        const venceu = hojeISO() >= dpISO;
+                                        return (
+                                          <p className={`text-[11px] mt-0.5 font-medium ${venceu ? 'text-rose-700 dark:text-rose-300' : 'text-violet-700 dark:text-violet-300'}`}>
+                                            {venceu ? '⏰ Pedir a 2ª guia agora' : `📅 Pedir a 2ª guia em ${dpBR}`}
+                                            <span className="font-normal text-muted-foreground"> · 10º dia útil após o pedido</span>
+                                          </p>
+                                        );
+                                      })()}
                                       {/* Passo FÍSICO — AÇÃO DIRETA no card (sem abrir o editor):
                                           assinar → recolher → enviar ao financeiro. */}
                                       {l.passo.key === 'assinar' && (
