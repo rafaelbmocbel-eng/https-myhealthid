@@ -344,7 +344,14 @@ export default function ResumoConsultaPresencial({
             serviceType={serviceType}
             pacienteId={pacienteId}
             patientName={patientName}
-            onAssessmentComplete={() => { setMostrarNovoRegistro(false); onAssessmentComplete?.(); }}
+            onAssessmentComplete={() => {
+              setMostrarNovoRegistro(false);
+              // Refaz a query desta seção para o VoiceAssessment recém-usado
+              // desmontar na hora (some o bloco SOAP duplicado) — antes só sumia
+              // após recarregar a página.
+              qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest-presencial', pacienteId] });
+              onAssessmentComplete?.();
+            }}
             onPainExtracted={mostraAvatar ? handlePainExtracted : undefined}
             painRegionsCatalog={mostraAvatar ? painRegionsCatalog : undefined}
             perfilProfissional={lente?.id}
