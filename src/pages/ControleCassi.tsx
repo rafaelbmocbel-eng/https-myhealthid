@@ -135,6 +135,17 @@ function projecaoGuia(inicioStr: string | null | undefined, sessoes: number): { 
   return { fimISO, atravessa };
 }
 
+// Cadência de guias CASSI do cliente: 1 e 2 = por mês; 3 = "3 guias em 2 meses"
+// (mesma mecânica de datas do 2/mês — pede a próxima quando as 10 sessões acabam).
+function rotuloCadencia(n: number | null | undefined): string {
+  const v = n || 1;
+  if (v >= 3) return '3 em 2 meses';
+  if (v === 2) return '2/mês';
+  return '1/mês';
+}
+const CADENCIAS = [1, 2, 3] as const;
+const cadenciaBotao = (n: number) => (n >= 3 ? '3/2m' : `${n}/mês`);
+
 export default function ControleCassi() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -569,7 +580,7 @@ export default function ControleCassi() {
                           <p className="text-sm font-semibold truncate flex items-center gap-1.5">
                             {paciente.nome} {paciente.sobrenome || ''}
                             {(paciente.guias_por_mes || 1) >= 2 && (
-                              <span className="text-[9px] uppercase font-bold text-violet-600 border border-violet-300 dark:border-violet-800 rounded px-1 shrink-0">2/mês</span>
+                              <span className="text-[9px] uppercase font-bold text-violet-600 border border-violet-300 dark:border-violet-800 rounded px-1 shrink-0">{rotuloCadencia(paciente.guias_por_mes)}</span>
                             )}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -773,19 +784,16 @@ export default function ControleCassi() {
                                     <p className="text-[15px] font-bold truncate leading-tight">{nome}</p>
                                     {/* Controle 1↔2 guia/mês da guia vigente — aqui em "Este mês". Pede confirmação pra não trocar sem querer. */}
                                     <span className="inline-flex items-center rounded-full border border-border overflow-hidden shrink-0">
-                                      {[1, 2].map((n) => (
+                                      {CADENCIAS.map((n) => (
                                         <button key={n} onClick={() => {
                                           if (gpm === n) return;
-                                          const msg = n === 2
-                                            ? `Marcar "${nome}" como 2 guias/mês? A 2ª guia é pedida quando a 1ª acabar.`
-                                            : `Voltar "${nome}" para 1 guia/mês?`;
-                                          if (confirm(msg)) definirGuiasMes(paciente.id, n);
+                                          if (confirm(`Mudar "${nome}" para ${rotuloCadencia(n)}?\n\nA próxima guia é pedida quando as 10 sessões da atual terminam.`)) definirGuiasMes(paciente.id, n);
                                         }}
+                                          title={rotuloCadencia(n)}
                                           className={`text-[10px] px-2 py-0.5 font-bold ${gpm === n ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:bg-muted'}`}>
-                                          {n}
+                                          {cadenciaBotao(n)}
                                         </button>
                                       ))}
-                                      <span className="text-[9px] text-muted-foreground px-1.5">guia/mês</span>
                                     </span>
                                     {l.confirmado && <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">confirmada</span>}
                                   </div>
@@ -808,8 +816,8 @@ export default function ControleCassi() {
                                           <span className="text-muted-foreground font-normal"> · aceita {respCassi}</span>
                                         )}
                                       </p>
-                                      {/* Controle de DATA da 2ª guia (2/mês): DATA do fim das 10 sessões.
-                                          Prioridade do Rafael — mostrar a data em si, não uma frase. */}
+                                      {/* Controle de DATA da próxima guia (2/mês e 3 em 2 meses): DATA do
+                                          fim das 10 sessões da guia atual — a data em si, não uma frase. */}
                                       {gpm >= 2 && !l.jaPedido && !l.precisaPedir && (() => {
                                         const dpISO = dataProximoPedido(guia, gpm);
                                         if (!dpISO) return null;
@@ -817,7 +825,7 @@ export default function ControleCassi() {
                                         const venceu = hojeISO() >= dpISO;
                                         return (
                                           <p className={`text-[11px] mt-0.5 font-medium ${venceu ? 'text-rose-700 dark:text-rose-300' : 'text-violet-700 dark:text-violet-300'}`}>
-                                            {venceu ? `⏰ Pedir a 2ª guia — 10 sessões terminaram em ${dpBR}` : `📅 Pedir a 2ª guia em ${dpBR}`}
+                                            {venceu ? `⏰ Pedir a próxima guia — 10 sessões terminaram em ${dpBR}` : `📅 Pedir a próxima guia em ${dpBR}`}
                                           </p>
                                         );
                                       })()}
@@ -1675,7 +1683,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     sessoes: '',
   }));
   const [codigos, setCodigos] = useState<string[]>(paciente?.codigos_cassi || []);
-  const [guiasPorMes, setGuiasPorMes] = useState<number>(paciente?.guias_por_mes && paciente.guias_por_mes >= 2 ? 2 : 1);
+  const [guiasPorMes, setGuiasPorMes] = useState<number>(Math.min(3, Math.max(1, Number(paciente?.guias_por_mes) || 1)));
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
   const toggleCod = (c: string) => setCodigos((p) => p.includes(c) ? p.filter((x) => x !== c) : [...p, c]);
 
@@ -1795,7 +1803,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   const escolher = (p: any) => {
     setF({ nome: p.nome || '', sobrenome: p.sobrenome || '', carteirinha: p.carteirinha || '', diagnostico: p.cassi_diagnostico || '', email: p.email || '', telefone: p.telefone || '', data_resposta: '', sessoes: '' });
     setCodigos(Array.isArray(p.codigos_cassi) ? p.codigos_cassi : []);
-    setGuiasPorMes(Number(p.guias_por_mes) >= 2 ? 2 : 1);
+    setGuiasPorMes(Math.min(3, Math.max(1, Number(p.guias_por_mes) || 1)));
     setAlvoId(p.id);
     setAlvoEncerrado(!!p.cassi_encerrado_em);
   };
@@ -1811,7 +1819,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
       data_resposta: prev.data_resposta, sessoes: prev.sessoes,
     }));
     setCodigos(Array.isArray(p.codigos_cassi) ? p.codigos_cassi : []);
-    setGuiasPorMes(Number(p.guias_por_mes) >= 2 ? 2 : 1);
+    setGuiasPorMes(Math.min(3, Math.max(1, Number(p.guias_por_mes) || 1)));
     setAlvoId(p.id);
     setAlvoEncerrado(!!p.cassi_encerrado_em);
   };
@@ -2043,14 +2051,14 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Guias por mês</label>
             <div className="flex gap-1.5 mt-1">
-              {[1, 2].map((n) => (
+              {CADENCIAS.map((n) => (
                 <button type="button" key={n} onClick={() => setGuiasPorMes(n)}
                   className={`flex-1 text-[12px] py-1.5 rounded-lg border font-medium ${guiasPorMes === n ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
-                  {n} guia{n > 1 ? 's' : ''}/mês
+                  {rotuloCadencia(n)}
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">2/mês avisa pra pedir a próxima guia ~13 dias após a resposta da CASSI.</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">2/mês e 3 em 2 meses avisam pra pedir a próxima guia quando as 10 sessões da atual terminam.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -3707,7 +3715,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-[15px] font-bold truncate leading-tight">{nome}</p>
                     {!ativo && <span className="text-[9px] uppercase font-bold text-muted-foreground bg-muted rounded px-1 shrink-0">encerrado</span>}
-                    {marcado && <span className="text-[9px] uppercase font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/30 rounded px-1 shrink-0">2/mês</span>}
+                    {marcado && <span className="text-[9px] uppercase font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/30 rounded px-1 shrink-0">{rotuloCadencia(p.guias_por_mes)}</span>}
                     {ativo && p.cassi_confirmado_mes === mesVigente && <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">no mês ✓</span>}
                   </div>
                   <div className="text-[12px] text-muted-foreground mt-1 tabular-nums">

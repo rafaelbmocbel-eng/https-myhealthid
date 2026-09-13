@@ -563,7 +563,7 @@ export default function Pacientes() {
       convenio_id: (p as any).convenio_id || '',
       carteirinha: (p as any).carteirinha || '',
       codigos_cassi: Array.isArray((p as any).codigos_cassi) ? (p as any).codigos_cassi : [],
-      guias_por_mes: Number((p as any).guias_por_mes) >= 2 ? 2 : 1,
+      guias_por_mes: Math.min(3, Math.max(1, Number((p as any).guias_por_mes) || 1)),
       lgpd_aceite: !!(p as any).lgpd_aceite_em,
       contato_emergencia_nome: (p as any).contato_emergencia_nome || '',
       contato_emergencia_telefone: (p as any).contato_emergencia_telefone || '',
@@ -1555,15 +1555,15 @@ export default function Pacientes() {
                       <div>
                         <Label className="text-xs">Guias por mês</Label>
                         <div className="flex gap-1.5 mt-1">
-                          {[1, 2].map(n => (
+                          {[1, 2, 3].map(n => (
                             <button type="button" key={n}
                               onClick={() => setForm(f => ({ ...f, guias_por_mes: n }))}
                               className={cn('flex-1 text-[12px] py-1.5 rounded-lg border font-medium', form.guias_por_mes === n ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground')}>
-                              {n} guia{n > 1 ? 's' : ''}/mês
+                              {n >= 3 ? '3 em 2 meses' : `${n}/mês`}
                             </button>
                           ))}
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-1">2/mês: o Controle CASSI avisa pra pedir a próxima guia ~13 dias após a resposta da CASSI.</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">2/mês e 3 em 2 meses: o Controle CASSI avisa pra pedir a próxima guia quando as 10 sessões da atual terminam.</p>
                       </div>
                     </div>
                   )}
