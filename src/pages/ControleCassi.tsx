@@ -350,6 +350,15 @@ export default function ControleCassi() {
     if (error) { toast.error('Erro: ' + error.message); return; }
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
+  // Lista MANUAL durável de "Pedir guia": marca/desmarca cassi_pedir_guia no
+  // cadastro. Assim a lista NÃO some ao sair da página — só sai quando dá baixa
+  // (darBaixaPedidos limpa o marcador) ou quando você tira o cliente.
+  const marcarPedirGuia = async (id: string, valor: boolean) => {
+    const { error } = await (supabase as any).from('pacientes')
+      .update({ cassi_pedir_guia: valor }).eq('id', id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+  };
   const guiasAtivasLista = useMemo(() => guiasEff.filter((g) => g.status === 'ativa'), [guiasEff]);
   // Aba "Este mês": mês vigente + mês passado (pra carregar os pacientes que
   // continuam). Um por paciente (guia mais recente).
@@ -509,6 +518,7 @@ export default function ControleCassi() {
               foco={pedirFoco}
               onNovaGuia={(pac) => setEditando({ paciente: pac, guia: null })}
               onDarBaixa={darBaixaPedidos}
+              onMarcarPedir={marcarPedirGuia}
             />
 
             {guiasPedidas.length > 0 && (
@@ -2318,12 +2328,13 @@ interface ItemPedido {
   id: string; nome: string; sel: boolean;
   carteirinha: string; diagnostico: string; codigos: string[];
 }
-function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa }: {
+function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa, onMarcarPedir }: {
   linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>;
   candidatos?: Array<{ paciente: Paciente; guia: GuiaCassi | null }>; // todos os CASSI que dá pra adicionar manualmente
   foco?: Set<string>; // clientes vindos de "Pedir guia" — pré-seleciona esses (vazio = todos)
   onNovaGuia: (p: Paciente) => void;
   onDarBaixa: (ids: string[]) => Promise<void> | void;
+  onMarcarPedir?: (id: string, valor: boolean) => Promise<void> | void; // lista manual DURÁVEL
 }) {
   const { data: cfg } = useCassiConfig();
   const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
@@ -2374,6 +2385,8 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
     setOcultos((s) => { const n = new Set(s); n.delete(l.paciente.id); return n; });
     setItens((p) => p.some((i) => i.id === l.paciente.id) ? p : [...p, { ...novoItem(l), sel: true }]);
     setBuscaAdd('');
+    // Persiste na lista (não some ao sair da página) até dar baixa.
+    onMarcarPedir?.(l.paciente.id, true);
   };
 
   const upd = (id: string, patch: Partial<ItemPedido>) =>
@@ -2386,7 +2399,11 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
       return { ...it, codigos: [...it.codigos, cod] };
     }));
 
-  const retirar = (id: string) => setOcultos((s) => new Set(s).add(id));
+  const retirar = (id: string) => {
+    setOcultos((s) => new Set(s).add(id));
+    // Tira da lista durável também (se estava marcado manualmente).
+    onMarcarPedir?.(id, false);
+  };
   const visiveis = itens.filter((it) => !ocultos.has(it.id));
   const selecionados = visiveis.filter((i) => i.sel);
   const semCarteirinha = selecionados.filter((i) => !i.carteirinha.trim()).length;
