@@ -50,6 +50,16 @@ export default function EnviarPortalDialog({ pacientes, nomeClinica, onClose }: 
     try { await navigator.clipboard.writeText(url); toast.success('Link copiado!'); }
     catch { toast.error('Não consegui copiar — selecione e copie manualmente.'); }
   };
+  // Copia "Nome: link" de todos os clientes filtrados que têm link — pra colar
+  // numa lista e enviar em massa por outro meio.
+  const copiarTodos = async () => {
+    const linhas = lista
+      .filter((p) => p.portal_token)
+      .map((p) => `${`${p.nome} ${p.sobrenome || ''}`.trim()}: ${getPortalUrl(p.portal_token!)}`);
+    if (!linhas.length) { toast.error('Nenhum link disponível para copiar.'); return; }
+    try { await navigator.clipboard.writeText(linhas.join('\n')); toast.success(`${linhas.length} link(s) copiado(s)!`); }
+    catch { toast.error('Não consegui copiar — tente item a item.'); }
+  };
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -66,9 +76,14 @@ export default function EnviarPortalDialog({ pacientes, nomeClinica, onClose }: 
               {semLink > 0 && <>· {semLink} cliente(s) <b>sem link</b> gerado (abra e salve o cadastro dele uma vez).</>}
             </div>
           )}
-          <div className="relative">
-            <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <Input className="h-9 pl-8" placeholder="Filtrar por nome…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Input className="h-9 pl-8" placeholder="Filtrar por nome…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            </div>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 shrink-0" onClick={copiarTodos} title="Copiar nome + link de todos os listados">
+              <Copy className="h-3.5 w-3.5" /> Copiar todos
+            </Button>
           </div>
           <div className="space-y-1.5 max-h-[58vh] overflow-y-auto">
             {lista.length === 0 ? (

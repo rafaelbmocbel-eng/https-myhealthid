@@ -847,6 +847,10 @@ export default function Pacientes() {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <Button variant="outline" size="sm" className="h-10 rounded-xl gap-1.5" aria-label="Enviar portal em massa"
+                disabled={pacientes.length === 0} onClick={() => setPortalOpen(true)}>
+                <MessageCircle className="icon-sm" /> <span className="hidden sm:inline">Enviar portal</span>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" aria-label="Mais ações">
