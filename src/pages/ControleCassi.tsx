@@ -333,7 +333,12 @@ export default function ControleCassi() {
   const guiasPedidas = useMemo(() => linhas.filter((l) => pedidoAberto(l.paciente)), [linhas, guiaPorPaciente]);
   // Candidatos para ADICIONAR manualmente ao pedido: qualquer cliente CASSI ativo
   // que ainda não tem pedido em aberto (inclui os que o sistema não flagou sozinho).
-  const candidatosPedido = useMemo(() => linhas.filter((l) => !pedidoAberto(l.paciente)), [linhas, guiaPorPaciente]);
+  // Para o "+ Adicionar cliente ao pedido": TODOS os CASSI (inclusive os
+  // encerrados — dá pra puxar de volta), menos quem já tem pedido em aberto.
+  const candidatosPedidoTodos = useMemo(() => pacientes
+    .filter((p) => !pedidoAberto(p))
+    .map((p) => ({ paciente: p, guia: guiaPorPaciente.get(p.id) || null })),
+    [pacientes, guiaPorPaciente]);
 
   // Dar baixa: marca que a(s) guia(s) foram pedidas → saem de "Pedir guia".
   const darBaixaPedidos = async (ids: string[]) => {
@@ -354,8 +359,11 @@ export default function ControleCassi() {
   // cadastro. Assim a lista NÃO some ao sair da página — só sai quando dá baixa
   // (darBaixaPedidos limpa o marcador) ou quando você tira o cliente.
   const marcarPedirGuia = async (id: string, valor: boolean) => {
-    const { error } = await (supabase as any).from('pacientes')
-      .update({ cassi_pedir_guia: valor }).eq('id', id);
+    // Adicionar ao pedido também REATIVA quem estava com CASSI encerrado — se
+    // vamos pedir guia, o cliente volta a ser ativo.
+    const patch: any = { cassi_pedir_guia: valor };
+    if (valor) patch.cassi_encerrado_em = null;
+    const { error } = await (supabase as any).from('pacientes').update(patch).eq('id', id);
     if (error) { toast.error('Erro: ' + error.message); return; }
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
@@ -514,7 +522,7 @@ export default function ControleCassi() {
           <>
             <PedirGuiasPanel
               linhas={pedidosDoMes}
-              candidatos={candidatosPedido}
+              candidatos={candidatosPedidoTodos}
               foco={pedirFoco}
               onNovaGuia={(pac) => setEditando({ paciente: pac, guia: null })}
               onDarBaixa={darBaixaPedidos}
@@ -2459,6 +2467,7 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
               >
                 <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span className="flex-1 min-w-0 truncate">{l.paciente.nome} {l.paciente.sobrenome || ''}</span>
+                {l.paciente.cassi_encerrado_em && <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 shrink-0">encerrada · reativar</span>}
                 {l.paciente.carteirinha && <span className="text-[11px] text-muted-foreground shrink-0">{l.paciente.carteirinha}</span>}
               </button>
             ))}
