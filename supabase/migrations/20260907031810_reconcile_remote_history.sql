@@ -1,0 +1,13 @@
+-- Placeholder de RECONCILIAÇÃO de histórico de migrations.
+--
+-- O banco remoto tinha esta versão (20260907031810) registrada em
+-- supabase_migrations.schema_migrations, mas SEM arquivo correspondente no repo
+-- (aplicada fora do fluxo normal, por outro ambiente/processo). Isso fazia o
+-- `supabase db push` da GitHub Action falhar com:
+--   "Remote migration versions not found in local migrations directory"
+-- e, por tabela, IMPEDIA a publicação das edge functions.
+--
+-- Como a versão já consta como aplicada no remoto, o db push NÃO re-executa este
+-- arquivo — ele serve apenas para alinhar o histórico local ao remoto e destravar
+-- o deploy. Intencionalmente um no-op.
+SELECT 1;
