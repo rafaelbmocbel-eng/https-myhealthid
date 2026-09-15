@@ -2,7 +2,7 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { cn } from '@/lib/utils';
-import { MessageCircle, Kanban, Workflow, TrendingUp, Bot, Loader2, Radio, UserPlus } from 'lucide-react';
+import { MessageCircle, Kanban, Workflow, TrendingUp, Bot, Loader2, Radio, UserPlus, Smartphone } from 'lucide-react';
 
 const CrmInbox = lazy(() => import('./CrmInbox'));
 const CrmPipeline = lazy(() => import('./CrmPipeline'));
@@ -10,12 +10,14 @@ const CrmCadencias = lazy(() => import('./CrmCadencias'));
 const CrmMetricas = lazy(() => import('./CrmMetricas'));
 const WhatsappAutomacoes = lazy(() => import('./WhatsappAutomacoes'));
 const CrmTrafego = lazy(() => import('./CrmTrafego'));
+const CrmPortal = lazy(() => import('./CrmPortal'));
 
-type TabKey = 'inbox' | 'captacao' | 'pipeline' | 'cadencias' | 'metricas' | 'automacoes' | 'trafego';
+type TabKey = 'inbox' | 'captacao' | 'portal' | 'pipeline' | 'cadencias' | 'metricas' | 'automacoes' | 'trafego';
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; desc: string }[] = [
   { key: 'inbox', label: 'Zap', icon: MessageCircle, desc: 'Conversas' },
   { key: 'captacao', label: 'Captação', icon: UserPlus, desc: 'Leads de anúncios' },
+  { key: 'portal', label: 'Portal', icon: Smartphone, desc: 'Acesso & respostas' },
   { key: 'pipeline', label: 'Pipeline', icon: Kanban, desc: 'Kanban' },
   { key: 'cadencias', label: 'Cadências', icon: Workflow, desc: 'Follow-ups' },
   { key: 'metricas', label: 'Métricas', icon: TrendingUp, desc: 'Conversão' },
@@ -26,7 +28,7 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
 const STORAGE_KEY = 'crm.lastTab';
 
 function isTabKey(value: string | null): value is TabKey {
-  return value === 'inbox' || value === 'captacao' || value === 'pipeline' || value === 'cadencias' || value === 'metricas' || value === 'automacoes' || value === 'trafego';
+  return value === 'inbox' || value === 'captacao' || value === 'portal' || value === 'pipeline' || value === 'cadencias' || value === 'metricas' || value === 'automacoes' || value === 'trafego';
 }
 
 interface Props {
@@ -130,6 +132,7 @@ export default function CrmHub({ embedded = false }: Props) {
           }>
             {tab === 'inbox' && <CrmInbox embedded />}
             {tab === 'captacao' && <CrmInbox embedded mode="leads" />}
+            {tab === 'portal' && <CrmPortal embedded />}
             {tab === 'pipeline' && <CrmPipeline embedded />}
             {tab === 'cadencias' && <CrmCadencias embedded />}
             {tab === 'metricas' && <CrmMetricas embedded />}
