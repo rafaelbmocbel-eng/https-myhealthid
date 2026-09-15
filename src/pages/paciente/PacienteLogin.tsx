@@ -9,7 +9,6 @@ import { Eye, EyeOff, Loader2, Heart, Activity, Calendar, Dumbbell, LineChart, S
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
 import logoFull from '@/assets/logo-myhealthid-full.webp';
-import { withAuthLockRetry } from '@/lib/authLock';
 
 export default function PacienteLogin() {
   const { token: routeToken } = useParams();
@@ -261,43 +260,18 @@ export default function PacienteLogin() {
       }
     } else {
       try {
-        const { data: signUpData, error } = await withAuthLockRetry(() =>
-          supabase.auth.signUp({
-            email: form.email,
-            password: form.password,
-            options: {
-              data: { nome: form.nome, is_patient: true },
-              // Preserva o token na volta da confirmação de e-mail, senão o
-              // vínculo por token se perde (crítico p/ cliente cadastrado sem e-mail).
-              emailRedirectTo: portalToken
-                ? `${window.location.origin}/paciente/login?portal=1&token=${encodeURIComponent(portalToken)}`
-                : `${window.location.origin}/paciente/login`,
-            },
-          })
-        );
+        // Cria a conta pela edge function (já CONFIRMADA — sem e-mail de
+        // confirmação). Isso evita o erro "Error sending confirmation email" que
+        // travava o cliente na criação da senha. O vínculo é pelo token/e-mail
+        // no handlePostLogin após o login.
+        const { data, error: fnError } = await supabase.functions.invoke('criar-conta-portal', {
+          body: { email: form.email, password: form.password, nome: form.nome },
+        });
+        const res = (data as any) || {};
+        const code = (res.code || '').toString();
 
-        if (error) {
-          const message = error.message.toLowerCase();
-          const code = (error as any)?.code?.toLowerCase?.() || '';
-          const isAlreadyRegistered =
-            message.includes('already registered') ||
-            message.includes('already been registered') ||
-            message.includes('user already registered') ||
-            code === 'user_already_exists' ||
-            code === 'email_exists';
-          const isWeakPassword =
-            code === 'weak_password' ||
-            message.includes('weak password') ||
-            message.includes('pwned') ||
-            message.includes('password should');
-          const isInvalidEmail =
-            code === 'email_address_invalid' ||
-            code === 'validation_failed' ||
-            message.includes('email address is invalid') ||
-            (message.includes('email address') && message.includes('invalid')) ||
-            message.includes('unable to validate email');
-
-          if (isAlreadyRegistered) {
+        if (fnError || res.error) {
+          if (code === 'email_exists') {
             const { error: signInError } = await signIn(form.email, form.password);
             if (!signInError) {
               toast({ title: 'Conta já existente', description: 'Você já tinha cadastro. Entrando no portal...' });
@@ -312,36 +286,30 @@ export default function PacienteLogin() {
             setSubmitting(false);
             return;
           }
-          if (isWeakPassword) {
-            toast({
-              title: 'Senha muito fraca',
-              description: 'Escolha uma senha mais forte (mínimo 8 caracteres, evite senhas comuns).',
-              variant: 'destructive',
-            });
+          if (code === 'weak_password') {
+            toast({ title: 'Senha muito fraca', description: 'Escolha uma senha mais forte (mínimo 8 caracteres).', variant: 'destructive' });
             setSubmitting(false);
             return;
           }
-          if (isInvalidEmail) {
-            toast({
-              title: 'E-mail não aceito',
-              description: 'Use um e-mail válido e real. Domínios temporários podem ser bloqueados.',
-              variant: 'destructive',
-            });
+          if (code === 'invalid_email') {
+            toast({ title: 'E-mail não aceito', description: 'Use um e-mail válido e real.', variant: 'destructive' });
             setSubmitting(false);
             return;
           }
-          toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
+          toast({ title: 'Erro ao cadastrar', description: res.error || fnError?.message || 'Tente novamente.', variant: 'destructive' });
           setSubmitting(false);
-        } else if (!signUpData?.session) {
-          // Email confirmation required — user won't be logged in automatically
-          toast({
-            title: 'Verifique seu e-mail',
-            description: 'Clique no link que enviamos para ativar sua conta e depois faça login.',
-          });
-          setSubmitting(false);
-        } else {
-          toast({ title: 'Conta criada!', description: 'Conectando ao portal...' });
+          return;
         }
+
+        // Conta criada e já confirmada → entra direto.
+        toast({ title: 'Conta criada!', description: 'Conectando ao portal...' });
+        const { error: signInError } = await signIn(form.email, form.password);
+        if (signInError) {
+          toast({ title: 'Conta criada', description: 'Agora entre com seu e-mail e senha.' });
+          setTab('login');
+          setSubmitting(false);
+        }
+        // Sucesso: o handlePostLogin (efeito) vincula por token/e-mail e navega.
       } catch (err: any) {
         console.error('[Portal] Erro no cadastro:', err);
         toast({
