@@ -260,63 +260,91 @@ export default function PacienteLogin() {
       }
     } else {
       try {
-        // Cria a conta pela edge function (já CONFIRMADA — sem e-mail de
-        // confirmação). Isso evita o erro "Error sending confirmation email" que
-        // travava o cliente na criação da senha. O vínculo é pelo token/e-mail
-        // no handlePostLogin após o login.
-        const { data, error: fnError } = await supabase.functions.invoke('criar-conta-portal', {
-          body: { email: form.email, password: form.password, nome: form.nome },
-        });
-        const res = (data as any) || {};
-        const code = (res.code || '').toString();
+        // CAMINHO RÁPIDO: cria a conta já CONFIRMADA por edge function (sem enviar
+        // e-mail de confirmação — evita o "Error sending confirmation email" quando
+        // o envio de e-mail do Supabase está no limite). Se a função ainda não
+        // estiver publicada ou não confirmar, cai no cadastro padrão abaixo.
+        try {
+          const { data } = await supabase.functions.invoke('criar-conta-portal', {
+            body: { email: form.email, password: form.password, nome: form.nome },
+          });
+          if ((data as any)?.ok) {
+            toast({ title: 'Conta criada!', description: 'Conectando ao portal...' });
+            const { error: signInError } = await signIn(form.email, form.password);
+            if (signInError) {
+              toast({ title: 'Conta criada', description: 'Agora entre com seu e-mail e senha.' });
+              setTab('login');
+              setSubmitting(false);
+            }
+            return; // sucesso pelo caminho rápido
+          }
+        } catch { /* função indisponível → usa o cadastro padrão abaixo */ }
 
-        if (fnError || res.error) {
-          if (code === 'email_exists') {
+        // FALLBACK: cadastro padrão (Supabase Auth).
+        const { data: signUpData, error } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+          options: {
+            data: { nome: form.nome, is_patient: true },
+            emailRedirectTo: portalToken
+              ? `${window.location.origin}/paciente/login?portal=1&token=${encodeURIComponent(portalToken)}`
+              : `${window.location.origin}/paciente/login`,
+          },
+        });
+
+        if (error) {
+          const message = error.message.toLowerCase();
+          const code = (error as any)?.code?.toLowerCase?.() || '';
+          const isAlreadyRegistered =
+            message.includes('already registered') ||
+            message.includes('already been registered') ||
+            message.includes('user already registered') ||
+            code === 'user_already_exists' ||
+            code === 'email_exists';
+          const isWeakPassword =
+            code === 'weak_password' ||
+            message.includes('weak password') ||
+            message.includes('pwned') ||
+            message.includes('password should');
+          const isInvalidEmail =
+            code === 'email_address_invalid' ||
+            code === 'validation_failed' ||
+            message.includes('email address is invalid') ||
+            (message.includes('email address') && message.includes('invalid')) ||
+            message.includes('unable to validate email');
+
+          if (isAlreadyRegistered) {
             const { error: signInError } = await signIn(form.email, form.password);
             if (!signInError) {
               toast({ title: 'Conta já existente', description: 'Você já tinha cadastro. Entrando no portal...' });
               return;
             }
-            toast({
-              title: 'E-mail já cadastrado',
-              description: 'Esta conta já existe. Use a aba Entrar com a senha já criada.',
-              variant: 'destructive',
-            });
+            toast({ title: 'E-mail já cadastrado', description: 'Esta conta já existe. Use a aba Entrar com a senha já criada.', variant: 'destructive' });
             setTab('login');
             setSubmitting(false);
             return;
           }
-          if (code === 'weak_password') {
-            toast({ title: 'Senha muito fraca', description: 'Escolha uma senha mais forte (mínimo 8 caracteres).', variant: 'destructive' });
+          if (isWeakPassword) {
+            toast({ title: 'Senha muito fraca', description: 'Escolha uma senha mais forte (mínimo 8 caracteres, evite senhas comuns).', variant: 'destructive' });
             setSubmitting(false);
             return;
           }
-          if (code === 'invalid_email') {
-            toast({ title: 'E-mail não aceito', description: 'Use um e-mail válido e real.', variant: 'destructive' });
+          if (isInvalidEmail) {
+            toast({ title: 'E-mail não aceito', description: 'Use um e-mail válido e real. Domínios temporários podem ser bloqueados.', variant: 'destructive' });
             setSubmitting(false);
             return;
           }
-          toast({ title: 'Erro ao cadastrar', description: res.error || fnError?.message || 'Tente novamente.', variant: 'destructive' });
+          toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
           setSubmitting(false);
-          return;
-        }
-
-        // Conta criada e já confirmada → entra direto.
-        toast({ title: 'Conta criada!', description: 'Conectando ao portal...' });
-        const { error: signInError } = await signIn(form.email, form.password);
-        if (signInError) {
-          toast({ title: 'Conta criada', description: 'Agora entre com seu e-mail e senha.' });
-          setTab('login');
+        } else if (!signUpData?.session) {
+          toast({ title: 'Verifique seu e-mail', description: 'Clique no link que enviamos para ativar sua conta e depois faça login.' });
           setSubmitting(false);
+        } else {
+          toast({ title: 'Conta criada!', description: 'Conectando ao portal...' });
         }
-        // Sucesso: o handlePostLogin (efeito) vincula por token/e-mail e navega.
       } catch (err: any) {
         console.error('[Portal] Erro no cadastro:', err);
-        toast({
-          title: 'Erro ao cadastrar',
-          description: 'Ocorreu um erro de conexão. Tente novamente.',
-          variant: 'destructive',
-        });
+        toast({ title: 'Erro ao cadastrar', description: 'Ocorreu um erro de conexão. Tente novamente.', variant: 'destructive' });
         setSubmitting(false);
       }
     }
