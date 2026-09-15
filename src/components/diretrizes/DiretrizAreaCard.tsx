@@ -31,7 +31,7 @@ export interface DiretrizAreaProps {
 // Renderiza o conteúdo de um plano/diretriz (objetivo, resumo, fases, alertas).
 // Reaproveitado tanto na revisão do plano salvo quanto na revisão da SUGESTÃO
 // gerada a partir da avaliação (botão "Atualizar com a avaliação").
-function PlanoConteudo({ c }: { c: any }) {
+export function PlanoConteudo({ c }: { c: any }) {
   return (
     <>
       {c.objetivo && <p className="text-sm font-medium">{c.objetivo}</p>}

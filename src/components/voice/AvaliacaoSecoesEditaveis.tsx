@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
+import AtualizarTratamentoBanner from '@/components/diretrizes/AtualizarTratamentoBanner';
 
 
 interface Props {
@@ -942,7 +943,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   const { toast } = useToast();
   const qc = useQueryClient();
   const navigate = useNavigate();
-
+  // Aviso "a avaliação mudou — atualizar o tratamento?" após editar uma seção.
+  const [mostrarAtualizarTratamento, setMostrarAtualizarTratamento] = useState(false);
 
   const meta = resultado?._secoes || {};
   const editadasIniciais: Record<string, string> = meta.editadas || {};
@@ -1058,6 +1060,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       if (confirmadas.has(key)) await sincronizarProntuario(confirmadas, novosTextos);
       setEditando(null);
       toast({ title: 'Edição salva' });
+      setMostrarAtualizarTratamento(true); // oferece atualizar a diretriz
       qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest', pacienteId] });
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e?.message, variant: 'destructive' });
@@ -1234,6 +1237,12 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
 
   return (
     <div className="space-y-5">
+      {mostrarAtualizarTratamento && (
+        <AtualizarTratamentoBanner
+          pacienteId={pacienteId}
+          onDone={() => setMostrarAtualizarTratamento(false)}
+        />
+      )}
       {/* Abas de navegação + Grid de cards */}
       {(() => {
         const renderCards = (secoesParaRenderizar: SecaoDef[]) => {
