@@ -28,7 +28,8 @@ const cpfField = z
 // ── Patient Data ─────────────────────────────────────────────
 export const PacienteSchema = z.object({
   nome: z.string().trim().min(1, 'Nome é obrigatório').max(100, 'Nome muito longo'),
-  sobrenome: z.string().trim().min(1, 'Sobrenome é obrigatório').max(100, 'Sobrenome muito longo'),
+  // Sobrenome é opcional: o cadastro usa um único campo "Nome completo".
+  sobrenome: z.string().trim().max(100, 'Sobrenome muito longo').optional().transform(v => v || ''),
   email: z.union([z.string().email('E-mail inválido'), z.literal('')]).optional().transform(v => v || null),
   telefone: z.union([
     z.string().regex(/^[\d\s()+-]{8,20}$/, 'Telefone inválido'),

@@ -546,7 +546,9 @@ export default function Pacientes() {
 
   const openEdit = (p: Paciente) => {
     setForm({
-      nome: p.nome, sobrenome: p.sobrenome, email: p.email || '',
+      // Cadastro usa um campo único: junta nome+sobrenome no "Nome completo" e
+      // zera o sobrenome (evita duplicar se o profissional reescrever o nome).
+      nome: `${p.nome || ''} ${p.sobrenome || ''}`.trim(), sobrenome: '', email: p.email || '',
       telefone: p.telefone || '', data_nascimento: p.data_nascimento || '',
       genero: p.genero || '', cpf: p.cpf ? maskCPF(p.cpf) : '',
       cep: (p as any).cep ? maskCEP((p as any).cep) : '',
@@ -1242,15 +1244,9 @@ export default function Pacientes() {
             <DialogTitle>{modal.paciente ? 'Editar Paciente' : 'Novo Paciente'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Nome *</Label>
-                <Input placeholder="Maria" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <Label>Sobrenome</Label>
-                <Input placeholder="Silva" value={form.sobrenome} onChange={e => setForm(f => ({ ...f, sobrenome: e.target.value }))} />
-              </div>
+            <div className="space-y-1">
+              <Label>Nome completo *</Label>
+              <Input placeholder="Maria Silva" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <Label>E-mail</Label>
@@ -1643,15 +1639,9 @@ export default function Pacientes() {
             <p className="text-xs text-muted-foreground">
               Cadastre o essencial agora e envie um link para o paciente completar o restante (CPF, endereço, saúde) com calma em casa.
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Nome *</Label>
-                <Input value={quickForm.nome} onChange={e => setQuickForm(f => ({ ...f, nome: e.target.value }))} className="text-[16px] sm:text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Sobrenome</Label>
-                <Input value={quickForm.sobrenome} onChange={e => setQuickForm(f => ({ ...f, sobrenome: e.target.value }))} className="text-[16px] sm:text-sm" />
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Nome completo *</Label>
+              <Input placeholder="Maria Silva" value={quickForm.nome} onChange={e => setQuickForm(f => ({ ...f, nome: e.target.value }))} className="text-[16px] sm:text-sm" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">E-mail</Label>
