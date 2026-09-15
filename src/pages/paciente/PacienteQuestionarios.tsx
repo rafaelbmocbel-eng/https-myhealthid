@@ -108,7 +108,9 @@ export default function PacienteQuestionarios() {
         updated_at: new Date().toISOString(),
       }).eq('id', activeId);
       if (error) throw error;
-      toast({ title: '💾 Progresso salvo', description: 'Você pode continuar depois.', duration: 2000 });
+      // Salva em SILÊNCIO — não mostra toast a cada resposta (o wizard já tem o
+      // indicador "salvando/salvo" inline e o aviso ao pausar). Só avisamos se
+      // FALHAR, pra o cliente não perder respostas sem saber.
     } catch (err) {
       // Antes o toast de sucesso aparecia mesmo em falha (o update não lança, só
       // retorna {error}) — o cliente achava que pausou salvo e perdia respostas.
