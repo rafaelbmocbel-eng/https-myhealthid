@@ -79,8 +79,8 @@ export default function CompletarCadastro() {
         } else {
           setForm(f => ({
             ...f,
-            nome: p.nome || '',
-            sobrenome: p.sobrenome || '',
+            nome: `${p.nome || ''} ${p.sobrenome || ''}`.trim(),
+            sobrenome: '',
             telefone: p.telefone || '',
           }));
         }
@@ -204,15 +204,9 @@ export default function CompletarCadastro() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <section className="space-y-3">
             <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Dados pessoais</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Nome *</Label>
-                <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} required className="text-[16px] sm:text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Sobrenome</Label>
-                <Input value={form.sobrenome} onChange={e => setForm(f => ({ ...f, sobrenome: e.target.value }))} className="text-[16px] sm:text-sm" />
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Nome completo *</Label>
+              <Input placeholder="Maria Silva" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} required className="text-[16px] sm:text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">

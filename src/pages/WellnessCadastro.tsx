@@ -126,24 +126,15 @@ export default function WellnessCadastro() {
           <Card>
             <CardContent className="p-5">
               <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="nome" className="text-xs">Nome</Label>
-                    <Input
-                      id="nome"
-                      required
-                      value={form.nome}
-                      onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="sobrenome" className="text-xs">Sobrenome</Label>
-                    <Input
-                      id="sobrenome"
-                      value={form.sobrenome}
-                      onChange={(e) => setForm({ ...form, sobrenome: e.target.value })}
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <Label htmlFor="nome" className="text-xs">Nome completo</Label>
+                  <Input
+                    id="nome"
+                    required
+                    placeholder="Maria Silva"
+                    value={form.nome}
+                    onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  />
                 </div>
 
                 <div className="space-y-1">

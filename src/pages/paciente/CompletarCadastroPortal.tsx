@@ -60,8 +60,8 @@ function CompletarCadastroPortalInner() {
         }
         setForm(f => ({
           ...f,
-          nome: pac.nome || '',
-          sobrenome: pac.sobrenome || '',
+          nome: `${pac.nome || ''} ${pac.sobrenome || ''}`.trim(),
+          sobrenome: '',
           telefone: pac.telefone || '',
           data_nascimento: pac.data_nascimento || '',
           genero: pac.genero || '',
@@ -204,15 +204,9 @@ function CompletarCadastroPortalInner() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <section className="space-y-3">
             <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Dados pessoais</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Nome *</Label>
-                <Input autoCapitalize="words" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} required className="text-[16px] sm:text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Sobrenome</Label>
-                <Input autoCapitalize="words" value={form.sobrenome} onChange={e => setForm(f => ({ ...f, sobrenome: e.target.value }))} className="text-[16px] sm:text-sm" />
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Nome completo *</Label>
+              <Input autoCapitalize="words" placeholder="Maria Silva" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} required className="text-[16px] sm:text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">

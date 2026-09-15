@@ -377,27 +377,15 @@ export default function AgendaPublica() {
             <div className="p-5 space-y-4 bg-muted/10">
               <div className="space-y-2">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Seus Dados</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-muted-foreground ml-1">Nome</label>
-                    <input
-                      type="text"
-                      placeholder="Nome"
-                      className="w-full h-9 px-3 rounded-lg border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                      value={newPacData.nome}
-                      onChange={e => setNewPacData(d => ({ ...d, nome: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-muted-foreground ml-1">Sobrenome</label>
-                    <input
-                      type="text"
-                      placeholder="Sobrenome"
-                      className="w-full h-9 px-3 rounded-lg border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                      value={newPacData.sobrenome}
-                      onChange={e => setNewPacData(d => ({ ...d, sobrenome: e.target.value }))}
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground ml-1">Nome completo</label>
+                  <input
+                    type="text"
+                    placeholder="Nome completo"
+                    className="w-full h-9 px-3 rounded-lg border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                    value={newPacData.nome}
+                    onChange={e => setNewPacData(d => ({ ...d, nome: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-medium text-muted-foreground ml-1">WhatsApp</label>

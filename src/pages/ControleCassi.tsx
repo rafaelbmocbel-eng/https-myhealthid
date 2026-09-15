@@ -1690,8 +1690,9 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   const encerrado = !!paciente?.cassi_encerrado_em;
   const [motivoEnc, setMotivoEnc] = useState('Alta (ficou bom)');
   const [f, setF] = useState(() => ({
-    nome: paciente?.nome || '',
-    sobrenome: paciente?.sobrenome || '',
+    // Campo único de nome (junta nome+sobrenome; sobrenome fica vazio).
+    nome: `${paciente?.nome || ''} ${paciente?.sobrenome || ''}`.trim(),
+    sobrenome: '',
     carteirinha: paciente?.carteirinha || '',
     diagnostico: paciente?.cassi_diagnostico || '',
     email: paciente?.email || '',
@@ -1819,7 +1820,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     setCodigos([]); setGuiasPorMes(1); setAlvoId(null); setAlvoEncerrado(false);
   };
   const escolher = (p: any) => {
-    setF({ nome: p.nome || '', sobrenome: p.sobrenome || '', carteirinha: p.carteirinha || '', diagnostico: p.cassi_diagnostico || '', email: p.email || '', telefone: p.telefone || '', data_resposta: '', sessoes: '' });
+    setF({ nome: `${p.nome || ''} ${p.sobrenome || ''}`.trim(), sobrenome: '', carteirinha: p.carteirinha || '', diagnostico: p.cassi_diagnostico || '', email: p.email || '', telefone: p.telefone || '', data_resposta: '', sessoes: '' });
     setCodigos(Array.isArray(p.codigos_cassi) ? p.codigos_cassi : []);
     setGuiasPorMes(Math.min(3, Math.max(1, Number(p.guias_por_mes) || 1)));
     setAlvoId(p.id);
@@ -1831,7 +1832,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   // dados da 1ª guia que o profissional acabou de digitar.
   const vincularExistente = (p: any) => {
     setF((prev) => ({
-      nome: p.nome || '', sobrenome: p.sobrenome ?? '',
+      nome: `${p.nome || ''} ${p.sobrenome || ''}`.trim(), sobrenome: '',
       carteirinha: p.carteirinha || '', diagnostico: p.cassi_diagnostico || '',
       email: p.email || '', telefone: p.telefone || '',
       data_resposta: prev.data_resposta, sessoes: prev.sessoes,
@@ -1990,15 +1991,9 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
               <button type="button" className="text-[11px] text-primary shrink-0" onClick={() => setAlvoId(null)}>trocar</button>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Nome</label>
-              <Input value={f.nome} onChange={(e) => set('nome', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Sobrenome</label>
-              <Input value={f.sobrenome} onChange={(e) => set('sobrenome', e.target.value)} />
-            </div>
+          <div>
+            <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Nome completo</label>
+            <Input placeholder="Maria Silva" value={f.nome} onChange={(e) => set('nome', e.target.value)} />
           </div>
           {/* Anti-duplicação: já existe alguém com esse nome no app → vincular. */}
           {!alvoId && possiveisDup.length > 0 && (

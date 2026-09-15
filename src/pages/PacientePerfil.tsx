@@ -507,8 +507,8 @@ export default function PacientePerfil() {
   const openEdit = () => {
     if (!paciente) return;
     setEditForm({
-      nome: paciente.nome || '',
-      sobrenome: paciente.sobrenome || '',
+      nome: `${paciente.nome || ''} ${paciente.sobrenome || ''}`.trim(),
+      sobrenome: '',
       email: paciente.email || '',
       telefone: paciente.telefone || '',
       data_nascimento: paciente.data_nascimento || '',
@@ -1292,15 +1292,9 @@ export default function PacientePerfil() {
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-2">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Nome *</Label>
-                    <Input placeholder="Maria" value={editForm.nome} onChange={e => setEditForm(f => ({ ...f, nome: e.target.value }))} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Sobrenome</Label>
-                    <Input placeholder="Silva" value={editForm.sobrenome} onChange={e => setEditForm(f => ({ ...f, sobrenome: e.target.value }))} />
-                  </div>
+                <div className="space-y-1">
+                  <Label>Nome completo *</Label>
+                  <Input placeholder="Maria Silva" value={editForm.nome} onChange={e => setEditForm(f => ({ ...f, nome: e.target.value }))} />
                 </div>
                 <div className="space-y-1">
                   <Label>E-mail</Label>
