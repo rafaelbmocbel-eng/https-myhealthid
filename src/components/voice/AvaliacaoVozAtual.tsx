@@ -86,6 +86,53 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     }
   };
 
+  // Reprocessa a avaliação a partir de um COMPLEMENTO de TEXTO (ex.: o Resumo
+  // Clínico que o profissional acabou de editar) e ATUALIZA todas as abas, mas
+  // PRESERVA as seções que ele editou à mão (reaplica _secoes.editadas por cima
+  // do resultado reprocessado — o Resumo dele fica como escreveu, e Quadro/Dx e
+  // Tratamento passam a refletir o complemento).
+  const reprocessarComEdicao = async (complementoTexto: string, preservarEditadas: Record<string, string>) => {
+    if (!latest || !user || !complementoTexto.trim()) return;
+    setReprocessing(true);
+    try {
+      const stamp = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+      const merged = `${(latest as any).transcricao || ''}\n\n--- Complemento (${stamp}) ---\n${complementoTexto}`;
+      toast({ title: '🧠 Atualizando as abas...', description: 'A IA está reanalisando com o seu complemento.' });
+
+      await reprocessarComplemento({
+        avaliacaoId: latest.id,
+        pacienteId,
+        terapeutaId: user.id,
+        patientName,
+        serviceType: (latest as any).servico || serviceType,
+        finalTranscript: merged,
+        prevResultado: (latest as any).resultado,
+        prevQueixaPrincipal: (latest as any).queixa_principal,
+        prevSeveridade: (latest as any).classificacao_severidade,
+        notaProntuarioTitulo: `Avaliação complementada — ${(latest as any).classificacao_severidade || 'N/A'}`,
+        notaProntuarioDescricao: `📝 Complemento da avaliação (todas as abas atualizadas).\n\n${complementoTexto.slice(0, 500)}`,
+      });
+
+      // Reaplica as edições manuais por cima do resultado reprocessado.
+      if (preservarEditadas && Object.keys(preservarEditadas).length) {
+        const { data: row } = await (supabase as any).from('avaliacoes_voz').select('resultado').eq('id', latest.id).maybeSingle();
+        const r = (row?.resultado as any) || {};
+        const novo = {
+          ...r,
+          _secoes: { ...(r._secoes || {}), editadas: { ...(r._secoes?.editadas || {}), ...preservarEditadas } },
+        };
+        await (supabase as any).from('avaliacoes_voz').update({ resultado: novo }).eq('id', latest.id);
+      }
+
+      invalidarCachesAvaliacaoVoz(qc, pacienteId);
+      toast({ title: 'Abas atualizadas! ✅', description: 'Quadro/Dx e Tratamento refletem o complemento.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao atualizar', description: e.message, variant: 'destructive' });
+    } finally {
+      setReprocessing(false);
+    }
+  };
+
   const excluirAvaliacao = async () => {
     if (!latest) return;
     if (!confirm('Excluir esta avaliação por voz? Esta ação não pode ser desfeita.')) return;
@@ -164,10 +211,14 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
 
       {hasResult ? (
         <AvaliacaoSecoesEditaveis
+          // key muda quando a avaliação é reprocessada (savedAt novo) → remonta e
+          // as abas mostram o conteúdo atualizado, sem precisar recarregar.
+          key={`${latest.id}:${(latest as any).resultado?._meta?.savedAt || ''}`}
           pacienteId={pacienteId}
           avaliacaoId={latest.id}
           resultado={(latest as any).resultado}
           transcricao={(latest as any).transcricao}
+          onReprocessar={reprocessarComEdicao}
         />
       ) : (
         <VoiceAssessment

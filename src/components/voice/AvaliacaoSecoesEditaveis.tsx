@@ -25,6 +25,9 @@ interface Props {
   avaliacaoId: string;
   resultado: any;
   transcricao?: string | null;
+  /** Reprocessa a avaliação com um complemento de texto (atualiza todas as abas),
+   *  preservando as seções editadas à mão. Fornecido pelo AvaliacaoVozAtual. */
+  onReprocessar?: (complementoTexto: string, preservarEditadas: Record<string, string>) => Promise<void>;
 }
 
 type SecaoKey =
@@ -938,17 +941,20 @@ function DiretrizCompact({ diretriz }: { diretriz: any }) {
   );
 }
 
-export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao }: Props) {
+export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao, onReprocessar }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const navigate = useNavigate();
   // Aviso "a avaliação mudou — atualizar o tratamento?" após editar uma seção.
   const [mostrarAtualizarTratamento, setMostrarAtualizarTratamento] = useState(false);
+  const [reprocessandoAbas, setReprocessandoAbas] = useState(false);
 
   const meta = resultado?._secoes || {};
   const editadasIniciais: Record<string, string> = meta.editadas || {};
   const confirmadasIniciais: SecaoKey[] = Array.isArray(meta.confirmadas) ? meta.confirmadas : [];
+  // Edições manuais acumuladas nesta sessão (pra preservar ao reprocessar as abas).
+  const [editadasAtuais, setEditadasAtuais] = useState<Record<string, string>>(() => ({ ...editadasIniciais }));
 
   const [textos, setTextos] = useState<Record<SecaoKey, string>>(() => {
     const init = {} as Record<SecaoKey, string>;
@@ -1048,11 +1054,13 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     try {
       const novosTextos = { ...textos, [key]: rascunho };
       setTextos(novosTextos);
+      const novasEditadas = { ...editadasAtuais, [key]: rascunho };
+      setEditadasAtuais(novasEditadas);
       const novoResultado = {
         ...resultado,
         _secoes: {
           ...(resultado?._secoes || {}),
-          editadas: { ...editadasIniciais, [key]: rascunho },
+          editadas: novasEditadas,
           confirmadas: Array.from(confirmadas),
         },
       };
@@ -1065,6 +1073,21 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e?.message, variant: 'destructive' });
     } finally { setSaving(null); }
+  };
+
+  // Reprocessa a avaliação (complemento) e atualiza Quadro/Dx e Tratamento com o
+  // que foi acrescentado, preservando as seções editadas à mão.
+  const rotuloSecao = (k: string) => SECOES.find((s) => s.key === k)?.titulo || k;
+  const atualizarAbas = async () => {
+    if (!onReprocessar) return;
+    const complemento = Object.entries(editadasAtuais)
+      .filter(([, v]) => (v || '').trim())
+      .map(([k, v]) => `${rotuloSecao(k)}: ${v.trim()}`)
+      .join('\n\n');
+    if (!complemento) { toast({ title: 'Edite alguma seção antes de atualizar as abas.' }); return; }
+    setReprocessandoAbas(true);
+    try { await onReprocessar(complemento, editadasAtuais); }
+    finally { setReprocessandoAbas(false); }
   };
 
   const criarOuRecuperarProtocoloDaDiretriz = async (): Promise<string | null> => {
@@ -1241,6 +1264,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
         <AtualizarTratamentoBanner
           pacienteId={pacienteId}
           onDone={() => setMostrarAtualizarTratamento(false)}
+          onAtualizarAbas={onReprocessar ? atualizarAbas : undefined}
+          atualizandoAbas={reprocessandoAbas}
         />
       )}
       {/* Abas de navegação + Grid de cards */}
