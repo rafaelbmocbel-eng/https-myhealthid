@@ -252,6 +252,10 @@ export default function Agenda() {
     offsetY: number;
   } | null>(null);
   const [dragDelta, setDragDelta] = useState({ dy: 0, dx: 0 });
+  // Long-press: no celular, exige SEGURAR ~0,5s parado pra "pegar" o card (evita
+  // mover clientes sem querer ao rolar/deslizar a agenda).
+  const longPressRef = useRef<number | null>(null);
+  const [aguardandoLongPress, setAguardandoLongPress] = useState<string | null>(null);
 
   // Drag confirmation state
   const [pendingDrag, setPendingDrag] = useState<{
@@ -372,16 +376,56 @@ export default function Agenda() {
   daysRef.current = days;
 
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent, ag: Agendamento, dayIdx: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const isTouch = 'touches' in e;
+    const clientY = isTouch ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const clientX = isTouch ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const start = parseISO(ag.data_inicio);
     const end = parseISO(ag.data_fim);
     const origStartMin = getHours(start) * 60 + getMinutes(start);
     const durationMin = differenceInMinutes(end, start);
-    setDragging({ ag, startY: clientY, startX: clientX, origStartMin, durationMin, dayIndex: dayIdx, offsetY: 0 });
-    setDragDelta({ dy: 0, dx: 0 });
+
+    const iniciar = () => {
+      setAguardandoLongPress(null);
+      setDragging({ ag, startY: clientY, startX: clientX, origStartMin, durationMin, dayIndex: dayIdx, offsetY: 0 });
+      setDragDelta({ dy: 0, dx: 0 });
+    };
+
+    // Mouse (desktop): arrastar é deliberado — começa na hora.
+    if (!isTouch) {
+      e.preventDefault();
+      e.stopPropagation();
+      iniciar();
+      return;
+    }
+
+    // Celular: só "pega" o card depois de SEGURAR ~0,5s parado. Se o dedo rolar
+    // antes disso, é rolagem (cancela e não move ninguém). NÃO damos preventDefault
+    // agora, pra a rolagem normal continuar funcionando até a ativação.
+    e.stopPropagation();
+    setAguardandoLongPress(ag.id);
+    const TOL = 10;   // px de tolerância antes de considerar "rolagem"
+    const HOLD = 500; // ms segurando pra ativar
+    const cancelar = () => {
+      if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+      setAguardandoLongPress(null);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+      window.removeEventListener('touchcancel', onEnd);
+    };
+    const onMove = (ev: TouchEvent) => {
+      const t = ev.touches[0];
+      if (!t) return;
+      if (Math.abs(t.clientY - clientY) > TOL || Math.abs(t.clientX - clientX) > TOL) cancelar();
+    };
+    const onEnd = () => cancelar();
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
+    window.addEventListener('touchcancel', onEnd);
+    longPressRef.current = window.setTimeout(() => {
+      cancelar();
+      try { (navigator as any).vibrate?.(15); } catch { /* nb */ }
+      iniciar();
+    }, HOLD);
   }, []);
 
   useEffect(() => {
@@ -1721,6 +1765,7 @@ export default function Agenda() {
                                 'absolute rounded-md border border-l-[3px] px-2 py-1 overflow-hidden cursor-grab select-none pointer-events-auto',
                                 'hover:brightness-[0.98] hover:shadow-sm transition-all z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
+                                aguardandoLongPress === ag.id && !isDraggingThis && 'ring-2 ring-primary/50 scale-[1.02] shadow-md transition-transform',
                                 !memberColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
                               )}
                               style={{
