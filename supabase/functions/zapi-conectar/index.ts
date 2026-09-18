@@ -25,10 +25,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const clientToken = Deno.env.get("ZAPI_CLIENT_TOKEN");
-    if (!clientToken) {
-      return json({ error: "ZAPI_CLIENT_TOKEN não configurado no projeto. Adicione o token de integrador da Z-API nas secrets." }, 400);
-    }
+    const envClientToken = Deno.env.get("ZAPI_CLIENT_TOKEN");
     const webhookSecret = Deno.env.get("WHATSAPP_WEBHOOK_SECRET") || "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 
@@ -44,6 +41,22 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { action } = await req.json().catch(() => ({ action: "provisionar" }));
 
+    // Credenciais desta clínica. O Client-Token pode vir do secret global da
+    // plataforma (ZAPI_CLIENT_TOKEN) OU do token já salvo por clínica em
+    // config_clinica — assim "Reconectar" funciona mesmo sem o secret global,
+    // igual ao whatsapp-diagnostico.
+    const { data: cfg } = await admin
+      .from("config_clinica")
+      .select("zapi_instance_id, zapi_token, zapi_client_token")
+      .eq("terapeuta_id", user.id)
+      .maybeSingle();
+    let instanceId = cfg?.zapi_instance_id || null;
+    let token = cfg?.zapi_token || null;
+    const clientToken = envClientToken || cfg?.zapi_client_token;
+    if (!clientToken) {
+      return json({ error: "Token da Z-API não configurado. Fale com o suporte." }, 400);
+    }
+
     const zHeaders = { "Content-Type": "application/json", "Client-Token": clientToken };
 
     // Aponta o webhook de recebimento pro nosso endpoint, carimbando o
@@ -58,15 +71,6 @@ Deno.serve(async (req) => {
         method: "PUT", headers: zHeaders, body: JSON.stringify({ value: webhookUrl }),
       }).catch(() => { /* best-effort */ });
     };
-
-    // Credenciais já existentes desta clínica (se houver)
-    const { data: cfg } = await admin
-      .from("config_clinica")
-      .select("zapi_instance_id, zapi_token")
-      .eq("terapeuta_id", user.id)
-      .maybeSingle();
-    let instanceId = cfg?.zapi_instance_id || null;
-    let token = cfg?.zapi_token || null;
 
     // ── PROVISIONAR: cria a instância (se ainda não existe) e aponta o webhook ──
     if (action === "provisionar") {
