@@ -801,7 +801,15 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       let envBlob = ignorarAudio ? null : audioBlob;
       let envMime = audioMimeType;
       let converteu = false;
-      if (!ignorarAudio && pcmWavRef.current && pcmWavRef.current.size > 44) {
+      // Gravação LONGA (>10 min): o WAV 16kHz fica enorme (~2 MB/min → 24 min ≈
+      // 47 MB) e estourava a memória do servidor (erro 546) e o limite do Whisper
+      // (25 MB). Como o Groq/Whisper aceita o formato NATIVO comprimido (webm no
+      // Android, mp4/AAC no iOS), para áudio longo enviamos o ORIGINAL comprimido
+      // (~10x menor) e NÃO convertemos para WAV.
+      const audioLongo = recordingTime > 600 && !!audioBlob;
+      if (!ignorarAudio && audioLongo) {
+        console.info(`[voice] áudio longo (${Math.round(recordingTime / 60)} min) — enviando original comprimido (${audioMimeType}) para o Groq, sem converter p/ WAV.`);
+      } else if (!ignorarAudio && pcmWavRef.current && pcmWavRef.current.size > 44) {
         const wav = pcmWavRef.current;
         envBlob = wav;
         envMime = 'audio/wav';

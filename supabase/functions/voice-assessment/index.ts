@@ -16,16 +16,23 @@ const corsHeaders = {
 // conversão frágil no aparelho. Recebe o áudio em base64 (como já trafega hoje),
 // remonta o arquivo e envia como multipart. Retorna a transcrição ou null (para
 // o chamador cair no fallback do Gemini). Tier gratuito do Groq cobre este uso.
-async function transcreverComGroq(
-  base64: string,
+// Limite de tamanho do Whisper no Groq (25 MB). Acima disso a API recusa —
+// então nem tentamos (evita gastar memória/tempo à toa).
+const GROQ_MAX_BYTES = 25 * 1024 * 1024;
+
+// Núcleo da transcrição: recebe os BYTES já prontos (Uint8Array). Preferido para
+// áudio vindo do storage (signedUrl), pois evita o ciclo base64→string→bytes que
+// duplicava o arquivo na memória e derrubava o worker (erro 546) em áudios longos.
+async function transcreverComGroqBytes(
+  bytes: Uint8Array,
   mime: string,
   apiKey: string,
 ): Promise<string | null> {
   try {
-    const bin = atob(base64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-
+    if (bytes.length > GROQ_MAX_BYTES) {
+      console.warn(`[voice-assessment] Áudio ${(bytes.length / 1048576).toFixed(1)}MB acima do limite do Groq (25MB) — pulando.`);
+      return null;
+    }
     const cleanMime = (mime || "audio/webm").split(";")[0].toLowerCase().trim();
     const ext = cleanMime.includes("mp4") || cleanMime.includes("m4a") || cleanMime.includes("aac") ? "m4a"
       : cleanMime.includes("mpeg") || cleanMime.includes("mp3") ? "mp3"
@@ -59,6 +66,35 @@ async function transcreverComGroq(
     return txt.length > 0 ? txt : null;
   } catch (err) {
     console.warn("[voice-assessment] Groq erro:", err);
+    return null;
+  }
+}
+
+// Converte bytes → base64 em blocos (sem estourar a pilha). Usado só quando o
+// Gemini (fallback) precisa do áudio inline e o arquivo é pequeno.
+function bytesParaBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
+  }
+  return btoa(binary);
+}
+
+// Wrapper que aceita base64 (caminho antigo: áudio curto enviado inline).
+// Decodifica para bytes e delega ao núcleo.
+async function transcreverComGroq(
+  base64: string,
+  mime: string,
+  apiKey: string,
+): Promise<string | null> {
+  try {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return await transcreverComGroqBytes(bytes, mime, apiKey);
+  } catch (err) {
+    console.warn("[voice-assessment] Groq (base64) erro:", err);
     return null;
   }
 }
@@ -453,29 +489,27 @@ Deno.serve(async (req) => {
 
     let audioBase64ToUse = audioBase64;
     let audioMimeTypeToUse = audioMimeType;
+    // Bytes do áudio quando vem do storage (signedUrl). Mantidos como Uint8Array
+    // e enviados DIRETO ao Groq — NÃO convertemos para base64 aqui, porque isso
+    // duplicava o arquivo em memória (arrayBuffer + string binária + base64) e
+    // matava o worker (erro 546) em gravações longas (ex.: 24 min).
+    let audioBytesToUse: Uint8Array | null = null;
 
-    // Se recebemos signedUrl, baixamos o áudio e convertemos para base64
+    // Se recebemos signedUrl, baixamos o áudio e guardamos os BYTES
     if (signedUrl && !audioBase64ToUse) {
       try {
         const audioRes = await fetch(signedUrl);
         if (!audioRes.ok) throw new Error(`Storage download failed: ${audioRes.status}`);
         const audioBuffer = await audioRes.arrayBuffer();
-        // Convert to base64 in chunks to avoid call-stack overflow on large files
-        const bytes = new Uint8Array(audioBuffer);
-        const CHUNK = 0x8000;
-        let binary = '';
-        for (let i = 0; i < bytes.length; i += CHUNK) {
-          // Uint8Array works directly with apply — no Array.from copy
-          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
-        }
-        audioBase64ToUse = btoa(binary);
+        audioBytesToUse = new Uint8Array(audioBuffer);
         // infer mime from signedUrl or default
         const urlLower = signedUrl.toLowerCase();
         if (urlLower.includes('.webm')) audioMimeTypeToUse = 'audio/webm';
         else if (urlLower.includes('.m4a') || urlLower.includes('.mp4')) audioMimeTypeToUse = 'audio/mp4';
         else if (urlLower.includes('.ogg')) audioMimeTypeToUse = 'audio/ogg';
+        else if (urlLower.includes('.wav')) audioMimeTypeToUse = 'audio/wav';
         else audioMimeTypeToUse = audioMimeType || 'audio/webm';
-        console.log(`[voice-assessment] Downloaded audio from signedUrl: ${audioBase64ToUse.length} chars base64`);
+        console.log(`[voice-assessment] Downloaded audio from signedUrl: ${(audioBytesToUse.length / 1048576).toFixed(1)}MB`);
       } catch (err) {
         console.error("[voice-assessment] Failed to download audio from signedUrl:", err);
         return new Response(JSON.stringify({ error: "Não foi possível baixar o áudio do storage. Tente novamente." }), {
@@ -485,7 +519,7 @@ Deno.serve(async (req) => {
     }
 
     const hasText = transcript && transcript.trim().length >= 20;
-    const hasAudio = audioBase64ToUse && audioBase64ToUse.length > 100;
+    const hasAudio = (audioBase64ToUse && audioBase64ToUse.length > 100) || (audioBytesToUse && audioBytesToUse.length > 100);
 
     if (!hasText && !hasAudio) {
       await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { status: "failed", error_message: "Sem áudio ou transcrição válida." });
@@ -517,7 +551,8 @@ Deno.serve(async (req) => {
       else if (cleanMime.includes("wav")) audioFormats = ["wav", "mp3"];
       else if (cleanMime.includes("ogg")) audioFormats = ["ogg", "webm"];
       else audioFormats = ["aac", "mp3", "webm", "ogg", "wav"];
-      console.log(`[voice-assessment] Audio: mime=${cleanMime} -> candidatos=[${audioFormats.join(",")}], base64Len=${audioBase64ToUse.length}`);
+      const tamanho = audioBytesToUse ? `${(audioBytesToUse.length / 1048576).toFixed(1)}MB (bytes)` : `${audioBase64ToUse.length} chars base64`;
+      console.log(`[voice-assessment] Audio: mime=${cleanMime} -> candidatos=[${audioFormats.join(",")}], ${tamanho}`);
     }
     const audioFormat = audioFormats[0]; // usado no Pass 2 (fallback quando anexa áudio)
 
@@ -538,7 +573,10 @@ Deno.serve(async (req) => {
       //    Gemini se o Groq não estiver configurado (sem GROQ_API_KEY) ou falhar.
       const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
       if (GROQ_API_KEY) {
-        const groqTxt = await transcreverComGroq(audioBase64ToUse, audioMimeTypeToUse, GROQ_API_KEY);
+        // Preferimos os bytes (do storage) — sem inflar base64 na memória.
+        const groqTxt = audioBytesToUse
+          ? await transcreverComGroqBytes(audioBytesToUse, audioMimeTypeToUse, GROQ_API_KEY)
+          : await transcreverComGroq(audioBase64ToUse, audioMimeTypeToUse, GROQ_API_KEY);
         if (groqTxt) {
           faithfulTranscript = (hasText && appendAudio) ? `${faithfulTranscript}\n\n${groqTxt}` : groqTxt;
           audioTranscrito = true;
@@ -548,10 +586,22 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Gemini precisa do áudio inline em base64. Só construímos AGORA (e só se
+      // o Groq não resolveu) e apenas para arquivos pequenos — áudio grande já
+      // não caberia inline no Gemini e construir a base64 estouraria a memória.
+      if (!audioTranscrito && !audioBase64ToUse && audioBytesToUse) {
+        const GEMINI_INLINE_MAX = 18 * 1024 * 1024;
+        if (audioBytesToUse.length <= GEMINI_INLINE_MAX) {
+          audioBase64ToUse = bytesParaBase64(audioBytesToUse);
+        } else {
+          console.warn(`[voice-assessment] Áudio ${(audioBytesToUse.length / 1048576).toFixed(1)}MB grande e Groq indisponível — pulando fallback Gemini para não estourar memória.`);
+        }
+      }
+
       // 2) FALLBACK: Gemini input_audio (comportamento anterior). Tenta cada
       //    formato candidato; um 400 (formato rejeitado) passa para o próximo.
       //    Assim o áudio do iOS (mp4/AAC) é aceito como "aac".
-      for (const fmt of (audioTranscrito ? [] : audioFormats)) {
+      for (const fmt of ((audioTranscrito || !audioBase64ToUse) ? [] : audioFormats)) {
         try {
           const pass1Ctrl = new AbortController();
           const pass1Timer = setTimeout(() => pass1Ctrl.abort(), 270_000);
@@ -693,7 +743,9 @@ Deno.serve(async (req) => {
     const userContent: any[] = [];
     // Anexa o áudio à análise quando não há transcrição OU quando é um complemento
     // cujo áudio não pôde ser transcrito (fallback: o modelo ao menos ouve o áudio novo).
-    const attachAudioToPass2 = hasAudio && (!faithfulTranscript || (appendAudio && !audioTranscrito));
+    // Só anexa o áudio ao Pass 2 se tivermos a base64 (o Gemini exige inline).
+    // Com o caminho de bytes+Groq, a base64 pode nunca ter sido construída.
+    const attachAudioToPass2 = hasAudio && !!audioBase64ToUse && (!faithfulTranscript || (appendAudio && !audioTranscrito));
 
     if (attachAudioToPass2) {
       userContent.push({
