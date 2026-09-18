@@ -1,6 +1,17 @@
 // Helper compartilhado: monta o contexto clínico do paciente para o agente IA
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
+// Fuso da clínica. As datas no banco são UTC; sem isto o Deno renderiza em UTC
+// e o bot informa 3h a mais (ex.: sessão 17:00 vira "20:00"). Todo horário
+// mostrado ao paciente OU lido pela IA deve passar por estes formatadores.
+export const FUSO_BR = "America/Sao_Paulo";
+export function fmtDataHoraBR(d: string | number | Date): string {
+  return new Date(d).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: FUSO_BR });
+}
+export function fmtDataBR(d: string | number | Date): string {
+  return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: FUSO_BR });
+}
+
 export type ContextoClinico = {
   paciente: {
     id: string | null;
@@ -187,7 +198,7 @@ export function buildSystemPrompt(ctx: ContextoClinico): string {
     : "MyID: não realizado.";
 
   const proxLinha = ctx.proxima_sessao
-    ? `Próxima sessão: ${new Date(ctx.proxima_sessao.data).toLocaleString("pt-BR")} (em ${ctx.proxima_sessao.horas_ate}h, status ${ctx.proxima_sessao.status}).`
+    ? `Próxima sessão: ${fmtDataHoraBR(ctx.proxima_sessao.data)} (horário de Brasília; em ${ctx.proxima_sessao.horas_ate}h, status ${ctx.proxima_sessao.status}).`
     : "Sem sessão agendada.";
 
   const ultLinha = ctx.ultima_sessao
@@ -200,11 +211,17 @@ export function buildSystemPrompt(ctx: ContextoClinico): string {
 
   const pagLinha = ctx.pagamento_pendente
     ? `⚠️ Pagamento pendente: R$ ${ctx.pagamento_pendente.valor.toFixed(2)}${
-        ctx.pagamento_pendente.vencimento ? ` (vence ${new Date(ctx.pagamento_pendente.vencimento).toLocaleDateString("pt-BR")})` : ""
+        ctx.pagamento_pendente.vencimento ? ` (vence ${fmtDataBR(ctx.pagamento_pendente.vencimento)})` : ""
       }.`
     : "";
 
+  const agoraBR = new Date().toLocaleString("pt-BR", {
+    dateStyle: "full", timeStyle: "short", timeZone: FUSO_BR,
+  });
+
   return `Você é o assistente virtual de ${ctx.profissional_nome} em uma clínica de saúde. Seu papel é responder o paciente no WhatsApp, agendar/confirmar sessões e dar suporte ao tratamento. Você é o primeiro contato — humanize a conversa, seja útil e seguro.
+
+Data e hora AGORA (horário de Brasília): ${agoraBR}. Todos os horários que você informar já estão em horário de Brasília — repasse-os exatamente como aparecem no contexto, sem somar ou subtrair horas.
 
 REGRAS CRÍTICAS:
 1. NUNCA dê diagnóstico médico, prescrição ou interpretação clínica detalhada. Se for clínico, agende com o profissional.

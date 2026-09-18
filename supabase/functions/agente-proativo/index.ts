@@ -1,7 +1,7 @@
 // Agente proativo — roda via cron a cada 15 min e dispara mensagens contextualizadas
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
-import { montarContextoClinico, buildSystemPrompt } from "../_shared/agente-contexto.ts";
+import { montarContextoClinico, buildSystemPrompt, fmtDataHoraBR, FUSO_BR } from "../_shared/agente-contexto.ts";
 import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
 import { registrarMensagemSaida } from "../_shared/registrar-saida.ts";
 
@@ -70,7 +70,7 @@ type DispatchCtx = {
 
 async function dispararConfirmacao24h(ctx: DispatchCtx, ag: any) {
   if (await jaDisparado(ctx.admin, ctx.paciente_id, "confirmacao_24h", ag.id, 48)) return;
-  const instrucao = `Gere uma mensagem CURTA (2 linhas) pedindo confirmação da sessão amanhã às ${new Date(ag.data_inicio).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}. Peça para o paciente responder SIM para confirmar ou REAGENDAR para mudar.`;
+  const instrucao = `Gere uma mensagem CURTA (2 linhas) pedindo confirmação da sessão amanhã às ${fmtDataHoraBR(ag.data_inicio)} (horário de Brasília — use exatamente esse horário). Peça para o paciente responder SIM para confirmar ou REAGENDAR para mudar.`;
   const msg = await gerarMensagem(ctx.systemPromptBase, instrucao);
   if (!msg) return;
   const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg);
@@ -79,7 +79,7 @@ async function dispararConfirmacao24h(ctx: DispatchCtx, ag: any) {
 
 async function dispararLembrete2h(ctx: DispatchCtx, ag: any) {
   if (await jaDisparado(ctx.admin, ctx.paciente_id, "lembrete_2h", ag.id, 6)) return;
-  const instrucao = `Gere uma mensagem MUITO curta (1 linha) lembrando da sessão hoje às ${new Date(ag.data_inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}. Termine com "Te espero! 💙"`;
+  const instrucao = `Gere uma mensagem MUITO curta (1 linha) lembrando da sessão hoje às ${new Date(ag.data_inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO_BR })} (horário de Brasília — use exatamente esse horário). Termine com "Te espero! 💙"`;
   const msg = await gerarMensagem(ctx.systemPromptBase, instrucao);
   if (!msg) return;
   const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg);

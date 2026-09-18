@@ -1,7 +1,7 @@
 // Agente IA conversacional do WhatsApp — responde, agenda, escala, com contexto clínico
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
-import { montarContextoClinico, buildSystemPrompt, type ContextoClinico } from "../_shared/agente-contexto.ts";
+import { montarContextoClinico, buildSystemPrompt, fmtDataHoraBR, type ContextoClinico } from "../_shared/agente-contexto.ts";
 import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
 
 const corsHeaders = {
@@ -193,7 +193,7 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
         }
         if (slots.length >= 10) break;
       }
-      return { horarios: slots.map(s => new Date(s).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })), iso: slots };
+      return { horarios: slots.map(s => fmtDataHoraBR(s)), iso: slots };
     }
 
     if (name === "agendar_sessao") {
@@ -215,11 +215,11 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "agendamento_bot",
         titulo: "🤖 Novo agendamento pelo bot",
-        descricao: `${ctx.paciente.nome} agendou ${data_inicio.toLocaleString("pt-BR")} via WhatsApp.`,
+        descricao: `${ctx.paciente.nome} agendou ${fmtDataHoraBR(data_inicio)} via WhatsApp.`,
         rota: `/agenda`,
         metadata: { agendamento_id: data.id, paciente_id: ctx.paciente.id },
       });
-      return { ok: true, data_confirmada: data_inicio.toLocaleString("pt-BR") };
+      return { ok: true, data_confirmada: fmtDataHoraBR(data_inicio) };
     }
 
     if (name === "registrar_chegada") {
@@ -259,7 +259,7 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "confirmacao_paciente",
         titulo: "✅ Paciente confirmou sessão",
-        descricao: `${ctx.paciente.nome} confirmou ${new Date(ctx.proxima_sessao.data).toLocaleString("pt-BR")}.`,
+        descricao: `${ctx.paciente.nome} confirmou ${fmtDataHoraBR(ctx.proxima_sessao.data)}.`,
         rota: `/agenda`,
         metadata: { agendamento_id: ctx.proxima_sessao.id },
       });
@@ -276,7 +276,7 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "reagendamento_solicitado",
         titulo: "🔄 Paciente quer reagendar",
-        descricao: `${ctx.paciente.nome} pediu para remarcar ${new Date(ctx.proxima_sessao.data).toLocaleString("pt-BR")}.`,
+        descricao: `${ctx.paciente.nome} pediu para remarcar ${fmtDataHoraBR(ctx.proxima_sessao.data)}.`,
         rota: `/agenda`,
         metadata: { agendamento_id: ctx.proxima_sessao.id },
       });
@@ -293,7 +293,7 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "cancelamento_bot",
         titulo: "⚠️ Cancelamento via bot",
-        descricao: `${ctx.paciente.nome} cancelou sessão ${new Date(ctx.proxima_sessao.data).toLocaleString("pt-BR")}. Motivo: ${motivoCancelamento}`,
+        descricao: `${ctx.paciente.nome} cancelou sessão ${fmtDataHoraBR(ctx.proxima_sessao.data)}. Motivo: ${motivoCancelamento}`,
         rota: `/agenda`,
         metadata: { agendamento_id: ctx.proxima_sessao.id },
       });
