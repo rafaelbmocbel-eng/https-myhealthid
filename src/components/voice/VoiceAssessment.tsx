@@ -177,6 +177,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [fullEditorError, setFullEditorError] = useState<string | null>(null);
   const { adicionar: adicionarNotaProntuario } = useNotasProntuario(pacienteId || '');
   const [resumableJob, setResumableJob] = useState<{ id: string; resultado: any; transcricao: string } | null>(null);
+  // Gravações que ficaram no servidor sem virar avaliação (ex.: falha antiga por
+  // áudio longo). Permite reprocessar com 1 toque, sem regravar a consulta.
+  const [recuperaveis, setRecuperaveis] = useState<Array<{ id: string; audio_path: string; audio_mime_type: string | null; created_at: string }>>([]);
+  const [recuperandoId, setRecuperandoId] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recTimeRef = useRef(0);
@@ -382,6 +386,79 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, pacienteId]);
+
+  // Gravações que subiram para o servidor mas NÃO viraram avaliação (job travado
+  // em pending/processing/failed com áudio salvo) — ex.: falhas antigas por áudio
+  // longo. Oferece reprocessar com 1 toque, sem regravar.
+  useEffect(() => {
+    if (!user?.id || !pacienteId || appendMode || initialRecord) return;
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 dias
+    supabase
+      .from('voice_assessment_jobs' as any)
+      .select('id, audio_path, audio_mime_type, status, created_at')
+      .eq('terapeuta_id', user.id)
+      .eq('paciente_id', pacienteId)
+      .gte('created_at', cutoff)
+      .in('status', ['pending', 'processing', 'failed'])
+      .not('audio_path', 'is', null)
+      .is('resultado', null)
+      .order('created_at', { ascending: false })
+      .then(({ data }: { data: any }) => {
+        const rows = (data as any[] | null) || [];
+        // Só um por caminho de áudio (evita repetir a mesma gravação em N tentativas).
+        const vistos = new Set<string>();
+        const unicos = rows.filter((r) => {
+          if (!r.audio_path || vistos.has(r.audio_path)) return false;
+          vistos.add(r.audio_path);
+          return true;
+        }).slice(0, 3);
+        setRecuperaveis(unicos);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, pacienteId]);
+
+  // Reprocessa uma gravação salva no servidor: gera link assinado do áudio e
+  // manda para a mesma função de avaliação (que agora aguenta áudio longo).
+  const recuperarGravacao = async (job: { id: string; audio_path: string; audio_mime_type: string | null }) => {
+    if (recuperandoId) return;
+    setRecuperandoId(job.id);
+    try {
+      const { data: signed, error: signErr } = await supabase.storage
+        .from('audio-temp')
+        .createSignedUrl(job.audio_path, 3600);
+      if (signErr || !signed?.signedUrl) {
+        throw new Error('Não consegui acessar o áudio salvo. Ele pode ter expirado.');
+      }
+      toast({
+        title: 'Recuperando gravação…',
+        description: 'A IA está transcrevendo e analisando o áudio salvo. Isso pode levar alguns minutos.',
+      });
+      const body: any = {
+        serviceType, patientName, patientAge, patientSex, perfilProfissional,
+        signedUrl: signed.signedUrl,
+        audioMimeType: job.audio_mime_type || 'audio/webm',
+      };
+      const { data, error } = await supabase.functions.invoke('voice-assessment', { body });
+      if (error) throw new Error((data as any)?.error || error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const generated = (data as any).assessment;
+      const generatedTranscript = (data as any).transcricao || '';
+      if (!generated) throw new Error('A IA não retornou uma avaliação. Tente novamente.');
+      setAssessment(generated);
+      setEditedTranscript(generatedTranscript);
+      setStep('result');
+      setRecuperaveis((cur) => cur.filter((r) => r.id !== job.id));
+      await saveAssessment(generated, generatedTranscript, { silent: true });
+      // Marca o job como concluído para não reaparecer na lista de recuperação.
+      void supabase.from('voice_assessment_jobs' as any)
+        .update({ status: 'completed' }).eq('id', job.id).then(() => {});
+      toast({ title: '✅ Gravação recuperada', description: 'Avaliação gerada e salva no histórico.' });
+    } catch (e: any) {
+      toast({ title: 'Não foi possível recuperar', description: e.message, variant: 'destructive' });
+    } finally {
+      setRecuperandoId(null);
+    }
+  };
 
   const startRecording = useCallback(async () => {
     try {
@@ -2130,6 +2207,38 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
   // ── Step 1: Recording UI ──
   return (
     <div className="space-y-4">
+      {recuperaveis.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
+          <CardContent className="py-3 px-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Gravação salva não processada</p>
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Encontramos áudio deste paciente no servidor que não virou avaliação. Recupere sem regravar.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              {recuperaveis.map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg bg-background/60 border border-amber-200 dark:border-amber-800 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">
+                    Gravação de {new Date(r.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </span>
+                  <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                    disabled={!!recuperandoId}
+                    onClick={() => recuperarGravacao(r)}>
+                    {recuperandoId === r.id
+                      ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Recuperando…</>
+                      : <><RotateCcw className="h-3.5 w-3.5 mr-1" />Recuperar</>}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {resumableJob && (
         <Card className="border-blue-300 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-700">
           <CardContent className="py-3 px-4 flex items-center justify-between gap-3 flex-wrap">
