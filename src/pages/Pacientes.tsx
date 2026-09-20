@@ -28,6 +28,7 @@ import {
 import { format, parseISO, differenceInDays, formatDistanceToNow } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn, normalizarBusca } from '@/lib/utils';
+import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
 import { CODIGOS_CASSI } from '@/lib/cassiGuias';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { exportToCsv } from '@/utils/exportCsv';
@@ -492,9 +493,50 @@ export default function Pacientes() {
     return p?._servicos || [];
   };
 
-  const openNew = () => { setForm(emptyForm); setModal({ open: true }); };
-  const openQuick = () => {
-    setQuickForm({ nome: '', sobrenome: '', email: '', telefone: '', lgpd_aceite: false });
+  // Rascunhos de CADASTRO (não de edição): salvam o que está sendo digitado para
+  // não se perder se o celular tirar o app do ar (troca de app, tela apagada,
+  // recarga da página). Restauram ao abrir "Novo" de novo.
+  const novoDraftKey = `pacientes:novo:${user?.id ?? 'anon'}`;
+  const rapidoDraftKey = `pacientes:rapido:${user?.id ?? 'anon'}`;
+
+  // Auto-salva o formulário completo enquanto está em modo NOVO (nunca em edição).
+  useEffect(() => {
+    if (!modal.open || modal.paciente) return;
+    const t = setTimeout(() => { void writeDraft(novoDraftKey, form, 1); }, 800);
+    const onHide = () => { if (document.visibilityState === 'hidden') void writeDraft(novoDraftKey, form, 1); };
+    document.addEventListener('visibilitychange', onHide);
+    return () => { clearTimeout(t); document.removeEventListener('visibilitychange', onHide); };
+  }, [form, modal.open, modal.paciente, novoDraftKey]);
+
+  // Auto-salva o cadastro rápido enquanto o modal está aberto.
+  useEffect(() => {
+    if (!quickModal) return;
+    const t = setTimeout(() => { void writeDraft(rapidoDraftKey, quickForm, 1); }, 800);
+    const onHide = () => { if (document.visibilityState === 'hidden') void writeDraft(rapidoDraftKey, quickForm, 1); };
+    document.addEventListener('visibilitychange', onHide);
+    return () => { clearTimeout(t); document.removeEventListener('visibilitychange', onHide); };
+  }, [quickForm, quickModal, rapidoDraftKey]);
+
+  const openNew = async () => {
+    const draft = await readDraft<FormData>(novoDraftKey, 1);
+    const temConteudo = !!draft && !!(draft.nome?.trim() || draft.telefone?.trim() || draft.email?.trim() || draft.cpf?.trim());
+    if (temConteudo) {
+      setForm({ ...emptyForm, ...draft });
+      toast({ title: 'Rascunho restaurado', description: 'Recuperamos o cadastro que você tinha começado.' });
+    } else {
+      setForm(emptyForm);
+    }
+    setModal({ open: true });
+  };
+  const openQuick = async () => {
+    const draft = await readDraft<typeof quickForm>(rapidoDraftKey, 1);
+    const temConteudo = !!draft && !!(draft.nome?.trim() || draft.telefone?.trim() || draft.email?.trim());
+    if (temConteudo) {
+      setQuickForm({ nome: '', sobrenome: '', email: '', telefone: '', lgpd_aceite: false, ...draft });
+      toast({ title: 'Rascunho restaurado', description: 'Recuperamos o cadastro rápido que você tinha começado.' });
+    } else {
+      setQuickForm({ nome: '', sobrenome: '', email: '', telefone: '', lgpd_aceite: false });
+    }
     setQuickModal(true);
   };
 
@@ -532,6 +574,7 @@ export default function Pacientes() {
       } catch {/* nb */}
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       const url = `${getBaseUrl()}/portaldocliente/completar/${data.portal_token}`;
+      void clearDraft(rapidoDraftKey);
       setQuickModal(false);
       setShareModal({ open: true, nome: data.nome, telefone: data.telefone || undefined, url });
     } catch (e: any) {
@@ -663,6 +706,8 @@ export default function Pacientes() {
         } catch { /* não bloqueia */ }
       }
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
+      // Cadastro concluído com sucesso → descarta o rascunho de "novo".
+      if (!modal.paciente) void clearDraft(novoDraftKey);
       toast({ title: modal.paciente ? 'Paciente atualizado!' : 'Paciente cadastrado!' });
       setModal({ open: false });
     } catch (e: any) {
@@ -1590,7 +1635,7 @@ export default function Pacientes() {
             ))}
 
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setModal({ open: false })}>Cancelar</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { if (!modal.paciente) void clearDraft(novoDraftKey); setModal({ open: false }); }}>Cancelar</Button>
               <Button className="flex-1 rounded-xl" onClick={handleSave} disabled={submitting}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
               </Button>
@@ -1658,7 +1703,7 @@ export default function Pacientes() {
               </Label>
             </div>
             <div className="flex gap-3 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setQuickModal(false)}>Cancelar</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { void clearDraft(rapidoDraftKey); setQuickModal(false); }}>Cancelar</Button>
               <Button className="flex-1" onClick={handleQuickSave} disabled={submitting}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Criar e gerar link'}
               </Button>

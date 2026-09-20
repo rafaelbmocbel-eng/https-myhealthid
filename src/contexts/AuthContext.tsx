@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { withAuthLockRetry } from '@/lib/authLock';
@@ -35,6 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [authReady, setAuthReady] = useState(false);
+  // Já carregamos o perfil ao menos uma vez? Depois disso, um refresh de token
+  // (que dispara ao VOLTAR pro app) não deve mais ligar o "loading" global —
+  // senão a tela atual pisca o spinner e reinicia o que o usuário estava fazendo.
+  const jaCarregouRef = useRef(false);
 
   const ensureProfessionalProfile = useCallback(async (currentUser: User) => {
     const { data: paciente, error: pacienteError } = await withAuthLockRetry(async () =>
@@ -102,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('[Auth] Falha ao buscar perfil:', error);
       setProfile(null);
     } finally {
+      jaCarregouRef.current = true;
       setLoading(false);
     }
   }, [ensureProfessionalProfile]);
@@ -114,11 +119,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthReady(true);
 
         if (nextSession?.user) {
-          setLoading(true);
+          // Só bloqueia a tela com o spinner no PRIMEIRO carregamento (login).
+          // Em refresh de token ao voltar pro app, atualiza o perfil em segundo
+          // plano — sem reiniciar a tela em que o usuário estava.
+          if (!jaCarregouRef.current) setLoading(true);
           setTimeout(() => {
             void fetchProfile(nextSession.user);
           }, 0);
         } else {
+          jaCarregouRef.current = false;
           setProfile(null);
           setLoading(false);
         }
