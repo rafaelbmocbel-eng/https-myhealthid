@@ -80,13 +80,15 @@ export default function AgendaPublica() {
         // Update access tracking via secure RPC
         await supabase.rpc('track_agenda_link_access', { p_token: token });
 
-        const [{ data: profileData }, { data: cfg }, { data: ags }] = await Promise.all([
+        const [{ data: profileData }, { data: cfg }, { data: turnosData }, { data: ags }] = await Promise.all([
           supabase
             .rpc('get_terapeuta_by_agenda_token', { p_token: token })
             .maybeSingle(),
           supabase
             .rpc('get_config_agenda_by_token', { p_token: token })
             .maybeSingle(),
+          // Turnos (blocos por dia, ex.: 08–12 e 14–18) — get_config não traz.
+          supabase.rpc('get_turnos_by_token', { p_token: token }),
           supabase
             .rpc('get_agenda_disponibilidade', {
               p_terapeuta_id: linkData.terapeuta_id,
@@ -96,7 +98,7 @@ export default function AgendaPublica() {
         ]);
 
         if (profileData) setTerapeuta(profileData as TerapeutaInfo);
-        if (cfg) setConfig(cfg);
+        if (cfg) setConfig({ ...cfg, turnos: (turnosData as any) || {} });
         setAgendamentos((ags || []) as Slot[]);
       } catch {
         setErro('Erro ao carregar. Tente novamente.');
@@ -125,41 +127,56 @@ export default function AgendaPublica() {
       const duracao = config.duracao_padrao || 45;
       const intervalo = config.intervalo_entre_sessoes || 0;
       const slots: { hora: string; disponivel: boolean; dataInicio: Date; dataFim: Date; vagasRestantes: number }[] = [];
-      let minutoAtual = hIni * 60;
 
-      while (minutoAtual + duracao <= hFim * 60) {
-        const h = Math.floor(minutoAtual / 60);
-        const m = minutoAtual % 60;
-        const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      // Blocos de atendimento do dia: se há TURNOS configurados (ex.: manhã
+      // 08–12 e tarde 14–18), gera horários por bloco — sem oferecer o intervalo
+      // de almoço. Sem turnos, usa o horário corrido início→fim.
+      const diaKey = (Object.keys(diasSemanaMap) as string[]).find(k => diasSemanaMap[k] === dia.getDay());
+      const turnosDia = (config.turnos && diaKey ? config.turnos[diaKey] : null) as { inicio: string; fim: string }[] | null;
+      const blocos = (turnosDia && turnosDia.length > 0)
+        ? turnosDia.map(t => {
+            const [bh, bm] = (t.inicio || '08:00').split(':').map(Number);
+            const [eh, em] = (t.fim || '18:00').split(':').map(Number);
+            return { ini: bh * 60 + (bm || 0), fim: eh * 60 + (em || 0) };
+          })
+        : [{ ini: hIni * 60, fim: hFim * 60 }];
 
-        const slotInicio = new Date(dia);
-        slotInicio.setHours(h, m, 0, 0);
-        const slotFim = addMinutes(slotInicio, duracao);
+      for (const bloco of blocos) {
+        let minutoAtual = bloco.ini;
+        while (minutoAtual + duracao <= bloco.fim) {
+          const h = Math.floor(minutoAtual / 60);
+          const m = minutoAtual % 60;
+          const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 
-        // Don't show past slots for today
-        if (isSameDay(dia, hoje) && slotInicio < hoje) {
+          const slotInicio = new Date(dia);
+          slotInicio.setHours(h, m, 0, 0);
+          const slotFim = addMinutes(slotInicio, duracao);
+
+          // Don't show past slots for today
+          if (isSameDay(dia, hoje) && slotInicio < hoje) {
+            minutoAtual += duracao + intervalo;
+            continue;
+          }
+
+          const vagasMax = config.vagas_por_horario || 1;
+          const ocupadas = agendamentos.filter(ag => {
+            if (ag.status === 'cancelado') return false;
+            const agStart = parseISO(ag.data_inicio).getTime();
+            const agEnd = parseISO(ag.data_fim).getTime();
+            return slotInicio.getTime() < agEnd && slotFim.getTime() > agStart;
+          }).length;
+
+          const disponivel = ocupadas < vagasMax;
+
+          slots.push({
+            hora: horaStr,
+            disponivel,
+            dataInicio: slotInicio,
+            dataFim: slotFim,
+            vagasRestantes: vagasMax - ocupadas
+          });
           minutoAtual += duracao + intervalo;
-          continue;
         }
-
-        const vagasMax = config.vagas_por_horario || 1;
-        const ocupadas = agendamentos.filter(ag => {
-          if (ag.status === 'cancelado') return false;
-          const agStart = parseISO(ag.data_inicio).getTime();
-          const agEnd = parseISO(ag.data_fim).getTime();
-          return slotInicio.getTime() < agEnd && slotFim.getTime() > agStart;
-        }).length;
-
-        const disponivel = ocupadas < vagasMax;
-
-        slots.push({
-          hora: horaStr,
-          disponivel,
-          dataInicio: slotInicio,
-          dataFim: slotFim,
-          vagasRestantes: vagasMax - ocupadas
-        });
-        minutoAtual += duracao + intervalo;
       }
 
       if (slots.length > 0) dias.push({ data: dia, slots });
