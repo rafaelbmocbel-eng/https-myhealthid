@@ -123,14 +123,15 @@ export async function reprocessarComplemento(
           regiao_id: f.region_id,
           sistema: 'musculoesqueletico',
           tipo_achado: cleanResult.queixa_principal || 'Complemento de avaliação por voz — IA',
-          tipo_diagnostico: 'achado_clinico',
+          // Entra como PENDENTE de revisão — o profissional confirma no Avatar.
+          tipo_diagnostico: 'relato_paciente',
           severidade: Math.min(5, Math.max(1, Math.round(f.intensity / 2))),
           status: 'ativo',
           origem: 'voz_ia',
           data_inicio: hoje,
           notas_clinicas: cleanResult.resumo_clinico || null,
           visivel_paciente: false,
-          metadata: { termo: f.structures?.join(', ') || 'dor relatada', avaliacao_origem: 'voz_ia_complemento' },
+          metadata: { termo: f.structures?.join(', ') || 'dor relatada', avaliacao_origem: 'voz_ia_complemento', sugestao_tipo: 'achado_clinico' },
         }));
         const { error: insErr } = await supabase.from('eventos_clinicos_anatomicos' as any).insert(eventos);
         if (insErr) throw insErr;

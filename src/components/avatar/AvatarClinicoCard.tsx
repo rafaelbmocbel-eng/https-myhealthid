@@ -1926,10 +1926,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 p-3">
                   <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-amber-800 dark:text-amber-400">
                     <AlertTriangle className="h-3.5 w-3.5" />
-                    {pendentes.length} Relato{pendentes.length > 1 ? 's' : ''} do paciente — aguardando confirmação
+                    {pendentes.length} Achado{pendentes.length > 1 ? 's' : ''} — aguardando sua revisão
                   </div>
                   <p className="text-[11px] text-amber-700 dark:text-amber-500">
-                    Leia o relato, ajuste o campo se necessário e confirme para registrar no avatar.
+                    Detectados na avaliação (voz/texto) ou relatados pelo paciente. Confirme para registrar no Avatar Clínico, ou descarte.
                   </p>
                   <div className="space-y-3">
                     {pendentes.map((ev) => {
@@ -1981,7 +1981,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             >
                               Descartar
                             </Button>
-                            <span className="text-[10px] text-muted-foreground ml-auto">
+                            <Badge variant="outline" className="text-[9px] h-4 px-1 ml-auto">{ORIGEM_LABEL[ev.origem] || 'Outro'}</Badge>
+                            <span className="text-[10px] text-muted-foreground">
                               {new Date(ev.data_inicio).toLocaleDateString('pt-BR')}
                             </span>
                           </div>

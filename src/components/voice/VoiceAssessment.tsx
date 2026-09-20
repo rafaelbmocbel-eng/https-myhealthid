@@ -1151,6 +1151,12 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
               const achadoDor = painFindings.find(f => f.region_id === r.regiao_id);
               const severidade = r.severidade_override || (achadoDor ? Math.min(5, Math.max(1, Math.round(achadoDor.intensity / 2))) : severidadeBase);
               const estruturaField = r.estrutura_override || (achadoDor?.structures?.join(', ') || null);
+              // A IA NÃO confirma achado sozinha: tudo entra como PENDENTE de
+              // revisão (tipo_diagnostico 'relato_paciente') e aparece na área
+              // "Revisão" do Avatar Clínico. Só vira histórico do avatar quando o
+              // profissional confirma. A classificação sugerida pela IA fica em
+              // metadata para referência ao confirmar.
+              const sugestaoTipo = r.tipo_diagnostico || tipoDiag;
               return {
                 paciente_id: pacienteId,
                 terapeuta_id: user.id,
@@ -1158,7 +1164,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
                 sistema: r.sistema,
                 // AI events carry specific clinical descriptions; generic path uses the assessment queixa
                 tipo_achado: r.tipo_diagnostico ? r.termo : tipoAchadoPtBr,
-                tipo_diagnostico: r.tipo_diagnostico || tipoDiag,
+                tipo_diagnostico: 'relato_paciente',
                 severidade,
                 status: 'ativo',
                 origem: 'voz_ia',
@@ -1166,7 +1172,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
                 notas_clinicas: generatedAssessment.resumo_clinico || null,
                 visivel_paciente: false,
                 estrutura: estruturaField,
-                metadata: { hipoteses: generatedAssessment.hipoteses_diagnosticas?.slice(0, 3) || [], avaliacao_origem: 'voz_ia', termo: r.termo },
+                metadata: { hipoteses: generatedAssessment.hipoteses_diagnosticas?.slice(0, 3) || [], avaliacao_origem: 'voz_ia', termo: r.termo, sugestao_tipo: sugestaoTipo, sugestao_severidade: severidade },
               };
             });
 
@@ -1180,8 +1186,8 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           queryClient.invalidateQueries({ queryKey: ['timeline_completa', pacienteId] });
           queryClient.invalidateQueries({ queryKey: ['paciente-insights-avatar', pacienteId] });
           toast({
-            title: '🧍 Avatar clínico atualizado',
-            description: `${eventos.length} achado(s) registrado(s) a partir desta avaliação.`,
+            title: '🧍 Achados enviados para revisão',
+            description: `${eventos.length} achado(s) detectado(s) — confirme no Avatar Clínico para entrar no histórico.`,
           });
         } catch (e) {
           console.warn('[VoiceAssessment] auto-avatar save failed:', e);
