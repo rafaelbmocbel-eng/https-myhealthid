@@ -11,7 +11,7 @@ const TOP_LEVEL = new Set<string>([
   '/pacientes',
   '/eventos',
   '/configuracoes',
-  '/crm/inbox',
+  '/crm',
   '/base-cientifica',
   '/auth',
   '/paciente/dashboard',
@@ -28,6 +28,8 @@ const HIDDEN_PREFIXES = [
   '/cadastro/',
   '/pacientes/', // perfil já tem botão voltar no header do card
   '/controle-cassi', // já tem "Voltar" no header próprio
+  '/configuracoes/layout', // editor de layout já tem back próprio
+  '/editarpaciente', // já tem back próprio
 ];
 
 /**

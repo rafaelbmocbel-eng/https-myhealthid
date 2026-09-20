@@ -591,6 +591,8 @@ export default function PacientePerfil() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Voltar para Pacientes"
+                title="Voltar para Pacientes"
                 className="h-7 gap-1 -ml-1.5 text-muted-foreground hover:text-foreground shrink-0 px-2"
                 onClick={() => navigate('/pacientes')}
               >

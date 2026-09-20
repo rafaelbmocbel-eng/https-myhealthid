@@ -578,7 +578,7 @@ export default function EditarPaciente() {
 
       {/* Top bar */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b bg-background shrink-0 z-10">
-        <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground p-1">
+        <button onClick={() => navigate(-1)} aria-label="Voltar" title="Voltar" className="text-muted-foreground hover:text-foreground p-1">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1 min-w-0">
