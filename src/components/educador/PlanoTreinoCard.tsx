@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Dumbbell, Sparkles, Loader2, Eye, Trash2, Pencil } from 'lucide-react';
+import { Dumbbell, Sparkles, Loader2, Trash2, Pencil } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -35,10 +34,10 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
   const [freq, setFreq] = useState(3);
   const [duracao, setDuracao] = useState(12);
   const [restricoes, setRestricoes] = useState('');
-  const [verPlano, setVerPlano] = useState<any | null>(null);
   const [editarPlano, setEditarPlano] = useState<any | null>(null);
-  // Ver/editar o treino com GIFs (TreinoDocumento) direto no card.
-  const [editandoDoc, setEditandoDoc] = useState(false);
+  // Edição INLINE do treino (TreinoDocumento) direto no card, sem abrir dialog —
+  // guarda o id do plano em edição e o conteúdo/título em rascunho.
+  const [editandoInlineId, setEditandoInlineId] = useState<string | null>(null);
   const [docConteudo, setDocConteudo] = useState<any>(null);
   const [docTitulo, setDocTitulo] = useState<string>('');
   const [salvandoDoc, setSalvandoDoc] = useState(false);
@@ -123,16 +122,16 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
     qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
   };
 
-  const salvarDoc = async () => {
-    if (!verPlano) return;
+  const salvarDoc = async (plano: any) => {
+    if (!plano) return;
     setSalvandoDoc(true);
     try {
       const { error } = await (supabase as any).from('planos_treino')
-        .update({ estrutura: docConteudo, titulo: docTitulo || verPlano.titulo })
-        .eq('id', verPlano.id);
+        .update({ estrutura: docConteudo, titulo: docTitulo || plano.titulo })
+        .eq('id', plano.id);
       if (error) throw error;
       toast.success('Treino atualizado');
-      setEditandoDoc(false);
+      setEditandoInlineId(null);
       qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
     } catch (e: any) {
       toast.error(e.message || 'Não consegui salvar');
@@ -238,9 +237,11 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
           <p className="text-[11px] text-amber-600 dark:text-amber-400 text-center -mt-1">🔒 {chancela.motivo}</p>
         )}
 
-        {planosVisiveis.map((p: any) => (
-          <div key={p.id} className="p-3 rounded-lg border border-border/40 space-y-1">
-            <div className="flex items-center justify-between gap-2">
+        {planosVisiveis.map((p: any) => {
+          const emEdicao = editandoInlineId === p.id;
+          return (
+          <div key={p.id} className="p-3 rounded-lg border border-border/40 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold truncate">{p.titulo}</div>
                 <div className="text-[11px] text-muted-foreground">
@@ -258,15 +259,43 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
                 onClick={() => liberar(p, !p.aprovado)}>
                 {p.aprovado ? 'Ocultar' : 'Liberar'}
               </Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" title="Ver treino (com GIFs)" onClick={() => { setVerPlano(p); setDocConteudo(p.estrutura || {}); setDocTitulo(p.titulo || ''); setEditandoDoc(false); }}><Eye className="icon-xs" /></Button>
-              {/* Editar plano: troca de exercício (com busca na biblioteca), carga,
-                  fase, séries/reps — o editor único do plano. */}
-              <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar plano" onClick={() => setEditarPlano(p)}><Pencil className="icon-xs" /></Button>
+              {/* Editar plano avançado: troca de exercício (busca na biblioteca),
+                  carga, fase, séries/reps. */}
+              <Button size="icon" variant="ghost" className="h-7 w-7" title="Trocar exercícios (avançado)" onClick={() => setEditarPlano(p)}><Dumbbell className="icon-xs" /></Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" title="Excluir plano" aria-label="Excluir plano" onClick={() => setApagarId(p.id)}><Trash2 className="icon-xs text-destructive" /></Button>
             </div>
+
+            {/* Barra de edição inline — mostra/edita o treino aqui mesmo (como no portal) */}
+            <div className="flex items-center gap-2">
+              {!emEdicao ? (
+                <Button size="sm" variant="outline" className="h-7 gap-1.5 text-[11px]"
+                  onClick={() => { setEditandoInlineId(p.id); setDocConteudo(p.estrutura || {}); setDocTitulo(p.titulo || ''); }}>
+                  <Pencil className="icon-xs" /> Editar movimentos
+                </Button>
+              ) : (
+                <>
+                  <Button size="sm" className="h-7 gap-1.5 text-[11px]" onClick={() => salvarDoc(p)} disabled={salvandoDoc}>
+                    {salvandoDoc ? <Loader2 className="icon-xs animate-spin" /> : null} Salvar
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setEditandoInlineId(null)} disabled={salvandoDoc}>Cancelar</Button>
+                </>
+              )}
+            </div>
+
+            {/* Treino visível JÁ AQUI (com GIFs) — e editável inline, sem precisar do olho */}
+            <TreinoDocumento
+              nome=""
+              titulo={emEdicao ? docTitulo : (p.titulo || '')}
+              conteudo={emEdicao ? docConteudo : (p.estrutura || {})}
+              editando={emEdicao}
+              onTituloChange={setDocTitulo}
+              onConteudoChange={setDocConteudo}
+            />
+
             <RevisorSeguranca pacienteId={pacienteId} tipo="treino" plano={p.estrutura} />
           </div>
-        ))}
+          );
+        })}
 
         {outros.length > 0 && (
           <button
@@ -277,41 +306,6 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
           </button>
         )}
       </CardContent>
-
-      <Dialog open={!!verPlano} onOpenChange={(o) => { if (!o) { setVerPlano(null); setEditandoDoc(false); } }}>
-        <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base">{editandoDoc ? 'Editar treino' : (verPlano?.titulo || 'Treino')}</DialogTitle>
-          </DialogHeader>
-
-          {/* Ações: ver com GIFs, editar cada movimento, salvar */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {!editandoDoc ? (
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditandoDoc(true)}>
-                <Pencil className="icon-xs" /> Editar movimentos
-              </Button>
-            ) : (
-              <>
-                <Button size="sm" className="gap-1.5" onClick={salvarDoc} disabled={salvandoDoc}>
-                  {salvandoDoc ? <Loader2 className="icon-xs animate-spin" /> : null} Salvar
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => { setDocConteudo(verPlano?.estrutura || {}); setDocTitulo(verPlano?.titulo || ''); setEditandoDoc(false); }} disabled={salvandoDoc}>Cancelar</Button>
-              </>
-            )}
-          </div>
-
-          {verPlano && (
-            <TreinoDocumento
-              nome=""
-              titulo={docTitulo}
-              conteudo={editandoDoc ? docConteudo : (verPlano.estrutura || {})}
-              editando={editandoDoc}
-              onTituloChange={setDocTitulo}
-              onConteudoChange={setDocConteudo}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       {editarPlano && (
         <PlanoTreinoEditor plano={editarPlano} pacienteId={pacienteId} onClose={() => setEditarPlano(null)} />
