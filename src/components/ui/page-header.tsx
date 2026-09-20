@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PageHeaderProps {
   title: string;
@@ -21,6 +22,11 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, subtitle, eyebrow, icon, actions, className, back }: PageHeaderProps) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  // No celular, o botão de voltar flutuante global (GlobalBackButton) já cobre a
+  // navegação — então o botão inline do cabeçalho só aparece no desktop, evitando
+  // DUAS setas de voltar na mesma tela.
+  const mostrarBack = !!back && !isMobile;
 
   const handleBack = () => {
     if (typeof back === 'string') {
@@ -40,7 +46,7 @@ export function PageHeader({ title, subtitle, eyebrow, icon, actions, className,
       )}
     >
       <div className="flex items-start gap-3 min-w-0">
-        {back && (
+        {mostrarBack && (
           <button
             type="button"
             onClick={handleBack}
