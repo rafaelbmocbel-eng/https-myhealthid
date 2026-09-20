@@ -151,6 +151,20 @@ export default function PatientIntegratedDashboard({
   // Use whichever is more recent
   const hasMyID = !!ultimaMyID || !!myidLinkResult;
 
+  // Já existe avaliação (voz/texto/presencial) ou achados no avatar? Então o
+  // Avatar Clínico já pode aparecer na Visão Geral, mesmo sem o MyID concluído.
+  const { data: temAvaliacaoOuAvatar = false } = useQuery({
+    queryKey: ['integrated-tem-avaliacao', pacienteId],
+    enabled: !!pacienteId,
+    queryFn: async () => {
+      const [av, ev] = await Promise.all([
+        (supabase as any).from('avaliacoes_voz').select('id').eq('paciente_id', pacienteId).limit(1),
+        (supabase as any).from('eventos_clinicos_anatomicos').select('id').eq('paciente_id', pacienteId).limit(1),
+      ]);
+      return ((av.data?.length || 0) > 0) || ((ev.data?.length || 0) > 0);
+    },
+  });
+
   // ── Service-specific data
   const { data: serviceData = [] } = useQuery({
     queryKey: ['integrated-service-data', pacienteId, serviceType],
@@ -422,13 +436,22 @@ export default function PatientIntegratedDashboard({
     <div className="space-y-5">
       {/* ─── SEÇÃO 1: MyID RESULTADO ─── */}
       {!hasMyID ? (
-        <div className="flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-xl border-border bg-muted/20 text-center">
-          <Fingerprint className="h-14 w-14 text-muted-foreground opacity-20 mb-3" />
-          <h4 className="font-bold text-foreground">Aguardando MyID</h4>
-          <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-            O paciente precisa concluir o questionário MyID para visualizar os resultados.
-          </p>
-        </div>
+        <>
+          <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl border-border bg-muted/20 text-center">
+            <Fingerprint className="h-12 w-12 text-muted-foreground opacity-20 mb-2" />
+            <h4 className="font-bold text-foreground">Aguardando MyID</h4>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+              {temAvaliacaoOuAvatar
+                ? 'O MyID ainda não foi concluído — mas o Avatar Clínico da avaliação já está disponível abaixo.'
+                : 'O paciente precisa concluir o questionário MyID para visualizar os resultados.'}
+            </p>
+          </div>
+          {/* Mesmo sem MyID, se já houve avaliação, o Avatar Clínico aparece aqui
+              (o mesmo que o cliente vê no portal dele). */}
+          {temAvaliacaoOuAvatar && (
+            <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
+          )}
+        </>
       ) : (
         <>
           {/* ═══════════ MEU MyID — duas leituras, dois tons ═══════════ */}
