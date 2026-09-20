@@ -31,7 +31,7 @@ export function useAgendamentoNotifications() {
     if (!authReady || !user) return;
 
     const channel = supabase
-      .channel('agendamentos-notifications')
+      .channel(`agendamentos-notifications-${user.id}`)
       .on(
         'postgres_changes',
         {

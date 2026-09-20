@@ -19,12 +19,19 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Get tomorrow's date range
+    // Janela de "amanhã" ANCORADA no fuso de São Paulo. A função roda em UTC;
+    // sem isto a janela ficava 3h deslocada e os atendimentos da noite (ex.: 22h)
+    // caíam fora e NUNCA recebiam lembrete no dia anterior.
     const now = new Date();
-    const tomorrow = new Date(now);
+    const spNow = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const tomorrow = new Date(spNow);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStart = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate()).toISOString();
-    const tomorrowEnd = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate() + 1).toISOString();
+    const y = tomorrow.getFullYear();
+    const m = String(tomorrow.getMonth() + 1).padStart(2, "0");
+    const d = String(tomorrow.getDate()).padStart(2, "0");
+    const spMidnight = new Date(`${y}-${m}-${d}T00:00:00-03:00`);
+    const tomorrowStart = spMidnight.toISOString();
+    const tomorrowEnd = new Date(spMidnight.getTime() + 864e5).toISOString();
 
     // Fetch all confirmed appointments for tomorrow
     const { data: agendamentos, error: agError } = await supabase

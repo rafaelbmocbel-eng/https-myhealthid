@@ -372,6 +372,9 @@ export default function Agenda() {
   draggingRef.current = dragging;
   const dragDeltaRef = useRef(dragDelta);
   dragDeltaRef.current = dragDelta;
+  // Marca que ACABOU de arrastar (com movimento real) para suprimir o "click
+  // fantasma" que abriria a edição por engano logo após soltar o card.
+  const justDraggedRef = useRef(false);
   const daysRef = useRef(days);
   daysRef.current = days;
 
@@ -475,6 +478,12 @@ export default function Agenda() {
       const d = draggingRef.current;
       const delta = dragDeltaRef.current;
       if (!d) return;
+      // Houve movimento real? Então suprime o click sintético que viria em
+      // seguida (senão o modal de edição abre sozinho após arrastar no celular).
+      if (Math.abs(delta.dy) > 6 || Math.abs(delta.dx) > 6) {
+        justDraggedRef.current = true;
+        setTimeout(() => { justDraggedRef.current = false; }, 400);
+      }
       // Snap to 15-min increments
       const pxPerMin = SLOT_HEIGHT / SLOT_MINUTES;
       const minutesDelta = Math.round(delta.dy / pxPerMin / 15) * 15;
@@ -772,8 +781,17 @@ export default function Agenda() {
             const newEnd = new Date(newStart.getTime() + durMs);
             extras.push({ ...payload, data_inicio: newStart.toISOString(), data_fim: newEnd.toISOString(), recorrencia_grupo_id: grupoId } as Omit<Agendamento, 'id'>);
           }
+        } else if (form.recorrencia === 'mensal') {
+          // Mensal: 1 sessão por mês, no MESMO dia do mês (addMonths). O campo
+          // "quantos meses" define o total; a base já é o 1º mês, então +N-1.
+          const meses = Math.max(1, totalWeeks);
+          for (let i = 1; i < meses; i++) {
+            const newStart = addMonths(baseStart, i);
+            const newEnd = addMonths(baseEnd, i);
+            extras.push({ ...payload, data_inicio: newStart.toISOString(), data_fim: newEnd.toISOString(), recorrencia_grupo_id: grupoId } as Omit<Agendamento, 'id'>);
+          }
         } else {
-          const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
+          const intervalDays = form.recorrencia === 'semanal' ? 7 : 14;
           const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
           for (let i = 1; i <= totalSlots; i++) {
             const newStart = new Date(baseStart);
@@ -832,8 +850,21 @@ export default function Agenda() {
               recorrencia_grupo_id: grupoId,
             } as Omit<Agendamento, 'id'>);
           }
+        } else if (form.recorrencia === 'mensal') {
+          // Mensal: 1 sessão por mês no mesmo dia do mês. "meses" = total de sessões.
+          const meses = Math.max(1, totalWeeks);
+          for (let i = 0; i < meses; i++) {
+            const newStart = addMonths(baseStart, i);
+            const newEnd = addMonths(baseEnd, i);
+            allItems.push({
+              ...payload,
+              data_inicio: newStart.toISOString(),
+              data_fim: newEnd.toISOString(),
+              recorrencia_grupo_id: grupoId,
+            } as Omit<Agendamento, 'id'>);
+          }
         } else {
-          const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
+          const intervalDays = form.recorrencia === 'semanal' ? 7 : 14;
           const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
           for (let i = 0; i <= totalSlots; i++) {
             const newStart = new Date(baseStart);
@@ -1758,7 +1789,7 @@ export default function Agenda() {
                           return (
                             <div
                               key={ag.id}
-                              onClick={e => { if (!dragging) { e.stopPropagation(); openEdit(ag); } }}
+                              onClick={e => { if (!dragging && !justDraggedRef.current) { e.stopPropagation(); openEdit(ag); } }}
                               onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               className={cn(
@@ -2395,12 +2426,14 @@ export default function Agenda() {
 
                       {form.recorrencia !== 'none' && (
                         <div>
-                          <Label className="text-xs font-bold">Por quantas semanas?</Label>
+                          <Label className="text-xs font-bold">{form.recorrencia === 'mensal' ? 'Por quantos meses?' : 'Por quantas semanas?'}</Label>
                           <NumberField inputMode="numeric" min={1} max={52} emptyValue={1} className="mt-1.5" value={form.recorrencia_semanas} onValueChange={(n) => setForm(f => ({ ...f, recorrencia_semanas: n }))} />
                           <p className="text-[10px] text-muted-foreground mt-1">
                             {form.recorrencia === 'dias_semana'
                               ? `Aprox. ${form.recorrencia_dias.length * form.recorrencia_semanas} sessões serão criadas`
-                              : `Serão criadas ${Math.floor((form.recorrencia_semanas * 7) / (form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30)) + 1} sessões no total`}
+                              : form.recorrencia === 'mensal'
+                                ? `Serão criadas ${Math.max(1, form.recorrencia_semanas)} sessões (1 por mês, no mesmo dia)`
+                                : `Serão criadas ${Math.floor((form.recorrencia_semanas * 7) / (form.recorrencia === 'semanal' ? 7 : 14)) + 1} sessões no total`}
                           </p>
                         </div>
                       )}
