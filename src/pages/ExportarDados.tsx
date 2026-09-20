@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Download, Loader2, CheckCircle2, AlertCircle, FileArchive, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { PageHeader } from '@/components/ui/page-header';
 
 // Tables to export. Supabase RLS already scopes rows to the logged-in user (terapeuta_id),
 // so a plain SELECT * returns only what the user owns.
@@ -154,13 +155,12 @@ export default function ExportarDados() {
   return (
     <AppLayout>
       <div className="container py-4 sm:py-6 max-w-3xl pb-32">
-        <div className="mb-5">
-          <div className="eyebrow-accent mb-1.5">Configurações · Backup</div>
-          <h1 className="h-page">Exportar todos os dados</h1>
-          <p className="text-caption mt-1">
-            Baixe um ZIP com CSV de todas as tabelas do seu app.
-          </p>
-        </div>
+        <PageHeader
+          back
+          eyebrow="Configurações · Backup"
+          title="Exportar todos os dados"
+          subtitle="Baixe um ZIP com CSV de todas as tabelas do seu app."
+        />
 
         <Card className="mb-4">
           <CardHeader>

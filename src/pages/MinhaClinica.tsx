@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getBaseUrl } from '@/utils/linkUrls';
 import { Building2, UserPlus, Copy, Trash2, Loader2, LogOut, Crown, Link2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 
 const PERFIL_LABEL: Record<string, string> = {
   fisioterapeuta: 'Fisioterapeuta', medico: 'Médico(a)', psicologo: 'Psicólogo(a)',
@@ -100,10 +101,7 @@ export default function MinhaClinica() {
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-bold">Minha Clínica</h1>
-        </div>
+        <PageHeader icon={<Building2 className="h-5 w-5" />} title="Minha Clínica" back />
 
         <PlanoGate
           feature="multi_profissional"

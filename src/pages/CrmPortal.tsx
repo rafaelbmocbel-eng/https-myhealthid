@@ -123,7 +123,7 @@ export default function CrmPortal({ embedded = false }: { embedded?: boolean } =
     <div className={embedded ? 'p-3 sm:p-4 space-y-4' : 'container py-4 space-y-4'}>
       <div>
         <div className="eyebrow-accent mb-1.5">Portal do cliente</div>
-        <h1 className="h-page flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" /> Acesso &amp; respostas</h1>
+        <h1 className="h-page flex items-center gap-2"><Smartphone className="h-5 w-5 text-muted-foreground/70" /> Acesso &amp; respostas</h1>
         <p className="text-caption mt-1">Acompanhe quem entrou e quem respondeu, e envie o link de acesso.</p>
       </div>
 

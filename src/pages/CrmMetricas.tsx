@@ -82,7 +82,7 @@ export default function CrmMetricas({ embedded = false }: { embedded?: boolean }
         <div className="flex items-center gap-3">
           {!embedded && <Link to="/crm?tab=pipeline"><Button variant="ghost" size="icon"><ArrowLeft className="icon-md" /></Button></Link>}
           <div>
-            <h1 className="h-page flex items-center gap-2"><TrendingUp className="icon-md text-primary" /> Métricas CRM</h1>
+            <h1 className="h-page flex items-center gap-2"><TrendingUp className="icon-md text-muted-foreground/70" /> Métricas CRM</h1>
             <p className="text-caption text-muted-foreground">Performance do funil de vendas</p>
           </div>
         </div>

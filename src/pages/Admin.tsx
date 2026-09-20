@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 import { useAdminMetrics, atualizarPlano, removerPlano, concederPlano, revogarCortesia, grandfatherTodos, criarLinkParceiro, revogarLinkParceiro, traduzirBibliotecaBatch, type PeriodoAdmin } from '@/hooks/useAdminMetrics';
 import { MODULOS_CATALOGO, MODULOS_KEYS } from '@/lib/modulosPlano';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2, Layers, Check, Gift, X, Link2, Copy,
 } from 'lucide-react';
@@ -271,25 +272,26 @@ export default function Admin() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black flex items-center gap-2"><TrendingUp className="h-6 w-6 text-primary" /> Painel Administrativo</h1>
-          <p className="text-sm text-muted-foreground">Vendas, uso e assinaturas do app · atualizado {new Date(data.gerado_em).toLocaleString('pt-BR')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
-            {PERIODOS.map((p) => (
-              <button key={p.valor} onClick={() => setPeriodo(p.valor)}
-                className={`text-xs font-medium px-2.5 py-1 rounded-md transition-colors ${periodo === p.valor ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-                {p.rotulo}
-              </button>
-            ))}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={<TrendingUp className="h-5 w-5" />}
+        title="Painel Administrativo"
+        subtitle={`Vendas, uso e assinaturas do app · atualizado ${new Date(data.gerado_em).toLocaleString('pt-BR')}`}
+        actions={
+          <>
+            <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
+              {PERIODOS.map((p) => (
+                <button key={p.valor} onClick={() => setPeriodo(p.valor)}
+                  className={`text-xs font-medium px-2.5 py-1 rounded-md transition-colors ${periodo === p.valor ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {p.rotulo}
+                </button>
+              ))}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+              {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            </Button>
+          </>
+        }
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
