@@ -210,6 +210,12 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     dimensoes?: { label: string; valor: number }[];
   } | null>(null);
   const [autoFilling, setAutoFilling] = useState(false);
+  // Contexto clínico do paciente (diagnóstico CID ativo, condições, medicamentos,
+  // queixa) para pré-preencher CID/CIF e dados dos documentos.
+  const [clinCtx, setClinCtx] = useState<{
+    cid?: string; cidDesc?: string;
+    condicoes?: string; medicamentos?: string; queixa?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -232,6 +238,57 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
       });
     })();
   }, [open, user]);
+
+  // Carrega o contexto clínico do paciente ao abrir: CID ativo (diagnósticos),
+  // condições pré-existentes, medicamentos e queixa principal — para pré-preencher
+  // os documentos e sugerir CIF automaticamente.
+  useEffect(() => {
+    if (!open || !paciente?.id) return;
+    (async () => {
+      const [diagRes, pacRes] = await Promise.all([
+        (supabase as any).from('diagnosticos_paciente')
+          .select('cid_codigo, cid_descricao, data_diagnostico')
+          .eq('paciente_id', paciente.id).eq('ativo', true)
+          .order('data_diagnostico', { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
+        (supabase as any).from('pacientes')
+          .select('queixa_principal, condicoes_preexistentes, medicamentos_uso')
+          .eq('id', paciente.id).maybeSingle(),
+      ]);
+      const d = diagRes.data as any; const pac = pacRes.data as any;
+      setClinCtx({
+        cid: d?.cid_codigo || undefined,
+        cidDesc: d?.cid_descricao || undefined,
+        condicoes: pac?.condicoes_preexistentes || undefined,
+        medicamentos: pac?.medicamentos_uso || undefined,
+        queixa: pac?.queixa_principal || undefined,
+      });
+    })();
+  }, [open, paciente?.id]);
+
+  // Atestado: pré-preenche CID e motivo (que dispara a sugestão de CIF) com o
+  // que já existe do paciente. Só preenche campos ainda vazios.
+  useEffect(() => {
+    if (tipo !== 'atestado_fisio' || !clinCtx) return;
+    if (clinCtx.cid) setCid((v) => v || clinCtx.cid || '');
+    if (clinCtx.queixa) setMotivo((v) => v || clinCtx.queixa || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, clinCtx]);
+
+  // Laudo: pré-preenche CID-10, história pregressa, medicamentos e uma CIF
+  // inicial a partir do que já existe do paciente. Só campos vazios.
+  useEffect(() => {
+    if (tipo !== 'laudo_cinetico' || !clinCtx) return;
+    if (clinCtx.cid) setCidPrincipal((v) => v || clinCtx.cid || '');
+    if (clinCtx.condicoes) setHpp((v) => v || clinCtx.condicoes || '');
+    if (clinCtx.medicamentos) setMedicamentos((v) => v || clinCtx.medicamentos || '');
+    setCifCodigos((v) => {
+      if (v) return v;
+      const base = [queixaPrincipal, clinCtx.queixa].filter(Boolean).join(' ');
+      const s = sugerirCIF(base);
+      return s ? `${s.cif} — ${s.desc}` : v;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, clinCtx]);
 
   // Auto-fill MyID + última avaliação presencial quando seleciona Laudo
   useEffect(() => {
@@ -699,6 +756,28 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
                     <Input id="cif" value={cifCodigos} onChange={(e) => setCifCodigos(e.target.value)} placeholder="Ex: b280.2, d450.1" />
                   </div>
                 </div>
+                {/* Sugestão de CIF que ATUALIZA conforme você edita a queixa/diagnóstico */}
+                {(() => {
+                  const base = [queixaPrincipal, diagnosticoFuncional, clinCtx?.queixa].filter(Boolean).join(' ');
+                  const s = sugerirCIF(base);
+                  if (!s) return null;
+                  const jaTem = cifCodigos.includes(s.cif);
+                  return (
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                      <Sparkles className="icon-sm text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="flex-1">
+                        <strong>CIF sugerida:</strong> {s.cif} — {s.desc}
+                        {clinCtx?.cid && <><br /><span className="text-muted-foreground">CID e dados clínicos pré-preenchidos do cadastro do paciente.</span></>}
+                      </span>
+                      {!jaTem && (
+                        <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2 shrink-0"
+                          onClick={() => setCifCodigos((v) => v.trim() ? `${v.trim()}, ${s.cif}` : `${s.cif} — ${s.desc}`)}>
+                          Adicionar
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div>
                   <Label htmlFor="obj">Objetivos *</Label>
                   <Textarea id="obj" rows={2} value={objetivos} onChange={(e) => setObjetivos(e.target.value)} />
