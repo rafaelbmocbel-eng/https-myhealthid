@@ -451,7 +451,7 @@ Deno.serve(async (req) => {
         motivo_escalonamento: `Red flag detectado: "${flagged}"`,
         bot_ativo: false,
       }).eq("id", conversa_id);
-      const aviso = "Recebi sua mensagem e vou pedir para o(a) profissional te responder pessoalmente o quanto antes. Se for uma emergência, procure o pronto-socorro mais próximo ou ligue 192. 💙";
+      const aviso = "Recebi sua mensagem e já vou pedir para o(a) profissional te responder pessoalmente agora. 💙";
       await enviarWhatsapp(admin, conv.terapeuta_id, conv.telefone, aviso);
       await admin.from("whatsapp_mensagens_inbox").insert({
         conversa_id, terapeuta_id: conv.terapeuta_id, direcao: "saida", tipo: "texto",
