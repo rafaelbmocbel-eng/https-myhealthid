@@ -378,6 +378,34 @@ export default function Agenda() {
   const daysRef = useRef(days);
   daysRef.current = days;
 
+  // Criar agendamento por LONG-PRESS num horário vazio (celular): segurar ~0,5s
+  // abre o "novo" naquele horário. Passar o dedo / rolar NÃO cria nada (cancela).
+  // No desktop, o clique do mouse continua abrindo direto.
+  const cellPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cellPressPosRef = useRef<{ x: number; y: number } | null>(null);
+  const cellPointerIsTouchRef = useRef(false);
+
+  const handleCellPressStart = (e: React.PointerEvent, slotStart: Date) => {
+    cellPointerIsTouchRef.current = e.pointerType !== 'mouse';
+    if (!cellPointerIsTouchRef.current) return; // desktop: o onClick cuida
+    cellPressPosRef.current = { x: e.clientX, y: e.clientY };
+    if (cellPressTimerRef.current) clearTimeout(cellPressTimerRef.current);
+    cellPressTimerRef.current = setTimeout(() => {
+      cellPressTimerRef.current = null;
+      try { navigator.vibrate?.(30); } catch { /* aparelho sem vibração */ }
+      openNew(slotStart);
+    }, 500);
+  };
+  const handleCellPressMove = (e: React.PointerEvent) => {
+    if (!cellPressTimerRef.current || !cellPressPosRef.current) return;
+    const dx = Math.abs(e.clientX - cellPressPosRef.current.x);
+    const dy = Math.abs(e.clientY - cellPressPosRef.current.y);
+    if (dx > 10 || dy > 10) { clearTimeout(cellPressTimerRef.current); cellPressTimerRef.current = null; }
+  };
+  const handleCellPressEnd = () => {
+    if (cellPressTimerRef.current) { clearTimeout(cellPressTimerRef.current); cellPressTimerRef.current = null; }
+  };
+
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent, ag: Agendamento, dayIdx: number) => {
     const isTouch = 'touches' in e;
     const clientY = isTouch ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
@@ -1683,10 +1711,16 @@ export default function Agenda() {
                 {/* Slot rows - grid background */}
                 {slots.map((slot, si) => (
                   <React.Fragment key={`slot-${si}`}>
-                    {/* Time label */}
+                    {/* Time label — segurar aqui também cria no horário (long-press) */}
                     <div
-                      className="border-b border-r text-right pr-2 text-[10px] text-muted-foreground bg-background sticky left-0"
+                      className="border-b border-r text-right pr-2 text-[10px] text-muted-foreground bg-background sticky left-0 cursor-pointer"
                       style={{ height: SLOT_HEIGHT, paddingTop: 6 }}
+                      onPointerDown={(e) => handleCellPressStart(e, setMinutes(setHours(new Date(days[0]), slot.hour), slot.minute))}
+                      onPointerMove={handleCellPressMove}
+                      onPointerUp={handleCellPressEnd}
+                      onPointerCancel={handleCellPressEnd}
+                      onPointerLeave={handleCellPressEnd}
+                      onClick={() => { if (!cellPointerIsTouchRef.current) openNew(setMinutes(setHours(new Date(days[0]), slot.hour), slot.minute)); }}
                     >
                       {slot.label}
                     </div>
@@ -1706,7 +1740,12 @@ export default function Agenda() {
                           key={`cell-${si}-${di}`}
                           className="border-b border-r relative cursor-pointer hover:bg-accent/10 transition-colors group"
                           style={{ height: SLOT_HEIGHT }}
-                          onClick={() => openNew(slotStart)}
+                          onPointerDown={(e) => handleCellPressStart(e, slotStart)}
+                          onPointerMove={handleCellPressMove}
+                          onPointerUp={handleCellPressEnd}
+                          onPointerCancel={handleCellPressEnd}
+                          onPointerLeave={handleCellPressEnd}
+                          onClick={() => { if (!cellPointerIsTouchRef.current) openNew(slotStart); }}
                         >
                           {showNowLine && (
                             <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: nowLineTop }}>
