@@ -81,10 +81,12 @@ export default function CrmMetricas({ embedded = false }: { embedded?: boolean }
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-3">
           {!embedded && <Link to="/crm?tab=pipeline"><Button variant="ghost" size="icon"><ArrowLeft className="icon-md" /></Button></Link>}
-          <div>
-            <h1 className="h-page flex items-center gap-2"><TrendingUp className="icon-md text-muted-foreground/70" /> Métricas CRM</h1>
-            <p className="text-caption text-muted-foreground">Performance do funil de vendas</p>
-          </div>
+          {!embedded && (
+            <div>
+              <h1 className="h-page flex items-center gap-2"><TrendingUp className="icon-md text-muted-foreground/70" /> Métricas CRM</h1>
+              <p className="text-caption text-muted-foreground">Performance do funil de vendas</p>
+            </div>
+          )}
         </div>
         <div className="flex gap-1 bg-muted rounded-lg p-1">
           {(["7", "30", "90"] as const).map(p => (

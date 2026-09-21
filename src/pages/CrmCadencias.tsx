@@ -99,10 +99,12 @@ export default function CrmCadencias({ embedded = false }: { embedded?: boolean 
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           {!embedded && <Link to="/crm?tab=pipeline"><Button variant="ghost" size="icon"><ArrowLeft className="icon-md" /></Button></Link>}
-          <div>
-            <h1 className="h-page flex items-center gap-2"><Zap className="icon-md text-muted-foreground/70" /> Cadências de Follow-up</h1>
-            <p className="text-caption text-muted-foreground">Sequências automáticas disparadas quando o lead muda de estágio</p>
-          </div>
+          {!embedded && (
+            <div>
+              <h1 className="h-page flex items-center gap-2"><Zap className="icon-md text-muted-foreground/70" /> Cadências de Follow-up</h1>
+              <p className="text-caption text-muted-foreground">Sequências automáticas disparadas quando o lead muda de estágio</p>
+            </div>
+          )}
         </div>
         <Button onClick={criarCadencia}><Plus className="icon-sm" /> Nova</Button>
       </div>

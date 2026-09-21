@@ -26,10 +26,12 @@ export default function CrmTrafego({ embedded = false }: Props) {
   return (
     <div className={embedded ? '' : 'min-h-screen bg-background'}>
       <div className="border-b border-border/40 bg-card/30 sticky top-0 z-10">
-        <div className="px-3 sm:px-5 py-3">
-          <h1 className="h-page">Tráfego</h1>
-          <p className="text-caption mt-0.5">De onde vêm seus leads e como divulgar melhor</p>
-        </div>
+        {!embedded && (
+          <div className="px-3 sm:px-5 py-3">
+            <h1 className="h-page">Tráfego</h1>
+            <p className="text-caption mt-0.5">De onde vêm seus leads e como divulgar melhor</p>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <div className="flex gap-1 px-2 pb-2 min-w-max">
             {SUBS.map((s) => {
