@@ -29,6 +29,7 @@ const DemoMyID = lazyWithRetry(() => import("./pages/DemoMyID"));
 const Privacidade = lazyWithRetry(() => import("./pages/Privacidade"));
 const Termos = lazyWithRetry(() => import("./pages/Termos"));
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const EscolherAcesso = lazyWithRetry(() => import("./pages/EscolherAcesso"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const MyIDResponder = lazyWithRetry(() => import("./pages/MyIDResponder"));
 const MyIDView = lazyWithRetry(() => import("./pages/MyIDView"));
@@ -162,6 +163,7 @@ const App = () => (
                 <Route path="/index" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/inicio" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/entrar" element={<EscolherAcesso />} />
                 {/* Site do PROFISSIONAL (marketing + funcionalidades) — entrada própria,
                     separada da home do cliente. O login em si fica em /auth. */}
                 <Route path="/profissional" element={<LandingProfissional />} />

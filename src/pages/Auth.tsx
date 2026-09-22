@@ -156,6 +156,16 @@ export default function Auth() {
             ))}
           </div>
 
+          {tab === 'register' && (
+            <div className="mb-4 flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs">
+              <span className="text-base leading-none">🩺</span>
+              <span className="flex-1 text-amber-800 dark:text-amber-300">
+                <strong>Cadastro exclusivo para profissionais</strong> (fisioterapeuta/clínica). É cliente/paciente?{' '}
+                <Link to="/paciente/login" className="font-bold text-primary hover:underline">Ir ao portal do cliente →</Link>
+              </span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {tab === 'register' && (
               <div className="space-y-1">
