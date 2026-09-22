@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { SignInSchema, SignUpSchema } from '@/lib/validations';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,12 @@ import LogoIcon from '@/components/LogoIcon';
 export default function Auth() {
   const { user, signIn, signUp, loading } = useAuth();
   const { toast } = useToast();
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+  // As CTAs "Criar conta / Começar como profissional" abrem em /auth?modo=cadastro
+  // — sem isto caíam na aba Entrar e o cadastro parecia não existir.
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<'login' | 'register'>(
+    searchParams.get('modo') === 'cadastro' ? 'register' : 'login',
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
@@ -128,11 +133,14 @@ export default function Auth() {
             <span className="text-2xl font-black text-foreground">My Health ID</span>
           </div>
 
+          <span className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wide">
+            Painel do profissional
+          </span>
           <h1 className="text-2xl font-black text-foreground mb-1">
-            {tab === 'login' ? 'Bem-vindo de volta' : 'Criar conta'}
+            {tab === 'login' ? 'Bem-vindo de volta' : 'Criar conta de profissional'}
           </h1>
           <p className="text-muted-foreground text-sm mb-6">
-            {tab === 'login' ? 'Entre com suas credenciais para acessar a plataforma.' : 'Cadastre-se como terapeuta para começar.'}
+            {tab === 'login' ? 'Entre com suas credenciais para acessar o painel profissional.' : 'Cadastre-se como profissional (fisioterapeuta/clínica) para começar.'}
           </p>
 
           {/* Tabs */}
@@ -205,6 +213,15 @@ export default function Auth() {
               {tab === 'login' ? 'Cadastrar' : 'Entrar'}
             </button>
           </p>
+
+          <div className="mt-4 pt-4 border-t border-border/60 text-center">
+            <p className="text-xs text-muted-foreground">
+              É cliente/paciente?{' '}
+              <Link to="/paciente/login" className="font-semibold text-primary hover:underline">
+                Entrar no portal do cliente →
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

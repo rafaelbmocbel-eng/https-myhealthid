@@ -234,8 +234,8 @@ export default function LandingPublica() {
             <a href="#planos">Planos</a>
           </nav>
           <div className="right">
-            <Link className="pro-link" to="/profissional">Sou profissional <span aria-hidden="true">→</span></Link>
-            <Link className="btn btn-ghost btn-sm" to="/paciente/login">Entrar</Link>
+            <Link className="btn btn-ghost btn-sm" to="/profissional">Sou profissional <span aria-hidden="true">→</span></Link>
+            <Link className="btn btn-ghost btn-sm" to="/paciente/login">Entrar (cliente)</Link>
           </div>
         </div>
       </header>

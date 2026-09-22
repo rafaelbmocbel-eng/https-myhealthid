@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -610,6 +610,9 @@ export default function PacienteLogin() {
             >
               <Heart className="h-7 w-7 text-primary-foreground" fill="currentColor" />
             </div>
+            <span className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wide">
+              Portal do cliente
+            </span>
             <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
               {tab === 'login'
                 ? 'Bem-vindo de volta'
@@ -799,6 +802,13 @@ export default function PacienteLogin() {
             <ShieldCheck className="h-3 w-3" />
             <span>Acesso seguro · Dados protegidos pela LGPD</span>
           </div>
+
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            É profissional (fisioterapeuta/clínica)?{' '}
+            <Link to="/auth" className="font-semibold text-primary hover:underline">
+              Entrar no painel →
+            </Link>
+          </p>
         </div>
       </div>
 
