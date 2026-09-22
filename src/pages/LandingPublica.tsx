@@ -67,6 +67,9 @@ const CSS = `
 .clh .hero .lede{color:var(--muted); font-size:clamp(16px,2vw,19px); max-width:52ch; margin-top:18px}
 .clh .cta-row{display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; justify-content:center}
 .clh .trust{display:flex; align-items:center; gap:10px; margin-top:18px; color:var(--muted); font-size:13.5px; font-family:var(--mono)}
+.clh .entrar-portas{margin-top:26px; display:flex; flex-direction:column; align-items:center; gap:10px}
+.clh .entrar-titulo{color:var(--muted); font-size:13.5px}
+.clh .entrar-btns{display:flex; flex-wrap:wrap; gap:12px; justify-content:center}
 .clh .dot{width:6px; height:6px; border-radius:50%; background:var(--emerald)}
 .clh .hero-center .myid-card{width:100%; max-width:440px}
 
@@ -234,8 +237,8 @@ export default function LandingPublica() {
             <a href="#planos">Planos</a>
           </nav>
           <div className="right">
-            <Link className="btn btn-ghost btn-sm" to="/profissional">Sou profissional <span aria-hidden="true">→</span></Link>
-            <Link className="btn btn-ghost btn-sm" to="/entrar">Entrar</Link>
+            <Link className="btn btn-ghost btn-sm" to="/paciente/login">Sou cliente</Link>
+            <Link className="btn btn-emerald btn-sm" to="/auth">Sou profissional</Link>
           </div>
         </div>
       </header>
@@ -265,6 +268,15 @@ export default function LandingPublica() {
               <Link className="btn btn-ghost" to="/demo">Ver como funciona</Link>
             </div>
             <div className="trust"><span className="dot" /> Leva ~10 minutos · Dados protegidos pela LGPD</div>
+
+            {/* Duas portas claras, na própria página — sem ir para outra tela */}
+            <div className="entrar-portas">
+              <span className="entrar-titulo">Já tem conta? Entre pela sua área:</span>
+              <div className="entrar-btns">
+                <Link className="btn btn-ghost" to="/paciente/login">👤 Sou cliente</Link>
+                <Link className="btn btn-ghost" to="/auth">🩺 Sou profissional</Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
