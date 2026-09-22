@@ -237,8 +237,7 @@ export default function LandingPublica() {
             <a href="#planos">Planos</a>
           </nav>
           <div className="right">
-            <Link className="btn btn-ghost btn-sm" to="/paciente/login">Sou cliente</Link>
-            <Link className="btn btn-emerald btn-sm" to="/auth">Sou profissional</Link>
+            <Link className="btn btn-emerald btn-sm" to="/paciente/login">Entrar</Link>
           </div>
         </div>
       </header>
@@ -269,12 +268,11 @@ export default function LandingPublica() {
             </div>
             <div className="trust"><span className="dot" /> Leva ~10 minutos · Dados protegidos pela LGPD</div>
 
-            {/* Duas portas claras, na própria página — sem ir para outra tela */}
+            {/* Login do cliente na própria página */}
             <div className="entrar-portas">
-              <span className="entrar-titulo">Já tem conta? Entre pela sua área:</span>
+              <span className="entrar-titulo">Já tem conta?</span>
               <div className="entrar-btns">
-                <Link className="btn btn-ghost" to="/paciente/login">👤 Sou cliente</Link>
-                <Link className="btn btn-ghost" to="/auth">🩺 Sou profissional</Link>
+                <Link className="btn btn-ghost" to="/paciente/login">Entrar no meu portal</Link>
               </div>
             </div>
           </div>
@@ -441,9 +439,9 @@ export default function LandingPublica() {
           <div>
             <div className="k">Para profissionais</div>
             <h3>É fisioterapeuta ou profissional de saúde?</h3>
-            <p>Avaliação por voz, prontuário e diretriz de tratamento — o My Health ID para a sua clínica.</p>
+            <p>Veja todas as funcionalidades, facilidades e os planos — e entre no painel profissional.</p>
           </div>
-          <Link className="btn btn-ghost go" to="/profissional">Ver a plataforma profissional →</Link>
+          <Link className="btn btn-emerald go" to="/profissional">Sou profissional →</Link>
         </div>
       </div>
 
