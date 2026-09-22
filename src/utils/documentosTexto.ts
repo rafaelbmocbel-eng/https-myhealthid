@@ -68,8 +68,57 @@ export function corpoPadraoDocumento(tipo: TipoDocumento, ctx: Ctx, dados: any):
     case 'recibo':
       return `Recebi de ${pacienteLine(p)} a importância de ${fmtCurrency(dados.valor)} ${valorPorExtenso(dados.valor)}, referente a ${dados.referente}${dados.numeroSessoes ? ` (${dados.numeroSessoes} sessões)` : ''}${dados.formaPagamento ? `, paga por ${dados.formaPagamento}` : ''}.\n\nPara maior clareza, firmo o presente recibo, dando plena, geral e irrevogável quitação do valor recebido.`;
 
-    case 'laudo_cinetico':
-      return null;
+    case 'laudo_cinetico': {
+      const d = dados || {};
+      const nome = `${p.nome}${p.sobrenome ? ' ' + p.sobrenome : ''}`;
+      let idade: number | null = null;
+      if (d.dataNascimento) {
+        try { idade = Math.floor((Date.now() - new Date(d.dataNascimento).getTime()) / (365.25 * 24 * 3600 * 1000)); } catch { idade = null; }
+      }
+      const idLinha = [
+        `Nome: ${nome}`,
+        idade != null ? `Idade: ${idade} anos` : null,
+        d.sexo ? `Sexo: ${d.sexo}` : null,
+        p.cpf ? `CPF: ${p.cpf}` : null,
+        d.profissao ? `Profissão: ${d.profissao}` : null,
+      ].filter(Boolean).join(' · ');
+
+      const partes: string[] = [];
+      partes.push('1. IDENTIFICAÇÃO');
+      partes.push(idLinha);
+      partes.push('');
+      partes.push('2. ANAMNESE');
+      partes.push(`Queixa principal: ${d.queixaPrincipal || '—'}`);
+      if (d.hma) partes.push(`História da moléstia atual (HMA): ${d.hma}`);
+      if (d.hpp) partes.push(`História pregressa (HPP): ${d.hpp}`);
+      if (d.medicamentos) partes.push(`Medicamentos em uso: ${d.medicamentos}`);
+      partes.push('');
+      partes.push('3. EXAME FÍSICO-FUNCIONAL');
+      partes.push(d.exameFisico || '—');
+      if (d.testesEspeciais) partes.push(`Testes especiais: ${d.testesEspeciais}`);
+      if (d.myidScore != null || (Array.isArray(d.myidDimensoes) && d.myidDimensoes.length)) {
+        partes.push('');
+        partes.push('4. AVALIAÇÃO MyID');
+        if (d.myidScore != null) {
+          partes.push(`Score global: ${Number(d.myidScore).toFixed(1)}/100${d.myidClassificacao ? ` — ${d.myidClassificacao}` : ''}`);
+        }
+        if (Array.isArray(d.myidDimensoes) && d.myidDimensoes.length) {
+          partes.push(`Perdas por dimensão (0 = ideal · 10 = pior): ${d.myidDimensoes.map((x: any) => `${x.label} ${Number(x.valor).toFixed(1)}`).join(' · ')}`);
+        }
+      }
+      partes.push('');
+      partes.push('5. DIAGNÓSTICO CINÉTICO-FUNCIONAL');
+      partes.push(d.diagnosticoFuncional || '—');
+      if (d.cidPrincipal) partes.push(`CID-10: ${d.cidPrincipal}`);
+      if (d.cifCodigos) partes.push(`Códigos CIF: ${d.cifCodigos}`);
+      partes.push('');
+      partes.push('6. PLANO TERAPÊUTICO');
+      partes.push(`Objetivos: ${d.objetivos || '—'}`);
+      partes.push(`Conduta fisioterapêutica: ${d.conduta || '—'}`);
+      if (d.frequenciaSugerida) partes.push(`Frequência sugerida: ${d.frequenciaSugerida}`);
+      if (d.prognostico) partes.push(`Prognóstico: ${d.prognostico}`);
+      return partes.join('\n');
+    }
 
     default:
       return null;

@@ -418,7 +418,9 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     return dados;
   };
 
-  const isTextoDoc = !!tipo && tipo !== 'laudo_cinetico';
+  // Todos os tipos (inclusive o Laudo) usam agora o mesmo padrão: texto
+  // organizado editável + prévia em HTML (que abre no celular).
+  const isTextoDoc = !!tipo;
 
   // Dados finais enviados ao gerador: campos + data de emissão + corpo editado
   // (só sobrescreve o texto padrão quando o usuário mexeu no texto à mão).
@@ -441,6 +443,10 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     tipo, terapeuta, paciente, corpoEditado,
     data, horaEntrada, horaSaida, diasAfastamento, cid, motivo,
     desde, finalidade, observacoes, valor, referente, formaPagamento, numeroSessoes,
+    // Campos do Laudo — para o texto/prévia atualizarem ao editar.
+    profissao, queixaPrincipal, hma, hpp, medicamentos, exameFisico, testesEspeciais,
+    diagnosticoFuncional, cidPrincipal, cifCodigos, objetivos, conduta,
+    frequenciaSugerida, prognostico, myidData,
   ]);
 
   // Insere uma patologia comum no fim do texto (o usuário edita/reposiciona depois).
@@ -486,21 +492,6 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     setCorpoEditado(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo]);
-
-  // Auto-preview (PDF em iframe) SÓ para o Laudo — que é estruturado e não tem
-  // uma pré-visualização HTML. Os documentos de texto usam a prévia HTML abaixo,
-  // que renderiza no celular (iframe de PDF não abre em navegador mobile).
-  useEffect(() => {
-    if (tipo !== 'laudo_cinetico' || !terapeuta) return;
-    const t = setTimeout(() => { handlePreview(); }, 600);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    tipo, terapeuta, clinica,
-    profissao, queixaPrincipal, hma, hpp, medicamentos, exameFisico, testesEspeciais,
-    diagnosticoFuncional, cidPrincipal, cifCodigos, objetivos, conduta,
-    frequenciaSugerida, prognostico, myidData, dataEmissao,
-  ]);
 
   // Gera o PDF de verdade e abre em nova aba (útil no celular pra ver/imprimir
   // o arquivo final — a prévia HTML já mostra o conteúdo ao vivo).
@@ -862,40 +853,15 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               </div>
             )}
 
-            {/* Laudo é estruturado (sem corpo de texto) — mantém a prévia em PDF. */}
-            {tipo === 'laudo_cinetico' && previewUrl && (
-              <div className="rounded-xl border border-border overflow-hidden bg-muted/30">
-                <div className="flex items-center justify-between px-3 py-2 bg-muted/60 border-b border-border">
-                  <div className="flex items-center gap-2 text-xs font-medium">
-                    <Eye className="icon-sm text-primary" />
-                    Pré-visualização
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={() => previewUrl && window.open(previewUrl, '_blank')}
-                  >
-                    <ExternalLink className="icon-sm" /> Abrir em nova aba
-                  </Button>
-                </div>
-                <iframe
-                  src={previewUrl}
-                  title="Pré-visualização do documento"
-                  className="w-full h-[60vh] bg-white"
-                />
-              </div>
-            )}
-
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={tipo === 'laudo_cinetico' ? handlePreview : handleAbrirPdf}
+                onClick={handleAbrirPdf}
                 disabled={previewLoading || gerando}
               >
                 {previewLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ExternalLink className="h-4 w-4 mr-2" />}
-                {tipo === 'laudo_cinetico' ? 'Atualizar pré-visualização' : 'Abrir PDF'}
+                Abrir PDF
               </Button>
               <Button
                 className="flex-1 bg-gradient-to-r from-primary to-accent text-primary-foreground"
