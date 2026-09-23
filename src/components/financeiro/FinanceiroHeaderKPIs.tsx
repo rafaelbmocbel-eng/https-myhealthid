@@ -7,7 +7,6 @@ import { useRepasseConfig } from '@/hooks/useRepasseConfig';
 import { format, startOfMonth, endOfMonth, subMonths } from '@/lib/dateSafe';
 import { DollarSign, Receipt, Percent, TrendingUp, TrendingDown, Minus, Wallet } from 'lucide-react';
 
-const FALLBACK_PCT = 0.4;
 
 interface AggregatedMonth {
   faturado: number;
@@ -26,7 +25,7 @@ interface AggregatedMonth {
  */
 export default function FinanceiroHeaderKPIs() {
   const { user } = useAuth();
-  const { getRepasse } = useRepasseConfig();
+  const { calcularRepasse, padraoPct } = useRepasseConfig();
 
   const mesAtual = format(new Date(), 'yyyy-MM');
   const periodos = useMemo(() => {
@@ -66,15 +65,8 @@ export default function FinanceiroHeaderKPIs() {
   });
 
   const { atual, anterior } = useMemo(() => {
-    const repasseOf = (s: any) => {
-      const valor = Number(s.valor_cobrado) || 0;
-      const membroId = s.agendamentos?.membro_equipe_id;
-      if (!membroId) return valor * FALLBACK_PCT;
-      const cfg = getRepasse(membroId, s.convenio_id || null);
-      if (!cfg) return valor * FALLBACK_PCT;
-      if (cfg.valor_fixo != null) return Number(cfg.valor_fixo);
-      return valor * (Number(cfg.percentual) / 100);
-    };
+    const repasseOf = (s: any) =>
+      calcularRepasse(Number(s.valor_cobrado) || 0, s.agendamentos?.membro_equipe_id, s.convenio_id || null).repasse;
 
     const empty = (): AggregatedMonth => ({
       faturado: 0, aFaturar: 0, repasse: 0, despesas: 0, liquido: 0, lucro: 0, sessoes: 0,
@@ -104,7 +96,8 @@ export default function FinanceiroHeaderKPIs() {
     atual.lucro = atual.liquido - atual.despesas;
     anterior.lucro = anterior.liquido - anterior.despesas;
     return { atual, anterior };
-  }, [data, getRepasse, periodos]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, calcularRepasse, padraoPct, periodos]);
 
   const fmt = formatBRL0;
 

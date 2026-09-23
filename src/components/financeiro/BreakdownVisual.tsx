@@ -15,12 +15,11 @@ import {
 } from 'recharts';
 
 const PALETTE = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
-const FALLBACK_PCT = 0.4;
 
 export default function BreakdownVisual() {
   const { user } = useAuth();
   const { membros: equipe } = useEquipe();
-  const { getRepasse } = useRepasseConfig();
+  const { calcularRepasse, padraoPct } = useRepasseConfig();
   const [mesOffset, setMesOffset] = useState(0);
 
   const { inicio, fim, label } = useMemo(() => {
@@ -55,15 +54,8 @@ export default function BreakdownVisual() {
 
   const fmt = formatBRL;
 
-  const repasseOf = (s: any) => {
-    const valor = Number(s.valor_cobrado) || 0;
-    const membroId = s.agendamentos?.membro_equipe_id;
-    if (!membroId) return valor * FALLBACK_PCT;
-    const cfg = getRepasse(membroId, s.convenio_id || null);
-    if (!cfg) return valor * FALLBACK_PCT;
-    if (cfg.valor_fixo != null) return Number(cfg.valor_fixo);
-    return valor * (Number(cfg.percentual) / 100);
-  };
+  const repasseOf = (s: any) =>
+    calcularRepasse(Number(s.valor_cobrado) || 0, s.agendamentos?.membro_equipe_id, s.convenio_id || null).repasse;
 
   // Por convênio (inclui Particular)
   const porConvenio = useMemo(() => {
@@ -99,7 +91,8 @@ export default function BreakdownVisual() {
       it.sessoes += 1;
     });
     return Array.from(map.values()).sort((a, b) => b.bruto - a.bruto);
-  }, [sessoes, equipe, getRepasse]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessoes, equipe, calcularRepasse, padraoPct]);
 
   const totalGeral = porConvenio.reduce((a, c) => a + c.valor, 0);
 

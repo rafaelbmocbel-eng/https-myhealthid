@@ -13,8 +13,18 @@ import { Percent, Users } from 'lucide-react';
 export default function RepasseConfigManager() {
   const { membros, loading: loadingMembros } = useEquipe();
   const { convenios, loading: loadingConv } = useConvenios();
-  const { getRepasse, setRepasse } = useRepasseConfig();
+  const { getRepasse, setRepasse, padraoPct, setPadrao } = useRepasseConfig();
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [padraoDraft, setPadraoDraft] = useState<string | null>(null);
+
+  const salvarPadrao = async () => {
+    if (padraoDraft === null) return;
+    const num = Number(padraoDraft.replace(',', '.'));
+    if (padraoDraft.trim() !== '' && Number.isFinite(num) && num !== padraoPct) {
+      await setPadrao.mutateAsync(num);
+    }
+    setPadraoDraft(null);
+  };
 
   const key = (m: string, c: string | null) => `${m}::${c ?? 'particular'}`;
 
@@ -56,7 +66,31 @@ export default function RepasseConfigManager() {
       </div>
       <p className="text-caption mb-4">
         Defina a porcentagem que cada profissional recebe por sessão, conforme o tipo de atendimento.
+        Sessões que <b>você</b> atende (sem profissional da equipe) não têm repasse.
       </p>
+
+      <div className="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-lg bg-muted/40 border border-border/40">
+        <div className="flex-1 min-w-[12rem]">
+          <p className="text-sm font-medium">Repasse padrão da equipe</p>
+          <p className="text-micro text-muted-foreground">Usado para quem não tem % próprio na tabela abaixo.</p>
+        </div>
+        <div className="relative">
+          <Input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            max={100}
+            step="1"
+            value={padraoDraft ?? String(padraoPct)}
+            onChange={(e) => setPadraoDraft(e.target.value)}
+            onBlur={salvarPadrao}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            className="h-9 w-24 text-center pr-6"
+            aria-label="Repasse padrão da equipe em porcentagem"
+          />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-micro text-muted-foreground pointer-events-none">%</span>
+        </div>
+      </div>
 
       {loadingMembros || loadingConv ? (
         <p className="text-caption">Carregando…</p>
@@ -99,7 +133,7 @@ export default function RepasseConfigManager() {
                           onChange={(e) => onChange(m.id, c.id, e.target.value)}
                           onBlur={() => onBlur(m.id, c.id)}
                           className="h-9 w-20 text-center pr-6"
-                          placeholder="—"
+                          placeholder={String(padraoPct)}
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-micro text-muted-foreground pointer-events-none">%</span>
                       </div>

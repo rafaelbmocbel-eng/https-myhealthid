@@ -13,12 +13,11 @@ import { format, startOfMonth, endOfMonth, subMonths } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
 
-const FALLBACK_PCT = 0.4;
 
 export default function FechamentoProfissional() {
   const { user } = useAuth();
   const { membros: equipe } = useEquipe();
-  const { getRepasse } = useRepasseConfig();
+  const { calcularRepasse, padraoPct } = useRepasseConfig();
   const [mesOffset, setMesOffset] = useState(0);
   const [profissionalId, setProfissionalId] = useState<string>('');
 
@@ -68,18 +67,7 @@ export default function FechamentoProfissional() {
   const linhas = useMemo(() => {
     return sessoes.map((s: any) => {
       const valor = Number(s.valor_cobrado) || 0;
-      const cfg = getRepasse(profSelecionado, s.convenio_id || null);
-      let percentual = FALLBACK_PCT * 100;
-      let repasse = valor * FALLBACK_PCT;
-      if (cfg) {
-        if (cfg.valor_fixo != null) {
-          repasse = Number(cfg.valor_fixo);
-          percentual = valor > 0 ? (repasse / valor) * 100 : 0;
-        } else {
-          percentual = Number(cfg.percentual);
-          repasse = valor * (percentual / 100);
-        }
-      }
+      const { repasse, percentual, custom } = calcularRepasse(valor, profSelecionado, s.convenio_id || null);
       // Data da sessão pode vir ausente/inválida — evita crash "Invalid time value".
       const dt = s.data_sessao ? new Date(`${s.data_sessao}T12:00:00`) : null;
       return {
@@ -91,10 +79,11 @@ export default function FechamentoProfissional() {
         valorBruto: valor,
         percentual,
         repasse,
-        custom: !!cfg,
+        custom,
       };
     });
-  }, [sessoes, profSelecionado, getRepasse]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessoes, profSelecionado, calcularRepasse, padraoPct]);
 
   const totais = useMemo(() => {
     const t = { bruto: 0, repasse: 0, particular: 0, plano: 0, repPart: 0, repPlano: 0 };

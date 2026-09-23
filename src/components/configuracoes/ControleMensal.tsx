@@ -15,32 +15,38 @@ import { exportToCsv } from '@/utils/exportCsv';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
-const REPASSE_STORAGE_KEY = 'controle-mensal-repasse-pct';
 
 type Filtro = 'todos' | 'particular' | 'plano';
 
 export default function ControleMensal() {
   const { user } = useAuth();
   const { membros: equipe } = useEquipe();
-  const { getRepasse } = useRepasseConfig();
+  const { getRepasse, padraoPct, setPadrao } = useRepasseConfig();
   const [mesOffset, setMesOffset] = useState(0); // 0 = mês atual, 1 = mês passado...
   const [profissionalId, setProfissionalId] = useState<string>('todos');
   const [tipoFiltro, setTipoFiltro] = useState<Filtro>('todos');
-  const [repassePctInput, setRepassePctInput] = useState<string>(() => {
-    if (typeof window === 'undefined') return '40';
-    return localStorage.getItem(REPASSE_STORAGE_KEY) || '40';
-  });
+  // O % aqui é o MESMO repasse padrão da clínica (salvo no banco, igual em
+  // todos os aparelhos). Antes ficava só no navegador e divergia do Financeiro.
+  const [repassePctInput, setRepassePctInput] = useState<string | null>(null);
   const REPASSE_PCT = useMemo(() => {
-    const n = parseFloat(repassePctInput.replace(',', '.'));
+    const raw = repassePctInput ?? String(padraoPct);
+    const n = parseFloat(raw.replace(',', '.'));
     if (isNaN(n) || n < 0) return 0;
     if (n > 100) return 1;
     return n / 100;
-  }, [repassePctInput]);
+  }, [repassePctInput, padraoPct]);
   const repasseLabel = `${(REPASSE_PCT * 100).toFixed(REPASSE_PCT * 100 % 1 === 0 ? 0 : 1)}%`;
 
   const handleRepasseChange = (v: string) => {
     setRepassePctInput(v);
-    if (typeof window !== 'undefined') localStorage.setItem(REPASSE_STORAGE_KEY, v);
+  };
+  const salvarRepassePadrao = async () => {
+    if (repassePctInput === null) return;
+    const n = parseFloat(repassePctInput.replace(',', '.'));
+    if (repassePctInput.trim() !== '' && Number.isFinite(n) && n !== padraoPct) {
+      await setPadrao.mutateAsync(n);
+    }
+    setRepassePctInput(null);
   };
 
   const { inicio, fim, label } = useMemo(() => {
@@ -81,7 +87,8 @@ export default function ControleMensal() {
     const valor = Number(s.valor_cobrado) || 0;
     const membroId = s.agendamentos?.membro_equipe_id || null;
     const convenioId = s.convenio_id || null;
-    if (!membroId) return valor * REPASSE_PCT;
+    // Sem profissional da equipe (o próprio dono atendeu) → sem repasse.
+    if (!membroId) return 0;
     const cfg = getRepasse(membroId, convenioId);
     if (!cfg) return valor * REPASSE_PCT;
     if (cfg.valor_fixo != null) return Number(cfg.valor_fixo);
@@ -245,8 +252,11 @@ export default function ControleMensal() {
               min={0}
               max={100}
               step="0.5"
-              value={repassePctInput}
+              value={repassePctInput ?? String(padraoPct)}
               onChange={(e) => handleRepasseChange(e.target.value)}
+              onBlur={salvarRepassePadrao}
+              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+              title="Repasse padrão da equipe (vale em todo o financeiro)"
               className="h-6 w-14 px-1.5 text-xs font-bold border-0 bg-transparent focus-visible:ring-1"
             />
             <span className="text-xs font-bold">%</span>
