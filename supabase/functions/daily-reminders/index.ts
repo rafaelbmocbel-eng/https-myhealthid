@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireInternal } from "../_shared/auth.ts";
+import { inicioDoDiaBR } from "../_shared/tz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -102,7 +103,7 @@ Deno.serve(async (req) => {
         .select("id")
         .eq("terapeuta_id", terapeutaId)
         .eq("tipo", "lembrete_amanha")
-        .gte("created_at", new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
+        .gte("created_at", inicioDoDiaBR())
         .limit(1);
 
       if (existing && existing.length > 0) continue;

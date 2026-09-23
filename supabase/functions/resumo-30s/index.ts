@@ -99,7 +99,7 @@ Paciente: ${paciente?.nome} ${paciente?.sobrenome ?? ""}${idade ? `, ${idade} an
 Queixa: ${paciente?.queixa_principal ?? "—"}
 Observações: ${paciente?.observacoes ?? "—"}
 
-MyID (${myid?.updated_at ? new Date(myid.updated_at).toLocaleDateString("pt-BR") : "sem MyID concluído"}):
+MyID (${myid?.updated_at ? new Date(myid.updated_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "sem MyID concluído"}):
 Score: ${myid?.myid_score_parcial ?? "—"}
 Red flags: ${myid?.red_flags_detectadas ? "SIM" : "não"}
 Resultado: ${JSON.stringify(myid?.resultado_processado ?? {}).slice(0, 2500)}

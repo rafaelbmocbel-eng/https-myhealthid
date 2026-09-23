@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { hojeBR } from "../_shared/tz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -274,7 +275,7 @@ serve(async (req) => {
       terapeuta_id: terapeutaId,
       paciente_id: pacienteId,
       paciente_nome: pacienteNome,
-      data_avaliacao: new Date().toISOString().split("T")[0],
+      data_avaliacao: hojeBR(),
       dados_avaliacao: { resultado: result, respostas: raw_data },
       classificacao,
       myid_score: myidScore,

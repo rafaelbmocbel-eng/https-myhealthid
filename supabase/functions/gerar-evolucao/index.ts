@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
         .order("created_at", { ascending: false }).limit(6);
       if (notas?.length) {
         ctx += "\n\n[Evoluções/notas anteriores (mais recente primeiro)]\n" +
-          notas.slice(0, 4).map((n: any) => `• ${new Date(n.created_at).toLocaleDateString("pt-BR")} (${n.tipo}): ${String(n.descricao).slice(0, 400)}`).join("\n");
+          notas.slice(0, 4).map((n: any) => `• ${new Date(n.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} (${n.tipo}): ${String(n.descricao).slice(0, 400)}`).join("\n");
       }
 
       // ── Diretriz/conduta VIGENTE — protocolo (fisio) ou diretriz_profissional (outras) ──
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
         diretrizMeta = {
           id: fonte.id,
           titulo: fonte.titulo || (usarProto ? "Plano de Reabilitação" : "Diretriz"),
-          data: new Date(fonte.updated_at).toLocaleDateString("pt-BR"),
+          data: new Date(fonte.updated_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
           updated_at: fonte.updated_at,
         };
         // Texto da diretriz (para escrever na íntegra quando for a 1ª vez).

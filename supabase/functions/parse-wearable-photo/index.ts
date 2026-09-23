@@ -2,6 +2,7 @@
 // Usa Gemini Vision via Lovable AI Gateway.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { requireUser } from "../_shared/auth.ts";
+import { hojeBR } from "../_shared/tz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,7 +113,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = hojeBR();
     const dateStr = typeof dados.date_hint === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dados.date_hint)
       ? dados.date_hint : today;
 

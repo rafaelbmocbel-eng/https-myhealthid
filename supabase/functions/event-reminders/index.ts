@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireInternal } from "../_shared/auth.ts";
 import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
+import { hojeBR } from "../_shared/tz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
     const in90m = new Date(now.getTime() + 90 * 60 * 1000);
 
     // Pega TODOS eventos ativos futuros e filtra em JS (combina data+hora)
-    const today = now.toISOString().split("T")[0];
+    const today = hojeBR();
     const { data: eventos } = await supabase
       .from("eventos")
       .select("id, terapeuta_id, titulo, data_evento, horario_inicio, local, link_video, categoria, lembrete_24h_enviado, lembrete_1h_enviado")

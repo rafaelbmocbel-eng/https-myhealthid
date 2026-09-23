@@ -7,6 +7,7 @@
 // de revisão do profissional sem nunca virar achado clínico por conta própria.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireUser, corsHeaders } from "../_shared/auth.ts";
+import { hojeBR } from "../_shared/tz.ts";
 
 interface Answer { categoria: string; pergunta: string; resposta: string }
 interface RegionDef { id: string; label: string; sistemas: string[] }
@@ -147,7 +148,7 @@ ${regionList}`;
       });
     }
 
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeBR();
     const eventos = achados.map((a: any) => {
       const origem = respostaPorCategoria.get(a.categoria)!;
       return {

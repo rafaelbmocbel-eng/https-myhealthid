@@ -9,6 +9,7 @@
 // paciente → terapeuta e aplica as mesmas regras que o profissional usaria.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireUser, corsHeaders } from "../_shared/auth.ts";
+import { hojeBR } from "../_shared/tz.ts";
 
 interface Finding {
   region_id: string;
@@ -128,7 +129,7 @@ Deno.serve(async (req) => {
         .neq("status", "resolvido");
 
       const regioesAtivas = new Set((existentes || []).map((e: { regiao_id: string }) => e.regiao_id));
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = hojeBR();
       const notasBase = "Relato registrado pelo próprio paciente no portal, sem profissional presente. Aguarda confirmação clínica.";
 
       // Primary: AI-classified events (surgical history, chronic conditions, neurological, systemic)

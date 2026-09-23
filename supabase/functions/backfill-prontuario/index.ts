@@ -234,7 +234,7 @@ Paciente: ${av.paciente_nome} — Data: ${av.data_avaliacao}`;
       for (const sess of (sessoes || [])) {
         const key = `sessao_confirmada:${sess.id}`;
         if (existingRefs.has(key)) continue;
-        const dataSessao = new Date(sess.data_sessao).toLocaleDateString('pt-BR');
+        const dataSessao = new Date(sess.data_sessao).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
         await supabase.from("notas_prontuario").insert({
           paciente_id: sess.paciente_id, terapeuta_id: terapeutaId,
           tipo: "sessao_confirmada",

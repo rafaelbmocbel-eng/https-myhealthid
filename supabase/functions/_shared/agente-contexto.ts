@@ -1,5 +1,6 @@
 // Helper compartilhado: monta o contexto clínico do paciente para o agente IA
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { hojeBR } from "./tz.ts";
 
 // Fuso da clínica. As datas no banco são UTC; sem isto o Deno renderiza em UTC
 // e o bot informa 3h a mais (ex.: sessão 17:00 vira "20:00"). Todo horário
@@ -77,9 +78,7 @@ export async function montarContextoClinico(
   // Aniversário
   let aniversario_hoje = false;
   if (pac?.data_nascimento) {
-    const d = new Date(pac.data_nascimento);
-    const now = new Date();
-    aniversario_hoje = d.getDate() === now.getDate() && d.getMonth() === now.getMonth();
+    aniversario_hoje = String(pac.data_nascimento).slice(5, 10) === hojeBR().slice(5, 10);
   }
 
   const ctx: ContextoClinico = {
