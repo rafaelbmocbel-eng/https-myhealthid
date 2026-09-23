@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MODULOS_CATALOGO as FEATURES_LABEL } from "@/lib/modulosPlano";
 
+const brl = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
 interface PlanoPublico {
   id: string;
   nome: string;
@@ -158,9 +161,12 @@ function PlanoCard({ plano }: { plano: PlanoPublico }) {
 
       <div className="mb-5">
         <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold">R$ {plano.preco_mensal.toFixed(0)}</span>
+          <span className="text-3xl font-bold">{brl(plano.preco_mensal)}</span>
           <span className="text-caption">/mês{isClinica ? " por profissional" : ""}</span>
         </div>
+        <p className="text-micro mt-1">
+          ou <strong className="text-foreground">{brl(plano.preco_mensal * 10)}/ano</strong>{isClinica ? " por profissional" : ""} — 2 meses grátis
+        </p>
         {isClinica && <p className="text-micro mt-1">Mínimo de 2 profissionais</p>}
       </div>
 
