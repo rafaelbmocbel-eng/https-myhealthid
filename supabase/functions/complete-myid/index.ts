@@ -152,6 +152,26 @@ function buildMyIDEnhancements(cs: any, myidScore: number, classificacao: string
 
 
 
+// Dicas (MyID + história + evidência) e relatório de devolutiva para o cliente.
+// Fire-and-forget: não atrasa a resposta. Vale também para o cliente free sem
+// profissional — pela regra do produto, ele recebe as dicas de IA.
+function dispararDicasERelatorio(pacienteId: string) {
+  for (const fn of ["gerar-dicas-paciente", "gerar-relatorio-avaliacao"]) {
+    try {
+      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/${fn}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: JSON.stringify({ paciente_id: pacienteId }),
+      }).catch((e) => console.warn(`[complete-myid] ${fn} falhou:`, e));
+    } catch (e) {
+      console.warn(`[complete-myid] disparo de ${fn} falhou (não bloqueante):`, e);
+    }
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -266,6 +286,7 @@ serve(async (req) => {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (pacienteId) dispararDicasERelatorio(pacienteId);
       return new Response(JSON.stringify({ ok: true, synced: false, reason: "missing paciente_id or terapeuta_id" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -547,37 +568,7 @@ Avaliação via MyID-100 v2.0. Dados completos no dashboard.`;
       console.warn("Enriquecimento MyID da diretriz falhou (não bloqueante):", enrichErr);
     }
 
-    // 8. DICAS AUTOMÁTICAS DE EVIDÊNCIA — toda vez que o cliente conclui um
-    // MyID, gera as dicas/exercícios personalizados (MyID + história clínica +
-    // artigos científicos). Fire-and-forget: não atrasa nem bloqueia a resposta.
-    try {
-      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/gerar-dicas-paciente`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-        },
-        body: JSON.stringify({ paciente_id: pacienteId }),
-      }).catch((e) => console.warn("[complete-myid] gerar-dicas-paciente falhou:", e));
-    } catch (dicasErr) {
-      console.warn("Disparo de dicas automáticas falhou (não bloqueante):", dicasErr);
-    }
-
-    // 9. RELATÓRIO DE AVALIAÇÃO — devolutiva de pontos fortes e a melhorar
-    // (MyID + avatar clínico + métricas), escrita para o cliente ler no portal.
-    // Fire-and-forget, como as dicas.
-    try {
-      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/gerar-relatorio-avaliacao`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-        },
-        body: JSON.stringify({ paciente_id: pacienteId }),
-      }).catch((e) => console.warn("[complete-myid] gerar-relatorio-avaliacao falhou:", e));
-    } catch (relErr) {
-      console.warn("Disparo do relatório de avaliação falhou (não bloqueante):", relErr);
-    }
+    dispararDicasERelatorio(pacienteId);
 
     return new Response(JSON.stringify({ ok: true, synced: true, avaliacao_identidade_id: inserted.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

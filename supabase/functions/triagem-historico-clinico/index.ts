@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
     const systemPrompt = `Você é um assistente clínico que classifica respostas de um questionário de antecedentes/histórico de saúde do paciente (fraturas, cirurgias, traumas, acidentes, doenças sistêmicas, malformações, tratamentos).
 
 Para CADA resposta recebida, retorne:
+- indice: repita exatamente o número "#" da resposta
 - categoria: repita exatamente a categoria recebida
 - regiao_id: o ID de região anatômica MAIS relevante (escolha sempre uma, mesmo para condições sistêmicas — use o órgão/estrutura mais associado)
 - sistema: o sistema corporal correspondente à região escolhida
@@ -57,18 +58,19 @@ Para CADA resposta recebida, retorne:
 REGRAS:
 - Nunca invente um regiao_id fora da lista abaixo.
 - Se a resposta não descrever nada clinicamente relevante (ex: "não", "nunca"), NÃO a inclua no retorno.
+- Categoria "historico_familiar" é doença de PARENTES, não do paciente: o tipo_achado deve começar com "Histórico familiar:" (ex: "Histórico familiar: câncer de mama (mãe)") e severidade no máximo 1.
 
 REGIÕES DISPONÍVEIS:
 ${regionList}`;
 
     const userPrompt = answers
-      .map((a) => `Categoria: ${a.categoria}\nPergunta: ${a.pergunta}\nResposta: ${a.resposta}`)
+      .map((a, i) => `#${i}\nCategoria: ${a.categoria}\nPergunta: ${a.pergunta}\nResposta: ${a.resposta}`)
       .join("\n\n");
 
     // Padrão comprovado no app: JSON mode (response_format). O function-calling
     // forçado (tool_choice) não é bem suportado pelo endpoint OpenAI-compat do
     // Gemini e retornava non-2xx. Pedimos o JSON direto no prompt.
-    const formatoPrompt = `\n\nResponda APENAS com um objeto JSON no formato:\n{"achados":[{"categoria":"<repita a categoria recebida>","regiao_id":"<id da lista>","sistema":"<sistema da região>","tipo_achado":"<rótulo clínico curto>","severidade":<inteiro 0 a 4>}]}\nSe nada for clinicamente relevante, retorne {"achados":[]}.`;
+    const formatoPrompt = `\n\nResponda APENAS com um objeto JSON no formato:\n{"achados":[{"indice":<número # da resposta>,"categoria":"<repita a categoria recebida>","regiao_id":"<id da lista>","sistema":"<sistema da região>","tipo_achado":"<rótulo clínico curto>","severidade":<inteiro 0 a 4>}]}\nSe nada for clinicamente relevante, retorne {"achados":[]}.`;
 
     const ctrl = new AbortController();
     setTimeout(() => ctrl.abort(), 45_000);
@@ -121,9 +123,16 @@ ${regionList}`;
     const validIds = new Set(regions.map((r) => r.id));
     const validSistemas = new Set(regions.flatMap((r) => r.sistemas));
     const respostaPorCategoria = new Map(answers.map((a) => [a.categoria, a]));
+    // Várias cirurgias/medicamentos têm a mesma categoria: a proveniência vai
+    // pelo índice da resposta (a categoria sozinha apontava sempre a última).
+    const respostaDoAchado = (a: any): Answer | undefined => {
+      const i = Number(a?.indice);
+      if (Number.isInteger(i) && answers[i] && answers[i].categoria === a.categoria) return answers[i];
+      return respostaPorCategoria.get(a.categoria);
+    };
 
     const achados = (args.achados ?? []).filter((a: any) =>
-      validIds.has(a.regiao_id) && validSistemas.has(a.sistema) && respostaPorCategoria.has(a.categoria)
+      validIds.has(a.regiao_id) && validSistemas.has(a.sistema) && respostaDoAchado(a)
     );
 
     if (achados.length === 0) {
@@ -148,18 +157,40 @@ ${regionList}`;
       });
     }
 
+    // A mesma informação reenviada (o card manda o histórico inteiro a cada
+    // envio) gera um único possível achado: compara com o que já existe.
+    const norm = (t: string) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+    const { data: existentes } = await admin
+      .from("eventos_clinicos_anatomicos")
+      .select("regiao_id, tipo_achado, metadata")
+      .eq("paciente_id", paciente.id)
+      .eq("tipo_diagnostico", "historico_relatado");
+    const jaExiste = new Set<string>();
+    for (const e of existentes ?? []) {
+      const chave = (e as any).metadata?.chave_resposta;
+      if (chave) jaExiste.add(`r:${chave}`);
+      jaExiste.add(`a:${e.regiao_id}|${norm(e.tipo_achado)}`);
+    }
+
     const hoje = hojeBR();
-    const eventos = achados.map((a: any) => {
-      const origem = respostaPorCategoria.get(a.categoria)!;
-      return {
+    const eventos = achados.flatMap((a: any) => {
+      const origem = respostaDoAchado(a)!;
+      const chaveResposta = `${origem.categoria}|${norm(origem.resposta)}`;
+      const chaveAchado = `${a.regiao_id}|${norm(a.tipo_achado)}`;
+      if (jaExiste.has(`r:${chaveResposta}`) || jaExiste.has(`a:${chaveAchado}`)) return [];
+      jaExiste.add(`r:${chaveResposta}`);
+      jaExiste.add(`a:${chaveAchado}`);
+      const familiar = origem.categoria === "historico_familiar";
+      const sev = Math.max(0, Math.min(4, Math.round(Number(a.severidade) || 0)));
+      return [{
         paciente_id: paciente.id,
         terapeuta_id: paciente.terapeuta_id,
         regiao_id: a.regiao_id,
         sistema: a.sistema,
-        tipo_achado: a.tipo_achado,
+        tipo_achado: familiar && !/^hist[óo]rico familiar/i.test(String(a.tipo_achado)) ? `Histórico familiar: ${a.tipo_achado}` : a.tipo_achado,
         tipo_diagnostico: "historico_relatado",
         origem: "autocadastro_paciente",
-        severidade: a.severidade,
+        severidade: familiar ? Math.min(sev, 1) : sev,
         status: "resolvido",
         data_inicio: hoje,
         data_resolucao: hoje,
@@ -169,9 +200,17 @@ ${regionList}`;
           categoria: a.categoria,
           fonte: "questionario_historico_clinico",
           revisado_profissional: false,
+          chave_resposta: chaveResposta,
+          ...(familiar ? { familiar: true } : {}),
         },
-      };
+      }];
     });
+
+    if (eventos.length === 0) {
+      return new Response(JSON.stringify({ criados: 0, duplicados: achados.length }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { error: insErr } = await admin.from("eventos_clinicos_anatomicos").insert(eventos);
     if (insErr) {

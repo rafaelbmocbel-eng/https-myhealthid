@@ -389,7 +389,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const revisado_por_ids = [...(meta.revisado_por_ids || []), user.id];
       const { error } = await (supabase as any)
         .from('eventos_clinicos_anatomicos')
-        .update({ metadata: { ...meta, rejeicoes, revisado_por_ids } })
+        // Rejeitado sai da fila e do histórico ativo; fica só no histórico de
+        // possíveis achados descartados.
+        .update({ metadata: { ...meta, rejeicoes, revisado_por_ids, descartado: true, descartado_em: new Date().toISOString(), descartado_por: user.id } })
         .eq('id', ev.id);
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
@@ -1822,7 +1824,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           // Resolvidos — privacidade: o cliente só vê os liberados (o histórico
           // relatado no portal é resolvido + visivel_paciente=false até o
           // profissional confirmar, então não vaza aqui).
-          const historico = eventos.filter(e => e.status === 'resolvido' && (!soLiberados || e.visivel_paciente));
+          // Possível achado (histórico relatado ainda não confirmado) e descartado
+          // não são histórico clínico: ficam na revisão / histórico de possíveis achados.
+          const historico = eventos.filter(e => e.status === 'resolvido' && (!soLiberados || e.visivel_paciente) &&
+            !(e.tipo_diagnostico === 'historico_relatado' && !(e as any).metadata?.revisado_profissional));
           if (historico.length === 0) return null;
           return (
             <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
@@ -1902,11 +1907,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           const pendentesHistorico = eventos.filter(
             (e) => e.tipo_diagnostico === 'historico_relatado' &&
               !((e as any).metadata?.revisado_por_ids || []).includes(user?.id) &&
+              !(e as any).metadata?.descartado &&
               ((e as any).metadata?.rejeicoes?.length || 0) < 3
           );
           const descartadosConsenso = eventos.filter(
             (e) => e.tipo_diagnostico === 'historico_relatado' &&
-              ((e as any).metadata?.rejeicoes?.length || 0) >= 3
+              ((e as any).metadata?.descartado || ((e as any).metadata?.rejeicoes?.length || 0) >= 3)
           );
           return (
             <div className="space-y-3 border-t border-border/40 pt-3">
@@ -2123,15 +2129,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   >
                     <span className="flex items-center gap-2">
                       <History className="h-3.5 w-3.5" />
-                      {descartadosConsenso.length} item{descartadosConsenso.length > 1 ? 'ns' : ''} arquivado{descartadosConsenso.length > 1 ? 's' : ''} por consenso
+                      Histórico de possíveis achados descartados ({descartadosConsenso.length})
                     </span>
                     {descartadosOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                   </button>
                   {descartadosOpen && (
                     <div className="px-3 pb-3 space-y-1.5 border-t border-border/30 pt-2">
                       <p className="text-[11px] text-muted-foreground">
-                        Rejeitados por 3 ou mais profissionais. Ficam arquivados para auditoria.
-                        Se o paciente atualizar o histórico com informações equivalentes, novos itens serão criados com contagem zerada.
+                        Possíveis achados que foram rejeitados. Não entram no avatar nem no histórico clínico — ficam aqui só para consulta.
+                        Se o paciente reenviar a mesma informação, ela não volta para a revisão.
                       </p>
                       {descartadosConsenso.map(ev => {
                         const meta = (ev as any).metadata || {};

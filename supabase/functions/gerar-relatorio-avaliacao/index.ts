@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       // histórico pendentes de revisão não entram no texto que o cliente lê.
       admin.from("eventos_clinicos_anatomicos").select("*")
         .eq("paciente_id", paciente_id).eq("visivel_paciente", true)
-        .or("tipo_diagnostico.is.null,tipo_diagnostico.not.in.(relato_paciente,historico_relatado)")
+        .or("tipo_diagnostico.is.null,tipo_diagnostico.neq.relato_paciente")
         .order("created_at", { ascending: false }).limit(12),
       admin.from("testes_funcionais_paciente").select("tipo_teste, resultado, unidade, classificacao")
         .eq("paciente_id", paciente_id).order("data_teste", { ascending: false }).limit(8),
@@ -98,14 +98,18 @@ Deno.serve(async (req) => {
     const idade = pac.data_nascimento
       ? Math.floor((Date.now() - new Date(pac.data_nascimento).getTime()) / (365.25 * 24 * 3600 * 1000))
       : null;
-    const avatarTxt = (avatarRes.data || [])
+    // Histórico relatado só entra depois de confirmado; descartado nunca.
+    const achadosAvatar = (avatarRes.data || []).filter((e: any) =>
+      !e.metadata?.descartado &&
+      !(e.tipo_diagnostico === "historico_relatado" && !e.metadata?.revisado_profissional));
+    const avatarTxt = achadosAvatar
       .map((e: any) => JSON.stringify(e).slice(0, 250)).join("\n");
     const testesTxt = (testesRes.data || [])
       .map((t: any) => `${t.tipo_teste}: ${t.resultado} ${t.unidade || ""} (${t.classificacao || "?"})`).join("\n");
 
     const contexto = {
       myid: true,
-      avatar: (avatarRes.data || []).length,
+      avatar: achadosAvatar.length,
       testes: (testesRes.data || []).length,
       bioimpedancia: !!compRes.data,
       antropometria: !!antroRes.data,
