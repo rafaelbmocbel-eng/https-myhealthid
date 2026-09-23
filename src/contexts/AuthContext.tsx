@@ -55,6 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Pacientes autônomos (cadastro pelo portal) não devem receber perfil de profissional.
     // Checa tanto a flag de metadata quanto a tabela portal_pacientes.
     if (currentUser.user_metadata?.is_patient === true) return null;
+    // Cliente novo que volta do Google para o portal ainda não tem is_patient nem
+    // ficha: criar perfil aqui fazia o login do portal tratá-lo como profissional.
+    if (typeof window !== 'undefined' && /^\/(paciente|portaldocliente|portal)(\/|$)/.test(window.location.pathname)) return null;
     const { data: portalPaciente } = await supabase
       .from('portal_pacientes')
       .select('id')

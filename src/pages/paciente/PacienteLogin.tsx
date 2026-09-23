@@ -149,11 +149,14 @@ export default function PacienteLogin() {
       //    paciente por nenhuma via — que é o caso de um profissional de verdade.
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, perfil_profissional_confirmado, crefito')
         .eq('user_id', user.id)
         .maybeSingle();
+      // Perfil "fantasma" (não confirmado, sem registro) é de cliente que entrou
+      // pelo Google — não é profissional; segue para a escolha "Sou novo".
+      const profissionalDeVerdade = !!profile && (profile.perfil_profissional_confirmado || !!profile.crefito);
 
-      if (profile && user.user_metadata?.is_patient !== true) {
+      if (profissionalDeVerdade && user.user_metadata?.is_patient !== true) {
         if (isPortalLink) {
           linkAttempted.current = false;
           setLinking(false);
@@ -194,7 +197,9 @@ export default function PacienteLogin() {
       .from('portal_pacientes')
       .insert({ user_id: user.id, nome, email: user.email });
     if (!insertError) {
-      navigate('/paciente/profissionais', { replace: true });
+      // A ficha free é criada por trigger no banco; o 1º passo do cliente é o MyID.
+      try { await supabase.auth.updateUser({ data: { is_patient: true } }); } catch { /* best-effort: só evita perfil profissional futuro */ }
+      navigate('/paciente/questionarios', { replace: true });
     } else {
       setCriandoNovo(false);
       toast({
