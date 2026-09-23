@@ -193,6 +193,20 @@ Deno.serve(async (req) => {
     const wellness = wellnessRes.data || [];
     const vendas = vendasRes.data || [];
 
+    // ── Última atividade por profissional (proxy de "está usando") ──
+    // Considera agendamentos e avaliações criados nos últimos 120 dias.
+    const ativCorte = new Date(Date.now() - 120 * 86400000).toISOString();
+    const [agAtivRes, avAtivRes] = await Promise.all([
+      admin.from("agendamentos").select("terapeuta_id, created_at").gte("created_at", ativCorte).order("created_at", { ascending: false }).limit(8000),
+      admin.from("avaliacoes_voz").select("terapeuta_id, created_at").gte("created_at", ativCorte).order("created_at", { ascending: false }).limit(3000),
+    ]);
+    const ultimaAtividade: Record<string, string> = {};
+    [...(agAtivRes.data || []), ...(avAtivRes.data || [])].forEach((a: any) => {
+      if (!a.terapeuta_id) return;
+      const cur = ultimaAtividade[a.terapeuta_id];
+      if (!cur || a.created_at > cur) ultimaAtividade[a.terapeuta_id] = a.created_at;
+    });
+
     const planoById: Record<string, any> = {};
     planos.forEach((p: any) => { planoById[p.id] = p; });
 
@@ -251,6 +265,9 @@ Deno.serve(async (req) => {
         clinica: cfg?.razao_social || "",
         plano: plano?.nome || "—",
         status_assinatura: assin?.status || "sem assinatura",
+        origem: assin?.origem || null,
+        data_fim: assin?.data_fim || null,
+        ultima_atividade: ultimaAtividade[p.user_id] || null,
         cadastrado_em: p.created_at,
       };
     }).sort((a, b) => (b.cadastrado_em || "").localeCompare(a.cadastrado_em || ""));

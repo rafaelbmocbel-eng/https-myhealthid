@@ -47,6 +47,42 @@ function StatusAssinatura({ status }: { status: string }) {
   return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cls}`}>{status}</span>;
 }
 
+// Categoria "real" do assinante (pagante / trial / cortesia / fundador / sem plano).
+function categoriaAssinante(p: { origem: string | null; status_assinatura: string }): 'pagante' | 'trial' | 'cortesia' | 'fundador' | 'sem' {
+  if (p.origem === 'cortesia') return 'cortesia';
+  if (p.origem === 'fundador') return 'fundador';
+  if (p.status_assinatura === 'trial' || p.origem === 'trial_signup') return 'trial';
+  if (p.status_assinatura === 'ativa') return 'pagante';
+  return 'sem';
+}
+
+const CAT_BADGE: Record<string, { label: string; cls: string }> = {
+  pagante: { label: 'Pagante', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  trial: { label: 'Trial', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+  cortesia: { label: 'Cortesia', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' },
+  fundador: { label: 'Fundador', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  sem: { label: 'Sem plano', cls: 'bg-muted text-muted-foreground' },
+};
+
+function OrigemBadge({ cat }: { cat: string }) {
+  const b = CAT_BADGE[cat] || CAT_BADGE.sem;
+  return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${b.cls}`}>{b.label}</span>;
+}
+
+function diasDesde(iso: string | null): number | null {
+  if (!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+// Sinal de "está usando": última atividade (agendamento/avaliação) recente.
+function Atividade({ ultima }: { ultima: string | null }) {
+  const d = diasDesde(ultima);
+  if (d == null) return <span className="text-[11px] text-muted-foreground">nunca usou</span>;
+  const cls = d <= 14 ? 'text-emerald-600' : d <= 45 ? 'text-amber-600' : 'text-red-600';
+  const txt = d === 0 ? 'hoje' : d === 1 ? 'ontem' : `há ${d}d`;
+  return <span className={`text-[11px] font-medium ${cls}`}>{d <= 14 ? '● usando' : '○ parado'} · {txt}</span>;
+}
+
 function Kpi({ icon: Icon, label, valor, sub, tom = 'default' }: {
   icon: any; label: string; valor: string; sub?: string; tom?: 'default' | 'good' | 'warn';
 }) {
@@ -89,6 +125,7 @@ export default function Admin() {
   const [confirmarRemover, setConfirmarRemover] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [filtroEsp, setFiltroEsp] = useState<string>('todas');
+  const [filtroCat, setFiltroCat] = useState<string>('todos'); // pagante/trial/cortesia/fundador/sem/usando/parados
   // Editor de funcionalidades por plano
   const [traduzindoBib, setTraduzindoBib] = useState(false);
   const [funcPlanoId, setFuncPlanoId] = useState<string | null>(null);
@@ -266,9 +303,24 @@ export default function Admin() {
   const buscaLower = normalizarBusca(busca);
   const profFiltrados = data.profissionais_lista.filter((p) => {
     if (filtroEsp !== 'todas' && p.especialidade !== filtroEsp) return false;
+    if (filtroCat !== 'todos') {
+      const cat = categoriaAssinante(p);
+      const d = diasDesde(p.ultima_atividade);
+      if (filtroCat === 'usando' && !(d != null && d <= 14)) return false;
+      else if (filtroCat === 'parados' && (d != null && d <= 14)) return false;
+      else if (['pagante', 'trial', 'cortesia', 'fundador', 'sem'].includes(filtroCat) && cat !== filtroCat) return false;
+    }
     if (!buscaLower) return true;
     return [p.nome, p.email, p.cidade, p.uf, p.clinica, p.telefone].some((v) => normalizarBusca(v).includes(buscaLower));
   });
+
+  // Contagens por categoria (para os chips e o resumo).
+  const catCount = data.profissionais_lista.reduce((acc: Record<string, number>, p) => {
+    acc[categoriaAssinante(p)] = (acc[categoriaAssinante(p)] || 0) + 1;
+    const d = diasDesde(p.ultima_atividade);
+    if (d != null && d <= 14) acc.usando = (acc.usando || 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-10">
@@ -369,6 +421,24 @@ export default function Admin() {
             <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Profissionais ({fmtInt(profFiltrados.length)}{filtroEsp !== 'todas' || busca ? ` de ${fmtInt(data.profissionais_lista.length)}` : ''})</CardTitle>
             <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome, e-mail, cidade…" className="h-8 w-full sm:w-64 text-sm" />
           </div>
+          {/* Filtro por categoria de assinatura + uso */}
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {([
+              ['todos', `Todos (${fmtInt(data.profissionais_lista.length)})`],
+              ['pagante', `Pagantes (${fmtInt(catCount.pagante || 0)})`],
+              ['trial', `Trial (${fmtInt(catCount.trial || 0)})`],
+              ['cortesia', `Cortesia (${fmtInt(catCount.cortesia || 0)})`],
+              ['fundador', `Fundador (${fmtInt(catCount.fundador || 0)})`],
+              ['sem', `Sem plano (${fmtInt(catCount.sem || 0)})`],
+              ['usando', `● Usando (${fmtInt(catCount.usando || 0)})`],
+              ['parados', `○ Parados`],
+            ] as [string, string][]).map(([k, label]) => (
+              <button key={k} onClick={() => setFiltroCat(k)}
+                className={`text-[11px] px-2.5 py-1 rounded-full border ${filtroCat === k ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           {/* Filtro por valência (especialidade) */}
           <div className="flex flex-wrap gap-1.5 mt-2">
             <button onClick={() => setFiltroEsp('todas')} className={`text-[11px] px-2.5 py-1 rounded-full border ${filtroEsp === 'todas' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>Todas ({fmtInt(data.profissionais_lista.length)})</button>
@@ -385,10 +455,10 @@ export default function Admin() {
               <thead className="sticky top-0 bg-card">
                 <tr className="text-left text-xs text-muted-foreground border-b border-border">
                   <th className="py-2 pr-3">Profissional</th>
-                  <th className="py-2 pr-3">Valência</th>
-                  <th className="py-2 pr-3">De onde</th>
+                  <th className="py-2 pr-3">Situação</th>
+                  <th className="py-2 pr-3">Atividade</th>
                   <th className="py-2 pr-3">Plano</th>
-                  <th className="py-2 pr-3">Assinatura</th>
+                  <th className="py-2 pr-3">De onde</th>
                   <th className="py-2 pr-3">Cadastro</th>
                 </tr>
               </thead>
@@ -398,15 +468,22 @@ export default function Admin() {
                     <td className="py-2 pr-3">
                       <div className="font-medium">{p.nome}</div>
                       <div className="text-[11px] text-muted-foreground">{p.email || '—'}{p.telefone ? ` · ${p.telefone}` : ''}</div>
-                      {p.crefito && <div className="text-[10px] text-muted-foreground">{p.crefito}</div>}
+                      <div className="text-[10px] text-muted-foreground">{labelEsp(p.especialidade)}{p.crefito ? ` · ${p.crefito}` : ''}</div>
                     </td>
-                    <td className="py-2 pr-3">{labelEsp(p.especialidade)}</td>
+                    <td className="py-2 pr-3">
+                      <OrigemBadge cat={categoriaAssinante(p)} />
+                      {p.status_assinatura === 'trial' && p.data_fim && (
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          {(() => { const dd = diasDesde(p.data_fim); return dd == null ? '' : dd < 0 ? `expira em ${-dd}d` : `expirou há ${dd}d`; })()}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3"><Atividade ultima={p.ultima_atividade} /></td>
+                    <td className="py-2 pr-3">{p.plano}</td>
                     <td className="py-2 pr-3">
                       {p.cidade || p.uf ? <span>{[p.cidade, p.uf].filter(Boolean).join(' / ')}</span> : <span className="text-muted-foreground">—</span>}
                       {p.clinica && <div className="text-[11px] text-muted-foreground">{p.clinica}</div>}
                     </td>
-                    <td className="py-2 pr-3">{p.plano}</td>
-                    <td className="py-2 pr-3"><StatusAssinatura status={p.status_assinatura} /></td>
                     <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{p.cadastrado_em ? new Date(p.cadastrado_em).toLocaleDateString('pt-BR') : '—'}</td>
                   </tr>
                 ))}

@@ -21,6 +21,7 @@ export interface AdminMetrics {
     especialidade: string; especialidade_texto: string; crefito: string;
     cidade: string; uf: string; clinica: string;
     plano: string; status_assinatura: string; cadastrado_em: string;
+    origem: string | null; data_fim: string | null; ultima_atividade: string | null;
   }>;
   assinaturas_profissionais: { por_status: Record<string, number>; mrr: number; por_plano: Array<{ nome: string; ativas: number; mrr: number }> };
   assinaturas_alunos: { por_status: Record<string, number>; mrr: number; inadimplentes: number };
