@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { pendenciasDoBloco } from '@/utils/myid/validacaoBlocos';
+import { toast } from '@/hooks/use-toast';
 import { Bloco1 } from './steps/Bloco1';
 import { Bloco2 } from './steps/Bloco2';
 import { Bloco3 } from './steps/Bloco3';
@@ -105,8 +107,20 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data]);
 
+    // Não deixa avançar com pergunta de escolha sem resposta (entraria no
+    // cálculo com valor assumido). Retorna true se pode seguir.
+    const confereBloco = () => {
+        const faltam = pendenciasDoBloco(step, data);
+        if (faltam.length === 0) return true;
+        toast({ title: 'Falta responder', description: faltam.join(', '), variant: 'destructive' });
+        return false;
+    };
+
     const handleNext = () => {
+        if (step >= 1 && step <= 6 && !confereBloco()) return;
         if (step === 6) {
+            // O autosave com debounce poderia gravar "em andamento" depois do Finalizar.
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
             if (onSaveProgress) onSaveProgress(data, step);
             const calculator = new MyIDCalculator(data);
             const res = calculator.getFullResult();
@@ -326,6 +340,7 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
                         <Button variant="outline" onClick={handleBack} className="w-28">Voltar</Button>
                         <Button
                             onClick={() => {
+                                if (!confereBloco()) return;
                                 if (FASE_CHECKPOINTS.has(step) && !showPausePrompt) {
                                     setShowPausePrompt(true);
                                     if (onSaveProgress) onSaveProgress(data, step);

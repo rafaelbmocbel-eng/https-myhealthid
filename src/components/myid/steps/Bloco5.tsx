@@ -130,7 +130,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <Input
                             type="range"
                             min="0" max="10" step="1"
-                            value={data.bloco_5c_stress || 0}
+                            value={data.bloco_5c_stress ?? 5}
                             onChange={(e) => updateData({ bloco_5c_stress: parseInt(e.target.value) })}
                             className="w-full"
                         />
@@ -138,7 +138,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             <span>0 (Totalmente Calmo)</span>
                             <span>10 (Estresse Máximo)</span>
                         </div>
-                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_stress || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_stress ?? 5} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                     </div>
                 </div>
 
@@ -149,7 +149,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <Input
                             type="range"
                             min="0" max="10" step="1"
-                            value={data.bloco_5c_anxiety || 0}
+                            value={data.bloco_5c_anxiety ?? 5}
                             onChange={(e) => updateData({ bloco_5c_anxiety: parseInt(e.target.value) })}
                             className="w-full"
                         />
@@ -157,7 +157,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             <span>0 (Nenhuma)</span>
                             <span>10 (Ansiedade Extrema)</span>
                         </div>
-                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_anxiety || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_anxiety ?? 5} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                     </div>
                 </div>
 
@@ -197,7 +197,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             <Input
                                 type="range"
                                 min="0" max="10" step="1"
-                                value={data.bloco_5d_work_stress || 0}
+                                value={data.bloco_5d_work_stress ?? 5}
                                 onChange={(e) => updateData({ bloco_5d_work_stress: parseInt(e.target.value) })}
                                 className="w-full"
                             />
@@ -205,7 +205,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                                 <span>0 (Nenhum estresse)</span>
                                 <span>10 (Estresse extremo)</span>
                             </div>
-                            <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_work_stress || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
+                            <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_work_stress ?? 5} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                         </div>
                     )}
                 </div>
@@ -217,7 +217,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <Input
                             type="range"
                             min="0" max="10" step="1"
-                            value={data.bloco_5d_family_conflict || 0}
+                            value={data.bloco_5d_family_conflict ?? 5}
                             onChange={(e) => updateData({ bloco_5d_family_conflict: parseInt(e.target.value) })}
                             className="w-full"
                         />
@@ -225,7 +225,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             <span>0 (Nenhum conflito)</span>
                             <span>10 (Conflitos intensos)</span>
                         </div>
-                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_family_conflict || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_family_conflict ?? 5} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                     </div>
                 </div>
 
@@ -236,7 +236,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <Input
                             type="range"
                             min="0" max="10" step="1"
-                            value={data.bloco_5d_financial_worry || 0}
+                            value={data.bloco_5d_financial_worry ?? 5}
                             onChange={(e) => updateData({ bloco_5d_financial_worry: parseInt(e.target.value) })}
                             className="w-full"
                         />
@@ -244,7 +244,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             <span>0 (Nenhuma preocupação)</span>
                             <span>10 (Preocupação extrema)</span>
                         </div>
-                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_financial_worry || 0} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_financial_worry ?? 5} <span className="text-lg text-muted-foreground font-bold">/ 10</span></div>
                     </div>
                 </div>
             </section>

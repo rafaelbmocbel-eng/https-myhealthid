@@ -432,3 +432,11 @@ export const TEMPLATES_INTERPRETACAO: Record<string, { titulo: string; descricao
     recomendacao: 'Intervenção multidisciplinar urgente e prioritária. Avaliação médica imediata recomendada.',
   },
 };
+
+/** Dimensões de CAPACIDADE (maior = melhor). As demais (D, P, I, N) são demanda/carga (maior = pior). */
+export const DIMENSOES_CAPACIDADE = new Set(['R', 'C', 'AF', 'HID', 'NUT', 'ERG', 'EFI']);
+
+/** Quanto a dimensão pesa contra o paciente (0 = ótimo, 10 = pior), qualquer que seja a direção. */
+export function gravidadeDimensao(key: string, valor: number): number {
+  return DIMENSOES_CAPACIDADE.has(key) ? 10 - valor : valor;
+}

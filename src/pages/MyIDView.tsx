@@ -8,6 +8,7 @@ import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import LogoIcon from '@/components/LogoIcon';
 import { scoresDoResultado } from '@/utils/myid/scores';
+import { gravidadeDimensao } from '@/utils/myid/lossTable';
 
 interface Resultado {
   id: string;
@@ -145,8 +146,11 @@ export default function MyIDView() {
               {dimMap.map((d) => {
                 const v = Number(scores[d.key] ?? 0);
                 const pct = Math.min(100, Math.max(0, (v / 10) * 100));
+                // Capacidade (sono, contexto, funcionalidade…) é melhor quanto maior;
+                // a cor segue a gravidade, não o número cru.
+                const g = gravidadeDimensao(d.key, v);
                 const tone =
-                  v <= 3 ? 'bg-emerald-500' : v <= 6 ? 'bg-amber-500' : v <= 8 ? 'bg-orange-500' : 'bg-destructive';
+                  g <= 3 ? 'bg-emerald-500' : g <= 6 ? 'bg-amber-500' : g <= 8 ? 'bg-orange-500' : 'bg-destructive';
                 return (
                   <div key={d.key} className="rounded-lg border border-border/40 p-3">
                     <div className="flex items-center justify-between">

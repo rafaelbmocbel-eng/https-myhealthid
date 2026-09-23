@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 /**
- * PortalGate — intermediate component that forcefully signs out ANY existing
- * Supabase session before rendering the patient login page.
+ * PortalGate — se o paciente dono do link já está logado, vai direto ao portal;
+ * senão encerra qualquer outra sessão antes de mostrar o login do paciente.
  * This guarantees the patient portal link never leaks into the professional app.
  */
 export default function PortalGate() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [ready, setReady] = useState(false);
   const [PacienteLogin, setPacienteLogin] = useState<React.ComponentType | null>(null);
   const [demorandoMuito, setDemorandoMuito] = useState(false);
@@ -25,7 +26,30 @@ export default function PortalGate() {
     let cancelled = false;
 
     const init = async () => {
-      // 1) Force sign out — no matter who is logged in
+      // 0) O próprio paciente dono deste link já está logado? Vai direto ao
+      //    portal — antes cada toque no link do WhatsApp deslogava e pedia
+      //    cadastro de novo (atrito alto, principalmente para idosos).
+      if (token) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const { data: pac } = await supabase
+              .from('pacientes')
+              .select('id')
+              .eq('user_id', session.user.id)
+              .eq('portal_token', token)
+              .maybeSingle();
+            if (pac && !cancelled) {
+              navigate('/paciente/dashboard', { replace: true });
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('[PortalGate] checagem de sessão falhou (segue para o login):', e);
+        }
+      }
+
+      // 1) Sessão de outra pessoa (profissional ou outra ficha): sai antes do login
       try {
         await supabase.auth.signOut();
       } catch (e) {
@@ -54,6 +78,7 @@ export default function PortalGate() {
 
     init();
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!ready || !PacienteLogin) {

@@ -204,6 +204,9 @@ DIMENSÃO ANALISADA: ${dimInfo.nome}
 Descrição: ${dimInfo.descricao}
 Foco terapêutico típico: ${dimInfo.foco}
 Score nesta dimensão: ${scoreValor != null ? Number(scoreValor).toFixed(1) : 'não informado'} / 10
+Direção da escala: ${['R', 'C', 'AF', 'HID', 'NUT', 'ERG', 'EFI'].includes(dimensao)
+  ? 'CAPACIDADE — quanto MAIOR, MELHOR (10 = ótimo, 0 = muito comprometido).'
+  : 'DEMANDA/CARGA — quanto MAIOR, PIOR (0 = sem problema, 10 = muito comprometido).'}
 
 RESPOSTAS DA PACIENTE NESTA DIMENSÃO:
 ${JSON.stringify(respostasFiltradas, null, 2)}

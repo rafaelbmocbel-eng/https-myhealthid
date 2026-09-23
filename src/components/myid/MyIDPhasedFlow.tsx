@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Clock, CheckCircle2 } from 'lucide-react';
+import { pendenciasDoBloco } from '@/utils/myid/validacaoBlocos';
 import { Bloco1 } from './steps/Bloco1';
 import { Bloco2 } from './steps/Bloco2';
 import { Bloco3 } from './steps/Bloco3';
@@ -155,6 +156,12 @@ export function MyIDPhasedFlow({
   );
 
   const handleAdvance = async () => {
+    // Pergunta de escolha sem resposta entraria no cálculo com valor assumido.
+    const faltam = pendenciasDoBloco(blocoNumero, data);
+    if (faltam.length > 0) {
+      toast({ title: 'Falta responder', description: faltam.join(', '), variant: 'destructive' });
+      return;
+    }
     // Inside the phase: still has more blocos
     if (blocoIdxInPhase < totalBlocosNaFase - 1) {
       setBlocoIdxInPhase((i) => i + 1);
