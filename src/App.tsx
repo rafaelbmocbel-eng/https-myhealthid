@@ -83,6 +83,7 @@ const PacienteDiario = lazyWithRetry(() => import("./pages/paciente/PacienteDiar
 const PacienteEvolucao = lazyWithRetry(() => import("./pages/paciente/PacienteEvolucao"));
 const PacienteExercicios = lazyWithRetry(() => import("./pages/paciente/PacienteExercicios"));
 const PacientePlanoIA = lazyWithRetry(() => import("./pages/paciente/PacientePlanoIA"));
+const PacienteAvatar = lazyWithRetry(() => import("./pages/paciente/PacienteAvatar"));
 const PacienteTreinoCompleto = lazyWithRetry(() => import("./pages/paciente/PacienteTreinoCompleto"));
 const PacienteDicas = lazyWithRetry(() => import("./pages/paciente/PacienteDicas"));
 const PacientePagamentos = lazyWithRetry(() => import("./pages/paciente/PacientePagamentos"));
@@ -231,6 +232,7 @@ const App = () => (
                 <Route path="/paciente/diario" element={<ProtectedPatientRoute><PacienteDiario /></ProtectedPatientRoute>} />
                 <Route path="/paciente/evolucao" element={<ProtectedPatientRoute><PacienteEvolucao /></ProtectedPatientRoute>} />
                 <Route path="/paciente/exercicios" element={<ProtectedPatientRoute><PacienteExercicios /></ProtectedPatientRoute>} />
+                <Route path="/paciente/avatar" element={<ProtectedPatientRoute><PacienteAvatar /></ProtectedPatientRoute>} />
                 <Route path="/paciente/plano-ia" element={<ProtectedPatientRoute><PacientePlanoIA /></ProtectedPatientRoute>} />
                 <Route path="/paciente/treino-completo" element={<ProtectedPatientRoute><PacienteTreinoCompleto /></ProtectedPatientRoute>} />
                 <Route path="/paciente/dicas" element={<ProtectedPatientRoute><PacienteDicas /></ProtectedPatientRoute>} />

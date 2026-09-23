@@ -17,7 +17,7 @@ const FREE_FEATURES: WellnessFeature[] = ['myid', 'missoes_basicas'];
 export function useWellnessAccess() {
   const { user, authReady } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['wellness-status', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_wellness_status');
@@ -51,7 +51,12 @@ export function useWellnessAccess() {
   // Consulta mensal NÃO entra no trial (só Premium pago)
   const TRIAL_EXCLUDED: WellnessFeature[] = ['consulta_mensal'];
 
+  // Sem resposta do servidor (carregando ou erro) não dá para saber o tier:
+  // o padrão 'clinico' abriria o conteúdo premium para o free.
+  const tierDesconhecido = !data && (isLoading || isError);
+
   const hasFeature = (feature: WellnessFeature): boolean => {
+    if (tierDesconhecido) return feature === 'myid';
     if (isClinico || isPremium) return true;
     if (isFree) {
       if (FREE_FEATURES.includes(feature)) return true;
@@ -63,6 +68,7 @@ export function useWellnessAccess() {
 
   return {
     isLoading,
+    isError,
     tipoConta,
     isClinico,
     isFree,

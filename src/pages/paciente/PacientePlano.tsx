@@ -32,7 +32,8 @@ export default function PacientePlano() {
   const { toast } = useToast();
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { tipoConta, isPremium, isFree, proximaCobranca } = useWellnessAccess();
+  const { tipoConta, isPremium, isFree, proximaCobranca, isLoading: tierCarregando, isError: tierErro } = useWellnessAccess();
+  const tierPronto = !tierCarregando && !tierErro;
   const [pagando, setPagando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
 
@@ -175,7 +176,7 @@ export default function PacientePlano() {
                   <p className="text-[11px] text-muted-foreground">Confirmando seu pagamento…</p>
                 </div>
               )}
-              {!isPremium && tipoConta !== 'clinico' && !confirmando && (
+              {!isPremium && tierPronto && tipoConta !== 'clinico' && !confirmando && (
                 <Button className="w-full mt-3" onClick={handleAssinar} disabled={pagando}>
                   {pagando ? <Loader2 className="icon-sm mr-2 animate-spin" /> : <Sparkles className="icon-sm mr-2" />}
                   {pagando ? 'Abrindo pagamento…' : 'Assinar agora'}
@@ -195,7 +196,7 @@ export default function PacientePlano() {
                   )}
                 </div>
               )}
-              {tipoConta === 'clinico' && (
+              {tierPronto && tipoConta === 'clinico' && (
                 <div className="flex items-center gap-2 mt-3 p-2 rounded-lg bg-muted/40">
                   <Lock className="icon-sm text-muted-foreground" />
                   <p className="text-[11px] text-muted-foreground">

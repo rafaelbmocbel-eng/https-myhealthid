@@ -6,6 +6,7 @@ import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import PortalSemVinculoCard from '@/components/paciente/PortalSemVinculoCard';
+import PortalErrorState from '@/components/paciente/PortalErrorState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,25 +57,29 @@ export default function PacienteQuestionarios() {
   const [creatingRetake, setCreatingRetake] = useState(false);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
   const [terapeutaId, setTerapeutaId] = useState<string | null>(null);
+  const [erroCarregar, setErroCarregar] = useState(false);
 
   const fetchQuestionarios = async () => {
     if (!user) return;
+    setErroCarregar(false);
 
-    const { data: pac } = await supabase
+    const { data: pac, error: errPac } = await supabase
       .from('pacientes')
       .select('id, terapeuta_id')
       .eq('user_id', user.id)
       .maybeSingle();
+    if (errPac) { setErroCarregar(true); setLoading(false); return; }
 
     if (!pac) { setLoading(false); return; }
     setPacienteId(pac.id);
     setTerapeutaId(pac.terapeuta_id);
 
-    const { data } = await supabase
+    const { data, error: errQ } = await supabase
       .from('myid_avaliacoes')
       .select('id, token_acesso, status, created_at, updated_at, respostas_brutas, resultado_processado, paciente_id, terapeuta_id')
       .eq('paciente_id', pac.id)
       .order('created_at', { ascending: false });
+    if (errQ) { setErroCarregar(true); setLoading(false); return; }
 
     setQuestionarios(data || []);
     setLoading(false);
@@ -396,6 +401,16 @@ export default function PacienteQuestionarios() {
   const pendentes = questionarios.filter(q => q.status !== 'concluido');
   const concluidos = questionarios.filter(q => q.status === 'concluido');
   const hasPending = pendentes.length > 0;
+
+  if (erroCarregar) {
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <PortalErrorState onRetry={() => { setLoading(true); fetchQuestionarios(); }} mensagem="Não consegui carregar seus questionários. Verifique sua internet e tente de novo." />
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
 
   if (!loading && !pacienteId) {
     return (

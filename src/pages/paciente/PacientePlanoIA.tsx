@@ -51,6 +51,8 @@ export function PlanoPersonalizadoSection() {
       (supabase as any).from('planos_ia_cliente').select('tipo, titulo, conteudo')
         .eq('paciente_id', pid),
     ]);
+    const falha = [t, d, dir, ia].find(r => r.error);
+    if (falha) throw falha.error;
     setTreino(t.data || null);
     setDieta(d.data || null);
     setDiretrizes(dir.data || []);
@@ -124,10 +126,12 @@ export function PlanoPersonalizadoSection() {
         });
         if (res.error) throw await erroDaFuncao(res.error);
         const plano = (res.data as any)?.plano;
-        if (plano) {
-          await (supabase as any).from('planos_ia_cliente').upsert(
+        if (!plano) throw new Error('Não consegui gerar o plano agora. Tente de novo em instantes.');
+        {
+          const { error: errSalvar } = await (supabase as any).from('planos_ia_cliente').upsert(
             { paciente_id: pacienteId, tipo: 'treino', titulo: plano.titulo || 'Meu treino personalizado', conteudo: { ...plano, baseadoEm } },
             { onConflict: 'paciente_id,tipo' });
+          if (errSalvar) throw errSalvar;
         }
       }
 
@@ -150,10 +154,12 @@ export function PlanoPersonalizadoSection() {
         });
         if (res.error) throw await erroDaFuncao(res.error);
         const plano = (res.data as any)?.plano;
-        if (plano) {
-          await (supabase as any).from('planos_ia_cliente').upsert(
+        if (!plano) throw new Error('Não consegui gerar o plano agora. Tente de novo em instantes.');
+        {
+          const { error: errSalvar } = await (supabase as any).from('planos_ia_cliente').upsert(
             { paciente_id: pacienteId, tipo: 'nutricao', titulo: plano.titulo || 'Meu plano alimentar personalizado', conteudo: plano },
             { onConflict: 'paciente_id,tipo' });
+          if (errSalvar) throw errSalvar;
         }
       }
 

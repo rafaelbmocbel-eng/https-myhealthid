@@ -125,7 +125,7 @@ export default function HistoricoClinicoCard() {
   const [pacienteId, setPacienteId] = useState<string | null>(null);
   const [temProfissional, setTemProfissional] = useState(true);
   const [loaded, setLoaded] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'erro'>('idle');
   const [enviando, setEnviando] = useState(false);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,7 +179,7 @@ export default function HistoricoClinicoCard() {
           dados.alergias.outros,
         ].filter(Boolean).join('; ');
 
-        await (supabase as any)
+        const { error } = await (supabase as any)
           .from('pacientes')
           .update({
             historico_clinico: payload,
@@ -188,11 +188,12 @@ export default function HistoricoClinicoCard() {
             ...(alerg ? { alergias: alerg } : {}),
           })
           .eq('id', pacienteId);
+        if (error) throw error;
 
         setSaveStatus('saved');
         savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2500);
       } catch {
-        setSaveStatus('idle');
+        setSaveStatus('erro');
       }
     }, 2500);
 
@@ -310,10 +311,11 @@ export default function HistoricoClinicoCard() {
       if ((data as any)?.error) throw new Error((data as any).error);
 
       // Salva timestamp do último envio
-      await (supabase as any)
+      const { error: errEnvio } = await (supabase as any)
         .from('pacientes')
         .update({ historico_clinico: { ...dados, ultimo_envio: new Date().toISOString() } })
         .eq('id', pacienteId);
+      if (errEnvio) throw errEnvio;
       setDados(d => ({ ...d, ultimo_envio: new Date().toISOString() }));
 
       toast({
@@ -368,6 +370,9 @@ export default function HistoricoClinicoCard() {
           )}
           {saveStatus === 'saved' && (
             <span className="text-[11px] text-emerald-600 flex items-center gap-1">✓ Salvo</span>
+          )}
+          {saveStatus === 'erro' && (
+            <span className="text-[11px] text-destructive flex items-center gap-1">Não salvou — verifique a internet</span>
           )}
         </div>
       </div>

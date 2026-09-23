@@ -97,6 +97,7 @@ export default function PacienteAgenda() {
 
       if (!pac) return;
       setPaciente(pac);
+      if (!pac.terapeuta_id) return;
 
       const { data: cfg } = await supabase
         .from('config_agenda')
@@ -391,7 +392,7 @@ export default function PacienteAgenda() {
     );
   }
 
-  if (!paciente) {
+  if (!paciente || !paciente.terapeuta_id) {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
@@ -605,7 +606,7 @@ export default function PacienteAgenda() {
               {!config ? (
                 <Card>
                   <CardContent className="p-6 text-center">
-                    <p className="text-xs text-muted-foreground">Agenda não configurada pelo terapeuta.</p>
+                    <p className="text-xs text-muted-foreground">Seu profissional ainda não abriu horários para agendamento online. Fale com ele pelo WhatsApp.</p>
                   </CardContent>
                 </Card>
               ) : (

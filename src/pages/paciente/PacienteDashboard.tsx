@@ -302,7 +302,8 @@ export default function PacienteDashboard() {
   // Checklist "Primeiros passos".
   //  - Histórico CLÍNICO = perguntas de doenças/cirurgias/traumas → alimenta o avatar.
   //  - Histórico de SAÚDE = relato da dor atual (voz/texto), o "contar sua história".
-  const historicoFeito = !!(paciente as any)?.historico_clinico;
+  // Só conta quando foi ENVIADO para revisão — rascunho auto-salvo não gera achados.
+  const historicoFeito = !!(paciente as any)?.historico_clinico?.ultimo_envio;
   const cadastroCompleto = (paciente as any)?.cadastro_status !== 'pendente_paciente';
   const questFree = isFree && !isInTrial;
   const questionariosOk = myidConcluido && stats.pendentes === 0 && !proxInstrumento;

@@ -12,6 +12,7 @@ import { useSpeechToText } from '@/hooks/useSpeechToText';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { erroDaFuncao } from '@/lib/fnError';
 
 interface HistoriaAtual {
   queixa: string;
@@ -172,7 +173,7 @@ export default function PacienteHistoria() {
         .map(c => ({ pergunta: c.label, resposta: historia[c.id].trim() }))
         .filter(a => a.resposta.length >= 3);
       const { data, error } = await supabase.functions.invoke('historia-paciente', { body: { answers } });
-      if (error) throw error;
+      if (error) throw await erroDaFuncao(error);
       const tipo = (data as any)?.tipo;
       toast({
         title: tipo === 'inicial' ? '✅ História enviada' : '✅ Atualização enviada',
@@ -182,6 +183,8 @@ export default function PacienteHistoria() {
       const msg = e?.message || '';
       if (msg.includes('24h') || msg.includes('Você já enviou')) {
         toast({ title: 'Já enviado hoje', description: 'Você pode reenviar amanhã. Suas edições continuam sendo salvas.' });
+      } else if (msg === 'paciente_nao_encontrado') {
+        toast({ title: 'Cadastro incompleto', description: 'Conecte-se a um profissional para enviar sua história.', variant: 'destructive' });
       } else {
         toast({ title: 'Não foi possível enviar', description: msg || 'Tente novamente em instantes.', variant: 'destructive' });
       }

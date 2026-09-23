@@ -25,8 +25,8 @@ interface Props { pacienteId: string; }
 export default function QuestionariosClinicosSection({ pacienteId }: Props) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { isFree, isInTrial } = useWellnessAccess();
-  const bloqueado = isFree && !isInTrial;
+  const { isFree, isInTrial, isLoading: tierCarregando, isError: tierErro } = useWellnessAccess();
+  const bloqueado = (isFree && !isInTrial) || tierCarregando || tierErro;
 
   const [aberto, setAberto] = useState<InstrumentoId | null>(null);
   const [histAberto, setHistAberto] = useState(false);
