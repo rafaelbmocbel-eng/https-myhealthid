@@ -65,7 +65,11 @@ serve(async (req: Request) => {
         .select('whatsapp_provider')
         .eq('terapeuta_id', user.id)
         .maybeSingle()
-      if ((prov?.whatsapp_provider || 'zapi').toLowerCase() === 'evolution') {
+      // Evolution e Meta (API oficial) saem pelo remetente compartilhado; só a
+      // Z-API segue o caminho abaixo. Antes a Meta caía no caminho Z-API e toda
+      // resposta manual da caixa dava "credenciais Z-API não configuradas".
+      const provedor = (prov?.whatsapp_provider || 'zapi').toLowerCase()
+      if (provedor === 'evolution' || provedor === 'meta') {
         const admin = createClient(
           Deno.env.get('SUPABASE_URL')!,
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -79,7 +83,7 @@ serve(async (req: Request) => {
           if (!message) throw new Error('Message or media is required')
           ok = await enviarWhatsapp(admin, user.id, phone, message, { manual: true })
         }
-        if (!ok) throw new Error('Falha ao enviar pelo Evolution API')
+        if (!ok) throw new Error(provedor === 'meta' ? 'Falha ao enviar pela API oficial do WhatsApp' : 'Falha ao enviar pelo Evolution API')
         return new Response(
           JSON.stringify({ success: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },

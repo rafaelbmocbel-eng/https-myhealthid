@@ -51,15 +51,23 @@ interface ChatMessage {
 
 const DIA_KEY = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
 
+// O Deno roda em UTC; Brasília é UTC-3 fixo (sem horário de verão desde 2019).
+// Este Date "deslocado" deve ser lido SEMPRE com getUTC* — assim os campos
+// (dia, hora) saem no horário de Brasília.
+const OFFSET_BR_MS = 3 * 3600000;
+function agoraBR(): Date {
+  return new Date(Date.now() - OFFSET_BR_MS);
+}
+
 function dentroDoHorario(cfg: ConfigAutomacao): boolean {
   if (!cfg.horario_inicio || !cfg.horario_fim) return true;
-  const now = new Date();
-  const dia = DIA_KEY[now.getDay()];
+  const now = agoraBR();
+  const dia = DIA_KEY[now.getUTCDay()];
   const dias: string[] = cfg.dias_semana || [];
   if (dias.length && !dias.includes(dia)) return false;
   const [hi, mi] = String(cfg.horario_inicio).split(":").map(Number);
   const [hf, mf] = String(cfg.horario_fim).split(":").map(Number);
-  const cur = now.getHours() * 60 + now.getMinutes();
+  const cur = now.getUTCHours() * 60 + now.getUTCMinutes();
   return cur >= hi * 60 + mi && cur <= hf * 60 + mf;
 }
 
@@ -177,13 +185,22 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
       const dur = cfgAgenda?.duracao_padrao || 60;
       const hi = String(cfgAgenda?.horario_inicio || "08:00").split(":").map(Number);
       const hf = String(cfgAgenda?.horario_fim || "18:00").split(":").map(Number);
-      const diasOk: string[] = cfgAgenda?.dias_semana || ["seg","ter","qua","qui","sex"];
+      // dias_semana é salvo como objeto {seg: true, ter: false, ...}; aceita
+      // também lista por segurança. Antes o .includes() num objeto quebrava a
+      // consulta de horários inteira.
+      const rawDias = cfgAgenda?.dias_semana as unknown;
+      const diasOk: string[] = Array.isArray(rawDias)
+        ? (rawDias as string[])
+        : rawDias && typeof rawDias === "object"
+          ? Object.entries(rawDias as Record<string, boolean>).filter(([, v]) => v).map(([k]) => k)
+          : ["seg", "ter", "qua", "qui", "sex"];
+      const hojeBR = agoraBR();
       for (let d = 0; d < dias; d++) {
-        const dia = new Date(inicio.getTime() + d * 86400000);
-        if (!diasOk.includes(DIA_KEY[dia.getDay()])) continue;
+        const dia = new Date(hojeBR.getTime() + d * 86400000); // campos em horário de Brasília
+        if (!diasOk.includes(DIA_KEY[dia.getUTCDay()])) continue;
         for (let m = hi[0] * 60 + hi[1]; m + dur <= hf[0] * 60 + hf[1]; m += dur) {
-          const slot = new Date(dia);
-          slot.setHours(Math.floor(m / 60), m % 60, 0, 0);
+          // Horário de Brasília → instante real (UTC = BR + 3h).
+          const slot = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), Math.floor(m / 60), m % 60) + OFFSET_BR_MS);
           if (slot < new Date(Date.now() + 2 * 3600000)) continue;
           const ocupado = ocupados.some((o) =>
             new Date(o.data_inicio) <= slot && new Date(o.data_fim) > slot
@@ -206,9 +223,8 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
         terapeuta_id, paciente_id: ctx.paciente.id,
         data_inicio: data_inicio.toISOString(),
         data_fim: data_fim.toISOString(),
-        status: "confirmacao_pendente",
-        observacao,
-        origem: "bot_whatsapp",
+        status: "pendente",
+        observacoes: observacao,
       }).select("id").single();
       if (error) return { ok: false, erro: error.message };
       // Notifica profissional
@@ -223,9 +239,11 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
     }
 
     if (name === "registrar_chegada") {
-      const hoje = new Date();
-      const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString();
-      const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59).toISOString();
+      // "Hoje" em Brasília: 00:00 BR = 03:00 UTC.
+      const hoje = agoraBR();
+      const inicioMs = Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate()) + OFFSET_BR_MS;
+      const inicioDia = new Date(inicioMs).toISOString();
+      const fimDia = new Date(inicioMs + 86400000 - 1000).toISOString();
       const { data: agHoje } = await admin.from("agendamentos")
         .select("id, data_inicio")
         .eq("terapeuta_id", terapeuta_id)
@@ -237,9 +255,10 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
         .limit(1)
         .maybeSingle();
       if (!agHoje) return { ok: false, erro: "Nenhuma sessão encontrada para hoje." };
-      await admin.from("agendamentos")
+      const { error: chkErr } = await admin.from("agendamentos")
         .update({ checked_in_em: new Date().toISOString() })
         .eq("id", agHoje.id);
+      if (chkErr) return { ok: false, erro: "Não consegui registrar a chegada agora." };
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "checkin_sala_espera",
         titulo: "🟢 Paciente chegou",
@@ -252,10 +271,11 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
 
     if (name === "confirmar_proxima_sessao") {
       if (!ctx.proxima_sessao) return { ok: false, erro: "Nenhuma sessão futura encontrada." };
-      await admin.from("agendamentos").update({
+      const { error: confErr } = await admin.from("agendamentos").update({
         status: "confirmado",
         confirmado_pelo_paciente_em: new Date().toISOString(),
       }).eq("id", ctx.proxima_sessao.id);
+      if (confErr) return { ok: false, erro: "Não consegui confirmar agora. Escale para humano." };
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "confirmacao_paciente",
         titulo: "✅ Paciente confirmou sessão",
@@ -269,10 +289,11 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
     if (name === "reagendar_proxima_sessao") {
       if (!ctx.proxima_sessao) return { ok: false, erro: "Nenhuma sessão futura para reagendar." };
       const motivoReagendamento = typeof args.motivo === "string" ? args.motivo : "—";
-      await admin.from("agendamentos").update({
+      const { error: reagErr } = await admin.from("agendamentos").update({
         status: "cancelado",
-        observacao: `Reagendamento solicitado via bot: ${motivoReagendamento}`,
+        observacoes: `Reagendamento solicitado via bot: ${motivoReagendamento}`,
       }).eq("id", ctx.proxima_sessao.id);
+      if (reagErr) return { ok: false, erro: "Não consegui liberar o horário agora. Escale para humano." };
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "reagendamento_solicitado",
         titulo: "🔄 Paciente quer reagendar",
@@ -286,10 +307,11 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
     if (name === "cancelar_proxima_sessao") {
       if (!ctx.proxima_sessao) return { ok: false, erro: "Nenhuma sessão futura encontrada." };
       const motivoCancelamento = typeof args.motivo === "string" ? args.motivo : "—";
-      await admin.from("agendamentos").update({
+      const { error: cancErr } = await admin.from("agendamentos").update({
         status: "cancelado",
-        observacao: `Cancelado via bot: ${motivoCancelamento}`,
+        observacoes: `Cancelado via bot: ${motivoCancelamento}`,
       }).eq("id", ctx.proxima_sessao.id);
+      if (cancErr) return { ok: false, erro: "Não consegui cancelar agora. Escale para humano." };
       await admin.from("notificacoes").insert({
         terapeuta_id, tipo: "cancelamento_bot",
         titulo: "⚠️ Cancelamento via bot",
@@ -398,6 +420,12 @@ Deno.serve(async (req) => {
     if (!cfg || !cfg.bot_ativo) {
       return new Response(JSON.stringify({ ok: true, skip: "bot desativado" }), { headers: corsHeaders });
     }
+    // Modo férias: nada de IA nem de ações na agenda (cancelar/confirmar)
+    // enquanto as automações estiverem pausadas — antes o bot seguia agindo e
+    // só o envio da resposta era bloqueado.
+    if (cfg.automacoes_pausadas) {
+      return new Response(JSON.stringify({ ok: true, skip: "automacoes_pausadas" }), { headers: corsHeaders });
+    }
 
     // REGRA ESTRITA: o bot só manda automática para quem está na lista de
     // CLIENTES — cadastrado E ativo. Sem cadastro, inativo, ou removido dos
@@ -452,8 +480,9 @@ Deno.serve(async (req) => {
         bot_ativo: false,
       }).eq("id", conversa_id);
       const aviso = "Recebi sua mensagem e já vou pedir para o(a) profissional te responder pessoalmente agora. 💙";
-      await enviarWhatsapp(admin, conv.terapeuta_id, conv.telefone, aviso);
-      await admin.from("whatsapp_mensagens_inbox").insert({
+      const avisoEnviado = await enviarWhatsapp(admin, conv.terapeuta_id, conv.telefone, aviso);
+      // Só registra na caixa se a mensagem realmente saiu.
+      if (avisoEnviado) await admin.from("whatsapp_mensagens_inbox").insert({
         conversa_id, terapeuta_id: conv.terapeuta_id, direcao: "saida", tipo: "texto",
         conteudo: aviso, status: "enviada", metadata: { bot: true, red_flag: flagged },
       });
@@ -483,8 +512,8 @@ Deno.serve(async (req) => {
       }
       const msgFora = cfg.mensagem_fora_horario || "Recebemos sua mensagem! Nosso horário de atendimento é em breve, e logo te respondemos. 💙";
       const personalizada = msgFora.replace("{nome}", (conv.nome_contato?.split(" ")[0] || ""));
-      await enviarWhatsapp(admin, conv.terapeuta_id, conv.telefone, personalizada);
-      await admin.from("whatsapp_mensagens_inbox").insert({
+      const foraEnviado = await enviarWhatsapp(admin, conv.terapeuta_id, conv.telefone, personalizada);
+      if (foraEnviado) await admin.from("whatsapp_mensagens_inbox").insert({
         conversa_id, terapeuta_id: conv.terapeuta_id, direcao: "saida", tipo: "texto",
         conteudo: personalizada, status: "enviada", metadata: { bot: true, fora_horario: true },
       });

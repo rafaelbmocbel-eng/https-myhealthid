@@ -168,7 +168,14 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
 
   const salvar = async () => {
     setSaving(true);
-    const { error } = await supabase.from("whatsapp_automacoes").upsert(cfg, { onConflict: "terapeuta_id" });
+    // Campos numéricos obrigatórios no banco: se ficaram vazios na tela, volta
+    // ao padrão em vez de gravar null (que fazia o "Salvar" dar erro).
+    const payload = {
+      ...cfg,
+      sla_minutos: cfg.sla_minutos ?? 30,
+      max_turnos_bot: cfg.max_turnos_bot ?? 5,
+    };
+    const { error } = await supabase.from("whatsapp_automacoes").upsert(payload, { onConflict: "terapeuta_id" });
     setSaving(false);
     if (error) return toast.error("Erro ao salvar: " + error.message);
     toast.success("Automações salvas");

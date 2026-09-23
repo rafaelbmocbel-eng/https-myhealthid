@@ -220,6 +220,21 @@ Deno.serve(async (req) => {
       conversaId = created.id;
     }
 
+    // Idempotência: a Z-API/Meta reenviam o mesmo evento quando não recebem
+    // resposta a tempo. Se essa mensagem já foi gravada, encerra aqui — senão
+    // ela entrava duplicada e o bot respondia duas vezes.
+    if (messageId) {
+      const { data: jaExiste } = await admin
+        .from("whatsapp_mensagens_inbox").select("id")
+        .eq("terapeuta_id", terapeuta_id).eq("zapi_message_id", messageId)
+        .limit(1).maybeSingle();
+      if (jaExiste) {
+        return new Response(JSON.stringify({ ok: true, duplicado: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Insere mensagem
     const { error: mErr } = await admin.from("whatsapp_mensagens_inbox").insert({
       conversa_id: conversaId,

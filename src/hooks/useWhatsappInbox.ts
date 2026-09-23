@@ -84,10 +84,13 @@ export function useWhatsappMensagens(conversaId: string | null) {
         .from('whatsapp_mensagens_inbox')
         .select('*')
         .eq('conversa_id', conversaId)
-        .order('created_at', { ascending: true })
+        // Pega as 500 MAIS RECENTES e inverte para exibir em ordem cronológica.
+        // Com ascending + limit, conversas longas mostravam só as 500 mais
+        // antigas e a mensagem nova do paciente nunca aparecia.
+        .order('created_at', { ascending: false })
         .limit(500);
       if (error) throw error;
-      return (data || []) as WAMensagem[];
+      return ((data || []) as WAMensagem[]).reverse();
     },
     enabled: !!conversaId && !!user,
   });

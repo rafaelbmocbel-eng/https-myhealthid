@@ -63,9 +63,18 @@ Deno.serve(async (req) => {
 
       const { data: passo } = await admin
         .from("crm_cadencia_passos")
-        .select("mensagem, ordem")
+        .select("mensagem, ordem, ativo")
         .eq("id", exec.passo_id).maybeSingle();
       if (!passo) { skipados++; continue; }
+
+      // Cadência ou passo pausado pelo profissional: não envia o que já estava
+      // na fila (antes pausar a cadência não impedia os envios agendados).
+      const { data: cad } = await admin
+        .from("crm_cadencias").select("ativo").eq("id", exec.cadencia_id).maybeSingle();
+      if ((cad as any)?.ativo === false || (passo as any).ativo === false) {
+        await admin.from("crm_cadencia_execucoes").update({ status: "cancelado", erro: "cadencia_pausada" }).eq("id", exec.id);
+        skipados++; continue;
+      }
 
       const primeiroNome = conv.nome_contato?.split(" ")[0] || "";
       const msg = passo.mensagem.replace(/\{nome\}/g, primeiroNome);

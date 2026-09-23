@@ -259,6 +259,8 @@ export default function ControleCassi() {
       : patch.recolhida ? 'Guia marcada como recolhida'
       : 'Guia marcada como assinada');
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+    // A lista de guias tem cache próprio — sem isto o botão "continuava ali".
+    qc.invalidateQueries({ queryKey: ['guias-cassi', user?.id] });
   };
   // Excluir cliente (remove do controle — pra duplicados/erros). Soft delete: some
   // das listas mas não apaga o histórico do banco.

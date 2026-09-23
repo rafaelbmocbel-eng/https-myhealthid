@@ -108,7 +108,10 @@ Deno.serve(async (req) => {
         .is("confirmacao_enviada_em", null);
       for (const ag of ags || []) {
         const cfg = await getCfg(ag.terapeuta_id);
-        if (!cfg?.auto_confirmacao_24h && !(cfg?.gatilhos_ativos?.confirmacao_24h)) continue;
+        // O interruptor da tela ("Confirmação 24h") manda: desligado = não envia.
+        // Antes a coluna legada auto_confirmacao_24h (sempre true) mantinha o
+        // envio ligado mesmo com o interruptor desligado.
+        if (cfg?.gatilhos_ativos?.confirmacao_24h === false) continue;
         const info = await processarPaciente(ag);
         if (!info) continue;
         const msg = aplicar(cfg.mensagem_confirmacao || "Olá {nome}! Confirmando sua sessão amanhã às {horario}. Responda SIM para confirmar ou diga se prefere reagendar.", info.nome, info.hora, info.data);
@@ -207,7 +210,7 @@ Deno.serve(async (req) => {
             .select("id", { count: "exact", head: true })
             .eq("paciente_id", ag.paciente_id)
             .eq("terapeuta_id", ag.terapeuta_id)
-            .eq("status", "falta")
+            .eq("status", "faltou")
             .not("no_show_processado_em", "is", null);
           if ((count || 0) === 0) perdoada = true;
         }
@@ -217,7 +220,7 @@ Deno.serve(async (req) => {
           : "No-show automático: paciente não confirmou nem cancelou em até 2h.";
 
         await admin.from("agendamentos").update({
-          status: "falta",
+          status: "faltou",
           no_show_processado_em: new Date().toISOString(),
           observacoes: obsTxt,
         }).eq("id", ag.id);
