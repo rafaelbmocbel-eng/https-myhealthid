@@ -202,7 +202,13 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const pcmWavRef = useRef<Blob | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
 
-  const draftKey = `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
+  // Editar uma avaliação salva usa rascunho próprio: antes dividia a chave com a
+  // avaliação nova em andamento e sobrescrevia/limpava o rascunho dela.
+  const draftKey = initialRecord?.id
+    ? `voice:edit:${initialRecord.id}:${user?.id ?? 'anon'}`
+    : `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
+  // Último conteúdo gravado no banco — o autosave só grava quando algo mudou.
+  const ultimoSalvoRef = useRef<string | null>(null);
   const recBackupKey = `${draftKey}::rec`;
 
   // Wake Lock helpers
@@ -229,6 +235,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     if (!initialRecord || hasRestoredDraftRef.current) return;
     hasRestoredDraftRef.current = true;
     savedAssessmentIdRef.current = initialRecord.id;
+    ultimoSalvoRef.current = JSON.stringify([initialRecord.resultado || null, initialRecord.transcricao || '']);
     setAssessment(initialRecord.resultado || null);
     setEditedTranscript(initialRecord.transcricao || '');
     setIsSaved(true);
@@ -250,8 +257,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       assessment: any;
       expandedSections: Record<string, boolean>;
       isSaved: boolean;
+      avaliacaoId?: string | null;
     }>(draftKey, VOICE_DRAFT_VERSION).then((draft) => {
       if (!draft) return;
+      // Sem o id, o autosave do rascunho restaurado INSERIA uma cópia da avaliação.
+      if (draft.avaliacaoId) savedAssessmentIdRef.current = draft.avaliacaoId;
 
       setStep(draft.step ?? 'record');
       setTranscript(draft.transcript ?? '');
@@ -336,6 +346,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         assessment,
         expandedSections,
         isSaved,
+        avaliacaoId: savedAssessmentIdRef.current,
       },
       VOICE_DRAFT_VERSION,
     );
@@ -352,7 +363,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   // Auto-save em edições — após o primeiro save, qualquer alteração é gravada (debounced)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   useEffect(() => {
-    if (!isSaved || !assessment || step !== 'result') return;
+    // Gate pelo registro existente (não por isSaved): toda edição faz
+    // setIsSaved(false), então o autosave nunca rodava depois de editar.
+    if (!savedAssessmentIdRef.current || !assessment || step !== 'result') return;
+    if (JSON.stringify([assessment, editedTranscript]) === ultimoSalvoRef.current) return;
     setAutoSaveStatus('saving');
     const t = setTimeout(async () => {
       const r = await saveAssessment(assessment, editedTranscript, { silent: true });
@@ -762,6 +776,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         avaliacaoId = inserted?.id ?? null;
         savedAssessmentIdRef.current = avaliacaoId;
       }
+      ultimoSalvoRef.current = JSON.stringify([assessmentToSave, transcriptToSave]);
 
       const noteWarning: string | null = null;
 

@@ -116,7 +116,9 @@ DIRETRIZ DE TRATAMENTO — 3 fases:
 Cada técnica DEVE ter: dosagem clínica concreta (séries×reps, intensidade, frequência), nível de evidência (A/B/C), e citar [n] do BANCO DE EVIDÊNCIA injetado quando aplicável.
 Respeite janelas de cicatrização: muscular 3-8sem, tendão 6-26sem, ligamento 6-12sem.
 
-RESPONDA usando a função estruturada. Seja CONCISO e CLÍNICO — não invente achados; marque como "Inferido" quando incerto. Todos os campos em Português Brasileiro (PT-BR). Códigos CID-10/CIF permanecem no formato original.`;
+COMPLETUDE (decisão do Rafael): a avaliação é o registro clínico do profissional — PRESERVE TODAS AS MINÚCIAS ditas na sessão. Não resuma o que foi relatado ou examinado: mantenha datas, lado (D/E), localização exata, intensidades (EVA), horários e padrões, gatilhos e alívios, medicamentos e doses, exames, cirurgias, testes especiais com resultado (+/−), graus de ADM, graus de força, medidas, hábitos, trabalho, esporte e objetivos do paciente. Prefira texto completo e organizado (tópicos) a frases genéricas.
+
+RESPONDA usando a função estruturada. Seja CLÍNICO e FIEL — não invente achados; marque como "Inferido" quando incerto. Todos os campos em Português Brasileiro (PT-BR). Códigos CID-10/CIF permanecem no formato original.`;
 
 // ──────────────────────────────────────────────────────────────────
 // SCHEMA DE SAÍDA
@@ -136,15 +138,15 @@ const TOOL_SCHEMA = {
           type: "object",
           description: "Estrutura SOAP padrão do prontuário",
           properties: {
-            subjetivo: { type: "string", description: "Relato do paciente: queixa, história, evolução, fatores moduladores." },
-            objetivo: { type: "string", description: "Achados objetivos mencionados (postura, palpação, testes, ADM, força). Se nada foi avaliado objetivamente, indicar." },
-            avaliacao: { type: "string", description: "RESUMO MUITO CURTO da avaliação clínica — MÁXIMO 3 a 4 linhas, em texto corrido ou bullets enxutos. NÃO incluir hipóteses diagnósticas (vão em campo próprio). NÃO repetir subjetivo/objetivo. Apenas: síntese geral do quadro + severidade/prognóstico em uma frase. Seja extremamente conciso." },
-            plano: { type: "string", description: "Conduta proposta resumida em 2-4 linhas." },
+            subjetivo: { type: "string", description: "Relato COMPLETO do paciente, sem resumir: queixa, início e mecanismo, evolução, localização e irradiação, intensidade (EVA atual/pior/melhor), padrão ao longo do dia, fatores de piora e melhora, tratamentos e medicamentos já feitos, exames, histórico relevante, rotina/trabalho/esporte, sono, emocional e objetivos. Mantenha todos os detalhes e números ditos, organizados em tópicos." },
+            objetivo: { type: "string", description: "TODOS os achados objetivos mencionados, com os valores exatos: inspeção/postura, palpação (estrutura e lado), ADM em graus, força (0-5), testes especiais com resultado (+/−) e lado, testes funcionais, neurológico, medidas. Não omita nenhum achado dito. Se nada foi avaliado objetivamente, indicar." },
+            avaliacao: { type: "string", description: "Raciocínio clínico da avaliação (até 6-8 linhas): síntese do quadro, tipo de dor, fatores contribuintes (físicos e psicossociais), severidade, irritabilidade e prognóstico. NÃO incluir hipóteses diagnósticas (vão em campo próprio) e NÃO copiar o subjetivo/objetivo — interprete-os." },
+            plano: { type: "string", description: "Conduta proposta completa: o que foi feito na sessão, orientações dadas ao paciente, exercícios/tarefas para casa, frequência das sessões, reavaliação e encaminhamentos. Mantenha tudo o que foi dito." },
           },
           required: ["subjetivo", "objetivo", "avaliacao", "plano"],
         },
 
-        resumo_clinico: { type: "string", description: "Síntese narrativa unificada (3-5 frases) integrando todas as lentes clínicas. SEMPRE em PT-BR." },
+        resumo_clinico: { type: "string", description: "Síntese narrativa unificada (5-8 frases) integrando todas as lentes clínicas, citando os dados mais relevantes (números, lados, testes). SEMPRE em PT-BR." },
         queixa_principal: { type: "string", description: "Queixa principal do paciente em PT-BR. Ex: 'Dor cervical crônica com irradiação para membro superior direito'." },
         tempo_evolucao: { type: "string", description: "Tempo de evolução em PT-BR. Ex: '6 meses', '2 anos'." },
         mecanismo_lesao: { type: "string", description: "Mecanismo de lesão em PT-BR." },
