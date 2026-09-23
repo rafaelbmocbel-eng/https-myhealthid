@@ -60,7 +60,7 @@ const STEPS = [
 
 export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCancel }: ProtocoloEditorProps) {
     const { user } = useAuth();
-    const chancelaFisio = usePodeChancelar('fisioterapia');
+    const chancelaFisio = usePodeChancelar('diretriz');
     const qc = useQueryClient();
     const [salvando, setSalvando] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);

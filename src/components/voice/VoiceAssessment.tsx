@@ -167,9 +167,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [soapNoteSaved, setSoapNoteSaved] = useState(false);
   const [creatingDiretriz, setCreatingDiretriz] = useState(false);
   const [diretrizCreatedId, setDiretrizCreatedId] = useState<string | null>(null);
-  // A diretriz de tratamento (fisioterapia) só é chancelada por Fisioterapeuta
-  // — ou por clínica que tenha um ativo na equipe.
-  const chancelaFisio = usePodeChancelar('fisioterapia');
+  // A diretriz de tratamento é chancelada pelo próprio profissional, de
+  // qualquer profissão (cada um envia a da sua avaliação).
+  const chancelaFisio = usePodeChancelar('diretriz');
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [showProntuarioReview, setShowProntuarioReview] = useState(false);
   const [showFullEditor, setShowFullEditor] = useState(false);

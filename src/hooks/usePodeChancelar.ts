@@ -14,7 +14,10 @@ import { useAuth } from '@/contexts/AuthContext';
 const SUPER_ADMINS = ['rafaelbmocbel@gmail.com'];
 export type AreaChancela =
   | 'treino' | 'nutricao' | 'fisioterapia'
-  | 'medicina' | 'psicologia' | 'terapia_ocupacional' | 'odontologia';
+  | 'medicina' | 'psicologia' | 'terapia_ocupacional' | 'odontologia'
+  // Diretriz de tratamento nascida da avaliação do próprio profissional: cada
+  // profissão envia a sua, do mesmo jeito que o fisioterapeuta.
+  | 'diretriz';
 
 // Perfis que podem liberar cada área. Prescrição de exercício terapêutico é
 // competência tanto do Educador Físico quanto do Fisioterapeuta — por isso
@@ -27,6 +30,7 @@ const PERFIL_EXIGIDO: Record<AreaChancela, PerfilProfissional[]> = {
   psicologia: ['psicologo'],
   terapia_ocupacional: ['terapeuta_ocupacional'],
   odontologia: ['dentista'],
+  diretriz: ['fisioterapeuta', 'medico', 'psicologo', 'nutricionista', 'educador_fisico', 'terapeuta_ocupacional', 'dentista'],
 };
 
 const LABEL: Record<AreaChancela, string> = {
@@ -37,6 +41,7 @@ const LABEL: Record<AreaChancela, string> = {
   psicologia: 'Psicólogo(a)',
   terapia_ocupacional: 'Terapeuta Ocupacional',
   odontologia: 'Dentista',
+  diretriz: 'profissional com a profissão definida no perfil',
 };
 
 export interface Chancela {

@@ -44,7 +44,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }: Props) {
   const { user, profile } = useAuth();
-  const chancelaFisio = usePodeChancelar('fisioterapia');
+  const chancelaFisio = usePodeChancelar('diretriz');
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();

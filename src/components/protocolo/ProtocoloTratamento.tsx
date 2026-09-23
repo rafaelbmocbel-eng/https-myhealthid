@@ -42,7 +42,7 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
   const [salvando, setSalvando] = useState(false);
   const qc = useQueryClient();
   const { user } = useAuth();
-  const chancelaFisio = usePodeChancelar('fisioterapia');
+  const chancelaFisio = usePodeChancelar('diretriz');
 
   const { data: tratamentos = [], isLoading } = useQuery({
     queryKey: ['protocolo-tratamentos', protocoloId],
