@@ -81,6 +81,10 @@ export default function Precos() {
           </div>
         )}
 
+        <p className="mt-5 text-center text-caption">
+          💡 <strong className="text-foreground">Plano anual:</strong> pague 10 meses e use 12 (~17% de desconto). O portal do paciente é sempre grátis.
+        </p>
+
         {/* Excedente IA */}
         <div className="mt-10 rounded-xl border border-border/40 bg-card/40 p-5 sm:p-6">
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
@@ -88,7 +92,7 @@ export default function Precos() {
               <h2 className="h-card mb-1">Excedente de IA</h2>
               <p className="text-caption">
                 Quando ultrapassar o limite mensal do seu plano, cada análise extra custa apenas{" "}
-                <strong className="text-foreground">R$ 0,40</strong>. Cobrado só por uso real.
+                <strong className="text-foreground">R$ 1,00</strong>. Cobrado só por uso real.
               </p>
             </div>
             <Badge variant="secondary" className="shrink-0">Cobrança por uso</Badge>
@@ -113,11 +117,15 @@ export default function Precos() {
           />
           <FAQ
             q="O que acontece se eu passar do limite de IA?"
-            a="Nada bloqueia. As análises extras continuam funcionando e são cobradas a R$ 0,40 cada na próxima fatura."
+            a="Nada bloqueia. As análises extras continuam funcionando e são cobradas a R$ 1,00 cada na próxima fatura."
           />
           <FAQ
             q="O plano Clínica cobra por profissional?"
-            a="Sim. R$ 197 por profissional ativo, com mínimo de 2. O dono recebe painel consolidado e gestão de comissões."
+            a="Sim. R$ 397 por profissional ativo, com mínimo de 2. O dono recebe painel consolidado e gestão de comissões."
+          />
+          <FAQ
+            q="Tem plano anual?"
+            a="Sim. No anual você paga 10 meses e usa 12 — cerca de 17% de desconto em qualquer plano."
           />
           <FAQ
             q="Meus pacientes pagam alguma coisa?"

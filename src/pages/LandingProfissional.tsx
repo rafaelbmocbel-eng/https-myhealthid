@@ -209,16 +209,16 @@ const beneficiosPac = [
 
 const planosProfissional = [
   {
-    nome: 'Individual', preco: '149', periodo: 'por mês · 1 profissional', destaque: false,
-    items: ['Avaliações ilimitadas por voz e texto', 'Diretrizes de tratamento com IA', 'Prontuário inteligente completo', 'Agenda com controle de expediente', 'Portal do paciente incluso', 'Até 100 pacientes ativos'],
+    nome: 'Essencial', preco: '197', periodo: 'por mês · 1 profissional', destaque: false,
+    items: ['Agenda completa e pacientes ilimitados', 'Prontuário SOAP + MyID', 'Avaliação por voz/texto com IA + diretrizes', 'Documentos: declaração, atestado, laudo, recibo', 'Avatar Clínico + portal do paciente', '60 análises de IA/mês inclusas'],
   },
   {
-    nome: 'Clínica', preco: '390', periodo: 'por mês · até 5 profissionais', destaque: true,
-    items: ['Tudo do plano Individual', 'Múltiplos profissionais na equipe', 'Dashboard de gestão da clínica', 'Propostas comerciais em PDF', 'Pacientes ilimitados', 'Suporte prioritário'],
+    nome: 'Profissional', preco: '347', periodo: 'por mês · 1 profissional', destaque: true,
+    items: ['Tudo do Essencial', 'Zap: bot de IA no WhatsApp + automações', 'CRM completo, funil de vendas e cadências', 'Financeiro avançado + pacotes de sessões', 'Vitrine, jornada do cliente e relatórios', '200 análises de IA/mês inclusas'],
   },
   {
-    nome: 'Enterprise', preco: null, periodo: 'Redes e grupos de saúde', destaque: false,
-    items: ['Profissionais ilimitados', 'Integração com sistemas existentes', 'Treinamento e onboarding dedicado', 'SLA garantido e conta gerenciada', 'Contrato e preço personalizados', 'LGPD e segurança avançada'],
+    nome: 'Clínica', preco: '397', periodo: 'por mês · por profissional (mín. 2)', destaque: false,
+    items: ['Tudo do Profissional, para cada profissional', 'Multi-profissional na mesma clínica', 'Painel do dono consolidado', 'Gestão de comissões por profissional', '200 análises de IA/mês por profissional', 'Suporte prioritário'],
   },
 ];
 
@@ -774,6 +774,9 @@ export default function LandingProfissional() {
             <div className="text-[11px] font-bold uppercase tracking-widest text-primary mb-2">Planos Profissionais</div>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Escolha o plano ideal<br className="hidden sm:block" /> para sua prática</h2>
             <p className="mt-3 text-muted-foreground">Comece grátis por 14 dias. Sem cartão de crédito.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              IA inclusa em cada plano · análise extra R$ 1,00 · <strong className="text-foreground">anual: pague 10, use 12</strong>
+            </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 items-start">
             {planosProfissional.map((plano) => (
