@@ -718,14 +718,18 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     try {
       const origem = mode === 'written' ? 'escrita' : 'voice_assessment';
       const effectivePainMap = options?.painMapOverride ?? painMap ?? extractedPainMap ?? null;
+      // Ao editar uma avaliação existente, não há painMap/myidContext na tela:
+      // sem o merge, abrir "Editar" apagava o mapa de dor salvo.
+      const prevMeta = ((assessmentToSave as any)?._meta || {}) as Record<string, any>;
       const resultadoComOrigem = {
         ...normalizeJson(assessmentToSave),
         _meta: {
-          origem,
-          mode,
+          ...prevMeta,
+          origem: prevMeta.origem ?? origem,
+          mode: prevMeta.mode ?? mode,
           savedAt: new Date().toISOString(),
-          mapa_dor: effectivePainMap,
-          myid_contexto: myidContext || null,
+          mapa_dor: effectivePainMap ?? prevMeta.mapa_dor ?? null,
+          myid_contexto: myidContext || prevMeta.myid_contexto || null,
         },
       };
       const payload: any = {
@@ -824,6 +828,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   };
 
   const processAssessment = async () => {
+    let processouOk = false;
     const text = editedTranscript.trim();
     if (!audioBase64 && text.length < 20) {
       toast({ title: 'Conteúdo insuficiente', description: 'Adicione mais conteúdo ou grave áudio.', variant: 'destructive' });
@@ -847,9 +852,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
               .order('created_at', { ascending: false })
               .limit(3),
             supabase
-              .from('pacientes')
+              .from('avaliacoes_identidade')
               .select('myid_score')
-              .eq('id', pacienteId)
+              .eq('paciente_id', pacienteId)
+              .order('created_at', { ascending: false })
+              .limit(1)
               .maybeSingle(),
           ]);
           const historico = histRes.data ?? [];
@@ -1205,6 +1212,16 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         painMapOverride: painMap ?? autoPainMap ?? null,
       });
 
+      if (saveResult.saved) {
+        processouOk = true;
+        // O job já virou avaliação salva: sem isto o banner "concluída em segundo
+        // plano" reaparecia por 2h e o "Salvar" dele duplicava a avaliação.
+        const jobId = activeJobIdRef.current;
+        if (jobId) {
+          activeJobIdRef.current = null;
+          void supabase.from('voice_assessment_jobs' as any).delete().eq('id', jobId).then(() => {}, () => { /* best-effort */ });
+        }
+      }
       setStep('result');
       toast({
         title: saveResult.saved ? '✅ Avaliação gerada e salva!' : '✅ Avaliação gerada!',
@@ -1238,9 +1255,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       }
     } finally {
       setIsProcessing(false);
-      // Cleanup do áudio em audio-temp após processamento (sucesso ou erro)
+      // Remove o áudio só no sucesso: em erro (timeout/546 em gravação longa) ele
+      // é o que permite "Recuperar avaliação" depois.
       const orphanPath = uploadedAudioPathRef.current;
-      if (orphanPath) {
+      if (orphanPath && processouOk) {
         uploadedAudioPathRef.current = null;
         void supabase.storage.from('audio-temp').remove([orphanPath]).catch(() => { /* noop */ });
       }
@@ -2263,13 +2281,13 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                   setStep('result');
                   setResumableJob(null);
                   // Mark job as seen by deleting it
-                  void supabase.from('voice_assessment_jobs' as any).delete().eq('id', resumableJob.id).catch(() => {});
+                  void supabase.from('voice_assessment_jobs' as any).delete().eq('id', resumableJob.id).then(() => {}, () => { /* best-effort */ });
                 }}>
                 Ver resultado
               </Button>
               <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => {
                 setResumableJob(null);
-                void supabase.from('voice_assessment_jobs' as any).delete().eq('id', resumableJob.id).catch(() => {});
+                void supabase.from('voice_assessment_jobs' as any).delete().eq('id', resumableJob.id).then(() => {}, () => { /* best-effort */ });
               }}>
                 Ignorar
               </Button>

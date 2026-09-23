@@ -75,7 +75,8 @@ export default function DiretrizTecnicasEditor({ diretriz, area, pacienteId, onC
         if (Array.isArray(f.marcadores)) f.marcadores = f.marcadores.filter((m: any) => m?.nome && m.nome.trim());
       });
       const { error } = await (supabase as any).from('diretrizes_profissionais')
-        .update({ conteudo: limpo }).eq('id', diretriz.id);
+        // Sem trigger de updated_at: a evolução usa essa data para saber se a conduta mudou.
+        .update({ conteudo: limpo, updated_at: new Date().toISOString() }).eq('id', diretriz.id);
       if (error) throw error;
     },
     onSuccess: () => {

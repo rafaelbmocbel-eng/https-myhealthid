@@ -303,7 +303,8 @@ export default function PacientePerfil() {
   });
 
   const { data: protocolos = [], isLoading: loadingProto } = useQuery({
-    queryKey: ['protocolos-perfil', id],
+    // Prefixo 'protocolos-paciente': as mutações já invalidam essa chave.
+    queryKey: ['protocolos-paciente', 'perfil', id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('protocolos')

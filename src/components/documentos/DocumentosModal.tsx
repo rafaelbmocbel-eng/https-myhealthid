@@ -523,7 +523,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
       doc.save(filename);
 
       // Salvar histórico
-      await (supabase as any).from('documentos_emitidos').insert({
+      const { error: errHist } = await (supabase as any).from('documentos_emitidos').insert({
         terapeuta_id: user.id,
         paciente_id: paciente.id,
         tipo,
@@ -531,7 +531,11 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
         conteudo: dados,
       });
 
-      toast({ title: '📄 Documento gerado!', description: `${TIPO_DOCUMENTO_LABEL[tipo]} baixado com sucesso.` });
+      if (errHist) {
+        toast({ title: 'PDF baixado, mas não registrado no histórico', description: 'Gere de novo se precisar do registro do documento emitido.', variant: 'destructive' });
+      } else {
+        toast({ title: '📄 Documento gerado!', description: `${TIPO_DOCUMENTO_LABEL[tipo]} baixado com sucesso.` });
+      }
       onOpenChange(false);
       setTipo(null);
     } catch (err: any) {

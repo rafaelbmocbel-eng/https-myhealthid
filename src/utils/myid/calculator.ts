@@ -73,8 +73,10 @@ export class MyIDCalculator {
         const painNow = this.responses.bloco_2_pain_now;
         const painMax = this.responses.bloco_2_pain_max;
 
-        if (painNow !== undefined && painMax !== undefined) {
-            const d = (painNow + painMax) / 2;
+        // O slider mostra 0 sem gravar nada: quem não mexe na "dor agora" (porque já
+        // está em 0) ficava com D = 0 mesmo marcando pior dor 9.
+        if (painNow !== undefined || painMax !== undefined) {
+            const d = ((painNow ?? 0) + (painMax ?? 0)) / 2;
             this.scores['D'] = Math.round(d * 10) / 10;
             return this.scores['D'];
         }
@@ -146,10 +148,12 @@ export class MyIDCalculator {
             this.responses.bloco_3_independence ?? this.responses.bloco3?.independencia ?? 0,
             this.responses.bloco_3_social ?? this.responses.bloco3?.vidaSocial ?? 0,
         ].filter((v): v is number => v !== null);
-        // Pior item domina porque EFI é bem-estar: menor = pior
-        const min = Math.min(...efiValues);
+        // As respostas do Bloco 3 medem LIMITAÇÃO (0 = não atrapalha, 10 = impossível),
+        // mas EFI é bem-estar (menor = pior, perda sobre 10 - EFI). Converte aqui;
+        // a pior limitação domina.
+        const max = Math.max(...efiValues);
         const avg = efiValues.reduce((a, b) => a + b, 0) / efiValues.length;
-        const efi = min * 0.6 + avg * 0.4;
+        const efi = 10 - (max * 0.6 + avg * 0.4);
         this.scores['EFI'] = Math.round(efi * 10) / 10;
         return this.scores['EFI'];
     }
@@ -558,7 +562,7 @@ export class MyIDCalculator {
         return {
             session_id: this.responses.session_id || 'N/A',
             timestamp: new Date().toISOString(),
-            versao: '2.0',
+            versao: '2.1',
 
             // MyID-100 score (0-100, higher = better)
             MyID_score: this.result.MyID || 0,

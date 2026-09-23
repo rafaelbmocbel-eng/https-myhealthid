@@ -177,14 +177,17 @@ Deno.serve(async (req) => {
         const eventoData = {
           paciente_id: paciente.id,
           terapeuta_id: paciente.terapeuta_id,
-          regiao_id: "coluna_lombar",
+          // Relato livre (pode ser ombro, joelho...): sem região presumida; o
+          // profissional classifica. "coluna_lombar" nem existia no mapa.
+          regiao_id: "geral",
           sistema: "musculoesqueletico",
           tipo_diagnostico: "relato_paciente",
           origem: "autocadastro_paciente",
           tipo_achado: textoAvatar,
           severidade: 1,
           status: "ativo",
-          visivel_paciente: true,
+          // Relato não revisado não aparece para o cliente (regra: profissional revisa antes).
+          visivel_paciente: false,
           metadata: { avaliacao_voz_id: inserted.id, respostas: filled },
         };
         if (existingEvento) {

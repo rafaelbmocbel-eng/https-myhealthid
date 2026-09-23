@@ -36,7 +36,8 @@ Responda ESTRITAMENTE em JSON:
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  try { await requireUser(req); } catch (r) { return r as Response; }
+  let token = "";
+  try { ({ token } = await requireUser(req)); } catch (r) { return r as Response; }
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -52,6 +53,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "IA indisponível (sem chave configurada)." }), {
         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // O contexto é lido com service role: confere antes, com as permissões do
+    // próprio usuário (RLS — dono ou equipe), se ele pode ver esse paciente.
+    if (paciente_id) {
+      const doUsuario = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+      });
+      const { data: acesso } = await doUsuario.from("pacientes").select("id").eq("id", paciente_id).maybeSingle();
+      if (!acesso) {
+        return new Response(JSON.stringify({ error: "Paciente não encontrado" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

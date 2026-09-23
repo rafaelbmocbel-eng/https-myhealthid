@@ -101,6 +101,10 @@ export async function reprocessarComplemento(
     savedAt: new Date().toISOString(),
     mapa_dor: mapaDor,
   };
+  // Edições manuais, seções confirmadas e o vínculo com a diretriz são do
+  // profissional — a nova resposta da IA não pode apagá-los.
+  const prevSecoes = (input.prevResultado as any)?._secoes;
+  if (prevSecoes) cleanResult._secoes = prevSecoes;
 
   const { error: updErr } = await (supabase as any).from('avaliacoes_voz').update({
     resultado: cleanResult,

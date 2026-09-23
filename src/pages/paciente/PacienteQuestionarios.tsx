@@ -111,7 +111,9 @@ export default function PacienteQuestionarios() {
         respostas_brutas: { ...data, _savedStep: step },
         status: 'em_andamento',
         updated_at: new Date().toISOString(),
-      }).eq('id', activeId);
+      // O autosave com debounce pode disparar DEPOIS do "Finalizar": nunca
+      // rebaixa um MyID já concluído para em andamento.
+      }).eq('id', activeId).neq('status', 'concluido');
       if (error) throw error;
       // Salva em SILÊNCIO — não mostra toast a cada resposta (o wizard já tem o
       // indicador "salvando/salvo" inline e o aviso ao pausar). Só avisamos se

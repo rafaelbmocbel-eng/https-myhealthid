@@ -8,21 +8,28 @@ const corsHeaders = {
 
 function generateRichMyIDNote(av: any, cs: any) {
   const myidScore = Number(av.myid_score ?? 0);
-  const myidFormatted = myidScore.toFixed(1);
+  // complete-myid grava MyID-100 (0–100, maior = melhor); registros antigos
+  // usavam 0–10 (maior = pior). Sem distinguir, um 75 (bom) virava "risco".
+  const escala100 = myidScore > 10;
+  const myidFormatted = escala100 ? `${Math.round(myidScore)}/100` : `${myidScore.toFixed(1)}/10`;
   const classificacao = av.classificacao || "N/A";
   const dNum = Number(cs.D ?? av.score_d ?? 0);
-  const efiNum = Number(cs.EFI ?? av.score_efi ?? 0);
+  // EFI é bem-estar (menor = pior); aqui vira limitação para seguir "maior = pior".
+  const efiNum = 10 - Number(cs.EFI ?? av.score_efi ?? 10);
   const pNum = Number(cs.P ?? av.score_p ?? 0);
   const iNum = Number(cs.I ?? av.score_i ?? 0);
   const nNum = Number(cs.N ?? av.score_n ?? 0);
   const rNum = Number(cs.R ?? av.score_r ?? 0);
   const cNum = Number(cs.C ?? av.score_c ?? 0);
 
-  const severityDesc = myidScore >= 8
+  const nivelRisco = escala100
+    ? (myidScore <= 29 ? 8 : myidScore <= 49 ? 6 : myidScore <= 69 ? 3 : 0)
+    : myidScore;
+  const severityDesc = nivelRisco >= 8
     ? "RISCO DE CRONIFICAÇÃO — Paciente apresenta sobrecarga sistêmica extrema com múltiplos domínios comprometidos. Necessidade urgente de abordagem multidisciplinar."
-    : myidScore >= 6
+    : nivelRisco >= 6
     ? "SOBRECARGA CRÍTICA — O perfil indica demandas que excedem significativamente a capacidade de regulação do paciente. Intervenção prioritária recomendada."
-    : myidScore >= 3
+    : nivelRisco >= 3
     ? "SOBRECARGA MODERADA — Há desequilíbrio entre demandas e capacidades de recuperação. Monitoramento frequente e ajustes terapêuticos são indicados."
     : "RECUPERAÇÃO FAVORÁVEL — O paciente apresenta boa capacidade de regulação com demandas controláveis.";
 
@@ -70,13 +77,13 @@ function generateRichMyIDNote(av: any, cs: any) {
 
   return `📋 QUESTIONÁRIO MyID RESPONDIDO PELO PACIENTE — ${av.paciente_nome}
 
-🎯 RESULTADO GERAL: Score MyID ${myidFormatted}/10 — ${classificacao}
+🎯 RESULTADO GERAL: Score MyID ${myidFormatted} — ${classificacao}
 📌 ${severityDesc}
 ${flagsText}
 
 📊 PERFIL MULTIDIMENSIONAL:
 • Dor (D): ${dNum.toFixed(1)}/10 — ${dNum >= 7 ? "dor intensa" : dNum >= 4 ? "dor moderada" : "dor leve/controlada"}${painLocation ? `, localizada em ${painLocation}` : ""}
-• Funcionalidade (EFI): ${efiNum.toFixed(1)}/10 — ${efiNum >= 7 ? "limitação funcional severa" : efiNum >= 4 ? "limitação funcional moderada" : "funcionalidade preservada"}
+• Limitação funcional (EFI): ${efiNum.toFixed(1)}/10 — ${efiNum >= 7 ? "limitação funcional severa" : efiNum >= 4 ? "limitação funcional moderada" : "funcionalidade preservada"}
 • Psicológico (P): ${pNum.toFixed(1)}/10 — ${pNum >= 7 ? "componente emocional significativo" : pNum >= 4 ? "influência psicológica moderada" : "perfil emocional estável"}
 • Demanda (I): ${iNum.toFixed(1)}/10 — ${iNum >= 7 ? "sobrecarga de demandas elevada" : iNum >= 4 ? "demandas moderadas" : "demandas controladas"}
 • Ruído Sistêmico (N): ${nNum.toFixed(1)}/10 — ${nNum >= 7 ? "múltiplos fatores comprometidos" : nNum >= 4 ? "alguns fatores afetados" : "estilo de vida favorável"}
@@ -89,7 +96,7 @@ ${sleepHours || stressLevel || painIntensity ? `
 🧬 DADOS REPORTADOS:${painIntensity ? ` NRS ${painIntensity}/10.` : ""}${sleepHours ? ` Sono: ${sleepHours}h/noite.` : ""}${stressLevel ? ` Estresse: ${stressLevel}/10.` : ""}` : ""}
 
 📝 INTERPRETAÇÃO CLÍNICA:
-O paciente ${av.paciente_nome} apresenta um índice MyID de ${myidFormatted}/10, classificado como "${classificacao}". ${clinicalNarrative}${painCombo}${psychoNote}${noiseNote}
+O paciente ${av.paciente_nome} apresenta um índice MyID de ${myidFormatted}, classificado como "${classificacao}". ${clinicalNarrative}${painCombo}${psychoNote}${noiseNote}
 
 🔄 Avaliação preenchida pelo paciente. Dados completos disponíveis no dashboard.`;
 }
@@ -122,14 +129,9 @@ serve(async (req) => {
     const forceRegenerate = body.force === true;
     let notasCriadas = 0;
 
-    // If force regenerate, delete existing MyID notes to recreate with rich format
-    if (forceRegenerate) {
-      await supabase
-        .from("notas_prontuario")
-        .delete()
-        .eq("terapeuta_id", terapeutaId)
-        .in("tipo", ["myid_resposta", "avaliacao_profissional"]);
-    }
+    // "force" apagava as notas MyID de TODOS os pacientes do profissional e
+    // recriava com dados perdidos (scores/red flags originais). Agora o
+    // backfill só cria as notas que faltam.
 
     // Get existing notas to avoid duplicates
     const { data: existingNotas } = await supabase

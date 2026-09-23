@@ -160,7 +160,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
       if (!session) throw new Error('Não autenticado');
       const { data, error } = await supabase.functions.invoke('backfill-prontuario', {
         headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { force: true },
+        body: {},
       });
       if (error) throw error;
       toast({ title: `Histórico sincronizado! ✅`, description: `${data?.notas_criadas || 0} nota(s) gerada(s).` });

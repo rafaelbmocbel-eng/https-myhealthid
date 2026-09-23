@@ -14,7 +14,7 @@ import MyIDFormulaDisplay from './MyIDFormulaDisplay';
 import MyIDDicasPessoais from './MyIDDicasPessoais';
 import MyIDTreatmentPlan from './MyIDTreatmentPlan';
 import { shareMyIDResults } from '@/utils/whatsapp';
-import { DIMENSION_LABELS, PerdaCalculada } from '@/utils/myid/lossTable';
+import { DIMENSION_LABELS, PerdaCalculada, classificarMyID100 } from '@/utils/myid/lossTable';
 import { scoresDoResultado } from '@/utils/myid/scores';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -426,8 +426,11 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
   const top4 = perdasItems.slice(0, 4);
   const [openEnc, setOpenEnc] = useState<string | null>(null);
 
-  const statusLabel = myidScoreValue >= 85 ? 'EXCELENTE' : myidScoreValue >= 70 ? 'BOM' : myidScoreValue >= 50 ? 'MODERADO' : myidScoreValue >= 30 ? 'ATENÇÃO' : 'ATENÇÃO PRIORITÁRIA';
-  const statusCor = myidScoreValue >= 85 ? '#10b981' : myidScoreValue >= 70 ? '#f59e0b' : myidScoreValue >= 50 ? '#f97316' : myidScoreValue >= 30 ? '#ef4444' : '#7f1d1d';
+  // Mesma regra do cálculo salvo (inclui o rebaixamento por gatilho crítico),
+  // para o profissional não ver uma classificação diferente da do cliente.
+  const classif = classificarMyID100(Math.round(myidScoreValue), gatilhosCriticos.length > 0);
+  const statusLabel = classif.nome;
+  const statusCor = classif.cor;
 
   const maxPerda = Math.max(...perdasItems.map((i: PerdaItem) => i.perda), 1);
 

@@ -218,12 +218,12 @@ serve(async (req) => {
         });
       }
 
-      await supabase.from("myid_avaliacoes").update({
-        status: "concluido",
-        respostas_brutas: raw_data,
-        resultado_processado: result,
-        updated_at: new Date().toISOString(),
-      }).eq("id", avaliacao_id);
+      // Reenvio (timeout no celular, duplo toque): não duplica histórico/evolução.
+      if (avaliacao.status === "concluido") {
+        return new Response(JSON.stringify({ ok: true, synced: true, duplicado: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       pacienteId = avaliacao.paciente_id;
       terapeutaId = avaliacao.terapeuta_id;
@@ -246,7 +246,26 @@ serve(async (req) => {
       terapeutaId = link.terapeuta_id;
     }
 
+    // Só marca concluído depois que o histórico for gravado — senão uma falha
+    // deixava o MyID "concluído" sem avaliação e sem como reenviar.
+    const marcarConcluido = async () => {
+      if (!avaliacao_id) return null;
+      const { error } = await supabase.from("myid_avaliacoes").update({
+        status: "concluido",
+        respostas_brutas: raw_data,
+        resultado_processado: result,
+        updated_at: new Date().toISOString(),
+      }).eq("id", avaliacao_id);
+      return error;
+    };
+
     if (!pacienteId || !terapeutaId) {
+      const errMarcar = await marcarConcluido();
+      if (errMarcar) {
+        return new Response(JSON.stringify({ error: "Não foi possível salvar o MyID" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ ok: true, synced: false, reason: "missing paciente_id or terapeuta_id" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -301,10 +320,13 @@ serve(async (req) => {
 
     if (insertErr) {
       console.error("Insert avaliacoes_identidade error:", insertErr);
-      return new Response(JSON.stringify({ ok: true, synced: false, error: insertErr.message }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "Não foi possível salvar o MyID. Tente de novo." }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const errMarcar = await marcarConcluido();
+    if (errMarcar) console.error("Update myid_avaliacoes concluido error:", errMarcar);
 
     // 5. Register evolution record
     try {

@@ -8,6 +8,7 @@ import { MyIDCalculator, MyIDResponses } from '@/utils/myid/calculator';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
 import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
+import { toast } from '@/hooks/use-toast';
 
 const DRAFT_VERSION = 1;
 interface MyIDDraft {
@@ -101,7 +102,7 @@ export default function AvaliacaoPublica() {
       const calculator = new MyIDCalculator(data);
       const resultado = calculator.getFullResult();
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      await fetch(
+      const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/complete-myid`,
         {
           method: 'POST',
@@ -117,9 +118,16 @@ export default function AvaliacaoPublica() {
           }),
         }
       );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Erro ao enviar');
+      }
       setResultadoFinal(resultado);
     } catch (e) {
+      // Mantém o rascunho e o formulário: o cliente tenta de novo sem redigitar.
       console.warn('Erro ao sincronizar resultado:', e);
+      toast({ title: 'Não conseguimos enviar suas respostas', description: 'Verifique sua internet e toque em concluir de novo. Suas respostas continuam salvas.', variant: 'destructive' });
+      return false;
     }
     if (draftKeyRef.current) void clearDraft(draftKeyRef.current);
     setConcluido(true);

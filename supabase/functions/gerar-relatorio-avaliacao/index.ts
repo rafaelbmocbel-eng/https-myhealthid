@@ -69,8 +69,12 @@ Deno.serve(async (req) => {
         .eq("id", paciente_id).maybeSingle(),
       // MyID completo com fallback para o formato importado (avaliacoes_identidade).
       carregarResultadoMyid(admin, paciente_id),
+      // Só o que o profissional já revisou e liberou ao cliente — relato e
+      // histórico pendentes de revisão não entram no texto que o cliente lê.
       admin.from("eventos_clinicos_anatomicos").select("*")
-        .eq("paciente_id", paciente_id).order("created_at", { ascending: false }).limit(12),
+        .eq("paciente_id", paciente_id).eq("visivel_paciente", true)
+        .or("tipo_diagnostico.is.null,tipo_diagnostico.not.in.(relato_paciente,historico_relatado)")
+        .order("created_at", { ascending: false }).limit(12),
       admin.from("testes_funcionais_paciente").select("tipo_teste, resultado, unidade, classificacao")
         .eq("paciente_id", paciente_id).order("data_teste", { ascending: false }).limit(8),
       admin.from("body_composition").select("weight_kg, body_fat_pct, muscle_mass_kg, visceral_fat")

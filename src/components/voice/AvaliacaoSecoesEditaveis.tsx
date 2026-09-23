@@ -1064,7 +1064,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
           confirmadas: Array.from(confirmadas),
         },
       };
-      await supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
+      const { error: errEdicao } = await supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
+      if (errEdicao) throw errEdicao;
       if (confirmadas.has(key)) await sincronizarProntuario(confirmadas, novosTextos);
       setEditando(null);
       toast({ title: 'Edição salva' });
@@ -1157,14 +1158,18 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       objetivos: [fase.objetivo, ...fase.demandasAlvo, ...(fase.criteriosProgressao || [])].filter(Boolean),
       sessoes_por_semana: 2,
     }));
-    await (supabase as any).from('protocolo_fases').insert(fasesPayload);
+    const { error: errFases } = await (supabase as any).from('protocolo_fases').insert(fasesPayload);
+    if (errFases) throw errFases;
 
     return prot.id as string;
   };
 
-  const toggleConfirmacao = async (key: SecaoKey) => {
-    const nova = new Set(confirmadas);
+  // `base` e `forcar` servem ao card agrupado (Funcionalidade + Psicossocial):
+  // a 2ª chamada precisa partir do resultado da 1ª, não do estado ainda velho.
+  const toggleConfirmacao = async (key: SecaoKey, base: Set<SecaoKey> = confirmadas, forcar?: boolean): Promise<Set<SecaoKey>> => {
+    const nova = new Set(base);
     const estavaConfirmada = nova.has(key);
+    if (forcar !== undefined && forcar === estavaConfirmada) return nova;
     const diretrizConfirmadaSemProtocolo = key === 'diretriz' && estavaConfirmada && !resultado?._secoes?.diretriz_protocolo_id;
     if (estavaConfirmada && !diretrizConfirmadaSemProtocolo) nova.delete(key); else nova.add(key);
     setSaving(key);
@@ -1181,12 +1186,14 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
         ...resultado,
         _secoes: {
           ...(resultado?._secoes || {}),
-          editadas: editadasIniciais,
+          // A prop pode estar velha até o refetch; o estado tem a última edição salva.
+          editadas: editadasAtuais,
           confirmadas: Array.from(nova),
           ...(protocoloIdCriado ? { diretriz_protocolo_id: protocoloIdCriado } : {}),
         },
       };
-      await supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
+      const { error: errConf } = await supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
+      if (errConf) throw errConf;
       await sincronizarProntuario(nova, textos);
 
       qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
@@ -1203,18 +1210,32 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
         toast({ title: estavaConfirmada ? 'Removida do prontuário' : 'Enviada ao prontuário' });
       }
 
+      return nova;
     } catch (e: any) {
-      setConfirmadas(new Set(estavaConfirmada ? [...confirmadas] : [...confirmadas].filter((k) => k !== key)));
+      setConfirmadas(new Set(base));
       toast({ title: 'Erro', description: e?.message, variant: 'destructive' });
+      return new Set(base);
     } finally { setSaving(null); }
   };
 
   const sincronizarProntuario = async (setConf: Set<SecaoKey>, textosAtuais: Record<SecaoKey, string>) => {
     if (!user) return;
     const dataAtual = new Date().toLocaleDateString('pt-BR');
+    // Busca a nota no banco: duas chamadas seguidas (card agrupado) viam o
+    // notaExistente antigo (undefined) e criavam duas notas para a mesma avaliação.
+    let notaId: string | undefined = notaExistente?.id;
+    if (!notaId) {
+      const { data: nota } = await (supabase as any).from('notas_prontuario')
+        .select('id').eq('referencia_id', avaliacaoId).eq('tipo', 'avaliacao_presencial')
+        .limit(1).maybeSingle();
+      notaId = nota?.id;
+    }
     const incluidas = SECOES.filter((s) => setConf.has(s.key) && textosAtuais[s.key]?.trim());
     if (incluidas.length === 0) {
-      if (notaExistente?.id) await (supabase as any).from('notas_prontuario').delete().eq('id', notaExistente.id);
+      if (notaId) {
+        const { error } = await (supabase as any).from('notas_prontuario').delete().eq('id', notaId);
+        if (error) throw error;
+      }
       return;
     }
     const partes: string[] = [`📅 AVALIAÇÃO PRESENCIAL — ${dataAtual}`];
@@ -1235,10 +1256,12 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       },
       referencia_id: avaliacaoId,
     };
-    if (notaExistente?.id) {
-      await (supabase as any).from('notas_prontuario').update(payload).eq('id', notaExistente.id);
+    if (notaId) {
+      const { error } = await (supabase as any).from('notas_prontuario').update(payload).eq('id', notaId);
+      if (error) throw error;
     } else {
-      const { data } = await (supabase as any).from('notas_prontuario').insert(payload).select('id').single();
+      const { data, error } = await (supabase as any).from('notas_prontuario').insert(payload).select('id').single();
+      if (error) throw error;
       qc.setQueryData(['nota-avaliacao-presencial', avaliacaoId], data);
     }
   };
@@ -1326,8 +1349,9 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                           <button
                             type="button"
                             onClick={async () => {
-                              if (sFunc) await toggleConfirmacao('funcionalidade');
-                              if (sPsi) await toggleConfirmacao('psicossocial');
+                              let base = confirmadas;
+                              if (sFunc) base = await toggleConfirmacao('funcionalidade', base, false);
+                              if (sPsi) await toggleConfirmacao('psicossocial', base, false);
                             }}
                             title="Remover do prontuário"
                             className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground/25 hover:text-red-500 hover:bg-red-500/10 transition-colors"
@@ -1339,8 +1363,9 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                             size="sm"
                             className="h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium"
                             onClick={async () => {
-                              if (sFunc) await toggleConfirmacao('funcionalidade');
-                              if (sPsi) await toggleConfirmacao('psicossocial');
+                              let base = confirmadas;
+                              if (sFunc) base = await toggleConfirmacao('funcionalidade', base, true);
+                              if (sPsi) await toggleConfirmacao('psicossocial', base, true);
                             }}
                             disabled={savingF}
                           >
