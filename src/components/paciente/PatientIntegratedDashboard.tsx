@@ -355,7 +355,11 @@ export default function PatientIntegratedDashboard({
 
   // Prefer stored 0-100 value, but recalculate from scores if stored value seems wrong (0 or old scale <11)
   const storedScore = myidLinkResult?.MyID_score ?? (Number(ultimaMyID?.myid_score) || 0);
-  const myidScore = (storedScore > 10 ? storedScore : scores ? computeMyID100FromScores(scores) : storedScore);
+  // Só recalcula registros da escala antiga (0-10, sem myid_100). Um MyID-100
+  // grave de verdade (0-10 pontos) era "corrigido" para cima, sem as penalidades.
+  const resultadoArmazenado = myidLinkResult ?? (ultimaMyID?.myid_analysis as any);
+  const escala100 = storedScore > 10 || !!resultadoArmazenado?.myid_100;
+  const myidScore = (escala100 ? storedScore : scores ? computeMyID100FromScores(scores) : storedScore);
   const rawRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? (!!ultimaMyID?.red_flags || false);
   const hasRedFlags = Array.isArray(rawRedFlags) ? rawRedFlags.length > 0 : !!rawRedFlags;
 
