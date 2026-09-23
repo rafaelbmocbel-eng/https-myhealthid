@@ -537,6 +537,22 @@ Deno.serve(async (req) => {
     }
     const systemPrompt = buildSystemPrompt(ctx);
 
+    // Várias mensagens seguidas (ex.: "oi" / "tudo bem?" / "queria remarcar")
+    // disparavam uma resposta cada. Espera o tempo de "digitação" e só segue
+    // se esta ainda for a última mensagem do paciente — a invocação da última
+    // responde lendo todas no histórico.
+    const ultimaEntradaId = async (): Promise<string | null> => {
+      const { data } = await admin.from("whatsapp_mensagens_inbox")
+        .select("id").eq("conversa_id", conversa_id).eq("direcao", "entrada")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      return (data as { id: string } | null)?.id ?? null;
+    };
+    const delay = Math.min(cfg.delay_resposta_segundos || 3, 8);
+    await new Promise(r => setTimeout(r, Math.max(delay, 3) * 1000));
+    if ((await ultimaEntradaId()) !== mensagem_id) {
+      return new Response(JSON.stringify({ ok: true, skip: "mensagem mais nova chegou" }), { headers: corsHeaders });
+    }
+
     // Histórico recente (últimas 10 mensagens)
     const { data: histData } = await admin
       .from("whatsapp_mensagens_inbox")
@@ -552,6 +568,7 @@ Deno.serve(async (req) => {
 
     // Loop de tools (máx 4 chamadas)
     let resposta_final = "";
+    let executouTool = false;
     for (let i = 0; i < 4; i++) {
       const ai = await chamarLLM(messages, systemPrompt, true);
       if (!ai) break;
@@ -562,6 +579,7 @@ Deno.serve(async (req) => {
           let args: ToolArgs = {};
           try { args = JSON.parse(tc.function.arguments || "{}"); } catch { /* argumentos malformados — segue com objeto vazio */ }
           const result = await executarTool(admin, tc.function.name, args, ctx, conv.terapeuta_id, conversa_id);
+          executouTool = true;
           messages.push({
             role: "tool",
             tool_call_id: tc.id,
@@ -584,9 +602,12 @@ Deno.serve(async (req) => {
       resposta_final = `${saudacao.replace(/\{nome\}/g, primeiroNome)}\n\n${resposta_final}`;
     }
 
-    // Delay simulando humano
-    const delay = Math.min(cfg.delay_resposta_segundos || 3, 8);
-    await new Promise(r => setTimeout(r, delay * 1000));
+    // Chegou mensagem nova enquanto a IA pensava: a próxima invocação responde
+    // tudo junto. Se uma ação já foi feita (agendar, confirmar…), responde
+    // mesmo assim para o paciente saber o resultado.
+    if (!executouTool && (await ultimaEntradaId()) !== mensagem_id) {
+      return new Response(JSON.stringify({ ok: true, skip: "mensagem mais nova chegou" }), { headers: corsHeaders });
+    }
 
     const enviado = await enviarWhatsapp(admin, conv.terapeuta_id, conv.telefone, resposta_final);
     if (enviado) {

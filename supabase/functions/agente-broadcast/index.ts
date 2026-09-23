@@ -63,10 +63,28 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: false, error: "já em execução ou concluído" }), { headers: corsHeaders });
     }
 
-    await admin.from("agente_broadcasts").update({
+    // Campanha AGENDADA (disparada pelo cron) respeita "Pausar automações":
+    // fica agendada e sai quando o profissional retomar. O envio imediato
+    // (clicado pelo profissional) continua sendo intencional.
+    const agendada = !callerTerapeutaId;
+    const pausado = async () => {
+      const { data } = await admin.from("whatsapp_automacoes")
+        .select("automacoes_pausadas").eq("terapeuta_id", bc.terapeuta_id).maybeSingle();
+      return (data as { automacoes_pausadas?: boolean } | null)?.automacoes_pausadas === true;
+    };
+    if (agendada && await pausado()) {
+      return new Response(JSON.stringify({ ok: true, skip: "automações pausadas" }), { headers: corsHeaders });
+    }
+
+    // Trava atômica: duas chamadas simultâneas (cron + clique) não disparam
+    // a campanha duas vezes — só quem mudar o status segue.
+    const { data: travado } = await admin.from("agente_broadcasts").update({
       status: "executando", iniciado_em: new Date().toISOString(),
       total: (bc.paciente_ids || []).length,
-    }).eq("id", broadcast_id);
+    }).eq("id", broadcast_id).not("status", "in", "(executando,concluido)").select("id");
+    if (!travado?.length) {
+      return new Response(JSON.stringify({ ok: false, error: "já em execução ou concluído" }), { headers: corsHeaders });
+    }
 
     // Variantes A/B: [{ key:'A', texto:'...', peso: 50 }, ...]
     const variantes: { key: string; texto: string; peso: number }[] = Array.isArray(bc.ab_variantes) && bc.ab_variantes.length
@@ -84,7 +102,10 @@ Deno.serve(async (req) => {
     // @ts-expect-error -- EdgeRuntime disponível em Supabase Edge Functions
     EdgeRuntime.waitUntil((async () => {
       let enviados = 0, erros = 0;
+      let interrompida = false;
       for (const paciente_id of bc.paciente_ids || []) {
+        // Pausou no meio da campanha agendada: para aqui (não reenvia depois).
+        if (agendada && await pausado()) { interrompida = true; break; }
         try {
           const { data: pac } = await admin.from("pacientes")
             .select("telefone, ativo").eq("id", paciente_id).maybeSingle();
@@ -121,7 +142,7 @@ Deno.serve(async (req) => {
         }
       }
       await admin.from("agente_broadcasts").update({
-        status: "concluido", concluido_em: new Date().toISOString(),
+        status: interrompida ? "interrompido" : "concluido", concluido_em: new Date().toISOString(),
         enviados, erros, resultado_variantes: stats,
       }).eq("id", broadcast_id);
     })().catch((e) => console.error("agente-broadcast background error:", e)));

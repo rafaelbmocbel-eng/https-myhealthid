@@ -133,10 +133,16 @@ export default function PacienteQuestionarios() {
     // Fecha o wizard e volta para a lista. Só é chamado quando a avaliação
     // foi de fato persistida — numa falha dura mantemos o wizard aberto para
     // o paciente poder tentar de novo sem redigitar.
-    const encerrarComSucesso = () => {
+    // Abre o resultado recém-concluído: ele traz o próximo passo do fluxo
+    // ("Complete seu perfil de saúde" → histórico clínico) no momento de
+    // maior engajamento, em vez de voltar para a lista.
+    const idConcluido = activeId;
+    const encerrarComSucesso = async () => {
       setActiveId(null);
       setViewMode('list');
-      fetchQuestionarios();
+      await fetchQuestionarios();
+      setActiveId(idConcluido);
+      setViewMode('viewing');
     };
 
     try {
