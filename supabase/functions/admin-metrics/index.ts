@@ -275,8 +275,11 @@ Deno.serve(async (req) => {
     // ── Assinaturas de profissionais ──
     const assinPorStatus: Record<string, number> = {};
     assinaturas.forEach((a: any) => { assinPorStatus[a.status] = (assinPorStatus[a.status] || 0) + 1; });
+    // Receita só de quem paga: cortesias e fundador ficam "ativos" mas não
+    // entram no MRR (antes o grandfather/cortesias inflavam a receita).
+    const pagante = (a: any) => a.status === "ativa" && a.origem !== "cortesia" && a.origem !== "fundador";
     const mrrProfissionais = assinaturas
-      .filter((a: any) => a.status === "ativa")
+      .filter(pagante)
       .reduce((s: number, a: any) => s + Number(planoById[a.plano_id]?.preco_mensal || 0), 0);
     const assinPorPlano: Record<string, { nome: string; ativas: number; mrr: number }> = {};
     assinaturas.filter((a: any) => a.status === "ativa").forEach((a: any) => {
@@ -284,7 +287,7 @@ Deno.serve(async (req) => {
       const nome = pl?.nome || "—";
       if (!assinPorPlano[a.plano_id]) assinPorPlano[a.plano_id] = { nome, ativas: 0, mrr: 0 };
       assinPorPlano[a.plano_id].ativas += 1;
-      assinPorPlano[a.plano_id].mrr += Number(pl?.preco_mensal || 0);
+      if (pagante(a)) assinPorPlano[a.plano_id].mrr += Number(pl?.preco_mensal || 0);
     });
 
     // ── Assinaturas de alunos (wellness) ──

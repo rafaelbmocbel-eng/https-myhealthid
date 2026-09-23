@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
       const { data: ags } = await admin.from("agendamentos")
         .select("id, terapeuta_id, paciente_id, data_inicio, confirmacao_enviada_em, status")
         .gte("data_inicio", start).lte("data_inicio", end)
-        .in("status", ["confirmado", "agendado", "confirmacao_pendente"])
+        .in("status", ["confirmado", "pendente", "agendado", "confirmacao_pendente"])
         .is("confirmacao_enviada_em", null);
       for (const ag of ags || []) {
         const cfg = await getCfg(ag.terapeuta_id);
@@ -134,11 +134,12 @@ Deno.serve(async (req) => {
       const { data: ags } = await admin.from("agendamentos")
         .select("id, terapeuta_id, paciente_id, data_inicio, lembrete_2h_enviado_em, status")
         .gte("data_inicio", start).lte("data_inicio", end)
-        .in("status", ["confirmado", "agendado", "confirmacao_pendente"])
+        .in("status", ["confirmado", "pendente", "agendado", "confirmacao_pendente"])
         .is("lembrete_2h_enviado_em", null);
       for (const ag of ags || []) {
         const cfg = await getCfg(ag.terapeuta_id);
-        if (!(cfg?.gatilhos_ativos?.lembrete_2h)) continue;
+        // Mesma regra da tela: só desliga se o interruptor estiver desligado.
+        if (cfg?.gatilhos_ativos?.lembrete_2h === false) continue;
         const info = await processarPaciente(ag);
         if (!info) continue;
         const msg = aplicar(cfg.mensagem_lembrete_2h || "Oi {nome}! Lembrete: sua sessão é hoje às {horario}. Te espero!", info.nome, info.hora, info.data);
