@@ -297,11 +297,8 @@ export default function LandingProfissional() {
             <a href="#profissionais" className="hover:text-foreground transition-colors">Profissionais</a>
             <a href="#precos"        className="hover:text-foreground transition-colors">Planos</a>
           </nav>
-          {/* Página do PROFISSIONAL: entrada própria (Entrar) + volta discreta pro cliente. */}
+          {/* Página do PROFISSIONAL: topo só com o login do profissional. */}
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Sou cliente <span aria-hidden="true">→</span>
-            </Link>
             <Link to="/auth"
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
               Entrar
@@ -914,6 +911,19 @@ export default function LandingProfissional() {
           <p className="mt-6 text-xs opacity-40">14 dias grátis para profissionais · Sem cartão · Cancele quando quiser</p>
         </div>
       </section>
+
+      {/* ── Faixa: voltar para a página do cliente (espelho do "Sou profissional" da home) ── */}
+      <div className="border-t border-border/40 bg-muted/30">
+        <div className="mx-auto max-w-6xl px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-primary">Para clientes</div>
+            <p className="text-sm text-muted-foreground mt-0.5">Não é profissional? Volte para a página do cliente.</p>
+          </div>
+          <Link to="/" className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted transition-colors">
+            Sou cliente <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+      </div>
 
       {/* ── Footer ── */}
       <footer className="border-t border-border/40 bg-background">
