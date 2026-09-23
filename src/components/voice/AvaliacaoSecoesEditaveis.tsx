@@ -992,7 +992,22 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       ...resultado,
       _secoes: { ...(resultado?._secoes || {}), editadas: editadasIniciais, confirmadas: Array.from(confirmadas) },
     };
-    supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
+    // Pré-confirmado = enviado de fato: antes a tela dizia "Sincronizado" sem
+    // nenhuma nota no prontuário.
+    const confirmadasAuto = new Set(confirmadas);
+    (async () => {
+      try {
+        const { error } = await supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
+        if (error) throw error;
+        await sincronizarProntuario(confirmadasAuto, textos);
+        qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+        qc.invalidateQueries({ queryKey: ['prontuario'] });
+        qc.invalidateQueries({ queryKey: ['nota-avaliacao-presencial', avaliacaoId] });
+      } catch {
+        setConfirmadas(new Set());
+        toast({ title: 'Não consegui enviar ao prontuário', description: 'Confirme as seções manualmente.', variant: 'destructive' });
+      }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

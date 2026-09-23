@@ -232,7 +232,9 @@ export function PlanoPersonalizadoSection() {
                   </p>
                 </CardContent>
               </Card>
-            ) : (
+            ) : isFree ? (
+              // Só o free vê o convite: o cliente clínico não assina o Premium
+              // (a página de assinatura não oferece para ele) — o profissional monta.
               <Card className="border-0 shadow-md overflow-hidden">
                 <div className="p-5 text-center text-white" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)' }}>
                   <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-2">
@@ -254,7 +256,7 @@ export function PlanoPersonalizadoSection() {
                   </div>
                 </div>
               </Card>
-            )}
+            ) : null}
 
             {/* Planos agrupados por ÁREA, cada um com seu cabeçalho. Cada seção
                 só aparece se tiver conteúdo liberado/gerado. */}
@@ -319,7 +321,9 @@ export function PlanoPersonalizadoSection() {
                       <p className="text-xs text-muted-foreground/60 mt-1">
                         {podeGerar
                           ? 'Toque em "Gerar treino + nutrição" acima para montar o seu — ou seu profissional pode montar um.'
-                          : 'Seu profissional pode montar um plano sob medida para você. Assine o Premium para criar o seu com IA quando quiser.'}
+                          : isFree
+                            ? 'Seu profissional pode montar um plano sob medida para você. Assine o Premium para criar o seu com IA quando quiser.'
+                            : 'Seu profissional monta seu plano sob medida — ele aparece aqui assim que for liberado.'}
                       </p>
                     </CardContent></Card>
                   )}
