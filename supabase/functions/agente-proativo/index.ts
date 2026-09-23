@@ -1,7 +1,7 @@
 // Agente proativo — roda via cron a cada 15 min e dispara mensagens contextualizadas
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
-import { montarContextoClinico, buildSystemPrompt, fmtDataHoraBR, FUSO_BR } from "../_shared/agente-contexto.ts";
+import { montarContextoClinico, buildSystemPrompt, fmtDataHoraBR, fmtDataBR, FUSO_BR } from "../_shared/agente-contexto.ts";
 import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
 import { registrarMensagemSaida } from "../_shared/registrar-saida.ts";
 
@@ -145,6 +145,21 @@ async function dispararDiarioPendente(ctx: DispatchCtx) {
   await registrarDisparo(ctx.admin, ctx.terapeuta_id, ctx.paciente_id, "diario_pendente", null, msg, ok);
 }
 
+// Lembrete gentil de cobrança JÁ vencida. No máximo 1 vez por semana por
+// paciente. Só roda se o gatilho "Pagamento pendente" estiver ligado.
+async function dispararPagamentoPendente(ctx: DispatchCtx, ctxClinico: any) {
+  const pg = ctxClinico.pagamento_pendente;
+  if (!pg) return;
+  if (pg.vencimento && new Date(pg.vencimento).getTime() > Date.now()) return;
+  if (await jaDisparado(ctx.admin, ctx.paciente_id, "pagamento_pendente", null, 7 * 24)) return;
+  const venc = pg.vencimento ? ` (venceu em ${fmtDataBR(pg.vencimento)})` : "";
+  const instrucao = `O paciente tem um pagamento pendente de R$ ${Number(pg.valor).toFixed(2)}${venc}. Gere uma mensagem CURTA, gentil e sem constrangimento lembrando da pendência e oferecendo ajuda (por exemplo, reenviar a chave PIX). Não seja insistente nem ameaçador.`;
+  const msg = await gerarMensagem(ctx.systemPromptBase, instrucao);
+  if (!msg) return;
+  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg);
+  await registrarDisparo(ctx.admin, ctx.terapeuta_id, ctx.paciente_id, "pagamento_pendente", null, msg, ok);
+}
+
 async function dispararAniversario(ctx: DispatchCtx) {
   if (await jaDisparado(ctx.admin, ctx.paciente_id, "aniversario", null, 24 * 300)) return;
   const instrucao = `HOJE é aniversário do paciente. Gere mensagem CURTA, calorosa, com um voto sincero. Sem promoções.`;
@@ -163,7 +178,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const stats = { confirmacao: 0, lembrete: 0, pos: 0, exerc: 0, myid: 0, reeng: 0, aniv: 0, diario: 0 };
+  const stats = { confirmacao: 0, lembrete: 0, pos: 0, exerc: 0, myid: 0, reeng: 0, aniv: 0, diario: 0, pag: 0 };
 
   // Para cada terapeuta com automações + bot ativos
   const { data: configs } = await admin.from("whatsapp_automacoes")
@@ -271,6 +286,10 @@ Deno.serve(async (req) => {
         }
         if (gatilhos.diario_pendente !== false) {
           await dispararDiarioPendente(baseCtx); stats.diario++;
+        }
+        // Opt-in: cobrança só sai se o profissional ligou o gatilho.
+        if (gatilhos.pagamento_pendente === true) {
+          await dispararPagamentoPendente(baseCtx, ctxClinico); stats.pag++;
         }
         if (gatilhos.myid_vencido !== false) {
           await dispararMyidVencido(baseCtx, ctxClinico); stats.myid++;

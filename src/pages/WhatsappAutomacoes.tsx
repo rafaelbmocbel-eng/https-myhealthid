@@ -357,7 +357,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
     setCfg({ ...cfg, dias_semana: dias });
   };
   // Opt-in: só disparam com true explícito no backend — o interruptor nasce desligado.
-  const GATILHOS_OPT_IN = new Set(['nps_pos_sessao', 'progresso_semanal']);
+  const GATILHOS_OPT_IN = new Set(['nps_pos_sessao', 'progresso_semanal', 'pagamento_pendente']);
   const gatilhoLigado = (k: string) => {
     const v = (cfg.gatilhos_ativos || {})[k];
     return GATILHOS_OPT_IN.has(k) ? v === true : v !== false;
@@ -460,9 +460,10 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               </div>
               <div>
                 <Label>Delay antes de responder (s)</Label>
-                <Input type="number" inputMode="numeric" min={0} max={120}
+                <Input type="number" inputMode="numeric" min={0} max={8}
                   value={cfg.delay_resposta_segundos ?? ''}
-                  onChange={(e) => setCfg({ ...cfg, delay_resposta_segundos: e.target.value === '' ? 0 : Number(e.target.value) })} />
+                  onChange={(e) => setCfg({ ...cfg, delay_resposta_segundos: e.target.value === '' ? 0 : Math.min(8, Number(e.target.value)) })} />
+                <p className="text-micro mt-1">Até 8 segundos.</p>
               </div>
             </div>
             <div>

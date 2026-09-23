@@ -431,13 +431,19 @@ Deno.serve(async (req) => {
     // CLIENTES — cadastrado E ativo. Sem cadastro, inativo, ou removido dos
     // clientes → NÃO responde. (Leads de anúncio ficam para quando houver
     // campanhas; por ora, ninguém fora da lista de clientes recebe.)
+    // Interruptor "Responder apenas a contatos cadastrados" (padrão: ligado).
+    // Desligado, o bot também atende quem ainda não é cliente (leads).
     if (!conv.paciente_id) {
-      return new Response(JSON.stringify({ ok: true, skip: "nao_cliente" }), { headers: corsHeaders });
-    }
-    const { data: pacStatus } = await admin
-      .from("pacientes").select("ativo").eq("id", conv.paciente_id).maybeSingle();
-    if (!pacStatus || (pacStatus as { ativo?: boolean }).ativo === false) {
-      return new Response(JSON.stringify({ ok: true, skip: "cliente_inativo_ou_removido" }), { headers: corsHeaders });
+      if (cfg.bot_apenas_cadastrados !== false) {
+        return new Response(JSON.stringify({ ok: true, skip: "nao_cliente" }), { headers: corsHeaders });
+      }
+    } else {
+      // Cliente cadastrado mas inativo/removido nunca recebe automática.
+      const { data: pacStatus } = await admin
+        .from("pacientes").select("ativo").eq("id", conv.paciente_id).maybeSingle();
+      if (!pacStatus || (pacStatus as { ativo?: boolean }).ativo === false) {
+        return new Response(JSON.stringify({ ok: true, skip: "cliente_inativo_ou_removido" }), { headers: corsHeaders });
+      }
     }
 
     // Já escalada? Não responde.
@@ -463,7 +469,8 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(1).maybeSingle();
     const ultSaida = ultSaidaData as { created_at: string; metadata: Record<string, unknown> | null } | null;
-    if (ultSaida && !ultSaida.metadata?.bot) {
+    // Interruptor "Pausar bot quando profissional já respondeu" (padrão: ligado).
+    if (cfg.pausar_bot_apos_humano !== false && ultSaida && !ultSaida.metadata?.bot) {
       const diff = Date.now() - new Date(ultSaida.created_at).getTime();
       if (diff < 30 * 60 * 1000) {
         return new Response(JSON.stringify({ ok: true, skip: "humano respondeu" }), { headers: corsHeaders });
@@ -522,6 +529,12 @@ Deno.serve(async (req) => {
 
     // Monta contexto clínico
     const ctx = await montarContextoClinico(admin, conv.terapeuta_id, conv.paciente_id, conv.telefone, conv.nome_contato);
+    // Interruptor "Usar dados clínicos": desligado, a IA não vê MyID nem
+    // exercícios (a próxima sessão continua, pois é usada para confirmar/remarcar).
+    if (cfg.usar_contexto_clinico === false) {
+      ctx.myid = null;
+      ctx.exercicios_pendentes = 0;
+    }
     const systemPrompt = buildSystemPrompt(ctx);
 
     // Histórico recente (últimas 10 mensagens)
@@ -563,6 +576,13 @@ Deno.serve(async (req) => {
     }
 
     if (!resposta_final) resposta_final = "Recebi sua mensagem! Em instantes te respondo. 💙";
+
+    // Saudação configurada: vai junto na PRIMEIRA resposta do bot na conversa.
+    const saudacao = String(cfg.mensagem_saudacao || "").trim();
+    if (saudacao && !(conv.turnos_bot || 0)) {
+      const primeiroNome = conv.nome_contato?.split(" ")[0] || "";
+      resposta_final = `${saudacao.replace(/\{nome\}/g, primeiroNome)}\n\n${resposta_final}`;
+    }
 
     // Delay simulando humano
     const delay = Math.min(cfg.delay_resposta_segundos || 3, 8);
