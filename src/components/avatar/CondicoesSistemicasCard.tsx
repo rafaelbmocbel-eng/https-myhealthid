@@ -16,14 +16,14 @@ import { cn } from '@/lib/utils';
 // SISTEMA do corpo. Ficam guardadas como evento com regiao_id='sistemico' (fora
 // do mapa do corpo), com o sistema certo, então acendem o sistema no avatar e
 // alimentam os motores de IA (planos/diretrizes) como o resto dos achados.
-const REGIAO_SISTEMICA = 'sistemico';
+export const REGIAO_SISTEMICA = 'sistemico';
 
 type Sistema =
   | 'musculoesqueletico' | 'nervoso' | 'cardiovascular' | 'respiratorio'
   | 'digestorio' | 'endocrino' | 'urinario' | 'reprodutor' | 'tegumentar'
   | 'linfatico' | 'sensorial';
 
-const SIST_LABEL: Record<Sistema, string> = {
+export const SIST_LABEL: Record<Sistema, string> = {
   musculoesqueletico: 'Musculoesquelético', nervoso: 'Nervoso / Mental', cardiovascular: 'Cardiovascular',
   respiratorio: 'Respiratório', digestorio: 'Digestório', endocrino: 'Endócrino / Metabólico',
   urinario: 'Urinário', reprodutor: 'Reprodutor', tegumentar: 'Pele', linfatico: 'Linfático / Sangue', sensorial: 'Sensorial',
@@ -36,7 +36,7 @@ const SIST_COR: Record<string, string> = {
 };
 
 // Condições comuns já mapeadas ao sistema (com CID quando aplicável).
-const CONDICOES: { label: string; sistema: Sistema; cid?: string }[] = [
+export const CONDICOES: { label: string; sistema: Sistema; cid?: string }[] = [
   { label: 'Hipertensão arterial', sistema: 'cardiovascular', cid: 'I10' },
   { label: 'Dislipidemia (colesterol alto)', sistema: 'cardiovascular', cid: 'E78' },
   { label: 'Diabetes mellitus', sistema: 'endocrino', cid: 'E11' },
@@ -57,6 +57,34 @@ const CONDICOES: { label: string; sistema: Sistema; cid?: string }[] = [
   { label: 'Doença renal crônica', sistema: 'urinario', cid: 'N18' },
   { label: 'Anemia', sistema: 'linfatico', cid: 'D64' },
 ];
+
+// Reconhece no texto livre uma condição sistêmica conhecida (sem local no corpo).
+// Siglas usadas no dia a dia: HAS, DM, DPOC, DRC.
+const PADROES_SISTEMICOS: { re: RegExp; label: string }[] = [
+  { re: /\bhas\b|hipertens|pressao alta/i, label: 'Hipertensão arterial' },
+  { re: /\bdm ?[12]?\b|diabet/i, label: 'Diabetes mellitus' },
+  { re: /dislipid|colesterol|triglic/i, label: 'Dislipidemia (colesterol alto)' },
+  { re: /hipotireoid/i, label: 'Hipotireoidismo' },
+  { re: /hipertireoid/i, label: 'Hipertireoidismo' },
+  { re: /obesidade/i, label: 'Obesidade' },
+  { re: /ansiedade/i, label: 'Ansiedade' },
+  { re: /depress/i, label: 'Depressão' },
+  { re: /insonia/i, label: 'Insônia' },
+  { re: /enxaqueca/i, label: 'Enxaqueca' },
+  { re: /fibromialg/i, label: 'Fibromialgia' },
+  { re: /artrite reumat/i, label: 'Artrite reumatoide' },
+  { re: /osteopor/i, label: 'Osteoporose' },
+  { re: /\basma\b/i, label: 'Asma' },
+  { re: /\bdpoc\b/i, label: 'DPOC' },
+  { re: /\bdrc\b|doenca renal|insuficiencia renal/i, label: 'Doença renal crônica' },
+  { re: /anemia/i, label: 'Anemia' },
+];
+export function detectarCondicaoSistemica(texto: string) {
+  // Sem acentos: "diabético", "pressão", "insônia" casam com os padrões.
+  const t = (texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const achado = PADROES_SISTEMICOS.find((p) => p.re.test(t));
+  return achado ? CONDICOES.find((c) => c.label === achado.label) || null : null;
+}
 
 const SEVERIDADES = [
   { v: 1, label: 'Leve / controlada' },

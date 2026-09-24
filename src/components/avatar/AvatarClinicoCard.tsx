@@ -24,6 +24,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { sistemaDaCondicaoSistemica } from '@/utils/condicoesSistemicas';
+import { detectarCondicaoSistemica, REGIAO_SISTEMICA, SIST_LABEL } from '@/components/avatar/CondicoesSistemicasCard';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 import {
   PONTO_ANATOMICO, LS_DOT_OFFSETS, LS_SCALES, LS_FIGURA,
@@ -1450,7 +1451,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           const regiaoDetectada = notaSistema.texto.trim()
             ? encontrarSintomasEmTexto(notaSistema.texto).find(s => s.sistema === sysToShow)?.regiao_id
             : undefined;
-          const regiaoAuto = notaSistema.regiaoManual || regiaoDetectada || regiaoPadrao;
+          // Condição sistêmica (HAS, diabetes…) não tem local no corpo: é marcada
+          // como 'sistemico' no SISTEMA certo (ex.: HAS → cardiovascular), mesmo
+          // que o profissional esteja no painel de outro sistema.
+          const condSistemica = notaSistema.texto.trim() ? detectarCondicaoSistemica(notaSistema.texto) : null;
+          const regiaoAuto = notaSistema.regiaoManual || (condSistemica ? REGIAO_SISTEMICA : '') || regiaoDetectada || regiaoPadrao;
+          const ehSistemica = regiaoAuto === REGIAO_SISTEMICA;
+          const sistemaDestino = ehSistemica && condSistemica ? condSistemica.sistema : sysToShow;
 
           return (
             <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 mt-3 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -1470,10 +1477,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     value={notaSistema.texto}
                     onChange={(e) => setNotaSistema({ ...notaSistema, texto: e.target.value })}
                   />
-                  {notaSistema.texto.trim() && sysToShow === 'musculoesqueletico' && (
+                  {notaSistema.texto.trim() && (sysToShow === 'musculoesqueletico' || ehSistemica) && (
                     <div className="space-y-1">
                       <Label className="text-[10px]">
-                        Região no corpo {regiaoDetectada ? '(detectada — confira)' : '(escolha a região correta)'}
+                        Região no corpo {ehSistemica ? '(condição do corpo todo — sem local)' : regiaoDetectada ? '(detectada — confira)' : '(escolha a região correta)'}
                       </Label>
                       <Select
                         value={regiaoAuto || undefined}
@@ -1481,18 +1488,34 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       >
                         <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Escolha a região…" /></SelectTrigger>
                         <SelectContent className="max-h-64">
-                          {MSK_REGIOES_OPCOES.map(o => (
-                            <SelectItem key={o.id} value={o.id} className="text-xs">{o.label}</SelectItem>
-                          ))}
+                          <SelectItem value={REGIAO_SISTEMICA} className="text-xs font-semibold">Condição sistêmica — sem local no corpo (ex.: hipertensão, diabetes)</SelectItem>
+                          {sysToShow === 'musculoesqueletico'
+                            ? MSK_REGIOES_OPCOES.map(o => (
+                                <SelectItem key={o.id} value={o.id} className="text-xs">{o.label}</SelectItem>
+                              ))
+                            : [...REGIONS, ...VISCERAL_REGIONS].filter(r => (r as any).sistemas?.includes?.(sysToShow)).map(r => (
+                                <SelectItem key={r.id} value={r.id} className="text-xs">{r.label}</SelectItem>
+                              ))}
                         </SelectContent>
                       </Select>
+                      {ehSistemica && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {condSistemica
+                            ? <>Reconhecido: <span className="font-bold text-foreground">{condSistemica.label}</span>{condSistemica.cid ? ` (CID ${condSistemica.cid})` : ''} → sistema <span className="font-bold text-foreground">{SIST_LABEL[condSistemica.sistema]}</span>.</>
+                            : <>Fica no sistema <span className="font-bold text-foreground">{config.label}</span>, sem ponto no mapa do corpo.</>}
+                        </p>
+                      )}
                     </div>
                   )}
-                  {notaSistema.texto.trim() && sysToShow !== 'musculoesqueletico' && (
+                  {notaSistema.texto.trim() && sysToShow !== 'musculoesqueletico' && !ehSistemica && (
                     <p className="text-[10px] text-muted-foreground">
                       Será marcado no avatar em: <span className="font-bold text-foreground">
                         {[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === regiaoAuto)?.label || regiaoAuto}
                       </span>
+                      {' · '}
+                      <button type="button" className="underline" onClick={() => setNotaSistema({ ...notaSistema, regiaoManual: REGIAO_SISTEMICA })}>
+                        é condição do corpo todo?
+                      </button>
                     </p>
                   )}
                   <div className="flex items-center gap-2">
@@ -1526,22 +1549,26 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         saveMut.mutate({
                           paciente_id: pacienteId,
                           regiao_id: regiaoAuto,
-                          sistema: sysToShow,
+                          sistema: sistemaDestino,
+                          ...(ehSistemica && condSistemica?.cid ? { diagnostico_cid: condSistemica.cid } : {}),
                           tipo_achado: notaSistema.texto.trim(),
                           tipo_diagnostico: 'achado_clinico',
                           origem: 'exame_clinico',
                           status: 'cronico',
                           metadata: {
-                            natureza: notaSistema.natureza,
+                            natureza: ehSistemica ? 'sistemica' : notaSistema.natureza,
                             condicao_associada: notaSistema.natureza === 'sintoma' ? notaSistema.condicaoAssociada.trim() : null,
                             origem_manual: true,
                             revisado_profissional: true,
                           },
                         } as any);
+                        if (ehSistemica && sistemaDestino !== sysToShow) {
+                          toast.success(`${condSistemica?.label || 'Condição'} salva no sistema ${SIST_LABEL[sistemaDestino as keyof typeof SIST_LABEL] || sistemaDestino}.`);
+                        }
                         setNotaSistema({ texto: '', natureza: 'condicao', condicaoAssociada: '', regiaoManual: '' });
                       }}
                     >
-                      <Check className="mr-1 h-3 w-3" /> Salvar e marcar no avatar
+                      <Check className="mr-1 h-3 w-3" /> {ehSistemica ? 'Salvar condição sistêmica' : 'Salvar e marcar no avatar'}
                     </Button>
                   </div>
                 </div>
