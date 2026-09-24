@@ -9,7 +9,7 @@ import type {
 } from '@/types/myid';
 
 import {
-  calcularPerdaDimensao, classificarMyID100, identificarDriver, DIMENSOES_CAPACIDADE,
+  calcularPerdaDimensao, classificarMyID100, identificarDriver, gravidadeDimensao, valorExibido,
   DIMENSION_LABELS, DIMENSION_COLORS, TEMPLATES_INTERPRETACAO,
 } from '@/utils/myid/lossTable';
 
@@ -282,27 +282,22 @@ export function getThermalColor(v: number): string {
 }
 
 export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
-  // UMA escala no gráfico, na MESMA direção do MyID-100: cada anel é a NOTA do
-  // fator — 10 = ótimo, 0 = crítico (anel cheio = bom). Respostas em que "maior
-  // = pior" (dor, emoções, mudanças, sinais) entram como 10 − valor; sono,
-  // hábitos e funcionalidade já vêm como nota. Ex.: dorme 3h + estresse 8 → R 2,4.
-  // `severity` (0 = ótimo, 10 = crítico) só controla cor e brilho.
-  // `??` e não `||`: nota 0 é resposta válida (ex.: totalmente sedentário).
-  const gravidade = (key: string, padrao: number) => {
+  // Duas famílias de anéis, cada uma na sua leitura natural (modelo do Rafael):
+  // - INTERNOS = o que sustenta (sono, vida pessoal, hábitos): NOTA, maior = melhor.
+  // - EXTERNOS = o que pesa (dor, emoções, mudanças, sinais, limitação): INTENSIDADE,
+  //   maior = pior (dor 8,5 é muito ruim).
+  // Nos dois, quanto pior, mais o MyID perde. A cor segue sempre a gravidade.
+  // `??` e não `||`: 0 é resposta válida (ex.: totalmente sedentário).
+  const anel = (label: string, key: string, type: 'inner' | 'outer', padrao: number): FingerprintRing => {
     const bruto = Number(scores[key] ?? padrao);
-    return Math.max(0, Math.min(10, DIMENSOES_CAPACIDADE.has(key) ? 10 - bruto : bruto));
+    const g = Math.max(0, Math.min(10, gravidadeDimensao(key, bruto)));
+    return { label, value: valorExibido(key, bruto), type, color: getThermalColor(g), scoreKey: key, severity: g };
   };
-  const anel = (label: string, key: string, type: 'inner' | 'outer', padrao = 0): FingerprintRing => {
-    const g = gravidade(key, padrao);
-    return { label, value: 10 - g, type, color: getThermalColor(g), scoreKey: key, severity: g };
-  };
-  // MED pode ser negativo (penalidade) ou positivo: só a penalidade tira nota.
   const med = (() => {
     const raw = scores.MED ?? 0;
     const g = raw < 0 ? Math.min(-raw * 1.5, 10) : 0;
-    return { label: 'Medicação', value: 10 - g, type: 'outer' as const, color: getThermalColor(g), scoreKey: 'MED', severity: g };
+    return { label: 'Medicação', value: g, type: 'outer' as const, color: getThermalColor(g), scoreKey: 'MED', severity: g };
   })();
-  // Layout: hábitos/reservas no centro → o que está pressionando por fora.
   return [
     anel('Sono e energia', 'R', 'inner', 10),
     anel('Vida pessoal', 'C', 'inner', 10),
@@ -310,12 +305,12 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
     anel('Hidratação', 'HID', 'inner', 10),
     anel('Alimentação', 'NUT', 'inner', 10),
     anel('Postura no dia', 'ERG', 'inner', 10),
-    anel('Suas atividades do dia', 'EFI', 'outer', 10),
-    anel('Cabeça e emoções', 'P', 'outer'),
-    anel('Mudanças recentes', 'I', 'outer'),
-    anel('Sinais do corpo', 'N', 'outer'),
+    anel('Limitação nas atividades', 'EFI', 'outer', 10),
+    anel('Cabeça e emoções', 'P', 'outer', 0),
+    anel('Mudanças recentes', 'I', 'outer', 0),
+    anel('Sinais do corpo', 'N', 'outer', 0),
     med,
-    anel('Dor', 'D', 'outer'),
+    anel('Dor', 'D', 'outer', 0),
   ];
 }
 

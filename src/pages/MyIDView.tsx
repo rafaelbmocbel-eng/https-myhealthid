@@ -8,7 +8,7 @@ import { format, parseISO } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import LogoIcon from '@/components/LogoIcon';
 import { scoresDoResultado } from '@/utils/myid/scores';
-import { gravidadeDimensao } from '@/utils/myid/lossTable';
+import { gravidadeDimensao, valorExibido, grupoExibicao } from '@/utils/myid/lossTable';
 
 interface Resultado {
   id: string;
@@ -78,13 +78,13 @@ export default function MyIDView() {
   const redFlags = r.red_flags_detected || r.redFlags;
 
   const dimMap: Array<{ key: string; label: string }> = [
+    { key: 'R', label: 'Sono e energia' },
+    { key: 'C', label: 'Vida pessoal' },
     { key: 'D', label: 'Dor' },
-    { key: 'EFI', label: 'Funcionalidade' },
-    { key: 'P', label: 'Psicológico' },
-    { key: 'I', label: 'Inércia' },
-    { key: 'R', label: 'Regulação' },
-    { key: 'C', label: 'Contexto' },
-    { key: 'N', label: 'Ruído sistêmico' },
+    { key: 'EFI', label: 'Limitação nas atividades' },
+    { key: 'P', label: 'Cabeça e emoções' },
+    { key: 'I', label: 'Mudanças recentes' },
+    { key: 'N', label: 'Sinais do corpo' },
   ];
 
   return (
@@ -142,12 +142,15 @@ export default function MyIDView() {
         <Card className="rounded-xl border-border/40 shadow-xs">
           <CardContent className="p-5">
             <h2 className="text-sm font-bold">Dimensões avaliadas</h2>
-            <p className="text-[11px] text-muted-foreground mb-3">Nota de cada fator: 10 = ótimo · 0 = crítico (mesma direção do MyID).</p>
+            <p className="text-[11px] text-muted-foreground mb-3">Sono, hábitos e vida pessoal: nota (maior = melhor). Dor, emoções, limitação, mudanças e sinais: intensidade (maior = pior). Cor vermelha = ruim nos dois.</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {dimMap.map((d) => {
-                // Nota na direção do MyID: 10 = ótimo, 0 = crítico. g = gravidade (cor).
-                const g = Math.max(0, Math.min(10, gravidadeDimensao(d.key, Number(scores[d.key] ?? 0))));
-                const nota = 10 - g;
+                // Reservas: nota (maior = melhor) · Cargas: intensidade (maior = pior).
+                // g = gravidade (cor), igual nas duas.
+                const bruto = Number(scores[d.key] ?? 0);
+                const g = Math.max(0, Math.min(10, gravidadeDimensao(d.key, bruto)));
+                const nota = valorExibido(d.key, bruto);
+                const reserva = grupoExibicao(d.key) === 'reserva';
                 const pct = (nota / 10) * 100;
                 const tone =
                   g <= 3 ? 'bg-emerald-500' : g <= 6 ? 'bg-amber-500' : g <= 8 ? 'bg-orange-500' : 'bg-destructive';
@@ -157,7 +160,7 @@ export default function MyIDView() {
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                         {d.label}
                       </span>
-                      <span className="text-sm font-bold">{nota.toFixed(1)}</span>
+                      <span className="text-sm font-bold" title={reserva ? 'Nota — maior = melhor' : 'Intensidade — maior = pior'}>{nota.toFixed(1)}</span>
                     </div>
                     <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
                       <div className={`h-full ${tone}`} style={{ width: `${pct}%` }} />

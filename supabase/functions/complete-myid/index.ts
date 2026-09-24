@@ -543,14 +543,13 @@ serve(async (req) => {
       const topDomains = dimensions.filter(d => d.score >= 5).slice(0, 3).map(d => d.name).join(", ");
       const flagsSummary = redFlags && redFlagAlerts.length > 0 ? ` ⚠️ Red flags detectadas.` : "";
       
-      // Todas as dimensões como NOTA, na mesma direção do MyID-100 (10 = ótimo,
-      // 0 = crítico): as de "maior = pior" (dor, emoções, mudanças, sinais) entram
-      // como 10 − valor. Ex.: dorme 3h + estresse 8 → Sono e energia 2,4.
-      const nota = (v: number) => Math.max(0, Math.min(10, v)).toFixed(1);
+      // Duas famílias, cada uma na sua leitura (como os anéis do gráfico):
+      // RESERVAS (o que sustenta): nota, maior = melhor · CARGAS (o que pesa):
+      // intensidade, maior = pior. Em ambas, quanto pior, mais o MyID perde.
+      const v1 = (v: number) => Math.max(0, Math.min(10, v)).toFixed(1);
       const descricao = `MyID-100: ${myidFormatted}/100 — ${classificacao}.${flagsSummary}
-Nota de cada fator (10 = ótimo · 0 = crítico):
-Dor ${nota(10 - dNum)} (dor relatada ${nota(dNum)}/10) | Funcionalidade ${nota(efiNum)} | Emocional/crenças ${nota(10 - pNum)}
-Sono e energia ${nota(Number(scoreR))} | Vida pessoal ${nota(Number(scoreC))} | Mudanças recentes ${nota(10 - iNum)} | Sinais do corpo ${nota(10 - nNum)}
+Reservas (nota, maior = melhor): Sono e energia ${v1(Number(scoreR))} | Vida pessoal ${v1(Number(scoreC))}
+Cargas (intensidade, maior = pior): Dor ${v1(dNum)} | Limitação nas atividades ${v1(10 - efiNum)} | Emocional/crenças ${v1(pNum)} | Mudanças recentes ${v1(iNum)} | Sinais do corpo ${v1(nNum)}
 Domínios prioritários: ${topDomains || "nenhum em nível crítico"}.
 Dor: ${painLocation !== "não especificada" ? painLocation : "local não especificado"} — agora ${painIntensity}/10${painMaxRaw != null ? `, pior da semana ${painMaxRaw}/10` : ""}${painFrequency !== "não informada" ? `, frequência ${painFrequency}` : ""}${painType !== "não especificado" ? `. Padrão: ${painType}` : ""}.${funcText ? `\nLimitação nas atividades (0 = nenhuma, 10 = impossível): ${funcText}.` : ""}
 Estilo de vida: ${lifestyleText}.${psychText ? `\nPerfil psicológico: ${pNum >= 7 ? "componente emocional significativo" : "influência psicológica moderada"}.` : ""}

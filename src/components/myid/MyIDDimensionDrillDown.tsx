@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { gravidadeDimensao } from '@/utils/myid/lossTable';
+import { valorExibido, grupoExibicao } from '@/utils/myid/lossTable';
 
 // Hash não-criptográfico estável p/ detectar se inputs mudaram desde o último cache.
 function hashInputs(obj: unknown): string {
@@ -290,7 +290,7 @@ export default function MyIDDimensionDrillDown({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {scoreValor != null && (
-            <Badge variant="outline" className="text-xs whitespace-nowrap" title="Nota do fator: 10 = ótimo · 0 = crítico">nota {(10 - Math.max(0, Math.min(10, gravidadeDimensao(dimensao, scoreValor)))).toFixed(1)} / 10</Badge>
+            <Badge variant="outline" className="text-xs whitespace-nowrap" title={grupoExibicao(dimensao) === 'reserva' ? 'Nota — maior = melhor' : 'Intensidade — maior = pior'}>{grupoExibicao(dimensao) === 'reserva' ? 'nota' : 'intensidade'} {valorExibido(dimensao, scoreValor).toFixed(1)} / 10</Badge>
           )}
           {onClose && (
             <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">

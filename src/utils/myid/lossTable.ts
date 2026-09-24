@@ -445,3 +445,19 @@ export const DIMENSOES_CAPACIDADE = new Set(['R', 'C', 'AF', 'HID', 'NUT', 'ERG'
 export function gravidadeDimensao(key: string, valor: number): number {
   return DIMENSOES_CAPACIDADE.has(key) ? 10 - valor : valor;
 }
+
+/**
+ * Como cada dimensão é MOSTRADA (modelo do Rafael):
+ * - "reserva" (anéis internos: o que sustenta) → nota, maior = melhor.
+ * - "carga" (anéis externos: o que pesa) → intensidade, maior = pior.
+ * Funcionalidade (EFI) é calculada como nota, mas aparece no grupo de cargas
+ * como "limitação" (10 − EFI). Em qualquer caso, quanto pior, mais o MyID perde.
+ */
+export type GrupoExibicao = 'reserva' | 'carga';
+export function grupoExibicao(key: string): GrupoExibicao {
+  return ['R', 'C', 'AF', 'HID', 'NUT', 'ERG'].includes(key) ? 'reserva' : 'carga';
+}
+export function valorExibido(key: string, bruto: number): number {
+  const v = key === 'EFI' ? 10 - bruto : bruto;
+  return Math.max(0, Math.min(10, v));
+}

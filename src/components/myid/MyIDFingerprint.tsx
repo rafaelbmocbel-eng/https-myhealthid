@@ -23,7 +23,7 @@ const SHORT_LABELS: Record<string, string> = {
 };
 
 const FULL_LABELS: Record<string, string> = {
-  D: 'Dor', EFI: 'Atividades', P: 'Emoções', I: 'Mudanças',
+  D: 'Dor', EFI: 'Limitação', P: 'Emoções', I: 'Mudanças',
   R: 'Sono/Energia', C: 'Vida pessoal', AF: 'Movimento',
   HID: 'Hidratação', NUT: 'Alimentação', ERG: 'Postura',
   N: 'Sinais corpo', MED: 'Medicação',
@@ -31,7 +31,7 @@ const FULL_LABELS: Record<string, string> = {
 
 const RING_DESCRIPTIONS: Record<string, { title: string; summary: string; components: string[] }> = {
   D:   { title: 'Dor (D)', summary: 'Intensidade e características da dor relatada.', components: ['Intensidade atual', 'Pior intensidade', 'Melhor dia', 'Tipo de dor', 'Regiões afetadas'] },
-  EFI: { title: 'Atividades do dia (EFI)', summary: 'Impacto funcional nas tarefas diárias.', components: ['Trabalho', 'Tarefas domésticas', 'Exercício', 'Independência', 'Vida social'] },
+  EFI: { title: 'Limitação nas atividades (EFI)', summary: 'Quanto a dor atrapalha as tarefas do dia — quanto maior, mais limitado.', components: ['Trabalho', 'Tarefas domésticas', 'Exercício', 'Independência', 'Vida social'] },
   P:   { title: 'Cabeça e emoções (P)', summary: 'Crenças e respostas psicológicas frente à dor.', components: ['Medo de movimento', 'Catastrofização', 'Evitação', 'Autoeficácia', 'Expectativa de recuperação'] },
   I:   { title: 'Mudanças recentes (I)', summary: 'Gatilhos e mudanças que antecederam o quadro.', components: ['Novos equipamentos', 'Aumento de carga', 'Mudança de postura', 'Sustos físicos', 'Data de início'] },
   R:   { title: 'Sono e energia (R)', summary: 'Regulação neurovegetativa: descanso e recuperação.', components: ['Qualidade do sono', 'Horas de sono', 'Despertar por dor', 'Fadiga', 'Estresse e ansiedade'] },
@@ -103,8 +103,9 @@ export default function MyIDFingerprint({
       const dashLen = circumference * Math.min(fillFraction, 1);
 
       const color = ring.color || getThermalColor(ring.value);
-      // value = nota (10 = ótimo) → tamanho do arco; severity (0 = ótimo) → brilho.
-      const severity = ring.severity ?? 10 - ring.value;
+      // value → tamanho do arco (interno: nota; externo: intensidade);
+      // severity (0 = ótimo, 10 = crítico) → brilho, igual para as duas famílias.
+      const severity = ring.severity ?? (ring.type === 'inner' ? 10 - ring.value : ring.value);
       const opacity = 0.55 + (severity / 10) * 0.45;
 
       return { ...ring, r, fillFraction, circumference, dashLen, color, opacity, severity, index: i };
@@ -182,7 +183,7 @@ export default function MyIDFingerprint({
             <g
               key={ridge.scoreKey}
               role="button"
-              aria-label={`${ridge.label}: nota ${ridge.value.toFixed(1)} de 10`}
+              aria-label={`${ridge.label}: ${ridge.type === 'inner' ? 'nota' : 'intensidade'} ${ridge.value.toFixed(1)} de 10`}
               onMouseEnter={() => { setHoveredIdx(ridgeIdx); onRingHover?.(ridge.scoreKey); }}
               onMouseLeave={() => { setHoveredIdx(null); onRingHover?.(null); }}
               onClick={() => handleClick(ridge, ridgeIdx)}
@@ -351,12 +352,14 @@ export default function MyIDFingerprint({
                     {info.title}
                   </h4>
                   <span className="ml-auto text-xs font-bold tabular-nums" style={{ color: ridge.color }}>
-                    <span className="text-muted-foreground font-normal">nota </span>{ridge.value.toFixed(1)}<span className="text-muted-foreground font-normal">/10</span>
+                    <span className="text-muted-foreground font-normal">{ridge.type === 'inner' ? 'nota ' : 'intensidade '}</span>{ridge.value.toFixed(1)}<span className="text-muted-foreground font-normal">/10</span>
                   </span>
                 </div>
-                {ridge.scoreKey === 'D' && (
-                  <p className="text-[11px] text-muted-foreground -mt-1 mb-2">Dor relatada: {(10 - ridge.value).toFixed(1)}/10 (0 = sem dor)</p>
-                )}
+                <p className="text-[11px] text-muted-foreground -mt-1 mb-2">
+                  {ridge.type === 'inner'
+                    ? 'Anel interno (o que te sustenta): quanto MAIOR, melhor.'
+                    : 'Anel externo (o que pesa sobre você): quanto MAIOR, pior.'}
+                </p>
                 <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{info.summary}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {info.components.map((c) => (
@@ -385,8 +388,9 @@ export default function MyIDFingerprint({
                 </button>
                 {legendaAberta && (
                   <p className="text-[10.5px] text-muted-foreground mt-1.5 leading-snug">
-                    Cada anel é a <strong>nota</strong> do fator, na mesma direção do MyID: 10 = ótimo, 0 = crítico.
-                    Anel cheio = bom; anel curto e cor quente = precisa de atenção. Na Dor, a nota 10 = sem dor.
+                    <strong>Anéis internos</strong> (o que te sustenta — sono, hábitos, vida pessoal): nota, <strong>quanto maior, melhor</strong>.
+                    {' '}<strong>Anéis externos</strong> (o que pesa — dor, emoções, limitação): intensidade, <strong>quanto maior, pior</strong>.
+                    Em ambos, cor quente = atenção, e o que está ruim tira pontos do MyID.
                   </p>
                 )}
                 {legendaAberta && (
