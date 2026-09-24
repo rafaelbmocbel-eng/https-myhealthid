@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { format, addDays, isBefore, startOfDay, parseISO, setHours, setMinutes, addMinutes, isAfter } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { gerarPixQrCodeDataUrl, gerarPixPayload } from '@/utils/pixQrCode';
-import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
+import logoMyHealthId from '@/assets/logo-myhealthid.png';
 import { useUtmCapture, getCapturedUtm } from '@/hooks/useUtmCapture';
 import { PublicTrackingPixels } from '@/components/tracking/PublicTrackingPixels';
 
@@ -585,7 +585,7 @@ export default function FunilPublico() {
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 shadow-lg">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <img src={logoMyHealthId} alt="Logo" className="h-10 w-10 rounded-full object-cover" />
+          <img src={logoMyHealthId} alt="My Health ID" className="h-10 w-10 rounded-full object-cover" />
           <div>
             <h1 className="font-bold text-lg">Atendimento</h1>
             <p className="text-xs opacity-80">Online • Resposta automática</p>

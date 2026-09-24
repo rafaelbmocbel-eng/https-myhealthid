@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
+import logoMyHealthId from '@/assets/logo-myhealthid.png';
 import { MyIDPhasedFlow } from '@/components/myid/MyIDPhasedFlow';
 import { MyIDCalculator, MyIDResponses } from '@/utils/myid/calculator';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
@@ -152,7 +152,7 @@ export default function AvaliacaoPublica() {
     const fpData = getMyIDFingerprintData(resultadoFinal.component_scores);
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6 p-6">
-        <img src={logoMyHealthId} alt="MyID" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />
+        <img src={logoMyHealthId} alt="My Health ID" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />
         <CheckCircle2 className="h-16 w-16 text-emerald-500" />
         <div className="text-center max-w-sm">
           <h2 className="text-2xl font-bold text-foreground mb-2">Avaliação MyID Concluída!</h2>
@@ -176,7 +176,7 @@ export default function AvaliacaoPublica() {
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card px-4 py-3 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <img src={logoMyHealthId} alt="MyID" className="h-9 w-9 rounded-xl object-cover shrink-0" />
+          <img src={logoMyHealthId} alt="My Health ID" className="h-9 w-9 rounded-xl object-cover shrink-0" />
           <div>
             <h1 className="font-bold text-sm text-foreground">Questionário MyID</h1>
             <p className="text-xs text-muted-foreground">Avaliação em 4 fases</p>

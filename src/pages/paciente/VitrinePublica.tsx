@@ -12,7 +12,7 @@ import {
   Search, MapPin, DollarSign, User, Loader2, ArrowLeft,
   Monitor, Building2, Globe, ChevronRight, Star, Home,
 } from 'lucide-react';
-import logoFull from '@/assets/logo-myhealthid-full.webp';
+import LogoMarca from '@/components/LogoMarca';
 
 type Terapeuta = {
   terapeuta_id: string;
@@ -320,7 +320,7 @@ export default function VitrinePublica() {
           >
             <ArrowLeft className="h-4 w-4 text-white" />
           </button>
-          <img src={logoFull} alt="My Health ID" className="h-7 w-auto object-contain" />
+          <LogoMarca tamanho={26} fundo="escuro" />
           <div className="ml-auto">
             <Button
               size="sm"

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2, UserPlus, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
-import logoFull from '@/assets/logo-myhealthid-full.webp';
+import logoFull from '@/assets/logo-myhealthid-horizontal.png';
 import { useUtmCapture, getCapturedUtm } from '@/hooks/useUtmCapture';
 
 export default function CadastroCliente() {
@@ -141,7 +141,7 @@ export default function CadastroCliente() {
 
       {/* Mobile header */}
       <div className="md:hidden w-full py-4 px-4 shrink-0 bg-white border-b border-border/40">
-        <img src={logoFull} alt="My Health ID" className="w-full h-auto max-h-36 object-contain" />
+        <img src={logoFull} alt="My Health ID — Sua saúde, sua identidade." className="w-full max-w-[300px] mx-auto h-auto object-contain" />
       </div>
 
       {/* Form panel */}

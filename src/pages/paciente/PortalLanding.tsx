@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Heart, Calendar, Activity, Dumbbell, LineChart, MessageCircle, Search, ShieldCheck, Star, ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import logoFull from '@/assets/logo-myhealthid-full.webp';
+import LogoMarca from '@/components/LogoMarca';
 
 const FEATURES = [
   { icon: Search, title: 'Encontre seu terapeuta', desc: 'Busque profissionais por especialidade, cidade e convênio — gratuito.' },
@@ -25,7 +25,7 @@ export default function PortalLanding() {
       {/* ─── Header ─── */}
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border/40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <img src={logoFull} alt="My Health ID" className="h-8 w-auto object-contain" />
+          <LogoMarca tamanho={28} />
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate('/paciente/login')}>
               Entrar
@@ -165,7 +165,7 @@ export default function PortalLanding() {
       <footer className="py-6 px-4 border-t border-border/40 mt-auto">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground/60">
           <div className="flex items-center gap-2">
-            <img src={logoFull} alt="My Health ID" className="h-5 w-auto opacity-50 object-contain" />
+            <LogoMarca tamanho={18} className="opacity-60" />
           </div>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> LGPD Compliant</span>

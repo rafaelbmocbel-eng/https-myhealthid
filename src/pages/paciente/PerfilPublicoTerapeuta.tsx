@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { ArrowLeft, MapPin, DollarSign, User, CheckCircle2, Send, Loader2, ShieldCheck, Heart } from 'lucide-react';
-import logoFull from '@/assets/logo-myhealthid-full.webp';
+import LogoMarca from '@/components/LogoMarca';
 
 type Terapeuta = {
   terapeuta_id: string;
@@ -116,7 +116,7 @@ export default function PerfilPublicoTerapeuta() {
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <img src={logoFull} alt="My Health ID" className="h-7 w-auto object-contain" />
+            <LogoMarca tamanho={26} />
           </div>
           {!user && (
             <Button size="sm" variant="outline" onClick={() => navigate('/paciente/login')}>

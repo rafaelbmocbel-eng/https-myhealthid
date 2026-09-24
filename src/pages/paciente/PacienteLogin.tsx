@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2, Heart, Activity, Calendar, Dumbbell, LineChart, ShieldCheck, Sparkles, Lock, Mail, User as UserIcon, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
-import logoFull from '@/assets/logo-myhealthid-full.webp';
+import logoFull from '@/assets/logo-myhealthid-horizontal.png';
+import LogoMarca from '@/components/LogoMarca';
 
 export default function PacienteLogin() {
   const { token: routeToken } = useParams();
@@ -426,7 +427,7 @@ export default function PacienteLogin() {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-6 px-6 py-10 text-center">
         <div className="bg-white/95 rounded-xl px-3 py-2 shadow-md">
-          <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
+          <LogoMarca tamanho={34} />
         </div>
         <div className="space-y-2 max-w-sm">
           <p className="text-lg font-black text-foreground">Essa é uma conta de profissional</p>
@@ -463,7 +464,7 @@ export default function PacienteLogin() {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-6 px-6 text-center">
         <div className="bg-white/95 rounded-xl px-3 py-2 shadow-md mb-2">
-          <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
+          <LogoMarca tamanho={34} />
         </div>
         <div className="space-y-1">
           <p className="text-base font-bold text-foreground">Você está logado como profissional</p>
@@ -493,7 +494,7 @@ export default function PacienteLogin() {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-6 px-6 py-10 text-center">
         <div className="bg-white/95 rounded-xl px-3 py-2 shadow-md">
-          <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
+          <LogoMarca tamanho={34} />
         </div>
         <div className="space-y-2 max-w-sm">
           <p className="text-lg font-black text-foreground">Não encontramos seu cadastro</p>
@@ -563,7 +564,7 @@ export default function PacienteLogin() {
 
         <div className="relative flex items-center gap-3">
           <div className="bg-white/95 rounded-xl px-3 py-2 shadow-lg">
-            <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
+            <LogoMarca tamanho={34} />
           </div>
           <div className="text-xs text-white/50">Portal do Paciente</div>
         </div>
@@ -614,7 +615,7 @@ export default function PacienteLogin() {
 
       {/* ============ Mobile header ============ */}
       <div className="md:hidden relative w-full py-4 px-4 shrink-0 bg-white border-b border-border/40">
-        <img src={logoFull} alt="My Health ID — Portal do Paciente" className="w-full h-auto max-h-36 object-contain" />
+        <img src={logoFull} alt="My Health ID — Portal do Paciente" className="w-full max-w-[300px] mx-auto h-auto object-contain" />
       </div>
 
       {/* ============ Right panel — Form ============ */}

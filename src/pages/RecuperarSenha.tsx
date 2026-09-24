@@ -7,7 +7,7 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import LogoIcon from '@/components/LogoIcon';
-import logoFull from '@/assets/logo-myhealthid-full.webp';
+import logoFull from '@/assets/logo-myhealthid-horizontal.png';
 
 export default function RecuperarSenha() {
   const { resetPassword } = useAuth();
@@ -62,7 +62,7 @@ export default function RecuperarSenha() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="mb-8 lg:hidden flex justify-center">
-            <img src={logoFull} alt="My Health ID" className="w-full h-auto max-h-40 object-contain" />
+            <img src={logoFull} alt="My Health ID — Sua saúde, sua identidade." className="w-full max-w-[300px] mx-auto h-auto object-contain" />
           </div>
 
           <Link to="/auth" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">

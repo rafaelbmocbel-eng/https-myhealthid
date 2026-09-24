@@ -5,7 +5,7 @@ import { Loader2, XCircle, CalendarDays, Clock, CheckCircle2, Phone, ArrowLeft }
 import { cn } from '@/lib/utils';
 import { shareViaWhatsApp } from '@/utils/whatsapp';
 import { Button } from '@/components/ui/button';
-import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
+import logoMyHealthId from '@/assets/logo-myhealthid.png';
 import { format, addDays, startOfWeek, isSameDay, isAfter, parseISO, addMinutes } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -314,7 +314,7 @@ export default function AgendaPublica() {
             <CheckCircle2 className="h-14 w-14 text-primary" />
           </div>
           <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 shadow-md">
-            <img src={logoMyHealthId} alt="Logo" className="h-8 w-8 rounded-lg object-cover" />
+            <img src={logoMyHealthId} alt="My Health ID" className="h-8 w-8 rounded-lg object-cover" />
           </div>
         </div>
 
@@ -471,7 +471,7 @@ export default function AgendaPublica() {
       <div className="border-b bg-card px-4 py-4 sticky top-0 z-10 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <img src={logoMyHealthId} alt="Logo" className="h-10 w-10 rounded-xl object-cover shrink-0" />
+            <img src={logoMyHealthId} alt="My Health ID" className="h-10 w-10 rounded-xl object-cover shrink-0" />
             <div>
               <h1 className="font-bold text-sm text-foreground">
                 Agenda Online{terapeuta ? ` — ${terapeuta.nome} ${terapeuta.sobrenome}` : ''}
