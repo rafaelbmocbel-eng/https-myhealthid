@@ -30,7 +30,7 @@ export default function PortalLanding() {
             <Button variant="ghost" size="sm" onClick={() => navigate('/paciente/login')}>
               Entrar
             </Button>
-            <Button size="sm" onClick={() => navigate('/portaldocliente/vitrine')}>
+            <Button size="sm" onClick={() => navigate('/profissionais')}>
               Encontrar terapeuta
             </Button>
           </div>
@@ -68,7 +68,7 @@ export default function PortalLanding() {
             <Button
               size="lg"
               className="h-12 px-8 rounded-xl font-bold text-sm shadow-lg"
-              onClick={() => navigate('/portaldocliente/vitrine')}
+              onClick={() => navigate('/profissionais')}
             >
               <Search className="h-4 w-4 mr-2" />
               Encontrar meu terapeuta
@@ -100,7 +100,7 @@ export default function PortalLanding() {
             {ESPECIALIDADES.map((e) => (
               <button
                 key={e}
-                onClick={() => navigate(`/portaldocliente/vitrine?especialidade=${encodeURIComponent(e)}`)}
+                onClick={() => navigate(`/profissionais?especialidade=${encodeURIComponent(e)}`)}
                 className="px-3 py-1.5 rounded-full text-xs font-semibold border border-border/60 bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
               >
                 {e}
@@ -153,7 +153,7 @@ export default function PortalLanding() {
           <Button
             size="lg"
             className="h-12 px-8 rounded-xl font-bold"
-            onClick={() => navigate('/portaldocliente/vitrine')}
+            onClick={() => navigate('/profissionais')}
           >
             Explorar terapeutas
             <ArrowRight className="h-4 w-4 ml-2" />

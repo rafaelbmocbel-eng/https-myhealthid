@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { normalizarBusca } from '@/lib/utils';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -171,6 +171,18 @@ function ProfissionalCard({ t, onClick }: { t: Terapeuta; onClick: () => void })
 // ─── componente principal ───────────────────────────────────────────────────
 export default function VitrinePublica() {
   const navigate = useNavigate();
+
+  // Página pública (divulgada no site): título e descrição para busca/compartilhamento.
+  useEffect(() => {
+    document.title = 'Encontre um profissional de saúde | My Health ID';
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', 'Fisioterapeutas, psicólogos, nutricionistas e outros profissionais que usam o My Health ID. Veja especialidades, cidade, valores e solicite atendimento.');
+  }, []);
   const [searchParams, setSearchParams] = useSearchParams();
   const [busca, setBusca] = useState('');
   const [modalidadeFiltro, setModalidadeFiltro] = useState<'todos' | 'presencial' | 'online'>('todos');
@@ -239,7 +251,7 @@ export default function VitrinePublica() {
         {/* barra de navegação */}
         <div className="relative flex items-center gap-2 px-4 pt-3 pb-1">
           <button
-            onClick={() => navigate('/portaldocliente')}
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
             className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
             aria-label="Voltar"
           >
@@ -384,7 +396,7 @@ export default function VitrinePublica() {
                 <ProfissionalCard
                   key={t.terapeuta_id}
                   t={t}
-                  onClick={() => navigate(`/portaldocliente/terapeuta/${t.terapeuta_id}`)}
+                  onClick={() => navigate(`/profissionais/${t.terapeuta_id}`)}
                 />
               ))}
             </div>

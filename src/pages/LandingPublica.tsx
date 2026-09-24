@@ -67,6 +67,11 @@ const CSS = `
 .clh .hero .lede{color:var(--muted); font-size:clamp(16px,2vw,19px); max-width:52ch; margin-top:18px}
 .clh .cta-row{display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; justify-content:center}
 .clh .trust{display:flex; align-items:center; gap:10px; margin-top:18px; color:var(--muted); font-size:13.5px; font-family:var(--mono)}
+.clh .vitrine-cta{margin:22px auto 0; max-width:460px; display:flex; flex-direction:column; gap:3px; padding:14px 18px; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:var(--shadow); text-align:left; transition:border-color .2s}
+.clh .vitrine-cta:hover{border-color:var(--emerald)}
+.clh .vitrine-cta .vt{font-weight:700; color:var(--ink); font-size:15px}
+.clh .vitrine-cta .vs{color:var(--muted); font-size:13.5px}
+.clh .vitrine-top{display:none}
 .clh .entrar-portas{margin-top:26px; display:flex; flex-direction:column; align-items:center; gap:10px}
 .clh .entrar-titulo{color:var(--muted); font-size:13.5px}
 .clh .entrar-btns{display:flex; flex-wrap:wrap; gap:12px; justify-content:center}
@@ -165,7 +170,12 @@ const CSS = `
   .clh .avatar-grid{grid-template-columns:1fr; gap:24px}
   .clh .tiers{grid-template-columns:1fr}
   .clh .nav .links{display:none}
+  .clh .vitrine-top{display:inline-flex}
+  .clh .brand{white-space:nowrap}
   .clh .pro-band .go{margin-left:0; width:100%}
+}
+@media (max-width:420px){
+  .clh .brand-txt{display:none}
 }
 @media (prefers-reduced-motion:reduce){.clh *{animation:none!important}}
 `;
@@ -228,15 +238,17 @@ export default function LandingPublica() {
         <div className="wrap nav">
           <a className="brand" href="/">
             <img className="mark" src={logoMark} alt="" aria-hidden="true" />
-            My Health ID
+            <span className="brand-txt">My Health ID</span>
           </a>
           <nav className="links">
             <a href="#como">Como funciona</a>
             <a href="#dims">O MyID</a>
             <a href="#avatar">Avatar Clínico</a>
             <a href="#planos">Planos</a>
+            <Link to="/profissionais">Encontrar profissional</Link>
           </nav>
           <div className="right">
+            <Link className="btn btn-ghost btn-sm vitrine-top" to="/profissionais">Profissionais</Link>
             <Link className="btn btn-emerald btn-sm" to="/paciente/login">Entrar</Link>
           </div>
         </div>
@@ -267,6 +279,12 @@ export default function LandingPublica() {
               <Link className="btn btn-ghost" to="/demo">Ver como funciona</Link>
             </div>
             <div className="trust"><span className="dot" /> Leva ~10 minutos · Dados protegidos pela LGPD</div>
+
+            {/* Vitrine aberta: qualquer pessoa encontra um profissional, sem conta */}
+            <Link className="vitrine-cta" to="/profissionais">
+              <span className="vt">Procurando um profissional?</span>
+              <span className="vs">Fisioterapia, psicologia, nutrição e mais — veja quem atende perto de você →</span>
+            </Link>
 
             {/* Login do cliente na própria página */}
             <div className="entrar-portas">
@@ -401,7 +419,7 @@ export default function LandingPublica() {
                 <li><Check c="var(--cyan)" /> Planos de treino, dicas e nutrição personalizados</li>
               </ul>
               <p className="note">Ligue-se a um profissional agora. O <b>Premium</b> (self-service) vem em breve. Os planos não substituem um profissional — os mais elaborados pedem acompanhamento presencial.</p>
-              <Link className="btn btn-ghost" to="/portaldocliente/vitrine" style={{ marginTop: '16px' }}>Encontrar um profissional</Link>
+              <Link className="btn btn-ghost" to="/profissionais" style={{ marginTop: '16px' }}>Encontrar um profissional</Link>
             </div>
           </div>
         </div>
@@ -414,7 +432,7 @@ export default function LandingPublica() {
               <h3>Conecte-se a um profissional e vá além.</h3>
               <p>Ao se ligar a um profissional, seu MyID fica <b>mais completo</b>: avatar montado, achados revisados e acompanhamento de verdade. Encontre fisioterapeutas e profissionais de saúde que entendem o seu retrato — sem sair do app.</p>
             </div>
-            <Link className="btn btn-emerald" to="/portaldocliente/vitrine">Encontrar um profissional</Link>
+            <Link className="btn btn-emerald" to="/profissionais">Encontrar um profissional</Link>
           </div>
         </div>
       </section>
@@ -457,7 +475,7 @@ export default function LandingPublica() {
           <div className="col">
             <h4>Cliente</h4>
             <Link to="/paciente/login">Fazer o MyID</Link>
-            <Link to="/portaldocliente/vitrine">Encontrar profissional</Link>
+            <Link to="/profissionais">Encontrar profissional</Link>
             <Link to="/paciente/login">Entrar no portal</Link>
           </div>
           <div className="col">

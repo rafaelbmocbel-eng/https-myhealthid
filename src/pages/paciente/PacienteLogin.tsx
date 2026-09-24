@@ -19,6 +19,22 @@ export default function PacienteLogin() {
   const portalToken = routeToken ?? searchParams.get('token');
   const isPortalLink = Boolean(routeToken) || searchParams.get('portal') === '1';
 
+  // Veio de uma página pública (ex.: perfil na vitrine → "Solicitar")? Depois do
+  // login volta para lá. Guardado na sessão porque o login pelo Google recarrega
+  // a página sem o parâmetro. Só caminhos internos (evita redirecionamento aberto).
+  const proximaParam = searchParams.get('proxima');
+  if (proximaParam && proximaParam.startsWith('/') && !proximaParam.startsWith('//')) {
+    try { sessionStorage.setItem('mh_proxima', proximaParam); } catch { /* storage bloqueado: segue sem retorno */ }
+  }
+  const destinoApos = (padrao: string) => {
+    let proxima: string | null = null;
+    try {
+      proxima = sessionStorage.getItem('mh_proxima');
+      sessionStorage.removeItem('mh_proxima');
+    } catch { /* storage bloqueado: usa o destino padrão */ }
+    return proxima && proxima.startsWith('/') && !proxima.startsWith('//') ? proxima : padrao;
+  };
+
   // Quem chega pelo link de convite quase sempre é PRIMEIRO acesso: precisa
   // CRIAR a senha (Cadastrar), não "Entrar". Por isso o link já abre em Cadastrar
   // — evita o erro "Invalid login credentials" de tentar logar sem ter conta.
@@ -118,7 +134,7 @@ export default function PacienteLogin() {
         .maybeSingle();
       if (paciente) {
         await marcarComoPaciente();
-        navigate('/paciente/dashboard', { replace: true });
+        navigate(destinoApos('/paciente/dashboard'), { replace: true });
         return;
       }
 
@@ -127,7 +143,7 @@ export default function PacienteLogin() {
       if (emailError) console.warn('[Portal] Falha ao vincular via email:', emailError);
       else if (linkedByEmail) {
         await marcarComoPaciente();
-        navigate('/paciente/dashboard', { replace: true });
+        navigate(destinoApos('/paciente/dashboard'), { replace: true });
         return;
       }
 
@@ -139,7 +155,7 @@ export default function PacienteLogin() {
         .maybeSingle();
       if (portalPaciente) {
         await marcarComoPaciente();
-        navigate('/paciente/profissionais', { replace: true });
+        navigate(destinoApos('/paciente/profissionais'), { replace: true });
         return;
       }
 
@@ -199,7 +215,7 @@ export default function PacienteLogin() {
     if (!insertError) {
       // A ficha free é criada por trigger no banco; o 1º passo do cliente é o MyID.
       try { await supabase.auth.updateUser({ data: { is_patient: true } }); } catch { /* best-effort: só evita perfil profissional futuro */ }
-      navigate('/paciente/questionarios', { replace: true });
+      navigate(destinoApos('/paciente/questionarios'), { replace: true });
     } else {
       setCriandoNovo(false);
       toast({

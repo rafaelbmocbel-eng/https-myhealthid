@@ -176,7 +176,7 @@ export default function VitrineConfig() {
   }
 
   const pendentes = solicitacoes.filter((s) => s.status === 'pendente');
-  const vitrineUrl = `${window.location.origin}/portaldocliente/terapeuta/${user?.id}`;
+  const vitrineUrl = `${window.location.origin}/profissionais/${user?.id}`;
 
   return (
     <div className="space-y-6">

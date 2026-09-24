@@ -223,6 +223,9 @@ const App = () => (
                 <Route path="/portaldocliente" element={<Navigate to="/paciente/login" replace />} />
                 <Route path="/portaldocliente/vitrine" element={<VitrinePublica />} />
                 <Route path="/portaldocliente/terapeuta/:id" element={<PerfilPublicoTerapeuta />} />
+                {/* Endereço público curto da vitrine (divulgação no site) */}
+                <Route path="/profissionais" element={<VitrinePublica />} />
+                <Route path="/profissionais/:id" element={<PerfilPublicoTerapeuta />} />
 
                 {/* Portal do paciente — auth + app */}
                 <Route path="/paciente/login" element={<PortalErrorBoundary><PacienteLogin /></PortalErrorBoundary>} />

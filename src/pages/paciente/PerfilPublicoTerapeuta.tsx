@@ -74,7 +74,7 @@ export default function PerfilPublicoTerapeuta() {
 
   const handleSolicitar = () => {
     if (!user) {
-      navigate(`/paciente/login?proxima=/portaldocliente/terapeuta/${id}`);
+      navigate(`/paciente/login?proxima=/profissionais/${id}`);
       return;
     }
     setDialogOpen(true);
@@ -94,7 +94,7 @@ export default function PerfilPublicoTerapeuta() {
         <Heart className="h-10 w-10 text-muted-foreground/30 mb-3" />
         <p className="text-sm font-semibold text-foreground">Perfil não encontrado</p>
         <p className="text-xs text-muted-foreground mt-1">Este profissional pode não estar mais disponível na vitrine.</p>
-        <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/portaldocliente/vitrine')}>
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/profissionais')}>
           Voltar à vitrine
         </Button>
       </div>
@@ -108,7 +108,7 @@ export default function PerfilPublicoTerapeuta() {
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate('/portaldocliente/vitrine')}
+              onClick={() => navigate('/profissionais')}
               className="p-1.5 rounded-lg hover:bg-muted transition-colors"
               aria-label="Voltar"
             >
