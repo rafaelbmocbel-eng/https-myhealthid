@@ -25,14 +25,14 @@ const PROBLEMA_SIMPLES: Record<string, (score: number) => string> = {
   D:   (s) => s >= 7 ? 'Sua dor está intensa e atrapalhando o dia a dia.' : 'Você sente dor com frequência.',
   EFI: (s) => s >= 7 ? 'Você está com muita dificuldade nas atividades do dia a dia.' : 'Algumas atividades estão mais difíceis do que deveriam.',
   P:   (s) => s >= 5 ? 'Medo de se mexer ou pensamentos negativos sobre a dor estão te travando.' : 'Há alguma insegurança em relação ao movimento.',
-  I:   (s) => s >= 2 ? 'A dor já está há tempo demais sem tratamento adequado.' : 'A dor é recente — bom momento para agir.',
+  I:   (s) => s >= 2.5 ? 'Mudanças recentes (mais carga, nova postura, equipamento ou um susto) estão sobrecarregando o corpo.' : 'Alguma mudança recente na rotina pode ter contribuído para a dor.',
   R:   (s) => s >= 7 ? 'Seu corpo não está recuperando: sono ruim, cansaço e estresse altos.' : 'Sono, energia ou estresse estão desregulados.',
   C:   (s) => s >= 6 ? 'Pressões do trabalho, família ou dinheiro estão pesando muito.' : 'O contexto de vida está sobrecarregando você.',
   AF:  (s) => s >= 6 ? 'Você está muito parado(a) — isso piora a dor.' : 'Falta movimento no seu dia.',
   HID: ()  => 'Você está bebendo pouca água.',
   NUT: ()  => 'Sua alimentação pode estar inflamando o corpo.',
   ERG: (s) => s >= 6 ? 'Sua postura/posto de trabalho está agredindo o corpo todo dia.' : 'Pequenos ajustes de postura ajudariam muito.',
-  N:   ()  => 'Cicatrizes, cirurgias ou questões viscerais estão somando ruído ao sistema.',
+  N:   ()  => 'Sinais do corpo (digestão, intestino, ciclo hormonal) estão somando carga ao quadro.',
 };
 
 const ACAO_SIMPLES: Record<string, string> = {

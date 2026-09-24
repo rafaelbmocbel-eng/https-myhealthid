@@ -431,22 +431,23 @@ serve(async (req) => {
 
       // Build descriptive summary from raw_data
       const rd = raw_data || {};
-      const painLocation = rd.painLocation || rd.localizacao_dor || rd.bloco_2_location || "não especificada";
-      const painDuration = rd.painDuration || rd.duracao_dor || rd.bloco_1_duration || "não informada";
-      const painIntensity = rd.painIntensity ?? rd.intensidade_dor ?? rd.nrs ?? rd.bloco_2_nrs ?? "N/A";
-      const sleepQuality = rd.sleepQuality ?? rd.qualidade_sono ?? rd.bloco_5_sleep_quality ?? "N/A";
-      const stressLevel = rd.stressLevel ?? rd.nivel_estresse ?? rd.bloco_5_stress ?? "N/A";
-      const activityLevel = rd.activityLevel ?? rd.nivel_atividade ?? rd.bloco_5_activity ?? "N/A";
-      const hydration = rd.hydration ?? rd.hidratacao ?? rd.bloco_5_hydration ?? "N/A";
-      const sleepHours = rd.sleepHours ?? rd.horas_sono ?? rd.bloco_5_sleep_hours ?? "N/A";
-      const painFrequency = rd.painFrequency ?? rd.frequencia_dor ?? rd.bloco_2_frequency ?? "não informada";
-      const painType = rd.painType ?? rd.tipo_dor ?? rd.bloco_2_type ?? "não especificado";
+      // Chaves REAIS do formulário atual (as antigas — bloco_2_nrs, bloco_5_stress…
+      // — não existem e a nota saía toda "N/A"); legado mantido como fallback.
+      const FREQ_PT: Record<string, string> = { constant: "constante", daily: "diária", weekly: "semanal", monthly: "mensal" };
+      const painLocation = rd.bloco_1_queixa || rd.painLocation || rd.localizacao_dor || "não especificada";
+      const painIntensity = rd.bloco_2_pain_now ?? rd.painIntensity ?? rd.intensidade_dor ?? "N/A";
+      const painMaxRaw = rd.bloco_2_pain_max ?? null;
+      const sleepQuality = rd.bloco_5a_quality ?? rd.sleepQuality ?? rd.qualidade_sono ?? "N/A";
+      const stressLevel = rd.bloco_5c_stress ?? rd.stressLevel ?? rd.nivel_estresse ?? "N/A";
+      const sleepHours = rd.bloco_5a_hours ?? rd.sleepHours ?? rd.horas_sono ?? "N/A";
+      const waterLiters = rd.bloco_5f_water_liters ?? null;
+      const painFrequency = FREQ_PT[rd.bloco_2_pain_frequency] ?? rd.painFrequency ?? rd.frequencia_dor ?? "não informada";
+      const painType = result.pain_pattern ?? rd.painType ?? rd.tipo_dor ?? "não especificado";
       const workImpact = rd.bloco_3_work ?? rd.trabalho_impacto ?? "N/A";
       const exerciseImpact = rd.bloco_3_exercise ?? rd.exercicio_impacto ?? "N/A";
       const socialImpact = rd.bloco_3_social ?? rd.social_impacto ?? "N/A";
-      const catastrophizing = rd.bloco_4_catastrophizing ?? rd.catastrofizacao ?? null;
-      const fearAvoidance = rd.bloco_4_fear ?? rd.medo_evitacao ?? null;
-      const nutrition = rd.nutrition ?? rd.alimentacao ?? rd.bloco_5_nutrition ?? "N/A";
+      const catastrophizing = rd.bloco_4_belief_damage ?? rd.catastrofizacao ?? null;
+      const fearAvoidance = rd.bloco_4_fear_movement ?? rd.medo_evitacao ?? null;
 
       const flagsText = redFlags && redFlagAlerts.length > 0
         ? `\n⚠️ RED FLAGS DETECTADAS:\n${redFlagAlerts.map((f: string) => `  🚨 ${f}`).join("\n")}\n  ➡️ Requer avaliação médica complementar antes de prosseguir com condutas.`
@@ -477,8 +478,8 @@ serve(async (req) => {
         { name: "Dor", score: dNum, desc: "intensidade e frequência da dor reportada" },
         { name: "Funcionalidade", score: 10 - efiNum, desc: "limitação funcional nas atividades diárias" },
         { name: "Psicológico", score: pNum, desc: "fatores emocionais como catastrofização, medo e ansiedade" },
-        { name: "Demanda/Inércia", score: iNum, desc: "carga de demandas físicas e ocupacionais" },
-        { name: "Ruído Sistêmico", score: nNum, desc: "fatores de estilo de vida como sono, estresse e hidratação" },
+        { name: "Mudanças recentes", score: iNum, desc: "mudanças de carga, postura, equipamento ou susto nas últimas 4 semanas" },
+        { name: "Sinais do corpo", score: nNum, desc: "sinais digestivos/viscerais e hormonais" },
       ].sort((a, b) => b.score - a.score);
 
       const topConcerns = dimensions.filter(d => d.score >= 5);
@@ -489,16 +490,16 @@ serve(async (req) => {
       // Build lifestyle summary
       const lifestyleItems = [];
       if (sleepHours !== "N/A") lifestyleItems.push(`sono de ${sleepHours}h/noite`);
-      if (sleepQuality !== "N/A") lifestyleItems.push(`qualidade do sono ${Number(sleepQuality) <= 4 ? "prejudicada" : Number(sleepQuality) >= 7 ? "adequada" : "moderada"} (${sleepQuality}/10)`);
-      if (stressLevel !== "N/A") lifestyleItems.push(`estresse ${Number(stressLevel) >= 7 ? "elevado" : Number(stressLevel) >= 4 ? "moderado" : "baixo"} (${stressLevel}/10)`);
-      if (activityLevel !== "N/A") lifestyleItems.push(`atividade física ${Number(activityLevel) <= 3 ? "insuficiente" : Number(activityLevel) >= 7 ? "ativa" : "moderada"} (${activityLevel}/10)`);
-      if (hydration !== "N/A") lifestyleItems.push(`hidratação ${Number(hydration) <= 4 ? "insuficiente" : "adequada"} (${hydration}/10)`);
-      if (nutrition !== "N/A") lifestyleItems.push(`alimentação (${nutrition}/10)`);
+      if (sleepQuality !== "N/A") lifestyleItems.push(`qualidade do sono ${Number(sleepQuality) <= 4 ? "prejudicada" : Number(sleepQuality) >= 7 ? "adequada" : "moderada"} (${sleepQuality}/10, 10 = ótima)`);
+      if (stressLevel !== "N/A") lifestyleItems.push(`estresse ${Number(stressLevel) >= 7 ? "elevado" : Number(stressLevel) >= 4 ? "moderado" : "baixo"} (${stressLevel}/10, 10 = máximo)`);
+      const afNum = Number(cs.AF ?? NaN);
+      if (!isNaN(afNum)) lifestyleItems.push(`atividade física ${afNum <= 3 ? "insuficiente" : afNum >= 7 ? "ativa" : "moderada"}`);
+      if (waterLiters != null) lifestyleItems.push(`água ${waterLiters} L/dia`);
       const lifestyleText = lifestyleItems.length > 0 ? lifestyleItems.join(", ") : "dados de estilo de vida não informados";
 
       // Build functional impact summary  
       const funcItems = [];
-      if (workImpact !== "N/A") funcItems.push(`trabalho ${workImpact}/10`);
+      if (workImpact !== "N/A") funcItems.push(workImpact === "na" ? "trabalho: não se aplica" : `trabalho ${workImpact}/10`);
       if (exerciseImpact !== "N/A") funcItems.push(`exercício ${exerciseImpact}/10`);
       if (socialImpact !== "N/A") funcItems.push(`vida social ${socialImpact}/10`);
       const funcText = funcItems.length > 0 ? funcItems.join(", ") : "";
@@ -518,11 +519,16 @@ serve(async (req) => {
       const topDomains = dimensions.filter(d => d.score >= 5).slice(0, 3).map(d => `${d.name} ${d.score.toFixed(1)}`).join(", ");
       const flagsSummary = redFlags && redFlagAlerts.length > 0 ? ` ⚠️ Red flags detectadas.` : "";
       
+      // Todas as dimensões na MESMA escala de peso (0 = ótimo, 10 = crítico):
+      // capacidades (EFI, R, C) entram como 10 − valor. Antes a linha misturava
+      // "Dor 5/10" (maior = pior) com "Funcionalidade 8,6/10" (maior = melhor).
+      const peso = (v: number) => Math.max(0, Math.min(10, v)).toFixed(1);
       const descricao = `MyID-100: ${myidFormatted}/100 — ${classificacao}.${flagsSummary}
-Dor (D): ${scoreD}/10 | Funcionalidade (EFI): ${scoreEFI}/10 | Psicológico (P): ${scoreP}/10
-Demanda (I): ${scoreI}/10 | Ruído (N): ${scoreN}/10 | Regulação (R): ${scoreR}/10
+Peso de cada fator (0 = ótimo · 10 = crítico):
+Dor ${peso(dNum)} | Limitação funcional ${peso(10 - efiNum)} | Emocional/crenças ${peso(pNum)}
+Sono e energia ${peso(10 - Number(scoreR))} | Vida pessoal ${peso(10 - Number(scoreC))} | Mudanças recentes ${peso(iNum)} | Sinais do corpo ${peso(nNum)}
 Domínios prioritários: ${topDomains || "nenhum em nível crítico"}.
-Dor: ${painLocation !== "não especificada" ? painLocation : "local não especificado"}, NRS ${painIntensity}/10, ${painType !== "não especificado" ? painType : ""} ${painFrequency !== "não informada" ? `(${painFrequency})` : ""}.
+Dor: ${painLocation !== "não especificada" ? painLocation : "local não especificado"} — agora ${painIntensity}/10${painMaxRaw != null ? `, pior da semana ${painMaxRaw}/10` : ""}${painFrequency !== "não informada" ? `, frequência ${painFrequency}` : ""}${painType !== "não especificado" ? `. Padrão: ${painType}` : ""}.${funcText ? `\nLimitação nas atividades (0 = nenhuma, 10 = impossível): ${funcText}.` : ""}
 Estilo de vida: ${lifestyleText}.${psychText ? `\nPerfil psicológico: ${pNum >= 7 ? "componente emocional significativo" : "influência psicológica moderada"}.` : ""}
 ${severityDesc.split("—")[0].trim()} — ${myidNum <= 49 ? "intervenção prioritária" : myidNum <= 69 ? "monitoramento e ajustes" : "manutenção e prevenção"}.
 Avaliação via MyID-100 v2.0. Dados completos no dashboard.`;

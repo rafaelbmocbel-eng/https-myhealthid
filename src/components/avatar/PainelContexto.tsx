@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Moon, Zap, Droplets, Utensils, Brain, Activity, AlertTriangle } from 'lucide-react';
+import { gravidadeDimensao } from '@/utils/myid/lossTable';
 
 interface Props {
   scores: {
@@ -59,9 +60,12 @@ export function PainelContexto({ scores, alergias, medicamentos, mostrar = true 
   const chips: ChipData[] = [];
 
   // 1. Sono & Regulação (R) — ≥7 ruim, thresholds: warn=4, bad=7
+  // As notas do MyID vêm em duas direções: sono, atividade, hidratação,
+  // nutrição, contexto e ergonomia são CAPACIDADE (maior = melhor). Aqui tudo
+  // passa por gravidadeDimensao (0 = ótimo, 10 = crítico) antes das faixas.
   const R = scores.R ?? null;
-  if (R != null && R > 0) {
-    const variant = scoreToVariant(R, { warn: 4, bad: 7 });
+  if (R != null) {
+    const variant = scoreToVariant(gravidadeDimensao('R', R), { warn: 4, bad: 7 });
     const statusMap: Record<ChipVariant, string> = {
       green: 'Adequado', amber: 'Atenção', orange: 'Comprometido', red: 'Comprometido', blue: 'Adequado',
     };
@@ -74,7 +78,7 @@ export function PainelContexto({ scores, alergias, medicamentos, mostrar = true 
   }
 
   // 2. Atividade Física (AF + I combined avg) — ≥7 ruim (warn=4, bad=7)
-  const afAvg = avg(scores.AF, scores.I);
+  const afAvg = scores.AF != null ? gravidadeDimensao('AF', scores.AF) : null;
   if (afAvg != null) {
     const variant = scoreToVariant(afAvg, { warn: 4, bad: 7 });
     const statusMap: Record<ChipVariant, string> = {
@@ -90,8 +94,8 @@ export function PainelContexto({ scores, alergias, medicamentos, mostrar = true 
 
   // 3. Hidratação (HID) — ≥7 ruim (warn=4, bad=7)
   const HID = scores.HID ?? null;
-  if (HID != null && HID > 0) {
-    const variant = scoreToVariant(HID, { warn: 4, bad: 7 });
+  if (HID != null) {
+    const variant = scoreToVariant(gravidadeDimensao('HID', HID), { warn: 4, bad: 7 });
     const statusMap: Record<ChipVariant, string> = {
       green: 'Adequada', amber: 'Atenção', orange: 'Insuficiente', red: 'Insuficiente', blue: 'Adequada',
     };
@@ -105,8 +109,8 @@ export function PainelContexto({ scores, alergias, medicamentos, mostrar = true 
 
   // 4. Nutrição (NUT) — ≥7 ruim (warn=4, bad=7); never alarming language
   const NUT = scores.NUT ?? null;
-  if (NUT != null && NUT > 0) {
-    const variant = scoreToVariant(NUT, { warn: 4, bad: 7 });
+  if (NUT != null) {
+    const variant = scoreToVariant(gravidadeDimensao('NUT', NUT), { warn: 4, bad: 7 });
     const statusMap: Record<ChipVariant, string> = {
       green: 'Equilibrada', amber: 'Atenção', orange: 'Atenção', red: 'Atenção', blue: 'Equilibrada',
     };
@@ -119,7 +123,7 @@ export function PainelContexto({ scores, alergias, medicamentos, mostrar = true 
   }
 
   // 5. Psicossocial (avg of P and C) — ≥7 ruim (warn=4, bad=7)
-  const psicAvg = avg(scores.P, scores.C);
+  const psicAvg = avg(scores.P, scores.C != null ? gravidadeDimensao('C', scores.C) : undefined);
   if (psicAvg != null) {
     const variant = scoreToVariant(psicAvg, { warn: 4, bad: 7 });
     const statusMap: Record<ChipVariant, string> = {
@@ -134,7 +138,7 @@ export function PainelContexto({ scores, alergias, medicamentos, mostrar = true 
   }
 
   // 6. Ergonomia (ERG) — only show if ERG ≥ 4
-  const ERG = scores.ERG ?? null;
+  const ERG = scores.ERG != null ? gravidadeDimensao('ERG', scores.ERG) : null;
   if (ERG != null && ERG >= 4) {
     const variant: ChipVariant = ERG >= 7 ? 'orange' : 'amber';
     const status = ERG >= 7 ? 'Sobrecarga postural' : 'Atenção postural';

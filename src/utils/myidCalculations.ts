@@ -9,7 +9,7 @@ import type {
 } from '@/types/myid';
 
 import {
-  calcularPerdaDimensao, classificarMyID100, identificarDriver,
+  calcularPerdaDimensao, classificarMyID100, identificarDriver, DIMENSOES_CAPACIDADE,
   DIMENSION_LABELS, DIMENSION_COLORS, TEMPLATES_INTERPRETACAO,
 } from '@/utils/myid/lossTable';
 
@@ -282,31 +282,40 @@ export function getThermalColor(v: number): string {
 }
 
 export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
-  // Layout: CAPACIDADE no centro (suas reservas, base interna) → DEMANDA por fora (o que está pressionando agora).
-  // Lê-se do centro pra fora: "o que me sustenta" → "o que está me desafiando".
+  // UMA escala só no gráfico: cada anel mostra QUANTO AQUELE FATOR PESA contra o
+  // paciente — 0 = ótimo, 10 = crítico (a mesma "escala de comprometimento" da
+  // legenda de cores). As respostas vêm em duas direções (dor 0-10: maior = pior;
+  // sono/alimentação: maior = melhor); aqui tudo vira "peso", então anel maior e
+  // mais quente é SEMPRE pior. O MyID-100 no centro é 100 menos a soma desses pesos.
+  // `??` e não `||`: nota 0 é resposta válida (ex.: totalmente sedentário).
+  const peso = (key: string, padrao: number) => {
+    const bruto = Number(scores[key] ?? padrao);
+    return Math.max(0, Math.min(10, DIMENSOES_CAPACIDADE.has(key) ? 10 - bruto : bruto));
+  };
+  const anel = (label: string, key: string, type: 'inner' | 'outer', padrao = 0): FingerprintRing => {
+    const v = peso(key, padrao);
+    return { label, value: v, type, color: getThermalColor(v), scoreKey: key, severity: v };
+  };
+  // MED pode ser negativo (penalidade) ou positivo (bônus): só a penalidade pesa.
+  const med = (() => {
+    const raw = scores.MED ?? 0;
+    const v = raw < 0 ? Math.min(-raw * 1.5, 10) : 0;
+    return { label: 'Medicação', value: v, type: 'outer' as const, color: getThermalColor(v), scoreKey: 'MED', severity: v };
+  })();
+  // Layout: hábitos/reservas no centro → o que está pressionando por fora.
   return [
-    // ── CAPACIDADE (anéis internos) ──
-    { label: 'Sono e energia', value: scores.R || 0, type: 'inner', color: getThermalColor(10 - (scores.R || 0)), scoreKey: 'R' },
-    { label: 'Vida pessoal', value: scores.C || 0, type: 'inner', color: getThermalColor(10 - (scores.C || 0)), scoreKey: 'C' },
-    { label: 'Movimento', value: scores.AF || 5, type: 'inner', color: getThermalColor(10 - (scores.AF || 5)), scoreKey: 'AF' },
-    { label: 'Hidratação', value: scores.HID || 7, type: 'inner', color: getThermalColor(10 - (scores.HID || 7)), scoreKey: 'HID' },
-    { label: 'Alimentação', value: scores.NUT || 7, type: 'inner', color: getThermalColor(10 - (scores.NUT || 7)), scoreKey: 'NUT' },
-    { label: 'Postura no dia', value: scores.ERG || 7, type: 'inner', color: getThermalColor(10 - (scores.ERG || 7)), scoreKey: 'ERG' },
-    // ── DEMANDA (anéis externos) ──
-    // EFI fica visualmente no grupo "externo", mas é bem-estar/funcionalidade: menor valor = pior.
-    { label: 'Suas atividades do dia', value: scores.EFI || 0, type: 'outer', color: getThermalColor(10 - (scores.EFI || 0)), scoreKey: 'EFI', severity: 10 - (scores.EFI || 0) },
-    { label: 'Cabeça e emoções', value: scores.P || 0, type: 'outer', color: getThermalColor(scores.P || 0), scoreKey: 'P' },
-    { label: 'Mudanças recentes', value: scores.I || 0, type: 'outer', color: getThermalColor(scores.I || 0), scoreKey: 'I' },
-    { label: 'Sinais do corpo', value: scores.N || 0, type: 'outer', color: getThermalColor(scores.N || 0), scoreKey: 'N' },
-    // MED can be negative (penalty) or positive (bonus).
-    // For the ring: encode the PENALTY as demand (higher = worse).
-    // A corticoid patient (MED=-5) should show a red, high-demand ring.
-    (() => {
-      const raw = scores.MED ?? 0;
-      const demandValue = raw < 0 ? Math.min(-raw * 1.5, 10) : 0;
-      return { label: 'Medicação', value: demandValue, type: 'outer' as const, color: getThermalColor(demandValue), scoreKey: 'MED' };
-    })(),
-    { label: 'Dor', value: scores.D || 0, type: 'outer', color: getThermalColor(scores.D || 0), scoreKey: 'D' },
+    anel('Sono e energia', 'R', 'inner', 10),
+    anel('Vida pessoal', 'C', 'inner', 10),
+    anel('Movimento', 'AF', 'inner', 10),
+    anel('Hidratação', 'HID', 'inner', 10),
+    anel('Alimentação', 'NUT', 'inner', 10),
+    anel('Postura no dia', 'ERG', 'inner', 10),
+    anel('Suas atividades do dia', 'EFI', 'outer', 10),
+    anel('Cabeça e emoções', 'P', 'outer'),
+    anel('Mudanças recentes', 'I', 'outer'),
+    anel('Sinais do corpo', 'N', 'outer'),
+    med,
+    anel('Dor', 'D', 'outer'),
   ];
 }
 

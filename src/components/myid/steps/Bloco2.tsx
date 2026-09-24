@@ -12,7 +12,12 @@ interface Bloco2Props {
 export function Bloco2({ data, updateData }: Bloco2Props) {
     const handleRedFlagChange = (field: string, checked: boolean) => {
         const current = data.bloco_2_red_flags || {};
-        updateData({ bloco_2_red_flags: { ...current, [field]: checked } });
+        // "Nenhum desses" e um sinal de alerta não podem ficar marcados juntos.
+        if (field === 'none' && checked) {
+            updateData({ bloco_2_red_flags: { none: true } });
+            return;
+        }
+        updateData({ bloco_2_red_flags: { ...current, [field]: checked, ...(checked ? { none: false } : {}) } });
     };
 
     const handlePatternChange = (value: string, checked: boolean) => {

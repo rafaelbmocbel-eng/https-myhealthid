@@ -129,11 +129,32 @@ export class MyIDCalculator {
     }
 
     detectPainPattern(): string {
+        // Formulário atual: padrão temporal (Bloco 2) + sinal neural dos alertas.
+        // Antes lia só o formato antigo (bloco2.regioes) e todo mundo saía
+        // "Mecânico Adaptativo", mesmo marcando dor noturna ou rigidez matinal.
+        const padroes: string[] = this.responses.bloco_2_temporal_pattern || [];
+        const flags = this.responses.bloco_2_red_flags || {};
         const regions = this.responses.bloco2?.regioes || [];
-        const allTypes = regions.flatMap(r => r.tiposDor || []);
-        let patternType = 'Mecânico Adaptativo';
-        if (allTypes.includes('Queimação') || allTypes.includes('Dormência')) patternType = 'Isquêmico / Neuropático';
-        else if (allTypes.includes('Peso/Pressão')) patternType = 'Congestivo / Mecânico';
+        const tiposLegado = regions.flatMap(r => r.tiposDor || []);
+
+        let patternType = 'Não definido';
+        if (flags.neuropathy || tiposLegado.includes('Queimação') || tiposLegado.includes('Dormência')) {
+            patternType = 'Neuropático (irradiação / formigamento)';
+        } else if (padroes.includes('nocturnal') && padroes.includes('morning_stiffness')) {
+            patternType = 'Inflamatório (noturna + rigidez matinal)';
+        } else if (padroes.includes('nocturnal')) {
+            patternType = 'Noturno (investigar componente inflamatório)';
+        } else if (padroes.includes('morning_stiffness')) {
+            patternType = 'Rigidez matinal (componente inflamatório/articular)';
+        } else if (padroes.includes('mechanical') || padroes.includes('post_exercise')) {
+            patternType = padroes.includes('post_exercise') && !padroes.includes('mechanical')
+                ? 'Mecânico — sobrecarga pós-esforço'
+                : 'Mecânico Adaptativo';
+        } else if (tiposLegado.includes('Peso/Pressão')) {
+            patternType = 'Congestivo / Mecânico';
+        } else if (regions.length > 0) {
+            patternType = 'Mecânico Adaptativo';
+        }
         this.result.pain_pattern = patternType;
         return patternType;
     }
@@ -186,7 +207,13 @@ export class MyIDCalculator {
     calculateRegulation(): number {
         const sleepQuality = this.responses.bloco_5a_quality ?? this.responses.bloco5?.qualidadeSono ?? 5;
         const sleepHours = this.responses.bloco_5a_hours ?? this.responses.bloco5?.horasSono ?? 7;
-        const sleepHoursNormalized = this.normalizeTo10(sleepHours, 9);
+        // 7–9h = ótimo (10). Abaixo cai até 0 em 3h; acima de 9h cai devagar (sono
+        // excessivo também é sinal ruim). Antes era horas/9 sem teto: 12h valia 13.
+        const sleepHoursNormalized = sleepHours >= 7 && sleepHours <= 9
+            ? 10
+            : sleepHours < 7
+                ? Math.max(0, ((sleepHours - 3) / 4) * 10)
+                : Math.max(5, 10 - (sleepHours - 9) * 2.5);
         const awakeMapping: Record<string, number> = { never: 10, nunca: 10, rarely: 7, rarely_v2: 7, moderately: 5, frequently: 3, always: 0 };
         const sleepAwake = awakeMapping[this.responses.bloco_5a_awake || this.responses.bloco5?.acordaPorDor || 'rarely'] ?? 5;
         const disorders = this.responses.bloco_5a_disorders || this.responses.bloco5?.bloco_5a_disorders || [];
@@ -195,9 +222,11 @@ export class MyIDCalculator {
 
         const tirednessMapping: Record<string, number> = { never: 10, nunca: 10, sometimes: 6, as_vezes: 6, frequently: 3, always: 0 };
         const wakingTired = tirednessMapping[this.responses.bloco_5b_tired_awake || this.responses.bloco5?.exaustoAoAcordar || 'sometimes'] ?? 5;
-        // R2: combina fadiga crônica + estado ao acordar
-        const fadiga = this.responses.bloco_5b_fatigue ?? this.responses.bloco5?.fadiga ?? 5;
-        const rEnergy = (wakingTired + (10 - fadiga)) / 2;
+        // R2: estado ao acordar (+ fadiga crônica, só quando foi perguntada). O
+        // formulário atual não pergunta fadiga: o valor fixo 5 puxava todo mundo
+        // para o meio (quem nunca acorda cansado ficava no máximo com 7,5).
+        const fadiga = this.responses.bloco_5b_fatigue ?? this.responses.bloco5?.fadiga;
+        const rEnergy = fadiga === undefined || fadiga === null ? wakingTired : (wakingTired + (10 - fadiga)) / 2;
 
         const stress = this.responses.bloco_5c_stress ?? this.responses.bloco5?.estresse ?? 5;
         const anxiety = this.responses.bloco_5c_anxiety ?? this.responses.bloco5?.ansiedade ?? 5;
@@ -272,7 +301,13 @@ export class MyIDCalculator {
         const deficiencyMap: Record<string, number> = { multiple: -3, one_significant: -2, possible: -1, none: 0 };
         const deficiencyAdj = deficiencyMap[this.responses.bloco_5g_deficiency || this.responses.bloco5?.bloco_5g_deficiency || ''] ?? 0;
 
-        const nut = Math.max(0, Math.min(10, (qualityVal + proteinVal) / 2 + inflammatoryAdj + fruitsBonus + deficiencyAdj));
+        // Bônus só completam até 10; penalidades descontam SEMPRE depois do teto.
+        // Antes tudo era somado e cortado em 10 no fim: com base excelente, os
+        // bônus (até +3) "engoliam" as penalidades e inflamatório diário/deficiências
+        // não tiravam nada.
+        const bonus = Math.max(0, inflammatoryAdj) + fruitsBonus;
+        const penal = Math.min(0, inflammatoryAdj) + deficiencyAdj;
+        const nut = Math.max(0, Math.min(10, (qualityVal + proteinVal) / 2 + bonus) + penal);
         this.scores['NUT'] = Math.round(nut * 10) / 10;
         return this.scores['NUT'];
     }
@@ -282,20 +317,25 @@ export class MyIDCalculator {
         const spaceMap: Record<string, number> = { no_office: 6, none: 0, precarious: 3, acceptable: 6, good: 9, excellent: 10 };
         const spaceVal = spaceMap[this.responses.bloco_5h_workspace || this.responses.bloco5?.bloco_5h_workspace || 'acceptable'] ?? 5;
         const habitsPenalty = (this.responses.bloco_5h_bad_habits || this.responses.bloco5?.bloco_5h_bad_habits || []).length * 1.5;
-        const erg = Math.max(0, spaceVal - habitsPenalty);
 
         // Posição de sono contribui para ERG noturna
         const sleepPosMap: Record<string, number> = {
-            back: 1.5, side: 1, back_side: 0.5, stomach: -1, variable: 0,
+            back: 1.5, side: 1, back_side: 0.5, stomach: -1, variable: 0, mixed: 0,
             costas: 1.5, lado: 1, barriga: -1, variavel: 0,
         };
+        // "old" e "bad" são os códigos do formulário atual — antes não estavam no
+        // mapa e colchão velho/ruim contava como neutro.
         const mattressMap: Record<string, number> = {
-            excellent: 1.5, good: 0.5, acceptable: 0, poor: -1, very_poor: -2,
+            excellent: 1.5, good: 0.5, acceptable: 0, poor: -1, very_poor: -2, bad: -1, old: -1.5,
             otimo: 1.5, bom: 0.5, aceitavel: 0, ruim: -1, muito_ruim: -2,
         };
         const sleepBonus = sleepPosMap[this.responses.bloco_5h_sleep_position || this.responses.bloco5?.bloco_5h_sleep_position || ''] ?? 0;
         const mattressBonus = mattressMap[this.responses.bloco_5h_mattress || this.responses.bloco5?.bloco_5h_mattress || ''] ?? 0;
-        const ergFinal = Math.max(0, Math.min(10, erg + sleepBonus + mattressBonus));
+        // Mesmo princípio da nutrição: bônus até o teto, penalidades sempre valem
+        // (dormir de bruços / colchão ruim não podem ser apagados por um bom escritório).
+        const bonusErg = Math.max(0, sleepBonus) + Math.max(0, mattressBonus);
+        const penalErg = Math.min(0, sleepBonus) + Math.min(0, mattressBonus);
+        const ergFinal = Math.max(0, Math.min(10, spaceVal + bonusErg) - habitsPenalty + penalErg);
         this.scores['ERG'] = Math.round(ergFinal * 10) / 10;
         return this.scores['ERG'];
     }
@@ -562,7 +602,7 @@ export class MyIDCalculator {
         return {
             session_id: this.responses.session_id || 'N/A',
             timestamp: new Date().toISOString(),
-            versao: '2.1',
+            versao: '2.2',
 
             // MyID-100 score (0-100, higher = better)
             MyID_score: this.result.MyID || 0,

@@ -103,11 +103,9 @@ export default function MyIDFingerprint({
       const dashLen = circumference * Math.min(fillFraction, 1);
 
       const color = ring.color || getThermalColor(ring.value);
-      // Severity drives brightness (0-10, maior = mais alarmante):
-      // capacity (inner): low value = alarming
-      // demand (outer): high value = alarming
-      // EFI é "outer" mas é bem-estar (menor = pior), por isso vem com severity explícito.
-      const severity = ring.severity ?? (ring.type === 'inner' ? 10 - ring.value : ring.value);
+      // Os anéis já chegam na escala de "peso" (0 = ótimo, 10 = crítico) — ver
+      // getMyIDFingerprintData. Mais peso = mais brilho.
+      const severity = ring.severity ?? ring.value;
       const opacity = 0.55 + (severity / 10) * 0.45;
 
       return { ...ring, r, fillFraction, circumference, dashLen, color, opacity, severity, index: i };
@@ -185,7 +183,7 @@ export default function MyIDFingerprint({
             <g
               key={ridge.scoreKey}
               role="button"
-              aria-label={`${ridge.label}: ${ridge.value.toFixed(1)} de 10`}
+              aria-label={`${ridge.label}: pesa ${ridge.value.toFixed(1)} de 10`}
               onMouseEnter={() => { setHoveredIdx(ridgeIdx); onRingHover?.(ridge.scoreKey); }}
               onMouseLeave={() => { setHoveredIdx(null); onRingHover?.(null); }}
               onClick={() => handleClick(ridge, ridgeIdx)}
@@ -354,7 +352,7 @@ export default function MyIDFingerprint({
                     {info.title}
                   </h4>
                   <span className="ml-auto text-xs font-bold tabular-nums" style={{ color: ridge.color }}>
-                    {ridge.value.toFixed(1)}<span className="text-muted-foreground font-normal">/10</span>
+                    <span className="text-muted-foreground font-normal">pesa </span>{ridge.value.toFixed(1)}<span className="text-muted-foreground font-normal">/10</span>
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{info.summary}</p>
@@ -383,6 +381,12 @@ export default function MyIDFingerprint({
                     {legendaAberta ? 'recolher' : 'toque para ver'}
                   </span>
                 </button>
+                {legendaAberta && (
+                  <p className="text-[10.5px] text-muted-foreground mt-1.5 leading-snug">
+                    Cada anel mostra quanto aquele fator <strong>pesa contra você</strong>: 0 = ótimo, 10 = crítico.
+                    Anel maior e mais quente = pior. O MyID no centro é 100 menos o que pesa.
+                  </p>
+                )}
                 {legendaAberta && (
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
                     {ridgeData.map((r) => (

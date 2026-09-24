@@ -78,7 +78,7 @@ export function MyIDFaseTransicao({
     const rings = getMyIDFingerprintData(partialScores).map((r) => {
       const key = r.scoreKey || '';
       if (filled.has(key)) return r;
-      return { ...r, value: 0, color: 'hsl(var(--muted-foreground) / 0.25)' };
+      return { ...r, value: 0, severity: 0, color: 'hsl(var(--muted-foreground) / 0.25)' };
     });
     return rings;
   })();

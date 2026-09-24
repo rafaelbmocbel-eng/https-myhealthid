@@ -13,8 +13,11 @@ interface Bloco1Props {
 export function Bloco1({ data, updateData }: Bloco1Props) {
     const handleCheckboxChange = (field: string, value: string, checked: boolean) => {
         const current = data[field] || [];
-        if (checked) {
-            updateData({ [field]: [...current, value] });
+        // "Nenhuma mudança" exclui as demais (e vice-versa).
+        if (checked && value === 'none') {
+            updateData({ [field]: ['none'] });
+        } else if (checked) {
+            updateData({ [field]: [...current.filter((item: string) => item !== 'none'), value] });
         } else {
             updateData({ [field]: current.filter((item: string) => item !== value) });
         }

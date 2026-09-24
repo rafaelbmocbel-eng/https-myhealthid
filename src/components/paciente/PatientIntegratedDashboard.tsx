@@ -571,6 +571,7 @@ export default function PatientIntegratedDashboard({
                     );
                     return (
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <p className="text-[10.5px] text-muted-foreground">Número = quanto o fator pesa (0 = ótimo · 10 = crítico).</p>
                         {inner.length > 0 && <RingList title="Anéis internos · sustento" items={inner} dotClass="bg-sky-500" />}
                         {outer.length > 0 && <RingList title="Anéis externos · pressão" items={outer} dotClass="bg-red-500" />}
                       </div>
@@ -696,7 +697,8 @@ export default function PatientIntegratedDashboard({
                         const ranked = rings
                           .filter(r => r.scoreKey !== 'MED')
                           .map(r => {
-                            const deficit = r.severity ?? (r.type === 'inner' ? 10 - r.value : r.value);
+                            // Anéis já vêm na escala de peso (0 = ótimo, 10 = crítico).
+                            const deficit = r.severity ?? r.value;
                             const p = calcularPerdaDimensao(r.scoreKey, deficit);
                             return { ring: r, perda: p.perda_pontos, critico: p.gatilho_critico };
                           })
@@ -715,15 +717,14 @@ export default function PatientIntegratedDashboard({
                                 const isAlerta = !isCrit && perda >= limiarAlerta;
                                 const estado = isCrit ? a.critico : isAlerta ? a.alerta : a.ok;
                                 const tone = isCrit ? 'text-destructive' : isAlerta ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400';
-                                const direcao = ring.severity !== undefined || ring.type === 'inner' ? 'maior = melhor' : 'maior = pior';
                                 return (
                                   <li key={ring.scoreKey} className="flex gap-2 text-[12.5px] leading-snug">
                                     <span className="text-muted-foreground tabular-nums shrink-0 w-5">{idx + 1}.</span>
                                     <span className="flex-1">
                                       <span className="font-semibold text-foreground">{ring.label}</span>
-                                      <span className="text-muted-foreground"> · nota </span>
+                                      <span className="text-muted-foreground"> · pesa </span>
                                       <span className="font-semibold tabular-nums" style={{ color: ring.color }}>{Number(ring.value).toFixed(1)}/10</span>
-                                      <span className="text-muted-foreground"> ({direcao})</span>
+                                      <span className="text-muted-foreground"> (0 = ótimo, 10 = crítico)</span>
                                       <span className="text-muted-foreground"> → tirou </span>
                                       <span className={cn('font-semibold tabular-nums', tone)}>{perda} pts</span>
                                       <span className="text-muted-foreground"> de {pesoMax} possíveis{critico ? ' · gatilho crítico' : ''}.</span>
