@@ -262,7 +262,11 @@ export class MyIDCalculator {
         const intensity = this.responses.bloco_5e_intensity ?? this.responses.bloco5?.bloco_5e_intensity ?? 'moderate';
         const styleMap: Record<string, number> = { very_sedentary: 0, sedentary: 3, moderate: 6, active: 8, very_active: 10 };
         const intensityMap: Record<string, number> = { none: 0, light: 4, moderate: 7, intense: 9, maximum: 10 };
-        const af = ((styleMap[lifestyle] ?? 5) + (intensityMap[intensity] ?? 5)) / 2;
+        // Tempo sentado total é fator de risco independente da atividade física
+        // (Ekelund et al., Lancet 2016): ≥6h −0,5 · ≥8h −1 · ≥10h −1,5.
+        const sentadoH = Number(this.responses.bloco_5e_sitting_hours ?? NaN);
+        const penalSentado = isNaN(sentadoH) ? 0 : sentadoH >= 10 ? -1.5 : sentadoH >= 8 ? -1 : sentadoH >= 6 ? -0.5 : 0;
+        const af = Math.max(0, ((styleMap[lifestyle] ?? 5) + (intensityMap[intensity] ?? 5)) / 2 + penalSentado);
         this.scores['AF'] = Math.round(af * 10) / 10;
         return this.scores['AF'];
     }
@@ -276,7 +280,10 @@ export class MyIDCalculator {
         const colorScore = colorMap[this.responses.bloco_5f_urine_color || this.responses.bloco5?.bloco_5f_urine_color || 'yellow_clear'] ?? 5;
         const symptoms = this.responses.bloco_5f_dehydration_symptoms || this.responses.bloco5?.bloco_5f_dehydration_symptoms || {};
         const symptomPenalty = Object.values(symptoms).filter(v => v === true).length * 2;
-        const hid = Math.max(0, (waterScore + colorScore) / 2 - symptomPenalty);
+        // Micções/dia: <4 sugere ingestão baixa (normal ~6–8): <4 −1,5 · 4–5 −0,5.
+        const miccoes = Number(this.responses.bloco_5f_micturition ?? NaN);
+        const penalMiccao = isNaN(miccoes) ? 0 : miccoes < 4 ? 1.5 : miccoes < 6 ? 0.5 : 0;
+        const hid = Math.max(0, (waterScore + colorScore) / 2 - symptomPenalty - penalMiccao);
         this.scores['HID'] = Math.round(hid * 10) / 10;
         return this.scores['HID'];
     }
@@ -335,7 +342,11 @@ export class MyIDCalculator {
         // (dormir de bruços / colchão ruim não podem ser apagados por um bom escritório).
         const bonusErg = Math.max(0, sleepBonus) + Math.max(0, mattressBonus);
         const penalErg = Math.min(0, sleepBonus) + Math.min(0, mattressBonus);
-        const ergFinal = Math.max(0, Math.min(10, spaceVal + bonusErg) - habitsPenalty + penalErg);
+        // Sentado sem pausa: pausas a cada 30–60 min protegem a coluna.
+        // >60 min −1 · ≥120 min −2.
+        const semPausaMin = Number(this.responses.bloco_5h_sitting_continuous ?? NaN);
+        const penalSemPausa = isNaN(semPausaMin) ? 0 : semPausaMin >= 120 ? 2 : semPausaMin > 60 ? 1 : 0;
+        const ergFinal = Math.max(0, Math.min(10, spaceVal + bonusErg) - habitsPenalty + penalErg - penalSemPausa);
         this.scores['ERG'] = Math.round(ergFinal * 10) / 10;
         return this.scores['ERG'];
     }
@@ -484,8 +495,11 @@ export class MyIDCalculator {
         this.perdas['ERG'] = calcularPerdaDimensao('ERG', 10 - ERG);
         this.perdas['EFI'] = calcularPerdaDimensao('EFI', 10 - EFI);
 
+        // Cronicidade: opção fixa do Bloco 1 (tempo de dor); data só no formato legado.
+        const DURACAO_MULT: Record<string, number> = { lt6w: 1.0, '6_12w': 1.1, '3_12m': 1.2, gt1y: 1.3 };
+        const duracao = this.responses.bloco_1_duracao as string | undefined;
         const dataInicio = this.responses.bloco_1_date || this.responses.bloco1?.data_inicio_dor || this.responses.bloco1?.dataInicioDor;
-        const cronicMult = this.getCronicidadeMultiplier(dataInicio);
+        const cronicMult = duracao && DURACAO_MULT[duracao] ? DURACAO_MULT[duracao] : this.getCronicidadeMultiplier(dataInicio);
         if (cronicMult > 1 && this.perdas['D'].perda_pontos > 0) {
             const perdaDAjustada = Math.min(TABELA_PERDAS.D.peso_maximo, this.perdas['D'].perda_pontos * cronicMult);
             this.perdas['D'] = { ...this.perdas['D'], perda_pontos: perdaDAjustada };
@@ -602,7 +616,7 @@ export class MyIDCalculator {
         return {
             session_id: this.responses.session_id || 'N/A',
             timestamp: new Date().toISOString(),
-            versao: '2.2',
+            versao: '2.3',
 
             // MyID-100 score (0-100, higher = better)
             MyID_score: this.result.MyID || 0,

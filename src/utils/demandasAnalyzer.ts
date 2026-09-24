@@ -185,28 +185,32 @@ export function identificarDemandas(scores: {
 }): DemandaMelhoria[] {
   const demandas: DemandaMelhoria[] = [];
 
-  if (scores.R <= 4) {
+  // Régua do Método Identidade (avaliação estrutural): TODAS as notas são
+  // "maior = pior" — R alto = sem controle neurovegetativo (o cálculo do ID diz
+  // R > 6 comprometida, R > 8 crítica) e EFI alto = mais limitação (sobe junto
+  // com a dor nos dados reais). Antes R e EFI eram lidos ao contrário (≤ 4 = crítico).
+  if (scores.R >= 6) {
     demandas.push({
       area: 'Regulação',
       score: scores.R,
-      severidade: 'Crítica',
+      severidade: scores.R > 8 ? 'Crítica' : 'Alta',
       descricao: 'Regulação neurovegetativa comprometida — base fisiológica para todas as intervenções',
       prioridade: 0,
-      motivo: `Score R = ${scores.R.toFixed(1)} (limiar crítico ≤ 4). A regulação neurovegetativa é a fundação do tratamento — sem restaurá-la, outras intervenções têm eficácia reduzida.`,
+      motivo: `Score R = ${scores.R.toFixed(1)} (comprometida > 6, crítica > 8 — maior = pior). A regulação neurovegetativa é a fundação do tratamento — sem restaurá-la, outras intervenções têm eficácia reduzida.`,
       acaoRecomendada: 'Restaurar equilíbrio do sistema nervoso autônomo',
       cor: '#dc2626',
       corBg: '#fef2f2',
     });
   }
 
-  if (scores.EFI <= 4) {
+  if (scores.EFI >= 6) {
     demandas.push({
       area: 'Funcionalidade',
       score: scores.EFI,
       severidade: 'Crítica',
       descricao: 'Funcionalidade severamente comprometida em atividades cotidianas',
       prioridade: 1,
-      motivo: `Score EFI = ${scores.EFI.toFixed(1)} (crítico ≤ 4). Incapacidade funcional grave limita participação em todas as áreas de vida.`,
+      motivo: `Score EFI = ${scores.EFI.toFixed(1)} (limitação ≥ 6 — maior = pior). Incapacidade funcional grave limita participação em todas as áreas de vida.`,
       acaoRecomendada: 'Restaurar capacidade funcional básica',
       cor: '#dc2626',
       corBg: '#fef2f2',
@@ -419,6 +423,6 @@ export function gerarProtocoloAutomatico(
     prognose,
     objetivoGeral: `Restaurar funcionalidade e reduzir dor (ID ${scores.idFinal.toFixed(1)} → meta <20) através de intervenção terapêutica multidimensional em 12 semanas`,
     duracaoTotal: '12 semanas',
-    frequencia: scores.R <= 2 || scores.idFinal >= 35 ? '2x por semana (início conservador)' : '2-3x por semana',
+    frequencia: scores.R > 8 || scores.idFinal >= 35 ? '2x por semana (início conservador)' : '2-3x por semana',
   };
 }

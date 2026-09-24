@@ -3,6 +3,9 @@ import type { MyIDResponses } from './calculator';
 // Perguntas de escolha que, sem resposta, entravam no cálculo com um valor
 // assumido em silêncio (o cliente não sabia que tinha pulado).
 const OBRIGATORIAS: Record<number, { campo: string; rotulo: string }[]> = {
+  1: [
+    { campo: 'bloco_1_duracao', rotulo: 'Há quanto tempo sente a dor' },
+  ],
   3: [
     { campo: 'bloco_3_work', rotulo: 'Trabalho' },
     { campo: 'bloco_3_home', rotulo: 'Tarefas de casa' },

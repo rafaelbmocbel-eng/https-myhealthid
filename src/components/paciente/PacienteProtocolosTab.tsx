@@ -161,15 +161,17 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
       .limit(1);
 
     if (voiceAvs && voiceAvs.length > 0) {
+      // A avaliação por voz não tem as notas da régua estrutural (E/P/C/F/D/R):
+      // mandá-la ao gerador automático passava tudo como 0 e ele acusava
+      // "Regulação crítica" e "Funcionalidade comprometida" para qualquer paciente.
+      // Usa a diretriz em 3 fases que a própria avaliação por voz já gera.
       const av = voiceAvs[0] as any;
       const resultado = typeof av.resultado === 'string' ? JSON.parse(av.resultado) : av.resultado;
-      setAnalisandoAvaliacao({
-        id: av.id, paciente_id: pacienteId, created_at: av.created_at,
-        score_e: resultado?.scores?.estrutural || 0, score_p: resultado?.scores?.psicologico || 0,
-        score_c: resultado?.scores?.contexto || 0, score_f: resultado?.scores?.funcionalidade || 0,
-        score_d: resultado?.scores?.dor || resultado?.intensidade_dor || 0, score_r: resultado?.scores?.regulacao || 0,
-        score_efi: resultado?.scores?.efi || 0, dor_identidade: resultado?.intensidade_dor || 0, status: 'concluida',
-      });
+      if (resultado?.diretriz_tratamento) {
+        await handleCriarProtocoloDaVoz(av);
+      } else {
+        toast({ title: "Avaliação sem diretriz", description: "Reprocesse ou complemente a avaliação por voz para gerar a diretriz em 3 fases.", variant: "destructive" });
+      }
       return;
     }
 
@@ -626,6 +628,10 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
                       ))}
                       {scores['idFinal'] != null && (
                         <span className="text-primary font-bold">ID {Number(scores['idFinal'] as number).toFixed(1)}</span>
+                      )}
+                      {/* Régua do Método Identidade: diferente do MyID-100 (lá 100 = ótimo) */}
+                      {scores['idFinal'] != null && (
+                        <span className="text-muted-foreground italic" title="Avaliação estrutural antiga: notas e ID — quanto maior, pior">escala antiga · maior = pior</span>
                       )}
                     </div>
                   )}

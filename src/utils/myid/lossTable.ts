@@ -135,12 +135,15 @@ export const PENALIDADES_MEDICAMENTOS: Record<string, number> = {
   opioide: -4,
   ainh_cronico: -2,
   ansiolitico: -2,
-  antidepressivo_ssri: 1,       // SSRI/SNRI — evidência moderada para dor
-  antidepressivo_tricyclico: 3, // Tricíclico (amitriptilina) — maior evidência
-  antidepressivo_outro: 1,
-  gabapentina: 2,      // BÔNUS
-  ainh_esporadico: 2,  // BÔNUS
-  suplementacao: 1,    // BÔNUS leve
+  // Sem bônus (decisão do Rafael): tomar um remédio não é sinal de saúde — com
+  // bônus, quem tomava amitriptilina ganhava nota. Continuam listados para o
+  // profissional; só uso crônico de corticoide/opioide/AINE/relaxante desconta.
+  antidepressivo_ssri: 0,
+  antidepressivo_tricyclico: 0,
+  antidepressivo_outro: 0,
+  gabapentina: 0,
+  ainh_esporadico: 0,
+  suplementacao: 0,
 };
 
 export interface PerdaCalculada {
@@ -193,14 +196,16 @@ const INTERPRETACAO_MAP: Record<string, Record<string, string>> = {
   N: { '0': 'Ruído mínimo', '0.8': 'Ruído leve', '1.6': 'Ruído moderado', '2': 'Ruído alto' },
 };
 
-function getInterpretacao(dim: string, perda: number): string {
+// O rótulo vem da FAIXA em que a gravidade caiu (1ª faixa = 1º rótulo...).
+// Antes comparava a perda interpolada com a perda "cheia" da faixa: dentro da
+// faixa a perda interpolada é menor e o rótulo saía um nível abaixo (ex.: medo de
+// movimento na faixa leve aparecia como "Estável").
+function getInterpretacao(dim: string, indiceBanda: number): string {
   const map = INTERPRETACAO_MAP[dim];
   if (!map) return '';
-  let best = '';
-  for (const [threshold, desc] of Object.entries(map)) {
-    if (perda >= Number(threshold)) best = desc;
-  }
-  return best;
+  // Ordena pelas chaves numéricas: objetos JS põem chaves inteiras ('0', '18') antes.
+  const rotulos = Object.entries(map).sort((x, y) => Number(x[0]) - Number(y[0])).map(([, d]) => d);
+  return rotulos[Math.max(0, Math.min(rotulos.length - 1, indiceBanda))] || '';
 }
 
 // As bandas continuam sendo a fonte de calibração (mesmos pesos, mesmos limiares).
@@ -248,7 +253,7 @@ export function calcularPerdaDimensao(dimensao: string, scoreBruto: number): Per
     perda_pontos: perdaInterpolada,
     percentual_perda: (perdaInterpolada / TOTAL_MAX_LOSS) * 100,
     banda: `${banda.min}-${banda.max}`,
-    interpretacao: getInterpretacao(dimensao, perdaInterpolada),
+    interpretacao: getInterpretacao(dimensao, config.bandas.indexOf(banda)),
     gatilho_critico: gatilhoCritico,
   };
 }
@@ -278,11 +283,11 @@ export function calcularPerdaMedicamentos(meds: {
         ? PENALIDADES_MEDICAMENTOS.antidepressivo_ssri
         : PENALIDADES_MEDICAMENTOS.antidepressivo_outro;
     penalty += bonus;
-    medicamentos.push(tipo === 'tricyclic' ? 'Tricíclico (bônus ++)' : 'Antidepressivo (bônus)');
+    medicamentos.push(tipo === 'tricyclic' ? 'Antidepressivo tricíclico' : 'Antidepressivo');
   }
-  if (meds.supplementation) { penalty += PENALIDADES_MEDICAMENTOS.suplementacao; medicamentos.push('Suplementação (bônus)'); }
+  if (meds.supplementation) { penalty += PENALIDADES_MEDICAMENTOS.suplementacao; medicamentos.push('Suplementação'); }
   if (meds.opioide) { penalty += PENALIDADES_MEDICAMENTOS.opioide; medicamentos.push('Opioide'); }
-  if (meds.gabapentina) { penalty += PENALIDADES_MEDICAMENTOS.gabapentina; medicamentos.push('Gabapentina (bônus)'); }
+  if (meds.gabapentina) { penalty += PENALIDADES_MEDICAMENTOS.gabapentina; medicamentos.push('Gabapentina'); }
 
   return { perda_pontos: penalty, medicamentos };
 }

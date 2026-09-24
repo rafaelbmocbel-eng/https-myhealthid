@@ -93,9 +93,27 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
 
                 <div className="space-y-3">
                     <Label className="text-base font-bold text-foreground">Quando exatamente começou?</Label>
+                    {/* Opção fixa: é ela que entra no cálculo (dor crônica pesa mais). */}
+                    <RadioGroup
+                        value={data.bloco_1_duracao || ''}
+                        onValueChange={(v) => updateData({ bloco_1_duracao: v })}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                    >
+                        {[
+                            { v: 'lt6w', l: 'Menos de 6 semanas' },
+                            { v: '6_12w', l: 'Entre 6 e 12 semanas' },
+                            { v: '3_12m', l: 'Entre 3 meses e 1 ano' },
+                            { v: 'gt1y', l: 'Mais de 1 ano' },
+                        ].map((o) => (
+                            <label key={o.v} htmlFor={`dur-${o.v}`} className="flex items-center gap-3 rounded-lg border border-muted p-3 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                <RadioGroupItem value={o.v} id={`dur-${o.v}`} />
+                                <span className="text-sm font-semibold">{o.l}</span>
+                            </label>
+                        ))}
+                    </RadioGroup>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Tempo aproximado ou Data:</Label>
+                            <Label className="text-sm font-semibold">Se quiser, detalhe (data ou tempo exato):</Label>
                             <Input
                                 placeholder="Ex: Há 3 dias, 1 mês, 5 anos..."
                                 value={data.bloco_1_quando_data || ''}
