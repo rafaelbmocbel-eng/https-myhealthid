@@ -538,7 +538,9 @@ serve(async (req) => {
       }
 
       // Build concise 8-line summary for prontuário
-      const topDomains = dimensions.filter(d => d.score >= 5).slice(0, 3).map(d => `${d.name} ${d.score.toFixed(1)}`).join(", ");
+      // Só os nomes: o número aqui seria gravidade (maior = pior) e confundiria
+      // com as notas acima (10 = ótimo).
+      const topDomains = dimensions.filter(d => d.score >= 5).slice(0, 3).map(d => d.name).join(", ");
       const flagsSummary = redFlags && redFlagAlerts.length > 0 ? ` ⚠️ Red flags detectadas.` : "";
       
       // Todas as dimensões como NOTA, na mesma direção do MyID-100 (10 = ótimo,
