@@ -14,7 +14,7 @@ import MyIDFormulaDisplay from './MyIDFormulaDisplay';
 import MyIDDicasPessoais from './MyIDDicasPessoais';
 import MyIDTreatmentPlan from './MyIDTreatmentPlan';
 import { shareMyIDResults } from '@/utils/whatsapp';
-import { DIMENSION_LABELS, PerdaCalculada, classificarMyID100 } from '@/utils/myid/lossTable';
+import { DIMENSION_LABELS, PerdaCalculada, classificarMyID100, TABELA_PERDAS } from '@/utils/myid/lossTable';
 import { scoresDoResultado } from '@/utils/myid/scores';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -489,7 +489,7 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <Activity className="h-4 w-4 text-muted-foreground" />O que mais está pesando
               <span className="ml-auto text-xs font-normal text-muted-foreground">
-                total −{perdasItems.reduce((s: number, i: PerdaItem) => s + i.perda, 0)} pts
+                total −{perdasItems.reduce((s: number, i: PerdaItem) => s + i.perda, 0).toFixed(1)} pts
               </span>
             </CardTitle>
           </CardHeader>
@@ -502,7 +502,12 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
                     {item.isDriver && <Badge className="text-[9px] h-4 bg-primary/15 text-primary border-primary/30">DRIVER</Badge>}
                     {item.gatilho && <Badge variant="destructive" className="text-[9px] h-4">CRÍTICO</Badge>}
                   </div>
-                  <span className="text-xs font-black text-destructive shrink-0">−{item.perda} pts</span>
+                  <span className="text-xs shrink-0 tabular-nums">
+                    <span className="font-black text-destructive">−{item.perda} pts</span>
+                    {TABELA_PERDAS[item.key] && (
+                      <span className="text-muted-foreground"> · restam {Math.max(0, TABELA_PERDAS[item.key].peso_maximo - item.perda).toFixed(1)} de {TABELA_PERDAS[item.key].peso_maximo}</span>
+                    )}
+                  </span>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                   <div className={cn("h-full rounded-full transition-all duration-700", corPerda(item.perda, maxPerda))} style={{ width: `${(item.perda / maxPerda) * 100}%` }} />

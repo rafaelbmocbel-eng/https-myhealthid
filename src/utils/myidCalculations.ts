@@ -9,7 +9,7 @@ import type {
 } from '@/types/myid';
 
 import {
-  calcularPerdaDimensao, classificarMyID100, identificarDriver, gravidadeDimensao, valorExibido,
+  calcularPerdaDimensao, classificarMyID100, identificarDriver, gravidadeDimensao, valorExibido, TABELA_PERDAS,
   DIMENSION_LABELS, DIMENSION_COLORS, TEMPLATES_INTERPRETACAO,
 } from '@/utils/myid/lossTable';
 
@@ -281,7 +281,11 @@ export function getThermalColor(v: number): string {
   return 'hsl(0, 85%, 50%)';
 }
 
-export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
+export function getMyIDFingerprintData(
+  scores: Record<string, number>,
+  // Perdas reais do cálculo (incluem cronicidade da dor); sem elas, recalcula pela tabela.
+  perdasCalculadas?: Record<string, { perda_pontos?: number }> | null,
+): FingerprintRing[] {
   // Duas famílias de anéis, cada uma na sua leitura natural (modelo do Rafael):
   // - INTERNOS = o que sustenta (sono, vida pessoal, hábitos): NOTA, maior = melhor.
   // - EXTERNOS = o que pesa (dor, emoções, mudanças, sinais, limitação): INTENSIDADE,
@@ -291,12 +295,14 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
   const anel = (label: string, key: string, type: 'inner' | 'outer', padrao: number): FingerprintRing => {
     const bruto = Number(scores[key] ?? padrao);
     const g = Math.max(0, Math.min(10, gravidadeDimensao(key, bruto)));
-    return { label, value: valorExibido(key, bruto), type, color: getThermalColor(g), scoreKey: key, severity: g };
+    const pesoMax = TABELA_PERDAS[key]?.peso_maximo;
+    const perda = Number(perdasCalculadas?.[key]?.perda_pontos ?? calcularPerdaDimensao(key, g).perda_pontos);
+    return { label, value: valorExibido(key, bruto), type, color: getThermalColor(g), scoreKey: key, severity: g, pesoMax, perda };
   };
   const med = (() => {
     const raw = scores.MED ?? 0;
     const g = raw < 0 ? Math.min(-raw * 1.5, 10) : 0;
-    return { label: 'Medicação', value: g, type: 'outer' as const, color: getThermalColor(g), scoreKey: 'MED', severity: g };
+    return { label: 'Medicação', value: g, type: 'outer' as const, color: getThermalColor(g), scoreKey: 'MED', severity: g, perda: raw < 0 ? -raw : 0 };
   })();
   return [
     anel('Sono e energia', 'R', 'inner', 10),

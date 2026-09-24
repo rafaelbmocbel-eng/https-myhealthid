@@ -13,6 +13,9 @@ const OBRIGATORIAS: Record<number, { campo: string; rotulo: string }[]> = {
     { campo: 'bloco_3_independence', rotulo: 'Independência física' },
     { campo: 'bloco_3_social', rotulo: 'Vida social' },
   ],
+  5: [
+    { campo: 'bloco_5b_energy', rotulo: 'Energia ao longo do dia' },
+  ],
   4: [
     { campo: 'bloco_4_fear_movement', rotulo: 'Medo de movimento' },
     { campo: 'bloco_4_belief_damage', rotulo: 'Crença de dano' },

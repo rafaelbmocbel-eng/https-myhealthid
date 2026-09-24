@@ -149,7 +149,7 @@ export default function AvaliacaoPublica() {
   );
 
   if (concluido && resultadoFinal) {
-    const fpData = getMyIDFingerprintData(resultadoFinal.component_scores);
+    const fpData = getMyIDFingerprintData(resultadoFinal.component_scores, resultadoFinal.perdas_calculadas);
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6 p-6">
         <img src={logoMyHealthId} alt="My Health ID" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />

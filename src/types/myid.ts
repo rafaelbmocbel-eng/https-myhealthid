@@ -205,6 +205,9 @@ export interface FingerprintRing {
   /** 0-10, quanto maior mais alarmante. Default: inner = 10 - value, outer = value.
    *  Necessário para EFI, que é "outer" (anel externo) mas tem semântica de bem-estar (menor = pior). */
   severity?: number;
+  /** Pontos que a dimensão vale no MyID-100 e quanto perdeu (restam = pesoMax − perda). */
+  pesoMax?: number;
+  perda?: number;
 }
 
 // ── Defaults ──

@@ -360,6 +360,17 @@ export default function MyIDFingerprint({
                     ? 'Anel interno (o que te sustenta): quanto MAIOR, melhor.'
                     : 'Anel externo (o que pesa sobre você): quanto MAIOR, pior.'}
                 </p>
+                {ridge.pesoMax != null && ridge.perda != null && (
+                  <p className="text-[11px] mb-2 tabular-nums">
+                    <span className="text-muted-foreground">No MyID vale {ridge.pesoMax} pts · perdeu </span>
+                    <span className="font-semibold text-destructive">{ridge.perda.toFixed(1)}</span>
+                    <span className="text-muted-foreground"> · restam </span>
+                    <span className="font-semibold">{Math.max(0, ridge.pesoMax - ridge.perda).toFixed(1)} de {ridge.pesoMax}</span>
+                  </p>
+                )}
+                {ridge.pesoMax == null && ridge.perda != null && ridge.perda > 0 && (
+                  <p className="text-[11px] mb-2 tabular-nums text-muted-foreground">Desconta <span className="font-semibold text-destructive">{ridge.perda.toFixed(1)} pts</span> do MyID.</p>
+                )}
                 <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{info.summary}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {info.components.map((c) => (

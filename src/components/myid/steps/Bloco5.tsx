@@ -117,6 +117,21 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <div className="flex items-center space-x-2"><RadioGroupItem value="always" id="en-always" /><Label htmlFor="en-always">Sempre</Label></div>
                     </RadioGroup>
                 </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold"> Como está sua energia ao longo do dia?</Label>
+                    <RadioGroup
+                        value={data.bloco_5b_energy?.toString() ?? ''}
+                        onValueChange={(v) => updateData({ bloco_5b_energy: parseInt(v) })}
+                        className="flex flex-wrap gap-4"
+                    >
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="0" id="ed-0" /><Label htmlFor="ed-0">Esgotado (0)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="3" id="ed-3" /><Label htmlFor="ed-3">Baixa (3)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="5" id="ed-5" /><Label htmlFor="ed-5">Regular (5)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="8" id="ed-8" /><Label htmlFor="ed-8">Boa (8)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="10" id="ed-10" /><Label htmlFor="ed-10">Cheio de energia (10)</Label></div>
+                    </RadioGroup>
+                </div>
             </section>
 
             {/* 5C: Fatores Psicológicos */}

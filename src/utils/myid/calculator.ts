@@ -232,8 +232,16 @@ export class MyIDCalculator {
         // R2: estado ao acordar (+ fadiga crônica, só quando foi perguntada). O
         // formulário atual não pergunta fadiga: o valor fixo 5 puxava todo mundo
         // para o meio (quem nunca acorda cansado ficava no máximo com 7,5).
-        const fadiga = this.responses.bloco_5b_fatigue ?? this.responses.bloco5?.fadiga;
-        const rEnergy = fadiga === undefined || fadiga === null ? wakingTired : (wakingTired + (10 - fadiga)) / 2;
+        // Energia ao longo do dia (0 = esgotado, 10 = cheio) — equilibra a parte de
+        // energia, que tinha 1 pergunta só. Legado: fadiga (maior = pior).
+        const fadigaLegado = this.responses.bloco_5b_fatigue ?? this.responses.bloco5?.fadiga;
+        let energiaDia: number | null = null;
+        if (this.responses.bloco_5b_energy !== undefined && this.responses.bloco_5b_energy !== null) {
+            energiaDia = Number(this.responses.bloco_5b_energy);
+        } else if (fadigaLegado !== undefined && fadigaLegado !== null) {
+            energiaDia = 10 - Number(fadigaLegado);
+        }
+        const rEnergy = energiaDia === null ? wakingTired : (wakingTired + energiaDia) / 2;
 
         const stress = this.responses.bloco_5c_stress ?? this.responses.bloco5?.estresse ?? 5;
         const anxiety = this.responses.bloco_5c_anxiety ?? this.responses.bloco5?.ansiedade ?? 5;
@@ -623,7 +631,7 @@ export class MyIDCalculator {
         return {
             session_id: this.responses.session_id || 'N/A',
             timestamp: new Date().toISOString(),
-            versao: '2.3.1',
+            versao: '2.4',
 
             // MyID-100 score (0-100, higher = better)
             MyID_score: this.result.MyID || 0,

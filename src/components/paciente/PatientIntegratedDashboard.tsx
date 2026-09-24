@@ -399,7 +399,9 @@ export default function PatientIntegratedDashboard({
   const focusAreas: string[] = Array.isArray(rawFocus) ? rawFocus.map((a: any) => typeof a === 'string' ? a : (a?.label || a?.area || JSON.stringify(a))) : [];
   const redFlagsDetected = hasRedFlags;
 
-  const rings = scores ? getMyIDFingerprintData(scores) : [];
+  const rings = scores
+    ? getMyIDFingerprintData(scores, myidLinkResult?.perdas_calculadas ?? (ultimaMyID?.myid_analysis as any)?.perdas_calculadas)
+    : [];
   const severityClass = getMyIDSeverityColor(classificacao);
 
   // ── Chart data
@@ -700,7 +702,8 @@ export default function PatientIntegratedDashboard({
                             // severity = gravidade (0 = ótimo, 10 = crítico), igual nas duas famílias.
                             const deficit = r.severity ?? (r.type === 'inner' ? 10 - r.value : r.value);
                             const p = calcularPerdaDimensao(r.scoreKey, deficit);
-                            return { ring: r, perda: p.perda_pontos, critico: p.gatilho_critico };
+                            // Perda real do cálculo (inclui cronicidade da dor) quando disponível.
+                            return { ring: r, perda: r.perda ?? p.perda_pontos, critico: p.gatilho_critico };
                           })
                           .sort((a, b) => b.perda - a.perda);
                         const totalPerdido = ranked.reduce((s, x) => s + x.perda, 0);
@@ -727,7 +730,9 @@ export default function PatientIntegratedDashboard({
                                       <span className="text-muted-foreground"> ({ring.type === 'inner' ? 'maior = melhor' : 'maior = pior'})</span>
                                       <span className="text-muted-foreground"> → tirou </span>
                                       <span className={cn('font-semibold tabular-nums', tone)}>{perda} pts</span>
-                                      <span className="text-muted-foreground"> de {pesoMax} possíveis{critico ? ' · gatilho crítico' : ''}.</span>
+                                      <span className="text-muted-foreground"> de {pesoMax} possíveis · restam </span>
+                                      <span className="font-semibold tabular-nums">{Math.max(0, pesoMax - perda).toFixed(1)}</span>
+                                      <span className="text-muted-foreground">{critico ? ' · gatilho crítico' : ''}.</span>
                                       <span className="block">
                                         <span className={cn('font-medium', tone)}>{estado}.</span>
                                         <span className="text-muted-foreground"> → {a.acao}</span>
