@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatBRL0 } from '@/lib/formatBRL';
+import { nomeDaUF } from '@/lib/ufs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,23 @@ type Terapeuta = {
   valor_sessao: number | null;
   foto_url: string | null;
   modalidade: string | null;
+  bairro: string | null;
 };
+
+// Opções de local a partir dos próprios profissionais da vitrine. Agrupa grafias
+// diferentes do mesmo lugar ("Belém", "belém ") pela forma normalizada.
+function opcoesUnicas(valores: (string | null)[]): { chave: string; label: string }[] {
+  const mapa = new Map<string, string>();
+  for (const v of valores) {
+    const label = (v || '').trim();
+    if (!label) continue;
+    const chave = normalizarBusca(label);
+    if (!mapa.has(chave)) mapa.set(chave, label);
+  }
+  return [...mapa.entries()]
+    .map(([chave, label]) => ({ chave, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+}
 
 // ─── categorias com emoji ───────────────────────────────────────────────────
 const CATEGORIAS = [
@@ -127,10 +144,10 @@ function ProfissionalCard({ t, onClick }: { t: Terapeuta; onClick: () => void })
           </span>
         </div>
 
-        {t.cidade && (
+        {(t.cidade || t.bairro) && (
           <p className="text-[11px] text-muted-foreground flex items-center gap-0.5 mb-2">
             <MapPin className="h-3 w-3 shrink-0" />
-            {t.cidade}{t.uf ? `, ${t.uf}` : ''}
+            {[t.bairro?.trim(), t.cidade?.trim()].filter(Boolean).join(' · ')}{t.uf ? `, ${t.uf}` : ''}
           </p>
         )}
 
@@ -189,6 +206,18 @@ export default function VitrinePublica() {
   const catScrollRef = useRef<HTMLDivElement>(null);
 
   const categoriaAtiva = searchParams.get('categoria') || 'Todos';
+  // Local na URL: a busca pode ser compartilhada (ex.: /profissionais?uf=PA&cidade=belem)
+  const ufFiltro = (searchParams.get('uf') || '').toUpperCase();
+  const cidadeFiltro = searchParams.get('cidade') || '';
+  const bairroFiltro = searchParams.get('bairro') || '';
+  const setLocal = (campo: 'uf' | 'cidade' | 'bairro', valor: string) => {
+    const p = new URLSearchParams(searchParams);
+    if (valor) p.set(campo, valor); else p.delete(campo);
+    // Trocar o nível de cima zera os de baixo (estado → cidade → bairro)
+    if (campo === 'uf') { p.delete('cidade'); p.delete('bairro'); }
+    if (campo === 'cidade') p.delete('bairro');
+    setSearchParams(p, { replace: true });
+  };
 
   const { data: terapeutas = [], isLoading, isError } = useQuery({
     queryKey: ['vitrine-terapeutas'],
@@ -203,12 +232,33 @@ export default function VitrinePublica() {
     },
   });
 
+  const ufsDisponiveis = useMemo(
+    () => [...new Set(terapeutas.map((t) => (t.uf || '').toUpperCase()).filter(Boolean))]
+      .sort((a, b) => nomeDaUF(a).localeCompare(nomeDaUF(b), 'pt-BR')),
+    [terapeutas],
+  );
+  const cidadesDisponiveis = useMemo(
+    () => opcoesUnicas(terapeutas.filter((t) => !ufFiltro || (t.uf || '').toUpperCase() === ufFiltro).map((t) => t.cidade)),
+    [terapeutas, ufFiltro],
+  );
+  const bairrosDisponiveis = useMemo(
+    () => opcoesUnicas(terapeutas
+      .filter((t) => (!ufFiltro || (t.uf || '').toUpperCase() === ufFiltro) && (!cidadeFiltro || normalizarBusca(t.cidade) === cidadeFiltro))
+      .map((t) => t.bairro)),
+    [terapeutas, ufFiltro, cidadeFiltro],
+  );
+
   const filtrados = useMemo(() => {
     const termo = normalizarBusca(busca);
     return terapeutas.filter((t) => {
+      if (ufFiltro && (t.uf || '').toUpperCase() !== ufFiltro) return false;
+      if (cidadeFiltro && normalizarBusca(t.cidade) !== cidadeFiltro) return false;
+      if (bairroFiltro && normalizarBusca(t.bairro) !== bairroFiltro) return false;
       if (termo && !(
         normalizarBusca(t.nome_exibicao).includes(termo) ||
         normalizarBusca(t.cidade).includes(termo) ||
+        normalizarBusca(t.bairro).includes(termo) ||
+        normalizarBusca(nomeDaUF(t.uf)).includes(termo) ||
         (t.especialidades || []).some((e) => normalizarBusca(e).includes(termo)) ||
         normalizarBusca(t.bio).includes(termo)
       )) return false;
@@ -228,7 +278,8 @@ export default function VitrinePublica() {
 
       return true;
     });
-  }, [terapeutas, busca, categoriaAtiva, modalidadeFiltro]);
+  }, [terapeutas, busca, categoriaAtiva, modalidadeFiltro, ufFiltro, cidadeFiltro, bairroFiltro]);
+  const temFiltroLocal = !!(ufFiltro || cidadeFiltro || bairroFiltro);
 
   const setCategoria = (label: string) => {
     const p = new URLSearchParams(searchParams);
@@ -241,7 +292,7 @@ export default function VitrinePublica() {
     <div className="min-h-[100dvh] bg-background flex flex-col">
       {/* ─── HERO + HEADER ─── */}
       <div
-        className="relative pt-safe"
+        className="relative overflow-hidden pt-safe"
         style={{ background: 'linear-gradient(160deg, hsl(213 55% 14%) 0%, hsl(213 55% 5%) 100%)' }}
       >
         {/* decoração */}
@@ -281,7 +332,7 @@ export default function VitrinePublica() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Nome, especialidade ou cidade..."
+              placeholder="Nome, especialidade, cidade ou bairro..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               className="pl-10 h-12 rounded-2xl text-[16px] sm:text-sm bg-background border-0 shadow-lg"
@@ -345,6 +396,41 @@ export default function VitrinePublica() {
         )}
       </div>
 
+      {/* ─── FILTRO LOCAL: Estado → Cidade → Bairro ─── */}
+      {terapeutas.length > 0 && (
+        <div className="px-4 pt-3 grid grid-cols-3 gap-2 max-w-3xl w-full">
+          <select
+            aria-label="Estado"
+            value={ufFiltro}
+            onChange={(e) => setLocal('uf', e.target.value)}
+            className="h-10 rounded-xl border border-border/60 bg-background px-2 text-[16px] sm:text-sm min-w-0"
+          >
+            <option value="">Estado</option>
+            {ufsDisponiveis.map((uf) => <option key={uf} value={uf}>{nomeDaUF(uf)}</option>)}
+          </select>
+          <select
+            aria-label="Cidade"
+            value={cidadeFiltro}
+            onChange={(e) => setLocal('cidade', e.target.value)}
+            disabled={cidadesDisponiveis.length === 0}
+            className="h-10 rounded-xl border border-border/60 bg-background px-2 text-[16px] sm:text-sm min-w-0 disabled:opacity-50"
+          >
+            <option value="">Cidade</option>
+            {cidadesDisponiveis.map((c) => <option key={c.chave} value={c.chave}>{c.label}</option>)}
+          </select>
+          <select
+            aria-label="Bairro"
+            value={bairroFiltro}
+            onChange={(e) => setLocal('bairro', e.target.value)}
+            disabled={bairrosDisponiveis.length === 0}
+            className="h-10 rounded-xl border border-border/60 bg-background px-2 text-[16px] sm:text-sm min-w-0 disabled:opacity-50"
+          >
+            <option value="">Bairro</option>
+            {bairrosDisponiveis.map((b) => <option key={b.chave} value={b.chave}>{b.label}</option>)}
+          </select>
+        </div>
+      )}
+
       {/* ─── LISTA ─── */}
       <div className="flex-1 px-4 py-4">
         {isLoading ? (
@@ -365,18 +451,18 @@ export default function VitrinePublica() {
             <div className="text-5xl">🔍</div>
             <p className="font-semibold text-foreground">Nenhum resultado encontrado</p>
             <p className="text-sm text-muted-foreground max-w-xs">
-              {busca || categoriaAtiva !== 'Todos' || modalidadeFiltro !== 'todos'
+              {busca || categoriaAtiva !== 'Todos' || modalidadeFiltro !== 'todos' || temFiltroLocal
                 ? 'Tente outros termos ou remova os filtros.'
                 : 'Ainda não há profissionais cadastrados na vitrine.'}
             </p>
-            {(busca || categoriaAtiva !== 'Todos' || modalidadeFiltro !== 'todos') && (
+            {(busca || categoriaAtiva !== 'Todos' || modalidadeFiltro !== 'todos' || temFiltroLocal) && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   setBusca('');
                   setModalidadeFiltro('todos');
-                  setCategoria('Todos');
+                  setSearchParams(new URLSearchParams(), { replace: true });
                 }}
               >
                 Remover filtros

@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format, differenceInDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { usePlanoAtivo } from '@/hooks/usePlanoAtivo';
+import { UFS } from '@/lib/ufs';
 
 type VitrineData = {
   vitrine_ativo: boolean;
@@ -24,6 +25,8 @@ type VitrineData = {
   vitrine_especialidades: string[];
   vitrine_convenios: string[];
   vitrine_cidade: string;
+  vitrine_uf: string;
+  vitrine_bairro: string;
   vitrine_valor_sessao: string;
   vitrine_foto_url: string;
   vitrine_modalidade: 'presencial' | 'online' | 'ambos';
@@ -59,6 +62,8 @@ export default function VitrineConfig() {
     vitrine_especialidades: [],
     vitrine_convenios: [],
     vitrine_cidade: '',
+    vitrine_uf: '',
+    vitrine_bairro: '',
     vitrine_valor_sessao: '',
     vitrine_foto_url: '',
     vitrine_modalidade: 'presencial',
@@ -72,7 +77,7 @@ export default function VitrineConfig() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('config_clinica')
-        .select('vitrine_ativo,vitrine_nome_exibicao,vitrine_bio,vitrine_especialidades,vitrine_convenios,vitrine_cidade,vitrine_valor_sessao,vitrine_foto_url,responsavel,cidade')
+        .select('*')
         .eq('terapeuta_id', user!.id)
         .maybeSingle();
       if (error) throw error;
@@ -101,6 +106,8 @@ export default function VitrineConfig() {
       vitrine_especialidades: config.vitrine_especialidades || [],
       vitrine_convenios: config.vitrine_convenios || [],
       vitrine_cidade: config.vitrine_cidade || config.cidade || '',
+      vitrine_uf: (config as any).vitrine_uf || (config as any).uf || '',
+      vitrine_bairro: (config as any).vitrine_bairro || '',
       vitrine_valor_sessao: config.vitrine_valor_sessao?.toString() || '',
       vitrine_foto_url: config.vitrine_foto_url || '',
       vitrine_modalidade: (config as any).vitrine_modalidade || 'presencial',
@@ -115,14 +122,16 @@ export default function VitrineConfig() {
         vitrine_bio: data.vitrine_bio || null,
         vitrine_especialidades: data.vitrine_especialidades,
         vitrine_convenios: data.vitrine_convenios,
-        vitrine_cidade: data.vitrine_cidade || null,
+        vitrine_cidade: data.vitrine_cidade.trim() || null,
+        vitrine_uf: data.vitrine_uf || null,
+        vitrine_bairro: data.vitrine_bairro.trim() || null,
         vitrine_valor_sessao: data.vitrine_valor_sessao ? parseFloat(String(data.vitrine_valor_sessao).replace(',', '.')) : null,
         vitrine_foto_url: data.vitrine_foto_url || null,
         vitrine_modalidade: data.vitrine_modalidade,
       };
       const { error } = await supabase
         .from('config_clinica')
-        .update(payload)
+        .update(payload as any)
         .eq('terapeuta_id', user!.id);
       if (error) throw error;
     },
@@ -266,13 +275,33 @@ export default function VitrineConfig() {
           />
         </div>
 
+        {/* Localização: é por ela que o cliente filtra a vitrine (Estado → Cidade → Bairro) */}
+        <div className="grid grid-cols-[110px_1fr] gap-3">
+          <div>
+            <Label>Estado</Label>
+            <Select value={form.vitrine_uf || undefined} onValueChange={(v) => setForm((f) => ({ ...f, vitrine_uf: v }))}>
+              <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+              <SelectContent>{UFS.map((u) => <SelectItem key={u.sigla} value={u.sigla}>{u.sigla} — {u.nome}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Cidade</Label>
+            <Input
+              value={form.vitrine_cidade}
+              onChange={(e) => setForm((f) => ({ ...f, vitrine_cidade: e.target.value }))}
+              placeholder="Ex.: Belém"
+            />
+          </div>
+        </div>
+
         <div>
-          <Label>Cidade</Label>
+          <Label>Bairro</Label>
           <Input
-            value={form.vitrine_cidade}
-            onChange={(e) => setForm((f) => ({ ...f, vitrine_cidade: e.target.value }))}
-            placeholder="São Paulo"
+            value={form.vitrine_bairro}
+            onChange={(e) => setForm((f) => ({ ...f, vitrine_bairro: e.target.value }))}
+            placeholder="Ex.: Umarizal"
           />
+          <p className="text-[11px] text-muted-foreground mt-1">Só o nome da cidade e do bairro — o cliente filtra a vitrine por eles.</p>
         </div>
 
         <div>
