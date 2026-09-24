@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, Clock, Target, DollarSign, Radio } from "lucide-react";
 import { useOrigemMetrics } from "@/hooks/useOrigemMetrics";
+import { filtrarLeadsReais } from '@/lib/crmLeads';
 
 type Stage = "novo" | "qualificado" | "agendado" | "fechado" | "perdido";
 const STAGE_LABELS: Record<Stage, string> = {
@@ -38,19 +39,7 @@ export default function CrmMetricas({ embedded = false }: { embedded?: boolean }
         .eq("terapeuta_id", user.id)
         .gte("created_at", dataInicio);
 
-      // Cliente que JÁ existia quando a conversa começou não é lead (só está
-      // falando da sessão) — antes entrava como lead "fechado" e inflava a
-      // conversão. Lead que virou cliente depois continua contando.
-      const pacIds = [...new Set((convs || []).map(x => x.paciente_id).filter(Boolean))] as string[];
-      const criadoEm: Record<string, string> = {};
-      for (let i = 0; i < pacIds.length; i += 200) {
-        const { data: pacs } = await supabase.from("pacientes").select("id, created_at").in("id", pacIds.slice(i, i + 200));
-        (pacs || []).forEach(p => { criadoEm[p.id] = p.created_at; });
-      }
-      const c = (convs || []).filter(x => {
-        const pacCriado = x.paciente_id ? criadoEm[x.paciente_id] : null;
-        return !pacCriado || new Date(pacCriado).getTime() >= new Date(x.created_at).getTime() - 60_000;
-      });
+      const c = await filtrarLeadsReais(convs || []);
       const porEstagio: Record<string, number> = { novo: 0, qualificado: 0, agendado: 0, fechado: 0, perdido: 0 };
       const motivosMap: Record<string, number> = {};
       let tempoTotal = 0, tempoCount = 0;

@@ -26,6 +26,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { filtrarLeadsReais } from '@/lib/crmLeads';
 
 type Stage = 'novo' | 'qualificado' | 'agendado' | 'fechado' | 'perdido';
 type QuickFilter = 'todos' | 'minha_vez' | 'sla' | 'parados';
@@ -93,7 +94,7 @@ export default function CrmPipeline({ embedded = false }: { embedded?: boolean }
         .order('pipeline_updated_at', { ascending: false })
         .limit(500);
       if (error) throw error;
-      return (data || []) as Lead[];
+      return filtrarLeadsReais((data || []) as Lead[]);
     },
     enabled: !!user,
   });
