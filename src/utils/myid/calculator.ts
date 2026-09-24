@@ -138,7 +138,14 @@ export class MyIDCalculator {
         const tiposLegado = regions.flatMap(r => r.tiposDor || []);
 
         let patternType = 'Não definido';
-        if (flags.neuropathy || tiposLegado.includes('Queimação') || tiposLegado.includes('Dormência')) {
+        // Sinais de alerta mandam no padrão: dor noturna que NÃO alivia com a
+        // posição e febre/perda de peso não são dor mecânica, mesmo que o cliente
+        // também marque "piora com movimento".
+        if (flags.fever || flags.weight_loss) {
+            patternType = 'Sinais sistêmicos (febre/perda de peso) — investigação médica';
+        } else if (flags.night_pain) {
+            patternType = 'Não mecânico — dor noturna sem alívio postural (investigar)';
+        } else if (flags.neuropathy || tiposLegado.includes('Queimação') || tiposLegado.includes('Dormência')) {
             patternType = 'Neuropático (irradiação / formigamento)';
         } else if (padroes.includes('nocturnal') && padroes.includes('morning_stiffness')) {
             patternType = 'Inflamatório (noturna + rigidez matinal)';
@@ -616,7 +623,7 @@ export class MyIDCalculator {
         return {
             session_id: this.responses.session_id || 'N/A',
             timestamp: new Date().toISOString(),
-            versao: '2.3',
+            versao: '2.3.1',
 
             // MyID-100 score (0-100, higher = better)
             MyID_score: this.result.MyID || 0,

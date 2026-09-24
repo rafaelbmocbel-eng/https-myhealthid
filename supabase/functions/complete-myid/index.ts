@@ -176,7 +176,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { avaliacao_id, link_avaliacao_id, token_acesso, result, raw_data } = await req.json();
+    const body = await req.json();
+    const { avaliacao_id, link_avaliacao_id, token_acesso } = body;
+    let { result, raw_data } = body;
+    let reparo = false;
 
     if (!result) {
       return new Response(JSON.stringify({ error: "result is required" }), {
@@ -239,14 +242,31 @@ serve(async (req) => {
       }
 
       // Reenvio (timeout no celular, duplo toque): não duplica histórico/evolução.
+      // Mas um MyID "concluído" que NUNCA chegou ao histórico (falha antiga ou
+      // criado sem profissional) é completado agora, com as respostas salvas.
       if (avaliacao.status === "concluido") {
-        return new Response(JSON.stringify({ ok: true, synced: true, duplicado: true }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        const { data: jaSincronizado } = await supabase
+          .from("avaliacoes_identidade").select("id").eq("myid_avaliacao_id", avaliacao.id).maybeSingle();
+        if (jaSincronizado) {
+          return new Response(JSON.stringify({ ok: true, synced: true, duplicado: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        reparo = true;
+        if (avaliacao.resultado_processado) result = avaliacao.resultado_processado;
+        if (avaliacao.respostas_brutas) raw_data = avaliacao.respostas_brutas;
       }
 
       pacienteId = avaliacao.paciente_id;
       terapeutaId = avaliacao.terapeuta_id;
+      // MyID criado quando o paciente ainda não tinha profissional: usa o atual.
+      if (!terapeutaId && pacienteId) {
+        const { data: pacProf } = await supabase.from("pacientes").select("terapeuta_id").eq("id", pacienteId).maybeSingle();
+        if (pacProf?.terapeuta_id) {
+          terapeutaId = pacProf.terapeuta_id;
+          await supabase.from("myid_avaliacoes").update({ terapeuta_id: terapeutaId }).eq("id", avaliacao_id);
+        }
+      }
     }
 
     // Path B: via links_avaliacao (must be active + not expired)
@@ -314,6 +334,7 @@ serve(async (req) => {
     const payload = {
       terapeuta_id: terapeutaId,
       paciente_id: pacienteId,
+      myid_avaliacao_id: avaliacao_id || null,
       paciente_nome: pacienteNome,
       data_avaliacao: hojeBR(),
       dados_avaliacao: { resultado: result, respostas: raw_data },
@@ -348,6 +369,7 @@ serve(async (req) => {
 
     const errMarcar = await marcarConcluido();
     if (errMarcar) console.error("Update myid_avaliacoes concluido error:", errMarcar);
+    if (reparo) console.log(`[complete-myid] MyID ${avaliacao_id} concluído sem histórico — sincronizado agora.`);
 
     // 5. Register evolution record
     try {
