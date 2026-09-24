@@ -23,6 +23,7 @@ type Terapeuta = {
   cidade: string | null;
   uf: string | null;
   bairro?: string | null;
+  homecare?: boolean | null;
   valor_sessao: number | null;
   foto_url: string | null;
 };
@@ -147,7 +148,7 @@ export default function PerfilPublicoTerapeuta() {
               {(terapeuta.cidade || terapeuta.bairro) && (
                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                   <MapPin className="h-3.5 w-3.5" />
-                  {[terapeuta.bairro?.trim(), terapeuta.cidade?.trim()].filter(Boolean).join(' · ')}{terapeuta.uf ? `, ${terapeuta.uf}` : ''}
+                  {[terapeuta.homecare ? 'Atende em domicílio em toda a cidade' : terapeuta.bairro?.trim(), terapeuta.cidade?.trim()].filter(Boolean).join(' · ')}{terapeuta.uf ? `, ${terapeuta.uf}` : ''}
                 </p>
               )}
               {terapeuta.valor_sessao && (

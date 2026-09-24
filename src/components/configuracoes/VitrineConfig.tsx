@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Store, Eye, X, Plus, Loader2, ExternalLink, CheckCircle2, XCircle, Monitor, Building2, Globe, AlertTriangle, ShieldCheck, Clock } from 'lucide-react';
+import { Store, Eye, X, Plus, Loader2, ExternalLink, CheckCircle2, XCircle, Monitor, Building2, Globe, Home, AlertTriangle, ShieldCheck, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, differenceInDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
@@ -30,6 +30,7 @@ type VitrineData = {
   vitrine_valor_sessao: string;
   vitrine_foto_url: string;
   vitrine_modalidade: 'presencial' | 'online' | 'ambos';
+  vitrine_homecare: boolean;
 };
 
 type Solicitacao = {
@@ -67,6 +68,7 @@ export default function VitrineConfig() {
     vitrine_valor_sessao: '',
     vitrine_foto_url: '',
     vitrine_modalidade: 'presencial',
+    vitrine_homecare: false,
   });
   const [novaEspecialidade, setNovaEspecialidade] = useState('');
   const [novoConvenio, setNovoConvenio] = useState('');
@@ -111,6 +113,7 @@ export default function VitrineConfig() {
       vitrine_valor_sessao: config.vitrine_valor_sessao?.toString() || '',
       vitrine_foto_url: config.vitrine_foto_url || '',
       vitrine_modalidade: (config as any).vitrine_modalidade || 'presencial',
+      vitrine_homecare: (config as any).vitrine_homecare === true,
     });
   }, [config]);
 
@@ -128,6 +131,7 @@ export default function VitrineConfig() {
         vitrine_valor_sessao: data.vitrine_valor_sessao ? parseFloat(String(data.vitrine_valor_sessao).replace(',', '.')) : null,
         vitrine_foto_url: data.vitrine_foto_url || null,
         vitrine_modalidade: data.vitrine_modalidade,
+        vitrine_homecare: data.vitrine_homecare,
       };
       const { error } = await supabase
         .from('config_clinica')
@@ -337,6 +341,21 @@ export default function VitrineConfig() {
               </SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Homecare: aparece para quem procura em QUALQUER bairro da cidade */}
+        <div className="sm:col-span-2 flex items-start justify-between gap-3 rounded-lg border border-border/50 p-3">
+          <div>
+            <Label className="flex items-center gap-1.5"><Home className="h-3.5 w-3.5" /> Atendo em domicílio (homecare)</Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Você aparece em todos os bairros da sua cidade na vitrine, não só no seu bairro.
+            </p>
+          </div>
+          <Switch
+            checked={form.vitrine_homecare}
+            onCheckedChange={(v) => setForm((f) => ({ ...f, vitrine_homecare: v }))}
+            aria-label="Atendo em domicílio"
+          />
         </div>
 
         <div className="sm:col-span-2">

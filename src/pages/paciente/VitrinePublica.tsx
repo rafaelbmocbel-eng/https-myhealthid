@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Search, MapPin, DollarSign, User, Loader2, ArrowLeft,
-  Monitor, Building2, Globe, ChevronRight, Star,
+  Monitor, Building2, Globe, ChevronRight, Star, Home,
 } from 'lucide-react';
 import logoFull from '@/assets/logo-myhealthid-full.webp';
 
@@ -26,6 +26,7 @@ type Terapeuta = {
   foto_url: string | null;
   modalidade: string | null;
   bairro: string | null;
+  homecare?: boolean | null;
 };
 
 // Opções de local a partir dos próprios profissionais da vitrine. Agrupa grafias
@@ -147,8 +148,13 @@ function ProfissionalCard({ t, onClick }: { t: Terapeuta; onClick: () => void })
         {(t.cidade || t.bairro) && (
           <p className="text-[11px] text-muted-foreground flex items-center gap-0.5 mb-2">
             <MapPin className="h-3 w-3 shrink-0" />
-            {[t.bairro?.trim(), t.cidade?.trim()].filter(Boolean).join(' · ')}{t.uf ? `, ${t.uf}` : ''}
+            {[t.homecare ? 'Toda a cidade' : t.bairro?.trim(), t.cidade?.trim()].filter(Boolean).join(' · ')}{t.uf ? `, ${t.uf}` : ''}
           </p>
+        )}
+        {t.homecare && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 mb-2">
+            <Home className="h-2.5 w-2.5" /> Atende em domicílio
+          </span>
         )}
 
         {/* especialidades extras */}
@@ -202,7 +208,7 @@ export default function VitrinePublica() {
   }, []);
   const [searchParams, setSearchParams] = useSearchParams();
   const [busca, setBusca] = useState('');
-  const [modalidadeFiltro, setModalidadeFiltro] = useState<'todos' | 'presencial' | 'online'>('todos');
+  const [modalidadeFiltro, setModalidadeFiltro] = useState<'todos' | 'presencial' | 'online' | 'domicilio'>('todos');
   const catScrollRef = useRef<HTMLDivElement>(null);
 
   const categoriaAtiva = searchParams.get('categoria') || 'Todos';
@@ -253,11 +259,13 @@ export default function VitrinePublica() {
     return terapeutas.filter((t) => {
       if (ufFiltro && (t.uf || '').toUpperCase() !== ufFiltro) return false;
       if (cidadeFiltro && normalizarBusca(t.cidade) !== cidadeFiltro) return false;
-      if (bairroFiltro && normalizarBusca(t.bairro) !== bairroFiltro) return false;
+      // Homecare atende a cidade inteira: aparece em qualquer bairro dela.
+      if (bairroFiltro && !t.homecare && normalizarBusca(t.bairro) !== bairroFiltro) return false;
       if (termo && !(
         normalizarBusca(t.nome_exibicao).includes(termo) ||
         normalizarBusca(t.cidade).includes(termo) ||
         normalizarBusca(t.bairro).includes(termo) ||
+        (!!t.homecare && termo.length >= 4 && ['domicilio', 'domiciliar', 'homecare'].some((k) => k.includes(termo))) ||
         normalizarBusca(nomeDaUF(t.uf)).includes(termo) ||
         (t.especialidades || []).some((e) => normalizarBusca(e).includes(termo)) ||
         normalizarBusca(t.bio).includes(termo)
@@ -272,8 +280,12 @@ export default function VitrinePublica() {
 
       if (modalidadeFiltro !== 'todos') {
         const m = t.modalidade || 'presencial';
-        if (modalidadeFiltro === 'online' && m === 'presencial') return false;
-        if (modalidadeFiltro === 'presencial' && m === 'online') return false;
+        if (modalidadeFiltro === 'domicilio') {
+          if (!t.homecare) return false;
+        } else {
+          if (modalidadeFiltro === 'online' && m === 'presencial') return false;
+          if (modalidadeFiltro === 'presencial' && m === 'online') return false;
+        }
       }
 
       return true;
@@ -373,8 +385,8 @@ export default function VitrinePublica() {
 
       {/* ─── FILTRO MODALIDADE ─── */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border/40 px-4 py-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none">
-        {(['todos', 'presencial', 'online'] as const).map((m) => {
-          const labels = { todos: 'Todos', presencial: 'Presencial', online: 'Online' };
+        {(['todos', 'presencial', 'online', 'domicilio'] as const).map((m) => {
+          const labels = { todos: 'Todos', presencial: 'Presencial', online: 'Online', domicilio: 'Domicílio' };
           return (
             <button
               key={m}
