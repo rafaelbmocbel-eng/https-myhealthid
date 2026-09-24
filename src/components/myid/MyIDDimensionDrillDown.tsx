@@ -290,7 +290,7 @@ export default function MyIDDimensionDrillDown({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {scoreValor != null && (
-            <Badge variant="outline" className="text-xs whitespace-nowrap" title="Quanto o fator pesa: 0 = ótimo · 10 = crítico">pesa {Math.max(0, Math.min(10, gravidadeDimensao(dimensao, scoreValor))).toFixed(1)} / 10</Badge>
+            <Badge variant="outline" className="text-xs whitespace-nowrap" title="Nota do fator: 10 = ótimo · 0 = crítico">nota {(10 - Math.max(0, Math.min(10, gravidadeDimensao(dimensao, scoreValor)))).toFixed(1)} / 10</Badge>
           )}
           {onClose && (
             <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">

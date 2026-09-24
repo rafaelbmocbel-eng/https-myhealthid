@@ -142,13 +142,13 @@ export default function MyIDView() {
         <Card className="rounded-xl border-border/40 shadow-xs">
           <CardContent className="p-5">
             <h2 className="text-sm font-bold">Dimensões avaliadas</h2>
-            <p className="text-[11px] text-muted-foreground mb-3">Quanto cada fator pesa: 0 = ótimo · 10 = crítico.</p>
+            <p className="text-[11px] text-muted-foreground mb-3">Nota de cada fator: 10 = ótimo · 0 = crítico (mesma direção do MyID).</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {dimMap.map((d) => {
-                // Mesma escala do gráfico: quanto o fator pesa (0 = ótimo, 10 = crítico).
-                // Sono/contexto/funcionalidade altos (bom) viram peso baixo.
+                // Nota na direção do MyID: 10 = ótimo, 0 = crítico. g = gravidade (cor).
                 const g = Math.max(0, Math.min(10, gravidadeDimensao(d.key, Number(scores[d.key] ?? 0))));
-                const pct = (g / 10) * 100;
+                const nota = 10 - g;
+                const pct = (nota / 10) * 100;
                 const tone =
                   g <= 3 ? 'bg-emerald-500' : g <= 6 ? 'bg-amber-500' : g <= 8 ? 'bg-orange-500' : 'bg-destructive';
                 return (
@@ -157,7 +157,7 @@ export default function MyIDView() {
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                         {d.label}
                       </span>
-                      <span className="text-sm font-bold">{g.toFixed(1)}</span>
+                      <span className="text-sm font-bold">{nota.toFixed(1)}</span>
                     </div>
                     <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
                       <div className={`h-full ${tone}`} style={{ width: `${pct}%` }} />

@@ -282,25 +282,25 @@ export function getThermalColor(v: number): string {
 }
 
 export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
-  // UMA escala só no gráfico: cada anel mostra QUANTO AQUELE FATOR PESA contra o
-  // paciente — 0 = ótimo, 10 = crítico (a mesma "escala de comprometimento" da
-  // legenda de cores). As respostas vêm em duas direções (dor 0-10: maior = pior;
-  // sono/alimentação: maior = melhor); aqui tudo vira "peso", então anel maior e
-  // mais quente é SEMPRE pior. O MyID-100 no centro é 100 menos a soma desses pesos.
+  // UMA escala no gráfico, na MESMA direção do MyID-100: cada anel é a NOTA do
+  // fator — 10 = ótimo, 0 = crítico (anel cheio = bom). Respostas em que "maior
+  // = pior" (dor, emoções, mudanças, sinais) entram como 10 − valor; sono,
+  // hábitos e funcionalidade já vêm como nota. Ex.: dorme 3h + estresse 8 → R 2,4.
+  // `severity` (0 = ótimo, 10 = crítico) só controla cor e brilho.
   // `??` e não `||`: nota 0 é resposta válida (ex.: totalmente sedentário).
-  const peso = (key: string, padrao: number) => {
+  const gravidade = (key: string, padrao: number) => {
     const bruto = Number(scores[key] ?? padrao);
     return Math.max(0, Math.min(10, DIMENSOES_CAPACIDADE.has(key) ? 10 - bruto : bruto));
   };
   const anel = (label: string, key: string, type: 'inner' | 'outer', padrao = 0): FingerprintRing => {
-    const v = peso(key, padrao);
-    return { label, value: v, type, color: getThermalColor(v), scoreKey: key, severity: v };
+    const g = gravidade(key, padrao);
+    return { label, value: 10 - g, type, color: getThermalColor(g), scoreKey: key, severity: g };
   };
-  // MED pode ser negativo (penalidade) ou positivo (bônus): só a penalidade pesa.
+  // MED pode ser negativo (penalidade) ou positivo: só a penalidade tira nota.
   const med = (() => {
     const raw = scores.MED ?? 0;
-    const v = raw < 0 ? Math.min(-raw * 1.5, 10) : 0;
-    return { label: 'Medicação', value: v, type: 'outer' as const, color: getThermalColor(v), scoreKey: 'MED', severity: v };
+    const g = raw < 0 ? Math.min(-raw * 1.5, 10) : 0;
+    return { label: 'Medicação', value: 10 - g, type: 'outer' as const, color: getThermalColor(g), scoreKey: 'MED', severity: g };
   })();
   // Layout: hábitos/reservas no centro → o que está pressionando por fora.
   return [
