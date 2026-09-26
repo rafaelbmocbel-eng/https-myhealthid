@@ -115,7 +115,8 @@ Deno.serve(async (req) => {
         const info = await processarPaciente(ag);
         if (!info) continue;
         const msg = aplicar(cfg.mensagem_confirmacao || "Olá {nome}! Confirmando sua sessão amanhã às {horario}. Responda SIM para confirmar ou diga se prefere reagendar.", info.nome, info.hora, info.data);
-        const ok = await enviarWhatsapp(admin, ag.terapeuta_id, info.pac.telefone, msg);
+        const ok = await enviarWhatsapp(admin, ag.terapeuta_id, info.pac.telefone, msg,
+          { modelo: { chave: "confirmacao_24h", params: [info.nome, info.data, info.hora] } });
         if (ok) {
           await admin.from("agendamentos").update({
             confirmacao_enviada_em: new Date().toISOString(),
@@ -143,7 +144,8 @@ Deno.serve(async (req) => {
         const info = await processarPaciente(ag);
         if (!info) continue;
         const msg = aplicar(cfg.mensagem_lembrete_2h || "Oi {nome}! Lembrete: sua sessão é hoje às {horario}. Te espero!", info.nome, info.hora, info.data);
-        const ok = await enviarWhatsapp(admin, ag.terapeuta_id, info.pac.telefone, msg);
+        const ok = await enviarWhatsapp(admin, ag.terapeuta_id, info.pac.telefone, msg,
+          { modelo: { chave: "lembrete_2h", params: [info.nome, info.hora] } });
         if (ok) {
           await admin.from("agendamentos").update({ lembrete_2h_enviado_em: new Date().toISOString() }).eq("id", ag.id);
           await registrarEnvio(admin, ag.terapeuta_id, ag.paciente_id, info.pac.telefone, msg);

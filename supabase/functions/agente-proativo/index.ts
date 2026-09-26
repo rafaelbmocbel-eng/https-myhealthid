@@ -66,6 +66,8 @@ async function registrarDisparo(admin: any, terapeuta_id: string, paciente_id: s
 type DispatchCtx = {
   admin: any; terapeuta_id: string; paciente_id: string; telefone: string;
   systemPromptBase: string; cfg: any;
+  // Primeiro nome — variável dos modelos aprovados da Meta (fora das 24h).
+  primeiroNome?: string;
 };
 
 async function dispararConfirmacao24h(ctx: DispatchCtx, ag: any) {
@@ -73,7 +75,10 @@ async function dispararConfirmacao24h(ctx: DispatchCtx, ag: any) {
   const instrucao = `Gere uma mensagem CURTA (2 linhas) pedindo confirmação da sessão amanhã às ${fmtDataHoraBR(ag.data_inicio)} (horário de Brasília — use exatamente esse horário). Peça para o paciente responder SIM para confirmar ou REAGENDAR para mudar.`;
   const msg = await gerarMensagem(ctx.systemPromptBase, instrucao);
   if (!msg) return;
-  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg);
+  const dataBR = new Date(ag.data_inicio).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: FUSO_BR });
+  const horaBR = new Date(ag.data_inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO_BR });
+  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg,
+    { modelo: { chave: "confirmacao_24h", params: [ctx.primeiroNome || "", dataBR, horaBR] } });
   await registrarDisparo(ctx.admin, ctx.terapeuta_id, ctx.paciente_id, "confirmacao_24h", ag.id, msg, ok);
 }
 
@@ -82,7 +87,9 @@ async function dispararLembrete2h(ctx: DispatchCtx, ag: any) {
   const instrucao = `Gere uma mensagem MUITO curta (1 linha) lembrando da sessão hoje às ${new Date(ag.data_inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO_BR })} (horário de Brasília — use exatamente esse horário). Termine com "Te espero! 💙"`;
   const msg = await gerarMensagem(ctx.systemPromptBase, instrucao);
   if (!msg) return;
-  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg);
+  const horaBR = new Date(ag.data_inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO_BR });
+  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg,
+    { modelo: { chave: "lembrete_2h", params: [ctx.primeiroNome || "", horaBR] } });
   await registrarDisparo(ctx.admin, ctx.terapeuta_id, ctx.paciente_id, "lembrete_2h", ag.id, msg, ok);
 }
 
@@ -156,7 +163,8 @@ async function dispararPagamentoPendente(ctx: DispatchCtx, ctxClinico: any) {
   const instrucao = `O paciente tem um pagamento pendente de R$ ${Number(pg.valor).toFixed(2)}${venc}. Gere uma mensagem CURTA, gentil e sem constrangimento lembrando da pendência e oferecendo ajuda (por exemplo, reenviar a chave PIX). Não seja insistente nem ameaçador.`;
   const msg = await gerarMensagem(ctx.systemPromptBase, instrucao);
   if (!msg) return;
-  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg);
+  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg,
+    { modelo: { chave: "pagamento_pendente", params: [ctx.primeiroNome || ""] } });
   await registrarDisparo(ctx.admin, ctx.terapeuta_id, ctx.paciente_id, "pagamento_pendente", null, msg, ok);
 }
 
@@ -165,7 +173,8 @@ async function dispararAniversario(ctx: DispatchCtx) {
   const instrucao = `HOJE é aniversário do paciente. Gere mensagem CURTA, calorosa, com um voto sincero. Sem promoções.`;
   const msg = await gerarMensagem(ctx.systemPromptBase, instrucao);
   if (!msg) return;
-  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg);
+  const ok = await enviarWhatsapp(ctx.admin, ctx.terapeuta_id, ctx.telefone, msg,
+    { modelo: { chave: "aniversario", params: [ctx.primeiroNome || ""] } });
   await registrarDisparo(ctx.admin, ctx.terapeuta_id, ctx.paciente_id, "aniversario", null, msg, ok);
 }
 
@@ -208,7 +217,7 @@ Deno.serve(async (req) => {
         const ctxClinico = await montarContextoClinico(admin, terapeuta_id, ag.paciente_id, tel, null);
         await dispararConfirmacao24h({
           admin, terapeuta_id, paciente_id: ag.paciente_id, telefone: tel,
-          systemPromptBase: buildSystemPrompt(ctxClinico), cfg,
+          systemPromptBase: buildSystemPrompt(ctxClinico), cfg, primeiroNome: ctxClinico?.paciente?.primeiro_nome || "",
         }, ag);
         stats.confirmacao++;
       }
@@ -231,7 +240,7 @@ Deno.serve(async (req) => {
         const ctxClinico = await montarContextoClinico(admin, terapeuta_id, ag.paciente_id, tel, null);
         await dispararLembrete2h({
           admin, terapeuta_id, paciente_id: ag.paciente_id, telefone: tel,
-          systemPromptBase: buildSystemPrompt(ctxClinico), cfg,
+          systemPromptBase: buildSystemPrompt(ctxClinico), cfg, primeiroNome: ctxClinico?.paciente?.primeiro_nome || "",
         }, ag);
         stats.lembrete++;
       }
@@ -254,7 +263,7 @@ Deno.serve(async (req) => {
         const ctxClinico = await montarContextoClinico(admin, terapeuta_id, ag.paciente_id, tel, null);
         await dispararPosSessao({
           admin, terapeuta_id, paciente_id: ag.paciente_id, telefone: tel,
-          systemPromptBase: buildSystemPrompt(ctxClinico), cfg,
+          systemPromptBase: buildSystemPrompt(ctxClinico), cfg, primeiroNome: ctxClinico?.paciente?.primeiro_nome || "",
         }, ag);
         stats.pos++;
       }
@@ -275,7 +284,7 @@ Deno.serve(async (req) => {
         const ctxClinico = await montarContextoClinico(admin, terapeuta_id, p.id, p.telefone, null);
         const baseCtx = {
           admin, terapeuta_id, paciente_id: p.id, telefone: p.telefone,
-          systemPromptBase: buildSystemPrompt(ctxClinico), cfg,
+          systemPromptBase: buildSystemPrompt(ctxClinico), cfg, primeiroNome: ctxClinico?.paciente?.primeiro_nome || "",
         };
 
         if (gatilhos.aniversario !== false && ctxClinico.paciente.aniversario_hoje) {

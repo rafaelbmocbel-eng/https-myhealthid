@@ -38,7 +38,18 @@ type ConfigClinica = {
   meta_phone_number_id: string;
   meta_access_token: string;
   meta_waba_id: string;
+  meta_templates: Record<string, { nome?: string; idioma?: string }>;
 };
+
+// Modelos aprovados da Meta usados FORA da janela de 24h. As variáveis {{n}}
+// precisam estar exatamente nesta ordem no modelo criado no painel da Meta.
+const MODELOS_META: { chave: string; titulo: string; variaveis: string }[] = [
+  { chave: 'confirmacao_24h', titulo: 'Confirmação da sessão (24h antes)', variaveis: '{{1}} nome · {{2}} data · {{3}} horário' },
+  { chave: 'lembrete_2h', titulo: 'Lembrete da sessão (2h antes)', variaveis: '{{1}} nome · {{2}} horário' },
+  { chave: 'pagamento_pendente', titulo: 'Pagamento pendente', variaveis: '{{1}} nome' },
+  { chave: 'aniversario', titulo: 'Aniversário', variaveis: '{{1}} nome' },
+  { chave: 'contato_generico', titulo: 'Contato geral (demais mensagens)', variaveis: 'sem variáveis — a mensagem completa é entregue quando o paciente responder' },
+];
 
 const EMPTY: ConfigClinica = {
   razao_social: '', cnpj: '', responsavel: '', registro_responsavel: '',
@@ -48,6 +59,7 @@ const EMPTY: ConfigClinica = {
   zapi_instance_id: '', zapi_token: '', zapi_client_token: '', zapi_ativo: false,
   whatsapp_provider: 'zapi', evolution_base_url: '', evolution_instance: '', evolution_api_key: '',
   meta_phone_number_id: '', meta_access_token: '', meta_waba_id: '',
+  meta_templates: {},
 };
 
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -119,6 +131,7 @@ export default function ConfigClinica() {
         meta_phone_number_id: (data as any).meta_phone_number_id || '',
         meta_access_token: (data as any).meta_access_token || '',
         meta_waba_id: (data as any).meta_waba_id || '',
+        meta_templates: ((data as any).meta_templates as ConfigClinica['meta_templates']) || {},
       });
     }
     setLoading(false);
@@ -366,11 +379,32 @@ export default function ConfigClinica() {
               <Label className="text-xs font-medium mb-1.5 block">WABA ID (opcional)</Label>
               <Input value={form.meta_waba_id} onChange={e => update('meta_waba_id', e.target.value)} placeholder="ID da conta do WhatsApp Business" />
             </div>
+            <div className="rounded-xl border border-border/50 p-3 space-y-2.5">
+              <div>
+                <p className="text-xs font-semibold">Modelos aprovados (mensagens fora das 24h)</p>
+                <p className="text-[11px] text-muted-foreground">
+                  A Meta só deixa a clínica iniciar conversa com modelos aprovados. Digite o nome exato de cada modelo
+                  aprovado no seu painel. Sem o modelo, aquela automação não sai quando o paciente está há mais de 24h sem escrever.
+                </p>
+              </div>
+              {MODELOS_META.map((m) => (
+                <div key={m.chave}>
+                  <Label className="text-xs font-medium mb-1 block">{m.titulo}</Label>
+                  <Input
+                    value={form.meta_templates?.[m.chave]?.nome || ''}
+                    onChange={e => update('meta_templates', { ...form.meta_templates, [m.chave]: { nome: e.target.value.trim(), idioma: 'pt_BR' } })}
+                    placeholder="nome_do_modelo"
+                  />
+                  <p className="text-[10.5px] text-muted-foreground mt-0.5">Variáveis: {m.variaveis}</p>
+                </div>
+              ))}
+            </div>
             <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
               <p className="text-[11px] font-semibold text-muted-foreground">No painel da Meta, configure o Webhook com:</p>
               <p className="text-[11px]"><b>URL de callback:</b> <code className="break-all">https://zxulglbcxehqplxainmz.supabase.co/functions/v1/whatsapp-webhook</code></p>
               <p className="text-[11px]"><b>Token de verificação:</b> o mesmo valor do secret <code>WHATSAPP_META_VERIFY_TOKEN</code> do projeto.</p>
               <p className="text-[11px]"><b>Campos:</b> assine <code>messages</code>.</p>
+              <p className="text-[11px]"><b>Segurança:</b> o App Secret do app da Meta vai no secret <code>META_APP_SECRET</code> do projeto (valida a assinatura das mensagens).</p>
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
               <div className="flex items-center gap-2">

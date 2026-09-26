@@ -17,10 +17,22 @@ interface WaConfig {
   meta_phone_number_id?: string | null;
   meta_access_token?: string | null;
   meta_api_version?: string | null;
+  meta_templates?: Record<string, { nome?: string; idioma?: string }> | null;
 }
 
 const COLS =
-  "whatsapp_provider, zapi_instance_id, zapi_token, zapi_client_token, evolution_base_url, evolution_instance, evolution_api_key, meta_phone_number_id, meta_access_token, meta_api_version";
+  "whatsapp_provider, zapi_instance_id, zapi_token, zapi_client_token, evolution_base_url, evolution_instance, evolution_api_key, meta_phone_number_id, meta_access_token, meta_api_version, meta_templates";
+
+/**
+ * Modelo aprovado (Meta) a usar quando a mensagem sai FORA da janela de 24h.
+ * `chave` = automação (confirmacao_24h, lembrete_2h, pagamento_pendente,
+ * aniversario); `params` = variáveis {{1}}, {{2}}… na ordem do modelo.
+ * Na Z-API/Evolution é ignorado.
+ */
+export interface ModeloMeta {
+  chave: string;
+  params: string[];
+}
 
 /** Template para envio Meta FORA da janela de 24h (mensagem iniciada pela clínica). */
 export interface WaTemplate {
@@ -77,6 +89,7 @@ async function enviarMeta(
   num: string,
   message: string,
   template?: WaTemplate,
+  modelo?: ModeloMeta,
 ): Promise<boolean> {
   if (!cfg.meta_phone_number_id || !cfg.meta_access_token) return false;
   const ver = cfg.meta_api_version || "v21.0";
@@ -87,14 +100,47 @@ async function enviarMeta(
   let payload: Record<string, unknown>;
   if (dentro) {
     payload = { messaging_product: "whatsapp", to: num, type: "text", text: { body: message, preview_url: true } };
-  } else if (template) {
+  } else {
+    // Fora das 24h: modelo aprovado da própria automação (com o conteúdo) ou,
+    // para mensagens personalizadas, o modelo genérico + a mensagem na fila.
+    const modelos = cfg.meta_templates || {};
+    const especifico = modelo ? modelos[modelo.chave] : undefined;
+    const generico = modelos["contato_generico"];
+    let tpl: WaTemplate | undefined = template;
+    let guardarPendente = false;
+    if (!tpl && especifico?.nome) {
+      tpl = {
+        name: especifico.nome, language: especifico.idioma || "pt_BR",
+        components: modelo!.params.length
+          ? [{ type: "body", parameters: modelo!.params.map((t) => ({ type: "text", text: String(t || "-") })) }]
+          : [],
+      };
+    } else if (!tpl && generico?.nome) {
+      tpl = { name: generico.nome, language: generico.idioma || "pt_BR", components: [] };
+      guardarPendente = true;
+    }
+    if (!tpl) {
+      console.warn(`[wa-meta] fora da janela de 24h e sem modelo aprovado cadastrado (${modelo?.chave || "genérico"}) — não enviado (terapeuta ${terapeuta_id})`);
+      return false;
+    }
     payload = {
       messaging_product: "whatsapp", to: num, type: "template",
-      template: { name: template.name, language: { code: template.language || "pt_BR" }, components: template.components || [] },
+      template: { name: tpl.name, language: { code: tpl.language || "pt_BR" }, components: tpl.components || [] },
     };
-  } else {
-    console.warn(`[wa-meta] fora da janela de 24h e sem template — não enviado (terapeuta ${terapeuta_id})`);
-    return false;
+    if (guardarPendente) {
+      try {
+        const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+        if (!r.ok) {
+          console.warn(`[wa-meta] modelo genérico falhou ${r.status}: ${(await r.text()).slice(0, 200)}`);
+          return false;
+        }
+        await admin.from("whatsapp_envios_pendentes").insert({ terapeuta_id, telefone: num, conteudo: message });
+        return true;
+      } catch (e) {
+        console.warn("[wa-meta] erro de rede (genérico):", e);
+        return false;
+      }
+    }
   }
   try {
     const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
@@ -125,7 +171,7 @@ export async function enviarWhatsapp(
   terapeuta_id: string,
   phone: string,
   message: string,
-  opts?: { manual?: boolean; template?: WaTemplate },
+  opts?: { manual?: boolean; template?: WaTemplate; modelo?: ModeloMeta },
 ): Promise<boolean> {
   if (!opts?.manual && await automacoesPausadas(admin, terapeuta_id)) return false;
   const cfg = await getConfig(admin, terapeuta_id);
@@ -134,7 +180,7 @@ export async function enviarWhatsapp(
   if (!num || !message) return false;
 
   if (isMeta(cfg)) {
-    return await enviarMeta(admin, cfg, terapeuta_id, num, message, opts?.template);
+    return await enviarMeta(admin, cfg, terapeuta_id, num, message, opts?.template, opts?.modelo);
   }
 
   if (isEvolution(cfg)) {
@@ -247,4 +293,27 @@ export async function enviarWhatsappMidia(
   } catch {
     return false;
   }
+}
+
+/**
+ * Entrega as mensagens que esperavam o paciente responder (Meta, fora das 24h).
+ * Chamada pelo webhook quando chega mensagem do paciente — a janela abriu.
+ */
+export async function entregarPendentes(admin: AdminClient, terapeuta_id: string, telefone: string): Promise<number> {
+  const num = String(telefone || "").replace(/\D/g, "");
+  if (!num) return 0;
+  const desde = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+  const { data } = await admin.from("whatsapp_envios_pendentes")
+    .select("id, conteudo").eq("terapeuta_id", terapeuta_id).eq("telefone", num)
+    .is("enviado_em", null).gte("created_at", desde).order("created_at");
+  let n = 0;
+  for (const p of (data as { id: string; conteudo: string }[] | null) || []) {
+    // manual: a janela está aberta e é a continuação de algo já iniciado.
+    const ok = await enviarWhatsapp(admin, terapeuta_id, num, p.conteudo, { manual: true });
+    if (ok) {
+      await admin.from("whatsapp_envios_pendentes").update({ enviado_em: new Date().toISOString() }).eq("id", p.id);
+      n++;
+    }
+  }
+  return n;
 }

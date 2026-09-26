@@ -1,6 +1,7 @@
 // Webhook receptor da Z-API — recebe mensagens entrantes/saintes e grava na inbox.
 // Configure no painel Z-API: https://<project>.supabase.co/functions/v1/whatsapp-webhook
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { entregarPendentes } from "../_shared/enviar-whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,8 +48,11 @@ Deno.serve(async (req) => {
   // ?secret=... Se o segredo NÃO estiver configurado, o zapi-conectar aponta a
   // URL sem secret; então aqui também não exigimos (senão o recebimento ficaria
   // 100% quebrado quando o dono da plataforma não criou o segredo).
+  // A Meta não manda ?secret: ela assina o corpo (x-hub-signature-256) com o
+  // App Secret. Chamadas da Meta são validadas pela assinatura, logo abaixo.
+  const assinaturaMeta = req.headers.get("x-hub-signature-256");
   const expectedSecret = Deno.env.get("WHATSAPP_WEBHOOK_SECRET");
-  if (expectedSecret) {
+  if (expectedSecret && !assinaturaMeta) {
     const provided = new URL(req.url).searchParams.get("secret") || req.headers.get("x-webhook-secret");
     if (provided !== expectedSecret) {
       console.warn("[whatsapp-webhook] unauthorized: secret mismatch");
@@ -60,7 +64,24 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const rawBody = await req.json();
+    const textoCorpo = await req.text();
+    if (assinaturaMeta) {
+      const appSecret = Deno.env.get("META_APP_SECRET");
+      if (appSecret) {
+        const chave = await crypto.subtle.importKey("raw", new TextEncoder().encode(appSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+        const assinatura = await crypto.subtle.sign("HMAC", chave, new TextEncoder().encode(textoCorpo));
+        const hex = "sha256=" + [...new Uint8Array(assinatura)].map((b) => b.toString(16).padStart(2, "0")).join("");
+        if (hex !== assinaturaMeta) {
+          console.warn("[whatsapp-webhook] assinatura da Meta inválida");
+          return new Response(JSON.stringify({ error: "unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        console.warn("[whatsapp-webhook] META_APP_SECRET não configurado — assinatura da Meta não verificada");
+      }
+    }
+    const rawBody = JSON.parse(textoCorpo || "{}");
     console.log("[whatsapp-webhook] payload:", JSON.stringify(rawBody).slice(0, 500));
 
     // Meta (WhatsApp Cloud API) tem formato próprio. Normaliza para o mesmo shape
@@ -311,6 +332,13 @@ Deno.serve(async (req) => {
         headers: internalHeaders,
         body: JSON.stringify({ mensagem_id: novaMsgId }),
       }).catch((e) => console.warn("transcribe trigger failed:", e));
+    }
+
+    // Meta: o paciente respondeu → a janela de 24h abriu. Entrega as mensagens
+    // que esperavam (enviadas fora da janela via modelo genérico).
+    if (metaPhoneNumberId && !fromMe && terapeuta_id) {
+      entregarPendentes(admin, terapeuta_id, phone)
+        .catch((e) => console.warn("entrega de pendentes falhou:", e));
     }
 
     // Bot de resposta + detecção de intenção (apenas msgs de entrada)
