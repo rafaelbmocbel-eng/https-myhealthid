@@ -230,6 +230,18 @@ export default function Agenda() {
   const [searchParams, setSearchParams] = useSearchParams();
   const prefillHandledRef = useRef(false);
   const [expandedSlots, setExpandedSlots] = useState<Set<string>>(new Set());
+  // Turma: ao arrastar o dedo sobre as bolinhas, mostra quem é cada aluno.
+  const [bolhaAluno, setBolhaAluno] = useState<{ nome: string; status: string; x: number; y: number } | null>(null);
+  const deslizouNaTurmaRef = useRef(false);
+  const inicioToqueTurmaRef = useRef<string | null>(null);
+  const mostrarAlunoEm = (x: number, y: number) => {
+    const alvo = (document.elementFromPoint(x, y) as HTMLElement | null)?.closest('[data-aluno-nome]') as HTMLElement | null;
+    if (!alvo) return;
+    const r = alvo.getBoundingClientRect();
+    const id = alvo.dataset.alunoId || '';
+    if (inicioToqueTurmaRef.current && id !== inicioToqueTurmaRef.current) deslizouNaTurmaRef.current = true;
+    setBolhaAluno({ nome: alvo.dataset.alunoNome || '', status: alvo.dataset.alunoStatus || '', x: r.left + r.width / 2, y: r.top });
+  };
   const [batchStatusRunning, setBatchStatusRunning] = useState(false);
   const [turmaPacSearch, setTurmaPacSearch] = useState('');
   const [turmaModal, setTurmaModal] = useState<{
@@ -1974,8 +1986,27 @@ export default function Agenda() {
                                   </div>
                                 </div>
 
-                                {/* Avatares numa linha só (rola para o lado) — não empurra a altura */}
-                                <div className="px-2 py-1 flex flex-nowrap gap-1 overflow-x-auto">
+                                {/* Avatares numa linha só. Arrastar o dedo por cima mostra o nome de
+                                    cada aluno num balão; toque rápido abre o atendimento. */}
+                                <div
+                                  className="px-2 py-1 flex flex-nowrap gap-1 overflow-x-auto"
+                                  style={{ touchAction: 'pan-y' }}
+                                  onTouchStart={e => e.stopPropagation()}
+                                  onPointerDown={e => {
+                                    e.stopPropagation();
+                                    deslizouNaTurmaRef.current = false;
+                                    const alvo = (e.target as HTMLElement).closest('[data-aluno-id]') as HTMLElement | null;
+                                    inicioToqueTurmaRef.current = alvo?.dataset.alunoId || null;
+                                    if (e.pointerType !== 'mouse') {
+                                      try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* captura implícita inexistente — segue */ }
+                                      mostrarAlunoEm(e.clientX, e.clientY);
+                                    }
+                                  }}
+                                  onPointerMove={e => mostrarAlunoEm(e.clientX, e.clientY)}
+                                  onPointerUp={e => { if (e.pointerType !== 'mouse') setTimeout(() => setBolhaAluno(null), 900); }}
+                                  onPointerCancel={() => setBolhaAluno(null)}
+                                  onPointerLeave={e => { if (e.pointerType === 'mouse') setBolhaAluno(null); }}
+                                >
                                   {sorted.map(ag => {
                                     const pac = pacientes.find(p => p.id === ag.paciente_id);
                                     const nome = pac
@@ -1991,9 +2022,12 @@ export default function Agenda() {
                                     return (
                                       <button
                                         key={ag.id}
-                                        title={`${nome} — ${STATUS_CONFIG[ag.status]?.label || ag.status}`}
+                                        data-aluno-id={ag.id}
+                                        data-aluno-nome={nome}
+                                        data-aluno-status={STATUS_CONFIG[ag.status]?.label || ag.status}
+                                        aria-label={`${nome} — ${STATUS_CONFIG[ag.status]?.label || ag.status}`}
                                         className={cn(
-                                          'w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all relative hover:shadow-md select-none',
+                                          'w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all relative hover:shadow-md select-none',
                                           isAtendido ? 'border-emerald-400' :
                                           isFaltou ? 'border-red-300 opacity-55' :
                                           'border-border hover:border-primary/50'
@@ -2003,9 +2037,20 @@ export default function Agenda() {
                                           color: color?.color || 'hsl(var(--muted-foreground))',
                                           ...(isAtendido ? { boxShadow: '0 0 0 1px rgb(74 222 128 / 0.5)' } : {}),
                                         }}
-                                        onClick={(e) => { e.stopPropagation(); openEdit(ag); }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          // Se o dedo deslizou por outras bolinhas, foi só "espiar" os nomes.
+                                          if (deslizouNaTurmaRef.current) { deslizouNaTurmaRef.current = false; return; }
+                                          openEdit(ag);
+                                        }}
                                       >
-                                        {isFaltou ? '✗' : isAtendido ? '✓' : initials}
+                                        {initials}
+                                        {(isAtendido || isFaltou) && (
+                                          <span className={cn(
+                                            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border border-card flex items-center justify-center text-[7px] leading-none text-white',
+                                            isAtendido ? 'bg-emerald-500' : 'bg-red-400',
+                                          )}>{isAtendido ? '✓' : '✗'}</span>
+                                        )}
                                       </button>
                                     );
                                   })}
@@ -2070,6 +2115,18 @@ export default function Agenda() {
           )}
         </div>
       </div>
+
+      {/* Balão com o nome do aluno da turma (acompanha o dedo) */}
+      {bolhaAluno && (
+        <div
+          className="fixed z-[70] pointer-events-none -translate-x-1/2 -translate-y-full rounded-lg bg-foreground text-background px-2.5 py-1.5 shadow-lg text-center"
+          style={{ left: bolhaAluno.x, top: bolhaAluno.y - 8 }}
+          role="status"
+        >
+          <div className="text-xs font-bold whitespace-nowrap">{bolhaAluno.nome}</div>
+          <div className="text-[10px] opacity-75 whitespace-nowrap">{bolhaAluno.status}</div>
+        </div>
+      )}
 
       {/* Modal de Agendamento */}
       <Dialog open={modal.open} onOpenChange={open => !open && setModal({ open: false })}>
