@@ -648,69 +648,46 @@ export default function Agenda() {
     return { top, height };
   };
 
-  // Calculate side-by-side columns for overlapping appointments
-  const getOverlapLayout = (dayAgs: Agendamento[]) => {
-    const activeAgs = dayAgs.filter(ag => ag.status !== 'cancelado');
-    if (activeAgs.length === 0) return {};
+  // Colunas lado a lado para horários que se cruzam (mesmo algoritmo das agendas
+  // do Google/Outlook): agrupa quem se sobrepõe, distribui em colunas e deixa
+  // cada item se ESTICAR para a direita enquanto não houver conflito ali — antes
+  // todos ficavam com a mesma largura (25% com 4 colunas), mesmo com espaço livre.
+  // Recebe itens genéricos para a turma entrar como um bloco só.
+  type ItemLayout = { id: string; inicio: number; fim: number };
+  const getOverlapLayout = (itens: ItemLayout[]) => {
+    const layout: Record<string, { col: number; span: number; totalCols: number }> = {};
+    if (itens.length === 0) return layout;
+    const sorted = [...itens].sort((a, b) => a.inicio - b.inicio || (b.fim - b.inicio) - (a.fim - a.inicio));
+    const cruza = (a: ItemLayout, b: ItemLayout) => a.inicio < b.fim && a.fim > b.inicio;
 
-    const sorted = [...activeAgs].sort((a, b) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
-    const layout: Record<string, { col: number; totalCols: number }> = {};
+    // 1. Grupos: uma nova sequência começa quando o item não cruza com nada aberto.
+    const grupos: ItemLayout[][] = [];
+    let atual: ItemLayout[] = [];
+    let fimAtual = -Infinity;
+    for (const it of sorted) {
+      if (atual.length && it.inicio >= fimAtual) { grupos.push(atual); atual = []; fimAtual = -Infinity; }
+      atual.push(it);
+      fimAtual = Math.max(fimAtual, it.fim);
+    }
+    if (atual.length) grupos.push(atual);
 
-    // 1. Group into Clusters (Connected Components)
-    const clusters: Agendamento[][] = [];
-    sorted.forEach(ag => {
-      const agStart = parseISO(ag.data_inicio).getTime();
-      const agEnd = parseISO(ag.data_fim).getTime();
-
-      const overlappingClusterIndices = clusters.reduce((acc, cluster, idx) => {
-        if (cluster.some(c => {
-          const cS = parseISO(c.data_inicio).getTime();
-          const cE = parseISO(c.data_fim).getTime();
-          return agStart < cE && agEnd > cS;
-        })) acc.push(idx);
-        return acc;
-      }, [] as number[]);
-
-      if (overlappingClusterIndices.length === 0) {
-        clusters.push([ag]);
-      } else {
-        const firstIdx = overlappingClusterIndices[0];
-        clusters[firstIdx].push(ag);
-        // Merge multiple clusters if ag connects them
-        for (let i = overlappingClusterIndices.length - 1; i > 0; i--) {
-          const otherIdx = overlappingClusterIndices[i];
-          clusters[firstIdx].push(...clusters[otherIdx]);
-          clusters.splice(otherIdx, 1);
-        }
+    // 2. Colunas (primeira livre) + 3. esticar para a direita enquanto couber.
+    for (const grupo of grupos) {
+      const colunas: ItemLayout[][] = [];
+      const colDe = new Map<string, number>();
+      for (const it of grupo) {
+        let c = colunas.findIndex(col => !col.some(o => cruza(o, it)));
+        if (c < 0) { colunas.push([]); c = colunas.length - 1; }
+        colunas[c].push(it);
+        colDe.set(it.id, c);
       }
-    });
-
-    // 2. Assign columns within each cluster (Greedy Column Packing)
-    clusters.forEach(cluster => {
-      const columns: string[][] = [];
-      cluster.forEach(ag => {
-        const agStart = parseISO(ag.data_inicio).getTime();
-        const agEnd = parseISO(ag.data_fim).getTime();
-
-        let colIdx = -1;
-        for (let i = 0; i < columns.length; i++) {
-          const overlapsInCol = columns[i].some(id => {
-            const other = cluster.find(c => c.id === id)!;
-            return agStart < parseISO(other.data_fim).getTime() && agEnd > parseISO(other.data_inicio).getTime();
-          });
-          if (!overlapsInCol) { colIdx = i; break; }
-        }
-
-        if (colIdx >= 0) columns[colIdx].push(ag.id);
-        else columns.push([ag.id]);
-      });
-
-      cluster.forEach(ag => {
-        const colIndex = columns.findIndex(col => col.includes(ag.id));
-        layout[ag.id] = { col: colIndex, totalCols: columns.length };
-      });
-    });
-
+      for (const it of grupo) {
+        const c = colDe.get(it.id)!;
+        let span = 1;
+        while (c + span < colunas.length && !colunas[c + span].some(o => cruza(o, it))) span++;
+        layout[it.id] = { col: c, span, totalCols: colunas.length };
+      }
+    }
     return layout;
   };
 
@@ -1782,7 +1759,6 @@ export default function Agenda() {
                   {days.map((day, di) => {
                     const dayAgs = getAgForDay(day);
                     const totalHeight = slots.length * SLOT_HEIGHT;
-                    const overlapLayout = getOverlapLayout(dayAgs);
                     // Uma "turma" é um conjunto de agendamentos NO MESMO HORÁRIO de início
                     // (ex.: 8 alunos às 09:00). NÃO é uma cadeia de sessões consecutivas que
                     // apenas se encostam no tempo. Antes, o agrupamento usava sobreposição
@@ -1807,6 +1783,17 @@ export default function Agenda() {
                       else normalAgs.push(...grupo);
                     });
 
+                    // Turma entra na divisão como UM bloco (id turma:<horário>), então os
+                    // atendimentos no mesmo intervalo ficam ao lado dela, não por baixo.
+                    const overlapLayout = getOverlapLayout([
+                      ...normalAgs.map(ag => ({ id: ag.id, inicio: parseISO(ag.data_inicio).getTime(), fim: parseISO(ag.data_fim).getTime() })),
+                      ...Array.from(denseGroups.entries()).map(([key, g]) => {
+                        const ini = Math.min(...g.map(x => parseISO(x.data_inicio).getTime()));
+                        const fim = Math.max(...g.map(x => parseISO(x.data_fim).getTime()));
+                        return { id: `turma:${key}`, inicio: ini, fim };
+                      }),
+                    ]);
+
                     return (
                       <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight, overflow: 'hidden' }}>
                         {/* Normal appointments (1-3 overlap) — side-by-side columns */}
@@ -1819,9 +1806,17 @@ export default function Agenda() {
                             color: membro.cor,
                             borderLeftColor: membro.cor,
                           } : (ag.paciente_id ? getPatientColor(ag.paciente_id) : null);
-                          const layout = overlapLayout[ag.id] || { col: 0, totalCols: 1 };
+                          const layout = overlapLayout[ag.id] || { col: 0, span: 1, totalCols: 1 };
                           const colWidth = 100 / layout.totalCols;
                           const leftPct = layout.col * colWidth;
+                          // Cartão estreito (menos de ~1/3 da largura): mostra só o essencial.
+                          const larguraFrac = layout.span / layout.totalCols;
+                          const estreito = larguraFrac < 0.34;
+                          const nomeCompleto = ag.titulo
+                            || (ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : null)
+                            || (ag.paciente_id ? (() => { const p = pacientes.find(x => x.id === ag.paciente_id); return p ? `${p.nome} ${p.sobrenome}` : null; })() : null)
+                            || 'Agendamento';
+                          const primeiroNome = (ag.pacientes?.nome || nomeCompleto).split(' ')[0];
                           const isDraggingThis = dragging?.ag.id === ag.id;
                           const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
 
@@ -1832,7 +1827,8 @@ export default function Agenda() {
                               onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               className={cn(
-                                'absolute rounded-md border border-l-[3px] px-2 py-1 overflow-hidden cursor-grab select-none pointer-events-auto',
+                                'absolute rounded-md border border-l-[3px] overflow-hidden cursor-grab select-none pointer-events-auto',
+                                estreito ? 'px-1 py-0.5' : 'px-2 py-1',
                                 'hover:brightness-[0.98] hover:shadow-sm transition-all z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
                                 aguardandoLongPress === ag.id && !isDraggingThis && 'ring-2 ring-primary/50 scale-[1.02] shadow-md transition-transform',
@@ -1842,7 +1838,7 @@ export default function Agenda() {
                                 top: pos.top,
                                 height: pos.height,
                                 left: `${leftPct}%`,
-                                width: `${colWidth - 1}%`,
+                                width: `calc(${colWidth * layout.span}% - 2px)`,
                                 ...(memberColor ? {
                                   backgroundColor: memberColor.backgroundColor,
                                   borderColor: memberColor.borderColor,
@@ -1852,32 +1848,29 @@ export default function Agenda() {
                                 ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
                               }}
                             >
-                              <div className="flex items-center gap-0.5 text-[10px] font-medium truncate pr-5 tracking-tight">
-                                {ag.recorrencia_grupo_id && <Repeat className="h-2.5 w-2.5 shrink-0 opacity-60" />}
-                                {sc.icon}
-                                {ag.paciente_id && (
-                                  <MyIDFreshnessDot info={getFreshnessInfo(myidFreshnessMap, ag.paciente_id)} />
-                                )}
-                                <span className="truncate">
-                                  {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
-                                  {layout.totalCols > 2
-                                    ? (ag.pacientes?.nome || ag.titulo || 'Ag.')
-                                    : (ag.titulo
-                                      || (ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : null)
-                                      || (ag.paciente_id ? (() => { const p = pacientes.find(x => x.id === ag.paciente_id); return p ? `${p.nome} ${p.sobrenome}` : null; })() : null)
-                                      || 'Agendamento')
-                                  }
-                                </span>
-                              </div>
-                              {layout.totalCols > 1 && (
-                                <div className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-semibold" style={{
-                                  backgroundColor: memberColor?.borderLeftColor || sc.border.replace('border-', ''),
-                                  color: '#fff',
-                                }}>
-                                  {layout.col + 1}
+                              {estreito ? (
+                                // Estreito: nome em cima, horário embaixo — sem ícones que
+                                // comiam o espaço (antes aparecia só "0" ou nada).
+                                <div className="leading-tight">
+                                  <div className="text-[10px] font-semibold truncate">{primeiroNome}</div>
+                                  {pos.height > 30 && (
+                                    <div className="text-[9px] opacity-75 tabular-nums">{format(parseISO(ag.data_inicio), 'HH:mm')}</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-0.5 text-[10px] font-medium truncate tracking-tight">
+                                  {ag.recorrencia_grupo_id && <Repeat className="h-2.5 w-2.5 shrink-0 opacity-60" />}
+                                  {sc.icon}
+                                  {ag.paciente_id && (
+                                    <MyIDFreshnessDot info={getFreshnessInfo(myidFreshnessMap, ag.paciente_id)} />
+                                  )}
+                                  <span className="truncate">
+                                    {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
+                                    {larguraFrac < 0.5 ? primeiroNome : nomeCompleto}
+                                  </span>
                                 </div>
                               )}
-                              {pos.height > 40 && layout.totalCols <= 3 && (
+                              {pos.height > 40 && !estreito && (
                                 <div className="text-[10px] opacity-80 truncate mt-0.5">
                                   {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
                                 </div>
@@ -1894,11 +1887,13 @@ export default function Agenda() {
                         })}
 
                         {/* Cartão Turma — grid de avatares com presença em lote */}
-                        {Array.from(denseGroups.values()).map((group, gi) => {
+                        {Array.from(denseGroups.entries()).map(([turmaKey, group], gi) => {
                           const sorted = [...group].sort((a, b) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
                           const earliest = sorted[0];
                           const pos = getAgPos(earliest);
                           const isExpanded = expandedSlots.has(`${di}-${gi}`);
+                          const lt = overlapLayout[`turma:${turmaKey}`] || { col: 0, span: 1, totalCols: 1 };
+                          const ltCol = 100 / lt.totalCols;
 
                           // Detecta nome da turma — se todos compartilham o mesmo título
                           const titulos = [...new Set(sorted.map(ag => ag.titulo).filter(Boolean))];
@@ -1913,11 +1908,20 @@ export default function Agenda() {
                             <div
                               key={`dense-${di}-${gi}`}
                               className="absolute pointer-events-auto"
-                              style={{ top: pos.top, left: 0, right: 0, zIndex: isExpanded ? 40 : 15 }}
+                              // Ocupa só o próprio horário e a sua coluna. Fechado, não passa da
+                              // hora de término (antes cobria os atendimentos seguintes); aberto,
+                              // flutua por cima com sombra, e fecha com um toque no cabeçalho.
+                              style={{
+                                top: pos.top,
+                                left: `${lt.col * ltCol}%`,
+                                width: `calc(${ltCol * lt.span}% - 2px)`,
+                                height: isExpanded ? undefined : Math.max(pos.height, 44),
+                                zIndex: isExpanded ? 40 : 15,
+                              }}
                             >
                               <div className={cn(
-                                'rounded-lg border shadow-md overflow-hidden',
-                                isExpanded ? 'bg-card ring-2 ring-primary/20 shadow-xl' : 'bg-card/95'
+                                'rounded-lg border overflow-hidden',
+                                isExpanded ? 'bg-card ring-2 ring-primary/20 shadow-xl' : 'bg-card/95 shadow-sm h-full'
                               )}>
                                 {/* Header da turma */}
                                 <div
@@ -1970,8 +1974,8 @@ export default function Agenda() {
                                   </div>
                                 </div>
 
-                                {/* Grid de avatares — sempre visível */}
-                                <div className="px-2 py-1.5 flex flex-wrap gap-1">
+                                {/* Avatares numa linha só (rola para o lado) — não empurra a altura */}
+                                <div className="px-2 py-1 flex flex-nowrap gap-1 overflow-x-auto">
                                   {sorted.map(ag => {
                                     const pac = pacientes.find(p => p.id === ag.paciente_id);
                                     const nome = pac
@@ -1989,7 +1993,7 @@ export default function Agenda() {
                                         key={ag.id}
                                         title={`${nome} — ${STATUS_CONFIG[ag.status]?.label || ag.status}`}
                                         className={cn(
-                                          'w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all relative hover:scale-110 hover:shadow-md select-none',
+                                          'w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all relative hover:shadow-md select-none',
                                           isAtendido ? 'border-emerald-400' :
                                           isFaltou ? 'border-red-300 opacity-55' :
                                           'border-border hover:border-primary/50'
