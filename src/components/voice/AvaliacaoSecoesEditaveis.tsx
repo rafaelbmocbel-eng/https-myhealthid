@@ -1093,6 +1093,9 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       toast({ title: 'Edição salva' });
       setMostrarAtualizarTratamento(true); // oferece atualizar a diretriz
       qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest', pacienteId] });
+      // O que o profissional escreve (condutas, estruturas a tratar) precisa
+      // repercutir no plano de reabilitação sem depender de um segundo clique.
+      if (key !== 'diretriz' && onReprocessar && !reprocessandoAbas) void atualizarAbas(novasEditadas);
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e?.message, variant: 'destructive' });
     } finally { setSaving(null); }
@@ -1101,15 +1104,15 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   // Reprocessa a avaliação (complemento) e atualiza Quadro/Dx e Tratamento com o
   // que foi acrescentado, preservando as seções editadas à mão.
   const rotuloSecao = (k: string) => SECOES.find((s) => s.key === k)?.titulo || k;
-  const atualizarAbas = async () => {
+  const atualizarAbas = async (editadas: Record<string, string> = editadasAtuais) => {
     if (!onReprocessar) return;
-    const complemento = Object.entries(editadasAtuais)
+    const complemento = Object.entries(editadas)
       .filter(([, v]) => (v || '').trim())
       .map(([k, v]) => `${rotuloSecao(k)}: ${v.trim()}`)
       .join('\n\n');
     if (!complemento) { toast({ title: 'Edite alguma seção antes de atualizar as abas.' }); return; }
     setReprocessandoAbas(true);
-    try { await onReprocessar(complemento, editadasAtuais); }
+    try { await onReprocessar(complemento, editadas); }
     finally { setReprocessandoAbas(false); }
   };
 
@@ -1310,7 +1313,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
           <AtualizarTratamentoBanner
             pacienteId={pacienteId}
             onDone={() => setMostrarAtualizarTratamento(false)}
-            onAtualizarAbas={onReprocessar ? atualizarAbas : undefined}
+            onAtualizarAbas={onReprocessar ? () => atualizarAbas() : undefined}
             atualizandoAbas={reprocessandoAbas}
           />
         </div>

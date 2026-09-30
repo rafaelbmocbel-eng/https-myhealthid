@@ -118,6 +118,8 @@ Respeite janelas de cicatrização: muscular 3-8sem, tendão 6-26sem, ligamento 
 
 COMPLETUDE (decisão do Rafael): a avaliação é o registro clínico do profissional — PRESERVE TODAS AS MINÚCIAS ditas na sessão. Não resuma o que foi relatado ou examinado: mantenha datas, lado (D/E), localização exata, intensidades (EVA), horários e padrões, gatilhos e alívios, medicamentos e doses, exames, cirurgias, testes especiais com resultado (+/−), graus de ADM, graus de força, medidas, hábitos, trabalho, esporte e objetivos do paciente. Prefira texto completo e organizado (tópicos) a frases genéricas.
 
+EDIÇÃO DO PROFISSIONAL: blocos "--- Edição do profissional (...) ---" foram escritos pelo próprio profissional e têm PRIORIDADE sobre o restante da transcrição. Incorpore-os no resumo, no quadro e nas hipóteses. Toda ação de avaliação ou tratamento ali escrita ("avaliar…", "tratar…", mobilização articular/neural, estruturas, músculos, nervos, níveis vertebrais) é OBRIGATÓRIA e deve aparecer como técnica explícita, com os mesmos termos, na fase adequada de "diretriz_tratamento" (avaliações a fazer entram na Fase 1). Nunca omita nenhuma delas.
+
 RESPONDA usando a função estruturada. Seja CLÍNICO e FIEL — não invente achados; marque como "Inferido" quando incerto. Todos os campos em Português Brasileiro (PT-BR). Códigos CID-10/CIF permanecem no formato original.`;
 
 // ──────────────────────────────────────────────────────────────────

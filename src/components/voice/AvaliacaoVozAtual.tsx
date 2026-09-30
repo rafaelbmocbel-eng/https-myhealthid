@@ -96,7 +96,10 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     setReprocessing(true);
     try {
       const stamp = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
-      const merged = `${(latest as any).transcricao || ''}\n\n--- Complemento (${stamp}) ---\n${complementoTexto}`;
+      // As edições são reenviadas inteiras a cada atualização; remove o bloco
+      // anterior para a transcrição não acumular cópias.
+      const base = ((latest as any).transcricao || '').replace(/\n*--- Edição do profissional \([^)]*\) ---[\s\S]*?(?=\n\n--- |$)/g, '');
+      const merged = `${base}\n\n--- Edição do profissional (${stamp}) ---\n${complementoTexto}`;
       toast({ title: '🧠 Atualizando as abas...', description: 'A IA está reanalisando com o seu complemento.' });
 
       await reprocessarComplemento({
