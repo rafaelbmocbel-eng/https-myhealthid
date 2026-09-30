@@ -18,7 +18,7 @@ const MARCADOR_EDICAO = /\n*--- Edição do profissional \([^)]*\) ---[\s\S]*?(?
 
 // Edições feitas à mão fora do próprio plano (quadro clínico, dor...). O plano
 // só é refeito a partir delas; a seção 'diretriz' editada já É o plano.
-function edicoesClinicas(resultado: any): Record<string, string> {
+export function edicoesClinicas(resultado: any): Record<string, string> {
   const editadas = resultado?._secoes?.editadas || {};
   return Object.fromEntries(
     Object.entries(editadas).filter(([k, v]) => k !== 'diretriz' && typeof v === 'string' && v.trim()),

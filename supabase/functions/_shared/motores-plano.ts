@@ -238,7 +238,11 @@ export function textoPresencial(m: MotoresClinicos, foco: FocoPlano): string {
     partes.push(`Avaliação clínica registrada (texto do profissional — tem PRIORIDADE, incorpore diretamente na conduta):\n${av}\n` +
       "REGRA OBRIGATÓRIA: toda ação de tratamento ou avaliação que o profissional escreveu acima (ex.: \"tratar…\", \"avaliar…\", " +
       "\"mobilização…\", técnicas, estruturas, níveis vertebrais, nervos) DEVE aparecer como conduta explícita na fase adequada, " +
-      "com os mesmos termos e estruturas citados. Não omita, não generalize e não substitua nenhuma delas.");
+      "com os mesmos termos e estruturas citados. Não omita, não generalize e não substitua nenhuma delas. " +
+      "Essas condutas são o EIXO do plano: cada uma EVOLUI pelas fases (ex.: mobilização neural — deslizamento → tensionamento → " +
+      "integração no gesto; músculo liberado → alongamento ativo/controle motor → força e gesto; segmento vertebral mobilizado → " +
+      "estabilização segmentar → tolerância a carga). Avaliações pedidas (\"avaliar…\") entram no início com o teste a usar. " +
+      "Depois, COMPLETE com o que a literatura recomenda para o caso.");
   }
   if (!partes.length) return "";
   return `\nAVALIAÇÃO PRESENCIAL (achados e observações do profissional — ${instrucaoPresencial(foco)}):\n${partes.join("\n")}`;

@@ -4,7 +4,7 @@ import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { atualizarPlanoComEdicoes, planoDesatualizado } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
+import { atualizarPlanoComEdicoes, edicoesClinicas, planoDesatualizado } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
 import { invalidarCachesAvaliacaoVoz } from '@/utils/voiceAssessment/reprocessarComplemento';
 
 // Aparece onde o plano em fases é exibido quando o profissional editou a
@@ -20,7 +20,7 @@ export default function PlanoDesatualizadoAviso({ avaliacaoId, pacienteId, resul
   const qc = useQueryClient();
   const [rodando, setRodando] = useState(false);
 
-  if (!avaliacaoId || !user || !planoDesatualizado(resultado)) return null;
+  if (!avaliacaoId || !user || !Object.keys(edicoesClinicas(resultado)).length) return null;
   const carregando = rodando || !!ocupado;
 
   const atualizar = async () => {
@@ -37,6 +37,17 @@ export default function PlanoDesatualizadoAviso({ avaliacaoId, pacienteId, resul
       setRodando(false);
     }
   };
+
+  // Plano já em dia: deixa só um atalho discreto para refazer (ex.: após
+  // reescrever as condutas ou quando a IA aproveitou pouco do que foi escrito).
+  if (!planoDesatualizado(resultado)) {
+    return (
+      <Button size="sm" variant="ghost" onClick={atualizar} disabled={carregando} className="w-full gap-1.5 text-xs text-muted-foreground">
+        {carregando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        {carregando ? 'Refazendo o plano...' : 'Refazer plano com minhas edições'}
+      </Button>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-amber-300/70 bg-amber-50 dark:bg-amber-900/15 p-3 flex items-start gap-3 flex-wrap">
