@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import PlanoDesatualizadoAviso from '@/components/voice/PlanoDesatualizadoAviso';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -293,7 +294,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
       if (!protocolo?.paciente_id || !protocolo?.terapeuta_id) return null;
       const { data, error } = await (supabase as any)
         .from('avaliacoes_voz')
-        .select('resultado, created_at')
+        .select('id, resultado, created_at')
         .eq('paciente_id', protocolo.paciente_id)
         .eq('terapeuta_id', protocolo.terapeuta_id)
         .order('created_at', { ascending: false })
@@ -337,6 +338,11 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
           <>
             {!showEditor ? (
               <>
+                <PlanoDesatualizadoAviso
+                  avaliacaoId={avaliacaoDiretriz?.id}
+                  pacienteId={protocolo.paciente_id}
+                  resultado={resultadoAvaliacao}
+                />
                 <DiretrizSnapshotCompact snapshot={diretrizSnapshot} />
                 <Button
                   size="sm"

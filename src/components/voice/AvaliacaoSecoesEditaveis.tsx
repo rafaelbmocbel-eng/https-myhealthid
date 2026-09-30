@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 import AtualizarTratamentoBanner from '@/components/diretrizes/AtualizarTratamentoBanner';
+import PlanoDesatualizadoAviso from './PlanoDesatualizadoAviso';
 
 
 interface Props {
@@ -1084,6 +1085,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
           ...(resultado?._secoes || {}),
           editadas: novasEditadas,
           confirmadas: Array.from(confirmadas),
+          ...(key !== 'diretriz' ? { editadas_em: new Date().toISOString() } : {}),
         },
       };
       const { error: errEdicao } = await supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
@@ -1546,9 +1548,17 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                   ) : (
                     <SectionCollapse>
                       {s.key === 'diretriz' ? (
-                        editadoManualmente
-                          ? <DiretrizFases texto={textos[s.key]} />
-                          : <DiretrizCompact diretriz={resultado?.diretriz_tratamento} />
+                        <div className="space-y-3">
+                          <PlanoDesatualizadoAviso
+                            avaliacaoId={avaliacaoId}
+                            pacienteId={pacienteId}
+                            resultado={resultado}
+                            ocupado={reprocessandoAbas}
+                          />
+                          {editadoManualmente
+                            ? <DiretrizFases texto={textos[s.key]} />
+                            : <DiretrizCompact diretriz={resultado?.diretriz_tratamento} />}
+                        </div>
                       ) : s.key === 'resumo_clinico' ? (
                         <ResumoSoapCard texto={textos[s.key]} severidade={resultado?.classificacao_severidade} />
                       ) : (

@@ -13,6 +13,7 @@ import {
 import VoiceAssessment from './VoiceAssessment';
 import AvaliacaoSecoesEditaveis from './AvaliacaoSecoesEditaveis';
 import { reprocessarComplemento, invalidarCachesAvaliacaoVoz } from '@/utils/voiceAssessment/reprocessarComplemento';
+import { atualizarPlanoComEdicoes } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
 
 interface Props {
   pacienteId: string;
@@ -95,40 +96,10 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     if (!latest || !user || !complementoTexto.trim()) return;
     setReprocessing(true);
     try {
-      const stamp = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
-      // As edições são reenviadas inteiras a cada atualização; remove o bloco
-      // anterior para a transcrição não acumular cópias.
-      const base = ((latest as any).transcricao || '').replace(/\n*--- Edição do profissional \([^)]*\) ---[\s\S]*?(?=\n\n--- |$)/g, '');
-      const merged = `${base}\n\n--- Edição do profissional (${stamp}) ---\n${complementoTexto}`;
-      toast({ title: '🧠 Atualizando as abas...', description: 'A IA está reanalisando com o seu complemento.' });
-
-      await reprocessarComplemento({
-        avaliacaoId: latest.id,
-        pacienteId,
-        terapeutaId: user.id,
-        patientName,
-        serviceType: (latest as any).servico || serviceType,
-        finalTranscript: merged,
-        prevResultado: (latest as any).resultado,
-        prevQueixaPrincipal: (latest as any).queixa_principal,
-        prevSeveridade: (latest as any).classificacao_severidade,
-        notaProntuarioTitulo: `Avaliação complementada — ${(latest as any).classificacao_severidade || 'N/A'}`,
-        notaProntuarioDescricao: `📝 Complemento da avaliação (todas as abas atualizadas).\n\n${complementoTexto.slice(0, 500)}`,
-      });
-
-      // Reaplica as edições manuais por cima do resultado reprocessado.
-      if (preservarEditadas && Object.keys(preservarEditadas).length) {
-        const { data: row } = await (supabase as any).from('avaliacoes_voz').select('resultado').eq('id', latest.id).maybeSingle();
-        const r = (row?.resultado as any) || {};
-        const novo = {
-          ...r,
-          _secoes: { ...(r._secoes || {}), editadas: { ...(r._secoes?.editadas || {}), ...preservarEditadas } },
-        };
-        await (supabase as any).from('avaliacoes_voz').update({ resultado: novo }).eq('id', latest.id);
-      }
-
+      toast({ title: '🧠 Atualizando o plano...', description: 'A IA está refazendo a avaliação com as suas edições.' });
+      await atualizarPlanoComEdicoes({ avaliacaoId: latest.id, terapeutaId: user.id, editadas: preservarEditadas });
       invalidarCachesAvaliacaoVoz(qc, pacienteId);
-      toast({ title: 'Abas atualizadas! ✅', description: 'Quadro/Dx e Tratamento refletem o complemento.' });
+      toast({ title: 'Plano atualizado! ✅', description: 'Quadro/Dx e Tratamento refletem as suas edições.' });
     } catch (e: any) {
       toast({ title: 'Erro ao atualizar', description: e.message, variant: 'destructive' });
     } finally {
