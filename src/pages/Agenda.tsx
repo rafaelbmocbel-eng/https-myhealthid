@@ -41,6 +41,7 @@ import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
 import { shareConfirmacaoSessao } from '@/utils/whatsapp';
 import { MyIDFreshnessDot } from '@/components/agenda/MyIDFreshnessDot';
 import { useMyIDFreshnessMap, getFreshnessInfo } from '@/hooks/useMyIDFreshness';
+import EncontrarVagas from '@/components/agenda/EncontrarVagas';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
 
 // Painéis auxiliares — lazy para manter o chunk principal da Agenda menor
@@ -596,7 +597,7 @@ export default function Agenda() {
   // novo horário for iniciado e não finalizado, ele é simplesmente descartado,
   // sem nenhuma mensagem.
 
-  const openNew = (date?: Date) => {
+  const openNew = (date?: Date, membroId?: string) => {
     const base = date || new Date();
     const end = new Date(base.getTime() + config.duracao_padrao * 60000);
     setForm({
@@ -605,7 +606,7 @@ export default function Agenda() {
       data_fim: format(end, "yyyy-MM-dd'T'HH:mm"),
       status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
       recorrencia: 'none', recorrencia_semanas: 4, recorrencia_dias: [],
-      membro_equipe_id: '',
+      membro_equipe_id: membroId || '',
     });
     setModal({ open: true });
   };
@@ -1359,6 +1360,14 @@ export default function Agenda() {
             <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-9 px-3 rounded-xl shadow-md text-xs sm:text-sm" onClick={() => openNew()}>
               <Plus className="h-4 w-4" /> <span className="hidden xs:inline">Agendar</span>
             </Button>
+            <EncontrarVagas
+              agendamentos={agendamentos as any}
+              pacientes={pacientes as any}
+              config={config as any}
+              equipe={equipe}
+              onAgendar={(inicio, membroId) => openNew(inicio, membroId)}
+              onAbrir={(ag) => openEdit(ag as any)}
+            />
             <Suspense fallback={null}>
               <ListaEspera />
               <SalaEsperaVirtual />
