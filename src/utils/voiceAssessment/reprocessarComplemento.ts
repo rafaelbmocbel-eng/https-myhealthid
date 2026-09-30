@@ -16,6 +16,8 @@ export interface ReprocessarComplementoInput {
   prevSeveridade?: string | null;
   notaProntuarioTitulo: string;
   notaProntuarioDescricao: string;
+  /** Campo "Condutas do profissional" — eixo obrigatório do plano. */
+  condutasProfissional?: string;
 }
 
 export interface ReprocessarComplementoResult {
@@ -56,6 +58,7 @@ export async function reprocessarComplemento(
     serviceType: input.serviceType,
     patientName: input.patientName,
   };
+  if (input.condutasProfissional?.trim()) body.condutasProfissional = input.condutasProfissional.trim();
   if (input.audioBase64) {
     body.audioBase64 = input.audioBase64;
     body.audioMimeType = input.audioMimeType || 'audio/webm';

@@ -13,7 +13,7 @@ import {
 import VoiceAssessment from './VoiceAssessment';
 import AvaliacaoSecoesEditaveis from './AvaliacaoSecoesEditaveis';
 import { reprocessarComplemento, invalidarCachesAvaliacaoVoz } from '@/utils/voiceAssessment/reprocessarComplemento';
-import { atualizarPlanoComEdicoes } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
+import { atualizarPlanoComEdicoes, condutasProfissional } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
 
 interface Props {
   pacienteId: string;
@@ -76,6 +76,7 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
         prevSeveridade: (latest as any).classificacao_severidade,
         notaProntuarioTitulo: `Avaliação por Voz atualizada — ${(latest as any).classificacao_severidade || 'N/A'}`,
         notaProntuarioDescricao: `📝 Avaliação complementada e reprocessada pela IA.\n\n${capturedText.slice(0, 500)}`,
+        condutasProfissional: condutasProfissional((latest as any).resultado) || undefined,
       });
 
       invalidarCachesAvaliacaoVoz(qc, pacienteId);

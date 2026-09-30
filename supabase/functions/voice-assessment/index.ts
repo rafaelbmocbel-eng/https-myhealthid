@@ -118,7 +118,7 @@ Respeite janelas de cicatrização: muscular 3-8sem, tendão 6-26sem, ligamento 
 
 COMPLETUDE (decisão do Rafael): a avaliação é o registro clínico do profissional — PRESERVE TODAS AS MINÚCIAS ditas na sessão. Não resuma o que foi relatado ou examinado: mantenha datas, lado (D/E), localização exata, intensidades (EVA), horários e padrões, gatilhos e alívios, medicamentos e doses, exames, cirurgias, testes especiais com resultado (+/−), graus de ADM, graus de força, medidas, hábitos, trabalho, esporte e objetivos do paciente. Prefira texto completo e organizado (tópicos) a frases genéricas.
 
-EDIÇÃO DO PROFISSIONAL: blocos "--- Edição do profissional (...) ---" foram escritos pelo próprio profissional e têm PRIORIDADE sobre o restante da transcrição. Incorpore-os no resumo, no quadro e nas hipóteses. As condutas ali escritas ("avaliar…", "tratar…", mobilização articular/neural, músculos, nervos, níveis vertebrais, disfunções) são o EIXO do plano — a diretriz SOMA o que o profissional indicou + a EVOLUÇÃO disso + o que a literatura acrescenta:
+EDIÇÃO DO PROFISSIONAL: a seção "CONDUTAS DO PROFISSIONAL" e os blocos "--- Edição do profissional (...) ---" foram escritos pelo próprio profissional e têm PRIORIDADE sobre o restante da transcrição. Incorpore-os no resumo, no quadro e nas hipóteses. As condutas ali escritas ("avaliar…", "tratar…", mobilização articular/neural, músculos, nervos, níveis vertebrais, disfunções) são o EIXO do plano — a diretriz SOMA o que o profissional indicou + a EVOLUÇÃO disso + o que a literatura acrescenta:
   1. Nenhuma conduta pode faltar — use os mesmos termos (ex.: "iliopsoas", "nervo femoral", "L1, L2 e L5"). Avaliações a fazer ("avaliar escoliose") entram na Fase 1 como técnica de avaliação com o teste/medida a usar (ex.: Adams, escoliômetro, radiografia se indicado) e dizem como o resultado muda o plano.
   2. Cada conduta EVOLUI pelas 3 fases, não fica só na Fase 1. Ex.: mobilização neural do femoral — Fase 1 deslizamento (slider) indolor; Fase 2 tensionamento (tensioner) + fortalecimento na amplitude ganha; Fase 3 integração no gesto esportivo. Músculo tratado manualmente na Fase 1 (ex.: iliopsoas, diafragma) vira alongamento ativo, controle motor e força na Fase 2, e é integrado ao gesto na Fase 3. Segmento vertebral mobilizado na Fase 1 vira estabilização segmentar/controle lombopélvico na Fase 2 e tolerância a carga/impacto na Fase 3.
   3. Nas técnicas derivadas, deixe explícita a ligação no nome ou na justificativa (ex.: "Progressão da mobilização neural do femoral — tensionamento"). Depois disso, COMPLETE com o que a literatura injetada recomenda para o caso, com dosagem e [n].
@@ -251,6 +251,7 @@ const TOOL_SCHEMA = {
                       justificativa: { type: "string", description: "Por que esta técnica nesta fase. SEMPRE cite [n] das referências injetadas quando aplicável (ex: 'reduz sensibilização central [3,7]')." },
                       nivel_evidencia: { type: "string", enum: ["A", "B", "C"] },
                       lente_clinica: { type: "string", description: "Fisioterapia | Neurociência da Dor | Osteopatia | Quiropraxia | Posturologia | Reabilitação Esportiva | Integrada." },
+                      conduta_profissional: { type: "boolean", description: "true se a técnica é uma conduta escrita pelo profissional em CONDUTAS DO PROFISSIONAL / Edição do profissional, ou a evolução direta de uma delas nesta fase. false para o que veio só da literatura." },
                     },
                     required: ["tecnica", "dosagem", "justificativa", "nivel_evidencia", "lente_clinica"],
                   },
@@ -275,6 +276,7 @@ const TOOL_SCHEMA = {
                       justificativa: { type: "string", description: "Cite [n] do banco quando aplicável." },
                       nivel_evidencia: { type: "string", enum: ["A", "B", "C"] },
                       lente_clinica: { type: "string" },
+                      conduta_profissional: { type: "boolean", description: "true se a técnica é uma conduta escrita pelo profissional em CONDUTAS DO PROFISSIONAL / Edição do profissional, ou a evolução direta de uma delas nesta fase. false para o que veio só da literatura." },
                     },
                     required: ["tecnica", "dosagem", "justificativa", "nivel_evidencia", "lente_clinica"],
                   },
@@ -299,6 +301,7 @@ const TOOL_SCHEMA = {
                       justificativa: { type: "string" },
                       nivel_evidencia: { type: "string", enum: ["A", "B", "C"] },
                       lente_clinica: { type: "string" },
+                      conduta_profissional: { type: "boolean", description: "true se a técnica é uma conduta escrita pelo profissional em CONDUTAS DO PROFISSIONAL / Edição do profissional, ou a evolução direta de uma delas nesta fase. false para o que veio só da literatura." },
                     },
                     required: ["tecnica", "dosagem", "justificativa", "nivel_evidencia", "lente_clinica"],
                   },
@@ -465,7 +468,7 @@ Deno.serve(async (req) => {
     if (!isHealthcheck) {
       try { await requireUser(req); } catch (r) { return r as Response; }
     }
-    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional, patientContext, jobId, appendAudio } = await req.json();
+    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional, patientContext, jobId, appendAudio, condutasProfissional } = await req.json();
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
@@ -755,6 +758,12 @@ Deno.serve(async (req) => {
     // Com o caminho de bytes+Groq, a base64 pode nunca ter sido construída.
     const attachAudioToPass2 = hasAudio && !!audioBase64ToUse && (!faithfulTranscript || (appendAudio && !audioTranscrito));
 
+    // Campo próprio da avaliação: o que o profissional decidiu tratar/avaliar.
+    const condutasTxt = typeof condutasProfissional === "string" ? condutasProfissional.trim().slice(0, 4000) : "";
+    const blocoCondutas = condutasTxt
+      ? `\n\nCONDUTAS DO PROFISSIONAL (decisão clínica de quem atende — EIXO OBRIGATÓRIO do plano "diretriz_tratamento"; cada item entra com os mesmos termos, EVOLUI pelas 3 fases e é marcado com conduta_profissional=true; depois a literatura complementa):\n${condutasTxt}`
+      : "";
+
     if (attachAudioToPass2) {
       userContent.push({
         type: "input_audio",
@@ -765,12 +774,12 @@ Deno.serve(async (req) => {
     if (faithfulTranscript) {
       userContent.push({
         type: "text",
-        text: `${contextInfo}\n\nTRANSCRIÇÃO LITERAL DA CONSULTA (preservar integralmente no campo "transcricao", SEM resumir, SEM reescrever):\n\n${faithfulTranscript}${evidenciaContext}\n\nGere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases). IMPORTANTE: o campo "transcricao" deve conter EXATAMENTE o texto acima. TODOS os demais campos de texto DEVEM estar em Português Brasileiro (PT-BR) — diagnósticos, técnicas, hipóteses, resumos, queixa principal, tudo em PT-BR.`,
+        text: `${contextInfo}\n\nTRANSCRIÇÃO LITERAL DA CONSULTA (preservar integralmente no campo "transcricao", SEM resumir, SEM reescrever):\n\n${faithfulTranscript}${evidenciaContext}${blocoCondutas}\n\nGere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases). IMPORTANTE: o campo "transcricao" deve conter EXATAMENTE o texto acima. TODOS os demais campos de texto DEVEM estar em Português Brasileiro (PT-BR) — diagnósticos, técnicas, hipóteses, resumos, queixa principal, tudo em PT-BR.`,
       });
     } else {
       userContent.push({
         type: "text",
-        text: `${contextInfo}\n\nAnalise o áudio da consulta clínica. Transcreva fielmente em PT-BR no campo "transcricao" (íntegra, sem resumir) e gere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases).`,
+        text: `${contextInfo}${blocoCondutas}\n\nAnalise o áudio da consulta clínica. Transcreva fielmente em PT-BR no campo "transcricao" (íntegra, sem resumir) e gere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases).`,
       });
     }
 

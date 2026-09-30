@@ -4,7 +4,7 @@ import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { atualizarPlanoComEdicoes, edicoesClinicas, planoDesatualizado } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
+import { atualizarPlanoComEdicoes, planoDesatualizado, temContribuicaoProfissional } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
 import { invalidarCachesAvaliacaoVoz } from '@/utils/voiceAssessment/reprocessarComplemento';
 
 // Aparece onde o plano em fases é exibido quando o profissional editou a
@@ -20,7 +20,7 @@ export default function PlanoDesatualizadoAviso({ avaliacaoId, pacienteId, resul
   const qc = useQueryClient();
   const [rodando, setRodando] = useState(false);
 
-  if (!avaliacaoId || !user || !Object.keys(edicoesClinicas(resultado)).length) return null;
+  if (!avaliacaoId || !user || !temContribuicaoProfissional(resultado)) return null;
   const carregando = rodando || !!ocupado;
 
   const atualizar = async () => {

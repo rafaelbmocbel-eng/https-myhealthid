@@ -164,6 +164,10 @@ function formatAvaliacaoVoz(resultado: SB): string {
   if (!resultado || typeof resultado !== "object") return "";
   const partes: string[] = [];
   const editadas = (resultado?._secoes?.editadas as SB) || {};
+  const condutas = resultado?._secoes?.condutas_profissional;
+  if (typeof condutas === "string" && condutas.trim()) {
+    partes.push(`CONDUTAS DO PROFISSIONAL (eixo obrigatório do plano): ${condutas.trim().slice(0, 3000)}`);
+  }
   // O texto editado vai INTEIRO (até 2500 por seção): antes era cortado em 600
   // caracteres e as condutas que o profissional escreve no FIM do quadro
   // ("Tratar iliopsoas… Avaliar escoliose…") nunca chegavam à diretriz.
@@ -176,7 +180,7 @@ function formatAvaliacaoVoz(resultado: SB): string {
     partes.push(`Resumo clínico: ${resultado.resumo_clinico.trim().slice(0, 1200)}`);
   }
   if (!partes.length) return "";
-  return partes.join("\n").slice(0, 7000);
+  return partes.join("\n").slice(0, 9000);
 }
 
 // Formata os exames presenciais (bioimpedância, teste de pisada, …). Usa o

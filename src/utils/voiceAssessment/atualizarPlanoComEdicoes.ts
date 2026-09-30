@@ -25,13 +25,24 @@ export function edicoesClinicas(resultado: any): Record<string, string> {
   ) as Record<string, string>;
 }
 
-/** O profissional editou a avaliação depois da última vez que o plano foi refeito. */
+export function condutasProfissional(resultado: any): string {
+  const c = resultado?._secoes?.condutas_profissional;
+  return typeof c === 'string' ? c.trim() : '';
+}
+
+/** Há algo escrito pelo profissional que deve moldar o plano. */
+export function temContribuicaoProfissional(resultado: any): boolean {
+  return !!condutasProfissional(resultado) || Object.keys(edicoesClinicas(resultado)).length > 0;
+}
+
+/** O profissional editou a avaliação ou as condutas depois da última vez que o plano foi refeito. */
 export function planoDesatualizado(resultado: any): boolean {
-  if (!Object.keys(edicoesClinicas(resultado)).length) return false;
+  if (!temContribuicaoProfissional(resultado)) return false;
   const sincronizado = resultado?._secoes?.plano_sincronizado_em;
   if (!sincronizado) return true;
-  const editado = resultado?._secoes?.editadas_em;
-  return !!editado && new Date(editado).getTime() > new Date(sincronizado).getTime();
+  const ts = (v: unknown) => (typeof v === 'string' ? new Date(v).getTime() : 0);
+  const ultimaEdicao = Math.max(ts(resultado?._secoes?.editadas_em), ts(resultado?._secoes?.condutas_em));
+  return ultimaEdicao > ts(sincronizado);
 }
 
 /**
@@ -60,7 +71,8 @@ export async function atualizarPlanoComEdicoes(params: {
   const complemento = Object.entries(editadas)
     .map(([k, v]) => `${rotulos[k] || k}: ${String(v).trim()}`)
     .join('\n\n');
-  if (!complemento) throw new Error('Nenhuma edição para levar ao plano.');
+  const condutas = condutasProfissional(resultado);
+  if (!complemento && !condutas) throw new Error('Escreva suas condutas ou edite a avaliação antes de refazer o plano.');
 
   const { data: pac } = await (supabase as any).from('pacientes').select('nome').eq('id', row.paciente_id).maybeSingle();
 
@@ -68,7 +80,7 @@ export async function atualizarPlanoComEdicoes(params: {
   // As edições são reenviadas inteiras a cada atualização; remove o bloco
   // anterior para a transcrição não acumular cópias.
   const base = String(row.transcricao || '').replace(MARCADOR_EDICAO, '');
-  const merged = `${base}\n\n--- Edição do profissional (${stamp}) ---\n${complemento}`;
+  const merged = complemento ? `${base}\n\n--- Edição do profissional (${stamp}) ---\n${complemento}` : base;
 
   await reprocessarComplemento({
     avaliacaoId: row.id,
@@ -81,7 +93,8 @@ export async function atualizarPlanoComEdicoes(params: {
     prevQueixaPrincipal: row.queixa_principal,
     prevSeveridade: row.classificacao_severidade,
     notaProntuarioTitulo: `Avaliação atualizada com edições do profissional — ${row.classificacao_severidade || 'N/A'}`,
-    notaProntuarioDescricao: `📝 Plano de tratamento refeito com as edições do profissional.\n\n${complemento.slice(0, 500)}`,
+    notaProntuarioDescricao: `📝 Plano de tratamento refeito com as condutas e edições do profissional.\n\n${(condutas ? `Condutas: ${condutas}\n\n` : '') + complemento}`.slice(0, 700),
+    condutasProfissional: condutas || undefined,
   });
 
   // Reaplica as edições (a IA não pode apagá-las) e marca o plano como em dia.

@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 import AtualizarTratamentoBanner from '@/components/diretrizes/AtualizarTratamentoBanner';
 import PlanoDesatualizadoAviso from './PlanoDesatualizadoAviso';
+import CondutasProfissionalCard from './CondutasProfissionalCard';
 
 
 interface Props {
@@ -799,6 +800,7 @@ function DiretrizCompact({ diretriz }: { diretriz: any }) {
         const dur: string | undefined = v?.duracao_semanas;
         const objs: any[] = Array.isArray(v?.objetivos) ? v.objetivos : [];
         const tecs: any[] = Array.isArray(v?.tecnicas) ? v.tecnicas : (Array.isArray(v?.exercicios) ? v.exercicios : []);
+        const limiteTec = Math.max(5, tecs.filter((t) => t?.conduta_profissional).length);
         const crit: any[] = Array.isArray(v?.criterios_progressao) ? v.criterios_progressao
           : v?.criterios_progressao ? [v.criterios_progressao] : [];
 
@@ -845,13 +847,23 @@ function DiretrizCompact({ diretriz }: { diretriz: any }) {
               <div className="mb-2">
                 <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">🔧 Técnicas</p>
                 <div className="flex flex-wrap gap-1">
-                  {tecs.slice(0, 5).map((t, i) => (
-                    <span key={i} className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/75">
-                      {nomeTec(t) || `Técnica ${i + 1}`}
+                  {[...tecs.filter((t) => t?.conduta_profissional), ...tecs.filter((t) => !t?.conduta_profissional)]
+                    .slice(0, limiteTec).map((t, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium',
+                        t?.conduta_profissional
+                          ? 'bg-emerald-500/15 text-emerald-800 ring-1 ring-emerald-500/40 dark:text-emerald-300'
+                          : 'bg-muted text-foreground/75',
+                      )}
+                      title={t?.conduta_profissional ? 'Sua conduta' : undefined}
+                    >
+                      {t?.conduta_profissional && '★ '}{nomeTec(t) || `Técnica ${i + 1}`}
                     </span>
                   ))}
-                  {tecs.length > 5 && (
-                    <span className="text-[11px] text-muted-foreground/60 self-center">+{tecs.length - 5}</span>
+                  {tecs.length > limiteTec && (
+                    <span className="text-[11px] text-muted-foreground/60 self-center">+{tecs.length - limiteTec}</span>
                   )}
                 </div>
               </div>
@@ -1624,7 +1636,10 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
               {TABS_CONFIG.map(tab => {
                 const secoesTab = secoesDisponiveis.filter(s => tab.keys.includes(s.key));
                 return (
-                  <TabsContent key={tab.id} value={tab.id} className="mt-0">
+                  <TabsContent key={tab.id} value={tab.id} className="mt-0 space-y-2.5">
+                    {tab.id === 'tratamento' && (
+                      <CondutasProfissionalCard avaliacaoId={avaliacaoId} pacienteId={pacienteId} resultado={resultado} />
+                    )}
                     {secoesTab.length === 0 ? (
                       <Card className="rounded-2xl border-dashed border-border/50">
                         <CardContent className="p-6 text-center text-caption text-muted-foreground">

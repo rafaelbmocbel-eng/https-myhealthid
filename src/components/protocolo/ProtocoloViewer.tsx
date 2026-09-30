@@ -39,6 +39,9 @@ function DiretrizSnapshotCompact({ snapshot }: { snapshot: DiretrizSnapshot }) {
         const colors = FASE_COLORS[idx % FASE_COLORS.length];
         const objs = [fase.objetivo, ...(fase.demandasAlvo || [])].filter(Boolean);
         const tecnicas = fase.tecnicas || [];
+        // Condutas do profissional primeiro e sempre visíveis; o resto até 5.
+        const tecnicasOrdenadas = [...tecnicas.filter((t) => t.conduta_profissional), ...tecnicas.filter((t) => !t.conduta_profissional)];
+        const limiteTec = Math.max(5, tecnicas.filter((t) => t.conduta_profissional).length);
         const criterios = fase.criteriosProgressao || [];
 
         return (
@@ -87,14 +90,23 @@ function DiretrizSnapshotCompact({ snapshot }: { snapshot: DiretrizSnapshot }) {
                 <div className="space-y-1">
                   <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">🔧 Técnicas</p>
                   <div className="flex flex-wrap gap-1">
-                    {tecnicas.slice(0, 5).map((t, i) => (
-                      <span key={i} className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-foreground/70">
-                        {t.nome}
+                    {tecnicasOrdenadas.slice(0, limiteTec).map((t, i) => (
+                      <span
+                        key={i}
+                        className={cn(
+                          'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium',
+                          t.conduta_profissional
+                            ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+                            : 'border-border/60 bg-muted/40 text-foreground/70',
+                        )}
+                        title={t.conduta_profissional ? 'Sua conduta' : undefined}
+                      >
+                        {t.conduta_profissional && '★ '}{t.nome}
                       </span>
                     ))}
-                    {tecnicas.length > 5 && (
+                    {tecnicas.length > limiteTec && (
                       <span className="inline-flex items-center rounded-md border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground/60">
-                        +{tecnicas.length - 5}
+                        +{tecnicas.length - limiteTec}
                       </span>
                     )}
                   </div>

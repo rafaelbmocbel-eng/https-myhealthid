@@ -20,6 +20,8 @@ export interface DiretrizSnapshotTechnique {
   frequencia: string;
   motivo: string;
   categoria?: string;
+  // Técnica escrita pelo profissional (ou evolução direta dela) — não só literatura.
+  conduta_profissional?: boolean;
 }
 
 export interface DiretrizSnapshotPhase {
@@ -147,6 +149,7 @@ const normalizeTechnique = (item: unknown): DiretrizSnapshotTechnique => {
     motivo: String(tec.motivo || tec.justificativa || ''),
     categoria: String(tec.categoria || tec.lente_clinica || 'referência'),
     ...(typeof tec.nivel_evidencia === 'string' ? { nivel_evidencia: tec.nivel_evidencia } : {}),
+    ...(tec.conduta_profissional === true ? { conduta_profissional: true } : {}),
   };
 };
 
@@ -231,6 +234,7 @@ export function createDiretrizSnapshotFromVoz(
             motivo: String(tec.motivo || tec.justificativa || ''),
             categoria: String(tec.categoria || tec.lente_clinica || 'referência'),
             ...(typeof tec.nivel_evidencia === 'string' ? { nivel_evidencia: tec.nivel_evidencia } : {}),
+            ...(tec.conduta_profissional === true ? { conduta_profissional: true } : {}),
           };
         }),
       } satisfies DiretrizSnapshotPhase;
