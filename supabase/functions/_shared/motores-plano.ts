@@ -164,16 +164,19 @@ function formatAvaliacaoVoz(resultado: SB): string {
   if (!resultado || typeof resultado !== "object") return "";
   const partes: string[] = [];
   const editadas = (resultado?._secoes?.editadas as SB) || {};
+  // O texto editado vai INTEIRO (até 2500 por seção): antes era cortado em 600
+  // caracteres e as condutas que o profissional escreve no FIM do quadro
+  // ("Tratar iliopsoas… Avaliar escoliose…") nunca chegavam à diretriz.
   for (const [k, v] of Object.entries(editadas)) {
     if (typeof v === "string" && v.trim()) {
-      partes.push(`${SECAO_AVALIACAO_LABEL[k] || k}: ${v.trim().slice(0, 600)}`);
+      partes.push(`${SECAO_AVALIACAO_LABEL[k] || k} (escrito pelo profissional): ${v.trim().slice(0, 2500)}`);
     }
   }
   if (!editadas.resumo_clinico && typeof resultado.resumo_clinico === "string" && resultado.resumo_clinico.trim()) {
-    partes.push(`Resumo clínico: ${resultado.resumo_clinico.trim().slice(0, 600)}`);
+    partes.push(`Resumo clínico: ${resultado.resumo_clinico.trim().slice(0, 1200)}`);
   }
   if (!partes.length) return "";
-  return partes.join("\n").slice(0, 2000);
+  return partes.join("\n").slice(0, 7000);
 }
 
 // Formata os exames presenciais (bioimpedância, teste de pisada, …). Usa o
@@ -232,7 +235,10 @@ export function textoPresencial(m: MotoresClinicos, foco: FocoPlano): string {
   }
   const av = formatAvaliacaoVoz(m.avaliacaoVoz as SB);
   if (av) {
-    partes.push(`Avaliação clínica registrada (texto do profissional — tem PRIORIDADE, incorpore diretamente na conduta):\n${av}`);
+    partes.push(`Avaliação clínica registrada (texto do profissional — tem PRIORIDADE, incorpore diretamente na conduta):\n${av}\n` +
+      "REGRA OBRIGATÓRIA: toda ação de tratamento ou avaliação que o profissional escreveu acima (ex.: \"tratar…\", \"avaliar…\", " +
+      "\"mobilização…\", técnicas, estruturas, níveis vertebrais, nervos) DEVE aparecer como conduta explícita na fase adequada, " +
+      "com os mesmos termos e estruturas citados. Não omita, não generalize e não substitua nenhuma delas.");
   }
   if (!partes.length) return "";
   return `\nAVALIAÇÃO PRESENCIAL (achados e observações do profissional — ${instrucaoPresencial(foco)}):\n${partes.join("\n")}`;

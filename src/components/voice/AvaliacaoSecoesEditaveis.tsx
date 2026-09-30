@@ -949,6 +949,13 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   // Aviso "a avaliação mudou — atualizar o tratamento?" após editar uma seção.
   const [mostrarAtualizarTratamento, setMostrarAtualizarTratamento] = useState(false);
   const [reprocessandoAbas, setReprocessandoAbas] = useState(false);
+  const bannerTratamentoRef = useRef<HTMLDivElement>(null);
+  // O aviso fica no topo; sem isso quem edita lá embaixo nunca o vê.
+  useEffect(() => {
+    if (mostrarAtualizarTratamento) {
+      bannerTratamentoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [mostrarAtualizarTratamento]);
 
   const meta = resultado?._secoes || {};
   const editadasIniciais: Record<string, string> = meta.editadas || {};
@@ -1299,12 +1306,14 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   return (
     <div className="space-y-5">
       {mostrarAtualizarTratamento && (
-        <AtualizarTratamentoBanner
-          pacienteId={pacienteId}
-          onDone={() => setMostrarAtualizarTratamento(false)}
-          onAtualizarAbas={onReprocessar ? atualizarAbas : undefined}
-          atualizandoAbas={reprocessandoAbas}
-        />
+        <div ref={bannerTratamentoRef} className="sticky top-2 z-20 scroll-mt-4 rounded-xl bg-background shadow-md">
+          <AtualizarTratamentoBanner
+            pacienteId={pacienteId}
+            onDone={() => setMostrarAtualizarTratamento(false)}
+            onAtualizarAbas={onReprocessar ? atualizarAbas : undefined}
+            atualizandoAbas={reprocessandoAbas}
+          />
+        </div>
       )}
       {/* Abas de navegação + Grid de cards */}
       {(() => {
