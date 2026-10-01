@@ -39,6 +39,12 @@ function brl(n: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0);
 }
 
+// "2-3x por semana" → 2; "12 semanas" → 12.
+function primeiroNumero(txt: unknown): number {
+  const m = String(txt ?? '').match(/\d+(?:[.,]\d+)?/);
+  return m ? Number(m[0].replace(',', '.')) : 0;
+}
+
 const FASE_COLORS = ['bg-rose-500', 'bg-amber-500', 'bg-emerald-500'];
 const FASE_BORDER = ['border-l-rose-500', 'border-l-amber-500', 'border-l-emerald-500'];
 
@@ -49,9 +55,12 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
   const [tab, setTab] = useState<'editar' | 'preview'>('editar');
 
   // ---- pacote / CTA ----
-  const [numeroSessoes, setNumeroSessoes] = useState<number>(12);
-  const [frequencia, setFrequencia] = useState<string>('2x por semana');
-  const [duracao, setDuracao] = useState<string>(protocolo?.duracao_total || '12 semanas');
+  // Nº de sessões = semanas × sessões por semana (sem conta manual).
+  const [semanas, setSemanas] = useState<number>(() => primeiroNumero(protocolo?.duracao_total) || 12);
+  const [sessoesPorSemana, setSessoesPorSemana] = useState<number>(() => primeiroNumero(protocolo?.frequencia) || 2);
+  const numeroSessoes = Math.max(0, Math.round(semanas * sessoesPorSemana));
+  const frequencia = `${sessoesPorSemana}x por semana`;
+  const duracao = `${semanas} ${semanas === 1 ? 'semana' : 'semanas'}`;
   const [valorSessao, setValorSessao] = useState<number>(150);
   const [desconto, setDesconto] = useState<number>(0);
   const [formaPagamento, setFormaPagamento] = useState<string>('PIX, cartão em até 6x sem juros');
@@ -399,16 +408,12 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">4. Investimento</h3>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-[11px]">Nº de sessões</Label>
-                    <Input type="number" inputMode="numeric" min={1} value={numeroSessoes || ''} onChange={(e) => setNumeroSessoes(e.target.value === '' ? 0 : Number(e.target.value))} />
+                    <Label className="text-[11px]">Duração (semanas)</Label>
+                    <Input type="number" inputMode="numeric" min={1} value={semanas || ''} onChange={(e) => setSemanas(e.target.value === '' ? 0 : Number(e.target.value))} />
                   </div>
                   <div>
-                    <Label className="text-[11px]">Frequência</Label>
-                    <Input value={frequencia} onChange={(e) => setFrequencia(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label className="text-[11px]">Duração</Label>
-                    <Input value={duracao} onChange={(e) => setDuracao(e.target.value)} />
+                    <Label className="text-[11px]">Sessões por semana</Label>
+                    <Input type="number" inputMode="numeric" min={1} max={7} value={sessoesPorSemana || ''} onChange={(e) => setSessoesPorSemana(e.target.value === '' ? 0 : Number(e.target.value))} />
                   </div>
                   <div>
                     <Label className="text-[11px]">Valor por sessão (R$)</Label>
@@ -417,6 +422,16 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
                   <div>
                     <Label className="text-[11px]">Desconto (%)</Label>
                     <Input type="number" inputMode="decimal" min={0} max={90} value={desconto || ''} onChange={(e) => setDesconto(e.target.value === '' ? 0 : Number(e.target.value))} />
+                  </div>
+                  <div className="col-span-2 rounded-lg bg-muted/50 px-3 py-2 text-xs tabular-nums">
+                    <p>
+                      <span className="font-semibold">{numeroSessoes} sessões</span>
+                      <span className="text-muted-foreground"> ({semanas} sem × {sessoesPorSemana}/sem) × {brl(valorSessao)}</span>
+                      {' = '}<span className={desconto ? 'line-through text-muted-foreground' : 'font-semibold'}>{brl(numeroSessoes * valorSessao)}</span>
+                    </p>
+                    {desconto > 0 && (
+                      <p>Com {desconto}% de desconto: <span className="font-semibold">{brl(total)}</span></p>
+                    )}
                   </div>
                   <div>
                     <Label className="text-[11px]">Validade (dias)</Label>
