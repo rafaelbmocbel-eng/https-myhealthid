@@ -341,7 +341,30 @@ export default function PacienteLogin() {
               toast({ title: 'Conta já existente', description: 'Você já tinha cadastro. Entrando no portal...' });
               return;
             }
-            toast({ title: 'E-mail já cadastrado', description: 'Esta conta já existe. Use a aba Entrar com a senha já criada.', variant: 'destructive' });
+            // Conta criada antes pelo Google (sem senha): pelo link, cria a senha agora.
+            if (portalToken) {
+              const { data: def } = await supabase.functions.invoke('definir-senha-portal', {
+                body: { token: portalToken, email: form.email, password: form.password },
+              });
+              const r = def as { ok?: boolean; code?: string } | null;
+              if (r?.ok) {
+                const { error: errEntrar } = await signIn(form.email, form.password);
+                if (!errEntrar) {
+                  toast({ title: 'Senha criada!', description: 'A partir de agora você também entra com e-mail e senha.' });
+                  return;
+                }
+              } else if (r?.code === 'ja_tem_senha') {
+                toast({ title: 'Você já tem uma senha', description: 'Use a aba Entrar. Se não lembra, toque em "Esqueci minha senha".', variant: 'destructive' });
+                setTab('login');
+                setSubmitting(false);
+                return;
+              } else if (r?.code === 'weak_password') {
+                toast({ title: 'Senha muito fraca', description: 'Escolha uma senha mais forte (mínimo 8 caracteres, evite senhas comuns).', variant: 'destructive' });
+                setSubmitting(false);
+                return;
+              }
+            }
+            toast({ title: 'E-mail já cadastrado', description: 'Esta conta já existe. Entre com a senha ou, se você usou o Google antes, toque em "Entrar com Google".', variant: 'destructive' });
             setTab('login');
             setSubmitting(false);
             return;
