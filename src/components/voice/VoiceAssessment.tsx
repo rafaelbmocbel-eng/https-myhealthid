@@ -143,6 +143,8 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [editedTranscript, setEditedTranscript] = useState('');
+  // Condutas/técnicas que o terapeuta já quer no plano — vão como eixo obrigatório da diretriz.
+  const [condutas, setCondutas] = useState('');
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioMimeType, setAudioMimeType] = useState<string>('audio/webm');
@@ -258,8 +260,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       expandedSections: Record<string, boolean>;
       isSaved: boolean;
       avaliacaoId?: string | null;
+      condutas?: string;
     }>(draftKey, VOICE_DRAFT_VERSION).then((draft) => {
       if (!draft) return;
+      if (draft.condutas) setCondutas(draft.condutas);
       // Sem o id, o autosave do rascunho restaurado INSERIA uma cópia da avaliação.
       if (draft.avaliacaoId) savedAssessmentIdRef.current = draft.avaliacaoId;
 
@@ -324,6 +328,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     const hasMeaningfulDraft = Boolean(
       transcript.trim() ||
       editedTranscript.trim() ||
+      condutas.trim() ||
       audioBase64 ||
       assessment ||
       step !== 'record'
@@ -347,10 +352,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         expandedSections,
         isSaved,
         avaliacaoId: savedAssessmentIdRef.current,
+        condutas,
       },
       VOICE_DRAFT_VERSION,
     );
-  }, [appendMode, assessment, audioBase64, audioMimeType, draftKey, editedTranscript, expandedSections, isSaved, recordingTime, step, transcript, user]);
+  }, [appendMode, assessment, audioBase64, audioMimeType, condutas, draftKey, editedTranscript, expandedSections, isSaved, recordingTime, step, transcript, user]);
 
   // Avaliação salva no banco → o backup da gravação pode ser descartado.
   useEffect(() => {
@@ -409,7 +415,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 dias
     supabase
       .from('voice_assessment_jobs' as any)
-      .select('id, audio_path, audio_mime_type, status, created_at')
+      .select('id, audio_path, audio_mime_type, status, created_at, input_params')
       .eq('terapeuta_id', user.id)
       .eq('paciente_id', pacienteId)
       .gte('created_at', cutoff)
@@ -433,7 +439,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
   // Reprocessa uma gravação salva no servidor: gera link assinado do áudio e
   // manda para a mesma função de avaliação (que agora aguenta áudio longo).
-  const recuperarGravacao = async (job: { id: string; audio_path: string; audio_mime_type: string | null }) => {
+  const recuperarGravacao = async (job: { id: string; audio_path: string; audio_mime_type: string | null; input_params?: { condutasProfissional?: string } | null }) => {
     if (recuperandoId) return;
     setRecuperandoId(job.id);
     try {
@@ -451,6 +457,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         serviceType, patientName, patientAge, patientSex, perfilProfissional,
         signedUrl: signed.signedUrl,
         audioMimeType: job.audio_mime_type || 'audio/webm',
+        ...(job.input_params?.condutasProfissional ? { condutasProfissional: job.input_params.condutasProfissional } : {}),
       };
       const { data, error } = await supabase.functions.invoke('voice-assessment', { body });
       if (error) throw new Error((data as any)?.error || error.message);
@@ -745,6 +752,15 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           mapa_dor: effectivePainMap ?? prevMeta.mapa_dor ?? null,
           myid_contexto: myidContext || prevMeta.myid_contexto || null,
         },
+        // O plano foi gerado já com as condutas — nasce sincronizado com elas.
+        ...(condutas.trim() ? {
+          _secoes: {
+            ...((assessmentToSave as any)?._secoes || {}),
+            condutas_profissional: condutas.trim(),
+            condutas_em: (assessmentToSave as any)?._secoes?.condutas_em || new Date().toISOString(),
+            plano_sincronizado_em: (assessmentToSave as any)?._secoes?.plano_sincronizado_em || new Date().toISOString(),
+          },
+        } : {}),
       };
       const payload: any = {
         terapeuta_id: user.id,
@@ -855,6 +871,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
     try {
       const body: any = { serviceType, patientName, patientAge, patientSex, perfilProfissional };
+      if (condutas.trim()) body.condutasProfissional = condutas.trim();
 
       // Injeta contexto do paciente: últimas 3 avaliações + MyID score
       if (pacienteId) {
@@ -991,6 +1008,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
                 perfilProfissional,
                 ...(body.patientContext ? { patientContext: body.patientContext } : {}),
                 ...(text.length >= 20 ? { transcript: text } : {}),
+                ...(body.condutasProfissional ? { condutasProfissional: body.condutasProfissional } : {}),
               },
               status: 'pending',
             })
@@ -1339,6 +1357,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
 
   const resetAll = () => {
     setTranscript('');
+    setCondutas('');
     setEditedTranscript('');
     setAudioBase64(null);
     setAudioBlob(null);
@@ -2430,6 +2449,20 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               className="min-h-[100px] text-sm"
             />
           </div>
+          {!appendMode && (
+            <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.04] p-3 space-y-1.5">
+              <p className="text-sm font-semibold">Condutas e técnicas do terapeuta <span className="font-normal text-muted-foreground">(opcional)</span></p>
+              <p className="text-xs text-muted-foreground">
+                O que você já quer avaliar ou tratar. Entra obrigatoriamente na diretriz, evolui pelas fases e a literatura complementa. No plano, aparece com ★.
+              </p>
+              <Textarea
+                value={condutas}
+                onChange={(e) => setCondutas(e.target.value)}
+                placeholder={'Ex.:\n• Avaliar escoliose\n• Tratar iliopsoas e diafragma\n• Mobilização neural do nervo femoral\n• Mobilização articular L1, L2 e L5'}
+                className="min-h-[96px] text-sm bg-background"
+              />
+            </div>
+          )}
           {transcript.length > 0 && (
             <div className="flex items-center justify-between mt-1">
               <p className="text-xs text-muted-foreground">{transcript.split(/\s+/).filter(Boolean).length} palavras</p>
