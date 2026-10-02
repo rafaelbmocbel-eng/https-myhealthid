@@ -1857,7 +1857,8 @@ export default function Agenda() {
                               )}
                               style={{
                                 top: pos.top,
-                                height: pos.height,
+                                // 2px de respiro: cartões seguidos (15h e 16h) não grudam.
+                                height: Math.max(pos.height - 2, 26),
                                 left: `${leftPct}%`,
                                 width: `calc(${colWidth * layout.span}% - 2px)`,
                                 ...(memberColor ? {
@@ -1936,17 +1937,19 @@ export default function Agenda() {
                                 top: pos.top,
                                 left: `${lt.col * ltCol}%`,
                                 width: `calc(${ltCol * lt.span}% - 2px)`,
-                                height: isExpanded ? undefined : Math.max(pos.height, 44),
+                                height: isExpanded ? undefined : Math.max(pos.height - 2, 44),
                                 zIndex: isExpanded ? 40 : 15,
                               }}
                             >
                               <div className={cn(
                                 'rounded-lg border overflow-hidden',
-                                isExpanded ? 'bg-card ring-2 ring-primary/20 shadow-xl' : 'bg-card/95 shadow-sm h-full'
+                                // Fechado: coluna que cabe exatamente na hora da turma — o cabeçalho
+                                // fica fixo e as bolinhas encolhem para caber (antes eram cortadas).
+                                isExpanded ? 'bg-card ring-2 ring-primary/20 shadow-xl' : 'bg-card/95 shadow-sm h-full flex flex-col'
                               )}>
                                 {/* Header da turma */}
                                 <div
-                                  className="flex items-center justify-between px-2 py-1.5 bg-primary/10 border-b cursor-pointer hover:bg-primary/15 transition-colors gap-1"
+                                  className="flex items-center justify-between px-2 py-1 shrink-0 bg-primary/10 border-b cursor-pointer hover:bg-primary/15 transition-colors gap-1"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setExpandedSlots(prev => {
@@ -1957,13 +1960,14 @@ export default function Agenda() {
                                     });
                                   }}
                                 >
-                                  <div className="flex flex-col gap-0 min-w-0">
+                                  {/* Uma linha só: nome/horário e, ao lado, a contagem de presença. */}
+                                  <div className="flex items-center gap-1.5 min-w-0">
                                     <span className="text-[10px] font-bold text-primary flex items-center gap-1 truncate">
                                       <Users className="h-3 w-3 shrink-0" />
-                                      {turmaNome || `${sorted.length} alunos`} • {format(parseISO(earliest.data_inicio), 'HH:mm')}–{format(parseISO(earliest.data_fim), 'HH:mm')}
+                                      <span className="truncate">{turmaNome || `${sorted.length} alunos`} • {format(parseISO(earliest.data_inicio), 'HH:mm')}–{format(parseISO(earliest.data_fim), 'HH:mm')}</span>
                                     </span>
                                     {isPast && (
-                                      <span className="text-[9px] text-muted-foreground">
+                                      <span className="text-[9px] text-muted-foreground shrink-0 tabular-nums">
                                         ✓{nAtendidos} ✗{nFaltaram}{nPendentes > 0 && ` ⏳${nPendentes}`}
                                       </span>
                                     )}
@@ -1998,7 +2002,7 @@ export default function Agenda() {
                                 {/* Avatares numa linha só. Arrastar o dedo por cima mostra o nome de
                                     cada aluno num balão; toque rápido abre o atendimento. */}
                                 <div
-                                  className="px-2 py-1 flex flex-nowrap gap-1 overflow-x-auto"
+                                  className={cn('px-2 py-1 flex flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden', !isExpanded && 'flex-1 min-h-0')}
                                   style={{ touchAction: 'pan-y' }}
                                   onTouchStart={e => e.stopPropagation()}
                                   onPointerDown={e => {
@@ -2036,7 +2040,8 @@ export default function Agenda() {
                                         data-aluno-status={STATUS_CONFIG[ag.status]?.label || ag.status}
                                         aria-label={`${nome} — ${STATUS_CONFIG[ag.status]?.label || ag.status}`}
                                         className={cn(
-                                          'w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all relative hover:shadow-md select-none',
+                                          // Até 28px; encolhe com a altura disponível (mín. 18px) sem cortar.
+                                          'h-full max-h-7 min-h-[18px] aspect-square shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all relative hover:shadow-md select-none',
                                           isAtendido ? 'border-emerald-400' :
                                           isFaltou ? 'border-red-300 opacity-55' :
                                           'border-border hover:border-primary/50'
