@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, XCircle, TrendingUp, TrendingDown, Minus, ClipboardList, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, TrendingUp, TrendingDown, Minus, ClipboardList } from 'lucide-react';
 import { useEventosAnatomicos, useSaveEventoAnatomico, type EventoAnatomico } from '@/hooks/useEventosAnatomicos';
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { detectarEstagnacao, MCID_MYID } from '@/components/paciente/EvolucaoDashboard';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { FecharButton } from '@/components/ui/fechar-button';
 
 interface PainelDecisaoClinicaProps {
   pacienteId: string;
@@ -346,9 +347,7 @@ export default function PainelDecisaoClinica({ pacienteId, temAgendaFutura = tru
             <div className="rounded-xl border border-border bg-background p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Registrar Intercorrência</p>
-                <button onClick={() => setIntercorrenciaOpen(false)} className="text-muted-foreground hover:text-foreground">
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <FecharButton onClick={() => setIntercorrenciaOpen(false)} />
               </div>
               <div className="flex gap-1.5">
                 {(['baixa', 'media', 'alta'] as const).map(u => (

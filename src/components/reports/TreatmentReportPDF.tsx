@@ -2,11 +2,24 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-    Printer, Download, X, Activity, Fingerprint, Heart, Brain,
-    Dumbbell, AlertTriangle, CheckCircle2, BookOpen, Stethoscope,
-    Clock, Target, TrendingUp, Shield,
+  Printer,
+  Download,
+  Activity,
+  Fingerprint,
+  Heart,
+  Brain,
+  Dumbbell,
+  AlertTriangle,
+  CheckCircle2,
+  BookOpen,
+  Stethoscope,
+  Clock,
+  Target,
+  TrendingUp,
+  Shield,
 } from 'lucide-react';
 import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
+import { FecharButton } from '@/components/ui/fechar-button';
 
 interface TreatmentReportProps {
     pacienteNome: string;
@@ -108,7 +121,7 @@ export default function TreatmentReportPDF({
                         <Button onClick={handlePrint} className="gap-2 bg-primary hover:bg-primary/90 text-white">
                             <Printer className="h-4 w-4" /> Imprimir / Salvar PDF
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
+                        <FecharButton onClick={onClose} />
                     </div>
                 </div>
 

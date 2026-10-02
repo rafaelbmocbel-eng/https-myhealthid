@@ -4,14 +4,27 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
-  Loader2, Sparkles, FileText, CheckCircle2, AlertTriangle, Lightbulb,
-  ChevronDown, X, Users, Stethoscope, Brain, Apple, Dumbbell, Activity, RefreshCw,
+  Loader2,
+  Sparkles,
+  FileText,
+  CheckCircle2,
+  AlertTriangle,
+  Lightbulb,
+  ChevronDown,
+  Users,
+  Stethoscope,
+  Brain,
+  Apple,
+  Dumbbell,
+  Activity,
+  RefreshCw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { valorExibido, grupoExibicao } from '@/utils/myid/lossTable';
+import { FecharButton } from '@/components/ui/fechar-button';
 
 // Hash não-criptográfico estável p/ detectar se inputs mudaram desde o último cache.
 function hashInputs(obj: unknown): string {
@@ -293,9 +306,7 @@ export default function MyIDDimensionDrillDown({
             <Badge variant="outline" className="text-xs whitespace-nowrap" title={grupoExibicao(dimensao) === 'reserva' ? 'Nota — maior = melhor' : 'Intensidade — maior = pior'}>{grupoExibicao(dimensao) === 'reserva' ? 'nota' : 'intensidade'} {valorExibido(dimensao, scoreValor).toFixed(1)} / 10</Badge>
           )}
           {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
-              <X className="icon-xs" />
-            </Button>
+            <FecharButton onClick={onClose} />
           )}
         </div>
       </div>

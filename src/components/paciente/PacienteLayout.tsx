@@ -3,9 +3,23 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import {
-  LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, TrendingUp,
-  Wallet, Watch, Ticket, MessageSquare, MoreHorizontal, X,
-  ChevronRight, Users, Activity, Lightbulb, ArrowLeft,
+  LayoutDashboard,
+  CalendarDays,
+  ClipboardList,
+  User,
+  LogOut,
+  Heart,
+  TrendingUp,
+  Wallet,
+  Watch,
+  Ticket,
+  MessageSquare,
+  MoreHorizontal,
+  ChevronRight,
+  Users,
+  Activity,
+  Lightbulb,
+  ArrowLeft,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
@@ -19,6 +33,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { getPatientBreadcrumbs } from '@/lib/breadcrumbs';
+import { FecharButton } from '@/components/ui/fechar-button';
 
 const navItems = [
   { path: '/paciente/dashboard', label: 'Início',                shortLabel: 'Início',   icon: LayoutDashboard, badgeKey: null, premium: false },
@@ -272,12 +287,7 @@ export default function PacienteLayout({ children, hideVoltar }: Props) {
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="w-10 h-1 rounded-full bg-muted mx-auto absolute left-1/2 -translate-x-1/2 top-2" />
               <p className="text-sm font-bold text-foreground mt-1">Mais opções</p>
-              <button
-                onClick={() => setMaisOpen(false)}
-                className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted active:scale-95 transition-all"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <FecharButton onClick={() => setMaisOpen(false)} />
             </div>
 
             <div className="px-4 pb-2 space-y-2">
