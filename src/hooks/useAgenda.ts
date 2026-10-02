@@ -92,6 +92,9 @@ export function useAgenda() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
   const refreshTimeoutRef = useRef<number | null>(null);
+  // Depois da 1ª carga, recarregar acontece em segundo plano: a tela da agenda
+  // não some (antes cada ✓/✗ trocava a agenda inteira pelo spinner).
+  const jaCarregouRef = useRef(false);
 
   const fetchAll = useCallback(async () => {
     if (!authReady) return;
@@ -100,10 +103,11 @@ export function useAgenda() {
       setPacientes([]);
       setConfig(DEFAULT_CONFIG);
       setLoading(false);
+      jaCarregouRef.current = false;
       return;
     }
 
-    setLoading(true);
+    if (!jaCarregouRef.current) setLoading(true);
     setErro(false);
 
     try {
@@ -127,6 +131,7 @@ export function useAgenda() {
       if (cfgResult.error) console.error('[useAgenda] config error:', cfgResult.error);
 
       setAgendamentos((agResult.data as Agendamento[]) || []);
+      if (!agResult.error) jaCarregouRef.current = true;
       setPacientes((pacResult.data as Paciente[]) || []);
       if (cfgResult.data) setConfig(cfgResult.data as ConfigAgenda);
     } catch (error) {
@@ -319,6 +324,8 @@ export function useAgenda() {
   };
 
   const updateAgendamento = async (id: string, data: Partial<Agendamento>) => {
+    // Otimista: o cartão muda na hora; o fetchAll abaixo confirma com o banco.
+    setAgendamentos((prev) => prev.map((a) => (a.id === id ? { ...a, ...data } : a)));
     try {
       const { error } = await withAuthLockRetry(async () => {
         return await supabase.from('agendamentos').update(data).eq('id', id);
@@ -327,6 +334,7 @@ export function useAgenda() {
 
       await fetchAll();
     } catch (error) {
+      void fetchAll(); // desfaz a mudança otimista
       toast({
         title: 'Erro ao atualizar',
         description: error instanceof Error ? error.message : 'Falha ao atualizar agendamento.',
