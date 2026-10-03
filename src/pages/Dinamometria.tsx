@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
@@ -20,11 +20,12 @@ import { cn } from '@/lib/utils';
 import { lerPlanilha, type Aba } from '@/lib/dinamometria/planilha';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
-  SLOTS, UF, REGIOES, VALENCIAS, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
+  SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
   resumoCurtoAnalise, stLSI, stDesvio, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
 } from '@/lib/dinamometria/analise';
-import { gerarRelatorioDinamometria, gerarRelatorioCliente, itensMapa, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
-import { mapaMuscularSVG, MUSCULOS, COR_STATUS } from '@/lib/dinamometria/anatomia';
+import { gerarRelatorioDinamometria, gerarRelatorioCliente, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
+import { mapaMuscularSVG, itensSimetria, itensRazao, MUSCULOS, COR_STATUS } from '@/lib/dinamometria/anatomia';
+import { achadosDor, AVISO_DOR } from '@/lib/dinamometria/dor';
 
 const COR: Record<Lado, string> = { D: '#2A78D6', E: '#EB6834' };
 const CHAVE_CRITERIOS = 'dinamometria_criterios_v2';
@@ -71,6 +72,23 @@ function Pilula({ st }: { st: Status }) {
   return <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap', cls)}>{icone} {st[1]}</span>;
 }
 
+const TINTA: Record<string, string> = {
+  ok: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300',
+  warn: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+  bad: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300',
+  info: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+};
+
+// Valor com fundo verde, amarelo ou vermelho conforme a classificação.
+function Sinal({ st, children }: { st: Status; children: ReactNode }) {
+  if (!st) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-semibold whitespace-nowrap', TINTA[st[0]])} title={st[1]}>
+      <i className="h-2 w-2 rounded-full" style={{ background: COR_STATUS[st[0]] }} />{children}
+    </span>
+  );
+}
+
 function Bolinha({ lado }: { lado: Lado }) {
   return <span className="inline-block h-2.5 w-2.5 rounded-sm mr-1.5 align-middle" style={{ background: COR[lado] }} />;
 }
@@ -106,6 +124,7 @@ export default function Dinamometria() {
   const [regEvo, setRegEvo] = useState<string | null>(null);
   const [confirmaExcluir, setConfirmaExcluir] = useState(false);
   const [gerando, setGerando] = useState<'tecnico' | 'cliente' | null>(null);
+  const [detalhes, setDetalhes] = useState(false);
 
   const [dataAv, setDataAv] = useState(() => new Date().toISOString().slice(0, 10));
   const [regioes, setRegioes] = useState<string[]>(['joelho']);
@@ -316,8 +335,15 @@ export default function Dinamometria() {
   };
   const anterior = sessao && atual ? anteriorDe(sessao, atual.regiao) : null;
   const texto = atual && A ? interpretar(atual, A, crit, anterior) : [];
-  const legendaMapa = useMemo(() => itensMapa(analises, crit), [analises, crit]);
-  const svgMapa = useMemo(() => (legendaMapa.length ? mapaMuscularSVG(legendaMapa) : ''), [legendaMapa]);
+  const dores = useMemo(() => achadosDor(analises, crit), [analises, crit]);
+  const avatares = useMemo(() => {
+    const sim = itensSimetria(analises, crit), raz = itensRazao(analises, crit);
+    return {
+      legenda: sim,
+      sim: sim.length ? mapaMuscularSVG(sim, dores.filter(a => a.tipo === 'unilateral').flatMap(a => a.aneis)) : '',
+      raz: raz.length ? mapaMuscularSVG(raz, dores.filter(a => a.tipo === 'razao').flatMap(a => a.aneis)) : '',
+    };
+  }, [analises, crit, dores]);
 
   const copiar = async () => {
     if (!sessao) return;
@@ -716,88 +742,112 @@ export default function Dinamometria() {
                       <Button size="sm" onClick={() => pdf('cliente')} disabled={!!gerando}>{gerando === 'cliente' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <UserRound className="h-3.5 w-3.5 mr-1" />}Relatório para o cliente</Button>
                     </div>
                   </div>
-                  {sessao.movs.length > 1 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {sessao.movs.map(m => (
-                        <button key={m.regiao} type="button" onClick={() => setRegVer(m.regiao)} aria-pressed={m.regiao === atual.regiao} className={cn('rounded-full border px-3 py-1 text-sm', m.regiao === atual.regiao ? 'border-primary bg-primary/10 font-medium' : 'border-border text-muted-foreground hover:bg-muted')}>
-                          <span className="inline-flex items-center gap-1.5">
-                            {REGIOES[m.regiao]?.l}
-                            <span className="inline-flex gap-0.5" aria-hidden>{VALENCIAS.map(vl => { const st = analisar(m, crit).valencias[vl.id]?.status; return <i key={vl.id} className="h-2 w-2 rounded-full" style={{ background: COR_STATUS[st?.[0] ?? 'info'], opacity: st ? 1 : 0.35 }} />; })}</span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Valências · {A.R.l}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {VALENCIAS.map(vl => {
-                        const v = A.valencias[vl.id];
-                        return (
-                          <div key={vl.id} className="rounded-xl border border-border/60 p-3.5 space-y-1.5" style={{ borderLeft: `4px solid ${COR_STATUS[v?.status?.[0] ?? 'info']}` }}>
-                            <p className="text-sm font-semibold">{vl.nome}</p>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-3xl font-extrabold tabular-nums">{v ? v.texto : '—'}</span>
-                              {v ? <Pilula st={v.status} /> : <span className="text-xs text-muted-foreground">Sem dados</span>}
-                            </div>
-                            <p className="text-xs text-muted-foreground">{v ? v.onde : vl.id === 'fadiga' || vl.id === 'estabilidade' ? 'Exige o arquivo com a curva força × tempo.' : 'Exige os dois lados (ou os dois músculos) medidos.'}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">Cada valência é avaliada separadamente, sem nota única. O valor mostrado é o pior caso da articulação; o detalhe de cada lado e músculo está abaixo.</p>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    {([['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Ruim'], ['info', 'Sem comparação']] as [string, string][]).map(([k, l]) => <span key={k} className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full" style={{ background: COR_STATUS[k] }} />{l}</span>)}
                   </div>
                 </Card>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {([['ag', A.R.ag, A.lsiAg], ['an', A.R.an, A.lsiAn]] as const).map(([g, nome, L]) => (
-                    <Card key={g} className="p-4 space-y-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Simetria · {nome}</p>
-                      <div className="flex items-center justify-between gap-2"><span className="text-3xl font-extrabold tabular-nums">{L ? `${fmt(L.v, 0)}%` : '—'}</span><Pilula st={stLSI(L?.v, crit)} /></div>
-                      <div className="text-sm space-y-0.5">
-                        {(['D', 'E'] as Lado[]).map(l => <div key={l} className="flex justify-between"><span className="text-muted-foreground"><Bolinha lado={l} />{l === 'D' ? 'Direito' : 'Esquerdo'}</span><span className="font-mono">{fmt(disp(atual.slots[`${g}${l}` as Slot]?.metricas.pico), 1)} {u}</span></div>)}
+                {analises.map(({ av, A: Ax }) => {
+                  const R = Ax.R;
+                  const pico = (k: Slot) => av.slots[k]?.metricas.pico;
+                  const grupos = (['ag', 'an'] as const).filter(g => pico(`${g}D` as Slot) != null || pico(`${g}E` as Slot) != null);
+                  const temFadiga = grupos.filter(g => Ax.slots[`${g}D` as Slot]?.fadiga != null || Ax.slots[`${g}E` as Slot]?.fadiga != null);
+                  const ref = (Ax.razoes.D || Ax.razoes.E)?.refTxt;
+                  return (
+                    <Card key={av.regiao} className="p-4 space-y-3">
+                      <p className="font-semibold">{R.l}</p>
+                      <div className="overflow-x-auto rounded-lg border border-border/50">
+                        <table className="w-full text-sm min-w-[560px]">
+                          <thead className="bg-muted/50 text-xs text-muted-foreground">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-semibold">Movimento</th>
+                              <th className="px-3 py-2 text-left font-semibold"><Bolinha lado="D" />Direito</th>
+                              <th className="px-3 py-2 text-left font-semibold"><Bolinha lado="E" />Esquerdo</th>
+                              <th className="px-3 py-2 text-left font-semibold">Direito × esquerdo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {grupos.map(g => {
+                              const L = g === 'ag' ? Ax.lsiAg : Ax.lsiAn;
+                              const st = L ? stLSI(L.v, crit) : null;
+                              return (
+                                <tr key={g} className="border-t border-border/40">
+                                  <td className="px-3 py-2"><span className="font-medium">Força · {g === 'ag' ? R.ag : R.an}</span></td>
+                                  <td className="px-3 py-2 font-mono">{pico(`${g}D` as Slot) == null ? '—' : `${fmt(disp(pico(`${g}D` as Slot)), 1)} ${u}`}</td>
+                                  <td className="px-3 py-2 font-mono">{pico(`${g}E` as Slot) == null ? '—' : `${fmt(disp(pico(`${g}E` as Slot)), 1)} ${u}`}</td>
+                                  <td className="px-3 py-2">{L ? <Sinal st={st}>{st?.[0] === 'ok' ? `Equilibrado (${fmt(L.v, 0)}%)` : `${L.fraco === 'D' ? 'Direito' : 'Esquerdo'} ${fmt(100 - L.v, 0)}% mais fraco`}</Sinal> : <span className="text-xs text-muted-foreground">Falta um dos lados</span>}</td>
+                                </tr>
+                              );
+                            })}
+                            {(Ax.razoes.D || Ax.razoes.E) && (
+                              <tr className="border-t border-border/40">
+                                <td className="px-3 py-2"><span className="font-medium">Agonista × antagonista</span><span className="block text-xs text-muted-foreground">{R.razaoL}{ref ? ` · esperado ${ref}` : ''}</span></td>
+                                {(['D', 'E'] as Lado[]).map(l => { const x = Ax.razoes[l]; return <td key={l} className="px-3 py-2">{x ? <Sinal st={x.desvio == null ? ['info', 'Sem referência'] : stDesvio(x.desvio, crit)}>{fmt(x.r * 100, 0)}%</Sinal> : '—'}</td>; })}
+                                <td className="px-3 py-2 text-xs text-muted-foreground">Desequilíbrio aqui pode gerar dor na própria articulação.</td>
+                              </tr>
+                            )}
+                            {temFadiga.map(g => (
+                              <tr key={`f${g}`} className="border-t border-border/40">
+                                <td className="px-3 py-2"><span className="font-medium">Índice de fadiga · {g === 'ag' ? R.ag : R.an}</span></td>
+                                {(['D', 'E'] as Lado[]).map(l => { const f = Ax.slots[`${g}${l}` as Slot]?.fadiga; return <td key={l} className="px-3 py-2">{f == null ? '—' : <Sinal st={stFadiga(f, crit)}>{fmt(f, 0)}%</Sinal>}</td>; })}
+                                <td className="px-3 py-2 text-xs text-muted-foreground">Queda da força na contração sustentada.</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
+                      {!temFadiga.length && <p className="text-[11px] text-muted-foreground">{SLOTS.some(k => av.slots[k]?.curva) ? `Fadiga não calculada: a contração precisa ficar alta por pelo menos ${crit.platoMin} s.` : 'Fadiga exige o arquivo com a curva força × tempo (não sai só dos picos).'}</p>}
                     </Card>
-                  ))}
-                  {(['D', 'E'] as Lado[]).map(l => {
-                    const x = A.razoes[l];
-                    return (
-                      <Card key={l} className="p-4 space-y-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{A.R.razaoL.split(' (')[0]} · {l === 'D' ? 'Direito' : 'Esquerdo'}</p>
-                        <div className="flex items-center justify-between gap-2"><span className="text-3xl font-extrabold tabular-nums">{x ? `${fmt(x.r * 100, 0)}%` : '—'}</span><Pilula st={stDesvio(x?.desvio, crit)} /></div>
-                        <div className="text-sm flex justify-between"><span className="text-muted-foreground">Referência</span><span className="font-mono">{x?.refTxt || '—'}</span></div>
-                      </Card>
-                    );
-                  })}
-                </div>
+                  );
+                })}
 
                 <Card className="p-4 space-y-3">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <p className="font-semibold text-sm">Mapa muscular{sessao.movs.length > 1 ? ' · todas as articulações da sessão' : ''}</p>
+                    <p className="font-semibold">Avatar{sessao.movs.length > 1 ? ' · todas as articulações' : ''}</p>
                     <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      {([['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Trabalhar'], ['info', 'Sem comparação']] as [string, string][]).map(([k, l]) => <span key={k} className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm" style={{ background: COR_STATUS[k] }} />{l}</span>)}
+                      {([['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Ruim']] as [string, string][]).map(([k, l]) => <span key={k} className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm" style={{ background: COR_STATUS[k] }} />{l}</span>)}
+                      <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full border-2 border-dashed border-muted-foreground" />Possível ponto de dor</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-4 items-start">
-                    <div className="rounded-lg border border-border/50 bg-white max-w-[520px] w-full mx-auto [&_svg]:w-full [&_svg]:h-auto" dangerouslySetInnerHTML={{ __html: svgMapa }} />
-                    <ol className="space-y-2 text-sm">
-                      {legendaMapa.map(it => {
-                        const info = MUSCULOS[it.regiao]?.[it.g];
-                        return (
-                          <li key={it.numero} className="flex gap-2">
-                            <span className="h-5 w-5 shrink-0 rounded-full bg-foreground text-background text-[11px] font-bold flex items-center justify-center">{it.numero}</span>
-                            <span className="min-w-0">
-                              <span className="font-medium">{info?.nome}</span>
-                              <span className="flex flex-wrap gap-1.5 mt-0.5">{(['D', 'E'] as Lado[]).map(l => it[l] && <span key={l} className="text-xs text-muted-foreground flex items-center gap-1">{l === 'D' ? 'Dir.' : 'Esq.'} <Pilula st={it[l]} /></span>)}</span>
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ol>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {([['Direito × esquerdo', 'O lado mais fraco fica amarelo ou vermelho. Círculos nas articulações vizinhas: possível sobrecarga.', avatares.sim], ['Agonista × antagonista', 'Em cada lado, o músculo relativamente fraco fica amarelo ou vermelho. Círculo na própria articulação: possível dor.', avatares.raz]] as const).map(([titulo, sub, svg]) => (
+                      <div key={titulo} className="space-y-1.5 min-w-0">
+                        <p className="text-sm font-semibold">{titulo}</p>
+                        <p className="text-xs text-muted-foreground">{sub}</p>
+                        <div className="rounded-lg border border-border/50 bg-white w-full [&_svg]:w-full [&_svg]:h-auto" dangerouslySetInnerHTML={{ __html: svg }} />
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Cor de cada lado: a pior situação entre a força para a idade e o sexo (escore z) e, no lado mais fraco, a simetria. Na vista de frente, o lado direito do paciente aparece à esquerda da imagem.</p>
+                  <p className="text-xs text-muted-foreground">{avatares.legenda.map(it => `${it.numero} ${MUSCULOS[it.regiao]?.[it.g]?.nome ?? ''}`).join(' · ')}. Na vista de frente, o lado direito do paciente aparece à esquerda da imagem.</p>
                 </Card>
 
+                <Card className="p-4 space-y-3">
+                  <p className="font-semibold">Relação com dores</p>
+                  {dores.length ? (
+                    <ul className="space-y-2.5">
+                      {dores.map((a, i) => (
+                        <li key={i} className="flex gap-2.5">
+                          <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: COR_STATUS[a.st?.[0] ?? 'info'] }} />
+                          <span className="min-w-0"><span className="block text-sm font-medium">{a.titulo}</span><span className="block text-sm text-muted-foreground">{a.texto}</span></span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="text-sm text-muted-foreground">Sem desequilíbrios que sugiram sobrecarga nas articulações avaliadas.</p>}
+                  <p className="text-[11px] text-muted-foreground">{AVISO_DOR}</p>
+                </Card>
+
+                <Button variant="outline" className="w-full" onClick={() => setDetalhes(v => !v)} aria-expanded={detalhes}>
+                  {detalhes ? 'Esconder detalhes técnicos' : 'Ver detalhes técnicos (curvas, métricas e interpretação)'}
+                </Button>
+
+                {detalhes && (<>
+                {sessao.movs.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {sessao.movs.map(m => (
+                      <button key={m.regiao} type="button" onClick={() => setRegVer(m.regiao)} aria-pressed={m.regiao === atual.regiao} className={cn('rounded-full border px-3 py-1 text-sm', m.regiao === atual.regiao ? 'border-primary bg-primary/10 font-medium' : 'border-border text-muted-foreground hover:bg-muted')}>{REGIOES[m.regiao]?.l}</button>
+                    ))}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {graficoCurva(atual, 'ag', A.R.ag)}
                   {graficoCurva(atual, 'an', A.R.an)}
@@ -863,6 +913,8 @@ export default function Dinamometria() {
                   </div>
                   <p className="text-[11px] text-muted-foreground">Pico = maior média móvel de 50 ms, descontada a linha de base (no modo "só os picos", o maior valor digitado). Oscilação = desvio em torno da tendência do platô, em % da média. Norma: McKay et al., 2017, membro dominante{A.R.torque ? '; joelho em torque (força × braço de alavanca), medido com dinamômetro fixo' : ''}.</p>
                 </Card>
+
+                </>)}
 
                 {sessao.obs && <Card className="p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Observações</p><p className="text-sm mt-1">{sessao.obs}</p></Card>}
 

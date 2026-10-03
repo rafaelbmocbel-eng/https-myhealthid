@@ -30,7 +30,7 @@ const APLICACOES: Aplicacao[] = [
     id: 'dinamometria',
     nome: 'Análise de dinamometria',
     descricao: 'Importa o Excel do dinamômetro e gera a avaliação de força.',
-    detalhes: ['Simetria entre lados e razão agonista/antagonista', 'Fadiga, taxa de desenvolvimento de força e curvas', 'Cada valência avaliada separadamente, evolução e relatórios em PDF'],
+    detalhes: ['Simetria entre lados e razão agonista/antagonista', 'Força de cada movimento, índice de fadiga e curvas', 'Avatar em verde, amarelo e vermelho com relação com dores; evolução e relatórios em PDF'],
     icone: Dumbbell,
     rota: id => `/pacientes/${id}/dinamometria`,
   },

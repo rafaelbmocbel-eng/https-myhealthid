@@ -1,8 +1,8 @@
-// Mapa muscular (figura humana de frente e de costas) desenhado em SVG próprio,
-// colorido pelo resultado de cada grupo muscular e lado. Usado na tela e nos
-// relatórios em PDF para o cliente entender onde está cada músculo.
+// Avatar (figura humana de frente e de costas) desenhado em SVG próprio. Os
+// músculos são pintados de verde, amarelo ou vermelho e as articulações com
+// possível dor recebem um círculo tracejado. Usado na tela e nos PDFs.
 
-import { type Analise, type Criterios, type Lado, type Slot, type Status, CRITERIOS_PADRAO, stLSI, stZ } from './analise';
+import { type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Status, stLSI, stDesvio } from './analise';
 
 type Vista = 'frente' | 'costas';
 interface Forma { vista: Vista; d: string; c: [number, number] }
@@ -53,24 +53,64 @@ export const MUSCULOS: Record<string, { ag: InfoMusculo; an: InfoMusculo }> = {
   },
 };
 
-const PESO: Record<string, number> = { bad: 3, warn: 2, ok: 1, info: 0 };
+export const PESO: Record<string, number> = { bad: 3, warn: 2, ok: 1, info: 0 };
 export const COR_STATUS: Record<string, string> = { ok: '#22A35A', warn: '#F2A900', bad: '#E04B3F', info: '#8FA3BF' };
 
-// Situação de um lado: o pior entre a força para idade/sexo (escore z) e, se
-// este for o lado mais fraco, a simetria entre os lados.
-export function statusLado(A: Analise, g: 'ag' | 'an', lado: Lado, c: Criterios = CRITERIOS_PADRAO): Status {
-  const s = A.slots[`${g}${lado}` as Slot];
-  if (!s) return null;
-  const cands: Status[] = [];
-  if (s.z != null) cands.push(stZ(s.z));
-  const L = g === 'ag' ? A.lsiAg : A.lsiAn;
-  if (L && L.fraco === lado) cands.push(stLSI(L.v, c));
-  const validos = cands.filter(Boolean) as NonNullable<Status>[];
-  if (!validos.length) return ['info', 'Avaliado'];
-  return validos.reduce((a, b) => (PESO[b[0]] > PESO[a[0]] ? b : a));
-}
+export type Articulacao = 'cervical' | 'ombro' | 'cotovelo' | 'punho' | 'lombar' | 'quadril' | 'joelho' | 'tornozelo' | 'pe';
+// Centro de cada articulação no lado ESQUERDO da imagem (mesma convenção das FORMAS).
+const ARTIC: Record<Articulacao, { c: [number, number]; meio?: boolean }> = {
+  cervical: { c: [110, 72], meio: true }, ombro: { c: [66, 94] }, cotovelo: { c: [52, 194] }, punho: { c: [44, 270] },
+  lombar: { c: [110, 226], meio: true }, quadril: { c: [86, 252] }, joelho: { c: [91, 350] }, tornozelo: { c: [93, 436] }, pe: { c: [91, 455] },
+};
+export const NOME_ARTIC: Record<Articulacao, string> = {
+  cervical: 'coluna cervical', ombro: 'ombro', cotovelo: 'cotovelo', punho: 'punho', lombar: 'coluna lombar', quadril: 'quadril', joelho: 'joelho', tornozelo: 'tornozelo', pe: 'pé',
+};
+export const ARTIC_DA_REGIAO: Record<string, Articulacao> = { joelho: 'joelho', quadril: 'quadril', quadrilRot: 'quadril', ombro: 'ombro', tornozelo: 'tornozelo', cotovelo: 'cotovelo' };
+// Articulações acima e abaixo, que recebem a sobrecarga quando um lado compensa o outro.
+export const VIZINHAS: Record<string, [Articulacao, Articulacao]> = {
+  joelho: ['quadril', 'tornozelo'], quadril: ['lombar', 'joelho'], quadrilRot: ['lombar', 'joelho'],
+  tornozelo: ['joelho', 'pe'], ombro: ['cervical', 'cotovelo'], cotovelo: ['ombro', 'punho'],
+};
+export interface Anel { art: Articulacao; lado: Lado | null; st: Status }
+
+const pior = (a: Status, b: Status): Status => (!a ? b : !b ? a : PESO[b[0]] > PESO[a[0]] ? b : a);
 
 export interface ItemMapa { regiao: string; g: 'ag' | 'an'; numero: number; D: Status; E: Status }
+
+type ItemAv = { av: Avaliacao; A: Analise };
+function montar(itens: ItemAv[], cor: (A: Analise, g: 'ag' | 'an', lado: Lado) => Status): ItemMapa[] {
+  const out: ItemMapa[] = [];
+  let n = 1;
+  for (const { av, A } of itens) {
+    for (const g of ['ag', 'an'] as const) {
+      if (!A.slots[`${g}D` as Slot] && !A.slots[`${g}E` as Slot]) continue;
+      const st = (l: Lado): Status => (A.slots[`${g}${l}` as Slot] ? cor(A, g, l) : null);
+      out.push({ regiao: av.regiao, g, numero: n++, D: st('D'), E: st('E') });
+    }
+  }
+  return out;
+}
+
+const SEM_COMPARACAO: Status = ['info', 'Sem comparação'];
+
+// Direito × esquerdo: o lado mais fraco recebe a cor da simetria; o mais forte fica verde.
+export const itensSimetria = (itens: ItemAv[], c: Criterios) => montar(itens, (A, g, l) => {
+  const L = g === 'ag' ? A.lsiAg : A.lsiAn;
+  if (!L) return SEM_COMPARACAO;
+  const st = stLSI(L.v, c);
+  return L.fraco === l || st?.[0] === 'ok' ? st : ['ok', 'Lado mais forte'];
+});
+
+// Agonista × antagonista: em cada lado, o músculo relativamente fraco recebe a
+// cor da razão; o outro fica verde.
+export const itensRazao = (itens: ItemAv[], c: Criterios) => montar(itens, (A, g, l) => {
+  const x = A.razoes[l];
+  if (!x || x.desvio == null) return SEM_COMPARACAO;
+  const st = stDesvio(x.desvio, c);
+  if (st?.[0] === 'ok') return st;
+  const fraco = x.ref != null && x.r < x.ref ? 'an' : 'ag';
+  return g === fraco ? st : ['ok', 'Relativamente forte'];
+});
 
 const CORPO = [
   el(110, 40, 21, 26),
@@ -84,7 +124,7 @@ const CORPO = [
   el(91, 450, 12, 7), el(129, 450, 12, 7),
 ];
 
-function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[]): string {
+function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[]): string {
   const espelho = (d: string) => `<g transform="translate(220,0) scale(-1,1)">${d}</g>`;
   const corpo = CORPO.map(d => `<path d="${d}"/>`).join('');
   let musc = '', marcas = '';
@@ -105,6 +145,13 @@ function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[]): string {
       marcas += `<circle cx="${cx}" cy="${f.c[1]}" r="7.5" fill="#ffffff" stroke="#1F2937" stroke-width="1.2"/><text x="${cx}" y="${f.c[1] + 3.6}" text-anchor="middle" font-size="10" font-weight="700" fill="#1F2937">${it.numero}</text>`;
     }
   }
+  const ladoEsqImg: Lado = vista === 'frente' ? 'D' : 'E';
+  const circ = aneis.map(a => {
+    if (!a.st) return '';
+    const p = ARTIC[a.art], cor = COR_STATUS[a.st[0]];
+    const x = p.meio || !a.lado ? 110 : a.lado === ladoEsqImg ? p.c[0] : 220 - p.c[0];
+    return `<circle cx="${x}" cy="${p.c[1]}" r="11" fill="${cor}" fill-opacity="0.18" stroke="${cor}" stroke-width="2.6" stroke-dasharray="4 3"/>`;
+  }).join('');
   const esq = vista === 'frente' ? 'Direito' : 'Esquerdo', dir = vista === 'frente' ? 'Esquerdo' : 'Direito';
   return `<g transform="translate(${ox},0)">
     <text x="110" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="#1F2937">${vista === 'frente' ? 'Frente' : 'Costas'}</text>
@@ -113,15 +160,22 @@ function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[]): string {
     <g transform="translate(0,14)">
       <g fill="#9AA3AE" stroke="#9AA3AE" stroke-width="3" stroke-linejoin="round">${corpo}</g>
       <g fill="#EEF0F3">${corpo}</g>
-      ${musc}${marcas}
+      ${musc}${circ}${marcas}
     </g>
   </g>`;
 }
 
-export function mapaMuscularSVG(itens: ItemMapa[]): string {
+export function mapaMuscularSVG(itens: ItemMapa[], aneis: Anel[] = []): string {
+  const unicos = new Map<string, Anel>();
+  for (const a of aneis) {
+    const k = `${a.art}:${ARTIC[a.art].meio ? '' : a.lado}`;
+    const ant = unicos.get(k);
+    unicos.set(k, ant ? { ...a, st: pior(ant.st, a.st) } : a);
+  }
+  const lista = [...unicos.values()];
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 480" font-family="Helvetica, Arial, sans-serif">
     <rect width="460" height="480" fill="#ffffff"/>
-    ${vistaSVG('frente', 0, itens)}${vistaSVG('costas', 240, itens)}
+    ${vistaSVG('frente', 0, itens, lista)}${vistaSVG('costas', 240, itens, lista)}
   </svg>`;
 }
 
