@@ -29,10 +29,10 @@ const APLICACOES: Aplicacao[] = [
   {
     id: 'dinamometria',
     nome: 'Análise de dinamometria',
-    descricao: 'Importa o Excel do dinamômetro e gera a avaliação de força.',
+    descricao: 'Célula de carga Bluetooth (ou Excel do dinamômetro): teste de força guiado e treino com alvo.',
     detalhes: ['Simetria entre lados e razão agonista/antagonista', 'Força de cada movimento, índice de fadiga e curvas', 'Avatar em verde, amarelo e vermelho com relação com dores; evolução e relatórios em PDF'],
     icone: Dumbbell,
-    rota: id => `/pacientes/${id}/dinamometria`,
+    rota: id => `/dinamometria?paciente=${id}`,
   },
 ];
 

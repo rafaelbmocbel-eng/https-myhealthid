@@ -39,6 +39,8 @@ const Agenda = lazyWithRetry(() => import("./pages/Agenda"));
 const Pacientes = lazyWithRetry(() => import("./pages/Pacientes"));
 const ControleCassi = lazyWithRetry(() => import("./pages/ControleCassi"));
 const Dinamometria = lazyWithRetry(() => import("./pages/Dinamometria"));
+const DinamometriaInicio = lazyWithRetry(() => import("./pages/DinamometriaInicio"));
+const DinamometriaTreino = lazyWithRetry(() => import("./pages/DinamometriaTreino"));
 const Aplicacoes = lazyWithRetry(() => import("./pages/Aplicacoes"));
 const PacientePerfil = lazyWithRetry(() => import("./pages/PacientePerfil"));
 const AvaliacaoPublica = lazyWithRetry(() => import("./pages/AvaliacaoPublica"));
@@ -189,6 +191,8 @@ const App = () => (
                 <Route path="/pacientes/:id" element={<ProfessionalGuard><PacientePerfil /></ProfessionalGuard>} />
                 <Route path="/aplicacoes" element={<ProfessionalGuard><Aplicacoes /></ProfessionalGuard>} />
                 <Route path="/pacientes/:id/dinamometria" element={<ProfessionalGuard><Dinamometria /></ProfessionalGuard>} />
+                <Route path="/pacientes/:id/dinamometria/treino" element={<ProfessionalGuard><DinamometriaTreino /></ProfessionalGuard>} />
+                <Route path="/dinamometria" element={<ProfessionalGuard><DinamometriaInicio /></ProfessionalGuard>} />
                 <Route path="/protocolos" element={<Navigate to="/pacientes" replace />} />
 
                 <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />

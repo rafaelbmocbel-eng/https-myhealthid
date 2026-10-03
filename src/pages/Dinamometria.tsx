@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
 import { Dumbbell, FileUp, Loader2, Trash2, FileDown, Copy, Save, FlaskConical, X, UserRound, Bluetooth } from 'lucide-react';
@@ -19,6 +19,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { lerPlanilha, type Aba } from '@/lib/dinamometria/planilha';
 import CapturaCelulaDialog, { type CapturaCelula } from '@/components/dinamometria/CapturaCelulaDialog';
+import ExecucaoProtocoloDialog, { type ConfigProtocolo, type Etapa } from '@/components/dinamometria/ExecucaoProtocoloDialog';
+import { celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
   SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
@@ -156,6 +158,9 @@ function linhasCurva(av: Avaliacao, g: 'ag' | 'an', u: Unidade) {
 
 export default function Dinamometria() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const pesoParam = searchParams.get('peso');
+  const vindoDoTeste = searchParams.get('modo') === 'teste';
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const [aba, setAba] = useState('resultado');
@@ -180,6 +185,14 @@ export default function Dinamometria() {
   const [slots, setSlots] = useState<Record<string, SlotRascunho>>({});
   const [lendo, setLendo] = useState<string | null>(null);
   const [capturaCk, setCapturaCk] = useState<string | null>(null);
+  const [statusCelula, setStatusCelula] = useState<StatusCelula>(celula.status);
+  useEffect(() => celula.onStatus(setStatusCelula), []);
+  const [protoAberto, setProtoAberto] = useState(false);
+  const [proto, setProto] = useState(() => {
+    const padrao = { tempoForca: 5, repeticoes: 3, descanso: 30, preparo: 3, lado: 'D' as Lado, grupo: 'ag' as 'ag' | 'an', ordem: 'grupo' as 'grupo' | 'lado' };
+    try { return { ...padrao, ...JSON.parse(localStorage.getItem('mh.din.protocolo') || '{}') }; } catch { return padrao; }
+  });
+  useEffect(() => { try { localStorage.setItem('mh.din.protocolo', JSON.stringify(proto)); } catch { /* sem armazenamento — só não lembra */ } }, [proto]);
   const [sobre, setSobre] = useState<string | null>(null);
 
   const { data: paciente } = useQuery({
@@ -226,7 +239,7 @@ export default function Dinamometria() {
     setSuj({
       idade: String(idadeDe(paciente.data_nascimento) ?? ult?.idade ?? ''),
       sexo: sx.startsWith('f') ? 'F' : sx.startsWith('m') ? 'M' : (ult?.sexo || 'M'),
-      peso: String(pesoBio ?? ult?.peso ?? ''),
+      peso: String(pesoParam || (pesoBio ?? ult?.peso ?? '')),
       dominante: ult?.dominante || 'D',
       acometido: ult?.acometido || 'N',
       modalidade: ult?.modalidade || '',
@@ -240,6 +253,7 @@ export default function Dinamometria() {
       for (const m of ultReg.movs) md[m.regiao] = SLOTS.some(k => m.slots[k]?.curva) ? 'curva' : 'pico';
       setModos(md);
     } else setAba('nova');
+    if (vindoDoTeste) setAba('nova');
     setPreenchido(true);
   }, [paciente, isLoading, registros, pesoBio, preenchido]);
 
@@ -437,6 +451,21 @@ export default function Dinamometria() {
     try { localStorage.setItem(CHAVE_CRITERIOS, JSON.stringify(novo)); } catch { /* sem armazenamento local: vale só nesta sessão */ }
     toast.success('Critérios salvos neste aparelho');
   };
+
+  // Ordem do teste: começa pelo lado e grupo escolhidos. "grupo" = mesmo
+  // músculo nos dois lados antes de trocar; "lado" = os dois músculos de um lado antes.
+  const etapasTeste: Etapa[] = useMemo(() => {
+    const outroLado: Lado = proto.lado === 'D' ? 'E' : 'D';
+    const outroGrupo = proto.grupo === 'ag' ? 'an' : 'ag';
+    const ordem: [string, Lado][] = proto.ordem === 'grupo'
+      ? [[proto.grupo, proto.lado], [proto.grupo, outroLado], [outroGrupo, proto.lado], [outroGrupo, outroLado]]
+      : [[proto.grupo, proto.lado], [outroGrupo, proto.lado], [proto.grupo, outroLado], [outroGrupo, outroLado]];
+    return regioes.flatMap(r => ordem.map(([g, l]) => {
+      const k = `${g}${l}` as Slot;
+      return { id: chave(r, k), titulo: nomeSlot(r, k) };
+    }));
+  }, [regioes, proto]);
+  const configProto: ConfigProtocolo = { tempoForca: proto.tempoForca, repeticoes: proto.repeticoes, descanso: proto.descanso, preparo: proto.preparo };
 
   const podeSalvar = regioes.some(r => SLOTS.some(k => {
     const ck = chave(r, k);
@@ -703,6 +732,64 @@ export default function Dinamometria() {
                   ))}
                 </div>
               </div>
+            </Card>
+
+            {/* Teste guiado com a célula Bluetooth */}
+            <Card className="p-4 space-y-3 border-primary/30">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="font-semibold flex items-center gap-1.5"><Bluetooth className="h-4 w-4 text-primary" /> Teste com a célula de carga</p>
+                {statusCelula.conectado ? (
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />{statusCelula.nome}</span>
+                ) : (
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => celula.conectar().catch((e: any) => { if (e?.name !== 'NotFoundError') toast.error(e?.message || 'Não consegui conectar.'); })}>
+                    <Bluetooth className="h-3.5 w-3.5" /> Conectar célula
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Força por repetição (s)</Label><Input inputMode="numeric" value={proto.tempoForca} onChange={e => setProto(p => ({ ...p, tempoForca: Math.max(1, Number(e.target.value) || 0) }))} /></div>
+                <div className="space-y-1"><Label className="text-xs">Repetições</Label><Input inputMode="numeric" value={proto.repeticoes} onChange={e => setProto(p => ({ ...p, repeticoes: Math.min(10, Math.max(1, Number(e.target.value) || 0)) }))} /></div>
+                <div className="space-y-1"><Label className="text-xs">Descanso entre repetições (s)</Label><Input inputMode="numeric" value={proto.descanso} onChange={e => setProto(p => ({ ...p, descanso: Math.max(0, Number(e.target.value) || 0) }))} /></div>
+                <div className="space-y-1"><Label className="text-xs">Contagem antes (s)</Label><Input inputMode="numeric" value={proto.preparo} onChange={e => setProto(p => ({ ...p, preparo: Math.max(1, Number(e.target.value) || 0) }))} /></div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Começar pelo lado</Label>
+                  <Select value={proto.lado} onValueChange={v => setProto(p => ({ ...p, lado: v as Lado }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="D">Direito</SelectItem><SelectItem value="E">Esquerdo</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Começar pelo grupo</Label>
+                  <Select value={proto.grupo} onValueChange={v => setProto(p => ({ ...p, grupo: v as 'ag' | 'an' }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ag">{regioes.length === 1 ? REGIOES[regioes[0]].ag : 'Agonista'}</SelectItem>
+                      <SelectItem value="an">{regioes.length === 1 ? REGIOES[regioes[0]].an : 'Antagonista'}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Ordem</Label>
+                  <Select value={proto.ordem} onValueChange={v => setProto(p => ({ ...p, ordem: v as 'grupo' | 'lado' }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="grupo">Mesmo músculo nos dois lados, depois o outro músculo</SelectItem>
+                      <SelectItem value="lado">Os dois músculos de um lado, depois o outro lado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Sequência: {etapasTeste.map(e => e.titulo).join(' → ')}
+              </p>
+              <Button
+                className="w-full h-11 gap-2"
+                disabled={!statusCelula.conectado || !etapasTeste.length}
+                onClick={() => { setModos(p => { const n = { ...p }; for (const r of regioes) n[r] = 'curva'; return n; }); setProtoAberto(true); }}
+              >
+                <Dumbbell className="h-4 w-4" /> Iniciar teste
+              </Button>
+              {!statusCelula.conectado && <p className="text-xs text-muted-foreground">Conecte a célula para iniciar. Sem célula, use os arquivos do Excel abaixo.</p>}
             </Card>
 
             {regioes.map(r => {
@@ -1114,6 +1201,15 @@ export default function Dinamometria() {
         </Tabs>
         {id && <p className="text-xs text-muted-foreground">As avaliações ficam nos <Link className="underline" to={`/pacientes/${id}`}>exames presenciais do paciente</Link> e o resumo entra nos planos de IA.</p>}
       </div>
+      <ExecucaoProtocoloDialog
+        open={protoAberto}
+        onOpenChange={setProtoAberto}
+        etapas={etapasTeste}
+        config={configProto}
+        modo="teste"
+        onEtapa={(ck, r) => receberCaptura(ck, { t: r.t, fN: r.fN, nome: statusCelula.conectado ? statusCelula.nome : 'Célula' })}
+        onFim={() => toast.success('Teste concluído. Confira as curvas e toque em "Analisar e salvar".')}
+      />
       <CapturaCelulaDialog
         open={!!capturaCk}
         onOpenChange={(v) => { if (!v) setCapturaCk(null); }}
