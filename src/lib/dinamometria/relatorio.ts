@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import {
   type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito, type Unidade,
-  SLOTS, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stZ, interpretar, type Status,
+  SLOTS, SLOTS_POR_LADO, simetriaSlot, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stZ, interpretar, type Status,
 } from './analise';
 import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, proporcaoSVG, itensAvatar } from './anatomia';
 import { achadosDor, AVISO_DOR } from './dor';
@@ -231,9 +231,10 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
     y += 3; doc.setDrawColor(225); doc.line(M, y, W - M, y); y += 6;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); t(`RESULTADOS DO PACIENTE · ${R.l.toUpperCase()}`, M, y); doc.setFont('helvetica', 'normal'); y += 6;
 
-    // Simetria D/E (mesmo músculo, um valor por par) e razão antagonista/agonista
-    // de cada lado ficam na própria tabela, com a cor do status.
-    const cab = ['Músculo', `Pico (${u})`, 'Simetria D/E', 'An/Ag (lado)', 'N/kg', 'z', `RFD200 (${u}/s)`, 'Fadiga', 'Oscilação'];
+    // Simetria: o lado mais forte de cada músculo vale 100% e o outro, a % dele
+    // (4 valores). Razão antagonista/agonista: um valor por lado (2 valores),
+    // ocupando as linhas daquele lado — por isso a tabela vem agrupada por lado.
+    const cab = ['Músculo', `Pico (${u})`, 'Simetria', 'Razão An/Ag', 'N/kg', 'z', `RFD200 (${u}/s)`, 'Fadiga', 'Oscilação'];
     const cols = [M, 50, 68, 92, 116, 130, 142, 168, 184];
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8.4); cab.forEach((h, i) => t(h, cols[i], y)); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8);
     y += 2; doc.line(M, y, W - M, y); y += 5;
@@ -241,28 +242,29 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
       bolinha(doc, st, x + 1.4, yy - 1.1, 1.2);
       doc.setFont('helvetica', 'bold'); corStatus(doc, st); t(txt, x + 3.6, yy); doc.setFont('helvetica', 'normal'); doc.setTextColor(20);
     };
-    for (const k of SLOTS) {
-      const m = A.slots[k];
-      if (!m) continue;
-      const lado: Lado = k.endsWith('D') ? 'D' : 'E';
-      const grupo = k.startsWith('ag') ? 'ag' : 'an';
-      const temPar = !!A.slots[`${grupo}D` as Slot] && !!A.slots[`${grupo}E` as Slot];
-      const linha = [nomeSlot(av.regiao, k), fmt(disp(m.pico), 1), '', '', m.nkg == null ? '-' : fmt(m.nkg, 1), m.z == null ? '-' : fmt(m.z, 1), m.rfd200 == null ? '-' : fmt(disp(m.rfd200), 0), m.fadiga == null ? '-' : `${fmt(m.fadiga, 0)}%`, m.oscilacao == null ? '-' : `${fmt(m.oscilacao, 1)}%`];
-      linha.forEach((v, i) => { if (v) t(v, cols[i], y); });
-      const L = grupo === 'ag' ? A.lsiAg : A.lsiAn;
-      if (!temPar || lado === 'D') {
-        if (L) valorSt(`${fmt(L.v, 0)}%`, stLSI(L.v, c), cols[2], temPar ? y + 2.75 : y);
-        else t('-', cols[2], y);
-        // Chave ligando as duas linhas do par D/E.
-        if (temPar) { doc.setDrawColor(170); doc.line(cols[2] - 1.5, y - 3.2, cols[2] - 1.5, y + 7.5); doc.setDrawColor(225); }
+    for (const lado of ['D', 'E'] as Lado[]) {
+      const doLado = SLOTS_POR_LADO.filter(k => k.endsWith(lado) && A.slots[k]);
+      if (!doLado.length) continue;
+      const y0 = y;
+      for (const k of doLado) {
+        const m = A.slots[k]!;
+        const linha = [nomeSlot(av.regiao, k), fmt(disp(m.pico), 1), '', '', m.nkg == null ? '-' : fmt(m.nkg, 1), m.z == null ? '-' : fmt(m.z, 1), m.rfd200 == null ? '-' : fmt(disp(m.rfd200), 0), m.fadiga == null ? '-' : `${fmt(m.fadiga, 0)}%`, m.oscilacao == null ? '-' : `${fmt(m.oscilacao, 1)}%`];
+        linha.forEach((v, i) => { if (v) t(v, cols[i], y); });
+        const sim = simetriaSlot(A, k, c);
+        if (!sim) t('-', cols[2], y);
+        else if (sim.v >= 99.5) { doc.setTextColor(110); t('100% (forte)', cols[2], y); doc.setTextColor(20); }
+        else valorSt(`${fmt(sim.v, 0)}%`, sim.st, cols[2], y);
+        y += 5.5;
       }
       const rz = A.razoes[lado];
-      if (rz) valorSt(`${fmt(rz.r * 100, 0)}%`, rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, c), cols[3], y);
-      else t('-', cols[3], y);
-      y += 5.5;
+      const ym = (y0 + y - 5.5) / 2;
+      if (rz) valorSt(`${lado} ${fmt(rz.r * 100, 0)}%`, rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, c), cols[3], doLado.length > 1 ? ym : y0);
+      else t('-', cols[3], y0);
+      if (doLado.length > 1) { doc.setDrawColor(170); doc.line(cols[3] - 1.5, y0 - 3.2, cols[3] - 1.5, y - 4); doc.setDrawColor(225); }
+      if (lado === 'D') { doc.setDrawColor(225); doc.line(M, y - 3.6, W - M, y - 3.6); }
     }
     doc.setFontSize(7.4); doc.setTextColor(110);
-    t(`Simetria D/E: lado mais fraco em % do mais forte (verde >= ${c.lsiAdequado}%). An/Ag: ${R.razaoL} do mesmo lado.`, M, y); doc.setTextColor(20);
+    t(`Simetria: o lado mais forte de cada músculo = 100%; o outro em % dele (verde >= ${c.lsiAdequado}%). ${R.an}/${R.ag}: razão do mesmo lado (ref. ${A.razoes.D?.refTxt || A.razoes.E?.refTxt || '-'}).`, M, y); doc.setTextColor(20);
     y += 3;
     y += 2; doc.setFont('helvetica', 'bold'); doc.setFontSize(10); t('Simetria e equilíbrio', M, y); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.3); y += 5.5;
     const linhas = [

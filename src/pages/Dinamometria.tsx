@@ -24,7 +24,7 @@ import { celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
   SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
-  resumoCurtoAnalise, stLSI, stDesvio, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
+  resumoCurtoAnalise, stLSI, stDesvio, simetriaSlot, SLOTS_POR_LADO, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
 } from '@/lib/dinamometria/analise';
 import { gerarRelatorioDinamometria, gerarRelatorioCliente, gruposBarras, type GrupoBarras, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
 import { mapaMuscularSVG, itensAvatar, COR_STATUS } from '@/lib/dinamometria/anatomia';
@@ -1015,36 +1015,36 @@ export default function Dinamometria() {
                     <table className="w-full text-sm min-w-[1040px]">
                       <thead className="bg-muted/50 text-xs text-muted-foreground">
                         <tr>
-                          {['Músculo', `Pico (${u})`, 'Simetria D/E', 'Razão An/Ag (lado)', 'N/kg', 'Norma (idade e sexo)', 'Tempo até pico (s)', `RFD 0–100 ms (${u}/s)`, `RFD 0–200 ms (${u}/s)`, `Impulso (${u}·s)`, 'Fadiga', 'Oscilação', 'Rep.'].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}
+                          {['Músculo', `Pico (${u})`, 'Simetria (mais forte = 100%)', `Razão ${A.R.an}/${A.R.ag}`, 'N/kg', 'Norma (idade e sexo)', 'Tempo até pico (s)', `RFD 0–100 ms (${u}/s)`, `RFD 0–200 ms (${u}/s)`, `Impulso (${u}·s)`, 'Fadiga', 'Oscilação', 'Rep.'].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}
                         </tr>
                       </thead>
                       <tbody>
-                        {SLOTS.filter(k => A.slots[k]).map(k => {
+                        {SLOTS_POR_LADO.filter(k => A.slots[k]).map(k => {
                           const s = A.slots[k]!;
                           const lado: Lado = k.endsWith('D') ? 'D' : 'E';
-                          const grupo = k.startsWith('ag') ? 'ag' : 'an';
-                          // Simetria: uma célula para o par D/E do mesmo músculo (linhas vizinhas).
-                          const parD = `${grupo}D` as Slot, parE = `${grupo}E` as Slot;
-                          const temPar = !!A.slots[parD] && !!A.slots[parE];
-                          const mostraLsi = !temPar || k === parD;
-                          const L = grupo === 'ag' ? A.lsiAg : A.lsiAn;
+                          // Razão do lado: uma célula para as linhas daquele lado (vizinhas).
+                          const doLado = SLOTS_POR_LADO.filter(x => x.endsWith(lado) && A.slots[x]);
+                          const primeiraDoLado = doLado[0] === k;
+                          const sim = simetriaSlot(A, k, crit);
                           const rz = A.razoes[lado];
                           return (
-                            <tr key={k} className="border-t border-border/40">
+                            <tr key={k} className={cn('border-t border-border/40', primeiraDoLado && lado === 'E' && 'border-t-2 border-t-border')}>
                               <td className="px-2.5 py-2 whitespace-nowrap"><Bolinha lado={lado} />{nomeSlot(atual.regiao, k)}</td>
                               <td className="px-2.5 py-2 font-mono">{fmt(disp(s.pico), 1)}</td>
-                              {mostraLsi && (
-                                <td rowSpan={temPar ? 2 : 1} className="px-2.5 py-2 align-middle border-l border-border/40">
-                                  {L ? <span className="flex flex-col gap-0.5"><span className="font-mono font-semibold">{fmt(L.v, 0)}%</span><Pilula st={stLSI(L.v, crit)} /></span> : '—'}
+                              <td className="px-2.5 py-2 border-l border-border/40">
+                                {sim ? <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono font-semibold">{fmt(sim.v, 0)}%</span>{sim.v < 99.5 ? <Pilula st={sim.st} /> : <span className="text-[11px] text-muted-foreground">mais forte</span>}</span> : '—'}
+                              </td>
+                              {primeiraDoLado && (
+                                <td rowSpan={doLado.length} className="px-2.5 py-2 align-middle border-l border-border/40">
+                                  {rz ? (
+                                    <span className="flex flex-col gap-0.5" title={`${A.R.razaoL} · ${lado === 'D' ? 'direito' : 'esquerdo'} · referência ${rz.refTxt || '—'}`}>
+                                      <span className="text-[11px] text-muted-foreground">{lado === 'D' ? 'Direito' : 'Esquerdo'}</span>
+                                      <span className="font-mono font-semibold">{fmt(rz.r * 100, 0)}%</span>
+                                      <Pilula st={rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, crit)} />
+                                    </span>
+                                  ) : '—'}
                                 </td>
                               )}
-                              <td className="px-2.5 py-2 border-l border-border/40">
-                                {rz ? (
-                                  <span className="flex items-center gap-1.5 whitespace-nowrap" title={`${A.R.razaoL} · ${lado === 'D' ? 'direito' : 'esquerdo'} · referência ${rz.refTxt || '—'}`}>
-                                    <span className="font-mono">{fmt(rz.r * 100, 0)}%</span><Pilula st={rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, crit)} />
-                                  </span>
-                                ) : '—'}
-                              </td>
                               <td className="px-2.5 py-2 font-mono">{s.nkg == null ? '—' : fmt(s.nkg, 1)}</td>
                               <td className="px-2.5 py-2">{s.precisaBraco ? <span className="text-xs text-muted-foreground">informe o braço de alavanca</span> : s.z == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(s.pctNorma, 0)}% · z {fmt(s.z, 1)}</span><Pilula st={stZ(s.z)} /></span>}</td>
                               <td className="px-2.5 py-2 font-mono">{fmt(s.ttp, 2)}</td>

@@ -304,6 +304,16 @@ export function lsi(s: Sujeito, d: number | null | undefined, e: number | null |
   return d < e ? { v: (d / e) * 100, fraco: 'D', forte: 'E' } : { v: (e / d) * 100, fraco: 'E', forte: 'D' };
 }
 export const stLSI = (v?: number | null, c: Criterios = CRITERIOS_PADRAO): Status => (v == null ? null : v >= c.lsiAdequado ? ['ok', 'Adequado'] : v >= c.lsiImportante ? ['warn', 'Déficit moderado'] : ['bad', 'Déficit importante']);
+// Tabela agrupada por lado: a razão antagonista/agonista ocupa as duas linhas do lado.
+export const SLOTS_POR_LADO: Slot[] = ['agD', 'anD', 'agE', 'anE'];
+// Simetria por músculo: o lado mais forte vale 100% e o outro, a % dele.
+export function simetriaSlot(A: { slots: Partial<Record<Slot, { pico: number }>> }, k: Slot, c: Criterios = CRITERIOS_PADRAO): { v: number; st: Status } | null {
+  const g = k.slice(0, 2);
+  const d = A.slots[`${g}D` as Slot]?.pico, e = A.slots[`${g}E` as Slot]?.pico, eu = A.slots[k]?.pico;
+  if (!d || !e || !eu || d <= 0 || e <= 0) return null;
+  const v = (eu / Math.max(d, e)) * 100;
+  return { v, st: stLSI(v, c) };
+}
 export const stDesvio = (d: number | null | undefined, c: Criterios): Status => (d == null ? null : d <= c.razaoTol / 100 ? ['ok', 'Adequada'] : d <= c.razaoLimite / 100 ? ['warn', 'Limítrofe'] : ['bad', 'Desequilíbrio']);
 export const stFadiga = (v: number | null | undefined, c: Criterios): Status => (v == null ? null : v <= c.fadBaixa ? ['ok', 'Baixa'] : v <= c.fadAlta ? ['warn', 'Moderada'] : ['bad', 'Alta']);
 export const stOsc = (v: number | null | undefined, c: Criterios): Status => (v == null ? null : v <= c.oscEstavel ? ['ok', 'Estável'] : v <= c.oscInstavel ? ['warn', 'Oscilante'] : ['bad', 'Instável']);
