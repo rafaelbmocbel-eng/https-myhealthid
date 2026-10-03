@@ -25,6 +25,37 @@ const FORMAS: Record<string, Forma> = {
   infraespinal: { vista: 'costas', d: el(86, 118, 14, 11), c: [86, 118] },
 };
 
+// Musculatura de fundo (não avaliada), em cinza claro: dá forma de corpo humano
+// à figura. Os músculos avaliados são pintados por cima, na cor do status.
+const FUNDO: Record<Vista, string[]> = {
+  frente: [
+    el(67, 104, 10, 13), // deltoide
+    el(83, 109, 17, 12), // peitoral
+    'M100 128Q109 126 110 130L110 206Q104 209 100 204Q97 166 100 128Z', // reto abdominal
+    'M80 136Q92 148 98 166Q97 196 92 214Q82 200 78 176Q76 154 80 136Z', // oblíquo
+    el(58, 150, 7, 24), // bíceps
+    'M54 182Q61 188 60 212Q57 240 52 262Q46 262 45 250Q46 214 54 182Z', // antebraço
+    el(83, 247, 9, 8), // flexores do quadril
+    'M78 262Q92 255 104 266Q104 310 98 340Q88 345 82 340Q73 300 78 262Z', // quadríceps
+    'M99 258Q108 261 107 280Q105 300 100 312Q94 292 96 268Z', // adutores
+    el(87, 386, 5.5, 28), // tibial anterior
+    el(97, 388, 4, 22), // panturrilha (visão medial)
+  ],
+  costas: [
+    'M102 82Q90 88 76 94Q86 106 100 122L110 124L110 84Z', // trapézio
+    el(67, 106, 10, 13), // deltoide posterior
+    el(86, 118, 14, 11), // infraespinal
+    'M78 132Q95 152 108 186L108 206Q92 192 82 172Q75 152 78 132Z', // grande dorsal
+    'M100 204Q109 202 110 206L110 232Q103 233 99 228Z', // lombar
+    el(58, 152, 7, 24), // tríceps
+    'M54 182Q61 188 60 212Q57 240 52 262Q46 262 45 250Q46 214 54 182Z', // antebraço
+    el(81, 238, 12, 10), // glúteo médio
+    el(95, 254, 14, 12), // glúteo máximo
+    'M78 268Q90 262 104 270Q104 310 98 342Q88 347 82 342Q73 304 78 268Z', // posteriores
+    el(90, 378, 10, 26), // panturrilha
+  ],
+};
+
 export interface InfoMusculo { forma: string; nome: string; local: string; funcao: string }
 export const MUSCULOS: Record<string, { ag: InfoMusculo; an: InfoMusculo }> = {
   joelho: {
@@ -152,7 +183,8 @@ const DETALHES: Record<Vista, string> = {
     + '<path d="M110 98L110 212"/><path d="M110 236L110 262"/>',
 };
 
-function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[], topo: number): string {
+// simples: sem rótulos nem títulos (usado no close da articulação).
+function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[], topo: number, simples = false): string {
   const espelho = (d: string) => `<g transform="translate(220,0) scale(-1,1)">${d}</g>`;
   let musc = '', marcas = '';
   for (const it of itens) {
@@ -178,6 +210,7 @@ function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[], to
       }
     }
   }
+  const fundo = FUNDO[vista].map((d) => `<path d="${d}"/>`).join('');
   const ladoEsqImg: Lado = vista === 'frente' ? 'D' : 'E';
   const circ = aneis.map(a => {
     if (!a.st) return '';
@@ -189,14 +222,15 @@ function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[], to
   return `<g transform="translate(${ox},0)">
     <g transform="translate(0,14)">
       <path d="${CONTORNO}" fill="#F1F3F5" stroke="#8A9BA8" stroke-width="2.4" stroke-linejoin="round"/>
+      <g fill="#E3E8EE" stroke="#FFFFFF" stroke-width="1.3">${fundo}${espelho(fundo)}</g>
       <g fill="none" stroke="#A9B6C0" stroke-width="1.4" stroke-linecap="round">${DETALHES[vista]}</g>
-      ${musc}${circ}${marcas}
+      ${musc}${circ}${simples ? '' : marcas}
     </g>
-    <g font-weight="700" stroke="#ffffff" stroke-width="4" paint-order="stroke" stroke-linejoin="round">
+    ${simples ? '' : `    <g font-weight="700" stroke="#ffffff" stroke-width="4" paint-order="stroke" stroke-linejoin="round">
       <text x="110" y="${topo + 16}" text-anchor="middle" font-size="13" fill="#1F2937">${vista === 'frente' ? 'Frente' : 'Costas'}</text>
       <text x="16" y="${topo + 16}" text-anchor="start" font-size="13" fill="#4B5563">${esq === 'Direito' ? 'D' : 'E'}</text>
       <text x="204" y="${topo + 16}" text-anchor="end" font-size="13" fill="#4B5563">${dir === 'Direito' ? 'D' : 'E'}</text>
-    </g>
+    </g>`}
   </g>`;
 }
 
@@ -243,4 +277,31 @@ export async function svgParaPNG(svg: string, largura = 920): Promise<string> {
   if (!ctx) throw new Error('Canvas indisponível.');
   ctx.drawImage(img, 0, 0, largura, altura);
   return cv.toDataURL('image/png');
+}
+
+// Close de frente da articulação avaliada, com o anel de cada lado na cor da
+// relação antagonista/agonista e o valor ao lado (ex.: "D 53%").
+export function focoArticulacaoSVG(regiao: string, itens: ItemMapa[], razao: Partial<Record<Lado, { txt: string; st: Status }>>): string {
+  const art = ARTIC_DA_REGIAO[regiao] ?? 'joelho';
+  const p = ARTIC[art];
+  const cy = p.c[1] + 14;
+  const topo = Math.max(0, cy - 62), alt = 124;
+  let extra = '';
+  for (const lado of ['D', 'E'] as Lado[]) {
+    const r = razao[lado];
+    if (!r || !r.st) continue;
+    const cor = COR_STATUS[r.st[0]];
+    const x = lado === 'D' ? p.c[0] : 220 - p.c[0];
+    extra += `<circle cx="${x}" cy="${cy}" r="15" fill="${cor}" fill-opacity="0.16" stroke="${cor}" stroke-width="3"/>`;
+    const w = r.txt.length * 7.2 + 14, lx = lado === 'D' ? x - 24 - w : x + 24;
+    extra += `<line x1="${lado === 'D' ? x - 15 : x + 15}" y1="${cy}" x2="${lado === 'D' ? lx + w : lx}" y2="${cy}" stroke="${cor}" stroke-width="2"/>`;
+    extra += `<rect x="${lx}" y="${cy - 10}" width="${w}" height="20" rx="10" fill="#ffffff" stroke="${cor}" stroke-width="2"/><text x="${lx + w / 2}" y="${cy + 4.6}" text-anchor="middle" font-size="13" font-weight="700" fill="#1F2937">${r.txt}</text>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-80 ${topo} 380 ${alt}" font-family="Helvetica, Arial, sans-serif">
+    <rect x="-80" y="${topo}" width="380" height="${alt}" fill="#ffffff"/>
+    ${vistaSVG('frente', 0, itens, [], topo, true)}
+    ${extra}
+    <text x="-74" y="${topo + 16}" font-size="12" font-weight="700" fill="#4B5563">D</text>
+    <text x="294" y="${topo + 16}" font-size="12" font-weight="700" fill="#4B5563" text-anchor="end">E</text>
+  </svg>`;
 }
