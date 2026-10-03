@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
-import { Dumbbell, FileUp, Loader2, Trash2, FileDown, Copy, Save, FlaskConical, X, UserRound } from 'lucide-react';
+import { Dumbbell, FileUp, Loader2, Trash2, FileDown, Copy, Save, FlaskConical, X, UserRound, Bluetooth } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { lerPlanilha, type Aba } from '@/lib/dinamometria/planilha';
+import CapturaCelulaDialog, { type CapturaCelula } from '@/components/dinamometria/CapturaCelulaDialog';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
   SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
@@ -178,6 +179,7 @@ export default function Dinamometria() {
   const [visivel, setVisivel] = useState(true);
   const [slots, setSlots] = useState<Record<string, SlotRascunho>>({});
   const [lendo, setLendo] = useState<string | null>(null);
+  const [capturaCk, setCapturaCk] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
 
   const { data: paciente } = useQuery({
@@ -265,6 +267,12 @@ export default function Dinamometria() {
     } finally {
       setLendo(null);
     }
+  };
+
+  // Curva vinda direto da célula Bluetooth: mesma análise da planilha.
+  const receberCaptura = (ck: string, c: CapturaCelula) => {
+    const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setSlots(p => ({ ...p, [ck]: { arquivo: `${c.nome} — captura ${hora}`, res: analisarCurva(c.t, c.fN, crit.platoMin) } }));
   };
 
   const ajustarMapa = (ck: string, patch: Partial<Mapa>) => setSlots(p => {
@@ -463,10 +471,13 @@ export default function Dinamometria() {
                 <input type="file" accept=".xlsx,.csv,.txt" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => { const f = e.target.files?.[0]; if (f) carregarArquivo(ck, f); e.target.value = ''; }} />
               </label>
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setCapturaCk(ck)} title="Capturar pela célula de carga Bluetooth">
+              <Bluetooth className="h-3.5 w-3.5 mr-1" /> Célula
+            </Button>
             {s && <Button size="sm" variant="ghost" onClick={() => setSlots(p => { const n = { ...p }; delete n[ck]; return n; })} title="Remover"><X className="h-4 w-4" /></Button>}
           </div>
         </div>
-        {s ? <p className="text-xs font-mono text-muted-foreground break-all">{s.arquivo}</p> : <p className="text-xs text-muted-foreground">Arraste aqui o .xlsx ou .csv exportado pelo dinamômetro.</p>}
+        {s ? <p className="text-xs font-mono text-muted-foreground break-all">{s.arquivo}</p> : <p className="text-xs text-muted-foreground">Capture pela célula Bluetooth ou arraste aqui o .xlsx/.csv exportado pelo dinamômetro.</p>}
         {s?.insp && s.mapa && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             {s.abas && s.abas.length > 1 && (
@@ -1103,6 +1114,12 @@ export default function Dinamometria() {
         </Tabs>
         {id && <p className="text-xs text-muted-foreground">As avaliações ficam nos <Link className="underline" to={`/pacientes/${id}`}>exames presenciais do paciente</Link> e o resumo entra nos planos de IA.</p>}
       </div>
+      <CapturaCelulaDialog
+        open={!!capturaCk}
+        onOpenChange={(v) => { if (!v) setCapturaCk(null); }}
+        titulo={capturaCk ? nomeSlot(capturaCk.split(':')[0], capturaCk.split(':')[1] as Slot) : ''}
+        onConcluir={(c) => { if (capturaCk) receberCaptura(capturaCk, c); }}
+      />
     </AppLayout>
   );
 }
