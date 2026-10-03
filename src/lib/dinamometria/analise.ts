@@ -1,6 +1,7 @@
 // Análise de dinamometria isométrica a partir da curva força × tempo exportada
 // pelo dinamômetro: detecção de colunas, repetições, pico, RFD, impulso,
-// índice de fadiga, oscilação do platô, simetria, razões e score de força.
+// índice de fadiga, oscilação do platô, simetria e razões. Cada valência é
+// classificada separadamente; não há nota única que as some.
 
 import type { Celula } from './planilha';
 
@@ -39,8 +40,20 @@ export const REGIOES: Record<string, Regiao> = {
   cotovelo: { l: 'Cotovelo', ag: 'Flexores', an: 'Extensores', razaoL: 'Extensores / Flexores', mAg: 'el_flex', mAn: 'el_ext', modo: 'mck' },
 };
 
-export interface Criterios { unidade: Unidade; lsiPleno: number; lsiZero: number; razaoTol: number; razaoZero: number; fadPleno: number; fadZero: number; oscPleno: number; oscZero: number; mudanca: number; platoMin: number }
-export const CRITERIOS_PADRAO: Criterios = { unidade: 'kgf', lsiPleno: 90, lsiZero: 70, razaoTol: 10, razaoZero: 40, fadPleno: 15, fadZero: 45, oscPleno: 3, oscZero: 12, mudanca: 15, platoMin: 4 };
+// Faixas de cada valência: até o primeiro limite é adequado (verde), até o
+// segundo é atenção (amarelo), além dele é alterado (vermelho).
+export interface Criterios {
+  unidade: Unidade;
+  lsiAdequado: number; lsiImportante: number;
+  razaoTol: number; razaoLimite: number;
+  fadBaixa: number; fadAlta: number;
+  oscEstavel: number; oscInstavel: number;
+  mudanca: number; platoMin: number;
+}
+export const CRITERIOS_PADRAO: Criterios = {
+  unidade: 'kgf', lsiAdequado: 90, lsiImportante: 80, razaoTol: 10, razaoLimite: 20,
+  fadBaixa: 15, fadAlta: 30, oscEstavel: 3, oscInstavel: 8, mudanca: 15, platoMin: 4,
+};
 
 export interface Metricas { pico: number; ttp: number | null; rfd100: number | null; rfd200: number | null; impulso: number | null; duracao: number | null; plato: number | null; fadiga: number | null; oscilacao: number | null; hz: number | null; reps: number[]; fonte?: 'curva' | 'pico' }
 export interface SlotDados { arquivo: string; metricas: Metricas; curva?: { t: number[]; f: number[] } | null }
@@ -290,22 +303,28 @@ export function lsi(s: Sujeito, d: number | null | undefined, e: number | null |
   if (s.acometido === 'E') return { v: (e / d) * 100, fraco: 'E', forte: 'D' };
   return d < e ? { v: (d / e) * 100, fraco: 'D', forte: 'E' } : { v: (e / d) * 100, fraco: 'E', forte: 'D' };
 }
-export const stLSI = (v?: number | null): Status => (v == null ? null : v >= 90 ? ['ok', 'Adequado'] : v >= 80 ? ['warn', 'Déficit moderado'] : ['bad', 'Déficit importante']);
-export const stDesvio = (d: number | null | undefined, c: Criterios): Status => (d == null ? null : d <= c.razaoTol / 100 ? ['ok', 'Adequada'] : d <= (2 * c.razaoTol) / 100 ? ['warn', 'Limítrofe'] : ['bad', 'Desequilíbrio']);
-export const stFadiga = (v: number | null | undefined, c: Criterios): Status => (v == null ? null : v <= c.fadPleno ? ['ok', 'Baixa'] : v <= (c.fadPleno + c.fadZero) / 2 ? ['warn', 'Moderada'] : ['bad', 'Alta']);
-export const stOsc = (v: number | null | undefined, c: Criterios): Status => (v == null ? null : v <= c.oscPleno ? ['ok', 'Estável'] : v <= (c.oscPleno + c.oscZero) / 2 ? ['warn', 'Oscilante'] : ['bad', 'Instável']);
+export const stLSI = (v?: number | null, c: Criterios = CRITERIOS_PADRAO): Status => (v == null ? null : v >= c.lsiAdequado ? ['ok', 'Adequado'] : v >= c.lsiImportante ? ['warn', 'Déficit moderado'] : ['bad', 'Déficit importante']);
+export const stDesvio = (d: number | null | undefined, c: Criterios): Status => (d == null ? null : d <= c.razaoTol / 100 ? ['ok', 'Adequada'] : d <= c.razaoLimite / 100 ? ['warn', 'Limítrofe'] : ['bad', 'Desequilíbrio']);
+export const stFadiga = (v: number | null | undefined, c: Criterios): Status => (v == null ? null : v <= c.fadBaixa ? ['ok', 'Baixa'] : v <= c.fadAlta ? ['warn', 'Moderada'] : ['bad', 'Alta']);
+export const stOsc = (v: number | null | undefined, c: Criterios): Status => (v == null ? null : v <= c.oscEstavel ? ['ok', 'Estável'] : v <= c.oscInstavel ? ['warn', 'Oscilante'] : ['bad', 'Instável']);
 export const stZ = (z: number | null | undefined): Status => (z == null ? null : z >= -1 ? ['ok', 'Na norma'] : z >= -2 ? ['warn', 'Abaixo da média'] : ['bad', 'Fraqueza (z < −2)']);
-const rampa = (v: number | null, pleno: number, zero: number) => {
-  if (v == null) return null;
-  return pleno > zero ? clamp((v - zero) / (pleno - zero), 0, 1) : clamp((zero - v) / (zero - pleno), 0, 1);
-};
 
 export interface SlotAnalise extends Metricas { z: number | null; pctNorma: number | null; precisaBraco: boolean; nkg: number | null }
 export interface Razao { r: number; ref: number | null; refTxt: string; desvio: number | null }
 export interface Analise {
   R: Regiao; slots: Partial<Record<Slot, SlotAnalise>>; lsiAg: LSI | null; lsiAn: LSI | null; razoes: Partial<Record<Lado, Razao>>;
-  comps: Record<'sim' | 'raz' | 'fad' | 'est', number | null>; score: number | null; categoria: Status;
+  valencias: Record<ValenciaId, Valencia | null>;
 }
+
+// Cada valência mostra o pior caso da articulação (o que precisa de atenção).
+export type ValenciaId = 'simetria' | 'razao' | 'fadiga' | 'estabilidade';
+export interface Valencia { valor: number; texto: string; status: Status; onde: string }
+export const VALENCIAS: { id: ValenciaId; nome: string; explica: string }[] = [
+  { id: 'simetria', nome: 'Simetria entre lados', explica: 'Força do lado mais fraco em % do mais forte (menor valor entre os grupos).' },
+  { id: 'razao', nome: 'Agonista × antagonista', explica: 'Relação entre os músculos opostos; mostra o lado mais distante da referência.' },
+  { id: 'fadiga', nome: 'Fadiga', explica: 'Perda de força na contração sustentada (maior valor entre os músculos).' },
+  { id: 'estabilidade', nome: 'Estabilidade da curva', explica: 'Oscilação da força no platô (maior valor entre os músculos).' },
+];
 
 export function analisar(av: Avaliacao, c: Criterios): Analise {
   const R = REGIOES[av.regiao] || REGIOES.joelho;
@@ -339,18 +358,26 @@ export function analisar(av: Avaliacao, c: Criterios): Analise {
     }
   }
   const lsiAg = lsi(s, pk('agD'), pk('agE')), lsiAn = lsi(s, pk('anD'), pk('anE'));
-  const media = (a: (number | null)[]) => { const v = a.filter((x): x is number => x != null); return v.length ? v.reduce((p, x) => p + x, 0) / v.length : null; };
-  const comps = {
-    sim: media([lsiAg, lsiAn].map(x => (x ? rampa(x.v, c.lsiPleno, c.lsiZero) : null))),
-    raz: media(Object.values(razoes).map(x => (x && x.desvio != null ? rampa(x.desvio * 100, c.razaoTol, c.razaoZero) : null))),
-    fad: (() => { const v = SLOTS.map(k => slots[k]?.fadiga).filter((x): x is number => x != null); return v.length ? rampa(Math.max(...v), c.fadPleno, c.fadZero) : null; })(),
-    est: (() => { const v = SLOTS.map(k => slots[k]?.oscilacao).filter((x): x is number => x != null); return v.length ? rampa(Math.max(...v), c.oscPleno, c.oscZero) : null; })(),
+  const valencias: Analise['valencias'] = { simetria: null, razao: null, fadiga: null, estabilidade: null };
+  const sims = ([[R.ag, lsiAg], [R.an, lsiAn]] as [string, LSI | null][]).filter((x): x is [string, LSI] => x[1] != null);
+  if (sims.length) {
+    const [nome, L] = sims.reduce((a, b) => (b[1].v < a[1].v ? b : a));
+    valencias.simetria = { valor: L.v, texto: `${fmt(L.v, 0)}%`, status: stLSI(L.v, c), onde: `${nome}, lado ${L.fraco === 'D' ? 'direito' : 'esquerdo'} mais fraco` };
+  }
+  const rzs = (Object.entries(razoes) as [Lado, Razao][]).filter(([, x]) => x.desvio != null);
+  if (rzs.length) {
+    const [l, x] = rzs.reduce((a, b) => ((b[1].desvio as number) > (a[1].desvio as number) ? b : a));
+    valencias.razao = { valor: x.r * 100, texto: `${fmt(x.r * 100, 0)}%`, status: stDesvio(x.desvio, c), onde: `lado ${l === 'D' ? 'direito' : 'esquerdo'}, referência ${x.refTxt}` };
+  }
+  const pior = (campo: 'fadiga' | 'oscilacao') => {
+    const v = SLOTS.filter(k => slots[k]?.[campo] != null).map(k => [k, slots[k]![campo] as number] as const);
+    return v.length ? v.reduce((a, b) => (b[1] > a[1] ? b : a)) : null;
   };
-  const pts = { sim: comps.sim == null ? null : comps.sim * 25, raz: comps.raz == null ? null : comps.raz * 25, fad: comps.fad == null ? null : comps.fad * 25, est: comps.est == null ? null : comps.est * 25 };
-  const disp = Object.values(pts).filter((x): x is number => x != null);
-  const score = disp.length ? Math.round((disp.reduce((p, x) => p + x, 0) / (disp.length * 25)) * 100) : null;
-  const categoria: Status = score == null ? null : score >= 90 ? ['ok', 'Excelente'] : score >= 75 ? ['ok', 'Bom'] : score >= 60 ? ['warn', 'Regular'] : ['bad', 'Crítico'];
-  return { R, slots, lsiAg, lsiAn, razoes, comps: pts, score, categoria };
+  const pf = pior('fadiga');
+  if (pf) valencias.fadiga = { valor: pf[1], texto: `${fmt(pf[1], 0)}%`, status: stFadiga(pf[1], c), onde: nomeSlot(av.regiao, pf[0]) };
+  const po = pior('oscilacao');
+  if (po) valencias.estabilidade = { valor: po[1], texto: `${fmt(po[1], 1)}%`, status: stOsc(po[1], c), onde: nomeSlot(av.regiao, po[0]) };
+  return { R, slots, lsiAg, lsiAn, razoes, valencias };
 }
 
 const ladoNome = (l: Lado) => (l === 'D' ? 'direito' : 'esquerdo');
@@ -359,7 +386,7 @@ export function interpretar(av: Avaliacao, A: Analise, c: Criterios, anterior?: 
   const R = A.R, out: string[] = [];
   const sim = (nome: string, L: LSI | null) => {
     if (!L) return;
-    const q = L.v >= 90 ? 'dentro do critério de simetria (≥ 90%)' : L.v >= 80 ? 'déficit moderado' : 'déficit importante';
+    const q = L.v >= c.lsiAdequado ? `dentro do critério de simetria (≥ ${c.lsiAdequado}%)` : L.v >= c.lsiImportante ? 'déficit moderado' : 'déficit importante';
     out.push(`${nome}: o lado ${ladoNome(L.fraco)} produz ${fmt(L.v, 0)}% da força do lado ${ladoNome(L.forte)}, ${q}.`);
   };
   sim(R.ag, A.lsiAg);
@@ -374,7 +401,7 @@ export function interpretar(av: Avaliacao, A: Analise, c: Criterios, anterior?: 
   const fads = SLOTS.filter(k => A.slots[k]?.fadiga != null).map(k => [k, A.slots[k]!.fadiga as number] as const);
   if (fads.length) {
     const w = fads.reduce((a, b) => (b[1] > a[1] ? b : a));
-    out.push(`Índice de fadiga: maior perda de força na contração sustentada em ${nomeSlot(av.regiao, w[0])} (${fmt(w[1], 0)}%)${w[1] > c.fadPleno ? `, acima do limite de ${c.fadPleno}% definido nos critérios` : ''}.`);
+    out.push(`Índice de fadiga: maior perda de força na contração sustentada em ${nomeSlot(av.regiao, w[0])} (${fmt(w[1], 0)}%)${w[1] > c.fadBaixa ? `, acima do limite de ${c.fadBaixa}% definido nos critérios` : ''}.`);
     for (const g of ['ag', 'an'] as const) {
       const a = A.slots[`${g}D`]?.fadiga, b = A.slots[`${g}E`]?.fadiga;
       if (a != null && b != null && Math.abs(a - b) > 10) out.push(`${g === 'ag' ? R.ag : R.an}: a fadiga difere ${fmt(Math.abs(a - b), 0)} pontos entre os lados, maior à ${a > b ? 'direita' : 'esquerda'}; sugere trabalho específico de resistência desse lado.`);
@@ -387,7 +414,7 @@ export function interpretar(av: Avaliacao, A: Analise, c: Criterios, anterior?: 
   const oscs = SLOTS.filter(k => A.slots[k]?.oscilacao != null).map(k => [k, A.slots[k]!.oscilacao as number] as const);
   if (oscs.length) {
     const w = oscs.reduce((a, b) => (b[1] > a[1] ? b : a));
-    if (w[1] > c.oscPleno) out.push(`Curva menos estável em ${nomeSlot(av.regiao, w[0])} (oscilação de ${fmt(w[1], 1)}% em torno da tendência), o que pode indicar dificuldade de controle motor ou dor durante a contração.`);
+    if (w[1] > c.oscEstavel) out.push(`Curva menos estável em ${nomeSlot(av.regiao, w[0])} (oscilação de ${fmt(w[1], 1)}% em torno da tendência), o que pode indicar dificuldade de controle motor ou dor durante a contração.`);
   }
   for (const g of ['ag', 'an'] as const) {
     const a = A.slots[`${g}D`]?.rfd200, b = A.slots[`${g}E`]?.rfd200;
@@ -407,7 +434,6 @@ export function interpretar(av: Avaliacao, A: Analise, c: Criterios, anterior?: 
     const dt = dataBR(anterior.data);
     out.push(mud.length ? `Desde ${dt}, mudanças acima de ${c.mudanca}%: ${mud.join('; ')}.` : `Desde ${dt}, nenhuma mudança de força ultrapassou ${c.mudanca}%, o limite adotado para mudança real.`);
   }
-  if (A.score != null && A.categoria) out.push(`Score de força: ${A.score}/100 (${A.categoria[1].toLowerCase()}).`);
   return out;
 }
 
@@ -417,7 +443,6 @@ export const dataBR = (s: string) => { if (!s) return ''; const [y, m, d] = s.sl
 export function resumoCurtoAnalise(av: Avaliacao, A: Analise, c: Criterios): string {
   const R = A.R, u = c.unidade, d = (N?: number | null) => fmt(N == null ? null : N / UF[u], 1);
   const partes: string[] = [`Dinamometria (${R.l})`];
-  if (A.score != null) partes.push(`score de força ${A.score}/100`);
   const pk = (k: Slot) => av.slots[k]?.metricas.pico;
   if (pk('agD') || pk('agE')) partes.push(`${R.ag} D ${d(pk('agD'))} / E ${d(pk('agE'))} ${u}${A.lsiAg ? ` (simetria ${fmt(A.lsiAg.v, 0)}%)` : ''}`);
   if (pk('anD') || pk('anE')) partes.push(`${R.an} D ${d(pk('anD'))} / E ${d(pk('anE'))} ${u}${A.lsiAn ? ` (simetria ${fmt(A.lsiAn.v, 0)}%)` : ''}`);

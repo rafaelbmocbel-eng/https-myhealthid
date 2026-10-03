@@ -20,14 +20,14 @@ import { cn } from '@/lib/utils';
 import { lerPlanilha, type Aba } from '@/lib/dinamometria/planilha';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
-  SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
+  SLOTS, UF, REGIOES, VALENCIAS, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
   resumoCurtoAnalise, stLSI, stDesvio, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
 } from '@/lib/dinamometria/analise';
 import { gerarRelatorioDinamometria, gerarRelatorioCliente, itensMapa, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
 import { mapaMuscularSVG, MUSCULOS, COR_STATUS } from '@/lib/dinamometria/anatomia';
 
 const COR: Record<Lado, string> = { D: '#2A78D6', E: '#EB6834' };
-const CHAVE_CRITERIOS = 'dinamometria_criterios_v1';
+const CHAVE_CRITERIOS = 'dinamometria_criterios_v2';
 
 interface SlotRascunho { arquivo: string; abas?: Aba[]; abaIdx?: number; insp?: Inspecao | null; mapa?: Mapa | null; res: ResultadoCurva | null }
 interface Registro { id: string; data: string; movs: Avaliacao[]; obs: string }
@@ -37,7 +37,12 @@ const chave = (regiao: string, k: Slot) => `${regiao}:${k}`;
 function lerCriterios(): Criterios {
   try {
     const s = localStorage.getItem(CHAVE_CRITERIOS);
-    return s ? { ...CRITERIOS_PADRAO, ...JSON.parse(s) } : CRITERIOS_PADRAO;
+    if (s) return { ...CRITERIOS_PADRAO, ...JSON.parse(s) };
+    // A v1 tinha faixas de pontuação do score; só unidade, mudança e platô continuam valendo.
+    const v1 = localStorage.getItem('dinamometria_criterios_v1');
+    if (!v1) return CRITERIOS_PADRAO;
+    const { unidade, mudanca, platoMin } = JSON.parse(v1);
+    return { ...CRITERIOS_PADRAO, ...(unidade ? { unidade } : {}), ...(mudanca != null ? { mudanca } : {}), ...(platoMin != null ? { platoMin } : {}) };
   } catch {
     // localStorage indisponível (modo privado): segue com o padrão
     return CRITERIOS_PADRAO;
@@ -88,8 +93,6 @@ function linhasCurva(av: Avaliacao, g: 'ag' | 'an', u: Unidade) {
   for (let x = t0; x <= t1 + 1e-9; x += passo) out.push({ t: +x.toFixed(3), D: interp(d, x), E: interp(e, x) });
   return out;
 }
-
-const mediaScore = (as: Analise[]) => { const v = as.map(a => a.score).filter((x): x is number => x != null); return v.length ? Math.round(v.reduce((p, x) => p + x, 0) / v.length) : null; };
 
 export default function Dinamometria() {
   const { id } = useParams<{ id: string }>();
@@ -313,9 +316,8 @@ export default function Dinamometria() {
   };
   const anterior = sessao && atual ? anteriorDe(sessao, atual.regiao) : null;
   const texto = atual && A ? interpretar(atual, A, crit, anterior) : [];
-  const scoreGeral = mediaScore(analises.map(x => x.A));
-  const svgMapa = useMemo(() => (analises.length ? mapaMuscularSVG(itensMapa(analises)) : ''), [analises]);
-  const legendaMapa = useMemo(() => itensMapa(analises), [analises]);
+  const legendaMapa = useMemo(() => itensMapa(analises, crit), [analises, crit]);
+  const svgMapa = useMemo(() => (legendaMapa.length ? mapaMuscularSVG(legendaMapa) : ''), [legendaMapa]);
 
   const copiar = async () => {
     if (!sessao) return;
@@ -331,12 +333,12 @@ export default function Dinamometria() {
     if (!sessao) return null;
     const itens: ItemRelatorio[] = sessao.movs.map(av => ({
       av, A: analisar(av, crit), anterior: anteriorDe(sessao, av.regiao),
-      historico: registros.slice(0, idx + 1).flatMap(r => { const m = r.movs.find(x => x.regiao === av.regiao); return m ? [{ data: r.data, score: analisar(m, crit).score }] : []; }),
+      historico: registros.slice(0, idx + 1).flatMap(r => { const m = r.movs.find(x => x.regiao === av.regiao); if (!m) return []; const a = analisar(m, crit); return [{ data: r.data, lsiAg: a.lsiAg?.v ?? null, lsiAn: a.lsiAn?.v ?? null }]; }),
     }));
     return {
       paciente: nomePaciente,
       profissional: profile ? `${profile.nome} ${profile.sobrenome || ''}`.trim() + (profile.crefito ? ` · CREFITO ${profile.crefito}` : '') : undefined,
-      data: sessao.data, c: crit, itens, scoreGeral: mediaScore(itens.map(i => i.A)),
+      data: sessao.data, c: crit, itens,
     };
   };
 
@@ -547,14 +549,14 @@ export default function Dinamometria() {
     if (!m) return [];
     const a = analisar(m, crit);
     const p = (k: Slot) => { const v = m.slots[k]?.metricas.pico; return v == null ? null : +(v / UF[crit.unidade]).toFixed(1); };
-    return [{ data: dataBR(r.data).slice(0, 5), dataFull: r.data, score: a.score, agD: p('agD'), agE: p('agE'), anD: p('anD'), anE: p('anE'), lsiAg: a.lsiAg?.v ?? null, lsiAn: a.lsiAn?.v ?? null }];
+    return [{ data: dataBR(r.data).slice(0, 5), dataFull: r.data, agD: p('agD'), agE: p('agE'), anD: p('anD'), anE: p('anE'), lsiAg: a.lsiAg?.v ?? null, lsiAn: a.lsiAn?.v ?? null }];
   }), [registros, crit, regEvoAtual]);
 
   const camposCrit: [keyof Criterios, string, string?][] = [
-    ['lsiPleno', 'Simetria plena (%)', 'Grindem 2016: ≥ 90%'], ['lsiZero', 'Simetria zero (%)'],
-    ['razaoTol', 'Razão: desvio pleno (%)', 'Desvio da referência'], ['razaoZero', 'Razão: desvio zero (%)'],
-    ['fadPleno', 'Fadiga plena (%)', 'Pior índice entre os músculos'], ['fadZero', 'Fadiga zero (%)'],
-    ['oscPleno', 'Oscilação plena (%)'], ['oscZero', 'Oscilação zero (%)'],
+    ['lsiAdequado', 'Simetria adequada a partir de (%)', 'Grindem 2016: ≥ 90%'], ['lsiImportante', 'Déficit importante abaixo de (%)'],
+    ['razaoTol', 'Razão adequada até (% de desvio)', 'Desvio da referência'], ['razaoLimite', 'Desequilíbrio acima de (% de desvio)'],
+    ['fadBaixa', 'Fadiga baixa até (%)'], ['fadAlta', 'Fadiga alta acima de (%)'],
+    ['oscEstavel', 'Curva estável até (% de oscilação)'], ['oscInstavel', 'Curva instável acima de (%)'],
     ['mudanca', 'Mudança real (%)', 'Troque pelo erro de medida do serviço'], ['platoMin', 'Platô mínimo p/ fadiga (s)'],
   ];
 
@@ -701,7 +703,6 @@ export default function Dinamometria() {
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{dataBR(sessao.data)}{registros.length > 1 && ` · avaliação ${idx + 1} de ${registros.length}`}</p>
                       <p className="text-lg font-semibold">{nomePaciente}</p>
-                      {sessao.movs.length > 1 && <p className="text-sm text-muted-foreground">Score geral da sessão: <b className="text-foreground">{scoreGeral ?? '—'}/100</b> (média das articulações)</p>}
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       {registros.length > 1 && (
@@ -719,33 +720,32 @@ export default function Dinamometria() {
                     <div className="flex flex-wrap gap-1.5">
                       {sessao.movs.map(m => (
                         <button key={m.regiao} type="button" onClick={() => setRegVer(m.regiao)} aria-pressed={m.regiao === atual.regiao} className={cn('rounded-full border px-3 py-1 text-sm', m.regiao === atual.regiao ? 'border-primary bg-primary/10 font-medium' : 'border-border text-muted-foreground hover:bg-muted')}>
-                          {REGIOES[m.regiao]?.l} · {analisar(m, crit).score ?? '—'}
+                          <span className="inline-flex items-center gap-1.5">
+                            {REGIOES[m.regiao]?.l}
+                            <span className="inline-flex gap-0.5" aria-hidden>{VALENCIAS.map(vl => { const st = analisar(m, crit).valencias[vl.id]?.status; return <i key={vl.id} className="h-2 w-2 rounded-full" style={{ background: COR_STATUS[st?.[0] ?? 'info'], opacity: st ? 1 : 0.35 }} />; })}</span>
+                          </span>
                         </button>
                       ))}
                     </div>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                    <div className="space-y-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Score de força · {A.R.l}</p>
-                      <div className="flex items-baseline gap-2"><span className="text-7xl font-extrabold tabular-nums leading-none">{A.score ?? '—'}</span><span className="text-xl text-muted-foreground font-semibold">/100</span></div>
-                      <div className="flex items-center gap-2"><span className="text-base font-bold uppercase tracking-wide">{A.categoria?.[1] || 'Sem dados'}</span></div>
-                      <div className="relative pt-2">
-                        <div className="grid h-2.5 gap-0.5" style={{ gridTemplateColumns: '59fr 15fr 15fr 11fr' }}>
-                          <i className="rounded-sm bg-red-400/40" /><i className="rounded-sm bg-amber-400/50" /><i className="rounded-sm bg-emerald-400/30" /><i className="rounded-sm bg-emerald-500/60" />
-                        </div>
-                        {A.score != null && <span className="absolute top-0.5 h-5 w-[3px] rounded bg-foreground -translate-x-1/2" style={{ left: `${A.score}%` }} />}
-                        <div className="grid text-[10px] text-muted-foreground mt-1" style={{ gridTemplateColumns: '59fr 15fr 15fr 11fr' }}><span>0–59 Crítico</span><span>60–74 Regular</span><span>75–89 Bom</span><span>90+</span></div>
-                      </div>
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Valências · {A.R.l}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {VALENCIAS.map(vl => {
+                        const v = A.valencias[vl.id];
+                        return (
+                          <div key={vl.id} className="rounded-xl border border-border/60 p-3.5 space-y-1.5" style={{ borderLeft: `4px solid ${COR_STATUS[v?.status?.[0] ?? 'info']}` }}>
+                            <p className="text-sm font-semibold">{vl.nome}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-3xl font-extrabold tabular-nums">{v ? v.texto : '—'}</span>
+                              {v ? <Pilula st={v.status} /> : <span className="text-xs text-muted-foreground">Sem dados</span>}
+                            </div>
+                            <p className="text-xs text-muted-foreground">{v ? v.onde : vl.id === 'fadiga' || vl.id === 'estabilidade' ? 'Exige o arquivo com a curva força × tempo.' : 'Exige os dois lados (ou os dois músculos) medidos.'}</p>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="space-y-3">
-                      {([['Simetria bilateral', A.comps.sim], ['Agonista × antagonista', A.comps.raz], ['Resistência à fadiga', A.comps.fad], ['Estabilidade da curva', A.comps.est]] as [string, number | null][]).map(([l, v]) => (
-                        <div key={l} className="space-y-1">
-                          <div className="flex justify-between text-sm"><span className="font-medium">{l}</span><span className="font-mono text-muted-foreground">{v == null ? 'n/d' : `${fmt(v, 0)} / 25`}</span></div>
-                          <div className="h-2 rounded bg-muted overflow-hidden"><div className="h-full rounded bg-foreground" style={{ width: `${v == null ? 0 : (v / 25) * 100}%` }} /></div>
-                        </div>
-                      ))}
-                      <p className="text-[11px] text-muted-foreground">Componentes sem dados ficam fora do cálculo e o score é reescalonado para 100.</p>
-                    </div>
+                    <p className="text-[11px] text-muted-foreground">Cada valência é avaliada separadamente, sem nota única. O valor mostrado é o pior caso da articulação; o detalhe de cada lado e músculo está abaixo.</p>
                   </div>
                 </Card>
 
@@ -753,7 +753,7 @@ export default function Dinamometria() {
                   {([['ag', A.R.ag, A.lsiAg], ['an', A.R.an, A.lsiAn]] as const).map(([g, nome, L]) => (
                     <Card key={g} className="p-4 space-y-2">
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Simetria · {nome}</p>
-                      <div className="flex items-center justify-between gap-2"><span className="text-3xl font-extrabold tabular-nums">{L ? `${fmt(L.v, 0)}%` : '—'}</span><Pilula st={stLSI(L?.v)} /></div>
+                      <div className="flex items-center justify-between gap-2"><span className="text-3xl font-extrabold tabular-nums">{L ? `${fmt(L.v, 0)}%` : '—'}</span><Pilula st={stLSI(L?.v, crit)} /></div>
                       <div className="text-sm space-y-0.5">
                         {(['D', 'E'] as Lado[]).map(l => <div key={l} className="flex justify-between"><span className="text-muted-foreground"><Bolinha lado={l} />{l === 'D' ? 'Direito' : 'Esquerdo'}</span><span className="font-mono">{fmt(disp(atual.slots[`${g}${l}` as Slot]?.metricas.pico), 1)} {u}</span></div>)}
                       </div>
@@ -809,19 +809,19 @@ export default function Dinamometria() {
                       <p className="font-semibold text-sm">Índice de fadiga</p>
                       {SLOTS.filter(k => A.slots[k]).map(k => {
                         const f = A.slots[k]!.fadiga;
-                        const escala = Math.max(crit.fadZero, 50);
+                        const escala = Math.max(crit.fadAlta * 1.5, 50);
                         return (
                           <div key={k} className="grid grid-cols-[130px_1fr_48px] gap-2 items-center text-sm">
                             <span className="truncate">{nomeSlot(atual.regiao, k)}</span>
                             <span className="relative h-3.5 rounded bg-muted border border-border/50">
                               <b className="absolute inset-y-0 left-0 rounded" style={{ width: `${f == null ? 0 : clamp((f / escala) * 100, 0, 100)}%`, background: COR[k.endsWith('D') ? 'D' : 'E'] }} />
-                              <i className="absolute -top-1 -bottom-1 w-0.5 bg-muted-foreground" style={{ left: `${(crit.fadPleno / escala) * 100}%` }} title={`Limite ${crit.fadPleno}%`} />
+                              <i className="absolute -top-1 -bottom-1 w-0.5 bg-muted-foreground" style={{ left: `${(crit.fadBaixa / escala) * 100}%` }} title={`Limite ${crit.fadBaixa}%`} />
                             </span>
                             <span className="font-mono text-right">{f == null ? 'n/d' : `${fmt(f, 0)}%`}</span>
                           </div>
                         );
                       })}
-                      <p className="text-[11px] text-muted-foreground">(Força máxima em 1 s − força no último segundo) ÷ força máxima. A linha marca o limite de {crit.fadPleno}%.</p>
+                      <p className="text-[11px] text-muted-foreground">(Força máxima em 1 s − força no último segundo) ÷ força máxima. A linha marca o limite de fadiga baixa ({crit.fadBaixa}%).</p>
                     </Card>
                   )}
                   <Card className="p-4 space-y-2">
@@ -895,17 +895,18 @@ export default function Dinamometria() {
             ) : (
               <>
                 <Card className="p-4 space-y-2">
-                  <p className="font-semibold text-sm">Score de força · {REvo.l}</p>
+                  <p className="font-semibold text-sm">Simetria entre lados · {REvo.l}</p>
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={evolucao} margin={{ top: 8, right: 12, bottom: 4, left: -16 }}>
                         <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
                         <XAxis dataKey="data" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [v, 'Score']} />
-                        <ReferenceLine y={90} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" label={{ value: 'Excelente', position: 'insideTopLeft', fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                        <ReferenceLine y={75} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" label={{ value: 'Bom', position: 'insideTopLeft', fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Line dataKey="score" stroke={COR.D} strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
+                        <YAxis domain={[(min: number) => Math.min(60, Math.floor(min / 10) * 10), 100]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [`${fmt(Number(v), 0)}%`, n === 'lsiAg' ? REvo.ag : REvo.an]} />
+                        <Legend formatter={v => (v === 'lsiAg' ? REvo.ag : REvo.an)} wrapperStyle={{ fontSize: 12 }} />
+                        <ReferenceLine y={crit.lsiAdequado} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" label={{ value: `Adequado (${crit.lsiAdequado}%)`, position: 'insideTopLeft', fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                        <Line dataKey="lsiAg" stroke="#0F766E" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} connectNulls />
+                        <Line dataKey="lsiAn" stroke="#7C3AED" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} connectNulls />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -935,7 +936,7 @@ export default function Dinamometria() {
                   <div className="overflow-x-auto rounded-lg border border-border/50">
                     <table className="w-full text-sm min-w-[680px]">
                       <thead className="bg-muted/50 text-xs text-muted-foreground">
-                        <tr>{['Data', 'Score', ...SLOTS.map(k => `${nomeSlot(regEvoAtual, k)} (${u})`), `Simetria ${REvo.ag}`, `Simetria ${REvo.an}`].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}</tr>
+                        <tr>{['Data', ...SLOTS.map(k => `${nomeSlot(regEvoAtual, k)} (${u})`), `Simetria ${REvo.ag}`, `Simetria ${REvo.an}`].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}</tr>
                       </thead>
                       <tbody>
                         {[...evolucao].reverse().map((e, i, arr) => {
@@ -943,7 +944,6 @@ export default function Dinamometria() {
                           return (
                             <tr key={e.dataFull + i} className="border-t border-border/40">
                               <td className="px-2.5 py-2 whitespace-nowrap">{dataBR(e.dataFull)}</td>
-                              <td className="px-2.5 py-2 font-mono font-semibold">{e.score ?? '—'}</td>
                               {SLOTS.map(k => {
                                 const v = e[k], p = prev?.[k];
                                 const d = v != null && p ? ((v - p) / p) * 100 : null;
@@ -966,8 +966,8 @@ export default function Dinamometria() {
           {/* ─── Critérios ─── */}
           <TabsContent value="criterios" className="space-y-4 mt-4">
             <Card className="p-4 space-y-3">
-              <p className="font-semibold">Critérios do score de força</p>
-              <p className="text-sm text-muted-foreground max-w-3xl">O score soma quatro componentes de 25 pontos. Cada um recebe 25 pontos ao atingir o valor "pleno" e 0 ao chegar no valor "zero", com pontuação proporcional entre eles. É um índice interno do serviço: só a simetria ≥ 90% e as referências das razões vêm diretamente da literatura. Os critérios ficam salvos neste aparelho.</p>
+              <p className="font-semibold">Critérios das valências</p>
+              <p className="text-sm text-muted-foreground max-w-3xl">Cada valência (simetria, agonista × antagonista, fadiga e estabilidade) é classificada separadamente, sem nota única: até o primeiro limite fica verde, entre os dois limites fica amarelo e além do segundo fica vermelho. A simetria ≥ 90% e as referências das razões vêm da literatura; as faixas de fadiga e oscilação são do serviço e podem ser ajustadas. Os critérios ficam salvos neste aparelho.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Unidade de exibição</Label>

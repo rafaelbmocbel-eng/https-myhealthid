@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import {
   type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito,
-  SLOTS, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, interpretar,
+  SLOTS, UF, VALENCIAS, fmt, nomeSlot, dataBR, stLSI, stDesvio, interpretar, type Status,
 } from './analise';
 import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, statusLado, type ItemMapa } from './anatomia';
 
@@ -57,12 +57,17 @@ const seguro = (s: string) => String(s)
 
 const nomeArquivo = (paciente: string, sufixo: string, data: string) => `${sufixo}_${paciente.replace(/[^\wÀ-ú]+/g, '_')}_${data}.pdf`;
 
+function corStatus(doc: jsPDF, st: Status) {
+  const hex = COR_STATUS[st?.[0] ?? 'info'];
+  doc.setTextColor(parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16));
+}
+
 function linhaSujeito(s: Sujeito) {
   return [s.sexo === 'M' ? 'Masculino' : 'Feminino', s.idade != null ? `${s.idade} anos` : '', s.peso ? `${s.peso} kg` : '', s.modalidade || '', `dominante ${s.dominante === 'E' ? 'esquerdo' : 'direito'}`].filter(Boolean).join(', ');
 }
 
-export interface ItemRelatorio { av: Avaliacao; A: Analise; anterior?: { data: string; av: Avaliacao } | null; historico: { data: string; score: number | null }[] }
-export interface DadosRelatorio { paciente: string; profissional?: string; logoUrl?: string; data: string; c: Criterios; itens: ItemRelatorio[]; scoreGeral: number | null }
+export interface ItemRelatorio { av: Avaliacao; A: Analise; anterior?: { data: string; av: Avaliacao } | null; historico: { data: string; lsiAg: number | null; lsiAn: number | null }[] }
+export interface DadosRelatorio { paciente: string; profissional?: string; logoUrl?: string; data: string; c: Criterios; itens: ItemRelatorio[] }
 
 // ───────── Relatório técnico (uma página por articulação) ─────────
 export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
@@ -87,18 +92,16 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
     if (d.profissional) { y += 4.5; t(`Profissional: ${d.profissional}`, M, y); }
     y += 4; doc.setDrawColor(210); doc.line(M, y, W - M, y); y += 11;
 
-    doc.setTextColor(20); doc.setFontSize(9); t(`SCORE DE FORÇA · ${R.l.toUpperCase()}`, M, y - 5);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(38); const sc = String(A.score ?? '-'); t(sc, M, y + 7);
-    doc.setFontSize(12); t('/100', M + sc.length * 8.2 + 1, y + 7); t((A.categoria ? A.categoria[1] : 'Sem dados').toUpperCase(), M, y + 14);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
-    const cx = 92;
-    const comps: [string, number | null][] = [['Simetria bilateral', A.comps.sim], ['Agonista x antagonista', A.comps.raz], ['Resistência à fadiga', A.comps.fad], ['Estabilidade da curva', A.comps.est]];
-    comps.forEach(([l, v], i) => {
-      const yy = y - 5 + i * 7.5;
-      t(l, cx, yy); t(v == null ? 'n/d' : `${fmt(v, 0)}/25`, W - M, yy, { align: 'right' });
-      doc.setFillColor(232, 234, 238); doc.rect(cx, yy + 1.4, W - M - cx, 2, 'F');
-      if (v != null) { doc.setFillColor(20, 25, 34); doc.rect(cx, yy + 1.4, ((W - M - cx) * v) / 25, 2, 'F'); }
+    doc.setTextColor(20); doc.setFontSize(9); t(`VALÊNCIAS · ${R.l.toUpperCase()} (cada uma avaliada separadamente)`, M, y - 5);
+    VALENCIAS.forEach((vl, i) => {
+      const v = A.valencias[vl.id];
+      const yy = y + 1 + i * 6;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(20); t(vl.nome, M, yy);
+      t(v ? v.texto : 'n/d', 72, yy);
+      corStatus(doc, v?.status ?? null); t(v?.status ? v.status[1] : 'Sem dados', 92, yy);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.6); doc.setTextColor(90); t(v ? v.onde : '', 128, yy);
     });
+    doc.setTextColor(20); doc.setFont('helvetica', 'normal');
     y += 26;
 
     const cab = ['Músculo', `Pico (${u})`, 'N/kg', 'z (norma)', `RFD 0-200 (${u}/s)`, 'Fadiga', 'Oscilação'];
@@ -114,8 +117,8 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
     }
     y += 2; doc.setFont('helvetica', 'bold'); doc.setFontSize(10); t('Simetria e equilíbrio', M, y); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.3); y += 5.5;
     const linhas = [
-      `Simetria ${R.ag}: ${A.lsiAg ? `${fmt(A.lsiAg.v, 0)}% (${stLSI(A.lsiAg.v)?.[1]})` : '-'}`,
-      `Simetria ${R.an}: ${A.lsiAn ? `${fmt(A.lsiAn.v, 0)}% (${stLSI(A.lsiAn.v)?.[1]})` : '-'}`,
+      `Simetria ${R.ag}: ${A.lsiAg ? `${fmt(A.lsiAg.v, 0)}% (${stLSI(A.lsiAg.v, c)?.[1]})` : '-'}`,
+      `Simetria ${R.an}: ${A.lsiAn ? `${fmt(A.lsiAn.v, 0)}% (${stLSI(A.lsiAn.v, c)?.[1]})` : '-'}`,
     ];
     for (const l of ['D', 'E'] as Lado[]) {
       const x = A.razoes[l];
@@ -146,15 +149,20 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
       if (y + ls.length * 4.5 > 284) { doc.addPage(); y = 18; }
       doc.text(ls, M, y); y += ls.length * 4.5 + 1.5;
     }
-    if (historico.length > 1) {
+    const evo: Serie[] = ([['lsiAg', COR.D], ['lsiAn', COR.E]] as const).flatMap(([k, cor]) => {
+      const pts = historico.flatMap((x, i) => (x[k] == null ? [] : [[i, x[k] as number] as [number, number]]));
+      return pts.length ? [{ nome: k, cor, pts }] : [];
+    });
+    if (historico.length > 1 && evo.length) {
       const h = ((W - 2 * M) * 220) / 760;
-      if (y + h + 10 > 284) { doc.addPage(); y = 18; }
-      y += 3; doc.setFont('helvetica', 'bold'); doc.setFontSize(10); t(`Evolução do score · ${R.l}`, M, y); doc.setFont('helvetica', 'normal'); y += 3;
-      const img = graficoPNG([{ nome: 'Score', cor: COR.D, pts: historico.map((x, i) => [i, x.score ?? 0]) }], { xFmt: String, yFmt: v => fmt(v, 0), xTicks: historico.map((x, i) => [i, dataBR(x.data).slice(0, 5)]), pontos: true, yMin100: true, H: 220 });
-      doc.addImage(img, 'PNG', M, y, W - 2 * M, h); y += h + 4;
+      if (y + h + 14 > 284) { doc.addPage(); y = 18; }
+      y += 3; doc.setFont('helvetica', 'bold'); doc.setFontSize(10); t(`Evolução da simetria · ${R.l}`, M, y); doc.setFont('helvetica', 'normal'); y += 3;
+      const img = graficoPNG(evo, { xFmt: String, yFmt: v => `${fmt(v, 0)}%`, xTicks: historico.map((x, i) => [i, dataBR(x.data).slice(0, 5)]), pontos: true, yMin100: true, H: 220 });
+      doc.addImage(img, 'PNG', M, y, W - 2 * M, h); y += h + 3;
+      doc.setFontSize(8); doc.setTextColor(90); t(`Azul = ${R.ag}, laranja = ${R.an}. Critério de simetria: ${c.lsiAdequado}%.`, M, y + 1); doc.setTextColor(20); y += 5;
     }
     doc.setFontSize(7.4); doc.setTextColor(110);
-    const rod = doc.splitTextToSize(seguro('O score de força é um índice interno do serviço, com faixas ajustáveis; não é uma escala validada. Normas: McKay et al., Neurology 2017 (membro dominante). Simetria >= 90%: Grindem et al., Br J Sports Med 2016. Adução/abdução do quadril >= 0,80: Tyler et al., Am J Sports Med 2001.'), W - 2 * M);
+    const rod = doc.splitTextToSize(seguro(`Faixas das valências (ajustáveis): simetria adequada >= ${c.lsiAdequado}%, déficit importante < ${c.lsiImportante}%; razão até ${c.razaoTol}% de desvio adequada, acima de ${c.razaoLimite}% desequilíbrio; fadiga baixa <= ${c.fadBaixa}%, alta > ${c.fadAlta}%; oscilação estável <= ${c.oscEstavel}%, instável > ${c.oscInstavel}%. Normas: McKay et al., Neurology 2017 (membro dominante). Simetria >= 90%: Grindem et al., Br J Sports Med 2016. Adução/abdução do quadril >= 0,80: Tyler et al., Am J Sports Med 2001.`), W - 2 * M);
     if (y > 270) { doc.addPage(); y = 18; }
     doc.text(rod, M, Math.max(y + 4, 286 - rod.length * 3.3));
   }
@@ -162,21 +170,21 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
 }
 
 // ───────── Mapa muscular para tela e relatório do cliente ─────────
-export function itensMapa(itens: { av: Avaliacao; A: Analise }[]): ItemMapa[] {
+export function itensMapa(itens: { av: Avaliacao; A: Analise }[], c?: Criterios): ItemMapa[] {
   const out: ItemMapa[] = [];
   let n = 1;
   for (const { av, A } of itens) {
     for (const g of ['ag', 'an'] as const) {
       if (!A.slots[`${g}D` as Slot] && !A.slots[`${g}E` as Slot]) continue;
-      out.push({ regiao: av.regiao, g, numero: n++, D: statusLado(A, g, 'D'), E: statusLado(A, g, 'E') });
+      out.push({ regiao: av.regiao, g, numero: n++, D: statusLado(A, g, 'D', c), E: statusLado(A, g, 'E', c) });
     }
   }
   return out;
 }
 
-function fraseSimetria(v: number) {
-  if (v >= 90) return 'os dois lados estão equilibrados';
-  if (v >= 80) return 'há uma diferença moderada entre os lados';
+function fraseSimetria(v: number, c: Criterios) {
+  if (v >= c.lsiAdequado) return 'os dois lados estão equilibrados';
+  if (v >= c.lsiImportante) return 'há uma diferença moderada entre os lados';
   return 'há uma diferença importante entre os lados';
 }
 function fraseNorma(z: number) {
@@ -203,17 +211,29 @@ export async function gerarRelatorioCliente(d: DadosRelatorio) {
   y += 9;
 
   doc.setTextColor(20);
-  if (d.scoreGeral != null) {
-    const cat = d.scoreGeral >= 90 ? 'Excelente' : d.scoreGeral >= 75 ? 'Bom' : d.scoreGeral >= 60 ? 'Regular' : 'Precisa de atenção';
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(34); t(String(d.scoreGeral), M, y + 8);
-    doc.setFontSize(12); t('/100', M + String(d.scoreGeral).length * 7.4 + 1, y + 8);
-    doc.setFontSize(13); t(cat, M + 34, y + 2);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(70);
-    par('Seu score de força vai de 0 a 100 e junta quatro coisas: o equilíbrio entre os lados direito e esquerdo, o equilíbrio entre músculos que trabalham em sentidos opostos, a resistência e a firmeza da contração.', M + 34, y + 7, W - 2 * M - 34, 4.3);
-    doc.setTextColor(20); y += 24;
+  // Quatro aspectos da força, cada um com sua própria avaliação (sem nota única).
+  const COLS_V: [typeof VALENCIAS[number]['id'], string][] = [['simetria', 'Direito x esquerdo'], ['razao', 'Músculos opostos'], ['fadiga', 'Resistência'], ['estabilidade', 'Firmeza']];
+  const STATUS_CLIENTE: Record<string, string> = { ok: 'Bom', warn: 'Atenção', bad: 'Trabalhar', info: 'Medido' };
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); t('Seus resultados em quatro aspectos', M, y); y += 5;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8); doc.setTextColor(80);
+  y = par('Cada aspecto é avaliado separadamente: equilíbrio entre os lados direito e esquerdo, equilíbrio entre músculos que trabalham em sentidos opostos, resistência ao cansaço e firmeza da contração.', M, y, W - 2 * M, 4);
+  y += 2; doc.setTextColor(20);
+  const colX = [M, 58, 98, 136, 170];
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8);
+  t('Articulação', colX[0], y); COLS_V.forEach(([, l], i) => t(l, colX[i + 1], y));
+  y += 1.6; doc.setDrawColor(210); doc.line(M, y, W - M, y); y += 4.6;
+  for (const { A } of d.itens) {
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(20); t(A.R.l, colX[0], y);
+    COLS_V.forEach(([id], i) => {
+      const v = A.valencias[id];
+      if (!v?.status) { doc.setTextColor(140); t('-', colX[i + 1], y); return; }
+      doc.setFont('helvetica', 'bold'); corStatus(doc, v.status); t(STATUS_CLIENTE[v.status[0]], colX[i + 1], y); doc.setFont('helvetica', 'normal');
+    });
+    y += 5.2;
   }
+  doc.setTextColor(20); y += 4;
 
-  const itensMap = itensMapa(d.itens);
+  const itensMap = itensMapa(d.itens, c);
   try {
     const png = await svgParaPNG(mapaMuscularSVG(itensMap));
     const larg = 118, alt = (larg * 480) / 460;
@@ -245,7 +265,7 @@ export async function gerarRelatorioCliente(d: DadosRelatorio) {
       frases.push(`Fica na ${info.local} e ${info.funcao}.`);
       frases.push(`Força medida: direito ${fmt(disp(d1), 1)} ${u}, esquerdo ${fmt(disp(e1), 1)} ${u}.`);
       const L = g === 'ag' ? A.lsiAg : A.lsiAn;
-      if (L) frases.push(`O lado ${L.fraco === 'D' ? 'direito' : 'esquerdo'} tem ${fmt(L.v, 0)}% da força do outro: ${fraseSimetria(L.v)}.`);
+      if (L) frases.push(`O lado ${L.fraco === 'D' ? 'direito' : 'esquerdo'} tem ${fmt(L.v, 0)}% da força do outro: ${fraseSimetria(L.v, c)}.`);
       const zs = (['D', 'E'] as Lado[]).map(l => A.slots[`${g}${l}` as Slot]?.z).filter((z): z is number => z != null);
       if (zs.length) frases.push(`A força está ${fraseNorma(Math.min(...zs))}.`);
       const texto = frases.join(' ');

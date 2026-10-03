@@ -2,7 +2,7 @@
 // colorido pelo resultado de cada grupo muscular e lado. Usado na tela e nos
 // relatórios em PDF para o cliente entender onde está cada músculo.
 
-import { type Analise, type Lado, type Slot, type Status, stLSI, stZ } from './analise';
+import { type Analise, type Criterios, type Lado, type Slot, type Status, CRITERIOS_PADRAO, stLSI, stZ } from './analise';
 
 type Vista = 'frente' | 'costas';
 interface Forma { vista: Vista; d: string; c: [number, number] }
@@ -58,13 +58,13 @@ export const COR_STATUS: Record<string, string> = { ok: '#22A35A', warn: '#F2A90
 
 // Situação de um lado: o pior entre a força para idade/sexo (escore z) e, se
 // este for o lado mais fraco, a simetria entre os lados.
-export function statusLado(A: Analise, g: 'ag' | 'an', lado: Lado): Status {
+export function statusLado(A: Analise, g: 'ag' | 'an', lado: Lado, c: Criterios = CRITERIOS_PADRAO): Status {
   const s = A.slots[`${g}${lado}` as Slot];
   if (!s) return null;
   const cands: Status[] = [];
   if (s.z != null) cands.push(stZ(s.z));
   const L = g === 'ag' ? A.lsiAg : A.lsiAn;
-  if (L && L.fraco === lado) cands.push(stLSI(L.v));
+  if (L && L.fraco === lado) cands.push(stLSI(L.v, c));
   const validos = cands.filter(Boolean) as NonNullable<Status>[];
   if (!validos.length) return ['info', 'Avaliado'];
   return validos.reduce((a, b) => (PESO[b[0]] > PESO[a[0]] ? b : a));
