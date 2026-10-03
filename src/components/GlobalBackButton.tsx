@@ -13,6 +13,7 @@ const TOP_LEVEL = new Set<string>([
   '/configuracoes',
   '/crm',
   '/base-cientifica',
+  '/aplicacoes',
   '/auth',
   '/paciente/dashboard',
   '/paciente/login',

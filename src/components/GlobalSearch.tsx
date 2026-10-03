@@ -9,7 +9,7 @@ import {
   BookOpen, DollarSign, Tag, Inbox, GitBranch, Zap, BarChart3, Target, Wrench, MessageCircle,
   Kanban, TrendingUp, Radio, Bot, UserCog, Sun,
   UserPlus, CalendarPlus, Plug, Bell, ShieldCheck, Stethoscope, Home, Workflow,
-  Loader2,
+  Loader2, LayoutGrid,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +34,7 @@ const ITEMS: NavItem[] = [
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, keywords: 'calendario horario sessao consulta', group: 'Páginas' },
   { label: 'Pacientes', href: '/pacientes', icon: Users, keywords: 'clientes lista cadastro', group: 'Páginas' },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, keywords: 'workshop curso mentoria inscricao', group: 'Páginas' },
+  { label: 'Aplicações', href: '/aplicacoes', icon: LayoutGrid, keywords: 'dinamometria forca dinamometro excel avaliacao ferramentas apps', group: 'Páginas' },
   { label: 'Base Científica', href: '/base-cientifica', icon: BookOpen, keywords: 'evidencia pubmed estudo artigo pesquisa', group: 'Páginas' },
   { label: 'Início', href: '/inicio-app', icon: LayoutDashboard, keywords: 'visao geral metricas', group: 'Páginas' },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign, keywords: 'pagamento receita faturamento dinheiro', group: 'Páginas' },

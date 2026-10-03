@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   CalendarDays, Users,
   Settings, LogOut, User, MessageCircle,
-  Sun, DollarSign, Store, Dumbbell, ClipboardList, TrendingUp, type LucideIcon,
+  Sun, DollarSign, Store, Dumbbell, ClipboardList, TrendingUp, LayoutGrid, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +26,7 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   // com o item "Financeiro", que abre /pacientes?tab=financeiro).
   { label: 'Pacientes', href: '/pacientes', icon: Users, modulo: 'pacientes', queryExclude: 'tab=financeiro' },
   { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },
+  { label: 'Aplicações', href: '/aplicacoes', icon: LayoutGrid },
   // Zap navega pra /crm/inbox (redireciona pra /crm?tab=inbox → pathname /crm).
   { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true, modulo: 'crm', match: '/crm' },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign, modulo: 'financeiro_avancado', match: '/pacientes', queryFlag: 'tab=financeiro' },
