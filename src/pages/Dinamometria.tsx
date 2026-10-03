@@ -566,10 +566,16 @@ export default function Dinamometria() {
   const temSimulado = regioes.some(r => modoDe(r) === 'curva' && SLOTS.some(k => slots[chave(r, k)]?.arquivo.includes('simulado')));
   // Prévia: a mesma análise do exame salvo, feita sobre o que já foi capturado.
   const previa = (() => {
-    const ses = sessaoRascunho();
-    if (!ses) return null;
-    const movs = movimentosDaAnalise(ses);
-    return movs.length ? movs.map(av => ({ av, A: analisar(av, crit) })) : null;
+    // A prévia nunca pode derrubar a tela: se algo falhar, só não aparece.
+    try {
+      const ses = sessaoRascunho();
+      if (!ses) return null;
+      const movs = movimentosDaAnalise(ses);
+      return movs.length ? movs.map(av => ({ av, A: analisar(av, crit) })) : null;
+    } catch (e) {
+      console.warn('[Dinamometria] prévia falhou', e);
+      return null;
+    }
   })();
 
   // ───── Render: entrada ─────

@@ -298,11 +298,12 @@ class CelulaBle {
       let ultimoErro: unknown = null;
       for (let t = 0; t < 3; t++) {
         try {
-          if (this.writeChar.properties.writeWithoutResponse) await this.writeChar.writeValueWithoutResponse(dados);
-          else await this.writeChar.writeValue(dados);
+          const op = this.writeChar.properties.writeWithoutResponse ? this.writeChar.writeValueWithoutResponse(dados) : this.writeChar.writeValue(dados);
+          // Uma escrita que nunca responde não pode travar a fila (e com ela o "iniciar").
+          await Promise.race([op, espera(1500).then(() => { throw new Error('escrita sem resposta'); })]);
           await espera(40);
           return;
-        } catch (e) { ultimoErro = e; await espera(120); }
+        } catch (e) { ultimoErro = e; this.registrar(`comando ${Array.from(dados.slice(0, 1), (x) => x.toString(16)).join('')} falhou: ${(e as Error)?.message || e}`); await espera(120); }
       }
       throw ultimoErro;
     });
