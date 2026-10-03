@@ -1,10 +1,10 @@
 import jsPDF from 'jspdf';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import {
-  type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito,
-  SLOTS, UF, VALENCIAS, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, interpretar, type Status,
+  type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito, type Unidade,
+  SLOTS, UF, VALENCIAS, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stZ, interpretar, type Status,
 } from './analise';
-import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, itensSimetria, itensRazao } from './anatomia';
+import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, proporcaoSVG, itensAvatar } from './anatomia';
 import { achadosDor, AVISO_DOR } from './dor';
 
 const COR = { D: '#2A78D6', E: '#EB6834', ink: '#141922', ink2: '#4A5262', grade: '#E6E8EC', eixo: '#C3C6CE', fundo: '#FFFFFF' };
@@ -50,6 +50,83 @@ function graficoPNG(series: Serie[], o: { xFmt: (v: number) => string; yFmt: (v:
     if (o.pontos) for (const p of s.pts) { x.beginPath(); x.arc(X(p[0]), Y(p[1]), 4.5, 0, 7); x.fillStyle = s.cor; x.fill(); x.lineWidth = 2; x.strokeStyle = COR.fundo; x.stroke(); }
   }
   return cv.toDataURL('image/png');
+}
+
+// Barras horizontais direito × esquerdo por movimento, com a faixa normal
+// para idade e sexo (média ± 1 DP) ao fundo. Canvas só para o PDF.
+export interface GrupoBarras { nome: string; D: number | null; E: number | null; min: number | null; ref: number | null }
+function barrasPNG(grupos: GrupoBarras[], unidade: string, W = 640): string {
+  const linhaH = 22, gap = 14, T = 26, B = 24, L = 168, Rm = 56;
+  const H = T + B + grupos.length * (2 * linhaH + gap);
+  const esc = 2, cv = document.createElement('canvas');
+  cv.width = W * esc; cv.height = H * esc;
+  const x = cv.getContext('2d');
+  if (!x) return '';
+  x.scale(esc, esc);
+  x.fillStyle = COR.fundo; x.fillRect(0, 0, W, H);
+  const vals = grupos.flatMap(g => [g.D, g.E, g.ref == null || g.min == null ? null : 2 * g.ref - g.min]).filter((v): v is number => v != null);
+  const bruto = Math.max(...vals, 1) * 1.08, p10 = Math.pow(10, Math.floor(Math.log10(bruto / 4))), r = bruto / 4 / p10;
+  const passo = (r < 1.5 ? 1 : r < 3 ? 2 : r < 7 ? 5 : 10) * p10, x1 = Math.ceil(bruto / passo) * passo;
+  const pw = W - L - Rm, X = (v: number) => L + (v / x1) * pw;
+  x.font = '11px Helvetica, Arial, sans-serif'; x.textBaseline = 'middle';
+  for (let v = 0; v <= x1 + 1e-9; v += passo) {
+    x.strokeStyle = COR.grade; x.lineWidth = 1; x.beginPath(); x.moveTo(X(v), T - 4); x.lineTo(X(v), H - B); x.stroke();
+    x.fillStyle = COR.ink2; x.textAlign = 'center'; x.fillText(fmt(v, 0), X(v), H - B + 11);
+  }
+  grupos.forEach((g, i) => {
+    const y0 = T + i * (2 * linhaH + gap);
+    if (g.ref != null && g.min != null) {
+      x.fillStyle = 'rgba(34,163,90,0.13)'; x.fillRect(X(g.min), y0 - 3, X(2 * g.ref - g.min) - X(g.min), 2 * linhaH + 6);
+      x.strokeStyle = '#22A35A'; x.setLineDash([4, 3]); x.lineWidth = 1.5; x.beginPath(); x.moveTo(X(g.ref), y0 - 3); x.lineTo(X(g.ref), y0 + 2 * linhaH + 3); x.stroke(); x.setLineDash([]);
+    }
+    x.fillStyle = COR.ink; x.textAlign = 'right'; x.font = 'bold 12px Helvetica, Arial, sans-serif';
+    x.fillText(g.nome, L - 20, y0 + linhaH);
+    (['D', 'E'] as const).forEach((l, k) => {
+      const v = g[l], yy = y0 + k * linhaH + 3, h = linhaH - 6;
+      x.font = 'bold 11px Helvetica, Arial, sans-serif'; x.fillStyle = COR.ink2; x.textAlign = 'right'; x.fillText(l, L - 2, yy + h / 2);
+      if (v == null) return;
+      x.fillStyle = COR[l]; x.beginPath(); x.roundRect(L, yy, Math.max(2, X(v) - L), h, 3); x.fill();
+      x.fillStyle = COR.ink; x.textAlign = 'left'; x.fillText(`${fmt(v, 1)} ${unidade}`, X(v) + 5, yy + h / 2);
+    });
+  });
+  x.font = '11px Helvetica, Arial, sans-serif'; x.textAlign = 'left'; x.textBaseline = 'middle';
+  let lx = L;
+  for (const [cor, txt] of [[COR.D, 'Direito'], [COR.E, 'Esquerdo']] as const) { x.fillStyle = cor; x.fillRect(lx, 7, 10, 10); x.fillStyle = COR.ink2; x.fillText(txt, lx + 14, 12); lx += x.measureText(txt).width + 30; }
+  if (grupos.some(g => g.ref != null)) { x.fillStyle = 'rgba(34,163,90,0.25)'; x.fillRect(lx, 7, 14, 10); x.fillStyle = COR.ink2; x.fillText('Faixa normal para idade e sexo (linha = média)', lx + 18, 12); }
+  return cv.toDataURL('image/png');
+}
+
+export function gruposBarras(A: Analise, u: Unidade): GrupoBarras[] {
+  const dv = (N?: number | null) => (N == null ? null : N / UF[u]);
+  return (['ag', 'an'] as const).flatMap(g => {
+    const sD = A.slots[`${g}D` as Slot], sE = A.slots[`${g}E` as Slot];
+    if (!sD && !sE) return [];
+    const ref = sD?.esperado ?? sE?.esperado ?? null, min = sD?.minimo ?? sE?.minimo ?? null;
+    return [{ nome: g === 'ag' ? A.R.ag : A.R.an, D: dv(sD?.pico), E: dv(sE?.pico), ref: dv(ref), min: dv(min) }];
+  });
+}
+
+// Avatar recortado na região avaliada (esquerda) + barras D × E (direita).
+async function blocoVisual(doc: jsPDF, av: Avaliacao, A: Analise, c: Criterios, x0: number, y: number, larg: number): Promise<number> {
+  const u = c.unidade;
+  const larAv = Math.min(80, larg * 0.46), larBar = larg - larAv - 4;
+  let altAv = 0, altBar = 0;
+  try {
+    const svg = mapaMuscularSVG(itensAvatar([{ av, A }], c, u), achadosDor([{ av, A }], c).flatMap(a => a.aneis), true);
+    altAv = larAv * proporcaoSVG(svg);
+    if (y + altAv > 285) { doc.addPage(); y = 18; }
+    doc.addImage(await svgParaPNG(svg, 760), 'PNG', x0, y, larAv, altAv);
+  } catch { /* sem o avatar, segue com o gráfico */ }
+  const grupos = gruposBarras(A, u);
+  if (grupos.length) {
+    const img = barrasPNG(grupos, u);
+    const pr = new Image();
+    pr.src = img;
+    await new Promise(ok => { pr.onload = ok; pr.onerror = ok; });
+    altBar = pr.width ? (larBar * pr.height) / pr.width : larBar * 0.35;
+    doc.addImage(img, 'PNG', x0 + larAv + 4, y + Math.max(0, (altAv - altBar) / 2), larBar, altBar);
+  }
+  return y + Math.max(altAv, altBar) + 3;
 }
 
 const seguro = (s: string) => String(s)
@@ -132,6 +209,7 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
       if (x) linhas.push(`${R.razaoL} ${l === 'D' ? 'direito' : 'esquerdo'}: ${fmt(x.r * 100, 0)}% (referência ${x.refTxt || '-'}${x.desvio != null ? `, ${stDesvio(x.desvio, c)?.[1].toLowerCase()}` : ''})`);
     }
     for (const l of linhas) { t(l, M, y); y += 5; }
+    y = await blocoVisual(doc, av, A, c, M, y + 2, W - 2 * M);
 
     const serie = (g: 'ag' | 'an'): Serie[] => (['D', 'E'] as Lado[]).flatMap(l => {
       const cv = av.slots[`${g}${l}` as Slot]?.curva;
@@ -212,108 +290,94 @@ export async function gerarRelatorioCliente(d: DadosRelatorio) {
   try { await addLogoToDoc(doc, W - M - 16, 9, 16, d.logoUrl); } catch { /* logo é opcional no relatório */ }
   doc.setFont('helvetica', 'bold'); doc.setFontSize(19); doc.setTextColor(20); t('Sua avaliação de força', M, y + 3);
   y += 10; doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(70);
-  t(`${d.paciente} · ${dataBR(d.data)} · ${d.itens.map(i => i.A.R.l).join(', ')}`, M, y);
-  if (d.profissional) { y += 5; t(`Avaliado por ${d.profissional}`, M, y); }
+  t(`${d.paciente} · ${dataBR(d.data)}`, M, y);
+  if (d.itens[0]) { y += 5; t(linhaSujeito(d.itens[0].av.sujeito), M, y); }
+  if (d.profissional) { y += 5; t(`Avaliador: ${d.profissional}`, M, y); }
+  y += 2; doc.setDrawColor(210); doc.line(M, y, W - M, y);
   y += 9;
 
   doc.setTextColor(20);
-  const STATUS_CLIENTE: Record<string, string> = { ok: 'Bom', warn: 'Atenção', bad: 'Precisa melhorar', info: '' };
-  const comStatus = (txt: string, st: Status, x: number, yy: number) => {
-    if (!st) { doc.setTextColor(140); t('-', x, yy); doc.setTextColor(20); return; }
+  const celula = (txt: string, st: Status, x: number, yy: number) => {
+    if (!st || st[0] === 'info') { t(txt, x, yy); return; }
     bolinha(doc, st, x + 1.3, yy - 1.1, 1.3);
-    doc.setFont('helvetica', 'bold'); corStatus(doc, st); t(`${txt}${STATUS_CLIENTE[st[0]] ? ` ${STATUS_CLIENTE[st[0]]}` : ''}`, x + 3.8, yy);
+    doc.setFont('helvetica', 'bold'); corStatus(doc, st); t(txt, x + 3.8, yy);
     doc.setFont('helvetica', 'normal'); doc.setTextColor(20);
   };
-  const lado = (l: string) => (l === 'D' ? 'Direito' : 'Esquerdo');
 
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); t('Sua força em cada movimento', M, y); y += 5;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8); doc.setTextColor(80);
-  y = par('Verde = bom, amarelo = atenção, vermelho = precisa melhorar. "Músculos opostos" compara os músculos que fazem movimentos contrários; "cansaço" é quanto a força cai durante a contração sustentada.', M, y, W - 2 * M, 4);
-  doc.setTextColor(20); y += 3;
-  const cx = [M, 76, 112, 148];
+  doc.setFontSize(8.8); doc.setTextColor(80);
+  let lx = M;
+  for (const [k, l] of [['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Ruim']] as [string, string][]) {
+    bolinha(doc, [k as 'ok', ''], lx + 1.5, y - 1.1, 1.6); t(l, lx + 4.5, y); lx += doc.getTextWidth(l) + 10;
+  }
+  doc.setDrawColor(120); doc.setLineDashPattern([0.8, 0.6], 0); doc.circle(lx + 2, y - 1.1, 1.8); doc.setLineDashPattern([], 0); t('Possível ponto de dor', lx + 5.5, y);
+  y += 4.5;
+  y = par(`D = direito, E = esquerdo. Diferença entre os lados: até ${100 - c.lsiAdequado}% bom, até ${100 - c.lsiImportante}% atenção, acima disso ruim. A cor de cada músculo no desenho junta a força para a idade e o sexo, a diferença entre os lados e o equilíbrio entre músculos opostos.`, M, y, W - 2 * M, 3.9);
+  doc.setTextColor(20); y += 4;
+
+  const cx = [M, 66, 94, 122, 156];
   for (const { av, A } of d.itens) {
     const R = A.R;
-    if (y > 245) { doc.addPage(); y = 18; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); t(R.l, M, y); y += 5;
-    doc.setFontSize(8.6); doc.setTextColor(90);
-    ['Movimento', 'Direito', 'Esquerdo', 'Direito x esquerdo'].forEach((h, k) => t(h, cx[k], y));
+    if (y > 200) { doc.addPage(); y = 18; }
+    doc.setFillColor(243, 245, 247); doc.rect(M, y - 4.6, W - 2 * M, 7, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); t(R.l, M + 2, y); y += 5;
+    y = await blocoVisual(doc, av, A, c, M, y, W - 2 * M);
+    doc.setFontSize(8.4); doc.setTextColor(90); doc.setFont('helvetica', 'bold');
+    ['Movimento', 'Direito', 'Esquerdo', 'Referência', 'Direito x esquerdo'].forEach((h, k) => t(h, cx[k], y));
     doc.setTextColor(20); y += 1.6; doc.setDrawColor(215); doc.line(M, y, W - M, y); y += 4.6;
-    doc.setFontSize(9.2);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
     for (const g of ['ag', 'an'] as const) {
-      const dv = av.slots[`${g}D` as Slot]?.metricas.pico, ev = av.slots[`${g}E` as Slot]?.metricas.pico;
-      if (dv == null && ev == null) continue;
-      doc.setFont('helvetica', 'normal'); t(`Força · ${g === 'ag' ? R.ag : R.an}`, cx[0], y);
-      t(dv == null ? '-' : `${fmt(disp(dv), 1)} ${u}`, cx[1], y); t(ev == null ? '-' : `${fmt(disp(ev), 1)} ${u}`, cx[2], y);
+      const sD = A.slots[`${g}D` as Slot], sE = A.slots[`${g}E` as Slot];
+      if (!sD && !sE) continue;
+      t(`Força - ${g === 'ag' ? R.ag : R.an}`, cx[0], y);
+      ([[sD, 1], [sE, 2]] as const).forEach(([sl, k]) => { if (sl) celula(`${fmt(disp(sl.pico), 1)} ${u}`, stZ(sl.z), cx[k], y); else t('-', cx[k], y); });
+      const ref = sD?.esperado ?? sE?.esperado, min = sD?.minimo ?? sE?.minimo;
+      t(ref != null && min != null ? `~${fmt(disp(ref), 1)} (mín. ${fmt(disp(min), 1)})` : '-', cx[3], y);
       const L = g === 'ag' ? A.lsiAg : A.lsiAn;
-      if (L) { const st = stLSI(L.v, c); comStatus(st?.[0] === 'ok' ? 'Equilibrado' : `${lado(L.fraco)} ${fmt(100 - L.v, 0)}% mais fraco`, st, cx[3], y); }
-      else t('-', cx[3], y);
-      y += 5.4;
+      if (L) { const st = stLSI(L.v, c); celula(st?.[0] === 'ok' ? 'Equilibrado' : `${L.fraco} ${fmt(100 - L.v, 0)}% mais fraco`, st, cx[4], y); }
+      else t('-', cx[4], y);
+      y += 5.2;
     }
     if (A.razoes.D || A.razoes.E) {
-      t('Músculos opostos', cx[0], y);
-      (['D', 'E'] as const).forEach((l, k) => { const x = A.razoes[l]; if (x) comStatus(`${fmt(x.r * 100, 0)}%`, x.desvio == null ? ['info', ''] : stDesvio(x.desvio, c), cx[k + 1], y); else t('-', cx[k + 1], y); });
-      const ref = (A.razoes.D || A.razoes.E)?.refTxt;
-      doc.setFontSize(8.2); doc.setTextColor(90); t(`${R.razaoL.split(' (')[0]}${ref ? `, esperado ${ref}` : ''}`, cx[3], y); doc.setTextColor(20); doc.setFontSize(9.2);
-      y += 5.4;
+      t(R.razaoL.split(' (')[0], cx[0], y);
+      (['D', 'E'] as const).forEach((l, k) => { const x = A.razoes[l]; if (x) celula(`${fmt(x.r * 100, 0)}%`, x.desvio == null ? null : stDesvio(x.desvio, c), cx[k + 1], y); else t('-', cx[k + 1], y); });
+      t((A.razoes.D || A.razoes.E)?.refTxt || '-', cx[3], y);
+      doc.setFontSize(7.8); doc.setTextColor(100); t('agonista x antagonista', cx[4], y); doc.setTextColor(20); doc.setFontSize(9);
+      y += 5.2;
     }
     for (const g of ['ag', 'an'] as const) {
       const fd = A.slots[`${g}D` as Slot]?.fadiga, fe = A.slots[`${g}E` as Slot]?.fadiga;
       if (fd == null && fe == null) continue;
-      t(`Cansaço · ${g === 'ag' ? R.ag : R.an}`, cx[0], y);
-      [fd, fe].forEach((f, k) => { if (f == null) t('-', cx[k + 1], y); else comStatus(`${fmt(f, 0)}%`, stFadiga(f, c), cx[k + 1], y); });
-      y += 5.4;
+      t(`Fadiga - ${g === 'ag' ? R.ag : R.an}`, cx[0], y);
+      [fd, fe].forEach((f, k) => { if (f == null) t('-', cx[k + 1], y); else celula(`${fmt(f, 0)}%`, stFadiga(f, c), cx[k + 1], y); });
+      t(`até ${c.fadBaixa}%`, cx[3], y);
+      y += 5.2;
     }
-    y += 3;
+    const kgs = (['D', 'E'] as Lado[]).flatMap(l => (['ag', 'an'] as const).map(g => A.slots[`${g}${l}` as Slot]?.nkg)).some(v => v != null);
+    if (!kgs && !A.slots.agD?.esperado && !A.slots.agE?.esperado) { doc.setFontSize(7.8); doc.setTextColor(110); t('Referência de força indisponível: informe idade e sexo (e o braço de alavanca no joelho).', M, y); doc.setTextColor(20); y += 4; }
+    y += 5;
   }
 
-  const sim = itensSimetria(d.itens, c), raz = itensRazao(d.itens, c);
   const dores = achadosDor(d.itens, c);
-  try {
-    const larg = (W - 2 * M - 6) / 2, alt = (larg * 480) / 460;
-    if (y + alt + 22 > 285) { doc.addPage(); y = 18; }
-    const [p1, p2] = await Promise.all([
-      svgParaPNG(mapaMuscularSVG(sim, dores.filter(a => a.tipo === 'unilateral').flatMap(a => a.aneis))),
-      svgParaPNG(mapaMuscularSVG(raz, dores.filter(a => a.tipo === 'razao').flatMap(a => a.aneis))),
-    ]);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
-    t('Direito x esquerdo', M, y); t('Músculos opostos', M + larg + 6, y); y += 2;
-    doc.addImage(p1, 'PNG', M, y, larg, alt); doc.addImage(p2, 'PNG', M + larg + 6, y, larg, alt);
-    doc.setDrawColor(225); doc.rect(M, y, larg, alt); doc.rect(M + larg + 6, y, larg, alt);
-    y += alt + 5;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8);
-    let lx = M;
-    for (const [k, l] of [['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Precisa melhorar'], ['info', 'Sem comparação']] as [string, string][]) {
-      bolinha(doc, [k as 'ok', ''], lx + 1.5, y - 1.1, 1.6); t(l, lx + 4.5, y); lx += doc.getTextWidth(l) + 10;
-    }
-    doc.setDrawColor(120); doc.setLineDashPattern([0.8, 0.6], 0); doc.circle(lx + 2, y - 1.1, 1.8); doc.setLineDashPattern([], 0); t('Possível ponto de dor', lx + 5.5, y);
-    y += 4.6; doc.setFontSize(8.4); doc.setTextColor(80);
-    const nums = sim.map(i => `${i.numero} ${MUSCULOS[i.regiao]?.[i.g]?.nome ?? ''}`).join(' · ');
-    y = par(`${nums}. Na vista de frente, o seu lado direito aparece à esquerda da imagem.`, M, y, W - 2 * M, 3.8);
-    doc.setTextColor(20); y += 4;
-  } catch { /* sem os desenhos, o relatório segue só com o texto */ }
-
   if (y > 250) { doc.addPage(); y = 18; }
   doc.setFont('helvetica', 'bold'); doc.setFontSize(12); t('Relação com dores', M, y); y += 5.5;
   if (!dores.length) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9.6); y = par('Não apareceram desequilíbrios que sugiram sobrecarga nas articulações avaliadas.', M, y, W - 2 * M); }
   for (const a of dores) {
     const ls = doc.splitTextToSize(seguro(a.texto), W - 2 * M - 6);
-    if (y + 6 + ls.length * 4.5 > 282) { doc.addPage(); y = 18; }
+    if (y + 6 + ls.length * 4.4 > 282) { doc.addPage(); y = 18; }
     bolinha(doc, a.st, M + 1.6, y - 1.2, 1.7);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.8); t(a.titulo, M + 6, y);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.4); doc.text(ls, M + 6, y + 4.6); y += 4.6 + ls.length * 4.5 + 2.5;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.6); t(a.titulo.replace(' esquerdo', ' E').replace(' direito', ' D'), M + 6, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.2); doc.text(ls, M + 6, y + 4.4); y += 4.4 + ls.length * 4.4 + 2.2;
   }
-  doc.setFontSize(8); doc.setTextColor(110); y = par(AVISO_DOR, M, y + 1, W - 2 * M, 3.6); doc.setTextColor(20); y += 5;
+  doc.setFontSize(7.8); doc.setTextColor(110); y = par(AVISO_DOR, M, y + 1, W - 2 * M, 3.5); doc.setTextColor(20); y += 5;
 
   if (y > 255) { doc.addPage(); y = 18; }
   doc.setFont('helvetica', 'bold'); doc.setFontSize(12); t('Os músculos avaliados', M, y); y += 7;
   const pk = (av: Avaliacao, k: Slot) => av.slots[k]?.metricas.pico ?? null;
-  let n = 0;
   for (const { av, A } of d.itens) {
     for (const g of ['ag', 'an'] as const) {
       const info = MUSCULOS[av.regiao]?.[g];
       const d1 = pk(av, `${g}D` as Slot), e1 = pk(av, `${g}E` as Slot);
       if (!info || (d1 == null && e1 == null)) continue;
-      n++;
       const frases: string[] = [];
       frases.push(`Fica na ${info.local} e ${info.funcao}.`);
       frases.push(`Força medida: direito ${fmt(disp(d1), 1)} ${u}, esquerdo ${fmt(disp(e1), 1)} ${u}.`);
@@ -322,14 +386,13 @@ export async function gerarRelatorioCliente(d: DadosRelatorio) {
       const zs = (['D', 'E'] as Lado[]).map(l => A.slots[`${g}${l}` as Slot]?.z).filter((z): z is number => z != null);
       if (zs.length) frases.push(`A força está ${fraseNorma(Math.min(...zs))}.`);
       const texto = frases.join(' ');
-      const ls = doc.splitTextToSize(seguro(texto), W - 2 * M - 10);
+      const ls = doc.splitTextToSize(seguro(texto), W - 2 * M - 6);
       if (y + 8 + ls.length * 4.6 > 282) { doc.addPage(); y = 18; }
-      doc.setFillColor(31, 41, 55); doc.circle(M + 3.5, y - 1.3, 3.5, 'F');
-      doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); t(String(n), M + 3.5, y - 0.1, { align: 'center' });
-      doc.setTextColor(20); doc.setFontSize(11); t(info.nome, M + 10, y);
+      doc.setFillColor(31, 41, 55); doc.circle(M + 2, y - 1.3, 1.4, 'F');
+      doc.setTextColor(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); t(info.nome, M + 6, y);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9.6);
-      doc.text(ls, M + 10, y + 5.2);
-      y += 5.2 + ls.length * 4.6 + 4;
+      doc.text(ls, M + 6, y + 4.8);
+      y += 4.8 + ls.length * 4.4 + 3;
     }
   }
 

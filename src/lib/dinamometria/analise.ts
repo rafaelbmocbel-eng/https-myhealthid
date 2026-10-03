@@ -309,7 +309,8 @@ export const stFadiga = (v: number | null | undefined, c: Criterios): Status => 
 export const stOsc = (v: number | null | undefined, c: Criterios): Status => (v == null ? null : v <= c.oscEstavel ? ['ok', 'Estável'] : v <= c.oscInstavel ? ['warn', 'Oscilante'] : ['bad', 'Instável']);
 export const stZ = (z: number | null | undefined): Status => (z == null ? null : z >= -1 ? ['ok', 'Na norma'] : z >= -2 ? ['warn', 'Abaixo da média'] : ['bad', 'Fraqueza (z < −2)']);
 
-export interface SlotAnalise extends Metricas { z: number | null; pctNorma: number | null; precisaBraco: boolean; nkg: number | null }
+// esperado/minimo: força (N) média e limite inferior do normal (média − 1 DP) para idade e sexo.
+export interface SlotAnalise extends Metricas { z: number | null; pctNorma: number | null; precisaBraco: boolean; nkg: number | null; esperado: number | null; minimo: number | null }
 export interface Razao { r: number; ref: number | null; refTxt: string; desvio: number | null }
 export interface Analise {
   R: Regiao; slots: Partial<Record<Slot, SlotAnalise>>; lsiAg: LSI | null; lsiAn: LSI | null; razoes: Partial<Record<Lado, Razao>>;
@@ -335,13 +336,17 @@ export function analisar(av: Avaliacao, c: Criterios): Analise {
     const m = av.slots[k]?.metricas;
     if (!m) continue;
     const ref = norma(k.startsWith('ag') ? R.mAg : R.mAn, s);
-    let z: number | null = null, pctNorma: number | null = null, precisaBraco = false;
+    let z: number | null = null, pctNorma: number | null = null, precisaBraco = false, esperado: number | null = null, minimo: number | null = null;
     if (ref) {
       let v = m.pico;
       if (ref.nm) { if (av.braco) v = (m.pico * av.braco) / 100; else precisaBraco = true; }
-      if (!precisaBraco) { z = (v - ref.media) / ref.desvio; pctNorma = (v / ref.media) * 100; }
+      if (!precisaBraco) {
+        z = (v - ref.media) / ref.desvio; pctNorma = (v / ref.media) * 100;
+        const fator = ref.nm ? 100 / (av.braco as number) : 1;
+        esperado = ref.media * fator; minimo = (ref.media - ref.desvio) * fator;
+      }
     }
-    slots[k] = { ...m, z, pctNorma, precisaBraco, nkg: s.peso ? m.pico / s.peso : null };
+    slots[k] = { ...m, z, pctNorma, precisaBraco, nkg: s.peso ? m.pico / s.peso : null, esperado, minimo };
   }
   const razoes: Analise['razoes'] = {};
   for (const lado of ['D', 'E'] as Lado[]) {

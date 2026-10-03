@@ -23,8 +23,8 @@ import {
   SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
   resumoCurtoAnalise, stLSI, stDesvio, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
 } from '@/lib/dinamometria/analise';
-import { gerarRelatorioDinamometria, gerarRelatorioCliente, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
-import { mapaMuscularSVG, itensSimetria, itensRazao, MUSCULOS, COR_STATUS } from '@/lib/dinamometria/anatomia';
+import { gerarRelatorioDinamometria, gerarRelatorioCliente, gruposBarras, type GrupoBarras, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
+import { mapaMuscularSVG, itensAvatar, COR_STATUS } from '@/lib/dinamometria/anatomia';
 import { achadosDor, AVISO_DOR } from '@/lib/dinamometria/dor';
 
 const COR: Record<Lado, string> = { D: '#2A78D6', E: '#EB6834' };
@@ -86,6 +86,46 @@ function Sinal({ st, children }: { st: Status; children: ReactNode }) {
     <span className={cn('inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-semibold whitespace-nowrap', TINTA[st[0]])} title={st[1]}>
       <i className="h-2 w-2 rounded-full" style={{ background: COR_STATUS[st[0]] }} />{children}
     </span>
+  );
+}
+
+// Barras D × E com a faixa normal para idade e sexo (média ± 1 DP) ao fundo.
+function Barras({ grupos, u }: { grupos: GrupoBarras[]; u: string }) {
+  const max = Math.max(1, ...grupos.flatMap(g => [g.D, g.E, g.ref != null && g.min != null ? 2 * g.ref - g.min : null]).filter((v): v is number => v != null)) * 1.12;
+  const pct = (v: number) => `${(v / max) * 100}%`;
+  return (
+    <div className="space-y-4">
+      {grupos.map(g => (
+        <div key={g.nome} className="space-y-1">
+          <p className="text-sm font-semibold">{g.nome}</p>
+          <div className="relative space-y-1.5 py-1">
+            {g.ref != null && g.min != null && (
+              <>
+                <span className="absolute inset-y-0 rounded bg-emerald-500/15" style={{ left: `calc(1.25rem + (100% - 1.25rem) * ${g.min / max})`, width: `calc((100% - 1.25rem) * ${(2 * (g.ref - g.min)) / max})` }} />
+                <span className="absolute inset-y-0 border-l-2 border-dashed border-emerald-600" style={{ left: `calc(1.25rem + (100% - 1.25rem) * ${g.ref / max})` }} />
+              </>
+            )}
+            {(['D', 'E'] as Lado[]).map(l => {
+              const v = g[l];
+              return (
+                <div key={l} className="relative flex items-center gap-1.5">
+                  <span className="w-3.5 text-xs font-bold text-muted-foreground">{l}</span>
+                  <div className="flex-1 flex items-center gap-1.5">
+                    {v != null && <span className="h-5 rounded" style={{ width: pct(v), background: COR[l] }} />}
+                    <span className="text-xs font-mono font-semibold whitespace-nowrap">{v == null ? '—' : `${fmt(v, 1)} ${u}`}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: COR.D }} />Direito</span>
+        <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: COR.E }} />Esquerdo</span>
+        {grupos.some(g => g.ref != null) ? <span className="flex items-center gap-1"><i className="h-2.5 w-3.5 rounded-sm bg-emerald-500/25" />Faixa normal para idade e sexo (tracejado = média)</span> : <span>Sem faixa normal: informe idade e sexo{grupos.length ? ' (no joelho, também o braço de alavanca)' : ''}.</span>}
+      </div>
+    </div>
   );
 }
 
@@ -336,14 +376,10 @@ export default function Dinamometria() {
   const anterior = sessao && atual ? anteriorDe(sessao, atual.regiao) : null;
   const texto = atual && A ? interpretar(atual, A, crit, anterior) : [];
   const dores = useMemo(() => achadosDor(analises, crit), [analises, crit]);
-  const avatares = useMemo(() => {
-    const sim = itensSimetria(analises, crit), raz = itensRazao(analises, crit);
-    return {
-      legenda: sim,
-      sim: sim.length ? mapaMuscularSVG(sim, dores.filter(a => a.tipo === 'unilateral').flatMap(a => a.aneis)) : '',
-      raz: raz.length ? mapaMuscularSVG(raz, dores.filter(a => a.tipo === 'razao').flatMap(a => a.aneis)) : '',
-    };
-  }, [analises, crit, dores]);
+  const avatares = useMemo(() => Object.fromEntries(analises.map(x => [
+    x.av.regiao,
+    mapaMuscularSVG(itensAvatar([x], crit, crit.unidade), dores.filter(a => a.regiao === x.av.regiao).flatMap(a => a.aneis), true),
+  ])), [analises, crit, dores]);
 
   const copiar = async () => {
     if (!sessao) return;
@@ -743,7 +779,9 @@ export default function Dinamometria() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    {([['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Ruim'], ['info', 'Sem comparação']] as [string, string][]).map(([k, l]) => <span key={k} className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full" style={{ background: COR_STATUS[k] }} />{l}</span>)}
+                    {([['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Ruim']] as [string, string][]).map(([k, l]) => <span key={k} className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full" style={{ background: COR_STATUS[k] }} />{l}</span>)}
+                    <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full border-2 border-dashed border-muted-foreground" />Possível ponto de dor</span>
+                    <span>No avatar, a cor de cada lado junta a força para idade e sexo, a diferença entre os lados e o equilíbrio agonista × antagonista. Na vista de frente, o lado direito do paciente aparece à esquerda.</span>
                   </div>
                 </Card>
 
@@ -754,35 +792,45 @@ export default function Dinamometria() {
                   const temFadiga = grupos.filter(g => Ax.slots[`${g}D` as Slot]?.fadiga != null || Ax.slots[`${g}E` as Slot]?.fadiga != null);
                   const ref = (Ax.razoes.D || Ax.razoes.E)?.refTxt;
                   return (
-                    <Card key={av.regiao} className="p-4 space-y-3">
+                    <Card key={av.regiao} className="p-4 space-y-4">
                       <p className="font-semibold">{R.l}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-4 items-center">
+                        <div className="rounded-lg border border-border/50 bg-white w-full max-w-[460px] mx-auto [&_svg]:w-full [&_svg]:h-auto" dangerouslySetInnerHTML={{ __html: avatares[av.regiao] || '' }} />
+                        <Barras grupos={gruposBarras(Ax, u)} u={u} />
+                      </div>
                       <div className="overflow-x-auto rounded-lg border border-border/50">
-                        <table className="w-full text-sm min-w-[560px]">
+                        <table className="w-full text-sm min-w-[680px]">
                           <thead className="bg-muted/50 text-xs text-muted-foreground">
                             <tr>
                               <th className="px-3 py-2 text-left font-semibold">Movimento</th>
                               <th className="px-3 py-2 text-left font-semibold"><Bolinha lado="D" />Direito</th>
                               <th className="px-3 py-2 text-left font-semibold"><Bolinha lado="E" />Esquerdo</th>
-                              <th className="px-3 py-2 text-left font-semibold">Direito × esquerdo</th>
+                              <th className="px-3 py-2 text-left font-semibold">Referência</th>
+                              <th className="px-3 py-2 text-left font-semibold">Direito × esquerdo <span className="font-normal">(bom até {100 - crit.lsiAdequado}%)</span></th>
                             </tr>
                           </thead>
                           <tbody>
                             {grupos.map(g => {
                               const L = g === 'ag' ? Ax.lsiAg : Ax.lsiAn;
                               const st = L ? stLSI(L.v, crit) : null;
+                              const sD = Ax.slots[`${g}D` as Slot], sE = Ax.slots[`${g}E` as Slot];
+                              const esp = sD?.esperado ?? sE?.esperado, min = sD?.minimo ?? sE?.minimo;
+                              const forca = (sl?: typeof sD) => (sl == null ? '—' : sl.z == null ? <span className="font-mono">{fmt(disp(sl.pico), 1)} {u}</span> : <Sinal st={stZ(sl.z)}>{fmt(disp(sl.pico), 1)} {u}</Sinal>);
                               return (
                                 <tr key={g} className="border-t border-border/40">
-                                  <td className="px-3 py-2"><span className="font-medium">Força · {g === 'ag' ? R.ag : R.an}</span></td>
-                                  <td className="px-3 py-2 font-mono">{pico(`${g}D` as Slot) == null ? '—' : `${fmt(disp(pico(`${g}D` as Slot)), 1)} ${u}`}</td>
-                                  <td className="px-3 py-2 font-mono">{pico(`${g}E` as Slot) == null ? '—' : `${fmt(disp(pico(`${g}E` as Slot)), 1)} ${u}`}</td>
+                                  <td className="px-3 py-2"><span className="font-medium">Força · {g === 'ag' ? R.ag : R.an}</span>{(sD?.nkg ?? sE?.nkg) != null && <span className="block text-xs text-muted-foreground">D {fmt(sD?.nkg != null ? sD.nkg / UF[u] : null, 2)} · E {fmt(sE?.nkg != null ? sE.nkg / UF[u] : null, 2)} {u}/kg</span>}</td>
+                                  <td className="px-3 py-2">{forca(sD)}</td>
+                                  <td className="px-3 py-2">{forca(sE)}</td>
+                                  <td className="px-3 py-2 text-xs whitespace-nowrap">{esp != null && min != null ? <>≈ {fmt(disp(esp), 1)} {u}<span className="block text-muted-foreground">normal ≥ {fmt(disp(min), 1)}</span></> : <span className="text-muted-foreground">—</span>}</td>
                                   <td className="px-3 py-2">{L ? <Sinal st={st}>{st?.[0] === 'ok' ? `Equilibrado (${fmt(L.v, 0)}%)` : `${L.fraco === 'D' ? 'Direito' : 'Esquerdo'} ${fmt(100 - L.v, 0)}% mais fraco`}</Sinal> : <span className="text-xs text-muted-foreground">Falta um dos lados</span>}</td>
                                 </tr>
                               );
                             })}
                             {(Ax.razoes.D || Ax.razoes.E) && (
                               <tr className="border-t border-border/40">
-                                <td className="px-3 py-2"><span className="font-medium">Agonista × antagonista</span><span className="block text-xs text-muted-foreground">{R.razaoL}{ref ? ` · esperado ${ref}` : ''}</span></td>
+                                <td className="px-3 py-2"><span className="font-medium">Agonista × antagonista</span><span className="block text-xs text-muted-foreground">{R.razaoL}</span></td>
                                 {(['D', 'E'] as Lado[]).map(l => { const x = Ax.razoes[l]; return <td key={l} className="px-3 py-2">{x ? <Sinal st={x.desvio == null ? ['info', 'Sem referência'] : stDesvio(x.desvio, crit)}>{fmt(x.r * 100, 0)}%</Sinal> : '—'}</td>; })}
+                                <td className="px-3 py-2 text-xs whitespace-nowrap">{ref || '—'}</td>
                                 <td className="px-3 py-2 text-xs text-muted-foreground">Desequilíbrio aqui pode gerar dor na própria articulação.</td>
                               </tr>
                             )}
@@ -790,6 +838,7 @@ export default function Dinamometria() {
                               <tr key={`f${g}`} className="border-t border-border/40">
                                 <td className="px-3 py-2"><span className="font-medium">Índice de fadiga · {g === 'ag' ? R.ag : R.an}</span></td>
                                 {(['D', 'E'] as Lado[]).map(l => { const f = Ax.slots[`${g}${l}` as Slot]?.fadiga; return <td key={l} className="px-3 py-2">{f == null ? '—' : <Sinal st={stFadiga(f, crit)}>{fmt(f, 0)}%</Sinal>}</td>; })}
+                                <td className="px-3 py-2 text-xs whitespace-nowrap">até {crit.fadBaixa}%</td>
                                 <td className="px-3 py-2 text-xs text-muted-foreground">Queda da força na contração sustentada.</td>
                               </tr>
                             ))}
@@ -797,29 +846,15 @@ export default function Dinamometria() {
                         </table>
                       </div>
                       {!temFadiga.length && <p className="text-[11px] text-muted-foreground">{SLOTS.some(k => av.slots[k]?.curva) ? `Fadiga não calculada: a contração precisa ficar alta por pelo menos ${crit.platoMin} s.` : 'Fadiga exige o arquivo com a curva força × tempo (não sai só dos picos).'}</p>}
+                      {SLOTS.some(k => av.slots[k]?.curva) && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                          {graficoCurva(av, 'ag', R.ag)}
+                          {graficoCurva(av, 'an', R.an)}
+                        </div>
+                      )}
                     </Card>
                   );
                 })}
-
-                <Card className="p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <p className="font-semibold">Avatar{sessao.movs.length > 1 ? ' · todas as articulações' : ''}</p>
-                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      {([['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Ruim']] as [string, string][]).map(([k, l]) => <span key={k} className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm" style={{ background: COR_STATUS[k] }} />{l}</span>)}
-                      <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full border-2 border-dashed border-muted-foreground" />Possível ponto de dor</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {([['Direito × esquerdo', 'O lado mais fraco fica amarelo ou vermelho. Círculos nas articulações vizinhas: possível sobrecarga.', avatares.sim], ['Agonista × antagonista', 'Em cada lado, o músculo relativamente fraco fica amarelo ou vermelho. Círculo na própria articulação: possível dor.', avatares.raz]] as const).map(([titulo, sub, svg]) => (
-                      <div key={titulo} className="space-y-1.5 min-w-0">
-                        <p className="text-sm font-semibold">{titulo}</p>
-                        <p className="text-xs text-muted-foreground">{sub}</p>
-                        <div className="rounded-lg border border-border/50 bg-white w-full [&_svg]:w-full [&_svg]:h-auto" dangerouslySetInnerHTML={{ __html: svg }} />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{avatares.legenda.map(it => `${it.numero} ${MUSCULOS[it.regiao]?.[it.g]?.nome ?? ''}`).join(' · ')}. Na vista de frente, o lado direito do paciente aparece à esquerda da imagem.</p>
-                </Card>
 
                 <Card className="p-4 space-y-3">
                   <p className="font-semibold">Relação com dores</p>
@@ -837,7 +872,7 @@ export default function Dinamometria() {
                 </Card>
 
                 <Button variant="outline" className="w-full" onClick={() => setDetalhes(v => !v)} aria-expanded={detalhes}>
-                  {detalhes ? 'Esconder detalhes técnicos' : 'Ver detalhes técnicos (curvas, métricas e interpretação)'}
+                  {detalhes ? 'Esconder detalhes técnicos' : 'Ver detalhes técnicos (métricas e interpretação)'}
                 </Button>
 
                 {detalhes && (<>
@@ -848,11 +883,6 @@ export default function Dinamometria() {
                     ))}
                   </div>
                 )}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {graficoCurva(atual, 'ag', A.R.ag)}
-                  {graficoCurva(atual, 'an', A.R.an)}
-                </div>
-
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
                   {SLOTS.some(k => A.slots[k]?.fadiga != null) && (
                     <Card className="p-4 space-y-3">
