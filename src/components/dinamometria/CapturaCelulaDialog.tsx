@@ -138,6 +138,15 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
     onOpenChange(false);
   };
 
+  const [testando, setTestando] = useState<string | null>(null);
+  const tentarInicio = async () => {
+    setTestando('…');
+    const ok = await celula.tentarComandosInicio((c) => setTestando(c));
+    setTestando(null);
+    if (ok) toast.success(`A célula começou com o comando ${ok}. Vou usar ele sozinho nas próximas vezes.`);
+    else toast.error('Nenhum comando comum funcionou. Me diga o que você fazia no Serial Bluetooth Terminal para os números aparecerem.');
+  };
+
   const enviarComando = async () => {
     if (!comando.trim()) return;
     try { await celula.enviar(comando.trim()); toast.success('Comando enviado'); } catch (e: any) { toast.error(e?.message || 'Falha ao enviar'); }
@@ -147,7 +156,7 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && gravando) parar(); onOpenChange(v); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Bluetooth className="h-4 w-4 text-primary" /> Célula de carga</DialogTitle>
           <DialogDescription>{titulo}</DialogDescription>
@@ -241,10 +250,10 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
             {verDados && (
               <div className="space-y-2">
                 <p className="text-[10px] text-muted-foreground tabular-nums">Pacotes recebidos: {pacotes}</p>
-                <pre className="max-h-32 overflow-auto rounded bg-muted p-2 text-[10px] leading-tight">{linhas.slice(-15).join('\n') || '(nada recebido ainda)'}</pre>
+                <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2 text-[10px] leading-tight">{linhas.slice(-15).join('\n') || '(nada recebido ainda)'}</pre>
                 <details className="text-[10px]">
                   <summary className="cursor-pointer text-muted-foreground">Canais da célula (diagnóstico)</summary>
-                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-muted p-2 leading-tight">{celula.diagnostico.join('\n') || '—'}</pre>
+                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2 leading-tight">{celula.diagnostico.join('\n') || '—'}</pre>
                 </details>
                 <div className="flex items-center gap-2">
                   <Label className="text-[11px] shrink-0">Número usado</Label>
@@ -258,6 +267,9 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
                     </SelectContent>
                   </Select>
                 </div>
+                <Button size="sm" variant="secondary" className="w-full" onClick={tentarInicio} disabled={!!testando || gravando}>
+                  {testando ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Testando {testando}</> : 'Tentar comandos de início automaticamente'}
+                </Button>
                 <div className="flex gap-2">
                   <Input value={comando} onChange={(e) => setComando(e.target.value)} placeholder="Enviar comando (opcional)" className="h-8 text-xs" />
                   <Button size="sm" variant="outline" onClick={enviarComando}>Enviar</Button>

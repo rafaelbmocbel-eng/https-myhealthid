@@ -56,6 +56,10 @@ export function valorDaLinha(linha: string, campo: CampoValor): number | null {
   return nums[campo] ?? null;
 }
 
+const CHAVE_INICIO = 'mh.celula.comandoInicio';
+// Sem "C"/"CAL": em várias células isso inicia calibração.
+const COMANDOS_INICIO = ['', 'S', 's', 'START', 'start', '1', 'R', 'r', 'G', 'A', '$S', '$START', 'ON', 'AT+START'];
+
 const curto = (uuid: string) => (/^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$/i.test(uuid) ? uuid.slice(4, 8) : uuid);
 
 class CelulaBle {
@@ -128,6 +132,11 @@ class CelulaBle {
       try { await c.startNotifications(); } catch (e: any) { diag.push(`  ! não consegui escutar ${curto(c.uuid)}: ${e?.message || e}`); }
     }
     this.avisarStatus();
+    let salvo: string | null = null;
+    try { salvo = localStorage.getItem(CHAVE_INICIO); } catch { /* sem armazenamento */ }
+    if (salvo != null && write) {
+      try { await this.enviar(salvo); } catch { /* célula recusou — o usuário pode tentar de novo pelo painel */ }
+    }
   }
 
   private aoReceber = (ev: any) => {
@@ -158,11 +167,32 @@ class CelulaBle {
     }
   };
 
-  async enviar(texto: string) {
+  async enviar(texto: string, comQuebra = true) {
     if (!this.writeChar) throw new Error('A célula não aceita comandos.');
-    const dados = new TextEncoder().encode(texto.endsWith('\n') ? texto : `${texto}\r\n`);
+    const dados = new TextEncoder().encode(comQuebra && !texto.endsWith('\n') ? `${texto}\r\n` : texto);
+    if (!dados.length) return;
     if (this.writeChar.properties.writeWithoutResponse) await this.writeChar.writeValueWithoutResponse(dados);
     else await this.writeChar.writeValue(dados);
+  }
+
+  /**
+   * Várias células seriais só transmitem depois de um comando de início. Testa
+   * os mais comuns (evitando calibração) e para no primeiro que fizer chegar
+   * dados; o que funcionou é lembrado e enviado sozinho nas próximas conexões.
+   */
+  async tentarComandosInicio(progresso?: (cmd: string) => void): Promise<string | null> {
+    for (const cmd of COMANDOS_INICIO) {
+      if (!this.status.conectado) return null;
+      progresso?.(cmd === '' ? '(Enter)' : cmd);
+      const antes = this.pacotes;
+      try { await this.enviar(cmd); } catch { /* comando recusado — tenta o próximo */ }
+      await new Promise((r) => setTimeout(r, 900));
+      if (this.pacotes > antes) {
+        try { localStorage.setItem(CHAVE_INICIO, cmd); } catch { /* sem armazenamento — só não lembra */ }
+        return cmd === '' ? '(Enter)' : cmd;
+      }
+    }
+    return null;
   }
 
   private desligarNotificacao() {
