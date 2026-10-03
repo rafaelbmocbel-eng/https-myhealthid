@@ -273,7 +273,8 @@ export interface ItemRelatorio { av: Avaliacao; A: Analise; anterior?: { data: s
 export interface DadosRelatorio { paciente: string; profissional?: string; logoUrl?: string; data: string; c: Criterios; itens: ItemRelatorio[] }
 
 // ───────── Relatório técnico (uma página por articulação) ─────────
-export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
+// apenasGerar: devolve o PDF (Blob) sem baixar — usado na pré-visualização.
+export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar = false): Promise<{ blob: Blob; nome: string } | void> {
   const { c } = d;
   const u = c.unidade;
   const disp = (N?: number | null) => (N == null ? null : N / UF[u]);
@@ -417,8 +418,8 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
       doc.setLineWidth(0.2);
       y += hTab + 3.2;
       doc.setFontSize(6.8); doc.setTextColor(120);
-      t(`RFD em ${u}/s. Simetria: lado mais forte de cada músculo = 100%. ${R.an}/${R.ag}: razão do mesmo lado (referência ${A.razoes.D?.refTxt || A.razoes.E?.refTxt || '-'}). Cores: verde adequado, amarelo atenção, vermelho alterado.`, M, y);
-      doc.setTextColor(20); y += 5;
+      y = par2(doc, `RFD em ${u}/s. Simetria: lado mais forte de cada músculo = 100%. ${R.an}/${R.ag}: razão do mesmo lado (referência ${A.razoes.D?.refTxt || A.razoes.E?.refTxt || '-'}). Cores: verde adequado, amarelo atenção, vermelho alterado.`, M, y, larg, 3);
+      doc.setTextColor(20); y += 2;
     }
 
     // Simetria e equilíbrio: cartões com valor, cor e o que significa.
@@ -539,7 +540,9 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(20); doc.text(ls, M, yr); yr += ls.length * 3.7;
     doc.setFontSize(7.8); doc.setTextColor(100); doc.text(uso, M + 4, yr); yr += uso.length * 3.5 + 2;
   });
-  doc.save(nomeArquivo(d.paciente, 'Dinamometria', d.data));
+  const nomeT = nomeArquivo(d.paciente, 'Dinamometria', d.data);
+  if (apenasGerar) return { blob: doc.output('blob'), nome: nomeT };
+  doc.save(nomeT);
 }
 
 function fraseSimetria(v: number, c: Criterios) {
@@ -554,7 +557,7 @@ function fraseNorma(z: number) {
 }
 
 // ───────── Relatório para o cliente (linguagem simples + mapa muscular) ─────────
-export async function gerarRelatorioCliente(d: DadosRelatorio) {
+export async function gerarRelatorioCliente(d: DadosRelatorio, apenasGerar = false): Promise<{ blob: Blob; nome: string } | void> {
   const { c } = d;
   const u = c.unidade;
   const disp = (N?: number | null) => (N == null ? null : N / UF[u]);
@@ -680,6 +683,8 @@ export async function gerarRelatorioCliente(d: DadosRelatorio) {
   else y = par('Seus resultados estão equilibrados. Manter os exercícios ajuda a preservar a força e prevenir lesões; a próxima avaliação vai mostrar a evolução.', M, y, W - 2 * M);
   y += 3; doc.setFontSize(8); doc.setTextColor(110);
   par(`Este relatório resume uma avaliação de força feita com dinamômetro e não substitui a consulta com o profissional que acompanha você. Valores normais: ${citar(['mckay', 'machado'])}.`, M, Math.max(y, 276), W - 2 * M, 3.6);
-  doc.save(nomeArquivo(d.paciente, 'Avaliacao_de_forca', d.data));
+  const nomeC = nomeArquivo(d.paciente, 'Avaliacao_de_forca', d.data);
+  if (apenasGerar) return { blob: doc.output('blob'), nome: nomeC };
+  doc.save(nomeC);
 }
 

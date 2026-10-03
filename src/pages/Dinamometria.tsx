@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
-import { Dumbbell, FileUp, Loader2, Trash2, FileDown, Copy, Save, FlaskConical, X, UserRound, Bluetooth } from 'lucide-react';
+import { Dumbbell, FileUp, Loader2, Trash2, Copy, Save, FlaskConical, X, Bluetooth, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -21,6 +21,7 @@ import { lerPlanilha, type Aba } from '@/lib/dinamometria/planilha';
 import CapturaCelulaDialog, { type CapturaCelula } from '@/components/dinamometria/CapturaCelulaDialog';
 import ExecucaoProtocoloDialog, { type ConfigProtocolo, type Etapa } from '@/components/dinamometria/ExecucaoProtocoloDialog';
 import BancadaTeste, { type EtapaBancada } from '@/components/dinamometria/BancadaTeste';
+import PreviaPdfDialog from '@/components/dinamometria/PreviaPdfDialog';
 import { celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
@@ -485,6 +486,21 @@ export default function Dinamometria() {
       profissional: profile ? `${profile.nome} ${profile.sobrenome || ''}`.trim() + (profile.crefito ? ` · CREFITO ${profile.crefito}` : '') : undefined,
       data: sessao.data, c: crit, itens,
     };
+  };
+
+  const [previaPdf, setPreviaPdf] = useState<{ blob: Blob; nome: string; titulo: string } | null>(null);
+  const verPrevia = async (tipo: 'tecnico' | 'cliente') => {
+    const d = dadosRelatorio();
+    if (!d) return;
+    setGerando(tipo);
+    try {
+      const r = tipo === 'tecnico' ? await gerarRelatorioDinamometria(d, true) : await gerarRelatorioCliente(d, true);
+      if (r) setPreviaPdf({ ...r, titulo: tipo === 'tecnico' ? 'Prévia · relatório técnico' : 'Prévia · relatório do cliente' });
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao montar a prévia');
+    } finally {
+      setGerando(null);
+    }
   };
 
   const pdf = async (tipo: 'tecnico' | 'cliente') => {
@@ -1003,8 +1019,8 @@ export default function Dinamometria() {
                         </Select>
                       )}
                       <Button size="sm" variant="outline" onClick={copiar}><Copy className="h-3.5 w-3.5 mr-1" />Copiar interpretação</Button>
-                      <Button size="sm" variant="outline" onClick={() => pdf('tecnico')} disabled={!!gerando}>{gerando === 'tecnico' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <FileDown className="h-3.5 w-3.5 mr-1" />}Relatório técnico</Button>
-                      <Button size="sm" onClick={() => pdf('cliente')} disabled={!!gerando}>{gerando === 'cliente' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <UserRound className="h-3.5 w-3.5 mr-1" />}Relatório para o cliente</Button>
+                      <Button size="sm" variant="outline" onClick={() => verPrevia('tecnico')} disabled={!!gerando}>{gerando === 'tecnico' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Eye className="h-3.5 w-3.5 mr-1" />}Ver relatório técnico</Button>
+                      <Button size="sm" onClick={() => verPrevia('cliente')} disabled={!!gerando}>{gerando === 'cliente' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Eye className="h-3.5 w-3.5 mr-1" />}Ver relatório do cliente</Button>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -1354,6 +1370,7 @@ export default function Dinamometria() {
         </Tabs>
         {id && <p className="text-xs text-muted-foreground">As avaliações ficam nos <Link className="underline" to={`/pacientes/${id}`}>exames presenciais do paciente</Link> e o resumo entra nos planos de IA.</p>}
       </div>
+      <PreviaPdfDialog arquivo={previaPdf} titulo={previaPdf?.titulo || ''} onClose={() => setPreviaPdf(null)} />
       <ExecucaoProtocoloDialog
         open={protoAberto}
         onOpenChange={setProtoAberto}
