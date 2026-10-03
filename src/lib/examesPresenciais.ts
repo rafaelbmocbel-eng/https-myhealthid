@@ -87,7 +87,7 @@ export const EXAMES_PRESENCIAIS: TipoExame[] = [
   {
     id: 'dinamometria',
     nome: 'Dinamometria',
-    descricao: 'Força muscular (preensão/segmentar). Cole abaixo o texto do resultado.',
+    descricao: 'Força muscular (preensão/segmentar). Para importar o Excel do dinamômetro, use "Análise de dinamometria" acima; ou cole abaixo o texto do resultado.',
     campos: [
       { key: 'resultado', label: 'Resultado', tipo: 'textarea', placeholder: 'Cole aqui o texto do laudo da dinamometria…' },
       { key: 'observacoes', label: 'Observações', tipo: 'text', placeholder: 'Membro dominante, assimetrias…' },

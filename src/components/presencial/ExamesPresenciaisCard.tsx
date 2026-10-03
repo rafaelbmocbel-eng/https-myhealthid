@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Activity, ChevronDown, Plus, Trash2, Loader2, Camera, Stethoscope } from 'lucide-react';
+import { Activity, ChevronDown, Plus, Trash2, Loader2, Camera, Stethoscope, Dumbbell } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from '@/lib/dateSafe';
 import { cn } from '@/lib/utils';
@@ -152,6 +153,9 @@ export default function ExamesPresenciaisCard({ pacienteId, soLeitura = false, d
           {/* Registro de novo exame (oculto em modo só-leitura: portal/espelho) */}
           {!soLeitura && (
           <div className="rounded-lg border border-border/50 p-3 space-y-3">
+            <Button asChild variant="outline" className="w-full gap-1.5 border-dashed">
+              <Link to={`/pacientes/${pacienteId}/dinamometria`}><Dumbbell className="icon-sm" /> Análise de dinamometria (importar Excel)</Link>
+            </Button>
             {/* Importar bioimpedância de foto/print — a IA lê e preenche */}
             <input
               ref={fileRef}
@@ -264,7 +268,12 @@ export default function ExamesPresenciaisCard({ pacienteId, soLeitura = false, d
                       <li key={e.id} className="group flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
                         <div className="min-w-0 flex-1">
                           <p className="text-[13px] text-foreground">{resumoCurto(e.tipo, e.dados || {})}</p>
-                          <p className="text-[10px] text-muted-foreground">{format(parseISO(e.data_exame), 'dd/MM/yyyy')}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(parseISO(e.data_exame), 'dd/MM/yyyy')}
+                            {!soLeitura && e.tipo === 'dinamometria' && e.dados?.analise && (
+                              <> · <Link className="underline text-teal-700" to={`/pacientes/${pacienteId}/dinamometria`}>Abrir análise</Link></>
+                            )}
+                          </p>
                         </div>
                         {!soLeitura && (
                           <button
