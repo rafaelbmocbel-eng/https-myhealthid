@@ -2,11 +2,11 @@ import jsPDF from 'jspdf';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import {
   type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito, type Unidade,
-  SLOTS, UF, VALENCIAS, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stZ, interpretar, type Status,
+  SLOTS, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stZ, interpretar, type Status,
 } from './analise';
 import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, proporcaoSVG, itensAvatar } from './anatomia';
 import { achadosDor, AVISO_DOR } from './dor';
-import { REFERENCIAS, citar } from './referencias';
+import { REFERENCIAS, citar, citarCurto } from './referencias';
 
 const COR = { D: '#2A78D6', E: '#EB6834', ink: '#141922', ink2: '#4A5262', grade: '#E6E8EC', eixo: '#C3C6CE', fundo: '#FFFFFF' };
 
@@ -130,6 +130,12 @@ async function blocoVisual(doc: jsPDF, av: Avaliacao, A: Analise, c: Criterios, 
   return y + Math.max(altAv, altBar) + 3;
 }
 
+function par2(doc: jsPDF, txt: string, x: number, y: number, larg: number, alt = 3.7) {
+  const ls = doc.splitTextToSize(seguro(txt), larg);
+  doc.text(ls, x, y);
+  return y + ls.length * alt;
+}
+
 const seguro = (s: string) => String(s)
   .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≈/g, '~').replace(/−/g, '-').replace(/–/g, '-')
   .replace(/·/g, '-').replace(/×/g, 'x').replace(/÷/g, '/');
@@ -177,17 +183,53 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
     if (d.profissional) { y += 4.5; t(`Profissional: ${d.profissional}`, M, y); }
     y += 4; doc.setDrawColor(210); doc.line(M, y, W - M, y); y += 11;
 
-    doc.setTextColor(20); doc.setFontSize(9); t(`VALÊNCIAS · ${R.l.toUpperCase()} (cada uma avaliada separadamente)`, M, y - 5);
-    VALENCIAS.forEach((vl, i) => {
-      const v = A.valencias[vl.id];
-      const yy = y + 1 + i * 6;
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(20); t(vl.nome, M, yy);
-      t(v ? v.texto : 'n/d', 72, yy);
-      corStatus(doc, v?.status ?? null); t(v?.status ? v.status[1] : 'Sem dados', 92, yy);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.6); doc.setTextColor(90); t(v ? v.onde : '', 128, yy);
-    });
-    doc.setTextColor(20); doc.setFont('helvetica', 'normal');
-    y += 26;
+    // Referências teóricas (janela fisiológica) — não são resultados do paciente.
+    doc.setTextColor(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+    t(`REFERÊNCIAS TEÓRICAS · ${R.l.toUpperCase()} (janela fisiológica baseada em evidências)`, M, y - 5);
+    const razRef = (A.razoes.D || A.razoes.E)?.ref;
+    const janelaRazao = R.modo === 'min'
+      ? `>= ${fmt((R.min ?? 0.8) * 100, 0)}%`
+      : razRef != null ? `${fmt(razRef * (1 - c.razaoTol / 100) * 100, 0)}% a ${fmt(razRef * (1 + c.razaoTol / 100) * 100, 0)}% (média ~${fmt(razRef * 100, 0)}%)` : 'depende de idade e sexo';
+    const linhasRef: [string, string, string][] = [
+      ['Simetria bilateral', `>= ${c.lsiAdequado}% (diferença até ${100 - c.lsiAdequado}%); atenção ${c.lsiImportante}-${c.lsiAdequado}%`, citarCurto(['grindem', 'kyritsis', 'parkinson'])],
+      [`Agonista x antagonista (${R.razaoL.split(' (')[0]})`, janelaRazao, citarCurto(R.modo === 'min' ? ['tyler', 'whittaker'] : R.mAg === 'kn_ext' ? ['mckay', 'ishoi', 'taketomi'] : ['mckay', 'cools'])],
+      ...gruposBarras(A, u).filter(g => g.ref != null && g.min != null).map(g => [
+        `Força - ${g.nome}`, `${fmt(g.min, 1)} a ${fmt(2 * (g.ref as number) - (g.min as number), 1)} ${u} (média ${fmt(g.ref, 1)})`, citarCurto(['mckay', 'machado']),
+      ] as [string, string, string]),
+      ['Índice de fadiga', `<= ${c.fadBaixa}%; atenção ${c.fadBaixa}-${c.fadAlta}%`, 'Critério do serviço (sem norma publicada)'],
+      ['Curva de contração', `subida rápida e contínua; platô estável (oscilação <= ${c.oscEstavel}%)`, `${citarCurto(['maffiuletti'])}; oscilação: critério do serviço`],
+    ];
+    const cxR = [M, M + 46, M + 112];
+    doc.setFontSize(7.6); doc.setTextColor(100); doc.setFont('helvetica', 'bold');
+    ['Parâmetro', 'Janela fisiológica', 'Base científica'].forEach((h, k) => t(h, cxR[k], y));
+    let yr = y + 4.4;
+    for (const [nome, jan, base] of linhasRef) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.6); doc.setTextColor(20);
+      const ln = doc.splitTextToSize(seguro(nome), 44); doc.text(ln, cxR[0], yr);
+      doc.setFont('helvetica', 'normal');
+      const lj = doc.splitTextToSize(seguro(jan), 64); doc.text(lj, cxR[1], yr);
+      doc.setFontSize(7.6); doc.setTextColor(100);
+      const lb = doc.splitTextToSize(seguro(base), W - M - cxR[2]); doc.text(lb, cxR[2], yr);
+      yr += Math.max(ln.length, lj.length, lb.length) * 3.7 + 1.4;
+    }
+    // Curva de referência normalizada (% da força máxima), ilustrativa.
+    const ct: [number, number][] = [];
+    for (let s0 = 0; s0 <= 7; s0 += 0.02) {
+      const sub = s0 < 0.5 ? 0 : 1 - Math.exp(-(s0 - 0.5) / 0.18);
+      const queda = s0 < 1.5 ? 0 : Math.min(1, (s0 - 1.5) / 4.5) * 0.08;
+      const fim = s0 > 6 ? Math.max(0, 1 - (s0 - 6) / 0.6) : 1;
+      ct.push([s0, 100 * sub * (1 - queda) * fim * (1 + (s0 > 1 && s0 < 6 ? 0.012 * Math.sin(s0 * 9) : 0))]);
+    }
+    const imgRef = graficoPNG([{ nome: 'ref', cor: '#22A35A', pts: ct }], { xFmt: v => `${fmt(v, 0)} s`, yFmt: v => `${fmt(v, 0)}%`, yMin100: true, W: 520, H: 200 });
+    yr += 1;
+    doc.addImage(imgRef, 'PNG', M, yr, 70, 26.9);
+    doc.setFontSize(8.2); doc.setTextColor(60);
+    par2(doc, `Curva de contração de referência (ilustrativa, % da força máxima): subida rápida até o pico, com a taxa de desenvolvimento de força medida em 0-100 e 0-200 ms (${citarCurto(['maffiuletti'])}); platô estável, com oscilação até ${c.oscEstavel}%; e queda da força até ${c.fadBaixa}% no fim da contração sustentada.`, M + 74, yr + 4, W - 2 * M - 74);
+    doc.setTextColor(20);
+    y = yr + 30;
+    doc.setFontSize(7.4); doc.setTextColor(110); t('Estes valores são referências teóricas baseadas em evidências, não resultados do paciente.', M, y); doc.setTextColor(20);
+    y += 3; doc.setDrawColor(225); doc.line(M, y, W - M, y); y += 6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); t(`RESULTADOS DO PACIENTE · ${R.l.toUpperCase()}`, M, y); doc.setFont('helvetica', 'normal'); y += 6;
 
     const cab = ['Músculo', `Pico (${u})`, 'N/kg', 'z (norma)', `RFD 0-200 (${u}/s)`, 'Fadiga', 'Oscilação'];
     const cols = [M, 66, 90, 108, 130, 164, 184];

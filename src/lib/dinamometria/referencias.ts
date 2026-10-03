@@ -66,8 +66,13 @@ export const REFERENCIAS: Referencia[] = [
   r('cools', 'Cools et al., Knee Surg Sports Traumatol Arthrosc 2016',
     'Cools AM et al. Eccentric and isometric shoulder rotator cuff strength testing using a hand-held dynamometer: reference values for overhead athletes. Knee Surg Sports Traumatol Arthrosc. 2016;24(12):3838-3847.',
     '26294055', '10.1007/s00167-015-3755-9', 'Valores de referência de rotadores do ombro com dinamômetro manual e razão RE/RI.'),
+  r('maffiuletti', 'Maffiuletti et al., Eur J Appl Physiol 2016',
+    'Maffiuletti NA et al. Rate of force development: physiological and methodological considerations. Eur J Appl Physiol. 2016;116(6):1091-1116.',
+    '26941023', '10.1007/s00421-016-3346-6', 'Como medir a curva de contração: início da contração, taxa de desenvolvimento de força em 0–100 e 0–200 ms.'),
 ];
 
 export const REF = Object.fromEntries(REFERENCIAS.map(x => [x.id, x])) as Record<string, Referencia>;
 export const linkPubMed = (pmid: string) => `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
 export const citar = (ids: string[]) => ids.map(i => REF[i]?.curta).filter(Boolean).join('; ');
+// "Grindem 2016" a partir de "Grindem et al., Br J Sports Med 2016".
+export const citarCurto = (ids: string[]) => ids.map(i => REF[i]).filter(Boolean).map(x => `${x.curta.split(' ')[0]} ${x.curta.slice(-4)}`).join('; ');
