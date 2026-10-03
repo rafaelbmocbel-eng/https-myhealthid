@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bluetooth, BluetoothOff, CheckCircle2, Dumbbell, Loader2, Search, Target, UserPlus } from 'lucide-react';
+import { Bluetooth, BluetoothOff, CheckCircle2, ChevronDown, Dumbbell, FileText, History, Loader2, Search, Target, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { bluetoothDisponivel, celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
+import { REGIOES } from '@/lib/dinamometria/analise';
 import { cn } from '@/lib/utils';
 
 interface Pac { id: string; nome: string; sobrenome: string | null; data_nascimento: string | null; sexo: string | null }
@@ -113,6 +114,35 @@ export default function DinamometriaInicio() {
     else navigate(`/pacientes/${pac.id}/dinamometria/treino?${q}`);
   };
 
+  // Histórico do paciente: testes de força (com laudo) e treinos salvos.
+  const { data: historico, isLoading: carregandoHist } = useQuery({
+    queryKey: ['din-inicio-historico', pacId],
+    enabled: !!pacId,
+    queryFn: async () => {
+      const [ex, tr] = await Promise.all([
+        (supabase as any).from('exames_presenciais').select('id, data_exame, created_at, dados, resumo')
+          .eq('paciente_id', pacId).eq('tipo', 'dinamometria').order('data_exame', { ascending: false }).order('created_at', { ascending: false }),
+        (supabase as any).from('notas_prontuario').select('id, created_at, titulo, descricao')
+          .eq('paciente_id', pacId).eq('tipo', 'treino_dinamometria').order('created_at', { ascending: false }).limit(20),
+      ]);
+      const testes = ((ex.data || []) as any[]).map((e) => {
+        const a = e.dados?.analise;
+        const movs: any[] = Array.isArray(a?.movimentos) ? a.movimentos : a?.regiao ? [a] : [];
+        return {
+          id: e.id as string,
+          data: e.data_exame as string,
+          regioes: movs.map((m) => REGIOES[m.regiao]?.l || m.regiao).join(' · ') || 'Dinamometria',
+          laudo: (e.dados?.resultado as string) || '',
+          resumo: (e.resumo as string) || '',
+        };
+      });
+      const treinos = ((tr.data || []) as any[]).map((n) => ({ id: n.id as string, data: n.created_at as string, titulo: n.titulo as string, descricao: n.descricao as string }));
+      return { testes, treinos };
+    },
+  });
+  const [abertoId, setAbertoId] = useState<string | null>(null);
+  const dataBR = (d: string) => new Date(d.length <= 10 ? `${d}T12:00:00` : d).toLocaleDateString('pt-BR');
+
   const anos = idade(nasc || null);
 
   return (
@@ -189,6 +219,65 @@ export default function DinamometriaInicio() {
             </>
           )}
         </Card>
+
+        {/* Histórico */}
+        {pac && (
+          <Card className="p-4 space-y-3">
+            <p className="font-semibold flex items-center gap-2"><History className="h-4 w-4 text-primary" /> Histórico de testes</p>
+            {carregandoHist ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : !historico?.testes.length && !historico?.treinos.length ? (
+              <p className="text-sm text-muted-foreground">Nenhum teste ou treino ainda. O primeiro aparece aqui assim que for salvo.</p>
+            ) : (
+              <div className="space-y-2">
+                {historico?.testes.map((t) => {
+                  const aberto = abertoId === t.id;
+                  return (
+                    <div key={t.id} className="rounded-xl border border-border/60 overflow-hidden">
+                      <button className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40" onClick={() => setAbertoId(aberto ? null : t.id)} aria-expanded={aberto}>
+                        <span className="h-9 w-9 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><Dumbbell className="h-4 w-4" /></span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold">Teste de força · {t.regioes}</span>
+                          <span className="block text-xs text-muted-foreground">{dataBR(t.data)}</span>
+                        </span>
+                        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', aberto && 'rotate-180')} />
+                      </button>
+                      {aberto && (
+                        <div className="px-3 pb-3 space-y-2 border-t border-border/50 pt-2.5">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Laudo</p>
+                          {t.laudo ? t.laudo.split('\n\n').map((p, i) => <p key={i} className="text-sm leading-relaxed">{p}</p>) : <p className="text-sm text-muted-foreground">{t.resumo || 'Sem laudo em texto.'}</p>}
+                          <Button asChild size="sm" variant="outline" className="gap-1.5">
+                            <Link to={`/pacientes/${pac.id}/dinamometria?exame=${t.id}`}><FileText className="h-3.5 w-3.5" /> Ver resultado completo e PDF</Link>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {historico?.treinos.map((t) => {
+                  const aberto = abertoId === t.id;
+                  return (
+                    <div key={t.id} className="rounded-xl border border-border/60 overflow-hidden">
+                      <button className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40" onClick={() => setAbertoId(aberto ? null : t.id)} aria-expanded={aberto}>
+                        <span className="h-9 w-9 shrink-0 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center justify-center"><Target className="h-4 w-4" /></span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold truncate">{t.titulo}</span>
+                          <span className="block text-xs text-muted-foreground">{dataBR(t.data)}</span>
+                        </span>
+                        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', aberto && 'rotate-180')} />
+                      </button>
+                      {aberto && (
+                        <div className="px-3 pb-3 border-t border-border/50 pt-2.5 space-y-1">
+                          {(t.descricao || '').split('\n').map((l, i) => <p key={i} className="text-sm leading-relaxed">{l}</p>)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* 3. Modo */}
         <Card className={cn('p-4 space-y-3', !pac && 'opacity-60')}>

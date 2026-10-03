@@ -188,7 +188,8 @@ export default function Dinamometria() {
   const [aba, setAba] = useState('resultado');
   const [crit, setCrit] = useState<Criterios>(lerCriterios);
   const [critForm, setCritForm] = useState<Record<string, string>>({});
-  const [verId, setVerId] = useState<string | null>(null);
+  // ?exame=<id> abre direto o resultado daquele exame (vindo do histórico).
+  const [verId, setVerId] = useState<string | null>(searchParams.get('exame'));
   const [regVer, setRegVer] = useState<string | null>(null);
   const [regEvo, setRegEvo] = useState<string | null>(null);
   const [confirmaExcluir, setConfirmaExcluir] = useState(false);
@@ -276,6 +277,7 @@ export default function Dinamometria() {
       setModos(md);
     } else setAba('nova');
     if (vindoDoTeste) setAba('nova');
+    if (searchParams.get('exame')) setAba('resultado');
     setPreenchido(true);
   }, [paciente, isLoading, registros, pesoBio, preenchido]);
 
