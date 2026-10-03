@@ -17,8 +17,22 @@ const SERVICOS_SERIAIS: string[] = [
   '0000fee0-0000-1000-8000-00805f9b34fb',
   '49535343-fe7d-4ae5-8fa9-9fafd205e455', // Microchip / ISSC
   '0000abf0-0000-1000-8000-00805f9b34fb', // ESP32 SPP
-  '0000180f-0000-1000-8000-00805f9b34fb', // bateria (só para listar)
+  '0000ffe5-0000-1000-8000-00805f9b34fb',
+  '0000ffc0-0000-1000-8000-00805f9b34fb',
+  '0000ffd0-0000-1000-8000-00805f9b34fb',
+  '0000ff00-0000-1000-8000-00805f9b34fb',
+  '0000ae00-0000-1000-8000-00805f9b34fb',
+  '0000ae30-0000-1000-8000-00805f9b34fb',
+  '0000fefb-0000-1000-8000-00805f9b34fb', // Telit / Stollmann
+  '2456e1b9-26e2-8f83-e744-f34f01e9d701', // u-blox
+  '569a1101-b87f-490c-92cb-11ba5ea5167c', // Laird
+  'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // clones HM-10 / BT05
+  'f000c0e0-0451-4000-b000-000000000000', // TI CC26xx
+  '0000180a-0000-1000-8000-00805f9b34fb', // informações do aparelho (diagnóstico)
 ];
+
+// Bateria e similares mandam notificação mas não são a força.
+const IGNORAR_CHARS = ['00002a19-0000-1000-8000-00805f9b34fb'];
 
 export const bluetoothDisponivel = () => typeof navigator !== 'undefined' && !!(navigator as any).bluetooth;
 
@@ -42,9 +56,11 @@ export function valorDaLinha(linha: string, campo: CampoValor): number | null {
   return nums[campo] ?? null;
 }
 
+const curto = (uuid: string) => (/^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$/i.test(uuid) ? uuid.slice(4, 8) : uuid);
+
 class CelulaBle {
   private device: any = null;
-  private notifChar: any = null;
+  private notifChars: any[] = [];
   private writeChar: any = null;
   private buffer = '';
   private ouvintes = new Set<Ouvinte>();
@@ -52,6 +68,9 @@ class CelulaBle {
   private ouvintesStatus = new Set<OuvinteStatus>();
   campo: CampoValor = 'auto';
   ultimasLinhas: string[] = [];
+  // O que a célula expõe e de onde chegam dados — aparece em "Ver dados recebidos".
+  diagnostico: string[] = [];
+  pacotes = 0;
 
   get status(): StatusCelula {
     return this.device?.gatt?.connected ? { conectado: true, nome: this.device.name || 'Célula' } : { conectado: false };
@@ -75,29 +94,39 @@ class CelulaBle {
     device.addEventListener('gattserverdisconnected', () => this.avisarStatus());
     const server = await device.gatt.connect();
 
-    let notif: any = null;
+    // Escuta TODOS os canais com notificação (não sabemos qual é o da força) e
+    // registra o mapa de serviços para diagnóstico.
+    const notifs: any[] = [];
     let write: any = null;
+    const diag: string[] = [];
     const servicos: any[] = await server.getPrimaryServices().catch(() => []);
     for (const sv of servicos) {
       const chars: any[] = await sv.getCharacteristics().catch(() => []);
+      diag.push(`Serviço ${curto(sv.uuid)}`);
       for (const c of chars) {
-        if (!notif && (c.properties.notify || c.properties.indicate)) notif = c;
+        const props = ['read', 'write', 'writeWithoutResponse', 'notify', 'indicate'].filter((k) => c.properties[k]).join(',');
+        diag.push(`  • ${curto(c.uuid)} [${props}]`);
+        if ((c.properties.notify || c.properties.indicate) && !IGNORAR_CHARS.includes(c.uuid)) notifs.push(c);
         if (!write && (c.properties.write || c.properties.writeWithoutResponse)) write = c;
       }
-      if (notif) break;
     }
-    if (!notif) {
+    if (!servicos.length) diag.push('Nenhum serviço conhecido encontrado.');
+    this.diagnostico = diag;
+    if (!notifs.length) {
       device.gatt.disconnect();
-      throw new Error('Conectei, mas a célula não expõe um canal de dados conhecido. Me mande o nome do serviço (app nRF Connect).');
+      throw new Error('Conectei, mas a célula não expõe um canal de dados conhecido. Abra o app nRF Connect, conecte na célula e me mande um print dos serviços.');
     }
 
     this.desligarNotificacao();
     this.device = device;
-    this.notifChar = notif;
+    this.notifChars = notifs;
     this.writeChar = write;
     this.buffer = '';
-    notif.addEventListener('characteristicvaluechanged', this.aoReceber);
-    await notif.startNotifications();
+    this.pacotes = 0;
+    for (const c of notifs) {
+      c.addEventListener('characteristicvaluechanged', this.aoReceber);
+      try { await c.startNotifications(); } catch (e: any) { diag.push(`  ! não consegui escutar ${curto(c.uuid)}: ${e?.message || e}`); }
+    }
     this.avisarStatus();
   }
 
@@ -105,6 +134,15 @@ class CelulaBle {
     const dv: DataView = ev.target.value;
     const bytes = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
     const agora = performance.now();
+    this.pacotes++;
+    // Pacote binário (não é texto): mostra em hexadecimal para descobrirmos o formato.
+    const imprimivel = bytes.every((b) => b === 9 || b === 10 || b === 13 || (b >= 32 && b < 127));
+    if (!imprimivel) {
+      const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join(' ');
+      this.ultimasLinhas = [...this.ultimasLinhas.slice(-29), `[${curto(ev.target.uuid)}] hex: ${hex}`];
+      this.ouvintesLinha.forEach((cb) => cb(hex));
+      return;
+    }
     this.buffer += new TextDecoder().decode(bytes);
     const partes = this.buffer.split(/\r\n|\n|\r/);
     this.buffer = partes.pop() ?? '';
@@ -128,8 +166,8 @@ class CelulaBle {
   }
 
   private desligarNotificacao() {
-    if (this.notifChar) {
-      try { this.notifChar.removeEventListener('characteristicvaluechanged', this.aoReceber); } catch { /* já removido */ }
+    for (const c of this.notifChars) {
+      try { c.removeEventListener('characteristicvaluechanged', this.aoReceber); } catch { /* já removido */ }
     }
   }
 
@@ -137,7 +175,7 @@ class CelulaBle {
     this.desligarNotificacao();
     try { this.device?.gatt?.disconnect(); } catch { /* já desconectado */ }
     this.device = null;
-    this.notifChar = null;
+    this.notifChars = [];
     this.writeChar = null;
     this.avisarStatus();
   }

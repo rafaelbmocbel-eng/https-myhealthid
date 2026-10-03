@@ -40,6 +40,8 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
   const [linhas, setLinhas] = useState<string[]>(celula.ultimasLinhas);
   const [verDados, setVerDados] = useState(false);
   const [comando, setComando] = useState('');
+  const [semDados, setSemDados] = useState(false);
+  const [pacotes, setPacotes] = useState(celula.pacotes);
 
   const taraRef = useRef(0);
   const ultimoBrutoRef = useRef(0);
@@ -53,7 +55,7 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
   useEffect(() => {
     if (!open) return;
     const offS = celula.onStatus(setStatus);
-    const offL = celula.onLinha(() => setLinhas([...celula.ultimasLinhas]));
+    const offL = celula.onLinha(() => { setLinhas([...celula.ultimasLinhas]); setPacotes(celula.pacotes); setSemDados(false); });
     const offV = celula.onLeitura(({ valor, tMs }) => {
       ultimoBrutoRef.current = valor;
       const v = valor - taraRef.current;
@@ -71,6 +73,13 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
     return () => { offS(); offL(); offV(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Conectou e nada chegou em 4 s: abre o diagnóstico sozinho.
+  useEffect(() => {
+    if (!open || !status.conectado) return;
+    const id = setTimeout(() => { if (celula.pacotes === 0) { setSemDados(true); setVerDados(true); } }, 4000);
+    return () => clearTimeout(id);
+  }, [open, status]);
 
   const desenhar = () => {
     const cv = canvasRef.current;
@@ -220,9 +229,23 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
             <button className="text-[11px] text-muted-foreground underline" onClick={() => setVerDados((v) => !v)}>
               {verDados ? 'Ocultar' : 'Ver'} dados recebidos
             </button>
+            {semDados && (
+              <div className="rounded-lg border border-amber-300/70 bg-amber-50 dark:bg-amber-900/15 p-2.5 text-xs space-y-1">
+                <p className="font-semibold">Conectada, mas nenhum dado chegou</p>
+                <p className="text-muted-foreground">
+                  Aperte a célula para ver se chega algo. Se continuar vazio, ela pode precisar de um comando para começar
+                  (veja no manual ou no Serial Bluetooth Terminal) — envie no campo abaixo. E me mande um print desta área.
+                </p>
+              </div>
+            )}
             {verDados && (
               <div className="space-y-2">
+                <p className="text-[10px] text-muted-foreground tabular-nums">Pacotes recebidos: {pacotes}</p>
                 <pre className="max-h-32 overflow-auto rounded bg-muted p-2 text-[10px] leading-tight">{linhas.slice(-15).join('\n') || '(nada recebido ainda)'}</pre>
+                <details className="text-[10px]">
+                  <summary className="cursor-pointer text-muted-foreground">Canais da célula (diagnóstico)</summary>
+                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-muted p-2 leading-tight">{celula.diagnostico.join('\n') || '—'}</pre>
+                </details>
                 <div className="flex items-center gap-2">
                   <Label className="text-[11px] shrink-0">Número usado</Label>
                   <Select value={String(campo)} onValueChange={(v) => setCampo(v === 'auto' ? 'auto' : Number(v))}>
