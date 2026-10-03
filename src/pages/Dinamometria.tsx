@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { lerPlanilha, type Aba } from '@/lib/dinamometria/planilha';
 import CapturaCelulaDialog, { type CapturaCelula } from '@/components/dinamometria/CapturaCelulaDialog';
 import ExecucaoProtocoloDialog, { type ConfigProtocolo, type Etapa } from '@/components/dinamometria/ExecucaoProtocoloDialog';
+import BancadaTeste, { type EtapaBancada } from '@/components/dinamometria/BancadaTeste';
 import { celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
@@ -522,6 +523,20 @@ export default function Dinamometria() {
       return { id: chave(r, k), titulo: nomeSlot(r, k) };
     }));
   }, [regioes, proto]);
+  const [etapasExec, setEtapasExec] = useState<Etapa[]>([]);
+  const iniciarProtocolo = (ids: string[]) => {
+    setModos(p => { const n = { ...p }; for (const r of regioes) n[r] = 'curva'; return n; });
+    setEtapasExec(etapasTeste.filter(e => ids.includes(e.id)));
+    setProtoAberto(true);
+  };
+  const etapasBancada: EtapaBancada[] = etapasTeste.map(e => {
+    const res = slots[e.id]?.res;
+    return {
+      id: e.id, titulo: e.titulo, lado: (e.id.endsWith('D') ? 'D' : 'E') as Lado,
+      picoKgf: res && 'metricas' in res ? res.metricas.pico / UF.kgf : null,
+      erro: res && 'erro' in res ? res.erro : null,
+    };
+  });
   const configProto: ConfigProtocolo = { tempoForca: proto.tempoForca, repeticoes: proto.repeticoes, descanso: proto.descanso, preparo: proto.preparo };
 
   const podeSalvar = regioes.some(r => SLOTS.some(k => {
@@ -531,6 +546,13 @@ export default function Dinamometria() {
     return res && 'metricas' in res;
   }));
   const temSimulado = regioes.some(r => modoDe(r) === 'curva' && SLOTS.some(k => slots[chave(r, k)]?.arquivo.includes('simulado')));
+  // Prévia: a mesma análise do exame salvo, feita sobre o que já foi capturado.
+  const previa = (() => {
+    const ses = sessaoRascunho();
+    if (!ses) return null;
+    const movs = movimentosDaAnalise(ses);
+    return movs.length ? movs.map(av => ({ av, A: analisar(av, crit) })) : null;
+  })();
 
   // ───── Render: entrada ─────
   const cardSlot = (regiao: string, k: Slot) => {
@@ -820,63 +842,83 @@ export default function Dinamometria() {
               </div>
             </Card>
 
-            {/* Teste guiado com a célula Bluetooth */}
-            <Card className="p-4 space-y-3 border-primary/30">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="font-semibold flex items-center gap-1.5"><Bluetooth className="h-4 w-4 text-primary" /> Teste com a célula de carga</p>
-                {statusCelula.conectado ? (
-                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />{statusCelula.nome}</span>
-                ) : (
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => celula.conectar().catch((e: any) => { if (e?.name !== 'NotFoundError') toast.error(e?.message || 'Não consegui conectar.'); })}>
-                    <Bluetooth className="h-3.5 w-3.5" /> Conectar célula
+            {/* Bancada do teste com a célula Bluetooth */}
+            <BancadaTeste
+              status={statusCelula}
+              bateria={celula.bateria}
+              proto={proto}
+              onProto={setProto}
+              etapas={etapasBancada}
+              nomeAg={regioes.length === 1 ? REGIOES[regioes[0]].ag : 'Agonista'}
+              nomeAn={regioes.length === 1 ? REGIOES[regioes[0]].an : 'Antagonista'}
+              titulo={regioes.map(r => REGIOES[r].l).join(' · ')}
+              onConectar={() => celula.conectar().catch((e: any) => { if (e?.name !== 'NotFoundError') toast.error(e?.message || 'Não consegui conectar.'); })}
+              onIniciar={(ids) => iniciarProtocolo(ids)}
+              onCapturarUma={(ckId) => iniciarProtocolo([ckId])}
+            />
+
+            {previa && (
+              <Card className="p-4 space-y-3 border-emerald-500/30">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Prévia do exame</p>
+                    <p className="text-sm text-muted-foreground">Atualiza a cada captura · ainda não salvo</p>
+                  </div>
+                  <Button size="sm" className="gap-1.5" disabled={!podeSalvar || temSimulado || salvar.isPending} onClick={() => salvar.mutate()}>
+                    {salvar.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Salvar exame
                   </Button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Força por repetição (s)</Label><Input inputMode="numeric" value={proto.tempoForca} onChange={e => setProto(p => ({ ...p, tempoForca: Math.max(1, Number(e.target.value) || 0) }))} /></div>
-                <div className="space-y-1"><Label className="text-xs">Repetições</Label><Input inputMode="numeric" value={proto.repeticoes} onChange={e => setProto(p => ({ ...p, repeticoes: Math.min(10, Math.max(1, Number(e.target.value) || 0)) }))} /></div>
-                <div className="space-y-1"><Label className="text-xs">Descanso entre repetições (s)</Label><Input inputMode="numeric" value={proto.descanso} onChange={e => setProto(p => ({ ...p, descanso: Math.max(0, Number(e.target.value) || 0) }))} /></div>
-                <div className="space-y-1"><Label className="text-xs">Contagem antes (s)</Label><Input inputMode="numeric" value={proto.preparo} onChange={e => setProto(p => ({ ...p, preparo: Math.max(1, Number(e.target.value) || 0) }))} /></div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Começar pelo lado</Label>
-                  <Select value={proto.lado} onValueChange={v => setProto(p => ({ ...p, lado: v as Lado }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="D">Direito</SelectItem><SelectItem value="E">Esquerdo</SelectItem></SelectContent>
-                  </Select>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Começar pelo grupo</Label>
-                  <Select value={proto.grupo} onValueChange={v => setProto(p => ({ ...p, grupo: v as 'ag' | 'an' }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ag">{regioes.length === 1 ? REGIOES[regioes[0]].ag : 'Agonista'}</SelectItem>
-                      <SelectItem value="an">{regioes.length === 1 ? REGIOES[regioes[0]].an : 'Antagonista'}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1 col-span-2">
-                  <Label className="text-xs">Ordem</Label>
-                  <Select value={proto.ordem} onValueChange={v => setProto(p => ({ ...p, ordem: v as 'grupo' | 'lado' }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="grupo">Mesmo músculo nos dois lados, depois o outro músculo</SelectItem>
-                      <SelectItem value="lado">Os dois músculos de um lado, depois o outro lado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Sequência: {etapasTeste.map(e => e.titulo).join(' → ')}
-              </p>
-              <Button
-                className="w-full h-11 gap-2"
-                disabled={!statusCelula.conectado || !etapasTeste.length}
-                onClick={() => { setModos(p => { const n = { ...p }; for (const r of regioes) n[r] = 'curva'; return n; }); setProtoAberto(true); }}
-              >
-                <Dumbbell className="h-4 w-4" /> Iniciar teste
-              </Button>
-              {!statusCelula.conectado && <p className="text-xs text-muted-foreground">Conecte a célula para iniciar. Sem célula, use os arquivos do Excel abaixo.</p>}
-            </Card>
+                {previa.map(({ av, A: Ap }) => (
+                  <div key={av.regiao} className="space-y-3">
+                    {previa.length > 1 && <p className="font-semibold text-sm">{Ap.R.l}</p>}
+                    <div className="overflow-x-auto rounded-xl border border-border/50">
+                      <table className="w-full text-sm min-w-[620px]">
+                        <thead className="bg-muted/50 text-xs text-muted-foreground">
+                          <tr>{['Músculo', `Pico (${u})`, 'Simetria', `${Ap.R.an}/${Ap.R.ag}`, 'Fadiga', 'Falha do platô', 'Oscilação'].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}</tr>
+                        </thead>
+                        <tbody>
+                          {SLOTS_POR_LADO.filter(k => Ap.slots[k]).map(k => {
+                            const sl = Ap.slots[k]!;
+                            const lado: Lado = k.endsWith('D') ? 'D' : 'E';
+                            const doLado = SLOTS_POR_LADO.filter(x => x.endsWith(lado) && Ap.slots[x]);
+                            const sim = simetriaSlot(Ap, k, crit);
+                            const rz = Ap.razoes[lado];
+                            const fp = falhaPlato(av.slots[k]?.curva);
+                            return (
+                              <tr key={k} className={cn('border-t border-border/40', doLado[0] === k && lado === 'E' && 'border-t-2 border-t-border')}>
+                                <td className="px-2.5 py-2 whitespace-nowrap"><Bolinha lado={lado} />{nomeSlot(av.regiao, k)}</td>
+                                <td className="px-2.5 py-2 font-mono font-semibold">{fmt(disp(sl.pico), 1)}</td>
+                                <td className="px-2.5 py-2">{sim ? (sim.v >= 99.5 ? <span className="text-xs text-muted-foreground">100% · forte</span> : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(sim.v, 0)}%</span><Pilula st={sim.st} /></span>) : '—'}</td>
+                                {doLado[0] === k && (
+                                  <td rowSpan={doLado.length} className="px-2.5 py-2 align-middle border-l border-border/40">
+                                    {rz ? <span className="flex flex-col gap-0.5"><span className="font-mono font-semibold">{lado} {fmt(rz.r * 100, 0)}%</span><Pilula st={rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, crit)} /></span> : '—'}
+                                  </td>
+                                )}
+                                <td className="px-2.5 py-2">{sl.fadiga == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(sl.fadiga, 0)}%</span><Pilula st={stFadiga(sl.fadiga, crit)} /></span>}</td>
+                                <td className="px-2.5 py-2 font-mono whitespace-nowrap">{fp?.queda != null ? `${fmt(fp.queda, 1)}%/s` : '—'}</td>
+                                <td className="px-2.5 py-2">{sl.oscilacao == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(sl.oscilacao, 1)}%</span><Pilula st={stOsc(sl.oscilacao, crit)} /></span>}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {SLOTS.some(k => av.slots[k]?.curva) && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        {graficoCurva(av, 'ag', Ap.R.ag)}
+                        {graficoCurva(av, 'an', Ap.R.an)}
+                        {graficoFalha(av, 'ag', Ap.R.ag)}
+                        {graficoFalha(av, 'an', Ap.R.an)}
+                      </div>
+                    )}
+                    <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Interpretação prévia</p>
+                      {interpretar(av, Ap, crit, null).map((t, ix) => <p key={ix} className="text-sm leading-relaxed">{t}</p>)}
+                    </div>
+                  </div>
+                ))}
+              </Card>
+            )}
 
             {regioes.map(r => {
               const Rg = REGIOES[r];
@@ -1313,7 +1355,7 @@ export default function Dinamometria() {
       <ExecucaoProtocoloDialog
         open={protoAberto}
         onOpenChange={setProtoAberto}
-        etapas={etapasTeste}
+        etapas={etapasExec}
         config={configProto}
         modo="teste"
         onEtapa={(ck, r) => receberCaptura(ck, { t: r.t, fN: r.fN, nome: statusCelula.conectado ? statusCelula.nome : 'Célula' })}
