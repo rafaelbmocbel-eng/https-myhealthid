@@ -451,6 +451,18 @@ export function interpretar(av: Avaliacao, A: Analise, c: Criterios, anterior?: 
   } else {
     out.push('Teste registrado só com os valores de pico: fadiga, taxa de desenvolvimento de força e estabilidade da curva exigem o arquivo com a curva força × tempo.');
   }
+  // Curva de falha do platô: velocidade com que a força cai depois do pico.
+  for (const g of ['ag', 'an'] as const) {
+    const qD = falhaPlato(av.slots[`${g}D`]?.curva)?.queda, qE = falhaPlato(av.slots[`${g}E`]?.curva)?.queda;
+    if (qD == null && qE == null) continue;
+    const nome = g === 'ag' ? R.ag : R.an;
+    if (qD != null && qE != null) {
+      const dif = Math.abs(qD - qE);
+      out.push(`${nome}: na curva de falha do platô a força cai ${fmt(qD, 1)}%/s à direita e ${fmt(qE, 1)}%/s à esquerda${dif >= 1.5 ? `; o lado ${qD > qE ? 'direito' : 'esquerdo'} perde força mais rápido ao sustentar a contração` : '; comportamento semelhante entre os lados'}.`);
+    } else {
+      out.push(`${nome}: na curva de falha do platô a força cai ${fmt((qD ?? qE) as number, 1)}%/s (lado ${qD != null ? 'direito' : 'esquerdo'}).`);
+    }
+  }
   const oscs = SLOTS.filter(k => A.slots[k]?.oscilacao != null).map(k => [k, A.slots[k]!.oscilacao as number] as const);
   if (oscs.length) {
     const w = oscs.reduce((a, b) => (b[1] > a[1] ? b : a));
@@ -490,6 +502,8 @@ export function resumoCurtoAnalise(av: Avaliacao, A: Analise, c: Criterios): str
   if (rz.length) partes.push(`${R.razaoL}: ${rz.join(', ')}`);
   const fad = SLOTS.filter(k => A.slots[k]?.fadiga != null).map(k => `${nomeSlot(av.regiao, k)} ${fmt(A.slots[k]!.fadiga, 0)}%`);
   if (fad.length) partes.push(`fadiga: ${fad.join(', ')}`);
+  const queda = SLOTS.map(k => [k, falhaPlato(av.slots[k]?.curva)?.queda] as const).filter(([, q]) => q != null).map(([k, q]) => `${nomeSlot(av.regiao, k)} ${fmt(q as number, 1)}%/s`);
+  if (queda.length) partes.push(`queda no platô: ${queda.join(', ')}`);
   return partes.join('; ');
 }
 

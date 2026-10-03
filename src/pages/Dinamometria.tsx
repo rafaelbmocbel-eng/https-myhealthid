@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
@@ -173,6 +173,9 @@ function linhasCurva(av: Avaliacao, g: 'ag' | 'an', u: Unidade) {
   for (let x = t0; x <= t1 + 1e-9; x += passo) out.push({ t: +x.toFixed(3), D: interp(d, x), E: interp(e, x) });
   return out;
 }
+
+// Suba quando mudar o texto do laudo/resumo: exames antigos são regravados ao abrir.
+const VERSAO_LAUDO = 2;
 
 export default function Dinamometria() {
   const { id } = useParams<{ id: string }>();
@@ -356,6 +359,42 @@ export default function Dinamometria() {
     return movimentos.length ? { versao: 2, sujeito, movimentos } : null;
   };
 
+  // Laudo e resumo gravados com regras antigas são regravados com as atuais
+  // (as tabelas e gráficos já são calculados na hora a partir das curvas).
+  const atualizandoLaudosRef = useRef(false);
+  useEffect(() => {
+    if (!user || !id || atualizandoLaudosRef.current) return;
+    const velhos = exames.filter(e => e.tipo === 'dinamometria' && e.dados?.analise && (e.dados?.versao_laudo ?? 1) < VERSAO_LAUDO);
+    if (!velhos.length) return;
+    atualizandoLaudosRef.current = true;
+    void (async () => {
+      let n = 0;
+      for (const e of velhos) {
+        const movs = movimentosDaAnalise(e.dados.analise);
+        if (!movs.length) continue;
+        const laudo: string[] = [];
+        const resumos: string[] = [];
+        for (const av of movs) {
+          const ant = [...registros].reverse().find(r => r.id !== e.id && r.data <= e.data_exame && r.movs.some(m => m.regiao === av.regiao));
+          const A = analisar(av, crit);
+          const antAv = ant?.movs.find(m => m.regiao === av.regiao);
+          if (movs.length > 1) laudo.push(`${A.R.l.toUpperCase()}`);
+          laudo.push(...interpretar(av, A, crit, ant && antAv ? { data: ant.data, av: antAv } : null));
+          resumos.push(resumoCurtoAnalise(av, A, crit));
+        }
+        const { error } = await (supabase as any).from('exames_presenciais')
+          .update({ dados: { ...e.dados, resultado: laudo.join('\n\n'), versao_laudo: VERSAO_LAUDO }, resumo: resumos.join(' | ') })
+          .eq('id', e.id);
+        if (!error) n++;
+      }
+      if (n) {
+        toast.success(n === 1 ? 'Laudo da dinamometria atualizado com as regras atuais' : `${n} laudos de dinamometria atualizados com as regras atuais`);
+        qc.invalidateQueries({ queryKey: ['exames-presenciais', id] });
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exames, user, id]);
+
   const salvar = useMutation({
     mutationFn: async () => {
       if (!user || !id) throw new Error('Sem sessão');
@@ -377,7 +416,7 @@ export default function Dinamometria() {
         terapeuta_id: user.id,
         tipo: 'dinamometria',
         data_exame: dataAv,
-        dados: { resultado: laudo.join('\n\n'), observacoes: obs || undefined, analise: sessao },
+        dados: { resultado: laudo.join('\n\n'), observacoes: obs || undefined, analise: sessao, versao_laudo: VERSAO_LAUDO },
         resumo: resumos.join(' | '),
         visivel_paciente: visivel,
       }).select('id').single();
