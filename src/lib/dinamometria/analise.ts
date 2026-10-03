@@ -42,10 +42,30 @@ export const REGIOES: Record<string, Regiao> = {
 export interface Criterios { unidade: Unidade; lsiPleno: number; lsiZero: number; razaoTol: number; razaoZero: number; fadPleno: number; fadZero: number; oscPleno: number; oscZero: number; mudanca: number; platoMin: number }
 export const CRITERIOS_PADRAO: Criterios = { unidade: 'kgf', lsiPleno: 90, lsiZero: 70, razaoTol: 10, razaoZero: 40, fadPleno: 15, fadZero: 45, oscPleno: 3, oscZero: 12, mudanca: 15, platoMin: 4 };
 
-export interface Metricas { pico: number; ttp: number; rfd100: number | null; rfd200: number | null; impulso: number; duracao: number; plato: number; fadiga: number | null; oscilacao: number | null; hz: number; reps: number[] }
-export interface SlotDados { arquivo: string; metricas: Metricas; curva: { t: number[]; f: number[] } }
+export interface Metricas { pico: number; ttp: number | null; rfd100: number | null; rfd200: number | null; impulso: number | null; duracao: number | null; plato: number | null; fadiga: number | null; oscilacao: number | null; hz: number | null; reps: number[]; fonte?: 'curva' | 'pico' }
+export interface SlotDados { arquivo: string; metricas: Metricas; curva?: { t: number[]; f: number[] } | null }
 export interface Sujeito { idade: number | null; sexo: 'M' | 'F'; peso: number | null; dominante: Lado; acometido: Lado | 'N'; modalidade?: string }
+// Uma articulação avaliada. Sessões antigas (versao 1) guardavam uma só; a
+// versao 2 guarda várias em `movimentos`, todas com o mesmo `sujeito`.
 export interface Avaliacao { versao: 1; regiao: string; braco: number | null; sujeito: Sujeito; slots: Partial<Record<Slot, SlotDados>> }
+export interface Movimento { regiao: string; braco: number | null; slots: Partial<Record<Slot, SlotDados>> }
+export interface Sessao { versao: 2; sujeito: Sujeito; movimentos: Movimento[] }
+
+export function movimentosDaAnalise(a: unknown): Avaliacao[] {
+  const x = a as { versao?: number; movimentos?: Movimento[]; sujeito?: Sujeito; regiao?: string; slots?: Avaliacao['slots'] } | null;
+  if (!x) return [];
+  const suj = x.sujeito;
+  if (x.versao === 2 && Array.isArray(x.movimentos) && suj) return x.movimentos.map((m): Avaliacao => ({ versao: 1, regiao: m.regiao, braco: m.braco ?? null, sujeito: suj, slots: m.slots || {} }));
+  if (x.versao === 1 && x.regiao && x.slots && suj) return [x as Avaliacao];
+  return [];
+}
+
+// Dinamômetros que só mostram o valor máximo: as tentativas viram repetições.
+export function metricasDePico(valoresN: number[]): Metricas | null {
+  const v = valoresN.filter(n => Number.isFinite(n) && n > 0);
+  if (!v.length) return null;
+  return { pico: +Math.max(...v).toFixed(2), ttp: null, rfd100: null, rfd200: null, impulso: null, duracao: null, plato: null, fadiga: null, oscilacao: null, hz: null, reps: v.map(n => +n.toFixed(1)), fonte: 'pico' };
+}
 
 export const num = (v: unknown): number | null => {
   if (v === '' || v == null) return null;
@@ -247,7 +267,7 @@ export function analisarCurva(t: number[], fBruta: number[], platoMin: number): 
     metricas: {
       pico: +pico.toFixed(2), ttp: +ttp.toFixed(3), rfd100: r1(rfd100, 1), rfd200: r1(rfd200, 1), impulso: +impulso.toFixed(1),
       duracao: +((fim - ini) * dt).toFixed(2), plato: +plato.toFixed(2), fadiga: r1(fadiga, 1), oscilacao: r1(oscilacao, 2),
-      hz: Math.round(hz), reps: info.map(r => +r.pico.toFixed(1)),
+      hz: Math.round(hz), reps: info.map(r => +r.pico.toFixed(1)), fonte: 'curva',
     },
     curva: { t: ct, f: cf },
   };
@@ -359,8 +379,10 @@ export function interpretar(av: Avaliacao, A: Analise, c: Criterios, anterior?: 
       const a = A.slots[`${g}D`]?.fadiga, b = A.slots[`${g}E`]?.fadiga;
       if (a != null && b != null && Math.abs(a - b) > 10) out.push(`${g === 'ag' ? R.ag : R.an}: a fadiga difere ${fmt(Math.abs(a - b), 0)} pontos entre os lados, maior à ${a > b ? 'direita' : 'esquerda'}; sugere trabalho específico de resistência desse lado.`);
     }
-  } else {
+  } else if (SLOTS.some(k => av.slots[k]?.curva)) {
     out.push(`Fadiga não calculada: as contrações duraram menos de ${c.platoMin} s em força alta. Para medir fadiga, peça contração máxima sustentada por 5 a 10 s.`);
+  } else {
+    out.push('Teste registrado só com os valores de pico: fadiga, taxa de desenvolvimento de força e estabilidade da curva exigem o arquivo com a curva força × tempo.');
   }
   const oscs = SLOTS.filter(k => A.slots[k]?.oscilacao != null).map(k => [k, A.slots[k]!.oscilacao as number] as const);
   if (oscs.length) {

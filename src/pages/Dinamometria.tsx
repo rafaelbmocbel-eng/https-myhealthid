@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
-import { Dumbbell, FileUp, Loader2, Trash2, FileDown, Copy, Save, FlaskConical, X } from 'lucide-react';
+import { Dumbbell, FileUp, Loader2, Trash2, FileDown, Copy, Save, FlaskConical, X, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -19,17 +19,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { lerPlanilha, type Aba } from '@/lib/dinamometria/planilha';
 import {
-  type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type ResultadoCurva, type Slot, type Status, type Unidade, type Lado, type Sujeito,
+  type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
   SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
-  resumoCurtoAnalise, stLSI, stDesvio, stFadiga, stOsc, stZ, curvaSimulada, clamp,
+  resumoCurtoAnalise, stLSI, stDesvio, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
 } from '@/lib/dinamometria/analise';
-import { gerarRelatorioDinamometria } from '@/lib/dinamometria/relatorio';
+import { gerarRelatorioDinamometria, gerarRelatorioCliente, itensMapa, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
+import { mapaMuscularSVG, MUSCULOS, COR_STATUS } from '@/lib/dinamometria/anatomia';
 
 const COR: Record<Lado, string> = { D: '#2A78D6', E: '#EB6834' };
 const CHAVE_CRITERIOS = 'dinamometria_criterios_v1';
 
 interface SlotRascunho { arquivo: string; abas?: Aba[]; abaIdx?: number; insp?: Inspecao | null; mapa?: Mapa | null; res: ResultadoCurva | null }
-interface Registro { id: string; data: string; av: Avaliacao; obs: string }
+interface Registro { id: string; data: string; movs: Avaliacao[]; obs: string }
+type Modo = 'curva' | 'pico';
+const chave = (regiao: string, k: Slot) => `${regiao}:${k}`;
 
 function lerCriterios(): Criterios {
   try {
@@ -69,7 +72,7 @@ function Bolinha({ lado }: { lado: Lado }) {
 
 // Une as curvas D e E numa grade de tempo comum para o gráfico e o tooltip.
 function linhasCurva(av: Avaliacao, g: 'ag' | 'an', u: Unidade) {
-  const d = av.slots[`${g}D` as Slot]?.curva, e = av.slots[`${g}E` as Slot]?.curva;
+  const d = av.slots[`${g}D` as Slot]?.curva || undefined, e = av.slots[`${g}E` as Slot]?.curva || undefined;
   const curvas = [d, e].filter(Boolean) as { t: number[]; f: number[] }[];
   if (!curvas.length) return [];
   const t0 = Math.min(...curvas.map(c => c.t[0])), t1 = Math.max(...curvas.map(c => c.t[c.t.length - 1]));
@@ -86,6 +89,8 @@ function linhasCurva(av: Avaliacao, g: 'ag' | 'an', u: Unidade) {
   return out;
 }
 
+const mediaScore = (as: Analise[]) => { const v = as.map(a => a.score).filter((x): x is number => x != null); return v.length ? Math.round(v.reduce((p, x) => p + x, 0) / v.length) : null; };
+
 export default function Dinamometria() {
   const { id } = useParams<{ id: string }>();
   const { user, profile } = useAuth();
@@ -94,18 +99,23 @@ export default function Dinamometria() {
   const [crit, setCrit] = useState<Criterios>(lerCriterios);
   const [critForm, setCritForm] = useState<Record<string, string>>({});
   const [verId, setVerId] = useState<string | null>(null);
+  const [regVer, setRegVer] = useState<string | null>(null);
+  const [regEvo, setRegEvo] = useState<string | null>(null);
   const [confirmaExcluir, setConfirmaExcluir] = useState(false);
-  const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [gerando, setGerando] = useState<'tecnico' | 'cliente' | null>(null);
 
   const [dataAv, setDataAv] = useState(() => new Date().toISOString().slice(0, 10));
-  const [regiao, setRegiao] = useState('joelho');
-  const [braco, setBraco] = useState('');
+  const [regioes, setRegioes] = useState<string[]>(['joelho']);
+  const [bracos, setBracos] = useState<Record<string, string>>({});
+  const [modos, setModos] = useState<Record<string, Modo>>({});
+  const [unidadePico, setUnidadePico] = useState<Unidade>('kgf');
+  const [picos, setPicos] = useState<Record<string, string[]>>({});
   const [suj, setSuj] = useState({ idade: '', sexo: 'M' as 'M' | 'F', peso: '', dominante: 'D' as Lado, acometido: 'N' as Lado | 'N', modalidade: '' });
   const [obs, setObs] = useState('');
   const [visivel, setVisivel] = useState(true);
-  const [slots, setSlots] = useState<Partial<Record<Slot, SlotRascunho>>>({});
-  const [lendo, setLendo] = useState<Slot | null>(null);
-  const [sobre, setSobre] = useState<Slot | null>(null);
+  const [slots, setSlots] = useState<Record<string, SlotRascunho>>({});
+  const [lendo, setLendo] = useState<string | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
 
   const { data: paciente } = useQuery({
     queryKey: ['dinamometria-paciente', id],
@@ -131,7 +141,7 @@ export default function Dinamometria() {
   });
 
   const registros: Registro[] = useMemo(
-    () => exames.filter(e => e.tipo === 'dinamometria' && e.dados?.analise?.versao === 1).map(e => ({ id: e.id, data: e.data_exame, av: e.dados.analise as Avaliacao, obs: e.dados.observacoes || '' })),
+    () => exames.filter(e => e.tipo === 'dinamometria').map(e => ({ id: e.id, data: e.data_exame, movs: movimentosDaAnalise(e.dados?.analise), obs: e.dados?.observacoes || '' })).filter(r => r.movs.length),
     [exames],
   );
   const pesoBio = useMemo(() => {
@@ -145,7 +155,8 @@ export default function Dinamometria() {
   const [preenchido, setPreenchido] = useState(false);
   useEffect(() => {
     if (preenchido || !paciente || isLoading) return;
-    const ult = registros[registros.length - 1]?.av.sujeito;
+    const ultReg = registros[registros.length - 1];
+    const ult = ultReg?.movs[0]?.sujeito;
     const sx = String(paciente.sexo || paciente.genero || '').toLowerCase();
     setSuj({
       idade: String(idadeDe(paciente.data_nascimento) ?? ult?.idade ?? ''),
@@ -155,14 +166,20 @@ export default function Dinamometria() {
       acometido: ult?.acometido || 'N',
       modalidade: ult?.modalidade || '',
     });
-    if (registros.length) { setRegiao(registros[registros.length - 1].av.regiao); setBraco(registros[registros.length - 1].av.braco ? String(registros[registros.length - 1].av.braco) : ''); }
-    else setAba('nova');
+    if (ultReg) {
+      setRegioes(ultReg.movs.map(m => m.regiao));
+      const b: Record<string, string> = {};
+      for (const m of ultReg.movs) if (m.braco) b[m.regiao] = String(m.braco);
+      setBracos(b);
+      const md: Record<string, Modo> = {};
+      for (const m of ultReg.movs) md[m.regiao] = SLOTS.some(k => m.slots[k]?.curva) ? 'curva' : 'pico';
+      setModos(md);
+    } else setAba('nova');
     setPreenchido(true);
   }, [paciente, isLoading, registros, pesoBio, preenchido]);
 
   const u = crit.unidade;
   const disp = (N?: number | null) => (N == null ? null : N / UF[u]);
-  const R = REGIOES[regiao] || REGIOES.joelho;
 
   // ───── Importação ─────
   const processar = (s: SlotRascunho): SlotRascunho => {
@@ -172,14 +189,14 @@ export default function Dinamometria() {
     return { ...s, res: analisarCurva(ex.t, ex.f, crit.platoMin) };
   };
 
-  const carregarArquivo = async (k: Slot, file: File) => {
-    setLendo(k);
+  const carregarArquivo = async (ck: string, file: File) => {
+    setLendo(ck);
     try {
       const abas = await lerPlanilha(file);
       let abaIdx = 0, insp: Inspecao | null = null;
       for (let i = 0; i < abas.length; i++) { const r = inspecionar(abas[i].linhas); if (r) { abaIdx = i; insp = r; break; } }
-      if (!insp) { setSlots(p => ({ ...p, [k]: { arquivo: file.name, abas, abaIdx: 0, insp: null, mapa: null, res: { erro: 'Não encontrei colunas numéricas neste arquivo.' } } })); return; }
-      setSlots(p => ({ ...p, [k]: processar({ arquivo: file.name, abas, abaIdx, insp, mapa: insp.mapa, res: null }) }));
+      if (!insp) { setSlots(p => ({ ...p, [ck]: { arquivo: file.name, abas, abaIdx: 0, insp: null, mapa: null, res: { erro: 'Não encontrei colunas numéricas neste arquivo.' } } })); return; }
+      setSlots(p => ({ ...p, [ck]: processar({ arquivo: file.name, abas, abaIdx, insp, mapa: insp.mapa, res: null }) }));
     } catch (e: any) {
       toast.error(e?.message || `Não consegui ler ${file.name}.`);
     } finally {
@@ -187,53 +204,78 @@ export default function Dinamometria() {
     }
   };
 
-  const ajustarMapa = (k: Slot, patch: Partial<Mapa>) => setSlots(p => {
-    const s = p[k];
+  const ajustarMapa = (ck: string, patch: Partial<Mapa>) => setSlots(p => {
+    const s = p[ck];
     if (!s?.mapa) return p;
-    return { ...p, [k]: processar({ ...s, mapa: { ...s.mapa, ...patch } }) };
+    return { ...p, [ck]: processar({ ...s, mapa: { ...s.mapa, ...patch } }) };
   });
 
-  const trocarAba = (k: Slot, idx: number) => setSlots(p => {
-    const s = p[k];
+  const trocarAba = (ck: string, idx: number) => setSlots(p => {
+    const s = p[ck];
     if (!s?.abas) return p;
     const insp = inspecionar(s.abas[idx].linhas);
-    if (!insp) return { ...p, [k]: { ...s, abaIdx: idx, insp: null, mapa: null, res: { erro: 'Esta aba não tem colunas numéricas.' } } };
-    return { ...p, [k]: processar({ ...s, abaIdx: idx, insp, mapa: insp.mapa }) };
+    if (!insp) return { ...p, [ck]: { ...s, abaIdx: idx, insp: null, mapa: null, res: { erro: 'Esta aba não tem colunas numéricas.' } } };
+    return { ...p, [ck]: processar({ ...s, abaIdx: idx, insp, mapa: insp.mapa }) };
   });
+
+  const alternarRegiao = (r: string) => setRegioes(p => (p.includes(r) ? (p.length > 1 ? p.filter(x => x !== r) : p) : [...p, r]));
+  const modoDe = (r: string): Modo => modos[r] || 'curva';
 
   const usarExemplo = () => {
     const sp: Record<Slot, [number, number]> = { agD: [101, 13], agE: [93, 18], anD: [57, 20], anE: [51, 30] };
-    const novo: Partial<Record<Slot, SlotRascunho>> = {};
-    SLOTS.forEach((k, j) => { const c = curvaSimulada(sp[k][0], sp[k][1], 999 + j * 31); novo[k] = { arquivo: `exemplo_${k}.xlsx (simulado)`, res: analisarCurva(c.t, c.f, crit.platoMin) }; });
-    setSlots(novo);
-    setRegiao('joelho');
-    if (!braco) setBraco('36');
-    toast.message('Curvas simuladas carregadas. Troque pelos arquivos reais antes de salvar.');
+    const novo: Record<string, SlotRascunho> = {};
+    SLOTS.forEach((k, j) => { const c = curvaSimulada(sp[k][0], sp[k][1], 999 + j * 31); novo[chave('joelho', k)] = { arquivo: `exemplo_${k}.xlsx (simulado)`, res: analisarCurva(c.t, c.f, crit.platoMin) }; });
+    setSlots(p => ({ ...p, ...novo }));
+    setRegioes(p => (p.includes('joelho') ? p : [...p, 'joelho']));
+    setModos(p => ({ ...p, joelho: 'curva' }));
+    setBracos(p => ({ ...p, joelho: p.joelho || '36' }));
+    toast.message('Curvas simuladas carregadas no joelho. Troque pelos arquivos reais antes de salvar.');
   };
 
-  const avaliacaoRascunho = (): Avaliacao | null => {
-    const out: Avaliacao['slots'] = {};
-    for (const k of SLOTS) { const r = slots[k]?.res; if (r && 'metricas' in r) out[k] = { arquivo: slots[k]!.arquivo, metricas: r.metricas, curva: r.curva }; }
-    if (!Object.keys(out).length) return null;
+  const sessaoRascunho = (): Sessao | null => {
     const sujeito: Sujeito = { idade: num(suj.idade), sexo: suj.sexo, peso: num(suj.peso), dominante: suj.dominante, acometido: suj.acometido, modalidade: suj.modalidade || undefined };
-    return { versao: 1, regiao, braco: num(braco), sujeito, slots: out };
+    const movimentos: Movimento[] = [];
+    for (const r of regioes) {
+      const out: Movimento['slots'] = {};
+      for (const k of SLOTS) {
+        const ck = chave(r, k);
+        if (modoDe(r) === 'pico') {
+          const vals = (picos[ck] || []).map(v => num(v)).filter((v): v is number => v != null).map(v => v * UF[unidadePico]);
+          const m = metricasDePico(vals);
+          if (m) out[k] = { arquivo: 'valores de pico digitados', metricas: m, curva: null };
+        } else {
+          const res = slots[ck]?.res;
+          if (res && 'metricas' in res) out[k] = { arquivo: slots[ck].arquivo, metricas: res.metricas, curva: res.curva };
+        }
+      }
+      if (Object.keys(out).length) movimentos.push({ regiao: r, braco: num(bracos[r]), slots: out });
+    }
+    return movimentos.length ? { versao: 2, sujeito, movimentos } : null;
   };
 
   const salvar = useMutation({
     mutationFn: async () => {
       if (!user || !id) throw new Error('Sem sessão');
-      const av = avaliacaoRascunho();
-      if (!av) throw new Error('Importe pelo menos um arquivo válido.');
-      const ant = [...registros].reverse().find(r => r.data <= dataAv);
-      const A = analisar(av, crit);
-      const laudo = interpretar(av, A, crit, ant ? { data: ant.data, av: ant.av } : null).join('\n\n');
+      const sessao = sessaoRascunho();
+      if (!sessao) throw new Error('Importe um arquivo ou digite pelo menos um pico.');
+      const movs = movimentosDaAnalise(sessao);
+      const laudo: string[] = [];
+      const resumos: string[] = [];
+      for (const av of movs) {
+        const ant = [...registros].reverse().find(r => r.data <= dataAv && r.movs.some(m => m.regiao === av.regiao));
+        const A = analisar(av, crit);
+        const antAv = ant?.movs.find(m => m.regiao === av.regiao);
+        if (movs.length > 1) laudo.push(`${A.R.l.toUpperCase()}`);
+        laudo.push(...interpretar(av, A, crit, ant && antAv ? { data: ant.data, av: antAv } : null));
+        resumos.push(resumoCurtoAnalise(av, A, crit));
+      }
       const { data, error } = await (supabase as any).from('exames_presenciais').insert({
         paciente_id: id,
         terapeuta_id: user.id,
         tipo: 'dinamometria',
         data_exame: dataAv,
-        dados: { resultado: laudo, observacoes: obs || undefined, analise: av },
-        resumo: resumoCurtoAnalise(av, A, crit),
+        dados: { resultado: laudo.join('\n\n'), observacoes: obs || undefined, analise: sessao },
+        resumo: resumos.join(' | '),
         visivel_paciente: visivel,
       }).select('id').single();
       if (error) throw error;
@@ -241,8 +283,8 @@ export default function Dinamometria() {
     },
     onSuccess: (novoId) => {
       toast.success('Avaliação salva nos exames presenciais do paciente');
-      setSlots({}); setObs('');
-      setVerId(novoId || null);
+      setSlots({}); setPicos({}); setObs('');
+      setVerId(novoId || null); setRegVer(null);
       setAba('resultado');
       qc.invalidateQueries({ queryKey: ['exames-presenciais', id] });
     },
@@ -254,38 +296,61 @@ export default function Dinamometria() {
       const { error } = await (supabase as any).from('exames_presenciais').delete().eq('id', exId);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success('Avaliação excluída'); setVerId(null); setConfirmaExcluir(false); qc.invalidateQueries({ queryKey: ['exames-presenciais', id] }); },
+    onSuccess: () => { toast.success('Avaliação excluída'); setVerId(null); setRegVer(null); setConfirmaExcluir(false); qc.invalidateQueries({ queryKey: ['exames-presenciais', id] }); },
     onError: (e: any) => toast.error(e?.message || 'Erro ao excluir'),
   });
 
-  // ───── Avaliação em foco ─────
+  // ───── Sessão e articulação em foco ─────
   const idx = verId ? registros.findIndex(r => r.id === verId) : registros.length - 1;
-  const atual = idx >= 0 ? registros[idx] : null;
-  const anterior = idx > 0 ? registros[idx - 1] : null;
-  const A: Analise | null = atual ? analisar(atual.av, crit) : null;
-  const texto = atual && A ? interpretar(atual.av, A, crit, anterior ? { data: anterior.data, av: anterior.av } : null) : [];
+  const sessao = idx >= 0 ? registros[idx] : null;
+  const analises = useMemo(() => (sessao ? sessao.movs.map(av => ({ av, A: analisar(av, crit) })) : []), [sessao, crit]);
+  const atual = sessao ? (sessao.movs.find(m => m.regiao === regVer) || sessao.movs[0]) : null;
+  const A: Analise | null = atual ? analisar(atual, crit) : null;
+  const anteriorDe = (reg: Registro, regiao: string) => {
+    const i = registros.indexOf(reg);
+    for (let j = i - 1; j >= 0; j--) { const m = registros[j].movs.find(x => x.regiao === regiao); if (m) return { data: registros[j].data, av: m }; }
+    return null;
+  };
+  const anterior = sessao && atual ? anteriorDe(sessao, atual.regiao) : null;
+  const texto = atual && A ? interpretar(atual, A, crit, anterior) : [];
+  const scoreGeral = mediaScore(analises.map(x => x.A));
+  const svgMapa = useMemo(() => (analises.length ? mapaMuscularSVG(itensMapa(analises)) : ''), [analises]);
+  const legendaMapa = useMemo(() => itensMapa(analises), [analises]);
 
   const copiar = async () => {
-    if (!atual) return;
-    const txt = `${nomePaciente} · Dinamometria ${REGIOES[atual.av.regiao]?.l || ''} · ${dataBR(atual.data)}\n\n${texto.join('\n\n')}`;
+    if (!sessao) return;
+    const partes = sessao.movs.map(av => {
+      const a = analisar(av, crit);
+      return `${a.R.l.toUpperCase()}\n${interpretar(av, a, crit, anteriorDe(sessao, av.regiao)).join('\n\n')}`;
+    });
+    const txt = `${nomePaciente} · Dinamometria · ${dataBR(sessao.data)}\n\n${partes.join('\n\n')}`;
     try { await navigator.clipboard.writeText(txt); toast.success('Interpretação copiada'); } catch { toast.error('Não foi possível copiar neste aparelho'); }
   };
 
-  const pdf = async () => {
-    if (!atual || !A) return;
-    setGerandoPdf(true);
+  const dadosRelatorio = () => {
+    if (!sessao) return null;
+    const itens: ItemRelatorio[] = sessao.movs.map(av => ({
+      av, A: analisar(av, crit), anterior: anteriorDe(sessao, av.regiao),
+      historico: registros.slice(0, idx + 1).flatMap(r => { const m = r.movs.find(x => x.regiao === av.regiao); return m ? [{ data: r.data, score: analisar(m, crit).score }] : []; }),
+    }));
+    return {
+      paciente: nomePaciente,
+      profissional: profile ? `${profile.nome} ${profile.sobrenome || ''}`.trim() + (profile.crefito ? ` · CREFITO ${profile.crefito}` : '') : undefined,
+      data: sessao.data, c: crit, itens, scoreGeral: mediaScore(itens.map(i => i.A)),
+    };
+  };
+
+  const pdf = async (tipo: 'tecnico' | 'cliente') => {
+    const d = dadosRelatorio();
+    if (!d) return;
+    setGerando(tipo);
     try {
-      await gerarRelatorioDinamometria({
-        paciente: nomePaciente,
-        profissional: profile ? `${profile.nome} ${profile.sobrenome || ''}`.trim() + (profile.crefito ? ` · CREFITO ${profile.crefito}` : '') : undefined,
-        data: atual.data, av: atual.av, A, c: crit,
-        anterior: anterior ? { data: anterior.data, av: anterior.av } : null,
-        historico: registros.slice(0, idx + 1).map(r => ({ data: r.data, score: analisar(r.av, crit).score })),
-      });
+      if (tipo === 'tecnico') await gerarRelatorioDinamometria(d);
+      else await gerarRelatorioCliente(d);
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao gerar o PDF');
     } finally {
-      setGerandoPdf(false);
+      setGerando(null);
     }
   };
 
@@ -300,34 +365,40 @@ export default function Dinamometria() {
     toast.success('Critérios salvos neste aparelho');
   };
 
-  const podeSalvar = SLOTS.some(k => { const r = slots[k]?.res; return r && 'metricas' in r; });
-  const temSimulado = Object.values(slots).some(s => s?.arquivo.includes('simulado'));
+  const podeSalvar = regioes.some(r => SLOTS.some(k => {
+    const ck = chave(r, k);
+    if (modoDe(r) === 'pico') return (picos[ck] || []).some(v => (num(v) ?? 0) > 0);
+    const res = slots[ck]?.res;
+    return res && 'metricas' in res;
+  }));
+  const temSimulado = regioes.some(r => modoDe(r) === 'curva' && SLOTS.some(k => slots[chave(r, k)]?.arquivo.includes('simulado')));
 
-  // ───── Render ─────
-  const cardSlot = (k: Slot) => {
-    const s = slots[k];
+  // ───── Render: entrada ─────
+  const cardSlot = (regiao: string, k: Slot) => {
+    const ck = chave(regiao, k);
+    const s = slots[ck];
     const lado = k.endsWith('D') ? 'D' : 'E';
     const r = s?.res;
     const ok = r && 'metricas' in r ? r : null;
     return (
       <div
-        key={k}
-        onDragOver={e => { e.preventDefault(); setSobre(k); }}
+        key={ck}
+        onDragOver={e => { e.preventDefault(); setSobre(ck); }}
         onDragLeave={() => setSobre(null)}
-        onDrop={e => { e.preventDefault(); setSobre(null); const f = e.dataTransfer.files?.[0]; if (f) carregarArquivo(k, f); }}
-        className={cn('rounded-xl border-2 border-dashed p-3 space-y-2 min-w-0 transition-colors', sobre === k ? 'border-primary bg-primary/5' : 'border-border/60 bg-muted/20')}
+        onDrop={e => { e.preventDefault(); setSobre(null); const f = e.dataTransfer.files?.[0]; if (f) carregarArquivo(ck, f); }}
+        className={cn('rounded-xl border-2 border-dashed p-3 space-y-2 min-w-0 transition-colors', sobre === ck ? 'border-primary bg-primary/5' : 'border-border/60 bg-muted/20')}
       >
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="font-semibold text-sm"><Bolinha lado={lado} />{nomeSlot(regiao, k)}</span>
           <div className="flex gap-1.5">
             <Button asChild size="sm" variant="outline" className="relative overflow-hidden">
               <label className="cursor-pointer">
-                {lendo === k ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <FileUp className="h-3.5 w-3.5 mr-1" />}
+                {lendo === ck ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <FileUp className="h-3.5 w-3.5 mr-1" />}
                 {s ? 'Trocar' : 'Escolher arquivo'}
-                <input type="file" accept=".xlsx,.csv,.txt" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => { const f = e.target.files?.[0]; if (f) carregarArquivo(k, f); e.target.value = ''; }} />
+                <input type="file" accept=".xlsx,.csv,.txt" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => { const f = e.target.files?.[0]; if (f) carregarArquivo(ck, f); e.target.value = ''; }} />
               </label>
             </Button>
-            {s && <Button size="sm" variant="ghost" onClick={() => setSlots(p => { const n = { ...p }; delete n[k]; return n; })} title="Remover"><X className="h-4 w-4" /></Button>}
+            {s && <Button size="sm" variant="ghost" onClick={() => setSlots(p => { const n = { ...p }; delete n[ck]; return n; })} title="Remover"><X className="h-4 w-4" /></Button>}
           </div>
         </div>
         {s ? <p className="text-xs font-mono text-muted-foreground break-all">{s.arquivo}</p> : <p className="text-xs text-muted-foreground">Arraste aqui o .xlsx ou .csv exportado pelo dinamômetro.</p>}
@@ -336,7 +407,7 @@ export default function Dinamometria() {
             {s.abas && s.abas.length > 1 && (
               <div className="space-y-0.5 col-span-2 sm:col-span-4">
                 <Label className="text-[11px]">Aba</Label>
-                <Select value={String(s.abaIdx)} onValueChange={v => trocarAba(k, Number(v))}>
+                <Select value={String(s.abaIdx)} onValueChange={v => trocarAba(ck, Number(v))}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>{s.abas.map((a, i) => <SelectItem key={i} value={String(i)}>{a.nome}</SelectItem>)}</SelectContent>
                 </Select>
@@ -344,7 +415,7 @@ export default function Dinamometria() {
             )}
             <div className="space-y-0.5">
               <Label className="text-[11px]">Tempo</Label>
-              <Select value={s.mapa.tempo == null ? 'none' : String(s.mapa.tempo)} onValueChange={v => ajustarMapa(k, { tempo: v === 'none' ? null : Number(v) })}>
+              <Select value={s.mapa.tempo == null ? 'none' : String(s.mapa.tempo)} onValueChange={v => ajustarMapa(ck, { tempo: v === 'none' ? null : Number(v) })}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem coluna (usar Hz)</SelectItem>
@@ -355,12 +426,12 @@ export default function Dinamometria() {
             {s.mapa.tempo == null ? (
               <div className="space-y-0.5">
                 <Label className="text-[11px]">Frequência (Hz)</Label>
-                <Input className="h-8 text-xs" inputMode="numeric" defaultValue={s.mapa.hz} onBlur={e => ajustarMapa(k, { hz: num(e.target.value) || 100 })} />
+                <Input className="h-8 text-xs" inputMode="numeric" defaultValue={s.mapa.hz} onBlur={e => ajustarMapa(ck, { hz: num(e.target.value) || 100 })} />
               </div>
             ) : (
               <div className="space-y-0.5">
                 <Label className="text-[11px]">Unid. do tempo</Label>
-                <Select value={s.mapa.unidadeTempo} onValueChange={v => ajustarMapa(k, { unidadeTempo: v as Mapa['unidadeTempo'] })}>
+                <Select value={s.mapa.unidadeTempo} onValueChange={v => ajustarMapa(ck, { unidadeTempo: v as Mapa['unidadeTempo'] })}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="auto">Automático</SelectItem><SelectItem value="s">segundos</SelectItem><SelectItem value="ms">milissegundos</SelectItem></SelectContent>
                 </Select>
@@ -368,14 +439,14 @@ export default function Dinamometria() {
             )}
             <div className="space-y-0.5">
               <Label className="text-[11px]">Força</Label>
-              <Select value={String(s.mapa.forca)} onValueChange={v => ajustarMapa(k, { forca: Number(v) })}>
+              <Select value={String(s.mapa.forca)} onValueChange={v => ajustarMapa(ck, { forca: Number(v) })}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>{s.insp.colunas.map(c => <SelectItem key={c.idx} value={String(c.idx)}>{c.nome}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-0.5">
               <Label className="text-[11px]">Unid. da força</Label>
-              <Select value={s.mapa.unidade} onValueChange={v => ajustarMapa(k, { unidade: v as Unidade })}>
+              <Select value={s.mapa.unidade} onValueChange={v => ajustarMapa(ck, { unidade: v as Unidade })}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>{(['kgf', 'N', 'lbf'] as Unidade[]).map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
               </Select>
@@ -390,22 +461,61 @@ export default function Dinamometria() {
               Pico <b className="font-mono text-foreground">{fmt(disp(ok.metricas.pico), 1)} {u}</b> · {ok.metricas.reps.length} rep. · {ok.metricas.hz} Hz · {fmt(ok.metricas.duracao, 1)} s
               {ok.metricas.fadiga == null && ' · fadiga não calculada (contração curta)'}
             </p>
-            <div className="h-16">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={ok.curva.t.map((t, i) => ({ t, f: ok.curva.f[i] }))} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-                  <Line type="linear" dataKey="f" stroke={COR[lado]} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {ok.curva && (
+              <div className="h-16">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={ok.curva.t.map((t, i) => ({ t, f: ok.curva.f[i] }))} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                    <Line type="linear" dataKey="f" stroke={COR[lado]} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </>
         )}
       </div>
     );
   };
 
-  const graficoCurva = (g: 'ag' | 'an', titulo: string) => {
-    if (!atual) return null;
-    const dados = linhasCurva(atual.av, g, u);
+  const tabelaPicos = (regiao: string) => (
+    <div className="overflow-x-auto rounded-lg border border-border/50">
+      <table className="w-full text-sm min-w-[520px]">
+        <thead className="bg-muted/50 text-xs text-muted-foreground">
+          <tr>
+            <th className="px-2.5 py-2 text-left font-semibold">Músculo</th>
+            {[1, 2, 3].map(n => <th key={n} className="px-2.5 py-2 text-left font-semibold">Tentativa {n} ({unidadePico})</th>)}
+            <th className="px-2.5 py-2 text-left font-semibold">Maior</th>
+          </tr>
+        </thead>
+        <tbody>
+          {SLOTS.map(k => {
+            const ck = chave(regiao, k);
+            const vals = picos[ck] || ['', '', ''];
+            const nums = vals.map(v => num(v)).filter((v): v is number => v != null && v > 0);
+            return (
+              <tr key={ck} className="border-t border-border/40">
+                <td className="px-2.5 py-1.5 whitespace-nowrap"><Bolinha lado={k.endsWith('D') ? 'D' : 'E'} />{nomeSlot(regiao, k)}</td>
+                {[0, 1, 2].map(i => (
+                  <td key={i} className="px-1.5 py-1.5">
+                    <Input
+                      id={`pico-${ck}-${i}`}
+                      className="h-8 w-24 font-mono"
+                      inputMode="decimal"
+                      value={vals[i] || ''}
+                      onChange={e => setPicos(p => { const v = [...(p[ck] || ['', '', ''])]; v[i] = e.target.value; return { ...p, [ck]: v }; })}
+                    />
+                  </td>
+                ))}
+                <td className="px-2.5 py-1.5 font-mono font-semibold">{nums.length ? fmt(Math.max(...nums), 1) : '—'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const graficoCurva = (av: Avaliacao, g: 'ag' | 'an', titulo: string) => {
+    const dados = linhasCurva(av, g, u);
     if (!dados.length) return null;
     return (
       <Card className="p-4 space-y-2 min-w-0">
@@ -428,11 +538,17 @@ export default function Dinamometria() {
     );
   };
 
-  const evolucao = useMemo(() => registros.map(r => {
-    const a = analisar(r.av, crit);
-    const p = (k: Slot) => { const v = r.av.slots[k]?.metricas.pico; return v == null ? null : +(v / UF[crit.unidade]).toFixed(1); };
-    return { data: dataBR(r.data).slice(0, 5), dataFull: r.data, score: a.score, agD: p('agD'), agE: p('agE'), anD: p('anD'), anE: p('anE'), lsiAg: a.lsiAg?.v ?? null, lsiAn: a.lsiAn?.v ?? null, regiao: r.av.regiao };
-  }), [registros, crit]);
+  // ───── Evolução ─────
+  const regioesHist = useMemo(() => Array.from(new Set(registros.flatMap(r => r.movs.map(m => m.regiao)))), [registros]);
+  const regEvoAtual = regEvo && regioesHist.includes(regEvo) ? regEvo : regioesHist[0] || 'joelho';
+  const REvo = REGIOES[regEvoAtual] || REGIOES.joelho;
+  const evolucao = useMemo(() => registros.flatMap(r => {
+    const m = r.movs.find(x => x.regiao === regEvoAtual);
+    if (!m) return [];
+    const a = analisar(m, crit);
+    const p = (k: Slot) => { const v = m.slots[k]?.metricas.pico; return v == null ? null : +(v / UF[crit.unidade]).toFixed(1); };
+    return [{ data: dataBR(r.data).slice(0, 5), dataFull: r.data, score: a.score, agD: p('agD'), agE: p('agE'), anD: p('anD'), anE: p('anE'), lsiAg: a.lsiAg?.v ?? null, lsiAn: a.lsiAn?.v ?? null }];
+  }), [registros, crit, regEvoAtual]);
 
   const camposCrit: [keyof Criterios, string, string?][] = [
     ['lsiPleno', 'Simetria plena (%)', 'Grindem 2016: ≥ 90%'], ['lsiZero', 'Simetria zero (%)'],
@@ -448,7 +564,7 @@ export default function Dinamometria() {
         <PageHeader
           title="Análise de dinamometria"
           subtitle={nomePaciente}
-          eyebrow="Exames presenciais"
+          eyebrow="Aplicações"
           icon={<Dumbbell className="icon-md" />}
           back={id ? `/pacientes/${id}` : true}
         />
@@ -470,14 +586,6 @@ export default function Dinamometria() {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="space-y-1"><Label className="text-xs">Data</Label><Input type="date" value={dataAv} onChange={e => setDataAv(e.target.value)} /></div>
-                <div className="space-y-1 col-span-2 md:col-span-1">
-                  <Label className="text-xs">Articulação</Label>
-                  <Select value={regiao} onValueChange={setRegiao}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(REGIOES).map(([k, r]) => <SelectItem key={k} value={k}>{r.l}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                {R.torque && <div className="space-y-1"><Label className="text-xs">Braço de alavanca (cm)</Label><Input inputMode="decimal" value={braco} onChange={e => setBraco(e.target.value)} placeholder="Para a norma" /></div>}
                 <div className="space-y-1"><Label className="text-xs">Idade (anos)</Label><Input inputMode="numeric" value={suj.idade} onChange={e => setSuj(s => ({ ...s, idade: e.target.value }))} /></div>
                 <div className="space-y-1">
                   <Label className="text-xs">Sexo</Label>
@@ -503,10 +611,68 @@ export default function Dinamometria() {
                 </div>
                 <div className="space-y-1 col-span-2"><Label className="text-xs">Modalidade / atividade</Label><Input value={suj.modalidade} onChange={e => setSuj(s => ({ ...s, modalidade: e.target.value }))} placeholder="Ex.: futebol, corrida" /></div>
               </div>
-              <p className="text-xs text-muted-foreground">Um arquivo por músculo e lado. O app encontra as colunas de tempo e força, separa as repetições e usa a melhor. Para medir fadiga, a contração precisa ficar alta por pelo menos {crit.platoMin} s.</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Articulações avaliadas nesta sessão</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(REGIOES).map(([k, r]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => alternarRegiao(k)}
+                      aria-pressed={regioes.includes(k)}
+                      className={cn('rounded-full border px-3 py-1 text-sm transition-colors', regioes.includes(k) ? 'border-primary bg-primary/10 text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted')}
+                    >
+                      {r.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{SLOTS.map(cardSlot)}</div>
+            {regioes.map(r => {
+              const Rg = REGIOES[r];
+              const modo = modoDe(r);
+              return (
+                <Card key={r} className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-semibold">{Rg.l}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {Rg.torque && (
+                        <div className="flex items-center gap-1.5">
+                          <Label className="text-xs whitespace-nowrap">Braço de alavanca (cm)</Label>
+                          <Input className="h-8 w-20" inputMode="decimal" value={bracos[r] || ''} onChange={e => setBracos(p => ({ ...p, [r]: e.target.value }))} />
+                        </div>
+                      )}
+                      <div className="inline-flex rounded-lg border border-border p-0.5">
+                        {([['curva', 'Arquivo Excel'], ['pico', 'Só os picos']] as [Modo, string][]).map(([m, l]) => (
+                          <button key={m} type="button" onClick={() => setModos(p => ({ ...p, [r]: m }))} aria-pressed={modo === m} className={cn('rounded-md px-2.5 py-1 text-xs', modo === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>{l}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {modo === 'curva' ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">Um arquivo por músculo e lado. O app encontra as colunas de tempo e força, separa as repetições e usa a melhor. Para medir fadiga, a contração precisa ficar alta por pelo menos {crit.platoMin} s.</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{SLOTS.map(k => cardSlot(r, k))}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <p className="text-xs text-muted-foreground">Para dinamômetros que mostram só a força máxima. Digite até 3 tentativas; vale a maior. Fadiga, RFD e estabilidade não são calculadas.</p>
+                        <div className="flex items-center gap-1.5">
+                          <Label className="text-xs">Unidade</Label>
+                          <Select value={unidadePico} onValueChange={v => setUnidadePico(v as Unidade)}>
+                            <SelectTrigger className="h-8 w-20"><SelectValue /></SelectTrigger>
+                            <SelectContent>{(['kgf', 'N', 'lbf'] as Unidade[]).map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      {tabelaPicos(r)}
+                    </>
+                  )}
+                </Card>
+              );
+            })}
 
             <Card className="p-4 space-y-3">
               <div className="space-y-1"><Label className="text-xs">Observações</Label><Textarea rows={3} value={obs} onChange={e => setObs(e.target.value)} placeholder="Posição, dor durante o teste, protocolo…" /></div>
@@ -522,10 +688,10 @@ export default function Dinamometria() {
           <TabsContent value="resultado" className="space-y-4 mt-4">
             {isLoading ? (
               <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : !atual || !A ? (
+            ) : !sessao || !atual || !A ? (
               <Card className="p-8 text-center space-y-3">
                 <p className="font-semibold">Nenhuma avaliação de dinamometria ainda.</p>
-                <p className="text-sm text-muted-foreground">Importe os arquivos do dinamômetro na aba Nova avaliação.</p>
+                <p className="text-sm text-muted-foreground">Importe os arquivos do dinamômetro ou digite os picos na aba Nova avaliação.</p>
                 <Button onClick={() => setAba('nova')}>Nova avaliação</Button>
               </Card>
             ) : (
@@ -533,23 +699,34 @@ export default function Dinamometria() {
                 <Card className="p-5 space-y-4">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{A.R.l} · {dataBR(atual.data)}{registros.length > 1 && ` · avaliação ${idx + 1} de ${registros.length}`}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{dataBR(sessao.data)}{registros.length > 1 && ` · avaliação ${idx + 1} de ${registros.length}`}</p>
                       <p className="text-lg font-semibold">{nomePaciente}</p>
+                      {sessao.movs.length > 1 && <p className="text-sm text-muted-foreground">Score geral da sessão: <b className="text-foreground">{scoreGeral ?? '—'}/100</b> (média das articulações)</p>}
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       {registros.length > 1 && (
-                        <Select value={atual.id} onValueChange={v => { setVerId(v); setConfirmaExcluir(false); }}>
+                        <Select value={sessao.id} onValueChange={v => { setVerId(v); setRegVer(null); setConfirmaExcluir(false); }}>
                           <SelectTrigger className="h-9 w-auto min-w-[180px]"><SelectValue /></SelectTrigger>
-                          <SelectContent>{[...registros].reverse().map(r => <SelectItem key={r.id} value={r.id}>{dataBR(r.data)} · {REGIOES[r.av.regiao]?.l}</SelectItem>)}</SelectContent>
+                          <SelectContent>{[...registros].reverse().map(r => <SelectItem key={r.id} value={r.id}>{dataBR(r.data)} · {r.movs.map(m => REGIOES[m.regiao]?.l).join(', ')}</SelectItem>)}</SelectContent>
                         </Select>
                       )}
                       <Button size="sm" variant="outline" onClick={copiar}><Copy className="h-3.5 w-3.5 mr-1" />Copiar interpretação</Button>
-                      <Button size="sm" onClick={pdf} disabled={gerandoPdf}>{gerandoPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <FileDown className="h-3.5 w-3.5 mr-1" />}Relatório PDF</Button>
+                      <Button size="sm" variant="outline" onClick={() => pdf('tecnico')} disabled={!!gerando}>{gerando === 'tecnico' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <FileDown className="h-3.5 w-3.5 mr-1" />}Relatório técnico</Button>
+                      <Button size="sm" onClick={() => pdf('cliente')} disabled={!!gerando}>{gerando === 'cliente' ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <UserRound className="h-3.5 w-3.5 mr-1" />}Relatório para o cliente</Button>
                     </div>
                   </div>
+                  {sessao.movs.length > 1 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {sessao.movs.map(m => (
+                        <button key={m.regiao} type="button" onClick={() => setRegVer(m.regiao)} aria-pressed={m.regiao === atual.regiao} className={cn('rounded-full border px-3 py-1 text-sm', m.regiao === atual.regiao ? 'border-primary bg-primary/10 font-medium' : 'border-border text-muted-foreground hover:bg-muted')}>
+                          {REGIOES[m.regiao]?.l} · {analisar(m, crit).score ?? '—'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                     <div className="space-y-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Score de força</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Score de força · {A.R.l}</p>
                       <div className="flex items-baseline gap-2"><span className="text-7xl font-extrabold tabular-nums leading-none">{A.score ?? '—'}</span><span className="text-xl text-muted-foreground font-semibold">/100</span></div>
                       <div className="flex items-center gap-2"><span className="text-base font-bold uppercase tracking-wide">{A.categoria?.[1] || 'Sem dados'}</span></div>
                       <div className="relative pt-2">
@@ -578,7 +755,7 @@ export default function Dinamometria() {
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Simetria · {nome}</p>
                       <div className="flex items-center justify-between gap-2"><span className="text-3xl font-extrabold tabular-nums">{L ? `${fmt(L.v, 0)}%` : '—'}</span><Pilula st={stLSI(L?.v)} /></div>
                       <div className="text-sm space-y-0.5">
-                        {(['D', 'E'] as Lado[]).map(l => <div key={l} className="flex justify-between"><span className="text-muted-foreground"><Bolinha lado={l} />{l === 'D' ? 'Direito' : 'Esquerdo'}</span><span className="font-mono">{fmt(disp(atual.av.slots[`${g}${l}` as Slot]?.metricas.pico), 1)} {u}</span></div>)}
+                        {(['D', 'E'] as Lado[]).map(l => <div key={l} className="flex justify-between"><span className="text-muted-foreground"><Bolinha lado={l} />{l === 'D' ? 'Direito' : 'Esquerdo'}</span><span className="font-mono">{fmt(disp(atual.slots[`${g}${l}` as Slot]?.metricas.pico), 1)} {u}</span></div>)}
                       </div>
                     </Card>
                   ))}
@@ -594,38 +771,67 @@ export default function Dinamometria() {
                   })}
                 </div>
 
+                <Card className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-semibold text-sm">Mapa muscular{sessao.movs.length > 1 ? ' · todas as articulações da sessão' : ''}</p>
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      {([['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Trabalhar'], ['info', 'Sem comparação']] as [string, string][]).map(([k, l]) => <span key={k} className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm" style={{ background: COR_STATUS[k] }} />{l}</span>)}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-4 items-start">
+                    <div className="rounded-lg border border-border/50 bg-white max-w-[520px] w-full mx-auto [&_svg]:w-full [&_svg]:h-auto" dangerouslySetInnerHTML={{ __html: svgMapa }} />
+                    <ol className="space-y-2 text-sm">
+                      {legendaMapa.map(it => {
+                        const info = MUSCULOS[it.regiao]?.[it.g];
+                        return (
+                          <li key={it.numero} className="flex gap-2">
+                            <span className="h-5 w-5 shrink-0 rounded-full bg-foreground text-background text-[11px] font-bold flex items-center justify-center">{it.numero}</span>
+                            <span className="min-w-0">
+                              <span className="font-medium">{info?.nome}</span>
+                              <span className="flex flex-wrap gap-1.5 mt-0.5">{(['D', 'E'] as Lado[]).map(l => it[l] && <span key={l} className="text-xs text-muted-foreground flex items-center gap-1">{l === 'D' ? 'Dir.' : 'Esq.'} <Pilula st={it[l]} /></span>)}</span>
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Cor de cada lado: a pior situação entre a força para a idade e o sexo (escore z) e, no lado mais fraco, a simetria. Na vista de frente, o lado direito do paciente aparece à esquerda da imagem.</p>
+                </Card>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {graficoCurva('ag', A.R.ag)}
-                  {graficoCurva('an', A.R.an)}
+                  {graficoCurva(atual, 'ag', A.R.ag)}
+                  {graficoCurva(atual, 'an', A.R.an)}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-                  <Card className="p-4 space-y-3">
-                    <p className="font-semibold text-sm">Índice de fadiga</p>
-                    {SLOTS.filter(k => A.slots[k]).map(k => {
-                      const f = A.slots[k]!.fadiga;
-                      const escala = Math.max(crit.fadZero, 50);
-                      return (
-                        <div key={k} className="grid grid-cols-[130px_1fr_48px] gap-2 items-center text-sm">
-                          <span className="truncate">{nomeSlot(atual.av.regiao, k)}</span>
-                          <span className="relative h-3.5 rounded bg-muted border border-border/50">
-                            <b className="absolute inset-y-0 left-0 rounded" style={{ width: `${f == null ? 0 : clamp((f / escala) * 100, 0, 100)}%`, background: COR[k.endsWith('D') ? 'D' : 'E'] }} />
-                            <i className="absolute -top-1 -bottom-1 w-0.5 bg-muted-foreground" style={{ left: `${(crit.fadPleno / escala) * 100}%` }} title={`Limite ${crit.fadPleno}%`} />
-                          </span>
-                          <span className="font-mono text-right">{f == null ? 'n/d' : `${fmt(f, 0)}%`}</span>
-                        </div>
-                      );
-                    })}
-                    <p className="text-[11px] text-muted-foreground">(Força máxima em 1 s − força no último segundo) ÷ força máxima. A linha marca o limite de {crit.fadPleno}%.</p>
-                  </Card>
+                  {SLOTS.some(k => A.slots[k]?.fadiga != null) && (
+                    <Card className="p-4 space-y-3">
+                      <p className="font-semibold text-sm">Índice de fadiga</p>
+                      {SLOTS.filter(k => A.slots[k]).map(k => {
+                        const f = A.slots[k]!.fadiga;
+                        const escala = Math.max(crit.fadZero, 50);
+                        return (
+                          <div key={k} className="grid grid-cols-[130px_1fr_48px] gap-2 items-center text-sm">
+                            <span className="truncate">{nomeSlot(atual.regiao, k)}</span>
+                            <span className="relative h-3.5 rounded bg-muted border border-border/50">
+                              <b className="absolute inset-y-0 left-0 rounded" style={{ width: `${f == null ? 0 : clamp((f / escala) * 100, 0, 100)}%`, background: COR[k.endsWith('D') ? 'D' : 'E'] }} />
+                              <i className="absolute -top-1 -bottom-1 w-0.5 bg-muted-foreground" style={{ left: `${(crit.fadPleno / escala) * 100}%` }} title={`Limite ${crit.fadPleno}%`} />
+                            </span>
+                            <span className="font-mono text-right">{f == null ? 'n/d' : `${fmt(f, 0)}%`}</span>
+                          </div>
+                        );
+                      })}
+                      <p className="text-[11px] text-muted-foreground">(Força máxima em 1 s − força no último segundo) ÷ força máxima. A linha marca o limite de {crit.fadPleno}%.</p>
+                    </Card>
+                  )}
                   <Card className="p-4 space-y-2">
-                    <p className="font-semibold text-sm">Interpretação automática</p>
+                    <p className="font-semibold text-sm">Interpretação automática · {A.R.l}</p>
                     {texto.map((p, i) => <p key={i} className="text-sm leading-relaxed">{p}</p>)}
                   </Card>
                 </div>
 
                 <Card className="p-4 space-y-2">
-                  <p className="font-semibold text-sm">Métricas da curva</p>
+                  <p className="font-semibold text-sm">Métricas · {A.R.l}</p>
                   <div className="overflow-x-auto rounded-lg border border-border/50">
                     <table className="w-full text-sm min-w-[860px]">
                       <thead className="bg-muted/50 text-xs text-muted-foreground">
@@ -638,13 +844,13 @@ export default function Dinamometria() {
                           const s = A.slots[k]!;
                           return (
                             <tr key={k} className="border-t border-border/40">
-                              <td className="px-2.5 py-2 whitespace-nowrap"><Bolinha lado={k.endsWith('D') ? 'D' : 'E'} />{nomeSlot(atual.av.regiao, k)}</td>
+                              <td className="px-2.5 py-2 whitespace-nowrap"><Bolinha lado={k.endsWith('D') ? 'D' : 'E'} />{nomeSlot(atual.regiao, k)}</td>
                               <td className="px-2.5 py-2 font-mono">{fmt(disp(s.pico), 1)}</td>
                               <td className="px-2.5 py-2 font-mono">{s.nkg == null ? '—' : fmt(s.nkg, 1)}</td>
                               <td className="px-2.5 py-2">{s.precisaBraco ? <span className="text-xs text-muted-foreground">informe o braço de alavanca</span> : s.z == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(s.pctNorma, 0)}% · z {fmt(s.z, 1)}</span><Pilula st={stZ(s.z)} /></span>}</td>
                               <td className="px-2.5 py-2 font-mono">{fmt(s.ttp, 2)}</td>
-                              <td className="px-2.5 py-2 font-mono">{s.rfd100 == null ? '—' : fmt(disp(s.rfd100), 0)}</td>
-                              <td className="px-2.5 py-2 font-mono">{s.rfd200 == null ? '—' : fmt(disp(s.rfd200), 0)}</td>
+                              <td className="px-2.5 py-2 font-mono">{fmt(disp(s.rfd100), 0)}</td>
+                              <td className="px-2.5 py-2 font-mono">{fmt(disp(s.rfd200), 0)}</td>
                               <td className="px-2.5 py-2 font-mono">{fmt(disp(s.impulso), 0)}</td>
                               <td className="px-2.5 py-2">{s.fadiga == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(s.fadiga, 0)}%</span><Pilula st={stFadiga(s.fadiga, crit)} /></span>}</td>
                               <td className="px-2.5 py-2">{s.oscilacao == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(s.oscilacao, 1)}%</span><Pilula st={stOsc(s.oscilacao, crit)} /></span>}</td>
@@ -655,16 +861,16 @@ export default function Dinamometria() {
                       </tbody>
                     </table>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Pico = maior média móvel de 50 ms, descontada a linha de base. Oscilação = desvio em torno da tendência do platô, em % da média. Norma: McKay et al., 2017, membro dominante{A.R.torque ? '; joelho em torque (força × braço de alavanca), medido com dinamômetro fixo' : ''}.</p>
+                  <p className="text-[11px] text-muted-foreground">Pico = maior média móvel de 50 ms, descontada a linha de base (no modo "só os picos", o maior valor digitado). Oscilação = desvio em torno da tendência do platô, em % da média. Norma: McKay et al., 2017, membro dominante{A.R.torque ? '; joelho em torque (força × braço de alavanca), medido com dinamômetro fixo' : ''}.</p>
                 </Card>
 
-                {atual.obs && <Card className="p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Observações</p><p className="text-sm mt-1">{atual.obs}</p></Card>}
+                {sessao.obs && <Card className="p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Observações</p><p className="text-sm mt-1">{sessao.obs}</p></Card>}
 
                 <div className="flex gap-2 items-center flex-wrap">
                   {confirmaExcluir ? (
-                    <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm">
-                      Excluir a avaliação de {dataBR(atual.data)}? Não dá para desfazer.
-                      <Button size="sm" variant="destructive" disabled={excluir.isPending} onClick={() => excluir.mutate(atual.id)}>Excluir</Button>
+                    <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm flex-wrap">
+                      Excluir a avaliação de {dataBR(sessao.data)} (todas as articulações)? Não dá para desfazer.
+                      <Button size="sm" variant="destructive" disabled={excluir.isPending} onClick={() => excluir.mutate(sessao.id)}>Excluir</Button>
                       <Button size="sm" variant="ghost" onClick={() => setConfirmaExcluir(false)}>Cancelar</Button>
                     </div>
                   ) : (
@@ -677,12 +883,19 @@ export default function Dinamometria() {
 
           {/* ─── Evolução ─── */}
           <TabsContent value="evolucao" className="space-y-4 mt-4">
+            {regioesHist.length > 1 && (
+              <div className="flex flex-wrap gap-1.5">
+                {regioesHist.map(r => (
+                  <button key={r} type="button" onClick={() => setRegEvo(r)} aria-pressed={r === regEvoAtual} className={cn('rounded-full border px-3 py-1 text-sm', r === regEvoAtual ? 'border-primary bg-primary/10 font-medium' : 'border-border text-muted-foreground hover:bg-muted')}>{REGIOES[r]?.l}</button>
+                ))}
+              </div>
+            )}
             {evolucao.length < 2 ? (
-              <Card className="p-8 text-center text-sm text-muted-foreground">A evolução aparece a partir da segunda avaliação.</Card>
+              <Card className="p-8 text-center text-sm text-muted-foreground">A evolução aparece a partir da segunda avaliação da mesma articulação.</Card>
             ) : (
               <>
                 <Card className="p-4 space-y-2">
-                  <p className="font-semibold text-sm">Score de força</p>
+                  <p className="font-semibold text-sm">Score de força · {REvo.l}</p>
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={evolucao} margin={{ top: 8, right: 12, bottom: 4, left: -16 }}>
@@ -700,7 +913,7 @@ export default function Dinamometria() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {(['ag', 'an'] as const).map(g => (
                     <Card key={g} className="p-4 space-y-2 min-w-0">
-                      <p className="font-semibold text-sm">Pico · {g === 'ag' ? R.ag : R.an} ({u})</p>
+                      <p className="font-semibold text-sm">Pico · {g === 'ag' ? REvo.ag : REvo.an} ({u})</p>
                       <div className="h-52">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={evolucao} margin={{ top: 8, right: 12, bottom: 4, left: -16 }}>
@@ -718,11 +931,11 @@ export default function Dinamometria() {
                   ))}
                 </div>
                 <Card className="p-4 space-y-2">
-                  <p className="font-semibold text-sm">Histórico</p>
+                  <p className="font-semibold text-sm">Histórico · {REvo.l}</p>
                   <div className="overflow-x-auto rounded-lg border border-border/50">
-                    <table className="w-full text-sm min-w-[720px]">
+                    <table className="w-full text-sm min-w-[680px]">
                       <thead className="bg-muted/50 text-xs text-muted-foreground">
-                        <tr>{['Data', 'Articulação', 'Score', ...SLOTS.map(k => `${nomeSlot(regiao, k)} (${u})`), 'Simetria ag.', 'Simetria ant.'].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}</tr>
+                        <tr>{['Data', 'Score', ...SLOTS.map(k => `${nomeSlot(regEvoAtual, k)} (${u})`), `Simetria ${REvo.ag}`, `Simetria ${REvo.an}`].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}</tr>
                       </thead>
                       <tbody>
                         {[...evolucao].reverse().map((e, i, arr) => {
@@ -730,7 +943,6 @@ export default function Dinamometria() {
                           return (
                             <tr key={e.dataFull + i} className="border-t border-border/40">
                               <td className="px-2.5 py-2 whitespace-nowrap">{dataBR(e.dataFull)}</td>
-                              <td className="px-2.5 py-2 whitespace-nowrap">{REGIOES[e.regiao]?.l}</td>
                               <td className="px-2.5 py-2 font-mono font-semibold">{e.score ?? '—'}</td>
                               {SLOTS.map(k => {
                                 const v = e[k], p = prev?.[k];
@@ -780,7 +992,7 @@ export default function Dinamometria() {
             <Card className="p-4 space-y-2 text-sm">
               <p className="font-semibold">Como cada número é calculado</p>
               <ul className="list-disc pl-5 space-y-1 text-muted-foreground max-w-4xl">
-                <li><b className="text-foreground">Pico:</b> maior média móvel de 50 ms da melhor repetição, descontada a linha de base (5º percentil do registro).</li>
+                <li><b className="text-foreground">Pico:</b> maior média móvel de 50 ms da melhor repetição, descontada a linha de base (5º percentil do registro). No modo "só os picos", o maior valor digitado.</li>
                 <li><b className="text-foreground">Início da contração:</b> primeiro ponto acima de 2% do pico ou de 3 desvios padrão da linha de base. Tempo até o pico e RFD contam a partir dele.</li>
                 <li><b className="text-foreground">RFD 0–100 e 0–200 ms:</b> ganho de força nesses intervalos ÷ tempo. Só é calculada com amostragem de pelo menos 50 Hz.</li>
                 <li><b className="text-foreground">Índice de fadiga:</b> (maior média de 1 s − média do último segundo do platô) ÷ maior média × 100. Exige platô acima de 50% do pico por {crit.platoMin} s ou mais.</li>
