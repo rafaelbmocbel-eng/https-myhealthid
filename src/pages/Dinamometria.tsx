@@ -863,7 +863,8 @@ export default function Dinamometria() {
             {/* Bancada do teste com a célula Bluetooth */}
             <BancadaTeste
               status={statusCelula}
-              bateria={celula.bateria}
+              bateria={celula.bateriaPct}
+              bateriaVolts={celula.bateriaVolts}
               proto={proto}
               onProto={setProto}
               etapas={etapasBancada}

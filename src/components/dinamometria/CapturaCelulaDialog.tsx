@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import BateriaCelula from './BateriaCelula';
 import { bluetoothDisponivel, celula, type CampoValor, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import { UF, type Unidade } from '@/lib/dinamometria/analise';
 
@@ -220,7 +221,7 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
               <div className="space-y-1">
                 <Label className="text-[11px]">A célula mede em</Label>
                 {celula.fblock ? (
-                  <p className="h-9 flex items-center text-sm font-medium">kgf · 250 Hz{celula.bateria != null && <span className="ml-2 text-[11px] text-muted-foreground">bateria {celula.bateria}/3</span>}</p>
+                  <p className="h-9 flex items-center text-sm font-medium">kgf · 250 Hz<BateriaCelula pct={celula.bateriaPct} volts={celula.bateriaVolts} className="ml-2" /></p>
                 ) : (
                 <Select value={unidade} onValueChange={(v) => setUnidade(v as Unidade)} disabled={gravando}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>

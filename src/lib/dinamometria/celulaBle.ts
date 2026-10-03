@@ -65,6 +65,22 @@ export function valorDaLinha(linha: string, campo: CampoValor): number | null {
   return nums[campo] ?? null;
 }
 
+// Voltagem (V) → carga (%) pela curva típica de bateria de lítio de 1 célula.
+// A célula desliga perto de 3,40 V (mesma faixa "vazia" do FightTech).
+const CURVA_BATERIA: [number, number][] = [
+  [3.40, 0], [3.55, 5], [3.65, 10], [3.70, 15], [3.73, 20], [3.75, 25], [3.77, 30], [3.79, 35], [3.80, 40],
+  [3.82, 45], [3.84, 50], [3.85, 55], [3.87, 60], [3.91, 65], [3.95, 70], [3.98, 75], [4.02, 80], [4.08, 85],
+  [4.11, 90], [4.15, 95], [4.20, 100],
+];
+export function pctBateria(v: number): number {
+  if (v <= CURVA_BATERIA[0][0]) return 0;
+  for (let i = 1; i < CURVA_BATERIA.length; i++) {
+    const [v1, p1] = CURVA_BATERIA[i];
+    if (v <= v1) { const [v0, p0] = CURVA_BATERIA[i - 1]; return Math.round(p0 + ((v - v0) / (v1 - v0)) * (p1 - p0)); }
+  }
+  return 100;
+}
+
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Inteiro de 24 bits com sinal, little-endian.
 const s24 = (b: Uint8Array, i: number) => { const v = b[i] | (b[i + 1] << 8) | (b[i + 2] << 16); return v & 0x800000 ? v - 0x1000000 : v; };
@@ -90,6 +106,9 @@ class CelulaBle {
   pacotes = 0;
   fblock = false;
   bateria: number | null = null;
+  /** Carga estimada (0–100%) e voltagem da bateria, lidas ao conectar. */
+  bateriaPct: number | null = null;
+  bateriaVolts: number | null = null;
   /** Leituras por segundo no último segundo (saúde da conexão). */
   taxa = 0;
   private zeroBruto: number | null = null;
@@ -330,7 +349,10 @@ class CelulaBle {
       // Mesmas faixas do FightTech (centésimos de volt): >3,90 V cheia … ≤3,40 V vazia.
       const mv = b.length >= 4 ? b[2] + b[3] * 256 : null;
       this.bateria = mv == null ? null : mv > 390 ? 3 : mv > 365 ? 2 : mv > 340 ? 1 : 0;
-      this.registrar(`bateria: ${mv ?? '?'} (${this.bateria ?? '?'}/3)`);
+      this.bateriaVolts = mv == null ? null : mv / 100;
+      this.bateriaPct = this.bateriaVolts == null ? null : pctBateria(this.bateriaVolts);
+      this.registrar(`bateria: ${this.bateriaVolts?.toFixed(2) ?? '?'} V · ${this.bateriaPct ?? '?'}%`);
+      this.avisarStatus();
       if (this.zeroBruto == null) void this.enviarBytes([0x40]).catch(() => undefined);
       return;
     }

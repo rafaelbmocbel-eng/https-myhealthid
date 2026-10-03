@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import type { StatusCelula } from '@/lib/dinamometria/celulaBle';
 import type { Lado } from '@/lib/dinamometria/analise';
 import { cn } from '@/lib/utils';
+import BateriaCelula from './BateriaCelula';
 
 export interface ProtocoloTeste {
   tempoForca: number;
@@ -67,9 +68,11 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 1,
  * e a sequência de etapas com o andamento (pico de cada uma) — é a área de
  * trabalho da dinamometria.
  */
-export default function BancadaTeste({ status, bateria, proto, onProto, etapas, nomeAg, nomeAn, titulo, onConectar, onIniciar, onCapturarUma }: {
+export default function BancadaTeste({ status, bateria, bateriaVolts, proto, onProto, etapas, nomeAg, nomeAn, titulo, onConectar, onIniciar, onCapturarUma }: {
   status: StatusCelula;
+  // Carga da bateria da célula em % (null = ainda não lida).
   bateria: number | null;
+  bateriaVolts?: number | null;
   proto: ProtocoloTeste;
   onProto: (p: ProtocoloTeste) => void;
   etapas: EtapaBancada[];
@@ -101,11 +104,7 @@ export default function BancadaTeste({ status, bateria, proto, onProto, etapas, 
             <div className="shrink-0 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 flex items-center gap-1.5">
               <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" /></span>
               <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">{status.nome}</span>
-              {bateria != null && (
-                <span className="flex items-end gap-px ml-0.5" aria-label={`Bateria ${bateria} de 3`}>
-                  {[1, 2, 3].map((n) => <span key={n} className={cn('w-1 rounded-sm', n <= bateria ? 'bg-emerald-600' : 'bg-emerald-600/25')} style={{ height: 4 + n * 2 }} />)}
-                </span>
-              )}
+              {bateria != null && <BateriaCelula pct={bateria} volts={bateriaVolts} className="ml-0.5" />}
             </div>
           ) : (status as { reconectando?: boolean }).reconectando ? (
             <div className="shrink-0 rounded-full bg-amber-500/10 border border-amber-500/40 px-2.5 py-1 flex items-center gap-1.5">
@@ -118,6 +117,11 @@ export default function BancadaTeste({ status, bateria, proto, onProto, etapas, 
             </Button>
           )}
         </div>
+        {status.conectado && bateria != null && bateria < 20 && (
+          <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 px-2.5 py-1.5 text-xs text-red-700 dark:text-red-300">
+            Bateria da célula em <b>{bateria}%</b>: carregue antes do teste. Com pouca carga a leitura pode falhar ou cair no meio.
+          </div>
+        )}
         {etapas.length > 0 && (
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">

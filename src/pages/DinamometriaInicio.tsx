@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { bluetoothDisponivel, celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import { REGIOES } from '@/lib/dinamometria/analise';
+import BateriaCelula from '@/components/dinamometria/BateriaCelula';
 import { cn } from '@/lib/utils';
 
 interface Pac { id: string; nome: string; sobrenome: string | null; data_nascimento: string | null; sexo: string | null }
@@ -157,13 +158,16 @@ export default function DinamometriaInicio() {
             <p className="text-sm text-muted-foreground flex items-start gap-1.5"><BluetoothOff className="h-4 w-4 mt-0.5 shrink-0" /> Bluetooth indisponível neste navegador. Use o Chrome no Android ou no computador. Sem a célula, dá para seguir e importar o Excel.</p>
           ) : status.conectado ? (
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> {status.nome} conectada{celula.bateria != null && <span className="text-xs text-muted-foreground font-normal">· bateria {celula.bateria}/3</span>}</p>
+              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> {status.nome} conectada<BateriaCelula pct={celula.bateriaPct} volts={celula.bateriaVolts} className="ml-1" /></p>
               <button className="text-xs text-muted-foreground underline" onClick={() => celula.desconectar()}>Desconectar</button>
             </div>
           ) : (
             <Button className="w-full gap-2" onClick={conectar} disabled={conectando}>
               {conectando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bluetooth className="h-4 w-4" />} Parear célula ($FBLOCK)
             </Button>
+          )}
+          {status.conectado && celula.bateriaPct != null && celula.bateriaPct < 20 && (
+            <p className="text-xs text-red-600">Bateria da célula em {celula.bateriaPct}%: carregue antes de testar. Com pouca carga a leitura pode falhar.</p>
           )}
         </Card>
 

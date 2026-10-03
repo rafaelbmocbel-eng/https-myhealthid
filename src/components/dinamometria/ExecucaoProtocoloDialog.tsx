@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { celula } from '@/lib/dinamometria/celulaBle';
 import { UF, type Unidade } from '@/lib/dinamometria/analise';
 import { cn } from '@/lib/utils';
+import BateriaCelula from './BateriaCelula';
 
 export interface Etapa { id: string; titulo: string; alvoKg?: number | null }
 export interface ResultadoEtapa {
@@ -222,7 +223,7 @@ export default function ExecucaoProtocoloDialog({ open, onOpenChange, etapas, co
     <Dialog open={open} onOpenChange={(v) => { if (!v) { gravRef.current = null; faseRef.current = 'aguardando'; } onOpenChange(v); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{modo === 'teste' ? 'Teste de força' : 'Treino'} · {idx + 1}/{etapas.length}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 flex-wrap">{modo === 'teste' ? 'Teste de força' : 'Treino'} · {idx + 1}/{etapas.length}<BateriaCelula pct={celula.bateriaPct} volts={celula.bateriaVolts} /></DialogTitle>
           <DialogDescription className="text-base font-semibold text-foreground">{etapa?.titulo}</DialogDescription>
         </DialogHeader>
 
