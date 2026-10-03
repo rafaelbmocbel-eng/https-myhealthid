@@ -107,6 +107,11 @@ export default function BancadaTeste({ status, bateria, proto, onProto, etapas, 
                 </span>
               )}
             </div>
+          ) : (status as { reconectando?: boolean }).reconectando ? (
+            <div className="shrink-0 rounded-full bg-amber-500/10 border border-amber-500/40 px-2.5 py-1 flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Religando {status.nome || 'célula'}…</span>
+            </div>
           ) : (
             <Button size="sm" className="shrink-0 gap-1.5 rounded-full" onClick={onConectar}>
               <Bluetooth className="h-3.5 w-3.5" /> Conectar célula

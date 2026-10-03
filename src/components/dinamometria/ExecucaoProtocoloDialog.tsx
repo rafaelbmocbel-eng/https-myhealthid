@@ -282,7 +282,9 @@ export default function ExecucaoProtocoloDialog({ open, onOpenChange, etapas, co
             <Button variant="ghost" className="gap-1.5 text-muted-foreground" onClick={proxima}><SkipForward className="h-4 w-4" /> Pular</Button>
           )}
         </div>
-        {!celula.status.conectado && <p className="text-xs text-red-600">Célula desconectada. Feche e conecte de novo.</p>}
+        {!celula.status.conectado && ((celula.status as { reconectando?: boolean }).reconectando
+          ? <p className="text-xs text-amber-700 dark:text-amber-400">A conexão caiu — religando a célula sozinho. Se a etapa ficou sem dados, toque em Recomeçar.</p>
+          : <p className="text-xs text-red-600">Célula desconectada. Feche e conecte de novo.</p>)}
         <p className="text-[11px] text-muted-foreground">
           {config.repeticoes}× {config.tempoForca}s de força · {config.descanso}s de descanso · {config.preparo}s de preparo
         </p>

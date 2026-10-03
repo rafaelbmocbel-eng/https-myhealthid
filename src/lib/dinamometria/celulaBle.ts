@@ -49,7 +49,8 @@ type Ouvinte = (l: Leitura) => void;
 type OuvinteLinha = (linha: string) => void;
 type OuvinteStatus = (s: StatusCelula) => void;
 
-export type StatusCelula = { conectado: false } | { conectado: true; nome: string };
+// reconectando: a conexão caiu e o app está religando sozinho.
+export type StatusCelula = { conectado: false; reconectando?: boolean; nome?: string } | { conectado: true; nome: string };
 
 // Qual número da linha é a força: 'auto' = único número, ou o último quando há
 // vários (ex.: "t;f"). Ajustável na tela se a célula mandar outro formato.
@@ -89,13 +90,24 @@ class CelulaBle {
   pacotes = 0;
   fblock = false;
   bateria: number | null = null;
+  /** Leituras por segundo no último segundo (saúde da conexão). */
+  taxa = 0;
   private zeroBruto: number | null = null;
+  private zeroProvisorio: number[] = [];
   private transmitindo = false;
   private nAmostra = 0;
   private t0 = 0;
+  private ultimoDado = 0;
+  private contagemTaxa = 0;
+  private relogio: ReturnType<typeof setInterval> | null = null;
+  private reconectando = false;
+  private desligadoPeloUsuario = false;
+  private filaEscrita: Promise<unknown> = Promise.resolve();
+  private wakeLock: any = null;
 
   get status(): StatusCelula {
-    return this.device?.gatt?.connected ? { conectado: true, nome: this.device.name || 'Célula' } : { conectado: false };
+    if (this.device?.gatt?.connected) return { conectado: true, nome: this.device.name || 'Célula' };
+    return { conectado: false, reconectando: this.reconectando, nome: this.device?.name };
   }
 
   onLeitura(cb: Ouvinte) { this.ouvintes.add(cb); return () => { this.ouvintes.delete(cb); }; }
@@ -113,13 +125,21 @@ class CelulaBle {
         ? { acceptAllDevices: true, optionalServices: SERVICOS_SERIAIS }
         : { filters: [{ namePrefix: '$FBLOCK' }, { namePrefix: 'FBLOCK' }, { namePrefix: 'F-BLOCK' }], optionalServices: SERVICOS_SERIAIS },
     );
-    device.addEventListener('gattserverdisconnected', () => this.avisarStatus());
-    const server = await device.gatt.connect();
+    if (this.device && this.device !== device) this.desconectar();
+    this.desligadoPeloUsuario = false;
+    device.removeEventListener?.('gattserverdisconnected', this.aoCair);
+    device.addEventListener('gattserverdisconnected', this.aoCair);
+    this.device = device;
+    await this.configurar();
+  }
 
-    // Escuta TODOS os canais com notificação (não sabemos qual é o da força) e
-    // registra o mapa de serviços para diagnóstico.
+  // Liga GATT, escolhe os canais, assina as notificações e faz o "aperto de mão".
+  // Usado na 1ª conexão e em cada reconexão automática.
+  private async configurar() {
+    const device = this.device;
+    const server = await device.gatt.connect();
     const notifs: any[] = [];
-    let write: any = null;
+    let write: any = null, nusWrite: any = null, nusNotif: any = null;
     const diag: string[] = [];
     const servicos: any[] = await server.getPrimaryServices().catch(() => []);
     for (const sv of servicos) {
@@ -128,6 +148,8 @@ class CelulaBle {
       for (const c of chars) {
         const props = ['read', 'write', 'writeWithoutResponse', 'notify', 'indicate'].filter((k) => c.properties[k]).join(',');
         diag.push(`  • ${curto(c.uuid)} [${props}]`);
+        if (/^6e400002/i.test(c.uuid)) nusWrite = c;
+        if (/^6e400003/i.test(c.uuid)) nusNotif = c;
         if ((c.properties.notify || c.properties.indicate) && !IGNORAR_CHARS.includes(c.uuid)) notifs.push(c);
         if (!write && (c.properties.write || c.properties.writeWithoutResponse)) write = c;
       }
@@ -138,42 +160,107 @@ class CelulaBle {
       device.gatt.disconnect();
       throw new Error('Conectei, mas a célula não expõe um canal de dados conhecido. Abra o app nRF Connect, conecte na célula e me mande um print dos serviços.');
     }
-
+    this.fblock = /^\$?F-?BLOCK/i.test(device.name || '') && !!nusNotif;
     this.desligarNotificacao();
-    this.device = device;
-    this.notifChars = notifs;
-    this.writeChar = write;
+    // No Nordic UART os comandos vão SEMPRE no 6E400002 (antes podia cair num
+    // canal gravável de outro serviço e a célula nunca recebia o "iniciar").
+    this.notifChars = this.fblock ? [nusNotif] : notifs;
+    this.writeChar = nusWrite || write;
     this.buffer = '';
-    this.pacotes = 0;
-    for (const c of notifs) {
+    this.zeroBruto = null;
+    this.zeroProvisorio = [];
+    this.transmitindo = false;
+    this.ultimoDado = performance.now();
+    for (const c of this.notifChars) {
       c.addEventListener('characteristicvaluechanged', this.aoReceber);
       try { await c.startNotifications(); } catch (e: any) { diag.push(`  ! não consegui escutar ${curto(c.uuid)}: ${e?.message || e}`); }
     }
-    this.fblock = /^\$?F-?BLOCK/i.test(device.name || '') && notifs.some((c) => /^6e400003/i.test(c.uuid));
-    this.zeroBruto = null;
-    this.transmitindo = false;
-    this.bateria = null;
+    this.reconectando = false;
     this.avisarStatus();
+    void this.manterTelaLigada();
+    this.ligarRelogio();
     if (this.fblock) {
       // Mesma sequência do FightTech: 0x20 → (bateria) → 0x40 zera → 0x30 inicia.
-      await espera(100);
+      // As escritas vão por fila; se a bateria ou o zero não vierem, o relógio
+      // de vigilância zera e inicia mesmo assim.
+      await espera(150);
       await this.enviarBytes([0x20]).catch(() => undefined);
-      // Se a bateria não chegar, zera e inicia mesmo assim.
-      setTimeout(() => { if (this.zeroBruto == null && this.status.conectado) void this.enviarBytes([0x40]).catch(() => undefined); }, 1200);
-      setTimeout(() => { if (!this.transmitindo && this.status.conectado) void this.iniciarTransmissao(); }, 2500);
       return;
     }
     let salvo: string | null = null;
     try { salvo = localStorage.getItem(CHAVE_INICIO); } catch { /* sem armazenamento */ }
-    if (salvo != null && write) {
+    if (salvo != null && this.writeChar) {
       try { await this.enviar(salvo); } catch { /* célula recusou — o usuário pode tentar de novo pelo painel */ }
     }
   }
 
+  // Vigilância a cada 0,5 s: inicia se o aperto de mão não completou, reenvia
+  // "iniciar" se os dados pararam e reconecta se a célula ficou muda.
+  private ligarRelogio() {
+    if (this.relogio) clearInterval(this.relogio);
+    let tique = 0, desdeConexao = 0;
+    this.relogio = setInterval(() => {
+      tique++; desdeConexao += 500;
+      if (tique % 2 === 0) { this.taxa = this.contagemTaxa; this.contagemTaxa = 0; }
+      if (!this.status.conectado || !this.fblock) return;
+      const parado = performance.now() - this.ultimoDado;
+      if (!this.transmitindo) {
+        if (desdeConexao === 1500 && this.zeroBruto == null) void this.enviarBytes([0x40]).catch(() => undefined);
+        if (desdeConexao >= 2500) void this.iniciarTransmissao();
+        return;
+      }
+      if (parado > 1500 && tique % 3 === 0) {
+        this.registrar('sem dados — reenviando iniciar');
+        void this.enviarBytes([0x30]).catch(() => undefined);
+      }
+      if (parado > 5000) {
+        this.registrar('célula muda — reconectando');
+        this.ultimoDado = performance.now();
+        try { this.device?.gatt?.disconnect(); } catch { /* força a reconexão */ }
+      }
+    }, 500);
+  }
+
+  // Conexão caiu: religa sozinho, com espera crescente (0,5 s até 8 s).
+  private aoCair = async () => {
+    this.transmitindo = false;
+    if (this.desligadoPeloUsuario || !this.device) { this.avisarStatus(); return; }
+    this.reconectando = true;
+    this.avisarStatus();
+    this.registrar('conexão caiu — religando');
+    for (let i = 0; i < 12 && !this.desligadoPeloUsuario; i++) {
+      await espera(Math.min(8000, 500 * 2 ** i));
+      if (this.desligadoPeloUsuario || !this.device) break;
+      try {
+        await this.configurar();
+        this.registrar('reconectada');
+        return;
+      } catch { /* tenta de novo */ }
+    }
+    this.reconectando = false;
+    this.avisarStatus();
+  };
+
+  private ouvindoVisibilidade = false;
+  private async manterTelaLigada() {
+    // O wake lock é solto quando a tela some; pede de novo ao voltar.
+    if (!this.ouvindoVisibilidade && typeof document !== 'undefined') {
+      this.ouvindoVisibilidade = true;
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && this.status.conectado) void this.manterTelaLigada(); });
+    }
+    try {
+      if (this.wakeLock || !(navigator as any).wakeLock) return;
+      this.wakeLock = await (navigator as any).wakeLock.request('screen');
+      this.wakeLock.addEventListener?.('release', () => { this.wakeLock = null; });
+    } catch { /* sem wake lock: segue normal, só não impede a tela de apagar */ }
+  }
+
   private async iniciarTransmissao() {
+    if (this.transmitindo) return;
     this.transmitindo = true;
     this.nAmostra = 0;
     this.t0 = performance.now();
+    this.ultimoDado = performance.now();
     await this.enviarBytes([0x30]).catch(() => { this.transmitindo = false; });
   }
 
@@ -184,11 +271,28 @@ class CelulaBle {
     return true;
   }
 
+  // O Chrome recusa uma escrita GATT enquanto outra está em andamento
+  // ("GATT operation already in progress"): tudo passa por uma fila, com até 3 tentativas.
+  private escrever(dados: Uint8Array) {
+    const tarefa = this.filaEscrita.then(async () => {
+      if (!this.writeChar) throw new Error('A célula não aceita comandos.');
+      let ultimoErro: unknown = null;
+      for (let t = 0; t < 3; t++) {
+        try {
+          if (this.writeChar.properties.writeWithoutResponse) await this.writeChar.writeValueWithoutResponse(dados);
+          else await this.writeChar.writeValue(dados);
+          await espera(40);
+          return;
+        } catch (e) { ultimoErro = e; await espera(120); }
+      }
+      throw ultimoErro;
+    });
+    this.filaEscrita = tarefa.catch(() => undefined);
+    return tarefa;
+  }
+
   async enviarBytes(b: number[]) {
-    if (!this.writeChar) throw new Error('A célula não aceita comandos.');
-    const dados = new Uint8Array(b);
-    if (this.writeChar.properties.writeWithoutResponse) await this.writeChar.writeValueWithoutResponse(dados);
-    else await this.writeChar.writeValue(dados);
+    await this.escrever(new Uint8Array(b));
   }
 
   private registrar(texto: string) {
@@ -199,15 +303,27 @@ class CelulaBle {
   private receberFblock(b: Uint8Array) {
     const tipo = b[0];
     if (tipo === 0x10) {
-      if (this.zeroBruto == null) return;
+      this.ultimoDado = performance.now();
+      if (!this.transmitindo) { this.transmitindo = true; this.nAmostra = 0; this.t0 = performance.now(); }
       for (let i = 1; i + 2 < b.length; i += 3) {
-        const kg = ((s24(b, i) - this.zeroBruto) * 800) / 8388608;
+        const bruto = s24(b, i);
+        // Sem a resposta do zero, usa a média das primeiras leituras (0,1 s) e
+        // pede o zero de novo — antes todas as leituras eram descartadas.
+        if (this.zeroBruto == null) {
+          this.zeroProvisorio.push(bruto);
+          if (this.zeroProvisorio.length < 25) continue;
+          this.zeroBruto = Math.round(this.zeroProvisorio.reduce((a, x) => a + x, 0) / this.zeroProvisorio.length);
+          this.registrar(`zero provisório: ${this.zeroBruto}`);
+          void this.enviarBytes([0x40]).catch(() => undefined);
+        }
+        const kg = ((bruto - this.zeroBruto) * 800) / 8388608;
         const tMs = this.t0 + this.nAmostra * 4; // 250 Hz
         this.nAmostra++;
+        this.contagemTaxa++;
         this.ouvintes.forEach((cb) => cb({ valor: kg, tMs }));
       }
       // Registro esparso para o diagnóstico (são ~250 leituras/s).
-      if (this.pacotes % 25 === 1) this.registrar(`dados: ${Math.floor((b.length - 1) / 3)} leituras/pacote`);
+      if (this.pacotes % 50 === 1) this.registrar(`dados: ${Math.floor((b.length - 1) / 3)} leituras/pacote · ${this.taxa}/s`);
       return;
     }
     if (tipo === 0x21) {
@@ -215,7 +331,7 @@ class CelulaBle {
       const mv = b.length >= 4 ? b[2] + b[3] * 256 : null;
       this.bateria = mv == null ? null : mv > 390 ? 3 : mv > 365 ? 2 : mv > 340 ? 1 : 0;
       this.registrar(`bateria: ${mv ?? '?'} (${this.bateria ?? '?'}/3)`);
-      void this.enviarBytes([0x40]).catch(() => undefined);
+      if (this.zeroBruto == null) void this.enviarBytes([0x40]).catch(() => undefined);
       return;
     }
     if (tipo === 0x40 && b.length >= 4) {
@@ -234,6 +350,7 @@ class CelulaBle {
     const agora = performance.now();
     this.pacotes++;
     if (this.fblock) { this.receberFblock(bytes); return; }
+    this.ultimoDado = agora;
     // Pacote binário (não é texto): mostra em hexadecimal para descobrirmos o formato.
     const imprimivel = bytes.every((b) => b === 9 || b === 10 || b === 13 || (b >= 32 && b < 127));
     if (!imprimivel) {
@@ -253,16 +370,14 @@ class CelulaBle {
       this.ultimasLinhas = [...this.ultimasLinhas.slice(-29), l];
       this.ouvintesLinha.forEach((cb) => cb(l));
       const v = valorDaLinha(l, this.campo);
-      if (v != null) this.ouvintes.forEach((cb) => cb({ valor: v, tMs: agora }));
+      if (v != null) { this.contagemTaxa++; this.ouvintes.forEach((cb) => cb({ valor: v, tMs: agora })); }
     }
   };
 
   async enviar(texto: string, comQuebra = true) {
-    if (!this.writeChar) throw new Error('A célula não aceita comandos.');
     const dados = new TextEncoder().encode(comQuebra && !texto.endsWith('\n') ? `${texto}\r\n` : texto);
     if (!dados.length) return;
-    if (this.writeChar.properties.writeWithoutResponse) await this.writeChar.writeValueWithoutResponse(dados);
-    else await this.writeChar.writeValue(dados);
+    await this.escrever(dados);
   }
 
   /**
@@ -292,9 +407,15 @@ class CelulaBle {
   }
 
   desconectar() {
+    this.desligadoPeloUsuario = true;
+    this.reconectando = false;
     if (this.fblock && this.transmitindo) void this.enviarBytes([0x31]).catch(() => undefined);
     this.transmitindo = false;
+    if (this.relogio) { clearInterval(this.relogio); this.relogio = null; }
+    try { this.wakeLock?.release?.(); } catch { /* já liberado */ }
+    this.wakeLock = null;
     this.desligarNotificacao();
+    try { this.device?.removeEventListener?.('gattserverdisconnected', this.aoCair); } catch { /* sem ouvinte */ }
     try { this.device?.gatt?.disconnect(); } catch { /* já desconectado */ }
     this.device = null;
     this.notifChars = [];
