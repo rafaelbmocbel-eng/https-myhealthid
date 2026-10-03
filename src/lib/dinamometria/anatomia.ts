@@ -14,14 +14,14 @@ const FORMAS: Record<string, Forma> = {
   quadriceps: { vista: 'frente', d: 'M78 262Q92 255 104 266Q104 310 98 340Q88 345 82 340Q73 300 78 262Z', c: [90, 300] },
   adutores: { vista: 'frente', d: 'M99 258Q108 261 107 280Q105 300 100 312Q94 292 96 268Z', c: [102, 271] },
   tibial: { vista: 'frente', d: el(87, 386, 5.5, 28), c: [87, 386] },
-  biceps: { vista: 'frente', d: el(57, 140, 8.5, 27), c: [57, 140] },
+  biceps: { vista: 'frente', d: el(58, 150, 7, 24), c: [58, 150] },
   peitoral: { vista: 'frente', d: el(83, 108, 17, 12), c: [83, 108] },
   quadrilAnterior: { vista: 'frente', d: el(83, 246, 9, 8), c: [83, 246] },
   posteriores: { vista: 'costas', d: 'M78 268Q90 262 104 270Q104 310 98 342Q88 347 82 342Q73 304 78 268Z', c: [90, 305] },
   gluteoMedio: { vista: 'costas', d: el(81, 238, 12, 10), c: [81, 238] },
   gluteoMaximo: { vista: 'costas', d: el(95, 254, 14, 12), c: [95, 254] },
   panturrilha: { vista: 'costas', d: el(90, 378, 10, 26), c: [90, 378] },
-  triceps: { vista: 'costas', d: el(57, 142, 8.5, 27), c: [57, 142] },
+  triceps: { vista: 'costas', d: el(58, 152, 7, 24), c: [58, 152] },
   infraespinal: { vista: 'costas', d: el(86, 118, 14, 11), c: [86, 118] },
 };
 
@@ -59,8 +59,8 @@ export const COR_STATUS: Record<string, string> = { ok: '#22A35A', warn: '#F2A90
 export type Articulacao = 'cervical' | 'ombro' | 'cotovelo' | 'punho' | 'lombar' | 'quadril' | 'joelho' | 'tornozelo' | 'pe';
 // Centro de cada articulação no lado ESQUERDO da imagem (mesma convenção das FORMAS).
 const ARTIC: Record<Articulacao, { c: [number, number]; meio?: boolean }> = {
-  cervical: { c: [110, 72], meio: true }, ombro: { c: [66, 94] }, cotovelo: { c: [52, 194] }, punho: { c: [44, 270] },
-  lombar: { c: [110, 226], meio: true }, quadril: { c: [86, 252] }, joelho: { c: [91, 350] }, tornozelo: { c: [93, 436] }, pe: { c: [91, 455] },
+  cervical: { c: [110, 72], meio: true }, ombro: { c: [63, 102] }, cotovelo: { c: [53, 196] }, punho: { c: [45, 268] },
+  lombar: { c: [110, 226], meio: true }, quadril: { c: [86, 252] }, joelho: { c: [91, 350] }, tornozelo: { c: [93, 440] }, pe: { c: [90, 456] },
 };
 export const NOME_ARTIC: Record<Articulacao, string> = {
   cervical: 'coluna cervical', ombro: 'ombro', cotovelo: 'cotovelo', punho: 'punho', lombar: 'coluna lombar', quadril: 'quadril', joelho: 'joelho', tornozelo: 'tornozelo', pe: 'pé',
@@ -112,21 +112,38 @@ export const itensRazao = (itens: ItemAv[], c: Criterios) => montar(itens, (A, g
   return g === fraco ? st : ['ok', 'Relativamente forte'];
 });
 
-const CORPO = [
-  el(110, 40, 21, 26),
-  'M100 60h20v24h-20Z',
-  'M70 84Q110 74 150 84L156 100Q160 150 146 205Q150 230 146 255L74 255Q70 230 74 205Q60 150 64 100Z',
-  'M152 88Q168 92 172 120L176 190Q170 198 160 196L154 130Z', 'M68 88Q52 92 48 120L44 190Q50 198 60 196L66 130Z',
-  'M160 196L176 190Q182 230 182 268L170 272Q164 232 160 196Z', 'M60 196L44 190Q38 230 38 268L50 272Q56 232 60 196Z',
-  el(176, 284, 8, 14), el(44, 284, 8, 14),
-  'M74 250L108 252L106 300Q104 330 102 352L80 352Q72 300 74 250Z', 'M146 250L112 252L114 300Q116 330 118 352L140 352Q148 300 146 250Z',
-  'M80 350L102 350Q104 400 100 440L86 440Q78 400 80 350Z', 'M140 350L118 350Q116 400 120 440L134 440Q142 400 140 350Z',
-  el(91, 450, 12, 7), el(129, 450, 12, 7),
+// Contorno do corpo: metade esquerda da imagem, do alto da cabeça até o
+// períneo; a outra metade é espelhada. Suavizado por Catmull-Rom.
+const METADE: [number, number][] = [
+  [110, 14], [98, 17], [90, 27], [88, 42], [90, 54], [95, 63], [101, 69], [102, 80],
+  [90, 87], [74, 91], [63, 96], [55, 106], [51, 121], [49, 146], [47, 171], [45, 196], [42, 225], [40, 250], [38, 266],
+  [34, 278], [32, 292], [35, 303], [42, 308], [49, 304], [52, 292], [51, 279], [52, 268],
+  [55, 240], [58, 212], [61, 192], [64, 166], [67, 141], [71, 124],
+  [74, 140], [75, 165], [73, 192], [71, 212], [70, 232], [70, 250],
+  [72, 270], [76, 302], [79, 330], [80, 352], [80, 372], [82, 402], [85, 428], [86, 442],
+  [81, 451], [80, 458], [88, 462], [99, 461], [102, 453], [100, 442],
+  [101, 420], [102, 396], [101, 372], [102, 350], [104, 322], [106, 292], [108, 272], [110, 265],
 ];
+function suave(pts: [number, number][]): string {
+  const n = pts.length, f = (v: number) => +v.toFixed(1);
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+    d += `C${f(p1[0] + (p2[0] - p0[0]) / 6)} ${f(p1[1] + (p2[1] - p0[1]) / 6)} ${f(p2[0] - (p3[0] - p1[0]) / 6)} ${f(p2[1] - (p3[1] - p1[1]) / 6)} ${p2[0]} ${p2[1]}`;
+  }
+  return `${d}Z`;
+}
+const CONTORNO = suave([...METADE, ...METADE.slice(1, -1).reverse().map(([x, y]) => [220 - x, y] as [number, number])]);
+const espelhar = (d: string) => `${d}<g transform="translate(220,0) scale(-1,1)">${d}</g>`;
+const DETALHES: Record<Vista, string> = {
+  frente: espelhar('<path d="M101 86Q90 89 78 92"/><path d="M73 122Q88 133 106 126"/><path d="M84 247Q98 257 108 265"/><path d="M86 356Q91 360 97 357"/><path d="M48 198Q51 201 55 199"/><path d="M41 292L44 300M45 291L47 301"/>')
+    + '<ellipse cx="110" cy="192" rx="2.2" ry="1.6"/>',
+  costas: espelhar('<path d="M93 104Q86 120 94 134"/><path d="M85 260Q97 270 110 264"/><path d="M86 357Q91 353 97 357"/><path d="M48 199Q51 196 55 198"/>')
+    + '<path d="M110 98L110 212"/><path d="M110 236L110 262"/>',
+};
 
 function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[]): string {
   const espelho = (d: string) => `<g transform="translate(220,0) scale(-1,1)">${d}</g>`;
-  const corpo = CORPO.map(d => `<path d="${d}"/>`).join('');
   let musc = '', marcas = '';
   for (const it of itens) {
     const info = MUSCULOS[it.regiao]?.[it.g];
@@ -158,8 +175,8 @@ function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[]): s
     <text x="22" y="34" text-anchor="start" font-size="10" fill="#6B7280">${esq}</text>
     <text x="198" y="34" text-anchor="end" font-size="10" fill="#6B7280">${dir}</text>
     <g transform="translate(0,14)">
-      <g fill="#9AA3AE" stroke="#9AA3AE" stroke-width="3" stroke-linejoin="round">${corpo}</g>
-      <g fill="#EEF0F3">${corpo}</g>
+      <path d="${CONTORNO}" fill="#F1F3F5" stroke="#8A9BA8" stroke-width="2.4" stroke-linejoin="round"/>
+      <g fill="none" stroke="#A9B6C0" stroke-width="1.4" stroke-linecap="round">${DETALHES[vista]}</g>
       ${musc}${circ}${marcas}
     </g>
   </g>`;
