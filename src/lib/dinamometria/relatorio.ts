@@ -6,6 +6,7 @@ import {
 } from './analise';
 import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, proporcaoSVG, itensAvatar } from './anatomia';
 import { achadosDor, AVISO_DOR } from './dor';
+import { REFERENCIAS, citar } from './referencias';
 
 const COR = { D: '#2A78D6', E: '#EB6834', ink: '#141922', ink2: '#4A5262', grade: '#E6E8EC', eixo: '#C3C6CE', fundo: '#FFFFFF' };
 
@@ -243,7 +244,9 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
         if (y + 5 + ls.length * 4.4 > 284) { doc.addPage(); y = 18; }
         bolinha(doc, a.st, M + 1.4, y - 1.2);
         doc.setFont('helvetica', 'bold'); doc.setFontSize(9.2); t(a.titulo, M + 5, y);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(ls, M + 5, y + 4.4); y += 4.4 + ls.length * 4.4 + 1.5;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(ls, M + 5, y + 4.4); y += 4.4 + ls.length * 4.4;
+        if (a.refs.length) { doc.setFontSize(7.6); doc.setTextColor(110); t(`Ref.: ${citar(a.refs)}`, M + 5, y + 0.6); doc.setTextColor(20); y += 3.4; }
+        y += 1.5;
       }
     }
     const evo: Serie[] = ([['lsiAg', COR.D], ['lsiAn', COR.E]] as const).flatMap(([k, cor]) => {
@@ -259,10 +262,20 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
       doc.setFontSize(8); doc.setTextColor(90); t(`Azul = ${R.ag}, laranja = ${R.an}. Critério de simetria: ${c.lsiAdequado}%.`, M, y + 1); doc.setTextColor(20); y += 5;
     }
     doc.setFontSize(7.4); doc.setTextColor(110);
-    const rod = doc.splitTextToSize(seguro(`Faixas das valências (ajustáveis): simetria adequada >= ${c.lsiAdequado}%, déficit importante < ${c.lsiImportante}%; razão até ${c.razaoTol}% de desvio adequada, acima de ${c.razaoLimite}% desequilíbrio; fadiga baixa <= ${c.fadBaixa}%, alta > ${c.fadAlta}%; oscilação estável <= ${c.oscEstavel}%, instável > ${c.oscInstavel}%. Normas: McKay et al., Neurology 2017 (membro dominante). Simetria >= 90%: Grindem et al., Br J Sports Med 2016. Adução/abdução do quadril >= 0,80: Tyler et al., Am J Sports Med 2001.`), W - 2 * M);
+    const rod = doc.splitTextToSize(seguro(`Faixas das valências (ajustáveis): simetria adequada >= ${c.lsiAdequado}%, déficit importante < ${c.lsiImportante}%; razão até ${c.razaoTol}% de desvio adequada, acima de ${c.razaoLimite}% desequilíbrio; fadiga baixa <= ${c.fadBaixa}%, alta > ${c.fadAlta}%; oscilação estável <= ${c.oscEstavel}%, instável > ${c.oscInstavel}%. Normas: McKay et al. 2017 (faixa normal = média ± 1 DP); simetria >= 90%: Grindem et al. 2016; adução/abdução >= 0,80: Tyler et al. 2001; fadiga e oscilação: faixas do serviço. Referências completas na última página.`), W - 2 * M);
     if (y > 270) { doc.addPage(); y = 18; }
     doc.text(rod, M, Math.max(y + 4, 286 - rod.length * 3.3));
   }
+  doc.addPage();
+  let yr = 18;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20); t('Referências (conferidas no PubMed)', M, yr); yr += 7;
+  REFERENCIAS.forEach((x, i) => {
+    const ls = doc.splitTextToSize(seguro(`${i + 1}. ${x.completa} PMID ${x.pmid}${x.doi ? `. doi:${x.doi}` : ''}`), W - 2 * M);
+    const uso = doc.splitTextToSize(seguro(x.uso), W - 2 * M - 4);
+    if (yr + (ls.length + uso.length) * 3.8 > 285) { doc.addPage(); yr = 18; }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(20); doc.text(ls, M, yr); yr += ls.length * 3.7;
+    doc.setFontSize(7.8); doc.setTextColor(100); doc.text(uso, M + 4, yr); yr += uso.length * 3.5 + 2;
+  });
   doc.save(nomeArquivo(d.paciente, 'Dinamometria', d.data));
 }
 
@@ -366,7 +379,9 @@ export async function gerarRelatorioCliente(d: DadosRelatorio) {
     if (y + 6 + ls.length * 4.4 > 282) { doc.addPage(); y = 18; }
     bolinha(doc, a.st, M + 1.6, y - 1.2, 1.7);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9.6); t(a.titulo.replace(' esquerdo', ' E').replace(' direito', ' D'), M + 6, y);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.2); doc.text(ls, M + 6, y + 4.4); y += 4.4 + ls.length * 4.4 + 2.2;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.2); doc.text(ls, M + 6, y + 4.4); y += 4.4 + ls.length * 4.4;
+    if (a.refs.length) { doc.setFontSize(7.4); doc.setTextColor(110); t(`Ref.: ${citar(a.refs)}`, M + 6, y + 0.4); doc.setTextColor(20); y += 3.2; }
+    y += 2.2;
   }
   doc.setFontSize(7.8); doc.setTextColor(110); y = par(AVISO_DOR, M, y + 1, W - 2 * M, 3.5); doc.setTextColor(20); y += 5;
 
@@ -401,7 +416,7 @@ export async function gerarRelatorioCliente(d: DadosRelatorio) {
   if (dores.length) y = par('Os pontos em amarelo e vermelho mostram onde trabalhar. Seu fisioterapeuta vai usar estes números para direcionar os exercícios e comparar na próxima avaliação.', M, y, W - 2 * M);
   else y = par('Seus resultados estão equilibrados. Manter os exercícios ajuda a preservar a força e prevenir lesões; a próxima avaliação vai mostrar a evolução.', M, y, W - 2 * M);
   y += 3; doc.setFontSize(8); doc.setTextColor(110);
-  par('Este relatório resume uma avaliação de força feita com dinamômetro e não substitui a consulta com o profissional que acompanha você.', M, Math.max(y, 280), W - 2 * M, 3.6);
+  par(`Este relatório resume uma avaliação de força feita com dinamômetro e não substitui a consulta com o profissional que acompanha você. Valores normais: ${citar(['mckay', 'machado'])}.`, M, Math.max(y, 276), W - 2 * M, 3.6);
   doc.save(nomeArquivo(d.paciente, 'Avaliacao_de_forca', d.data));
 }
 

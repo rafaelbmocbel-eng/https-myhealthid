@@ -26,6 +26,7 @@ import {
 import { gerarRelatorioDinamometria, gerarRelatorioCliente, gruposBarras, type GrupoBarras, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
 import { mapaMuscularSVG, itensAvatar, COR_STATUS } from '@/lib/dinamometria/anatomia';
 import { achadosDor, AVISO_DOR } from '@/lib/dinamometria/dor';
+import { REFERENCIAS, REF, linkPubMed } from '@/lib/dinamometria/referencias';
 
 const COR: Record<Lado, string> = { D: '#2A78D6', E: '#EB6834' };
 const CHAVE_CRITERIOS = 'dinamometria_criterios_v2';
@@ -863,7 +864,7 @@ export default function Dinamometria() {
                       {dores.map((a, i) => (
                         <li key={i} className="flex gap-2.5">
                           <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: COR_STATUS[a.st?.[0] ?? 'info'] }} />
-                          <span className="min-w-0"><span className="block text-sm font-medium">{a.titulo}</span><span className="block text-sm text-muted-foreground">{a.texto}</span></span>
+                          <span className="min-w-0"><span className="block text-sm font-medium">{a.titulo}</span><span className="block text-sm text-muted-foreground">{a.texto}</span>{a.refs.length > 0 && <span className="block text-[11px] text-muted-foreground mt-0.5">Ref.: {a.refs.map((r, k) => <span key={r}>{k > 0 && '; '}<a className="underline" href={linkPubMed(REF[r].pmid)} target="_blank" rel="noopener noreferrer">{REF[r].curta}</a></span>)}</span>}</span>
                         </li>
                       ))}
                     </ul>
@@ -1079,12 +1080,24 @@ export default function Dinamometria() {
                 <li><b className="text-foreground">RFD 0–100 e 0–200 ms:</b> ganho de força nesses intervalos ÷ tempo. Só é calculada com amostragem de pelo menos 50 Hz.</li>
                 <li><b className="text-foreground">Índice de fadiga:</b> (maior média de 1 s − média do último segundo do platô) ÷ maior média × 100. Exige platô acima de 50% do pico por {crit.platoMin} s ou mais.</li>
                 <li><b className="text-foreground">Oscilação:</b> desvio dos valores em torno da reta de tendência do platô ÷ média × 100. Separa instabilidade da queda por fadiga.</li>
-                <li><b className="text-foreground">Simetria:</b> lado acometido ÷ lado sadio; sem lado acometido, menor ÷ maior. ≥ 90% é o critério de retorno ao esporte (Grindem et al., 2016).</li>
-                <li><b className="text-foreground">Razão agonista × antagonista:</b> comparada à razão das médias de McKay et al. (2017) para idade e sexo; no quadril, adução/abdução ≥ 0,80 (Tyler et al., 2001).</li>
+                <li><b className="text-foreground">Força esperada:</b> média e desvio padrão de McKay et al. (2017) para idade e sexo; faixa normal = média ± 1 DP. Revisões mais recentes de valores com dinamômetro manual: Machado et al. (2025) e Benfica et al. (2018).</li>
+                <li><b className="text-foreground">Simetria:</b> lado acometido ÷ lado sadio; sem lado acometido, menor ÷ maior. ≥ 90% é o critério de retorno ao esporte (Grindem et al., 2016; Kyritsis et al., 2016). Os cortes de 10–15% são os mais usados, mas com pouca evidência (Parkinson et al., 2021).</li>
+                <li><b className="text-foreground">Razão agonista × antagonista:</b> comparada à razão das médias de McKay et al. (2017) para idade e sexo. No joelho isso dá I/Q isométrica ≈ 0,5, em linha com Ishøi et al. (2021) e Taketomi et al. (2024); o "ideal de 60–70%" vem de teste isocinético e não se aplica ao isométrico. No quadril, adução/abdução ≥ 0,80 (Tyler et al., 2001).</li>
+                <li><b className="text-foreground">Fadiga e oscilação:</b> não há valores normais publicados para esse teste; as faixas são do serviço e servem para comparar o paciente com ele mesmo.</li>
               </ul>
-              <p className="text-xs text-muted-foreground pt-1">
-                Referências: <a className="underline" href="https://doi.org/10.1212/WNL.0000000000003466" target="_blank" rel="noopener noreferrer">McKay 2017</a> · <a className="underline" href="https://doi.org/10.1136/bjsports-2016-096031" target="_blank" rel="noopener noreferrer">Grindem 2016</a> · <a className="underline" href="https://doi.org/10.1177/03635465010290020301" target="_blank" rel="noopener noreferrer">Tyler 2001</a>
-              </p>
+            </Card>
+            <Card className="p-4 space-y-2 text-sm">
+              <p className="font-semibold">Referências científicas</p>
+              <p className="text-xs text-muted-foreground">Conferidas no PubMed em 03/10/2026. Toque para abrir o artigo.</p>
+              <ol className="list-decimal pl-5 space-y-1.5 max-w-4xl">
+                {REFERENCIAS.map(x => (
+                  <li key={x.id}>
+                    <a className="underline" href={linkPubMed(x.pmid)} target="_blank" rel="noopener noreferrer">{x.completa}</a>
+                    <span className="text-muted-foreground"> PMID {x.pmid}{x.doi ? ` · doi ${x.doi}` : ''}</span>
+                    <span className="block text-xs text-muted-foreground">{x.uso}</span>
+                  </li>
+                ))}
+              </ol>
             </Card>
           </TabsContent>
         </Tabs>

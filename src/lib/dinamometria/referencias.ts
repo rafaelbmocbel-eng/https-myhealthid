@@ -1,0 +1,73 @@
+// Referências científicas usadas nos critérios, nas normas e na relação com
+// dores. Conferidas no PubMed em 03/10/2026 (PMID e DOI de cada artigo).
+
+export interface Referencia { id: string; curta: string; completa: string; pmid: string; doi: string; uso: string }
+
+const r = (id: string, curta: string, completa: string, pmid: string, doi: string, uso: string): Referencia => ({ id, curta, completa, pmid, doi, uso });
+
+export const REFERENCIAS: Referencia[] = [
+  r('mckay', 'McKay et al., Neurology 2017',
+    'McKay MJ et al. Normative reference values for strength and flexibility of 1,000 children and adults. Neurology. 2017;88(1):36-43.',
+    '27881628', '10.1212/WNL.0000000000003466', 'Valores normais de força por idade e sexo (faixa normal, escore z).'),
+  r('machado', 'Machado et al., J Electromyogr Kinesiol 2025',
+    'Machado MB et al. Measurement of maximal voluntary isometric lower limb muscle strength using a hand-held dynamometer in a non-injured healthy population: a systematic review of reference values, protocols, and sex differences. J Electromyogr Kinesiol. 2025;86:103102.',
+    '41481974', '10.1016/j.jelekin.2025.103102', 'Revisão sistemática mais recente de valores de referência com dinamômetro manual (19 estudos, 4.854 pessoas).'),
+  r('benfica', 'Benfica et al., Braz J Phys Ther 2018',
+    'Benfica PDA et al. Reference values for muscle strength: a systematic review with a descriptive meta-analysis. Braz J Phys Ther. 2018;22(5):355-369.',
+    '29764761', '10.1016/j.bjpt.2018.02.006', 'Revisão brasileira de valores de referência de força isométrica.'),
+  r('grindem', 'Grindem et al., Br J Sports Med 2016',
+    'Grindem H et al. Simple decision rules can reduce reinjury risk by 84% after ACL reconstruction: the Delaware-Oslo ACL cohort study. Br J Sports Med. 2016;50(13):804-808.',
+    '27162233', '10.1136/bjsports-2016-096031', 'Simetria do quadríceps ≥ 90% antes do retorno ao esporte reduziu a relesão.'),
+  r('kyritsis', 'Kyritsis et al., Br J Sports Med 2016',
+    'Kyritsis P et al. Likelihood of ACL graft rupture: not meeting six clinical discharge criteria before return to sport is associated with a four times greater risk of rupture. Br J Sports Med. 2016;50(15):946-951.',
+    '27215935', '10.1136/bjsports-2015-095908', 'Critérios de força e simetria antes do retorno: risco 4 vezes maior de ruptura quando não atingidos.'),
+  r('parkinson', 'Parkinson et al., J Sports Sci Med 2021',
+    'Parkinson AO et al. The calculation, thresholds and reporting of inter-limb strength asymmetry: a systematic review. J Sports Sci Med. 2021;20(4):594-617.',
+    '35321131', '10.52082/jssm.2021.594', 'Limiares de assimetria de 10–15% são os mais usados, mas com pouca evidência; serve de faixa de atenção, não de diagnóstico.'),
+  r('ishoi', 'Ishøi et al., Int J Sports Physiol Perform 2021',
+    'Ishøi L et al. Hamstring and quadriceps muscle strength in youth to senior elite soccer: a cross-sectional study including 125 players. Int J Sports Physiol Perform. 2021;16(10):1538-1544.',
+    '33887700', '10.1123/ijspp.2020-0713', 'Razão I/Q isométrica com dinamômetro: 0,45 em adultos e 0,54–0,61 em jovens (valores isocinéticos de 60–70% não se aplicam ao teste isométrico).'),
+  r('taketomi', 'Taketomi et al., Am J Sports Med 2024',
+    'Taketomi S et al. Intrinsic risk factors for noncontact anterior cruciate ligament injury in young female soccer players: a prospective cohort study. Am J Sports Med. 2024;52(12):2972-2979.',
+    '39320411', '10.1177/03635465241278745', 'Razão I/Q mais baixa (0,44 vs 0,50) associada a lesão do LCA sem contato.'),
+  r('green', 'Green et al., Br J Sports Med 2020',
+    'Green B et al. Recalibrating the risk of hamstring strain injury (HSI): a 2020 systematic review and meta-analysis of risk factors for index and recurrent hamstring strain injury in sport. Br J Sports Med. 2020;54(18):1081-1088.',
+    '32299793', '10.1136/bjsports-2019-100983', 'Força dos posteriores está entre os fatores associados a lesão muscular dos posteriores.'),
+  r('neal', 'Neal et al., Br J Sports Med 2019',
+    'Neal BS et al. Risk factors for patellofemoral pain: a systematic review and meta-analysis. Br J Sports Med. 2019;53(5):270-281.',
+    '30242107', '10.1136/bjsports-2017-098890', 'Fraqueza do quadríceps é fator de risco para dor patelofemoral; fraqueza do quadril não foi preditora.'),
+  r('nunes', 'Nunes et al., Sports Med 2026',
+    'Nunes GS et al. A systematic review with meta-analysis of the association between changes in muscle strength and clinical outcome changes in patellofemoral pain. Sports Med. 2026.',
+    '42301594', '10.1007/s40279-026-02473-w', 'Ganho de força (extensores do joelho, abdutores do quadril) acompanha a redução da dor patelofemoral.'),
+  r('tyler', 'Tyler et al., Am J Sports Med 2001',
+    'Tyler TF et al. The association of hip strength and flexibility with the incidence of adductor muscle strains in professional ice hockey players. Am J Sports Med. 2001;29(2):124-128.',
+    '11292035', '10.1177/03635465010290020301', 'Adução = 95% da abdução em atletas sem lesão vs 78% nos que tiveram estiramento dos adutores (base do critério ≥ 80%).'),
+  r('whittaker', 'Whittaker et al., Br J Sports Med 2015',
+    'Whittaker JL et al. Risk factors for groin injury in sport: an updated systematic review. Br J Sports Med. 2015;49(12):803-809.',
+    '25833903', '10.1136/bjsports-2014-094287', 'Adutores fracos (em valor absoluto e em relação aos abdutores) aumentam o risco de lesão na virilha.'),
+  r('mosler', 'Mosler et al., Br J Sports Med 2015',
+    'Mosler AB et al. Which factors differentiate athletes with hip/groin pain from those without? A systematic review with meta-analysis. Br J Sports Med. 2015;49(12):810.',
+    '26031646', '10.1136/bjsports-2015-094602', 'Atletas com dor no quadril/virilha têm menos força de adutores.'),
+  r('desousa', 'de Sousa et al., J Musculoskelet Neuronal Interact 2019',
+    'de Sousa CS et al. Lower limb muscle strength in patients with low back pain: a systematic review and meta-analysis. J Musculoskelet Neuronal Interact. 2019;19(1):69-78.',
+    '30839305', '', 'Pessoas com dor lombar têm menos força de abdutores e extensores do quadril e de extensores do joelho.'),
+  r('pizol', 'Pizol et al., BMC Musculoskelet Disord 2024',
+    'Pizol GZ et al. Hip biomechanics in patients with low back pain, what do we know? A systematic review. BMC Musculoskelet Disord. 2024;25(1):415.',
+    '38807086', '10.1186/s12891-024-07463-5', 'Dor lombar associada a fraqueza de abdutores e extensores do quadril.'),
+  r('khalaj', 'Khalaj et al., Br J Sports Med 2020',
+    'Khalaj N et al. Is chronic ankle instability associated with impaired muscle strength? Ankle, knee and hip muscle strength in individuals with chronic ankle instability: a systematic review with meta-analysis. Br J Sports Med. 2020;54(14):839-847.',
+    '31937576', '10.1136/bjsports-2018-100070', 'Instabilidade crônica do tornozelo vem com déficit de força no tornozelo e também no joelho e no quadril (cadeia cinética).'),
+  r('byram', 'Byram et al., Am J Sports Med 2010',
+    'Byram IR et al. Preseason shoulder strength measurements in professional baseball pitchers: identifying players at risk for injury. Am J Sports Med. 2010;38(7):1375-1382.',
+    '20489215', '10.1177/0363546509360404', 'Rotadores externos fracos e razão RE/RI baixa associados a lesão do ombro.'),
+  r('kwan', 'Kwan et al., Ther Adv Chronic Dis 2021',
+    'Kwan CK et al. Are muscle weakness and stiffness risk factors of the development of rotator cuff tendinopathy in overhead athletes: a systematic review. Ther Adv Chronic Dis. 2021;12:20406223211026178.',
+    '34276924', '10.1177/20406223211026178', 'Desequilíbrio entre rotadores externos e internos como fator de risco para lesão do ombro (evidência limitada).'),
+  r('cools', 'Cools et al., Knee Surg Sports Traumatol Arthrosc 2016',
+    'Cools AM et al. Eccentric and isometric shoulder rotator cuff strength testing using a hand-held dynamometer: reference values for overhead athletes. Knee Surg Sports Traumatol Arthrosc. 2016;24(12):3838-3847.',
+    '26294055', '10.1007/s00167-015-3755-9', 'Valores de referência de rotadores do ombro com dinamômetro manual e razão RE/RI.'),
+];
+
+export const REF = Object.fromEntries(REFERENCIAS.map(x => [x.id, x])) as Record<string, Referencia>;
+export const linkPubMed = (pmid: string) => `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
+export const citar = (ids: string[]) => ids.map(i => REF[i]?.curta).filter(Boolean).join('; ');

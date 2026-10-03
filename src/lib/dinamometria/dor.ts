@@ -4,18 +4,26 @@
 import { type Analise, type Avaliacao, type Criterios, type Lado, type LSI, type Status, fmt, stLSI, stDesvio } from './analise';
 import { type Anel, ARTIC_DA_REGIAO, NOME_ARTIC, PESO, VIZINHAS } from './anatomia';
 
-const RAZAO_DOR: Record<string, string> = {
-  joelho: 'Desequilíbrio entre quadríceps e posteriores da coxa está associado a dor no próprio joelho (na frente, em volta da patela) e a maior risco de lesão do ligamento cruzado anterior e dos posteriores da coxa.',
-  quadril: 'Adutores fracos em relação aos abdutores estão associados a dor na virilha e no próprio quadril (pubalgia, distensão dos adutores).',
-  quadrilRot: 'Desequilíbrio entre os rotadores está associado a dor no próprio quadril e a pior controle do joelho no apoio.',
-  ombro: 'Rotadores externos fracos em relação aos internos estão associados a dor no próprio ombro (impacto e tendinopatia do manguito rotador).',
-  tornozelo: 'Desequilíbrio entre panturrilha e tibial anterior está associado a dor no próprio tornozelo e na perna (canelite, tendão de Aquiles) e a entorses de repetição.',
-  cotovelo: 'Desequilíbrio entre flexores e extensores pode sobrecarregar os tendões do próprio cotovelo (epicondilites).',
+// Texto e referências (ids de referencias.ts). Sem referência = hipótese clínica.
+const RAZAO_DOR: Record<string, { texto: string; refs: string[] }> = {
+  joelho: { texto: 'Quadríceps fraco é fator de risco para dor na frente do joelho (patelofemoral). Razão I/Q baixa (posteriores relativamente fracos) foi associada a lesão do LCA, e a força dos posteriores a lesão muscular dos posteriores.', refs: ['neal', 'taketomi', 'green'] },
+  quadril: { texto: 'Adutores fracos em relação aos abdutores aumentam o risco de lesão e de dor na virilha e no quadril; abaixo de 80% da força de abdução o risco sobe.', refs: ['tyler', 'whittaker', 'mosler'] },
+  quadrilRot: { texto: 'Desequilíbrio entre os rotadores pode alterar o controle do quadril e do joelho no apoio (hipótese clínica; evidência direta com dor ainda limitada).', refs: [] },
+  ombro: { texto: 'Rotadores externos fracos e razão RE/RI baixa foram associados a lesão e dor no ombro (manguito rotador).', refs: ['byram', 'kwan'] },
+  tornozelo: { texto: 'Déficits de força ao redor do tornozelo aparecem na instabilidade crônica e nas entorses de repetição.', refs: ['khalaj'] },
+  cotovelo: { texto: 'Desequilíbrio entre flexores e extensores pode sobrecarregar os tendões do próprio cotovelo (hipótese clínica; evidência direta limitada).', refs: [] },
 };
 
-export const AVISO_DOR = 'Relações com dor são associações descritas na literatura para orientar a avaliação; não são diagnóstico e devem ser confirmadas no exame clínico.';
+const UNILATERAL_DOR: Record<string, { texto: string; refs: string[] }> = {
+  joelho: { texto: 'Após lesão do joelho, simetria do quadríceps abaixo de 90% está associada a mais relesão.', refs: ['grindem', 'kyritsis'] },
+  quadril: { texto: 'Fraqueza do quadril aparece em pessoas com dor lombar.', refs: ['desousa', 'pizol'] },
+  quadrilRot: { texto: 'Fraqueza do quadril aparece em pessoas com dor lombar.', refs: ['desousa', 'pizol'] },
+  tornozelo: { texto: 'Na instabilidade do tornozelo, a fraqueza se estende ao joelho e ao quadril.', refs: ['khalaj'] },
+};
 
-export interface AchadoDor { regiao: string; tipo: 'unilateral' | 'razao'; st: Status; titulo: string; texto: string; aneis: Anel[] }
+export const AVISO_DOR = 'Relações com dor são associações descritas na literatura (referências conferidas no PubMed) ou hipóteses clínicas, indicadas no texto; não são diagnóstico e devem ser confirmadas no exame clínico.';
+
+export interface AchadoDor { regiao: string; tipo: 'unilateral' | 'razao'; st: Status; titulo: string; texto: string; refs: string[]; aneis: Anel[] }
 
 const ladoNome = (l: Lado) => (l === 'D' ? 'direito' : 'esquerdo');
 
@@ -30,9 +38,10 @@ export function achadosDor(itens: { av: Avaliacao; A: Analise }[], c: Criterios)
       out.push({
         regiao: av.regiao, tipo: 'unilateral', st,
         titulo: `${R.l} · ${nome}: lado ${ladoNome(L.fraco)} ${fmt(100 - L.v, 0)}% mais fraco`,
-        texto: viz
-          ? `O lado mais forte tende a compensar o mais fraco. Diferenças assim entre os lados podem sobrecarregar as articulações vizinhas: ${NOME_ARTIC[viz[0]]} (acima) e ${NOME_ARTIC[viz[1]]} (abaixo).`
-          : 'O lado mais forte tende a compensar o mais fraco e pode sobrecarregar as articulações vizinhas.',
+        texto: `${viz
+          ? `O lado mais forte tende a compensar o mais fraco, o que pode sobrecarregar as articulações vizinhas: ${NOME_ARTIC[viz[0]]} (acima) e ${NOME_ARTIC[viz[1]]} (abaixo).`
+          : 'O lado mais forte tende a compensar o mais fraco e pode sobrecarregar as articulações vizinhas.'}${UNILATERAL_DOR[av.regiao] ? ` ${UNILATERAL_DOR[av.regiao].texto}` : ''}`,
+        refs: [...(UNILATERAL_DOR[av.regiao]?.refs ?? []), 'parkinson'],
         aneis: viz ? viz.map(art => ({ art, lado: L.fraco, st })) : [],
       });
     }
@@ -44,7 +53,8 @@ export function achadosDor(itens: { av: Avaliacao; A: Analise }[], c: Criterios)
       out.push({
         regiao: av.regiao, tipo: 'razao', st,
         titulo: `${R.l} · ${R.razaoL} ${ladoNome(l)}: ${fmt(x.r * 100, 0)}% (referência ${x.refTxt})`,
-        texto: RAZAO_DOR[av.regiao] || 'Desequilíbrio entre músculos opostos pode gerar dor na própria articulação.',
+        texto: RAZAO_DOR[av.regiao]?.texto || 'Desequilíbrio entre músculos opostos pode gerar dor na própria articulação (hipótese clínica).',
+        refs: RAZAO_DOR[av.regiao]?.refs ?? [],
         aneis: art ? [{ art, lado: l, st }] : [],
       });
     }
