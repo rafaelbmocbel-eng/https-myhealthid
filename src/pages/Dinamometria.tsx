@@ -24,7 +24,7 @@ import { celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
   SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
-  resumoCurtoAnalise, stLSI, stDesvio, simetriaSlot, SLOTS_POR_LADO, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
+  resumoCurtoAnalise, stLSI, stDesvio, simetriaSlot, SLOTS_POR_LADO, falhaPlato, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
 } from '@/lib/dinamometria/analise';
 import { gerarRelatorioDinamometria, gerarRelatorioCliente, gruposBarras, type GrupoBarras, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
 import { mapaMuscularSVG, itensAvatar, COR_STATUS } from '@/lib/dinamometria/anatomia';
@@ -138,6 +138,24 @@ function Bolinha({ lado }: { lado: Lado }) {
 }
 
 // Une as curvas D e E numa grade de tempo comum para o gráfico e o tooltip.
+// Curva de falha do platô de D e E no mesmo eixo (% do pico × s após o pico).
+function linhasFalha(av: Avaliacao, g: 'ag' | 'an') {
+  const d = falhaPlato(av.slots[`${g}D` as Slot]?.curva), e = falhaPlato(av.slots[`${g}E` as Slot]?.curva);
+  if (!d && !e) return null;
+  const interp = (fp: typeof d, x: number) => {
+    if (!fp || !fp.pts.length || x > fp.pts[fp.pts.length - 1][0]) return null;
+    let lo = 0, hi = fp.pts.length - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (fp.pts[m][0] <= x) lo = m; else hi = m; }
+    const [x0, y0] = fp.pts[lo], [x1, y1] = fp.pts[hi];
+    return x1 === x0 ? y0 : y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+  };
+  const tMax = Math.max(d?.duracao || 0, e?.duracao || 0);
+  const passo = Math.max(0.02, tMax / 300);
+  const dados: { t: number; D: number | null; E: number | null }[] = [];
+  for (let x = 0; x <= tMax + 1e-9; x += passo) dados.push({ t: +x.toFixed(3), D: interp(d, x), E: interp(e, x) });
+  return { dados, d, e };
+}
+
 function linhasCurva(av: Avaliacao, g: 'ag' | 'an', u: Unidade) {
   const d = av.slots[`${g}D` as Slot]?.curva || undefined, e = av.slots[`${g}E` as Slot]?.curva || undefined;
   const curvas = [d, e].filter(Boolean) as { t: number[]; f: number[] }[];
@@ -619,6 +637,35 @@ export default function Dinamometria() {
     </div>
   );
 
+  const graficoFalha = (av: Avaliacao, g: 'ag' | 'an', titulo: string) => {
+    const L = linhasFalha(av, g);
+    if (!L) return null;
+    return (
+      <Card className="p-4 space-y-2 min-w-0">
+        <p className="font-semibold text-sm">Curva de falha do platô · {titulo}</p>
+        <div className="h-52">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={L.dados} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
+              <CartesianGrid strokeDasharray="0" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="t" type="number" domain={[0, 'dataMax']} tickFormatter={v => `${fmt(v, 0)} s`} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+              <YAxis domain={[40, 100]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => `${fmt(v, 0)}%`} width={44} />
+              <ReferenceLine y={100 - crit.fadBaixa} stroke="#22A35A" strokeDasharray="4 4" />
+              <ReferenceLine y={100 - crit.fadAlta} stroke="#E04B3F" strokeDasharray="4 4" />
+              <Tooltip formatter={(v: any, n: any) => [`${fmt(Number(v), 0)}% do pico`, n === 'D' ? 'Direito' : 'Esquerdo']} labelFormatter={v => `${fmt(Number(v), 1)} s após o pico`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <Legend formatter={v => (v === 'D' ? 'Direito' : 'Esquerdo')} wrapperStyle={{ fontSize: 12 }} />
+              <Line type="linear" dataKey="D" stroke={COR.D} strokeWidth={2} dot={false} isAnimationActive={false} connectNulls={false} />
+              <Line type="linear" dataKey="E" stroke={COR.E} strokeWidth={2} dot={false} isAnimationActive={false} connectNulls={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Força em % do próprio pico, do pico até o fim do platô. Queda: D {L.d?.queda != null ? `${fmt(L.d.queda, 1)}%/s` : '—'} · E {L.e?.queda != null ? `${fmt(L.e.queda, 1)}%/s` : '—'}.
+          Linhas tracejadas: limites de fadiga ({crit.fadBaixa}% e {crit.fadAlta}%).
+        </p>
+      </Card>
+    );
+  };
+
   const graficoCurva = (av: Avaliacao, g: 'ag' | 'an', titulo: string) => {
     const dados = linhasCurva(av, g, u);
     if (!dados.length) return null;
@@ -949,6 +996,8 @@ export default function Dinamometria() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                           {graficoCurva(av, 'ag', R.ag)}
                           {graficoCurva(av, 'an', R.an)}
+                          {graficoFalha(av, 'ag', R.ag)}
+                          {graficoFalha(av, 'an', R.an)}
                         </div>
                       )}
                     </Card>
@@ -1015,7 +1064,7 @@ export default function Dinamometria() {
                     <table className="w-full text-sm min-w-[1040px]">
                       <thead className="bg-muted/50 text-xs text-muted-foreground">
                         <tr>
-                          {['Músculo', `Pico (${u})`, 'Simetria (mais forte = 100%)', `Razão ${A.R.an}/${A.R.ag}`, 'N/kg', 'Norma (idade e sexo)', 'Tempo até pico (s)', `RFD 0–100 ms (${u}/s)`, `RFD 0–200 ms (${u}/s)`, `Impulso (${u}·s)`, 'Fadiga', 'Oscilação', 'Rep.'].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}
+                          {['Músculo', `Pico (${u})`, 'Simetria (mais forte = 100%)', `Razão ${A.R.an}/${A.R.ag}`, 'N/kg', 'Norma (idade e sexo)', 'Tempo até pico (s)', `RFD 0–100 ms (${u}/s)`, `RFD 0–200 ms (${u}/s)`, `Impulso (${u}·s)`, 'Fadiga', 'Falha do platô', 'Oscilação', 'Rep.'].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}
                         </tr>
                       </thead>
                       <tbody>
@@ -1052,6 +1101,7 @@ export default function Dinamometria() {
                               <td className="px-2.5 py-2 font-mono">{fmt(disp(s.rfd200), 0)}</td>
                               <td className="px-2.5 py-2 font-mono">{fmt(disp(s.impulso), 0)}</td>
                               <td className="px-2.5 py-2">{s.fadiga == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(s.fadiga, 0)}%</span><Pilula st={stFadiga(s.fadiga, crit)} /></span>}</td>
+                              <td className="px-2.5 py-2 font-mono whitespace-nowrap">{(() => { const fp = falhaPlato(atual.slots[k]?.curva); return fp?.queda != null ? `${fmt(fp.queda, 1)}%/s · ${fmt(fp.duracao, 1)} s` : '—'; })()}</td>
                               <td className="px-2.5 py-2">{s.oscilacao == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(s.oscilacao, 1)}%</span><Pilula st={stOsc(s.oscilacao, crit)} /></span>}</td>
                               <td className="px-2.5 py-2 font-mono">{s.reps.length}</td>
                             </tr>

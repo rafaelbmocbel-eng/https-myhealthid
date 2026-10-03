@@ -286,6 +286,31 @@ export function analisarCurva(t: number[], fBruta: number[], platoMin: number): 
   };
 }
 
+// ───────── Curva de falha do platô ─────────
+// Do pico até o fim do platô (força ≥ 50% do pico): força em % do pico ao longo
+// do tempo, e a velocidade da queda (%/s, inclinação da reta). Calculada da
+// curva já salva, então vale também para avaliações antigas.
+export interface FalhaPlato { pts: [number, number][]; queda: number | null; duracao: number }
+export function falhaPlato(curva: { t: number[]; f: number[] } | null | undefined): FalhaPlato | null {
+  if (!curva || curva.t.length < 10) return null;
+  const { t, f } = curva;
+  let ip = 0;
+  for (let i = 1; i < f.length; i++) if (f[i] > f[ip]) ip = i;
+  const pico = f[ip];
+  if (!(pico > 0)) return null;
+  let fim = ip;
+  while (fim + 1 < f.length && f[fim + 1] >= 0.5 * pico) fim++;
+  const pts: [number, number][] = [];
+  for (let i = ip; i <= fim; i++) pts.push([+(t[i] - t[ip]).toFixed(3), +((f[i] / pico) * 100).toFixed(1)]);
+  const duracao = pts.length ? pts[pts.length - 1][0] : 0;
+  let queda: number | null = null;
+  if (duracao >= 1 && pts.length >= 5) {
+    const lr = regLinear(pts.map((p) => p[0]), pts.map((p) => p[1]));
+    queda = +Math.max(0, -lr.b).toFixed(1);
+  }
+  return { pts, queda, duracao: +duracao.toFixed(2) };
+}
+
 // ───────── Resultado ─────────
 export type Status = ['ok' | 'warn' | 'bad' | 'info', string] | null;
 const faixa = (idade: number | null): Faixa | null => (idade == null ? null : idade < 10 ? 'c' : idade < 20 ? 'a' : idade < 60 ? 'ad' : 'o');

@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import {
   type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito, type Unidade,
-  SLOTS, SLOTS_POR_LADO, simetriaSlot, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stZ, interpretar, type Status,
+  SLOTS, SLOTS_POR_LADO, simetriaSlot, falhaPlato, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stZ, interpretar, type Status,
 } from './analise';
 import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, proporcaoSVG, itensAvatar } from './anatomia';
 import { achadosDor, AVISO_DOR } from './dor';
@@ -234,8 +234,8 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
     // Simetria: o lado mais forte de cada músculo vale 100% e o outro, a % dele
     // (4 valores). Razão antagonista/agonista: um valor por lado (2 valores),
     // ocupando as linhas daquele lado — por isso a tabela vem agrupada por lado.
-    const cab = ['Músculo', `Pico (${u})`, 'Simetria', 'Razão An/Ag', 'N/kg', 'z', `RFD200 (${u}/s)`, 'Fadiga', 'Oscilação'];
-    const cols = [M, 50, 68, 92, 116, 130, 142, 168, 184];
+    const cab = ['Músculo', `Pico (${u})`, 'Simetria', 'Razão An/Ag', 'N/kg', 'z', `RFD200 (${u}/s)`, 'Fadiga', 'Queda/s', 'Oscil.'];
+    const cols = [M, 46, 62, 84, 106, 118, 128, 152, 166, 182];
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8.4); cab.forEach((h, i) => t(h, cols[i], y)); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8);
     y += 2; doc.line(M, y, W - M, y); y += 5;
     const valorSt = (txt: string, st: Status, x: number, yy: number) => {
@@ -248,7 +248,7 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
       const y0 = y;
       for (const k of doLado) {
         const m = A.slots[k]!;
-        const linha = [nomeSlot(av.regiao, k), fmt(disp(m.pico), 1), '', '', m.nkg == null ? '-' : fmt(m.nkg, 1), m.z == null ? '-' : fmt(m.z, 1), m.rfd200 == null ? '-' : fmt(disp(m.rfd200), 0), m.fadiga == null ? '-' : `${fmt(m.fadiga, 0)}%`, m.oscilacao == null ? '-' : `${fmt(m.oscilacao, 1)}%`];
+        const linha = [nomeSlot(av.regiao, k), fmt(disp(m.pico), 1), '', '', m.nkg == null ? '-' : fmt(m.nkg, 1), m.z == null ? '-' : fmt(m.z, 1), m.rfd200 == null ? '-' : fmt(disp(m.rfd200), 0), m.fadiga == null ? '-' : `${fmt(m.fadiga, 0)}%`, (() => { const q = falhaPlato(av.slots[k]?.curva)?.queda; return q == null ? '-' : `${fmt(q, 1)}%`; })(), m.oscilacao == null ? '-' : `${fmt(m.oscilacao, 1)}%`];
         linha.forEach((v, i) => { if (v) t(v, cols[i], y); });
         const sim = simetriaSlot(A, k, c);
         if (!sim) t('-', cols[2], y);
@@ -293,6 +293,23 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio) {
       if (sAg.length) t(`Curva ${R.ag} (${u}): azul = direito, laranja = esquerdo`, M, y + h + 4);
       if (sAn.length) t(`Curva ${R.an} (${u})`, M + meia + 4, y + h + 4);
       doc.setTextColor(20); y += h + 11;
+      // Curva de falha do platô: % do pico, do pico até o fim do platô.
+      const falha = (g: 'ag' | 'an'): Serie[] => (['D', 'E'] as Lado[]).flatMap(l => {
+        const fp = falhaPlato(av.slots[`${g}${l}` as Slot]?.curva);
+        return fp && fp.pts.length > 3 ? [{ nome: l, cor: COR[l], pts: fp.pts }] : [];
+      });
+      const fAg = falha('ag'), fAn = falha('an');
+      if (fAg.length || fAn.length) {
+        if (y + h + 12 > 284) { doc.addPage(); y = 18; }
+        const opF = { xFmt: (v: number) => `${fmt(v, 0)} s`, yFmt: (v: number) => `${fmt(v, 0)}%`, yMin100: true };
+        if (fAg.length) doc.addImage(graficoPNG(fAg, opF), 'PNG', M, y, meia, h);
+        if (fAn.length) doc.addImage(graficoPNG(fAn, opF), 'PNG', M + meia + 4, y, meia, h);
+        doc.setFontSize(8); doc.setTextColor(90);
+        const qd = (g: 'ag' | 'an', l: Lado) => { const q = falhaPlato(av.slots[`${g}${l}` as Slot]?.curva)?.queda; return q == null ? '-' : `${fmt(q, 1)}%/s`; };
+        if (fAg.length) t(`Falha do platô ${R.ag} (% do pico): queda D ${qd('ag', 'D')}, E ${qd('ag', 'E')}`, M, y + h + 4);
+        if (fAn.length) t(`Falha do platô ${R.an}: queda D ${qd('an', 'D')}, E ${qd('an', 'E')}`, M + meia + 4, y + h + 4);
+        doc.setTextColor(20); y += h + 11;
+      }
     } else y += 4;
 
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); t('Interpretação', M, y); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.4); y += 5.5;
