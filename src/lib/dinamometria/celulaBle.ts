@@ -1,8 +1,16 @@
 // Conexão com a célula de carga Bluetooth (BLE) — ex.: "$FBLOCK-0068".
-// A célula fala "serial sobre BLE": manda texto, uma leitura por linha (CR+LF),
-// como visto no Serial Bluetooth Terminal. Não sabemos de antemão qual serviço
-// serial o fabricante usa, então procuramos os mais comuns e, na falta deles,
-// qualquer característica com notificação.
+//
+// FBLOCK (Queling / app FightTech) — protocolo binário no Nordic UART, lido do
+// próprio app do fabricante. Comandos de 1 byte em 6E400002:
+//   0x20 ao conectar · 0x30 iniciar · 0x31 parar · 0x40 zerar · 0x61 reset
+//   (0x60 é calibração — nunca enviamos).
+// Pacotes em 6E400003, pelo 1º byte:
+//   0x21 bateria (bytes 2-3, LE) → o app responde zerando (0x40)
+//   0x40 zero: inteiro de 24 bits com sinal (bytes 1-3, LE) = leitura bruta em repouso
+//   0x10 dados: sequência de inteiros de 24 bits com sinal (LE), 250 Hz;
+//        kg = (bruto − zero) × 800 / 8388608
+//
+// Outras células seriais: texto, uma leitura por linha (CR+LF).
 //
 // Usa Web Bluetooth: funciona no Chrome/Edge (Android e computador). Não existe
 // no Safari/iPhone nem dentro do WebView do app nativo.
@@ -56,6 +64,10 @@ export function valorDaLinha(linha: string, campo: CampoValor): number | null {
   return nums[campo] ?? null;
 }
 
+const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// Inteiro de 24 bits com sinal, little-endian.
+const s24 = (b: Uint8Array, i: number) => { const v = b[i] | (b[i + 1] << 8) | (b[i + 2] << 16); return v & 0x800000 ? v - 0x1000000 : v; };
+
 const CHAVE_INICIO = 'mh.celula.comandoInicio';
 // Sem "C"/"CAL": em várias células isso inicia calibração.
 const COMANDOS_INICIO = ['', 'S', 's', 'START', 'start', '1', 'R', 'r', 'G', 'A', '$S', '$START', 'ON', 'AT+START'];
@@ -75,6 +87,12 @@ class CelulaBle {
   // O que a célula expõe e de onde chegam dados — aparece em "Ver dados recebidos".
   diagnostico: string[] = [];
   pacotes = 0;
+  fblock = false;
+  bateria: number | null = null;
+  private zeroBruto: number | null = null;
+  private transmitindo = false;
+  private nAmostra = 0;
+  private t0 = 0;
 
   get status(): StatusCelula {
     return this.device?.gatt?.connected ? { conectado: true, nome: this.device.name || 'Célula' } : { conectado: false };
@@ -131,7 +149,20 @@ class CelulaBle {
       c.addEventListener('characteristicvaluechanged', this.aoReceber);
       try { await c.startNotifications(); } catch (e: any) { diag.push(`  ! não consegui escutar ${curto(c.uuid)}: ${e?.message || e}`); }
     }
+    this.fblock = /^\$?F-?BLOCK/i.test(device.name || '') && notifs.some((c) => /^6e400003/i.test(c.uuid));
+    this.zeroBruto = null;
+    this.transmitindo = false;
+    this.bateria = null;
     this.avisarStatus();
+    if (this.fblock) {
+      // Mesma sequência do FightTech: 0x20 → (bateria) → 0x40 zera → 0x30 inicia.
+      await espera(100);
+      await this.enviarBytes([0x20]).catch(() => undefined);
+      // Se a bateria não chegar, zera e inicia mesmo assim.
+      setTimeout(() => { if (this.zeroBruto == null && this.status.conectado) void this.enviarBytes([0x40]).catch(() => undefined); }, 1200);
+      setTimeout(() => { if (!this.transmitindo && this.status.conectado) void this.iniciarTransmissao(); }, 2500);
+      return;
+    }
     let salvo: string | null = null;
     try { salvo = localStorage.getItem(CHAVE_INICIO); } catch { /* sem armazenamento */ }
     if (salvo != null && write) {
@@ -139,11 +170,70 @@ class CelulaBle {
     }
   }
 
+  private async iniciarTransmissao() {
+    this.transmitindo = true;
+    this.nAmostra = 0;
+    this.t0 = performance.now();
+    await this.enviarBytes([0x30]).catch(() => { this.transmitindo = false; });
+  }
+
+  /** Zera na própria célula (FBLOCK). Devolve false se esta célula não suporta. */
+  async zerarNaCelula(): Promise<boolean> {
+    if (!this.fblock) return false;
+    await this.enviarBytes([0x40]);
+    return true;
+  }
+
+  async enviarBytes(b: number[]) {
+    if (!this.writeChar) throw new Error('A célula não aceita comandos.');
+    const dados = new Uint8Array(b);
+    if (this.writeChar.properties.writeWithoutResponse) await this.writeChar.writeValueWithoutResponse(dados);
+    else await this.writeChar.writeValue(dados);
+  }
+
+  private registrar(texto: string) {
+    this.ultimasLinhas = [...this.ultimasLinhas.slice(-29), texto];
+    this.ouvintesLinha.forEach((cb) => cb(texto));
+  }
+
+  private receberFblock(b: Uint8Array) {
+    const tipo = b[0];
+    if (tipo === 0x10) {
+      if (this.zeroBruto == null) return;
+      for (let i = 1; i + 2 < b.length; i += 3) {
+        const kg = ((s24(b, i) - this.zeroBruto) * 800) / 8388608;
+        const tMs = this.t0 + this.nAmostra * 4; // 250 Hz
+        this.nAmostra++;
+        this.ouvintes.forEach((cb) => cb({ valor: kg, tMs }));
+      }
+      // Registro esparso para o diagnóstico (são ~250 leituras/s).
+      if (this.pacotes % 25 === 1) this.registrar(`dados: ${Math.floor((b.length - 1) / 3)} leituras/pacote`);
+      return;
+    }
+    if (tipo === 0x21) {
+      // Mesmas faixas do FightTech (centésimos de volt): >3,90 V cheia … ≤3,40 V vazia.
+      const mv = b.length >= 4 ? b[2] + b[3] * 256 : null;
+      this.bateria = mv == null ? null : mv > 390 ? 3 : mv > 365 ? 2 : mv > 340 ? 1 : 0;
+      this.registrar(`bateria: ${mv ?? '?'} (${this.bateria ?? '?'}/3)`);
+      void this.enviarBytes([0x40]).catch(() => undefined);
+      return;
+    }
+    if (tipo === 0x40 && b.length >= 4) {
+      this.zeroBruto = s24(b, 1);
+      this.registrar(`zero: ${this.zeroBruto}`);
+      if (!this.transmitindo) void this.iniciarTransmissao();
+      this.avisarStatus();
+      return;
+    }
+    this.registrar(`hex: ${Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(' ')}`);
+  }
+
   private aoReceber = (ev: any) => {
     const dv: DataView = ev.target.value;
     const bytes = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
     const agora = performance.now();
     this.pacotes++;
+    if (this.fblock) { this.receberFblock(bytes); return; }
     // Pacote binário (não é texto): mostra em hexadecimal para descobrirmos o formato.
     const imprimivel = bytes.every((b) => b === 9 || b === 10 || b === 13 || (b >= 32 && b < 127));
     if (!imprimivel) {
@@ -202,6 +292,8 @@ class CelulaBle {
   }
 
   desconectar() {
+    if (this.fblock && this.transmitindo) void this.enviarBytes([0x31]).catch(() => undefined);
+    this.transmitindo = false;
     this.desligarNotificacao();
     try { this.device?.gatt?.disconnect(); } catch { /* já desconectado */ }
     this.device = null;

@@ -59,13 +59,13 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
     const offV = celula.onLeitura(({ valor, tMs }) => {
       ultimoBrutoRef.current = valor;
       const v = valor - taraRef.current;
-      setAtual(v);
+      setAtual(Math.abs(v) < 0.05 ? 0 : v);
       historicoRef.current = [...historicoRef.current.slice(-299), v];
       if (gravRef.current) {
         gravRef.current.t.push(tMs);
         gravRef.current.v.push(v);
         setNAmostras(gravRef.current.v.length);
-        setPico((p) => Math.max(p, v));
+        setPico((p) => Math.max(p, Math.abs(v)));
       }
       desenhar();
     });
@@ -114,7 +114,17 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
     }
   };
 
-  const zerar = () => { taraRef.current = ultimoBrutoRef.current; setAtual(0); historicoRef.current = []; };
+  // FBLOCK zera na própria célula; nas outras, tara por software.
+  const zerar = async () => {
+    historicoRef.current = [];
+    setAtual(0);
+    try {
+      if (await celula.zerarNaCelula()) { taraRef.current = 0; return; }
+    } catch { /* falhou na célula — cai na tara por software */ }
+    taraRef.current = ultimoBrutoRef.current;
+  };
+  // FBLOCK sempre manda em kg; a unidade só é escolhida para outras células.
+  const unidadeCelula: Unidade = celula.fblock ? 'kgf' : unidade;
 
   const iniciar = () => {
     gravRef.current = { t: [], v: [] };
@@ -131,9 +141,12 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
     // A célula pode mandar várias leituras no mesmo pacote (mesmo horário de
     // chegada): usa a taxa média da gravação para um tempo uniforme.
     const dur = (g.t[g.t.length - 1] - g.t[0]) / 1000;
-    const hz = dur > 0 ? (g.v.length - 1) / dur : 50;
+    const hz = celula.fblock ? 250 : (dur > 0 ? (g.v.length - 1) / dur : 50);
     const t = g.v.map((_, i) => i / hz);
-    const fN = g.v.map((v) => v * UF[unidade]);
+    // Empurrar dá força negativa na célula: deixa o pico sempre positivo.
+    const maxV = Math.max(...g.v), minV = Math.min(...g.v);
+    const sinal = Math.abs(minV) > Math.abs(maxV) ? -1 : 1;
+    const fN = g.v.map((v) => sinal * v * UF[unidadeCelula]);
     onConcluir({ t, fN, nome: status.conectado ? status.nome : 'Célula' });
     onOpenChange(false);
   };
@@ -192,7 +205,7 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Agora</p>
-                  <p className="text-4xl font-bold tabular-nums leading-none">{fmt(atual)}<span className="text-base font-medium text-muted-foreground ml-1">{unidade}</span></p>
+                  <p className="text-4xl font-bold tabular-nums leading-none">{fmt(atual)}<span className="text-base font-medium text-muted-foreground ml-1">{unidadeCelula}</span></p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Pico</p>
@@ -206,6 +219,9 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-[11px]">A célula mede em</Label>
+                {celula.fblock ? (
+                  <p className="h-9 flex items-center text-sm font-medium">kgf · 250 Hz{celula.bateria != null && <span className="ml-2 text-[11px] text-muted-foreground">bateria {celula.bateria}/3</span>}</p>
+                ) : (
                 <Select value={unidade} onValueChange={(v) => setUnidade(v as Unidade)} disabled={gravando}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -214,6 +230,7 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
                     <SelectItem value="lbf">lbf</SelectItem>
                   </SelectContent>
                 </Select>
+                )}
               </div>
               <div className="flex items-end">
                 <Button variant="outline" className="w-full gap-1.5" onClick={zerar} disabled={gravando}>
@@ -267,9 +284,9 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
                     </SelectContent>
                   </Select>
                 </div>
-                <Button size="sm" variant="secondary" className="w-full" onClick={tentarInicio} disabled={!!testando || gravando}>
+                {!celula.fblock && <Button size="sm" variant="secondary" className="w-full" onClick={tentarInicio} disabled={!!testando || gravando}>
                   {testando ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Testando {testando}</> : 'Tentar comandos de início automaticamente'}
-                </Button>
+                </Button>}
                 <div className="flex gap-2">
                   <Input value={comando} onChange={(e) => setComando(e.target.value)} placeholder="Enviar comando (opcional)" className="h-8 text-xs" />
                   <Button size="sm" variant="outline" onClick={enviarComando}>Enviar</Button>
