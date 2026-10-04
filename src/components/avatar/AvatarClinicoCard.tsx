@@ -201,13 +201,6 @@ const marcadorStatus = (ev: { sistema: SistemaCorporal; status: string }): React
     : { background: 'transparent', border: `2px solid ${cor}` };
 };
 
-const NOME_CURTO_SISTEMA: Record<SistemaCorporal, string> = {
-  musculoesqueletico: 'Músculos/ossos', nervoso: 'Nervoso', digestorio: 'Digestório',
-  circulatorio: 'Coração/vasos', respiratorio: 'Respiratório', endocrino: 'Hormônios',
-  urinario: 'Urinário', reprodutor: 'Reprodutor', tegumentar: 'Pele',
-  linfatico: 'Imunidade', sensorial: 'Sentidos',
-};
-
 const SISTEMA_CHART_COLOR: Record<SistemaCorporal, string> = {
   musculoesqueletico: '#a855f7',
   nervoso: '#3b82f6',
@@ -640,7 +633,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   );
   const sistemaFoco: SistemaCorporal | null = hoveredSistema || (sistemasAtivos.length === 1 ? sistemasAtivos[0] : null);
   const [zonaFoco, setZonaFoco] = useState<string | null>(null);
-  const [mostrarTodosSistemas, setMostrarTodosSistemas] = useState(false);
+  const [menuSistemas, setMenuSistemas] = useState(false);
 
   const nomeLocal = (ev: EventoAnatomico) =>
     ev.regiao_id === REGIAO_SISTEMICA
@@ -920,91 +913,55 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
 
         <div className="flex flex-col gap-2">
-          {/* Sistemas — com nome e cor (a mesma dos pontos no corpo). Os que têm
-              achado vêm primeiro, com a contagem; os demais ficam recolhidos. */}
+          {/* Sistemas — um botão só ("Todos os sistemas · N achados"); a lista abre ao tocar. */}
           {(() => {
             const contagem = (s: SistemaCorporal) => eventosFiltrados.filter(e => e.sistema === s).length;
-            const comAchado = SISTEMAS_ORDEM.filter(s => contagem(s) > 0);
-            const semAchado = SISTEMAS_ORDEM.filter(s => contagem(s) === 0);
-            const chip = (s: SistemaCorporal) => {
-              const active = sistemasAtivos.length === 1 && sistemasAtivos[0] === s;
-              const config = SISTEMA_CONFIG[s];
-              const Icon = config.icon;
-              const cor = SISTEMA_CHART_COLOR[s];
-              const n = contagem(s);
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  title={active ? 'Toque de novo para ver todos' : `Destacar ${config.label}`}
-                  onMouseEnter={() => setHoveredSistema(s)}
-                  onMouseLeave={() => setHoveredSistema(null)}
-                  onClick={() => setSistemasAtivos(active ? [] : [s])}
-                  className={cn(
-                    'flex items-center gap-1 rounded-full border px-2 py-1 text-[10.5px] font-semibold transition-all',
-                    n === 0 && !active && 'opacity-60',
-                  )}
-                  style={active
-                    ? { borderColor: cor, background: cor, color: 'white' }
-                    : { borderColor: `${cor}55`, background: `${cor}12`, color: n > 0 ? cor : undefined }}
-                >
-                  <Icon className="h-3 w-3 shrink-0" />
-                  {NOME_CURTO_SISTEMA[s]}
-                  {n > 0 && (
-                    <span className="rounded-full px-1 text-[9px] font-bold leading-4 min-w-4 text-center"
-                      style={active ? { background: 'white', color: cor } : { background: cor, color: 'white' }}>{n}</span>
-                  )}
-                </button>
-              );
-            };
-            const focoAtivo = sistemasAtivos.length === 1;
+            const total = eventosFiltrados.length;
+            const foco = sistemasAtivos.length === 1 ? sistemasAtivos[0] : null;
+            const corFoco = foco ? SISTEMA_CHART_COLOR[foco] : null;
+            const escolher = (s: SistemaCorporal | null) => { setSistemasAtivos(s ? [s] : []); setMenuSistemas(false); };
+            const ordem = [...SISTEMAS_ORDEM].sort((a, b) => contagem(b) - contagem(a));
             return (
-              <div className="space-y-1">
-                <div className="flex flex-wrap gap-1 justify-center">
-                  {comAchado.length > 0 && (
-                    <button type="button" onClick={() => setSistemasAtivos([])}
-                      className={cn('rounded-full border px-2 py-1 text-[10.5px] font-semibold transition-all',
-                        !focoAtivo ? 'border-foreground bg-foreground text-background' : 'border-border bg-background text-muted-foreground')}>
-                      Todos
+              <div className="relative flex justify-center">
+                <button type="button" onClick={() => setMenuSistemas(v => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors"
+                  style={corFoco ? { borderColor: corFoco, background: `${corFoco}14`, color: corFoco } : undefined}>
+                  {foco ? SISTEMA_CONFIG[foco].label : 'Todos os sistemas'}
+                  <span className="rounded-full bg-foreground/80 px-1.5 text-[10px] font-bold leading-4 text-background"
+                    style={corFoco ? { background: corFoco } : undefined}>
+                    {foco ? contagem(foco) : total}
+                  </span>
+                  {menuSistemas ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
+                {menuSistemas && (
+                  <div className="absolute top-full z-30 mt-1.5 w-64 max-w-[92vw] rounded-xl border bg-background p-1.5 shadow-lg animate-in fade-in zoom-in-95 duration-150">
+                    <button type="button" onClick={() => escolher(null)}
+                      className={cn('flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-xs font-semibold hover:bg-muted', !foco && 'bg-muted')}>
+                      Todos os sistemas <span className="text-muted-foreground">{total}</span>
                     </button>
-                  )}
-                  {comAchado.map(chip)}
-                  {(mostrarTodosSistemas || comAchado.length === 0) && semAchado.map(chip)}
-                  {comAchado.length > 0 && semAchado.length > 0 && (
-                    <button type="button" onClick={() => setMostrarTodosSistemas(v => !v)}
-                      className="rounded-full border border-dashed border-border px-2 py-1 text-[10.5px] text-muted-foreground hover:bg-muted">
-                      {mostrarTodosSistemas ? 'menos' : `+ ${semAchado.length} sem achado`}
-                    </button>
-                  )}
-                </div>
-                <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-3">
-                  <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-foreground/70" /> ativo agora</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full border-2 border-foreground/70 bg-background" /> crônico / histórico</span>
-                </p>
+                    {ordem.map(s => {
+                      const n = contagem(s);
+                      const Icon = SISTEMA_CONFIG[s].icon;
+                      return (
+                        <button key={s} type="button" onClick={() => escolher(s)}
+                          className={cn('flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs hover:bg-muted', foco === s && 'bg-muted font-semibold', n === 0 && 'opacity-50')}>
+                          <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: SISTEMA_CHART_COLOR[s] }} />
+                          <span className="flex-1 text-left">{SISTEMA_CONFIG[s].label}</span>
+                          <span className="text-muted-foreground">{n}</span>
+                        </button>
+                      );
+                    })}
+                    <p className="mt-1 flex items-center justify-center gap-3 border-t px-2 pt-1.5 text-[10px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-foreground/70" /> ativo</span>
+                      <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full border-2 border-foreground/70" /> crônico / histórico</span>
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })()}
 
-          {/* Condições do corpo todo (HAS, diabetes…) não têm um ponto no corpo:
-              ficam como etiquetas logo acima do avatar. */}
-          {gruposAchados.sistemicos.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-1">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Corpo todo:</span>
-              {gruposAchados.sistemicos.map(ev => {
-                const apagado = !!sistemaFoco && ev.sistema !== sistemaFoco;
-                return (
-                  <button key={ev.id} type="button"
-                    onClick={() => setZonaFoco(zonaFoco === REGIAO_SISTEMICA ? null : REGIAO_SISTEMICA)}
-                    className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-opacity', apagado && 'opacity-35')}
-                    style={{ borderColor: `${SISTEMA_CHART_COLOR[ev.sistema]}66`, background: `${SISTEMA_CHART_COLOR[ev.sistema]}14`, color: SISTEMA_CHART_COLOR[ev.sistema] }}>
-                    {ev.tipo_achado}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="flex items-start gap-2">
+          <div className="relative flex items-start gap-2">
           {/* Silhueta — principal */}
           <div className="flex-1 relative min-w-0 flex justify-center">
           <svg viewBox={`0 0 240 ${Math.round(deriveFigura(figura).footY + 13)}`} className="h-auto w-full max-h-[62vh] mx-auto relative" shapeRendering="geometricPrecision" preserveAspectRatio="xMidYMid meet" style={{ filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.14)) drop-shadow(0 2px 5px rgba(0,0,0,0.10))' }}>
@@ -1428,46 +1385,42 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </svg>
           </div>
 
-          {/* Achados — coluna lateral: TODOS os achados, de todos os sistemas */}
-          <div className="w-36 shrink-0 flex flex-col gap-1.5 max-h-[500px] overflow-y-auto pr-0.5">
-            {gruposAchados.zonas.length === 0 && gruposAchados.sistemicos.length === 0 ? (
-              <p className="text-[10px] text-muted-foreground text-center py-4 italic leading-relaxed">
-                Nenhum achado registrado ainda.
-              </p>
-            ) : (
-              <>
-                {[
-                  ...(gruposAchados.sistemicos.length > 0 ? [{ id: REGIAO_SISTEMICA, label: 'Corpo todo', evs: gruposAchados.sistemicos }] : []),
-                  ...gruposAchados.zonas,
-                ].map(g => {
-                  const focado = zonaFoco === g.id;
-                  return (
-                    <button key={g.id} type="button"
+          {/* Achados — só pontos, na borda do avatar (ele ganha o espaço). Tocar/passar
+              o dedo mostra o nome; o detalhe abre logo abaixo. Inclui "Corpo todo". */}
+          {(gruposAchados.zonas.length > 0 || gruposAchados.sistemicos.length > 0) && (
+            <div className="absolute right-0 top-0 z-10 flex flex-col items-end gap-2">
+              {[
+                ...(gruposAchados.sistemicos.length > 0 ? [{ id: REGIAO_SISTEMICA, label: 'Corpo todo', evs: gruposAchados.sistemicos }] : []),
+                ...gruposAchados.zonas,
+              ].map(g => {
+                const focado = zonaFoco === g.id;
+                const evsFoco = sistemaFoco ? g.evs.filter(e => e.sistema === sistemaFoco) : g.evs;
+                const apagado = evsFoco.length === 0;
+                const top = evsFoco[0] ?? g.evs[0];
+                const sistemico = g.id === REGIAO_SISTEMICA;
+                const cor = sistemico ? 'hsl(var(--foreground))' : SISTEMA_CHART_COLOR[top.sistema];
+                const ativoAgora = (evsFoco.length ? evsFoco : g.evs).some(e => e.status === 'ativo' || e.status === 'em_tratamento');
+                return (
+                  <div key={g.id} className={cn('relative flex items-center justify-end transition-opacity', apagado && 'opacity-30')}>
+                    {focado && (
+                      <span className="absolute right-full mr-1.5 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-[10px] font-bold text-background shadow-md">
+                        {g.label}{g.evs.length > 1 ? ` · ${g.evs.length}` : ''}
+                      </span>
+                    )}
+                    <button type="button" aria-label={g.label}
                       onMouseEnter={() => setZonaFoco(g.id)}
                       onClick={() => setZonaFoco(focado ? null : g.id)}
-                      className={cn('w-full text-left rounded-xl border px-2 py-1.5 transition-all',
-                        focado ? 'border-foreground/40 bg-muted shadow-sm' : 'border-border/60 bg-background hover:bg-muted/60')}>
-                      <p className="text-[10px] font-bold leading-tight text-foreground flex items-center gap-1">
-                        {g.id === REGIAO_SISTEMICA && <Activity className="h-3 w-3 shrink-0" />}
-                        {g.label}
-                      </p>
-                      <div className="mt-0.5 space-y-0.5">
-                        {g.evs.map(ev => {
-                          const apagado = !!sistemaFoco && ev.sistema !== sistemaFoco;
-                          return (
-                            <p key={ev.id} className={cn('text-[9.5px] leading-snug flex items-start gap-1', apagado && 'opacity-35')}>
-                              <span className="mt-[3px] h-2 w-2 rounded-full shrink-0" style={marcadorStatus(ev)} />
-                              <span className={cn('text-muted-foreground', focado ? '' : 'line-clamp-2')}>{ev.tipo_achado || 'Achado'}</span>
-                            </p>
-                          );
-                        })}
-                      </div>
+                      className={cn('flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-extrabold transition-transform', focado && 'scale-125')}
+                      style={ativoAgora
+                        ? { background: cor, color: 'white', border: '2px solid white', boxShadow: '0 1px 4px rgba(0,0,0,.25)' }
+                        : { background: 'hsl(var(--background))', color: cor, border: `2.5px solid ${cor}`, boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
+                      {sistemico ? <Activity className="h-3 w-3" /> : g.evs.length > 1 ? g.evs.length : null}
                     </button>
-                  );
-                })}
-              </>
-            )}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           </div>
 
         {/* Detalhe do local tocado — o que foi registrado ali, em texto */}
