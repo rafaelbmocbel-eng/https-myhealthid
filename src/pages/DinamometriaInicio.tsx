@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Bluetooth, BluetoothOff, CheckCircle2, ChevronDown, Dumbbell, FileText, History, Loader2, Search, Target, UserPlus } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Bluetooth, BluetoothOff, CheckCircle2, ChevronDown, Dumbbell, FileText, History, Loader2, Trash2, Search, Target, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -142,6 +143,29 @@ export default function DinamometriaInicio() {
     },
   });
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const [excluir, setExcluir] = useState<null | { id: string; tipo: 'teste' | 'treino'; titulo: string }>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const confirmarExclusao = async () => {
+    if (!excluir) return;
+    setExcluindo(true);
+    try {
+      const tabela = excluir.tipo === 'teste' ? 'exames_presenciais' : 'notas_prontuario';
+      const { data, error } = await (supabase as any).from(tabela).delete().eq('id', excluir.id).select('id');
+      if (error) throw error;
+      // RLS não dá erro quando não deixa apagar: confere se apagou mesmo.
+      if (!data?.length) throw new Error('Só quem registrou pode excluir este item.');
+      toast.success(excluir.tipo === 'teste' ? 'Exame excluído' : 'Treino excluído');
+      if (abertoId === excluir.id) setAbertoId(null);
+      qc.invalidateQueries({ queryKey: ['din-inicio-historico', pacId] });
+      qc.invalidateQueries({ queryKey: ['exames-presenciais'] });
+      setExcluir(null);
+    } catch (e: any) {
+      toast.error(e?.message || 'Não consegui excluir.');
+    } finally {
+      setExcluindo(false);
+    }
+  };
   const dataBR = (d: string) => new Date(d.length <= 10 ? `${d}T12:00:00` : d).toLocaleDateString('pt-BR');
 
   const anos = idade(nasc || null);
@@ -250,9 +274,14 @@ export default function DinamometriaInicio() {
                         <div className="px-3 pb-3 space-y-2 border-t border-border/50 pt-2.5">
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Laudo</p>
                           {t.laudo ? t.laudo.split('\n\n').map((p, i) => <p key={i} className="text-sm leading-relaxed">{p}</p>) : <p className="text-sm text-muted-foreground">{t.resumo || 'Sem laudo em texto.'}</p>}
-                          <Button asChild size="sm" variant="outline" className="gap-1.5">
-                            <Link to={`/pacientes/${pac.id}/dinamometria?exame=${t.id}`}><FileText className="h-3.5 w-3.5" /> Ver resultado completo e PDF</Link>
-                          </Button>
+                          <div className="flex flex-wrap gap-2 justify-between">
+                            <Button asChild size="sm" variant="outline" className="gap-1.5">
+                              <Link to={`/pacientes/${pac.id}/dinamometria?exame=${t.id}`}><FileText className="h-3.5 w-3.5" /> Ver resultado completo e PDF</Link>
+                            </Button>
+                            <Button size="sm" variant="ghost" className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setExcluir({ id: t.id, tipo: 'teste', titulo: `Teste de força · ${t.regioes} (${dataBR(t.data)})` })}>
+                              <Trash2 className="h-3.5 w-3.5" /> Excluir exame
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -273,6 +302,11 @@ export default function DinamometriaInicio() {
                       {aberto && (
                         <div className="px-3 pb-3 border-t border-border/50 pt-2.5 space-y-1">
                           {(t.descricao || '').split('\n').map((l, i) => <p key={i} className="text-sm leading-relaxed">{l}</p>)}
+                          <div className="flex justify-end pt-1">
+                            <Button size="sm" variant="ghost" className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setExcluir({ id: t.id, tipo: 'treino', titulo: `${t.titulo} (${dataBR(t.data)})` })}>
+                              <Trash2 className="h-3.5 w-3.5" /> Excluir treino
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -307,6 +341,22 @@ export default function DinamometriaInicio() {
           {salvando && <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Salvando cadastro…</p>}
         </Card>
       </div>
+      <AlertDialog open={!!excluir} onOpenChange={(v) => { if (!v && !excluindo) setExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {excluir?.tipo === 'teste' ? 'este exame' : 'este treino'}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {excluir?.titulo}. {excluir?.tipo === 'teste' ? 'O laudo, as curvas e os resultados deste teste serão apagados e ele sai da evolução do paciente.' : 'O registro deste treino sai do prontuário.'} Não dá para desfazer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" disabled={excluindo} onClick={(e) => { e.preventDefault(); void confirmarExclusao(); }}>
+              {excluindo && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
