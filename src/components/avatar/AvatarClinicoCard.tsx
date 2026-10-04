@@ -614,10 +614,48 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
   // relato_paciente não entra no mapa SVG nem na lista de achados — fica só
   // no card de revisão até o profissional confirmar como achado_clinico.
+  // O mapa mostra os achados de TODOS os sistemas; selecionar um sistema só
+  // destaca os dele (os demais ficam esmaecidos), nunca esconde.
   const eventosFiltrados = useMemo(
-    () => eventos.filter(e => sistemasAtivos.includes(e.sistema) && (e as any).tipo_diagnostico !== 'relato_paciente'),
-    [eventos, sistemasAtivos],
+    () => eventos.filter(e =>
+      (e as any).tipo_diagnostico !== 'relato_paciente'
+      && e.status !== 'resolvido'
+      && (soLiberados ? e.visivel_paciente : true)),
+    [eventos, soLiberados],
   );
+  const sistemaFoco: SistemaCorporal | null = hoveredSistema || (sistemasAtivos.length === 1 ? sistemasAtivos[0] : null);
+  const [zonaFoco, setZonaFoco] = useState<string | null>(null);
+
+  const nomeLocal = (ev: EventoAnatomico) =>
+    ev.regiao_id === REGIAO_SISTEMICA
+      ? 'Corpo todo'
+      : [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === ev.regiao_id)?.label || zonaDeRegiao(ev.regiao_id)?.label || ev.regiao_id;
+
+  // Um grupo por local do corpo + um grupo "corpo todo" (HAS, diabetes…).
+  const gruposAchados = useMemo(() => {
+    const porZona = new Map<string, { id: string; label: string; evs: EventoAnatomico[] }>();
+    const sistemicos: EventoAnatomico[] = [];
+    eventosFiltrados.forEach(ev => {
+      const zona = ev.regiao_id === REGIAO_SISTEMICA ? undefined : zonaDeRegiao(ev.regiao_id);
+      if (!zona) { sistemicos.push(ev); return; }
+      const g = porZona.get(zona.id) ?? { id: zona.id, label: zona.label, evs: [] };
+      g.evs.push(ev);
+      porZona.set(zona.id, g);
+    });
+    const ordenar = (evs: EventoAnatomico[]) => [...evs].sort((a, b) => {
+      const da = tipoPeso((a as any).tipo_diagnostico);
+      const db = tipoPeso((b as any).tipo_diagnostico);
+      return da !== db ? db - da : (b.severidade ?? 0) - (a.severidade ?? 0);
+    });
+    return {
+      // Título pelo órgão/estrutura ("Coração", "Útero"), não pela zona ("Tórax").
+      zonas: [...porZona.values()].map(g => {
+        const locais = [...new Set(g.evs.map(nomeLocal))];
+        return { ...g, label: locais.length <= 2 ? locais.join(' · ') : g.label, evs: ordenar(g.evs) };
+      }),
+      sistemicos: ordenar(sistemicos),
+    };
+  }, [eventosFiltrados]);
 
   const systemScores = useMemo(() => SISTEMAS_ORDEM.map(s => {
     const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
@@ -758,61 +796,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     });
 
     return map;
-  }, [eventosFiltrados]);
-
-  // Condições ativas por zona corporal — usada para dots e lista compacta
-  const activeConditions = useMemo(() => {
-    const result: Array<{
-      zonaId: string; label: string; cor: string; status: string; tipo_achado: string;
-    }> = [];
-    const statusLabel: Record<string, string> = {
-      ativo: 'Ativo', cronico: 'Crônico', observacao: 'Obs.', resolvido: 'Resolvido',
-    };
-    ZONAS_CORPORAIS.forEach(zona => {
-      const zoneEvs = eventosFiltrados.filter(ev => zona.ids.includes(ev.regiao_id));
-      if (zoneEvs.length === 0) return;
-      const top = [...zoneEvs].sort((a, b) => {
-        const da = tipoPeso((a as any).tipo_diagnostico);
-        const db = tipoPeso((b as any).tipo_diagnostico);
-        return da !== db ? db - da : (b.severidade ?? 0) - (a.severidade ?? 0);
-      })[0];
-      result.push({
-        zonaId: zona.id, label: zona.label, cor: corEvento(top),
-        status: statusLabel[top.status] ?? top.status,
-        tipo_achado: top.tipo_achado || '',
-      });
-    });
-    return result;
-  }, [eventosFiltrados]);
-
-  // Cards: conditions for the currently selected system (mirrors avatar dots)
-  const findingsForCards = useMemo(() => {
-    const statusLabel: Record<string, string> = {
-      ativo: 'Ativo', cronico: 'Crônico', em_tratamento: 'Em tratamento', observacao: 'Obs.',
-    };
-    const evs = eventosFiltrados.filter(e => e.status !== 'resolvido');
-    const result: Array<{
-      zonaId: string; id: string; label: string; cor: string; status: string; tipo_achado: string; sistema: SistemaCorporal;
-    }> = [];
-    ZONAS_CORPORAIS.forEach(zona => {
-      const zoneEvs = evs.filter(ev => zona.ids.includes(ev.regiao_id));
-      if (zoneEvs.length === 0) return;
-      const top = [...zoneEvs].sort((a, b) => {
-        const da = tipoPeso((a as any).tipo_diagnostico);
-        const db = tipoPeso((b as any).tipo_diagnostico);
-        return da !== db ? db - da : (b.severidade ?? 0) - (a.severidade ?? 0);
-      })[0];
-      result.push({
-        zonaId: zona.id,
-        id: top.id,
-        label: zona.label,
-        cor: corEvento(top),
-        status: statusLabel[top.status] ?? top.status,
-        tipo_achado: top.tipo_achado || '',
-        sistema: top.sistema,
-      });
-    });
-    return result;
   }, [eventosFiltrados]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
@@ -959,6 +942,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               );
             })}
           </div>
+
+          {/* Condições do corpo todo (HAS, diabetes…) não têm um ponto no corpo:
+              ficam como etiquetas logo acima do avatar. */}
+          {gruposAchados.sistemicos.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-1">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Corpo todo:</span>
+              {gruposAchados.sistemicos.map(ev => {
+                const apagado = !!sistemaFoco && ev.sistema !== sistemaFoco;
+                return (
+                  <button key={ev.id} type="button"
+                    onClick={() => setZonaFoco(zonaFoco === REGIAO_SISTEMICA ? null : REGIAO_SISTEMICA)}
+                    className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-opacity', apagado && 'opacity-35')}
+                    style={{ borderColor: `${SISTEMA_CHART_COLOR[ev.sistema]}66`, background: `${SISTEMA_CHART_COLOR[ev.sistema]}14`, color: SISTEMA_CHART_COLOR[ev.sistema] }}>
+                    {ev.tipo_achado}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex items-start gap-2">
           {/* Silhueta — principal */}
@@ -1292,41 +1294,62 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 limpo e apenas as marcações pontuais indicam a região acometida.
                 Ver ZONAS_CORPORAIS + o bloco de dots abaixo. */}
 
-            {/* ═══ Dots clínicos — um ponto colorido por zona com achado ativo ═══ */}
-            {ZONAS_CORPORAIS
-              .filter(z => !z.views || z.views.includes(view as 'front' | 'back'))
-              .map(zona => {
-                const cor = zona.ids.reduce(
-                  (acc: string | null, id) => acc ?? (corPorRegiao[id] ?? null),
-                  null,
-                );
-                if (!cor) return null;
+            {/* ═══ Pontos clínicos — um por local, na cor do sistema ═══
+                Selecionar um sistema esmaece os pontos dos outros; tocar num
+                ponto mostra o que foi registrado ali. */}
+            {gruposAchados.zonas.map(g => {
+              const zona = ZONAS_CORPORAIS.find(z => z.id === g.id);
+              if (!zona || (zona.views && !zona.views.includes(view as 'front' | 'back'))) return null;
+              const off = savedOrganOffsets[zona.id] ?? { dx: 0, dy: 0 };
+              const piv = zonePivot(zona.shape);
+              const rawX = piv.x + off.dx;
+              // Na vista posterior a lateralidade espelha em torno de x=120.
+              const cx  = view === 'back' ? 240 - rawX : rawX;
+              const cy  = piv.y + off.dy;
+              const evsFoco = sistemaFoco ? g.evs.filter(e => e.sistema === sistemaFoco) : g.evs;
+              const apagado = evsFoco.length === 0;
+              const top = evsFoco[0] ?? g.evs[0];
+              const cor = SISTEMA_CHART_COLOR[top.sistema] || corEvento(top);
+              const focado = zonaFoco === g.id;
+              const sistemasDaZona = [...new Set(g.evs.map(e => e.sistema))];
+              return (
+                <g key={g.id} style={{ cursor: 'pointer' }} opacity={apagado ? 0.22 : 1}
+                  onMouseEnter={() => setZonaFoco(g.id)}
+                  onClick={() => setZonaFoco(focado ? null : g.id)}>
+                  {!apagado && <circle cx={cx} cy={cy} r={9} fill={cor} className="avc-dot-ping" />}
+                  <circle cx={cx} cy={cy} r={focado ? 9 : 7} fill={cor} stroke="white" strokeWidth={focado ? 2 : 1.2} />
+                  {/* Mais de um sistema no mesmo local: anel com a cor do segundo */}
+                  {sistemasDaZona.length > 1 && (
+                    <circle cx={cx} cy={cy} r={focado ? 11.5 : 9.5} fill="none"
+                      stroke={SISTEMA_CHART_COLOR[sistemasDaZona.find(x => x !== top.sistema)!]} strokeWidth={1.6} />
+                  )}
+                  {g.evs.length > 1
+                    ? <text x={cx} y={cy + 2.6} textAnchor="middle" fontSize={7.5} fontWeight={800} fill="white">{g.evs.length}</text>
+                    : <circle cx={cx} cy={cy} r={2.6} fill="white" opacity={0.75} />}
+                </g>
+              );
+            })}
 
-                const off = savedOrganOffsets[zona.id] ?? { dx: 0, dy: 0 };
-                const piv = zonePivot(zona.shape);
-                const rawX = piv.x + off.dx;
-                // Na vista posterior a lateralidade espelha: o lado direito do
-                // paciente aparece à DIREITA de quem olha (o oposto da frente).
-                // As zonas bilaterais dos membros usam coordenadas orientadas
-                // pela frente, então espelhamos em torno do eixo médio (x=120,
-                // viewBox 240). Estruturas na linha média (coluna, crânio) ficam
-                // em x=120 → 240-120=120, ou seja, não se movem.
-                const cx  = view === 'back' ? 240 - rawX : rawX;
-                const cy  = piv.y + off.dy;
-
-                return (
-                  <g key={zona.id} style={{ cursor: 'pointer' }}
-                    onClick={() => abrirSheet(zona.id)}>
-                    {/* Anel pulsante */}
-                    <circle cx={cx} cy={cy} r={9} fill={cor} className="avc-dot-ping" />
-                    {/* Ponto sólido */}
-                    <circle cx={cx} cy={cy} r={7} fill={cor} />
-                    {/* Destaque central */}
-                    <circle cx={cx} cy={cy} r={2.8} fill="white" opacity={0.70} />
-                  </g>
-                );
-              })
-            }
+            {/* Rótulo do local tocado/passado o mouse */}
+            {zonaFoco && zonaFoco !== REGIAO_SISTEMICA && (() => {
+              const g = gruposAchados.zonas.find(z => z.id === zonaFoco);
+              const zona = ZONAS_CORPORAIS.find(z => z.id === zonaFoco);
+              if (!g || !zona || (zona.views && !zona.views.includes(view as 'front' | 'back'))) return null;
+              const off = savedOrganOffsets[zona.id] ?? { dx: 0, dy: 0 };
+              const piv = zonePivot(zona.shape);
+              const rawX = piv.x + off.dx;
+              const cx = view === 'back' ? 240 - rawX : rawX;
+              const cy = piv.y + off.dy;
+              const txt = g.label.length > 20 ? `${g.label.slice(0, 19)}…` : g.label;
+              const w = txt.length * 4.7 + 10;
+              const x = Math.min(Math.max(cx - w / 2, 2), 238 - w);
+              return (
+                <g pointerEvents="none">
+                  <rect x={x} y={cy - 26} width={w} height={14} rx={4} fill="hsl(var(--foreground))" opacity={0.88} />
+                  <text x={x + w / 2} y={cy - 16.3} textAnchor="middle" fontSize={8} fontWeight={700} fill="hsl(var(--background))">{txt}</text>
+                </g>
+              );
+            })()}
 
             {/* Prévia do achado que está sendo digitado — anel tracejado + nome do local */}
             {previaAchado && previaAchado.regiao !== REGIAO_SISTEMICA && (() => {
@@ -1358,56 +1381,83 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </svg>
           </div>
 
-          {/* Achados — coluna lateral direita */}
-          <div className="w-32 shrink-0 flex flex-col gap-1.5 max-h-[500px] overflow-y-auto pr-0.5">
-            {sistemasAtivos.length === 0 ? (
+          {/* Achados — coluna lateral: TODOS os achados, de todos os sistemas */}
+          <div className="w-36 shrink-0 flex flex-col gap-1.5 max-h-[500px] overflow-y-auto pr-0.5">
+            {gruposAchados.zonas.length === 0 && gruposAchados.sistemicos.length === 0 ? (
               <p className="text-[10px] text-muted-foreground text-center py-4 italic leading-relaxed">
-                Selecione um sistema acima.
+                Nenhum achado registrado ainda.
               </p>
-            ) : findingsForCards.length === 0 ? (
-              <p className="text-[10px] text-muted-foreground text-center py-4 italic">
-                Sem achados ativos.
-              </p>
-            ) : findingsForCards.map(c => {
-              const sysColor = SISTEMA_CHART_COLOR[c.sistema] || '#94a3b8';
-              const statusHex: Record<string, string> = {
-                'Ativo': '#ec4899', 'Crônico': '#f59e0b', 'Em tratamento': '#f97316', 'Obs.': '#eab308',
-              };
-              const sh = statusHex[c.status] || '#94a3b8';
-              return (
-                <div key={c.zonaId}
-                  className="w-full rounded-xl border px-2 py-1.5 shrink-0 relative group"
-                  style={{ borderColor: `${sysColor}35`, background: `${sysColor}0a` }}>
-                  <button type="button" onClick={() => abrirSheet(c.zonaId)} className="w-full text-left transition-opacity hover:opacity-80 active:opacity-60">
-                    <div className="flex items-start justify-between gap-1 mb-0.5 pr-5">
-                      <p className="text-[10px] font-bold leading-tight" style={{ color: sysColor }}>{c.label}</p>
-                      <span className="text-[8px] font-semibold px-1 py-px rounded-full shrink-0"
-                        style={{ color: sh, background: `${sh}1a` }}>{c.status}</span>
-                    </div>
-                    {c.tipo_achado && (
-                      <p className="text-[9px] text-muted-foreground leading-snug line-clamp-2 pr-5">{c.tipo_achado}</p>
-                    )}
-                  </button>
+            ) : (
+              <>
+                {[
+                  ...(gruposAchados.sistemicos.length > 0 ? [{ id: REGIAO_SISTEMICA, label: 'Corpo todo', evs: gruposAchados.sistemicos }] : []),
+                  ...gruposAchados.zonas,
+                ].map(g => {
+                  const focado = zonaFoco === g.id;
+                  return (
+                    <button key={g.id} type="button"
+                      onMouseEnter={() => setZonaFoco(g.id)}
+                      onClick={() => setZonaFoco(focado ? null : g.id)}
+                      className={cn('w-full text-left rounded-xl border px-2 py-1.5 transition-all',
+                        focado ? 'border-foreground/40 bg-muted shadow-sm' : 'border-border/60 bg-background hover:bg-muted/60')}>
+                      <p className="text-[10px] font-bold leading-tight text-foreground flex items-center gap-1">
+                        {g.id === REGIAO_SISTEMICA && <Activity className="h-3 w-3 shrink-0" />}
+                        {g.label}
+                      </p>
+                      <div className="mt-0.5 space-y-0.5">
+                        {g.evs.map(ev => {
+                          const apagado = !!sistemaFoco && ev.sistema !== sistemaFoco;
+                          return (
+                            <p key={ev.id} className={cn('text-[9.5px] leading-snug flex items-start gap-1', apagado && 'opacity-35')}>
+                              <span className="mt-[3px] h-1.5 w-1.5 rounded-full shrink-0" style={{ background: SISTEMA_CHART_COLOR[ev.sistema] }} />
+                              <span className={cn('text-muted-foreground', focado ? '' : 'line-clamp-2')}>{ev.tipo_achado || 'Achado'}</span>
+                            </p>
+                          );
+                        })}
+                      </div>
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+          </div>
+
+        {/* Detalhe do local tocado — o que foi registrado ali, em texto */}
+        {zonaFoco && (() => {
+          const g = zonaFoco === REGIAO_SISTEMICA
+            ? { id: REGIAO_SISTEMICA, label: 'Corpo todo (condições sistêmicas)', evs: gruposAchados.sistemicos }
+            : gruposAchados.zonas.find(z => z.id === zonaFoco);
+          if (!g || g.evs.length === 0) return null;
+          return (
+            <div className="mt-2 rounded-xl border bg-background p-2.5 space-y-1.5 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-bold">{g.label}</p>
+                <button type="button" onClick={() => setZonaFoco(null)} className="p-1 rounded-md text-muted-foreground hover:bg-muted" title="Fechar">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {g.evs.map(ev => (
+                <div key={ev.id} className="flex items-start gap-2 text-[11px]">
+                  <span className="mt-1 h-2 w-2 rounded-full shrink-0" style={{ background: SISTEMA_CHART_COLOR[ev.sistema] }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold leading-snug">{ev.tipo_achado || 'Achado'}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {SISTEMA_CONFIG[ev.sistema]?.label} · {nomeLocal(ev)} · {STATUS_LABEL[ev.status] ?? ev.status}
+                      {ev.data_inicio ? ` · desde ${new Date(ev.data_inicio).getFullYear()}` : ''}
+                    </p>
+                  </div>
                   {isProfessional && !modoSimplificado && (
-                    <button
-                      type="button"
-                      title="Excluir achado"
-                      className="absolute top-1 right-1 p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                      disabled={deleteMut.isPending}
-                      onClick={() => {
-                        if (window.confirm(`Excluir o achado "${c.tipo_achado || c.label}"?`)) {
-                          deleteMut.mutate(c.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <button type="button" className="text-[10px] font-semibold text-primary hover:underline shrink-0"
+                      onClick={() => { setSheetRegiao(ev.regiao_id); setEditing(null); }}>
+                      Editar
                     </button>
                   )}
                 </div>
-              );
-            })}
-          </div>
-          </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Campo único de achado: o app identifica sistema e local; o profissional confirma. */}
         {isProfessional && !modoSimplificado && pacienteId && (
@@ -1561,11 +1611,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         })()}
 
         {/* Legend — sistema → cor */}
-        {findingsForCards.length > 0 && (
+        {eventosFiltrados.length > 0 && (
           <div className="space-y-1 mt-2">
             <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] justify-center">
               {(Object.entries(SISTEMA_CHART_COLOR) as [SistemaCorporal, string][])
-                .filter(([s]) => findingsForCards.some(c => c.sistema === s))
+                .filter(([s]) => eventosFiltrados.some(e => e.sistema === s))
                 .map(([s, color]) => (
                   <span key={s} className="flex items-center gap-1 text-muted-foreground">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
