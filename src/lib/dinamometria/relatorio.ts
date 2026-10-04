@@ -111,25 +111,25 @@ export function gruposBarras(A: Analise, u: Unidade): GrupoBarras[] {
 async function blocoVisual(doc: jsPDF, av: Avaliacao, A: Analise, c: Criterios, x0: number, y: number, larg: number): Promise<number> {
   const u = c.unidade;
   const R = A.R;
-  const larAv = 84, gap = 6, larDir = larg - larAv - gap, xDir = x0 + larAv + gap;
+  const larAv = 54, gap = 6, larDir = larg - larAv - gap, xDir = x0 + larAv + gap;
   const aneis = achadosDor([{ av, A }], c).flatMap(a => a.aneis);
   const itens = itensAvatar([{ av, A }], c, u);
   // Avatar inteiro (frente e costas) — cabe exame com várias articulações.
   const svgCorpo = mapaMuscularSVG(itens, aneis, false);
   const altAv = larAv * proporcaoSVG(svgCorpo);
-  const hFoco = 26;
-  if (y + Math.max(altAv + hFoco + 14, 70) > 285) { doc.addPage(); y = 18; }
+  const hFoco = 20;
+  if (y + Math.max(altAv + hFoco + 10, 70) > 286) { doc.addPage(); y = 18; }
   const yTopo = y;
   doc.setDrawColor(...hexRgb('#D6DEE8')); doc.setLineWidth(0.3);
   doc.roundedRect(x0, y, larAv, altAv + hFoco + 10, 2.2, 2.2, 'S');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4); doc.setTextColor(...hexRgb(AZUL));
   doc.text('MAPA MUSCULAR · FRENTE E COSTAS', x0 + 3, y + 4.4);
-  try { doc.addImage(await svgParaPNG(svgCorpo, 900), 'PNG', x0 + 1, y + 5.5, larAv - 2, altAv - 2); } catch { /* sem o avatar, segue com os gráficos */ }
+  try { doc.addImage(await svgParaPNG(svgCorpo, 700), 'PNG', x0 + 1, y + 5.5, larAv - 2, altAv - 2, undefined, 'FAST'); } catch { /* sem o avatar, segue com os gráficos */ }
   // Close da articulação com a relação antagonista/agonista de cada lado.
   const yFoco = y + altAv + 6;
   doc.setDrawColor(...hexRgb('#E3E9F0')); doc.line(x0 + 3, yFoco - 1.5, x0 + larAv - 3, yFoco - 1.5);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4); doc.setTextColor(...hexRgb(AZUL));
-  doc.text(seguro(`${R.l.toUpperCase()} EM DESTAQUE · ${R.an.toUpperCase()}/${R.ag.toUpperCase()}`), x0 + 3, yFoco + 2.4);
+  doc.text(seguro(`${R.l.split(' (')[0].toUpperCase()} EM DESTAQUE`), x0 + 3, yFoco + 2.4);
   const razao: Partial<Record<Lado, { txt: string; st: Status }>> = {};
   for (const l of ['D', 'E'] as Lado[]) {
     const rz = A.razoes[l];
@@ -139,7 +139,7 @@ async function blocoVisual(doc: jsPDF, av: Avaliacao, A: Analise, c: Criterios, 
     const svgFoco = focoArticulacaoSVG(av.regiao, itens, razao);
     const wF = larAv - 4, hF = Math.min(hFoco, wF * proporcaoSVG(svgFoco));
     const wImg = hF / proporcaoSVG(svgFoco);
-    doc.addImage(await svgParaPNG(svgFoco, 900), 'PNG', x0 + (larAv - wImg) / 2, yFoco + 3.5, wImg, hF);
+    doc.addImage(await svgParaPNG(svgFoco, 700), 'PNG', x0 + (larAv - wImg) / 2, yFoco + 3.5, wImg, hF, undefined, 'FAST');
   } catch { /* close opcional */ }
 
   // Direita: comparação unilateral (barras D × E) e razão antagonista/agonista D e E.
@@ -152,7 +152,7 @@ async function blocoVisual(doc: jsPDF, av: Avaliacao, A: Analise, c: Criterios, 
     const pr = new Image(); pr.src = img;
     await new Promise(ok => { pr.onload = ok; pr.onerror = ok; });
     const altBar = pr.width ? (larDir * pr.height) / pr.width : larDir * 0.35;
-    doc.addImage(img, 'PNG', xDir, yd + 6, larDir, altBar);
+    doc.addImage(img, 'PNG', xDir, yd + 6, larDir, altBar, undefined, 'FAST');
     yd += altBar + 10;
   }
   if (A.razoes.D || A.razoes.E) {
@@ -164,12 +164,15 @@ async function blocoVisual(doc: jsPDF, av: Avaliacao, A: Analise, c: Criterios, 
       yd = trilhoRazao(doc, `${nomeArt} ${l === 'D' ? 'direito' : 'esquerdo'}`, A.razoes[l], c, R.modo === 'min', R.min ?? null, xDir, yd, larDir);
     }
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(120);
-    yd = par2(doc, R.modo === 'min' ? `Verde: a partir do mínimo de referência (${fmt((R.min ?? 0.8) * 100, 0)}%).` : `Faixa verde: referência ±${c.razaoTol}% (linha = média para idade e sexo). Acima de ±${c.razaoLimite}%: desequilíbrio.`, xDir, yd - 1, larDir, 3);
+    yd = par2(doc, R.modo === 'min' ? `Verde: a partir do mínimo de referência (${fmt((R.min ?? 0.8) * 100, 0)}%).` : `Faixa verde: referência ±${c.razaoTol}% (linha = média para idade e sexo). Acima de ±${c.razaoLimite}%: desequilíbrio.`, xDir, yd + 1.5, larDir, 3);
     doc.setTextColor(20);
   }
   doc.setLineWidth(0.2); doc.setTextColor(20);
   return Math.max(yTopo + altAv + hFoco + 10, yd) + 4;
 }
+
+// Página pública com todas as referências (substitui a página do PubMed no PDF).
+export const LINK_REFERENCIAS = 'https://www.myhealthid.com.br/referencias/dinamometria';
 
 // ───────── Peças de layout do relatório técnico ─────────
 const hexRgb = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -305,60 +308,47 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
     const janelaRazao = R.modo === 'min'
       ? `>= ${fmt((R.min ?? 0.8) * 100, 0)}%`
       : razRef != null ? `${fmt(razRef * (1 - c.razaoTol / 100) * 100, 0)}% a ${fmt(razRef * (1 + c.razaoTol / 100) * 100, 0)}% (média ~${fmt(razRef * 100, 0)}%)` : 'depende de idade e sexo';
-    const linhasRef: [string, string, string][] = [
-      ['Simetria bilateral', `>= ${c.lsiAdequado}% (diferença até ${100 - c.lsiAdequado}%); atenção ${c.lsiImportante}-${c.lsiAdequado}%`, citarCurto(['grindem', 'kyritsis', 'parkinson'])],
-      [`Agonista x antagonista (${R.razaoL.split(' (')[0]})`, janelaRazao, citarCurto(R.modo === 'min' ? ['tyler', 'whittaker'] : R.mAg === 'kn_ext' ? ['mckay', 'ishoi', 'taketomi'] : ['mckay', 'cools'])],
+    const linhasRef: [string, string][] = [
+      ['Simetria bilateral', `>= ${c.lsiAdequado}% (diferença até ${100 - c.lsiAdequado}%); atenção ${c.lsiImportante}-${c.lsiAdequado}%`],
+      [`Agonista x antagonista (${R.razaoL.split(' (')[0]})`, janelaRazao],
       ...gruposBarras(A, u).filter(g => g.ref != null && g.min != null).map(g => [
-        `Força - ${g.nome}`, `${fmt(g.min, 1)} a ${fmt(2 * (g.ref as number) - (g.min as number), 1)} ${u} (média ${fmt(g.ref, 1)})`, citarCurto(['mckay', 'machado']),
-      ] as [string, string, string]),
-      ['Índice de fadiga', `<= ${c.fadBaixa}%; atenção ${c.fadBaixa}-${c.fadAlta}%`, 'Critério do serviço (sem norma publicada)'],
-      ['Curva de contração', `subida rápida e contínua; platô estável (oscilação <= ${c.oscEstavel}%)`, `${citarCurto(['maffiuletti'])}; oscilação: critério do serviço`],
+        `Força - ${g.nome}`, `${fmt(g.min, 1)} a ${fmt(2 * (g.ref as number) - (g.min as number), 1)} ${u} (média ${fmt(g.ref, 1)})`,
+      ] as [string, string]),
+      ['Índice de fadiga', `<= ${c.fadBaixa}%; atenção ${c.fadBaixa}-${c.fadAlta}%`],
+      ['Curva de contração', `subida rápida até o pico (força medida em 0-100 e 0-200 ms); platô estável, oscilação <= ${c.oscEstavel}%; queda da força <= ${c.fadBaixa}% no fim da contração sustentada`],
     ];
     {
-      const wC = [46, 70, larg - 116 - 4];
-      const xC = [M + 3, M + 3 + wC[0], M + 3 + wC[0] + wC[1]];
-      const linhasMed = linhasRef.map(([a, b, cc]) => {
+      const wC = [52, larg - 52 - 6];
+      const xC = [M + 3, M + 3 + wC[0]];
+      const linhasMed = linhasRef.map(([a, b]) => {
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8.3); const la = doc.splitTextToSize(seguro(a), wC[0] - 3);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.3); const lb = doc.splitTextToSize(seguro(b), wC[1] - 3);
-        doc.setFontSize(7.2); const lc = doc.splitTextToSize(seguro(cc), wC[2]);
-        return { la, lb, lc, h: Math.max(la.length, lb.length, lc.length) * 3.55 + 3.2 };
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.3); const lb = doc.splitTextToSize(seguro(b), wC[1]);
+        return { la, lb, h: Math.max(la.length, lb.length) * 3.55 + 3 };
       });
       const hTab = 7 + linhasMed.reduce((s2, l) => s2 + l.h, 0);
-      garantir(hTab + 4);
+      garantir(hTab + 8);
       doc.setDrawColor(...hexRgb('#D6DEE8')); doc.setLineWidth(0.3);
       doc.setFillColor(...hexRgb('#F4F7FB')); doc.roundedRect(M, y, larg, hTab, 2.2, 2.2, 'FD');
       doc.setFillColor(...hexRgb('#E6EDF5')); doc.roundedRect(M, y, larg, 7, 2.2, 2.2, 'F'); doc.rect(M, y + 4, larg, 3, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4); doc.setTextColor(...hexRgb(AZUL));
-      ['PARÂMETRO', 'JANELA FISIOLÓGICA', 'BASE CIENTÍFICA'].forEach((h, k) => doc.text(h, xC[k], y + 4.7));
+      ['PARÂMETRO', 'JANELA FISIOLÓGICA'].forEach((h, k) => doc.text(h, xC[k], y + 4.7));
       let yy = y + 7;
       linhasMed.forEach((l, k) => {
         if (k % 2 === 1) { doc.setFillColor(255, 255, 255); doc.rect(M + 0.3, yy, larg - 0.6, l.h, 'F'); }
         if (k > 0) { doc.setDrawColor(...hexRgb('#E3E9F0')); doc.line(M + 2, yy, M + larg - 2, yy); }
-        const yt = yy + 4.4;
+        const yt = yy + 4.3;
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8.3); doc.setTextColor(30); doc.text(l.la, xC[0], yt);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8.3); doc.setTextColor(45); doc.text(l.lb, xC[1], yt);
-        doc.setFont('helvetica', 'italic'); doc.setFontSize(7.2); doc.setTextColor(115); doc.text(l.lc, xC[2], yt);
         yy += l.h;
       });
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(20); doc.setLineWidth(0.2);
-      y += hTab + 3;
+      doc.setFont('helvetica', 'normal'); doc.setLineWidth(0.2);
+      y += hTab + 3.5;
+      doc.setFontSize(6.9); doc.setTextColor(130);
+      t('Referências teóricas baseadas em evidências, não resultados do paciente. Fontes científicas:', M, y);
+      const wTxt = doc.getTextWidth(seguro('Referências teóricas baseadas em evidências, não resultados do paciente. Fontes científicas:'));
+      doc.setTextColor(...hexRgb('#2563EB')); doc.textWithLink(LINK_REFERENCIAS.replace('https://', ''), M + wTxt + 1.2, y, { url: LINK_REFERENCIAS });
+      doc.setTextColor(20); y += 6;
     }
-    // Curva de referência normalizada (% da força máxima), ilustrativa.
-    const ct: [number, number][] = [];
-    for (let s0 = 0; s0 <= 7; s0 += 0.02) {
-      const sub = s0 < 0.5 ? 0 : 1 - Math.exp(-(s0 - 0.5) / 0.18);
-      const queda = s0 < 1.5 ? 0 : Math.min(1, (s0 - 1.5) / 4.5) * 0.08;
-      const fim = s0 > 6 ? Math.max(0, 1 - (s0 - 6) / 0.6) : 1;
-      ct.push([s0, 100 * sub * (1 - queda) * fim * (1 + (s0 > 1 && s0 < 6 ? 0.012 * Math.sin(s0 * 9) : 0))]);
-    }
-    garantir(32);
-    const imgRef = graficoPNG([{ nome: 'ref', cor: '#22A35A', pts: ct }], { xFmt: v => `${fmt(v, 0)} s`, yFmt: v => `${fmt(v, 0)}%`, yMin100: true, W: 520, H: 200 });
-    doc.addImage(imgRef, 'PNG', M, y, 66, 25.4);
-    doc.setFontSize(8); doc.setTextColor(70);
-    par2(doc, `Curva de contração de referência (ilustrativa, % da força máxima): subida rápida até o pico, com a taxa de desenvolvimento de força medida em 0-100 e 0-200 ms (${citarCurto(['maffiuletti'])}); platô estável, com oscilação até ${c.oscEstavel}%; e queda da força até ${c.fadBaixa}% no fim da contração sustentada.`, M + 70, y + 5, larg - 70);
-    doc.setFontSize(7); doc.setTextColor(130); t('Referências teóricas baseadas em evidências, não resultados do paciente.', M + 70, y + 23);
-    doc.setTextColor(20);
-    y += 31;
 
     // ── 2. Resultados do paciente: todos os achados com a marcação de cada um.
     garantir(50);
@@ -434,30 +424,32 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
         const rz = A.razoes[l];
         if (!rz) continue;
         const st: Status = rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, c);
-        cards.push({ titulo: `${R.an}/${R.ag} · ${l === 'D' ? 'direito' : 'esquerdo'}`, valor: `${fmt(rz.r * 100, 0)}%`, st, sub: `${st?.[1] ?? ''} · ${direcaoRazao(rz, c, R.modo === 'min')} (ref. ${rz.refTxt || '-'})` });
+        cards.push({ titulo: `Razão An/Ag · ${l === 'D' ? 'direito' : 'esquerdo'}`, valor: `${fmt(rz.r * 100, 0)}%`, st, sub: `${st?.[1] ?? ''} · ${direcaoRazao(rz, c, R.modo === 'min')} (ref. ${rz.refTxt || '-'})` });
       }
       if (cards.length) {
-        garantir(8 + Math.ceil(cards.length / 2) * 17);
+        garantir(8 + Math.ceil(cards.length / 4) * 22);
         y = secao(doc, 'Simetria e equilíbrio', null, M, y + 1);
-        const wc = (larg - 4) / 2, hc = 14.5;
+        // Uma linha só com os cartões lado a lado (ocupa menos altura).
+        const nCol = Math.min(4, cards.length), gapC = 3;
+        const wc = (larg - gapC * (nCol - 1)) / nCol, hc = 19;
         cards.forEach((cd, k) => {
-          const cx = M + (k % 2) * (wc + 4), cy = y + Math.floor(k / 2) * (hc + 2.5);
+          const cx = M + (k % nCol) * (wc + gapC), cy = y + Math.floor(k / nCol) * (hc + 2.5);
           const tm = tomDe(cd.st);
           doc.setFillColor(...hexRgb(tm.bg)); doc.roundedRect(cx, cy, wc, hc, 2, 2, 'F');
-          doc.setFillColor(...hexRgb(COR_STATUS[cd.st?.[0] ?? 'info'])); doc.roundedRect(cx, cy, 1.6, hc, 0.8, 0.8, 'F');
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(90); doc.text(seguro(cd.titulo.toUpperCase()), cx + 4.5, cy + 4.6);
-          doc.setFontSize(14); doc.setTextColor(...hexRgb(tm.fg)); doc.text(cd.valor, cx + 4.5, cy + 11.4);
-          const wv = doc.getTextWidth(cd.valor);
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(60);
-          doc.text(doc.splitTextToSize(seguro(cd.sub), wc - wv - 11), cx + 7.5 + wv, cy + 8.6);
+          doc.setFillColor(...hexRgb(COR_STATUS[cd.st?.[0] ?? 'info'])); doc.roundedRect(cx, cy, 1.4, hc, 0.7, 0.7, 'F');
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(6.4); doc.setTextColor(90);
+          doc.text(doc.splitTextToSize(seguro(cd.titulo.toUpperCase()), wc - 6)[0], cx + 3.8, cy + 4.2);
+          doc.setFontSize(13); doc.setTextColor(...hexRgb(tm.fg)); doc.text(cd.valor, cx + 3.8, cy + 10.4);
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(6.3); doc.setTextColor(60);
+          doc.text(doc.splitTextToSize(seguro(cd.sub), wc - 6).slice(0, 2), cx + 3.8, cy + 14);
         });
         doc.setTextColor(20);
-        y += Math.ceil(cards.length / 2) * (hc + 2.5) + 2;
+        y += Math.ceil(cards.length / nCol) * (hc + 2.5) + 1;
       }
     }
 
     // ── 3 e 4. Avatar inteiro + articulação em destaque | gráficos unilateral e agonista × antagonista.
-    y = await blocoVisual(doc, av, A, c, M, y + 2, larg);
+    y = await blocoVisual(doc, av, A, c, M, y + 1, larg);
 
     const serie = (g: 'ag' | 'an'): Serie[] => (['D', 'E'] as Lado[]).flatMap(l => {
       const cv = av.slots[`${g}${l}` as Slot]?.curva;
@@ -466,14 +458,15 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
     const sAg = serie('ag'), sAn = serie('an');
     if (sAg.length || sAn.length) {
       const opC = { xFmt: (v: number) => `${fmt(v, 0)} s`, yFmt: (v: number) => fmt(v, 0) };
-      const meia = (W - 2 * M) / 2 - 2, h = (meia * 260) / 760;
+      const meia = (W - 2 * M) / 2 - 2, h = (meia * 200) / 760;
       y += 3;
-      if (sAg.length) doc.addImage(graficoPNG(sAg, opC), 'PNG', M, y, meia, h);
-      if (sAn.length) doc.addImage(graficoPNG(sAn, opC), 'PNG', M + meia + 4, y, meia, h);
+      if (y + 2 * h + 22 > 284) { doc.addPage(); y = 18; }
+      if (sAg.length) doc.addImage(graficoPNG(sAg, { ...opC, H: 200 }), 'PNG', M, y, meia, h, undefined, 'FAST');
+      if (sAn.length) doc.addImage(graficoPNG(sAn, { ...opC, H: 200 }), 'PNG', M + meia + 4, y, meia, h, undefined, 'FAST');
       doc.setFontSize(8); doc.setTextColor(90);
       if (sAg.length) t(`Curva ${R.ag} (${u}): azul = direito, laranja = esquerdo`, M, y + h + 4);
       if (sAn.length) t(`Curva ${R.an} (${u})`, M + meia + 4, y + h + 4);
-      doc.setTextColor(20); y += h + 11;
+      doc.setTextColor(20); y += h + 7;
       // Curva de falha do platô: % do pico, do pico até o fim do platô.
       const falha = (g: 'ag' | 'an'): Serie[] => (['D', 'E'] as Lado[]).flatMap(l => {
         const fp = falhaPlato(av.slots[`${g}${l}` as Slot]?.curva);
@@ -482,9 +475,9 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
       const fAg = falha('ag'), fAn = falha('an');
       if (fAg.length || fAn.length) {
         if (y + h + 12 > 284) { doc.addPage(); y = 18; }
-        const opF = { xFmt: (v: number) => `${fmt(v, 0)} s`, yFmt: (v: number) => `${fmt(v, 0)}%`, yMin100: true };
-        if (fAg.length) doc.addImage(graficoPNG(fAg, opF), 'PNG', M, y, meia, h);
-        if (fAn.length) doc.addImage(graficoPNG(fAn, opF), 'PNG', M + meia + 4, y, meia, h);
+        const opF = { xFmt: (v: number) => `${fmt(v, 0)} s`, yFmt: (v: number) => `${fmt(v, 0)}%`, yMin100: true, H: 200 };
+        if (fAg.length) doc.addImage(graficoPNG(fAg, opF), 'PNG', M, y, meia, h, undefined, 'FAST');
+        if (fAn.length) doc.addImage(graficoPNG(fAn, opF), 'PNG', M + meia + 4, y, meia, h, undefined, 'FAST');
         doc.setFontSize(8); doc.setTextColor(90);
         const qd = (g: 'ag' | 'an', l: Lado) => { const q = falhaPlato(av.slots[`${g}${l}` as Slot]?.curva)?.queda; return q == null ? '-' : `${fmt(q, 1)}%/s`; };
         if (fAg.length) t(`Falha do platô ${R.ag} (% do pico): queda D ${qd('ag', 'D')}, E ${qd('ag', 'E')}`, M, y + h + 4);
@@ -504,12 +497,13 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
       if (y > 260) { doc.addPage(); y = 18; }
       y += 2; doc.setFontSize(10); doc.setFont('helvetica', 'bold'); t('Relação com dores', M, y); y += 5.5;
       for (const a of dores) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
         const ls = doc.splitTextToSize(seguro(a.texto), W - 2 * M - 5);
         if (y + 5 + ls.length * 4.4 > 284) { doc.addPage(); y = 18; }
         bolinha(doc, a.st, M + 1.4, y - 1.2);
         doc.setFont('helvetica', 'bold'); doc.setFontSize(9.2); t(a.titulo, M + 5, y);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(ls, M + 5, y + 4.4); y += 4.4 + ls.length * 4.4;
-        if (a.refs.length) { doc.setFontSize(7.6); doc.setTextColor(110); t(`Ref.: ${citar(a.refs)}`, M + 5, y + 0.6); doc.setTextColor(20); y += 3.4; }
+        if (a.refs.length) { doc.setFontSize(7.6); doc.setTextColor(110); const lr = doc.splitTextToSize(seguro(`Ref.: ${citar(a.refs)}`), W - 2 * M - 5); doc.text(lr, M + 5, y + 0.6); doc.setTextColor(20); y += 3.4 * lr.length; }
         y += 1.5;
       }
     }
@@ -522,24 +516,14 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
       if (y + h + 14 > 284) { doc.addPage(); y = 18; }
       y += 3; doc.setFont('helvetica', 'bold'); doc.setFontSize(10); t(`Evolução da simetria · ${R.l}`, M, y); doc.setFont('helvetica', 'normal'); y += 3;
       const img = graficoPNG(evo, { xFmt: String, yFmt: v => `${fmt(v, 0)}%`, xTicks: historico.map((x, i) => [i, dataBR(x.data).slice(0, 5)]), pontos: true, yMin100: true, H: 220 });
-      doc.addImage(img, 'PNG', M, y, W - 2 * M, h); y += h + 3;
+      doc.addImage(img, 'PNG', M, y, W - 2 * M, h, undefined, 'FAST'); y += h + 3;
       doc.setFontSize(8); doc.setTextColor(90); t(`Azul = ${R.ag}, laranja = ${R.an}. Critério de simetria: ${c.lsiAdequado}%.`, M, y + 1); doc.setTextColor(20); y += 5;
     }
     doc.setFontSize(7.4); doc.setTextColor(110);
-    const rod = doc.splitTextToSize(seguro(`Faixas das valências (ajustáveis): simetria adequada >= ${c.lsiAdequado}%, déficit importante < ${c.lsiImportante}%; razão até ${c.razaoTol}% de desvio adequada, acima de ${c.razaoLimite}% desequilíbrio; fadiga baixa <= ${c.fadBaixa}%, alta > ${c.fadAlta}%; oscilação estável <= ${c.oscEstavel}%, instável > ${c.oscInstavel}%. Normas: McKay et al. 2017 (faixa normal = média ± 1 DP); simetria >= 90%: Grindem et al. 2016; adução/abdução >= 0,80: Tyler et al. 2001; fadiga e oscilação: faixas do serviço. Referências completas na última página.`), W - 2 * M);
+    const rod = doc.splitTextToSize(seguro(`Faixas das valências (ajustáveis): simetria adequada >= ${c.lsiAdequado}%, déficit importante < ${c.lsiImportante}%; razão até ${c.razaoTol}% de desvio adequada, acima de ${c.razaoLimite}% desequilíbrio; fadiga baixa <= ${c.fadBaixa}%, alta > ${c.fadAlta}%; oscilação estável <= ${c.oscEstavel}%, instável > ${c.oscInstavel}%. Normas: McKay et al. 2017 (faixa normal = média ± 1 DP); simetria >= 90%: Grindem et al. 2016; adução/abdução >= 0,80: Tyler et al. 2001; fadiga e oscilação: faixas do serviço. Referências completas: ${LINK_REFERENCIAS.replace('https://', '')}`), W - 2 * M);
     if (y > 270) { doc.addPage(); y = 18; }
     doc.text(rod, M, Math.max(y + 4, 286 - rod.length * 3.3));
   }
-  doc.addPage();
-  let yr = 18;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20); t('Referências (conferidas no PubMed)', M, yr); yr += 7;
-  REFERENCIAS.forEach((x, i) => {
-    const ls = doc.splitTextToSize(seguro(`${i + 1}. ${x.completa} PMID ${x.pmid}${x.doi ? `. doi:${x.doi}` : ''}`), W - 2 * M);
-    const uso = doc.splitTextToSize(seguro(x.uso), W - 2 * M - 4);
-    if (yr + (ls.length + uso.length) * 3.8 > 285) { doc.addPage(); yr = 18; }
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(20); doc.text(ls, M, yr); yr += ls.length * 3.7;
-    doc.setFontSize(7.8); doc.setTextColor(100); doc.text(uso, M + 4, yr); yr += uso.length * 3.5 + 2;
-  });
   const nomeT = nomeArquivo(d.paciente, 'Dinamometria', d.data);
   if (apenasGerar) return { blob: doc.output('blob'), nome: nomeT };
   doc.save(nomeT);

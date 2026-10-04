@@ -177,7 +177,7 @@ function linhasCurva(av: Avaliacao, g: 'ag' | 'an', u: Unidade) {
 }
 
 // Suba quando mudar o texto do laudo/resumo: exames antigos são regravados ao abrir.
-const VERSAO_LAUDO = 2;
+const VERSAO_LAUDO = 3;
 
 export default function Dinamometria() {
   const { id } = useParams<{ id: string }>();
@@ -203,7 +203,7 @@ export default function Dinamometria() {
   const [modos, setModos] = useState<Record<string, Modo>>({});
   const [unidadePico, setUnidadePico] = useState<Unidade>('kgf');
   const [picos, setPicos] = useState<Record<string, string[]>>({});
-  const [suj, setSuj] = useState({ idade: '', sexo: 'M' as 'M' | 'F', peso: '', dominante: 'D' as Lado, acometido: 'N' as Lado | 'N', modalidade: '' });
+  const [suj, setSuj] = useState({ idade: '', sexo: 'M' as 'M' | 'F', peso: '', dominante: 'D' as Lado, acometido: 'N' as Lado | 'N', modalidade: '', sintomas: '' });
   const [obs, setObs] = useState('');
   const [visivel, setVisivel] = useState(true);
   const [slots, setSlots] = useState<Record<string, SlotRascunho>>({});
@@ -267,6 +267,7 @@ export default function Dinamometria() {
       dominante: ult?.dominante || 'D',
       acometido: ult?.acometido || 'N',
       modalidade: ult?.modalidade || '',
+      sintomas: '',
     });
     if (ultReg) {
       setRegioes(ultReg.movs.map(m => m.regiao));
@@ -343,7 +344,7 @@ export default function Dinamometria() {
   };
 
   const sessaoRascunho = (): Sessao | null => {
-    const sujeito: Sujeito = { idade: num(suj.idade), sexo: suj.sexo, peso: num(suj.peso), dominante: suj.dominante, acometido: suj.acometido, modalidade: suj.modalidade || undefined };
+    const sujeito: Sujeito = { idade: num(suj.idade), sexo: suj.sexo, peso: num(suj.peso), dominante: suj.dominante, acometido: suj.acometido, modalidade: suj.modalidade || undefined, sintomas: suj.sintomas.trim() || undefined };
     const movimentos: Movimento[] = [];
     for (const r of regioes) {
       const out: Movimento['slots'] = {};
@@ -365,6 +366,41 @@ export default function Dinamometria() {
 
   // Laudo e resumo gravados com regras antigas são regravados com as atuais
   // (as tabelas e gráficos já são calculados na hora a partir das curvas).
+  // Monta laudo e resumo de um exame salvo com as regras atuais.
+  const montarLaudo = (e: { id: string; data_exame: string; dados: any }) => {
+    const movs = movimentosDaAnalise(e.dados.analise);
+    if (!movs.length) return null;
+    const laudo: string[] = [];
+    const resumos: string[] = [];
+    for (const av of movs) {
+      const ant = [...registros].reverse().find(r => r.id !== e.id && r.data <= e.data_exame && r.movs.some(m => m.regiao === av.regiao));
+      const A = analisar(av, crit);
+      const antAv = ant?.movs.find(m => m.regiao === av.regiao);
+      if (movs.length > 1) laudo.push(`${A.R.l.toUpperCase()}`);
+      laudo.push(...interpretar(av, A, crit, ant && antAv ? { data: ant.data, av: antAv } : null));
+      resumos.push(resumoCurtoAnalise(av, A, crit));
+    }
+    return { resultado: laudo.join('\n\n'), resumo: resumos.join(' | ') };
+  };
+
+  // Relato de dor de um exame já salvo: grava no sujeito e regrava o laudo.
+  const [relatoEdit, setRelatoEdit] = useState<string | null>(null);
+  const salvarRelato = useMutation({
+    mutationFn: async ({ exameId, texto }: { exameId: string; texto: string }) => {
+      const e = exames.find(x => x.id === exameId);
+      if (!e?.dados?.analise) throw new Error('Exame não encontrado.');
+      const analise = { ...e.dados.analise, sujeito: { ...(e.dados.analise.sujeito || {}), sintomas: texto.trim() || undefined } };
+      const dados = { ...e.dados, analise };
+      const l = montarLaudo({ ...e, dados });
+      const { error } = await (supabase as any).from('exames_presenciais')
+        .update({ dados: { ...dados, ...(l ? { resultado: l.resultado } : {}), versao_laudo: VERSAO_LAUDO }, ...(l ? { resumo: l.resumo } : {}) })
+        .eq('id', exameId);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success('Relato salvo e interpretação atualizada'); setRelatoEdit(null); qc.invalidateQueries({ queryKey: ['exames-presenciais', id] }); },
+    onError: (e: any) => toast.error(e?.message || 'Erro ao salvar o relato'),
+  });
+
   const atualizandoLaudosRef = useRef(false);
   useEffect(() => {
     if (!user || !id || atualizandoLaudosRef.current) return;
@@ -374,20 +410,10 @@ export default function Dinamometria() {
     void (async () => {
       let n = 0;
       for (const e of velhos) {
-        const movs = movimentosDaAnalise(e.dados.analise);
-        if (!movs.length) continue;
-        const laudo: string[] = [];
-        const resumos: string[] = [];
-        for (const av of movs) {
-          const ant = [...registros].reverse().find(r => r.id !== e.id && r.data <= e.data_exame && r.movs.some(m => m.regiao === av.regiao));
-          const A = analisar(av, crit);
-          const antAv = ant?.movs.find(m => m.regiao === av.regiao);
-          if (movs.length > 1) laudo.push(`${A.R.l.toUpperCase()}`);
-          laudo.push(...interpretar(av, A, crit, ant && antAv ? { data: ant.data, av: antAv } : null));
-          resumos.push(resumoCurtoAnalise(av, A, crit));
-        }
+        const l = montarLaudo(e);
+        if (!l) continue;
         const { error } = await (supabase as any).from('exames_presenciais')
-          .update({ dados: { ...e.dados, resultado: laudo.join('\n\n'), versao_laudo: VERSAO_LAUDO }, resumo: resumos.join(' | ') })
+          .update({ dados: { ...e.dados, resultado: l.resultado, versao_laudo: VERSAO_LAUDO }, resumo: l.resumo })
           .eq('id', e.id);
         if (!error) n++;
       }
@@ -847,6 +873,11 @@ export default function Dinamometria() {
                   </Select>
                 </div>
                 <div className="space-y-1 col-span-2"><Label className="text-xs">Modalidade / atividade</Label><Input value={suj.modalidade} onChange={e => setSuj(s => ({ ...s, modalidade: e.target.value }))} placeholder="Ex.: futebol, corrida" /></div>
+                <div className="space-y-1 col-span-2 md:col-span-4">
+                  <Label className="text-xs">Dor e sintomas relatados pelo cliente (opcional)</Label>
+                  <Textarea rows={2} value={suj.sintomas} onChange={e => setSuj(s => ({ ...s, sintomas: e.target.value }))} placeholder="Ex.: dor na frente do joelho esquerdo ao descer escadas há 2 meses; piora depois da corrida" />
+                  <p className="text-[11px] text-muted-foreground">Entra na interpretação: o app cruza o local e o lado da dor com os achados de força, simetria, razão e fadiga.</p>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Articulações avaliadas nesta sessão</Label>
@@ -1161,6 +1192,25 @@ export default function Dinamometria() {
                   <Card className="p-4 space-y-2">
                     <p className="font-semibold text-sm">Interpretação automática · {A.R.l}</p>
                     {texto.map((p, i) => <p key={i} className="text-sm leading-relaxed">{p}</p>)}
+                    <div className="border-t border-border/50 pt-2.5 mt-1 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dor e sintomas relatados</p>
+                        {relatoEdit == null && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setRelatoEdit(atual.sujeito.sintomas || '')}>{atual.sujeito.sintomas ? 'Editar' : 'Adicionar'}</Button>}
+                      </div>
+                      {relatoEdit == null ? (
+                        <p className="text-sm text-muted-foreground">{atual.sujeito.sintomas || 'Nenhum relato. Se o cliente contou dor ou sintomas, adicione: o app cruza com os achados e completa a interpretação.'}</p>
+                      ) : (
+                        <div className="space-y-2">
+                          <Textarea rows={3} value={relatoEdit} onChange={e => setRelatoEdit(e.target.value)} placeholder="Ex.: dor na frente do joelho esquerdo ao descer escadas; piora depois da corrida" />
+                          <div className="flex gap-2 justify-end">
+                            <Button size="sm" variant="ghost" onClick={() => setRelatoEdit(null)}>Cancelar</Button>
+                            <Button size="sm" disabled={salvarRelato.isPending || !sessao} onClick={() => sessao && salvarRelato.mutate({ exameId: sessao.id, texto: relatoEdit })}>
+                              {salvarRelato.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}Salvar e reinterpretar
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </Card>
                 </div>
 

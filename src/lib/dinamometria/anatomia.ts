@@ -9,20 +9,32 @@ interface Forma { vista: Vista; d: string; c: [number, number] }
 
 // Formas desenhadas no lado ESQUERDO da imagem. Na vista de frente esse é o
 // lado DIREITO do paciente; na de costas, o ESQUERDO. O outro lado é espelhado.
-const el = (cx: number, cy: number, rx: number, ry: number) => `M${cx - rx} ${cy}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`;
+// Proporção do corpo: o desenho original tinha a virilha em 56% da altura
+// (tronco longo). Y() leva a virilha (y=265) para a metade da figura (y=238),
+// como numa figura humana real; pernas alongam na mesma medida.
+const TOPO_CORPO = 14, VIRILHA = 265, PE = 462, VIRILHA_NOVA = (TOPO_CORPO + PE) / 2;
+const K_SUP = (VIRILHA_NOVA - TOPO_CORPO) / (VIRILHA - TOPO_CORPO), K_INF = (PE - VIRILHA_NOVA) / (PE - VIRILHA);
+const Y = (y: number) => +(y <= VIRILHA ? TOPO_CORPO + (y - TOPO_CORPO) * K_SUP : VIRILHA_NOVA + (y - VIRILHA) * K_INF).toFixed(1);
+const KY = (y: number) => (y <= VIRILHA ? K_SUP : K_INF);
+// Aplica Y() aos pares "x y" de um path com comandos absolutos (M, Q, L, C).
+const P = (d: string) => d.replace(/(-?\d+(?:\.\d+)?)([ ,])(-?\d+(?:\.\d+)?)/g, (_m, x, sep, y) => `${x}${sep}${Y(Number(y))}`);
+const el = (cx: number, cy0: number, rx: number, ry0: number) => {
+  const cy = Y(cy0), ry = +(ry0 * KY(cy0)).toFixed(1);
+  return `M${cx - rx} ${cy}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`;
+};
 const FORMAS: Record<string, Forma> = {
-  quadriceps: { vista: 'frente', d: 'M78 262Q92 255 104 266Q104 310 98 340Q88 345 82 340Q73 300 78 262Z', c: [90, 300] },
-  adutores: { vista: 'frente', d: 'M99 258Q108 261 107 280Q105 300 100 312Q94 292 96 268Z', c: [102, 271] },
-  tibial: { vista: 'frente', d: el(87, 386, 5.5, 28), c: [87, 386] },
-  biceps: { vista: 'frente', d: el(58, 150, 7, 24), c: [58, 150] },
-  peitoral: { vista: 'frente', d: el(83, 108, 17, 12), c: [83, 108] },
-  quadrilAnterior: { vista: 'frente', d: el(83, 246, 9, 8), c: [83, 246] },
-  posteriores: { vista: 'costas', d: 'M78 268Q90 262 104 270Q104 310 98 342Q88 347 82 342Q73 304 78 268Z', c: [90, 305] },
-  gluteoMedio: { vista: 'costas', d: el(81, 238, 12, 10), c: [81, 238] },
-  gluteoMaximo: { vista: 'costas', d: el(95, 254, 14, 12), c: [95, 254] },
-  panturrilha: { vista: 'costas', d: el(90, 378, 10, 26), c: [90, 378] },
-  triceps: { vista: 'costas', d: el(58, 152, 7, 24), c: [58, 152] },
-  infraespinal: { vista: 'costas', d: el(86, 118, 14, 11), c: [86, 118] },
+  quadriceps: { vista: 'frente', d: P('M78 262Q92 255 104 266Q104 310 98 340Q88 345 82 340Q73 300 78 262Z'), c: [90, Y(300)] },
+  adutores: { vista: 'frente', d: P('M99 258Q108 261 107 280Q105 300 100 312Q94 292 96 268Z'), c: [102, Y(271)] },
+  tibial: { vista: 'frente', d: el(87, 386, 5.5, 28), c: [87, Y(386)] },
+  biceps: { vista: 'frente', d: el(58, 150, 7, 24), c: [58, Y(150)] },
+  peitoral: { vista: 'frente', d: el(83, 108, 17, 12), c: [83, Y(108)] },
+  quadrilAnterior: { vista: 'frente', d: el(83, 246, 9, 8), c: [83, Y(246)] },
+  posteriores: { vista: 'costas', d: P('M78 268Q90 262 104 270Q104 310 98 342Q88 347 82 342Q73 304 78 268Z'), c: [90, Y(305)] },
+  gluteoMedio: { vista: 'costas', d: el(81, 238, 12, 10), c: [81, Y(238)] },
+  gluteoMaximo: { vista: 'costas', d: el(95, 254, 14, 12), c: [95, Y(254)] },
+  panturrilha: { vista: 'costas', d: el(90, 378, 10, 26), c: [90, Y(378)] },
+  triceps: { vista: 'costas', d: el(58, 152, 7, 24), c: [58, Y(152)] },
+  infraespinal: { vista: 'costas', d: el(86, 118, 14, 11), c: [86, Y(118)] },
 };
 
 // Musculatura de fundo (não avaliada), em cinza claro: dá forma de corpo humano
@@ -31,27 +43,27 @@ const FUNDO: Record<Vista, string[]> = {
   frente: [
     el(67, 104, 10, 13), // deltoide
     el(83, 109, 17, 12), // peitoral
-    'M100 128Q109 126 110 130L110 206Q104 209 100 204Q97 166 100 128Z', // reto abdominal
-    'M80 136Q92 148 98 166Q97 196 92 214Q82 200 78 176Q76 154 80 136Z', // oblíquo
+    P('M100 128Q109 126 110 130L110 206Q104 209 100 204Q97 166 100 128Z'), // reto abdominal
+    P('M80 136Q92 148 98 166Q97 196 92 214Q82 200 78 176Q76 154 80 136Z'), // oblíquo
     el(58, 150, 7, 24), // bíceps
-    'M54 182Q61 188 60 212Q57 240 52 262Q46 262 45 250Q46 214 54 182Z', // antebraço
+    P('M54 182Q61 188 60 212Q57 240 52 262Q46 262 45 250Q46 214 54 182Z'), // antebraço
     el(83, 247, 9, 8), // flexores do quadril
-    'M78 262Q92 255 104 266Q104 310 98 340Q88 345 82 340Q73 300 78 262Z', // quadríceps
-    'M99 258Q108 261 107 280Q105 300 100 312Q94 292 96 268Z', // adutores
+    P('M78 262Q92 255 104 266Q104 310 98 340Q88 345 82 340Q73 300 78 262Z'), // quadríceps
+    P('M99 258Q108 261 107 280Q105 300 100 312Q94 292 96 268Z'), // adutores
     el(87, 386, 5.5, 28), // tibial anterior
     el(97, 388, 4, 22), // panturrilha (visão medial)
   ],
   costas: [
-    'M102 82Q90 88 76 94Q86 106 100 122L110 124L110 84Z', // trapézio
+    P('M102 82Q90 88 76 94Q86 106 100 122L110 124L110 84Z'), // trapézio
     el(67, 106, 10, 13), // deltoide posterior
     el(86, 118, 14, 11), // infraespinal
-    'M78 132Q95 152 108 186L108 206Q92 192 82 172Q75 152 78 132Z', // grande dorsal
-    'M100 204Q109 202 110 206L110 232Q103 233 99 228Z', // lombar
+    P('M78 132Q95 152 108 186L108 206Q92 192 82 172Q75 152 78 132Z'), // grande dorsal
+    P('M100 204Q109 202 110 206L110 232Q103 233 99 228Z'), // lombar
     el(58, 152, 7, 24), // tríceps
-    'M54 182Q61 188 60 212Q57 240 52 262Q46 262 45 250Q46 214 54 182Z', // antebraço
+    P('M54 182Q61 188 60 212Q57 240 52 262Q46 262 45 250Q46 214 54 182Z'), // antebraço
     el(81, 238, 12, 10), // glúteo médio
     el(95, 254, 14, 12), // glúteo máximo
-    'M78 268Q90 262 104 270Q104 310 98 342Q88 347 82 342Q73 304 78 268Z', // posteriores
+    P('M78 268Q90 262 104 270Q104 310 98 342Q88 347 82 342Q73 304 78 268Z'), // posteriores
     el(90, 378, 10, 26), // panturrilha
   ],
 };
@@ -90,8 +102,8 @@ export const COR_STATUS: Record<string, string> = { ok: '#22A35A', warn: '#F2A90
 export type Articulacao = 'cervical' | 'ombro' | 'cotovelo' | 'punho' | 'lombar' | 'quadril' | 'joelho' | 'tornozelo' | 'pe';
 // Centro de cada articulação no lado ESQUERDO da imagem (mesma convenção das FORMAS).
 const ARTIC: Record<Articulacao, { c: [number, number]; meio?: boolean }> = {
-  cervical: { c: [110, 72], meio: true }, ombro: { c: [63, 102] }, cotovelo: { c: [53, 196] }, punho: { c: [45, 268] },
-  lombar: { c: [110, 226], meio: true }, quadril: { c: [86, 252] }, joelho: { c: [91, 350] }, tornozelo: { c: [93, 440] }, pe: { c: [90, 456] },
+  cervical: { c: [110, Y(72)], meio: true }, ombro: { c: [63, Y(102)] }, cotovelo: { c: [53, Y(196)] }, punho: { c: [45, Y(268)] },
+  lombar: { c: [110, Y(226)], meio: true }, quadril: { c: [86, Y(252)] }, joelho: { c: [91, Y(350)] }, tornozelo: { c: [93, Y(440)] }, pe: { c: [90, Y(456)] },
 };
 export const NOME_ARTIC: Record<Articulacao, string> = {
   cervical: 'coluna cervical', ombro: 'ombro', cotovelo: 'cotovelo', punho: 'punho', lombar: 'coluna lombar', quadril: 'quadril', joelho: 'joelho', tornozelo: 'tornozelo', pe: 'pé',
@@ -174,13 +186,14 @@ function suave(pts: [number, number][]): string {
   }
   return `${d}Z`;
 }
-const CONTORNO = suave([...METADE, ...METADE.slice(1, -1).reverse().map(([x, y]) => [220 - x, y] as [number, number])]);
+const METADE_P = METADE.map(([x, y]) => [x, Y(y)] as [number, number]);
+const CONTORNO = suave([...METADE_P, ...METADE_P.slice(1, -1).reverse().map(([x, y]) => [220 - x, y] as [number, number])]);
 const espelhar = (d: string) => `${d}<g transform="translate(220,0) scale(-1,1)">${d}</g>`;
 const DETALHES: Record<Vista, string> = {
-  frente: espelhar('<path d="M101 86Q90 89 78 92"/><path d="M73 122Q88 133 106 126"/><path d="M84 247Q98 257 108 265"/><path d="M86 356Q91 360 97 357"/><path d="M48 198Q51 201 55 199"/><path d="M41 292L44 300M45 291L47 301"/>')
-    + '<ellipse cx="110" cy="192" rx="2.2" ry="1.6"/>',
-  costas: espelhar('<path d="M93 104Q86 120 94 134"/><path d="M85 260Q97 270 110 264"/><path d="M86 357Q91 353 97 357"/><path d="M48 199Q51 196 55 198"/>')
-    + '<path d="M110 98L110 212"/><path d="M110 236L110 262"/>',
+  frente: espelhar(`<path d="${P('M101 86Q90 89 78 92')}"/><path d="${P('M73 122Q88 133 106 126')}"/><path d="${P('M84 247Q98 257 108 265')}"/><path d="${P('M86 356Q91 360 97 357')}"/><path d="${P('M48 198Q51 201 55 199')}"/><path d="${P('M41 292L44 300M45 291L47 301')}"/>`)
+    + `<ellipse cx="110" cy="${Y(192)}" rx="2.2" ry="1.6"/>`,
+  costas: espelhar(`<path d="${P('M93 104Q86 120 94 134')}"/><path d="${P('M85 260Q97 270 110 264')}"/><path d="${P('M86 357Q91 353 97 357')}"/><path d="${P('M48 199Q51 196 55 198')}"/>`)
+    + `<path d="${P('M110 98L110 212')}"/><path d="${P('M110 236L110 262')}"/>`,
 };
 
 // simples: sem rótulos nem títulos (usado no close da articulação).
@@ -197,7 +210,7 @@ function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[], to
       const st = it[lado];
       if (!st) continue;
       const cor = COR_STATUS[st[0]];
-      const forma = `<path d="${f.d}" fill="${cor}" fill-opacity="0.88" stroke="#ffffff" stroke-width="1.5"/>`;
+      const forma = `<path d="${f.d}" fill="${cor}" fill-opacity="0.8" stroke="#ffffff" stroke-width="1.2"/>`;
       const espelhar = lado !== ladoImgEsq;
       musc += espelhar ? espelho(forma) : forma;
       const cx = espelhar ? 220 - f.c[0] : f.c[0];
@@ -221,7 +234,7 @@ function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[], to
   const esq = vista === 'frente' ? 'Direito' : 'Esquerdo', dir = vista === 'frente' ? 'Esquerdo' : 'Direito';
   return `<g transform="translate(${ox},0)">
     <g transform="translate(0,14)">
-      <path d="${CONTORNO}" fill="#F1F3F5" stroke="#8A9BA8" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="${CONTORNO}" fill="#F3F5F7" stroke="#9AAAB6" stroke-width="1.8" stroke-linejoin="round"/>
       <g fill="#E3E8EE" stroke="#FFFFFF" stroke-width="1.3">${fundo}${espelho(fundo)}</g>
       <g fill="none" stroke="#A9B6C0" stroke-width="1.4" stroke-linecap="round">${DETALHES[vista]}</g>
       ${musc}${circ}${simples ? '' : marcas}

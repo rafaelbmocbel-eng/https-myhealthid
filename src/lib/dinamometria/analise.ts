@@ -57,7 +57,8 @@ export const CRITERIOS_PADRAO: Criterios = {
 
 export interface Metricas { pico: number; ttp: number | null; rfd100: number | null; rfd200: number | null; impulso: number | null; duracao: number | null; plato: number | null; fadiga: number | null; oscilacao: number | null; hz: number | null; reps: number[]; fonte?: 'curva' | 'pico' }
 export interface SlotDados { arquivo: string; metricas: Metricas; curva?: { t: number[]; f: number[] } | null }
-export interface Sujeito { idade: number | null; sexo: 'M' | 'F'; peso: number | null; dominante: Lado; acometido: Lado | 'N'; modalidade?: string }
+// sintomas: dor/sintomas e correlações contados pelo cliente, escritos pelo profissional.
+export interface Sujeito { idade: number | null; sexo: 'M' | 'F'; peso: number | null; dominante: Lado; acometido: Lado | 'N'; modalidade?: string; sintomas?: string }
 // Uma articulação avaliada. Sessões antigas (versao 1) guardavam uma só; a
 // versao 2 guarda várias em `movimentos`, todas com o mesmo `sujeito`.
 export interface Avaliacao { versao: 1; regiao: string; braco: number | null; sujeito: Sujeito; slots: Partial<Record<Slot, SlotDados>> }
@@ -422,6 +423,51 @@ export function analisar(av: Avaliacao, c: Criterios): Analise {
 
 const ladoNome = (l: Lado) => (l === 'D' ? 'direito' : 'esquerdo');
 
+// ───────── Relato de dor do cliente × achados do teste ─────────
+const ARTIC_TEXTO: [string, RegExp][] = [
+  ['joelho', /joelh|patel|menisc|ligament/], ['quadril', /quadril|virilha|glute|trocant/], ['lombar', /lombar|coluna|costas|lombo/],
+  ['tornozelo', /tornozel|calcanh|aquiles|panturrilh|\bpe\b|\bpes\b|plantar/], ['ombro', /ombro|manguito|escapul/],
+  ['cotovelo', /cotovel|epicond/], ['coxa', /coxa|posterior|isquio|quadricep/],
+];
+const ARTIC_DA_REG: Record<string, string> = { joelho: 'joelho', quadril: 'quadril', quadrilRot: 'quadril', ombro: 'ombro', tornozelo: 'tornozelo', cotovelo: 'cotovelo' };
+const VIZ_REG: Record<string, string[]> = { joelho: ['quadril', 'tornozelo', 'coxa'], quadril: ['lombar', 'joelho', 'coxa'], tornozelo: ['joelho'], ombro: ['cotovelo'], cotovelo: ['ombro'] };
+
+export function correlacionarSintomas(av: Avaliacao, A: Analise, c: Criterios): string[] {
+  const relato = (av.sujeito.sintomas || '').trim();
+  if (!relato) return [];
+  const R = A.R, out: string[] = [`Relato do cliente: "${relato.replace(/[.\s]+$/, '')}".`];
+  const tx = relato.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const lados: Lado[] = [...(/direit/.test(tx) ? ['D' as Lado] : []), ...(/esquerd/.test(tx) ? ['E' as Lado] : [])];
+  const locais = ARTIC_TEXTO.filter(([, re]) => re.test(tx)).map(([n]) => n);
+  const art = ARTIC_DA_REG[av.regiao] || av.regiao;
+  const nomeLado = (l: Lado) => (l === 'D' ? 'direito' : 'esquerdo');
+  if (locais.includes(art) || (art === 'joelho' && locais.includes('coxa'))) {
+    const achados: string[] = [];
+    for (const l of lados.length ? lados : (['D', 'E'] as Lado[])) {
+      for (const [nome, L] of [[R.ag, A.lsiAg], [R.an, A.lsiAn]] as const) {
+        if (L && L.fraco === l && L.v < c.lsiAdequado) achados.push(`${nome} ${nomeLado(l)} é o lado mais fraco (${fmt(L.v, 0)}% do outro lado)`);
+      }
+      const rz = A.razoes[l];
+      if (rz && rz.desvio != null && rz.desvio > c.razaoTol / 100 && rz.ref != null) achados.push(`relação ${R.razaoL.split(' (')[0]} ${rz.r > rz.ref ? 'acima' : 'abaixo'} da referência à ${l === 'D' ? 'direita' : 'esquerda'} (${fmt(rz.r * 100, 0)}%)`);
+      const fads = (['ag', 'an'] as const).map(g => [g, A.slots[`${g}${l}` as Slot]?.fadiga] as const).filter(([, f]) => f != null && (f as number) > c.fadBaixa);
+      for (const [g, f] of fads) achados.push(`fadiga alta em ${g === 'ag' ? R.ag : R.an} ${nomeLado(l)} (${fmt(f as number, 0)}%)`);
+    }
+    if (achados.length) {
+      out.push(`Correlação: a queixa ${lados.length ? `no ${art} ${lados.map(nomeLado).join(' e ')}` : `no ${art}`} coincide com os achados do teste: ${achados.join('; ')}. Isso reforça a relação entre o déficit de força e o sintoma, e indica onde priorizar o fortalecimento.`);
+    } else if (lados.length) {
+      out.push(`Correlação: a queixa no ${art} ${lados.map(nomeLado).join(' e ')} não coincide com déficits de força desse lado no teste. Considere sobrecarga por compensação, dor de outra origem (articular, tendínea, referida) e confirme no exame clínico.`);
+    } else {
+      out.push(`Correlação: o teste não mostrou déficits que expliquem a queixa no ${art}; indique o lado da dor para uma correlação mais precisa.`);
+    }
+  } else if (locais.some(l => (VIZ_REG[art] || []).includes(l))) {
+    const L = [A.lsiAg, A.lsiAn].filter((x): x is LSI => !!x).sort((a, b) => a.v - b.v)[0];
+    out.push(`Correlação: a queixa em região vizinha (${locais.filter(l => (VIZ_REG[art] || []).includes(l)).join(', ')}) pode se relacionar com a ${art}${L && L.v < c.lsiAdequado ? `: a assimetria de ${fmt(L.v, 0)}% (lado ${nomeLado(L.fraco)} mais fraco) tende a sobrecarregar as articulações acima e abaixo` : ', pela cadeia de movimento'}. Vale avaliar também essa região.`);
+  } else if (locais.length) {
+    out.push(`Correlação: a queixa (${locais.join(', ')}) não envolve diretamente a articulação testada (${art}); correlacione com o exame clínico.`);
+  }
+  return out;
+}
+
 export function interpretar(av: Avaliacao, A: Analise, c: Criterios, anterior?: { data: string; av: Avaliacao } | null): string[] {
   const R = A.R, out: string[] = [];
   const sim = (nome: string, L: LSI | null) => {
@@ -486,6 +532,7 @@ export function interpretar(av: Avaliacao, A: Analise, c: Criterios, anterior?: 
     const dt = dataBR(anterior.data);
     out.push(mud.length ? `Desde ${dt}, mudanças acima de ${c.mudanca}%: ${mud.join('; ')}.` : `Desde ${dt}, nenhuma mudança de força ultrapassou ${c.mudanca}%, o limite adotado para mudança real.`);
   }
+  out.push(...correlacionarSintomas(av, A, c));
   return out;
 }
 

@@ -41,6 +41,7 @@ const ControleCassi = lazyWithRetry(() => import("./pages/ControleCassi"));
 const Dinamometria = lazyWithRetry(() => import("./pages/Dinamometria"));
 const DinamometriaInicio = lazyWithRetry(() => import("./pages/DinamometriaInicio"));
 const DinamometriaTreino = lazyWithRetry(() => import("./pages/DinamometriaTreino"));
+const ReferenciasDinamometria = lazyWithRetry(() => import("./pages/ReferenciasDinamometria"));
 const Aplicacoes = lazyWithRetry(() => import("./pages/Aplicacoes"));
 const PacientePerfil = lazyWithRetry(() => import("./pages/PacientePerfil"));
 const AvaliacaoPublica = lazyWithRetry(() => import("./pages/AvaliacaoPublica"));
@@ -230,6 +231,7 @@ const App = () => (
                 {/* Portal do paciente — marketplace público */}
                 <Route path="/portaldocliente" element={<Navigate to="/paciente/login" replace />} />
                 <Route path="/portaldocliente/vitrine" element={<VitrinePublica />} />
+                <Route path="/referencias/dinamometria" element={<ReferenciasDinamometria />} />
                 <Route path="/portaldocliente/terapeuta/:id" element={<PerfilPublicoTerapeuta />} />
                 {/* Endereço público curto da vitrine (divulgação no site) */}
                 <Route path="/profissionais" element={<VitrinePublica />} />
