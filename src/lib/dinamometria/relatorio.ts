@@ -4,7 +4,7 @@ import {
   type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito, type Unidade,
   SLOTS, SLOTS_POR_LADO, simetriaSlot, falhaPlato, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stOsc, stZ, interpretar, type Status,
 } from './analise';
-import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, proporcaoSVG, itensAvatar, focoArticulacaoSVG } from './anatomia';
+import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, proporcaoSVG, itensAvatar, focoArticulacaoSVG, aneisRazao } from './anatomia';
 import { achadosDor, AVISO_DOR } from './dor';
 import { REFERENCIAS, citar, citarCurto } from './referencias';
 
@@ -112,7 +112,7 @@ async function blocoVisual(doc: jsPDF, av: Avaliacao, A: Analise, c: Criterios, 
   const u = c.unidade;
   const R = A.R;
   const larAv = 54, gap = 6, larDir = larg - larAv - gap, xDir = x0 + larAv + gap;
-  const aneis = achadosDor([{ av, A }], c).flatMap(a => a.aneis);
+  const aneis = [...achadosDor([{ av, A }], c).flatMap(a => a.aneis), ...aneisRazao([{ av, A }], c)];
   const itens = itensAvatar([{ av, A }], c, u);
   // Avatar inteiro (frente e costas) — cabe exame com várias articulações.
   const svgCorpo = mapaMuscularSVG(itens, aneis, false);

@@ -2,7 +2,7 @@
 // músculos são pintados de verde, amarelo ou vermelho e as articulações com
 // possível dor recebem um círculo tracejado. Usado na tela e nos PDFs.
 
-import { type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Status, type Unidade, UF, fmt, stZ, simetriaSlot } from './analise';
+import { type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Status, type Unidade, UF, fmt, stZ, stDesvio, simetriaSlot } from './analise';
 
 type Vista = 'frente' | 'costas';
 interface Forma { vista: Vista; d: string; c: [number, number] }
@@ -114,7 +114,9 @@ export const VIZINHAS: Record<string, [Articulacao, Articulacao]> = {
   joelho: ['quadril', 'tornozelo'], quadril: ['lombar', 'joelho'], quadrilRot: ['lombar', 'joelho'],
   tornozelo: ['joelho', 'pe'], ombro: ['cervical', 'cotovelo'], cotovelo: ['ombro', 'punho'],
 };
-export interface Anel { art: Articulacao; lado: Lado | null; st: Status }
+// razao: anel da relação agonista/antagonista daquele lado (pinta a articulação
+// testada); sem isso, é um anel de possível dor/sobrecarga (tracejado).
+export interface Anel { art: Articulacao; lado: Lado | null; st: Status; razao?: boolean }
 
 const pior = (a: Status, b: Status): Status => (!a ? b : !b ? a : PESO[b[0]] > PESO[a[0]] ? b : a);
 
@@ -226,7 +228,9 @@ function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[], to
     if (!a.st) return '';
     const p = ARTIC[a.art], cor = COR_STATUS[a.st[0]];
     const x = p.meio || !a.lado ? 110 : a.lado === ladoEsqImg ? p.c[0] : 220 - p.c[0];
-    return `<circle cx="${x}" cy="${p.c[1]}" r="11" fill="${cor}" fill-opacity="0.18" stroke="${cor}" stroke-width="2.6" stroke-dasharray="4 3"/>`;
+    return a.razao
+      ? `<circle cx="${x}" cy="${p.c[1]}" r="12" fill="${cor}" fill-opacity="0.45" stroke="${cor}" stroke-width="2.8"/>`
+      : `<circle cx="${x}" cy="${p.c[1]}" r="11" fill="${cor}" fill-opacity="0.18" stroke="${cor}" stroke-width="2.6" stroke-dasharray="4 3"/>`;
   }).join('');
   const esq = vista === 'frente' ? 'Direito' : 'Esquerdo', dir = vista === 'frente' ? 'Esquerdo' : 'Direito';
   return `<g transform="translate(${ox},0)">
@@ -246,12 +250,30 @@ function vistaSVG(vista: Vista, ox: number, itens: ItemMapa[], aneis: Anel[], to
 
 // recortar: mostra só a faixa do corpo com os músculos e articulações marcados,
 // para o avatar ocupar pouco espaço.
+// Articulação testada pintada pela razão agonista/antagonista de cada lado
+// (ex.: joelho direito pela razão Posteriores/Quadríceps direita):
+// verde dentro da janela, amarelo quase saindo, vermelho muito fora.
+export function aneisRazao(itens: ItemAv[], c: Criterios): Anel[] {
+  return itens.flatMap(({ av, A }) => {
+    const art = ARTIC_DA_REGIAO[av.regiao];
+    if (!art) return [];
+    return (['D', 'E'] as Lado[]).flatMap((l): Anel[] => {
+      const rz = A.razoes[l];
+      if (!rz) return [];
+      return [{ art, lado: l, st: rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, c), razao: true }];
+    });
+  });
+}
+
 export function mapaMuscularSVG(itens: ItemMapa[], aneis: Anel[] = [], recortar = false): string {
   const unicos = new Map<string, Anel>();
   for (const a of aneis) {
     const k = `${a.art}:${ARTIC[a.art].meio ? '' : a.lado}`;
     const ant = unicos.get(k);
-    unicos.set(k, ant ? { ...a, st: pior(ant.st, a.st) } : a);
+    // A cor da razão manda na articulação testada; anéis de dor só se somam entre si.
+    if (!ant) unicos.set(k, a);
+    else if (a.razao && !ant.razao) unicos.set(k, a);
+    else if (a.razao === ant.razao) unicos.set(k, { ...a, st: pior(ant.st, a.st) });
   }
   const lista = [...unicos.values()];
   let topo = 0, alt = 480;

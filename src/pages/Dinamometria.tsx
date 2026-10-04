@@ -29,7 +29,7 @@ import {
   resumoCurtoAnalise, stLSI, stDesvio, simetriaSlot, SLOTS_POR_LADO, falhaPlato, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
 } from '@/lib/dinamometria/analise';
 import { gerarRelatorioDinamometria, gerarRelatorioCliente, gruposBarras, type GrupoBarras, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
-import { mapaMuscularSVG, itensAvatar, COR_STATUS } from '@/lib/dinamometria/anatomia';
+import { mapaMuscularSVG, itensAvatar, COR_STATUS, aneisRazao } from '@/lib/dinamometria/anatomia';
 import { achadosDor, AVISO_DOR } from '@/lib/dinamometria/dor';
 import { REFERENCIAS, REF, linkPubMed } from '@/lib/dinamometria/referencias';
 
@@ -488,7 +488,7 @@ export default function Dinamometria() {
   const dores = useMemo(() => achadosDor(analises, crit), [analises, crit]);
   const avatares = useMemo(() => Object.fromEntries(analises.map(x => [
     x.av.regiao,
-    mapaMuscularSVG(itensAvatar([x], crit, crit.unidade), dores.filter(a => a.regiao === x.av.regiao).flatMap(a => a.aneis), true),
+    mapaMuscularSVG(itensAvatar([x], crit, crit.unidade), [...dores.filter(a => a.regiao === x.av.regiao).flatMap(a => a.aneis), ...aneisRazao([x], crit)], true),
   ])), [analises, crit, dores]);
 
   const copiar = async () => {
