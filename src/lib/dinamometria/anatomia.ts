@@ -2,7 +2,7 @@
 // músculos são pintados de verde, amarelo ou vermelho e as articulações com
 // possível dor recebem um círculo tracejado. Usado na tela e nos PDFs.
 
-import { type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Status, type Unidade, UF, fmt, stLSI, stDesvio, stZ } from './analise';
+import { type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Status, type Unidade, UF, fmt, stLSI, stZ } from './analise';
 
 type Vista = 'frente' | 'costas';
 interface Forma { vista: Vista; d: string; c: [number, number] }
@@ -134,24 +134,17 @@ function montar(itens: ItemAv[], cor: (A: Analise, g: 'ag' | 'an', lado: Lado) =
   return out;
 }
 
-// Cor de cada lado no avatar: a pior situação entre força para idade e sexo,
-// simetria (no lado mais fraco) e agonista × antagonista (no músculo
-// relativamente fraco daquele lado). O rótulo mostra "D 45,2" / "E 38,1".
+// Cor de cada grupo muscular no avatar = simetria entre os lados (unilateral):
+// verde dentro do padrão, amarelo em observação, vermelho com diferença
+// importante — os dois lados do par recebem a mesma cor, porque a diferença é
+// do par. A razão agonista/antagonista tem cor própria no close da articulação.
+// Sem o outro lado para comparar, usa a força para idade e sexo.
+// O rótulo mostra "D 45,2" / "E 38,1".
 export function itensAvatar(itens: ItemAv[], c: Criterios, u: Unidade): ItemMapa[] {
   const base = montar(itens, (A, g, l) => {
-    const s = A.slots[`${g}${l}` as Slot];
-    const cands: Status[] = [stZ(s?.z)];
     const L = g === 'ag' ? A.lsiAg : A.lsiAn;
-    if (L && L.fraco === l) cands.push(stLSI(L.v, c));
-    const x = A.razoes[l];
-    if (x && x.desvio != null) {
-      const st = stDesvio(x.desvio, c);
-      const fraco = x.ref != null && x.r < x.ref ? 'an' : 'ag';
-      if (st?.[0] !== 'ok' && g === fraco) cands.push(st);
-      else cands.push(['ok', 'Adequada']);
-    }
-    if (L) cands.push(['ok', 'Comparado']);
-    return cands.reduce(pior, null) ?? ['info', 'Sem referência'];
+    if (L) return stLSI(L.v, c);
+    return stZ(A.slots[`${g}${l}` as Slot]?.z) ?? ['info', 'Sem referência'];
   });
   const porRegiao = new Map(itens.map(i => [i.av.regiao, i.A]));
   return base.map(it => {
