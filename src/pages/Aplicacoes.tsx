@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutGrid, Dumbbell, Search, Loader2, ChevronRight, ArrowLeft, UserPlus } from 'lucide-react';
+import { LayoutGrid, Dumbbell, Search, Loader2, ChevronRight, ArrowLeft, UserPlus, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -21,6 +21,8 @@ interface Aplicacao {
   detalhes: string[];
   icone: typeof Dumbbell;
   rota: (pacienteId: string) => string;
+  /** Abre direto, sem escolher paciente antes; o paciente é opcional dentro da ferramenta. */
+  rotaDireta?: string;
 }
 
 // Ferramentas de avaliação que trabalham sobre um paciente. Para incluir uma
@@ -33,6 +35,15 @@ const APLICACOES: Aplicacao[] = [
     detalhes: ['Simetria entre lados e razão agonista/antagonista', 'Força de cada movimento, índice de fadiga e curvas', 'Avatar em verde, amarelo e vermelho com relação com dores; evolução e relatórios em PDF'],
     icone: Dumbbell,
     rota: id => `/dinamometria?paciente=${id}`,
+  },
+  {
+    id: 'dosagem',
+    nome: 'Dosagem de eletrotermofototerapia',
+    descricao: 'Laser, ultrassom e ondas de choque: dose por condição, com a fonte de cada faixa.',
+    detalhes: ['Calculadora de energia, tempo, intensidade e EFD com os dados do seu aparelho', 'Compara com os mínimos e faixas da literatura (PubMed) e diz onde não há dose confirmada', 'Triagem de contraindicações pelo prontuário e registro da dose aplicada'],
+    icone: Zap,
+    rota: id => `/dosagem?paciente=${id}`,
+    rotaDireta: '/dosagem',
   },
 ];
 
@@ -125,7 +136,14 @@ export default function Aplicacoes() {
                   <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-0.5">
                     {a.detalhes.map(d => <li key={d}>{d}</li>)}
                   </ul>
-                  <Button className="mt-auto" onClick={() => { setEscolhida(a); setBusca(''); }}>Abrir</Button>
+                  {a.rotaDireta ? (
+                    <div className="mt-auto flex gap-2">
+                      <Button className="flex-1" onClick={() => navigate(a.rotaDireta!)}>Abrir</Button>
+                      <Button variant="outline" onClick={() => { setEscolhida(a); setBusca(''); }}>Com paciente</Button>
+                    </div>
+                  ) : (
+                    <Button className="mt-auto" onClick={() => { setEscolhida(a); setBusca(''); }}>Abrir</Button>
+                  )}
                 </Card>
               );
             })}
