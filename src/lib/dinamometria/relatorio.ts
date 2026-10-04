@@ -310,7 +310,7 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
       : razRef != null ? `${fmt(razRef * (1 - c.razaoTol / 100) * 100, 0)}% a ${fmt(razRef * (1 + c.razaoTol / 100) * 100, 0)}% (média ~${fmt(razRef * 100, 0)}%)` : 'depende de idade e sexo';
     const linhasRef: [string, string][] = [
       ['Simetria bilateral', `>= ${c.lsiAdequado}% (diferença até ${100 - c.lsiAdequado}%); atenção ${c.lsiImportante}-${c.lsiAdequado}%`],
-      [`Agonista x antagonista (${R.razaoL.split(' (')[0]})`, janelaRazao],
+      ['Agonista x antagonista', `${R.razaoL.split(' (')[0]}: ${janelaRazao}`],
       ...gruposBarras(A, u).filter(g => g.ref != null && g.min != null).map(g => [
         `Força - ${g.nome}`, `${fmt(g.min, 1)} a ${fmt(2 * (g.ref as number) - (g.min as number), 1)} ${u} (média ${fmt(g.ref, 1)})`,
       ] as [string, string]),
@@ -318,28 +318,29 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
       ['Curva de contração', `subida rápida até o pico (força medida em 0-100 e 0-200 ms); platô estável, oscilação <= ${c.oscEstavel}%; queda da força <= ${c.fadBaixa}% no fim da contração sustentada`],
     ];
     {
-      const wC = [52, larg - 52 - 6];
-      const xC = [M + 3, M + 3 + wC[0]];
-      const linhasMed = linhasRef.map(([a, b]) => {
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.3); const la = doc.splitTextToSize(seguro(a), wC[0] - 3);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.3); const lb = doc.splitTextToSize(seguro(b), wC[1]);
-        return { la, lb, h: Math.max(la.length, lb.length) * 3.55 + 3 };
-      });
-      const hTab = 7 + linhasMed.reduce((s2, l) => s2 + l.h, 0);
+      // Parâmetros como colunas e a janela de cada um logo abaixo: usa a largura
+      // toda e ocupa menos da metade da altura da tabela em linhas.
+      const n = linhasRef.length;
+      const ultimaLarga = linhasRef[n - 1][0].startsWith('Curva');
+      const wLarga = ultimaLarga ? Math.min(46, larg * 0.26) : larg / n;
+      const wNorm = ultimaLarga ? (larg - wLarga) / (n - 1) : larg / n;
+      const ws = linhasRef.map((_, k) => (ultimaLarga && k === n - 1 ? wLarga : wNorm));
+      const xs: number[] = []; ws.reduce((acc, w0) => { xs.push(acc); return acc + w0; }, M);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4);
+      const cabs = linhasRef.map(([a], k) => doc.splitTextToSize(seguro(a), ws[k] - 4));
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8);
+      const vals = linhasRef.map(([, b], k) => doc.splitTextToSize(seguro(b), ws[k] - 4));
+      const hCab = Math.max(...cabs.map(c2 => c2.length)) * 3.1 + 3.4;
+      const hVal = Math.max(...vals.map(v => v.length)) * 3.3 + 3.6;
+      const hTab = hCab + hVal;
       garantir(hTab + 8);
       doc.setDrawColor(...hexRgb('#D6DEE8')); doc.setLineWidth(0.3);
-      doc.setFillColor(...hexRgb('#F4F7FB')); doc.roundedRect(M, y, larg, hTab, 2.2, 2.2, 'FD');
-      doc.setFillColor(...hexRgb('#E6EDF5')); doc.roundedRect(M, y, larg, 7, 2.2, 2.2, 'F'); doc.rect(M, y + 4, larg, 3, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4); doc.setTextColor(...hexRgb(AZUL));
-      ['PARÂMETRO', 'JANELA FISIOLÓGICA'].forEach((h, k) => doc.text(h, xC[k], y + 4.7));
-      let yy = y + 7;
-      linhasMed.forEach((l, k) => {
-        if (k % 2 === 1) { doc.setFillColor(255, 255, 255); doc.rect(M + 0.3, yy, larg - 0.6, l.h, 'F'); }
-        if (k > 0) { doc.setDrawColor(...hexRgb('#E3E9F0')); doc.line(M + 2, yy, M + larg - 2, yy); }
-        const yt = yy + 4.3;
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.3); doc.setTextColor(30); doc.text(l.la, xC[0], yt);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.3); doc.setTextColor(45); doc.text(l.lb, xC[1], yt);
-        yy += l.h;
+      doc.setFillColor(255, 255, 255); doc.roundedRect(M, y, larg, hTab, 2.2, 2.2, 'FD');
+      doc.setFillColor(...hexRgb('#E6EDF5')); doc.roundedRect(M, y, larg, hCab, 2.2, 2.2, 'F'); doc.rect(M, y + hCab - 2.2, larg, 2.2, 'F');
+      linhasRef.forEach((_, k) => {
+        if (k > 0) { doc.setDrawColor(...hexRgb('#D6DEE8')); doc.line(xs[k], y + 1.2, xs[k], y + hTab - 1.2); }
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4); doc.setTextColor(...hexRgb(AZUL)); doc.text(cabs[k], xs[k] + 2, y + 4);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(40); doc.text(vals[k], xs[k] + 2, y + hCab + 3.9);
       });
       doc.setFont('helvetica', 'normal'); doc.setLineWidth(0.2);
       y += hTab + 3.5;
