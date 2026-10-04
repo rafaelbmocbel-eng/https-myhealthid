@@ -10,6 +10,7 @@ import {
   avaliarLimitesTens, batimentoHz, cargaPorPulsoUc, cicloBurstPct, cicloTrabalhoPct, ciclosPorBurst, contracoesPorSessao, correnteMediaMa,
   densidadeCorrenteMaCm2, duracaoBurstMs, ocupacaoPulsoPct, periodoMs, razaoOffOn, tempoSobEstimuloS,
 } from '@/lib/dosagem/eletro';
+import { lerFicha } from '@/lib/dosagem/importarFicha';
 import { detectarAlertas, ITENS_SEGURANCA, idadeEmAnos, itensDaModalidade } from '@/lib/dosagem/seguranca';
 
 describe('laser', () => {
@@ -208,5 +209,62 @@ describe('correntes elétricas', () => {
     const r = avaliarLimitesTens({ freqHz: 300, larguraUs: 600, picoMa: 70 });
     expect(r.dentro).toBe(false);
     expect(r.avisos).toHaveLength(3);
+  });
+});
+
+describe('ler ficha técnica colada', () => {
+  it('laser: comprimento de onda, potência, área e modo', () => {
+    const r = lerFicha('Laser Ibramed modelo LP-808. Comprimento de onda: 808 nm. Potência óptica 100 mW. Área do feixe: 0,1 cm². Emissão contínua.', 'laser');
+    expect(r.campos.nm).toBe('808');
+    expect(r.campos.potMedia).toBe('100');
+    expect(r.campos.areaFeixe).toBe('0,1');
+    expect(r.campos.modoLaser).toBe('continuo');
+    expect(r.campos.fabricante).toBe('Ibramed');
+  });
+  it('laser: nome do modelo com “Pulse” não vira modo pulsado', () => {
+    const r = lerFicha('Ibramed modelo LaserPulse, 808 nm, 100 mW, emissão contínua', 'laser');
+    expect(r.campos.modoLaser).toBe('continuo');
+    expect(r.avisos.join(' ')).not.toMatch(/contínuo e pulsado/);
+  });
+  it('laser: potência em W vira mW, e a medida do laudo fica separada', () => {
+    const r = lerFicha('Potência média 0,1 W. Potência medida no laudo: 92 mW. Pico 25 W, 904 nm, pulsado', 'laser');
+    expect(r.campos.potMedia).toBe('100');
+    expect(r.campos.potMedida).toBe('92');
+    expect(r.campos.potPico).toBe('25000');
+    expect(r.campos.modoLaser).toBe('pulsado');
+  });
+  it('laser: diâmetro vira área aproximada e avisa', () => {
+    const r = lerFicha('Diâmetro do spot 3 mm, 660 nm, 40 mW', 'laser');
+    expect(Number(r.campos.areaFeixe?.replace(',', '.'))).toBeCloseTo(0.0707, 3);
+    expect(r.avisos.join(' ')).toMatch(/NA PELE/);
+  });
+  it('laser: vários comprimentos de onda geram aviso', () => {
+    const r = lerFicha('Ponteiras 660 nm e 808 nm', 'laser');
+    expect(r.campos.nm).toBe('660');
+    expect(r.avisos.join(' ')).toMatch(/uma ponteira para cada/);
+  });
+  it('ultrassom: frequência, ERA e BNR', () => {
+    const r = lerFicha('Transdutor 3 MHz, ERA: 4,2 cm², BNR 5,1. Potência máxima 8 W', 'ultrassom');
+    expect(r.campos.freq).toBe('3');
+    expect(r.campos.era).toBe('4,2');
+    expect(r.campos.bnr).toBe('5,1');
+    expect(r.campos.potMax).toBe('8');
+  });
+  it('ultrassom sem ERA avisa para usar o laudo', () => {
+    expect(lerFicha('1 MHz, potência máxima 10 W', 'ultrassom').avisos.join(' ')).toMatch(/laudo de calibração/);
+  });
+  it('ondas de choque: tipo, área focal e limites', () => {
+    const r = lerFicha('Onda focal. Área focal 28 mm². Frequência até 8 Hz. EFD até 0,55 mJ/mm².', 'ondas_choque');
+    expect(r.campos.tipoOnda).toBe('focal');
+    expect(r.campos.areaFocal).toBe('28');
+    expect(r.campos.hzMax).toBe('8');
+    expect(r.campos.efdMax).toBe('0,55');
+  });
+  it('data de calibração dd/mm/aaaa vira ISO; texto vazio ou sem valores não chuta', () => {
+    expect(lerFicha('Calibrado em 15/03/2026. 1 MHz', 'ultrassom').campos.calibracao).toBe('2026-03-15');
+    expect(lerFicha('', 'laser').achados).toHaveLength(0);
+    const r = lerFicha('texto sem números úteis', 'laser');
+    expect(r.achados).toHaveLength(0);
+    expect(r.avisos.length).toBeGreaterThan(0);
   });
 });
