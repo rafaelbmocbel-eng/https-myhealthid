@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizarBusca } from '@/lib/utils';
@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Search, MessageCircle, Copy, Smartphone, Loader2, Send } from 'lucide-react';
+import { Search, MessageCircle, Copy, Smartphone, Loader2, Send, Users } from 'lucide-react';
+import EnviarPortalLoteDialog, { type DestinatarioPortal } from '@/components/paciente/EnviarPortalLoteDialog';
 
 type Estado = 'convidado' | 'entrou' | 'respondeu';
 
@@ -28,6 +29,8 @@ interface PacientePortal {
 // copiar). Um lugar só pra acompanhar e cobrar os clientes.
 export default function CrmPortal({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useAuth();
+  const qc = useQueryClient();
+  const [loteAberto, setLoteAberto] = useState(false);
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<'todos' | Estado | 'sem_tel'>('todos');
   const [enviados, setEnviados] = useState<Set<string>>(new Set());
@@ -63,6 +66,27 @@ export default function CrmPortal({ embedded = false }: { embedded?: boolean } =
       }));
     },
   });
+
+  // Quando o link saiu em lote. Consulta separada e tolerante: se a coluna ainda
+  // não existir, a lista continua funcionando, só sem a marca de "enviado".
+  const { data: enviadoEm = {} } = useQuery({
+    queryKey: ['crm-portal-enviados', user?.id],
+    enabled: !!user,
+    queryFn: async (): Promise<Record<string, string>> => {
+      const { data, error } = await (supabase as any)
+        .from('pacientes')
+        .select('id, portal_link_enviado_em')
+        .eq('terapeuta_id', user!.id)
+        .not('portal_link_enviado_em', 'is', null);
+      if (error) return {};
+      return Object.fromEntries((data || []).map((r: any) => [r.id, r.portal_link_enviado_em as string]));
+    },
+  });
+
+  const destinatarios = useMemo<DestinatarioPortal[]>(() => pacientes
+    .filter((p) => p.estado === 'convidado' && p.portal_token && (p.telefone || '').replace(/\D/g, '').length >= 10)
+    .map((p) => ({ id: p.id, nome: p.nome, telefone: p.telefone!, portal_token: p.portal_token!, enviadoEm: enviadoEm[p.id] ?? null })),
+  [pacientes, enviadoEm]);
 
   const contagem = useMemo(() => ({
     total: pacientes.length,
@@ -151,6 +175,21 @@ export default function CrmPortal({ embedded = false }: { embedded?: boolean } =
         </Button>
       </div>
 
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50/60 dark:bg-emerald-950/20 dark:border-emerald-900/40 p-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold flex items-center gap-1.5"><Users className="h-4 w-4 text-emerald-700" /> Enviar o link para quem ainda não entrou</p>
+          <p className="text-[11px] text-muted-foreground">
+            {destinatarios.length > 0
+              ? `${destinatarios.length} cliente(s) com telefone · envio automático pelo WhatsApp, em lotes`
+              : 'Ninguém pendente com telefone cadastrado.'}
+          </p>
+        </div>
+        <Button size="sm" disabled={destinatarios.length === 0} onClick={() => setLoteAberto(true)}
+          className="h-9 gap-1.5 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Send className="h-3.5 w-3.5" /> Enviar em lote
+        </Button>
+      </div>
+
       {isLoading ? (
         <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : lista.length === 0 ? (
@@ -170,6 +209,11 @@ export default function CrmPortal({ embedded = false }: { embedded?: boolean } =
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     {seloEstado(p.estado)}
                     <span className="text-[11px] text-muted-foreground">{tel ? p.telefone : 'sem telefone'}</span>
+                    {enviadoEm[p.id] && (
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-0.5">
+                        <Send className="h-2.5 w-2.5" /> link enviado {new Date(enviadoEm[p.id]).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {p.portal_token ? (
@@ -189,6 +233,15 @@ export default function CrmPortal({ embedded = false }: { embedded?: boolean } =
             );
           })}
         </div>
+      )}
+      {loteAberto && (
+        <EnviarPortalLoteDialog
+          destinatarios={destinatarios}
+          onFinalizado={() => {
+            qc.invalidateQueries({ queryKey: ['crm-portal-enviados', user?.id] });
+          }}
+          onClose={() => setLoteAberto(false)}
+        />
       )}
     </div>
   );
