@@ -24,12 +24,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { sistemaDaCondicaoSistemica } from '@/utils/condicoesSistemicas';
-import { detectarCondicaoSistemica, REGIAO_SISTEMICA, SIST_LABEL } from '@/components/avatar/CondicoesSistemicasCard';
-import AchadoRapido from '@/components/avatar/AchadoRapido';
+import { REGIAO_SISTEMICA } from '@/components/avatar/CondicoesSistemicasCard';
+import AchadoRapido, { type PreviaAchado } from '@/components/avatar/AchadoRapido';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 import {
   PONTO_ANATOMICO, LS_DOT_OFFSETS, LS_SCALES, LS_FIGURA,
-  ZONAS_CORPORAIS, zonePivot,
+  ZONAS_CORPORAIS, zonePivot, zonaDeRegiao,
   buildStickFigurePaths, deriveFigura, DEFAULT_FIGURA,
   type FiguraParams,
 } from '@/utils/anatomia/pontoAnatomico';
@@ -416,6 +416,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>([]);
   const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
+  const [previaAchado, setPreviaAchado] = useState<PreviaAchado | null>(null);
 
   // Per-organ offsets and scales saved by the /calibrar tool — persisted in localStorage,
   // synced across tabs via the storage event.
@@ -518,28 +519,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number; sinal: string; sistema: string }[] | null>(null);
   // Sugestões do portal que o terapeuta dispensou nesta sessão (não viram achado).
   const [sugestoesIgnoradas, setSugestoesIgnoradas] = useState<Set<string>>(new Set());
-  const [notaSistema, setNotaSistema] = useState<{ texto: string; natureza: 'condicao' | 'sintoma'; condicaoAssociada: string; regiaoManual: string }>({
-    texto: '', natureza: 'condicao', condicaoAssociada: '', regiaoManual: '',
-  });
-
-  // Regiões musculoesqueléticas selecionáveis quando o texto não resolve a
-  // região sozinho — evita que um achado de perna/joelho caia em "abdômen".
-  const MSK_REGIOES_OPCOES: { id: string; label: string }[] = [
-    { id: 'cabeca', label: 'Cabeça / ATM' }, { id: 'cervical', label: 'Cervical / Pescoço' },
-    { id: 'ombro_d', label: 'Ombro D' }, { id: 'ombro_e', label: 'Ombro E' },
-    { id: 'cotovelo_d', label: 'Cotovelo D' }, { id: 'cotovelo_e', label: 'Cotovelo E' },
-    { id: 'antebraco_d', label: 'Antebraço D' }, { id: 'antebraco_e', label: 'Antebraço E' },
-    { id: 'mao_d', label: 'Punho / Mão D' }, { id: 'mao_e', label: 'Punho / Mão E' },
-    { id: 'dorsal', label: 'Dorso / Torácica' }, { id: 'lombar', label: 'Lombar / Sacro / Cóccix' },
-    { id: 'gluteos', label: 'Glúteos / Quadril' },
-    { id: 'coxa_d', label: 'Coxa D' }, { id: 'coxa_e', label: 'Coxa E' },
-    { id: 'joelho_d', label: 'Joelho D' }, { id: 'joelho_e', label: 'Joelho E' },
-    { id: 'cavo_d', label: 'Poplítea D (trás do joelho)' }, { id: 'cavo_e', label: 'Poplítea E (trás do joelho)' },
-    { id: 'canela_d', label: 'Perna D' }, { id: 'canela_e', label: 'Perna E' },
-    { id: 'panturr_d', label: 'Panturrilha D' }, { id: 'panturr_e', label: 'Panturrilha E' },
-    { id: 'tornozelo_d', label: 'Tornozelo D' }, { id: 'tornozelo_e', label: 'Tornozelo E' },
-    { id: 'pe_d', label: 'Pé D' }, { id: 'pe_e', label: 'Pé E' },
-  ];
 
   const { data: lente } = useLenteAtiva();
 
@@ -674,6 +653,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     const comAchado = systemScores.filter(s => s.count > 0).map(s => s.sistema);
     if (comAchado.length > 0) { setSistemasAtivos(comAchado); setAutoAtivado(true); }
   }, [systemScores, autoAtivado, sistemasAtivos.length, isProfessional]);
+
+  // Enquanto o profissional digita o achado, o sistema dele fica ligado no
+  // avatar — senão o ponto da prévia (e o achado salvo) não aparecem.
+  useEffect(() => {
+    if (!previaAchado || previaAchado.regiao === REGIAO_SISTEMICA) return;
+    const sis = previaAchado.sistema as SistemaCorporal;
+    setSistemasAtivos(prev => (prev.length === 1 && prev[0] === sis ? prev : [sis]));
+    const zona = zonaDeRegiao(previaAchado.regiao);
+    if (zona?.views && !zona.views.includes(view)) setView(zona.views[0] as 'front' | 'back');
+  }, [previaAchado]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onAchadoSalvo = useCallback((sistema: string) => {
+    setSistemasAtivos([sistema as SistemaCorporal]);
+    setPreviaAchado(null);
+  }, []);
 
   // Reconstrói a carga clínica de cada sistema mês a mês a partir do ciclo de vida
   // dos achados (data_inicio/data_resolucao). Como o registro não guarda histórico de
@@ -1334,7 +1328,32 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               })
             }
 
-
+            {/* Prévia do achado que está sendo digitado — anel tracejado + nome do local */}
+            {previaAchado && previaAchado.regiao !== REGIAO_SISTEMICA && (() => {
+              const zona = zonaDeRegiao(previaAchado.regiao);
+              if (!zona || (zona.views && !zona.views.includes(view as 'front' | 'back'))) return null;
+              const off = savedOrganOffsets[zona.id] ?? { dx: 0, dy: 0 };
+              const piv = zonePivot(zona.shape);
+              const rawX = piv.x + off.dx;
+              const cx = view === 'back' ? 240 - rawX : rawX;
+              const cy = piv.y + off.dy;
+              const cor = SISTEMA_CHART_COLOR[previaAchado.sistema as SistemaCorporal] || '#6366f1';
+              const rotulo = previaAchado.rotulo.length > 22 ? `${previaAchado.rotulo.slice(0, 21)}…` : previaAchado.rotulo;
+              const ladoDireito = cx < 150;
+              return (
+                <g pointerEvents="none">
+                  <circle cx={cx} cy={cy} r={13} fill={cor} opacity={0.18} className="avc-dot-ping" />
+                  <circle cx={cx} cy={cy} r={10} fill="none" stroke={cor} strokeWidth={2} strokeDasharray="3,2.5" />
+                  <circle cx={cx} cy={cy} r={5} fill={cor} />
+                  <g transform={`translate(${ladoDireito ? cx + 14 : cx - 14}, ${cy - 4})`}>
+                    <rect x={ladoDireito ? 0 : -rotulo.length * 4.6 - 8} y={-8} width={rotulo.length * 4.6 + 8} height={14} rx={4}
+                      fill="white" stroke={cor} strokeWidth={0.8} opacity={0.95} />
+                    <text x={ladoDireito ? 4 : -4} y={2.5} fontSize={8} fontWeight={700} fill={cor}
+                      textAnchor={ladoDireito ? 'start' : 'end'}>{rotulo}</text>
+                  </g>
+                </g>
+              );
+            })()}
 
           </svg>
           </div>
@@ -1392,7 +1411,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
         {/* Campo único de achado: o app identifica sistema e local; o profissional confirma. */}
         {isProfessional && !modoSimplificado && pacienteId && (
-          <div className="mt-3"><AchadoRapido pacienteId={pacienteId} /></div>
+          <div className="mt-3">
+            <AchadoRapido
+              pacienteId={pacienteId}
+              sistemaPreferido={sistemasAtivos.length === 1 ? sistemasAtivos[0] : null}
+              onPrevia={setPreviaAchado}
+              onSalvo={onAchadoSalvo}
+            />
+          </div>
         )}
 
         {/* Detalhe do sistema selecionado/hovered — aparece na íntegra com sua marcação clínica */}
@@ -1447,24 +1473,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             );
           };
 
-          const selecionadoExplicitamente = sistemasAtivos.length === 1 && sistemasAtivos[0] === sysToShow;
-          // MSK NÃO tem fallback de região (antes caía em 'abdomen', marcando
-          // achados de perna/joelho no abdômen). Sem detecção, o profissional
-          // escolhe a região no seletor abaixo.
-          const regiaoPadrao = sysToShow === 'musculoesqueletico'
-            ? ''
-            : (VISCERAL_REGIONS.find(r => r.sistemas.includes(sysToShow))?.id || 'abdomen');
-          const regiaoDetectada = notaSistema.texto.trim()
-            ? encontrarSintomasEmTexto(notaSistema.texto).find(s => s.sistema === sysToShow)?.regiao_id
-            : undefined;
-          // Condição sistêmica (HAS, diabetes…) não tem local no corpo: é marcada
-          // como 'sistemico' no SISTEMA certo (ex.: HAS → cardiovascular), mesmo
-          // que o profissional esteja no painel de outro sistema.
-          const condSistemica = notaSistema.texto.trim() ? detectarCondicaoSistemica(notaSistema.texto) : null;
-          const regiaoAuto = notaSistema.regiaoManual || (condSistemica ? REGIAO_SISTEMICA : '') || regiaoDetectada || regiaoPadrao;
-          const ehSistemica = regiaoAuto === REGIAO_SISTEMICA;
-          const sistemaDestino = ehSistemica && condSistemica ? condSistemica.sistema : sysToShow;
-
           return (
             <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 mt-3 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex gap-3 items-center border-b border-primary/10 pb-2">
@@ -1473,112 +1481,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 </div>
                 <p className="text-xs font-black uppercase tracking-wider">{config.label}</p>
               </div>
-
-              {isProfessional && selecionadoExplicitamente && (
-                <div className="space-y-2 rounded-lg border border-primary/20 bg-background p-2.5">
-                  <Label className="text-[10px]">Adicionar nota sobre sintoma/problema neste sistema</Label>
-                  <Textarea
-                    className="text-xs min-h-[60px]"
-                    placeholder="Ex.: Refluxo gastroesofágico recorrente"
-                    value={notaSistema.texto}
-                    onChange={(e) => setNotaSistema({ ...notaSistema, texto: e.target.value })}
-                  />
-                  {notaSistema.texto.trim() && (sysToShow === 'musculoesqueletico' || ehSistemica) && (
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">
-                        Região no corpo {ehSistemica ? '(condição do corpo todo — sem local)' : regiaoDetectada ? '(detectada — confira)' : '(escolha a região correta)'}
-                      </Label>
-                      <Select
-                        value={regiaoAuto || undefined}
-                        onValueChange={(v) => setNotaSistema({ ...notaSistema, regiaoManual: v })}
-                      >
-                        <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Escolha a região…" /></SelectTrigger>
-                        <SelectContent className="max-h-64">
-                          <SelectItem value={REGIAO_SISTEMICA} className="text-xs font-semibold">Condição sistêmica — sem local no corpo (ex.: hipertensão, diabetes)</SelectItem>
-                          {sysToShow === 'musculoesqueletico'
-                            ? MSK_REGIOES_OPCOES.map(o => (
-                                <SelectItem key={o.id} value={o.id} className="text-xs">{o.label}</SelectItem>
-                              ))
-                            : [...REGIONS, ...VISCERAL_REGIONS].filter(r => (r as any).sistemas?.includes?.(sysToShow)).map(r => (
-                                <SelectItem key={r.id} value={r.id} className="text-xs">{r.label}</SelectItem>
-                              ))}
-                        </SelectContent>
-                      </Select>
-                      {ehSistemica && (
-                        <p className="text-[10px] text-muted-foreground">
-                          {condSistemica
-                            ? <>Reconhecido: <span className="font-bold text-foreground">{condSistemica.label}</span>{condSistemica.cid ? ` (CID ${condSistemica.cid})` : ''} → sistema <span className="font-bold text-foreground">{SIST_LABEL[condSistemica.sistema]}</span>.</>
-                            : <>Fica no sistema <span className="font-bold text-foreground">{config.label}</span>, sem ponto no mapa do corpo.</>}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {notaSistema.texto.trim() && sysToShow !== 'musculoesqueletico' && !ehSistemica && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Será marcado no avatar em: <span className="font-bold text-foreground">
-                        {[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === regiaoAuto)?.label || regiaoAuto}
-                      </span>
-                      {' · '}
-                      <button type="button" className="underline" onClick={() => setNotaSistema({ ...notaSistema, regiaoManual: REGIAO_SISTEMICA })}>
-                        é condição do corpo todo?
-                      </button>
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={notaSistema.natureza}
-                      onValueChange={(v) => setNotaSistema({ ...notaSistema, natureza: v as 'condicao' | 'sintoma' })}
-                    >
-                      <SelectTrigger className="h-7 text-[11px] flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="condicao" className="text-xs">É a condição em si</SelectItem>
-                        <SelectItem value="sintoma" className="text-xs">É sintoma de outra condição</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {notaSistema.natureza === 'sintoma' && (
-                      <Input
-                        className="h-7 text-[11px] flex-1"
-                        placeholder="Sintoma de qual condição?"
-                        value={notaSistema.condicaoAssociada}
-                        onChange={(e) => setNotaSistema({ ...notaSistema, condicaoAssociada: e.target.value })}
-                      />
-                    )}
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      className="h-7 px-3 text-xs"
-                      disabled={!notaSistema.texto.trim() || !regiaoAuto || (notaSistema.natureza === 'sintoma' && !notaSistema.condicaoAssociada.trim())}
-                      onClick={() => {
-                        saveMut.mutate({
-                          paciente_id: pacienteId,
-                          regiao_id: regiaoAuto,
-                          sistema: sistemaDestino,
-                          ...(ehSistemica && condSistemica?.cid ? { diagnostico_cid: condSistemica.cid } : {}),
-                          tipo_achado: notaSistema.texto.trim(),
-                          tipo_diagnostico: 'achado_clinico',
-                          origem: 'exame_clinico',
-                          status: 'cronico',
-                          metadata: {
-                            natureza: ehSistemica ? 'sistemica' : notaSistema.natureza,
-                            condicao_associada: notaSistema.natureza === 'sintoma' ? notaSistema.condicaoAssociada.trim() : null,
-                            origem_manual: true,
-                            revisado_profissional: true,
-                          },
-                        } as any);
-                        if (ehSistemica && sistemaDestino !== sysToShow) {
-                          toast.success(`${condSistemica?.label || 'Condição'} salva no sistema ${SIST_LABEL[sistemaDestino as keyof typeof SIST_LABEL] || sistemaDestino}.`);
-                        }
-                        setNotaSistema({ texto: '', natureza: 'condicao', condicaoAssociada: '', regiaoManual: '' });
-                      }}
-                    >
-                      <Check className="mr-1 h-3 w-3" /> {ehSistemica ? 'Salvar condição sistêmica' : 'Salvar e marcar no avatar'}
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               <div className="space-y-3">
                 {sinaisHistorico.length > 0 && (

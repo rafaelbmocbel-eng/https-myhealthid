@@ -411,6 +411,60 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     tipo_diagnostico: 'historico_relatado',
   },
   {
+    keywords: ['cesarea', 'cesárea', 'parto cesareo', 'parto cesáreo', 'miomectomia', 'laqueadura'],
+    regioes: ['utero'],
+    sistema: 'reprodutor',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
+    keywords: ['ooforectomia', 'retirada do ovario', 'retirada do ovário', 'retirada dos ovarios', 'retirada dos ovários'],
+    regioes: ['ovarios'],
+    sistema: 'reprodutor',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
+    keywords: ['prostatectomia', 'retirada da prostata', 'retirada da próstata', 'rtu de prostata', 'rtu de próstata', 'hiperplasia prostatica', 'hiperplasia prostática', 'cancer de prostata', 'câncer de próstata'],
+    regioes: ['prostata'],
+    sistema: 'reprodutor',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
+    keywords: ['mastectomia', 'quadrantectomia', 'retirada da mama', 'cancer de mama', 'câncer de mama', 'nodulo na mama', 'nódulo na mama', 'protese de mama', 'prótese de mama', 'mamoplastia'],
+    regioes: ['mama_d', 'mama_e'],
+    sistema: 'reprodutor',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
+    keywords: ['colecistectomia', 'retirada da vesicula', 'retirada da vesícula', 'calculo na vesicula', 'cálculo na vesícula'],
+    regioes: ['vesicula_biliar'],
+    sistema: 'digestorio',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
+    keywords: ['gastrectomia', 'gastroplastia', 'sleeve', 'bypass gastrico', 'bypass gástrico'],
+    regioes: ['estomago'],
+    sistema: 'digestorio',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
+    keywords: ['colectomia', 'colostomia', 'ileostomia', 'retirada do intestino', 'cirurgia no intestino'],
+    regioes: ['colon_transverso'],
+    sistema: 'digestorio',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
+    keywords: ['nefrectomia', 'retirada do rim', 'transplante renal', 'transplante de rim', 'calculo renal', 'cálculo renal', 'pedra no rim'],
+    regioes: ['rim_d', 'rim_e'],
+    sistema: 'urinario',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
+    keywords: ['lobectomia', 'pneumectomia', 'retirada do pulmao', 'retirada do pulmão', 'cirurgia no pulmao', 'cirurgia no pulmão', 'nodulo pulmonar', 'nódulo pulmonar'],
+    regioes: ['pulmao_d', 'pulmao_e'],
+    sistema: 'respiratorio',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
     keywords: ['ovario', 'ovário', 'cisto ovariano', 'sindrome dos ovarios policisticos', 'sop', 'anovulacao'],
     regioes: ['ovarios'],
     sistema: 'reprodutor'

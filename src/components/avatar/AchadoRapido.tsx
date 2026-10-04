@@ -10,6 +10,7 @@ import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { detectarCondicaoSistemica, REGIAO_SISTEMICA } from '@/components/avatar/CondicoesSistemicasCard';
 import { useSaveEventoAnatomico, type StatusEvento } from '@/hooks/useEventosAnatomicos';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const SISTEMAS: [string, string][] = [
   ['musculoesqueletico', 'Musculoesquelético'], ['nervoso', 'Nervoso'], ['circulatorio', 'Circulatório / Cardíaco'],
@@ -40,7 +41,7 @@ function analisar(texto: string) {
     // Condição do corpo todo (diabetes, hipertensão…) vem primeiro, sem local.
     sugestoes.unshift({ regiao: REGIAO_SISTEMICA, sistema: sistemaApp, termo: sist.label });
   }
-  const tipo: Tipo = /cirurg|operad|opero|troca de|protese|implant|artroplast|reconstru|marcapasso|marca-passo|stent|angioplast|safena|revasculariz|transplant|ablac/.test(t) ? 'cirurgia'
+  const tipo: Tipo = /cirurg|operad|opero|troca de|protese|implant|artroplast|reconstru|marcapasso|marca-passo|stent|angioplast|safena|revasculariz|transplant|ablac|ectomia|otomia|ostomia|plastia|cesar|laquead|bypass|sleeve|retirada d/.test(t) ? 'cirurgia'
     : /fratur|ruptur|lesao|entorse|luxac/.test(t) ? 'fratura'
     : /\bdor\b|\bdoi\b|doendo|incomod|formigament|queimac/.test(t) ? 'dor' : 'condicao';
   const status: StatusEvento = tipo === 'dor' ? 'ativo' : 'cronico';
@@ -50,7 +51,18 @@ function analisar(texto: string) {
 
 // Campo único embaixo do avatar: o profissional escreve o achado, o app procura
 // sistema, estrutura/local, lado, tipo e data; o profissional confere e salva.
-export default function AchadoRapido({ pacienteId }: { pacienteId: string }) {
+export interface PreviaAchado { regiao: string; sistema: string; rotulo: string }
+
+interface Props {
+  pacienteId: string;
+  /** Sistema aberto no avatar — desempata quando o texto casa com vários. */
+  sistemaPreferido?: string | null;
+  /** Mostra no avatar, ao vivo, onde o achado vai ser marcado. */
+  onPrevia?: (p: PreviaAchado | null) => void;
+  onSalvo?: (sistema: string) => void;
+}
+
+export default function AchadoRapido({ pacienteId, sistemaPreferido, onPrevia, onSalvo }: Props) {
   const saveMut = useSaveEventoAnatomico();
   const [texto, setTexto] = useState('');
   const [textoAnalisado, setTextoAnalisado] = useState('');
@@ -66,7 +78,15 @@ export default function AchadoRapido({ pacienteId }: { pacienteId: string }) {
     return () => clearTimeout(id);
   }, [texto]);
 
-  const analise = useMemo(() => (textoAnalisado.length >= 3 ? analisar(textoAnalisado) : null), [textoAnalisado]);
+  const analise = useMemo(() => {
+    if (textoAnalisado.length < 3) return null;
+    const a = analisar(textoAnalisado);
+    if (sistemaPreferido) {
+      const i = a.sugestoes.findIndex((s) => s.sistema === sistemaPreferido && s.regiao !== REGIAO_SISTEMICA);
+      if (i > 0) a.sugestoes.unshift(...a.sugestoes.splice(i, 1));
+    }
+    return a;
+  }, [textoAnalisado, sistemaPreferido]);
 
   // Nova análise: aplica a 1ª sugestão (o profissional pode trocar).
   useEffect(() => {
@@ -85,6 +105,12 @@ export default function AchadoRapido({ pacienteId }: { pacienteId: string }) {
     setEscolhida(i); setSistema(s.sistema); setRegiao(s.regiao);
   };
 
+  useEffect(() => {
+    if (!onPrevia) return;
+    if (!texto.trim() || !sistema || !regiao) onPrevia(null);
+    else onPrevia({ regiao, sistema, rotulo: nomeRegiao(regiao) });
+  }, [texto, sistema, regiao, onPrevia]);
+
   const regioesDoSistema = useMemo(() => TODAS_REGIOES.filter((r) => !sistema || r.sistemas.includes(sistema)), [sistema]);
 
   const salvar = () => {
@@ -101,7 +127,11 @@ export default function AchadoRapido({ pacienteId }: { pacienteId: string }) {
       ...(regiao === REGIAO_SISTEMICA && analise?.cid ? { diagnostico_cid: analise.cid } : {}),
       metadata: { natureza: regiao === REGIAO_SISTEMICA ? 'sistemica' : 'condicao', tipo, origem_manual: true, revisado_profissional: true, achado_rapido: true },
     } as any, {
-      onSuccess: () => { setTexto(''); setTextoAnalisado(''); },
+      onSuccess: () => {
+        toast.success(`Achado marcado no avatar · ${nomeRegiao(regiao)}`);
+        onSalvo?.(sistema);
+        setTexto(''); setTextoAnalisado(''); setSistema(''); setRegiao('');
+      },
     });
   };
 
