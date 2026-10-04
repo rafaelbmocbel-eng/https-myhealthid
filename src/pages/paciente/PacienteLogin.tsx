@@ -257,6 +257,62 @@ export default function PacienteLogin() {
     }
   };
 
+  // Chama uma edge function e devolve SEMPRE o corpo ({ok, code}), mesmo quando
+  // ela responde 4xx (ex.: 409 "e-mail já cadastrado") — o supabase-js trata isso
+  // como erro e esconde o motivo, o que fazia o cadastro cair em "verifique seu e-mail".
+  const chamarFuncao = async (nome: string, body: Record<string, unknown>): Promise<{ ok?: boolean; code?: string }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke(nome, { body });
+      if (!error) return (data ?? {}) as { ok?: boolean; code?: string };
+      const resp = (error as { context?: Response }).context;
+      if (resp && typeof resp.json === 'function') {
+        try { return await resp.json(); } catch { /* corpo sem JSON: segue como falha genérica */ }
+      }
+    } catch { /* função fora do ar: segue como falha genérica */ }
+    return { ok: false, code: 'indisponivel' };
+  };
+
+  // O e-mail já tem conta. Tenta entrar com a senha digitada; se a conta é do
+  // Google e já está ligada a este link, cria a senha agora.
+  const tratarContaExistente = async () => {
+    const { error: signInError } = await signIn(form.email, form.password);
+    if (!signInError) {
+      toast({ title: 'Conta já existente', description: 'Você já tinha cadastro. Entrando no portal...' });
+      return;
+    }
+    if (portalToken) {
+      const def = await chamarFuncao('definir-senha-portal', { token: portalToken, email: form.email, password: form.password });
+      if (def.ok) {
+        const { error: errEntrar } = await signIn(form.email, form.password);
+        if (!errEntrar) {
+          toast({ title: 'Senha criada!', description: 'A partir de agora você também entra com e-mail e senha.' });
+          return;
+        }
+      } else if (def.code === 'ja_tem_senha') {
+        toast({ title: 'Você já tem uma senha', description: 'Use a aba Entrar. Se não lembra, toque em "Esqueci minha senha".', variant: 'destructive' });
+        setTab('login');
+        setSubmitting(false);
+        return;
+      } else if (def.code === 'weak_password') {
+        toast({ title: 'Senha muito fraca', description: 'Escolha uma senha mais forte (mínimo 8 caracteres, evite senhas comuns).', variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      } else if (def.code === 'nao_vinculado') {
+        toast({
+          title: 'Este e-mail já tem uma conta',
+          description: 'Se você usou o Google antes, toque em "Continuar com Google" para ligar ao seu link e depois crie a senha em Perfil. Se criou uma senha, use a aba Entrar.',
+          variant: 'destructive',
+        });
+        setTab('login');
+        setSubmitting(false);
+        return;
+      }
+    }
+    toast({ title: 'E-mail já cadastrado', description: 'Esta conta já existe. Entre com a senha ou, se você usou o Google antes, toque em "Continuar com Google".', variant: 'destructive' });
+    setTab('login');
+    setSubmitting(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -284,23 +340,30 @@ export default function PacienteLogin() {
       try {
         // CAMINHO RÁPIDO: cria a conta já CONFIRMADA por edge function (sem enviar
         // e-mail de confirmação — evita o "Error sending confirmation email" quando
-        // o envio de e-mail do Supabase está no limite). Se a função ainda não
-        // estiver publicada ou não confirmar, cai no cadastro padrão abaixo.
-        try {
-          const { data } = await supabase.functions.invoke('criar-conta-portal', {
-            body: { email: form.email, password: form.password, nome: form.nome },
-          });
-          if ((data as any)?.ok) {
-            toast({ title: 'Conta criada!', description: 'Conectando ao portal...' });
-            const { error: signInError } = await signIn(form.email, form.password);
-            if (signInError) {
-              toast({ title: 'Conta criada', description: 'Agora entre com seu e-mail e senha.' });
-              setTab('login');
-              setSubmitting(false);
-            }
-            return; // sucesso pelo caminho rápido
+        // o envio de e-mail do Supabase está no limite). Se a função estiver fora
+        // do ar, cai no cadastro padrão abaixo.
+        const r = await chamarFuncao('criar-conta-portal', { email: form.email, password: form.password, nome: form.nome });
+        if (r.ok) {
+          toast({ title: 'Conta criada!', description: 'Conectando ao portal...' });
+          const { error: signInError } = await signIn(form.email, form.password);
+          if (signInError) {
+            toast({ title: 'Conta criada', description: 'Agora entre com seu e-mail e senha.' });
+            setTab('login');
+            setSubmitting(false);
           }
-        } catch { /* função indisponível → usa o cadastro padrão abaixo */ }
+          return;
+        }
+        if (r.code === 'email_exists') { await tratarContaExistente(); return; }
+        if (r.code === 'weak_password') {
+          toast({ title: 'Senha muito fraca', description: 'Escolha uma senha mais forte (mínimo 8 caracteres, evite senhas comuns).', variant: 'destructive' });
+          setSubmitting(false);
+          return;
+        }
+        if (r.code === 'invalid_email') {
+          toast({ title: 'E-mail não aceito', description: 'Use um e-mail válido e real.', variant: 'destructive' });
+          setSubmitting(false);
+          return;
+        }
 
         // FALLBACK: cadastro padrão (Supabase Auth).
         const { data: signUpData, error } = await supabase.auth.signUp({
@@ -336,37 +399,7 @@ export default function PacienteLogin() {
             message.includes('unable to validate email');
 
           if (isAlreadyRegistered) {
-            const { error: signInError } = await signIn(form.email, form.password);
-            if (!signInError) {
-              toast({ title: 'Conta já existente', description: 'Você já tinha cadastro. Entrando no portal...' });
-              return;
-            }
-            // Conta criada antes pelo Google (sem senha): pelo link, cria a senha agora.
-            if (portalToken) {
-              const { data: def } = await supabase.functions.invoke('definir-senha-portal', {
-                body: { token: portalToken, email: form.email, password: form.password },
-              });
-              const r = def as { ok?: boolean; code?: string } | null;
-              if (r?.ok) {
-                const { error: errEntrar } = await signIn(form.email, form.password);
-                if (!errEntrar) {
-                  toast({ title: 'Senha criada!', description: 'A partir de agora você também entra com e-mail e senha.' });
-                  return;
-                }
-              } else if (r?.code === 'ja_tem_senha') {
-                toast({ title: 'Você já tem uma senha', description: 'Use a aba Entrar. Se não lembra, toque em "Esqueci minha senha".', variant: 'destructive' });
-                setTab('login');
-                setSubmitting(false);
-                return;
-              } else if (r?.code === 'weak_password') {
-                toast({ title: 'Senha muito fraca', description: 'Escolha uma senha mais forte (mínimo 8 caracteres, evite senhas comuns).', variant: 'destructive' });
-                setSubmitting(false);
-                return;
-              }
-            }
-            toast({ title: 'E-mail já cadastrado', description: 'Esta conta já existe. Entre com a senha ou, se você usou o Google antes, toque em "Entrar com Google".', variant: 'destructive' });
-            setTab('login');
-            setSubmitting(false);
+            await tratarContaExistente();
             return;
           }
           if (isWeakPassword) {
@@ -381,6 +414,10 @@ export default function PacienteLogin() {
           }
           toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
           setSubmitting(false);
+        } else if (signUpData?.user && (signUpData.user.identities?.length ?? 1) === 0) {
+          // Com confirmação de e-mail ligada, o Supabase responde "sucesso" para e-mail
+          // que já existe (sem sessão e sem identidades) — não é um cadastro novo.
+          await tratarContaExistente();
         } else if (!signUpData?.session) {
           toast({ title: 'Verifique seu e-mail', description: 'Clique no link que enviamos para ativar sua conta e depois faça login.' });
           setSubmitting(false);
