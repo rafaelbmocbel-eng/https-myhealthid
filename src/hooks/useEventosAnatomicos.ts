@@ -49,6 +49,12 @@ export interface EventoAnatomico {
   updated_at: string;
 }
 
+// O banco chama o sistema do coração de 'cardiovascular'; o avatar usa
+// 'circulatorio'. Traduz aqui, num ponto só, nos dois sentidos — antes salvar uma
+// nota no painel circulatório dava "invalid input value for enum".
+export const sistemaParaBanco = (s: unknown) => (s === 'circulatorio' ? 'cardiovascular' : s);
+const sistemaParaApp = (s: unknown) => (s === 'cardiovascular' ? 'circulatorio' : s);
+
 export function useEventosAnatomicos(pacienteId: string | undefined) {
   return useQuery({
     queryKey: ['eventos-anatomicos', pacienteId],
@@ -60,7 +66,7 @@ export function useEventosAnatomicos(pacienteId: string | undefined) {
         .eq('paciente_id', pacienteId!)
         .order('data_inicio', { ascending: false });
       if (error) throw error;
-      return (data || []) as any;
+      return ((data || []) as any[]).map((e) => ({ ...e, sistema: sistemaParaApp(e.sistema) }));
     },
   });
 }
@@ -71,6 +77,7 @@ export function useSaveEventoAnatomico() {
   return useMutation({
     mutationFn: async (input: Partial<EventoAnatomico> & { paciente_id: string; regiao_id: string; tipo_achado: string }) => {
       const payload: any = { ...input, terapeuta_id: user!.id };
+      if ('sistema' in payload) payload.sistema = sistemaParaBanco(payload.sistema);
       if (input.id) {
         const { id, created_at, updated_at, ...rest } = payload;
         const { error } = await supabase

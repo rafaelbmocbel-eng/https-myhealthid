@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { sistemaDaCondicaoSistemica } from '@/utils/condicoesSistemicas';
 import { detectarCondicaoSistemica, REGIAO_SISTEMICA, SIST_LABEL } from '@/components/avatar/CondicoesSistemicasCard';
+import AchadoRapido from '@/components/avatar/AchadoRapido';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 import {
   PONTO_ANATOMICO, LS_DOT_OFFSETS, LS_SCALES, LS_FIGURA,
@@ -1389,6 +1390,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </div>
           </div>
 
+        {/* Campo único de achado: o app identifica sistema e local; o profissional confirma. */}
+        {isProfessional && !modoSimplificado && pacienteId && (
+          <div className="mt-3"><AchadoRapido pacienteId={pacienteId} /></div>
+        )}
+
         {/* Detalhe do sistema selecionado/hovered — aparece na íntegra com sua marcação clínica */}
         {(() => {
           const sysToShow = hoveredSistema || (sistemasAtivos.length === 1 ? sistemasAtivos[0] : null);
@@ -1947,7 +1953,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
               {isProfessional && (
                 <p className="text-[11px] text-muted-foreground italic">
-                  Para registrar um novo sintoma ou condição, clique no ícone do sistema ao lado do corpo e use o campo de nota que aparece abaixo do avatar.
+                  Para registrar um novo achado, escreva no campo "Registrar achado" logo abaixo do avatar: o app identifica o sistema e o local, e você confirma.
                 </p>
               )}
 

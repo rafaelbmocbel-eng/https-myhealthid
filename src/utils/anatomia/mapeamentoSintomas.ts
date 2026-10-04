@@ -121,6 +121,13 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'circulatorio'
   },
   {
+    // Cirurgias e dispositivos cardíacos.
+    keywords: ['valvula', 'válvula', 'valvar', 'troca de valvula', 'troca de válvula', 'protese valvar', 'prótese valvar', 'estenose aortica', 'estenose aórtica', 'insuficiencia mitral', 'insuficiência mitral', 'marcapasso', 'marca-passo', 'stent', 'cateterismo', 'angioplastia', 'ponte de safena', 'safena', 'revascularizacao', 'revascularização', 'cirurgia cardiaca', 'cirurgia cardíaca', 'cardioversor', 'cdi', 'ablação', 'ablacao', 'sopro'],
+    regioes: ['coracao'],
+    sistema: 'circulatorio',
+    tipo_diagnostico: 'historico_relatado',
+  },
+  {
     keywords: ['palpitacao', 'palpitação', 'taquicardia', 'palpitacoes', 'coração acelerado'],
     regioes: ['coracao'],
     sistema: 'circulatorio'
