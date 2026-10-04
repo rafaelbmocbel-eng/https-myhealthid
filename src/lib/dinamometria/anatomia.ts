@@ -2,7 +2,7 @@
 // músculos são pintados de verde, amarelo ou vermelho e as articulações com
 // possível dor recebem um círculo tracejado. Usado na tela e nos PDFs.
 
-import { type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Status, type Unidade, UF, fmt, stLSI, stZ } from './analise';
+import { type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Status, type Unidade, UF, fmt, stZ, simetriaSlot } from './analise';
 
 type Vista = 'frente' | 'costas';
 interface Forma { vista: Vista; d: string; c: [number, number] }
@@ -134,17 +134,21 @@ function montar(itens: ItemAv[], cor: (A: Analise, g: 'ag' | 'an', lado: Lado) =
   return out;
 }
 
-// Cor de cada grupo muscular no avatar = simetria entre os lados (unilateral):
-// verde dentro do padrão, amarelo em observação, vermelho com diferença
-// importante — os dois lados do par recebem a mesma cor, porque a diferença é
-// do par. A razão agonista/antagonista tem cor própria no close da articulação.
-// Sem o outro lado para comparar, usa a força para idade e sexo.
+// Cor de cada lado no avatar (simetria unilateral):
+// • o lado mais forte do par é a referência (100%): verde, a não ser que esteja
+//   fraco para idade e sexo (norma) — aí amarelo/vermelho pela norma;
+// • o lado mais fraco recebe a cor da simetria (>= 90% verde, 80–90% amarelo,
+//   < 80% vermelho), ou a da norma se ela for pior.
+// A razão agonista/antagonista tem cor própria no close da articulação.
 // O rótulo mostra "D 45,2" / "E 38,1".
 export function itensAvatar(itens: ItemAv[], c: Criterios, u: Unidade): ItemMapa[] {
   const base = montar(itens, (A, g, l) => {
-    const L = g === 'ag' ? A.lsiAg : A.lsiAn;
-    if (L) return stLSI(L.v, c);
-    return stZ(A.slots[`${g}${l}` as Slot]?.z) ?? ['info', 'Sem referência'];
+    const k = `${g}${l}` as Slot;
+    const norma = stZ(A.slots[k]?.z);
+    const sim = simetriaSlot(A, k, c);
+    if (!sim) return norma ?? ['info', 'Sem referência'];
+    if (sim.v >= 99.5) return norma && norma[0] !== 'ok' ? norma : ['ok', 'Lado de referência'];
+    return [sim.st, norma].reduce(pior, null) ?? ['info', 'Sem referência'];
   });
   const porRegiao = new Map(itens.map(i => [i.av.regiao, i.A]));
   return base.map(it => {
