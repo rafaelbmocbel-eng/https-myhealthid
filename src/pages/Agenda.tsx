@@ -278,6 +278,10 @@ export default function Agenda() {
     label: string;
   } | null>(null);
 
+  // Agendamento sem paciente (o paciente foi apagado ou nunca foi escolhido): ao
+  // confirmar presença/falta pergunta quem é, em vez de só dar erro.
+  const [vincular, setVincular] = useState<{ ag: Agendamento; status: 'atendido' | 'faltou'; pacienteId: string; serie: boolean; salvando: boolean } | null>(null);
+
   // Recurrence edit modal state
   const [recurrenceEditModal, setRecurrenceEditModal] = useState<{
     open: boolean;
@@ -740,8 +744,12 @@ export default function Agenda() {
       toast({ title: 'Horário inválido', description: 'O término precisa ser depois do início.', variant: 'destructive' });
       return;
     }
-    setSubmitting(true);
     const pacienteIdFinal = form.paciente_id === 'bloqueio' ? undefined : (form.paciente_id || undefined);
+    if (!pacienteIdFinal && form.paciente_id !== 'bloqueio' && form.tipo_atendimento !== 'bloqueio' && !form.titulo.trim()) {
+      toast({ title: 'Escolha o paciente', description: 'Sem paciente não dá para confirmar a sessão. Para reservar um horário, escolha "Bloqueio" ou escreva um título.', variant: 'destructive' });
+      return;
+    }
+    setSubmitting(true);
     const pac = pacientes.find(p => p.id === pacienteIdFinal);
     const payload: any = {
       paciente_id: pacienteIdFinal,
@@ -1203,6 +1211,33 @@ export default function Agenda() {
     }
   };
 
+  const confirmarVinculo = async () => {
+    if (!vincular || !vincular.pacienteId || !user) return;
+    const { ag, status, pacienteId, serie } = vincular;
+    const pac = pacientes.find(p => p.id === pacienteId);
+    if (!pac) return;
+    setVincular({ ...vincular, salvando: true });
+    try {
+      const nome = `${pac.nome} ${pac.sobrenome || ''}`.trim();
+      // Só troca o título quando ele ainda é o genérico — não apaga um título escolhido.
+      const atualizar = async (filtro: (q: any) => any) => {
+        const base = () => supabase.from('agendamentos').update({ paciente_id: pacienteId }).eq('terapeuta_id', user.id).is('paciente_id', null);
+        const { error } = await filtro(base());
+        if (error) throw error;
+        const tit = () => supabase.from('agendamentos').update({ titulo: nome }).eq('terapeuta_id', user.id).eq('paciente_id', pacienteId).eq('titulo', 'Agendamento');
+        await filtro(tit());
+      };
+      if (serie && ag.recorrencia_grupo_id) await atualizar((q) => q.eq('recorrencia_grupo_id', ag.recorrencia_grupo_id));
+      else await atualizar((q) => q.eq('id', ag.id));
+      await refresh();
+      setVincular(null);
+      await handleSessaoStatus({ ...ag, paciente_id: pacienteId, titulo: ag.titulo === 'Agendamento' ? nome : ag.titulo }, status);
+    } catch (e: any) {
+      toast({ title: 'Não foi possível vincular o paciente', description: e?.message, variant: 'destructive' });
+      setVincular((v) => (v ? { ...v, salvando: false } : v));
+    }
+  };
+
   const handleSessaoStatus = async (ag: Agendamento, status: 'atendido' | 'faltou' | 'pendente') => {
     if (!user) return;
     try {
@@ -1212,7 +1247,7 @@ export default function Agenda() {
         await updateAgendamento(ag.id, { status: 'confirmado' });
       } else {
         if (!ag.paciente_id) {
-          toast({ title: 'Erro', description: 'Agendamento sem paciente vinculado.', variant: 'destructive' });
+          setVincular({ ag, status, pacienteId: '', serie: !!ag.recorrencia_grupo_id, salvando: false });
           return;
         }
         // Check if a session record already exists for this appointment
@@ -2912,6 +2947,41 @@ export default function Agenda() {
       </Dialog>
 
       {/* ===== REGISTRAR SESSÃO — SOAP rápido por voz ===== */}
+      <Dialog open={!!vincular} onOpenChange={(o) => { if (!o && !vincular?.salvando) setVincular(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Quem é o paciente deste horário?</DialogTitle>
+          </DialogHeader>
+          {vincular && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Este agendamento ({format(parseISO(vincular.ag.data_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}) está sem paciente ligado — por isso não dá para registrar {vincular.status === 'atendido' ? 'o atendimento' : 'a falta'}.
+                Escolha o paciente e seguimos.
+              </p>
+              <PacienteSelect
+                pacientes={pacientes}
+                value={vincular.pacienteId}
+                onValueChange={(v) => setVincular((cur) => (cur ? { ...cur, pacienteId: v } : cur))}
+              />
+              {vincular.ag.recorrencia_grupo_id && (
+                <label className="flex items-start gap-2 text-xs cursor-pointer">
+                  <input type="checkbox" className="mt-0.5" checked={vincular.serie}
+                    onChange={(e) => setVincular((cur) => (cur ? { ...cur, serie: e.target.checked } : cur))} />
+                  <span>Ligar este paciente a <strong>todos os horários da série</strong> que também estão sem paciente.</span>
+                </label>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" disabled={vincular.salvando} onClick={() => setVincular(null)}>Cancelar</Button>
+                <Button disabled={!vincular.pacienteId || vincular.salvando} onClick={confirmarVinculo} className="gap-1.5">
+                  {vincular.salvando && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Vincular e {vincular.status === 'atendido' ? 'confirmar atendimento' : 'registrar falta'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={voiceSessionModal.open} onOpenChange={(o) => setVoiceSessionModal(prev => ({ ...prev, open: o }))}>
         <DialogContent className="max-w-3xl max-h-[92dvh] overflow-y-auto p-0">
           <DialogHeader className="px-5 pt-5 pb-3 border-b">
