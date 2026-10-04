@@ -193,6 +193,21 @@ const SISTEMAS_POR_ESPECIALIDADE: Record<PerfilProfissional, SistemaCorporal[]> 
   terapeuta_ocupacional: ['musculoesqueletico', 'nervoso', 'sensorial'],
 };
 
+// Mesma linguagem dos pontos do corpo: cheio = ativo agora; vazado = crônico/histórico.
+const marcadorStatus = (ev: { sistema: SistemaCorporal; status: string }): React.CSSProperties => {
+  const cor = SISTEMA_CHART_COLOR[ev.sistema];
+  return ev.status === 'ativo' || ev.status === 'em_tratamento'
+    ? { background: cor }
+    : { background: 'transparent', border: `2px solid ${cor}` };
+};
+
+const NOME_CURTO_SISTEMA: Record<SistemaCorporal, string> = {
+  musculoesqueletico: 'Músculos/ossos', nervoso: 'Nervoso', digestorio: 'Digestório',
+  circulatorio: 'Coração/vasos', respiratorio: 'Respiratório', endocrino: 'Hormônios',
+  urinario: 'Urinário', reprodutor: 'Reprodutor', tegumentar: 'Pele',
+  linfatico: 'Imunidade', sensorial: 'Sentidos',
+};
+
 const SISTEMA_CHART_COLOR: Record<SistemaCorporal, string> = {
   musculoesqueletico: '#a855f7',
   nervoso: '#3b82f6',
@@ -625,6 +640,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   );
   const sistemaFoco: SistemaCorporal | null = hoveredSistema || (sistemasAtivos.length === 1 ? sistemasAtivos[0] : null);
   const [zonaFoco, setZonaFoco] = useState<string | null>(null);
+  const [mostrarTodosSistemas, setMostrarTodosSistemas] = useState(false);
 
   const nomeLocal = (ev: EventoAnatomico) =>
     ev.regiao_id === REGIAO_SISTEMICA
@@ -682,15 +698,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     };
   }).sort((a, b) => b.score - a.score), [eventos, sinalRegions, historiaVida, diagnosticosCID]);
 
-  // Auto-ativa (uma vez) os sistemas que têm achados quando o avatar carrega —
-  // antes o profissional gerava achados, abria o Avatar e via vazio até
-  // adivinhar que precisava clicar num ícone de sistema ("salvou mas sumiu").
-  const [autoAtivado, setAutoAtivado] = useState(false);
-  useEffect(() => {
-    if (!isProfessional || autoAtivado || sistemasAtivos.length > 0) return;
-    const comAchado = systemScores.filter(s => s.count > 0).map(s => s.sistema);
-    if (comAchado.length > 0) { setSistemasAtivos(comAchado); setAutoAtivado(true); }
-  }, [systemScores, autoAtivado, sistemasAtivos.length, isProfessional]);
 
   // Enquanto o profissional digita o achado, o sistema dele fica ligado no
   // avatar — senão o ponto da prévia (e o achado salvo) não aparecem.
@@ -913,35 +920,70 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
 
         <div className="flex flex-col gap-2">
-          {/* Ícones de sistema — fileira horizontal */}
-          <div className="flex flex-wrap gap-1 justify-center">
-            {systemScores.map(({ sistema: s, score }) => {
+          {/* Sistemas — com nome e cor (a mesma dos pontos no corpo). Os que têm
+              achado vêm primeiro, com a contagem; os demais ficam recolhidos. */}
+          {(() => {
+            const contagem = (s: SistemaCorporal) => eventosFiltrados.filter(e => e.sistema === s).length;
+            const comAchado = SISTEMAS_ORDEM.filter(s => contagem(s) > 0);
+            const semAchado = SISTEMAS_ORDEM.filter(s => contagem(s) === 0);
+            const chip = (s: SistemaCorporal) => {
               const active = sistemasAtivos.length === 1 && sistemasAtivos[0] === s;
               const config = SISTEMA_CONFIG[s];
               const Icon = config.icon;
-              let dotClass = "bg-border";
-              if (score >= 5) dotClass = "bg-red-500";
-              else if (score >= 2) dotClass = "bg-amber-500";
-              else if (score > 0) dotClass = "bg-emerald-500";
+              const cor = SISTEMA_CHART_COLOR[s];
+              const n = contagem(s);
               return (
                 <button
                   key={s}
                   type="button"
-                  title={config.label}
+                  title={active ? 'Toque de novo para ver todos' : `Destacar ${config.label}`}
                   onMouseEnter={() => setHoveredSistema(s)}
                   onMouseLeave={() => setHoveredSistema(null)}
                   onClick={() => setSistemasAtivos(active ? [] : [s])}
                   className={cn(
-                    "relative w-7 h-7 rounded-md border flex items-center justify-center transition-all hover:scale-110",
-                    active ? "border-primary bg-primary/10 ring-1 ring-primary shadow-sm" : "border-border/50 bg-background opacity-70 hover:opacity-100"
+                    'flex items-center gap-1 rounded-full border px-2 py-1 text-[10.5px] font-semibold transition-all',
+                    n === 0 && !active && 'opacity-60',
                   )}
+                  style={active
+                    ? { borderColor: cor, background: cor, color: 'white' }
+                    : { borderColor: `${cor}55`, background: `${cor}12`, color: n > 0 ? cor : undefined }}
                 >
-                  <Icon className={cn("w-3.5 h-3.5", active && `text-${config.color}-600`)} />
-                  {score > 0 && <span className={cn("absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-background", dotClass)} />}
+                  <Icon className="h-3 w-3 shrink-0" />
+                  {NOME_CURTO_SISTEMA[s]}
+                  {n > 0 && (
+                    <span className="rounded-full px-1 text-[9px] font-bold leading-4 min-w-4 text-center"
+                      style={active ? { background: 'white', color: cor } : { background: cor, color: 'white' }}>{n}</span>
+                  )}
                 </button>
               );
-            })}
-          </div>
+            };
+            const focoAtivo = sistemasAtivos.length === 1;
+            return (
+              <div className="space-y-1">
+                <div className="flex flex-wrap gap-1 justify-center">
+                  {comAchado.length > 0 && (
+                    <button type="button" onClick={() => setSistemasAtivos([])}
+                      className={cn('rounded-full border px-2 py-1 text-[10.5px] font-semibold transition-all',
+                        !focoAtivo ? 'border-foreground bg-foreground text-background' : 'border-border bg-background text-muted-foreground')}>
+                      Todos
+                    </button>
+                  )}
+                  {comAchado.map(chip)}
+                  {(mostrarTodosSistemas || comAchado.length === 0) && semAchado.map(chip)}
+                  {comAchado.length > 0 && semAchado.length > 0 && (
+                    <button type="button" onClick={() => setMostrarTodosSistemas(v => !v)}
+                      className="rounded-full border border-dashed border-border px-2 py-1 text-[10.5px] text-muted-foreground hover:bg-muted">
+                      {mostrarTodosSistemas ? 'menos' : `+ ${semAchado.length} sem achado`}
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-3">
+                  <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-foreground/70" /> ativo agora</span>
+                  <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full border-2 border-foreground/70 bg-background" /> crônico / histórico</span>
+                </p>
+              </div>
+            );
+          })()}
 
           {/* Condições do corpo todo (HAS, diabetes…) não têm um ponto no corpo:
               ficam como etiquetas logo acima do avatar. */}
@@ -1311,21 +1353,26 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               const top = evsFoco[0] ?? g.evs[0];
               const cor = SISTEMA_CHART_COLOR[top.sistema] || corEvento(top);
               const focado = zonaFoco === g.id;
+              const ativoAgora = (evsFoco.length ? evsFoco : g.evs).some(e => e.status === 'ativo' || e.status === 'em_tratamento');
               const sistemasDaZona = [...new Set(g.evs.map(e => e.sistema))];
               return (
                 <g key={g.id} style={{ cursor: 'pointer' }} opacity={apagado ? 0.22 : 1}
                   onMouseEnter={() => setZonaFoco(g.id)}
                   onClick={() => setZonaFoco(focado ? null : g.id)}>
-                  {!apagado && <circle cx={cx} cy={cy} r={9} fill={cor} className="avc-dot-ping" />}
-                  <circle cx={cx} cy={cy} r={focado ? 9 : 7} fill={cor} stroke="white" strokeWidth={focado ? 2 : 1.2} />
+                  {!apagado && ativoAgora && <circle cx={cx} cy={cy} r={9} fill={cor} className="avc-dot-ping" />}
+                  {/* Cheio = ativo agora; vazado (anel grosso) = crônico/histórico */}
+                  {ativoAgora
+                    ? <circle cx={cx} cy={cy} r={focado ? 9 : 7} fill={cor} stroke="white" strokeWidth={focado ? 2 : 1.2} />
+                    : <circle cx={cx} cy={cy} r={focado ? 8 : 6.2} fill="white" stroke={cor} strokeWidth={focado ? 3.4 : 2.8} />}
                   {/* Mais de um sistema no mesmo local: anel com a cor do segundo */}
                   {sistemasDaZona.length > 1 && (
                     <circle cx={cx} cy={cy} r={focado ? 11.5 : 9.5} fill="none"
                       stroke={SISTEMA_CHART_COLOR[sistemasDaZona.find(x => x !== top.sistema)!]} strokeWidth={1.6} />
                   )}
-                  {g.evs.length > 1
-                    ? <text x={cx} y={cy + 2.6} textAnchor="middle" fontSize={7.5} fontWeight={800} fill="white">{g.evs.length}</text>
-                    : <circle cx={cx} cy={cy} r={2.6} fill="white" opacity={0.75} />}
+                  {g.evs.length > 1 && (
+                    <text x={cx} y={cy + 2.6} textAnchor="middle" fontSize={7.5} fontWeight={800} fill={ativoAgora ? 'white' : cor}>{g.evs.length}</text>
+                  )}
+                  {g.evs.length === 1 && ativoAgora && <circle cx={cx} cy={cy} r={2.6} fill="white" opacity={0.75} />}
                 </g>
               );
             })}
@@ -1409,7 +1456,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                           const apagado = !!sistemaFoco && ev.sistema !== sistemaFoco;
                           return (
                             <p key={ev.id} className={cn('text-[9.5px] leading-snug flex items-start gap-1', apagado && 'opacity-35')}>
-                              <span className="mt-[3px] h-1.5 w-1.5 rounded-full shrink-0" style={{ background: SISTEMA_CHART_COLOR[ev.sistema] }} />
+                              <span className="mt-[3px] h-2 w-2 rounded-full shrink-0" style={marcadorStatus(ev)} />
                               <span className={cn('text-muted-foreground', focado ? '' : 'line-clamp-2')}>{ev.tipo_achado || 'Achado'}</span>
                             </p>
                           );
@@ -1439,7 +1486,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               </div>
               {g.evs.map(ev => (
                 <div key={ev.id} className="flex items-start gap-2 text-[11px]">
-                  <span className="mt-1 h-2 w-2 rounded-full shrink-0" style={{ background: SISTEMA_CHART_COLOR[ev.sistema] }} />
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full shrink-0" style={marcadorStatus(ev)} />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold leading-snug">{ev.tipo_achado || 'Achado'}</p>
                     <p className="text-[10px] text-muted-foreground">
@@ -1613,16 +1660,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         {/* Legend — sistema → cor */}
         {eventosFiltrados.length > 0 && (
           <div className="space-y-1 mt-2">
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] justify-center">
-              {(Object.entries(SISTEMA_CHART_COLOR) as [SistemaCorporal, string][])
-                .filter(([s]) => eventosFiltrados.some(e => e.sistema === s))
-                .map(([s, color]) => (
-                  <span key={s} className="flex items-center gap-1 text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-                    {SISTEMA_CONFIG[s]?.label || s}
-                  </span>
-                ))}
-            </div>
             <p className="text-[10px] text-muted-foreground text-center italic mt-1">
               O avatar é atualizado automaticamente a cada avaliação por voz ou presencial.
             </p>
