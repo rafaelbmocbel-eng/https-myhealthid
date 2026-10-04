@@ -11,6 +11,9 @@ import { AVISO_VALIDACAO, CONDICOES_LASER } from '@/lib/dosagem/protocolos';
 import type { DoseRegistrada, EquipamentoFisio } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
 import { Aviso, CampoNumero, FontesChips, Linha, numStr, parseNum, Secao, SeletorAparelho } from './comuns';
+import { estiloAcento } from '@/lib/dosagem/acentos';
+import { GraficoCard, JanelaDose } from './Graficos';
+import { DoseBarraMovel, DoseHero, SeloStatus } from './visual';
 import { RegistrarDosagem } from './RegistrarDosagem';
 import { SegurancaPainel, useSeguranca } from './SegurancaPainel';
 
@@ -107,8 +110,9 @@ export default function DosagemLaser({ paciente, equipamentos, equipamentosDispo
   } : null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] items-start">
+    <div style={estiloAcento('laser')} className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="space-y-4">
+        <DoseBarraMovel modalidade="laser" rotulo="Energia por ponto" valor={energiaPonto ? fmt(energiaPonto) : '—'} unidade="J" nota={ROTULO_STATUS[avaliacao.status]} />
         <Secao numero={1} titulo="Condição">
           <Select value={condId} onValueChange={setCondId}>
             <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
@@ -210,24 +214,31 @@ export default function DosagemLaser({ paciente, equipamentos, equipamentosDispo
       </div>
 
       <aside className="space-y-3 lg:sticky lg:top-4">
-        <Secao titulo="Dose calculada">
-          <Linha rotulo="Energia por ponto" valor={energiaPonto ? `${fmt(energiaPonto)} J` : '—'} destaque />
-          <Linha rotulo="Tempo por ponto" valor={fmtTempo(tempoPonto)} />
+        <DoseHero modalidade="laser" rotulo="Energia por ponto" valor={energiaPonto ? fmt(energiaPonto) : '—'} unidade="J"
+          detalhe={energiaPonto ? `${fmtTempo(tempoPonto)} por ponto${fluencia ? ` · ${fmt(fluencia)} J/cm²` : ''}` : 'Informe potência e dose'}>
+          <SeloStatus tom={TOM[avaliacao.status]} icone={ICONE_STATUS[avaliacao.status]}>{ROTULO_STATUS[avaliacao.status]}</SeloStatus>
+        </DoseHero>
+
+        {avaliacao.status !== 'sem_referencia' && avaliacao.minJ !== undefined && (
+          <GraficoCard titulo="Onde a sua dose cai" legenda={<>{avaliacao.mensagem}{avaliacao.fator === 4 && ' Em 904 nm contínuo, a referência é 4× a do superpulsado.'}</>}>
+            <JanelaDose min={avaliacao.minJ} max={avaliacao.maxJ} valor={energiaPonto} tom={TOM[avaliacao.status]} />
+            <FontesChips ids={avaliacao.fontes} className="mt-2" />
+          </GraficoCard>
+        )}
+        {avaliacao.status === 'sem_referencia' && (
+          <Aviso tom="neutro" icone={<CircleHelp className="h-4 w-4" />} titulo="Sem faixa de referência">{avaliacao.mensagem}</Aviso>
+        )}
+
+        <Secao titulo="Em números">
           <Linha rotulo="Densidade de energia" valor={fluencia ? `${fmt(fluencia)} J/cm²` : '—'} dica={areaN ? undefined : 'Informe a área do feixe'} />
           <Linha rotulo="Irradiância" valor={irradiancia ? `${fmt(irradiancia, 1)} mW/cm²` : '—'} />
           <Linha rotulo={`Total em ${pontosN} ponto${pontosN > 1 ? 's' : ''}`} valor={energiaTotal ? `${fmt(energiaTotal)} J${tempoTotal ? ` · ${fmtTempo(tempoTotal)}` : ''}` : '—'} />
-
-          <Aviso tom={TOM[avaliacao.status]} titulo={ROTULO_STATUS[avaliacao.status]} icone={ICONE_STATUS[avaliacao.status]}>
-            {avaliacao.mensagem}
-            {avaliacao.fator === 4 && <span className="block mt-1">Em 904 nm contínuo, a recomendação é 4× a dose do superpulsado (mínimo de {fmt(avaliacao.minJ, 1)} J por ponto).</span>}
-          </Aviso>
-          {avaliacao.fontes.length > 0 && <FontesChips ids={avaliacao.fontes} />}
-
-          <Aviso icone={<Info className="h-4 w-4" />}>
-            Registre sempre: comprimento de onda, potência, tempo, área do feixe, pulso, local, número de sessões e intervalo. A potência cai com o aquecimento e com a idade do aparelho; meça-a de tempos em tempos.
-          </Aviso>
-          <FontesChips ids={['jenkins2011', 'walt2022']} />
         </Secao>
+
+        <Aviso icone={<Info className="h-4 w-4" />}>
+          Registre sempre: comprimento de onda, potência, tempo, área do feixe, pulso, local, número de sessões e intervalo. A potência cai com o aquecimento e com a idade do aparelho; meça-a de tempos em tempos.
+          <FontesChips ids={['jenkins2011', 'walt2022']} className="mt-1.5" />
+        </Aviso>
 
         <Secao titulo="Registrar">
           <RegistrarDosagem paciente={paciente ?? null} dose={dose} segurancaPronta={seg.pronto}

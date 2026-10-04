@@ -63,8 +63,9 @@ export const ITENS_SEGURANCA: ItemSeguranca[] = [
   // ── Ultrassom ──
   { id: 'us_gestacao', modalidades: ['ultrassom'], gravidade: 'contraindicacao', fonte: 'classica',
     titulo: 'Gestação: útero e abdome', detalhe: 'Não aplicar sobre o útero gravídico nem no abdome da gestante.', padroes: P.gestacao },
-  { id: 'us_neoplasia', modalidades: ['ultrassom'], gravidade: 'contraindicacao', fonte: 'classica',
-    titulo: 'Neoplasia na região', detalhe: 'Não aplicar sobre tumor ou área de tratamento oncológico.', padroes: P.neoplasia },
+  { id: 'us_neoplasia', modalidades: ['ultrassom'], gravidade: 'contraindicacao', fonte: 'literatura', refs: ['daia2026'],
+    titulo: 'Lesão maligna ativa no campo',
+    detalhe: 'A contraindicação principal é a lesão maligna ativa dentro do campo de tratamento; a revisão atual não considera o câncer, por si só, uma contraindicação absoluta.', padroes: P.neoplasia },
   { id: 'us_trombose', modalidades: ['ultrassom'], gravidade: 'contraindicacao', fonte: 'classica',
     titulo: 'Trombose venosa ou tromboflebite', detalhe: 'Risco de mobilizar trombo: não aplicar sobre a região afetada.', padroes: P.trombose },
   { id: 'us_marcapasso', modalidades: ['ultrassom'], gravidade: 'precaucao', fonte: 'classica',
@@ -82,6 +83,29 @@ export const ITENS_SEGURANCA: ItemSeguranca[] = [
   { id: 'us_equipamento', modalidades: ['ultrassom'], gravidade: 'precaucao', fonte: 'literatura', refs: ['johns2007', 'ferrari2010', 'hekkenberg1994'],
     titulo: 'Calibração do transdutor',
     detalhe: 'ERA e potência variam entre transdutores e podem mudar a intensidade real em até 50%. No Brasil, só 32,3% dos aparelhos testados estavam de acordo com a norma. Use a ERA do laudo e confira que o BNR não passa de 8.' },
+
+
+  // ── Correntes elétricas ──
+  { id: 'elet_implantado', modalidades: ['tens', 'nmes', 'russa', 'interferencial'], gravidade: 'contraindicacao', fonte: 'literatura', refs: ['digby2009', 'daia2026', 'maffiuletti2013'],
+    titulo: 'Marca-passo, CDI e outros dispositivos implantados',
+    detalhe: 'Em dispositivos de ritmo cardíaco, TENS, diatermia e interferencial são “melhor evitar”, sem consenso; talvez possíveis com monitorização do dispositivo e do paciente. A eletroterapia pode ser contraindicada com dispositivos eletrônicos implantados, e a NMES não deve ser usada com marca-passo.', padroes: P.marcapasso },
+  { id: 'elet_trombose', modalidades: ['tens', 'nmes', 'russa', 'interferencial'], gravidade: 'contraindicacao', fonte: 'literatura', refs: ['daia2026'],
+    titulo: 'Trombose ativa', detalhe: 'A eletroterapia pode ser contraindicada em pacientes com trombose ativa, assim como em doença aguda, descompensação grave e doença cardiovascular não controlada.', padroes: P.trombose },
+  { id: 'elet_pele', modalidades: ['tens', 'nmes', 'russa', 'interferencial'], gravidade: 'precaucao', fonte: 'literatura', refs: ['johnson2022', 'gibson2017', 'schulz2025'],
+    titulo: 'Pele lesada, infecção local e sensibilidade diminuída',
+    detalhe: 'Os eventos adversos descritos são leves: irritação de pele, dor à palpação e desconforto. Queimaduras graves são raríssimas (2 casos na literatura de interferencial) e se associaram a hipoestesia e eletrodo mal posicionado. Infecção de ferida na área tratada foi critério de exclusão em ensaios.', padroes: [...P.hipoestesia, ...P.infeccao] },
+  { id: 'nmes_fraturas', modalidades: ['nmes'], gravidade: 'contraindicacao', fonte: 'literatura', refs: ['maffiuletti2013'],
+    titulo: 'Fratura traumática e lesão completa de neurônio motor inferior',
+    detalhe: 'No contexto de UTI, a NMES não pode ser usada com facilidade em pacientes com lesões de pele, fraturas traumáticas, lesão completa de neurônio motor inferior e marca-passo.', padroes: [/fratura/, /neuronio motor inferior/, /lesao medular completa/] },
+  { id: 'ifc_cautela', modalidades: ['interferencial'], gravidade: 'precaucao', fonte: 'literatura', refs: ['rampazo2022', 'schulz2025'],
+    titulo: 'Tumor, febre, inflamação aguda e gestação',
+    detalhe: 'Pacientes com tumor, febre, inflamação aguda, marca-passo e gestantes devem ser tratados com cautela. Em um ensaio, também excluíram implantes metálicos, DAOP III/IV e câncer com risco de metástase.', padroes: [...P.neoplasia, ...P.gestacao, /febre/, /inflamacao aguda/, /artropatia aguda/] },
+  { id: 'elet_gestacao', modalidades: ['tens', 'nmes', 'russa'], gravidade: 'precaucao', fonte: 'classica',
+    titulo: 'Gestação', detalhe: 'Evitar eletrodos sobre o abdome e a região lombar e pélvica da gestante.', padroes: P.gestacao },
+  { id: 'elet_cabeca_pescoco', modalidades: ['tens', 'nmes', 'russa', 'interferencial'], gravidade: 'precaucao', fonte: 'classica',
+    titulo: 'Cabeça, olhos e região anterior do pescoço', detalhe: 'Evitar eletrodos sobre a cabeça, os olhos e a região anterior do pescoço (seio carotídeo); cuidado em epilepsia.', padroes: [/epilep/, /convuls/] },
+  { id: 'elet_neoplasia', modalidades: ['tens', 'nmes', 'russa'], gravidade: 'precaucao', fonte: 'classica',
+    titulo: 'Neoplasia na região', detalhe: 'Evitar eletrodos sobre tumor ou área de tratamento oncológico.', padroes: P.neoplasia },
 
   // ── Ondas de choque ──
   { id: 'eswt_idosos_focal', modalidades: ['ondas_choque'], gravidade: 'precaucao', fonte: 'literatura', refs: ['reilly2018'],

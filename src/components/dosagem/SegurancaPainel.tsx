@@ -3,7 +3,7 @@ import { ChevronDown, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { detectarAlertas, itensDaModalidade, type Alerta, type ItemSeguranca } from '@/lib/dosagem/seguranca';
-import type { Modalidade } from '@/lib/dosagem/tipos';
+import { MODALIDADES, type Modalidade } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
 import { Aviso, FontesChips, Secao } from './comuns';
 
@@ -96,7 +96,7 @@ export function SegurancaPainel({ modalidade, estado, paciente, numero }: { moda
       </div>
       <label className="flex items-start gap-2 rounded-xl border border-border/70 bg-muted/30 p-3 text-xs font-medium cursor-pointer">
         <Checkbox checked={conferido} onCheckedChange={(v) => setConferido(v === true)} className="mt-0.5" />
-        <span>Conferi as contraindicações e precauções desta modalidade ({modalidade === 'laser' ? 'laser' : modalidade === 'ultrassom' ? 'ultrassom' : 'ondas de choque'}) para este paciente.</span>
+        <span>Conferi as contraindicações e precauções desta modalidade ({(MODALIDADES.find((m) => m.id === modalidade)?.curto ?? '').toLowerCase()}) para este paciente.</span>
       </label>
     </Secao>
   );

@@ -1,9 +1,33 @@
-export type Modalidade = 'laser' | 'ultrassom' | 'ondas_choque';
+export type Modalidade = 'laser' | 'ultrassom' | 'ondas_choque' | 'tens' | 'nmes' | 'russa' | 'interferencial';
 
-export const MODALIDADES: { id: Modalidade; nome: string; curto: string }[] = [
-  { id: 'laser', nome: 'Laser (fotobiomodulação)', curto: 'Laser' },
-  { id: 'ultrassom', nome: 'Ultrassom terapêutico', curto: 'Ultrassom' },
-  { id: 'ondas_choque', nome: 'Ondas de choque (ESWT)', curto: 'Ondas de choque' },
+/** Modalidades que têm aparelho cadastrável (potência, ERA, área focal…). */
+export type ModalidadeAparelho = 'laser' | 'ultrassom' | 'ondas_choque';
+
+export type GrupoModalidade = 'luz_ondas' | 'correntes';
+
+export interface InfoModalidade {
+  id: Modalidade;
+  nome: string;
+  curto: string;
+  grupo: GrupoModalidade;
+  /** Uma linha para o cartão de escolha. */
+  resumo: string;
+}
+
+export const MODALIDADES: InfoModalidade[] = [
+  { id: 'laser', nome: 'Laser (fotobiomodulação)', curto: 'Laser', grupo: 'luz_ondas', resumo: 'Energia por ponto e densidade de energia' },
+  { id: 'ultrassom', nome: 'Ultrassom terapêutico', curto: 'Ultrassom', grupo: 'luz_ondas', resumo: 'Intensidade, tempo e aquecimento' },
+  { id: 'ondas_choque', nome: 'Ondas de choque (ESWT)', curto: 'Ondas de choque', grupo: 'luz_ondas', resumo: 'EFD, impulsos e sessões' },
+  { id: 'tens', nome: 'TENS', curto: 'TENS', grupo: 'correntes', resumo: 'Frequência, pulso e intensidade' },
+  { id: 'nmes', nome: 'FES / NMES', curto: 'FES / NMES', grupo: 'correntes', resumo: 'Contração: on/off, rampa e torque' },
+  { id: 'russa', nome: 'Corrente russa', curto: 'Russa', grupo: 'correntes', resumo: 'Portadora kHz em bursts' },
+  { id: 'interferencial', nome: 'Corrente interferencial', curto: 'Interferencial', grupo: 'correntes', resumo: 'Portadoras e batimento' },
+];
+
+export const MODALIDADES_APARELHO = MODALIDADES.filter((m) => m.grupo === 'luz_ondas') as (InfoModalidade & { id: ModalidadeAparelho })[];
+export const GRUPOS: { id: GrupoModalidade; titulo: string }[] = [
+  { id: 'luz_ondas', titulo: 'Luz e ondas' },
+  { id: 'correntes', titulo: 'Correntes elétricas' },
 ];
 
 // Especificações guardadas em equipamentos_fisio.specs, por modalidade.
@@ -33,7 +57,7 @@ export interface SpecsOndasChoque {
 
 export interface EquipamentoFisio {
   id: string;
-  tipo: Modalidade;
+  tipo: ModalidadeAparelho;
   nome: string;
   fabricante: string | null;
   modelo: string | null;

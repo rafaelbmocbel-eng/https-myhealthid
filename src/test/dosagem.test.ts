@@ -6,6 +6,10 @@ import {
 } from '@/lib/dosagem/calculos';
 import { CONDICOES_ESWT, CONDICOES_LASER, CONDICOES_US } from '@/lib/dosagem/protocolos';
 import { REFERENCIAS_DOSAGEM, referencia } from '@/lib/dosagem/referencias';
+import {
+  avaliarLimitesTens, batimentoHz, cargaPorPulsoUc, cicloBurstPct, cicloTrabalhoPct, ciclosPorBurst, contracoesPorSessao, correnteMediaMa,
+  densidadeCorrenteMaCm2, duracaoBurstMs, ocupacaoPulsoPct, periodoMs, razaoOffOn, tempoSobEstimuloS,
+} from '@/lib/dosagem/eletro';
 import { detectarAlertas, ITENS_SEGURANCA, idadeEmAnos, itensDaModalidade } from '@/lib/dosagem/seguranca';
 
 describe('laser', () => {
@@ -168,5 +172,41 @@ describe('segurança', () => {
     expect(idadeEmAnos('2000-06-15', new Date('2026-06-14T12:00:00'))).toBe(25);
     expect(idadeEmAnos('2000-06-15', new Date('2026-06-15T12:00:00'))).toBe(26);
     expect(idadeEmAnos(null)).toBeNull();
+  });
+});
+
+describe('correntes elétricas', () => {
+  it('período e ocupação do pulso', () => {
+    expect(periodoMs(100)).toBe(10);
+    expect(ocupacaoPulsoPct(200, 100)).toBeCloseTo(2, 6); // 200 µs a 100 Hz = 2% do período
+  });
+  it('carga por pulso, corrente média e densidade de corrente', () => {
+    expect(cargaPorPulsoUc(20, 200)).toBeCloseTo(4, 6); // 20 mA × 200 µs = 4 µC
+    expect(correnteMediaMa(20, 200, 100)).toBeCloseTo(0.4, 6);
+    expect(densidadeCorrenteMaCm2(20, 25)).toBeCloseTo(0.8, 6);
+  });
+  it('NMES: ciclo de trabalho, razão e contrações', () => {
+    expect(cicloTrabalhoPct(10, 10)).toBe(50);
+    expect(razaoOffOn(5, 15)).toBe(3); // 1:3
+    expect(contracoesPorSessao(20, 10, 10)).toBe(60);
+    expect(tempoSobEstimuloS(60, 10)).toBe(600);
+    expect(contracoesPorSessao(15, 2, 2)).toBe(225);
+  });
+  it('russa: burst, ciclo e ciclos da portadora', () => {
+    expect(duracaoBurstMs(50, 50)).toBe(10);
+    expect(cicloBurstPct(50, 10)).toBe(50);
+    expect(cicloBurstPct(50, 30)).toBeNull(); // 30 ms a 50 Hz passa do período de 20 ms
+    expect(ciclosPorBurst(2500, 10)).toBe(25);
+  });
+  it('interferencial: batimento = diferença das portadoras', () => {
+    expect(batimentoHz(4000, 4100)).toBe(100);
+    expect(batimentoHz(4100, 4000)).toBe(100);
+    expect(batimentoHz(0, 100)).toBeNull();
+  });
+  it('limites do meta-TENS', () => {
+    expect(avaliarLimitesTens({ freqHz: 100, larguraUs: 200, picoMa: 30 }).dentro).toBe(true);
+    const r = avaliarLimitesTens({ freqHz: 300, larguraUs: 600, picoMa: 70 });
+    expect(r.dentro).toBe(false);
+    expect(r.avisos).toHaveLength(3);
   });
 });

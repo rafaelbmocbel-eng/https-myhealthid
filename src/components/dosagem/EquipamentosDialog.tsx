@@ -7,12 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRemoverEquipamento, useSalvarEquipamento } from '@/hooks/useEquipamentosFisio';
-import { MODALIDADES, type EquipamentoFisio, type Modalidade } from '@/lib/dosagem/tipos';
+import { MODALIDADES_APARELHO, type EquipamentoFisio, type ModalidadeAparelho } from '@/lib/dosagem/tipos';
 import { CampoNumero, mesesDesde, numStr, parseNum } from './comuns';
 
 interface Form {
   id?: string;
-  tipo: Modalidade;
+  tipo: ModalidadeAparelho;
   nome: string;
   fabricante: string;
   modelo: string;
@@ -26,7 +26,7 @@ interface Form {
   tipoOnda: 'focal' | 'radial'; areaFocal: string; hzMax: string; barMax: string; efdMax: string;
 }
 
-const vazio = (tipo: Modalidade): Form => ({
+const vazio = (tipo: ModalidadeAparelho): Form => ({
   tipo, nome: '', fabricante: '', modelo: '', calibracao: '', observacoes: '',
   nm: '', modoLaser: 'continuo', potMedia: '', potMedida: '', potPico: '', areaFeixe: '',
   freq: '1', era: '', bnr: '', potMax: '',
@@ -105,7 +105,7 @@ export default function EquipamentosDialog({ itens, onClose }: { itens: Equipame
             <p className="text-xs text-muted-foreground">
               Cadastre os dados reais de cada emissor, ponteira ou transdutor: a calculadora usa a sua potência, a sua área de feixe e a sua ERA, e não valores de catálogo.
             </p>
-            {MODALIDADES.map((m) => {
+            {MODALIDADES_APARELHO.map((m) => {
               const lista = itens.filter((i) => i.tipo === m.id);
               return (
                 <div key={m.id} className="space-y-2">
@@ -139,9 +139,9 @@ export default function EquipamentosDialog({ itens, onClose }: { itens: Equipame
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs font-medium">Tipo</Label>
-                <Select value={form.tipo} onValueChange={(v) => set('tipo', v as Modalidade)} disabled={!!form.id}>
+                <Select value={form.tipo} onValueChange={(v) => set('tipo', v as ModalidadeAparelho)} disabled={!!form.id}>
                   <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>{MODALIDADES.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
+                  <SelectContent>{MODALIDADES_APARELHO.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1 col-span-2">

@@ -7,6 +7,9 @@ import { AVISO_VALIDACAO, CONDICOES_ESWT, type SugestaoESWT } from '@/lib/dosage
 import type { DoseRegistrada, EquipamentoFisio } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
 import { Aviso, CampoNumero, FontesChips, Linha, numStr, parseNum, Secao, SeletorAparelho } from './comuns';
+import { estiloAcento } from '@/lib/dosagem/acentos';
+import { GraficoCard, MedidorEfd } from './Graficos';
+import { DoseBarraMovel, DoseHero } from './visual';
 import { RegistrarDosagem } from './RegistrarDosagem';
 import { SegurancaPainel, useSeguranca } from './SegurancaPainel';
 
@@ -90,8 +93,9 @@ export default function DosagemOndasChoque({ paciente, equipamentos, equipamento
   } : null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] items-start">
+    <div style={estiloAcento('ondas_choque')} className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="space-y-4">
+        <DoseBarraMovel modalidade="ondas_choque" rotulo="Duração da sessão" valor={tempoS ? fmtTempo(tempoS) : '—'} nota={efdSessao ? `EFD ${fmt(efdSessao, 0)} mJ/mm²` : undefined} />
         <Secao numero={1} titulo="Condição">
           <Select value={condId} onValueChange={setCondId}>
             <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
@@ -145,29 +149,18 @@ export default function DosagemOndasChoque({ paciente, equipamentos, equipamento
       </div>
 
       <aside className="space-y-3 lg:sticky lg:top-4">
-        <Secao titulo="Dose calculada">
-          <Linha rotulo="Duração da sessão" valor={fmtTempo(tempoS)} destaque dica="impulsos ÷ frequência" />
-          <Linha rotulo="EFD acumulada na sessão" valor={efdSessao ? `${fmt(efdSessao, 0)} mJ/mm²` : '—'} dica="EFD × impulsos" />
-          <Linha rotulo={`Em ${sesN ?? 1} sessão(ões)`} valor={efdTotal ? `${fmt(efdTotal, 0)} mJ/mm² · ${fmt(efdTotal / 1000, 2)} J/mm²` : '—'} />
-          {tipo === 'focal' && <Linha rotulo="Energia por impulso" valor={energiaImpulso ? `≈ ${fmt(energiaImpulso, 1)} mJ` : '—'} dica="EFD × área focal" />}
+        <DoseHero modalidade="ondas_choque" rotulo="Duração da sessão" valor={tempoS ? fmtTempo(tempoS) : '—'}
+          detalhe={efdSessao ? `EFD acumulada ${fmt(efdSessao, 0)} mJ/mm² por sessão` : 'Informe EFD, impulsos e frequência'} />
 
-          <div className="pt-2 space-y-1.5">
-            <p className="text-xs font-medium">Onde está a sua EFD</p>
-            <div className="relative h-2.5 rounded-full bg-gradient-to-r from-emerald-200 via-amber-200 to-rose-300 dark:from-emerald-900 dark:via-amber-900 dark:to-rose-900">
-              <span className="absolute top-1/2 h-4 w-px -translate-y-1/2 bg-foreground/60" style={{ left: `${(0.2 / ESCALA_MAX) * 100}%` }} />
-              {marcador !== null && <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-foreground shadow" style={{ left: `${marcador}%` }} />}
-            </div>
-            <div className="relative h-3 text-[10px] text-muted-foreground tabular-nums">
-              <span className="absolute left-0">0</span>
-              <span className="absolute -translate-x-1/2" style={{ left: `${(0.2 / ESCALA_MAX) * 100}%` }}>0,2</span>
-              <span className="absolute right-0">0,8</span>
-            </div>
-            <p className="text-[11px] leading-snug text-muted-foreground">
-              Nos ensaios, a EFD média foi 0,19 mJ/mm² (0,03–0,78). O limite de 0,2 entre “baixa” e “alta” energia é arbitrário e não há consenso; a literatura sugere abandonar essa divisão.
-              {efdN !== null && efdN > ESCALA_MAX ? ' Seu valor passa da escala mostrada.' : ''}
-            </p>
-            <FontesChips ids={['schmitz2015']} />
-          </div>
+        <GraficoCard titulo="Onde está a sua EFD"
+          legenda={<>Nos ensaios, a EFD média foi 0,19 mJ/mm² (0,03–0,78). O limite de 0,2 entre “baixa” e “alta” energia é arbitrário e não há consenso; a literatura sugere abandonar essa divisão.{efdN !== null && efdN > 0.8 ? ' Seu valor passa da escala mostrada.' : ''}</>}>
+          <MedidorEfd valor={efdN} />
+          <FontesChips ids={['schmitz2015']} className="mt-1.5" />
+        </GraficoCard>
+
+        <Secao titulo="Em números">
+          <Linha rotulo={`Em ${sesN ?? 1} sessão(ões)`} valor={efdTotal ? `${fmt(efdTotal, 0)} mJ/mm² · ${fmt(efdTotal / 1000, 2)} J/mm²` : '—'} dica="EFD × impulsos × sessões" />
+          {tipo === 'focal' && <Linha rotulo="Energia por impulso" valor={energiaImpulso ? `≈ ${fmt(energiaImpulso, 1)} mJ` : '—'} dica="EFD × área focal" />}
         </Secao>
 
         <Aviso icone={<Info className="h-4 w-4" />} titulo="Atenção ao registrar a EFD">

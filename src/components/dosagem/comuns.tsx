@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { EquipamentoFisio } from '@/lib/dosagem/tipos';
+import { ACC } from '@/lib/dosagem/acentos';
 import { cn } from '@/lib/utils';
 import { referencia, rotuloReferencia, urlPubmed } from '@/lib/dosagem/referencias';
 
@@ -34,10 +35,12 @@ export function CampoNumero({ id, label, unidade, valor, onChange, dica, placeho
 
 export function Secao({ numero, titulo, children, direita }: { numero?: number; titulo: string; children: ReactNode; direita?: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
+    <section className="space-y-3.5 rounded-2xl border border-border/60 bg-card p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-5">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          {numero !== undefined && <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center">{numero}</span>}
+        <h3 className="flex items-center gap-2.5 text-sm font-semibold tracking-tight">
+          {numero !== undefined && (
+            <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold', ACC.suaveForte, ACC.texto)}>{numero}</span>
+          )}
           {titulo}
         </h3>
         {direita}

@@ -9,6 +9,10 @@ import { AVISO_VALIDACAO, CONDICOES_US, NIVEL_EVIDENCIA_ROTULO } from '@/lib/dos
 import type { DoseRegistrada, EquipamentoFisio } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
 import { Aviso, CampoNumero, FontesChips, Linha, numStr, parseNum, Secao, SeletorAparelho } from './comuns';
+import { cn } from '@/lib/utils';
+import { ACC, estiloAcento } from '@/lib/dosagem/acentos';
+import { CurvaAquecimento, GraficoCard } from './Graficos';
+import { DoseBarraMovel, DoseHero } from './visual';
 import { RegistrarDosagem } from './RegistrarDosagem';
 import { SegurancaPainel, useSeguranca } from './SegurancaPainel';
 
@@ -86,8 +90,9 @@ export default function DosagemUltrassom({ paciente, equipamentos, equipamentosD
   } : null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] items-start">
+    <div style={estiloAcento('ultrassom')} className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="space-y-4">
+        <DoseBarraMovel modalidade="ultrassom" rotulo="Intensidade média (SATA)" valor={sataEf ? fmt(sataEf, 2) : '—'} unidade="W/cm²" nota={aquecimentoNoTempo ? `≈ ${fmt(aquecimentoNoTempo, 1)} °C` : undefined} />
         <Secao numero={1} titulo="Objetivo ou condição">
           <Select value={condId} onValueChange={setCondId}>
             <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
@@ -153,49 +158,48 @@ export default function DosagemUltrassom({ paciente, equipamentos, equipamentosD
       </div>
 
       <aside className="space-y-3 lg:sticky lg:top-4">
-        <Secao titulo="Dose calculada">
-          <Linha rotulo="Intensidade média (SATA)" valor={sataEf ? `${fmt(sataEf, 2)} W/cm²` : '—'} destaque />
-          <Linha rotulo="Potência efetiva" valor={potEf ? `${fmt(potEf, 2)} W` : '—'} dica="intensidade × ERA" />
-          <Linha rotulo="Energia total" valor={energia ? `${fmt(energia, 0)} J` : '—'} />
+        <DoseHero modalidade="ultrassom" rotulo="Intensidade média (SATA)" valor={sataEf ? fmt(sataEf, 2) : '—'} unidade="W/cm²"
+          detalhe={potEf ? `${fmt(potEf, 2)} W efetivos${energia ? ` · ${fmt(energia, 0)} J em ${fmt(tempoN, 1)} min` : ''}` : 'Informe intensidade e ERA'} />
+
+        <Secao titulo="Em números">
           <Linha rotulo="Energia por cm² tratado" valor={energiaCm2 ? `${fmt(energiaCm2, 1)} J/cm²` : '—'} />
           <Linha rotulo="Área em ERAs" valor={eras ? fmt(eras, 1) : '—'} />
           <Linha rotulo="Tempo por ERA" valor={minPorEra ? `${fmt(minPorEra, 1)} min` : '—'} dica="para comparar com a sua prática" />
         </Secao>
 
-        <Secao titulo="Aquecimento estimado" direita={<Flame className="h-4 w-4 text-orange-500" />}>
+        <GraficoCard titulo="Aquecimento estimado"
+          legenda={modo === 'pulsado' ? undefined : taxa ? 'Estimativa linear a partir do ritmo medido por Draper em adultos saudáveis (tríceps sural, 10 min, ultrassom contínuo; 1 MHz a 2,5 e 5 cm, 3 MHz a 0,8 e 1,6 cm). Tecido, profundidade, área e velocidade do transdutor mudam o resultado.' : undefined}>
           {modo === 'pulsado' ? (
             <Aviso icone={<Info className="h-4 w-4" />}>Sem estimativa de aquecimento no modo pulsado: as fontes lidas só medem o ultrassom contínuo.</Aviso>
           ) : taxa ? (
             <>
-              <Linha rotulo="Ritmo estimado" valor={`${fmt(taxa, 2)} °C/min`} />
-              <Linha rotulo="+ 1 °C em" valor={fmtTempo(t1 !== null ? t1 * 60 : null)} dica={t1 !== null && t1 > 10 ? 'passa dos 10 min medidos' : undefined} />
-              <Linha rotulo="+ 2 °C em" valor={fmtTempo(t2 !== null ? t2 * 60 : null)} dica={t2 !== null && t2 > 10 ? 'passa dos 10 min medidos' : undefined} />
-              <Linha rotulo="+ 4 °C em" valor={fmtTempo(t4 !== null ? t4 * 60 : null)} dica={t4 !== null && t4 > 10 ? 'passa dos 10 min medidos' : undefined} />
-              {aquecimentoNoTempo !== null && (
-                <Linha rotulo={`No tempo escolhido (${fmt(tempoN, 1)} min)`} valor={`≈ ${fmt(aquecimentoNoTempo, 1)} °C`} dica={tempoN && tempoN > 10 ? 'além dos 10 min medidos' : undefined} />
-              )}
-              <Aviso icone={<Info className="h-4 w-4" />}>
-                Estimativa linear a partir do ritmo medido por Draper em adultos saudáveis (tríceps sural, 10 min, ultrassom contínuo; profundidades de 2,5 e 5 cm em 1 MHz e de 0,8 e 1,6 cm em 3 MHz). Tecido, profundidade, área e velocidade do transdutor mudam o resultado.
-              </Aviso>
-              <FontesChips ids={['draper1995']} />
+              <CurvaAquecimento taxa={taxa} tempoMin={tempoN} />
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                {([['+1 °C', t1], ['+2 °C', t2], ['+4 °C', t4]] as const).map(([r, t]) => (
+                  <div key={r} className={cn('rounded-xl border px-2 py-1.5', ACC.borda, ACC.suave)}>
+                    <p className="text-[10px] font-medium text-muted-foreground">{r} em</p>
+                    <p className="text-sm font-bold tabular-nums">{fmtTempo(t !== null ? t * 60 : null)}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[10.5px] text-muted-foreground tabular-nums">Ritmo estimado: {fmt(taxa, 2)} °C/min.</p>
+              <FontesChips ids={['draper1995']} className="mt-1.5" />
             </>
           ) : (
             <Aviso icone={<Info className="h-4 w-4" />}>
-              {sataEf
-                ? 'Intensidade fora de 0,5–2,0 W/cm², a faixa medida: sem estimativa (não extrapolamos).'
-                : 'Informe a intensidade para estimar o aquecimento.'}
+              {sataEf ? 'Intensidade fora de 0,5–2,0 W/cm², a faixa medida: sem estimativa (não extrapolamos).' : 'Informe a intensidade para estimar o aquecimento.'}
               {' '}Referência: a 3 MHz e 0,132 W/cm² com o transdutor parado, +1 °C em cerca de 10 min e +4 °C em cerca de 80 min.
             </Aviso>
           )}
-          <details className="text-[11.5px] text-muted-foreground">
+          <details className="mt-2 text-[11.5px] text-muted-foreground">
             <summary className="cursor-pointer font-medium text-foreground/80">Outros dados medidos</summary>
-            <ul className="mt-1.5 list-disc pl-4 space-y-1">
+            <ul className="mt-1.5 list-disc space-y-1 pl-4">
               <li>Tendão de Aquiles, 3 MHz a 1 W/cm² por 10 min: com gel, +13,3 °C; com almofada de 1 cm, +9,3 °C; de 2 cm, +6,5 °C.</li>
               <li>Depois de 3 MHz a 1,5 W/cm² até ≥ 5 °C, o alongamento rende em média 3,3 minutos.</li>
             </ul>
             <FontesChips ids={['draper2010', 'draper1995b', 'rigby2015']} className="mt-1.5" />
           </details>
-        </Secao>
+        </GraficoCard>
 
         <Aviso tom="neutro" icone={<Info className="h-4 w-4" />} titulo="Calibração importa">
           ERA e potência variam entre transdutores e geraram até 50% de diferença na intensidade. No Brasil, só 32,3% dos aparelhos testados estavam de acordo com a norma.
