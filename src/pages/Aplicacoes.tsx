@@ -92,7 +92,8 @@ export default function Aplicacoes() {
     enabled: !!escolhida && !!user,
     queryFn: async () => {
       let q = (supabase as any).from('pacientes').select('id, nome, sobrenome').eq('terapeuta_id', user!.id).eq('ativo', true).order('nome').limit(30);
-      const termo = busca.trim();
+      // Nomes ficam gravados sem acento: tira os acentos do que foi digitado.
+      const termo = busca.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (termo) q = q.ilike('nome', `%${termo}%`);
       const { data } = await q;
       return (data || []) as { id: string; nome: string; sobrenome: string | null }[];

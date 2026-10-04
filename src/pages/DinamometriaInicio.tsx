@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { bluetoothDisponivel, celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import { REGIOES } from '@/lib/dinamometria/analise';
 import BateriaCelula from '@/components/dinamometria/BateriaCelula';
-import { cn } from '@/lib/utils';
+import { cn, normalizarBusca } from '@/lib/utils';
 
 interface Pac { id: string; nome: string; sobrenome: string | null; data_nascimento: string | null; sexo: string | null }
 
@@ -84,8 +84,8 @@ export default function DinamometriaInicio() {
   useEffect(() => { if (pesoSalvo != null) setPeso(String(pesoSalvo)); else setPeso(''); }, [pesoSalvo, pacId]);
 
   const filtrados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    const lista = q ? pacientes.filter((p) => `${p.nome} ${p.sobrenome || ''}`.toLowerCase().includes(q)) : pacientes;
+    const q = normalizarBusca(busca.trim());
+    const lista = q ? pacientes.filter((p) => normalizarBusca(`${p.nome} ${p.sobrenome || ''}`).includes(q)) : pacientes;
     return lista.slice(0, 30);
   }, [busca, pacientes]);
 
