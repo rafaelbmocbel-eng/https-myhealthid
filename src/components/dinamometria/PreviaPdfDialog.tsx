@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Download, ImageDown, Loader2 } from 'lucide-react';
+import { Download, ImageDown, Loader2, MessageCircle } from 'lucide-react';
+import { entregarPdf } from '@/lib/pdf/entrega';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -84,7 +85,10 @@ export default function PreviaPdfDialog({ arquivo, titulo, onClose }: {
         </div>
         <div className="p-3 border-t border-border/50 shrink-0 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>Fechar</Button>
-          <Button className="gap-1.5" onClick={baixarPdf} disabled={!arquivo}><Download className="h-4 w-4" /> Baixar PDF</Button>
+          <Button variant="outline" className="gap-1.5" onClick={baixarPdf} disabled={!arquivo}><Download className="h-4 w-4" /> Baixar</Button>
+          <Button className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={!arquivo} onClick={() => { if (arquivo) { entregarPdf({ blob: arquivo.blob, nome: arquivo.nome, titulo }); onClose(); } }}>
+            <MessageCircle className="h-4 w-4" /> Enviar ao cliente
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

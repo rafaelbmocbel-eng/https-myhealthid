@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import logoSrc from '@/assets/logo-myhealthid.png';
 
 /**

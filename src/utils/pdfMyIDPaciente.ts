@@ -1,3 +1,4 @@
+import { entregarPdf, nomeDocumento } from '@/lib/pdf/entrega';
 /**
  * PDF amigável do MyID para o PACIENTE.
  * Gerador pesado (jsPDF) — importar dinamicamente:
@@ -8,6 +9,7 @@
  * Primário, 3 fases do plano e missões priorizadas.
  */
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import { addLogoToDoc } from './pdfLogoHelper';
 import { drawFingerprintMark, drawClinicLogo } from './pdfFingerprintWatermark';
 
@@ -409,6 +411,8 @@ async function drawCover(doc: jsPDF, data: PDFMyIDPacienteData, dataFmt: string)
 }
 
 export async function gerarPDFMyIDPaciente(data: PDFMyIDPacienteData): Promise<Blob> {
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  data = { ...data, pacienteNome: nomeDocumento(data.pacienteNome) };
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   const dataFmt = (() => {
@@ -458,13 +462,7 @@ export async function gerarPDFMyIDPaciente(data: PDFMyIDPacienteData): Promise<B
   return doc.output('blob');
 }
 
+// Abre a janela "PDF pronto" (WhatsApp do cliente, compartilhar ou baixar).
 export function downloadPDFBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  entregarPdf({ blob, nome: filename });
 }

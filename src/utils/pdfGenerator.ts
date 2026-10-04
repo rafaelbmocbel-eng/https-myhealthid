@@ -1,4 +1,6 @@
+import { nomeDocumento } from '@/lib/pdf/entrega';
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import { addLogoToDoc } from './pdfLogoHelper';
 import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
@@ -63,6 +65,8 @@ function scoreLabel(score: number): string {
 }
 
 export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  data = { ...data, pacienteNome: nomeDocumento(data.pacienteNome) };
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
   const margin = 15;

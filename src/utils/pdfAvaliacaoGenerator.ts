@@ -1,4 +1,6 @@
+import { nomeDocumento } from '@/lib/pdf/entrega';
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import { addLogoToDoc } from './pdfLogoHelper';
 import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
@@ -196,6 +198,8 @@ function drawRadar(doc: jsPDF, cx: number, cy: number, data: Array<{ label: stri
 }
 
 export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  data = { ...data, pacienteNome: nomeDocumento(data.pacienteNome) };
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
   const M = 14;

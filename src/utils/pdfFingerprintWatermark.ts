@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import fingerprintSrc from '@/assets/myid-fingerprint.png';
 
 let cachedDataUrl: string | null = null;

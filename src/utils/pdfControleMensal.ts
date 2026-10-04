@@ -1,4 +1,6 @@
+import { nomeDocumento } from '@/lib/pdf/entrega';
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 
@@ -134,7 +136,7 @@ export function gerarPdfControleMensal(p: Params): void {
     const trunc = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + '…' : s);
     const cells = [
       row.data,
-      trunc(row.paciente, 28),
+      trunc(nomeDocumento(row.paciente), 28),
       trunc(row.profissional, 22),
       row.tipo === 'plano' ? 'Plano' : 'Particular',
       trunc(row.plano || '-', 18),

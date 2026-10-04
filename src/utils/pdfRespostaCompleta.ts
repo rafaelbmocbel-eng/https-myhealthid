@@ -1,4 +1,6 @@
+import { nomeDocumento } from '@/lib/pdf/entrega';
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import { supabase } from '@/integrations/supabase/client';
 import { addLogoToDoc } from './pdfLogoHelper';
 import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
@@ -69,6 +71,8 @@ interface RespostaCompletaInput {
 }
 
 export async function gerarPDFRespostaCompleta({ avaliacao, pacienteId, terapeutaNome }: RespostaCompletaInput): Promise<void> {
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  avaliacao = { ...avaliacao, pacienteNome: nomeDocumento(avaliacao.pacienteNome) };
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
   const M = 14;

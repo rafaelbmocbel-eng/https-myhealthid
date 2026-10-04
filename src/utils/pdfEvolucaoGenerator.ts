@@ -1,4 +1,6 @@
+import { nomeDocumento } from '@/lib/pdf/entrega';
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import type { EvolucaoRecord } from '@/hooks/useEvolucaoPaciente';
 import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
@@ -132,6 +134,8 @@ export interface PDFEvolucaoData {
 }
 
 export async function gerarPDFEvolucao(data: PDFEvolucaoData): Promise<void> {
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  data = { ...data, pacienteNome: nomeDocumento(data.pacienteNome) };
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
   const M = 14;

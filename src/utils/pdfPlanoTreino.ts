@@ -1,3 +1,4 @@
+import { nomeDocumento } from '@/lib/pdf/entrega';
 /**
  * Gera um PDF do plano de treino do cliente — com as explicações e o 1º frame
  * de cada GIF do nosso banco. Importar dinamicamente (jsPDF é pesado):
@@ -8,6 +9,7 @@
  * rede), o exercício entra sem imagem — o PDF nunca falha por causa de um GIF.
  */
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
 export interface PlanoTreinoPDFData {
@@ -60,6 +62,8 @@ function carregarFrame(url: string, timeoutMs = 7000): Promise<{ dataUrl: string
 }
 
 export async function gerarPDFPlanoTreino(data: PlanoTreinoPDFData): Promise<Blob> {
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  data = { ...data, pacienteNome: nomeDocumento(data.pacienteNome) };
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const fases: any[] = Array.isArray(data.conteudo?.fases) ? data.conteudo.fases : [];
 

@@ -5,6 +5,7 @@
 //  - a logo da clínica é sobreposta como imagem nítida separada (na resolução
 //    original), em vez de ficar rasterizada junto com a página.
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 
 const A4_W_MM = 210;
 const A4_H_MM = 297;

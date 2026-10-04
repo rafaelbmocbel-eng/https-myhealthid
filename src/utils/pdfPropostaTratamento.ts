@@ -1,8 +1,10 @@
+import { entregarPdf, nomeDocumento } from '@/lib/pdf/entrega';
 /**
  * PDF de PROPOSTA DE TRATAMENTO — versão comercial premium da diretriz.
  * Layout em 2 páginas com aproveitamento total do espaço.
  */
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import { drawFingerprintWatermark, drawFingerprintMark, drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
 
 // Paleta Serene
@@ -757,6 +759,8 @@ function drawFooter(doc: jsPDF, page: number, total: number, data: PDFPropostaDa
 
 // =============== ENTRADA ===============
 export async function gerarPDFPropostaTratamento(rawData: PDFPropostaData): Promise<Blob> {
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  rawData = { ...rawData, pacienteNome: nomeDocumento(rawData.pacienteNome) };
   const data = sanitizeDataForPDF(rawData);
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
@@ -797,13 +801,7 @@ export async function gerarPDFPropostaTratamento(rawData: PDFPropostaData): Prom
   return doc.output('blob');
 }
 
+// Abre a janela "PDF pronto" (WhatsApp do cliente, compartilhar ou baixar).
 export function downloadPDFBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  entregarPdf({ blob, nome: filename });
 }

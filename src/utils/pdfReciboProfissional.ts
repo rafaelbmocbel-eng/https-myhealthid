@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
 import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 

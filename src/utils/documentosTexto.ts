@@ -1,3 +1,4 @@
+import { nomeDocumento } from '@/lib/pdf/entrega';
 // Texto (corpo) dos documentos — módulo LEVE, sem jsPDF.
 // É usado tanto pelo gerador de PDF (pdfDocumentos.ts) quanto pelo modal, que
 // mostra esse mesmo texto num campo editável ("editar realmente o documento").
@@ -32,7 +33,8 @@ function valorPorExtenso(v: number): string {
 }
 
 export function pacienteLine(p: PacienteInfo): string {
-  const nome = `${p.nome}${p.sobrenome ? ' ' + p.sobrenome : ''}`;
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  const nome = nomeDocumento(`${p.nome}${p.sobrenome ? ' ' + p.sobrenome : ''}`);
   const docs: string[] = [];
   if (p.cpf) docs.push(`CPF ${p.cpf}`);
   if (p.rg) docs.push(`RG ${p.rg}`);
@@ -70,7 +72,7 @@ export function corpoPadraoDocumento(tipo: TipoDocumento, ctx: Ctx, dados: any):
 
     case 'laudo_cinetico': {
       const d = dados || {};
-      const nome = `${p.nome}${p.sobrenome ? ' ' + p.sobrenome : ''}`;
+      const nome = nomeDocumento(`${p.nome}${p.sobrenome ? ' ' + p.sobrenome : ''}`);
       let idade: number | null = null;
       if (d.dataNascimento) {
         try { idade = Math.floor((Date.now() - new Date(d.dataNascimento).getTime()) / (365.25 * 24 * 3600 * 1000)); } catch { idade = null; }

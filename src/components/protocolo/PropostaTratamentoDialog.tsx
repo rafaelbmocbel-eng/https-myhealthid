@@ -1,3 +1,4 @@
+import { entregarPdf, nomeDocumento } from '@/lib/pdf/entrega';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -166,7 +167,8 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
 
   // Props únicas do documento — mesmas na pré-visualização e no PDF.
   const docProps: PropostaDocumentoData = {
-    pacienteNome,
+    // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+    pacienteNome: nomeDocumento(pacienteNome),
     profissionalNome,
     clinicaNome,
     clinicaLogoDataUrl,
@@ -227,21 +229,10 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
       };
 
       const filename = `Proposta_${pacienteNome.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
-      const file = new File([blob], filename, { type: 'application/pdf' });
-      const navAny = navigator as any;
-
-      if (modo === 'share' && navAny.canShare && navAny.canShare({ files: [file] })) {
-        try {
-          await navAny.share({ files: [file], title: 'Proposta de Tratamento', text: mensagem });
-        } catch (err: any) {
-          if (err?.name !== 'AbortError') downloadPDFBlob(blob, filename);
-        }
-      } else {
-        downloadPDFBlob(blob, filename);
-        if (modo === 'share') {
-          toast({ title: 'PDF baixado', description: 'Envie pelo WhatsApp ou e-mail.' });
-        }
-      }
+      void modo;
+      void downloadPDFBlob;
+      // Abre a janela "PDF pronto": envia direto no WhatsApp do cliente, compartilha ou baixa.
+      entregarPdf({ blob, nome: filename, pacienteId, mensagem, titulo: 'Proposta de Tratamento' });
       onOpenChange(false);
     } catch (err: any) {
       console.error('[PropostaTratamentoDialog]', err);

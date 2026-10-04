@@ -1,4 +1,6 @@
 import jsPDF from 'jspdf';
+import '@/lib/pdf/patchJsPdf';
+import { nomeDocumento } from '@/lib/pdf/entrega';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import {
   type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito, type Unidade,
@@ -278,6 +280,8 @@ export interface DadosRelatorio { paciente: string; profissional?: string; logoU
 // ───────── Relatório técnico (uma página por articulação) ─────────
 // apenasGerar: devolve o PDF (Blob) sem baixar — usado na pré-visualização.
 export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar = false): Promise<{ blob: Blob; nome: string } | void> {
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  d = { ...d, paciente: nomeDocumento(d.paciente) };
   const { c } = d;
   const u = c.unidade;
   const disp = (N?: number | null) => (N == null ? null : N / UF[u]);
@@ -543,6 +547,8 @@ function fraseNorma(z: number) {
 
 // ───────── Relatório para o cliente (linguagem simples + mapa muscular) ─────────
 export async function gerarRelatorioCliente(d: DadosRelatorio, apenasGerar = false): Promise<{ blob: Blob; nome: string } | void> {
+  // Nome do cliente nos documentos: MAIÚSCULO e sem acento.
+  d = { ...d, paciente: nomeDocumento(d.paciente) };
   const { c } = d;
   const u = c.unidade;
   const disp = (N?: number | null) => (N == null ? null : N / UF[u]);

@@ -1,3 +1,4 @@
+import '@/lib/pdf/patchJsPdf';
 import { useState, useMemo, useEffect, useRef, type CSSProperties, type FocusEvent } from 'react';
 import { normalizarBusca } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
