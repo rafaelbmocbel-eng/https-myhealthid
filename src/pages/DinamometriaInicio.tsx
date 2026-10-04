@@ -5,7 +5,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Bluetooth, BluetoothOff, CheckCircle2, ChevronDown, Dumbbell, FileText, History, Loader2, Trash2, Search, Target, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
-import { PageHeader } from '@/components/ui/page-header';
+import BarraDinamometria from '@/components/dinamometria/BarraDinamometria';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -172,8 +172,8 @@ export default function DinamometriaInicio() {
 
   return (
     <AppLayout>
-      <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
-        <PageHeader title="Dinamometria" subtitle="Célula de carga, paciente e modo" eyebrow="Aplicações" icon={<Dumbbell className="icon-md" />} back="/aplicacoes" />
+      <div className="max-w-3xl mx-auto px-4 md:px-6 pb-6 space-y-4">
+        <BarraDinamometria titulo="Início" cliente={pac ? `${pac.nome} ${pac.sobrenome || ''}`.trim() : 'Célula, cliente e modo'} voltar="/aplicacoes" />
 
         {/* 1. Célula */}
         <Card className="p-4 space-y-2">

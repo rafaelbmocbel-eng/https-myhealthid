@@ -5,7 +5,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Dumbbell, FileUp, Loader2, Trash2, Copy, Save, FlaskConical, X, Bluetooth, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
-import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +20,8 @@ import { lerPlanilha, type Aba } from '@/lib/dinamometria/planilha';
 import CapturaCelulaDialog, { type CapturaCelula } from '@/components/dinamometria/CapturaCelulaDialog';
 import ExecucaoProtocoloDialog, { type ConfigProtocolo, type Etapa } from '@/components/dinamometria/ExecucaoProtocoloDialog';
 import BancadaTeste, { type EtapaBancada } from '@/components/dinamometria/BancadaTeste';
+import BarraDinamometria from '@/components/dinamometria/BarraDinamometria';
+import SeletorRegioes from '@/components/dinamometria/SeletorRegioes';
 import PreviaPdfDialog from '@/components/dinamometria/PreviaPdfDialog';
 import { celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import {
@@ -823,22 +824,16 @@ export default function Dinamometria() {
 
   return (
     <AppLayout>
-      <div className="container max-w-6xl py-6 space-y-5">
-        <PageHeader
-          title="Análise de dinamometria"
-          subtitle={nomePaciente}
-          eyebrow="Aplicações"
-          icon={<Dumbbell className="icon-md" />}
-          back={id ? `/pacientes/${id}` : true}
-        />
-
+      <div className="container max-w-6xl pb-6 space-y-5">
         <Tabs value={aba} onValueChange={setAba}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="nova">Nova avaliação</TabsTrigger>
-            <TabsTrigger value="resultado">Resultado</TabsTrigger>
-            <TabsTrigger value="evolucao">Evolução</TabsTrigger>
-            <TabsTrigger value="criterios">Critérios</TabsTrigger>
-          </TabsList>
+          <BarraDinamometria titulo={aba === 'nova' ? 'Teste de força' : aba === 'resultado' ? 'Resultado' : aba === 'evolucao' ? 'Evolução' : 'Critérios'} cliente={nomePaciente} voltar={id ? `/dinamometria?paciente=${id}` : undefined}>
+            <TabsList className="grid w-full grid-cols-4 h-10 p-1 rounded-xl">
+              <TabsTrigger value="nova" className="text-xs sm:text-sm rounded-lg">Novo teste</TabsTrigger>
+              <TabsTrigger value="resultado" className="text-xs sm:text-sm rounded-lg">Resultado</TabsTrigger>
+              <TabsTrigger value="evolucao" className="text-xs sm:text-sm rounded-lg">Evolução</TabsTrigger>
+              <TabsTrigger value="criterios" className="text-xs sm:text-sm rounded-lg">Critérios</TabsTrigger>
+            </TabsList>
+          </BarraDinamometria>
 
           {/* ─── Nova avaliação ─── */}
           <TabsContent value="nova" className="space-y-4 mt-4">
@@ -880,20 +875,11 @@ export default function Dinamometria() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Articulações avaliadas nesta sessão</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {Object.entries(REGIOES).map(([k, r]) => (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => alternarRegiao(k)}
-                      aria-pressed={regioes.includes(k)}
-                      className={cn('rounded-full border px-3 py-1 text-sm transition-colors', regioes.includes(k) ? 'border-primary bg-primary/10 text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted')}
-                    >
-                      {r.l}
-                    </button>
-                  ))}
+                <div className="flex items-baseline justify-between gap-2">
+                  <Label className="text-xs">Articulações deste teste</Label>
+                  <span className="text-[11px] text-muted-foreground">{regioes.length} selecionada{regioes.length === 1 ? '' : 's'}</span>
                 </div>
+                <SeletorRegioes selecionadas={regioes} onAlternar={alternarRegiao} />
               </div>
             </Card>
 

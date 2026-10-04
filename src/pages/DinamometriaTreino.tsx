@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Bluetooth, Loader2, Save, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
-import { PageHeader } from '@/components/ui/page-header';
+import BarraDinamometria from '@/components/dinamometria/BarraDinamometria';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,8 +111,8 @@ export default function DinamometriaTreino() {
 
   return (
     <AppLayout>
-      <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
-        <PageHeader title="Treino com dinamometria" subtitle={nome} eyebrow="Dinamometria" icon={<Target className="icon-md" />} back={`/dinamometria?paciente=${id}`} />
+      <div className="max-w-3xl mx-auto px-4 md:px-6 pb-6 space-y-4">
+        <BarraDinamometria titulo="Treino" cliente={nome} voltar={`/dinamometria?paciente=${id}`} />
 
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">

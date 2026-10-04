@@ -337,3 +337,14 @@ export function focoArticulacaoSVG(regiao: string, itens: ItemMapa[], razao: Par
     <text x="294" y="${topo + 16}" font-size="12" font-weight="700" fill="#4B5563" text-anchor="end">E</text>
   </svg>`;
 }
+
+// Miniatura do corpo (de frente) com a articulação em destaque — usada nos
+// cartões de escolha da região do teste.
+export function miniCorpoSVG(regiao: string, ativo: boolean): string {
+  const art = ARTIC_DA_REGIAO[regiao] ?? 'joelho';
+  const p = ARTIC[art];
+  const cor = ativo ? '#1E3A5F' : '#94A3B8';
+  const pontos = p.meio ? [110] : [p.c[0], 220 - p.c[0]];
+  const marcas = pontos.map((x) => `<circle cx="${x}" cy="${p.c[1]}" r="30" fill="${ativo ? '#2563EB' : cor}" fill-opacity="${ativo ? 0.28 : 0.14}"/><circle cx="${x}" cy="${p.c[1]}" r="15" fill="${ativo ? '#2563EB' : cor}"/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 4 184 470" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"><path d="${CONTORNO}" fill="${ativo ? '#EEF3F9' : '#F3F5F7'}" stroke="${ativo ? '#7C93AE' : '#B6C2CD'}" stroke-width="4" stroke-linejoin="round"/>${marcas}</svg>`;
+}
