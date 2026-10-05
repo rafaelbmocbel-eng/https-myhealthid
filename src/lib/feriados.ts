@@ -86,32 +86,35 @@ export function diaUtilApos(inicioISO: string, n: number): string | null {
 
 export interface DiaCalculado { iso: string; semana: string; rotulo: 'avaliacao' | 'sessao'; numero: number }
 export interface DiaPulado { iso: string; semana: string; motivo: string }
-export interface ResultadoDiasUteis { dias: DiaCalculado[]; pulados: DiaPulado[]; fimISO: string | null }
+export interface ResultadoDiasUteis { dias: DiaCalculado[]; pulados: DiaPulado[]; inicioISO: string | null; fimISO: string | null }
 
 const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
 /**
- * Datas de uma guia CASSI em dias úteis (seg–sex, sem feriado), a partir do dia em que foi autorizada.
- * `contarDiaAutorizacao`: o dia da autorização é o 1º dia, se for útil; senão a contagem começa no dia seguinte.
- * `comAvaliacao`: soma um dia extra no começo para a avaliação (144); as `quantidade` sessões vêm depois.
+ * Datas de uma guia CASSI em dias úteis (seg–sex, sem feriado).
+ * `sentido: 'adiante'` (padrão) conta a partir da data (o dia em que a guia foi autorizada); `'atras'` conta
+ * para trás, terminando na data (útil para lançar guia antiga). As datas saem sempre em ordem crescente.
+ * `contarDiaAutorizacao`: a própria data entra como 1º dia, se for útil; senão a contagem começa no dia vizinho.
+ * `comAvaliacao`: soma um dia extra (o mais antigo) para a avaliação (144); as `quantidade` sessões vêm depois.
  */
 export function calcularDiasUteisGuia(opts: {
   autorizacaoISO: string;
   quantidade: number;
   contarDiaAutorizacao?: boolean;
   comAvaliacao?: boolean;
+  sentido?: 'adiante' | 'atras';
   extras?: DatasExtras;
 }): ResultadoDiasUteis | null {
-  const { autorizacaoISO, quantidade, contarDiaAutorizacao = true, comAvaliacao = false, extras } = opts;
+  const { autorizacaoISO, quantidade, contarDiaAutorizacao = true, comAvaliacao = false, sentido = 'adiante', extras } = opts;
   const base = new Date(`${autorizacaoISO.slice(0, 10)}T00:00:00`);
   if (!autorizacaoISO || Number.isNaN(base.getTime()) || quantidade <= 0 || quantidade > 400) return null;
-  const inicio = new Date(base.getFullYear(), base.getMonth(), base.getDate() + (contarDiaAutorizacao ? 0 : 1));
+  const passo = sentido === 'atras' ? -1 : 1;
+  const cursor = new Date(base.getFullYear(), base.getMonth(), base.getDate() + (contarDiaAutorizacao ? 0 : passo));
   const total = quantidade + (comAvaliacao ? 1 : 0);
-  const dias: DiaCalculado[] = [];
+  const achados: string[] = [];
   const pulados: DiaPulado[] = [];
-  const cursor = new Date(inicio);
   let guarda = 0;
-  while (dias.length < total && guarda < 2000) {
+  while (achados.length < total && guarda < 2000) {
     guarda++;
     const dow = cursor.getDay();
     if (dow === 0 || dow === 6) {
@@ -119,10 +122,14 @@ export function calcularDiasUteisGuia(opts: {
     } else if (ehFeriado(cursor, extras)) {
       pulados.push({ iso: iso(cursor), semana: SEMANA[dow], motivo: nomeFeriado(cursor) ?? 'feriado local' });
     } else {
-      const aval = comAvaliacao && dias.length === 0;
-      dias.push({ iso: iso(cursor), semana: SEMANA[dow], rotulo: aval ? 'avaliacao' : 'sessao', numero: aval ? 0 : dias.length + (comAvaliacao ? 0 : 1) });
+      achados.push(iso(cursor));
     }
-    cursor.setDate(cursor.getDate() + 1);
+    cursor.setDate(cursor.getDate() + passo);
   }
-  return { dias, pulados, fimISO: dias.length ? dias[dias.length - 1].iso : null };
+  if (sentido === 'atras') { achados.reverse(); pulados.reverse(); }
+  const dias: DiaCalculado[] = achados.map((d, i) => {
+    const aval = comAvaliacao && i === 0;
+    return { iso: d, semana: SEMANA[new Date(`${d}T00:00:00`).getDay()], rotulo: aval ? 'avaliacao' : 'sessao', numero: aval ? 0 : i + (comAvaliacao ? 0 : 1) };
+  });
+  return { dias, pulados, inicioISO: dias.length ? dias[0].iso : null, fimISO: dias.length ? dias[dias.length - 1].iso : null };
 }

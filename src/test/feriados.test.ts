@@ -45,6 +45,22 @@ describe('calculadora de dias úteis da guia', () => {
     expect(r.dias[0]).toMatchObject({ rotulo: 'avaliacao', numero: 0 });
     expect(r.dias.slice(1).map((d) => d.numero)).toEqual([1, 2, 3]);
   });
+  it('conta para trás, terminando na data, e entrega em ordem crescente', () => {
+    // segunda 19/10/2026 como última sessão; antes: sex 16, qui 15, qua 14
+    const r = calcularDiasUteisGuia({ autorizacaoISO: '2026-10-19', quantidade: 4, sentido: 'atras' })!;
+    expect(r.dias.map((d) => d.iso)).toEqual(['2026-10-14', '2026-10-15', '2026-10-16', '2026-10-19']);
+    expect(r.inicioISO).toBe('2026-10-14');
+    expect(r.fimISO).toBe('2026-10-19');
+    expect(r.pulados.map((p) => p.iso)).toEqual(['2026-10-17', '2026-10-18']);
+  });
+  it('para trás com data em feriado e avaliação como o dia mais antigo', () => {
+    const r = calcularDiasUteisGuia({ autorizacaoISO: '2026-10-13', quantidade: 2, sentido: 'atras', comAvaliacao: true })!;
+    // 13 (ter) útil; 12 feriado; 11 dom; 10 sáb; 09 (sex)
+    expect(r.dias.map((d) => d.iso)).toEqual(['2026-10-08', '2026-10-09', '2026-10-13']);
+    expect(r.dias[0].rotulo).toBe('avaliacao');
+    const r2 = calcularDiasUteisGuia({ autorizacaoISO: '2026-10-12', quantidade: 1, sentido: 'atras' })!;
+    expect(r2.dias[0].iso).toBe('2026-10-09');
+  });
   it('recusa data inválida e quantidade zero', () => {
     expect(calcularDiasUteisGuia({ autorizacaoISO: '', quantidade: 5 })).toBeNull();
     expect(calcularDiasUteisGuia({ autorizacaoISO: '2026-10-13', quantidade: 0 })).toBeNull();

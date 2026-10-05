@@ -4,7 +4,7 @@ import { normalizarBusca } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gerarDatasSessoes } from '@/lib/feriados';
-import CalculadoraDiasUteis from '@/components/cassi/CalculadoraDiasUteis';
+import CalculadoraDiasUteis, { CalculadoraCartao } from '@/components/cassi/CalculadoraDiasUteis';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -168,7 +168,7 @@ export default function ControleCassi() {
   const [busca, setBusca] = useState('');
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
-  const [calcOpen, setCalcOpen] = useState(false);
+  const [calcPainel, setCalcPainelAberta] = useState(false);
   const [verEncerrados, setVerEncerrados] = useState(false);
   const [filtro2mes, setFiltro2mes] = useState(false);
   // Filtro do painel de ações do "Este mês": foca em quem precisa de atenção.
@@ -456,6 +456,12 @@ export default function ControleCassi() {
     });
   }, [linhas, busca]);
 
+  const abrirCalculadora = () => {
+    setView('ativas');
+    setCalcPainelAberta(true);
+    window.setTimeout(() => document.getElementById('calculadora-dias-uteis')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  };
+
   const loading = loadingPac || loadingGuias;
 
   return (
@@ -470,7 +476,7 @@ export default function ControleCassi() {
               <ClipboardList className="h-4 w-4 text-primary" />
               <span className="text-sm font-bold">Controle CASSI</span>
             </div>
-            <Button size="icon" variant="ghost" className="ml-auto h-8 w-8 md:hidden" title="Calculadora de dias úteis" aria-label="Calculadora de dias úteis" onClick={() => setCalcOpen(true)}>
+            <Button size="icon" variant="ghost" className="ml-auto h-8 w-8 md:hidden" title="Calculadora de dias úteis" aria-label="Calculadora de dias úteis" onClick={abrirCalculadora}>
               <CalendarDays className="h-4 w-4" />
             </Button>
             <Button size="icon" variant="ghost" className="h-8 w-8 md:hidden" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
@@ -489,7 +495,7 @@ export default function ControleCassi() {
                 </button>
               ))}
             </div>
-            <Button size="icon" variant="ghost" className="hidden md:inline-flex h-8 w-8" title="Calculadora de dias úteis" aria-label="Calculadora de dias úteis" onClick={() => setCalcOpen(true)}>
+            <Button size="icon" variant="ghost" className="hidden md:inline-flex h-8 w-8" title="Calculadora de dias úteis" aria-label="Calculadora de dias úteis" onClick={abrirCalculadora}>
               <CalendarDays className="h-4 w-4" />
             </Button>
             <Button size="icon" variant="ghost" className="hidden md:inline-flex h-8 w-8" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
@@ -594,6 +600,8 @@ export default function ControleCassi() {
                 ) : null}
               </div>
             </div>
+
+            <CalculadoraCartao aberto={calcPainel} onAlternar={() => setCalcPainelAberta((v) => !v)} />
 
             {(filtro2mes || busca) ? (
               (filtro2mes ? clientes2mes : linhasFiltradas).length === 0 ? (
@@ -998,7 +1006,6 @@ export default function ControleCassi() {
       )}
 
       {configOpen && <ConfigCassiDialog onClose={() => setConfigOpen(false)} />}
-      {calcOpen && <CalculadoraDiasUteis onClose={() => setCalcOpen(false)} />}
     </div>
   );
 }
