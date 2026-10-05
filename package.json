@@ -16,6 +16,7 @@
     "build:paciente": "vite build --config vite.config.paciente.ts"
   },
   "dependencies": {
+    "@capacitor-community/bluetooth-le": "^8.3.0",
     "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
     "@hookform/resolvers": "^3.10.0",

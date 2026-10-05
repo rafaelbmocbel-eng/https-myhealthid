@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import BateriaCelula from './BateriaCelula';
-import { bluetoothDisponivel, celula, type CampoValor, type StatusCelula } from '@/lib/dinamometria/celulaBle';
+import { bluetoothDisponivel, celula, ehIosNoNavegador, type CampoValor, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import { UF, type Unidade } from '@/lib/dinamometria/analise';
 
 const CHAVE_UNIDADE = 'mh.celula.unidade';
@@ -180,7 +180,7 @@ export default function CapturaCelulaDialog({ open, onOpenChange, titulo, onConc
           <div className="rounded-lg border border-amber-300/70 bg-amber-50 dark:bg-amber-900/15 p-3 text-sm space-y-1">
             <p className="font-semibold flex items-center gap-1.5"><BluetoothOff className="h-4 w-4" /> Bluetooth indisponível aqui</p>
             <p className="text-xs text-muted-foreground">
-              Abra o My Health ID no <b>Chrome</b> (Android ou computador). No iPhone e dentro do app instalado o navegador não libera Bluetooth.
+              {ehIosNoNavegador() ? <>No iPhone, o Safari e o Chrome não têm Bluetooth. Abra o My Health ID no app <b>Bluefy</b> (grátis na App Store) ou use o app nativo.</> : <>Abra o My Health ID no <b>Chrome</b> (Android ou computador) ou no app nativo.</>}
             </p>
           </div>
         ) : !status.conectado ? (

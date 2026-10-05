@@ -12,10 +12,11 @@
 //
 // Outras células seriais: texto, uma leitura por linha (CR+LF).
 //
-// Usa Web Bluetooth: funciona no Chrome/Edge (Android e computador). Não existe
-// no Safari/iPhone nem dentro do WebView do app nativo.
+// Dois caminhos: Web Bluetooth (Chrome/Edge no Android e no computador) e o plugin nativo
+// do app (iPhone e Android, ver bleNativo.ts). O Safari do iPhone não tem Web Bluetooth.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { bluetoothNativo, rodandoNoAppNativo } from './bleNativo';
 
 const SERVICOS_SERIAIS: string[] = [
   '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic UART
@@ -42,7 +43,10 @@ const SERVICOS_SERIAIS: string[] = [
 // Bateria e similares mandam notificação mas não são a força.
 const IGNORAR_CHARS = ['00002a19-0000-1000-8000-00805f9b34fb'];
 
-export const bluetoothDisponivel = () => typeof navigator !== 'undefined' && !!(navigator as any).bluetooth;
+export const bluetoothDisponivel = () => rodandoNoAppNativo() || (typeof navigator !== 'undefined' && !!(navigator as any).bluetooth);
+
+/** iPhone/iPad fora do app nativo: o navegador não tem Bluetooth e precisa do app ou do Bluefy. */
+export const ehIosNoNavegador = () => typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent) && !rodandoNoAppNativo();
 
 export interface Leitura { valor: number; tMs: number }
 type Ouvinte = (l: Leitura) => void;
@@ -136,9 +140,11 @@ class CelulaBle {
 
   async conectar(qualquerAparelho = false) {
     if (!bluetoothDisponivel()) {
-      throw new Error('Este navegador não tem Bluetooth. Use o Chrome no Android ou no computador.');
+      throw new Error(ehIosNoNavegador()
+        ? 'O Safari e o Chrome do iPhone não têm Bluetooth. Abra o My Health ID no app Bluefy ou use o app nativo.'
+        : 'Este navegador não tem Bluetooth. Use o Chrome no Android ou no computador.');
     }
-    const bt = (navigator as any).bluetooth;
+    const bt = rodandoNoAppNativo() ? bluetoothNativo : (navigator as any).bluetooth;
     const device = await bt.requestDevice(
       qualquerAparelho
         ? { acceptAllDevices: true, optionalServices: SERVICOS_SERIAIS }

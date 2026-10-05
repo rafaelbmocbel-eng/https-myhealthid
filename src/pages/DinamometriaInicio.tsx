@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { bluetoothDisponivel, celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
+import { bluetoothDisponivel, celula, ehIosNoNavegador, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import { REGIOES } from '@/lib/dinamometria/analise';
 import BateriaCelula from '@/components/dinamometria/BateriaCelula';
 import { cn, normalizarBusca } from '@/lib/utils';
@@ -207,7 +207,7 @@ export default function DinamometriaInicio() {
         <Card className="p-4 space-y-2">
           <p className="font-semibold flex items-center gap-2"><span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">1</span> Célula de carga</p>
           {!bluetoothDisponivel() ? (
-            <p className="text-sm text-muted-foreground flex items-start gap-1.5"><BluetoothOff className="h-4 w-4 mt-0.5 shrink-0" /> Bluetooth indisponível neste navegador. Use o Chrome no Android ou no computador. Sem a célula, dá para seguir e importar o Excel.</p>
+            <p className="text-sm text-muted-foreground flex items-start gap-1.5"><BluetoothOff className="h-4 w-4 mt-0.5 shrink-0" /> {ehIosNoNavegador() ? 'No iPhone, o Safari e o Chrome não têm Bluetooth. Abra o My Health ID no app Bluefy (grátis na App Store) ou use o app nativo.' : 'Bluetooth indisponível neste navegador. Use o Chrome no Android ou no computador.'} Sem a célula, dá para seguir e importar o Excel.</p>
           ) : status.conectado ? (
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> {status.nome} conectada<BateriaCelula pct={celula.bateriaPct} volts={celula.bateriaVolts} className="ml-1" /></p>
