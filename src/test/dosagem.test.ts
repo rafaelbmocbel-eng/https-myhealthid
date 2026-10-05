@@ -557,3 +557,47 @@ describe('análise de marcha', () => {
     expect('erro' in analisarMarcha(vazio, 1000, 1000)).toBe(true);
   });
 });
+
+describe('ferramentas da análise angular', () => {
+  const P = (x: number, y: number) => ({ x, y });
+  it('ângulo entre retas é sempre agudo e não depende da ordem dos pontos', async () => {
+    const m = await import('../lib/angular/medidas');
+    expect(m.anguloEntreRetas(P(0, 0), P(10, 0), P(0, 0), P(10, 10))).toBeCloseTo(45, 6);
+    expect(m.anguloEntreRetas(P(0, 0), P(10, 0), P(10, 10), P(0, 0))).toBeCloseTo(45, 6);
+    expect(m.anguloEntreRetas(P(0, 0), P(10, 0), P(5, 5), P(15, 5))).toBeCloseTo(0, 6);
+    expect(m.anguloEntreRetas(P(0, 0), P(0, 0), P(1, 1), P(2, 2))).toBeNull();
+  });
+  it('nível: acha o giro da foto e girar o desfaz', async () => {
+    const m = await import('../lib/angular/medidas');
+    // linha que deveria ser horizontal, 3° inclinada (lado direito mais baixo)
+    const a = P(0, 0), b = m.girar(P(100, 0), 3);
+    expect(m.rotacaoDoNivel(a, b, 'horizontal')).toBeCloseTo(3, 6);
+    const corrigido = m.girar(b, -3);
+    expect(corrigido.y).toBeCloseTo(0, 6);
+    // linha que deveria ser vertical, inclinada, em qualquer sentido de marcação
+    const v = m.girar(P(0, 100), 2);
+    expect(m.rotacaoDoNivel(a, v, 'vertical')).toBeCloseTo(2, 6);
+    expect(m.rotacaoDoNivel(v, a, 'vertical')).toBeCloseTo(2, 6);
+  });
+  it('escala e régua em centímetros', async () => {
+    const m = await import('../lib/angular/medidas');
+    const cmpx = m.cmPorPixel(P(0, 0), P(200, 0), 50)!;
+    expect(cmpx).toBeCloseTo(0.25, 6);
+    const regua = m.MEDIDAS.find((x) => x.id === 'regua')!;
+    expect(regua.calcular([P(0, 0), P(0, 100)], { cmPorPx: cmpx })!.valor).toBeCloseTo(25, 6);
+    expect(regua.calcular([P(0, 0), P(0, 100)], { cmPorPx: null })).toBeNull();
+    expect(m.cmPorPixel(P(0, 0), P(0, 0), 10)).toBeNull();
+  });
+  it('reta unitária informa inclinação e sentido', async () => {
+    const m = await import('../lib/angular/medidas');
+    const reta = m.MEDIDAS.find((x) => x.id === 'reta')!;
+    const r = reta.calcular([P(0, 100), P(100, 90)])!;
+    expect(r.valor).toBeCloseTo(5.71, 1);
+    expect(r.texto).toContain('sobe para a direita');
+  });
+  it('variação em centímetros mantém a unidade', async () => {
+    const { variacaoTexto, grau } = await import('../lib/angular/comparar');
+    expect(grau(12.34, 'cm')).toBe('12,3 cm');
+    expect(variacaoTexto(-1.2, 'cm')).toBe('−1,2 cm');
+  });
+});

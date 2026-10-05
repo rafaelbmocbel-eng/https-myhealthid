@@ -20,12 +20,16 @@ export interface DadosRelatorioAngular {
   anterior?: { data: string; medidas: MedidaSalva[] } | null;
   /** Foto com as marcações já desenhadas (data URL JPEG), se o profissional quiser incluí-la. */
   imagem?: { url: string; w: number; h: number } | null;
+  /** Frase extra para o rodapé (ex.: correção de nível aplicada). */
+  notaExtra?: string;
 }
 
 const dataArquivo = (br: string) => br.split('/').reverse().join('-');
 
-/** Desenha a foto com as retas e os pontos marcados e devolve um JPEG reduzido (data URL). */
-export function fotoComMarcacoes(img: HTMLImageElement, grupos: Ponto[][], larguraMax = 1100): { url: string; w: number; h: number } | null {
+export interface GrupoDesenho { pontos: Ponto[]; segmentos: [number, number][]; cor: string; rotulo?: string }
+
+/** Desenha a foto com as retas, os pontos e os valores marcados e devolve um JPEG reduzido (data URL). */
+export function fotoComMarcacoes(img: HTMLImageElement, grupos: GrupoDesenho[], larguraMax = 1100): { url: string; w: number; h: number } | null {
   const esc = Math.min(1, larguraMax / img.naturalWidth);
   const w = Math.round(img.naturalWidth * esc), h = Math.round(img.naturalHeight * esc);
   const cv = document.createElement('canvas');
@@ -34,17 +38,27 @@ export function fotoComMarcacoes(img: HTMLImageElement, grupos: Ponto[][], largu
   if (!c) return null;
   c.drawImage(img, 0, 0, w, h);
   const raio = Math.max(w, h) / 110;
-  const cores = ['#ef4444', '#3b82f6', '#10b981'];
+  const cores = ['#ef4444', '#3b82f6', '#10b981', '#a855f7'];
+  c.lineJoin = 'round';
   for (const g of grupos) {
-    if (g.length > 1) {
-      c.strokeStyle = '#facc15'; c.lineWidth = raio / 4; c.beginPath();
-      g.forEach((p, i) => (i ? c.lineTo(p.x * esc, p.y * esc) : c.moveTo(p.x * esc, p.y * esc)));
-      c.stroke();
+    c.strokeStyle = g.cor; c.lineWidth = raio / 4;
+    for (const [i, j] of g.segmentos) {
+      const A = g.pontos[i], B = g.pontos[j];
+      if (!A || !B) continue;
+      c.beginPath(); c.moveTo(A.x * esc, A.y * esc); c.lineTo(B.x * esc, B.y * esc); c.stroke();
     }
-    g.forEach((p, i) => {
+    g.pontos.forEach((p, i) => {
       c.beginPath(); c.arc(p.x * esc, p.y * esc, raio, 0, Math.PI * 2);
       c.fillStyle = cores[i % cores.length]; c.fill(); c.lineWidth = raio / 5; c.strokeStyle = '#fff'; c.stroke();
     });
+    if (g.rotulo && g.pontos.length) {
+      const cx = (g.pontos.reduce((s, p) => s + p.x, 0) / g.pontos.length) * esc;
+      const cy = (g.pontos.reduce((s, p) => s + p.y, 0) / g.pontos.length) * esc - raio * 2;
+      c.font = `700 ${Math.round(raio * 1.7)}px Helvetica, Arial, sans-serif`;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.lineWidth = raio / 2.5; c.strokeStyle = '#000'; c.strokeText(g.rotulo, cx, cy);
+      c.fillStyle = '#fff'; c.fillText(g.rotulo, cx, cy);
+    }
   }
   return { url: cv.toDataURL('image/jpeg', 0.85), w, h };
 }
@@ -111,8 +125,8 @@ export async function gerarRelatorioAngular(d: DadosRelatorioAngular): Promise<{
     const yy = y + alturaCab + alturaLinha * i;
     if (i > 0) { doc.setDrawColor(...BORDA); doc.setLineWidth(0.15); doc.line(M + 2, yy, W - M - 2, yy); }
     const base = yy + 4.4;
-    t(l.nome, cols[0], base); t(grau(l.atual!.graus), cols[1], base);
-    if (comAnterior) { t(grau(l.anterior?.graus), cols[2], base); doc.setFont('helvetica', 'bold'); t(variacaoTexto(l.variacao), cols[3], base); doc.setFont('helvetica', 'normal'); }
+    t(l.nome, cols[0], base); t(grau(l.atual!.graus, l.atual!.unidade), cols[1], base);
+    if (comAnterior) { t(grau(l.anterior?.graus, l.atual!.unidade), cols[2], base); doc.setFont('helvetica', 'bold'); t(variacaoTexto(l.variacao, l.atual!.unidade), cols[3], base); doc.setFont('helvetica', 'normal'); }
   });
   y += altTab + 8;
 
@@ -137,7 +151,7 @@ export async function gerarRelatorioAngular(d: DadosRelatorioAngular): Promise<{
   }
 
   // Rodapé de método
-  const rodape = doc.splitTextToSize(seguro(`${d.metodo === 'automatica_conferida' ? 'Pontos sugeridos por detecção automática de pose e conferidos pelo profissional.' : 'Pontos marcados manualmente pelo profissional.'} Os ângulos usam a horizontal e a vertical da foto como referência e valem para acompanhar a evolução entre fotos feitas do mesmo jeito. Medida de acompanhamento, não é diagnóstico.`), LARG);
+  const rodape = doc.splitTextToSize(seguro(`${d.metodo === 'automatica_conferida' ? 'Pontos sugeridos por detecção automática de pose e conferidos pelo profissional.' : 'Pontos marcados manualmente pelo profissional.'} ${d.notaExtra ?? 'Os ângulos usam a horizontal e a vertical da foto como referência e valem para acompanhar a evolução entre fotos feitas do mesmo jeito.'} Medida de acompanhamento, não é diagnóstico.`), LARG);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(110);
   doc.text(rodape, M, 287 - rodape.length * 3.3);
 

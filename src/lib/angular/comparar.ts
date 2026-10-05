@@ -1,7 +1,7 @@
 import { MEDIDAS } from './medidas';
 
 /** Medida como fica gravada em `dados_extras.medidas` da nota do prontuário. */
-export interface MedidaSalva { id: string; graus: number; texto?: string }
+export interface MedidaSalva { id: string; graus: number; texto?: string; /** Sem isso, o valor é em graus (registros antigos). */ unidade?: 'cm' }
 
 export interface LinhaComparacao {
   id: string;
@@ -26,8 +26,10 @@ export function compararMedidas(atual: MedidaSalva[], anterior: MedidaSalva[]): 
   });
 }
 
-export const grau = (n: number | null | undefined) =>
-  n == null ? '—' : `${n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}°`;
+const sufixo = (u?: 'cm') => (u === 'cm' ? ' cm' : '°');
+const num = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-export const variacaoTexto = (v: number | null) =>
-  v === null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}°`;
+export const grau = (n: number | null | undefined, u?: 'cm') => (n == null ? '—' : `${num(n)}${sufixo(u)}`);
+
+export const variacaoTexto = (v: number | null, u?: 'cm') =>
+  v === null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${num(Math.abs(v))}${sufixo(u)}`;
