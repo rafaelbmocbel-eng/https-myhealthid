@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Camera, ClipboardCheck, Copy, Loader2, Ruler, Sparkles, Trash2, Undo2, X } from 'lucide-react';
+import { Camera, ClipboardCheck, Copy, FileDown, Loader2, Ruler, Sparkles, Trash2, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -12,6 +13,9 @@ import { tabela } from '@/lib/dosagem/db';
 import { MEDIDAS, medidasDaVista, type Ponto, type Vista } from '@/lib/angular/medidas';
 import { detectarPose } from '@/lib/angular/detector';
 import { pontosAutomaticos } from '@/lib/angular/pose';
+import { compararMedidas, grau, variacaoTexto, type MedidaSalva } from '@/lib/angular/comparar';
+import { fotoComMarcacoes, gerarRelatorioAngular } from '@/lib/angular/relatorio';
+import { entregarPdf } from '@/lib/pdf/entrega';
 import { usePacienteDosagem, usePacientesLista } from '@/hooks/useProntuarioSeguranca';
 
 const VISTAS: { id: Vista; nome: string }[] = [
@@ -25,9 +29,10 @@ const CORES = ['#ef4444', '#3b82f6', '#10b981'];
 // Fase 1 da análise angular: foto estática com pontos marcados pelo profissional.
 // A foto fica só no navegador (não é enviada); o que vai ao prontuário é o texto das medidas.
 export default function AnaliseAngular() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [sp, setSp] = useSearchParams();
   const pacienteId = sp.get('paciente') || '';
+  const qc = useQueryClient();
   const { data: lista = [] } = usePacientesLista(user?.id);
   const { data: paciente } = usePacienteDosagem(pacienteId || null);
 
@@ -35,6 +40,9 @@ export default function AnaliseAngular() {
   const [foto, setFoto] = useState<{ url: string; w: number; h: number; img: HTMLImageElement } | null>(null);
   const [detectando, setDetectando] = useState(false);
   const [usouIA, setUsouIA] = useState(false);
+  const [anteriorId, setAnteriorId] = useState('');
+  const [comFoto, setComFoto] = useState(true);
+  const [gerando, setGerando] = useState(false);
   const [ativa, setAtiva] = useState<string>('ombros');
   const [pontos, setPontos] = useState<Record<string, Ponto[]>>({});
   const [salvando, setSalvando] = useState(false);
@@ -54,6 +62,23 @@ export default function AnaliseAngular() {
     const r = m.calcular(p);
     return r ? [{ medida: m, ...r }] : [];
   }), [disponiveis, pontos]);
+
+  const { data: historico = [] } = useQuery({
+    queryKey: ['analise-angular-historico', pacienteId],
+    enabled: !!pacienteId,
+    queryFn: async () => {
+      const { data, error } = await tabela('notas_prontuario').select('id, created_at, dados_extras')
+        .eq('paciente_id', pacienteId).eq('tipo', 'analise_angular').order('created_at', { ascending: false }).limit(20);
+      if (error) throw error;
+      return (data ?? []) as { id: string; created_at: string; dados_extras: { vista?: Vista; medidas?: MedidaSalva[] } | null }[];
+    },
+  });
+  const anterioresDaVista = historico.filter((h) => h.dados_extras?.vista === vista && h.dados_extras.medidas?.length);
+  const anterior = anterioresDaVista.find((h) => h.id === anteriorId) ?? null;
+
+  const medidasAtuais: MedidaSalva[] = resultados.map((r) => ({ id: r.medida.id, graus: Math.round(r.valor * 10) / 10, texto: r.texto }));
+  const comparacao = anterior ? compararMedidas(medidasAtuais, anterior.dados_extras!.medidas!).filter((l) => l.atual) : [];
+  const dataBR = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
   const escolherFoto = (arquivo: File | undefined) => {
     if (!arquivo) return;
@@ -129,14 +154,38 @@ export default function AnaliseAngular() {
         tipo: 'analise_angular',
         titulo: `Análise angular — vista ${vistaNome}`,
         descricao: `${texto}\n${usouIA ? 'Pontos sugeridos por detecção automática de pose e conferidos pelo profissional' : 'Pontos marcados manualmente'} em foto, com a horizontal e a vertical da imagem como referência; a foto não é armazenada.`,
-        dados_extras: { vista, medidas: resultados.map((r) => ({ id: r.medida.id, graus: Math.round(r.valor * 10) / 10 })), metodo: usouIA ? 'automatica_conferida' : 'marcacao_manual' },
+        dados_extras: { vista, medidas: medidasAtuais, metodo: usouIA ? 'automatica_conferida' : 'marcacao_manual' },
       });
       if (error) throw error;
       toast.success(`Análise registrada no prontuário de ${paciente.nome}.`);
+      qc.invalidateQueries({ queryKey: ['analise-angular-historico', pacienteId] });
     } catch (e) {
       toast.error((e as { message?: string })?.message || 'Não foi possível registrar.');
     } finally {
       setSalvando(false);
+    }
+  };
+
+  const gerarPdf = async () => {
+    if (!foto || !resultados.length) return;
+    setGerando(true);
+    try {
+      const imagem = comFoto ? fotoComMarcacoes(foto.img, disponiveis.map((m) => pontos[m.id] ?? []).filter((g) => g.length)) : null;
+      const { blob, nome } = await gerarRelatorioAngular({
+        paciente: paciente ? `${paciente.nome} ${paciente.sobrenome ?? ''}`.trim() : 'Paciente',
+        profissional: profile ? `${profile.nome} ${profile.sobrenome || ''}`.trim() + (profile.crefito ? ` · CREFITO ${profile.crefito}` : '') : undefined,
+        data: new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+        vistaNome,
+        medidas: medidasAtuais,
+        metodo: usouIA ? 'automatica_conferida' : 'marcacao_manual',
+        anterior: anterior ? { data: dataBR(anterior.created_at), medidas: anterior.dados_extras!.medidas! } : null,
+        imagem,
+      });
+      entregarPdf({ blob, nome, pacienteId: paciente?.id ?? null, titulo: 'Análise angular' });
+    } catch {
+      toast.error('Não consegui gerar o PDF.');
+    } finally {
+      setGerando(false);
     }
   };
 
@@ -247,8 +296,41 @@ export default function AnaliseAngular() {
                 </Button>
                 <Button variant="outline" onClick={copiar} disabled={!resultados.length} className="gap-1.5"><Copy className="h-4 w-4" /> Copiar</Button>
               </div>
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <Button variant="outline" onClick={gerarPdf} disabled={!resultados.length || gerando} className="gap-1.5">
+                  {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Gerar PDF
+                </Button>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={comFoto} onChange={(e) => setComFoto(e.target.checked)} /> Incluir a foto com as marcações</label>
+              </div>
               {!paciente && resultados.length > 0 && <p className="text-[11px] text-muted-foreground">Escolha um paciente no topo para registrar.</p>}
             </div>
+
+            {paciente && (
+              <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-3">
+                <p className="text-sm font-semibold">Comparar com avaliação anterior</p>
+                {anterioresDaVista.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Ainda não há análise angular de vista {vistaNome} registrada para este paciente.</p>
+                ) : (
+                  <>
+                    <select value={anteriorId} onChange={(e) => setAnteriorId(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm" aria-label="Avaliação anterior">
+                      <option value="">Escolher uma avaliação…</option>
+                      {anterioresDaVista.map((h) => <option key={h.id} value={h.id}>{dataBR(h.created_at)}</option>)}
+                    </select>
+                    {anterior && (comparacao.length === 0 ? <p className="text-xs text-muted-foreground">Complete uma medida para comparar.</p> : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs tabular-nums">
+                          <thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2 font-medium">Medida</th><th className="px-2 font-medium">Antes</th><th className="px-2 font-medium">Agora</th><th className="pl-2 font-medium">Variação</th></tr></thead>
+                          <tbody>{comparacao.map((l) => (
+                            <tr key={l.id} className="border-t border-border/50"><td className="py-1.5 pr-2">{l.nome}</td><td className="px-2">{grau(l.anterior?.graus)}</td><td className="px-2">{grau(l.atual?.graus)}</td><td className="pl-2 font-medium">{variacaoTexto(l.variacao)}</td></tr>
+                          ))}</tbody>
+                        </table>
+                        <p className="mt-1.5 text-[11px] text-muted-foreground">Nos desníveis o número não mostra o lado; veja a leitura de cada avaliação.</p>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
 
             <p className="px-1 text-[11px] leading-snug text-muted-foreground">
               A marcação automática acha centros de articulação, não os pontos ósseos da clínica (acrômio, crista ilíaca, C7, trocânter): use como ponto de partida, confira e ajuste. O ângulo craniovertebral sempre é marcado à mão. Os ângulos usam a horizontal e a vertical da foto como referência: com a câmera torta, os desníveis saem errados. Servem para acompanhar a evolução entre fotos feitas do mesmo jeito; não definem diagnóstico.

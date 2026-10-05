@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   arredondar, avaliarDoseLaser, eswtEfdAcumulada, eswtEnergiaPorImpulsoMj, eswtTempoSessaoS, faixaComprimentoOnda,
   laserEnergiaPorPonto, laserFluencia, laserIrradiancia, laserTempoParaEnergia, potenciaMediaPulsada, taxaAquecimento,
@@ -474,5 +474,36 @@ describe('marcação automática', () => {
     const r = pontosAutomaticos(lm({ 11: [0.5, 0.3, 0.3], 23: [0.5, 0.6, 0.3], 25: [0.5, 0.75, 0.3], 27: [0.5, 0.9, 0.3], 12: [0.52, 0.3], 24: [0.52, 0.6], 26: [0.52, 0.75], 28: [0.52, 0.9] }), 'perfil', 100, 100);
     expect(r.joelho![0].x).toBeCloseTo(52, 6);
     expect(r.cva).toBeUndefined();
+  });
+});
+
+describe('comparação entre avaliações', () => {
+  it('calcula a variação só quando as duas avaliações têm a medida', async () => {
+    const { compararMedidas, variacaoTexto, grau } = await import('../lib/angular/comparar');
+    const r = compararMedidas(
+      [{ id: 'ombros', graus: 2.1 }, { id: 'pelve', graus: 1 }],
+      [{ id: 'ombros', graus: 3.4 }, { id: 'cabeca', graus: 5 }],
+    );
+    expect(r.find((l) => l.id === 'ombros')!.variacao).toBe(-1.3);
+    expect(r.find((l) => l.id === 'pelve')!.variacao).toBeNull();
+    expect(r.find((l) => l.id === 'cabeca')!.atual).toBeNull();
+    expect(variacaoTexto(-1.3)).toBe('−1,3°');
+    expect(variacaoTexto(0)).toBe('0,0°');
+    expect(grau(null)).toBe('—');
+  });
+});
+
+// Em jsdom a imagem da logo nunca carrega e travaria o teste.
+vi.mock('@/utils/pdfLogoHelper', () => ({ addLogoToDoc: async () => {} }));
+
+describe('PDF da análise angular', () => {
+  it('gera um PDF com e sem avaliação anterior', async () => {
+    const { gerarRelatorioAngular } = await import('../lib/angular/relatorio');
+    const base = { paciente: 'Maria da Conceição', data: '05/10/2026', vistaNome: 'frente', metodo: 'marcacao_manual' as const, medidas: [{ id: 'ombros', graus: 2.1, texto: 'Linha dos ombros: 2,1° com a horizontal, lado direito mais alto.' }] };
+    const a = await gerarRelatorioAngular(base);
+    const b = await gerarRelatorioAngular({ ...base, anterior: { data: '01/09/2026', medidas: [{ id: 'ombros', graus: 3.4 }] } });
+    expect(a.nome).toBe('Analise_angular_MARIA_DA_CONCEICAO_2026-10-05.pdf');
+    expect(a.blob.size).toBeGreaterThan(1000);
+    expect(b.blob.size).toBeGreaterThan(a.blob.size - 200);
   });
 });
