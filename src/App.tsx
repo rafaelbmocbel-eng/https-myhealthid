@@ -41,6 +41,7 @@ const Pacientes = lazyWithRetry(() => import("./pages/Pacientes"));
 const ControleCassi = lazyWithRetry(() => import("./pages/ControleCassi"));
 const Dinamometria = lazyWithRetry(() => import("./pages/Dinamometria"));
 const Dosagem = lazyWithRetry(() => import("./pages/Dosagem"));
+const AnaliseAngular = lazyWithRetry(() => import("./pages/AnaliseAngular"));
 const DinamometriaInicio = lazyWithRetry(() => import("./pages/DinamometriaInicio"));
 const DinamometriaTreino = lazyWithRetry(() => import("./pages/DinamometriaTreino"));
 const ReferenciasDinamometria = lazyWithRetry(() => import("./pages/ReferenciasDinamometria"));
@@ -198,6 +199,7 @@ const App = () => (
                 <Route path="/pacientes/:id/dinamometria/treino" element={<ProfessionalGuard><DinamometriaTreino /></ProfessionalGuard>} />
                 <Route path="/dinamometria" element={<ProfessionalGuard><DinamometriaInicio /></ProfessionalGuard>} />
                 <Route path="/dosagem" element={<ProfessionalGuard><Dosagem /></ProfessionalGuard>} />
+                <Route path="/analise-angular" element={<ProfessionalGuard><AnaliseAngular /></ProfessionalGuard>} />
                 <Route path="/protocolos" element={<Navigate to="/pacientes" replace />} />
 
                 <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />

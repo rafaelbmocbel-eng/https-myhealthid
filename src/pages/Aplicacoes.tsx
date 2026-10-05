@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutGrid, Dumbbell, Search, Loader2, ChevronRight, ArrowLeft, UserPlus, Zap } from 'lucide-react';
+import { LayoutGrid, Dumbbell, Search, Loader2, ChevronRight, ArrowLeft, UserPlus, Zap, Ruler } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -44,6 +44,15 @@ const APLICACOES: Aplicacao[] = [
     icone: Zap,
     rota: id => `/dosagem?paciente=${id}`,
     rotaDireta: '/dosagem',
+  },
+  {
+    id: 'analise-angular',
+    nome: 'Análise angular',
+    descricao: 'Meça ângulos e desníveis do corpo em uma foto: ombros, pelve, cabeça, tronco, joelho e ângulo craniovertebral.',
+    detalhes: ['Fotos de frente, perfil e costas, com os pontos marcados na própria foto', 'O lado mais alto sai pelo lado do paciente, em qualquer vista', 'Registro no prontuário; a foto fica só no seu aparelho'],
+    icone: Ruler,
+    rota: id => `/analise-angular?paciente=${id}`,
+    rotaDireta: '/analise-angular',
   },
 ];
 

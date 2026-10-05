@@ -415,3 +415,35 @@ describe('busca de ficha técnica (validação do que a IA devolve)', () => {
     expect(p).toMatch(/Ibramed/);
   });
 });
+
+describe('análise angular', () => {
+  const P = (x: number, y: number) => ({ x, y });
+  it('ângulo interno em três pontos', async () => {
+    const m = await import('../lib/angular/medidas');
+    expect(m.anguloEm(P(0, 1), P(0, 0), P(1, 0))).toBeCloseTo(90, 6);
+    expect(m.anguloEm(P(-1, 0), P(0, 0), P(1, 0))).toBeCloseTo(180, 6);
+    expect(m.anguloEm(P(0, 0), P(0, 0), P(1, 0))).toBeNull();
+  });
+  it('retas em relação à horizontal e à vertical', async () => {
+    const m = await import('../lib/angular/medidas');
+    expect(m.anguloComHorizontal(P(0, 0), P(10, 10))).toBeCloseTo(45, 6);
+    expect(m.anguloComHorizontal(P(10, 0), P(0, 10))).toBeCloseTo(45, 6);
+    expect(m.desvioDaVertical(P(0, 0), P(0, 50))).toBeCloseTo(0, 6);
+    expect(m.desvioDaVertical(P(0, 0), P(50, 50))).toBeCloseTo(45, 6);
+  });
+  it('o lado mais alto é o do paciente, em qualquer vista', async () => {
+    const m = await import('../lib/angular/medidas');
+    const ombros = m.MEDIDAS.find((x) => x.id === 'ombros')!;
+    // y menor = mais alto na imagem; o direito do paciente está mais alto
+    expect(ombros.calcular([P(10, 90), P(100, 100)])!.texto).toContain('lado direito mais alto');
+    expect(ombros.calcular([P(10, 100), P(100, 90)])!.texto).toContain('lado esquerdo mais alto');
+    expect(ombros.calcular([P(10, 100), P(100, 100)])!.valor).toBe(0);
+  });
+  it('toda medida declara pontos e retorna null com pontos coincidentes', async () => {
+    const m = await import('../lib/angular/medidas');
+    for (const med of m.MEDIDAS) {
+      expect(med.pontos.length).toBeGreaterThanOrEqual(2);
+      expect(med.calcular(med.pontos.map(() => P(5, 5)))).toBeNull();
+    }
+  });
+});
