@@ -33,7 +33,7 @@ const articulares: Medida[] = LADOS.flatMap(({ s, nome }): Medida[] => [
   },
 ]);
 
-const reaproveitadas = ['tronco-perfil', 'reta', 'livre', 'regua', 'nivel', 'escala']
+const reaproveitadas = ['tronco-perfil', 'cva', 'reta', 'livre', 'cobb', 'regua', 'nivel', 'escala']
   .map((id) => MEDIDAS.find((m) => m.id === id)!)
   .map((m) => ({ ...m, vistas: ['perfil' as const] }));
 

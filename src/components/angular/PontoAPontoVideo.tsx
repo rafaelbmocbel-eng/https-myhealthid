@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ClipboardCheck, Copy, FileDown, Film, Loader2, Pause, Play, Plus, Sparkles, Trash2, Undo2 } from 'lucide-react';
+import { Activity, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ClipboardCheck, Copy, FileDown, Film, Hand, Loader2, Maximize2, MousePointer2, Pause, Play, Plus, Ruler, Sparkles, Trash2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,16 @@ import { tabela } from '@/lib/dosagem/db';
 import { cmPorPixel, girar, rotacaoDoNivel, segmentosDaMedida, type Medida, type Ponto } from '@/lib/angular/medidas';
 import { MEDIDAS_VIDEO, sugerirNoQuadro } from '@/lib/angular/medidasVideo';
 import { detectarPose, detectarVideo } from '@/lib/angular/detector';
+import LupaFoto from '@/components/angular/LupaFoto';
+import { COR_REFERENCIA as COR_REF, ICONE_MEDIDA, LADO_MEDIDA } from '@/components/angular/iconesMedida';
+import { useGestosFoto } from '@/hooks/useGestosFoto';
 import type { Frame } from '@/lib/angular/marcha';
 import { fotoComMarcacoes, type GrupoDesenho } from '@/lib/angular/relatorio';
 import { gerarRelatorioVideo } from '@/lib/angular/relatorioVideo';
 import { entregarPdf } from '@/lib/pdf/entrega';
 
 const CORES = ['#ef4444', '#3b82f6', '#10b981', '#a855f7'];
-const COR_REF: Record<string, string> = { nivel: '#22d3ee', escala: '#fb923c' };
+const ZOOM_MAX = 5;
 const FPS_OPCOES = [24, 30, 60, 120, 240];
 const MAX_ANALISE_S = 30;
 const FPS_ANALISE_MAX = 60;
@@ -76,7 +79,9 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
   const { user, profile } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const arrastando = useRef<{ medida: string; indice: number } | null>(null);
+  const caixaRef = useRef<HTMLDivElement>(null);
+  const rolagemRef = useRef<HTMLDivElement>(null);
+  const lupaFonte = useRef<{ t: number; url: string } | null>(null);
   const [arquivo, setArquivo] = useState<{ url: string; w: number; h: number; dur: number } | null>(null);
   const [fps, setFps] = useState(30);
   const [t, setT] = useState(0);
@@ -96,6 +101,9 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
   const [nQuadros, setNQuadros] = useState(0);
   const [progresso, setProgresso] = useState<number | null>(null);
   const [esqueleto, setEsqueleto] = useState(true);
+  const [mostrarAngulos, setMostrarAngulos] = useState(true);
+  const [zoom, setZoom] = useState(1);
+  const [mover, setMover] = useState(false);
 
   useEffect(() => () => { if (arquivo) URL.revokeObjectURL(arquivo.url); }, [arquivo]);
 
@@ -202,17 +210,24 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
     else setPontos((s) => ({ ...s, [m.id]: fn(s[m.id] ?? []) }));
   };
 
-  const marcar = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (tocando || arrastando.current || !proximo) return;
-    const p = doEvento(e);
-    if (p) definirPontos(medida, (a) => [...a, p]);
-  };
-  const arrastar = (e: React.PointerEvent<SVGSVGElement>) => {
-    const alvo = arrastando.current;
-    const p = alvo && doEvento(e);
-    if (!alvo || !p) return;
-    const m = MEDIDAS_VIDEO.find((x) => x.id === alvo.medida);
-    if (m) definirPontos(m, (a) => a.map((q, i) => (i === alvo.indice ? p : q)));
+  const gestos = useGestosFoto({
+    svgRef, rolagemRef, caixaRef, zoom, setZoom, zoomMax: ZOOM_MAX, mover, noPonto: doEvento, podeMarcar: !!proximo && !tocando,
+    aoMarcar: (p) => definirPontos(medida, (a) => [...a, p]),
+    aoArrastar: (id, indice, p) => { const m = MEDIDAS_VIDEO.find((x) => x.id === id); if (m) definirPontos(m, (a) => a.map((q, i) => (i === indice ? p : q))); },
+    aoIniciarArrasto: (id) => setAtiva(id),
+  });
+
+  // A lupa mostra o quadro parado: copia o quadro atual do vídeo para uma imagem, uma vez por instante.
+  const quadroParaLupa = (): string => {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return '';
+    if (lupaFonte.current?.t === t) return lupaFonte.current.url;
+    const cv = document.createElement('canvas');
+    cv.width = v.videoWidth; cv.height = v.videoHeight;
+    cv.getContext('2d')?.drawImage(v, 0, 0);
+    const url = cv.toDataURL('image/jpeg', 0.85);
+    lupaFonte.current = { t, url };
+    return url;
   };
 
   const sugerir = async () => {
@@ -328,7 +343,7 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
     }
   };
 
-  const raio = arquivo ? Math.max(arquivo.w, arquivo.h) / 85 : 8;
+  const raio = arquivo ? Math.max(arquivo.w, arquivo.h) / 85 / Math.sqrt(zoom) : 8;
   const daqui = capturas.filter((c) => Math.abs(c.t - t) < 0.5 / fps + 1e-6);
   const semEscala = medida.id === 'regua' && !cmPorPx;
 
@@ -340,7 +355,7 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
           <line key={`${i}-${j}`} x1={p[i].x} y1={p[i].y} x2={p[j].x} y2={p[j].y} stroke={cor} strokeWidth={raio / 4} strokeLinecap="round" />
         ))}
         {p.map((q, i) => (
-          <g key={i} style={{ cursor: 'move' }} onPointerDown={(e) => { if (tocando) return; e.stopPropagation(); (e.currentTarget.ownerSVGElement as SVGSVGElement).setPointerCapture(e.pointerId); arrastando.current = { medida: m.id, indice: i }; setAtiva(m.id); }}>
+          <g key={i} style={{ cursor: 'move' }} onPointerDown={(e) => { if (!tocando) gestos.aoPressionarPonto(e, m.id, i); }}>
             <circle cx={q.x} cy={q.y} r={raio} fill={CORES[i % CORES.length]} stroke="#fff" strokeWidth={raio / 5} />
             <text x={q.x} y={q.y} textAnchor="middle" dominantBaseline="central" fontSize={raio * 1.1} fill="#fff" fontWeight="700" pointerEvents="none">{i + 1}</text>
           </g>
@@ -365,11 +380,13 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
           </label>
         ) : (
           <div className="space-y-2">
-            <div className="overflow-hidden rounded-2xl border border-border/60 bg-black">
-              <div className="relative mx-auto" style={{ width: `min(100%, calc(70dvh * ${(arquivo.w / arquivo.h).toFixed(4)}))` }}>
-                <video ref={videoRef} src={arquivo.url} muted playsInline preload="auto" className="block w-full" />
-                <svg ref={svgRef} viewBox={`0 0 ${arquivo.w} ${arquivo.h}`} className="absolute inset-0 h-full w-full touch-none select-none" style={{ cursor: proximo && !tocando ? 'crosshair' : 'default' }}
-                  onPointerDown={marcar} onPointerMove={arrastar} onPointerUp={() => { arrastando.current = null; }} onPointerCancel={() => { arrastando.current = null; }}>
+            <div className="flex items-start gap-2">
+              <div ref={caixaRef} className="relative min-w-0 flex-1">
+                <div ref={rolagemRef} className="max-h-[70dvh] overflow-auto rounded-2xl border border-border/60 bg-black">
+                  <div className="relative mx-auto" style={{ width: `min(${zoom * 100}%, calc(70dvh * ${(arquivo.w / arquivo.h).toFixed(4)} * ${zoom}))` }}>
+                    <video ref={videoRef} src={arquivo.url} muted playsInline preload="auto" className="block w-full" />
+                    <svg ref={svgRef} viewBox={`0 0 ${arquivo.w} ${arquivo.h}`} className={cn('absolute inset-0 h-full w-full select-none [-webkit-touch-callout:none]', !mover && 'touch-none')} style={{ cursor: mover ? 'grab' : proximo && !tocando ? 'crosshair' : 'default' }}
+                      onContextMenu={(e) => e.preventDefault()} {...gestos.handlers}>
                   {esqueleto && !tocando && quadroAuto?.lm && (
                     <g pointerEvents="none">
                       {LIGACOES.map(([a, b]) => {
@@ -383,8 +400,35 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
                   {Object.entries(refs).map(([id, p]) => { const m = MEDIDAS_VIDEO.find((x) => x.id === id); return m && p.length ? desenharMedida(m, p, m.id === medida.id) : null; })}
                   {!tocando && daqui.map((c) => desenharMedida(c.medida, c.pontos, false, c))}
                   {!tocando && !ehRef && (pontos[medida.id]?.length ?? 0) > 0 && desenharMedida(medida, pontos[medida.id]!, true, resultadoAtual ?? undefined)}
-                </svg>
+                    </svg>
+                  </div>
+                </div>
+                {gestos.lupa && (
+                  <LupaFoto lupa={gestos.lupa} href={quadroParaLupa()} w={arquivo.w} h={arquivo.h} svgRef={svgRef} caixaRef={caixaRef}
+                    pontos={ptsAtiva} segmentos={segmentosDaMedida(medida)} comNovo={gestos.novoAtivo} />
+                )}
               </div>
+
+              <nav aria-label="Ferramentas de medida" className="flex max-h-[70dvh] w-12 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border/60 bg-card p-1">
+                {([['postura', MEDIDAS_VIDEO.filter((m) => !m.auxiliar)], ['referencia', MEDIDAS_VIDEO.filter((m) => m.auxiliar)]] as const).map(([g, itens], gi) => (
+                  <div key={g} className="flex flex-col gap-1">
+                    {gi > 0 && <span className="mx-1 h-px bg-border" aria-hidden />}
+                    {itens.map((m) => {
+                      const Icone = ICONE_MEDIDA[m.id] ?? Ruler;
+                      const feita = ((m.auxiliar ? refs[m.id] : pontos[m.id])?.length ?? 0) >= m.pontos.length;
+                      const ativa = m.id === medida.id;
+                      return (
+                        <button key={m.id} type="button" onClick={() => setAtiva(m.id)} aria-pressed={ativa} aria-label={m.nome} title={m.nome}
+                          className={cn('relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors', ativa ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+                          <Icone className="h-5 w-5" style={!ativa && COR_REF[m.id] ? { color: COR_REF[m.id] } : undefined} />
+                          {LADO_MEDIDA[m.id] && <span className="absolute bottom-0.5 right-0.5 text-[9px] font-bold leading-none">{LADO_MEDIDA[m.id]}</span>}
+                          {feita && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card" aria-hidden />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </nav>
             </div>
 
             <video ref={analiseRef} src={arquivo.url} muted playsInline preload="auto" aria-hidden className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px opacity-0" />
@@ -394,7 +438,6 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
               ) : nQuadros > 0 ? (
                 <span className="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-400"><Sparkles className="h-3.5 w-3.5" /> Articulações detectadas em {quadrosRef.current.filter((q) => q?.lm).length} de {nQuadros} quadros</span>
               ) : <span className="text-muted-foreground">Detecção automática indisponível: marque os pontos à mão.</span>}
-              <label className="flex items-center gap-1.5 text-muted-foreground"><input type="checkbox" checked={esqueleto} onChange={(e) => setEsqueleto(e.target.checked)} /> Mostrar esqueleto</label>
             </div>
             <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-2">
               <input type="range" min={0} max={Math.max(1, Math.floor(arquivo.dur * fps))} value={quadro} onChange={(e) => irPara(Number(e.target.value) / fps)} className="w-full" aria-label="Quadro do vídeo" />
@@ -420,26 +463,50 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground" role="status">
-                {tocando ? 'Pause o vídeo no quadro que quer medir.' : proximo ? <>Toque em: <strong className="text-foreground">{ptsAtiva.length + 1}. {proximo}</strong></> : ehRef ? 'Referência completa. Arraste um ponto para ajustar.' : 'Medida completa. Guarde a medida deste quadro ou ajuste os pontos.'}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {!ehRef && <Button size="sm" className="gap-1.5" onClick={sugerir} disabled={sugerindo || tocando}>{sugerindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Sugerir pontos</Button>}
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => definirPontos(medida, (a) => a.slice(0, -1))} disabled={!ptsAtiva.length}><Undo2 className="h-3.5 w-3.5" /> Desfazer</Button>
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => definirPontos(medida, () => [])} disabled={!ptsAtiva.length}><Trash2 className="h-3.5 w-3.5" /> Limpar</Button>
-                <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
-                  <Film className="h-3.5 w-3.5" /> Trocar vídeo
-                  <input type="file" accept="video/*" className="sr-only" onChange={(e) => escolher(e.target.files?.[0])} />
-                </label>
-              </div>
+            <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-border/60 bg-card p-1" role="toolbar" aria-label="Ações do vídeo">
+              {!ehRef && (
+                <>
+                  <Button size="sm" className="h-9 gap-1.5" onClick={sugerir} disabled={sugerindo || tocando} title="Sugerir os pontos da medida neste quadro">
+                    {sugerindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} <span className="hidden sm:inline">Sugerir</span>
+                  </Button>
+                  <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
+                </>
+              )}
+              <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Desfazer o último ponto" title="Desfazer" onClick={() => definirPontos(medida, (a) => a.slice(0, -1))} disabled={!ptsAtiva.length}><Undo2 className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Limpar a medida" title="Limpar a medida" onClick={() => definirPontos(medida, () => [])} disabled={!ptsAtiva.length}><Trash2 className="h-4 w-4" /></Button>
+              <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
+              <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Diminuir zoom" title="Diminuir zoom" onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} disabled={zoom <= 1}><ZoomOut className="h-4 w-4" /></Button>
+              <span className="min-w-[2.6rem] text-center text-xs font-semibold tabular-nums">{Math.round(zoom * 100)}%</span>
+              <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Aumentar zoom" title="Aumentar zoom" onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + 0.5).toFixed(1)))} disabled={zoom >= ZOOM_MAX}><ZoomIn className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Ajustar à tela" title="Ajustar à tela" onClick={() => { setZoom(1); setMover(false); }}><Maximize2 className="h-4 w-4" /></Button>
+              <Button size="icon" variant={mover ? 'default' : 'ghost'} className="h-9 w-9" aria-pressed={mover} aria-label={mover ? 'Voltar a marcar' : 'Mover o vídeo com um dedo'} title={mover ? 'Voltar a marcar' : 'Mover o vídeo com um dedo'} onClick={() => setMover((m) => !m)} disabled={zoom <= 1}>
+                {mover ? <Hand className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
+              </Button>
+              <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
+              <Button size="icon" variant={esqueleto ? 'default' : 'ghost'} className="h-9 w-9" aria-pressed={esqueleto} aria-label="Mostrar o esqueleto" title="Mostrar o esqueleto" onClick={() => setEsqueleto((v) => !v)}><Activity className="h-4 w-4" /></Button>
+              <Button size="sm" variant={mostrarAngulos ? 'default' : 'ghost'} className="h-9 px-2.5 text-xs font-bold" aria-pressed={mostrarAngulos} aria-label="Mostrar os ângulos sobre o vídeo" title="Mostrar os ângulos sobre o vídeo" onClick={() => setMostrarAngulos((v) => !v)}>°</Button>
+              <label className="ml-auto inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md hover:bg-accent" title="Trocar o vídeo" aria-label="Trocar o vídeo">
+                <Film className="h-4 w-4" />
+                <input type="file" accept="video/*" className="sr-only" onChange={(e) => escolher(e.target.files?.[0])} />
+              </label>
             </div>
+
+            <p className="text-xs text-muted-foreground" role="status">
+              <strong className="text-foreground">{medida.nome}.</strong>{' '}
+              {tocando ? 'Pause o vídeo no quadro que quer medir.' : mover ? 'Modo mover: arraste o vídeo com um dedo.'
+                : proximo ? <>Toque e segure para ver a lupa; solte para marcar <strong className="text-foreground">{ptsAtiva.length + 1}. {proximo}</strong>.</>
+                  : ehRef ? 'Referência completa. Arraste um ponto para ajustar.' : 'Medida completa. Guarde a medida deste quadro ou ajuste os pontos.'}
+              {' '}Dois dedos: zoom e mover.
+            </p>
           </div>
         )}
       </div>
 
       <aside className="space-y-3 lg:sticky lg:top-4">
         <div className="space-y-1.5 rounded-2xl border border-border/60 bg-card p-3">
+          <details className="rounded-xl border border-border/60 p-2.5">
+            <summary className="cursor-pointer text-sm font-semibold">Todas as medidas</summary>
+            <div className="mt-2 space-y-1.5">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Medir neste quadro</p>
           {MEDIDAS_VIDEO.filter((m) => !m.auxiliar).map((m) => {
             const n = pontos[m.id]?.length ?? 0;
@@ -462,6 +529,9 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
               </button>
             );
           })}
+            </div>
+          </details>
+          <p className="px-0.5 text-xs text-muted-foreground"><strong className="text-foreground">Ferramenta ativa:</strong> {medida.nome}</p>
           {medida.id === 'nivel' && (
             <div className="space-y-2 rounded-xl bg-muted/40 p-2.5 text-xs">
               <p className="text-muted-foreground">Marque 2 pontos sobre algo reto na vida real (chão, rodapé, fio de prumo) para corrigir o giro da imagem.</p>

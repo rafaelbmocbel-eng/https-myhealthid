@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Bone, Camera, ClipboardCheck, Compass, Copy, FileDown, Film, Gauge, GitCommitHorizontal, Grid3x3, Hand, Loader2, Maximize2, MousePointer2, MoveDiagonal, MoveHorizontal, PersonStanding, Ruler, Scaling, Scan, Slash, Smartphone, Sparkles, Spline, Triangle, Trash2, Undo2, X, ZoomIn, ZoomOut, type LucideIcon } from 'lucide-react';
+import { Camera, ClipboardCheck, Copy, FileDown, Film, Grid3x3, Hand, Loader2, Maximize2, MousePointer2, Ruler, Smartphone, Sparkles, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -11,6 +11,9 @@ import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import MarchaVideo from '@/components/angular/MarchaVideo';
 import PontoAPontoVideo from '@/components/angular/PontoAPontoVideo';
 import CameraNivel from '@/components/angular/CameraNivel';
+import LupaFoto from '@/components/angular/LupaFoto';
+import { COR_REFERENCIA, ICONE_MEDIDA, LADO_MEDIDA } from '@/components/angular/iconesMedida';
+import { useGestosFoto } from '@/hooks/useGestosFoto';
 import { parseNum } from '@/components/dosagem/comuns';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -37,20 +40,7 @@ const GRUPOS: { id: GrupoMedida; titulo: string }[] = [
 ];
 
 const CORES = ['#ef4444', '#3b82f6', '#10b981', '#a855f7'];
-const COR_REFERENCIA: Record<string, string> = { nivel: '#22d3ee', escala: '#fb923c' };
 const ZOOM_MAX = 5;
-const TAMANHO_LUPA = 120;
-const AUMENTO_LUPA = 3;
-const limitar = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
-
-// Ícone de cada ferramenta na barra ao lado da foto; o nome aparece ao segurar o dedo e na linha de instrução.
-const ICONE_MEDIDA: Record<string, LucideIcon> = {
-  ombros: MoveHorizontal, pelve: GitCommitHorizontal, cabeca: Scan, tronco: PersonStanding, cva: Compass, 'tronco-perfil': Slash,
-  'joelho-d': Bone, 'joelho-e': Bone, joelho: Bone, livre: Triangle, reta: MoveDiagonal, cobb: Spline, regua: Ruler, nivel: Gauge, escala: Scaling,
-};
-const LADO_MEDIDA: Record<string, string> = { 'joelho-d': 'D', 'joelho-e': 'E' };
-
-
 const nf = (n: number, d = 1) => n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
 const rotuloValor = (v: number, un?: 'cm') => `${nf(v)}${un === 'cm' ? ' cm' : '°'}`;
 
@@ -87,14 +77,8 @@ export default function AnaliseAngular() {
   const svgRef = useRef<SVGSVGElement>(null);
   const vistaRef = useRef<Vista>('frente');
   vistaRef.current = vista;
-  const arrastando = useRef<{ medida: string; indice: number } | null>(null);
   const caixaRef = useRef<HTMLDivElement>(null);
   const rolagemRef = useRef<HTMLDivElement>(null);
-  const ponteiros = useRef(new Map<number, { x: number; y: number }>());
-  const gesto = useRef<{ dist: number; zoom: number; fx: number; fy: number } | null>(null);
-  const ancora = useRef<{ fx: number; fy: number; ox: number; oy: number } | null>(null);
-  const novoPonto = useRef<number | null>(null);
-  const [lupa, setLupa] = useState<{ ponto: Ponto; cx: number; cy: number } | null>(null);
 
   useEffect(() => () => { if (foto) URL.revokeObjectURL(foto.url); }, [foto]);
 
@@ -164,97 +148,12 @@ export default function AnaliseAngular() {
   };
 
   // Um dedo marca e arrasta pontos (com a lupa); dois dedos fazem zoom e movem a foto.
-  const mostrarLupa = (e: { clientX: number; clientY: number }, ponto: Ponto) => {
-    const r = caixaRef.current?.getBoundingClientRect();
-    if (r) setLupa({ ponto, cx: e.clientX - r.left, cy: e.clientY - r.top });
-  };
-
-  const aplicarAncora = () => {
-    const c = rolagemRef.current, a = ancora.current;
-    if (!c || !a) return;
-    c.scrollLeft = a.fx * c.scrollWidth - a.ox;
-    c.scrollTop = a.fy * c.scrollHeight - a.oy;
-  };
-  useLayoutEffect(() => { aplicarAncora(); }, [zoom]);
-
-  const dedos = () => [...ponteiros.current.values()];
-
-  const iniciarGesto = () => {
-    novoPonto.current = null; arrastando.current = null; setLupa(null);
-    const c = rolagemRef.current;
-    const [a, b] = dedos();
-    if (!c || !a || !b) return;
-    const r = c.getBoundingClientRect();
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    gesto.current = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, zoom, fx: (c.scrollLeft + mx - r.left) / c.scrollWidth, fy: (c.scrollTop + my - r.top) / c.scrollHeight };
-  };
-
-  const atualizarGesto = () => {
-    const g = gesto.current, c = rolagemRef.current;
-    const [a, b] = dedos();
-    if (!g || !c || !a || !b) return;
-    const r = c.getBoundingClientRect();
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    const novo = limitar(g.zoom * (Math.hypot(a.x - b.x, a.y - b.y) / g.dist), 1, ZOOM_MAX);
-    ancora.current = { fx: g.fx, fy: g.fy, ox: mx - r.left, oy: my - r.top };
-    if (Math.abs(novo - zoom) < 0.01) aplicarAncora(); else setZoom(novo);
-  };
-
-  const anotarDedo = (e: React.PointerEvent) => { ponteiros.current.set(e.pointerId, { x: e.clientX, y: e.clientY }); };
-
-  const aoPressionar = (e: React.PointerEvent<SVGSVGElement>) => {
-    anotarDedo(e);
-    if (ponteiros.current.size === 2) { iniciarGesto(); return; }
-    if (ponteiros.current.size > 2 || mover || arrastando.current || !proximo) return;
-    const p = doEvento(e);
-    if (!p) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    novoPonto.current = e.pointerId;
-    mostrarLupa(e, p);
-  };
-
-  const aoPressionarPonto = (e: React.PointerEvent, medida: string, indice: number) => {
-    if (mover) return;
-    e.stopPropagation();
-    anotarDedo(e);
-    if (ponteiros.current.size > 1) { iniciarGesto(); return; }
-    svgRef.current?.setPointerCapture(e.pointerId);
-    arrastando.current = { medida, indice };
-    setAtiva(medida);
-    const p = doEvento(e);
-    if (p) mostrarLupa(e, p);
-  };
-
-  const aoMover = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (ponteiros.current.has(e.pointerId)) ponteiros.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (ponteiros.current.size >= 2) { atualizarGesto(); return; }
-    const p = doEvento(e);
-    if (!p) return;
-    const alvo = arrastando.current;
-    if (alvo) {
-      setPontos((s) => ({ ...s, [alvo.medida]: (s[alvo.medida] ?? []).map((q, i) => (i === alvo.indice ? p : q)) }));
-      mostrarLupa(e, p);
-    } else if (novoPonto.current === e.pointerId) {
-      mostrarLupa(e, p);
-    }
-  };
-
-  const aoSoltar = (e: React.PointerEvent<SVGSVGElement>) => {
-    const eraGesto = ponteiros.current.size >= 2;
-    ponteiros.current.delete(e.pointerId);
-    if (eraGesto) { gesto.current = null; ancora.current = null; novoPonto.current = null; arrastando.current = null; setLupa(null); return; }
-    if (novoPonto.current === e.pointerId && proximo) {
-      const p = doEvento(e);
-      if (p) setPontos((s) => ({ ...s, [medidaAtiva.id]: [...(s[medidaAtiva.id] ?? []), p] }));
-    }
-    novoPonto.current = null; arrastando.current = null; setLupa(null);
-  };
-
-  const aoCancelar = (e: React.PointerEvent<SVGSVGElement>) => {
-    ponteiros.current.delete(e.pointerId);
-    novoPonto.current = null; arrastando.current = null; setLupa(null);
-    if (ponteiros.current.size < 2) { gesto.current = null; ancora.current = null; }
-  };
+  const gestos = useGestosFoto({
+    svgRef, rolagemRef, caixaRef, zoom, setZoom, zoomMax: ZOOM_MAX, mover, noPonto: doEvento, podeMarcar: !!proximo,
+    aoMarcar: (p) => setPontos((s) => ({ ...s, [medidaAtiva.id]: [...(s[medidaAtiva.id] ?? []), p] })),
+    aoArrastar: (medida, indice, p) => setPontos((s) => ({ ...s, [medida]: (s[medida] ?? []).map((q, i) => (i === indice ? p : q)) })),
+    aoIniciarArrasto: (medida) => setAtiva(medida),
+  });
 
   const desfazer = () => setPontos((s) => ({ ...s, [medidaAtiva.id]: (s[medidaAtiva.id] ?? []).slice(0, -1) }));
   const limpar = () => setPontos((s) => ({ ...s, [medidaAtiva.id]: [] }));
@@ -414,7 +313,7 @@ export default function AnaliseAngular() {
                         <svg ref={svgRef} viewBox={`0 0 ${foto.w} ${foto.h}`} className={cn('mx-auto block select-none [-webkit-touch-callout:none]', !mover && 'touch-none')}
                           style={{ width: `min(${zoom * 100}%, calc(75dvh * ${proporcao.toFixed(4)} * ${zoom}))`, cursor: mover ? 'grab' : proximo ? 'crosshair' : 'default' }}
                           onContextMenu={(e) => e.preventDefault()}
-                          onPointerDown={aoPressionar} onPointerMove={aoMover} onPointerUp={aoSoltar} onPointerCancel={aoCancelar}>
+                          {...gestos.handlers}>
                           <image href={foto.url} width={foto.w} height={foto.h} />
                       {grade && (
                         <g transform={giro ? `rotate(${giro} ${foto.w / 2} ${foto.h / 2})` : undefined} stroke="#06b6d4" strokeOpacity={0.6} strokeWidth={base / 12} strokeDasharray={`${base / 2} ${base / 2}`} pointerEvents="none">
@@ -437,7 +336,7 @@ export default function AnaliseAngular() {
                               <line key={`${i}-${j}`} x1={p[i].x} y1={p[i].y} x2={p[j].x} y2={p[j].y} stroke={cor} strokeWidth={raio / 4} strokeLinecap="round" />
                             ))}
                             {p.map((q, i) => (
-                              <g key={i} onPointerDown={(e) => aoPressionarPonto(e, m.id, i)} style={{ cursor: mover ? 'grab' : 'move' }}>
+                              <g key={i} onPointerDown={(e) => gestos.aoPressionarPonto(e, m.id, i)} style={{ cursor: mover ? 'grab' : 'move' }}>
                                 <circle cx={q.x} cy={q.y} r={raio} fill={CORES[i % CORES.length]} stroke="#fff" strokeWidth={raio / 5} />
                                 <text x={q.x} y={q.y} textAnchor="middle" dominantBaseline="central" fontSize={raio * 1.1} fill="#fff" fontWeight="700" pointerEvents="none">{i + 1}</text>
                               </g>
@@ -452,28 +351,10 @@ export default function AnaliseAngular() {
                         </svg>
                       </div>
 
-                      {lupa && (() => {
-                        const escala = (svgRef.current?.getBoundingClientRect().width ?? foto.w) / foto.w;
-                        const lado = TAMANHO_LUPA / (AUMENTO_LUPA * escala);
-                        const larguraCaixa = caixaRef.current?.clientWidth ?? TAMANHO_LUPA;
-                        const esquerda = limitar(lupa.cx - TAMANHO_LUPA / 2, 4, Math.max(4, larguraCaixa - TAMANHO_LUPA - 4));
-                        const topo = lupa.cy - TAMANHO_LUPA - 32 < 4 ? lupa.cy + 32 : lupa.cy - TAMANHO_LUPA - 32;
-                        const un = 1 / (AUMENTO_LUPA * escala);
-                        const pts = [...(ptsAtiva.length ? ptsAtiva : []), ...(novoPonto.current !== null ? [lupa.ponto] : [])];
-                        return (
-                          <div className="pointer-events-none absolute z-20 overflow-hidden rounded-full border-2 border-white bg-black shadow-xl" style={{ width: TAMANHO_LUPA, height: TAMANHO_LUPA, left: esquerda, top: topo }} aria-hidden>
-                            <svg viewBox={`${lupa.ponto.x - lado / 2} ${lupa.ponto.y - lado / 2} ${lado} ${lado}`} width={TAMANHO_LUPA} height={TAMANHO_LUPA}>
-                              <image href={foto.url} width={foto.w} height={foto.h} />
-                              {segmentosDaMedida(medidaAtiva).filter(([i, j]) => i < pts.length && j < pts.length).map(([i, j]) => (
-                                <line key={`${i}-${j}`} x1={pts[i].x} y1={pts[i].y} x2={pts[j].x} y2={pts[j].y} stroke="#facc15" strokeWidth={2 * un} />
-                              ))}
-                              {pts.map((q, i) => <circle key={i} cx={q.x} cy={q.y} r={4 * un} fill={CORES[i % CORES.length]} stroke="#fff" strokeWidth={1 * un} />)}
-                              <line x1={lupa.ponto.x - 14 * un} x2={lupa.ponto.x + 14 * un} y1={lupa.ponto.y} y2={lupa.ponto.y} stroke="#fff" strokeWidth={1 * un} />
-                              <line y1={lupa.ponto.y - 14 * un} y2={lupa.ponto.y + 14 * un} x1={lupa.ponto.x} x2={lupa.ponto.x} stroke="#fff" strokeWidth={1 * un} />
-                            </svg>
-                          </div>
-                        );
-                      })()}
+                      {gestos.lupa && (
+                        <LupaFoto lupa={gestos.lupa} href={foto.url} w={foto.w} h={foto.h} svgRef={svgRef} caixaRef={caixaRef}
+                          pontos={ptsAtiva} segmentos={segmentosDaMedida(medidaAtiva)} comNovo={gestos.novoAtivo} />
+                      )}
                     </div>
 
                     <nav aria-label="Ferramentas de medida" className="flex max-h-[75dvh] w-12 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border/60 bg-card p-1">
