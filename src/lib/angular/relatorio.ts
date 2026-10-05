@@ -29,9 +29,11 @@ const dataArquivo = (br: string) => br.split('/').reverse().join('-');
 export interface GrupoDesenho { pontos: Ponto[]; segmentos: [number, number][]; cor: string; rotulo?: string }
 
 /** Desenha a foto com as retas, os pontos e os valores marcados e devolve um JPEG reduzido (data URL). */
-export function fotoComMarcacoes(img: HTMLImageElement, grupos: GrupoDesenho[], larguraMax = 1100): { url: string; w: number; h: number } | null {
-  const esc = Math.min(1, larguraMax / img.naturalWidth);
-  const w = Math.round(img.naturalWidth * esc), h = Math.round(img.naturalHeight * esc);
+export function fotoComMarcacoes(img: HTMLImageElement | HTMLVideoElement, grupos: GrupoDesenho[], larguraMax = 1100): { url: string; w: number; h: number } | null {
+  const largura = img instanceof HTMLVideoElement ? img.videoWidth : img.naturalWidth;
+  const altura = img instanceof HTMLVideoElement ? img.videoHeight : img.naturalHeight;
+  const esc = Math.min(1, larguraMax / largura);
+  const w = Math.round(largura * esc), h = Math.round(altura * esc);
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h;
   const c = cv.getContext('2d');

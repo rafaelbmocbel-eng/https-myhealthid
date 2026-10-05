@@ -25,7 +25,7 @@ function carregar(): Promise<PoseLandmarker> {
 }
 
 /** Detecta a pose em uma imagem já carregada. Devolve null se não achar uma pessoa. */
-export async function detectarPose(imagem: HTMLImageElement): Promise<Landmark[] | null> {
+export async function detectarPose(imagem: HTMLImageElement | HTMLVideoElement): Promise<Landmark[] | null> {
   const det = await carregar();
   const r = det.detect(imagem);
   return r.landmarks[0] ?? null;

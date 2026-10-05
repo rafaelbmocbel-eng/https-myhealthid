@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import MarchaVideo from '@/components/angular/MarchaVideo';
+import PontoAPontoVideo from '@/components/angular/PontoAPontoVideo';
 import CameraNivel from '@/components/angular/CameraNivel';
 import NivelCelular from '@/components/angular/NivelCelular';
 import { parseNum } from '@/components/dosagem/comuns';
@@ -69,6 +70,7 @@ export default function AnaliseAngular() {
   const [grade, setGrade] = useState(false);
   const [nivelTipo, setNivelTipo] = useState<'horizontal' | 'vertical'>('horizontal');
   const [escalaCm, setEscalaCm] = useState('');
+  const [modoVideo, setModoVideo] = useState<'ponto' | 'auto'>('ponto');
   const [cameraAberta, setCameraAberta] = useState(false);
   const [inclinacaoCaptura, setInclinacaoCaptura] = useState<number | null>(null);
   const [inverterSensor, setInverterSensor] = useState(false);
@@ -256,7 +258,7 @@ export default function AnaliseAngular() {
   return (
     <AppLayout>
       <div className="container max-w-6xl space-y-5 py-6">
-        <PageHeader back="/aplicacoes" title="Análise angular" subtitle="Meça ângulos e desníveis em uma foto, ou analise a marcha em um vídeo." icon={<Ruler className="icon-md" />} />
+        <PageHeader back="/aplicacoes" title="Análise angular" subtitle="Meça ângulos e desníveis em uma foto, ou ponto a ponto em um vídeo." icon={<Ruler className="icon-md" />} />
 
         <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-3 sm:flex-row sm:items-center">
           <span className="shrink-0 text-sm font-medium">Paciente <span className="text-xs font-normal text-muted-foreground">(opcional)</span></span>
@@ -269,7 +271,7 @@ export default function AnaliseAngular() {
         </div>
 
         <div role="tablist" aria-label="Tipo de análise" className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted/60 p-1.5">
-          {([['foto', 'Postura em foto', Camera], ['marcha', 'Marcha em vídeo', Film]] as const).map(([id, rotulo, Icone]) => (
+          {([['foto', 'Postura em foto', Camera], ['marcha', 'Análise em vídeo', Film]] as const).map(([id, rotulo, Icone]) => (
             <button key={id} type="button" role="tab" aria-selected={modoAnalise === id} onClick={() => mudarModo(id)}
               className={cn('flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all', modoAnalise === id ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
               <Icone className="h-4 w-4" /> {rotulo}
@@ -277,7 +279,17 @@ export default function AnaliseAngular() {
           ))}
         </div>
 
-        {modoAnalise === 'marcha' ? <MarchaVideo paciente={paciente} /> : (
+        {modoAnalise === 'marcha' ? (
+          <div className="space-y-3">
+            <div role="tablist" aria-label="Tipo de análise em vídeo" className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted/60 p-1.5">
+              {([['ponto', 'Ponto a ponto'], ['auto', 'Marcha automática']] as const).map(([id, rotulo]) => (
+                <button key={id} type="button" role="tab" aria-selected={modoVideo === id} onClick={() => setModoVideo(id)}
+                  className={cn('rounded-xl px-3 py-2 text-sm font-semibold transition-all', modoVideo === id ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>{rotulo}</button>
+              ))}
+            </div>
+            {modoVideo === 'ponto' ? <PontoAPontoVideo paciente={paciente} /> : <MarchaVideo paciente={paciente} />}
+          </div>
+        ) : (
           <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
             <div className="space-y-3">
               <div role="tablist" aria-label="Vista" className="grid grid-cols-3 gap-1.5 rounded-2xl bg-muted/60 p-1.5">

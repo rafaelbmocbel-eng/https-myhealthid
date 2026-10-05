@@ -657,3 +657,35 @@ describe('sensor de inclinação', () => {
     expect(giroDaFoto(3, true)).toBe(3);
   });
 });
+
+describe('medidas ponto a ponto no vídeo', () => {
+  const P = (x: number, y: number) => ({ x, y });
+  it('joelho e quadril saem como flexão (0° = estendido) e o tornozelo como ângulo perna-pé', async () => {
+    const { MEDIDAS_VIDEO } = await import('../lib/angular/medidasVideo');
+    const joelho = MEDIDAS_VIDEO.find((m) => m.id === 'joelho-d')!;
+    expect(joelho.calcular([P(0, 0), P(0, 100), P(0, 200)])!.valor).toBeCloseTo(0, 6);
+    expect(joelho.calcular([P(0, 0), P(0, 100), P(100, 100)])!.valor).toBeCloseTo(90, 6);
+    const tornozelo = MEDIDAS_VIDEO.find((m) => m.id === 'tornozelo-e')!;
+    expect(tornozelo.calcular([P(0, 0), P(0, 100), P(60, 100)])!.valor).toBeCloseTo(90, 6);
+    expect(MEDIDAS_VIDEO.some((m) => m.id === 'regua')).toBe(true);
+  });
+  it('sugere os pontos do lado pedido e recusa pontos pouco visíveis', async () => {
+    const { sugerirNoQuadro } = await import('../lib/angular/medidasVideo');
+    const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.9 }));
+    lm[24] = { x: 0.4, y: 0.5, visibility: 0.9 }; lm[26] = { x: 0.4, y: 0.7, visibility: 0.9 }; lm[28] = { x: 0.4, y: 0.9, visibility: 0.9 };
+    expect(sugerirNoQuadro('joelho-d', lm, 1000, 1000)).toEqual([{ x: 400, y: 500 }, { x: 400, y: 700 }, { x: 400, y: 900 }]);
+    lm[26] = { x: 0.4, y: 0.7, visibility: 0.2 };
+    expect(sugerirNoQuadro('joelho-d', lm, 1000, 1000)).toBeNull();
+    expect(sugerirNoQuadro('regua', lm, 1000, 1000)).toBeNull();
+  });
+});
+
+describe('PDF da análise em vídeo ponto a ponto', () => {
+  it('gera o PDF com várias medidas e nome padronizado', async () => {
+    const { gerarRelatorioVideo } = await import('../lib/angular/relatorioVideo');
+    const caps = Array.from({ length: 12 }, (_, i) => ({ t: i * 0.33, quadro: i * 10, nome: 'Joelho direito', valorTexto: `${20 + i},0°`, texto: '' }));
+    const r = await gerarRelatorioVideo({ paciente: 'Ana Júlia', data: '05/10/2026', fps: 30, capturas: caps });
+    expect(r.nome).toBe('Analise_angular_video_ANA_JULIA_2026-10-05.pdf');
+    expect(r.blob.size).toBeGreaterThan(1500);
+  });
+});
