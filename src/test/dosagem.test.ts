@@ -447,3 +447,32 @@ describe('análise angular', () => {
     }
   });
 });
+
+describe('marcação automática', () => {
+  const lm = (over: Record<number, [number, number, number?]>) => {
+    const a = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0 }));
+    for (const [i, [x, y, v]] of Object.entries(over)) a[Number(i)] = { x, y, visibility: v ?? 0.9 };
+    return a;
+  };
+  it('de frente mapeia ombros, pelve, cabeça, tronco e joelhos pelo lado do paciente', async () => {
+    const { pontosAutomaticos } = await import('../lib/angular/pose');
+    const r = pontosAutomaticos(lm({ 12: [0.4, 0.3], 11: [0.6, 0.31], 24: [0.45, 0.6], 23: [0.55, 0.6], 8: [0.42, 0.1], 7: [0.58, 0.1], 26: [0.45, 0.75], 28: [0.45, 0.9] }), 'frente', 1000, 2000);
+    expect(r.ombros).toEqual([{ x: 400, y: 600 }, { x: 600, y: 620 }]);
+    expect(r.pelve).toHaveLength(2);
+    expect(r.cabeca).toHaveLength(2);
+    expect(r.tronco).toHaveLength(2);
+    expect(r['joelho-d']).toHaveLength(3);
+    expect(r['joelho-e']).toBeUndefined();
+  });
+  it('ignora pontos pouco visíveis', async () => {
+    const { pontosAutomaticos } = await import('../lib/angular/pose');
+    const r = pontosAutomaticos(lm({ 12: [0.4, 0.3, 0.2], 11: [0.6, 0.3] }), 'costas', 100, 100);
+    expect(r.ombros).toBeUndefined();
+  });
+  it('no perfil usa o lado mais visível e não preenche o craniovertebral', async () => {
+    const { pontosAutomaticos } = await import('../lib/angular/pose');
+    const r = pontosAutomaticos(lm({ 11: [0.5, 0.3, 0.3], 23: [0.5, 0.6, 0.3], 25: [0.5, 0.75, 0.3], 27: [0.5, 0.9, 0.3], 12: [0.52, 0.3], 24: [0.52, 0.6], 26: [0.52, 0.75], 28: [0.52, 0.9] }), 'perfil', 100, 100);
+    expect(r.joelho![0].x).toBeCloseTo(52, 6);
+    expect(r.cva).toBeUndefined();
+  });
+});

@@ -104,8 +104,17 @@ export const MEDIDAS: Medida[] = [
       return { valor: dev, texto: `Tronco (ombro–quadril) a ${f1(dev)}° da vertical.` };
     },
   },
+  ...(['direito', 'esquerdo'] as const).map((lado): Medida => ({
+    id: `joelho-${lado === 'direito' ? 'd' : 'e'}`, nome: `Joelho ${lado}`, vistas: ['frente', 'costas'],
+    pontos: [`Quadril ${lado} (trocânter maior)`, `Joelho ${lado} (interlinha articular)`, `Tornozelo ${lado} (maléolo lateral)`],
+    calcular: ([q, j, t]) => {
+      const ang = anguloEm(q, j, t);
+      if (ang === null) return null;
+      return { valor: ang, texto: `Joelho ${lado}, quadril–joelho–tornozelo: ${f1(ang)}° (${f1(Math.abs(180 - ang))}° de afastamento da linha reta).` };
+    },
+  })),
   {
-    id: 'joelho', nome: 'Ângulo do joelho', vistas: ['frente', 'costas', 'perfil'],
+    id: 'joelho', nome: 'Ângulo do joelho', vistas: ['perfil'],
     pontos: ['Quadril (trocânter maior)', 'Joelho (interlinha articular)', 'Tornozelo (maléolo lateral)'],
     calcular: ([q, j, t]) => {
       const ang = anguloEm(q, j, t);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Camera, ClipboardCheck, Copy, Loader2, Ruler, Trash2, Undo2, X } from 'lucide-react';
+import { Camera, ClipboardCheck, Copy, Loader2, Ruler, Sparkles, Trash2, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { tabela } from '@/lib/dosagem/db';
 import { MEDIDAS, medidasDaVista, type Ponto, type Vista } from '@/lib/angular/medidas';
+import { detectarPose } from '@/lib/angular/detector';
+import { pontosAutomaticos } from '@/lib/angular/pose';
 import { usePacienteDosagem, usePacientesLista } from '@/hooks/useProntuarioSeguranca';
 
 const VISTAS: { id: Vista; nome: string }[] = [
@@ -30,7 +32,9 @@ export default function AnaliseAngular() {
   const { data: paciente } = usePacienteDosagem(pacienteId || null);
 
   const [vista, setVista] = useState<Vista>('frente');
-  const [foto, setFoto] = useState<{ url: string; w: number; h: number } | null>(null);
+  const [foto, setFoto] = useState<{ url: string; w: number; h: number; img: HTMLImageElement } | null>(null);
+  const [detectando, setDetectando] = useState(false);
+  const [usouIA, setUsouIA] = useState(false);
   const [ativa, setAtiva] = useState<string>('ombros');
   const [pontos, setPontos] = useState<Record<string, Ponto[]>>({});
   const [salvando, setSalvando] = useState(false);
@@ -56,7 +60,7 @@ export default function AnaliseAngular() {
     if (!arquivo.type.startsWith('image/')) { toast.error('Escolha um arquivo de imagem.'); return; }
     const url = URL.createObjectURL(arquivo);
     const img = new Image();
-    img.onload = () => { setFoto({ url, w: img.naturalWidth, h: img.naturalHeight }); setPontos({}); };
+    img.onload = () => { setFoto({ url, w: img.naturalWidth, h: img.naturalHeight, img }); setPontos({}); setUsouIA(false); };
     img.onerror = () => { URL.revokeObjectURL(url); toast.error('Não consegui abrir essa imagem.'); };
     img.src = url;
   };
@@ -83,6 +87,27 @@ export default function AnaliseAngular() {
     setPontos((s) => ({ ...s, [alvo.medida]: (s[alvo.medida] ?? []).map((q, i) => (i === alvo.indice ? p : q)) }));
   };
 
+  const marcarAutomatico = async () => {
+    if (!foto) return;
+    setDetectando(true);
+    try {
+      const lm = await detectarPose(foto.img);
+      if (!lm) { toast.error('Não achei o corpo na foto. Marque os pontos à mão.'); return; }
+      const sugeridos = pontosAutomaticos(lm, vista, foto.w, foto.h);
+      const ids = Object.keys(sugeridos);
+      if (!ids.length) { toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
+      setPontos((s) => ({ ...s, ...sugeridos }));
+      setAtiva(ids[0]);
+      setUsouIA(true);
+      toast.success(`Marquei ${ids.length} medida(s). Confira cada ponto e arraste o que estiver fora do lugar.`);
+    } catch {
+      // Sem internet para baixar o modelo, ou navegador sem suporte: segue a marcação manual.
+      toast.error('Não consegui carregar a marcação automática agora. Marque os pontos à mão.');
+    } finally {
+      setDetectando(false);
+    }
+  };
+
   const desfazer = () => setPontos((s) => ({ ...s, [medidaAtiva.id]: (s[medidaAtiva.id] ?? []).slice(0, -1) }));
   const limpar = () => setPontos((s) => ({ ...s, [medidaAtiva.id]: [] }));
 
@@ -103,8 +128,8 @@ export default function AnaliseAngular() {
         terapeuta_id: user.id,
         tipo: 'analise_angular',
         titulo: `Análise angular — vista ${vistaNome}`,
-        descricao: `${texto}\nMedidas feitas por marcação manual em foto, com a horizontal e a vertical da imagem como referência; a foto não é armazenada.`,
-        dados_extras: { vista, medidas: resultados.map((r) => ({ id: r.medida.id, graus: Math.round(r.valor * 10) / 10 })), metodo: 'marcacao_manual' },
+        descricao: `${texto}\n${usouIA ? 'Pontos sugeridos por detecção automática de pose e conferidos pelo profissional' : 'Pontos marcados manualmente'} em foto, com a horizontal e a vertical da imagem como referência; a foto não é armazenada.`,
+        dados_extras: { vista, medidas: resultados.map((r) => ({ id: r.medida.id, graus: Math.round(r.valor * 10) / 10 })), metodo: usouIA ? 'automatica_conferida' : 'marcacao_manual' },
       });
       if (error) throw error;
       toast.success(`Análise registrada no prontuário de ${paciente.nome}.`);
@@ -179,7 +204,10 @@ export default function AnaliseAngular() {
                   <p className="text-xs text-muted-foreground" role="status">
                     {proximo ? <>Toque em: <strong className="text-foreground">{ptsAtiva.length + 1}. {proximo}</strong></> : 'Medida completa. Arraste um ponto para ajustar.'}
                   </p>
-                  <div className="flex gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button size="sm" className="gap-1.5" onClick={marcarAutomatico} disabled={detectando}>
+                      {detectando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Marcar automaticamente
+                    </Button>
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={desfazer} disabled={!ptsAtiva.length}><Undo2 className="h-3.5 w-3.5" /> Desfazer</Button>
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={limpar} disabled={!ptsAtiva.length}><Trash2 className="h-3.5 w-3.5" /> Limpar</Button>
                     <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
@@ -223,7 +251,7 @@ export default function AnaliseAngular() {
             </div>
 
             <p className="px-1 text-[11px] leading-snug text-muted-foreground">
-              Os ângulos usam a horizontal e a vertical da foto como referência: com a câmera torta, os desníveis saem errados. Servem para acompanhar a evolução entre fotos feitas do mesmo jeito; não definem diagnóstico.
+              A marcação automática acha centros de articulação, não os pontos ósseos da clínica (acrômio, crista ilíaca, C7, trocânter): use como ponto de partida, confira e ajuste. O ângulo craniovertebral sempre é marcado à mão. Os ângulos usam a horizontal e a vertical da foto como referência: com a câmera torta, os desníveis saem errados. Servem para acompanhar a evolução entre fotos feitas do mesmo jeito; não definem diagnóstico.
             </p>
           </aside>
         </div>
