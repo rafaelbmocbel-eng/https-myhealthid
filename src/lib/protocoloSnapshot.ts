@@ -377,3 +377,27 @@ export function buildDiretrizResumo(snapshot: DiretrizSnapshot): string {
 
   return ['Diretriz personalizada salva como referência clínica.', ...linhas].join('\n\n');
 }
+export interface TecnicaParaPdf { nome: string; categoria: string; fase_numero: number; observacoes?: string }
+
+/**
+ * Técnicas do PDF da diretriz: as do cardápio escolhidas (`protocolo_tratamentos`) mais as que a
+ * própria diretriz traz (condutas do profissional e sugestões), sem repetir nome na mesma fase.
+ * Condutas do profissional vêm primeiro dentro de cada fase.
+ */
+export function tecnicasParaPdf(escolhidas: TecnicaParaPdf[], snapshot: DiretrizSnapshot | null): TecnicaParaPdf[] {
+  const chave = (t: { nome: string; fase_numero: number }) => `${t.fase_numero}|${t.nome.trim().toLowerCase()}`;
+  const vistos = new Set(escolhidas.map(chave));
+  const daDiretriz: Array<TecnicaParaPdf & { conduta: boolean }> = [];
+  for (const fase of snapshot?.fases || []) {
+    for (const t of fase.tecnicas || []) {
+      const item = { nome: t.nome, categoria: t.categoria && t.categoria !== 'referência' ? t.categoria : (t.conduta_profissional ? 'Conduta do profissional' : ''), fase_numero: fase.numero, observacoes: t.descricao || t.motivo || undefined, conduta: t.conduta_profissional === true };
+      if (!item.nome || vistos.has(chave(item))) continue;
+      vistos.add(chave(item));
+      daDiretriz.push(item);
+    }
+  }
+  const todas = [...escolhidas.map((t) => ({ ...t, conduta: false })), ...daDiretriz];
+  return todas
+    .sort((a, b) => a.fase_numero - b.fase_numero || Number(b.conduta) - Number(a.conduta))
+    .map(({ conduta: _conduta, ...resto }) => { void _conduta; return resto; });
+}

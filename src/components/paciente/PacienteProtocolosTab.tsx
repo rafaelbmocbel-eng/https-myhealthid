@@ -10,6 +10,7 @@ import {
   Zap, FileText, User, Plus, Send, Sparkles
 } from 'lucide-react';
 import PropostaTratamentoDialog from '@/components/protocolo/PropostaTratamentoDialog';
+import { getDiretrizSnapshotFromScores, tecnicasParaPdf } from '@/lib/protocoloSnapshot';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -243,12 +244,15 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
         frequencia: protocolo.frequencia || '2-3x por semana',
         prognose: scores['prognose'] || 'Moderado',
         fases: fasesComExercicios,
-        tecnicas: (tratamentos || []).map((t: any) => ({
-          nome: t.tecnica?.nome || 'Técnica',
-          categoria: t.tecnica?.categoria || '',
-          fase_numero: t.fase_numero || 1,
-          observacoes: t.observacoes,
-        })),
+        tecnicas: tecnicasParaPdf(
+          (tratamentos || []).map((t: any) => ({
+            nome: t.tecnica?.nome || 'Técnica',
+            categoria: t.tecnica?.categoria || '',
+            fase_numero: t.fase_numero || 1,
+            observacoes: t.observacoes,
+          })),
+          getDiretrizSnapshotFromScores(scores),
+        ),
       };
       const { gerarPDFProtocolo } = await import('@/utils/pdfGenerator');
       await gerarPDFProtocolo(pdfData);

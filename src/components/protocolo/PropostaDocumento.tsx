@@ -11,6 +11,12 @@ function brl(n: number) {
 
 const FASE_BORDER = ['border-l-rose-500', 'border-l-amber-500', 'border-l-emerald-500'];
 
+/** Condutas escritas pelo profissional primeiro; as demais seguem na ordem original. */
+export function ordenarTecnicasProposta<T extends { tecnica: string; conduta_profissional?: boolean }>(tecnicas: T[]): T[] {
+  const validas = tecnicas.filter((t) => t.tecnica);
+  return [...validas.filter((t) => t.conduta_profissional), ...validas.filter((t) => !t.conduta_profissional)];
+}
+
 export interface PropostaDocumentoData {
   pacienteNome: string;
   profissionalNome?: string;
@@ -20,7 +26,7 @@ export interface PropostaDocumentoData {
   classificacao?: string;
   resumoClinico?: string;
   prognostico?: string;
-  fases: Array<{ numero: number; titulo: string; semanas?: string; objetivo?: string; focos: string[] }>;
+  fases: Array<{ numero: number; titulo: string; semanas?: string; objetivo?: string; focos: string[]; tecnicas?: Array<{ tecnica: string; conduta_profissional?: boolean }> }>;
   manut: {
     mensagemPaciente?: string;
     frequenciaReavaliacao?: string;
@@ -122,6 +128,18 @@ export default function PropostaDocumento(props: PropostaDocumentoData) {
                   </li>
                 ))}
               </ul>
+            )}
+            {(f.tecnicas || []).filter((t) => t.tecnica).length > 0 && (
+              <div className="mt-1.5">
+                <p className="text-[9px] uppercase tracking-wider font-bold text-slate-500 mb-0.5">Técnicas</p>
+                <div className="flex flex-wrap gap-1">
+                  {ordenarTecnicasProposta(f.tecnicas || []).map((t, j) => (
+                    <span key={j} className={cn('text-[11px] leading-tight rounded px-1.5 py-0.5 border', t.conduta_profissional ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold' : 'bg-slate-50 border-slate-200 text-slate-700')}>
+                      {t.conduta_profissional ? '★ ' : ''}{t.tecnica}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         ))}

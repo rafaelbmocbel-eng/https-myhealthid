@@ -63,6 +63,7 @@ export interface TecnicaPlano {
   justificativa?: string;
   lente_clinica?: string;
   nivel_evidencia?: string | number;
+  conduta_profissional?: boolean;
 }
 
 export interface FasePlano {
@@ -315,7 +316,10 @@ function drawFases(doc: jsPDF, y: number, fases: FasePlano[], maxBottom: number)
   fases.slice(0, n).forEach((f, idx) => {
     const corFase = FASE_COLORS[idx] || NAVY;
     const focos = (f.focos || []).slice(0, 4);
-    const tecnicas = (f.tecnicas || []).slice(0, 5);
+    const todasTecnicas = f.tecnicas || [];
+    const nCondutas = todasTecnicas.filter((t) => t.conduta_profissional).length;
+    // Condutas do profissional primeiro e sempre incluídas; o resto completa até 5.
+    const tecnicas = [...todasTecnicas.filter((t) => t.conduta_profissional), ...todasTecnicas.filter((t) => !t.conduta_profissional)].slice(0, Math.max(5, nCondutas));
 
     doc.setFillColor(...c(WHITE));
     doc.setDrawColor(...c(SOFT));
@@ -378,7 +382,7 @@ function drawFases(doc: jsPDF, y: number, fases: FasePlano[], maxBottom: number)
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       doc.text('›', 110, yLine);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('helvetica', t.conduta_profissional ? 'bold' : 'normal');
       doc.setTextColor(...c(TEXT));
       const tl = wrap(doc, t.tecnica, 70).slice(0, 1);
       doc.text(tl, 113, yLine);

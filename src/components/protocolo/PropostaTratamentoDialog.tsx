@@ -9,7 +9,7 @@ import { Loader2, Share2, FileDown, Sparkles, Plus, X, Eye, Pencil } from 'lucid
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import PropostaDocumento, { type PropostaDocumentoData } from './PropostaDocumento';
+import PropostaDocumento, { ordenarTecnicasProposta, type PropostaDocumentoData } from './PropostaDocumento';
 
 interface Props {
   open: boolean;
@@ -24,6 +24,7 @@ interface TecnicaEd {
   justificativa?: string;
   lente_clinica?: string;
   nivel_evidencia?: string | number;
+  conduta_profissional?: boolean;
 }
 
 interface FaseEd {
@@ -103,6 +104,7 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
         justificativa: t?.justificativa || t?.descricao || '',
         lente_clinica: t?.lente_clinica || t?.lente || '',
         nivel_evidencia: t?.nivel_evidencia ?? t?.evidencia ?? '',
+        ...(t?.conduta_profissional === true ? { conduta_profissional: true } : {}),
       })).filter((t: TecnicaEd) => t.tecnica);
       return {
         numero: f.numero ?? i + 1,
@@ -176,7 +178,7 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
     classificacao: classificacao.trim() || undefined,
     resumoClinico: resumoClinico.trim() || undefined,
     prognostico: prognostico.trim() || undefined,
-    fases: fases.map(f => ({ numero: f.numero, titulo: f.titulo, semanas: f.semanas, objetivo: f.objetivo, focos: f.focos })),
+    fases: fases.map(f => ({ numero: f.numero, titulo: f.titulo, semanas: f.semanas, objetivo: f.objetivo, focos: f.focos, tecnicas: (f.tecnicas || []).map((t) => ({ tecnica: t.tecnica, conduta_profissional: t.conduta_profissional })) })),
     manut,
     numeroSessoes, duracao, frequencia, valorSessao, desconto, formaPagamento, total,
     mensagem, telefone: telefone || undefined, validadeDias,
@@ -342,9 +344,9 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
                           Técnicas da diretriz ({f.tecnicas.length}) — incluídas no PDF
                         </Label>
                         <div className="flex flex-wrap gap-1 mt-1.5">
-                          {f.tecnicas.map((t, k) => (
-                            <span key={k} className="text-[10px] px-2 py-0.5 rounded-md bg-muted text-foreground border border-border/40">
-                              {t.tecnica}
+                          {ordenarTecnicasProposta(f.tecnicas).map((t, k) => (
+                            <span key={k} className={cn('text-[10px] px-2 py-0.5 rounded-md border', t.conduta_profissional ? 'bg-emerald-500/15 text-emerald-800 border-emerald-500/40 font-semibold dark:text-emerald-300' : 'bg-muted text-foreground border-border/40')}>
+                              {t.conduta_profissional ? '★ ' : ''}{t.tecnica}
                             </span>
                           ))}
                         </div>
