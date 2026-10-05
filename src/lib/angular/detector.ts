@@ -32,6 +32,8 @@ export async function detectarPose(imagem: HTMLImageElement | HTMLVideoElement):
 }
 
 let carregandoVideo: Promise<PoseLandmarker> | null = null;
+// O detector de vídeo exige tempos sempre crescentes, mesmo entre análises seguidas do mesmo aparelho.
+let ultimoTempoMs = 0;
 
 function carregarVideo(): Promise<PoseLandmarker> {
   if (!carregandoVideo) {
@@ -51,7 +53,7 @@ function carregarVideo(): Promise<PoseLandmarker> {
 const aguardar = (v: HTMLVideoElement, evento: 'seeked' | 'loadeddata') =>
   new Promise<void>((ok) => { v.addEventListener(evento, () => ok(), { once: true }); });
 
-export interface OpcoesVideo { fps?: number; maxSegundos?: number; onProgresso?: (p: number) => void; cancelado?: () => boolean }
+export interface OpcoesVideo { fps?: number; maxSegundos?: number; onProgresso?: (p: number) => void; cancelado?: () => boolean; onQuadro?: (indice: number, quadro: { t: number; lm: Landmark[] | null }) => void }
 
 /**
  * Percorre o vídeo quadro a quadro (por busca de tempo, a `fps` fixo) e devolve a pose de cada um.
@@ -64,14 +66,18 @@ export async function detectarVideo(video: HTMLVideoElement, o: OpcoesVideo = {}
   const duracao = Math.min(video.duration || 0, o.maxSegundos ?? 20);
   const n = Math.floor(duracao * fps);
   const frames: { t: number; lm: Landmark[] | null }[] = [];
+  const base = ultimoTempoMs;
   video.pause();
   for (let i = 0; i < n; i++) {
     if (o.cancelado?.()) break;
     const t = i / fps;
     video.currentTime = t;
     await aguardar(video, 'seeked');
-    const r = det.detectForVideo(video, Math.round(t * 1000) + 1);
-    frames.push({ t, lm: r.landmarks[0] ?? null });
+    ultimoTempoMs = base + Math.round(t * 1000) + 1;
+    const r = det.detectForVideo(video, ultimoTempoMs);
+    const quadro = { t, lm: r.landmarks[0] ?? null };
+    frames.push(quadro);
+    o.onQuadro?.(i, quadro);
     o.onProgresso?.((i + 1) / n);
   }
   return frames;

@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils';
 import { tabela } from '@/lib/dosagem/db';
 import { cmPorPixel, girar, rotacaoDoNivel, segmentosDaMedida, type Medida, type Ponto } from '@/lib/angular/medidas';
 import { MEDIDAS_VIDEO, sugerirNoQuadro } from '@/lib/angular/medidasVideo';
-import { detectarPose } from '@/lib/angular/detector';
+import { detectarPose, detectarVideo } from '@/lib/angular/detector';
+import type { Frame } from '@/lib/angular/marcha';
 import { fotoComMarcacoes, type GrupoDesenho } from '@/lib/angular/relatorio';
 import { gerarRelatorioVideo } from '@/lib/angular/relatorioVideo';
 import { entregarPdf } from '@/lib/pdf/entrega';
@@ -17,6 +18,11 @@ import { entregarPdf } from '@/lib/pdf/entrega';
 const CORES = ['#ef4444', '#3b82f6', '#10b981', '#a855f7'];
 const COR_REF: Record<string, string> = { nivel: '#22d3ee', escala: '#fb923c' };
 const FPS_OPCOES = [24, 30, 60, 120, 240];
+const MAX_ANALISE_S = 30;
+const FPS_ANALISE_MAX = 60;
+const ANGULOS_AUTO = ['joelho-d', 'joelho-e', 'quadril-d', 'quadril-e', 'tornozelo-d', 'tornozelo-e'] as const;
+const LIGACOES: [number, number][] = [[11, 12], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 29], [29, 31], [28, 30], [30, 32], [11, 13], [13, 15], [12, 14], [14, 16]];
+const COR_LADO = { d: '#2A78D6', e: '#EB6834' };
 const nf = (n: number, d = 1) => n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
 const valorTexto = (v: number, un?: 'cm') => `${nf(v)}${un === 'cm' ? ' cm' : '°'}`;
 
@@ -29,6 +35,39 @@ interface Captura {
   valor: number;
   texto: string;
   imagem: { url: string; w: number; h: number } | null;
+}
+
+const valorNoQuadro = (id: string, lm: Frame['lm'], w: number, h: number, giro: number | null): number | null => {
+  const m = MEDIDAS_VIDEO.find((x) => x.id === id);
+  const pts = m && lm ? sugerirNoQuadro(id, lm, w, h) : null;
+  if (!m || !pts) return null;
+  return m.calcular(giro ? pts.map((q) => girar(q, -giro)) : pts)?.valor ?? null;
+};
+
+function GraficoAngulos({ titulo, d, e, fps, t, dur, onSeek }: { titulo: string; d: number[]; e: number[]; fps: number; t: number; dur: number; onSeek: (t: number) => void }) {
+  const todos = [...d, ...e].filter((v) => Number.isFinite(v));
+  if (todos.length < 2) return null;
+  const min = Math.min(...todos), max = Math.max(...todos), span = max - min || 1;
+  const W = 320, H = 120, L = 32, R = 6, T = 8, B = 16;
+  const X = (i: number) => L + ((i / fps) / dur) * (W - L - R);
+  const Y = (v: number) => T + (1 - (v - min) / span) * (H - T - B);
+  const caminho = (serie: number[]) => serie.map((v, i) => (Number.isFinite(v) ? `${Number.isFinite(serie[i - 1]) ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}` : '')).join(' ');
+  return (
+    <figure className="space-y-1">
+      <figcaption className="text-xs font-medium">{titulo}</figcaption>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full cursor-pointer" role="img" aria-label={titulo}
+        onClick={(ev) => { const r = ev.currentTarget.getBoundingClientRect(); const f = ((ev.clientX - r.left) / r.width * W - L) / (W - L - R); onSeek(Math.min(Math.max(f, 0), 1) * dur); }}>
+        {[min, (min + max) / 2, max].map((v) => (
+          <g key={v}><line x1={L} x2={W - R} y1={Y(v)} y2={Y(v)} stroke="currentColor" opacity={0.12} /><text x={L - 4} y={Y(v)} textAnchor="end" dominantBaseline="central" fontSize={9} fill="currentColor" opacity={0.6}>{Math.round(v)}°</text></g>
+        ))}
+        <path d={caminho(d)} fill="none" stroke={COR_LADO.d} strokeWidth={1.8} strokeLinejoin="round" />
+        <path d={caminho(e)} fill="none" stroke={COR_LADO.e} strokeWidth={1.8} strokeLinejoin="round" />
+        <line x1={X(t * fps)} x2={X(t * fps)} y1={T} y2={H - B} stroke="currentColor" strokeWidth={1} opacity={0.6} />
+        <text x={L} y={H - 3} fontSize={9} fill="currentColor" opacity={0.6}>0 s</text>
+        <text x={W - R} y={H - 3} textAnchor="end" fontSize={9} fill="currentColor" opacity={0.6}>{nf(dur, 1)} s</text>
+      </svg>
+    </figure>
+  );
 }
 
 // Análise angular ponto a ponto no vídeo: o profissional para em um quadro, marca os pontos (ou deixa o app
@@ -52,10 +91,17 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
   const [sugerindo, setSugerindo] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [gerando, setGerando] = useState(false);
+  const analiseRef = useRef<HTMLVideoElement>(null);
+  const quadrosRef = useRef<Frame[]>([]);
+  const [nQuadros, setNQuadros] = useState(0);
+  const [progresso, setProgresso] = useState<number | null>(null);
+  const [esqueleto, setEsqueleto] = useState(true);
 
   useEffect(() => () => { if (arquivo) URL.revokeObjectURL(arquivo.url); }, [arquivo]);
 
   const quadro = Math.round(t * fps);
+  const fpsAnalise = Math.min(fps, FPS_ANALISE_MAX);
+  const quadroAuto: Frame | undefined = nQuadros > 0 ? quadrosRef.current[Math.round(t * fpsAnalise)] : undefined;
   const medida: Medida = MEDIDAS_VIDEO.find((m) => m.id === ativa) ?? MEDIDAS_VIDEO[0];
   const ehRef = !!medida.auxiliar;
   const ptsAtiva = (ehRef ? refs[medida.id] : pontos[medida.id]) ?? [];
@@ -69,6 +115,31 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
     const p = refs.escala, cm = parseNum(escalaCm);
     return p && p.length >= 2 && cm ? cmPorPixel(p[0], p[1], cm) : null;
   }, [refs.escala, escalaCm]);
+
+  // Análise automática do vídeo inteiro (esqueleto em cada quadro), em um vídeo escondido para não travar a marcação manual.
+  useEffect(() => {
+    if (!arquivo) return;
+    let cancelado = false;
+    quadrosRef.current = [];
+    setNQuadros(0); setProgresso(0);
+    const espera = window.setTimeout(async () => {
+      const v = analiseRef.current;
+      if (!v) return;
+      try {
+        await detectarVideo(v, {
+          fps: fpsAnalise, maxSegundos: MAX_ANALISE_S, cancelado: () => cancelado, onProgresso: (p) => { if (!cancelado) setProgresso(p); },
+          onQuadro: (i, q) => { quadrosRef.current[i] = q; if (i % 4 === 0) setNQuadros(i + 1); },
+        });
+        if (!cancelado) setNQuadros(quadrosRef.current.length);
+      } catch {
+        // Sem internet para baixar o modelo ou navegador sem suporte: segue só a marcação manual.
+        if (!cancelado) toast.error('Não consegui carregar a detecção automática agora. Marque os pontos à mão.');
+      } finally {
+        if (!cancelado) setProgresso(null);
+      }
+    }, 400);
+    return () => { cancelado = true; window.clearTimeout(espera); };
+  }, [arquivo, fpsAnalise]);
 
   const calcular = (m: Medida, p: Ponto[]) => (p.length >= m.pontos.length ? m.calcular(giro ? p.map((q) => girar(q, -giro)) : p, { cmPorPx }) : null);
   const resultadoAtual = !ehRef ? calcular(medida, pontos[medida.id] ?? []) : null;
@@ -150,7 +221,7 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
     setSugerindo(true);
     try {
       v.pause(); setTocando(false);
-      const lm = await detectarPose(v);
+      const lm = quadroAuto?.lm ?? await detectarPose(v);
       if (!lm) { toast.error('Não achei o corpo neste quadro. Marque os pontos à mão.'); return; }
       const sug = sugerirNoQuadro(medida.id, lm, arquivo.w, arquivo.h);
       if (!sug) { toast.warning('Os pontos desta medida não estão nítidos neste quadro. Marque à mão ou escolha outro quadro.'); return; }
@@ -182,6 +253,30 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
     setPontos((s) => ({ ...s, [medida.id]: [] }));
     toast.success('Medida guardada neste quadro.');
   };
+
+  const angulosDoQuadro = quadroAuto?.lm && arquivo
+    ? ANGULOS_AUTO.flatMap((id) => {
+      const m = MEDIDAS_VIDEO.find((x) => x.id === id)!;
+      const pts = sugerirNoQuadro(id, quadroAuto.lm!, arquivo.w, arquivo.h);
+      const r = pts ? calcular(m, pts) : null;
+      return pts && r ? [{ m, pts, r }] : [];
+    })
+    : [];
+
+  const guardarAuto = (item: { m: Medida; pts: Ponto[]; r: { valor: number; texto: string } }) => {
+    const v = videoRef.current;
+    if (!v) return;
+    const imagem = fotoComMarcacoes(v, [{ pontos: item.pts, segmentos: segmentosDaMedida(item.m), cor: '#facc15', rotulo: valorTexto(item.r.valor, item.m.unidade) }], 900);
+    setCapturas((c) => [...c, { uid: crypto.randomUUID(), medida: item.m, t: Math.round(t * 1000) / 1000, quadro, pontos: item.pts, valor: item.r.valor, texto: item.r.texto, imagem }].sort((a, b) => a.t - b.t));
+    toast.success(`${item.m.nome} guardado neste quadro.`);
+  };
+
+  const series = useMemo(() => {
+    if (!arquivo || nQuadros === 0) return null;
+    const mk = (id: string) => Array.from({ length: nQuadros }, (_, i) => valorNoQuadro(id, quadrosRef.current[i]?.lm ?? null, arquivo.w, arquivo.h, giro) ?? NaN);
+    return { joelhoD: mk('joelho-d'), joelhoE: mk('joelho-e'), quadrilD: mk('quadril-d'), quadrilE: mk('quadril-e') };
+    // quadrosRef é mutável; nQuadros marca quando há quadros novos.
+  }, [arquivo, nQuadros, giro]);
 
   const texto = capturas.map((c) => `• ${nf(c.t, 2)} s (quadro ${c.quadro}) — ${c.texto}`).join('\n');
   const nota = giro !== null && Math.abs(giro) >= 0.05 ? `Imagem nivelada por uma referência ${nivelTipo} marcada (correção de ${nf(Math.abs(giro))}°).` : undefined;
@@ -275,6 +370,16 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
                 <video ref={videoRef} src={arquivo.url} muted playsInline preload="auto" className="block w-full" />
                 <svg ref={svgRef} viewBox={`0 0 ${arquivo.w} ${arquivo.h}`} className="absolute inset-0 h-full w-full touch-none select-none" style={{ cursor: proximo && !tocando ? 'crosshair' : 'default' }}
                   onPointerDown={marcar} onPointerMove={arrastar} onPointerUp={() => { arrastando.current = null; }} onPointerCancel={() => { arrastando.current = null; }}>
+                  {esqueleto && !tocando && quadroAuto?.lm && (
+                    <g pointerEvents="none">
+                      {LIGACOES.map(([a, b]) => {
+                        const A = quadroAuto.lm![a], B = quadroAuto.lm![b];
+                        if (!A || !B || (A.visibility ?? 1) < 0.3 || (B.visibility ?? 1) < 0.3) return null;
+                        const cor = a % 2 === 0 && b % 2 === 0 ? COR_LADO.d : a % 2 === 1 && b % 2 === 1 ? COR_LADO.e : '#e5e7eb';
+                        return <line key={`${a}-${b}`} x1={A.x * arquivo.w} y1={A.y * arquivo.h} x2={B.x * arquivo.w} y2={B.y * arquivo.h} stroke={cor} strokeOpacity={0.85} strokeWidth={raio / 4} strokeLinecap="round" />;
+                      })}
+                    </g>
+                  )}
                   {Object.entries(refs).map(([id, p]) => { const m = MEDIDAS_VIDEO.find((x) => x.id === id); return m && p.length ? desenharMedida(m, p, m.id === medida.id) : null; })}
                   {!tocando && daqui.map((c) => desenharMedida(c.medida, c.pontos, false, c))}
                   {!tocando && !ehRef && (pontos[medida.id]?.length ?? 0) > 0 && desenharMedida(medida, pontos[medida.id]!, true, resultadoAtual ?? undefined)}
@@ -282,6 +387,15 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
               </div>
             </div>
 
+            <video ref={analiseRef} src={arquivo.url} muted playsInline preload="auto" aria-hidden className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px opacity-0" />
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/60 bg-card px-3 py-2 text-xs" role="status">
+              {progresso !== null ? (
+                <span className="flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Achando as articulações em cada quadro… {Math.round(progresso * 100)}% (você já pode marcar à mão)</span>
+              ) : nQuadros > 0 ? (
+                <span className="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-400"><Sparkles className="h-3.5 w-3.5" /> Articulações detectadas em {quadrosRef.current.filter((q) => q?.lm).length} de {nQuadros} quadros</span>
+              ) : <span className="text-muted-foreground">Detecção automática indisponível: marque os pontos à mão.</span>}
+              <label className="flex items-center gap-1.5 text-muted-foreground"><input type="checkbox" checked={esqueleto} onChange={(e) => setEsqueleto(e.target.checked)} /> Mostrar esqueleto</label>
+            </div>
             <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-2">
               <input type="range" min={0} max={Math.max(1, Math.floor(arquivo.dur * fps))} value={quadro} onChange={(e) => irPara(Number(e.target.value) / fps)} className="w-full" aria-label="Quadro do vídeo" />
               <div className="flex flex-wrap items-center gap-1">
@@ -370,6 +484,32 @@ export default function PontoAPontoVideo({ paciente }: { paciente: { id: string;
           )}
           {semEscala && <p className="rounded-xl bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">Para medir em centímetros, primeiro calibre a escala.</p>}
         </div>
+
+        {angulosDoQuadro.length > 0 && (
+          <div className="space-y-1.5 rounded-2xl border border-border/60 bg-card p-3">
+            <p className="text-sm font-semibold">Ângulos neste quadro (automático)</p>
+            <ul className="space-y-1">
+              {angulosDoQuadro.map((a) => (
+                <li key={a.m.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span>{a.m.nome}</span>
+                  <span className="flex items-center gap-1.5 font-semibold tabular-nums">{valorTexto(a.r.valor, a.m.unidade)}
+                    <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Guardar ${a.m.nome}`} onClick={() => guardarAuto(a)} disabled={tocando}><Plus className="h-3.5 w-3.5" /></Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-muted-foreground">Calculados pelas articulações detectadas. Para corrigir, escolha a medida em “Medir neste quadro”, toque em Sugerir pontos e arraste.</p>
+          </div>
+        )}
+
+        {series && arquivo && (
+          <div className="space-y-3 rounded-2xl border border-border/60 bg-card p-3">
+            <p className="text-sm font-semibold">Movimento ao longo do vídeo</p>
+            <GraficoAngulos titulo="Flexão do joelho" d={series.joelhoD} e={series.joelhoE} fps={fpsAnalise} t={t} dur={arquivo.dur} onSeek={irPara} />
+            <GraficoAngulos titulo="Flexão do quadril (tronco-coxa)" d={series.quadrilD} e={series.quadrilE} fps={fpsAnalise} t={t} dur={arquivo.dur} onSeek={irPara} />
+            <p className="text-[11px] text-muted-foreground"><span style={{ color: COR_LADO.d }}>■</span> direito · <span style={{ color: COR_LADO.e }}>■</span> esquerdo · toque no gráfico para ir ao instante.</p>
+          </div>
+        )}
 
         <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-3">
           <p className="text-sm font-semibold">Neste quadro</p>

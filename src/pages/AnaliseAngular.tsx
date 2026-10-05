@@ -11,7 +11,6 @@ import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import MarchaVideo from '@/components/angular/MarchaVideo';
 import PontoAPontoVideo from '@/components/angular/PontoAPontoVideo';
 import CameraNivel from '@/components/angular/CameraNivel';
-import NivelCelular from '@/components/angular/NivelCelular';
 import { parseNum } from '@/components/dosagem/comuns';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -74,8 +73,9 @@ export default function AnaliseAngular() {
   const [cameraAberta, setCameraAberta] = useState(false);
   const [inclinacaoCaptura, setInclinacaoCaptura] = useState<number | null>(null);
   const [inverterSensor, setInverterSensor] = useState(false);
-  const [leituraSensor, setLeituraSensor] = useState<{ graus: number; texto: string } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const vistaRef = useRef<Vista>('frente');
+  vistaRef.current = vista;
   const arrastando = useRef<{ medida: string; indice: number } | null>(null);
 
   useEffect(() => () => { if (foto) URL.revokeObjectURL(foto.url); }, [foto]);
@@ -109,7 +109,6 @@ export default function AnaliseAngular() {
 
   const medidasAtuais: MedidaSalva[] = [
     ...resultados.map((r) => ({ id: r.medida.id, graus: Math.round(r.valor * 10) / 10, texto: r.texto, ...(r.medida.unidade ? { unidade: r.medida.unidade } : {}) })),
-    ...(leituraSensor ? [{ id: 'sensor', graus: Math.round(leituraSensor.graus * 10) / 10, texto: leituraSensor.texto }] : []),
   ];
   const temResultado = medidasAtuais.length > 0;
 
@@ -133,7 +132,7 @@ export default function AnaliseAngular() {
     if (!arquivo.type.startsWith('image/')) { toast.error('Escolha um arquivo de imagem.'); return; }
     const url = URL.createObjectURL(arquivo);
     const img = new Image();
-    img.onload = () => { setFoto({ url, w: img.naturalWidth, h: img.naturalHeight, img }); setPontos({}); setUsouIA(false); setZoom(1); setMover(false); setInclinacaoCaptura(inclinacao); setInverterSensor(false); };
+    img.onload = () => { setFoto({ url, w: img.naturalWidth, h: img.naturalHeight, img }); setPontos({}); setUsouIA(false); setZoom(1); setMover(false); setInclinacaoCaptura(inclinacao); setInverterSensor(false); void marcarAutomatico({ img, w: img.naturalWidth, h: img.naturalHeight }, vistaRef.current, true); };
     img.onerror = () => { URL.revokeObjectURL(url); toast.error('Não consegui abrir essa imagem.'); };
     img.src = url;
   };
@@ -163,22 +162,23 @@ export default function AnaliseAngular() {
   const desfazer = () => setPontos((s) => ({ ...s, [medidaAtiva.id]: (s[medidaAtiva.id] ?? []).slice(0, -1) }));
   const limpar = () => setPontos((s) => ({ ...s, [medidaAtiva.id]: [] }));
 
-  const marcarAutomatico = async () => {
-    if (!foto) return;
+  const marcarAutomatico = async (alvo?: { img: HTMLImageElement; w: number; h: number }, vistaAlvo: Vista = vista, silencioso = false) => {
+    const f = alvo ?? foto;
+    if (!f) return;
     setDetectando(true);
     try {
-      const lm = await detectarPose(foto.img);
-      if (!lm) { toast.error('Não achei o corpo na foto. Marque os pontos à mão.'); return; }
-      const sugeridos = pontosAutomaticos(lm, vista, foto.w, foto.h);
+      const lm = await detectarPose(f.img);
+      if (!lm) { if (!silencioso) toast.error('Não achei o corpo na foto. Marque os pontos à mão.'); return; }
+      const sugeridos = pontosAutomaticos(lm, vistaAlvo, f.w, f.h);
       const ids = Object.keys(sugeridos);
-      if (!ids.length) { toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
+      if (!ids.length) { if (!silencioso) toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
       setPontos((s) => ({ ...s, ...sugeridos }));
       setAtiva(ids[0]);
       setUsouIA(true);
       toast.success(`Marquei ${ids.length} medida(s). Confira cada ponto e arraste o que estiver fora do lugar.`);
     } catch {
       // Sem internet para baixar o modelo, ou navegador sem suporte: segue a marcação manual.
-      toast.error('Não consegui carregar a marcação automática agora. Marque os pontos à mão.');
+      if (!silencioso) toast.error('Não consegui carregar a marcação automática agora. Marque os pontos à mão.');
     } finally {
       setDetectando(false);
     }
@@ -294,7 +294,7 @@ export default function AnaliseAngular() {
             <div className="space-y-3">
               <div role="tablist" aria-label="Vista" className="grid grid-cols-3 gap-1.5 rounded-2xl bg-muted/60 p-1.5">
                 {VISTAS.map((v) => (
-                  <button key={v.id} type="button" role="tab" aria-selected={vista === v.id} onClick={() => setVista(v.id)}
+                  <button key={v.id} type="button" role="tab" aria-selected={vista === v.id} onClick={() => { setVista(v.id); if (foto && v.id !== vista) void marcarAutomatico(undefined, v.id, true); }}
                     className={cn('rounded-xl px-3 py-2 text-sm font-semibold transition-all', vista === v.id ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
                     {v.nome}
                   </button>
@@ -307,7 +307,7 @@ export default function AnaliseAngular() {
                   <span className="text-sm font-semibold">Tirar ou escolher a foto ({vistaNome})</span>
                   <span className="max-w-sm text-xs text-muted-foreground">Câmera parada na altura do meio do corpo, paciente inteiro no quadro, boa luz e roupa justa. A foto fica só neste aparelho.</span>
                   <input type="file" accept="image/*" className="sr-only" onChange={(e) => escolherFoto(e.target.files?.[0])} />
-                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={(e) => { e.preventDefault(); setCameraAberta(true); }}><Smartphone className="h-3.5 w-3.5" /> Tirar foto com nível</Button>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={(e) => { e.preventDefault(); setCameraAberta(true); }}><Smartphone className="h-3.5 w-3.5" /> Tirar a foto no app</Button>
                 </label>
               ) : (
                 <div className="space-y-2">
@@ -372,12 +372,12 @@ export default function AnaliseAngular() {
                           : 'Medida completa. Arraste um ponto para ajustar.'}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      <Button size="sm" className="gap-1.5" onClick={marcarAutomatico} disabled={detectando}>
+                      <Button size="sm" className="gap-1.5" onClick={() => void marcarAutomatico()} disabled={detectando}>
                         {detectando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Marcar automaticamente
                       </Button>
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={desfazer} disabled={!ptsAtiva.length}><Undo2 className="h-3.5 w-3.5" /> Desfazer</Button>
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={limpar} disabled={!ptsAtiva.length}><Trash2 className="h-3.5 w-3.5" /> Limpar</Button>
-                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCameraAberta(true)}><Smartphone className="h-3.5 w-3.5" /> Foto com nível</Button>
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCameraAberta(true)}><Smartphone className="h-3.5 w-3.5" /> Tirar a foto</Button>
                       <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
                         <Camera className="h-3.5 w-3.5" /> Trocar foto
                         <input type="file" accept="image/*" className="sr-only" onChange={(e) => escolherFoto(e.target.files?.[0])} />
@@ -420,19 +420,26 @@ export default function AnaliseAngular() {
 
                 {medidaAtiva.id === 'nivel' && (
                   <div className="space-y-2 rounded-xl bg-muted/40 p-2.5 text-xs">
-                    <p className="text-muted-foreground">Marque 2 pontos sobre algo que na vida real é reto: o rodapé ou o chão (horizontal), um fio de prumo ou batente de porta (vertical). O app mede o giro da foto e corrige todos os ângulos.</p>
-                    <div className="grid grid-cols-2 gap-1">
-                      {(['horizontal', 'vertical'] as const).map((t) => (
-                        <button key={t} type="button" aria-pressed={nivelTipo === t} onClick={() => setNivelTipo(t)}
-                          className={cn('rounded-lg border px-2 py-1.5 font-medium capitalize', nivelTipo === t ? 'border-primary bg-primary/10' : 'border-border/60')}>{t}</button>
-                      ))}
-                    </div>
-                    {giro !== null && <p className="font-medium">{Math.abs(giro) < 0.05 ? 'Foto já está nivelada.' : `Foto girada ${nf(Math.abs(giro))}° (por ${origemGiro}): todos os ângulos já saem corrigidos.`}</p>}
-                    {giroMarcado === null && giroSensor !== null && (
-                      <div className="space-y-1">
-                        <p className="text-muted-foreground">Confira com a grade: as linhas devem acompanhar o chão. Se estiverem tortas para o lado errado, inverta.</p>
-                        <Button size="sm" variant="outline" onClick={() => setInverterSensor((v) => !v)}>Inverter o sentido da correção</Button>
-                      </div>
+                    {giroMarcado === null && giroSensor !== null ? (
+                      <>
+                        <p className="font-medium">{Math.abs(giroSensor) < 0.05 ? 'Foto já está nivelada.' : `Corrigido automaticamente pelo sensor do celular: foto girada ${nf(Math.abs(giroSensor))}°.`}</p>
+                        <p className="text-muted-foreground">Ligue a grade e confira se as linhas acompanham o chão. Se estiverem tortas para o lado errado, inverta. Para usar outra referência, marque 2 pontos sobre algo reto (chão, rodapé ou fio de prumo).</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          <Button size="sm" variant="outline" onClick={() => setInverterSensor((v) => !v)}>Inverter o sentido</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setInclinacaoCaptura(null)}>Sem correção</Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground">Marque 2 pontos sobre algo que na vida real é reto: o rodapé ou o chão (horizontal), um fio de prumo ou batente de porta (vertical). O app mede o giro da foto e corrige todos os ângulos. Fotos tiradas pelo botão “Tirar a foto no app” já saem corrigidas.</p>
+                        <div className="grid grid-cols-2 gap-1">
+                          {(['horizontal', 'vertical'] as const).map((t) => (
+                            <button key={t} type="button" aria-pressed={nivelTipo === t} onClick={() => setNivelTipo(t)}
+                              className={cn('rounded-lg border px-2 py-1.5 font-medium capitalize', nivelTipo === t ? 'border-primary bg-primary/10' : 'border-border/60')}>{t}</button>
+                          ))}
+                        </div>
+                        {giro !== null && <p className="font-medium">{Math.abs(giro) < 0.05 ? 'Foto já está nivelada.' : `Foto girada ${nf(Math.abs(giro))}°: todos os ângulos já saem corrigidos.`}</p>}
+                      </>
                     )}
                   </div>
                 )}
@@ -449,8 +456,6 @@ export default function AnaliseAngular() {
                 {semEscala && <p className="rounded-xl bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">Para medir em centímetros, primeiro calibre a escala (em “Referências da foto”).</p>}
                 {medidaAtiva.id === 'cobb' && <p className="rounded-xl bg-muted/40 p-2.5 text-xs text-muted-foreground">Marque as duas retas (por exemplo, as linhas das vértebras limite da curva). O app dá o ângulo entre elas. Em foto, é uma estimativa; o Cobb de referência vem da radiografia.</p>}
               </div>
-
-              <NivelCelular onRegistrar={(graus, texto) => setLeituraSensor({ graus, texto })} />
 
               <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-3">
                 <p className="text-sm font-semibold">Resultado</p>

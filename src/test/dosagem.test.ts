@@ -689,3 +689,21 @@ describe('PDF da análise em vídeo ponto a ponto', () => {
     expect(r.blob.size).toBeGreaterThan(1500);
   });
 });
+
+describe('guia de enquadramento da câmera', () => {
+  const base = () => Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.9 }));
+  it('aprova corpo inteiro, centralizado e com bom tamanho', async () => {
+    const { avaliarEnquadramento } = await import('../lib/angular/pose');
+    const lm = base(); lm[0] = { x: 0.5, y: 0.1, visibility: 0.9 }; lm[27] = { x: 0.48, y: 0.92, visibility: 0.9 }; lm[28] = { x: 0.52, y: 0.92, visibility: 0.9 };
+    expect(avaliarEnquadramento(lm).ok).toBe(true);
+  });
+  it('pede para afastar, aproximar e centralizar', async () => {
+    const { avaliarEnquadramento } = await import('../lib/angular/pose');
+    const corpo = (topo: number, baseY: number, x = 0.5) => { const lm = base().map((l) => ({ ...l, x })); lm[0] = { x, y: topo, visibility: 0.9 }; lm[27] = { x, y: baseY, visibility: 0.9 }; lm[28] = { x, y: baseY, visibility: 0.9 }; return lm; };
+    expect(avaliarEnquadramento(corpo(0.01, 0.9)).mensagem).toMatch(/Afaste-se/);
+    expect(avaliarEnquadramento(corpo(0.3, 0.6)).mensagem).toMatch(/Aproxime-se/);
+    expect(avaliarEnquadramento(corpo(0.05, 0.97)).mensagem).toMatch(/Afaste-se um pouco/);
+    expect(avaliarEnquadramento(corpo(0.1, 0.9, 0.8)).mensagem).toMatch(/Centralize/);
+    expect(avaliarEnquadramento(null).ok).toBe(false);
+  });
+});

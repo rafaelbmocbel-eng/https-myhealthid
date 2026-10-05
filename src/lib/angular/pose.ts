@@ -46,3 +46,23 @@ export function pontosAutomaticos(lm: Landmark[], vista: Vista, w: number, h: nu
   if (todos(q, j, t)) saida.joelho = [q!, j!, t!];
   return saida;
 }
+
+export interface Enquadramento { ok: boolean; mensagem: string }
+
+/** Diz se o corpo está inteiro, centralizado e com bom tamanho no quadro, para guiar a distância da foto. */
+export function avaliarEnquadramento(lm: Landmark[] | null): Enquadramento {
+  if (!lm) return { ok: false, mensagem: 'Não achei o corpo. Posicione o paciente no centro do quadro.' };
+  const vis = (i: number) => (lm[i]?.visibility ?? 0) >= 0.5;
+  const nariz = lm[0], tD = lm[28], tE = lm[27];
+  const pes = [tD, tE].filter((_, k) => vis(k === 0 ? 28 : 27));
+  if (!vis(0) || !pes.length) return { ok: false, mensagem: 'Afaste-se: o corpo precisa aparecer inteiro, da cabeça aos pés.' };
+  const topo = nariz.y, base = Math.max(...pes.map((p) => p.y));
+  if (topo < 0.02 || base > 0.985) return { ok: false, mensagem: 'Afaste-se: a cabeça ou os pés estão cortados.' };
+  const altura = base - topo;
+  if (altura < 0.55) return { ok: false, mensagem: 'Aproxime-se um pouco: o corpo está pequeno no quadro.' };
+  if (altura > 0.9) return { ok: false, mensagem: 'Afaste-se um pouco: o corpo está grande demais no quadro.' };
+  const meio = [11, 12, 23, 24].filter(vis).map((i) => lm[i].x);
+  const cx = meio.length ? meio.reduce((s, v) => s + v, 0) / meio.length : nariz.x;
+  if (cx < 0.35 || cx > 0.65) return { ok: false, mensagem: 'Centralize o paciente no quadro.' };
+  return { ok: true, mensagem: 'Enquadramento bom. Pode fotografar.' };
+}
