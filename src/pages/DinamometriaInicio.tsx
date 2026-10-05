@@ -20,7 +20,7 @@ import BateriaCelula from '@/components/dinamometria/BateriaCelula';
 import { cn, normalizarBusca } from '@/lib/utils';
 import { lerDadosAvaliacao, salvarDadosAvaliacao, type LadoDin } from '@/lib/dinamometria/dadosAvaliacao';
 
-interface Pac { id: string; nome: string; sobrenome: string | null; data_nascimento: string | null; sexo: string | null }
+interface Pac { id: string; nome: string; sobrenome: string | null; data_nascimento: string | null; sexo: string | null; genero?: string | null }
 
 function idade(nasc: string | null) {
   if (!nasc) return null;
@@ -59,7 +59,7 @@ export default function DinamometriaInicio() {
     enabled: !!user,
     queryFn: async () => {
       const { data } = await (supabase as any).from('pacientes')
-        .select('id, nome, sobrenome, data_nascimento, sexo')
+        .select('id, nome, sobrenome, data_nascimento, sexo, genero')
         .eq('terapeuta_id', user!.id).eq('ativo', true).order('nome');
       return (data || []) as Pac[];
     },
@@ -91,7 +91,7 @@ export default function DinamometriaInicio() {
   useEffect(() => {
     if (!pac) return;
     setNasc(pac.data_nascimento?.slice(0, 10) || '');
-    const s = String(pac.sexo || '').toLowerCase();
+    const s = String(pac.sexo || pac.genero || '').toLowerCase();
     setSexo(s.startsWith('f') ? 'F' : s.startsWith('m') ? 'M' : '');
   }, [pac]);
   // Dados já digitados nesta sessão (ao voltar do teste para editar) valem mais que a última avaliação.
@@ -123,12 +123,13 @@ export default function DinamometriaInicio() {
   const seguir = async (modo: 'teste' | 'treino') => {
     if (!pac) return;
     const mudouNasc = (pac.data_nascimento?.slice(0, 10) || '') !== nasc;
-    const sexoAtual = String(pac.sexo || '').toLowerCase().startsWith('f') ? 'F' : String(pac.sexo || '').toLowerCase().startsWith('m') ? 'M' : '';
-    if (mudouNasc || (sexo && sexo !== sexoAtual)) {
+    const sexoGravado = String(pac.sexo || '').toUpperCase();
+    if (mudouNasc || (sexo && sexo !== sexoGravado)) {
       setSalvando(true);
       const { error } = await (supabase as any).from('pacientes').update({
         ...(mudouNasc ? { data_nascimento: nasc || null } : {}),
-        ...(sexo && sexo !== sexoAtual ? { sexo: sexo === 'F' ? 'feminino' : 'masculino' } : {}),
+        // A coluna sexo só aceita M, F ou O.
+        ...(sexo && sexo !== sexoGravado ? { sexo: sexo === 'F' ? 'F' : 'M' } : {}),
       }).eq('id', pac.id);
       setSalvando(false);
       if (error) { toast.error('Não consegui salvar o cadastro: ' + error.message); return; }

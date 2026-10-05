@@ -87,7 +87,8 @@ export default function Aplicacoes() {
         sobrenome: partes.slice(1).join(' '),
         telefone: novo.telefone,
         data_nascimento: novo.nascimento || null,
-        sexo: novo.sexo || null,
+        // A coluna sexo só aceita M, F ou O.
+        sexo: novo.sexo === 'feminino' ? 'F' : novo.sexo === 'masculino' ? 'M' : null,
         terapeuta_id: user.id,
         ativo: true,
         cadastro_status: 'pendente_paciente',
