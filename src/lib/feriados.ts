@@ -1,38 +1,52 @@
 // Feriados nacionais BR (fixos + móveis) para gerar a agenda de sessões CASSI só
 // em dias úteis. Cobre 2024–2027 (móveis dependem da Páscoa, então ficam listados).
 
-// Feriados MÓVEIS (Carnaval terça, Sexta-feira Santa, Corpus Christi) por ano.
-const FERIADOS_MOVEIS: string[] = [
-  // 2024
-  '2024-02-13', '2024-03-29', '2024-05-30',
-  // 2025
-  '2025-03-04', '2025-04-18', '2025-06-19',
-  // 2026
-  '2026-02-17', '2026-04-03', '2026-06-04',
-  // 2027
-  '2027-02-09', '2027-03-26', '2027-05-27',
-];
-
 // Feriados FIXOS (mesmo dia todo ano). Consciência Negra (20/11) é nacional desde 2024.
-const FIXOS_MMDD = ['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '11-20', '12-25'];
+const FIXOS: Record<string, string> = {
+  '01-01': 'Confraternização Universal', '04-21': 'Tiradentes', '05-01': 'Dia do Trabalho', '09-07': 'Independência',
+  '10-12': 'Nossa Senhora Aparecida', '11-02': 'Finados', '11-15': 'Proclamação da República', '11-20': 'Consciência Negra', '12-25': 'Natal',
+};
 
 function iso(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const FERIADOS = new Set<string>(FERIADOS_MOVEIS);
-for (let ano = 2024; ano <= 2027; ano++) {
-  for (const mmdd of FIXOS_MMDD) FERIADOS.add(`${ano}-${mmdd}`);
+// Páscoa (algoritmo de Meeus/Jones/Butcher, calendário gregoriano).
+function pascoa(ano: number): Date {
+  const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(ano, mes - 1, dia);
 }
 
-export function ehFeriado(d: Date): boolean {
-  return FERIADOS.has(iso(d));
+const FERIADOS = new Map<string, string>();
+// Móveis: Carnaval (terça), Sexta-feira Santa e Corpus Christi, calculados pela Páscoa.
+for (let ano = 2024; ano <= 2040; ano++) {
+  const p = pascoa(ano);
+  const desloca = (dias: number) => iso(new Date(p.getFullYear(), p.getMonth(), p.getDate() + dias));
+  FERIADOS.set(desloca(-47), 'Carnaval');
+  FERIADOS.set(desloca(-2), 'Sexta-feira Santa');
+  FERIADOS.set(desloca(60), 'Corpus Christi');
+  for (const [mmdd, nome] of Object.entries(FIXOS)) FERIADOS.set(`${ano}-${mmdd}`, nome);
+}
+
+/** Datas extras (feriado municipal, recesso) em 'YYYY-MM-DD', que também não contam como dia útil. */
+export type DatasExtras = ReadonlySet<string>;
+
+export function nomeFeriado(d: Date): string | null {
+  return FERIADOS.get(iso(d)) ?? null;
+}
+
+export function ehFeriado(d: Date, extras?: DatasExtras): boolean {
+  return FERIADOS.has(iso(d)) || !!extras?.has(iso(d));
 }
 
 // Dia útil = seg–sex e não feriado.
-export function ehDiaUtil(d: Date): boolean {
+export function ehDiaUtil(d: Date, extras?: DatasExtras): boolean {
   const dow = d.getDay(); // 0=dom, 6=sáb
-  return dow !== 0 && dow !== 6 && !ehFeriado(d);
+  return dow !== 0 && dow !== 6 && !ehFeriado(d, extras);
 }
 
 // Gera `quantidade` datas de sessão a partir de `inicio`, apenas em dias úteis e
@@ -42,13 +56,14 @@ export function gerarDatasSessoes(
   inicio: Date,
   quantidade: number,
   diasSemana: number[] = [1, 2, 3, 4, 5],
+  extras?: DatasExtras,
 ): Date[] {
   const datas: Date[] = [];
   const cursor = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
   let guarda = 0; // trava de segurança contra loop infinito
   while (datas.length < quantidade && guarda < 2000) {
     guarda++;
-    if (diasSemana.includes(cursor.getDay()) && ehDiaUtil(cursor)) {
+    if (diasSemana.includes(cursor.getDay()) && ehDiaUtil(cursor, extras)) {
       datas.push(new Date(cursor));
     }
     cursor.setDate(cursor.getDate() + 1);
@@ -67,4 +82,47 @@ export function diaUtilApos(inicioISO: string, n: number): string | null {
   const datas = gerarDatasSessoes(dia1, n, [1, 2, 3, 4, 5]);
   const ult = datas[datas.length - 1];
   return ult ? iso(ult) : null;
+}
+
+export interface DiaCalculado { iso: string; semana: string; rotulo: 'avaliacao' | 'sessao'; numero: number }
+export interface DiaPulado { iso: string; semana: string; motivo: string }
+export interface ResultadoDiasUteis { dias: DiaCalculado[]; pulados: DiaPulado[]; fimISO: string | null }
+
+const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+
+/**
+ * Datas de uma guia CASSI em dias úteis (seg–sex, sem feriado), a partir do dia em que foi autorizada.
+ * `contarDiaAutorizacao`: o dia da autorização é o 1º dia, se for útil; senão a contagem começa no dia seguinte.
+ * `comAvaliacao`: soma um dia extra no começo para a avaliação (144); as `quantidade` sessões vêm depois.
+ */
+export function calcularDiasUteisGuia(opts: {
+  autorizacaoISO: string;
+  quantidade: number;
+  contarDiaAutorizacao?: boolean;
+  comAvaliacao?: boolean;
+  extras?: DatasExtras;
+}): ResultadoDiasUteis | null {
+  const { autorizacaoISO, quantidade, contarDiaAutorizacao = true, comAvaliacao = false, extras } = opts;
+  const base = new Date(`${autorizacaoISO.slice(0, 10)}T00:00:00`);
+  if (!autorizacaoISO || Number.isNaN(base.getTime()) || quantidade <= 0 || quantidade > 400) return null;
+  const inicio = new Date(base.getFullYear(), base.getMonth(), base.getDate() + (contarDiaAutorizacao ? 0 : 1));
+  const total = quantidade + (comAvaliacao ? 1 : 0);
+  const dias: DiaCalculado[] = [];
+  const pulados: DiaPulado[] = [];
+  const cursor = new Date(inicio);
+  let guarda = 0;
+  while (dias.length < total && guarda < 2000) {
+    guarda++;
+    const dow = cursor.getDay();
+    if (dow === 0 || dow === 6) {
+      pulados.push({ iso: iso(cursor), semana: SEMANA[dow], motivo: dow === 0 ? 'domingo' : 'sábado' });
+    } else if (ehFeriado(cursor, extras)) {
+      pulados.push({ iso: iso(cursor), semana: SEMANA[dow], motivo: nomeFeriado(cursor) ?? 'feriado local' });
+    } else {
+      const aval = comAvaliacao && dias.length === 0;
+      dias.push({ iso: iso(cursor), semana: SEMANA[dow], rotulo: aval ? 'avaliacao' : 'sessao', numero: aval ? 0 : dias.length + (comAvaliacao ? 0 : 1) });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return { dias, pulados, fimISO: dias.length ? dias[dias.length - 1].iso : null };
 }

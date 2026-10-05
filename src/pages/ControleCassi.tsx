@@ -4,6 +4,7 @@ import { normalizarBusca } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gerarDatasSessoes } from '@/lib/feriados';
+import CalculadoraDiasUteis from '@/components/cassi/CalculadoraDiasUteis';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical, X, Archive } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertTriangle, CalendarClock, CheckCircle2, Circle, Download, UserPlus, Search, Pencil, CreditCard, Phone, Settings, Copy, MessageCircle, MoreVertical, X, Archive, CalendarDays } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
@@ -167,6 +168,7 @@ export default function ControleCassi() {
   const [busca, setBusca] = useState('');
   const [cadastro, setCadastro] = useState<Paciente | 'novo' | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
   const [verEncerrados, setVerEncerrados] = useState(false);
   const [filtro2mes, setFiltro2mes] = useState(false);
   // Filtro do painel de ações do "Este mês": foca em quem precisa de atenção.
@@ -468,7 +470,10 @@ export default function ControleCassi() {
               <ClipboardList className="h-4 w-4 text-primary" />
               <span className="text-sm font-bold">Controle CASSI</span>
             </div>
-            <Button size="icon" variant="ghost" className="ml-auto h-8 w-8 md:hidden" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
+            <Button size="icon" variant="ghost" className="ml-auto h-8 w-8 md:hidden" title="Calculadora de dias úteis" aria-label="Calculadora de dias úteis" onClick={() => setCalcOpen(true)}>
+              <CalendarDays className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-8 w-8 md:hidden" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
               <Settings className="h-4 w-4" />
             </Button>
           </div>
@@ -484,6 +489,9 @@ export default function ControleCassi() {
                 </button>
               ))}
             </div>
+            <Button size="icon" variant="ghost" className="hidden md:inline-flex h-8 w-8" title="Calculadora de dias úteis" aria-label="Calculadora de dias úteis" onClick={() => setCalcOpen(true)}>
+              <CalendarDays className="h-4 w-4" />
+            </Button>
             <Button size="icon" variant="ghost" className="hidden md:inline-flex h-8 w-8" title="Configurações CASSI" onClick={() => setConfigOpen(true)}>
               <Settings className="h-4 w-4" />
             </Button>
@@ -990,6 +998,7 @@ export default function ControleCassi() {
       )}
 
       {configOpen && <ConfigCassiDialog onClose={() => setConfigOpen(false)} />}
+      {calcOpen && <CalculadoraDiasUteis onClose={() => setCalcOpen(false)} />}
     </div>
   );
 }
@@ -1114,6 +1123,7 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     return dias.size;
   }, [agPaciente, d.data_resposta, d.data_pedido, d.sessoes_autorizadas]);
 
+  const [calcAberta, setCalcAberta] = useState(false);
   const [gerForm, setGerForm] = useState({ inicio: guia?.data_resposta || guia?.data_pedido || hojeISO(), horario: '08:00' });
 
   const gerarAgenda = useMutation({
@@ -1355,9 +1365,11 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
             return (
               <p className={`text-[11px] -mt-1 ${atravessa ? 'text-amber-700 dark:text-amber-400 font-medium' : 'text-muted-foreground'}`}>
                 {atravessa ? `⚠ Não fecha no mês em que começou — termina ~${fimBR} (atravessa o mês, em dias úteis).` : `Termina ~${fimBR} (em dias úteis, sessões seguidas).`}
+                {' '}<button type="button" onClick={() => setCalcAberta(true)} className="font-medium text-primary underline underline-offset-2">Ver as datas</button>
               </p>
             );
           })()}
+          {calcAberta && <CalculadoraDiasUteis onClose={() => setCalcAberta(false)} inicial={{ autorizacao: d.data_resposta || d.data_pedido, quantidade: Number(d.sessoes_autorizadas) || undefined, comAvaliacao: d.codigos.includes('144') }} />}
 
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Diagnóstico</label>
