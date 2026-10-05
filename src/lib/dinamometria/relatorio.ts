@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import '@/lib/pdf/patchJsPdf';
 import { nomeDocumento } from '@/lib/pdf/entrega';
+import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import {
   type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito, type Unidade,
@@ -529,6 +530,7 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
     if (y > 270) { doc.addPage(); y = 18; }
     doc.text(rod, M, Math.max(y + 4, 286 - rod.length * 3.3));
   }
+  molduraEmTodasPaginas(doc);
   const nomeT = nomeArquivo(d.paciente, 'Dinamometria', d.data);
   if (apenasGerar) return { blob: doc.output('blob'), nome: nomeT };
   doc.save(nomeT);
@@ -674,6 +676,7 @@ export async function gerarRelatorioCliente(d: DadosRelatorio, apenasGerar = fal
   else y = par('Seus resultados estão equilibrados. Manter os exercícios ajuda a preservar a força e prevenir lesões; a próxima avaliação vai mostrar a evolução.', M, y, W - 2 * M);
   y += 3; doc.setFontSize(8); doc.setTextColor(110);
   par(`Este relatório resume uma avaliação de força feita com dinamômetro e não substitui a consulta com o profissional que acompanha você. Valores normais: ${citar(['mckay', 'machado'])}.`, M, Math.max(y, 276), W - 2 * M, 3.6);
+  molduraEmTodasPaginas(doc);
   const nomeC = nomeArquivo(d.paciente, 'Avaliacao_de_forca', d.data);
   if (apenasGerar) return { blob: doc.output('blob'), nome: nomeC };
   doc.save(nomeC);

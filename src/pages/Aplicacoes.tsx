@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutGrid, Dumbbell, Search, Loader2, ChevronRight, ArrowLeft, UserPlus, Zap, Ruler } from 'lucide-react';
+import { LayoutGrid, Dumbbell, Search, Loader2, ChevronRight, ArrowLeft, UserPlus, UserRound, Zap, Ruler } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -17,9 +17,13 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Aplicacao {
   id: string;
   nome: string;
+  /** Rótulo curto sob o ícone. */
+  curto: string;
+  /** Lida por leitores de tela; a tela mostra só o ícone e o nome. */
   descricao: string;
-  detalhes: string[];
   icone: typeof Dumbbell;
+  /** Classes do azulejo do ícone (claro e escuro). */
+  cor: string;
   rota: (pacienteId: string) => string;
   /** Abre direto, sem escolher paciente antes; o paciente é opcional dentro da ferramenta. */
   rotaDireta?: string;
@@ -31,26 +35,29 @@ const APLICACOES: Aplicacao[] = [
   {
     id: 'dinamometria',
     nome: 'Análise de dinamometria',
-    descricao: 'Célula de carga Bluetooth (ou Excel do dinamômetro): teste de força guiado e treino com alvo.',
-    detalhes: ['Simetria entre lados e razão agonista/antagonista', 'Força de cada movimento, índice de fadiga e curvas', 'Avatar em verde, amarelo e vermelho com relação com dores; evolução e relatórios em PDF'],
+    curto: 'Dinamometria',
+    descricao: 'Célula de carga Bluetooth ou Excel do dinamômetro: teste de força guiado, simetria, fadiga e treino com alvo.',
     icone: Dumbbell,
+    cor: 'from-emerald-500/20 to-emerald-500/5 text-emerald-700 ring-emerald-500/25 dark:text-emerald-300',
     rota: id => `/dinamometria?paciente=${id}`,
   },
   {
     id: 'dosagem',
     nome: 'Dosagem de eletrotermofototerapia',
-    descricao: 'Guia de qual recurso tem mais respaldo para cada patologia, e as calculadoras de dose, com a fonte de cada número.',
-    detalhes: ['Descreva o paciente (ou leia o prontuário) e veja os recursos ordenados pela evidência', 'Laser, ultrassom, ondas de choque, TENS, FES, russa e interferencial, com resultados negativos incluídos', 'Triagem de contraindicações pelo prontuário e registro da dose aplicada'],
+    curto: 'Dosagem',
+    descricao: 'Guia do recurso com mais respaldo para cada patologia e calculadoras de dose, com a fonte de cada número.',
     icone: Zap,
+    cor: 'from-sky-500/20 to-sky-500/5 text-sky-700 ring-sky-500/25 dark:text-sky-300',
     rota: id => `/dosagem?paciente=${id}`,
     rotaDireta: '/dosagem',
   },
   {
     id: 'analise-angular',
     nome: 'Análise angular',
-    descricao: 'Meça ângulos e desníveis do corpo em uma foto: ombros, pelve, cabeça, tronco, joelho e ângulo craniovertebral.',
-    detalhes: ['Fotos de frente, perfil e costas, com os pontos marcados na própria foto', 'O lado mais alto sai pelo lado do paciente, em qualquer vista', 'Registro no prontuário; a foto fica só no seu aparelho'],
+    curto: 'Análise angular',
+    descricao: 'Ângulos e desníveis do corpo em foto e análise da marcha em vídeo, com comparação e PDF.',
     icone: Ruler,
+    cor: 'from-violet-500/20 to-violet-500/5 text-violet-700 ring-violet-500/25 dark:text-violet-300',
     rota: id => `/analise-angular?paciente=${id}`,
     rotaDireta: '/analise-angular',
   },
@@ -125,35 +132,32 @@ export default function Aplicacoes() {
       <div className="container max-w-5xl py-6 space-y-5">
         <PageHeader
           title="Aplicações"
-          subtitle="Ferramentas de avaliação para usar com seus pacientes."
+          subtitle="Toque no ícone para abrir. O ícone de pessoa abre já com um paciente."
           icon={<LayoutGrid className="icon-md" />}
         />
 
         {!escolhida ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {APLICACOES.map(a => {
               const Icone = a.icone;
+              const abrir = () => {
+                if (a.rotaDireta) navigate(a.rotaDireta);
+                else { setEscolhida(a); setBusca(''); }
+              };
               return (
-                <Card key={a.id} className="p-5 flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="h-10 w-10 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0"><Icone className="h-5 w-5" /></span>
-                    <div className="min-w-0">
-                      <p className="font-semibold leading-tight">{a.nome}</p>
-                      <p className="text-xs text-muted-foreground">{a.descricao}</p>
-                    </div>
-                  </div>
-                  <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-0.5">
-                    {a.detalhes.map(d => <li key={d}>{d}</li>)}
-                  </ul>
-                  {a.rotaDireta ? (
-                    <div className="mt-auto flex gap-2">
-                      <Button className="flex-1" onClick={() => navigate(a.rotaDireta!)}>Abrir</Button>
-                      <Button variant="outline" onClick={() => { setEscolhida(a); setBusca(''); }}>Com paciente</Button>
-                    </div>
-                  ) : (
-                    <Button className="mt-auto" onClick={() => { setEscolhida(a); setBusca(''); }}>Abrir</Button>
+                <div key={a.id} className="group relative">
+                  <button type="button" onClick={abrir} aria-label={`${a.nome}. ${a.descricao}`}
+                    className="flex w-full flex-col items-center gap-3 rounded-3xl border border-border/70 bg-card px-3 pb-4 pt-6 text-center shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+                    <span className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ring-1 ${a.cor}`}><Icone className="h-8 w-8" strokeWidth={1.75} /></span>
+                    <span className="text-sm font-semibold leading-tight text-balance">{a.curto}</span>
+                  </button>
+                  {a.rotaDireta && (
+                    <button type="button" onClick={() => { setEscolhida(a); setBusca(''); }} aria-label={`${a.curto} com paciente`} title="Abrir com um paciente"
+                      className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <UserRound className="h-4 w-4" />
+                    </button>
                   )}
-                </Card>
+                </div>
               );
             })}
           </div>

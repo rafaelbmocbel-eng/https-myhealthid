@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import '@/lib/pdf/patchJsPdf';
+import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { nomeDocumento } from '@/lib/pdf/entrega';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import { compararMedidas, grau, variacaoTexto, type MedidaSalva } from './comparar';
@@ -48,59 +49,98 @@ export function fotoComMarcacoes(img: HTMLImageElement, grupos: Ponto[][], largu
   return { url: cv.toDataURL('image/jpeg', 0.85), w, h };
 }
 
+const AZUL: [number, number, number] = [30, 58, 95];
+const CAB: [number, number, number] = [230, 237, 245];
+const BORDA: [number, number, number] = [208, 214, 222];
+const DOURADO: [number, number, number] = [234, 170, 20];
+
 export async function gerarRelatorioAngular(d: DadosRelatorioAngular): Promise<{ blob: Blob; nome: string }> {
   const paciente = nomeDocumento(d.paciente);
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const W = 210, M = 14;
+  const W = 210, M = 14, LARG = W - 2 * M;
   const t = (txt: string, x: number, y: number, op?: Parameters<jsPDF['text']>[3]) => doc.text(seguro(txt), x, y, op);
-  let y = 16;
-  try { await addLogoToDoc(doc, W - M - 16, 8, 16, d.logoUrl); } catch { /* logo é opcional */ }
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(20); t('Análise angular', M, y); y += 7;
-  doc.setFontSize(11); t(paciente, M, y); doc.setFont('helvetica', 'normal'); y += 5;
-  doc.setFontSize(9); doc.setTextColor(90);
-  t(`Vista ${d.vistaNome} - ${d.data}${d.profissional ? ` - ${d.profissional}` : ''}`, M, y); y += 7;
+  const novaPagina = () => { doc.addPage(); return 18; };
+
+  // Cabeçalho
+  let y = 18;
+  try { await addLogoToDoc(doc, W - M - 16, 10, 16, d.logoUrl); } catch { /* logo é opcional */ }
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...AZUL); t('Análise angular', M, y); y += 7;
+  doc.setFontSize(11.5); doc.setTextColor(20); t(paciente, M, y); y += 5;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90);
+  t(`Vista ${d.vistaNome} · ${d.data}${d.profissional ? ` · ${d.profissional}` : ''}`, M, y); y += 4;
+  doc.setDrawColor(...DOURADO); doc.setLineWidth(0.5); doc.line(M, y, M + 28, y);
+  doc.setDrawColor(...BORDA); doc.setLineWidth(0.25); doc.line(M + 28, y, W - M, y); y += 7;
   doc.setTextColor(20);
 
-  if (d.imagem) {
-    const maxH = 120, maxW = W - 2 * M;
-    const prop = d.imagem.w / d.imagem.h;
-    const h = Math.min(maxH, maxW / prop), w = h * prop;
-    doc.addImage(d.imagem.url, 'JPEG', M, y, w, h, undefined, 'FAST');
-    y += h + 6;
-  }
-
-  const linhas = compararMedidas(d.medidas, d.anterior?.medidas ?? []).filter((l) => l.atual);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); t('Medidas', M, y); y += 5;
-  doc.setFontSize(8.5);
-  const comAnterior = !!d.anterior;
-  const cols = comAnterior ? [M, 92, 118, 148, 172] : [M, 92];
-  doc.setTextColor(90);
-  t('Medida', cols[0], y); t('Agora', cols[1], y);
-  if (comAnterior) { t(`Antes (${d.anterior!.data})`, cols[2], y); t('Variação', cols[3], y); }
-  y += 2; doc.setDrawColor(200); doc.line(M, y, W - M, y); y += 4; doc.setTextColor(20); doc.setFont('helvetica', 'normal');
-  for (const l of linhas) {
-    if (y > 262) { doc.addPage(); y = 18; }
-    t(l.nome, cols[0], y); t(grau(l.atual!.graus), cols[1], y);
-    if (comAnterior) { t(grau(l.anterior?.graus), cols[2], y); t(variacaoTexto(l.variacao), cols[3], y); }
+  const titulo = (txt: string) => {
+    doc.setFillColor(...AZUL); doc.roundedRect(M, y - 3.6, 1.4, 5, 0.7, 0.7, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...AZUL); t(txt, M + 4, y); doc.setTextColor(20);
     y += 5;
-  }
-  y += 3;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); t('Leitura', M, y); y += 5;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
-  for (const l of linhas) {
-    if (!l.atual?.texto) continue;
-    const quebra = doc.splitTextToSize(seguro(`- ${l.atual.texto}`), W - 2 * M);
-    if (y + quebra.length * 4 > 272) { doc.addPage(); y = 18; }
-    doc.text(quebra, M, y); y += quebra.length * 4 + 1;
-  }
-  if (comAnterior) {
-    const frase = doc.splitTextToSize(seguro('A variação é a diferença numérica entre as duas avaliações; nos desníveis o número não mostra o lado, que está na leitura de cada avaliação.'), W - 2 * M);
-    doc.setTextColor(90); doc.text(frase, M, y + 2); doc.setTextColor(20);
+  };
+
+  // Foto com moldura própria
+  if (d.imagem) {
+    const maxH = 118;
+    const prop = d.imagem.w / d.imagem.h;
+    const h = Math.min(maxH, LARG / prop), w = h * prop;
+    const x = M + (LARG - w) / 2;
+    doc.setFillColor(255, 255, 255); doc.setDrawColor(...BORDA); doc.setLineWidth(0.4);
+    doc.roundedRect(x - 1.5, y - 1.5, w + 3, h + 3, 2.5, 2.5, 'FD');
+    doc.addImage(d.imagem.url, 'JPEG', x, y, w, h, undefined, 'FAST');
+    y += h + 8;
   }
 
-  const rodape = doc.splitTextToSize(seguro(`${d.metodo === 'automatica_conferida' ? 'Pontos sugeridos por detecção automática de pose e conferidos pelo profissional.' : 'Pontos marcados manualmente pelo profissional.'} Os ângulos usam a horizontal e a vertical da foto como referência e valem para acompanhar a evolução entre fotos feitas do mesmo jeito. Medida de acompanhamento, não é diagnóstico.`), W - 2 * M);
-  doc.setFontSize(7.4); doc.setTextColor(110);
-  doc.text(rodape, M, 286 - rodape.length * 3.3);
+  // Tabela de medidas
+  const linhas = compararMedidas(d.medidas, d.anterior?.medidas ?? []).filter((l) => l.atual);
+  const comAnterior = !!d.anterior;
+  const alturaLinha = 6.4, alturaCab = 7;
+  if (y + alturaCab + alturaLinha * Math.min(linhas.length, 3) + 10 > 280) y = novaPagina();
+  titulo('Medidas');
+  const cols = comAnterior ? [M + 4, 92, 120, 152] : [M + 4, 130];
+  const altTab = alturaCab + alturaLinha * linhas.length;
+  if (y + altTab > 282) y = novaPagina();
+  doc.setFillColor(255, 255, 255); doc.setDrawColor(...BORDA); doc.setLineWidth(0.3);
+  doc.roundedRect(M, y, LARG, altTab, 2.2, 2.2, 'FD');
+  doc.setFillColor(...CAB); doc.roundedRect(M, y, LARG, alturaCab, 2.2, 2.2, 'F'); doc.rect(M, y + alturaCab - 2.2, LARG, 2.2, 'F');
+  doc.setDrawColor(...BORDA); doc.line(M, y + alturaCab, W - M, y + alturaCab);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...AZUL);
+  t('Medida', cols[0], y + 4.7); t('Agora', cols[1], y + 4.7);
+  if (comAnterior) { t(`Antes (${d.anterior!.data})`, cols[2], y + 4.7); t('Variação', cols[3], y + 4.7); }
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(20);
+  linhas.forEach((l, i) => {
+    const yy = y + alturaCab + alturaLinha * i;
+    if (i > 0) { doc.setDrawColor(...BORDA); doc.setLineWidth(0.15); doc.line(M + 2, yy, W - M - 2, yy); }
+    const base = yy + 4.4;
+    t(l.nome, cols[0], base); t(grau(l.atual!.graus), cols[1], base);
+    if (comAnterior) { t(grau(l.anterior?.graus), cols[2], base); doc.setFont('helvetica', 'bold'); t(variacaoTexto(l.variacao), cols[3], base); doc.setFont('helvetica', 'normal'); }
+  });
+  y += altTab + 8;
 
+  // Leitura
+  const itens = linhas.filter((l) => l.atual?.texto).map((l) => doc.splitTextToSize(seguro(l.atual!.texto!), LARG - 12) as string[]);
+  if (itens.length) {
+    const altBox = itens.reduce((s, q) => s + q.length * 4 + 1.6, 0) + 5;
+    if (y + altBox + 8 > 282) y = novaPagina();
+    titulo('Leitura');
+    doc.setFillColor(247, 249, 252); doc.setDrawColor(...BORDA); doc.setLineWidth(0.3);
+    doc.roundedRect(M, y, LARG, altBox, 2.2, 2.2, 'FD');
+    doc.setFillColor(...AZUL); doc.roundedRect(M, y, 1.4, altBox, 0.7, 0.7, 'F');
+    let yy = y + 5.2;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8); doc.setTextColor(20);
+    for (const q of itens) { doc.text(q, M + 6, yy); yy += q.length * 4 + 1.6; }
+    y += altBox + 3;
+    if (comAnterior) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(100);
+      const f = doc.splitTextToSize(seguro('A variação é a diferença numérica entre as duas avaliações; nos desníveis o número não mostra o lado, que está na leitura de cada avaliação.'), LARG);
+      doc.text(f, M, y + 2); doc.setTextColor(20);
+    }
+  }
+
+  // Rodapé de método
+  const rodape = doc.splitTextToSize(seguro(`${d.metodo === 'automatica_conferida' ? 'Pontos sugeridos por detecção automática de pose e conferidos pelo profissional.' : 'Pontos marcados manualmente pelo profissional.'} Os ângulos usam a horizontal e a vertical da foto como referência e valem para acompanhar a evolução entre fotos feitas do mesmo jeito. Medida de acompanhamento, não é diagnóstico.`), LARG);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(110);
+  doc.text(rodape, M, 287 - rodape.length * 3.3);
+
+  molduraEmTodasPaginas(doc);
   return { blob: doc.output('blob'), nome: `Analise_angular_${paciente.replace(/[^\w]+/g, '_')}_${dataArquivo(d.data)}.pdf` };
 }
