@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Aplicacao {
   id: string;
   nome: string;
-  /** Rótulo curto sob o ícone. */
+  /** Nome curto, só para leitores de tela e dicas (a tela mostra apenas o ícone). */
   curto: string;
   /** Lida por leitores de tela; a tela mostra só o ícone e o nome. */
   descricao: string;
@@ -132,7 +132,7 @@ export default function Aplicacoes() {
       <div className="container max-w-5xl py-6 space-y-5">
         <PageHeader
           title="Aplicações"
-          subtitle="Toque no ícone para abrir. O ícone de pessoa abre já com um paciente."
+          subtitle="Ferramentas de avaliação."
           icon={<LayoutGrid className="icon-md" />}
         />
 
@@ -146,10 +146,9 @@ export default function Aplicacoes() {
               };
               return (
                 <div key={a.id} className="group relative">
-                  <button type="button" onClick={abrir} aria-label={`${a.nome}. ${a.descricao}`}
-                    className="flex w-full flex-col items-center gap-3 rounded-3xl border border-border/70 bg-card px-3 pb-4 pt-6 text-center shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-                    <span className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ring-1 ${a.cor}`}><Icone className="h-8 w-8" strokeWidth={1.75} /></span>
-                    <span className="text-sm font-semibold leading-tight text-balance">{a.curto}</span>
+                  <button type="button" onClick={abrir} aria-label={`${a.nome}. ${a.descricao}`} title={a.nome}
+                    className="flex aspect-square w-full items-center justify-center rounded-3xl border border-border/70 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+                    <span className={`flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br ring-1 ${a.cor}`}><Icone className="h-10 w-10" strokeWidth={1.75} /></span>
                   </button>
                   {a.rotaDireta && (
                     <button type="button" onClick={() => { setEscolhida(a); setBusca(''); }} aria-label={`${a.curto} com paciente`} title="Abrir com um paciente"
