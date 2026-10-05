@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ClipboardCheck, Copy, Film, Loader2, Sparkles, TriangleAlert } from 'lucide-react';
+import { ClipboardCheck, Copy, FileDown, Film, Loader2, Sparkles, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { tabela } from '@/lib/dosagem/db';
 import { detectarVideo } from '@/lib/angular/detector';
+import { gerarRelatorioMarcha } from '@/lib/angular/relatorioMarcha';
+import { entregarPdf } from '@/lib/pdf/entrega';
 import { analisarMarcha, type Frame, type Lado, type ResultadoMarcha } from '@/lib/angular/marcha';
 
 const FPS = 30;
@@ -39,8 +41,8 @@ function Curva({ titulo, d, e }: { titulo: string; d: number[] | null; e: number
   );
 }
 
-export default function MarchaVideo({ paciente }: { paciente: { id: string; nome: string } | null | undefined }) {
-  const { user } = useAuth();
+export default function MarchaVideo({ paciente }: { paciente: { id: string; nome: string; sobrenome?: string | null } | null | undefined }) {
+  const { user, profile } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const cancelar = useRef(false);
   const [arquivo, setArquivo] = useState<{ url: string; w: number; h: number } | null>(null);
@@ -48,6 +50,7 @@ export default function MarchaVideo({ paciente }: { paciente: { id: string; nome
   const [frames, setFrames] = useState<Frame[] | null>(null);
   const [quadro, setQuadro] = useState(0);
   const [salvando, setSalvando] = useState(false);
+  const [gerando, setGerando] = useState(false);
 
   useEffect(() => () => { if (arquivo) URL.revokeObjectURL(arquivo.url); }, [arquivo]);
 
@@ -99,6 +102,25 @@ export default function MarchaVideo({ paciente }: { paciente: { id: string; nome
   const copiar = async () => {
     try { await navigator.clipboard.writeText(`Análise de marcha por vídeo\n${texto.join('\n')}`); toast.success('Resumo copiado.'); }
     catch { toast.error('Não consegui copiar.'); }
+  };
+
+  const gerarPdf = async () => {
+    if (!ok) return;
+    setGerando(true);
+    try {
+      const { blob, nome } = await gerarRelatorioMarcha({
+        paciente: paciente ? `${paciente.nome} ${paciente.sobrenome ?? ''}`.trim() : 'Paciente',
+        profissional: profile ? `${profile.nome} ${profile.sobrenome || ''}`.trim() + (profile.crefito ? ` · CREFITO ${profile.crefito}` : '') : undefined,
+        data: new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+        resultado: ok,
+        fps: FPS,
+      });
+      entregarPdf({ blob, nome, pacienteId: paciente?.id ?? null, titulo: 'Análise da marcha' });
+    } catch {
+      toast.error('Não consegui gerar o PDF.');
+    } finally {
+      setGerando(false);
+    }
   };
 
   const registrar = async () => {
@@ -202,6 +224,9 @@ export default function MarchaVideo({ paciente }: { paciente: { id: string; nome
                   {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />} Registrar no prontuário
                 </Button>
                 <Button variant="outline" onClick={copiar} className="gap-1.5"><Copy className="h-4 w-4" /> Copiar</Button>
+                <Button variant="outline" onClick={gerarPdf} disabled={gerando} className="gap-1.5">
+                  {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Gerar PDF
+                </Button>
               </div>
               {!paciente && <p className="text-[11px] text-muted-foreground">Escolha um paciente no topo para registrar.</p>}
             </>

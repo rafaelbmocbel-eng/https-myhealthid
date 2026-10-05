@@ -601,3 +601,29 @@ describe('ferramentas da análise angular', () => {
     expect(variacaoTexto(-1.2, 'cm')).toBe('−1,2 cm');
   });
 });
+
+describe('PDF da marcha', () => {
+  it('gera o PDF a partir de um resultado de marcha', async () => {
+    const { analisarMarcha } = await import('../lib/angular/marcha');
+    const { gerarRelatorioMarcha } = await import('../lib/angular/relatorioMarcha');
+    const frames = Array.from({ length: 240 }, (_, i) => {
+      const t = i / 30;
+      const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.95 }));
+      for (const [lado, fase] of [['D', 0], ['E', 0.5]] as const) {
+        const phi = 2 * Math.PI * t + fase * 2 * Math.PI;
+        const coxa = 0.45 * Math.sin(phi), flex = 0.5 * (1 + Math.sin(phi - 1.8));
+        const j = { x: 0.5 + 0.2 * Math.sin(coxa), y: 0.5 + 0.2 * Math.cos(coxa) };
+        const a = { x: j.x + 0.2 * Math.sin(coxa - flex), y: j.y + 0.2 * Math.cos(coxa - flex) };
+        const ix = lado === 'D' ? [24, 26, 28, 30, 32] : [23, 25, 27, 29, 31];
+        lm[ix[0]] = { x: 0.5, y: 0.5, visibility: 0.95 }; lm[ix[1]] = { ...j, visibility: 0.95 }; lm[ix[2]] = { ...a, visibility: 0.95 };
+        lm[ix[3]] = { x: a.x, y: a.y + 0.02, visibility: 0.95 }; lm[ix[4]] = { x: a.x + 0.04, y: a.y + 0.02, visibility: 0.95 };
+      }
+      return { t, lm };
+    });
+    const r = analisarMarcha(frames, 1000, 1000);
+    if ('erro' in r) throw new Error(r.erro);
+    const pdf = await gerarRelatorioMarcha({ paciente: 'José da Silva', data: '05/10/2026', resultado: r, fps: 30 });
+    expect(pdf.nome).toBe('Analise_marcha_JOSE_DA_SILVA_2026-10-05.pdf');
+    expect(pdf.blob.size).toBeGreaterThan(1500);
+  });
+});
