@@ -11,12 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { bluetoothDisponivel, celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import { REGIOES } from '@/lib/dinamometria/analise';
 import BateriaCelula from '@/components/dinamometria/BateriaCelula';
 import { cn, normalizarBusca } from '@/lib/utils';
+import { lerDadosAvaliacao, salvarDadosAvaliacao, type LadoDin } from '@/lib/dinamometria/dadosAvaliacao';
 
 interface Pac { id: string; nome: string; sobrenome: string | null; data_nascimento: string | null; sexo: string | null }
 
@@ -31,7 +33,7 @@ function idade(nasc: string | null) {
 }
 
 // Entrada da dinamometria: 1) célula Bluetooth, 2) paciente (nascimento, sexo,
-// peso), 3) Teste de força ou Treino.
+// peso e dados da avaliação), 3) Teste de força ou Treino.
 export default function DinamometriaInicio() {
   const navigate = useNavigate();
   const [sp] = useSearchParams();
@@ -43,6 +45,11 @@ export default function DinamometriaInicio() {
   const [nasc, setNasc] = useState('');
   const [sexo, setSexo] = useState('');
   const [peso, setPeso] = useState('');
+  const [dataAv, setDataAv] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dominante, setDominante] = useState<LadoDin>('D');
+  const [acometido, setAcometido] = useState<LadoDin | 'N'>('N');
+  const [modalidade, setModalidade] = useState('');
+  const [sintomas, setSintomas] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => celula.onStatus(setStatus), []);
@@ -59,21 +66,27 @@ export default function DinamometriaInicio() {
   });
   const pac = pacientes.find((p) => p.id === pacId) || null;
 
-  // Peso mais recente: bioimpedância ou última dinamometria.
-  const { data: pesoSalvo } = useQuery({
+  // Peso mais recente (bioimpedância ou última dinamometria) e, da última dinamometria, lado dominante,
+  // lado acometido e modalidade, que costumam se repetir de uma avaliação para a outra.
+  const { data: anterior } = useQuery({
     queryKey: ['din-inicio-peso', pacId],
     enabled: !!pacId,
     queryFn: async () => {
       const { data } = await (supabase as any).from('exames_presenciais')
         .select('tipo, dados, data_exame').eq('paciente_id', pacId)
         .in('tipo', ['bioimpedancia', 'dinamometria']).order('data_exame', { ascending: false }).limit(10);
+      let peso: number | null = null;
+      let suj: { dominante?: LadoDin; acometido?: LadoDin | 'N'; modalidade?: string } | null = null;
       for (const e of (data || []) as any[]) {
-        const p = e.tipo === 'bioimpedancia' ? e.dados?.peso_kg : (e.dados?.analise?.sujeito?.peso ?? e.dados?.analise?.movimentos?.[0]?.sujeito?.peso);
-        if (p) return Number(p);
+        const sujeito = e.tipo === 'dinamometria' ? (e.dados?.analise?.sujeito ?? e.dados?.analise?.movimentos?.[0]?.sujeito) : null;
+        if (!suj && sujeito) suj = { dominante: sujeito.dominante, acometido: sujeito.acometido, modalidade: sujeito.modalidade };
+        const p = e.tipo === 'bioimpedancia' ? e.dados?.peso_kg : sujeito?.peso;
+        if (peso == null && p) peso = Number(p);
       }
-      return null;
+      return { peso, suj };
     },
   });
+  const pesoSalvo = anterior?.peso ?? null;
 
   useEffect(() => {
     if (!pac) return;
@@ -81,7 +94,17 @@ export default function DinamometriaInicio() {
     const s = String(pac.sexo || '').toLowerCase();
     setSexo(s.startsWith('f') ? 'F' : s.startsWith('m') ? 'M' : '');
   }, [pac]);
-  useEffect(() => { if (pesoSalvo != null) setPeso(String(pesoSalvo)); else setPeso(''); }, [pesoSalvo, pacId]);
+  // Dados já digitados nesta sessão (ao voltar do teste para editar) valem mais que a última avaliação.
+  useEffect(() => {
+    if (!pacId) return;
+    const salvo = lerDadosAvaliacao(pacId);
+    setPeso(salvo?.peso ?? (pesoSalvo != null ? String(pesoSalvo) : ''));
+    setDominante(salvo?.dominante ?? anterior?.suj?.dominante ?? 'D');
+    setAcometido(salvo?.acometido ?? anterior?.suj?.acometido ?? 'N');
+    setModalidade(salvo?.modalidade ?? anterior?.suj?.modalidade ?? '');
+    setSintomas(salvo?.sintomas ?? '');
+    setDataAv(salvo?.data ?? new Date().toISOString().slice(0, 10));
+  }, [anterior, pesoSalvo, pacId]);
 
   const filtrados = useMemo(() => {
     const q = normalizarBusca(busca.trim());
@@ -110,6 +133,10 @@ export default function DinamometriaInicio() {
       setSalvando(false);
       if (error) { toast.error('Não consegui salvar o cadastro: ' + error.message); return; }
     }
+    salvarDadosAvaliacao(pac.id, {
+      data: dataAv, idade: nasc ? String(idade(nasc) ?? '') : '', sexo: sexo === 'F' ? 'F' : 'M', peso: peso.replace(',', '.'),
+      dominante, acometido, modalidade: modalidade.trim(), sintomas: sintomas.trim(),
+    });
     const q = new URLSearchParams();
     if (peso) q.set('peso', peso.replace(',', '.'));
     if (modo === 'teste') { q.set('modo', 'teste'); navigate(`/pacientes/${pac.id}/dinamometria?${q}`); }
@@ -241,6 +268,35 @@ export default function DinamometriaInicio() {
                 <div className="space-y-1">
                   <Label className="text-xs">Peso (kg)</Label>
                   <Input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="Ex.: 68,5" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Data da avaliação</Label>
+                  <Input type="date" value={dataAv} onChange={(e) => setDataAv(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Lado dominante</Label>
+                  <Select value={dominante} onValueChange={(v) => setDominante(v as LadoDin)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="D">Direito</SelectItem><SelectItem value="E">Esquerdo</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Lado acometido</Label>
+                  <Select value={acometido} onValueChange={(v) => setAcometido(v as LadoDin | 'N')}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="N">Nenhum</SelectItem><SelectItem value="D">Direito</SelectItem><SelectItem value="E">Esquerdo</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1 col-span-2 md:col-span-3">
+                  <Label className="text-xs">Modalidade / atividade</Label>
+                  <Input value={modalidade} onChange={(e) => setModalidade(e.target.value)} placeholder="Ex.: futebol, corrida" />
+                </div>
+                <div className="space-y-1 col-span-2 md:col-span-3">
+                  <Label className="text-xs">Dor e sintomas relatados pelo cliente (opcional)</Label>
+                  <Textarea rows={2} value={sintomas} onChange={(e) => setSintomas(e.target.value)} placeholder="Ex.: dor na frente do joelho esquerdo ao descer escadas há 2 meses; piora depois da corrida" />
+                  <p className="text-[11px] text-muted-foreground">Entra na interpretação: o app cruza o local e o lado da dor com os achados de força, simetria, razão e fadiga.</p>
                 </div>
               </div>
               {!nasc && <p className="text-xs text-amber-700 dark:text-amber-400">Sem data de nascimento, a comparação com a norma por idade fica de fora.</p>}

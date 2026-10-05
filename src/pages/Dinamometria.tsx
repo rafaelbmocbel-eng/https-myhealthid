@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { lerDadosAvaliacao } from '@/lib/dinamometria/dadosAvaliacao';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
 import { Dumbbell, FileUp, Loader2, Trash2, Copy, Save, FlaskConical, X, Bluetooth, Eye } from 'lucide-react';
@@ -270,6 +271,12 @@ export default function Dinamometria() {
       modalidade: ult?.modalidade || '',
       sintomas: '',
     });
+    // Dados digitados no início (logo depois de escolher o cliente) valem mais que o cadastro e a última avaliação.
+    const salvo = id ? lerDadosAvaliacao(id) : null;
+    if (salvo) {
+      setSuj(s => ({ ...s, ...(salvo.idade !== undefined ? { idade: salvo.idade } : {}), ...(salvo.sexo ? { sexo: salvo.sexo } : {}), ...(salvo.peso ? { peso: salvo.peso } : {}), ...(salvo.dominante ? { dominante: salvo.dominante } : {}), ...(salvo.acometido ? { acometido: salvo.acometido } : {}), ...(salvo.modalidade !== undefined ? { modalidade: salvo.modalidade } : {}), ...(salvo.sintomas !== undefined ? { sintomas: salvo.sintomas } : {}) }));
+      if (salvo.data) setDataAv(salvo.data);
+    }
     if (ultReg) {
       setRegioes(ultReg.movs.map(m => m.regiao));
       const b: Record<string, string> = {};
@@ -838,41 +845,12 @@ export default function Dinamometria() {
           {/* ─── Nova avaliação ─── */}
           <TabsContent value="nova" className="space-y-4 mt-4">
             <Card className="p-4 space-y-3">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="font-semibold">Dados da avaliação</p>
-                <Button size="sm" variant="outline" onClick={usarExemplo}><FlaskConical className="h-3.5 w-3.5 mr-1" />Testar com curvas simuladas</Button>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Data</Label><Input type="date" value={dataAv} onChange={e => setDataAv(e.target.value)} /></div>
-                <div className="space-y-1"><Label className="text-xs">Idade (anos)</Label><Input inputMode="numeric" value={suj.idade} onChange={e => setSuj(s => ({ ...s, idade: e.target.value }))} /></div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Sexo</Label>
-                  <Select value={suj.sexo} onValueChange={v => setSuj(s => ({ ...s, sexo: v as 'M' | 'F' }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="M">Masculino</SelectItem><SelectItem value="F">Feminino</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1"><Label className="text-xs">Peso (kg){pesoBio ? ' · da bioimpedância' : ''}</Label><Input inputMode="decimal" value={suj.peso} onChange={e => setSuj(s => ({ ...s, peso: e.target.value }))} /></div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Lado dominante</Label>
-                  <Select value={suj.dominante} onValueChange={v => setSuj(s => ({ ...s, dominante: v as Lado }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="D">Direito</SelectItem><SelectItem value="E">Esquerdo</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Lado acometido</Label>
-                  <Select value={suj.acometido} onValueChange={v => setSuj(s => ({ ...s, acometido: v as Lado | 'N' }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="N">Nenhum</SelectItem><SelectItem value="D">Direito</SelectItem><SelectItem value="E">Esquerdo</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1 col-span-2"><Label className="text-xs">Modalidade / atividade</Label><Input value={suj.modalidade} onChange={e => setSuj(s => ({ ...s, modalidade: e.target.value }))} placeholder="Ex.: futebol, corrida" /></div>
-                <div className="space-y-1 col-span-2 md:col-span-4">
-                  <Label className="text-xs">Dor e sintomas relatados pelo cliente (opcional)</Label>
-                  <Textarea rows={2} value={suj.sintomas} onChange={e => setSuj(s => ({ ...s, sintomas: e.target.value }))} placeholder="Ex.: dor na frente do joelho esquerdo ao descer escadas há 2 meses; piora depois da corrida" />
-                  <p className="text-[11px] text-muted-foreground">Entra na interpretação: o app cruza o local e o lado da dor com os achados de força, simetria, razão e fadiga.</p>
-                </div>
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <p className="text-xs text-muted-foreground tabular-nums" data-testid="resumo-avaliacao">
+                  {[suj.idade ? `${suj.idade} anos` : null, suj.sexo === 'F' ? 'Feminino' : 'Masculino', suj.peso ? `${suj.peso} kg` : null, `dominante ${suj.dominante === 'D' ? 'direito' : 'esquerdo'}`, suj.acometido !== 'N' ? `acometido ${suj.acometido === 'D' ? 'direito' : 'esquerdo'}` : null, suj.modalidade || null].filter(Boolean).join(' · ')}
+                  {id && <> · <Link to={`/dinamometria?paciente=${id}`} className="font-medium text-primary underline underline-offset-2">Editar dados</Link></>}
+                </p>
+                <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={usarExemplo}><FlaskConical className="h-3.5 w-3.5 mr-1" />Testar com curvas simuladas</Button>
               </div>
               <div className="space-y-1.5">
                 <div className="flex items-baseline justify-between gap-2">

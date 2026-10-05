@@ -707,3 +707,21 @@ describe('guia de enquadramento da câmera', () => {
     expect(avaliarEnquadramento(null).ok).toBe(false);
   });
 });
+
+describe('dados da avaliação da dinamometria', () => {
+  it('guarda só valores válidos de cada campo', async () => {
+    const { sanitizarDadosAvaliacao } = await import('../lib/dinamometria/dadosAvaliacao');
+    expect(sanitizarDadosAvaliacao({ data: '2026-10-05', idade: '34', sexo: 'F', peso: '68,5', dominante: 'E', acometido: 'N', modalidade: 'corrida', sintomas: 'dor no joelho' }))
+      .toEqual({ data: '2026-10-05', idade: '34', sexo: 'F', peso: '68,5', dominante: 'E', acometido: 'N', modalidade: 'corrida', sintomas: 'dor no joelho' });
+    expect(sanitizarDadosAvaliacao({ data: '05/10/2026', idade: 'abc', sexo: 'X', peso: '-3', dominante: 'Z', acometido: 1 })).toEqual({});
+    expect(sanitizarDadosAvaliacao(null)).toEqual({});
+    expect(sanitizarDadosAvaliacao({ modalidade: 'x'.repeat(500) }).modalidade).toHaveLength(120);
+  });
+  it('salva e lê da sessão por paciente', async () => {
+    const { salvarDadosAvaliacao, lerDadosAvaliacao } = await import('../lib/dinamometria/dadosAvaliacao');
+    expect(lerDadosAvaliacao('p-teste')).toBeNull();
+    salvarDadosAvaliacao('p-teste', { data: '2026-10-05', idade: '40', sexo: 'M', peso: '80', dominante: 'D', acometido: 'E', modalidade: '', sintomas: 'dor' });
+    expect(lerDadosAvaliacao('p-teste')?.acometido).toBe('E');
+    expect(lerDadosAvaliacao('outro')).toBeNull();
+  });
+});
