@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calculator, Compass, ExternalLink, FlaskConical, Settings2, ShieldQuestion, X } from 'lucide-react';
+import { ArrowLeft, Calculator, Compass, Cpu, ExternalLink, FlaskConical, ShieldQuestion, X } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,7 @@ import DosagemTens from '@/components/dosagem/DosagemTens';
 import DosagemNmes from '@/components/dosagem/DosagemNmes';
 import DosagemRussa from '@/components/dosagem/DosagemRussa';
 import DosagemInterferencial from '@/components/dosagem/DosagemInterferencial';
-import EquipamentosDialog from '@/components/dosagem/EquipamentosDialog';
+import { EquipamentosPainel } from '@/components/dosagem/EquipamentosDialog';
 
 // Aplicação de dosagem de recursos: laser, ultrassom, ondas de choque, TENS,
 // FES/NMES, russa e interferencial. Cada número vem com a fonte (PubMed); o
@@ -32,10 +31,9 @@ import EquipamentosDialog from '@/components/dosagem/EquipamentosDialog';
 export default function Dosagem() {
   const { user } = useAuth();
   const [sp, setSp] = useSearchParams();
-  const [aparelhosAberto, setAparelhosAberto] = useState(false);
 
   // Sem `m` na URL abre o guia; com `m`, a calculadora daquela modalidade.
-  const modo: 'guia' | 'calc' = sp.get('m') ? 'calc' : 'guia';
+  const modo: 'guia' | 'calc' | 'aparelhos' = sp.get('v') === 'aparelhos' ? 'aparelhos' : sp.get('m') ? 'calc' : 'guia';
   const modalidade = (MODALIDADES.find((m) => m.id === sp.get('m'))?.id ?? 'laser') as Modalidade;
   const pacienteId = sp.get('paciente') || '';
   const guiaId = sp.get('g') || '';
@@ -58,8 +56,8 @@ export default function Dosagem() {
   const comAparelho = {
     paciente,
     equipamentos: equipamentosDoTipo(equip?.itens, modalidade),
-    equipamentosDisponiveis: !!equip?.disponivel,
-    onGerenciarAparelhos: () => setAparelhosAberto(true),
+    equipamentosDisponiveis: true,
+    onGerenciarAparelhos: () => definir({ v: 'aparelhos' }, false),
     condicaoInicial: condicaoParam,
   };
 
@@ -73,11 +71,6 @@ export default function Dosagem() {
             title="Dosagem de recursos"
             subtitle="Descubra o recurso com mais respaldo para a patologia e calcule a dose, com a fonte de cada número."
             icon={<FlaskConical className="icon-md" />}
-            actions={equip?.disponivel ? (
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAparelhosAberto(true)}>
-                <Settings2 className="h-4 w-4" /> Meus aparelhos
-              </Button>
-            ) : undefined}
           />
 
           <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/90 p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] backdrop-blur sm:flex-row sm:items-center sm:p-3.5">
@@ -100,18 +93,26 @@ export default function Dosagem() {
             )}
           </div>
 
-          <div role="tablist" aria-label="Modo" className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted/60 p-1.5">
-            {([['guia', 'Guia de recursos', Compass], ['calc', 'Calculadoras de dose', Calculator]] as const).map(([id, rotulo, Icone]) => (
+          <div role="tablist" aria-label="Modo" className="grid grid-cols-3 gap-1.5 rounded-2xl bg-muted/60 p-1.5">
+            {([['guia', 'Guia de recursos', Compass], ['calc', 'Calculadoras de dose', Calculator], ['aparelhos', 'Aparelhos', Cpu]] as const).map(([id, rotulo, Icone]) => (
               <button key={id} type="button" role="tab" aria-selected={modo === id}
-                onClick={() => (id === 'guia' ? definir({ m: null, c: null }) : definir({ m: sp.get('m') || 'laser' }))}
-                className={cn('flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all',
+                onClick={() => {
+                  if (id === 'guia') definir({ m: null, c: null, v: null });
+                  else if (id === 'calc') definir({ m: sp.get('m') || 'laser', v: null });
+                  else definir({ v: 'aparelhos' });
+                }}
+                className={cn('flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-semibold sm:gap-2 sm:px-3 sm:text-sm transition-all',
                   modo === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
                 <Icone className="h-4 w-4" /> {rotulo}
               </button>
             ))}
           </div>
 
-          {modo === 'guia' ? (
+          {modo === 'aparelhos' ? (
+            <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5">
+              <EquipamentosPainel itens={equip?.itens ?? []} disponivel={equip?.disponivel !== false} />
+            </div>
+          ) : modo === 'guia' ? (
             <GuiaRecursos
               paciente={paciente}
               patologiaId={guiaId}
@@ -167,7 +168,6 @@ export default function Dosagem() {
         </div>
       </div>
 
-      {aparelhosAberto && equip?.disponivel && <EquipamentosDialog itens={equip.itens} onClose={() => setAparelhosAberto(false)} />}
     </AppLayout>
   );
 }

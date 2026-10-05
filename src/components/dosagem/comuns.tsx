@@ -115,7 +115,7 @@ export function SeletorAparelho({ itens, valor, onChange, disponivel, onGerencia
     <div className="space-y-1">
       <div className="flex items-center justify-between">
         <Label className="text-xs font-medium">Aparelho</Label>
-        {disponivel && <button type="button" onClick={onGerenciar} className="text-[11px] font-medium text-primary hover:underline">Meus aparelhos</button>}
+        <button type="button" onClick={onGerenciar} className="text-[11px] font-medium text-primary hover:underline">Meus aparelhos</button>
       </div>
       <Select value={valor} onValueChange={onChange}>
         <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>

@@ -11,6 +11,7 @@ import {
   densidadeCorrenteMaCm2, duracaoBurstMs, ocupacaoPulsoPct, periodoMs, razaoOffOn, tempoSobEstimuloS,
 } from '@/lib/dosagem/eletro';
 import { lerFicha } from '@/lib/dosagem/importarFicha';
+import { extrairJson, montarPrompt, validarFicha } from '../../supabase/functions/_shared/ficha-aparelho';
 import { FAIXAS, PATOLOGIAS, indicacoesOrdenadas, interpretarDescricao, interpretarProntuario, modalidadesSemDados, patologia } from '@/lib/dosagem/guia';
 import { CONDICOES_IFC, CONDICOES_NMES, CONDICOES_RUSSA, CONDICOES_TENS } from '@/lib/dosagem/protocolosEletro';
 import { MODALIDADES } from '@/lib/dosagem/tipos';
@@ -340,5 +341,77 @@ describe('guia a partir do prontuário', () => {
     expect(r[0].id).toBe('fascite_plantar');
     expect(r[0].origens).toEqual(['Queixa principal', 'Avatar clínico']);
     expect(r.some((x) => x.id === 'lombar_cronica')).toBe(false);
+  });
+});
+
+describe('busca de ficha técnica (validação do que a IA devolve)', () => {
+  const boa = {
+    confere_modelo: { valor: true, trecho: 'Laser LaserPulse 808 nm da Ibramed' },
+    comprimento_onda: { valor: 808, unidade: 'nm', trecho: 'Comprimento de onda: 808 nm' },
+    potencia_media: { valor: 0.1, unidade: 'W', trecho: 'Potência de saída 0,1 W' },
+    area_feixe: { valor: 3, unidade: 'mm2', trecho: 'Área do spot: 3 mm2' },
+    modo: { valor: 'Contínuo', trecho: 'emissão contínua (CW)' },
+  };
+  it('aceita valores com trecho e converte unidades (W→mW, mm²→cm²)', () => {
+    const r = validarFicha(boa, 'laser');
+    expect(r.modeloConfere).toBe(true);
+    expect(r.campos.nm).toBe('808');
+    expect(r.campos.potMedia).toBe('100');
+    expect(r.campos.areaFeixe).toBe('0,03');
+    expect(r.campos.modoLaser).toBe('continuo');
+    expect(r.evidencias.nm).toMatch(/808 nm/);
+  });
+  it('descarta o campo cujo número não está no trecho (alucinação)', () => {
+    const r = validarFicha({ ...boa, comprimento_onda: { valor: 810, unidade: 'nm', trecho: 'Comprimento de onda: 808 nm' } }, 'laser');
+    expect(r.campos.nm).toBeUndefined();
+    expect(r.descartados.join(' ')).toMatch(/não aparece no trecho/);
+  });
+  it('descarta sem trecho, unidade errada ou valor implausível', () => {
+    const r = validarFicha({
+      confere_modelo: { valor: true, trecho: 'modelo exato citado' },
+      comprimento_onda: { valor: 5000, unidade: 'nm', trecho: 'comprimento 5000 nm' },
+      potencia_media: { valor: 100, unidade: 'cm2', trecho: 'potência 100 cm2' },
+      potencia_pico: { valor: 50, unidade: 'mW', trecho: '' },
+    }, 'laser');
+    expect(Object.keys(r.campos)).toHaveLength(0);
+    expect(r.descartados).toHaveLength(3);
+  });
+  it('sem confirmar o modelo exato, não devolve nada', () => {
+    expect(validarFicha({ ...boa, confere_modelo: { valor: false, trecho: '' } }, 'laser').campos).toEqual({});
+    expect(validarFicha({ ...boa, confere_modelo: { valor: true, trecho: '' } }, 'laser').modeloConfere).toBe(false);
+    expect(validarFicha(null, 'laser').campos).toEqual({});
+  });
+  it('ultrassom: só 1 ou 3 MHz, ERA em cm²', () => {
+    const r = validarFicha({
+      confere_modelo: { valor: true, trecho: 'Transdutor modelo exato' },
+      frequencia: { valor: 3, unidade: 'MHz', trecho: 'Frequência: 3 MHz' },
+      era: { valor: 4.2, unidade: 'cm2', trecho: 'ERA 4,2 cm2' },
+      bnr: { valor: 5.1, unidade: '', trecho: 'BNR máx. 5,1' },
+    }, 'ultrassom');
+    expect(r.campos).toEqual({ freq: '3', era: '4,2', bnr: '5,1' });
+    expect(validarFicha({ confere_modelo: { valor: true, trecho: 'modelo exato aqui' }, frequencia: { valor: 2, unidade: 'MHz', trecho: 'frequência 2 MHz' } }, 'ultrassom').campos.freq).toBeUndefined();
+  });
+  it('ondas de choque: tipo, área focal em mm² e limites', () => {
+    const r = validarFicha({
+      confere_modelo: { valor: true, trecho: 'Aplicador focal modelo exato' },
+      tipo: { valor: 'focal', trecho: 'onda de choque focal' },
+      area_focal: { valor: 0.28, unidade: 'cm2', trecho: 'área focal 0,28 cm2' },
+      efd_maxima: { valor: 0.55, unidade: 'mJ/mm2', trecho: 'até 0,55 mJ/mm2' },
+    }, 'ondas_choque');
+    expect(r.campos.tipoOnda).toBe('focal');
+    expect(r.campos.areaFocal).toBe('28');
+    expect(r.campos.efdMax).toBe('0,55');
+  });
+  it('extrai JSON mesmo dentro de cercas de código e ignora lixo', () => {
+    expect(extrairJson('```json\n{"a": 1}\n```')).toEqual({ a: 1 });
+    expect(extrairJson('Segue: {"a": {"b": 2}} fim')).toEqual({ a: { b: 2 } });
+    expect(extrairJson('sem json')).toBeNull();
+    expect(extrairJson('{quebrado')).toBeNull();
+  });
+  it('o prompt exige trecho literal e modelo exato', () => {
+    const p = montarPrompt({ fabricante: 'Ibramed', modelo: 'LaserPulse', tipo: 'laser' });
+    expect(p).toMatch(/LITERAL/);
+    expect(p).toMatch(/EXATAMENTE deste modelo/);
+    expect(p).toMatch(/Ibramed/);
   });
 });
