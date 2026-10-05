@@ -507,3 +507,53 @@ describe('PDF da análise angular', () => {
     expect(b.blob.size).toBeGreaterThan(a.blob.size - 200);
   });
 });
+
+describe('análise de marcha', () => {
+  // Marcha sintética de lado, andando para a direita: coxa oscila e o joelho flexiona.
+  const gerar = (fps: number, seg: number, passoHz: number, atrasoE = 0.5) => {
+    const frames: { t: number; lm: { x: number; y: number; visibility: number }[] }[] = [];
+    const L = 0.2;
+    for (let i = 0; i < fps * seg; i++) {
+      const t = i / fps;
+      const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.95 }));
+      for (const [lado, fase] of [['D', 0], ['E', atrasoE]] as const) {
+        const phi = 2 * Math.PI * (passoHz / 2) * t + fase * 2 * Math.PI;
+        const coxa = 0.45 * Math.sin(phi);
+        const flex = 0.5 * (1 + Math.sin(phi - 1.8)) * 1.0;
+        const q = { x: 0.5, y: 0.5 };
+        const j = { x: q.x + L * Math.sin(coxa), y: q.y + L * Math.cos(coxa) };
+        const a = { x: j.x + L * Math.sin(coxa - flex), y: j.y + L * Math.cos(coxa - flex) };
+        const base = lado === 'D' ? { q: 24, j: 26, a: 28, c: 30, p: 32 } : { q: 23, j: 25, a: 27, c: 29, p: 31 };
+        lm[base.q] = { ...q, visibility: 0.95 }; lm[base.j] = { ...j, visibility: 0.95 }; lm[base.a] = { ...a, visibility: 0.95 };
+        lm[base.c] = { x: a.x, y: a.y + 0.02, visibility: 0.95 }; lm[base.p] = { x: a.x + 0.04, y: a.y + 0.02, visibility: 0.95 };
+      }
+      frames.push({ t, lm });
+    }
+    return frames;
+  };
+
+  it('acha a direção, a cadência e a simetria de uma marcha regular', async () => {
+    const { analisarMarcha } = await import('../lib/angular/marcha');
+    const r = analisarMarcha(gerar(30, 8, 2), 1000, 1000);
+    if ('erro' in r) throw new Error(r.erro);
+    expect(r.direcao).toBe(1);
+    expect(r.cadencia!).toBeGreaterThan(110);
+    expect(r.cadencia!).toBeLessThan(130);
+    expect(r.ciclos.D).toBeGreaterThanOrEqual(5);
+    expect(r.ciclos.E).toBeGreaterThanOrEqual(5);
+    expect(r.simetriaTempoPct!).toBeGreaterThan(90);
+    expect(r.curvas.joelho.D).toHaveLength(101);
+    expect(r.amplitude.joelho.D!).toBeGreaterThan(10);
+  });
+  it('detecta assimetria quando um passo é mais longo que o outro', async () => {
+    const { analisarMarcha } = await import('../lib/angular/marcha');
+    const r = analisarMarcha(gerar(30, 8, 2, 0.35), 1000, 1000);
+    if ('erro' in r) throw new Error(r.erro);
+    expect(r.simetriaTempoPct!).toBeLessThan(85);
+  });
+  it('recusa vídeo sem corpo detectado', async () => {
+    const { analisarMarcha } = await import('../lib/angular/marcha');
+    const vazio = Array.from({ length: 60 }, (_, i) => ({ t: i / 30, lm: null }));
+    expect('erro' in analisarMarcha(vazio, 1000, 1000)).toBe(true);
+  });
+});

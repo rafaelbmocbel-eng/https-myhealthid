@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Camera, ClipboardCheck, Copy, FileDown, Loader2, Ruler, Sparkles, Trash2, Undo2, X } from 'lucide-react';
+import { Camera, ClipboardCheck, Copy, FileDown, Film, Loader2, Ruler, Sparkles, Trash2, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -16,6 +16,7 @@ import { pontosAutomaticos } from '@/lib/angular/pose';
 import { compararMedidas, grau, variacaoTexto, type MedidaSalva } from '@/lib/angular/comparar';
 import { fotoComMarcacoes, gerarRelatorioAngular } from '@/lib/angular/relatorio';
 import { entregarPdf } from '@/lib/pdf/entrega';
+import MarchaVideo from '@/components/angular/MarchaVideo';
 import { usePacienteDosagem, usePacientesLista } from '@/hooks/useProntuarioSeguranca';
 
 const VISTAS: { id: Vista; nome: string }[] = [
@@ -32,6 +33,7 @@ export default function AnaliseAngular() {
   const { user, profile } = useAuth();
   const [sp, setSp] = useSearchParams();
   const pacienteId = sp.get('paciente') || '';
+  const modoAnalise = sp.get('modo') === 'marcha' ? 'marcha' : 'foto';
   const qc = useQueryClient();
   const { data: lista = [] } = usePacientesLista(user?.id);
   const { data: paciente } = usePacienteDosagem(pacienteId || null);
@@ -194,7 +196,7 @@ export default function AnaliseAngular() {
   return (
     <AppLayout>
       <div className="container max-w-6xl space-y-5 py-6">
-        <PageHeader back="/aplicacoes" title="Análise angular" subtitle="Meça ângulos e desníveis em uma foto do paciente. Marque os pontos e o app calcula." icon={<Ruler className="icon-md" />} />
+        <PageHeader back="/aplicacoes" title="Análise angular" subtitle="Meça ângulos e desníveis em uma foto, ou analise a marcha em um vídeo." icon={<Ruler className="icon-md" />} />
 
         <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-3 sm:flex-row sm:items-center">
           <span className="shrink-0 text-sm font-medium">Paciente <span className="text-xs font-normal text-muted-foreground">(opcional)</span></span>
@@ -206,6 +208,17 @@ export default function AnaliseAngular() {
           </div>
         </div>
 
+        <div role="tablist" aria-label="Tipo de análise" className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted/60 p-1.5">
+          {([['foto', 'Postura em foto', Camera], ['marcha', 'Marcha em vídeo', Film]] as const).map(([id, rotulo, Icone]) => (
+            <button key={id} type="button" role="tab" aria-selected={modoAnalise === id}
+              onClick={() => { const n = new URLSearchParams(sp); if (id === 'marcha') n.set('modo', 'marcha'); else n.delete('modo'); setSp(n, { replace: true }); }}
+              className={cn('flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all', modoAnalise === id ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+              <Icone className="h-4 w-4" /> {rotulo}
+            </button>
+          ))}
+        </div>
+
+        {modoAnalise === 'marcha' ? <MarchaVideo paciente={paciente} /> : (
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-3">
             <div role="tablist" aria-label="Vista" className="grid grid-cols-3 gap-1.5 rounded-2xl bg-muted/60 p-1.5">
@@ -337,6 +350,7 @@ export default function AnaliseAngular() {
             </p>
           </aside>
         </div>
+        )}
       </div>
     </AppLayout>
   );
