@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Camera, ClipboardCheck, Copy, FileDown, Film, Grid3x3, Hand, Loader2, Maximize2, MousePointer2, Ruler, Sparkles, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Camera, ClipboardCheck, Copy, FileDown, Film, Grid3x3, Hand, Loader2, Maximize2, MousePointer2, Ruler, Smartphone, Sparkles, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -9,11 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import MarchaVideo from '@/components/angular/MarchaVideo';
+import CameraNivel from '@/components/angular/CameraNivel';
+import NivelCelular from '@/components/angular/NivelCelular';
 import { parseNum } from '@/components/dosagem/comuns';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { tabela } from '@/lib/dosagem/db';
 import { cmPorPixel, girar, medidasDaVista, rotacaoDoNivel, segmentosDaMedida, type GrupoMedida, type Medida, type Ponto, type Vista } from '@/lib/angular/medidas';
+import { giroDaFoto } from '@/lib/angular/sensor';
 import { detectarPose } from '@/lib/angular/detector';
 import { pontosAutomaticos } from '@/lib/angular/pose';
 import { compararMedidas, grau, variacaoTexto, type MedidaSalva } from '@/lib/angular/comparar';
@@ -66,6 +69,10 @@ export default function AnaliseAngular() {
   const [grade, setGrade] = useState(false);
   const [nivelTipo, setNivelTipo] = useState<'horizontal' | 'vertical'>('horizontal');
   const [escalaCm, setEscalaCm] = useState('');
+  const [cameraAberta, setCameraAberta] = useState(false);
+  const [inclinacaoCaptura, setInclinacaoCaptura] = useState<number | null>(null);
+  const [inverterSensor, setInverterSensor] = useState(false);
+  const [leituraSensor, setLeituraSensor] = useState<{ graus: number; texto: string } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const arrastando = useRef<{ medida: string; indice: number } | null>(null);
 
@@ -78,10 +85,13 @@ export default function AnaliseAngular() {
   const completa = (m: Medida) => (pontos[m.id]?.length ?? 0) >= m.pontos.length;
 
   // Referências da foto: giro (nível) e escala (cm por pixel).
-  const giro = useMemo(() => {
+  const giroMarcado = useMemo(() => {
     const p = pontos.nivel;
     return p && p.length >= 2 ? rotacaoDoNivel(p[0], p[1], nivelTipo) : null;
   }, [pontos.nivel, nivelTipo]);
+  const giroSensor = inclinacaoCaptura !== null ? giroDaFoto(inclinacaoCaptura, inverterSensor) : null;
+  const giro = giroMarcado ?? giroSensor;
+  const origemGiro = giroMarcado !== null ? 'uma referência marcada na foto' : 'o sensor do celular ao fotografar';
   const cmPorPx = useMemo(() => {
     const p = pontos.escala, cm = parseNum(escalaCm);
     return p && p.length >= 2 && cm ? cmPorPixel(p[0], p[1], cm) : null;
@@ -95,9 +105,11 @@ export default function AnaliseAngular() {
     return r ? [{ medida: m, ...r }] : [];
   }), [disponiveis, pontos, giro, cmPorPx]);
 
-  const medidasAtuais: MedidaSalva[] = resultados.map((r) => ({
-    id: r.medida.id, graus: Math.round(r.valor * 10) / 10, texto: r.texto, ...(r.medida.unidade ? { unidade: r.medida.unidade } : {}),
-  }));
+  const medidasAtuais: MedidaSalva[] = [
+    ...resultados.map((r) => ({ id: r.medida.id, graus: Math.round(r.valor * 10) / 10, texto: r.texto, ...(r.medida.unidade ? { unidade: r.medida.unidade } : {}) })),
+    ...(leituraSensor ? [{ id: 'sensor', graus: Math.round(leituraSensor.graus * 10) / 10, texto: leituraSensor.texto }] : []),
+  ];
+  const temResultado = medidasAtuais.length > 0;
 
   const { data: historico = [] } = useQuery({
     queryKey: ['analise-angular-historico', pacienteId],
@@ -114,12 +126,12 @@ export default function AnaliseAngular() {
   const comparacao = anterior ? compararMedidas(medidasAtuais, anterior.dados_extras!.medidas!).filter((l) => l.atual) : [];
   const dataBR = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-  const escolherFoto = (arquivo: File | undefined) => {
+  const escolherFoto = (arquivo: File | undefined, inclinacao: number | null = null) => {
     if (!arquivo) return;
     if (!arquivo.type.startsWith('image/')) { toast.error('Escolha um arquivo de imagem.'); return; }
     const url = URL.createObjectURL(arquivo);
     const img = new Image();
-    img.onload = () => { setFoto({ url, w: img.naturalWidth, h: img.naturalHeight, img }); setPontos({}); setUsouIA(false); setZoom(1); setMover(false); };
+    img.onload = () => { setFoto({ url, w: img.naturalWidth, h: img.naturalHeight, img }); setPontos({}); setUsouIA(false); setZoom(1); setMover(false); setInclinacaoCaptura(inclinacao); setInverterSensor(false); };
     img.onerror = () => { URL.revokeObjectURL(url); toast.error('Não consegui abrir essa imagem.'); };
     img.src = url;
   };
@@ -170,10 +182,10 @@ export default function AnaliseAngular() {
     }
   };
 
-  const texto = resultados.map((r) => `• ${r.texto}`).join('\n');
+  const texto = medidasAtuais.map((m) => `• ${m.texto}`).join('\n');
   const vistaNome = VISTAS.find((v) => v.id === vista)!.nome.toLowerCase();
   const notaNivel = giro !== null && Math.abs(giro) >= 0.05
-    ? `Foto nivelada por uma referência ${nivelTipo} marcada (correção de ${nf(Math.abs(giro))}°); os ângulos valem para acompanhar a evolução entre fotos feitas do mesmo jeito.`
+    ? `Foto nivelada por ${origemGiro} (correção de ${nf(Math.abs(giro))}°); os ângulos valem para acompanhar a evolução entre fotos feitas do mesmo jeito.`
     : undefined;
 
   const copiar = async () => {
@@ -182,7 +194,7 @@ export default function AnaliseAngular() {
   };
 
   const registrar = async () => {
-    if (!paciente || !user || !resultados.length) return;
+    if (!paciente || !user || !temResultado) return;
     setSalvando(true);
     try {
       const { error } = await tabela('notas_prontuario').insert({
@@ -211,7 +223,7 @@ export default function AnaliseAngular() {
   });
 
   const gerarPdf = async () => {
-    if (!foto || !resultados.length) return;
+    if (!foto || !temResultado) return;
     setGerando(true);
     try {
       const imagem = comFoto ? fotoComMarcacoes(foto.img, desenhos()) : null;
@@ -283,6 +295,7 @@ export default function AnaliseAngular() {
                   <span className="text-sm font-semibold">Tirar ou escolher a foto ({vistaNome})</span>
                   <span className="max-w-sm text-xs text-muted-foreground">Câmera parada na altura do meio do corpo, paciente inteiro no quadro, boa luz e roupa justa. A foto fica só neste aparelho.</span>
                   <input type="file" accept="image/*" className="sr-only" onChange={(e) => escolherFoto(e.target.files?.[0])} />
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={(e) => { e.preventDefault(); setCameraAberta(true); }}><Smartphone className="h-3.5 w-3.5" /> Tirar foto com nível</Button>
                 </label>
               ) : (
                 <div className="space-y-2">
@@ -352,6 +365,7 @@ export default function AnaliseAngular() {
                       </Button>
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={desfazer} disabled={!ptsAtiva.length}><Undo2 className="h-3.5 w-3.5" /> Desfazer</Button>
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={limpar} disabled={!ptsAtiva.length}><Trash2 className="h-3.5 w-3.5" /> Limpar</Button>
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCameraAberta(true)}><Smartphone className="h-3.5 w-3.5" /> Foto com nível</Button>
                       <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
                         <Camera className="h-3.5 w-3.5" /> Trocar foto
                         <input type="file" accept="image/*" className="sr-only" onChange={(e) => escolherFoto(e.target.files?.[0])} />
@@ -373,7 +387,7 @@ export default function AnaliseAngular() {
                       {itens.map((m) => {
                         const n = pontos[m.id]?.length ?? 0;
                         const feita = n >= m.pontos.length;
-                        const estado = m.id === 'nivel' && feita && giro !== null ? `${nf(Math.abs(giro))}°`
+                        const estado = m.id === 'nivel' && giro !== null ? `${nf(Math.abs(giro))}°`
                           : m.id === 'escala' && cmPorPx ? 'calibrada'
                             : feita ? 'feita' : `${n}/${m.pontos.length}`;
                         return (
@@ -401,7 +415,13 @@ export default function AnaliseAngular() {
                           className={cn('rounded-lg border px-2 py-1.5 font-medium capitalize', nivelTipo === t ? 'border-primary bg-primary/10' : 'border-border/60')}>{t}</button>
                       ))}
                     </div>
-                    {giro !== null && <p className="font-medium">{Math.abs(giro) < 0.05 ? 'Foto já está nivelada.' : `Foto girada ${nf(Math.abs(giro))}°: todos os ângulos já saem corrigidos.`}</p>}
+                    {giro !== null && <p className="font-medium">{Math.abs(giro) < 0.05 ? 'Foto já está nivelada.' : `Foto girada ${nf(Math.abs(giro))}° (por ${origemGiro}): todos os ângulos já saem corrigidos.`}</p>}
+                    {giroMarcado === null && giroSensor !== null && (
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground">Confira com a grade: as linhas devem acompanhar o chão. Se estiverem tortas para o lado errado, inverta.</p>
+                        <Button size="sm" variant="outline" onClick={() => setInverterSensor((v) => !v)}>Inverter o sentido da correção</Button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {medidaAtiva.id === 'escala' && (
@@ -418,25 +438,27 @@ export default function AnaliseAngular() {
                 {medidaAtiva.id === 'cobb' && <p className="rounded-xl bg-muted/40 p-2.5 text-xs text-muted-foreground">Marque as duas retas (por exemplo, as linhas das vértebras limite da curva). O app dá o ângulo entre elas. Em foto, é uma estimativa; o Cobb de referência vem da radiografia.</p>}
               </div>
 
+              <NivelCelular onRegistrar={(graus, texto) => setLeituraSensor({ graus, texto })} />
+
               <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-3">
                 <p className="text-sm font-semibold">Resultado</p>
-                {resultados.length === 0 ? <p className="text-xs text-muted-foreground">Complete uma medida para ver o resultado.</p> : (
-                  <ul className="space-y-1.5 text-sm tabular-nums">{resultados.map((r) => <li key={r.medida.id}>{r.texto}</li>)}</ul>
+                {!temResultado ? <p className="text-xs text-muted-foreground">Complete uma medida para ver o resultado.</p> : (
+                  <ul className="space-y-1.5 text-sm tabular-nums">{medidasAtuais.map((m) => <li key={m.id}>{m.texto}</li>)}</ul>
                 )}
                 {notaNivel && <p className="text-[11px] text-muted-foreground">Correção de nível aplicada: {nf(Math.abs(giro ?? 0))}°.</p>}
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <Button onClick={registrar} disabled={!paciente || !resultados.length || salvando} className="min-w-[180px] flex-1 gap-1.5">
+                  <Button onClick={registrar} disabled={!paciente || !temResultado || salvando} className="min-w-[180px] flex-1 gap-1.5">
                     {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />} Registrar no prontuário
                   </Button>
-                  <Button variant="outline" onClick={copiar} disabled={!resultados.length} className="gap-1.5"><Copy className="h-4 w-4" /> Copiar</Button>
+                  <Button variant="outline" onClick={copiar} disabled={!temResultado} className="gap-1.5"><Copy className="h-4 w-4" /> Copiar</Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <Button variant="outline" onClick={gerarPdf} disabled={!resultados.length || gerando} className="gap-1.5">
+                  <Button variant="outline" onClick={gerarPdf} disabled={!temResultado || gerando} className="gap-1.5">
                     {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Gerar PDF
                   </Button>
                   <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={comFoto} onChange={(e) => setComFoto(e.target.checked)} /> Incluir a foto com as marcações</label>
                 </div>
-                {!paciente && resultados.length > 0 && <p className="text-[11px] text-muted-foreground">Escolha um paciente no topo para registrar.</p>}
+                {!paciente && temResultado && <p className="text-[11px] text-muted-foreground">Escolha um paciente no topo para registrar.</p>}
               </div>
 
               {paciente && (
@@ -473,6 +495,7 @@ export default function AnaliseAngular() {
           </div>
         )}
       </div>
+      {cameraAberta && <CameraNivel onFechar={() => setCameraAberta(false)} onCapturar={(f, incl) => { setCameraAberta(false); escolherFoto(f, incl); }} />}
     </AppLayout>
   );
 }

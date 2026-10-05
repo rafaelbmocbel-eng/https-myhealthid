@@ -12,7 +12,7 @@ export interface LinhaComparacao {
   variacao: number | null;
 }
 
-const nomeDa = (id: string) => MEDIDAS.find((m) => m.id === id)?.nome ?? id;
+const nomeDa = (id: string) => (id === 'sensor' ? 'Inclinação pelo sensor do celular' : MEDIDAS.find((m) => m.id === id)?.nome ?? id);
 
 // Só mostra a variação numérica, sem dizer "melhorou" ou "piorou": não há referência
 // publicada no app para classificar os ângulos, e nos desníveis o número não traz o lado

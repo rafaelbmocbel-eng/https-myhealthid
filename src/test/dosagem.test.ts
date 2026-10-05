@@ -627,3 +627,33 @@ describe('PDF da marcha', () => {
     expect(pdf.blob.size).toBeGreaterThan(1500);
   });
 });
+
+describe('sensor de inclinação', () => {
+  const g = 9.81;
+  const rot = (graus: number) => { const r = (graus * Math.PI) / 180; return { x: -g * Math.sin(r), y: g * Math.cos(r), z: 0 }; };
+  it('aparelho reto marca 0° e girado no sentido horário marca positivo', async () => {
+    const { inclinacaoDoAparelho } = await import('../lib/angular/sensor');
+    expect(inclinacaoDoAparelho(rot(0))).toBeCloseTo(0, 6);
+    expect(inclinacaoDoAparelho(rot(12))).toBeCloseTo(12, 6);
+    expect(inclinacaoDoAparelho(rot(-7.5))).toBeCloseTo(-7.5, 6);
+  });
+  it('não depende da convenção de sinal do sistema (iPhone × Android)', async () => {
+    const { inclinacaoDoAparelho } = await import('../lib/angular/sensor');
+    const a = rot(9);
+    expect(inclinacaoDoAparelho({ x: -a.x, y: -a.y, z: 0 })).toBeCloseTo(9, 6);
+  });
+  it('funciona com o celular deitado de lado (paisagem)', async () => {
+    const { inclinacaoDoAparelho } = await import('../lib/angular/sensor');
+    // girado 90° + 5° no sentido horário: a borda vertical passa a ser a do eixo x
+    const r = ((90 + 5) * Math.PI) / 180;
+    expect(inclinacaoDoAparelho({ x: -g * Math.sin(r), y: g * Math.cos(r), z: 0 })).toBeCloseTo(5, 6);
+  });
+  it('recusa leitura com o aparelho deitado e suaviza', async () => {
+    const { inclinacaoDoAparelho, suavizarLeitura, giroDaFoto } = await import('../lib/angular/sensor');
+    expect(inclinacaoDoAparelho({ x: 0.2, y: 0.3, z: 9.8 })).toBeNull();
+    expect(suavizarLeitura(null, 10)).toBe(10);
+    expect(suavizarLeitura(10, 20, 0.5)).toBe(15);
+    expect(giroDaFoto(3)).toBe(-3);
+    expect(giroDaFoto(3, true)).toBe(3);
+  });
+});
