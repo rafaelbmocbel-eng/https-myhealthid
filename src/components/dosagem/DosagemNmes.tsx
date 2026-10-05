@@ -7,15 +7,15 @@ import { AVISO_VALIDACAO } from '@/lib/dosagem/protocolos';
 import { CONDICOES_NMES, type ParamsEletro } from '@/lib/dosagem/protocolosEletro';
 import type { DoseRegistrada } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
-import { Aviso, CampoNumero, FontesChips, Linha, numStr, parseNum, Secao } from './comuns';
+import { Aviso, CampoNumero, condicaoInicial, FontesChips, Linha, numStr, parseNum, Secao } from './comuns';
 import { CartaoCondicaoEletro, RegraIntensidade, SeletorCondicao } from './EletroComuns';
 import { GraficoCard, OndaOnOff, OndaPulsos } from './Graficos';
 import { RegistrarDosagem } from './RegistrarDosagem';
 import { SegurancaPainel, useSeguranca } from './SegurancaPainel';
 import { DoseBarraMovel, DoseHero } from './visual';
 
-export default function DosagemNmes({ paciente }: { paciente: PacienteDosagem | null | undefined }) {
-  const [condId, setCondId] = useState(CONDICOES_NMES[0].id);
+export default function DosagemNmes({ paciente, condicaoInicial: condIni }: { paciente: PacienteDosagem | null | undefined; condicaoInicial?: string | null }) {
+  const [condId, setCondId] = useState(condicaoInicial(CONDICOES_NMES, condIni));
   const [freq, setFreq] = useState('');
   const [largura, setLargura] = useState('');
   const [on, setOn] = useState('');

@@ -39,8 +39,8 @@ const APLICACOES: Aplicacao[] = [
   {
     id: 'dosagem',
     nome: 'Dosagem de eletrotermofototerapia',
-    descricao: 'Laser, ultrassom, ondas de choque, TENS, FES, russa e interferencial, com a fonte de cada faixa.',
-    detalhes: ['Calculadoras de energia, tempo, intensidade, EFD, carga por pulso e batimento', 'Compara com as faixas da literatura (PubMed) e diz onde não há dose confirmada, inclusive resultados negativos', 'Triagem de contraindicações pelo prontuário e registro da dose aplicada'],
+    descricao: 'Guia de qual recurso tem mais respaldo para cada patologia, e as calculadoras de dose, com a fonte de cada número.',
+    detalhes: ['Descreva o paciente (ou leia o prontuário) e veja os recursos ordenados pela evidência', 'Laser, ultrassom, ondas de choque, TENS, FES, russa e interferencial, com resultados negativos incluídos', 'Triagem de contraindicações pelo prontuário e registro da dose aplicada'],
     icone: Zap,
     rota: id => `/dosagem?paciente=${id}`,
     rotaDireta: '/dosagem',

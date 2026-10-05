@@ -6,7 +6,7 @@ import { eswtEfdAcumulada, eswtEnergiaPorImpulsoMj, eswtTempoSessaoS, fmt, fmtTe
 import { AVISO_VALIDACAO, CONDICOES_ESWT, type SugestaoESWT } from '@/lib/dosagem/protocolos';
 import type { DoseRegistrada, EquipamentoFisio } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
-import { Aviso, CampoNumero, FontesChips, Linha, numStr, parseNum, Secao, SeletorAparelho } from './comuns';
+import { Aviso, CampoNumero, condicaoInicial, FontesChips, Linha, numStr, parseNum, Secao, SeletorAparelho } from './comuns';
 import { estiloAcento } from '@/lib/dosagem/acentos';
 import { GraficoCard, MedidorEfd } from './Graficos';
 import { DoseBarraMovel, DoseHero } from './visual';
@@ -18,6 +18,7 @@ interface Props {
   equipamentos: EquipamentoFisio[];
   equipamentosDisponiveis: boolean;
   onGerenciarAparelhos: () => void;
+  condicaoInicial?: string | null;
 }
 
 const ESCALA_MAX = 0.8;
@@ -30,8 +31,8 @@ const descreverSugestao = (s: SugestaoESWT) => [
   s.sessoes ? `${s.sessoes} sessões${s.intervalo ? ` (${s.intervalo})` : ''}` : '',
 ].filter(Boolean).join(' · ');
 
-export default function DosagemOndasChoque({ paciente, equipamentos, equipamentosDisponiveis, onGerenciarAparelhos }: Props) {
-  const [condId, setCondId] = useState(CONDICOES_ESWT[0].id);
+export default function DosagemOndasChoque({ paciente, equipamentos, equipamentosDisponiveis, onGerenciarAparelhos, condicaoInicial: condIni }: Props) {
+  const [condId, setCondId] = useState(condicaoInicial(CONDICOES_ESWT, condIni));
   const [equipId, setEquipId] = useState('manual');
   const [tipo, setTipo] = useState<'focal' | 'radial'>('focal');
   const [efd, setEfd] = useState('');

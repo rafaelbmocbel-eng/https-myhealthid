@@ -7,15 +7,15 @@ import { AVISO_VALIDACAO } from '@/lib/dosagem/protocolos';
 import { CONDICOES_RUSSA, type ParamsEletro } from '@/lib/dosagem/protocolosEletro';
 import type { DoseRegistrada } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
-import { Aviso, CampoNumero, FontesChips, Linha, numStr, parseNum, Secao } from './comuns';
+import { Aviso, CampoNumero, condicaoInicial, FontesChips, Linha, numStr, parseNum, Secao } from './comuns';
 import { CartaoCondicaoEletro, RegraIntensidade, SeletorCondicao } from './EletroComuns';
 import { GraficoCard, OndaBursts, OndaOnOff } from './Graficos';
 import { RegistrarDosagem } from './RegistrarDosagem';
 import { SegurancaPainel, useSeguranca } from './SegurancaPainel';
 import { DoseBarraMovel, DoseHero } from './visual';
 
-export default function DosagemRussa({ paciente }: { paciente: PacienteDosagem | null | undefined }) {
-  const [condId, setCondId] = useState(CONDICOES_RUSSA[0].id);
+export default function DosagemRussa({ paciente, condicaoInicial: condIni }: { paciente: PacienteDosagem | null | undefined; condicaoInicial?: string | null }) {
+  const [condId, setCondId] = useState(condicaoInicial(CONDICOES_RUSSA, condIni));
   const [portadora, setPortadora] = useState('');
   const [burst, setBurst] = useState('');
   const [duracaoBurst, setDuracaoBurst] = useState('');

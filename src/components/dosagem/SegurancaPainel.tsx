@@ -2,24 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { detectarAlertas, itensDaModalidade, type Alerta, type ItemSeguranca } from '@/lib/dosagem/seguranca';
+import { alertasDoPaciente, itensDaModalidade, type Alerta, type ItemSeguranca } from '@/lib/dosagem/seguranca';
 import { MODALIDADES, type Modalidade } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
 import { Aviso, FontesChips, Secao } from './comuns';
 
 export function useSeguranca(modalidade: Modalidade, paciente: PacienteDosagem | null | undefined) {
   const itens = useMemo(() => itensDaModalidade(modalidade), [modalidade]);
-  const alertas = useMemo(() => {
-    const a: Record<string, Alerta[]> = detectarAlertas(paciente?.textos ?? [], itens);
-    const idade = paciente?.idade;
-    if (idade !== null && idade !== undefined) {
-      for (const i of itens) {
-        if (idade < 18 && i.id.endsWith('_epifise')) (a[i.id] ||= []).push({ origem: 'Cadastro', trecho: `${idade} anos` });
-        if (idade >= 65 && i.id === 'eswt_idosos_focal') (a[i.id] ||= []).push({ origem: 'Cadastro', trecho: `${idade} anos` });
-      }
-    }
-    return a;
-  }, [itens, paciente]);
+  const alertas = useMemo(() => alertasDoPaciente(itens, paciente), [itens, paciente]);
 
   const [reconhecidos, setReconhecidos] = useState<Set<string>>(new Set());
   const [conferido, setConferido] = useState(false);

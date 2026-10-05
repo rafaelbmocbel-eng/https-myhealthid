@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ExternalLink, FlaskConical, Settings2, ShieldQuestion, X } from 'lucide-react';
+import { ArrowLeft, Calculator, Compass, ExternalLink, FlaskConical, Settings2, ShieldQuestion, X } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,12 @@ import { cn } from '@/lib/utils';
 import { ACC, estiloAcento } from '@/lib/dosagem/acentos';
 import { AVISO_VALIDACAO } from '@/lib/dosagem/protocolos';
 import { REFERENCIAS_DOSAGEM, urlPubmed } from '@/lib/dosagem/referencias';
+import { indicacoesOrdenadas, patologia } from '@/lib/dosagem/guia';
 import { MODALIDADES, type Modalidade } from '@/lib/dosagem/tipos';
 import { equipamentosDoTipo, useEquipamentosFisio } from '@/hooks/useEquipamentosFisio';
 import { usePacienteDosagem, usePacientesLista } from '@/hooks/useProntuarioSeguranca';
 import SeletorModalidade from '@/components/dosagem/SeletorModalidade';
+import GuiaRecursos from '@/components/dosagem/GuiaRecursos';
 import DosagemLaser from '@/components/dosagem/DosagemLaser';
 import DosagemUltrassom from '@/components/dosagem/DosagemUltrassom';
 import DosagemOndasChoque from '@/components/dosagem/DosagemOndasChoque';
@@ -32,35 +34,44 @@ export default function Dosagem() {
   const [sp, setSp] = useSearchParams();
   const [aparelhosAberto, setAparelhosAberto] = useState(false);
 
+  // Sem `m` na URL abre o guia; com `m`, a calculadora daquela modalidade.
+  const modo: 'guia' | 'calc' = sp.get('m') ? 'calc' : 'guia';
   const modalidade = (MODALIDADES.find((m) => m.id === sp.get('m'))?.id ?? 'laser') as Modalidade;
   const pacienteId = sp.get('paciente') || '';
+  const guiaId = sp.get('g') || '';
+  const condicaoParam = sp.get('c');
+  const pat = guiaId ? patologia(guiaId) : undefined;
+  const melhorDoGuia = pat ? indicacoesOrdenadas(pat)[0]?.modalidade : undefined;
+  const modalidadeDoAcento: Modalidade = modo === 'calc' ? modalidade : (melhorDoGuia ?? 'laser');
 
   const { data: lista = [] } = usePacientesLista(user?.id);
   const { data: paciente } = usePacienteDosagem(pacienteId || null);
   const { data: equip } = useEquipamentosFisio();
 
-  const mudar = (chave: string, valor: string) => {
+  const definir = (mudancas: Record<string, string | null>, substituir = true) => {
     const novo = new URLSearchParams(sp);
-    if (valor) novo.set(chave, valor); else novo.delete(chave);
-    setSp(novo, { replace: true });
+    for (const [k, v] of Object.entries(mudancas)) { if (v) novo.set(k, v); else novo.delete(k); }
+    setSp(novo, { replace: substituir });
   };
+  const mudar = (chave: string, valor: string) => definir({ [chave]: valor || null });
 
   const comAparelho = {
     paciente,
     equipamentos: equipamentosDoTipo(equip?.itens, modalidade),
     equipamentosDisponiveis: !!equip?.disponivel,
     onGerenciarAparelhos: () => setAparelhosAberto(true),
+    condicaoInicial: condicaoParam,
   };
 
   return (
     <AppLayout>
-      <div style={estiloAcento(modalidade)} className="relative isolate">
+      <div style={estiloAcento(modalidadeDoAcento)} className="relative isolate">
         <div aria-hidden className={cn('pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 transition-colors duration-500', ACC.halo)} />
         <div className="container max-w-6xl space-y-5 py-6">
           <PageHeader
             back="/aplicacoes"
             title="Dosagem de recursos"
-            subtitle="Eletrotermofototerapia: calcule a dose, compare com a literatura e registre no prontuário."
+            subtitle="Descubra o recurso com mais respaldo para a patologia e calcule a dose, com a fonte de cada número."
             icon={<FlaskConical className="icon-md" />}
             actions={equip?.disponivel ? (
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAparelhosAberto(true)}>
@@ -89,21 +100,49 @@ export default function Dosagem() {
             )}
           </div>
 
-          <SeletorModalidade valor={modalidade} onChange={(m) => mudar('m', m === 'laser' ? '' : m)} />
-
-          <p className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
-            <ShieldQuestion className="h-3.5 w-3.5 shrink-0" /> Parâmetros em validação clínica: orientam, não substituem o seu raciocínio nem o manual do aparelho.
-          </p>
-
-          <div key={modalidade} className="animate-in fade-in slide-in-from-bottom-1 duration-300 motion-reduce:animate-none">
-            {modalidade === 'laser' && <DosagemLaser {...comAparelho} />}
-            {modalidade === 'ultrassom' && <DosagemUltrassom {...comAparelho} />}
-            {modalidade === 'ondas_choque' && <DosagemOndasChoque {...comAparelho} />}
-            {modalidade === 'tens' && <DosagemTens paciente={paciente} />}
-            {modalidade === 'nmes' && <DosagemNmes paciente={paciente} />}
-            {modalidade === 'russa' && <DosagemRussa paciente={paciente} />}
-            {modalidade === 'interferencial' && <DosagemInterferencial paciente={paciente} />}
+          <div role="tablist" aria-label="Modo" className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted/60 p-1.5">
+            {([['guia', 'Guia de recursos', Compass], ['calc', 'Calculadoras de dose', Calculator]] as const).map(([id, rotulo, Icone]) => (
+              <button key={id} type="button" role="tab" aria-selected={modo === id}
+                onClick={() => (id === 'guia' ? definir({ m: null, c: null }) : definir({ m: sp.get('m') || 'laser' }))}
+                className={cn('flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all',
+                  modo === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+                <Icone className="h-4 w-4" /> {rotulo}
+              </button>
+            ))}
           </div>
+
+          {modo === 'guia' ? (
+            <GuiaRecursos
+              paciente={paciente}
+              patologiaId={guiaId}
+              onPatologia={(id) => definir({ g: id })}
+              onUsar={(m, c) => definir({ m, c, g: guiaId || null }, false)}
+            />
+          ) : (
+            <>
+              {pat && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/60 bg-card px-3.5 py-2.5 text-xs">
+                  <p className="min-w-0"><span className="text-muted-foreground">Vindo do guia:</span> <strong>{pat.nome}</strong> · {MODALIDADES.find((m) => m.id === modalidade)?.curto}</p>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1.5" onClick={() => definir({ m: null, c: null }, false)}><ArrowLeft className="h-3.5 w-3.5" /> Voltar ao guia</Button>
+                </div>
+              )}
+              <SeletorModalidade valor={modalidade} onChange={(m) => definir({ m, c: null })} />
+
+              <p className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
+                <ShieldQuestion className="h-3.5 w-3.5 shrink-0" /> Parâmetros em validação clínica: orientam, não substituem o seu raciocínio nem o manual do aparelho.
+              </p>
+
+              <div key={`${modalidade}-${condicaoParam ?? ''}`} className="animate-in fade-in slide-in-from-bottom-1 duration-300 motion-reduce:animate-none">
+                {modalidade === 'laser' && <DosagemLaser {...comAparelho} />}
+                {modalidade === 'ultrassom' && <DosagemUltrassom {...comAparelho} />}
+                {modalidade === 'ondas_choque' && <DosagemOndasChoque {...comAparelho} />}
+                {modalidade === 'tens' && <DosagemTens paciente={paciente} condicaoInicial={condicaoParam} />}
+                {modalidade === 'nmes' && <DosagemNmes paciente={paciente} condicaoInicial={condicaoParam} />}
+                {modalidade === 'russa' && <DosagemRussa paciente={paciente} condicaoInicial={condicaoParam} />}
+                {modalidade === 'interferencial' && <DosagemInterferencial paciente={paciente} condicaoInicial={condicaoParam} />}
+              </div>
+            </>
+          )}
 
           <details className="group rounded-2xl border border-border/60 bg-card p-4">
             <summary className="cursor-pointer text-sm font-semibold">Fontes e como ler as faixas ({REFERENCIAS_DOSAGEM.length} artigos)</summary>

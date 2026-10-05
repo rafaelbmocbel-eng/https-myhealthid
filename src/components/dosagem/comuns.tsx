@@ -137,3 +137,6 @@ export function SeletorAparelho({ itens, valor, onChange, disponivel, onGerencia
     </div>
   );
 }
+
+/** Id inicial da condição: o recebido do guia, se existir na lista; senão, o primeiro. */
+export const condicaoInicial = (lista: { id: string }[], id?: string | null) => (lista.some((c) => c.id === id) ? (id as string) : lista[0].id);

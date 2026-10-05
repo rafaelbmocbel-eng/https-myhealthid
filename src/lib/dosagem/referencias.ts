@@ -193,6 +193,27 @@ export const REFERENCIAS_DOSAGEM: ReferenciaDosagem[] = [
   // ── Segurança em eletroterapia ─────────────────────────────────────────
   { id: 'daia2026', autores: 'Daia e cols.', ano: 2026, revista: 'J Clin Med', pmid: '42513462', doi: '10.3390/jcm15145548',
     uso: 'Revisão narrativa: a eletroterapia pode ser contraindicada com doença aguda, descompensação grave, doença cardiovascular não controlada, dispositivos eletrônicos implantados e trombose ativa. Ultrassom: a contraindicação principal é lesão maligna ativa no campo, e não o câncer em si.' },
+  // ── Guia: comparações entre recursos e revisões por condição ───────────
+  { id: 'hao2025', autores: 'Hao e cols.', ano: 2025, revista: 'Eur Spine J', pmid: '40244434', doi: '10.1007/s00586-025-08812-1',
+    uso: 'Dor cervical, meta-análise em rede (34 ensaios, 2141 pacientes): ordem de prioridade HILT, ondas de choque, interferencial, TENS, laser de baixa intensidade e ultrassom.' },
+  { id: 'dudon2026', autores: 'Dudon e Stania', ano: 2026, revista: 'J Clin Med', pmid: '41827423', doi: '10.3390/jcm15052007',
+    uso: 'Tendinopatias, ondas de choque contra ultrassom (14 ensaios, 639 pacientes, alto risco de viés): na epicondilite lateral, as ondas de choque podem reduzir mais a dor em repouso (DM −1,51), com certeza muito baixa; sem diferença no PRTEE.' },
+  { id: 'carlisi2019', autores: 'Carlisi e cols.', ano: 2019, revista: 'Clin Rehabil', pmid: '30585498', doi: '10.1177/0269215518819255',
+    uso: 'Dor trocantérica: ondas de choque focais foram mais eficazes que o ultrassom aos 2 meses (2,08 contra 3,36; P < 0,05).' },
+  { id: 'huang2015', autores: 'Huang e cols.', ano: 2015, revista: 'Arthritis Res Ther', pmid: '26667480', doi: '10.1186/s13075-015-0882-0',
+    uso: 'Lombalgia crônica: laser de baixa intensidade reduziu a dor (DMP −13,57), sem efeito significativo na incapacidade.' },
+  { id: 'tomazoni2020', autores: 'Tomazoni e cols.', ano: 2020, revista: 'J Physiother', pmid: '32680739', doi: '10.1016/j.jphys.2020.06.010',
+    uso: 'Lombalgia inespecífica (12 ensaios, n = 1046): a evidência atual não sustenta o laser para reduzir dor e incapacidade.' },
+  { id: 'friedman2026', autores: 'Friedman e cols.', ano: 2026, revista: 'Arch Rehabil Res Clin Transl', pmid: '42769704', doi: '10.1016/j.arrct.2026.100657',
+    uso: 'Tendinopatia patelar, meta-análise: as relações dose-resposta das ondas de choque continuam insuficientemente definidas.' },
+  { id: 'guo2026', autores: 'Guo e cols.', ano: 2026, revista: 'Orthop Surg', pmid: '42733276', doi: '10.1111/os.70408',
+    uso: 'Tendinopatia patelar: ondas de choque sem efeito contra placebo.' },
+  { id: 'alves2026', autores: 'Alves e cols.', ano: 2026, revista: 'Swiss Dent J', pmid: '42817778', doi: '10.61872/sdj-2026-03-03',
+    uso: 'Laser em disfunção da ATM: heterogeneidade clínica e metodológica impede conclusões definitivas.' },
+  { id: 'albornoz2021', autores: 'Albornoz-Cabello e cols.', ano: 2021, revista: 'Eur J Phys Rehabil Med', pmid: '33759439', doi: '10.23736/S1973-9087.21.06688-0',
+    uso: 'Cervicalgia crônica (n = 49): somar interferencial ao exercício melhorou dor e incapacidade imediatas (NNT 2), mas não a amplitude de movimento ativa.' },
+  { id: 'he2025', autores: 'He e cols.', ano: 2025, revista: 'J Stroke Cerebrovasc Dis', pmid: '40057253', doi: '10.1016/j.jstrokecerebrovasdis.2025.108279',
+    uso: 'Pé caído pós-AVC (37 ensaios, rede): a eficácia não foi significativa nas fases de sequela.' },
 ];
 
 const POR_ID = new Map(REFERENCIAS_DOSAGEM.map((r) => [r.id, r]));

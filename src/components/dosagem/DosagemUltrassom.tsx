@@ -8,7 +8,7 @@ import {
 import { AVISO_VALIDACAO, CONDICOES_US, NIVEL_EVIDENCIA_ROTULO } from '@/lib/dosagem/protocolos';
 import type { DoseRegistrada, EquipamentoFisio } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
-import { Aviso, CampoNumero, FontesChips, Linha, numStr, parseNum, Secao, SeletorAparelho } from './comuns';
+import { Aviso, CampoNumero, condicaoInicial, FontesChips, Linha, numStr, parseNum, Secao, SeletorAparelho } from './comuns';
 import { cn } from '@/lib/utils';
 import { ACC, estiloAcento } from '@/lib/dosagem/acentos';
 import { CurvaAquecimento, GraficoCard } from './Graficos';
@@ -21,10 +21,11 @@ interface Props {
   equipamentos: EquipamentoFisio[];
   equipamentosDisponiveis: boolean;
   onGerenciarAparelhos: () => void;
+  condicaoInicial?: string | null;
 }
 
-export default function DosagemUltrassom({ paciente, equipamentos, equipamentosDisponiveis, onGerenciarAparelhos }: Props) {
-  const [condId, setCondId] = useState(CONDICOES_US[0].id);
+export default function DosagemUltrassom({ paciente, equipamentos, equipamentosDisponiveis, onGerenciarAparelhos, condicaoInicial: condIni }: Props) {
+  const [condId, setCondId] = useState(condicaoInicial(CONDICOES_US, condIni));
   const [equipId, setEquipId] = useState('manual');
   const [freq, setFreq] = useState<'1' | '3'>('1');
   const [modo, setModo] = useState<'continuo' | 'pulsado'>('continuo');

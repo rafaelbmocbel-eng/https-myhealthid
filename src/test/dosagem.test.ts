@@ -11,6 +11,9 @@ import {
   densidadeCorrenteMaCm2, duracaoBurstMs, ocupacaoPulsoPct, periodoMs, razaoOffOn, tempoSobEstimuloS,
 } from '@/lib/dosagem/eletro';
 import { lerFicha } from '@/lib/dosagem/importarFicha';
+import { FAIXAS, PATOLOGIAS, indicacoesOrdenadas, interpretarDescricao, interpretarProntuario, modalidadesSemDados, patologia } from '@/lib/dosagem/guia';
+import { CONDICOES_IFC, CONDICOES_NMES, CONDICOES_RUSSA, CONDICOES_TENS } from '@/lib/dosagem/protocolosEletro';
+import { MODALIDADES } from '@/lib/dosagem/tipos';
 import { detectarAlertas, ITENS_SEGURANCA, idadeEmAnos, itensDaModalidade } from '@/lib/dosagem/seguranca';
 
 describe('laser', () => {
@@ -266,5 +269,76 @@ describe('ler ficha técnica colada', () => {
     const r = lerFicha('texto sem números úteis', 'laser');
     expect(r.achados).toHaveLength(0);
     expect(r.avisos.length).toBeGreaterThan(0);
+  });
+});
+
+describe('guia de recursos', () => {
+  const condicoesPorModalidade: Record<string, string[]> = {
+    laser: CONDICOES_LASER.map((c) => c.id),
+    ultrassom: CONDICOES_US.map((c) => c.id),
+    ondas_choque: CONDICOES_ESWT.map((c) => c.id),
+    tens: CONDICOES_TENS.map((c) => c.id),
+    nmes: CONDICOES_NMES.map((c) => c.id),
+    russa: CONDICOES_RUSSA.map((c) => c.id),
+    interferencial: CONDICOES_IFC.map((c) => c.id),
+  };
+  it('toda indicação aponta para uma condição que existe na calculadora', () => {
+    for (const p of PATOLOGIAS) for (const i of p.indicacoes) {
+      expect(condicoesPorModalidade[i.modalidade], `${p.id}/${i.modalidade}`).toContain(i.calc);
+    }
+  });
+  it('toda fonte do guia existe no catálogo e as faixas são válidas', () => {
+    for (const p of PATOLOGIAS) for (const i of p.indicacoes) {
+      expect(FAIXAS[i.faixa]).toBeTruthy();
+      expect(i.fontes.length, `${p.id}/${i.modalidade} sem fonte`).toBeGreaterThan(0);
+      for (const f of i.fontes) expect(referencia(f), `fonte ausente: ${f}`).toBeTruthy();
+    }
+  });
+  it('ids únicos e nenhuma modalidade repetida na mesma patologia', () => {
+    expect(new Set(PATOLOGIAS.map((p) => p.id)).size).toBe(PATOLOGIAS.length);
+    for (const p of PATOLOGIAS) expect(new Set(p.indicacoes.map((i) => i.modalidade)).size, p.id).toBe(p.indicacoes.length);
+  });
+  it('ordena da melhor para a pior faixa e mantém a ordem dos dados no empate', () => {
+    const joelho = indicacoesOrdenadas(patologia('joelho_oa')!);
+    expect(joelho[0].modalidade).toBe('laser');
+    expect(joelho.map((i) => i.faixa)).toEqual(['A', 'B', 'B', 'B']);
+    const ombro = indicacoesOrdenadas(patologia('ombro_manguito_impacto')!);
+    expect(ombro.map((i) => i.faixa)).toEqual(['B', 'C', 'D', 'D']);
+    const cervical = indicacoesOrdenadas(patologia('cervical')!).map((i) => i.modalidade);
+    expect(cervical).toEqual(['ondas_choque', 'interferencial', 'tens', 'laser', 'ultrassom']);
+  });
+  it('lista as modalidades sem dados levantados', () => {
+    const todas = MODALIDADES.map((m) => m.id);
+    const sem = modalidadesSemDados(patologia('fascite_plantar')!, todas);
+    expect(sem).not.toContain('laser');
+    expect(sem).toContain('tens');
+  });
+  it('entende a descrição do paciente, com e sem acento', () => {
+    expect(interpretarDescricao('Paciente com dor no joelho por artrose')[0].id).toBe('joelho_oa');
+    expect(interpretarDescricao('TENDINITE PATELAR em atleta')[0].id).toBe('tendinopatia_patelar_aquiles');
+    expect(interpretarDescricao('fascite plantar com esporão')[0].id).toBe('fascite_plantar');
+    expect(interpretarDescricao('AVC há 2 anos com pé caído')[0].id).toBe('pe_caido_avc');
+    expect(interpretarDescricao('esclerose múltipla, pé caído')[0].id).toBe('pe_caido_em');
+    expect(interpretarDescricao('cervicalgia e torcicolo')[0].id).toBe('cervical');
+    expect(interpretarDescricao('lombalgia aguda ontem')[0].id).toBe('lombar_aguda');
+    expect(interpretarDescricao('lombalgia crônica há 1 ano')[0].id).toBe('lombar_cronica');
+    expect(interpretarDescricao('pós-operatório de artroplastia total de joelho').map((r) => r.id)).toContain('quadriceps_pos_atj');
+  });
+  it('não inventa: texto sem relação ou muito curto devolve vazio', () => {
+    expect(interpretarDescricao('paciente simpático e pontual')).toHaveLength(0);
+    expect(interpretarDescricao('ab')).toHaveLength(0);
+  });
+});
+
+describe('guia a partir do prontuário', () => {
+  it('lê queixa, avatar e diagnósticos, e ignora texto que não é clínico', () => {
+    const r = interpretarProntuario([
+      { origem: 'Queixa principal', texto: 'Dor no calcanhar ao acordar' },
+      { origem: 'Avatar clínico', texto: 'Fascite plantar à direita' },
+      { origem: 'Medicamentos em uso', texto: 'Dor lombar crônica (não deveria contar)' },
+    ]);
+    expect(r[0].id).toBe('fascite_plantar');
+    expect(r[0].origens).toEqual(['Queixa principal', 'Avatar clínico']);
+    expect(r.some((x) => x.id === 'lombar_cronica')).toBe(false);
   });
 });

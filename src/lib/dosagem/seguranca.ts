@@ -167,3 +167,19 @@ export function idadeEmAnos(nascimento?: string | null, hoje = new Date()): numb
   if (hoje.getMonth() < d.getMonth() || (hoje.getMonth() === d.getMonth() && hoje.getDate() < d.getDate())) a--;
   return a;
 }
+
+/** Alertas do paciente para uma lista de itens: texto do prontuário + idade (menor de 18 e idoso). */
+export function alertasDoPaciente(
+  itens: ItemSeguranca[],
+  paciente: { textos: TextoProntuario[]; idade: number | null } | null | undefined,
+): Record<string, Alerta[]> {
+  const a: Record<string, Alerta[]> = detectarAlertas(paciente?.textos ?? [], itens);
+  const idade = paciente?.idade;
+  if (idade !== null && idade !== undefined) {
+    for (const i of itens) {
+      if (idade < 18 && i.id.endsWith('_epifise')) (a[i.id] ||= []).push({ origem: 'Cadastro', trecho: `${idade} anos` });
+      if (idade >= 65 && i.id === 'eswt_idosos_focal') (a[i.id] ||= []).push({ origem: 'Cadastro', trecho: `${idade} anos` });
+    }
+  }
+  return a;
+}

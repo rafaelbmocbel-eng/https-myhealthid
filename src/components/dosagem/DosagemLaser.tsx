@@ -10,7 +10,7 @@ import {
 import { AVISO_VALIDACAO, CONDICOES_LASER } from '@/lib/dosagem/protocolos';
 import type { DoseRegistrada, EquipamentoFisio } from '@/lib/dosagem/tipos';
 import type { PacienteDosagem } from '@/hooks/useProntuarioSeguranca';
-import { Aviso, CampoNumero, FontesChips, Linha, numStr, parseNum, Secao, SeletorAparelho } from './comuns';
+import { Aviso, CampoNumero, condicaoInicial, FontesChips, Linha, numStr, parseNum, Secao, SeletorAparelho } from './comuns';
 import { estiloAcento } from '@/lib/dosagem/acentos';
 import { GraficoCard, JanelaDose } from './Graficos';
 import { DoseBarraMovel, DoseHero, SeloStatus } from './visual';
@@ -33,10 +33,11 @@ interface Props {
   equipamentos: EquipamentoFisio[];
   equipamentosDisponiveis: boolean;
   onGerenciarAparelhos: () => void;
+  condicaoInicial?: string | null;
 }
 
-export default function DosagemLaser({ paciente, equipamentos, equipamentosDisponiveis, onGerenciarAparelhos }: Props) {
-  const [condId, setCondId] = useState(CONDICOES_LASER[0].id);
+export default function DosagemLaser({ paciente, equipamentos, equipamentosDisponiveis, onGerenciarAparelhos, condicaoInicial: condIni }: Props) {
+  const [condId, setCondId] = useState(condicaoInicial(CONDICOES_LASER, condIni));
   const [equipId, setEquipId] = useState('manual');
   const [nm, setNm] = useState('810');
   const [modo, setModo] = useState<ModoLaser>('continuo');
@@ -215,7 +216,7 @@ export default function DosagemLaser({ paciente, equipamentos, equipamentosDispo
 
       <aside className="space-y-3 lg:sticky lg:top-4">
         <DoseHero modalidade="laser" rotulo="Energia por ponto" valor={energiaPonto ? fmt(energiaPonto) : '—'} unidade="J"
-          detalhe={energiaPonto ? `${fmtTempo(tempoPonto)} por ponto${fluencia ? ` · ${fmt(fluencia)} J/cm²` : ''}` : 'Informe potência e dose'}>
+          detalhe={energiaPonto ? (tempoPonto ? `${fmtTempo(tempoPonto)} por ponto${fluencia ? ` · ${fmt(fluencia)} J/cm²` : ''}` : 'Informe a potência para calcular o tempo') : 'Informe potência e dose'}>
           <SeloStatus tom={TOM[avaliacao.status]} icone={ICONE_STATUS[avaliacao.status]}>{ROTULO_STATUS[avaliacao.status]}</SeloStatus>
         </DoseHero>
 
