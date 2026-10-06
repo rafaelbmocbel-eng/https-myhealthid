@@ -108,6 +108,10 @@ const FRIENDLY_KEY: Record<string, string> = {
   bloco_6_axial_trauma: 'Trauma axial',
   bloco_6_visceral_issues: 'Sintomas viscerais',
   bloco_6_endometriosis: 'Endometriose',
+  bloco_6_feminino_aplica: 'Perguntas hormonais se aplicam',
+  bloco_6_diagnostico: 'Diagnóstico hormonal',
+  bloco_6_meds_none: 'Não toma medicações',
+  bloco_5e_sitting_hours: 'Tempo total sentado por dia',
   bloco_6_daily_nsaid: 'AINE diário',
   bloco_6_muscle_relaxant: 'Relaxante muscular',
 };

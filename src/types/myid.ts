@@ -137,6 +137,9 @@ export interface MyIDBloco6Data {
   bloco_6_axial_trauma?: boolean;
   bloco_6_abdominal_surgeries?: string[];
   bloco_6_visceral_issues?: string[];
+  bloco_6_feminino_aplica?: 'sim' | 'na';
+  bloco_6_diagnostico?: 'none' | 'endo' | 'pcos' | 'both';
+  bloco_6_meds_none?: boolean;
   bloco_6_endometriosis?: boolean;
   bloco_6_pcos?: boolean;
   bloco_6_cycle_regularity?: string;
