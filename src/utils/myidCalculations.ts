@@ -165,6 +165,7 @@ export interface DimensionScores {
 /**
  * Central interpretation for MyID-100 (0-100 scale).
  * Accepts EITHER old 0-10 scores OR new 0-100 scores and normalizes.
+ * `dimensionScores`: valores brutos (nota ou intensidade), sem inverter.
  */
 export function getMyIDInterpretation(
   score: number,
@@ -183,35 +184,19 @@ export function getMyIDInterpretation(
   const dimensionAlerts: DimensionAlert[] = [];
 
   if (dimensionScores) {
-    const CRITICAL_THRESHOLDS: Record<string, number> = { R: 7, AF: 7, ERG: 8 };
+    // Recebe o valor BRUTO de cada dimensão (nota para R/C/AF/HID/NUT/ERG/EFI,
+    // intensidade para D/P/I/N) e converte aqui para gravidade (maior = pior).
+    const CRITICAL_THRESHOLDS: Record<string, number> = { R: 7, AF: 7, ERG: 8, EFI: 7 };
     for (const [key, dimVal] of Object.entries(dimensionScores)) {
-      if (dimVal === undefined || dimVal === null) continue;
+      if (dimVal === undefined || dimVal === null || Number.isNaN(dimVal)) continue;
+      const gravidade = gravidadeDimensao(key, dimVal);
       const threshold = CRITICAL_THRESHOLDS[key];
+      const base = { dimension: key, label: DIMENSION_LABELS[key] || key, value: dimVal };
 
-      // EFI é bem-estar/funcionalidade: menor valor = pior (oposto das demais dimensões de demanda aqui).
-      if (key === 'EFI') {
-        if (dimVal <= 3) {
-          dimensionAlerts.push({ dimension: key, label: DIMENSION_LABELS[key] || key, value: dimVal, severity: 'CRÍTICO' });
-        } else if (dimVal <= 5) {
-          dimensionAlerts.push({ dimension: key, label: DIMENSION_LABELS[key] || key, value: dimVal, severity: 'MODERADO' });
-        }
-        continue;
-      }
-
-      if (threshold !== undefined && dimVal >= threshold) {
-        dimensionAlerts.push({
-          dimension: key,
-          label: DIMENSION_LABELS[key] || key,
-          value: dimVal,
-          severity: 'CRÍTICO',
-        });
-      } else if (dimVal >= 7) {
-        dimensionAlerts.push({
-          dimension: key,
-          label: DIMENSION_LABELS[key] || key,
-          value: dimVal,
-          severity: 'MODERADO',
-        });
+      if (threshold !== undefined && gravidade >= threshold) {
+        dimensionAlerts.push({ ...base, severity: 'CRÍTICO' });
+      } else if (key === 'EFI' ? gravidade >= 5 : gravidade >= 7) {
+        dimensionAlerts.push({ ...base, severity: 'MODERADO' });
       }
     }
   }

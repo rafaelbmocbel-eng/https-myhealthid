@@ -51,6 +51,9 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                             <span>10 (Pior dor imaginável)</span>
                         </div>
                     </div>
+                    {data.bloco_2_pain_now === undefined && (
+                        <button type="button" onClick={() => updateData({ bloco_2_pain_now: 0 })} className="mx-auto block text-sm font-semibold text-primary underline">Marcar 0 (nenhuma dor)</button>
+                    )}
                     <div className="text-center font-black text-3xl text-primary mt-2">{data.bloco_2_pain_now || 0} <span className="text-xl text-muted-foreground font-bold">/ 10</span></div>
                 </div>
 
@@ -68,6 +71,9 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                             <span>10 (Pior dor imaginável)</span>
                         </div>
                     </div>
+                    {data.bloco_2_pain_max === undefined && (
+                        <button type="button" onClick={() => updateData({ bloco_2_pain_max: 0 })} className="mx-auto block text-sm font-semibold text-primary underline">Marcar 0 (nenhuma dor)</button>
+                    )}
                     <div className="text-center font-black text-3xl text-primary mt-2">{data.bloco_2_pain_max || 0} <span className="text-xl text-muted-foreground font-bold">/ 10</span></div>
                 </div>
 
@@ -100,53 +106,6 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                             </div>
                         ))}
                     </div>
-                </div>
-
-                <div className="space-y-4 pt-6 border-t border-muted">
-                    <div>
-                        <Label className="text-base font-bold text-foreground">Com que frequência você sente dor?</Label>
-                        <p className="text-sm text-muted-foreground mt-1">Qual a frequência com que a dor aparece?</p>
-                    </div>
-                    <RadioGroup
-                        value={data.bloco_2_pain_frequency || ''}
-                        onValueChange={(v) => updateData({ bloco_2_pain_frequency: v })}
-                        className="space-y-3 p-5 bg-muted/20 rounded-xl border border-muted/50"
-                    >
-                        <div className="flex items-center space-x-3">
-                            <RadioGroupItem value="constant" id="freq-1" />
-                            <Label htmlFor="freq-1" className="cursor-pointer text-sm font-semibold">Constantemente (O tempo todo ou quase todo o tempo)</Label>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <RadioGroupItem value="daily" id="freq-2" />
-                            <Label htmlFor="freq-2" className="cursor-pointer text-sm font-semibold">Diariamente (Todos os dias, mas em momentos específicos)</Label>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <RadioGroupItem value="weekly" id="freq-3" />
-                            <Label htmlFor="freq-3" className="cursor-pointer text-sm font-semibold">Semanalmente (Alguns dias na semana)</Label>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <RadioGroupItem value="monthly" id="freq-4" />
-                            <Label htmlFor="freq-4" className="cursor-pointer text-sm font-semibold">Mensalmente ou Raramente (Episódios isolados)</Label>
-                        </div>
-                    </RadioGroup>
-                </div>
-
-                <div className="space-y-4 pt-6 border-t border-muted">
-                    <div>
-                        <Label className="text-base font-bold text-foreground">Quando a dor é pior?</Label>
-                        <p className="text-sm text-muted-foreground mt-1">Em qual período do dia a dor costuma ser mais forte?</p>
-                    </div>
-                    <RadioGroup
-                        value={data.bloco_2_worst_time || ''}
-                        onValueChange={(v) => updateData({ bloco_2_worst_time: v })}
-                        className="space-y-3 p-5 bg-muted/20 rounded-xl border border-muted/50"
-                    >
-                        <div className="flex items-center space-x-3"><RadioGroupItem value="morning" id="wt-1" /><Label htmlFor="wt-1" className="cursor-pointer text-sm font-semibold">Manhã (Ao acordar ou logo nas primeiras horas)</Label></div>
-                        <div className="flex items-center space-x-3"><RadioGroupItem value="afternoon" id="wt-2" /><Label htmlFor="wt-2" className="cursor-pointer text-sm font-semibold">Tarde (Durante as atividades do dia)</Label></div>
-                        <div className="flex items-center space-x-3"><RadioGroupItem value="night" id="wt-3" /><Label htmlFor="wt-3" className="cursor-pointer text-sm font-semibold">Noite (Fim do dia)</Label></div>
-                        <div className="flex items-center space-x-3"><RadioGroupItem value="dawn" id="wt-4" /><Label htmlFor="wt-4" className="cursor-pointer text-sm font-semibold">Madrugada (Acorda por causa da dor)</Label></div>
-                        <div className="flex items-center space-x-3"><RadioGroupItem value="random" id="wt-5" /><Label htmlFor="wt-5" className="cursor-pointer text-sm font-semibold">Aleatório (Não tem hora certa)</Label></div>
-                    </RadioGroup>
                 </div>
 
                 <div className="space-y-4 pt-6 border-t border-muted">

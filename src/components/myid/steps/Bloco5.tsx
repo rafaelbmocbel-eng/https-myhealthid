@@ -19,9 +19,21 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
         }
     };
 
+    // "Nenhum" exclui as demais (e vice-versa); a escolha explícita torna a pergunta respondida.
+    const handleExclusivo = (field: string, value: string, checked: boolean) => {
+        const current: string[] = data[field] || [];
+        if (checked && value === 'none') updateData({ [field]: ['none'] });
+        else if (checked) updateData({ [field]: [...current.filter((i) => i !== 'none'), value] });
+        else updateData({ [field]: current.filter((i) => i !== value) });
+    };
+
     const handleObjCheckboxChange = (field: string, key: string, checked: boolean) => {
         const current = data[field] || {};
-        updateData({ [field]: { ...current, [key]: checked } });
+        if (key === 'none' && checked) {
+            updateData({ [field]: { none: true } });
+            return;
+        }
+        updateData({ [field]: { ...current, [key]: checked, ...(checked ? { none: false } : {}) } });
     };
 
     return (
@@ -72,6 +84,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     >
                         <div className="flex items-center space-x-2"><RadioGroupItem value="never" id="sa-never" /><Label htmlFor="sa-never">Nunca</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="rarely" id="sa-rarely" /><Label htmlFor="sa-rarely">Raramente</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="sometimes" id="sa-some" /><Label htmlFor="sa-some">Às vezes</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="frequently" id="sa-freq" /><Label htmlFor="sa-freq">Frequentemente</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="always" id="sa-always" /><Label htmlFor="sa-always">Sempre</Label></div>
                     </RadioGroup>
@@ -86,12 +99,13 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             { id: 'apnea', label: 'Apneia do Sono (ronco forte, falta de ar dormindo)' },
                             { id: 'bruxism', label: 'Bruxismo (aperta ou range os dentes)' },
                             { id: 'restless_legs', label: 'Síndrome das Pernas Inquietas' },
+                            { id: 'none', label: 'Nenhum destes' },
                         ].map(dis => (
                             <div key={dis.id} className="flex items-center space-x-2">
                                 <Checkbox
                                     id={`sd-${dis.id}`}
                                     checked={(data.bloco_5a_disorders || []).includes(dis.id)}
-                                    onCheckedChange={(c) => handleCheckboxChange('bloco_5a_disorders', dis.id, !!c)}
+                                    onCheckedChange={(c) => handleExclusivo('bloco_5a_disorders', dis.id, !!c)}
                                 />
                                 <Label htmlFor={`sd-${dis.id}`}>{dis.label}</Label>
                             </div>
@@ -146,6 +160,8 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             type="range"
                             min="0" max="10" step="1"
                             value={data.bloco_5c_stress ?? 5}
+                            onPointerUp={(e) => updateData({ bloco_5c_stress: parseInt(e.currentTarget.value) })}
+                            onKeyUp={(e) => updateData({ bloco_5c_stress: parseInt(e.currentTarget.value) })}
                             onChange={(e) => updateData({ bloco_5c_stress: parseInt(e.target.value) })}
                             className="w-full"
                         />
@@ -165,6 +181,8 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             type="range"
                             min="0" max="10" step="1"
                             value={data.bloco_5c_anxiety ?? 5}
+                            onPointerUp={(e) => updateData({ bloco_5c_anxiety: parseInt(e.currentTarget.value) })}
+                            onKeyUp={(e) => updateData({ bloco_5c_anxiety: parseInt(e.currentTarget.value) })}
                             onChange={(e) => updateData({ bloco_5c_anxiety: parseInt(e.target.value) })}
                             className="w-full"
                         />
@@ -203,7 +221,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <Checkbox
                             id="work-stress-na"
                             checked={data.bloco_5d_work_stress === 'na'}
-                            onCheckedChange={(c) => updateData({ bloco_5d_work_stress: c ? 'na' : 0 })}
+                            onCheckedChange={(c) => updateData({ bloco_5d_work_stress: c ? 'na' : undefined })}
                         />
                         <Label htmlFor="work-stress-na" className="font-normal text-sm">Não trabalho atualmente</Label>
                     </div>
@@ -213,6 +231,8 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                                 type="range"
                                 min="0" max="10" step="1"
                                 value={data.bloco_5d_work_stress ?? 5}
+                            onPointerUp={(e) => updateData({ bloco_5d_work_stress: parseInt(e.currentTarget.value) })}
+                            onKeyUp={(e) => updateData({ bloco_5d_work_stress: parseInt(e.currentTarget.value) })}
                                 onChange={(e) => updateData({ bloco_5d_work_stress: parseInt(e.target.value) })}
                                 className="w-full"
                             />
@@ -233,6 +253,8 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             type="range"
                             min="0" max="10" step="1"
                             value={data.bloco_5d_family_conflict ?? 5}
+                            onPointerUp={(e) => updateData({ bloco_5d_family_conflict: parseInt(e.currentTarget.value) })}
+                            onKeyUp={(e) => updateData({ bloco_5d_family_conflict: parseInt(e.currentTarget.value) })}
                             onChange={(e) => updateData({ bloco_5d_family_conflict: parseInt(e.target.value) })}
                             className="w-full"
                         />
@@ -252,6 +274,8 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             type="range"
                             min="0" max="10" step="1"
                             value={data.bloco_5d_financial_worry ?? 5}
+                            onPointerUp={(e) => updateData({ bloco_5d_financial_worry: parseInt(e.currentTarget.value) })}
+                            onKeyUp={(e) => updateData({ bloco_5d_financial_worry: parseInt(e.currentTarget.value) })}
                             onChange={(e) => updateData({ bloco_5d_financial_worry: parseInt(e.target.value) })}
                             className="w-full"
                         />
@@ -269,8 +293,8 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 <h3 className="text-lg font-semibold border-b pb-2 text-primary">Atividade física e tensão diária</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">Tempo sentado contínuo</Label>
-                    <p className="text-sm text-muted-foreground">Quantas horas por dia fica sentado direto?</p>
+                    <Label className="font-semibold text-base">Tempo total sentado por dia</Label>
+                    <p className="text-sm text-muted-foreground">Somando tudo (trabalho, carro, sofá, refeições), quantas horas por dia você passa sentado?</p>
                     <Input
                         type="number"
                         inputMode="decimal"
@@ -296,30 +320,6 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <div className="flex items-center space-x-2"><RadioGroupItem value="active" id="ls-a" /><Label htmlFor="ls-a">Ativo (exercícios regulares 3+ vezes/semana)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="very_active" id="ls-va" /><Label htmlFor="ls-va">Muito ativo (treinos intensos quase diariamente)</Label></div>
                     </RadioGroup>
-                </div>
-
-                <div className="space-y-4">
-                    <Label className="font-semibold text-base">Tipo de exercício que faz</Label>
-                    <p className="text-sm text-muted-foreground">Que tipo de exercício você pratica REGULARMENTE? (Marque TODOS que se aplicam)</p>
-                    <div className="space-y-2">
-                        {[
-                            { id: 'none', label: 'NENHUM / SEM EXERCÍCIO' },
-                            { id: 'cardio', label: 'CARDIO (Corrida, bicicleta, natação, dança)' },
-                            { id: 'strength', label: 'FORÇA / MUSCULAÇÃO' },
-                            { id: 'yoga', label: 'YOGA / PILATES / ALONGAMENTO' },
-                            { id: 'sports', label: 'ESPORTE (Futebol, vôlei, tênis, etc.)' },
-                            { id: 'daily', label: 'ATIVIDADE DIÁRIA (Caminhada, subir escadas, tarefas)' }
-                        ].map(ex => (
-                            <div key={ex.id} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`ex-${ex.id}`}
-                                    checked={(data.bloco_5e_exercise_types || []).includes(ex.id)}
-                                    onCheckedChange={(c) => handleCheckboxChange('bloco_5e_exercise_types', ex.id, !!c)}
-                                />
-                                <Label htmlFor={`ex-${ex.id}`}>{ex.label}</Label>
-                            </div>
-                        ))}
-                    </div>
                 </div>
 
                 <div className="space-y-4">
@@ -413,6 +413,14 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                                 onCheckedChange={(c) => handleObjCheckboxChange('bloco_5f_dehydration_symptoms', 'fatigue_water_helps', !!c)}
                             />
                             <Label htmlFor="hid-2">Letargia / Fadiga (que melhora muito ao beber água)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="hid-none"
+                                checked={!!data.bloco_5f_dehydration_symptoms?.none}
+                                onCheckedChange={(c) => handleObjCheckboxChange('bloco_5f_dehydration_symptoms', 'none', !!c)}
+                            />
+                            <Label htmlFor="hid-none">Nenhum destes</Label>
                         </div>
                     </div>
                 </div>
@@ -577,12 +585,13 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                             { id: 'bag', label: 'CARREGAR BOLSA PESADA de um lado só' },
                             { id: 'crossed_legs', label: 'SENTA DE PERNA CRUZADA frequentemente' },
                             { id: 'keyboard_high', label: 'TECLADO / MOUSE ALTO causando dor/tensão' },
+                            { id: 'none', label: 'NENHUM DESTES' },
                         ].map(hb => (
                             <div key={hb.id} className="flex items-center space-x-2">
                                 <Checkbox
                                     id={`hab-${hb.id}`}
                                     checked={(data.bloco_5h_bad_habits || []).includes(hb.id)}
-                                    onCheckedChange={(c) => handleCheckboxChange('bloco_5h_bad_habits', hb.id, !!c)}
+                                    onCheckedChange={(c) => handleExclusivo('bloco_5h_bad_habits', hb.id, !!c)}
                                 />
                                 <Label htmlFor={`hab-${hb.id}`}>{hb.label}</Label>
                             </div>

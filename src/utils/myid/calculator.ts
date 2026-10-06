@@ -221,10 +221,10 @@ export class MyIDCalculator {
             : sleepHours < 7
                 ? Math.max(0, ((sleepHours - 3) / 4) * 10)
                 : Math.max(5, 10 - (sleepHours - 9) * 2.5);
-        const awakeMapping: Record<string, number> = { never: 10, nunca: 10, rarely: 7, rarely_v2: 7, moderately: 5, frequently: 3, always: 0 };
+        const awakeMapping: Record<string, number> = { never: 10, nunca: 10, rarely: 7, rarely_v2: 7, sometimes: 5, moderately: 5, frequently: 3, always: 0 };
         const sleepAwake = awakeMapping[this.responses.bloco_5a_awake || this.responses.bloco5?.acordaPorDor || 'rarely'] ?? 5;
-        const disorders = this.responses.bloco_5a_disorders || this.responses.bloco5?.bloco_5a_disorders || [];
-        const disorderPenalty = disorders.length * 1.5;
+        const disorders: string[] = this.responses.bloco_5a_disorders || this.responses.bloco5?.bloco_5a_disorders || [];
+        const disorderPenalty = disorders.filter(x => x !== 'none').length * 1.5;
         const rSleep = Math.max(0, ((sleepQuality + sleepHoursNormalized + sleepAwake) / 3) - disorderPenalty);
 
         const tirednessMapping: Record<string, number> = { never: 10, nunca: 10, sometimes: 6, as_vezes: 6, frequently: 3, always: 0 };
@@ -249,8 +249,10 @@ export class MyIDCalculator {
         const control = controlMapping[this.responses.bloco_5c_control || this.responses.bloco5?.controleSaude || 'moderate'] ?? 5;
         const rPsychology = ((10 - stress) + (10 - anxiety) + control) / 3;
 
-        // R is CAPACITY: high R = good. For loss table we invert it (deficit = 10 - R)
-        const r = (rSleep + rEnergy + rPsychology) / 3;
+        // R é CAPACIDADE (maior = melhor); o pior sub-bloco domina (60% pior + 40% média),
+        // para um sono péssimo não ser diluído por psicológico bom.
+        const rParts = [rSleep, rEnergy, rPsychology];
+        const r = Math.min(...rParts) * 0.6 + (rParts.reduce((a, b) => a + b, 0) / rParts.length) * 0.4;
         this.scores['R'] = Math.round(r * 10) / 10;
         return this.scores['R'];
     }
@@ -266,7 +268,8 @@ export class MyIDCalculator {
             10 - familyConflict,
             10 - financialWorry,
         ].filter((v): v is number => v !== null);
-        const c = contextItems.reduce((a, b) => a + b, 0) / contextItems.length;
+        // Pior estressor isolado domina (ex.: finanças 10/10 não some na média).
+        const c = Math.min(...contextItems) * 0.6 + (contextItems.reduce((a, b) => a + b, 0) / contextItems.length) * 0.4;
         this.scores['C'] = Math.round(c * 10) / 10;
         return this.scores['C'];
     }
@@ -294,7 +297,7 @@ export class MyIDCalculator {
         const colorMap: Record<string, number> = { very_dark: 0, dark: 4, yellow_clear: 8, clear: 10 };
         const colorScore = colorMap[this.responses.bloco_5f_urine_color || this.responses.bloco5?.bloco_5f_urine_color || 'yellow_clear'] ?? 5;
         const symptoms = this.responses.bloco_5f_dehydration_symptoms || this.responses.bloco5?.bloco_5f_dehydration_symptoms || {};
-        const symptomPenalty = Object.values(symptoms).filter(v => v === true).length * 2;
+        const symptomPenalty = Object.entries(symptoms).filter(([k, v]) => k !== 'none' && v === true).length * 2;
         // Micções/dia: <4 sugere ingestão baixa (normal ~6–8): <4 −1,5 · 4–5 −0,5.
         const miccoes = Number(this.responses.bloco_5f_micturition ?? NaN);
         const penalMiccao = isNaN(miccoes) ? 0 : miccoes < 4 ? 1.5 : miccoes < 6 ? 0.5 : 0;
@@ -338,7 +341,7 @@ export class MyIDCalculator {
     calculateErgonomics(): number {
         const spaceMap: Record<string, number> = { no_office: 6, none: 0, precarious: 3, acceptable: 6, good: 9, excellent: 10 };
         const spaceVal = spaceMap[this.responses.bloco_5h_workspace || this.responses.bloco5?.bloco_5h_workspace || 'acceptable'] ?? 5;
-        const habitsPenalty = (this.responses.bloco_5h_bad_habits || this.responses.bloco5?.bloco_5h_bad_habits || []).length * 1.5;
+        const habitsPenalty = ((this.responses.bloco_5h_bad_habits || this.responses.bloco5?.bloco_5h_bad_habits || []) as string[]).filter(h => h !== 'none').length * 1.5;
 
         // Posição de sono contribui para ERG noturna
         const sleepPosMap: Record<string, number> = {
