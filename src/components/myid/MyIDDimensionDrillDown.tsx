@@ -87,7 +87,7 @@ const FRIENDLY_KEY: Record<string, string> = {
   bloco_5c_stress: 'Estresse',
   bloco_5c_anxiety: 'Ansiedade',
   bloco_5c_control: 'Sensação de controle',
-  bloco_5e_sitting_hours: 'Horas sentado/dia',
+  bloco_5e_sitting_hours: 'Tempo total sentado por dia',
   bloco_5e_lifestyle: 'Estilo de vida',
   bloco_5e_exercise_types: 'Tipos de exercício',
   bloco_5e_intensity: 'Intensidade do exercício',
@@ -111,7 +111,6 @@ const FRIENDLY_KEY: Record<string, string> = {
   bloco_6_feminino_aplica: 'Perguntas hormonais se aplicam',
   bloco_6_diagnostico: 'Diagnóstico hormonal',
   bloco_6_meds_none: 'Não toma medicações',
-  bloco_5e_sitting_hours: 'Tempo total sentado por dia',
   bloco_6_daily_nsaid: 'AINE diário',
   bloco_6_muscle_relaxant: 'Relaxante muscular',
 };
