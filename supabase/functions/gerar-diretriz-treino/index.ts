@@ -6,7 +6,7 @@
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logUsoIA } from "../_shared/log-ia.ts";
-import { carregarAchadosPresenciais, textoAchadosPresenciais, carregarScoresMyid } from "../_shared/motores-plano.ts";
+import { carregarAchadosPresenciais, textoAchadosPresenciais, carregarScoresMyid, textoHistoriaAtual } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     );
 
     const { data: pac } = await admin.from("pacientes")
-      .select("id, nome, sexo, data_nascimento, queixa_principal, historia_atual, condicoes_saude")
+      .select("id, nome, sexo, data_nascimento, queixa_principal, historia_atual, condicoes_preexistentes")
       .eq("id", paciente_id).eq("terapeuta_id", userId).maybeSingle();
     if (!pac) {
       return new Response(JSON.stringify({ error: "Paciente não encontrado" }), {
@@ -125,8 +125,8 @@ Deno.serve(async (req) => {
     const perfil = [
       `Paciente: ${idade ? idade + " anos" : "idade ?"}, sexo ${pac.sexo || "?"}.`,
       pac.queixa_principal ? `Queixa: ${String(pac.queixa_principal).slice(0, 300)}` : "",
-      pac.historia_atual ? `História: ${String(pac.historia_atual).slice(0, 500)}` : "",
-      pac.condicoes_saude ? `Condições de saúde: ${JSON.stringify(pac.condicoes_saude).slice(0, 300)}` : "",
+      textoHistoriaAtual(pac.historia_atual) ? `História: ${textoHistoriaAtual(pac.historia_atual).slice(0, 500)}` : "",
+      pac.condicoes_preexistentes ? `Condições de saúde: ${String(pac.condicoes_preexistentes).slice(0, 300)}` : "",
       presencialTxt,
       antropo.data ? `Antropometria: ${JSON.stringify(antropo.data)}` : "",
       body_comp.data ? `Bioimpedância: ${JSON.stringify(body_comp.data).slice(0, 600)}` : "",

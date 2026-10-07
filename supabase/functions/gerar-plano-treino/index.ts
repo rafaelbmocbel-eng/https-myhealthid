@@ -5,7 +5,15 @@
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logUsoIA } from "../_shared/log-ia.ts";
-import { carregarMotoresClinicos, textoMyID, textoPresencial, textoQuestionarios } from "../_shared/motores-plano.ts";
+import {
+  carregarMotoresClinicos, clientePodeGerar, insumosDosMotores, montarEntradaTriagem, resolverContextoGeracao,
+  textoFichaClinica, textoMyID, textoPresencial, textoQuestionarios,
+} from "../_shared/motores-plano.ts";
+import { avaliarTriagem, decidirLiberacao, textoTriagemParaPrompt } from "../_shared/triagem-bloqueio.ts";
+import {
+  aplicarGovernanca, instrucaoAcompanhamentoPrompt, montarGovernanca, PARAMETROS_TREINO, prepararAcompanhamento,
+  REGRA_FONTES_PROMPT, textoFaixasTreino, valorParametro,
+} from "../_shared/governanca-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,11 +24,14 @@ const SYSTEM = `Você é uma EQUIPE de personal trainers e educadores físicos c
 Padrão de qualidade: plano digno de consultoria — periodização real, progressão de carga/volume explícita entre fases, técnica e segurança em cada exercício, e coerência total com o perfil MyID e a condição clínica do paciente.
 
 PERIODIZAÇÃO (parte teórica — siga com rigor):
-- Divida a duração TOTAL informada em 2 a 4 fases progressivas. A SOMA das "semanas" de TODAS as fases DEVE ser EXATAMENTE igual à duração total informada (ex.: total 8 semanas → fases 3+3+2 ou 2+3+3; total 12 → 4+4+4). NUNCA deixe a soma diferente do total.
-- Cada fase tem um foco fisiológico claro e progressivo: Fase 1 Adaptação anatômica/aprendizado motor (volume moderado, intensidade baixa, ADM e técnica) → Fase 2 Desenvolvimento (aumento progressivo de volume, depois intensidade/carga) → Fase 3 Consolidação/Especialização (maior intensidade, densidade ou especificidade ao objetivo). Em planos ≥ 12 semanas, inclua 1 semana de deload/regeneração.
-- Explicite a PROGRESSÃO entre fases no campo "objetivo" de cada fase (o que aumenta: séries, repetições, carga, densidade, complexidade) e mantenha coerência com o objetivo (ex.: emagrecimento = maior densidade e gasto calórico; força = maior intensidade/menos reps; hipertrofia = volume na zona 6-12).
-- Parâmetros baseados em evidência por objetivo: força 3-6 reps/descanso 2-3min; hipertrofia 6-12 reps/descanso 60-90s; resistência/emagrecimento 12-20 reps ou circuitos/descanso 30-60s; iniciante e condições clínicas = progressão conservadora.
+- Divida a duração TOTAL informada em ${valorParametro(PARAMETROS_TREINO, "numero_de_fases")} fases progressivas. A SOMA das "semanas" de TODAS as fases DEVE ser EXATAMENTE igual à duração total informada (ex.: total 8 semanas → fases 3+3+2 ou 2+3+3; total 12 → 4+4+4). NUNCA deixe a soma diferente do total.
+- Cada fase tem um foco fisiológico claro e progressivo: Fase 1 Adaptação anatômica/aprendizado motor (volume moderado, intensidade baixa, ADM e técnica) → Fase 2 Desenvolvimento (aumento progressivo de volume, depois intensidade/carga) → Fase 3 Consolidação/Especialização (maior intensidade, densidade ou especificidade ao objetivo). Em planos de ${valorParametro(PARAMETROS_TREINO, "deload_a_partir_de")} ou mais, inclua ${valorParametro(PARAMETROS_TREINO, "deload_duracao")} de deload/regeneração.
+- Explicite a PROGRESSÃO entre fases no campo "objetivo" de cada fase (o que aumenta: séries, repetições, carga, densidade, complexidade) e mantenha coerência com o objetivo (ex.: emagrecimento = maior densidade e gasto calórico; força = maior intensidade/menos reps; hipertrofia = volume na faixa de repetições indicada para hipertrofia abaixo).
+${textoFaixasTreino()}
 - Frequência e nº de sessões por semana coerentes com a "Frequência" informada. Cada sessão com aquecimento específico e desaquecimento.
+- Segurança: respeite a triagem de segurança e as restrições informadas; o plano NÃO substitui o acompanhamento de um profissional. ${REGRA_FONTES_PROMPT}
+- A ficha clínica e a triagem servem SÓ para adaptar o plano: NUNCA cite diagnósticos, medicamentos, gestação, transtornos alimentares, saúde mental ou resultados de questionários no texto do plano (resumo, observações, orientações), porque o paciente pode compartilhar o plano.
+- ${instrucaoAcompanhamentoPrompt("treino")}
 
 Todos os exercícios da lista fornecida têm demonstração em GIF — o paciente executa muito melhor vendo o movimento.
 REGRAS ABSOLUTAS quando houver a lista "Exercícios disponíveis no banco":
@@ -49,7 +60,11 @@ Retorne SOMENTE JSON neste formato (o campo "semanas" de cada fase é OBRIGATÓR
       ]
     }
   ],
-  "observacoes_gerais": "string"
+  "observacoes_gerais": "string",
+  "acompanhamento": {
+    "reavaliar_em_semanas": "<número inteiro de semanas>",
+    "indicadores": [ { "id": "esforco_percebido", "nome": "string", "como_medir": "string", "quando_agir": "string" } ]
+  }
 }`;
 
 Deno.serve(async (req) => {
@@ -58,7 +73,7 @@ Deno.serve(async (req) => {
     let userId: string;
     try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
     const body = await req.json();
-    const { objetivo, nivel, frequencia_semanal, duracao_semanas, restricoes, antropometria, testes, idade, sexo, paciente_id } = body || {};
+    const { objetivo, nivel, frequencia_semanal, duracao_semanas, restricoes, antropometria, testes, idade, sexo, paciente_id, override } = body || {};
     if (!objetivo || !nivel || !frequencia_semanal) {
       return new Response(JSON.stringify({ error: "objetivo, nivel, frequencia_semanal obrigatórios" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -72,6 +87,40 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    const json = (corpo: unknown, status = 200) =>
+      new Response(JSON.stringify(corpo), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // QUEM está gerando vem do JWT e do banco, nunca do body (fail-closed): o
+    // próprio cliente (usa o próprio cadastro se paciente_id faltar) ou um
+    // profissional. Sem vínculo nenhum, recusa.
+    const ctx = await resolverContextoGeracao(admin, userId, paciente_id);
+    if (!ctx.ok || !ctx.chamador) return json({ error: ctx.error || "Sem permissão." }, ctx.status || 403);
+    const chamador = ctx.chamador;
+    const pacienteId = ctx.pacienteId ?? null;
+    const pacRow = ctx.paciente ?? null;
+
+    // TRAVA DE ENTITLEMENT: se quem chama é o PRÓPRIO cliente (não o
+    // profissional), gerar o plano com IA exige Premium ou período de teste.
+    // Cliente clínico não gera sozinho — paga o Premium ou o profissional monta.
+    if (chamador === "cliente" && !clientePodeGerar(pacRow)) {
+      return json({ error: "Recurso Premium: assine o Premium ou peça ao seu profissional para montar o plano." }, 402);
+    }
+
+    // TRÊS MOTORES (fonte única em _shared/motores-plano.ts): MyID +
+    // questionários clínicos validados + avaliação presencial (achados do
+    // avatar clínico E as observações/notas do profissional no atendimento).
+    const motores = pacienteId ? await carregarMotoresClinicos(admin, pacienteId) : null;
+
+    // TRIAGEM DE SEGURANÇA antes de gastar IA: usa os dados do banco (idade
+    // exata, histórico, autodeclaração, PAR-Q+, MyID), nunca só o que veio no body.
+    const triagem = avaliarTriagem(montarEntradaTriagem({
+      foco: "treino", chamador, motores, idadeBody: idade, textosPedido: [restricoes, objetivo],
+    }));
+    const decisao = decidirLiberacao(triagem, chamador, override);
+    if (!decisao.liberado) {
+      console.info(JSON.stringify({ fn: "gerar-plano-treino", chamador, nivel: triagem.nivel, motivos: triagem.motivos.map((m) => m.codigo) }));
+      return json({ ok: false, bloqueio: decisao.bloqueio });
+    }
 
     // Dono do banco de GIFs: quando o CLIENTE gera o próprio plano, o
     // biblioteca_exercicios dele (paciente) é vazio — os GIFs pertencem ao
@@ -79,26 +128,7 @@ Deno.serve(async (req) => {
     // não tem profissional (ou o banco está vazio), caímos no banco da
     // plataforma (qualquer biblioteca com GIF) para o cliente também ter a
     // demonstração em vídeo. Profissional gerando: bankOwner = ele mesmo.
-    let bankOwner: string | null = userId;
-    if (paciente_id) {
-      const { data: pacRow } = await admin.from("pacientes")
-        .select("terapeuta_id, user_id, tipo_conta, created_at").eq("id", paciente_id).maybeSingle();
-      bankOwner = ((pacRow as any)?.terapeuta_id) || userId;
-
-      // TRAVA DE ENTITLEMENT: se quem chama é o PRÓPRIO cliente (não o
-      // profissional), gerar o plano com IA exige Premium ou período de teste.
-      // Cliente clínico não gera sozinho — paga o Premium ou o profissional monta.
-      if ((pacRow as any)?.user_id && (pacRow as any).user_id === userId) {
-        const tipo = (pacRow as any).tipo_conta;
-        const emTeste = tipo === "wellness_free" &&
-          Date.now() < new Date((pacRow as any).created_at).getTime() + 7 * 86400000;
-        if (tipo !== "wellness_premium" && !emTeste) {
-          return new Response(JSON.stringify({ error: "Recurso Premium: assine o Premium ou peça ao seu profissional para montar o plano." }), {
-            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-      }
-    }
+    const bankOwner: string = pacRow?.terapeuta_id || userId;
     const BANK_COLS = "id, nome, grupo_muscular, gif_url, gif_url_fem, orientacoes, series_padrao, repeticoes_padrao, descanso_padrao_segundos";
     // SÓ exercícios COM GIF entram na lista — o objetivo é que todo movimento do
     // plano tenha demonstração animada e nome canônico da biblioteca.
@@ -115,9 +145,13 @@ Deno.serve(async (req) => {
       bibData = data || [];
     }
 
+    // Idade e sexo: o cadastro (banco) vale mais que o body, que o cliente não envia.
+    const idadeEfetiva = motores?.paciente.idade ?? (Number(idade) || null);
+    const sexoEfetivo = sexo || motores?.paciente.sexo || motores?.paciente.genero || null;
+
     // Se a paciente é mulher e o exercício tem a variante com avatar feminino,
     // entrega o GIF feminino.
-    const prefereFem = /^f/i.test(String(sexo || ""));
+    const prefereFem = /^f/i.test(String(sexoEfetivo || ""));
     type Disp = { id: string; nome: string; grupo: string; gif_url: string | null; orientacoes: string | null; series?: number; reps?: number; descanso?: number };
     const disponiveis: Disp[] = bibData
       .map((e) => ({
@@ -133,21 +167,20 @@ Deno.serve(async (req) => {
       ? `\n\nExercícios disponíveis no banco da clínica — use SOMENTE estes e preencha "id" com o id exato (NÃO invente exercícios fora desta lista):\n${disponiveis.slice(0, 250).map((e) => `- [${e.id}] ${e.nome}${e.grupo ? ` (${e.grupo})` : ""}`).join("\n")}`
       : "";
 
-    // TRÊS MOTORES (fonte única em _shared/motores-plano.ts): MyID +
-    // questionários clínicos validados + avaliação presencial (achados do
-    // avatar clínico E as observações/notas do profissional no atendimento).
     let myidStr = "";
     let questTxt = "";
     let presencialTxt = "";
-    if (paciente_id) {
-      const motores = await carregarMotoresClinicos(admin, paciente_id);
+    let fichaTxt = "";
+    if (motores) {
       myidStr = textoMyID(motores, "treino");
       questTxt = textoQuestionarios(motores, "treino");
       presencialTxt = textoPresencial(motores, "treino");
+      fichaTxt = textoFichaClinica(motores);
     }
+    const triagemTxt = textoTriagemParaPrompt(triagem, "treino");
 
     const userPrompt = `
-Paciente: ${idade ? idade + ' anos' : 'idade não informada'}, sexo ${sexo || 'não informado'}.
+Paciente: ${idadeEfetiva ? idadeEfetiva + ' anos' : 'idade não informada'}, sexo ${sexoEfetivo || 'não informado'}.
 Antropometria: ${antropometria ? JSON.stringify(antropometria) : 'não informada'}.
 Testes funcionais: ${testes ? JSON.stringify(testes) : 'não informados'}.
 
@@ -155,7 +188,7 @@ Objetivo: ${objetivo}
 Nível: ${nivel}
 Frequência: ${frequencia_semanal}x/semana
 Duração total: ${duracao_semanas || 12} semanas (a SOMA das semanas das fases DEVE ser exatamente ${duracao_semanas || 12})
-Restrições/lesões: ${restricoes || 'nenhuma'}${presencialTxt}${myidStr}${questTxt}${listaBlock}
+Restrições/lesões: ${restricoes || 'nenhuma'}${presencialTxt}${fichaTxt}${triagemTxt}${myidStr}${questTxt}${listaBlock}
 
 Gere o plano periodizado completo em JSON.`.trim();
 
@@ -189,6 +222,10 @@ Gere o plano periodizado completo em JSON.`.trim();
     try { plano = JSON.parse(content); } catch {
       const m = content.match(/\{[\s\S]*\}/);
       if (m) plano = JSON.parse(m[0]);
+    }
+    // Plano sem fases não é um plano: não carimba governança em cima de vazio.
+    if (!plano || typeof plano !== "object" || Array.isArray(plano) || !Array.isArray(plano.fases) || plano.fases.length === 0) {
+      throw new Error("A IA não retornou um plano válido — tente de novo.");
     }
 
     // Correção determinística das durações: garante que a soma das semanas das
@@ -237,9 +274,27 @@ Gere o plano periodizado completo em JSON.`.trim();
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, plano, usou_banco: disponiveis.length > 0 }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // GOVERNANÇA: fonte, parâmetros (todos "a confirmar"), triagem e plano de
+    // acompanhamento. Os indicadores obrigatórios têm texto fixo; o da IA é saneado.
+    const insumos = insumosDosMotores(motores, "treino");
+    if (antropometria) insumos.push("antropometria");
+    if (Array.isArray(testes) && testes.length > 0) insumos.push("testes_funcionais");
+    if (restricoes) insumos.push("restricoes_informadas");
+    if (disponiveis.length > 0) insumos.push("biblioteca_exercicios");
+    const acompanhamento = prepararAcompanhamento(plano.acompanhamento, "treino", {
+      duracaoTotalSemanas: totalSemanas,
+      primeiraFaseSemanas: Number(plano.fases[0]?.semanas),
     });
+    aplicarGovernanca(plano, montarGovernanca({
+      funcao: "gerar-plano-treino",
+      insumos,
+      parametros: PARAMETROS_TREINO,
+      triagem,
+      override: decisao.override,
+      acompanhamento,
+    }));
+
+    return json({ ok: true, plano, usou_banco: disponiveis.length > 0 });
   } catch (e: any) {
     const msg = e?.name === "AbortError" || /abort/i.test(String(e?.message))
       ? "A IA demorou demais para responder. Tente de novo — a segunda tentativa costuma ser mais rápida."

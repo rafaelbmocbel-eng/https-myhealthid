@@ -6,7 +6,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logUsoIA } from "../_shared/log-ia.ts";
 import { isInternalCall, requireUser } from "../_shared/auth.ts";
-import { carregarResultadoMyid } from "../_shared/motores-plano.ts";
+import { carregarResultadoMyid, textoHistoriaAtual } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     }
 
     const [pacRes, resultadoMyid, avatarRes, testesRes, compRes, antroRes, vitaisRes] = await Promise.all([
-      admin.from("pacientes").select("terapeuta_id, nome, sexo, data_nascimento, queixa_principal, historia_atual, condicoes_saude")
+      admin.from("pacientes").select("terapeuta_id, nome, sexo, data_nascimento, queixa_principal, historia_atual, condicoes_preexistentes")
         .eq("id", paciente_id).maybeSingle(),
       // MyID completo com fallback para o formato importado (avaliacoes_identidade).
       carregarResultadoMyid(admin, paciente_id),
@@ -119,8 +119,8 @@ Deno.serve(async (req) => {
     const perfil = [
       `Cliente: ${pac.nome ? String(pac.nome).split(" ")[0] : "?"}, ${idade ? idade + " anos" : "idade ?"}, sexo ${pac.sexo || "?"}.`,
       pac.queixa_principal ? `Queixa: ${String(pac.queixa_principal).slice(0, 300)}` : "",
-      pac.historia_atual ? `História: ${String(pac.historia_atual).slice(0, 400)}` : "",
-      pac.condicoes_saude ? `Condições de saúde: ${JSON.stringify(pac.condicoes_saude).slice(0, 250)}` : "",
+      textoHistoriaAtual(pac.historia_atual) ? `História: ${textoHistoriaAtual(pac.historia_atual).slice(0, 400)}` : "",
+      pac.condicoes_preexistentes ? `Condições de saúde: ${String(pac.condicoes_preexistentes).slice(0, 250)}` : "",
       `MYID (scores 0-10 por dimensão; D/P/I/N altos = pior; R/AF/ERG/HID/NUT/C/EFI baixos = pior): ${JSON.stringify(scores)}`,
       resultado?.myid_score != null ? `Score geral MyID: ${resultado.myid_score}` : "",
       avatarTxt ? `AVATAR CLÍNICO (achados anatômicos registrados):\n${avatarTxt}` : "(sem achados no avatar clínico)",

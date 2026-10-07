@@ -5,7 +5,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logUsoIA } from "../_shared/log-ia.ts";
 import { isInternalCall, requireUser } from "../_shared/auth.ts";
-import { carregarScoresMyid } from "../_shared/motores-plano.ts";
+import { carregarScoresMyid, textoHistoriaAtual } from "../_shared/motores-plano.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     // MyID (com fallback para o formato importado) + história do paciente
     const [scoresRaw, pacRes] = await Promise.all([
       carregarScoresMyid(admin, paciente_id),
-      admin.from("pacientes").select("terapeuta_id, queixa_principal, historia_atual, condicoes_saude")
+      admin.from("pacientes").select("terapeuta_id, queixa_principal, historia_atual, condicoes_preexistentes")
         .eq("id", paciente_id).maybeSingle(),
     ]);
     const scores = (scoresRaw as any) || {};
@@ -96,8 +96,8 @@ Deno.serve(async (req) => {
     const perfilTxt = [
       Object.keys(scores).length ? `Dimensões MyID (scores): ${JSON.stringify(scores)}` : "",
       pac.queixa_principal ? `Queixa: ${String(pac.queixa_principal).slice(0, 300)}` : "",
-      pac.historia_atual ? `História: ${String(pac.historia_atual).slice(0, 500)}` : "",
-      pac.condicoes_saude ? `Condições: ${JSON.stringify(pac.condicoes_saude).slice(0, 300)}` : "",
+      textoHistoriaAtual(pac.historia_atual) ? `História: ${textoHistoriaAtual(pac.historia_atual).slice(0, 500)}` : "",
+      pac.condicoes_preexistentes ? `Condições: ${String(pac.condicoes_preexistentes).slice(0, 300)}` : "",
     ].filter(Boolean).join("\n");
 
     const userPrompt = `Perfil do paciente:\n${perfilTxt || "(pouca informação — foque em dicas gerais seguras)"}\n\nGere de 5 a 7 dicas/exercícios personalizados, fundamentados SOMENTE nos artigos abaixo. Priorize as dimensões mais críticas do MyID.\n\nArtigos:\n${evidenciaTxt}\n\nRetorne o JSON.`;
