@@ -11,6 +11,7 @@ import { nomeDocumento } from '@/lib/pdf/entrega';
 import jsPDF from 'jspdf';
 import '@/lib/pdf/patchJsPdf';
 import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
+import { rodapeGovernanca } from '@/lib/governanca';
 
 export interface PlanoTreinoPDFData {
   pacienteNome: string;
@@ -19,6 +20,13 @@ export interface PlanoTreinoPDFData {
   clinicaLogoUrl?: string;
   conteudo: any; // { resumo, fases: [{ nome, semanas, objetivo, sessoes: [...] }], observacoes_gerais }
   nutricao?: any; // { titulo, resumo, calorias_totais, macros, refeicoes: [...], orientacoes, lista_compras }
+  /**
+   * 'profissional' (planos_treino) imprime quem liberou, data, versão, fonte e a
+   * reavaliação; o padrão ('cliente', planos_ia_cliente) não afirma liberação —
+   * o paciente escreve nessa tabela — e fica só com o aviso padrão.
+   */
+  origemGov?: 'profissional' | 'cliente';
+  aprovado?: boolean;
 }
 
 const NAVY: [number, number, number] = [30, 41, 82];
@@ -235,6 +243,19 @@ export async function gerarPDFPlanoTreino(data: PlanoTreinoPDFData): Promise<Blo
       paragrafo('Lista de compras', MARGIN, CONTENT_W, 9.5, NAVY, true);
       paragrafo(nut.lista_compras.join(' · '), MARGIN + 2, CONTENT_W - 2, 8.5, MUTED);
     }
+  }
+
+  // ── Governança do plano ──
+  const rodape = rodapeGovernanca(data.conteudo, { origem: data.origemGov ?? 'cliente', aprovado: data.aprovado });
+  if (rodape.selo || rodape.reavaliacao) {
+    garantir(26);
+    y += 4;
+    doc.setDrawColor(...LINE); doc.setLineWidth(0.2); doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+    y += 4;
+    paragrafo('Registro do plano', MARGIN, CONTENT_W, 9, NAVY, true);
+    if (rodape.selo) paragrafo(rodape.selo, MARGIN, CONTENT_W, 8, MUTED);
+    if (rodape.reavaliacao) paragrafo(rodape.reavaliacao, MARGIN, CONTENT_W, 8, MUTED);
+    paragrafo(rodape.aviso, MARGIN, CONTENT_W, 8, MUTED);
   }
 
   footer();

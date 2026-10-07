@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useLenteAtiva } from '@/hooks/useLenteAtiva';
+import { baseDoCliente } from '@/lib/governanca';
 
 // Hub da aba "Diretriz" do profissional: um "Planejamento por especialidade"
 // com uma sub-aba por área da saúde. Cada área usa a IA para produzir a diretriz/
@@ -86,7 +87,8 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
     try {
       if (tipo === 'treino') {
         const t = geradoCliente?.treinoIA;
-        const conteudo = (t?.conteudo || {}) as any;
+        // O plano do cliente é gravável por ele: não herda governança (fonte, triagem, aprovação).
+        const conteudo = baseDoCliente(t?.conteudo) as any;
         const fases = Array.isArray(conteudo.fases) ? conteudo.fases : [];
         const duracao = fases.reduce((s: number, f: any) => s + (Number(f.semanas) || 0), 0) || 8;
         const freq = fases.reduce((mx: number, f: any) => Math.max(mx, Array.isArray(f.sessoes) ? f.sessoes.length : 0), 0) || 3;
@@ -105,7 +107,7 @@ export default function DiretrizesPlanosHub({ pacienteId, pacienteNome }: Props)
         if (error) throw error;
         qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
       } else {
-        const plano = (geradoCliente?.nutricaoIA?.conteudo || {}) as any;
+        const plano = baseDoCliente(geradoCliente?.nutricaoIA?.conteudo) as any;
         const { error } = await (supabase as any).from('planos_alimentares').insert({
           paciente_id: pacienteId,
           terapeuta_id: user.id,

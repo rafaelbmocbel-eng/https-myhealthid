@@ -11,9 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { erroDaFuncao } from '@/lib/fnError';
 import PlanoTreinoInterativo from '@/components/paciente/PlanoTreinoInterativo';
 import { INSTRUMENTOS, CLASSIFICACAO_LABEL } from '@/lib/instrumentosClinicos';
+import TriagemBloqueioDialog from '@/components/planos/TriagemBloqueioDialog';
+import TriagemSegurancaCard from '@/components/planos/TriagemSegurancaCard';
+import SeloGovernanca from '@/components/planos/SeloGovernanca';
+import ResumoAcompanhamento from '@/components/planos/ResumoAcompanhamento';
+import { gerarPlanoComTriagem, idadeEmAnos } from '@/lib/geracaoPlano';
+import { lerGovernanca, lerTriagemSalva, triagemCompleta, type BloqueioTriagem } from '@/lib/governanca';
 
 // Seção reutilizável do plano personalizado (treino IA + personal + nutrição).
 // Mora dentro de "Treino personalizado" (/paciente/questionarios?foco=plano) —
@@ -32,6 +37,12 @@ export function PlanoPersonalizadoSection() {
   const [treinoIA, setTreinoIA] = useState<any>(null);
   const [dietaIA, setDietaIA] = useState<any>(null);
   const [gerando, setGerando] = useState<'' | 'treino' | 'nutricao' | 'tudo'>('');
+  // Triagem de segurança: a edge pode recusar a geração (nunca é o cliente quem decide
+  // prosseguir) e o cliente completa a triagem autodeclarada para o plano ser montado.
+  const [bloqueioCliente, setBloqueioCliente] = useState<BloqueioTriagem | null>(null);
+  const [triagemCompletaOk, setTriagemCompletaOk] = useState<boolean | null>(null);
+  const [triagemForcarAberta, setTriagemForcarAberta] = useState(false);
+  const [triagemChave, setTriagemChave] = useState(0);
 
   // VER o que o profissional montou: liberado para todo cliente (inclusive o
   // clínico). GERAR o próprio plano com IA: só Premium ou período de teste — o
@@ -39,8 +50,8 @@ export function PlanoPersonalizadoSection() {
   const podeGerar = isPremium || isInTrial;
 
   const carregar = async (pid: string) => {
-    const [t, d, dir, ia] = await Promise.all([
-      supabase.from('planos_treino').select('titulo, objetivo, estrutura, created_at')
+    const [t, d, dir, ia, anam] = await Promise.all([
+      (supabase as any).from('planos_treino').select('titulo, objetivo, estrutura, created_at')
         .eq('paciente_id', pid).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       (supabase as any).from('planos_alimentares').select('titulo, calorias_alvo, plano, created_at')
         .eq('paciente_id', pid).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
@@ -50,9 +61,12 @@ export function PlanoPersonalizadoSection() {
         .order('updated_at', { ascending: false }),
       (supabase as any).from('planos_ia_cliente').select('tipo, titulo, conteudo')
         .eq('paciente_id', pid),
+      (supabase as any).from('nutricao_anamnese').select('respostas').eq('paciente_id', pid).maybeSingle(),
     ]);
     const falha = [t, d, dir, ia].find(r => r.error);
     if (falha) throw falha.error;
+    // Falha ao ler a anamnese não derruba a tela: a triagem fica "desconhecida" e o card aparece aberto.
+    setTriagemCompletaOk(anam.error ? null : triagemCompleta(lerTriagemSalva(anam.data?.respostas).respostas));
     setTreino(t.data || null);
     setDieta(d.data || null);
     setDiretrizes(dir.data || []);
@@ -93,12 +107,18 @@ export function PlanoPersonalizadoSection() {
     if (!podeGerar) { navigate('/paciente/plano'); return; }
     setGerando(alvo);
     try {
-      const [{ data: anamRow }, { data: questRows }] = await Promise.all([
+      const [{ data: anamRow }, { data: questRows }, { data: pacRow }] = await Promise.all([
         (supabase as any).from('nutricao_anamnese').select('respostas').eq('paciente_id', pacienteId).maybeSingle(),
         (supabase as any).from('questionarios_clinicos')
           .select('instrumento, classificacao, created_at').eq('paciente_id', pacienteId)
           .order('created_at', { ascending: false }),
+        (supabase as any).from('pacientes').select('data_nascimento, sexo, genero').eq('id', pacienteId).maybeSingle(),
       ]);
+      const idadePerfil = idadeEmAnos(pacRow?.data_nascimento) ?? undefined;
+      const sexoPerfil = (pacRow?.sexo || pacRow?.genero || undefined) as string | undefined;
+      // Quando a triagem recusa um dos planos, o outro (se houver) continua; o aviso vem no fim.
+      let bloqueado: BloqueioTriagem | null = null;
+      let geradoAlgum = false;
       const r = (anamRow?.respostas || {}) as Record<string, string>;
       const objetivo = (r.objetivo || '').trim() || 'Saúde geral, alívio de dor e mais energia no dia a dia';
 
@@ -117,21 +137,21 @@ export function PlanoPersonalizadoSection() {
       };
 
       if (alvo === 'treino' || alvo === 'tudo') {
-        const res = await supabase.functions.invoke('gerar-plano-treino', {
-          body: {
-            paciente_id: pacienteId, objetivo, nivel: 'iniciante', frequencia_semanal: 3, duracao_semanas: 8,
-            // Incômodo relatado pelo cliente → o plano evita/adapta a região
-            ...(incomodo ? { restricoes: `IMPORTANTE — incômodo relatado pelo paciente, adapte com cuidado (reduza carga/ADM ou substitua exercícios que sobrecarreguem a região; progrida devagar): ${incomodo}` } : {}),
-          },
+        const rt = await gerarPlanoComTriagem('gerar-plano-treino', {
+          paciente_id: pacienteId, objetivo, nivel: 'iniciante', frequencia_semanal: 3, duracao_semanas: 8,
+          idade: idadePerfil, sexo: sexoPerfil,
+          // Incômodo relatado pelo cliente → o plano evita/adapta a região
+          ...(incomodo ? { restricoes: `IMPORTANTE — incômodo relatado pelo paciente, adapte com cuidado (reduza carga/ADM ou substitua exercícios que sobrecarreguem a região; progrida devagar): ${incomodo}` } : {}),
         });
-        if (res.error) throw await erroDaFuncao(res.error);
-        const plano = (res.data as any)?.plano;
-        if (!plano) throw new Error('Não consegui gerar o plano agora. Tente de novo em instantes.');
-        {
+        if (rt.tipo === 'bloqueio') {
+          bloqueado = rt.bloqueio;
+        } else {
+          const plano = rt.plano;
           const { error: errSalvar } = await (supabase as any).from('planos_ia_cliente').upsert(
             { paciente_id: pacienteId, tipo: 'treino', titulo: plano.titulo || 'Meu treino personalizado', conteudo: { ...plano, baseadoEm } },
             { onConflict: 'paciente_id,tipo' });
           if (errSalvar) throw errSalvar;
+          geradoAlgum = true;
         }
       }
 
@@ -139,31 +159,35 @@ export function PlanoPersonalizadoSection() {
         const peso = Number(r.peso_kg) || null;
         const altura = Number(r.altura_cm) || null;
         const imc = peso && altura ? +(peso / ((altura / 100) ** 2)).toFixed(1) : null;
-        const res = await supabase.functions.invoke('gerar-plano-alimentar', {
-          body: {
-            paciente_id: pacienteId, objetivo,
-            refeicoes_por_dia: Number(r.refeicoes_por_dia) || 5,
-            restricoes: r.restricoes_alergias || '',
-            preferencias: r.preferencias || '',
-            // Dados que calculam calorias/macros (TMB/TDEE)
-            antropometria: (peso || altura) ? { peso_kg: peso, altura_cm: altura, imc } : null,
-            idade: r.idade ? Number(r.idade) : undefined,
-            sexo: r.sexo || undefined,
-            nivel_atividade: r.nivel_atividade || undefined,
-          },
+        const rn = await gerarPlanoComTriagem('gerar-plano-alimentar', {
+          paciente_id: pacienteId, objetivo,
+          refeicoes_por_dia: Number(r.refeicoes_por_dia) || 5,
+          restricoes: r.restricoes_alergias || '',
+          preferencias: r.preferencias || '',
+          // Dados que calculam calorias/macros (TMB/TDEE)
+          antropometria: (peso || altura) ? { peso_kg: peso, altura_cm: altura, imc } : null,
+          idade: r.idade ? Number(r.idade) : idadePerfil,
+          sexo: r.sexo || sexoPerfil,
+          nivel_atividade: r.nivel_atividade || undefined,
         });
-        if (res.error) throw await erroDaFuncao(res.error);
-        const plano = (res.data as any)?.plano;
-        if (!plano) throw new Error('Não consegui gerar o plano agora. Tente de novo em instantes.');
-        {
+        if (rn.tipo === 'bloqueio') {
+          bloqueado = bloqueado ?? rn.bloqueio;
+        } else {
+          const plano = rn.plano;
           const { error: errSalvar } = await (supabase as any).from('planos_ia_cliente').upsert(
             { paciente_id: pacienteId, tipo: 'nutricao', titulo: plano.titulo || 'Meu plano alimentar personalizado', conteudo: plano },
             { onConflict: 'paciente_id,tipo' });
           if (errSalvar) throw errSalvar;
+          geradoAlgum = true;
         }
       }
 
       await carregar(pacienteId);
+      if (bloqueado) {
+        setBloqueioCliente(bloqueado);
+        if (geradoAlgum) toast.success('Um dos planos ficou pronto. Role a tela para ver.');
+        return;
+      }
       toast.success(incomodo ? 'Treino adaptado ao seu incômodo! 💪' : 'Plano pronto! 💪 Role a tela para ver.');
     } catch (e: any) {
       toast.error(e?.message || 'Não consegui gerar o plano agora. Tente de novo em instantes.');
@@ -195,6 +219,14 @@ export function PlanoPersonalizadoSection() {
 
             {/* Gerador de plano do cliente (IA) — só Premium/teste. O cliente
                 clínico não gera sozinho: paga o Premium OU o profissional monta. */}
+            {podeGerar && pacienteId && (
+              <TriagemSegurancaCard
+                key={triagemChave}
+                pacienteId={pacienteId}
+                defaultAberto={triagemForcarAberta || triagemCompletaOk !== true}
+                onSalvo={() => { setTriagemCompletaOk(true); setBloqueioCliente(null); }}
+              />
+            )}
             {podeGerar ? (
               <Card className="border-primary/25">
                 <CardContent className="p-4 space-y-3">
@@ -290,13 +322,18 @@ export function PlanoPersonalizadoSection() {
                       {mapDir(personalDir)}
                       <PlanoTreinoView treino={treino} />
                       {!treino && treinoIA && pacienteId && (
-                        <PlanoTreinoInterativo
-                          pacienteId={pacienteId}
-                          titulo={treinoIA.titulo}
-                          conteudo={treinoIA.conteudo}
-                          onRegenerarComIncomodo={(nota) => gerarPlano('treino', nota)}
-                          regenerando={gerando === 'treino'}
-                        />
+                        <>
+                          {/* planos_ia_cliente é gravável pelo próprio cliente: o selo nunca diz "liberado". */}
+                          <SeloGovernanca conteudo={treinoIA.conteudo} origem="cliente" visao="paciente" />
+                          <PlanoTreinoInterativo
+                            pacienteId={pacienteId}
+                            titulo={treinoIA.titulo}
+                            conteudo={treinoIA.conteudo}
+                            onRegenerarComIncomodo={(nota) => gerarPlano('treino', nota)}
+                            regenerando={gerando === 'treino'}
+                          />
+                          <ResumoAcompanhamento conteudo={treinoIA.conteudo} aprovacaoEm={lerGovernanca(treinoIA.conteudo)?.fonte?.gerado_em} />
+                        </>
                       )}
                     </SecaoPlano>
                   )}
@@ -305,7 +342,12 @@ export function PlanoPersonalizadoSection() {
                     <SecaoPlano titulo="🥗 Nutricional">
                       {mapDir(nutriDir)}
                       <PlanoDietaView dieta={dieta} />
-                      {!dieta && dietaIA && <PlanoDietaView dieta={{ titulo: dietaIA.titulo, plano: dietaIA.conteudo, calorias_alvo: dietaIA.conteudo?.calorias_totais }} ia />}
+                      {!dieta && dietaIA && (
+                        <>
+                          <PlanoDietaView dieta={{ titulo: dietaIA.titulo, plano: dietaIA.conteudo, calorias_alvo: dietaIA.conteudo?.calorias_totais }} ia />
+                          <ResumoAcompanhamento conteudo={dietaIA.conteudo} aprovacaoEm={lerGovernanca(dietaIA.conteudo)?.fonte?.gerado_em} />
+                        </>
+                      )}
                     </SecaoPlano>
                   )}
 
@@ -330,6 +372,18 @@ export function PlanoPersonalizadoSection() {
                 </>
               );
             })()}
+
+            <TriagemBloqueioDialog
+              bloqueio={bloqueioCliente}
+              chamador="cliente"
+              onCancelar={() => setBloqueioCliente(null)}
+              onProsseguir={() => setBloqueioCliente(null)}
+              onAbrirTriagem={() => {
+                setBloqueioCliente(null);
+                setTriagemForcarAberta(true);
+                setTriagemChave((k) => k + 1);
+              }}
+            />
     </div>
   );
 }
@@ -408,6 +462,7 @@ function PlanoTreinoView({ treino, ia }: { treino: any; ia?: boolean }) {
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
+        <SeloGovernanca conteudo={est} aprovado={ia ? undefined : true} origem={ia ? 'cliente' : 'profissional'} visao="paciente" compacto />
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><Dumbbell className="h-5 w-5 text-primary" /></div>
           <div className="min-w-0 flex-1">
@@ -462,6 +517,7 @@ function PlanoDietaView({ dieta, ia }: { dieta: any; ia?: boolean }) {
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
+        <SeloGovernanca conteudo={plano} aprovado={ia ? undefined : true} origem={ia ? 'cliente' : 'profissional'} visao="paciente" compacto />
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0"><Salad className="h-5 w-5 text-emerald-600" /></div>
           <div className="min-w-0 flex-1">

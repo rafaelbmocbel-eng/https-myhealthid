@@ -30,7 +30,9 @@ export default function AnamneseNutricionalCard({ pacienteId }: { pacienteId: st
         supabase.from('pacientes').select('data_nascimento, sexo').eq('id', pacienteId).maybeSingle(),
         (supabase as any).from('antropometria').select('peso_kg, altura_cm').eq('paciente_id', pacienteId).order('data_medicao', { ascending: false }).limit(1).maybeSingle(),
       ]);
-      const salvas = (anam.data?.respostas || {}) as Record<string, string>;
+      // A chave `triagem` (triagem de segurança) é do TriagemSegurancaCard: não entra nos
+      // campos desta tela e é preservada ao salvar.
+      const { triagem: _triagem, ...salvas } = (anam.data?.respostas || {}) as Record<string, any>;
       // Pré-preenche do cadastro/antropometria o que ainda não foi respondido.
       const p = pac.data as any;
       const a = antro.data as any;
@@ -56,14 +58,24 @@ export default function AnamneseNutricionalCard({ pacienteId }: { pacienteId: st
 
   const salvar = async () => {
     setSalvando(true);
-    const respostas = { ...r, imc: imc != null ? String(imc) : '' };
-    const { error } = await (supabase as any).from('nutricao_anamnese')
-      .upsert({ paciente_id: pacienteId, respostas, updated_at: new Date().toISOString() }, { onConflict: 'paciente_id' });
-    setSalvando(false);
-    if (error) { toast.error('Erro ao salvar: ' + error.message); return; }
-    setPreenchida(true);
-    setAberto(false);
-    toast.success('Respostas salvas! Elas entram no seu próximo plano alimentar.');
+    try {
+      // Relê a linha agora: a triagem de segurança pode ter sido salva depois que esta
+      // tela abriu, e o upsert troca o jsonb inteiro — sem isso ela seria apagada.
+      const { data: atual, error: erroLer } = await (supabase as any).from('nutricao_anamnese')
+        .select('respostas').eq('paciente_id', pacienteId).maybeSingle();
+      if (erroLer) { toast.error('Erro ao salvar: ' + erroLer.message); return; }
+      const respostas = { ...(atual?.respostas || {}), ...r, imc: imc != null ? String(imc) : '' };
+      const { error } = await (supabase as any).from('nutricao_anamnese')
+        .upsert({ paciente_id: pacienteId, respostas, updated_at: new Date().toISOString() }, { onConflict: 'paciente_id' });
+      if (error) { toast.error('Erro ao salvar: ' + error.message); return; }
+      setPreenchida(true);
+      setAberto(false);
+      toast.success('Respostas salvas! Elas entram no seu próximo plano alimentar.');
+    } catch (e: any) {
+      toast.error('Erro ao salvar: ' + (e?.message || 'tente de novo'));
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const AREAS: { k: string; label: string; ph: string }[] = [

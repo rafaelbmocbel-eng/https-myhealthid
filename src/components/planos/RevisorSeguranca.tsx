@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, AlertTriangle, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
+import { erroDaFuncao } from '@/lib/fnError';
 
 // Revisor de segurança do plano (IA). Botão discreto que, sob demanda, manda o
 // plano + contexto clínico do paciente para a edge function revisar-plano-seguranca
@@ -27,9 +28,11 @@ const SEV = {
   baixa: { cor: 'text-slate-600 dark:text-slate-300', bg: 'bg-muted/40', borda: 'border-border', rotulo: 'Baixa' },
 } as const;
 
+// Com `planoId` (treino/nutrição), a edge lê o plano SALVO e registra a revisão
+// no próprio plano; sem ele, revisa só o conteúdo enviado e não grava nada.
 export default function RevisorSeguranca({
-  pacienteId, tipo, plano,
-}: { pacienteId: string; tipo: 'treino' | 'nutricao' | 'clinica'; plano: any }) {
+  pacienteId, tipo, plano, planoId,
+}: { pacienteId: string; tipo: 'treino' | 'nutricao' | 'clinica'; plano: any; planoId?: string }) {
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState<Resultado | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -39,9 +42,9 @@ export default function RevisorSeguranca({
     setLoading(true); setErro(null); setRes(null);
     try {
       const { data, error } = await supabase.functions.invoke('revisar-plano-seguranca', {
-        body: { paciente_id: pacienteId, tipo, plano },
+        body: planoId ? { paciente_id: pacienteId, tipo, plano_id: planoId } : { paciente_id: pacienteId, tipo, plano },
       });
-      if (error) throw error;
+      if (error) throw await erroDaFuncao(error);
       if ((data as any)?.error) throw new Error((data as any).error);
       setRes(data as Resultado);
       setAberto(true);

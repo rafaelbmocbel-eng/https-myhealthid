@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Plus, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { avisoAposEdicao } from '@/lib/governanca';
 
 interface Props { plano: any; pacienteId: string; onClose: () => void; }
 
@@ -34,14 +35,22 @@ export default function PlanoDietaEditor({ plano, pacienteId, onClose }: Props) 
     atualizar((d) => { d.refeicoes.splice(ri, 1); });
 
   const salvar = useMutation({
+    // `dieta` é o clone do conteúdo salvo, com o _governanca intacto: o banco é quem
+    // decide se a edição devolve o plano liberado para rascunho.
     mutationFn: async () => {
-      const { error } = await (supabase as any).from('planos_alimentares')
-        .update({ titulo: titulo || 'Plano alimentar', plano: dieta }).eq('id', plano.id);
+      const { data, error } = await (supabase as any).from('planos_alimentares')
+        .update({ titulo: titulo || 'Plano alimentar', plano: dieta }).eq('id', plano.id)
+        .select('aprovado');
       if (error) throw error;
+      if (Array.isArray(data) && data.length === 0) throw new Error('Não consegui salvar: o plano não foi encontrado ou você não tem permissão.');
+      return Array.isArray(data) ? (data[0]?.aprovado ?? null) : null;
     },
-    onSuccess: () => {
-      toast.success('Plano alimentar atualizado');
+    onSuccess: (aprovadoDepois: boolean | null) => {
+      const aviso = avisoAposEdicao('Plano alimentar', !!plano.aprovado, aprovadoDepois);
+      if (aviso.nivel === 'aviso') toast.warning(aviso.mensagem);
+      else toast.success(aviso.mensagem);
       qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
       onClose();
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao salvar'),

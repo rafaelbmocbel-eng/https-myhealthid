@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dumbbell, Sparkles, Loader2, Trash2, Pencil } from 'lucide-react';
+import { Dumbbell, Sparkles, Loader2, Trash2, Pencil, ShieldAlert } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -16,15 +16,42 @@ import {
 } from '@/components/ui/alert-dialog';
 import NumberField from '@/components/ui/number-field';
 import { toast } from 'sonner';
-import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import PlanoTreinoEditor from './PlanoTreinoEditor';
+import AcompanhamentoPlanoCard from './AcompanhamentoPlanoCard';
 import RevisorSeguranca from '@/components/planos/RevisorSeguranca';
+import LiberarPlanoDialog from '@/components/planos/LiberarPlanoDialog';
+import TriagemBloqueioDialog from '@/components/planos/TriagemBloqueioDialog';
+import SeloGovernanca from '@/components/planos/SeloGovernanca';
+import ResumoAcompanhamento from '@/components/planos/ResumoAcompanhamento';
 import TreinoDocumento from '@/components/paciente/TreinoDocumento';
+import { gerarPlanoComTriagem, idadeEmAnos, resumoMotivosBloqueio } from '@/lib/geracaoPlano';
+import { avisoAposEdicao, type BloqueioTriagem, type OverrideTriagem } from '@/lib/governanca';
 
-interface Props { pacienteId: string; autoGerar?: boolean; ocultarGerador?: boolean; }
+interface Props {
+  pacienteId: string;
+  autoGerar?: boolean;
+  ocultarGerador?: boolean;
+  /**
+   * Estado da geração automática ("Montar todos"): 'pausado' = a triagem de segurança
+   * parou e espera decisão; 'liberado' = o plano foi gerado; 'dispensado' = o
+   * profissional deixou para depois (o pai pode oferecer tentar de novo).
+   */
+  onBloqueioAuto?: (estado: 'pausado' | 'liberado' | 'dispensado') => void;
+}
 
-export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador }: Props) {
+interface PedidoTreino {
+  corpo: Record<string, unknown>;
+  meta: { objetivo: string; nivel: string; freq: number; duracao: number; restricoes: string };
+}
+
+interface PendenteTriagem {
+  bloqueio: BloqueioTriagem;
+  pedido: PedidoTreino;
+  auto: boolean;
+}
+
+export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador, onBloqueioAuto }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const chancela = usePodeChancelar('treino');
@@ -47,6 +74,12 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
   // Mostra só UM plano (o liberado, ou o mais recente); os rascunhos antigos
   // ficam recolhidos para não parecer duplicado.
   const [verOutros, setVerOutros] = useState(false);
+  // Geração parada pela triagem: guarda o pedido para reenviar o MESMO pedido com
+  // o override do profissional. Na geração automática o diálogo não abre sozinho.
+  const [pendente, setPendente] = useState<PendenteTriagem | null>(null);
+  const [dialogoTriagemAberto, setDialogoTriagemAberto] = useState(false);
+  const [liberarId, setLiberarId] = useState<string | null>(null);
+  const autoDisparado = useRef(false);
 
   const { data: planos = [] } = useQuery({
     queryKey: ['planos-treino', pacienteId],
@@ -59,80 +92,111 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
     },
   });
 
-  const gerarMut = useMutation({
-    mutationFn: async () => {
-      // Buscar contexto: paciente + última antropometria + testes
-      const [pac, antro, testes] = await Promise.all([
-        supabase.from('pacientes').select('nome, sobrenome, data_nascimento, sexo').eq('id', pacienteId).maybeSingle(),
-        (supabase as any).from('antropometria').select('peso_kg, altura_cm, imc, gordura_pct').eq('paciente_id', pacienteId).order('data_medicao', { ascending: false }).limit(1).maybeSingle(),
-        (supabase as any).from('testes_funcionais_paciente').select('tipo_teste, resultado, unidade, classificacao').eq('paciente_id', pacienteId).order('data_teste', { ascending: false }).limit(8),
-      ]);
-      const p = pac.data as any;
-      const idade = p?.data_nascimento ? Math.floor((Date.now() - new Date(p.data_nascimento).getTime()) / (365.25 * 24 * 3600 * 1000)) : null;
-
-      const { data, error } = await supabase.functions.invoke('gerar-plano-treino', {
-        body: {
-          objetivo, nivel,
-          frequencia_semanal: freq,
-          duracao_semanas: duracao,
-          restricoes: restricoes || null,
-          antropometria: antro.data || null,
-          testes: testes.data || [],
-          idade, sexo: p?.sexo,
-          paciente_id: pacienteId,
-        },
-      });
-      if (error) throw await erroDaFuncao(error);
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const plano = (data as any).plano;
-
-      const { error: insErr } = await (supabase as any).from('planos_treino').insert({
-        terapeuta_id: user!.id,
-        paciente_id: pacienteId,
-        titulo: plano.titulo || `Plano ${objetivo} ${nivel}`,
+  const montarPedido = async (): Promise<PedidoTreino> => {
+    const [pac, antro, testes] = await Promise.all([
+      supabase.from('pacientes').select('nome, sobrenome, data_nascimento, sexo').eq('id', pacienteId).maybeSingle(),
+      (supabase as any).from('antropometria').select('peso_kg, altura_cm, imc, gordura_pct').eq('paciente_id', pacienteId).order('data_medicao', { ascending: false }).limit(1).maybeSingle(),
+      (supabase as any).from('testes_funcionais_paciente').select('tipo_teste, resultado, unidade, classificacao').eq('paciente_id', pacienteId).order('data_teste', { ascending: false }).limit(8),
+    ]);
+    const p = pac.data as any;
+    return {
+      corpo: {
         objetivo, nivel,
         frequencia_semanal: freq,
         duracao_semanas: duracao,
         restricoes: restricoes || null,
-        estrutura: plano,
+        antropometria: antro.data || null,
+        testes: testes.data || [],
+        idade: idadeEmAnos(p?.data_nascimento), sexo: p?.sexo,
+        paciente_id: pacienteId,
+      },
+      meta: { objetivo, nivel, freq, duracao, restricoes },
+    };
+  };
+
+  const gerarMut = useMutation({
+    mutationFn: async (v: { pedido?: PedidoTreino; override?: OverrideTriagem; auto?: boolean }) => {
+      const pedido = v.pedido ?? await montarPedido();
+      const r = await gerarPlanoComTriagem('gerar-plano-treino', pedido.corpo, v.override);
+      if (r.tipo === 'bloqueio') return { tipo: 'bloqueio' as const, bloqueio: r.bloqueio, pedido, auto: !!v.auto };
+
+      const { meta } = pedido;
+      const { error: insErr } = await (supabase as any).from('planos_treino').insert({
+        terapeuta_id: user!.id,
+        paciente_id: pacienteId,
+        titulo: r.plano.titulo || `Plano ${meta.objetivo} ${meta.nivel}`,
+        objetivo: meta.objetivo, nivel: meta.nivel,
+        frequencia_semanal: meta.freq,
+        duracao_semanas: meta.duracao,
+        restricoes: meta.restricoes || null,
+        estrutura: r.plano,
         aprovado: false,
       });
       if (insErr) throw insErr;
+      return { tipo: 'plano' as const };
     },
-    onSuccess: () => {
-      toast.success('Plano gerado e salvo');
+    onSuccess: (res) => {
+      if (res.tipo === 'bloqueio') {
+        setPendente({ bloqueio: res.bloqueio, pedido: res.pedido, auto: res.auto });
+        setDialogoTriagemAberto(!res.auto);
+        if (res.auto) onBloqueioAuto?.('pausado');
+        return;
+      }
+      toast.success('Plano gerado e salvo como rascunho');
+      setPendente(null);
+      setDialogoTriagemAberto(false);
+      onBloqueioAuto?.('liberado');
       qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
       setRestricoes('');
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao gerar plano'),
   });
 
+  const cancelarTriagem = () => {
+    setDialogoTriagemAberto(false);
+    if (pendente && !pendente.auto) setPendente(null);
+  };
+
+  const dispensarPausa = () => {
+    setPendente(null);
+    autoDisparado.current = false;
+    onBloqueioAuto?.('dispensado');
+  };
+
   // "Montar todos os planos": dispara a geração UMA vez quando ainda não há plano.
-  const autoDisparado = useRef(false);
   useEffect(() => {
     if (autoGerar && !autoDisparado.current && planos.length === 0 && !gerarMut.isPending) {
       autoDisparado.current = true;
-      gerarMut.mutate();
+      gerarMut.mutate({ auto: true });
     }
   }, [autoGerar, planos.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const invalidarPlanos = () => {
+    qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+    qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
+  };
 
   const [apagarId, setApagarId] = useState<string | null>(null);
   const apagar = async (id: string) => {
     await (supabase as any).from('planos_treino').delete().eq('id', id);
-    qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+    invalidarPlanos();
   };
 
   const salvarDoc = async (plano: any) => {
     if (!plano) return;
     setSalvandoDoc(true);
     try {
-      const { error } = await (supabase as any).from('planos_treino')
+      const { data, error } = await (supabase as any).from('planos_treino')
         .update({ estrutura: docConteudo, titulo: docTitulo || plano.titulo })
-        .eq('id', plano.id);
+        .eq('id', plano.id)
+        .select('aprovado');
       if (error) throw error;
-      toast.success('Treino atualizado');
+      if (Array.isArray(data) && data.length === 0) throw new Error('Não consegui salvar: o plano não foi encontrado ou você não tem permissão.');
+      const aviso = avisoAposEdicao('Treino', !!plano.aprovado, Array.isArray(data) ? data[0]?.aprovado : null);
+      if (aviso.nivel === 'aviso') toast.warning(aviso.mensagem);
+      else toast.success(aviso.mensagem);
       setEditandoInlineId(null);
-      qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+      invalidarPlanos();
     } catch (e: any) {
       toast.error(e.message || 'Não consegui salvar');
     } finally {
@@ -140,26 +204,26 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
     }
   };
 
-  const liberar = async (plano: any, aprovado: boolean) => {
-    // Chancela = só o profissional habilitado (ou a clínica que o tenha) libera.
-    // Ocultar (aprovado=false) é sempre permitido.
-    if (aprovado && !chancela.pode) { toast.error(chancela.motivo); return; }
-    const { error } = await (supabase as any).from('planos_treino').update({ aprovado }).eq('id', plano.id);
+  // Liberar passa pela revisão de segurança e pelo RPC liberar_plano (LiberarPlanoDialog):
+  // é o banco que carimba quem liberou. Chancela = só o profissional habilitado libera.
+  const abrirLiberar = (plano: any) => {
+    if (!chancela.pode) { toast.error(chancela.motivo); return; }
+    setLiberarId(plano.id);
+  };
+
+  // Ocultar (aprovado=false) é sempre permitido.
+  const ocultar = async (plano: any) => {
+    const { error } = await (supabase as any).from('planos_treino').update({ aprovado: false }).eq('id', plano.id);
     if (error) return toast.error(error.message);
-    toast.success(aprovado ? 'Liberado para o paciente' : 'Ocultado do paciente');
-    qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
-    // Ao LIBERAR, registra no prontuário/evolução do cliente.
-    if (aprovado && plano.terapeuta_id) {
-      const { registrarNotaPlanoLiberado } = await import('@/utils/notaPlanoLiberado');
-      await registrarNotaPlanoLiberado({ pacienteId, terapeutaId: plano.terapeuta_id, area: 'treino', titulo: plano.titulo, planoId: plano.id });
-      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-    }
+    toast.success('Ocultado do paciente');
+    invalidarPlanos();
   };
 
   // Um plano em destaque (liberado ou o mais recente); o resto fica recolhido.
   const principal = planos.find((p: any) => p.aprovado) || planos[0] || null;
   const outros = planos.filter((p: any) => p !== principal);
   const planosVisiveis = principal ? [principal, ...(verOutros ? outros : [])] : [];
+  const planoParaLiberar = planos.find((p: any) => p.id === liberarId) || null;
 
   return (
     <Card className="rounded-xl border-border/40 shadow-xs">
@@ -208,7 +272,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
         </div>
         <Textarea placeholder="Restrições/lesões (opcional)" rows={2} value={restricoes} onChange={(e) => setRestricoes(e.target.value)} />
 
-        <Button size="sm" onClick={() => gerarMut.mutate()} disabled={gerarMut.isPending} className="w-full">
+        <Button size="sm" onClick={() => gerarMut.mutate({})} disabled={gerarMut.isPending} className="w-full">
           {gerarMut.isPending ? <Loader2 className="icon-xs animate-spin mr-2" /> : <Sparkles className="icon-xs mr-2" />}
           {gerarMut.isPending ? 'Gerando plano periodizado...' : 'Gerar plano com IA'}
         </Button>
@@ -222,7 +286,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
         {ocultarGerador && planos.length === 0 && (
           <p className="text-sm text-muted-foreground py-3 text-center flex items-center justify-center gap-1.5">
             {gerarMut.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {gerarMut.isPending ? 'Montando o plano de treino…' : 'Ainda não gerado.'}
+            {gerarMut.isPending ? 'Montando o plano de treino…' : pendente ? 'Aguardando a sua decisão sobre a triagem de segurança.' : 'Ainda não gerado.'}
           </p>
         )}
 
@@ -231,6 +295,21 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
           <Button size="sm" variant="ghost" className="w-full h-8 text-[11px] gap-1.5 text-muted-foreground" onClick={() => setMostrarGerador(true)}>
             <Sparkles className="icon-xs" /> Gerar outro plano
           </Button>
+        )}
+
+        {pendente && !dialogoTriagemAberto && (
+          <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2 dark:border-amber-900 dark:bg-amber-950/30">
+            <p className="text-xs font-semibold flex items-center gap-1.5">
+              <ShieldAlert className="icon-xs text-amber-600 shrink-0" /> Geração pausada pela triagem de segurança
+            </p>
+            <p className="text-xs text-foreground/85">
+              {resumoMotivosBloqueio(pendente.bloqueio)}. Nenhum plano foi gerado: revise os pontos e decida se quer prosseguir.
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm" className="h-7 text-[11px]" onClick={() => setDialogoTriagemAberto(true)}>Revisar e decidir</Button>
+              <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={dispensarPausa}>Dispensar</Button>
+            </div>
+          </div>
         )}
 
         {planos.length > 0 && !chancela.loading && !chancela.pode && (
@@ -256,7 +335,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
               <Button size="sm" variant={p.aprovado ? 'ghost' : 'default'} className="h-7 text-[11px] px-2 shrink-0"
                 disabled={!p.aprovado && (chancela.loading || !chancela.pode)}
                 title={!p.aprovado && !chancela.pode ? chancela.motivo : (chancela.viaClinica ? chancela.motivo : undefined)}
-                onClick={() => liberar(p, !p.aprovado)}>
+                onClick={() => (p.aprovado ? ocultar(p) : abrirLiberar(p))}>
                 {p.aprovado ? 'Ocultar' : 'Liberar'}
               </Button>
               {/* Editar plano avançado: troca de exercício (busca na biblioteca),
@@ -264,6 +343,8 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
               <Button size="icon" variant="ghost" className="h-7 w-7" title="Trocar exercícios (avançado)" onClick={() => setEditarPlano(p)}><Dumbbell className="icon-xs" /></Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" title="Excluir plano" aria-label="Excluir plano" onClick={() => setApagarId(p.id)}><Trash2 className="icon-xs text-destructive" /></Button>
             </div>
+
+            <SeloGovernanca conteudo={p.estrutura} aprovado={!!p.aprovado} origem="profissional" visao="profissional" />
 
             {/* Barra de edição inline — mostra/edita o treino aqui mesmo (como no portal) */}
             <div className="flex items-center gap-2">
@@ -290,12 +371,18 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
               editando={emEdicao}
               onTituloChange={setDocTitulo}
               onConteudoChange={setDocConteudo}
+              origemGov="profissional"
+              aprovado={!!p.aprovado}
             />
 
-            <RevisorSeguranca pacienteId={pacienteId} tipo="treino" plano={p.estrutura} />
+            <ResumoAcompanhamento conteudo={p.estrutura} />
+
+            <RevisorSeguranca pacienteId={pacienteId} tipo="treino" plano={p.estrutura} planoId={p.id} />
           </div>
           );
         })}
+
+        {planos.length > 0 && <AcompanhamentoPlanoCard pacienteId={pacienteId} />}
 
         {outros.length > 0 && (
           <button
@@ -306,6 +393,30 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador 
           </button>
         )}
       </CardContent>
+
+      <TriagemBloqueioDialog
+        bloqueio={dialogoTriagemAberto ? pendente?.bloqueio ?? null : null}
+        chamador="profissional"
+        enviando={gerarMut.isPending}
+        onCancelar={cancelarTriagem}
+        onProsseguir={(override) => { if (pendente) gerarMut.mutate({ pedido: pendente.pedido, override }); }}
+      />
+
+      <LiberarPlanoDialog
+        tipo="treino"
+        planoId={planoParaLiberar?.id ?? ''}
+        pacienteId={pacienteId}
+        open={!!planoParaLiberar}
+        onOpenChange={(aberto) => { if (!aberto) setLiberarId(null); }}
+        onLiberado={() => {
+          invalidarPlanos();
+          qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+        }}
+        podeLiberar={chancela.pode}
+        motivoBloqueio={chancela.motivo}
+        terapeutaId={planoParaLiberar?.terapeuta_id}
+        tituloPlano={planoParaLiberar?.titulo}
+      />
 
       {editarPlano && (
         <PlanoTreinoEditor plano={editarPlano} pacienteId={pacienteId} onClose={() => setEditarPlano(null)} />

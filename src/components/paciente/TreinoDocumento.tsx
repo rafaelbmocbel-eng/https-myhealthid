@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Dumbbell, ShieldCheck, ImageOff, Salad, Plus, Trash2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { rodapeGovernanca } from '@/lib/governanca';
 
 // Documento do treino (estilo PDF, mas com GIFs ANIMANDO). Usado na página logada
 // (/paciente/treino-completo), na pública (/treino/:token) e no portal do
@@ -29,6 +30,14 @@ interface Props {
   onTituloChange?: (v: string) => void;
   onConteudoChange?: (novo: any) => void;
   onNutricaoChange?: (novo: any) => void;
+  /**
+   * De onde veio o conteúdo. 'profissional' (planos_treino) mostra no rodapé quem
+   * liberou, data, versão, fonte e a reavaliação; o padrão ('cliente', planos_ia_cliente)
+   * não afirma liberação nenhuma, pois o paciente escreve nessa tabela.
+   */
+  origemGov?: 'profissional' | 'cliente';
+  /** Coluna `aprovado` do plano do profissional. */
+  aprovado?: boolean;
 }
 
 const clone = (o: any) => JSON.parse(JSON.stringify(o ?? {}));
@@ -61,13 +70,14 @@ function EI({ value, onChange, className, placeholder }: { value: any; onChange:
 
 export default function TreinoDocumento({
   nome, titulo, conteudo, nutricao, editando,
-  onTituloChange, onConteudoChange, onNutricaoChange,
+  onTituloChange, onConteudoChange, onNutricaoChange, origemGov = 'cliente', aprovado,
 }: Props) {
   const fases: any[] = Array.isArray(conteudo?.fases) ? conteudo.fases : [];
   const refeicoes: any[] = Array.isArray(nutricao?.refeicoes) ? nutricao.refeicoes
     : Array.isArray(nutricao?.meals) ? nutricao.meals : [];
   const temNutricao = refeicoes.length > 0;
   const base: BaseadoEm | undefined = conteudo?.baseadoEm;
+  const rodape = rodapeGovernanca(conteudo, { origem: origemGov, aprovado });
   const [quebrados, setQuebrados] = useState<Set<string>>(new Set());
   const marcarQuebrado = (url: string) => setQuebrados((s) => new Set(s).add(url));
 
@@ -403,9 +413,11 @@ export default function TreinoDocumento({
           </Tabs>
         ) : treinoView}
 
-        <p className="text-[11px] text-[#9ca3af] border-t border-[#e1e4eb] pt-3">
-          My Health ID · Plano gerado por IA a partir da avaliação individual do cliente — apoio, não substitui avaliação profissional.
-        </p>
+        <div className="text-[11px] text-[#9ca3af] border-t border-[#e1e4eb] pt-3 space-y-0.5">
+          {rodape.selo && <p className="font-semibold text-[#6e7482]">{rodape.selo}</p>}
+          {rodape.reavaliacao && <p>{rodape.reavaliacao}</p>}
+          <p>My Health ID · Plano gerado por IA a partir da avaliação individual do cliente — apoio, não substitui avaliação profissional.</p>
+        </div>
       </div>
     </div>
   );

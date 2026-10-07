@@ -9,28 +9,60 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Apple, Sparkles, Loader2, Trash2, Eye, Plus, Pencil } from 'lucide-react';
+import { Apple, Sparkles, Loader2, Trash2, Eye, Plus, Pencil, ShieldAlert } from 'lucide-react';
 import PlanoDietaEditor from './PlanoDietaEditor';
 import { toast } from 'sonner';
-import { erroDaFuncao } from '@/lib/fnError';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
 import { format, parseISO } from '@/lib/dateSafe';
 import RevisorSeguranca from '@/components/planos/RevisorSeguranca';
+import LiberarPlanoDialog from '@/components/planos/LiberarPlanoDialog';
+import TriagemBloqueioDialog from '@/components/planos/TriagemBloqueioDialog';
+import SeloGovernanca from '@/components/planos/SeloGovernanca';
+import ResumoAcompanhamento from '@/components/planos/ResumoAcompanhamento';
+import { gerarPlanoComTriagem, idadeEmAnos, resumoMotivosBloqueio } from '@/lib/geracaoPlano';
+import type { BloqueioTriagem, OverrideTriagem } from '@/lib/governanca';
 
-interface Props { pacienteId: string; autoGerar?: boolean; ocultarGerador?: boolean; }
+interface Props {
+  pacienteId: string;
+  autoGerar?: boolean;
+  ocultarGerador?: boolean;
+  /**
+   * Estado da geração automática ("Montar todos"): 'pausado' = a triagem de segurança
+   * parou e espera decisão; 'liberado' = o plano foi gerado; 'dispensado' = o
+   * profissional deixou para depois (o pai pode oferecer tentar de novo).
+   */
+  onBloqueioAuto?: (estado: 'pausado' | 'liberado' | 'dispensado') => void;
+}
+
+interface PedidoAlimentar {
+  corpo: Record<string, unknown>;
+  meta: { objetivo: string; caloriasAlvo: number | null };
+}
+
+interface PendenteTriagem {
+  bloqueio: BloqueioTriagem;
+  pedido: PedidoAlimentar;
+  auto: boolean;
+}
 
 const OBJETIVOS = [
   'Emagrecimento', 'Hipertrofia', 'Manutenção', 'Reeducação alimentar',
   'Performance esportiva', 'Ganho de peso', 'Controle glicêmico', 'Controle pressórico',
 ];
 
-export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerador }: Props) {
+export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerador, onBloqueioAuto }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const chancela = usePodeChancelar('nutricao');
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<any | null>(null);
   const [editar, setEditar] = useState<any | null>(null);
+  // Geração parada pela triagem: guarda o pedido para reenviar o MESMO pedido com
+  // o override do profissional. Na geração automática o diálogo não abre sozinho.
+  const [pendente, setPendente] = useState<PendenteTriagem | null>(null);
+  const [dialogoTriagemAberto, setDialogoTriagemAberto] = useState(false);
+  const [liberarId, setLiberarId] = useState<string | null>(null);
+  const autoDisparado = useRef(false);
   const [form, setForm] = useState({
     objetivo: 'Emagrecimento',
     calorias_alvo: '',
@@ -77,87 +109,123 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
     },
   });
 
-  const gerar = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error('Sem sessão');
-      const idade = paciente?.data_nascimento
-        ? Math.floor((Date.now() - new Date(paciente.data_nascimento).getTime()) / (365.25 * 24 * 3600 * 1000))
-        : undefined;
-      const { data, error } = await supabase.functions.invoke('gerar-plano-alimentar', {
-        body: {
-          objetivo: form.objetivo,
-          calorias_alvo: Number(form.calorias_alvo) || undefined,
-          refeicoes_por_dia: Number(form.refeicoes_por_dia) || 5,
-          restricoes: form.restricoes,
-          preferencias: form.preferencias,
-          idade,
-          sexo: paciente?.sexo,
-          antropometria: antropoUlt,
-          recordatorio: recUlt,
-          paciente_id: pacienteId,
-        },
-      });
-      if (error) throw await erroDaFuncao(error);
-      if (!data?.ok) throw new Error(data?.error || 'Falha ao gerar');
+  const montarPedido = (): PedidoAlimentar => {
+    if (!user) throw new Error('Sem sessão');
+    const idade = idadeEmAnos(paciente?.data_nascimento) ?? undefined;
+    return {
+      corpo: {
+        objetivo: form.objetivo,
+        calorias_alvo: Number(form.calorias_alvo) || undefined,
+        refeicoes_por_dia: Number(form.refeicoes_por_dia) || 5,
+        restricoes: form.restricoes,
+        preferencias: form.preferencias,
+        idade,
+        sexo: paciente?.sexo,
+        antropometria: antropoUlt,
+        recordatorio: recUlt,
+        paciente_id: pacienteId,
+      },
+      meta: { objetivo: form.objetivo, caloriasAlvo: Number(form.calorias_alvo) || null },
+    };
+  };
 
-      const p = data.plano;
+  const gerar = useMutation({
+    mutationFn: async (v: { pedido?: PedidoAlimentar; override?: OverrideTriagem; auto?: boolean }) => {
+      if (!user) throw new Error('Sem sessão');
+      const pedido = v.pedido ?? montarPedido();
+      const r = await gerarPlanoComTriagem('gerar-plano-alimentar', pedido.corpo, v.override);
+      if (r.tipo === 'bloqueio') return { tipo: 'bloqueio' as const, bloqueio: r.bloqueio, pedido, auto: !!v.auto };
+
+      const p = r.plano;
       const { error: insErr } = await (supabase as any).from('planos_alimentares').insert({
         paciente_id: pacienteId,
         terapeuta_id: user.id,
-        titulo: p.titulo || `Plano ${form.objetivo}`,
-        objetivo: form.objetivo,
-        calorias_alvo: p.calorias_totais || Number(form.calorias_alvo) || null,
+        titulo: p.titulo || `Plano ${pedido.meta.objetivo}`,
+        objetivo: pedido.meta.objetivo,
+        calorias_alvo: p.calorias_totais || pedido.meta.caloriasAlvo,
         macros_alvo: p.macros || null,
         plano: p,
         ativo: true,
         aprovado: false,
       });
       if (insErr) throw insErr;
+      return { tipo: 'plano' as const };
     },
-    onSuccess: () => {
-      toast.success('Plano alimentar gerado');
+    onSuccess: (res) => {
+      if (res.tipo === 'bloqueio') {
+        setPendente({ bloqueio: res.bloqueio, pedido: res.pedido, auto: res.auto });
+        setDialogoTriagemAberto(!res.auto);
+        if (!res.auto) setOpen(false);
+        if (res.auto) onBloqueioAuto?.('pausado');
+        return;
+      }
+      toast.success('Plano alimentar gerado como rascunho');
       setOpen(false);
+      setPendente(null);
+      setDialogoTriagemAberto(false);
+      onBloqueioAuto?.('liberado');
       qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] });
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao gerar'),
   });
 
+  // Cancelar uma decisão manual devolve ao formulário de geração.
+  const cancelarTriagem = () => {
+    setDialogoTriagemAberto(false);
+    if (pendente && !pendente.auto) {
+      setPendente(null);
+      setOpen(true);
+    }
+  };
+
+  const dispensarPausa = () => {
+    setPendente(null);
+    autoDisparado.current = false;
+    onBloqueioAuto?.('dispensado');
+  };
+
   // "Montar todos os planos": gera a nutrição UMA vez quando ainda não há plano.
-  const autoDisparado = useRef(false);
   useEffect(() => {
     if (autoGerar && !autoDisparado.current && planos.length === 0 && !gerar.isPending) {
       autoDisparado.current = true;
-      gerar.mutate();
+      gerar.mutate({ auto: true });
     }
   }, [autoGerar, planos.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const invalidarPlanos = () => {
+    qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] });
+    qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
+  };
 
   const excluir = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase as any).from('planos_alimentares').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success('Removido'); qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] }); },
+    onSuccess: () => { toast.success('Removido'); invalidarPlanos(); },
   });
 
-  const aprovar = useMutation({
-    mutationFn: async ({ plano, aprovado }: { plano: any; aprovado: boolean }) => {
-      // Chancela: só o Nutricionista (ou a clínica que o tenha) libera. Ocultar é livre.
-      if (aprovado && !chancela.pode) throw new Error(chancela.motivo);
-      const { error } = await (supabase as any).from('planos_alimentares').update({ aprovado }).eq('id', plano.id);
+  // Liberar passa pela revisão de segurança e pelo RPC liberar_plano (LiberarPlanoDialog):
+  // é o banco que carimba quem liberou. Chancela: só o Nutricionista (ou a clínica que o tenha).
+  const abrirLiberar = (plano: any) => {
+    if (!chancela.pode) { toast.error(chancela.motivo); return; }
+    setLiberarId(plano.id);
+  };
+
+  // Ocultar (aprovado=false) é sempre permitido.
+  const ocultar = useMutation({
+    mutationFn: async (plano: any) => {
+      const { error } = await (supabase as any).from('planos_alimentares').update({ aprovado: false }).eq('id', plano.id);
       if (error) throw error;
     },
-    onSuccess: async (_d, v) => {
-      toast.success(v.aprovado ? 'Liberado para o paciente' : 'Ocultado do paciente');
-      qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] });
-      // Ao LIBERAR, registra no prontuário/evolução do cliente.
-      if (v.aprovado && v.plano?.terapeuta_id) {
-        const { registrarNotaPlanoLiberado } = await import('@/utils/notaPlanoLiberado');
-        await registrarNotaPlanoLiberado({ pacienteId, terapeutaId: v.plano.terapeuta_id, area: 'nutricao', titulo: v.plano.titulo, planoId: v.plano.id });
-        qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-      }
+    onSuccess: () => {
+      toast.success('Ocultado do paciente');
+      invalidarPlanos();
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const planoParaLiberar = planos.find((p: any) => p.id === liberarId) || null;
 
   return (
     <>
@@ -174,13 +242,27 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
           )}
         </CardHeader>
         <CardContent className="space-y-2">
+          {pendente && !dialogoTriagemAberto && (
+            <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2 dark:border-amber-900 dark:bg-amber-950/30">
+              <p className="text-xs font-semibold flex items-center gap-1.5">
+                <ShieldAlert className="icon-xs text-amber-600 shrink-0" /> Geração pausada pela triagem de segurança
+              </p>
+              <p className="text-xs text-foreground/85">
+                {resumoMotivosBloqueio(pendente.bloqueio)}. Nenhum plano foi gerado: revise os pontos e decida se quer prosseguir.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" className="h-7 text-[11px]" onClick={() => setDialogoTriagemAberto(true)}>Revisar e decidir</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={dispensarPausa}>Dispensar</Button>
+              </div>
+            </div>
+          )}
           {planos.length > 0 && !chancela.loading && !chancela.pode && (
             <p className="text-[11px] text-amber-600 dark:text-amber-400 text-center">🔒 {chancela.motivo}</p>
           )}
           {planos.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center flex items-center justify-center gap-1.5">
               {gerar.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {gerar.isPending ? 'Montando o plano alimentar…' : 'Nenhum plano gerado ainda.'}
+              {gerar.isPending ? 'Montando o plano alimentar…' : pendente ? 'Aguardando a sua decisão sobre a triagem de segurança.' : 'Nenhum plano gerado ainda.'}
             </p>
           ) : (
             planos.map((p: any) => (
@@ -196,8 +278,8 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
                   ? <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Liberado</Badge>
                   : <Badge variant="outline" className="text-xs">Rascunho</Badge>}
                 <Button variant={p.aprovado ? 'ghost' : 'default'} size="sm" className="h-8 text-xs px-2.5"
-                  onClick={() => aprovar.mutate({ plano: p, aprovado: !p.aprovado })}
-                  disabled={aprovar.isPending || (!p.aprovado && (chancela.loading || !chancela.pode))}
+                  onClick={() => (p.aprovado ? ocultar.mutate(p) : abrirLiberar(p))}
+                  disabled={ocultar.isPending || (!p.aprovado && (chancela.loading || !chancela.pode))}
                   title={!p.aprovado && !chancela.pode ? chancela.motivo : (chancela.viaClinica ? chancela.motivo : undefined)}>
                   {p.aprovado ? 'Ocultar' : 'Liberar'}
                 </Button>
@@ -211,7 +293,8 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
                   <Trash2 className="icon-sm text-destructive" />
                 </Button>
                 </div>
-                <RevisorSeguranca pacienteId={pacienteId} tipo="nutricao" plano={p.plano} />
+                <SeloGovernanca conteudo={p.plano} aprovado={!!p.aprovado} origem="profissional" visao="profissional" className="mt-2" />
+                <RevisorSeguranca pacienteId={pacienteId} tipo="nutricao" plano={p.plano} planoId={p.id} />
               </div>
             ))
           )}
@@ -247,7 +330,7 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
               <label className="text-xs text-muted-foreground">Preferências</label>
               <Textarea rows={2} placeholder="ex: vegetariano, sem frituras…" value={form.preferencias} onChange={e => setForm({ ...form, preferencias: e.target.value })} />
             </div>
-            <Button className="w-full" onClick={() => gerar.mutate()} disabled={gerar.isPending}>
+            <Button className="w-full" onClick={() => gerar.mutate({})} disabled={gerar.isPending}>
               {gerar.isPending ? <Loader2 className="icon-sm mr-2 animate-spin" /> : <Sparkles className="icon-sm mr-2" />}
               Gerar com IA
             </Button>
@@ -262,6 +345,7 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
               <DialogHeader><DialogTitle>{view.titulo}</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 {view.resumo && <p className="text-sm text-muted-foreground italic">{view.resumo}</p>}
+                <ResumoAcompanhamento conteudo={view} />
                 {view.macros && (
                   <div className="flex flex-wrap gap-2">
                     <Badge>{view.calorias_totais} kcal</Badge>
@@ -303,6 +387,30 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
           )}
         </DialogContent>
       </Dialog>
+
+      <TriagemBloqueioDialog
+        bloqueio={dialogoTriagemAberto ? pendente?.bloqueio ?? null : null}
+        chamador="profissional"
+        enviando={gerar.isPending}
+        onCancelar={cancelarTriagem}
+        onProsseguir={(override) => { if (pendente) gerar.mutate({ pedido: pendente.pedido, override }); }}
+      />
+
+      <LiberarPlanoDialog
+        tipo="nutricao"
+        planoId={planoParaLiberar?.id ?? ''}
+        pacienteId={pacienteId}
+        open={!!planoParaLiberar}
+        onOpenChange={(aberto) => { if (!aberto) setLiberarId(null); }}
+        onLiberado={() => {
+          invalidarPlanos();
+          qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+        }}
+        podeLiberar={chancela.pode}
+        motivoBloqueio={chancela.motivo}
+        terapeutaId={planoParaLiberar?.terapeuta_id}
+        tituloPlano={planoParaLiberar?.titulo}
+      />
 
       {editar && (
         <PlanoDietaEditor plano={editar} pacienteId={pacienteId} onClose={() => setEditar(null)} />

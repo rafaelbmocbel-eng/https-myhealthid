@@ -12,7 +12,7 @@ import {
   Calendar, Dumbbell, Heart, MessageCircle, DollarSign,
   CalendarDays, ClipboardList, Activity, ExternalLink, Loader2, Smartphone,
   TrendingUp, Trophy, Apple, Bell, GraduationCap, Stethoscope, Rocket, Sparkles,
-  Pencil, Save, X
+  Pencil, Save, X, ShieldAlert
 } from 'lucide-react';
 const PlanoTreinoCard = lazy(() => import('@/components/educador/PlanoTreinoCard'));
 const PlanoAlimentarCard = lazy(() => import('@/components/nutricao/PlanoAlimentarCard'));
@@ -30,6 +30,9 @@ import { ptBR } from 'date-fns/locale';
 import { getPortalUrl } from '@/utils/linkUrls';
 import { useToast } from '@/hooks/use-toast';
 import { usePodeChancelar } from '@/hooks/usePodeChancelar';
+import LiberarPlanoDialog from '@/components/planos/LiberarPlanoDialog';
+import SeloGovernanca from '@/components/planos/SeloGovernanca';
+import { baseDoCliente, removerGovernanca } from '@/lib/governanca';
 
 interface Props {
   pacienteId: string;
@@ -63,6 +66,11 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   // Trava de liberação: só o profissional habilitado (ou clínica) libera cada área.
   const chancelaTreino = usePodeChancelar('treino');
   const chancelaNutri = usePodeChancelar('nutricao');
+  // Plano em liberação (LiberarPlanoDialog: revisão de segurança + RPC liberar_plano).
+  const [liberarAlvo, setLiberarAlvo] = useState<{ tabela: 'planos_treino' | 'planos_alimentares'; id: string } | null>(null);
+  // "Montar todos": a triagem de segurança pode pausar a geração de cada plano.
+  const [pausaTriagem, setPausaTriagem] = useState<{ treino: boolean; nutricao: boolean }>({ treino: false, nutricao: false });
+  const [abaPlano, setAbaPlano] = useState('treino');
 
   // Gera (ou regenera) as dicas IA deste paciente na hora — e mostra o motivo
   // se a IA não conseguir (ex.: sem MyID concluído, sem evidência, erro).
@@ -105,7 +113,8 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
     try {
       if (tipo === 'treino') {
         const t = geradoCliente?.treinoIA;
-        const conteudo = (t?.conteudo || {}) as any;
+        // O plano do cliente é gravável por ele: não herda governança (fonte, triagem, aprovação).
+        const conteudo = baseDoCliente(t?.conteudo) as any;
         const fases = Array.isArray(conteudo.fases) ? conteudo.fases : [];
         const duracao = fases.reduce((s: number, f: any) => s + (Number(f.semanas) || 0), 0) || 8;
         const freq = fases.reduce((mx: number, f: any) => Math.max(mx, Array.isArray(f.sessoes) ? f.sessoes.length : 0), 0) || 3;
@@ -124,7 +133,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         if (error) throw error;
         qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
       } else {
-        const plano = (geradoCliente?.nutricaoIA || {}) as any;
+        const plano = baseDoCliente(geradoCliente?.nutricaoIA) as any;
         const { error } = await (supabase as any).from('planos_alimentares').insert({
           paciente_id: pacienteId,
           terapeuta_id: user.id,
@@ -201,12 +210,14 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           const fases = draftTreino.fases;
           const duracao = fases.reduce((s: number, f: any) => s + (Number(f.semanas) || 0), 0) || 8;
           const freq = fases.reduce((mx: number, f: any) => Math.max(mx, Array.isArray(f.sessoes) ? f.sessoes.length : 0), 0) || 3;
+          // Sem plano do profissional, o rascunho nasce do plano do cliente (gravável por ele).
+          const estrutura = geradoCliente?.treinoIA ? baseDoCliente(draftTreino) : removerGovernanca(draftTreino);
           const { error } = await sb.from('planos_treino').insert({
             terapeuta_id: user.id, paciente_id: pacienteId,
             titulo: draftTreino?.titulo || geradoCliente?.treinoIA?.titulo || 'Plano de treino',
             objetivo: 'saude', nivel: 'iniciante',
             frequencia_semanal: freq, duracao_semanas: duracao,
-            estrutura: draftTreino, aprovado: false,
+            estrutura, aprovado: false,
           });
           if (error) throw error;
         }
@@ -218,19 +229,28 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           const { error } = await sb.from('planos_alimentares').update({ plano: draftNutri, titulo: draftNutri?.titulo || pn.titulo, aprovado: false }).eq('id', pn.id);
           if (error) throw error;
         } else {
+          const plano = geradoCliente?.nutricaoIA ? baseDoCliente(draftNutri) : removerGovernanca(draftNutri);
           const { error } = await sb.from('planos_alimentares').insert({
             paciente_id: pacienteId, terapeuta_id: user.id,
             titulo: draftNutri?.titulo || 'Plano alimentar',
             objetivo: 'Reeducação alimentar',
             calorias_alvo: draftNutri?.calorias_totais || null,
             macros_alvo: draftNutri?.macros || null,
-            plano: draftNutri, ativo: true, aprovado: false,
+            plano, ativo: true, aprovado: false,
           });
           if (error) throw error;
         }
       }
-      toast({ title: 'Rascunho salvo ✅', description: 'O cliente só vê depois que você Liberar.' });
+      const estavaLiberado = Boolean((temTreino && profTreino()?.aprovado) || (temNutri && profNutri()?.aprovado));
+      toast({
+        title: 'Rascunho salvo ✅',
+        description: estavaLiberado
+          ? 'O plano estava liberado e voltou para rascunho. O cliente só vê depois que você Liberar de novo.'
+          : 'O cliente só vê depois que você Liberar.',
+      });
       qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] });
       setEditandoPlano(false);
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message || String(e), variant: 'destructive' });
@@ -239,22 +259,30 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
     }
   };
 
-  // Libera (ou oculta) o plano do profissional para o cliente. Aprovar exige chancela.
-  const liberarPlano = async (tabela: 'planos_treino' | 'planos_alimentares', id: string, aprovar: boolean, podeChancelar: boolean, motivo: string) => {
-    if (aprovar && !podeChancelar) { toast({ title: motivo, variant: 'destructive' }); return; }
-    const { error } = await (supabase as any).from(tabela).update({ aprovado: aprovar }).eq('id', id);
+  // Liberar abre o LiberarPlanoDialog: revisão de segurança + RPC liberar_plano, que
+  // carimba quem liberou no banco. Exige chancela. Ocultar é sempre permitido.
+  const abrirLiberar = (tabela: 'planos_treino' | 'planos_alimentares', id: string, podeChancelar: boolean, motivo: string) => {
+    if (!podeChancelar) { toast({ title: motivo, variant: 'destructive' }); return; }
+    setLiberarAlvo({ tabela, id });
+  };
+
+  const ocultarPlano = async (tabela: 'planos_treino' | 'planos_alimentares', id: string) => {
+    const { error } = await (supabase as any).from(tabela).update({ aprovado: false }).eq('id', id);
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
-    toast({ title: aprovar ? '📲 Liberado para o cliente' : 'Ocultado do cliente' });
+    toast({ title: 'Ocultado do cliente' });
     qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
-    // Ao LIBERAR, registra no prontuário/evolução do cliente.
-    if (aprovar && user) {
-      const area = tabela === 'planos_treino' ? 'treino' : 'nutricao';
-      const lista = tabela === 'planos_treino' ? (data?.planosTreino || []) : (data?.planosAlim || []);
-      const titulo = (lista as any[]).find((p) => p.id === id)?.titulo;
-      const { registrarNotaPlanoLiberado } = await import('@/utils/notaPlanoLiberado');
-      await registrarNotaPlanoLiberado({ pacienteId, terapeutaId: user.id, area, titulo, planoId: id });
-      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-    }
+  };
+
+  const aoLiberarPlano = () => {
+    qc.invalidateQueries({ queryKey: ['portal-controle-full', pacienteId] });
+    qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
+    qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] });
+    qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+  };
+
+  const aoMudarGeracaoAuto = (area: 'treino' | 'nutricao', estado: 'pausado' | 'liberado' | 'dispensado') => {
+    setPausaTriagem((prev) => ({ ...prev, [area]: estado === 'pausado' }));
+    if (estado === 'dispensado') setGerarTodos(false);
   };
 
   const { data, isLoading } = useQuery({
@@ -491,10 +519,29 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                     <Sparkles className="icon-sm" /> Montar todos os planos (treino, nutrição e fisioterapia)
                   </Button>
                 )}
-                {gerarTodos && faltaPlanos && (
+                {gerarTodos && faltaPlanos && !pausaTriagem.treino && !pausaTriagem.nutricao && (
                   <p className="text-[11px] text-primary text-center flex items-center justify-center gap-1.5">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> Montando seus planos… isso leva alguns segundos.
                   </p>
+                )}
+                {(pausaTriagem.treino || pausaTriagem.nutricao) && (
+                  <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2 dark:border-amber-900 dark:bg-amber-950/30">
+                    <p className="text-xs font-semibold flex items-center gap-1.5">
+                      <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0" /> A triagem de segurança pausou a geração automática
+                    </p>
+                    <p className="text-xs text-foreground/85">
+                      {pausaTriagem.treino && pausaTriagem.nutricao ? 'O treino e o plano alimentar' : pausaTriagem.treino ? 'O plano de treino' : 'O plano alimentar'}{' '}
+                      precisa{pausaTriagem.treino && pausaTriagem.nutricao ? 'm' : ''} da sua decisão. Nada é gerado sem a sua confirmação.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {pausaTriagem.treino && (
+                        <Button size="sm" className="h-7 text-[11px]" onClick={() => setAbaPlano('treino')}>Abrir treino</Button>
+                      )}
+                      {pausaTriagem.nutricao && (
+                        <Button size="sm" className="h-7 text-[11px]" onClick={() => setAbaPlano('nutricao')}>Abrir nutrição</Button>
+                      )}
+                    </div>
+                  </div>
                 )}
 
                 {/* A PÁGINA principal: aqui, na página bonita, o profissional VÊ, EDITA e
@@ -531,7 +578,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                           <Button size="sm" variant={ptv.aprovado ? 'ghost' : 'default'} className="h-7 text-[11px] gap-1.5"
                             disabled={!ptv.aprovado && (chancelaTreino.loading || !chancelaTreino.pode)}
                             title={!ptv.aprovado && !chancelaTreino.pode ? chancelaTreino.motivo : undefined}
-                            onClick={() => liberarPlano('planos_treino', ptv.id, !ptv.aprovado, chancelaTreino.pode, chancelaTreino.motivo)}>
+                            onClick={() => (ptv.aprovado ? ocultarPlano('planos_treino', ptv.id) : abrirLiberar('planos_treino', ptv.id, chancelaTreino.pode, chancelaTreino.motivo))}>
                             <Dumbbell className="h-3 w-3" /> {ptv.aprovado ? 'Ocultar treino' : 'Liberar treino'}
                           </Button>
                         )}
@@ -539,7 +586,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                           <Button size="sm" variant={pnv.aprovado ? 'ghost' : 'default'} className="h-7 text-[11px] gap-1.5"
                             disabled={!pnv.aprovado && (chancelaNutri.loading || !chancelaNutri.pode)}
                             title={!pnv.aprovado && !chancelaNutri.pode ? chancelaNutri.motivo : undefined}
-                            onClick={() => liberarPlano('planos_alimentares', pnv.id, !pnv.aprovado, chancelaNutri.pode, chancelaNutri.motivo)}>
+                            onClick={() => (pnv.aprovado ? ocultarPlano('planos_alimentares', pnv.id) : abrirLiberar('planos_alimentares', pnv.id, chancelaNutri.pode, chancelaNutri.motivo))}>
                             <Apple className="h-3 w-3" /> {pnv.aprovado ? 'Ocultar nutrição' : 'Liberar nutrição'}
                           </Button>
                         )}
@@ -554,6 +601,18 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                             ? '✅ Liberado — o cliente já vê este plano.'
                             : 'Plano que o cliente montou. Toque em Editar para criar a sua versão.'}
                       </p>
+                    )}
+                    {/* Selo de governança: só o plano do profissional afirma liberação; o do
+                        cliente (planos_ia_cliente) é sempre "gerado por IA, sem revisão". */}
+                    {!editandoPlano && (
+                      <div className="space-y-1.5 px-1 mb-2">
+                        {ptv
+                          ? <SeloGovernanca conteudo={ptv.estrutura} aprovado={!!ptv.aprovado} origem="profissional" visao="profissional" />
+                          : geradoCliente?.treinoIA && <SeloGovernanca conteudo={geradoCliente.treinoIA.conteudo} origem="cliente" visao="profissional" />}
+                        {pnv
+                          ? <SeloGovernanca conteudo={pnv.plano} aprovado={!!pnv.aprovado} origem="profissional" visao="profissional" />
+                          : geradoCliente?.nutricaoIA && <SeloGovernanca conteudo={geradoCliente.nutricaoIA} origem="cliente" visao="profissional" />}
+                      </div>
                     )}
                     {editandoPlano && (
                       <p className="text-[10px] text-muted-foreground px-1 mb-2">
@@ -570,6 +629,8 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                         editando={editandoPlano}
                         onConteudoChange={setDraftTreino}
                         onNutricaoChange={setDraftNutri}
+                        origemGov={ptv ? 'profissional' : 'cliente'}
+                        aprovado={ptv ? !!ptv.aprovado : undefined}
                       />
                     </Suspense>
                   </div>
@@ -579,7 +640,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                     reúne o plano + a diretriz daquela área. A criação vem do botão único
                     acima; aqui é só ver/editar/liberar o que já existe. */}
                 <Suspense fallback={<div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-                  <Tabs defaultValue="treino" className="w-full">
+                  <Tabs value={abaPlano} onValueChange={setAbaPlano} className="w-full">
                     <TabsList className="w-full grid grid-cols-3 h-auto p-1">
                       <TabsTrigger value="treino" className="text-xs gap-1"><Dumbbell className="h-3.5 w-3.5" /> Treino</TabsTrigger>
                       <TabsTrigger value="nutricao" className="text-xs gap-1"><Apple className="h-3.5 w-3.5" /> Nutrição</TabsTrigger>
@@ -588,11 +649,13 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                     {/* forceMount: mantém as abas montadas (as inativas ficam ocultas)
                         para o "Montar todos" gerar tudo de uma vez, não só a aba visível. */}
                     <TabsContent forceMount value="treino" className="space-y-3 mt-3 data-[state=inactive]:hidden">
-                      <PlanoTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                      <PlanoTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos}
+                        onBloqueioAuto={(estado) => aoMudarGeracaoAuto('treino', estado)} />
                       <DiretrizTreinoCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
                     </TabsContent>
                     <TabsContent forceMount value="nutricao" className="space-y-3 mt-3 data-[state=inactive]:hidden">
-                      <PlanoAlimentarCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
+                      <PlanoAlimentarCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos}
+                        onBloqueioAuto={(estado) => aoMudarGeracaoAuto('nutricao', estado)} />
                       <DiretrizNutricionalCard pacienteId={pacienteId} autoGerar={gerarTodos} ocultarGerador={faltaPlanos} />
                     </TabsContent>
                     <TabsContent forceMount value="clinico" className="space-y-3 mt-3 data-[state=inactive]:hidden">
@@ -762,6 +825,21 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
         </Accordion>
       </Card>
 
+      <LiberarPlanoDialog
+        tipo={liberarAlvo?.tabela === 'planos_alimentares' ? 'nutricao' : 'treino'}
+        planoId={liberarAlvo?.id ?? ''}
+        pacienteId={pacienteId}
+        open={!!liberarAlvo}
+        onOpenChange={(aberto) => { if (!aberto) setLiberarAlvo(null); }}
+        onLiberado={aoLiberarPlano}
+        podeLiberar={liberarAlvo?.tabela === 'planos_alimentares' ? chancelaNutri.pode : chancelaTreino.pode}
+        motivoBloqueio={liberarAlvo?.tabela === 'planos_alimentares' ? chancelaNutri.motivo : chancelaTreino.motivo}
+        tituloPlano={
+          liberarAlvo?.tabela === 'planos_alimentares'
+            ? data.planosAlim.find((p: any) => p.id === liberarAlvo.id)?.titulo
+            : data.planosTreino.find((p: any) => p.id === liberarAlvo?.id)?.titulo
+        }
+      />
     </div>
   );
 }

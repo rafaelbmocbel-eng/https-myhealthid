@@ -6,6 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dumbbell, CheckCircle2, ChevronDown, ChevronRight, Flame, Info, AlertTriangle, Loader2, PlayCircle, FileDown,
@@ -16,6 +20,11 @@ import { startOfWeek } from '@/lib/dateSafe';
 import { hojeLocalISO } from '@/lib/dataLocal';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import ComoFoiTreinoDialog from '@/components/paciente/ComoFoiTreinoDialog';
+import {
+  dorAcimaDoLimite, orientacaoDor, temRegistroEsforcoOuDor, textoRegistro,
+  type RegistroComoFoi, type RegistroTreinoFeito,
+} from '@/lib/acompanhamento';
 
 interface Props {
   pacienteId: string;
@@ -44,39 +53,79 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
   const [gifZoom, setGifZoom] = useState<{ url: string; nome: string } | null>(null);
   const [incomodo, setIncomodo] = useState(false);
   const [notaIncomodo, setNotaIncomodo] = useState('');
+  const [comoFoi, setComoFoi] = useState<{ key: string; nome: string; data: string } | null>(null);
+  const [desfazerPendente, setDesfazerPendente] = useState<{ key: string; registro: RegistroTreinoFeito } | null>(null);
 
   // Treinos feitos nesta semana (progresso) + hoje
   const { data: feitos } = useQuery({
     queryKey: ['plano-ia-treino-feito', pacienteId],
     queryFn: async () => {
       const inicioSemana = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString().split('T')[0];
-      const { data } = await (supabase as any).from('plano_ia_treino_feito')
-        .select('sessao_key, data').eq('paciente_id', pacienteId).gte('data', inicioSemana);
-      return (data || []) as { sessao_key: string; data: string }[];
+      const consultar = (colunas: string) => (supabase as any).from('plano_ia_treino_feito')
+        .select(colunas).eq('paciente_id', pacienteId).gte('data', inicioSemana);
+      const completa = await consultar('sessao_key, data, rpe, dor, observacao');
+      if (!completa.error) return (completa.data || []) as RegistroTreinoFeito[];
+      // Migration de acompanhamento ainda não aplicada: a marcação de feito segue funcionando.
+      const basica = await consultar('sessao_key, data');
+      return (basica.data || []) as RegistroTreinoFeito[];
     },
   });
 
-  const feitosHoje = useMemo(() => new Set((feitos || []).filter(f => f.data === hojeStr()).map(f => f.sessao_key)), [feitos]);
+  const feitosHoje = useMemo(
+    () => new Map((feitos || []).filter(f => f.data === hojeStr()).map(f => [f.sessao_key, f] as const)),
+    [feitos],
+  );
   const totalSemana = feitos?.length || 0;
 
   const marcar = useMutation({
-    mutationFn: async ({ key, jaFeito }: { key: string; jaFeito: boolean }) => {
+    mutationFn: async ({ key, jaFeito }: { key: string; nome?: string; jaFeito: boolean }) => {
       if (jaFeito) {
-        await (supabase as any).from('plano_ia_treino_feito')
+        const { error } = await (supabase as any).from('plano_ia_treino_feito')
           .delete().eq('paciente_id', pacienteId).eq('sessao_key', key).eq('data', hojeStr());
+        if (error) throw error;
       } else {
-        await (supabase as any).from('plano_ia_treino_feito')
-          .upsert({ paciente_id: pacienteId, sessao_key: key, data: hojeStr() }, { onConflict: 'paciente_id,sessao_key,data' });
+        // ignoreDuplicates: marcar de novo nunca mexe numa linha que já tenha esforço/dor registrados.
+        const { error } = await (supabase as any).from('plano_ia_treino_feito')
+          .upsert({ paciente_id: pacienteId, sessao_key: key, data: hojeStr() }, { onConflict: 'paciente_id,sessao_key,data', ignoreDuplicates: true });
+        if (error) throw error;
         // XP real (1x por sessão/dia)
         ganharXP(pacienteId, `treino-ia:${key}:${hojeStr()}`, 25);
       }
     },
-    onSuccess: (_, { jaFeito }) => {
-      if (!jaFeito) toast.success('Treino concluído! +25 XP 💪');
+    onSuccess: (_, { key, nome, jaFeito }) => {
+      if (!jaFeito) {
+        toast.success('Treino concluído! +25 XP 💪');
+        setComoFoi({ key, nome: nome || 'Treino', data: hojeStr() });
+      }
       qc.invalidateQueries({ queryKey: ['plano-ia-treino-feito', pacienteId] });
     },
     onError: () => toast.error('Não consegui salvar agora. Tente de novo.'),
   });
+
+  const registrarComoFoi = useMutation({
+    mutationFn: async ({ key, data, registro }: { key: string; data: string; registro: RegistroComoFoi }) => {
+      // Só as chaves informadas vão no payload: no conflito, o que ficou de fora não é sobrescrito.
+      const { error } = await (supabase as any).from('plano_ia_treino_feito')
+        .upsert({ paciente_id: pacienteId, sessao_key: key, data, ...registro }, { onConflict: 'paciente_id,sessao_key,data' });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Registro salvo. Obrigado!');
+      setComoFoi(null);
+      qc.invalidateQueries({ queryKey: ['plano-ia-treino-feito', pacienteId] });
+    },
+    onError: () => toast.error('Não consegui salvar agora. Tente de novo.'),
+  });
+
+  // Desfazer apaga a linha inteira (inclusive esforço e dor): se já houver registro, pede confirmação.
+  const pedirDesfazer = (key: string) => {
+    const registro = feitosHoje.get(key);
+    if (registro && temRegistroEsforcoOuDor(registro)) {
+      setDesfazerPendente({ key, registro });
+      return;
+    }
+    marcar.mutate({ key, jaFeito: true });
+  };
 
   const enviarIncomodo = async () => {
     if (!notaIncomodo.trim() || !onRegenerarComIncomodo) return;
@@ -160,7 +209,8 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
               {(Array.isArray(f.sessoes) ? f.sessoes : []).map((s: any, si: number) => {
                 const key = sessaoKey(fi, si, s.nome);
                 const aberto = aberta === key;
-                const feito = feitosHoje.has(key);
+                const registroHoje = feitosHoje.get(key);
+                const feito = !!registroHoje;
                 return (
                   <div key={si} className={cn('rounded-xl border', feito ? 'border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10' : 'border-border/40')}>
                     <button onClick={() => setAberta(aberto ? null : key)} className="w-full flex items-center gap-2 p-2.5 text-left">
@@ -221,6 +271,27 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
                           <p className="text-[11px] text-muted-foreground"><strong>Desaquecimento:</strong> {s.desaquecimento}</p>
                         )}
 
+                        {registroHoje && (
+                          <div className="rounded-lg bg-muted/30 px-2.5 py-2 space-y-1">
+                            <div className="flex items-center gap-2 text-[11px]">
+                              <span className="text-muted-foreground flex-1 min-w-0">
+                                {textoRegistro(registroHoje) || 'Como foi: sem registro'}
+                              </span>
+                              <button
+                                onClick={() => setComoFoi({ key, nome: s.nome || `Treino ${si + 1}`, data: registroHoje.data })}
+                                className="text-primary font-medium shrink-0"
+                              >
+                                {temRegistroEsforcoOuDor(registroHoje) ? 'Editar' : 'Registrar como foi'}
+                              </button>
+                            </div>
+                            {dorAcimaDoLimite(registroHoje.dor) && (
+                              <p className="text-[11px] text-red-700 dark:text-red-400 flex items-start gap-1">
+                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" /> {orientacaoDor(registroHoje.dor)}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
                         {/* Ações: marcar feito + incômodo */}
                         <div className="flex flex-col sm:flex-row gap-2 pt-1">
                           <Button
@@ -228,7 +299,7 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
                             variant={feito ? 'outline' : 'default'}
                             className="gap-1.5 flex-1"
                             disabled={marcar.isPending}
-                            onClick={() => marcar.mutate({ key, jaFeito: feito })}
+                            onClick={() => (feito ? pedirDesfazer(key) : marcar.mutate({ key, nome: s.nome || `Treino ${si + 1}`, jaFeito: false }))}
                           >
                             <CheckCircle2 className="h-4 w-4" />
                             {feito ? 'Feito hoje ✓ (desfazer)' : 'Marcar treino como feito'}
@@ -261,6 +332,41 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
           {gifZoom && <img src={gifZoom.url} alt={gifZoom.nome} className="w-full rounded-xl" />}
         </DialogContent>
       </Dialog>
+
+      <ComoFoiTreinoDialog
+        open={!!comoFoi}
+        onOpenChange={(o) => { if (!o) setComoFoi(null); }}
+        nomeSessao={comoFoi?.nome}
+        inicial={comoFoi ? (feitos || []).find(f => f.sessao_key === comoFoi.key && f.data === comoFoi.data) : null}
+        salvando={registrarComoFoi.isPending}
+        onSalvar={(registro) => { if (comoFoi) registrarComoFoi.mutate({ key: comoFoi.key, data: comoFoi.data, registro }); }}
+      />
+
+      <AlertDialog open={!!desfazerPendente} onOpenChange={(o) => { if (!o) setDesfazerPendente(null); }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desfazer este treino?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você já registrou como foi{desfazerPendente && textoRegistro(desfazerPendente.registro) ? ` (${textoRegistro(desfazerPendente.registro)})` : ''}.
+              {' '}Ao desfazer, esse registro também é apagado e o seu profissional deixa de vê-lo.
+              {desfazerPendente && dorAcimaDoLimite(desfazerPendente.registro.dor)
+                ? ' Como a dor passou do limite de alerta do app, vale manter o registro e procurar o seu profissional.'
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Manter treino</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (desfazerPendente) marcar.mutate({ key: desfazerPendente.key, jaFeito: true });
+                setDesfazerPendente(null);
+              }}
+            >
+              Desfazer e apagar registro
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Reportar incômodo → adapta o plano */}
       <Dialog open={incomodo} onOpenChange={(o) => { if (!o) setIncomodo(false); }}>
