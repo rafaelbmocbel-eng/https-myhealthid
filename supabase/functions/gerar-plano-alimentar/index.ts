@@ -4,7 +4,7 @@ import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logUsoIA } from "../_shared/log-ia.ts";
 import {
-  carregarMotoresClinicos, clientePodeGerar, insumosDosMotores, montarEntradaTriagem, resolverContextoGeracao,
+  carregarMotoresClinicos, insumosDosMotores, montarEntradaTriagem, resolverContextoGeracao,
   textoAnamneseNutricional, textoFichaClinica, textoMyID, textoPresencial, textoQuestionarios,
 } from "../_shared/motores-plano.ts";
 import { avaliarTriagem, decidirLiberacao, textoTriagemParaPrompt } from "../_shared/triagem-bloqueio.ts";
@@ -87,11 +87,10 @@ Deno.serve(async (req) => {
     const chamador = ctx.chamador;
     const pacienteId = ctx.pacienteId ?? null;
 
-    // TRAVA DE ENTITLEMENT: se quem chama é o PRÓPRIO cliente (não o profissional),
-    // gerar o plano alimentar com IA exige Premium ou período de teste. Cliente
-    // clínico não gera sozinho — paga o Premium ou o profissional monta.
-    if (chamador === "cliente" && !clientePodeGerar(ctx.paciente ?? null)) {
-      return json({ error: "Recurso Premium: assine o Premium ou peça ao seu profissional para montar o plano." }, 402);
+    // O plano é sempre montado, editado e liberado pelo PROFISSIONAL; o cliente só
+    // vê o que foi liberado. Quem chama como próprio cliente é recusado no servidor.
+    if (chamador === "cliente") {
+      return json({ error: "Seu plano é montado e liberado pelo seu profissional. Ele aparece aqui assim que for liberado." }, 403);
     }
 
     // TRÊS MOTORES (fonte única em _shared/motores-plano.ts): MyID +

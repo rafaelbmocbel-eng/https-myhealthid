@@ -428,14 +428,8 @@ export default function PacienteMetasDesafios({ pacienteId, soLeitura = false }:
           .select('dicas')
           .eq('paciente_id', pacienteId)
           .maybeSingle(),
-        (supabase as any).from('planos_treino')
-          .select('titulo, objetivo, created_at')
-          .eq('paciente_id', pacienteId).eq('ativo', true).eq('aprovado', true)
-          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        (supabase as any).from('planos_alimentares')
-          .select('titulo, calorias_alvo, created_at')
-          .eq('paciente_id', pacienteId).eq('ativo', true).eq('aprovado', true)
-          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        (supabase as any).rpc('meu_plano_liberado', { p_tipo: 'treino' }),
+        (supabase as any).rpc('meu_plano_liberado', { p_tipo: 'nutricao' }),
       ]);
 
       const diarios = diarioRes.data || [];

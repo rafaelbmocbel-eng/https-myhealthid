@@ -7,9 +7,10 @@ const h = vi.hoisted(() => ({
   user: { id: 'user-1' },
   invoke: vi.fn(),
   upserts: [] as { tabela: string; valor: Record<string, unknown> }[],
-  iaRows: [] as Record<string, unknown>[],
+  rpc: {} as Record<string, unknown>,
   anamneseRespostas: null as null | Record<string, unknown>,
   toast: { success: vi.fn(), error: vi.fn() },
+  rpcChamadas: [] as { nome: string; tipo: string }[],
 }));
 
 vi.mock('sonner', () => ({ toast: h.toast }));
@@ -22,8 +23,6 @@ vi.mock('@/integrations/supabase/client', () => {
     switch (tabela) {
       case 'pacientes':
         return { data: { id: 'pac-1', data_nascimento: '1990-05-10', sexo: 'feminino', genero: null }, error: null };
-      case 'planos_ia_cliente':
-        return { data: h.iaRows, error: null };
       case 'nutricao_anamnese':
         return { data: h.anamneseRespostas ? { respostas: h.anamneseRespostas } : null, error: null };
       case 'diretrizes_profissionais':
@@ -47,6 +46,10 @@ vi.mock('@/integrations/supabase/client', () => {
   return {
     supabase: {
       functions: { invoke: (...a: unknown[]) => h.invoke(...a) },
+      rpc: (nome: string, args: { p_tipo: string }) => {
+        h.rpcChamadas.push({ nome, tipo: args.p_tipo });
+        return Promise.resolve({ data: h.rpc[args.p_tipo] ?? null, error: null });
+      },
       from: (t: string) => construtor(t),
     },
   };
@@ -59,100 +62,44 @@ vi.mock('@/components/planos/TriagemSegurancaCard', () => ({
 
 import { PlanoPersonalizadoSection } from '../pages/paciente/PacientePlanoIA';
 
-const triagemCompleta = {
-  versao: 1, respondida_em: '2026-10-01T10:00:00Z',
-  gestante_lactante: 'nao', transtorno_alimentar: 'nao', doenca_renal: 'nao',
-  diabetes_insulina: 'nao', cardio_pressao: 'nao', cirurgia_lesao_recente: 'nao',
-};
-
-const bloqueioCliente = {
-  ok: false,
-  bloqueio: {
-    nivel: 'bloqueia',
-    motivos: [{ codigo: 'dado_ausente_triagem', rotulo: 'Triagem de segurança não respondida', detalhe: '', origem: 'dados_ausentes', nivel: 'bloqueia' }],
-    dadosAusentes: ['triagem_autodeclarada'],
-    pode_prosseguir_profissional: false,
-  },
-};
-
 function renderizar() {
   return render(<MemoryRouter><PlanoPersonalizadoSection /></MemoryRouter>);
 }
 
-beforeEach(() => {
-  h.invoke.mockReset();
-  h.upserts.length = 0;
-  h.iaRows = [];
-  h.anamneseRespostas = null;
-  h.toast.success.mockReset();
-  h.toast.error.mockReset();
-});
-afterEach(() => cleanup());
+describe('Plano do cliente: só o que o profissional liberou', () => {
+  beforeEach(() => {
+    h.rpc = {};
+    h.rpcChamadas.length = 0;
+    h.upserts.length = 0;
+    h.invoke.mockReset();
+    h.anamneseRespostas = null;
+  });
+  afterEach(() => cleanup());
 
-describe('Plano IA do cliente premium + triagem de segurança', () => {
-  it('sem triagem completa, o cartão da triagem aparece aberto', async () => {
+  it('lê treino e nutrição liberados pela RPC (nunca direto das tabelas) e não gera nada', async () => {
+    renderizar();
+    await waitFor(() => expect(h.rpcChamadas.length).toBe(2));
+    expect(h.rpcChamadas.map((c) => c.tipo).sort()).toEqual(['nutricao', 'treino']);
+    expect(h.rpcChamadas.every((c) => c.nome === 'meu_plano_liberado')).toBe(true);
+    expect(screen.queryByText(/Gerar treino/i)).toBeNull();
+    expect(screen.queryByText(/Montar meu plano/i)).toBeNull();
+    expect(h.invoke).not.toHaveBeenCalled();
+  });
+
+  it('sem plano liberado mostra que o profissional monta e libera', async () => {
+    renderizar();
+    expect(await screen.findByText(/assim que for liberado/i)).toBeTruthy();
+  });
+
+  it('mostra o treino liberado pelo profissional com o treino interativo', async () => {
+    h.rpc.treino = { titulo: 'Treino A', conteudo: { fases: [] } };
+    renderizar();
+    expect(await screen.findByTestId('treino-interativo')).toBeTruthy();
+  });
+
+  it('a triagem do cliente aparece aberta enquanto estiver incompleta', async () => {
     renderizar();
     const card = await screen.findByTestId('triagem-card');
-    expect(card).toHaveAttribute('data-aberto', 'true');
-  });
-
-  it('com a triagem completa, o cartão fica recolhido', async () => {
-    h.anamneseRespostas = { triagem: triagemCompleta };
-    renderizar();
-    const card = await screen.findByTestId('triagem-card');
-    expect(card).toHaveAttribute('data-aberto', 'false');
-  });
-
-  it('bloqueio da edge: mensagem acolhedora, nada é salvo, sem opção de prosseguir; leva à triagem', async () => {
-    h.invoke.mockResolvedValue({ data: bloqueioCliente, error: null });
-    renderizar();
-    fireEvent.click(await screen.findByRole('button', { name: 'Gerar treino' }));
-
-    expect(await screen.findByText('Vamos cuidar disso com o seu profissional')).toBeInTheDocument();
-    expect(screen.getByText(/Fale com o seu profissional/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Gerar mesmo assim/ })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Estou ciente/)).not.toBeInTheDocument();
-    expect(h.upserts).toHaveLength(0);
-    expect(h.toast.error).not.toHaveBeenCalled();
-
-    const corpo = (h.invoke.mock.calls[0][1] as { body: Record<string, unknown> }).body;
-    expect(corpo).toMatchObject({ paciente_id: 'pac-1', sexo: 'feminino' });
-    expect(typeof corpo.idade).toBe('number');
-    expect(corpo).not.toHaveProperty('override');
-
-    fireEvent.click(screen.getByRole('button', { name: /Abrir a triagem de segurança/ }));
-    await waitFor(() => expect(screen.queryByText('Vamos cuidar disso com o seu profissional')).not.toBeInTheDocument());
-    expect(screen.getByTestId('triagem-card')).toHaveAttribute('data-aberto', 'true');
-  });
-
-  it('"Gerar treino + nutrição": um plano bloqueado não impede o outro de ser salvo', async () => {
-    h.invoke
-      .mockResolvedValueOnce({ data: { ok: true, plano: { titulo: 'Meu treino', fases: [] } }, error: null })
-      .mockResolvedValueOnce({ data: bloqueioCliente, error: null });
-    renderizar();
-    fireEvent.click(await screen.findByRole('button', { name: /Gerar treino \+ nutrição/ }));
-
-    expect(await screen.findByText('Vamos cuidar disso com o seu profissional')).toBeInTheDocument();
-    expect(h.upserts).toHaveLength(1);
-    expect(h.upserts[0].valor).toMatchObject({ tipo: 'treino', paciente_id: 'pac-1' });
-    expect(h.toast.success).toHaveBeenCalledWith(expect.stringMatching(/Um dos planos ficou pronto/));
-  });
-
-  it('plano gerado pelo cliente nunca exibe selo de liberação, mesmo com aprovação forjada no conteúdo', async () => {
-    h.iaRows = [{
-      tipo: 'treino', titulo: 'Meu treino',
-      conteudo: {
-        fases: [],
-        _governanca: {
-          fonte: { tipo: 'ia', modelo: 'gemini-2.5-flash' },
-          aprovacao: { por_nome: 'Dra. Falsa', em: '2026-10-01T15:00:00Z', versao: 3 },
-        },
-      },
-    }];
-    renderizar();
-    expect(await screen.findByText('Gerado por IA · sem revisão de profissional')).toBeInTheDocument();
-    expect(screen.queryByText(/Liberado/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Dra\. Falsa/)).not.toBeInTheDocument();
-    expect(screen.getByTestId('treino-interativo')).toBeInTheDocument();
+    expect(card.getAttribute('data-aberto')).toBe('true');
   });
 });

@@ -139,7 +139,7 @@ export default function PlanoTreinoInterativo({ pacienteId, titulo, conteudo, on
     try {
       const [{ data: pac }, { data: nutRow }] = await Promise.all([
         supabase.from('pacientes').select('nome, sobrenome, terapeuta_id').eq('id', pacienteId).maybeSingle(),
-        (supabase as any).from('planos_ia_cliente').select('conteudo').eq('paciente_id', pacienteId).eq('tipo', 'nutricao').maybeSingle(),
+        (supabase as any).rpc('meu_plano_liberado', { p_tipo: 'nutricao' }),
       ]);
       const nome = pac ? `${pac.nome || ''} ${pac.sobrenome || ''}`.trim() : ((user?.user_metadata?.nome as string) || 'Paciente');
       const { gerarPDFPlanoTreino } = await import('@/utils/pdfPlanoTreino');

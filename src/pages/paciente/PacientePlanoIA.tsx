@@ -1,78 +1,48 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
-import { Loader2, Dumbbell, Salad, Lock, Sparkles, ChevronRight, Info, ClipboardList, Check, Wand2, RefreshCw } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import { Loader2, Dumbbell, Salad, Lock, Sparkles, Info, ClipboardList, Check } from 'lucide-react';
 import PlanoTreinoInterativo from '@/components/paciente/PlanoTreinoInterativo';
-import { INSTRUMENTOS, CLASSIFICACAO_LABEL } from '@/lib/instrumentosClinicos';
-import TriagemBloqueioDialog from '@/components/planos/TriagemBloqueioDialog';
 import TriagemSegurancaCard from '@/components/planos/TriagemSegurancaCard';
 import SeloGovernanca from '@/components/planos/SeloGovernanca';
 import ResumoAcompanhamento from '@/components/planos/ResumoAcompanhamento';
-import { gerarPlanoComTriagem, idadeEmAnos } from '@/lib/geracaoPlano';
-import { lerGovernanca, lerTriagemSalva, triagemCompleta, type BloqueioTriagem } from '@/lib/governanca';
+import { lerGovernanca, lerTriagemSalva, triagemCompleta } from '@/lib/governanca';
 
 // Seção reutilizável do plano personalizado (treino IA + personal + nutrição).
 // Mora dentro de "Treino personalizado" (/paciente/questionarios?foco=plano) —
 // o único lugar correto. Sem wrapper de layout (o pai fornece).
 export function PlanoPersonalizadoSection() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const { isFree, isPremium, isInTrial, isLoading: acLoading } = useWellnessAccess();
   const [loading, setLoading] = useState(true);
   const [erroCarregar, setErroCarregar] = useState(false);
   const [treino, setTreino] = useState<any>(null);
   const [dieta, setDieta] = useState<any>(null);
   const [diretrizes, setDiretrizes] = useState<any[]>([]);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
-  // Planos gerados pela IA para o próprio cliente (premium)
-  const [treinoIA, setTreinoIA] = useState<any>(null);
-  const [dietaIA, setDietaIA] = useState<any>(null);
-  const [gerando, setGerando] = useState<'' | 'treino' | 'nutricao' | 'tudo'>('');
-  // Triagem de segurança: a edge pode recusar a geração (nunca é o cliente quem decide
-  // prosseguir) e o cliente completa a triagem autodeclarada para o plano ser montado.
-  const [bloqueioCliente, setBloqueioCliente] = useState<BloqueioTriagem | null>(null);
   const [triagemCompletaOk, setTriagemCompletaOk] = useState<boolean | null>(null);
-  const [triagemForcarAberta, setTriagemForcarAberta] = useState(false);
-  const [triagemChave, setTriagemChave] = useState(0);
 
-  // VER o que o profissional montou: liberado para todo cliente (inclusive o
-  // clínico). GERAR o próprio plano com IA: só Premium ou período de teste — o
-  // cliente clínico NÃO gera sozinho (paga o Premium ou o profissional monta).
-  const podeGerar = isPremium || isInTrial;
-
+  // O plano é sempre criado, editado e LIBERADO pelo profissional; o cliente só vê
+  // o que foi liberado (por RPC, que já tira da resposta a revisão e a justificativa).
   const carregar = async (pid: string) => {
-    const [t, d, dir, ia, anam] = await Promise.all([
-      (supabase as any).from('planos_treino').select('titulo, objetivo, estrutura, created_at')
-        .eq('paciente_id', pid).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      (supabase as any).from('planos_alimentares').select('titulo, calorias_alvo, plano, created_at')
-        .eq('paciente_id', pid).eq('ativo', true).eq('aprovado', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    const [t, d, dir, anam] = await Promise.all([
+      (supabase as any).rpc('meu_plano_liberado', { p_tipo: 'treino' }),
+      (supabase as any).rpc('meu_plano_liberado', { p_tipo: 'nutricao' }),
       // RLS só entrega o que o profissional enviou ao portal — todas as áreas
       (supabase as any).from('diretrizes_profissionais').select('titulo, area, conteudo, updated_at')
         .eq('paciente_id', pid).eq('enviada_portal', true)
         .order('updated_at', { ascending: false }),
-      (supabase as any).from('planos_ia_cliente').select('tipo, titulo, conteudo')
-        .eq('paciente_id', pid),
       (supabase as any).from('nutricao_anamnese').select('respostas').eq('paciente_id', pid).maybeSingle(),
     ]);
-    const falha = [t, d, dir, ia].find(r => r.error);
+    const falha = [t, d, dir].find(r => r.error);
     if (falha) throw falha.error;
     // Falha ao ler a anamnese não derruba a tela: a triagem fica "desconhecida" e o card aparece aberto.
     setTriagemCompletaOk(anam.error ? null : triagemCompleta(lerTriagemSalva(anam.data?.respostas).respostas));
     setTreino(t.data || null);
     setDieta(d.data || null);
     setDiretrizes(dir.data || []);
-    const iaRows = (ia.data || []) as any[];
-    setTreinoIA(iaRows.find(r => r.tipo === 'treino') || null);
-    setDietaIA(iaRows.find(r => r.tipo === 'nutricao') || null);
   };
 
   const carregarTudo = async () => {
@@ -98,105 +68,7 @@ export function PlanoPersonalizadoSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Gera o plano do cliente (treino e/ou nutrição) a partir do MyID +
-  // questionários + anamnese. Usa as MESMAS funções de IA do profissional
-  // (que aceitam paciente_id) e persiste em planos_ia_cliente.
-  const gerarPlano = async (alvo: 'treino' | 'nutricao' | 'tudo', incomodo?: string) => {
-    if (!pacienteId) return;
-    // Trava do cliente: gerar o próprio plano é Premium/teste. Sem isso, leva ao Premium.
-    if (!podeGerar) { navigate('/paciente/plano'); return; }
-    setGerando(alvo);
-    try {
-      const [{ data: anamRow }, { data: questRows }, { data: pacRow }] = await Promise.all([
-        (supabase as any).from('nutricao_anamnese').select('respostas').eq('paciente_id', pacienteId).maybeSingle(),
-        (supabase as any).from('questionarios_clinicos')
-          .select('instrumento, classificacao, created_at').eq('paciente_id', pacienteId)
-          .order('created_at', { ascending: false }),
-        (supabase as any).from('pacientes').select('data_nascimento, sexo, genero').eq('id', pacienteId).maybeSingle(),
-      ]);
-      const idadePerfil = idadeEmAnos(pacRow?.data_nascimento) ?? undefined;
-      const sexoPerfil = (pacRow?.sexo || pacRow?.genero || undefined) as string | undefined;
-      // Quando a triagem recusa um dos planos, o outro (se houver) continua; o aviso vem no fim.
-      let bloqueado: BloqueioTriagem | null = null;
-      let geradoAlgum = false;
-      const r = (anamRow?.respostas || {}) as Record<string, string>;
-      const objetivo = (r.objetivo || '').trim() || 'Saúde geral, alívio de dor e mais energia no dia a dia';
-
-      // Perfil individual que embasou o treino — guardado JUNTO do plano para
-      // deixar claro (inclusive na página pública) que é feito dos SEUS
-      // questionários, não genérico.
-      const ultQuest = new Map<string, any>();
-      ((questRows as any[]) || []).forEach((q) => { if (!ultQuest.has(q.instrumento)) ultQuest.set(q.instrumento, q); });
-      const baseadoEm = {
-        objetivo,
-        questionarios: [...ultQuest.values()].map((q: any) => ({
-          sigla: (INSTRUMENTOS[q.instrumento as keyof typeof INSTRUMENTOS]?.sigla) || String(q.instrumento).toUpperCase(),
-          nome: INSTRUMENTOS[q.instrumento as keyof typeof INSTRUMENTOS]?.nome,
-          classificacao: CLASSIFICACAO_LABEL[q.classificacao] || q.classificacao,
-        })),
-      };
-
-      if (alvo === 'treino' || alvo === 'tudo') {
-        const rt = await gerarPlanoComTriagem('gerar-plano-treino', {
-          paciente_id: pacienteId, objetivo, nivel: 'iniciante', frequencia_semanal: 3, duracao_semanas: 8,
-          idade: idadePerfil, sexo: sexoPerfil,
-          // Incômodo relatado pelo cliente → o plano evita/adapta a região
-          ...(incomodo ? { restricoes: `IMPORTANTE — incômodo relatado pelo paciente, adapte com cuidado (reduza carga/ADM ou substitua exercícios que sobrecarreguem a região; progrida devagar): ${incomodo}` } : {}),
-        });
-        if (rt.tipo === 'bloqueio') {
-          bloqueado = rt.bloqueio;
-        } else {
-          const plano = rt.plano;
-          const { error: errSalvar } = await (supabase as any).from('planos_ia_cliente').upsert(
-            { paciente_id: pacienteId, tipo: 'treino', titulo: plano.titulo || 'Meu treino personalizado', conteudo: { ...plano, baseadoEm } },
-            { onConflict: 'paciente_id,tipo' });
-          if (errSalvar) throw errSalvar;
-          geradoAlgum = true;
-        }
-      }
-
-      if (alvo === 'nutricao' || alvo === 'tudo') {
-        const peso = Number(r.peso_kg) || null;
-        const altura = Number(r.altura_cm) || null;
-        const imc = peso && altura ? +(peso / ((altura / 100) ** 2)).toFixed(1) : null;
-        const rn = await gerarPlanoComTriagem('gerar-plano-alimentar', {
-          paciente_id: pacienteId, objetivo,
-          refeicoes_por_dia: Number(r.refeicoes_por_dia) || 5,
-          restricoes: r.restricoes_alergias || '',
-          preferencias: r.preferencias || '',
-          // Dados que calculam calorias/macros (TMB/TDEE)
-          antropometria: (peso || altura) ? { peso_kg: peso, altura_cm: altura, imc } : null,
-          idade: r.idade ? Number(r.idade) : idadePerfil,
-          sexo: r.sexo || sexoPerfil,
-          nivel_atividade: r.nivel_atividade || undefined,
-        });
-        if (rn.tipo === 'bloqueio') {
-          bloqueado = bloqueado ?? rn.bloqueio;
-        } else {
-          const plano = rn.plano;
-          const { error: errSalvar } = await (supabase as any).from('planos_ia_cliente').upsert(
-            { paciente_id: pacienteId, tipo: 'nutricao', titulo: plano.titulo || 'Meu plano alimentar personalizado', conteudo: plano },
-            { onConflict: 'paciente_id,tipo' });
-          if (errSalvar) throw errSalvar;
-          geradoAlgum = true;
-        }
-      }
-
-      await carregar(pacienteId);
-      if (bloqueado) {
-        setBloqueioCliente(bloqueado);
-        if (geradoAlgum) toast.success('Um dos planos ficou pronto. Role a tela para ver.');
-        return;
-      }
-      toast.success(incomodo ? 'Treino adaptado ao seu incômodo! 💪' : 'Plano pronto! 💪 Role a tela para ver.');
-    } catch (e: any) {
-      toast.error(e?.message || 'Não consegui gerar o plano agora. Tente de novo em instantes.');
-    } finally {
-      setGerando('');
-    }
-  };
-
-  if (acLoading || loading) {
+  if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
@@ -214,81 +86,14 @@ export function PlanoPersonalizadoSection() {
               </p>
             </div>
 
-            {/* A anamnese nutricional agora mora dentro dos "Questionários do
-                plano" (QuestionariosClinicosSection), não como card separado. */}
-
-            {/* Gerador de plano do cliente (IA) — só Premium/teste. O cliente
-                clínico não gera sozinho: paga o Premium OU o profissional monta. */}
-            {podeGerar && pacienteId && (
+            {/* A triagem de segurança do cliente ajuda o profissional a montar o plano. */}
+            {pacienteId && (
               <TriagemSegurancaCard
-                key={triagemChave}
                 pacienteId={pacienteId}
-                defaultAberto={triagemForcarAberta || triagemCompletaOk !== true}
-                onSalvo={() => { setTriagemCompletaOk(true); setBloqueioCliente(null); }}
+                defaultAberto={triagemCompletaOk !== true}
+                onSalvo={() => setTriagemCompletaOk(true)}
               />
             )}
-            {podeGerar ? (
-              <Card className="border-primary/25">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Wand2 className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold">Montar meu plano personalizado</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        Treino e alimentação sob medida, a partir do seu MyID, questionários e anamnese.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Button variant="outline" className="gap-1.5" disabled={!!gerando}
-                      onClick={() => gerarPlano('treino')}>
-                      {gerando === 'treino' ? <Loader2 className="h-4 w-4 animate-spin" /> : treinoIA ? <RefreshCw className="h-4 w-4" /> : <Dumbbell className="h-4 w-4" />}
-                      {treinoIA ? 'Refazer treino' : 'Gerar treino'}
-                    </Button>
-                    <Button variant="outline" className="gap-1.5" disabled={!!gerando}
-                      onClick={() => gerarPlano('nutricao')}>
-                      {gerando === 'nutricao' ? <Loader2 className="h-4 w-4 animate-spin" /> : dietaIA ? <RefreshCw className="h-4 w-4" /> : <Salad className="h-4 w-4" />}
-                      {dietaIA ? 'Refazer nutrição' : 'Gerar nutrição'}
-                    </Button>
-                  </div>
-                  {!treinoIA && !dietaIA && (
-                    <Button className="w-full gap-1.5" disabled={!!gerando} onClick={() => gerarPlano('tudo')}>
-                      {gerando === 'tudo' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                      {gerando === 'tudo' ? 'Montando seu plano…' : 'Gerar treino + nutrição'}
-                    </Button>
-                  )}
-                  <p className="text-[10px] text-muted-foreground">
-                    Responda a anamnese acima antes para o plano ficar mais preciso. A geração leva alguns segundos.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : isFree ? (
-              // Só o free vê o convite: o cliente clínico não assina o Premium
-              // (a página de assinatura não oferece para ele) — o profissional monta.
-              <Card className="border-0 shadow-md overflow-hidden">
-                <div className="p-5 text-center text-white" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)' }}>
-                  <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-2">
-                    <Wand2 className="h-6 w-6" />
-                  </div>
-                  <h2 className="text-base font-black">Monte seu treino e nutrição sob medida</h2>
-                  <p className="text-xs text-white/85 mt-1 max-w-sm mx-auto">
-                    Criar seu próprio plano personalizado faz parte do <strong>Premium</strong>. Você continua vendo tudo o que seu profissional montar para você aqui.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center mt-3">
-                    <Button variant="secondary" className="gap-1.5 bg-white text-primary hover:bg-white/90 border-0"
-                      onClick={() => navigate('/paciente/plano')}>
-                      Assinar o Premium <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button variant="secondary" className="gap-1.5 bg-white/20 hover:bg-white/30 text-white border-0"
-                      onClick={() => navigate('/paciente/profissionais')}>
-                      Falar com meu profissional
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ) : null}
 
             {/* Planos agrupados por ÁREA, cada um com seu cabeçalho. Cada seção
                 só aparece se tiver conteúdo liberado/gerado. */}
@@ -307,8 +112,8 @@ export function PlanoPersonalizadoSection() {
               const odontoDir = dirDe(['odontologia']);
               const outrasDir = diretrizes.filter((d: any) => !usadas.has(d.area));
 
-              const temPersonal = personalDir.length > 0 || !!treino || !!treinoIA;
-              const temNutri = nutriDir.length > 0 || !!dieta || !!dietaIA;
+              const temPersonal = personalDir.length > 0 || !!treino;
+              const temNutri = nutriDir.length > 0 || !!dieta;
               const vazio = !reab.length && !temPersonal && !temNutri && !psiDir.length && !medDir.length && !odontoDir.length && !outrasDir.length;
 
               const mapDir = (list: any[]) => list.map((d, i) => <DiretrizProfissionalView key={i} diretriz={d} />);
@@ -320,19 +125,15 @@ export function PlanoPersonalizadoSection() {
                   {temPersonal && (
                     <SecaoPlano titulo="🏋️ Personal (treino)">
                       {mapDir(personalDir)}
-                      <PlanoTreinoView treino={treino} />
-                      {!treino && treinoIA && pacienteId && (
+                      {treino && pacienteId && (
                         <>
-                          {/* planos_ia_cliente é gravável pelo próprio cliente: o selo nunca diz "liberado". */}
-                          <SeloGovernanca conteudo={treinoIA.conteudo} origem="cliente" visao="paciente" />
+                          <SeloGovernanca conteudo={treino.conteudo} origem="profissional" visao="paciente" aprovado />
                           <PlanoTreinoInterativo
                             pacienteId={pacienteId}
-                            titulo={treinoIA.titulo}
-                            conteudo={treinoIA.conteudo}
-                            onRegenerarComIncomodo={(nota) => gerarPlano('treino', nota)}
-                            regenerando={gerando === 'treino'}
+                            titulo={treino.titulo}
+                            conteudo={treino.conteudo}
                           />
-                          <ResumoAcompanhamento conteudo={treinoIA.conteudo} aprovacaoEm={lerGovernanca(treinoIA.conteudo)?.fonte?.gerado_em} />
+                          <ResumoAcompanhamento conteudo={treino.conteudo} aprovacaoEm={lerGovernanca(treino.conteudo)?.aprovacao?.em} />
                         </>
                       )}
                     </SecaoPlano>
@@ -341,11 +142,11 @@ export function PlanoPersonalizadoSection() {
                   {temNutri && (
                     <SecaoPlano titulo="🥗 Nutricional">
                       {mapDir(nutriDir)}
-                      <PlanoDietaView dieta={dieta} />
-                      {!dieta && dietaIA && (
+                      {dieta && (
                         <>
-                          <PlanoDietaView dieta={{ titulo: dietaIA.titulo, plano: dietaIA.conteudo, calorias_alvo: dietaIA.conteudo?.calorias_totais }} ia />
-                          <ResumoAcompanhamento conteudo={dietaIA.conteudo} aprovacaoEm={lerGovernanca(dietaIA.conteudo)?.fonte?.gerado_em} />
+                          <SeloGovernanca conteudo={dieta.conteudo} origem="profissional" visao="paciente" aprovado />
+                          <PlanoDietaView dieta={{ titulo: dieta.titulo, plano: dieta.conteudo, calorias_alvo: dieta.calorias_alvo }} />
+                          <ResumoAcompanhamento conteudo={dieta.conteudo} aprovacaoEm={lerGovernanca(dieta.conteudo)?.aprovacao?.em} />
                         </>
                       )}
                     </SecaoPlano>
@@ -361,11 +162,7 @@ export function PlanoPersonalizadoSection() {
                       <Sparkles className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                       <p className="text-sm font-medium text-muted-foreground">Nenhum plano ainda</p>
                       <p className="text-xs text-muted-foreground/60 mt-1">
-                        {podeGerar
-                          ? 'Toque em "Gerar treino + nutrição" acima para montar o seu — ou seu profissional pode montar um.'
-                          : isFree
-                            ? 'Seu profissional pode montar um plano sob medida para você. Assine o Premium para criar o seu com IA quando quiser.'
-                            : 'Seu profissional monta seu plano sob medida — ele aparece aqui assim que for liberado.'}
+                        Seu profissional monta seu plano sob medida — ele aparece aqui assim que for liberado.
                       </p>
                     </CardContent></Card>
                   )}
@@ -373,17 +170,6 @@ export function PlanoPersonalizadoSection() {
               );
             })()}
 
-            <TriagemBloqueioDialog
-              bloqueio={bloqueioCliente}
-              chamador="cliente"
-              onCancelar={() => setBloqueioCliente(null)}
-              onProsseguir={() => setBloqueioCliente(null)}
-              onAbrirTriagem={() => {
-                setBloqueioCliente(null);
-                setTriagemForcarAberta(true);
-                setTriagemChave((k) => k + 1);
-              }}
-            />
     </div>
   );
 }
