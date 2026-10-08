@@ -1,45 +1,52 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 
 const h = vi.hoisted(() => ({
   // Objeto estável: o componente recarrega tudo quando a referência de `user` muda.
   user: { id: 'user-1' },
   invoke: vi.fn(),
-  upserts: [] as { tabela: string; valor: Record<string, unknown> }[],
-  rpc: {} as Record<string, unknown>,
+  escritas: [] as { tabela: string; op: string }[],
+  tabelasLidas: [] as string[],
+  rpcChamadas: [] as { nome: string; tipo: string }[],
+  plano: {} as Record<string, unknown>,
+  status: {} as Record<string, unknown>,
+  acesso: { isFree: false, isPremium: true, isInTrial: false, isLoading: false },
+  terapeutaId: null as string | null,
   anamneseRespostas: null as null | Record<string, unknown>,
   toast: { success: vi.fn(), error: vi.fn() },
-  rpcChamadas: [] as { nome: string; tipo: string }[],
 }));
 
 vi.mock('sonner', () => ({ toast: h.toast }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: h.user }) }));
-vi.mock('@/hooks/useWellnessAccess', () => ({
-  useWellnessAccess: () => ({ isFree: false, isPremium: true, isInTrial: false, isLoading: false }),
-}));
+vi.mock('@/hooks/useWellnessAccess', () => ({ useWellnessAccess: () => h.acesso }));
 vi.mock('@/integrations/supabase/client', () => {
   const dados = (tabela: string) => {
     switch (tabela) {
       case 'pacientes':
-        return { data: { id: 'pac-1', data_nascimento: '1990-05-10', sexo: 'feminino', genero: null }, error: null };
+        return {
+          data: { id: 'pac-1', terapeuta_id: h.terapeutaId, data_nascimento: '1990-05-10', sexo: 'feminino', genero: null },
+          error: null,
+        };
       case 'nutricao_anamnese':
         return { data: h.anamneseRespostas ? { respostas: h.anamneseRespostas } : null, error: null };
       case 'diretrizes_profissionais':
-      case 'questionarios_clinicos':
         return { data: [], error: null };
       default:
         return { data: null, error: null };
     }
   };
   const construtor = (tabela: string) => {
+    h.tabelasLidas.push(tabela);
     const b: Record<string, unknown> = {};
     for (const m of ['select', 'eq', 'order', 'limit']) b[m] = () => b;
     b.maybeSingle = () => Promise.resolve(dados(tabela));
-    b.upsert = (valor: Record<string, unknown>) => {
-      h.upserts.push({ tabela, valor });
-      return Promise.resolve({ error: null });
-    };
+    for (const op of ['upsert', 'insert', 'update', 'delete']) {
+      b[op] = () => {
+        h.escritas.push({ tabela, op });
+        return b;
+      };
+    }
     b.then = (ok: (v: unknown) => unknown, ko: (e: unknown) => unknown) => Promise.resolve(dados(tabela)).then(ok, ko);
     return b;
   };
@@ -48,58 +55,351 @@ vi.mock('@/integrations/supabase/client', () => {
       functions: { invoke: (...a: unknown[]) => h.invoke(...a) },
       rpc: (nome: string, args: { p_tipo: string }) => {
         h.rpcChamadas.push({ nome, tipo: args.p_tipo });
-        return Promise.resolve({ data: h.rpc[args.p_tipo] ?? null, error: null });
+        const fonte = nome === 'meu_status_plano_cliente' ? h.status : h.plano;
+        return Promise.resolve({ data: fonte[args.p_tipo] ?? null, error: null });
       },
       from: (t: string) => construtor(t),
     },
   };
 });
 
-vi.mock('@/components/paciente/PlanoTreinoInterativo', () => ({ default: () => <div data-testid="treino-interativo" /> }));
+vi.mock('@/components/paciente/PlanoTreinoInterativo', () => ({
+  default: ({ onRegenerarComIncomodo }: { onRegenerarComIncomodo?: (nota: string) => void }) => (
+    <div data-testid="treino-interativo">
+      {onRegenerarComIncomodo && <button onClick={() => onRegenerarComIncomodo('dor no joelho')}>Senti incômodo</button>}
+    </div>
+  ),
+}));
 vi.mock('@/components/planos/TriagemSegurancaCard', () => ({
   default: ({ defaultAberto }: { defaultAberto?: boolean }) => <div data-testid="triagem-card" data-aberto={String(!!defaultAberto)} />,
 }));
 
 import { PlanoPersonalizadoSection } from '../pages/paciente/PacientePlanoIA';
 
-function renderizar() {
-  return render(<MemoryRouter><PlanoPersonalizadoSection /></MemoryRouter>);
+const triagemCompleta = {
+  versao: 1, respondida_em: '2026-10-01T10:00:00Z',
+  gestante_lactante: 'nao', transtorno_alimentar: 'nao', doenca_renal: 'nao',
+  diabetes_insulina: 'nao', cardio_pressao: 'nao', cirurgia_lesao_recente: 'nao',
+};
+
+const bloqueioCliente = {
+  ok: false,
+  bloqueio: {
+    nivel: 'bloqueia',
+    motivos: [{ codigo: 'dado_ausente_triagem', rotulo: 'Triagem de segurança não respondida', detalhe: '', origem: 'dados_ausentes', nivel: 'bloqueia' }],
+    dadosAusentes: ['triagem_autodeclarada'],
+    pode_prosseguir_profissional: false,
+  },
+};
+
+const recibo = (id = 'plano-1') => ({ data: { ok: true, em_revisao: true, plano_id: id }, error: null });
+
+const planoChancelado = (extra: Record<string, unknown> = {}) => ({
+  id: 'c1',
+  titulo: 'Treino chancelado',
+  created_at: '2026-10-08T12:00:00Z',
+  origem: 'equipe_myhealthid',
+  conteudo: {
+    fases: [],
+    _governanca: { aprovacao: { por_nome: 'Ana Souza', por_perfil: 'educador_fisico', em: '2026-10-08T15:00:00Z', versao: 1 } },
+  },
+  ...extra,
+});
+
+function Rota() {
+  return <div data-testid="rota">{useLocation().pathname}</div>;
 }
 
-describe('Plano do cliente: só o que o profissional liberou', () => {
-  beforeEach(() => {
-    h.rpc = {};
-    h.rpcChamadas.length = 0;
-    h.upserts.length = 0;
-    h.invoke.mockReset();
-    h.anamneseRespostas = null;
-  });
-  afterEach(() => cleanup());
+function renderizar() {
+  return render(
+    <MemoryRouter initialEntries={['/paciente/exercicios']}>
+      <PlanoPersonalizadoSection />
+      <Rota />
+    </MemoryRouter>,
+  );
+}
 
-  it('lê treino e nutrição liberados pela RPC (nunca direto das tabelas) e não gera nada', async () => {
+beforeEach(() => {
+  h.invoke.mockReset();
+  h.escritas.length = 0;
+  h.tabelasLidas.length = 0;
+  h.rpcChamadas.length = 0;
+  h.plano = {};
+  h.status = {};
+  h.acesso = { isFree: false, isPremium: true, isInTrial: false, isLoading: false };
+  h.terapeutaId = null;
+  h.anamneseRespostas = null;
+  h.toast.success.mockReset();
+  h.toast.error.mockReset();
+});
+afterEach(() => cleanup());
+
+describe('Plano do cliente Premium: gera, a equipe chancela, só então chega', () => {
+  it('lê planos e status por RPC (nunca direto das tabelas) e não lê planos_ia_cliente', async () => {
     renderizar();
-    await waitFor(() => expect(h.rpcChamadas.length).toBe(2));
-    expect(h.rpcChamadas.map((c) => c.tipo).sort()).toEqual(['nutricao', 'treino']);
-    expect(h.rpcChamadas.every((c) => c.nome === 'meu_plano_liberado')).toBe(true);
-    expect(screen.queryByText(/Gerar treino/i)).toBeNull();
-    expect(screen.queryByText(/Montar meu plano/i)).toBeNull();
+    await screen.findByRole('button', { name: 'Gerar treino' });
+    const chamadas = h.rpcChamadas.map((c) => `${c.nome}:${c.tipo}`).sort();
+    expect(chamadas).toEqual([
+      'meu_plano_liberado:nutricao', 'meu_plano_liberado:treino',
+      'meu_status_plano_cliente:nutricao', 'meu_status_plano_cliente:treino',
+    ]);
+    expect(h.tabelasLidas).not.toContain('planos_ia_cliente');
+    expect(h.tabelasLidas).not.toContain('planos_treino');
+    expect(h.tabelasLidas).not.toContain('plano_cliente_chancela');
+  });
+
+  it('Premium vê os botões de gerar treino, nutrição e os dois', async () => {
+    renderizar();
+    expect(await screen.findByRole('button', { name: 'Gerar treino' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Gerar nutrição' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Gerar os dois' })).toBeEnabled();
+    expect(screen.getByText('Nenhum plano ainda')).toBeInTheDocument();
+  });
+
+  it('gerar treino envia o pedido, mostra "em revisão" e não exibe nem grava nenhum plano', async () => {
+    h.invoke.mockImplementation(async () => {
+      h.status.treino = { status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null };
+      return recibo();
+    });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar treino' }));
+
+    expect(await screen.findByText(/Em revisão pela equipe científica MyHealthID — você recebe aqui quando for chancelado/)).toBeInTheDocument();
+    expect(screen.getByText(/Pedido enviado em 08\/10\/2026/)).toBeInTheDocument();
+    expect(h.toast.success).toHaveBeenCalledWith(expect.stringMatching(/Seu treino foi enviado para a revisão da equipe científica MyHealthID/));
+    expect(h.toast.error).not.toHaveBeenCalled();
+    expect(h.escritas).toHaveLength(0);
+    expect(screen.queryByTestId('treino-interativo')).not.toBeInTheDocument();
+
+    const [funcao, opcoes] = h.invoke.mock.calls[0] as [string, { body: Record<string, unknown> }];
+    expect(funcao).toBe('gerar-plano-treino');
+    expect(opcoes.body).toMatchObject({ paciente_id: 'pac-1', sexo: 'feminino' });
+    expect(typeof opcoes.body.idade).toBe('number');
+    expect(opcoes.body).not.toHaveProperty('override');
+
+    expect(await screen.findByRole('button', { name: 'Treino em revisão' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Gerar nutrição' })).toBeEnabled();
+  });
+
+  it('"Gerar os dois" pede treino e nutrição', async () => {
+    h.invoke.mockResolvedValue(recibo());
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar os dois' }));
+    await waitFor(() => expect(h.invoke).toHaveBeenCalledTimes(2));
+    expect(h.invoke.mock.calls.map((c) => c[0])).toEqual(['gerar-plano-treino', 'gerar-plano-alimentar']);
+    expect(h.toast.success).toHaveBeenCalledWith(expect.stringMatching(/Seu treino e seu plano alimentar foram enviados/));
+    expect(h.escritas).toHaveLength(0);
+  });
+
+  it('um plano bloqueado pela triagem não impede o outro de ir para a revisão', async () => {
+    h.invoke
+      .mockResolvedValueOnce(recibo())
+      .mockResolvedValueOnce({ data: bloqueioCliente, error: null });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar os dois' }));
+
+    expect(await screen.findByText('Vamos cuidar disso com o seu profissional')).toBeInTheDocument();
+    expect(h.toast.success).toHaveBeenCalledWith(expect.stringMatching(/Um dos planos foi enviado para a revisão/));
+    expect(h.escritas).toHaveLength(0);
+  });
+
+  it('bloqueio da edge: mensagem acolhedora, sem opção de prosseguir; leva à triagem', async () => {
+    h.invoke.mockResolvedValue({ data: bloqueioCliente, error: null });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar treino' }));
+
+    expect(await screen.findByText('Vamos cuidar disso com o seu profissional')).toBeInTheDocument();
+    expect(screen.getByText(/Fale com o seu profissional/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Gerar mesmo assim/ })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Estou ciente/)).not.toBeInTheDocument();
+    expect(h.escritas).toHaveLength(0);
+    expect(h.toast.error).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Abrir a triagem de segurança/ }));
+    await waitFor(() => expect(screen.queryByText('Vamos cuidar disso com o seu profissional')).not.toBeInTheDocument());
+    expect(screen.getByTestId('triagem-card')).toHaveAttribute('data-aberto', 'true');
+  });
+
+  it('se a edge devolver o plano com conteúdo (sem chancela), o portal não o exibe e avisa o erro', async () => {
+    h.invoke.mockResolvedValue({ data: { ok: true, plano: { titulo: 'Sem chancela', fases: [] } }, error: null });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar treino' }));
+
+    await waitFor(() => expect(h.toast.error).toHaveBeenCalledWith(expect.stringMatching(/revisão da equipe/)));
+    expect(h.toast.success).not.toHaveBeenCalled();
+    expect(screen.queryByText('Sem chancela')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('treino-interativo')).not.toBeInTheDocument();
+    expect(h.escritas).toHaveLength(0);
+  });
+
+  it('erro 402 da edge (sem Premium) mostra a mensagem acolhedora do servidor', async () => {
+    const mensagem = 'Gerar o seu plano faz parte do Premium. Seu profissional continua podendo montar um para você.';
+    h.invoke.mockResolvedValue({ data: null, error: { context: { json: async () => ({ error: mensagem, codigo: 'premium_necessario' }) } } });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar treino' }));
+    await waitFor(() => expect(h.toast.error).toHaveBeenCalledWith(mensagem));
+  });
+
+  it('409 do servidor (já há treino em revisão, ex.: outra aba): mostra o aviso e passa o botão para "em revisão"', async () => {
+    const mensagem = 'Você já tem um treino aguardando a revisão da equipe científica MyHealthID. Assim que for chancelado ele aparece aqui no portal; depois disso você pode gerar um novo.';
+    h.invoke.mockImplementation(async () => {
+      h.status.treino = { status: 'aguardando', gerado_em: '2026-10-09T12:00:00Z', nota_publica: null };
+      return { data: null, error: { context: { json: async () => ({ error: mensagem, codigo: 'plano_em_revisao' }) } } };
+    });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar treino' }));
+
+    await waitFor(() => expect(h.toast.error).toHaveBeenCalledWith(mensagem));
+    expect(await screen.findByRole('button', { name: 'Treino em revisão' })).toBeDisabled();
+  });
+
+  it('"Senti incômodo" no treino chancelado gera novo plano para a fila; o chancelado segue visível', async () => {
+    h.plano.treino = planoChancelado();
+    h.status.treino = { status: 'chancelado', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null };
+    h.invoke.mockImplementation(async () => {
+      h.status.treino = { status: 'aguardando', gerado_em: '2026-10-09T12:00:00Z', nota_publica: null };
+      return recibo();
+    });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Senti incômodo' }));
+
+    expect(await screen.findByText(/Em revisão pela equipe científica MyHealthID/)).toBeInTheDocument();
+    expect(screen.getByText(/O plano abaixo continua valendo até o novo ser chancelado/)).toBeInTheDocument();
+    expect(screen.getByTestId('treino-interativo')).toBeInTheDocument();
+    expect(screen.getByText(/Chancelado pela equipe científica MyHealthID/)).toBeInTheDocument();
+
+    const [funcao, opcoes] = h.invoke.mock.calls[0] as [string, { body: Record<string, unknown> }];
+    expect(funcao).toBe('gerar-plano-treino');
+    expect(String(opcoes.body.restricoes)).toContain('dor no joelho');
+    expect(h.toast.success).toHaveBeenCalledWith(expect.stringMatching(/Recebemos o seu relato.*procure um profissional/));
+    expect(h.escritas).toHaveLength(0);
+  });
+
+  it('o plano do profissional não oferece "Senti incômodo" (não é o plano gerado pelo app)', async () => {
+    h.plano.treino = { titulo: 'Treino do profissional', origem: 'profissional', conteudo: { fases: [] } };
+    renderizar();
+    expect(await screen.findByTestId('treino-interativo')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Senti incômodo' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Situação do plano do cliente', () => {
+  it('chancelado: mostra o plano com o selo da equipe científica (nome, perfil, data, versão)', async () => {
+    h.plano.treino = planoChancelado();
+    h.status.treino = { status: 'chancelado', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null };
+    renderizar();
+    expect(await screen.findByText('Chancelado pela equipe científica MyHealthID · Ana Souza, Educador Físico · 08/10/2026 · v1')).toBeInTheDocument();
+    expect(screen.getByTestId('treino-interativo')).toBeInTheDocument();
+    expect(screen.queryByText(/Em revisão pela equipe/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Liberado/)).not.toBeInTheDocument();
+  });
+
+  it('chancelado de nutrição aparece na seção Nutricional com o selo da equipe', async () => {
+    h.plano.nutricao = {
+      titulo: 'Plano alimentar', origem: 'equipe_myhealthid', calorias_alvo: 2000,
+      conteudo: { refeicoes: [], _governanca: { aprovacao: { por_nome: 'Bia Lima', por_perfil: 'nutricionista', em: '2026-10-08T15:00:00Z', versao: 2 } } },
+    };
+    renderizar();
+    expect(await screen.findByText('Chancelado pela equipe científica MyHealthID · Bia Lima, Nutricionista · 08/10/2026 · v2')).toBeInTheDocument();
+    expect(screen.getByText('Plano alimentar')).toBeInTheDocument();
+  });
+
+  it('aguardando sem plano anterior: só o status, sem conteúdo', async () => {
+    h.status.nutricao = { status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null };
+    renderizar();
+    expect(await screen.findByText(/Em revisão pela equipe científica MyHealthID — você recebe aqui quando for chancelado/)).toBeInTheDocument();
+    expect(screen.queryByText(/continua valendo/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nutrição em revisão' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Gerar os dois' })).not.toBeInTheDocument();
+  });
+
+  it('recusado: mostra o recado público da equipe e permite gerar de novo', async () => {
+    h.status.treino = { status: 'recusado', gerado_em: '2026-10-08T12:00:00Z', nota_publica: 'Precisamos de mais detalhes sobre a sua dor no ombro.' };
+    renderizar();
+    expect(await screen.findByText('Recusado: Precisamos de mais detalhes sobre a sua dor no ombro')).toBeInTheDocument();
+    expect(screen.getByText('Você pode gerar de novo ou procurar um profissional.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gerar treino de novo' })).toBeEnabled();
+  });
+
+  it('plano do profissional tem precedência sobre o chancelado', async () => {
+    h.plano.treino = {
+      titulo: 'Treino do profissional', origem: 'profissional',
+      conteudo: { fases: [], _governanca: { aprovacao: { por_nome: 'Carlos', em: '2026-10-01T15:00:00Z', versao: 3 } } },
+    };
+    h.status.treino = { status: 'chancelado', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null };
+    renderizar();
+    expect(await screen.findByText(/Liberado por Carlos em 01\/10\/2026 · v3/)).toBeInTheDocument();
+    expect(screen.getByText(/Seu profissional liberou um plano/)).toBeInTheDocument();
+    expect(screen.queryByText(/Chancelado pela equipe/)).not.toBeInTheDocument();
+  });
+});
+
+describe('Quem não é Premium', () => {
+  it('free vê o convite Premium e nenhum botão de gerar; o teste grátis não dá direito', async () => {
+    h.acesso = { isFree: true, isPremium: false, isInTrial: true, isLoading: false };
+    renderizar();
+    expect(await screen.findByText('Monte seu treino e nutrição sob medida')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Gerar/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('Gerar meu treino e plano nutricional')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Assinar o Premium/ }));
+    expect(screen.getByTestId('rota')).toHaveTextContent('/paciente/plano');
     expect(h.invoke).not.toHaveBeenCalled();
   });
 
-  it('sem plano liberado mostra que o profissional monta e libera', async () => {
+  it('cliente de profissional (clínico) não vê o convite Premium nem o gerador', async () => {
+    h.acesso = { isFree: false, isPremium: false, isInTrial: false, isLoading: false };
+    h.terapeutaId = 'ter-1';
     renderizar();
-    expect(await screen.findByText(/assim que for liberado/i)).toBeTruthy();
+    expect(await screen.findByText(/assim que for liberado/i)).toBeInTheDocument();
+    expect(screen.queryByText('Monte seu treino e nutrição sob medida')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Gerar/ })).not.toBeInTheDocument();
   });
 
-  it('mostra o treino liberado pelo profissional com o treino interativo', async () => {
-    h.rpc.treino = { titulo: 'Treino A', conteudo: { fases: [] } };
+  it('o status em revisão não mostra botões de gerar para quem deixou de ser Premium', async () => {
+    h.acesso = { isFree: true, isPremium: false, isInTrial: false, isLoading: false };
+    h.status.treino = { status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null };
     renderizar();
-    expect(await screen.findByTestId('treino-interativo')).toBeTruthy();
+    expect(await screen.findByText(/Em revisão pela equipe científica MyHealthID/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Treino em revisão|Gerar treino/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('Convite para procurar um profissional', () => {
+  it.each([
+    ['premium', { isFree: false, isPremium: true, isInTrial: false, isLoading: false }],
+    ['free', { isFree: true, isPremium: false, isInTrial: false, isLoading: false }],
+    ['clínico', { isFree: false, isPremium: false, isInTrial: false, isLoading: false }],
+  ])('sempre aparece (%s), sem profissional: leva a /paciente/profissionais', async (_nome, acesso) => {
+    h.acesso = acesso;
+    renderizar();
+    expect(await screen.findByText('Para um treino e plano nutricional ainda melhores, procure um profissional que use o MyHealthID')).toBeInTheDocument();
+    expect(screen.queryByText(/pode refinar e acompanhar este plano/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Encontrar um profissional/ }));
+    expect(screen.getByTestId('rota')).toHaveTextContent('/paciente/profissionais');
   });
 
-  it('a triagem do cliente aparece aberta enquanto estiver incompleta', async () => {
+  it('com profissional no MyHealthID, o texto muda e há atalho para conversar com ele', async () => {
+    h.terapeutaId = 'ter-1';
+    renderizar();
+    expect(await screen.findByText('Seu profissional no MyHealthID pode refinar e acompanhar este plano')).toBeInTheDocument();
+    expect(screen.queryByText(/procure um profissional que use o MyHealthID/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver profissionais' }));
+    expect(screen.getByTestId('rota')).toHaveTextContent('/paciente/profissionais');
+  });
+});
+
+describe('Triagem de segurança do cliente', () => {
+  it('sem triagem completa, o cartão da triagem aparece aberto', async () => {
     renderizar();
     const card = await screen.findByTestId('triagem-card');
-    expect(card.getAttribute('data-aberto')).toBe('true');
+    expect(card).toHaveAttribute('data-aberto', 'true');
+  });
+
+  it('com a triagem completa, o cartão fica recolhido', async () => {
+    h.anamneseRespostas = { triagem: triagemCompleta };
+    renderizar();
+    const card = await screen.findByTestId('triagem-card');
+    expect(card).toHaveAttribute('data-aberto', 'false');
   });
 });

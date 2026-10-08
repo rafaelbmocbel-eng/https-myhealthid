@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import { useLenteAtiva, type PerfilProfissional } from './useLenteAtiva';
 import { useClinicaContext } from './useClinicaContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 // A CHANCELA (liberar/enviar um plano ao paciente) é ato do profissional
 // habilitado: plano de treino/personal → Educador Físico; plano nutricional →
@@ -78,4 +80,50 @@ export function usePodeChancelar(area: AreaChancela): Chancela {
 
   // viaClinica mantido por compatibilidade (não é mais usado para conceder chancela).
   return { pode, motivo, loading, labelExigido: LABEL[area], viaClinica: false };
+}
+
+export type TipoPlanoCliente = 'treino' | 'nutricao';
+
+/**
+ * Mesma regra do banco para chancelar/editar o plano do cliente (`plano_cliente_perfil_ok`):
+ * vale o perfil GRAVADO em `profiles.perfil_profissional`. Sem perfil gravado não há habilitação
+ * (a lente cai em 'fisioterapeuta' por padrão, e o banco não). Super-admin chancela qualquer área.
+ */
+export function podeChancelarPlanoCliente(tipo: TipoPlanoCliente, perfilGravado: string | null | undefined, superAdmin: boolean): boolean {
+  if (superAdmin) return true;
+  return !!perfilGravado && (PERFIL_EXIGIDO[tipo] as string[]).includes(perfilGravado);
+}
+
+/** Como `usePodeChancelar`, para a fila de chancela da equipe científica: sem o perfil padrão da lente. */
+export function usePodeChancelarPlanoCliente(tipo: TipoPlanoCliente): Chancela {
+  const { user } = useAuth();
+  const { data: perfil, isLoading } = useQuery({
+    queryKey: ['perfil-profissional-gravado', user?.id],
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<string | null> => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('perfil_profissional')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as { perfil_profissional?: string | null } | null)?.perfil_profissional ?? null;
+    },
+  });
+
+  const isSuperAdmin = !!user?.email && SUPER_ADMINS.includes(user.email.toLowerCase());
+  const pode = podeChancelarPlanoCliente(tipo, perfil, isSuperAdmin);
+  const ehProprio = podeChancelarPlanoCliente(tipo, perfil, false);
+
+  let motivo = '';
+  if (pode && !ehProprio) {
+    motivo = 'Liberado (conta administradora).';
+  } else if (!pode) {
+    motivo = perfil
+      ? `Só um ${LABEL[tipo]} pode chancelar este plano — cada profissional chancela a sua própria área.`
+      : `Seu perfil profissional ainda não está definido. Ajuste em Configurações; só um ${LABEL[tipo]} pode chancelar este plano.`;
+  }
+
+  return { pode, motivo, loading: !!user?.id && isLoading, labelExigido: LABEL[tipo], viaClinica: false };
 }

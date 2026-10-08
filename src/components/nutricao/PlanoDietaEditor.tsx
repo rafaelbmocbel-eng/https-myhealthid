@@ -8,12 +8,27 @@ import { Loader2, Plus, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { avisoAposEdicao } from '@/lib/governanca';
 
-interface Props { plano: any; pacienteId: string; onClose: () => void; }
+interface Props {
+  plano: any;
+  /** Só o salvamento padrão usa: invalida os caches do paciente. */
+  pacienteId?: string;
+  onClose: () => void;
+  /**
+   * Salvamento próprio (ex.: fila de chancela da equipe científica). Quando
+   * informado, o editor NÃO grava em planos_alimentares: entrega o conteúdo
+   * editado (com o `_governanca` intacto) e o título, e fecha se não lançar erro.
+   */
+  onSalvar?: (plano: Record<string, unknown>, titulo: string) => void | Promise<void>;
+  tituloDialogo?: string;
+  rotuloSalvar?: string;
+}
 
 // Editor do plano alimentar: refeição a refeição, item a item (alimento, porção,
 // kcal, substituições). Salva no mesmo registro (coluna `plano`). Só o
 // profissional edita — é a "página" editável do plano nutricional.
-export default function PlanoDietaEditor({ plano, pacienteId, onClose }: Props) {
+export default function PlanoDietaEditor({
+  plano, pacienteId, onClose, onSalvar, tituloDialogo = 'Editar plano alimentar', rotuloSalvar = 'Salvar alterações',
+}: Props) {
   const qc = useQueryClient();
   const [titulo, setTitulo] = useState<string>(plano.titulo || '');
   const [dieta, setDieta] = useState<any>(() => JSON.parse(JSON.stringify(plano.plano || {})));
@@ -38,6 +53,10 @@ export default function PlanoDietaEditor({ plano, pacienteId, onClose }: Props) 
     // `dieta` é o clone do conteúdo salvo, com o _governanca intacto: o banco é quem
     // decide se a edição devolve o plano liberado para rascunho.
     mutationFn: async () => {
+      if (onSalvar) {
+        await onSalvar(dieta, titulo || 'Plano alimentar');
+        return null;
+      }
       const { data, error } = await (supabase as any).from('planos_alimentares')
         .update({ titulo: titulo || 'Plano alimentar', plano: dieta }).eq('id', plano.id)
         .select('aprovado');
@@ -46,6 +65,10 @@ export default function PlanoDietaEditor({ plano, pacienteId, onClose }: Props) 
       return Array.isArray(data) ? (data[0]?.aprovado ?? null) : null;
     },
     onSuccess: (aprovadoDepois: boolean | null) => {
+      if (onSalvar) {
+        onClose();
+        return;
+      }
       const aviso = avisoAposEdicao('Plano alimentar', !!plano.aprovado, aprovadoDepois);
       if (aviso.nivel === 'aviso') toast.warning(aviso.mensagem);
       else toast.success(aviso.mensagem);
@@ -59,7 +82,7 @@ export default function PlanoDietaEditor({ plano, pacienteId, onClose }: Props) 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl w-[95vw] max-h-[92vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="text-base">Editar plano alimentar</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="text-base">{tituloDialogo}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div>
             <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Título</label>
@@ -108,7 +131,7 @@ export default function PlanoDietaEditor({ plano, pacienteId, onClose }: Props) 
             <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
             <Button className="flex-1 gap-1.5" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
               {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Salvar alterações
+              {rotuloSalvar}
             </Button>
           </div>
         </div>

@@ -51,6 +51,21 @@ export function tabelaDoTipo(tipo: unknown): { tabela: "planos_treino" | "planos
   return null;
 }
 
+export interface AlvoRevisao {
+  tabela: "planos_treino" | "planos_alimentares" | "plano_cliente_chancela";
+  coluna: "estrutura" | "plano" | "conteudo";
+}
+
+/**
+ * Onde está o plano a revisar. `tabela: 'plano_cliente_chancela'` é o plano que o cliente
+ * Premium gerou e que a equipe científica revisa antes de chancelar; sem `tabela`, vale o
+ * `tipo` (planos do profissional).
+ */
+export function alvoDaRevisao(tipo: unknown, tabela?: unknown): AlvoRevisao | null {
+  if (tabela === "plano_cliente_chancela") return { tabela: "plano_cliente_chancela", coluna: "conteudo" };
+  return tabelaDoTipo(tipo);
+}
+
 // _governanca é metadado do app (triagem, aprovação, revisão anterior): não vai
 // para o LLM nem entra na revisão.
 export function removerGovernanca(plano: unknown): unknown {

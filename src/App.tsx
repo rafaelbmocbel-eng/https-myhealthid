@@ -69,6 +69,7 @@ const NovaSenha = lazyWithRetry(() => import("./pages/NovaSenha"));
 const BaseCientifica = lazyWithRetry(() => import("./pages/BaseCientifica"));
 const BibliotecaExercicios = lazyWithRetry(() => import("./pages/BibliotecaExercicios"));
 const CatalogoEvidencia = lazyWithRetry(() => import("./pages/CatalogoEvidencia"));
+const ChancelaEquipe = lazyWithRetry(() => import("./pages/ChancelaEquipe"));
 const Hoje = lazyWithRetry(() => import("./pages/Hoje"));
 const ExportarDados = lazyWithRetry(() => import("./pages/ExportarDados"));
 const Vitrine = lazyWithRetry(() => import("./pages/Vitrine"));
@@ -233,6 +234,7 @@ const App = () => (
                 <Route path="/base-cientifica" element={<ProfessionalGuard><BaseCientifica /></ProfessionalGuard>} />
                 <Route path="/exercicios" element={<ProfessionalGuard><BibliotecaExercicios /></ProfessionalGuard>} />
                 <Route path="/catalogo-evidencia" element={<ProfessionalGuard><CatalogoEvidencia /></ProfessionalGuard>} />
+                <Route path="/chancela" element={<ProfessionalGuard><ChancelaEquipe /></ProfessionalGuard>} />
 
                 {/* Portal do paciente — marketplace público */}
                 <Route path="/portaldocliente" element={<Navigate to="/paciente/login" replace />} />

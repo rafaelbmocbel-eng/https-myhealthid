@@ -13,14 +13,25 @@ import { avisoAposEdicao } from '@/lib/governanca';
 
 interface Props {
   plano: any;          // linha de planos_treino (id, titulo, estrutura, ...)
-  pacienteId: string;
+  /** Só o salvamento padrão usa: invalida os caches do paciente. */
+  pacienteId?: string;
   onClose: () => void;
+  /**
+   * Salvamento próprio (ex.: fila de chancela da equipe científica). Quando
+   * informado, o editor NÃO grava em planos_treino: entrega o conteúdo editado
+   * (com o `_governanca` intacto) e o título, e fecha se não lançar erro.
+   */
+  onSalvar?: (estrutura: Record<string, unknown>, titulo: string) => void | Promise<void>;
+  tituloDialogo?: string;
+  rotuloSalvar?: string;
 }
 
 // Editor do plano de treino gerado pela IA — o profissional ajusta antes/depois
 // de liberar (séries, reps, carga, descanso, observações; adiciona/remove
 // exercícios; renomeia sessões). Salva de volta em planos_treino.estrutura.
-export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props) {
+export default function PlanoTreinoEditor({
+  plano, pacienteId, onClose, onSalvar, tituloDialogo = 'Editar plano de treino', rotuloSalvar = 'Salvar alterações',
+}: Props) {
   const qc = useQueryClient();
   const [titulo, setTitulo] = useState<string>(plano.titulo || '');
   // deep clone para editar sem mexer no original até salvar
@@ -71,6 +82,10 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
     // `est` é o clone do conteúdo salvo, com o _governanca intacto: o banco é quem
     // decide se a edição devolve o plano liberado para rascunho.
     mutationFn: async () => {
+      if (onSalvar) {
+        await onSalvar(est, titulo || 'Plano de treino');
+        return null;
+      }
       const { data, error } = await (supabase as any).from('planos_treino')
         .update({ titulo: titulo || 'Plano de treino', estrutura: est }).eq('id', plano.id)
         .select('aprovado');
@@ -79,6 +94,10 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
       return Array.isArray(data) ? (data[0]?.aprovado ?? null) : null;
     },
     onSuccess: (aprovadoDepois: boolean | null) => {
+      if (onSalvar) {
+        onClose();
+        return;
+      }
       const aviso = avisoAposEdicao('Plano', !!plano.aprovado, aprovadoDepois);
       if (aviso.nivel === 'aviso') toast.warning(aviso.mensagem);
       else toast.success(aviso.mensagem);
@@ -92,7 +111,7 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl w-[95vw] max-h-[92vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="text-base">Editar plano de treino</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="text-base">{tituloDialogo}</DialogTitle></DialogHeader>
 
         <div className="space-y-4">
           <div>
@@ -155,7 +174,7 @@ export default function PlanoTreinoEditor({ plano, pacienteId, onClose }: Props)
             <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
             <Button className="flex-1 gap-1.5" disabled={salvar.isPending} onClick={() => salvar.mutate()}>
               {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Salvar alterações
+              {rotuloSalvar}
             </Button>
           </div>
         </div>

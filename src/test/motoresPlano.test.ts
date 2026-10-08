@@ -153,7 +153,7 @@ describe('carregarMotoresClinicos', () => {
     expect(m.falhasLeitura).toEqual([]);
     expect(textoPresencial(m, 'treino')).toContain('Condições de saúde: hipertensão');
     expect(textoPresencial(m, 'treino')).not.toContain('[object Object]');
-    expect(insumosDosMotores(m, 'nutricao')).toEqual(expect.arrayContaining(['MyID', 'questionarios', 'anamnese', 'historico_clinico']));
+    expect(insumosDosMotores(m, 'nutricao')).toEqual(expect.arrayContaining(['MyID', 'questionarios', 'anamnese', 'historico_clinico', 'queixa_historia_atual']));
     expect(insumosDosMotores(m, 'treino')).not.toContain('anamnese');
     expect(insumosDosMotores(null, 'treino')).toEqual([]);
   });
@@ -243,14 +243,13 @@ describe('montarEntradaTriagem', () => {
 });
 
 describe('clientePodeGerar', () => {
-  const agora = new Date('2026-10-07T12:00:00Z');
-  it('premium sempre pode; free só nos 7 primeiros dias; clínico nunca', () => {
-    expect(clientePodeGerar({ tipo_conta: 'wellness_premium', created_at: '2020-01-01T00:00:00Z' }, agora)).toBe(true);
-    expect(clientePodeGerar({ tipo_conta: 'wellness_free', created_at: '2026-10-02T00:00:00Z' }, agora)).toBe(true);
-    expect(clientePodeGerar({ tipo_conta: 'wellness_free', created_at: '2026-09-29T00:00:00Z' }, agora)).toBe(false);
-    expect(clientePodeGerar({ tipo_conta: 'clinico', created_at: '2026-10-06T00:00:00Z' }, agora)).toBe(false);
-    expect(clientePodeGerar({ tipo_conta: null, created_at: null }, agora)).toBe(false);
-    expect(clientePodeGerar(null, agora)).toBe(false);
+  it('só o Premium pode gerar: o teste grátis de 7 dias não vale mais', () => {
+    expect(clientePodeGerar({ tipo_conta: 'wellness_premium' })).toBe(true);
+    expect(clientePodeGerar({ tipo_conta: 'wellness_free', created_at: new Date().toISOString() } as never)).toBe(false);
+    expect(clientePodeGerar({ tipo_conta: 'clinico' })).toBe(false);
+    expect(clientePodeGerar({ tipo_conta: null })).toBe(false);
+    expect(clientePodeGerar({})).toBe(false);
+    expect(clientePodeGerar(null)).toBe(false);
   });
 });
 

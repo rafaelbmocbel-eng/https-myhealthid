@@ -1,12 +1,21 @@
 // Gera plano alimentar personalizado via Google Gemini API — baseado em
 // evidências e no perfil clínico do paciente (MyID + história).
+//
+// Quem chama define o destino: o PROFISSIONAL recebe o plano e o libera pelo fluxo atual;
+// o CLIENTE Premium gera só a partir do que é dele (MyID, formulários, histórico clínico,
+// anamnese nutricional) e o plano vai para a fila de chancela da equipe científica, sem voltar
+// o conteúdo.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logUsoIA } from "../_shared/log-ia.ts";
 import {
   carregarMotoresClinicos, insumosDosMotores, montarEntradaTriagem, resolverContextoGeracao,
-  textoAnamneseNutricional, textoFichaClinica, textoMyID, textoPresencial, textoQuestionarios,
+  textoAnamneseNutricional, textoFichaClinica, textoMyID, textoPresencial, textoQueixaDoCliente, textoQuestionarios,
 } from "../_shared/motores-plano.ts";
+import {
+  barreiraDoCliente, dadosDoPedido, entregarPlano, insumosDoPlano, limitarPedidoAlimentarCliente,
+  podeUsarFontesDoProfissional, restringirAInsumosDoCliente,
+} from "../_shared/plano-cliente.ts";
 import { avaliarTriagem, decidirLiberacao, textoTriagemParaPrompt } from "../_shared/triagem-bloqueio.ts";
 import {
   aplicarGovernanca, instrucaoAcompanhamentoPrompt, montarGovernanca, prepararAcompanhamento, REGRA_FONTES_PROMPT,
@@ -58,12 +67,9 @@ Deno.serve(async (req) => {
   try {
     let userId: string;
     try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
-    const body = await req.json();
-    const {
-      objetivo, calorias_alvo, refeicoes_por_dia, restricoes, preferencias,
-      antropometria, idade, sexo, nivel_atividade, recordatorio, paciente_id, override,
-    } = body || {};
-    if (!objetivo) {
+    const body = (await req.json()) || {};
+    const { calorias_alvo, antropometria, recordatorio, paciente_id, override } = body;
+    if (!body.objetivo) {
       return new Response(JSON.stringify({ error: "objetivo obrigatório" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -86,23 +92,34 @@ Deno.serve(async (req) => {
     if (!ctx.ok || !ctx.chamador) return json({ error: ctx.error || "Sem permissão." }, ctx.status || 403);
     const chamador = ctx.chamador;
     const pacienteId = ctx.pacienteId ?? null;
+    const pacRow = ctx.paciente ?? null;
 
-    // O plano é sempre montado, editado e liberado pelo PROFISSIONAL; o cliente só
-    // vê o que foi liberado. Quem chama como próprio cliente é recusado no servidor.
-    if (chamador === "cliente") {
-      return json({ error: "Seu plano é montado e liberado pelo seu profissional. Ele aparece aqui assim que for liberado." }, 403);
-    }
+    // O cliente só gera se pagar (Premium) e só tem um plano alimentar por vez aguardando a equipe
+    // científica (402/409/503 antes de gastar IA); o plano dele passa pela chancela.
+    const barreira = await barreiraDoCliente(admin, { chamador, tipo: "nutricao", pacienteId, paciente: pacRow });
+    if (barreira) return json(barreira.corpo, barreira.status);
+
+    // O pedido do cliente tem tetos no servidor; o do profissional vale como veio da tela dele.
+    const { objetivo, refeicoes_por_dia, restricoes, preferencias, idade, sexo, nivel_atividade } =
+      chamador === "cliente" ? limitarPedidoAlimentarCliente(body) : body;
+    if (!objetivo) return json({ error: "objetivo obrigatório" }, 400);
 
     // TRÊS MOTORES (fonte única em _shared/motores-plano.ts): MyID +
     // questionários clínicos validados + avaliação presencial (achados do avatar
     // clínico E observações do profissional). Bioimpedância e anamnese
     // nutricional são específicas da nutrição e entram à parte.
-    const motores = pacienteId ? await carregarMotoresClinicos(admin, pacienteId) : null;
+    const motoresCompletos = pacienteId ? await carregarMotoresClinicos(admin, pacienteId) : null;
+    // O prompt do CLIENTE só usa o que é dele: sem avaliação presencial, achados, exames nem
+    // avaliação por voz do profissional.
+    const motores = chamador === "cliente" ? restringirAInsumosDoCliente(motoresCompletos) : motoresCompletos;
+    const pedido = dadosDoPedido(chamador, { antropometria, recordatorio });
 
     // TRIAGEM DE SEGURANÇA antes de gastar IA: usa os dados do banco (idade
     // exata, histórico, autodeclaração, MyID), nunca só o que veio no body.
+    // Lê os motores COMPLETOS mesmo para o cliente: o que o profissional registrou também
+    // pode acender um alerta (falso negativo é risco de saúde).
     const triagem = avaliarTriagem(montarEntradaTriagem({
-      foco: "nutricao", chamador, motores, idadeBody: idade, textosPedido: [restricoes, preferencias, objetivo],
+      foco: "nutricao", chamador, motores: motoresCompletos, idadeBody: idade, textosPedido: [restricoes, preferencias, objetivo],
     }));
     const decisao = decidirLiberacao(triagem, chamador, override);
     if (!decisao.liberado) {
@@ -110,27 +127,33 @@ Deno.serve(async (req) => {
       return json({ ok: false, bloqueio: decisao.bloqueio });
     }
 
-    const insumos = insumosDosMotores(motores, "nutricao");
+    const insumosBrutos = insumosDosMotores(motores, "nutricao");
     let perfilClinico = "";
     if (motores && pacienteId) {
-      const { data: bio } = await admin.from("body_composition").select("*")
-        .eq("paciente_id", pacienteId)
-        .order("date", { ascending: false }).limit(1).maybeSingle();
+      // Bioimpedância é exame: só entra no plano do profissional.
+      const bioRes = podeUsarFontesDoProfissional(chamador)
+        ? await admin.from("body_composition").select("*")
+          .eq("paciente_id", pacienteId)
+          .order("date", { ascending: false }).limit(1).maybeSingle()
+        : null;
+      const bio = bioRes?.data ?? null;
       // Restrições/alergias vêm primeiro: o corte antigo (800 caracteres do JSON)
       // as perdia quando as respostas anteriores eram longas.
       const anamTxt = textoAnamneseNutricional(motores.anamnese);
       const extras: string[] = [];
-      if (bio) { extras.push(`Bioimpedância/composição corporal (mais recente): ${JSON.stringify(bio).slice(0, 600)}`); insumos.push("bioimpedancia"); }
+      if (bio) { extras.push(`Bioimpedância/composição corporal (mais recente): ${JSON.stringify(bio).slice(0, 600)}`); insumosBrutos.push("bioimpedancia"); }
       if (anamTxt) extras.push(`Anamnese nutricional (respostas do paciente — restrições e alergias primeiro): ${anamTxt}`);
       const extrasTxt = extras.length
         ? `\nDados nutricionais específicos (use para individualizar):\n${extras.join("\n")}`
         : "";
-      perfilClinico = `${textoMyID(motores, "nutricao")}${textoPresencial(motores, "nutricao")}${textoQuestionarios(motores, "nutricao")}${textoFichaClinica(motores)}${extrasTxt}`;
+      const contextoTxt = chamador === "cliente" ? textoQueixaDoCliente(motores) : textoPresencial(motores, "nutricao");
+      perfilClinico = `${textoMyID(motores, "nutricao")}${contextoTxt}${textoQuestionarios(motores, "nutricao")}${textoFichaClinica(motores)}${extrasTxt}`;
     }
     perfilClinico += textoTriagemParaPrompt(triagem, "nutricao");
-    if (antropometria) insumos.push("antropometria");
-    if (recordatorio) insumos.push("recordatorio_24h");
-    if (restricoes) insumos.push("restricoes_informadas");
+    if (pedido.antropometria) insumosBrutos.push("antropometria");
+    if (pedido.recordatorio) insumosBrutos.push("recordatorio_24h");
+    if (restricoes) insumosBrutos.push("restricoes_informadas");
+    const insumos = insumosDoPlano(chamador, insumosBrutos);
 
     // Idade e sexo: o cadastro (banco) vale mais que o body.
     const idadeEfetiva = motores?.paciente.idade ?? (Number(idade) || null);
@@ -138,8 +161,8 @@ Deno.serve(async (req) => {
 
     const userPrompt = `
 Paciente: ${idadeEfetiva ? idadeEfetiva + ' anos' : 'idade ?'}, sexo ${sexoEfetivo || '?'}, nível de atividade ${nivel_atividade || 'NÃO INFORMADO (use fator conservador e sinalize no plano que foi estimado)'}.
-Antropometria: ${antropometria ? JSON.stringify(antropometria) : 'não informada'}.
-Recordatório 24h recente: ${recordatorio ? JSON.stringify(recordatorio).slice(0, 1500) : 'não informado'}.${perfilClinico}
+Antropometria: ${pedido.antropometria ? JSON.stringify(pedido.antropometria) : 'não informada'}.
+Recordatório 24h recente: ${pedido.recordatorio ? JSON.stringify(pedido.recordatorio).slice(0, 1500) : 'não informado'}.${perfilClinico}
 
 Objetivo: ${objetivo}
 Calorias-alvo: ${(chamador === 'profissional' && calorias_alvo) || 'calcular pela necessidade estimada'}
@@ -194,7 +217,10 @@ Gere o plano alimentar completo em JSON conforme o formato. Siga apenas os parâ
       acompanhamento: prepararAcompanhamento(plano.acompanhamento, "nutricao"),
     }));
 
-    return json({ ok: true, plano });
+    // Profissional: recebe o plano. Cliente: o plano vai para a fila de chancela e a resposta
+    // não traz o conteúdo; se a gravação falhar, responde erro em vez de fingir sucesso.
+    const entrega = await entregarPlano(admin, { chamador, tipo: "nutricao", pacienteId, plano, objetivo });
+    return json(entrega.corpo, entrega.status);
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message || String(e) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

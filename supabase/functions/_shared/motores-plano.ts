@@ -16,6 +16,7 @@ import {
   type EntradaTriagem,
   type FocoTriagem,
 } from "./triagem-bloqueio.ts";
+import { contaPodeGerarPlano, restringirAInsumosDoCliente } from "./plano-cliente.ts";
 
 // deno-lint-ignore no-explicit-any
 type SB = any;
@@ -114,11 +115,30 @@ function avaliacaoTemRedFlags(resultado: SB): boolean {
   return [resultado.red_flags, resultado.red_flags_reforcadas].some((v) => Array.isArray(v) && v.length > 0);
 }
 
+export interface OpcoesMotores {
+  /**
+   * Só o que o próprio cliente informa (MyID, questionários, histórico clínico, queixa e
+   * história, anamnese): sem achados/notas da avaliação presencial, exames nem avaliação por
+   * voz do profissional. Quem monta o prompt do cliente usa isto. A triagem de segurança deve
+   * continuar lendo os motores completos (sem a opção): falso negativo é risco de saúde.
+   */
+  apenasInsumosDoCliente?: boolean;
+}
+
 // Carrega os três motores para um paciente. Tolerante a tabelas/colunas
 // ausentes — cada peça que falhar volta vazia, sem derrubar a geração. O que a
 // triagem de segurança precisa ler e não conseguiu vai em `falhasLeitura`
 // (erro do banco é diferente de "sem registro").
-export async function carregarMotoresClinicos(admin: SB, pacienteId: string): Promise<MotoresClinicos> {
+export async function carregarMotoresClinicos(
+  admin: SB,
+  pacienteId: string,
+  opcoes: OpcoesMotores = {},
+): Promise<MotoresClinicos> {
+  const completos = await lerMotoresClinicos(admin, pacienteId);
+  return opcoes.apenasInsumosDoCliente ? (restringirAInsumosDoCliente(completos) as MotoresClinicos) : completos;
+}
+
+async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<MotoresClinicos> {
   const vazio: MotoresClinicos = {
     scores: null, queixa: null, historia: null, condicoes: null, presencial: [], exames: [], questionarios: [], avaliacaoVoz: null,
     paciente: { dataNascimento: null, idade: null, genero: null, sexo: null },
@@ -352,6 +372,17 @@ export function textoPresencial(m: MotoresClinicos, foco: FocoPlano): string {
   }
   if (!partes.length) return "";
   return `\nAVALIAÇÃO PRESENCIAL (achados e observações do profissional — ${instrucaoPresencial(foco)}):\n${partes.join("\n")}`;
+}
+
+// Texto do que o CLIENTE declarou (queixa, história atual, condições): é o que o plano do
+// cliente usa no lugar da avaliação presencial do profissional.
+export function textoQueixaDoCliente(m: MotoresClinicos): string {
+  const partes: string[] = [];
+  if (m.queixa) partes.push(`Queixa principal: ${String(m.queixa).slice(0, 300)}`);
+  if (m.historia) partes.push(`História atual: ${String(m.historia).slice(0, 400)}`);
+  if (m.condicoes) partes.push(`Condições de saúde: ${String(m.condicoes).slice(0, 300)}`);
+  if (!partes.length) return "";
+  return `\nQUEIXA E HISTÓRIA INFORMADAS PELO CLIENTE (adapte o plano a elas e seja conservador onde houver dor ou limitação):\n${partes.join("\n")}`;
 }
 
 // Resultado completo do MyID (component_scores, MyID_score, perdas_calculadas,
@@ -705,20 +736,11 @@ export async function resolverContextoGeracao(admin: SB, userId: string, pacient
 }
 
 /**
- * Entitlement do CLIENTE gerando o próprio plano: Premium, ou os 7 primeiros
- * dias de uma conta wellness_free. Cliente clínico não gera sozinho — paga o
- * Premium ou o profissional monta.
+ * Entitlement do CLIENTE gerando o próprio plano: só quem paga (hoje wellness_premium; ver
+ * POLITICA_PLANO_CLIENTE em plano-cliente.ts). O teste grátis de 7 dias não vale mais.
  */
-export function clientePodeGerar(
-  pac: { tipo_conta?: string | null; created_at?: string | null } | null,
-  agora: Date = new Date(),
-): boolean {
-  const tipo = pac?.tipo_conta;
-  if (tipo === "wellness_premium") return true;
-  if (tipo === "wellness_free" && pac?.created_at) {
-    return agora.getTime() < new Date(pac.created_at).getTime() + 7 * 86400000;
-  }
-  return false;
+export function clientePodeGerar(pac: { tipo_conta?: string | null } | null): boolean {
+  return contaPodeGerarPlano(pac?.tipo_conta);
 }
 
 /**
@@ -733,5 +755,6 @@ export function insumosDosMotores(m: MotoresClinicos | null, foco: FocoTriagem):
   if (m.presencial.length || m.exames.length || formatAvaliacaoVoz(m.avaliacaoVoz as SB)) ins.push("avaliacao_presencial");
   if (foco === "nutricao" && textoAnamneseNutricional(m.anamnese)) ins.push("anamnese");
   if (textoFichaClinica(m)) ins.push("historico_clinico");
+  if (m.queixa || m.historia || m.condicoes) ins.push("queixa_historia_atual");
   return ins;
 }

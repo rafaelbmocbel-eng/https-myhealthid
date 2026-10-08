@@ -1,10 +1,18 @@
 import { supabase } from '@/integrations/supabase/client';
 import { erroDaFuncao } from '@/lib/fnError';
-import { extrairBloqueio, type BloqueioTriagem, type OverrideTriagem } from '@/lib/governanca';
+import {
+  extrairBloqueio, type BloqueioTriagem, type OverrideTriagem, type TipoPlanoGov,
+} from '@/lib/governanca';
 
 // Chamada das edges gerar-plano-treino / gerar-plano-alimentar. A triagem de
 // segurança responde HTTP 200 com { ok:false, bloqueio } em vez de erro, então
 // quem chama precisa tratar os dois desfechos: o plano ou o bloqueio.
+//
+// Há dois caminhos, conforme quem chama (o servidor decide pelo JWT):
+//  - PROFISSIONAL: `gerarPlanoComTriagem` → recebe { ok:true, plano } e libera pelo fluxo atual.
+//  - CLIENTE Premium: `gerarPlanoDoCliente` → recebe { ok:true, em_revisao:true, plano_id }, SEM o
+//    conteúdo: o plano vai para a fila da equipe científica MyHealthID e só chega ao cliente
+//    depois de chancelado (RPC `meu_plano_liberado`).
 
 export type FuncaoGeracaoPlano = 'gerar-plano-treino' | 'gerar-plano-alimentar';
 
@@ -28,6 +36,18 @@ export function interpretarRespostaGeracao(data: unknown): ResultadoGeracao {
   throw new Error(MENSAGEM_GERACAO_FALHOU);
 }
 
+async function invocarGeracao(
+  funcao: FuncaoGeracaoPlano,
+  corpo: Record<string, unknown>,
+  override?: OverrideTriagem | null,
+): Promise<unknown> {
+  const { data, error } = await supabase.functions.invoke(funcao, {
+    body: override ? { ...corpo, override } : corpo,
+  });
+  if (error) throw await erroDaFuncao(error);
+  return data;
+}
+
 /**
  * Invoca a edge de geração. `override` só é enviado quando o profissional decidiu
  * prosseguir depois de um bloqueio; o servidor ainda confere quem chama e recusa
@@ -38,11 +58,178 @@ export async function gerarPlanoComTriagem(
   corpo: Record<string, unknown>,
   override?: OverrideTriagem | null,
 ): Promise<ResultadoGeracao> {
-  const { data, error } = await supabase.functions.invoke(funcao, {
-    body: override ? { ...corpo, override } : corpo,
-  });
-  if (error) throw await erroDaFuncao(error);
-  return interpretarRespostaGeracao(data);
+  return interpretarRespostaGeracao(await invocarGeracao(funcao, corpo, override));
+}
+
+// ── Cliente Premium: o plano vai para a chancela da equipe científica ───────
+
+export type ResultadoGeracaoCliente =
+  | { tipo: 'em_revisao'; planoId: string }
+  | { tipo: 'bloqueio'; bloqueio: BloqueioTriagem };
+
+export const MENSAGEM_ENVIO_REVISAO_FALHOU =
+  'Não consegui enviar o seu plano para a revisão da equipe agora. Tente de novo em instantes.';
+
+/**
+ * Interpreta a resposta da edge para quem chamou como CLIENTE. Só vale o recibo de envio para a
+ * fila ({ ok:true, em_revisao:true, plano_id }); um plano com conteúdo nunca é aceito aqui (não
+ * passou pela chancela). Qualquer outra coisa lança Error (fail-closed).
+ */
+export function interpretarRespostaGeracaoCliente(data: unknown): ResultadoGeracaoCliente {
+  const d = (data && typeof data === 'object' ? data : {}) as {
+    ok?: unknown; error?: unknown; em_revisao?: unknown; plano_id?: unknown;
+  };
+  if (d.ok !== true) {
+    const bloqueio = extrairBloqueio(data);
+    if (bloqueio) return { tipo: 'bloqueio', bloqueio };
+  }
+  if (typeof d.error === 'string' && d.error) throw new Error(d.error);
+  if (d.ok === true && d.em_revisao === true && typeof d.plano_id === 'string' && d.plano_id) {
+    return { tipo: 'em_revisao', planoId: d.plano_id };
+  }
+  throw new Error(MENSAGEM_ENVIO_REVISAO_FALHOU);
+}
+
+/** Invoca a edge de geração como cliente: nunca envia `override` (o servidor também o recusa). */
+export async function gerarPlanoDoCliente(
+  funcao: FuncaoGeracaoPlano,
+  corpo: Record<string, unknown>,
+): Promise<ResultadoGeracaoCliente> {
+  return interpretarRespostaGeracaoCliente(await invocarGeracao(funcao, corpo));
+}
+
+// ── Pedido do cliente ────────────────────────────────────────────────────────
+
+export const OBJETIVO_PADRAO_CLIENTE = 'Saúde geral, alívio de dor e mais energia no dia a dia';
+
+export interface DadosPedidoCliente {
+  pacienteId: string;
+  /** `nutricao_anamnese.respostas` do próprio cliente. */
+  anamnese?: Record<string, unknown> | null;
+  nascimento?: string | null;
+  sexo?: string | null;
+}
+
+function textoDe(v: unknown): string {
+  return typeof v === 'string' ? v.trim() : '';
+}
+
+/** Idade/sexo do cadastro; a idade EXATA a edge recalcula pela data de nascimento no banco. */
+function perfilDoPedido(d: DadosPedidoCliente): { idade?: number; sexo?: string } {
+  const idade = idadeEmAnos(d.nascimento) ?? undefined;
+  const sexo = textoDe(d.sexo) || undefined;
+  return { ...(idade !== undefined ? { idade } : {}), ...(sexo ? { sexo } : {}) };
+}
+
+/** Objetivo declarado na anamnese do cliente, ou o objetivo geral padrão. */
+export function objetivoDoCliente(anamnese: Record<string, unknown> | null | undefined): string {
+  return textoDe(anamnese?.objetivo) || OBJETIVO_PADRAO_CLIENTE;
+}
+
+/**
+ * Corpo do pedido de treino do cliente. Só leva o que é dele (objetivo da anamnese, idade/sexo do
+ * cadastro e, no "Senti incômodo", o relato); o servidor ignora avaliação presencial, exames e
+ * antropometria vindos do body de um cliente.
+ */
+export function montarPedidoTreinoCliente(d: DadosPedidoCliente, incomodo?: string): Record<string, unknown> {
+  const relato = textoDe(incomodo);
+  return {
+    paciente_id: d.pacienteId,
+    objetivo: objetivoDoCliente(d.anamnese),
+    nivel: 'iniciante',
+    frequencia_semanal: 3,
+    duracao_semanas: 8,
+    ...perfilDoPedido(d),
+    ...(relato
+      ? { restricoes: `IMPORTANTE — incômodo relatado pelo paciente, adapte com cuidado (reduza carga/ADM ou substitua exercícios que sobrecarreguem a região; progrida devagar): ${relato}` }
+      : {}),
+  };
+}
+
+/** Corpo do pedido de plano alimentar do cliente (anamnese nutricional dele). */
+export function montarPedidoNutricaoCliente(d: DadosPedidoCliente): Record<string, unknown> {
+  const r = d.anamnese ?? {};
+  const perfil = perfilDoPedido(d);
+  const idadeAnamnese = Number(r.idade);
+  return {
+    paciente_id: d.pacienteId,
+    objetivo: objetivoDoCliente(r),
+    refeicoes_por_dia: Number(r.refeicoes_por_dia) || 5,
+    restricoes: textoDe(r.restricoes_alergias),
+    preferencias: textoDe(r.preferencias),
+    idade: Number.isFinite(idadeAnamnese) && idadeAnamnese > 0 ? idadeAnamnese : perfil.idade,
+    sexo: textoDe(r.sexo) || perfil.sexo,
+    nivel_atividade: textoDe(r.nivel_atividade) || undefined,
+  };
+}
+
+// ── Situação do plano do cliente (RPC meu_status_plano_cliente) ──────────────
+
+export type StatusPlanoCliente = 'aguardando' | 'chancelado' | 'recusado';
+
+export interface SituacaoPlanoCliente {
+  /** null = o cliente ainda não gerou plano deste tipo (ou o status não pôde ser lido). */
+  status: StatusPlanoCliente | null;
+  geradoEm: string | null;
+  /** Recado curto da equipe ao cliente (motivo da recusa). */
+  notaPublica: string | null;
+}
+
+export const SITUACAO_VAZIA: SituacaoPlanoCliente = { status: null, geradoEm: null, notaPublica: null };
+
+/** Leitura defensiva de `meu_status_plano_cliente`; qualquer formato inesperado vira "sem status". */
+export function lerSituacaoPlanoCliente(data: unknown): SituacaoPlanoCliente {
+  const d = (data && typeof data === 'object' && !Array.isArray(data) ? data : {}) as Record<string, unknown>;
+  const status = d.status === 'aguardando' || d.status === 'chancelado' || d.status === 'recusado' ? d.status : null;
+  if (!status) return SITUACAO_VAZIA;
+  return {
+    status,
+    geradoEm: textoDe(d.gerado_em) || null,
+    notaPublica: textoDe(d.nota_publica) || null,
+  };
+}
+
+export const TEXTO_EM_REVISAO = 'Em revisão pela equipe científica MyHealthID — você recebe aqui quando for chancelado';
+
+/** Primeira linha do aviso de recusa: o recado da equipe ao cliente, sem pontuação sobrando no fim. */
+export function textoRecusado(notaPublica: string | null | undefined): string {
+  const nota = textoDe(notaPublica).replace(/[\s.,;:!?]+$/, '');
+  return nota ? `Recusado: ${nota}` : 'Recusado pela equipe científica MyHealthID';
+}
+
+export const TEXTO_APOS_RECUSA = 'Você pode gerar de novo ou procurar um profissional.';
+
+/** Aviso (toast) depois de enviar planos para a revisão da equipe científica. */
+export function mensagemEnviadoParaRevisao(enviados: readonly TipoPlanoGov[], incomodo = false): string {
+  if (incomodo) {
+    return 'Recebemos o seu relato. O treino adaptado foi enviado para a revisão da equipe científica MyHealthID e o treino atual segue valendo até lá. Se o incômodo for forte ou não passar, procure um profissional.';
+  }
+  const treino = enviados.includes('treino');
+  const nutricao = enviados.includes('nutricao');
+  const quem = treino && nutricao ? 'Seu treino e seu plano alimentar foram enviados' : treino ? 'Seu treino foi enviado' : 'Seu plano alimentar foi enviado';
+  return `${quem} para a revisão da equipe científica MyHealthID. Você recebe aqui quando for chancelado.`;
+}
+
+export interface BotaoGerar {
+  rotulo: string;
+  desabilitado: boolean;
+}
+
+const ROTULOS_GERAR: Record<TipoPlanoGov, { novo: string; outro: string; denovo: string; revisao: string }> = {
+  treino: { novo: 'Gerar treino', outro: 'Gerar novo treino', denovo: 'Gerar treino de novo', revisao: 'Treino em revisão' },
+  nutricao: { novo: 'Gerar nutrição', outro: 'Gerar nova nutrição', denovo: 'Gerar nutrição de novo', revisao: 'Nutrição em revisão' },
+};
+
+/**
+ * Rótulo e estado do botão de gerar. Enquanto há um plano aguardando a equipe, o botão fica
+ * desligado (o servidor também recusa gerar outro do mesmo tipo: HTTP 409). `temChancelado`: o cliente
+ * já tem um plano chancelado visível, que continua valendo até o novo ser chancelado.
+ */
+export function botaoGerar(tipo: TipoPlanoGov, status: StatusPlanoCliente | null, temChancelado: boolean): BotaoGerar {
+  const r = ROTULOS_GERAR[tipo];
+  if (status === 'aguardando') return { rotulo: r.revisao, desabilitado: true };
+  if (status === 'recusado') return { rotulo: r.denovo, desabilitado: false };
+  return { rotulo: temChancelado ? r.outro : r.novo, desabilitado: false };
 }
 
 /** Idade completa em anos a partir de 'YYYY-MM-DD'; null se a data faltar ou for inválida. */

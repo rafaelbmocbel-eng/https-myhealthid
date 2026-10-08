@@ -3,8 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, ChevronDown, FileEdit, History, ShieldCheck, Sparkles } from 'lucide-react';
 import {
-  estadoSelo, lerGovernanca, resumoParametros, rotuloSelo, semAprovacao, semParametrosConfirmados,
-  type EstadoSelo,
+  estadoSelo, lerGovernanca, resumoParametros, rotuloSelo, rotuloSeloEquipe, semAprovacao, semParametrosConfirmados,
+  type EstadoSelo, type OrigemPlano,
 } from '@/lib/governanca';
 
 // Selo de governança de um plano: quem liberou, quando, em que versão e de onde
@@ -13,6 +13,9 @@ import {
 // `origem` decide de onde o plano veio e, por isso, o que o selo pode afirmar:
 //  - 'profissional' → planos_treino / planos_alimentares (protegidas por RLS e
 //    carimbadas por trigger no banco): pode mostrar "Liberado por ...".
+//  - 'equipe_myhealthid' → plano que o cliente Premium gerou e a equipe científica
+//    chancelou. Vem da RPC `meu_plano_liberado` (só devolve plano com status
+//    'chancelado', carimbado no banco): mostra "Chancelado pela equipe científica ...".
 //  - 'cliente' → planos_ia_cliente. O próprio paciente escreve nessa tabela, então
 //    NADA nela prova revisão ou aprovação: o selo nunca diz "Liberado/aprovado por
 //    profissional" e ignora qualquer `aprovacao` que esteja no conteúdo.
@@ -21,7 +24,7 @@ interface Props {
   conteudo: unknown;
   /** Coluna `aprovado` do plano. Ignorada quando origem = 'cliente'. */
   aprovado?: boolean;
-  origem: 'profissional' | 'cliente';
+  origem: OrigemPlano;
   /** 'profissional' mostra detalhes de revisão/justificativa; 'paciente' só o essencial. */
   visao?: 'profissional' | 'paciente';
   compacto?: boolean;
@@ -47,6 +50,7 @@ export default function SeloGovernanca({ conteudo, aprovado, origem, visao = 'pr
   const [verJustificativa, setVerJustificativa] = useState(false);
 
   const doCliente = origem === 'cliente';
+  const daEquipe = origem === 'equipe_myhealthid';
   const bruta = lerGovernanca(conteudo);
   const gov = doCliente ? semAprovacao(bruta) : bruta;
 
@@ -56,6 +60,9 @@ export default function SeloGovernanca({ conteudo, aprovado, origem, visao = 'pr
     // Texto fixo: nada que venha do conteúdo (gravável pelo paciente) entra no rótulo.
     tipo = 'ia';
     rotulo = 'Gerado por IA · sem revisão de profissional';
+  } else if (daEquipe) {
+    tipo = 'liberado';
+    rotulo = rotuloSeloEquipe(gov);
   } else {
     tipo = estadoSelo(gov, aprovado);
     rotulo = rotuloSelo(gov, aprovado);
@@ -94,7 +101,14 @@ export default function SeloGovernanca({ conteudo, aprovado, origem, visao = 'pr
         </p>
       )}
 
-      {!doCliente && visao === 'paciente' && tipo === 'liberado' && (
+      {daEquipe && visao === 'paciente' && (
+        <p className="text-[11px] text-muted-foreground pl-6">
+          Plano gerado a partir das suas respostas e chancelado pela equipe científica do MyHealthID. Não substitui o
+          acompanhamento de um profissional de saúde.
+        </p>
+      )}
+
+      {!doCliente && !daEquipe && visao === 'paciente' && tipo === 'liberado' && (
         <p className="text-[11px] text-muted-foreground pl-6">
           Este plano não substitui o acompanhamento de um profissional de saúde.
         </p>

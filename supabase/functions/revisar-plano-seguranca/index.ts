@@ -8,13 +8,18 @@
 // Com plano_id (treino/nutrição) revisa o plano SALVO no banco — não o que veio no
 // body — e grava o resultado em _governanca.revisao_seguranca, preso ao hash do
 // conteúdo revisado. Sem plano_id (ex.: diretriz) só responde, sem gravar.
+// Com { tabela: 'plano_cliente_chancela', plano_id } a EQUIPE CIENTÍFICA revisa o plano que um
+// cliente Premium gerou (aguardando chancela); o contexto é só o que o cliente informou.
 import { requireUser } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logUsoIA } from "../_shared/log-ia.ts";
-import { carregarMotoresClinicos, textoFichaClinica, textoMyID, textoPresencial, textoQuestionarios, type FocoPlano } from "../_shared/motores-plano.ts";
 import {
-  extrairJson, idadeEmAnos, interpretarRevisao, montarRevisaoPersistida, planoParaPrompt,
-  removerGovernanca, resumirHistoricoClinico, tabelaDoTipo,
+  carregarMotoresClinicos, textoFichaClinica, textoMyID, textoPresencial, textoQueixaDoCliente, textoQuestionarios,
+  type FocoPlano,
+} from "../_shared/motores-plano.ts";
+import {
+  alvoDaRevisao, extrairJson, idadeEmAnos, interpretarRevisao, montarRevisaoPersistida, planoParaPrompt,
+  removerGovernanca, resumirHistoricoClinico,
 } from "../_shared/revisao-seguranca.ts";
 
 const corsHeaders = {
@@ -86,8 +91,12 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { tipo, plano_id } = body || {};
     let pacienteId: string | null = typeof body?.paciente_id === "string" && body.paciente_id ? body.paciente_id : null;
-    const foco: FocoPlano = tipo === "nutricao" ? "nutricao" : tipo === "treino" ? "treino" : "clinica";
-    const alvo = tabelaDoTipo(tipo);
+    let foco: FocoPlano = tipo === "nutricao" ? "nutricao" : tipo === "treino" ? "treino" : "clinica";
+    const alvo = alvoDaRevisao(tipo, body?.tabela);
+    const ehPlanoCliente = alvo?.tabela === "plano_cliente_chancela";
+    if (ehPlanoCliente && !plano_id) {
+      return resposta(400, { error: "Informe o plano_id do plano do cliente a revisar." });
+    }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const admin: SB = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -103,13 +112,28 @@ Deno.serve(async (req) => {
       if (!alvo || typeof plano_id !== "string") {
         return resposta(400, { error: "plano_id só vale para planos de treino ou de nutrição." });
       }
+      if (ehPlanoCliente) {
+        // Plano de cliente: só a equipe científica (conferido pelo banco, com o JWT de quem chama).
+        const { data: ehEquipe } = await doUsuario.rpc("eh_equipe_cientifica");
+        if (ehEquipe !== true) {
+          return resposta(403, { error: "Só a equipe científica MyHealthID revisa os planos dos clientes." });
+        }
+      }
       // O hash vem ANTES da leitura: se o plano mudar durante a revisão, a gravação recusa.
       hashRevisado = await hashDoPlano(admin, alvo.tabela, plano_id);
       const { data: linha } = await doUsuario.from(alvo.tabela)
-        .select(`id, paciente_id, terapeuta_id, ${alvo.coluna}`).eq("id", plano_id).maybeSingle();
+        .select(ehPlanoCliente ? `id, paciente_id, tipo, status, ${alvo.coluna}` : `id, paciente_id, terapeuta_id, ${alvo.coluna}`)
+        .eq("id", plano_id).maybeSingle();
       if (!linha) return resposta(404, { error: "Plano não encontrado." });
-      // Quem só LÊ o plano (ex.: o paciente) não grava revisão com service role.
-      if (linha.terapeuta_id !== userId) return resposta(403, { error: "Só o profissional responsável pelo plano pode pedir a revisão." });
+      if (ehPlanoCliente) {
+        if (linha.status !== "aguardando") {
+          return resposta(409, { error: "Este plano não está mais aguardando chancela." });
+        }
+        foco = linha.tipo === "nutricao" ? "nutricao" : "treino";
+      } else if (linha.terapeuta_id !== userId) {
+        // Quem só LÊ o plano (ex.: o paciente) não grava revisão com service role.
+        return resposta(403, { error: "Só o profissional responsável pelo plano pode pedir a revisão." });
+      }
       if (pacienteId && pacienteId !== linha.paciente_id) {
         return resposta(400, { error: "O plano informado não pertence a este paciente." });
       }
@@ -129,9 +153,10 @@ Deno.serve(async (req) => {
     // Contexto clínico do paciente (mesmos motores das gerações) + restrições.
     let myidStr = "", presencialTxt = "", questTxt = "", restricoesTxt = "";
     if (pacienteId) {
-      const motores = await carregarMotoresClinicos(admin, pacienteId);
+      // Plano de cliente: contexto só do que o cliente informou (sem notas do profissional).
+      const motores = await carregarMotoresClinicos(admin, pacienteId, { apenasInsumosDoCliente: ehPlanoCliente });
       myidStr = textoMyID(motores, foco);
-      presencialTxt = textoPresencial(motores, foco);
+      presencialTxt = ehPlanoCliente ? textoQueixaDoCliente(motores) : textoPresencial(motores, foco);
       questTxt = textoQuestionarios(motores, foco);
 
       const colunasBase = "condicoes_preexistentes, alergias, medicamentos_uso, queixa_principal";

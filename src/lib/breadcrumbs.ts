@@ -10,6 +10,7 @@ const PROFESSIONAL_ROUTES: { path: string; label: string }[] = [
   { path: '/eventos', label: 'Eventos' },
   { path: '/configuracoes', label: 'Configurações' },
   { path: '/base-cientifica', label: 'Base Científica' },
+  { path: '/chancela', label: 'Fila de chancela' },
 ];
 
 /** Breadcrumbs do app do profissional. Retorna [] na home (/hoje) para não poluir a tela inicial. */

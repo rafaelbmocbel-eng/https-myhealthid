@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dumbbell, ShieldCheck, ImageOff, Salad, Plus, Trash2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { rodapeGovernanca } from '@/lib/governanca';
+import { rodapeGovernanca, type OrigemPlano } from '@/lib/governanca';
 
 // Documento do treino (estilo PDF, mas com GIFs ANIMANDO). Usado na página logada
 // (/paciente/treino-completo), na pública (/treino/:token) e no portal do
@@ -32,10 +32,12 @@ interface Props {
   onNutricaoChange?: (novo: any) => void;
   /**
    * De onde veio o conteúdo. 'profissional' (planos_treino) mostra no rodapé quem
-   * liberou, data, versão, fonte e a reavaliação; o padrão ('cliente', planos_ia_cliente)
-   * não afirma liberação nenhuma, pois o paciente escreve nessa tabela.
+   * liberou, data, versão, fonte e a reavaliação; 'equipe_myhealthid' (plano chancelado pela
+   * equipe científica, vindo da RPC meu_plano_liberado) mostra quem chancelou; o padrão
+   * ('cliente', planos_ia_cliente) não afirma liberação nenhuma, pois o paciente escreve
+   * nessa tabela.
    */
-  origemGov?: 'profissional' | 'cliente';
+  origemGov?: OrigemPlano;
   /** Coluna `aprovado` do plano do profissional. */
   aprovado?: boolean;
 }

@@ -16,10 +16,11 @@ interface Flag {
   sugestao?: string;
   onde?: string;
 }
-interface Resultado {
+export interface ResultadoRevisao {
   resumo?: string;
   risco_geral?: 'alto' | 'medio' | 'baixo';
   flags?: Flag[];
+  persistida?: boolean;
 }
 
 const SEV = {
@@ -30,24 +31,37 @@ const SEV = {
 
 // Com `planoId` (treino/nutrição), a edge lê o plano SALVO e registra a revisão
 // no próprio plano; sem ele, revisa só o conteúdo enviado e não grava nada.
-export default function RevisorSeguranca({
-  pacienteId, tipo, plano, planoId,
-}: { pacienteId: string; tipo: 'treino' | 'nutricao' | 'clinica'; plano: any; planoId?: string }) {
+// Com `tabela` = 'plano_cliente_chancela' o plano é o do cliente que aguarda a
+// chancela da equipe científica (o paciente não é informado: a edge lê da linha).
+interface RevisorProps {
+  pacienteId?: string;
+  tipo: 'treino' | 'nutricao' | 'clinica';
+  plano?: any;
+  planoId?: string;
+  tabela?: 'plano_cliente_chancela';
+  /** Chamado com a resposta da revisão (ex.: para atualizar a fila depois de a revisão ser gravada). */
+  onResultado?: (resultado: ResultadoRevisao) => void;
+}
+
+export default function RevisorSeguranca({ pacienteId, tipo, plano, planoId, tabela, onResultado }: RevisorProps) {
   const [loading, setLoading] = useState(false);
-  const [res, setRes] = useState<Resultado | null>(null);
+  const [res, setRes] = useState<ResultadoRevisao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState(true);
 
   const revisar = async () => {
     setLoading(true); setErro(null); setRes(null);
     try {
-      const { data, error } = await supabase.functions.invoke('revisar-plano-seguranca', {
-        body: planoId ? { paciente_id: pacienteId, tipo, plano_id: planoId } : { paciente_id: pacienteId, tipo, plano },
-      });
+      let body: Record<string, unknown>;
+      if (planoId && tabela) body = { tabela, tipo, plano_id: planoId };
+      else if (planoId) body = { paciente_id: pacienteId, tipo, plano_id: planoId };
+      else body = { paciente_id: pacienteId, tipo, plano };
+      const { data, error } = await supabase.functions.invoke('revisar-plano-seguranca', { body });
       if (error) throw await erroDaFuncao(error);
       if ((data as any)?.error) throw new Error((data as any).error);
-      setRes(data as Resultado);
+      setRes(data as ResultadoRevisao);
       setAberto(true);
+      onResultado?.(data as ResultadoRevisao);
     } catch (e: any) {
       setErro(e?.message || 'Não foi possível revisar agora.');
     } finally {

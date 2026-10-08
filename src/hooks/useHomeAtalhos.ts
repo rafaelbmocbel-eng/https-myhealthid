@@ -1,12 +1,14 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Users, LayoutDashboard, PartyPopper, BookOpen, DollarSign,
-  Tag, Settings, MessageCircle, CalendarDays,
+  Tag, Settings, MessageCircle, CalendarDays, ShieldCheck,
 } from 'lucide-react';
+import { useEquipeCientifica } from '@/hooks/useEquipeCientifica';
+import { ROTA_CHANCELA } from '@/lib/chancela';
 
 export type AtalhoId =
   | 'pacientes' | 'dashboard' | 'eventos' | 'base-cientifica'
-  | 'financeiro' | 'planos' | 'config' | 'crm' | 'agenda';
+  | 'financeiro' | 'planos' | 'config' | 'crm' | 'agenda' | 'chancela';
 
 export interface AtalhoDef {
   id: AtalhoId;
@@ -14,6 +16,8 @@ export interface AtalhoDef {
   icon: any;
   to: string;
   descricao: string;
+  /** Só aparece (no catálogo e na home) para a equipe científica MyHealthID. */
+  somenteEquipe?: boolean;
 }
 
 export const ATALHOS_CATALOGO: AtalhoDef[] = [
@@ -26,6 +30,7 @@ export const ATALHOS_CATALOGO: AtalhoDef[] = [
   { id: 'config',          label: 'Configurações',   icon: Settings,       to: '/configuracoes',   descricao: 'Ajustes do sistema' },
   { id: 'crm',             label: 'CRM Inbox',       icon: MessageCircle,  to: '/crm?tab=inbox',   descricao: 'Conversas do WhatsApp' },
   { id: 'agenda',          label: 'Agenda',          icon: CalendarDays,   to: '/agenda',          descricao: 'Calendário e sessões' },
+  { id: 'chancela',        label: 'Fila de chancela', icon: ShieldCheck,   to: ROTA_CHANCELA,      descricao: 'Planos de clientes aguardando a equipe científica', somenteEquipe: true },
 ];
 
 const STORAGE_KEY = 'home-atalhos-v1';
@@ -33,48 +38,68 @@ const DEFAULT_ATALHOS: AtalhoId[] = [
   'pacientes', 'dashboard', 'eventos', 'base-cientifica',
   'financeiro', 'planos', 'config',
 ];
+// Quem é da equipe científica já recebe a fila de chancela entre os atalhos padrão.
+const DEFAULT_ATALHOS_EQUIPE: AtalhoId[] = [...DEFAULT_ATALHOS, 'chancela'];
 
-function readStorage(): AtalhoId[] {
-  if (typeof window === 'undefined') return DEFAULT_ATALHOS;
+/** Lista salva pelo usuário; null = nunca personalizou (vale o padrão). */
+function readStorage(): AtalhoId[] | null {
+  if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_ATALHOS;
+    if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return DEFAULT_ATALHOS;
+    if (!Array.isArray(parsed)) return null;
     return parsed.filter((id: any) =>
       ATALHOS_CATALOGO.some(a => a.id === id)
     ) as AtalhoId[];
   } catch {
-    return DEFAULT_ATALHOS;
+    return null;
+  }
+}
+
+function writeStorage(ids: AtalhoId[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+  } catch {
+    // Armazenamento indisponível (modo privado/cota): a escolha vale só nesta sessão.
   }
 }
 
 export function useHomeAtalhos() {
-  const [ativos, setAtivos] = useState<AtalhoId[]>(() => readStorage());
+  const { ehEquipe } = useEquipeCientifica();
+  const [salvos, setSalvos] = useState<AtalhoId[] | null>(() => readStorage());
+  const padrao = ehEquipe ? DEFAULT_ATALHOS_EQUIPE : DEFAULT_ATALHOS;
+  const ativos = salvos ?? padrao;
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setAtivos(readStorage());
+      if (e.key === STORAGE_KEY) setSalvos(readStorage());
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const toggle = useCallback((id: AtalhoId) => {
-    setAtivos(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setSalvos(prev => {
+      const atual = prev ?? padrao;
+      const next = atual.includes(id) ? atual.filter(x => x !== id) : [...atual, id];
+      writeStorage(next);
       return next;
     });
-  }, []);
+  }, [padrao]);
 
   const reset = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_ATALHOS));
-    setAtivos(DEFAULT_ATALHOS);
-  }, []);
+    writeStorage(padrao);
+    setSalvos(padrao);
+  }, [padrao]);
 
-  const itens = ATALHOS_CATALOGO.filter(a => ativos.includes(a.id))
+  const catalogo = useMemo(
+    () => ATALHOS_CATALOGO.filter(a => !a.somenteEquipe || ehEquipe),
+    [ehEquipe],
+  );
+
+  const itens = catalogo.filter(a => ativos.includes(a.id))
     .sort((a, b) => ativos.indexOf(a.id) - ativos.indexOf(b.id));
 
-  return { ativos, itens, toggle, reset, catalogo: ATALHOS_CATALOGO };
+  return { ativos, itens, toggle, reset, catalogo };
 }

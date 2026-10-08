@@ -5,120 +5,58 @@ import { supabase } from '@/integrations/supabase/client';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PortalSkeleton from '@/components/paciente/PortalSkeleton';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Printer, FileDown, Loader2, Dumbbell, Share2, Pencil, Save, X } from 'lucide-react';
+import { ArrowLeft, Printer, FileDown, Loader2, Dumbbell } from 'lucide-react';
 import { toast } from 'sonner';
 import TreinoDocumento from '@/components/paciente/TreinoDocumento';
+import { origemDoPlanoLiberado, type OrigemPlano } from '@/lib/governanca';
+
+interface PlanoLiberado {
+  titulo?: string | null;
+  conteudo: any;
+  origem: OrigemPlano;
+}
 
 // Versão WEB do plano de treino — "imita o PDF", mas com os GIFs ANIMANDO de
-// verdade (PDF não anima; página web sim). Layout limpo, pronto para imprimir
-// ou compartilhar. Tudo expandido, sem interações — é um documento vivo.
+// verdade (PDF não anima; página web sim). Layout limpo, pronto para imprimir.
+// Tudo expandido, sem interações — é um documento vivo.
+//
+// Mostra só o que foi LIBERADO ao cliente (meu_plano_liberado): o plano do profissional
+// ou o que a equipe científica MyHealthID chancelou. Somente leitura: alterar um plano
+// já liberado ou chancelado é com o profissional / a equipe.
 export default function PacienteTreinoCompleto() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [nome, setNome] = useState('');
-  const [pacienteId, setPacienteId] = useState<string | null>(null);
-  const [plano, setPlano] = useState<{ titulo?: string; conteudo: any; share_token?: string | null } | null>(null);
+  const [terapeutaId, setTerapeutaId] = useState<string | null>(null);
+  const [plano, setPlano] = useState<PlanoLiberado | null>(null);
   const [nutricao, setNutricao] = useState<any>(null);
-  const [temNutricaoRow, setTemNutricaoRow] = useState(false);
   const [baixando, setBaixando] = useState(false);
-  const [compartilhando, setCompartilhando] = useState(false);
-
-  // Edição inline: o cliente/profissional edita todas as características do plano
-  // aqui na própria página e salva de volta em planos_ia_cliente.
-  const [editando, setEditando] = useState(false);
-  const [salvando, setSalvando] = useState(false);
-  const [draftTitulo, setDraftTitulo] = useState<string>('');
-  const [draftConteudo, setDraftConteudo] = useState<any>(null);
-  const [draftNutricao, setDraftNutricao] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: pac } = await supabase.from('pacientes').select('id, nome, sobrenome').eq('user_id', user.id).maybeSingle();
-      if (!pac) { setLoading(false); return; }
-      setPacienteId(pac.id);
-      setNome(`${pac.nome || ''} ${pac.sobrenome || ''}`.trim());
-      const { data } = await (supabase as any).from('planos_ia_cliente')
-        .select('tipo, titulo, conteudo, share_token').eq('paciente_id', pac.id);
-      const rows = (data || []) as any[];
-      setPlano(rows.find((r) => r.tipo === 'treino') || null);
-      const nut = rows.find((r) => r.tipo === 'nutricao');
-      setNutricao(nut?.conteudo || null);
-      setTemNutricaoRow(Boolean(nut));
-      setLoading(false);
+      try {
+        const { data: pac } = await supabase.from('pacientes').select('id, nome, sobrenome, terapeuta_id').eq('user_id', user.id).maybeSingle();
+        if (!pac) return;
+        setNome(`${pac.nome || ''} ${pac.sobrenome || ''}`.trim());
+        setTerapeutaId((pac as any).terapeuta_id ?? null);
+        const [t, n] = await Promise.all([
+          (supabase as any).rpc('meu_plano_liberado', { p_tipo: 'treino' }),
+          (supabase as any).rpc('meu_plano_liberado', { p_tipo: 'nutricao' }),
+        ]);
+        if (t.error) throw t.error;
+        setPlano(t.data ? { titulo: t.data.titulo, conteudo: t.data.conteudo, origem: origemDoPlanoLiberado(t.data) } : null);
+        // Falha ao ler a nutrição não impede o treino de aparecer.
+        setNutricao(n.error ? null : n.data?.conteudo ?? null);
+      } catch (e) {
+        console.error('[PacienteTreinoCompleto] carregar error:', e);
+        toast.error('Não consegui carregar o seu treino agora. Tente de novo.');
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
-
-  const iniciarEdicao = () => {
-    setDraftTitulo(plano?.titulo || '');
-    setDraftConteudo(JSON.parse(JSON.stringify(plano?.conteudo || {})));
-    setDraftNutricao(nutricao ? JSON.parse(JSON.stringify(nutricao)) : { refeicoes: [] });
-    setEditando(true);
-  };
-
-  const cancelarEdicao = () => setEditando(false);
-
-  const salvarEdicao = async () => {
-    if (!pacienteId || !plano) return;
-    setSalvando(true);
-    try {
-      const { error: e1 } = await (supabase as any).from('planos_ia_cliente')
-        .update({ titulo: draftTitulo || 'Meu plano de treino', conteudo: draftConteudo })
-        .eq('paciente_id', pacienteId).eq('tipo', 'treino');
-      if (e1) throw e1;
-
-      const temRefeicoes = Array.isArray(draftNutricao?.refeicoes) && draftNutricao.refeicoes.length > 0;
-      if (temNutricaoRow) {
-        const { error: e2 } = await (supabase as any).from('planos_ia_cliente')
-          .update({ conteudo: draftNutricao }).eq('paciente_id', pacienteId).eq('tipo', 'nutricao');
-        if (e2) throw e2;
-      } else if (temRefeicoes) {
-        // Cliente adicionou nutrição pela primeira vez — cria a linha.
-        const { error: e3 } = await (supabase as any).from('planos_ia_cliente')
-          .insert({ paciente_id: pacienteId, tipo: 'nutricao', titulo: draftNutricao?.titulo || 'Meu plano alimentar', conteudo: draftNutricao });
-        if (e3) throw e3;
-        setTemNutricaoRow(true);
-      }
-
-      setPlano({ ...plano, titulo: draftTitulo, conteudo: draftConteudo });
-      setNutricao(temRefeicoes ? draftNutricao : null);
-      setEditando(false);
-      toast.success('Plano atualizado');
-    } catch (err: any) {
-      toast.error(err?.message || 'Não consegui salvar agora.');
-    } finally {
-      setSalvando(false);
-    }
-  };
-
-  const compartilhar = async () => {
-    if (!plano || !pacienteId) return;
-    setCompartilhando(true);
-    try {
-      let token = plano.share_token;
-      if (!token) {
-        token = crypto.randomUUID();
-        const { error } = await (supabase as any).from('planos_ia_cliente')
-          .update({ share_token: token }).eq('paciente_id', pacienteId).eq('tipo', 'treino');
-        if (error) throw error;
-        setPlano({ ...plano, share_token: token });
-      }
-      const url = `${window.location.origin}/treino/${token}`;
-      const navAny = navigator as any;
-      if (navAny.share) {
-        try { await navAny.share({ title: 'Meu Treino — My Health ID', text: 'Meu treino personalizado (com os exercícios animados):', url }); }
-        catch (e: any) { if (e?.name !== 'AbortError') { await navigator.clipboard.writeText(url); toast.success('Link copiado!'); } }
-      } else {
-        await navigator.clipboard.writeText(url);
-        toast.success('Link copiado! Cole onde quiser compartilhar.');
-      }
-    } catch (e: any) {
-      toast.error(e?.message || 'Não consegui gerar o link agora.');
-    } finally {
-      setCompartilhando(false);
-    }
-  };
 
   const baixarPdf = async () => {
     if (!plano) return;
@@ -128,9 +66,11 @@ export default function PacienteTreinoCompleto() {
       const { downloadPDFBlob } = await import('@/utils/pdfMyIDPaciente');
       const { carregarBrandingClinica } = await import('@/utils/pdfBranding');
       // Branding vem do terapeuta do paciente (o usuário aqui é o paciente).
-      const { data: pacTer } = await supabase.from('pacientes').select('terapeuta_id').eq('user_id', user!.id).maybeSingle();
-      const branding = await carregarBrandingClinica((pacTer as any)?.terapeuta_id);
-      const blob = await gerarPDFPlanoTreino({ pacienteNome: nome || 'Paciente', titulo: plano.titulo, ...branding, conteudo: plano.conteudo, nutricao });
+      const branding = await carregarBrandingClinica(terapeutaId);
+      const blob = await gerarPDFPlanoTreino({
+        pacienteNome: nome || 'Paciente', titulo: plano.titulo, ...branding,
+        conteudo: plano.conteudo, nutricao, origemGov: plano.origem, aprovado: true,
+      });
       downloadPDFBlob(blob, `Meu_Treino_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (e) {
       console.error('[PacienteTreinoCompleto] baixarPdf error:', e);
@@ -150,59 +90,36 @@ export default function PacienteTreinoCompleto() {
               <ArrowLeft className="h-4 w-4" /> Voltar
             </button>
             <div className="ml-auto flex items-center gap-2">
-              {editando ? (
-                <>
-                  <Button size="sm" className="gap-1.5" disabled={salvando} onClick={salvarEdicao}>
-                    {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1.5" disabled={salvando} onClick={cancelarEdicao}>
-                    <X className="h-4 w-4" /> Cancelar
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button size="sm" variant="outline" className="gap-1.5" disabled={!plano} onClick={iniciarEdicao}>
-                    <Pencil className="h-4 w-4" /> Editar
-                  </Button>
-                  <Button size="sm" className="gap-1.5" disabled={compartilhando || !plano} onClick={compartilhar}>
-                    {compartilhando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Compartilhar
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.print()}>
-                    <Printer className="h-4 w-4" /> Imprimir
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1.5" disabled={baixando || !plano} onClick={baixarPdf}>
-                    {baixando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} PDF
-                  </Button>
-                </>
-              )}
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.print()}>
+                <Printer className="h-4 w-4" /> Imprimir
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" disabled={baixando || !plano} onClick={baixarPdf}>
+                {baixando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} PDF
+              </Button>
             </div>
           </div>
         </div>
 
         {loading ? (
           <PortalSkeleton />
-        ) : !editando && (!plano || fases.length === 0) ? (
+        ) : !plano || fases.length === 0 ? (
           <div className="max-w-2xl mx-auto p-8 text-center">
             <Dumbbell className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">Você ainda não tem um treino gerado.</p>
-            <Button className="mt-4" onClick={() => navigate('/paciente/exercicios')}>Montar meu treino</Button>
+            <p className="text-sm font-medium text-muted-foreground">Você ainda não tem um treino liberado.</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              Ele aparece aqui quando o seu profissional liberar ou quando a equipe científica MyHealthID chancelar o plano que você pediu.
+            </p>
+            <Button className="mt-4" onClick={() => navigate('/paciente/exercicios')}>Ver meu plano de tratamento</Button>
           </div>
         ) : (
           <div className="max-w-2xl mx-auto my-4 print:my-0">
-            {editando && (
-              <p className="text-xs text-center text-muted-foreground mb-2 px-4">
-                Modo edição — altere qualquer campo dos planos e toque em <strong>Salvar</strong>.
-              </p>
-            )}
             <TreinoDocumento
               nome={nome}
-              titulo={editando ? draftTitulo : plano?.titulo}
-              conteudo={editando ? draftConteudo : plano?.conteudo}
-              nutricao={editando ? draftNutricao : nutricao}
-              editando={editando}
-              onTituloChange={setDraftTitulo}
-              onConteudoChange={setDraftConteudo}
-              onNutricaoChange={setDraftNutricao}
+              titulo={plano.titulo}
+              conteudo={plano.conteudo}
+              nutricao={nutricao}
+              origemGov={plano.origem}
+              aprovado
             />
           </div>
         )}

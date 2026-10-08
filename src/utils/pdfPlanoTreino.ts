@@ -11,7 +11,7 @@ import { nomeDocumento } from '@/lib/pdf/entrega';
 import jsPDF from 'jspdf';
 import '@/lib/pdf/patchJsPdf';
 import { drawClinicLogo, drawLogoWatermark } from './pdfFingerprintWatermark';
-import { rodapeGovernanca } from '@/lib/governanca';
+import { rodapeGovernanca, type OrigemPlano } from '@/lib/governanca';
 
 export interface PlanoTreinoPDFData {
   pacienteNome: string;
@@ -22,10 +22,11 @@ export interface PlanoTreinoPDFData {
   nutricao?: any; // { titulo, resumo, calorias_totais, macros, refeicoes: [...], orientacoes, lista_compras }
   /**
    * 'profissional' (planos_treino) imprime quem liberou, data, versão, fonte e a
-   * reavaliação; o padrão ('cliente', planos_ia_cliente) não afirma liberação —
-   * o paciente escreve nessa tabela — e fica só com o aviso padrão.
+   * reavaliação; 'equipe_myhealthid' imprime quem da equipe científica chancelou; o padrão
+   * ('cliente', planos_ia_cliente) não afirma liberação — o paciente escreve nessa tabela —
+   * e fica só com o aviso padrão.
    */
-  origemGov?: 'profissional' | 'cliente';
+  origemGov?: OrigemPlano;
   aprovado?: boolean;
 }
 

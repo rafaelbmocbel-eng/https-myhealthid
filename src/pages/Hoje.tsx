@@ -7,6 +7,7 @@ import {
   CalendarDays, MessageCircle, ArrowRight, Clock,
 } from 'lucide-react';
 import { useHomeAtalhos } from '@/hooks/useHomeAtalhos';
+import { useChancelaPendentes } from '@/hooks/useChancelaPendentes';
 
 import AppLayout from '@/components/AppLayout';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
@@ -23,6 +24,7 @@ export default function Hoje() {
   const { user, profile, loading, authReady } = useAuth();
   const navigate = useNavigate();
   const { itens: atalhos } = useHomeAtalhos();
+  const chancelaPendentes = useChancelaPendentes();
 
   const firstName = useMemo(() => (profile?.nome || '').split(' ')[0] || 'Olá', [profile]);
   const initials = useMemo(() => {
@@ -307,6 +309,7 @@ export default function Hoje() {
                         icon={a.icon}
                         label={a.label}
                         urgency={a.id === 'dashboard' ? urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5) : undefined}
+                        badge={a.id === 'chancela' ? chancelaPendentes : undefined}
                         onClick={() => navigate(a.to)}
                       />
                     ))}

@@ -91,6 +91,8 @@ export interface RevisaoSegurancaGov {
 export interface AprovacaoGov {
   por_user_id: string | null;
   por_nome: string | null;
+  /** Só nas chancelas da equipe científica (`educador_fisico`, `nutricionista`, `super_admin`...). */
+  por_perfil: string | null;
   em: string | null;
   versao: number | null;
   justificativa: string | null;
@@ -243,6 +245,7 @@ function lerAprovacao(v: unknown): AprovacaoGov | null {
   return {
     por_user_id: texto(o.por_user_id),
     por_nome: texto(o.por_nome),
+    por_perfil: texto(o.por_perfil),
     em: texto(o.em),
     versao: numero(o.versao),
     justificativa: texto(o.justificativa),
@@ -399,6 +402,57 @@ export function rotuloSelo(gov: GovernancaLida | null | undefined, aprovado?: bo
   return partes.join(' · ');
 }
 
+// ── Plano chancelado pela equipe científica MyHealthID ─────────────────────
+
+/**
+ * De onde veio o plano que o paciente vê:
+ *  - 'profissional': planos_treino / planos_alimentares, liberado pelo profissional dele;
+ *  - 'equipe_myhealthid': plano que o cliente Premium gerou e a equipe científica chancelou
+ *    (plano_cliente_chancela, que o cliente só lê pela RPC `meu_plano_liberado`);
+ *  - 'cliente': planos_ia_cliente, gravável pelo próprio paciente e por isso sem prova de revisão.
+ */
+export type OrigemPlano = 'profissional' | 'equipe_myhealthid' | 'cliente';
+
+export const ROTULO_EQUIPE_CIENTIFICA = 'equipe científica MyHealthID';
+
+const ROTULO_PERFIL_CHANCELA: Record<string, string> = {
+  educador_fisico: 'Educador Físico',
+  fisioterapeuta: 'Fisioterapeuta',
+  nutricionista: 'Nutricionista',
+  super_admin: 'Administrador(a)',
+};
+
+function rotuloPerfilChancela(perfil: string | null | undefined): string {
+  if (!perfil) return '';
+  return ROTULO_PERFIL_CHANCELA[perfil] ?? perfil.replace(/_/g, ' ');
+}
+
+/**
+ * Origem de um plano devolvido por `meu_plano_liberado`. Só a RPC (servidor) diz que veio da
+ * equipe; qualquer outro valor, ou a ausência dele (RPC antiga), é o plano do profissional.
+ */
+export function origemDoPlanoLiberado(plano: unknown): 'profissional' | 'equipe_myhealthid' {
+  return obj(plano)?.origem === 'equipe_myhealthid' ? 'equipe_myhealthid' : 'profissional';
+}
+
+/**
+ * Selo de um plano chancelado: 'Chancelado pela equipe científica MyHealthID · <nome>, <perfil> ·
+ * dd/mm/aaaa · v<N>'. Cada parte só entra se o carimbo a trouxer; nada é inventado.
+ */
+export function rotuloSeloEquipe(gov: GovernancaLida | null | undefined): string {
+  const apr = gov?.aprovacao;
+  const partes = [`Chancelado pela ${ROTULO_EQUIPE_CIENTIFICA}`];
+  if (apr?.por_nome) {
+    const perfil = rotuloPerfilChancela(apr.por_perfil);
+    partes.push(perfil ? `${apr.por_nome}, ${perfil}` : apr.por_nome);
+  }
+  const data = formatarDataBR(apr?.em);
+  if (data) partes.push(data);
+  const versao = apr?.versao ?? null;
+  if (versao !== null) partes.push(`v${versao}`);
+  return partes.join(' · ');
+}
+
 // ── Rodapé de documentos (TreinoDocumento e PDF) ──────────────────────────
 
 export const AVISO_PADRAO_PLANO = 'Este plano não substitui o acompanhamento de um profissional de saúde.';
@@ -413,18 +467,20 @@ export interface RodapeGovernanca {
 
 /**
  * Texto de governança para rodapé de documento. Só o plano do profissional
- * (planos_treino/planos_alimentares) pode afirmar liberação; o plano do cliente
+ * (planos_treino/planos_alimentares) e o chancelado pela equipe científica
+ * (que vem da RPC do servidor) podem afirmar liberação; o plano do cliente
  * (planos_ia_cliente) fica só com o aviso padrão.
  */
 export function rodapeGovernanca(
   conteudo: unknown,
-  opcoes: { origem: 'profissional' | 'cliente'; aprovado?: boolean },
+  opcoes: { origem: OrigemPlano; aprovado?: boolean },
 ): RodapeGovernanca {
-  if (opcoes.origem !== 'profissional') return { selo: null, reavaliacao: null, aviso: AVISO_PADRAO_PLANO };
+  if (opcoes.origem === 'cliente') return { selo: null, reavaliacao: null, aviso: AVISO_PADRAO_PLANO };
 
   const gov = lerGovernanca(conteudo);
-  const estado = estadoSelo(gov, opcoes.aprovado);
-  const selo = rotuloSelo(gov, opcoes.aprovado);
+  const daEquipe = opcoes.origem === 'equipe_myhealthid';
+  const estado = daEquipe ? 'liberado' : estadoSelo(gov, opcoes.aprovado);
+  const selo = daEquipe ? rotuloSeloEquipe(gov) : rotuloSelo(gov, opcoes.aprovado);
 
   let reavaliacao: string | null = null;
   const acompanhamento = lerAcompanhamento(conteudo);

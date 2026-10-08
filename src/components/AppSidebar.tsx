@@ -3,11 +3,14 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   CalendarDays, Users,
   Settings, LogOut, User, MessageCircle,
-  Sun, DollarSign, Store, Dumbbell, ClipboardList, TrendingUp, LayoutGrid, type LucideIcon,
+  Sun, DollarSign, Store, Dumbbell, ClipboardList, TrendingUp, LayoutGrid, ShieldCheck, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
+import { useEquipeCientifica } from '@/hooks/useEquipeCientifica';
+import { useChancelaPendentes } from '@/hooks/useChancelaPendentes';
+import { ROTA_CHANCELA } from '@/lib/chancela';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
@@ -19,7 +22,7 @@ type ServiceKey = 'eventos';
 
 // UMA home só: "Hoje". O painel clínico completo (/inicio-app) é alcançado
 // pelos tiles da própria Hoje — não concorre mais no menu.
-const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; serviceKey?: ServiceKey; modulo?: string; separatorAfter?: boolean; match?: string; queryFlag?: string; queryExclude?: string }[] = [
+const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; vitrineBadge?: boolean; chancelaBadge?: boolean; serviceKey?: ServiceKey; modulo?: string; separatorAfter?: boolean; match?: string; queryFlag?: string; queryExclude?: string }[] = [
   { label: 'Hoje', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true, modulo: 'agenda' },
   // Pacientes só fica ativo quando NÃO está na sub-aba financeira (senão colidia
@@ -50,13 +53,23 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
   const { pendingCount: vitrinePending } = useVitrineNotifications();
 
   const isSuperAdmin = useIsSuperAdmin();
+  const { ehEquipe } = useEquipeCientifica();
+  const chancelaPendentes = useChancelaPendentes();
   const { data: plano } = usePlanoAtivo();
+  const itensDoPlano = NAV_ITEMS.filter(item =>
+    (!item.serviceKey || servicos[item.serviceKey]) &&
+    // Esconde funcionalidades que o plano do usuário não libera (gating).
+    (!item.modulo || temAcessoModulo(plano, item.modulo))
+  );
+  // Fila de chancela: só a equipe científica MyHealthID vê; entra antes de "Configurações".
+  const itemChancela: typeof NAV_ITEMS[number] = { label: 'Chancela', href: ROTA_CHANCELA, icon: ShieldCheck, chancelaBadge: true };
+  const idxConfig = itensDoPlano.findIndex(item => item.href === '/configuracoes');
+  const posicaoChancela = idxConfig < 0 ? itensDoPlano.length : idxConfig;
+  const comChancela = ehEquipe
+    ? [...itensDoPlano.slice(0, posicaoChancela), itemChancela, ...itensDoPlano.slice(posicaoChancela)]
+    : itensDoPlano;
   const visibleItems = [
-    ...NAV_ITEMS.filter(item =>
-      (!item.serviceKey || servicos[item.serviceKey]) &&
-      // Esconde funcionalidades que o plano do usuário não libera (gating).
-      (!item.modulo || temAcessoModulo(plano, item.modulo))
-    ),
+    ...comChancela,
     // Painel administrativo (vendas/uso) — só o dono do produto vê.
     ...(isSuperAdmin ? [{ label: 'Admin', href: '/admin', icon: TrendingUp } as typeof NAV_ITEMS[number]] : []),
   ];
@@ -114,6 +127,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
           const active = isActive(item);
           const showBadge = item.hasBadge && pendingCount > 0;
           const showVitrineBadge = item.vitrineBadge && vitrinePending > 0;
+          const showChancelaBadge = item.chancelaBadge && chancelaPendentes > 0;
           const needsSep = item.separatorAfter && idx < visibleItems.length - 1;
 
           const handleClick = () => {
@@ -167,6 +181,20 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
                   {vitrinePending > 9 ? '9+' : vitrinePending}
                 </span>
               )}
+              {showChancelaBadge && (
+                <span
+                  className={cn(
+                    'flex items-center justify-center text-[10px] font-bold rounded-full shrink-0',
+                    collapsed
+                      ? 'absolute -top-0.5 -right-0.5 h-4 w-4 text-white'
+                      : 'ml-auto h-5 min-w-5 px-1 text-white',
+                  )}
+                  style={{ background: 'hsl(32 90% 50%)' }}
+                  aria-label={`${chancelaPendentes} aguardando chancela`}
+                >
+                  {chancelaPendentes > 9 ? '9+' : chancelaPendentes}
+                </span>
+              )}
             </Link>
           );
 
@@ -177,6 +205,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
                 {item.label}
                 {showBadge && ` (${pendingCount} pendente${pendingCount > 1 ? 's' : ''})`}
                 {showVitrineBadge && ` (${vitrinePending} solicitaç${vitrinePending > 1 ? 'ões' : 'ão'})`}
+                {showChancelaBadge && ` (${chancelaPendentes} aguardando chancela)`}
               </TooltipContent>
             </Tooltip>
           ) : linkEl;
