@@ -51,3 +51,7 @@ verify_jwt = false
 
 [functions.traduzir-biblioteca-batch]
 verify_jwt = false
+
+# Só o super-admin pesquisa profissionais: o JWT é exigido aqui e a função ainda confere eh_super_admin() no banco.
+[functions.pesquisar-profissional]
+verify_jwt = true
