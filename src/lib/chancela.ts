@@ -10,6 +10,7 @@ import {
   JUSTIFICATIVA_MIN_CARACTERES, formatarDataBR, justificativaValida, lerGovernanca,
   type GovernancaLida, type NivelRisco, type TipoPlanoGov,
 } from '@/lib/governanca';
+import { ehEmailDeSuperAdmin } from '@/lib/superAdmins';
 
 export const ROTA_CHANCELA = '/chancela';
 
@@ -577,7 +578,8 @@ export const FILTROS_PROFISSIONAIS: readonly { id: FiltroProfissionais; rotulo: 
 ];
 
 function passaFiltro(p: ProfissionalAdmin, filtro: FiltroProfissionais): boolean {
-  if (filtro === 'pendentes') return !p.verificado && !!p.registro;
+  // A conta do administrador não tem o que verificar (o cartão não oferece o botão), então não aguarda verificação.
+  if (filtro === 'pendentes') return !p.verificado && !!p.registro && !ehEmailDeSuperAdmin(p.email);
   if (filtro === 'verificados') return p.verificado;
   if (filtro === 'equipe') return p.equipeCientifica;
   return true;

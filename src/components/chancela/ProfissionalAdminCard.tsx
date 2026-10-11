@@ -18,6 +18,8 @@ import {
 } from '@/lib/chancela';
 import { definirEquipeCientifica, verificarProfissional } from '@/lib/chancelaApi';
 import { formatarDataBR } from '@/lib/governanca';
+import type { ResumoPesquisaProfissional } from '@/lib/pesquisaProfissional';
+import PesquisaProfissionalPainel from './PesquisaProfissionalPainel';
 
 // Uma pessoa na administração: registro informado, verificação (só o administrador concede),
 // equipe científica e áreas em que ela chancela. O banco confere de novo dentro de cada RPC.
@@ -84,7 +86,13 @@ function ConfirmarVerificacaoDialog({ modo, p, ocupado, onCancelar, onConfirmar 
   );
 }
 
-export default function ProfissionalAdminCard({ p }: { p: ProfissionalAdmin }) {
+interface CardProps {
+  p: ProfissionalAdmin;
+  /** Último indício da pesquisa na internet (vem do resumo da lista); a pesquisa nunca verifica ninguém. */
+  resumoPesquisa?: ResumoPesquisaProfissional | null;
+}
+
+export default function ProfissionalAdminCard({ p, resumoPesquisa = null }: CardProps) {
   const qc = useQueryClient();
   const [ocupado, setOcupado] = useState(false);
   const [modo, setModo] = useState<Modo | null>(null);
@@ -171,6 +179,11 @@ export default function ProfissionalAdminCard({ p }: { p: ProfissionalAdmin }) {
         </p>
       ) : (
         <>
+          <PesquisaProfissionalPainel
+            profissional={{ userId: p.userId, nome: p.nome, email: p.email, perfil: p.perfil, registro: p.registro }}
+            resumo={resumoPesquisa}
+          />
+
           <div className="flex flex-wrap items-center gap-2">
             {p.verificado ? (
               <Button

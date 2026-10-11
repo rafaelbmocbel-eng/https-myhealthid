@@ -17,6 +17,8 @@ import {
   rotuloDiasUteis, validarPrazoChancela, type FiltroProfissionais,
 } from '@/lib/chancela';
 import { buscarProfissionaisAdmin, definirConfigPlanoCliente, type ChaveConfigPlanoCliente } from '@/lib/chancelaApi';
+import { indexarResumos } from '@/lib/pesquisaProfissional';
+import { CHAVE_PESQUISAS_RESUMO, buscarResumoPesquisasProfissionais } from '@/lib/pesquisaProfissionalApi';
 import { cn } from '@/lib/utils';
 import ProfissionalAdminCard from './ProfissionalAdminCard';
 
@@ -177,9 +179,18 @@ export default function AdministracaoChancela() {
     retry: false,
     queryFn: buscarProfissionaisAdmin,
   });
+  // Selo do último indício de cada profissional numa chamada só. Se falhar (ex.: banco ainda sem a
+  // atualização), a lista segue sem selos: o selo é um complemento, não pode derrubar a verificação.
+  const resumosPesquisa = useQuery({
+    queryKey: CHAVE_PESQUISAS_RESUMO,
+    staleTime: 15_000,
+    retry: false,
+    queryFn: buscarResumoPesquisasProfissionais,
+  });
   const [filtro, setFiltro] = useState<FiltroProfissionais | null>(null);
   const [busca, setBusca] = useState('');
 
+  const indicios = useMemo(() => indexarResumos(resumosPesquisa.data ?? []), [resumosPesquisa.data]);
   const profissionais = useMemo(() => lista.data ?? [], [lista.data]);
   const contagem = useMemo(() => contarProfissionaisAdmin(profissionais), [profissionais]);
   const filtroAtivo: FiltroProfissionais = filtro ?? (contagem.pendentes > 0 ? 'pendentes' : 'todos');
@@ -193,8 +204,9 @@ export default function AdministracaoChancela() {
         <div>
           <h2 className="text-sm font-bold flex items-center gap-1.5"><Users className="h-4 w-4 text-primary" aria-hidden /> Profissionais e equipe científica</h2>
           <p className="text-xs text-muted-foreground">
-            Só você verifica um profissional, depois de conferir o registro no conselho. Profissional verificado pode gerar planos por IA
-            para os próprios pacientes; para chancelar planos de clientes ele também precisa estar na equipe científica, com a área liberada.
+            Só você verifica um profissional, depois de conferir o registro no conselho. A pesquisa na internet é só um indício para ajudar
+            nessa conferência: nunca verifica ninguém. Profissional verificado pode gerar planos por IA para os próprios pacientes; para
+            chancelar planos de clientes ele também precisa estar na equipe científica, com a área liberada.
           </p>
         </div>
 
@@ -251,7 +263,7 @@ export default function AdministracaoChancela() {
         )}
         {visiveis.length > 0 && (
           <ul className="space-y-2" aria-label="Lista de profissionais">
-            {visiveis.map((p) => <ProfissionalAdminCard key={p.userId} p={p} />)}
+            {visiveis.map((p) => <ProfissionalAdminCard key={p.userId} p={p} resumoPesquisa={indicios.get(p.userId) ?? null} />)}
           </ul>
         )}
       </section>

@@ -13,6 +13,7 @@ import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 import { usePlanoClienteConfig } from '@/hooks/usePlanoClienteConfig';
 import { CHAVE_PENDENTES_CHANCELA, useChancelaPendentes } from '@/hooks/useChancelaPendentes';
 import { usePodeChancelarPlanoCliente } from '@/hooks/usePodeChancelar';
+import { useProfissionaisPendentesVerificacao } from '@/hooks/useProfissionaisPendentesVerificacao';
 import { formatarDataBR } from '@/lib/governanca';
 import {
   ABAS_FILA, CHAVE_FILA_CHANCELA, ROTULO_TIPO, descricaoPaciente, motivoCurtoNaoPode, ordenarFila, podeChancelarItem,
@@ -103,6 +104,7 @@ export default function ChancelaEquipe() {
   const treino = usePodeChancelarPlanoCliente('treino');
   const nutricao = usePodeChancelarPlanoCliente('nutricao');
   const pendentes = useChancelaPendentes();
+  const pendentesVerificacao = useProfissionaisPendentesVerificacao(ehSuperAdmin);
   const qc = useQueryClient();
   const [aba, setAba] = useState<AbaId>('aguardando');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
@@ -164,6 +166,10 @@ export default function ChancelaEquipe() {
     ? `${pendentes} plano${pendentes > 1 ? 's' : ''} aguardando a sua chancela.`
     : 'Nenhum plano aguardando chancela agora.';
   const prazo = `Prazo da equipe: ${rotuloDiasUteis(config.prazo_chancela_dias_uteis)} para chancelar.`;
+  const rotuloAdministracao = pendentesVerificacao > 0 ? `Administração (${pendentesVerificacao})` : 'Administração';
+  const dicaAdministracao = pendentesVerificacao > 0
+    ? `${pendentesVerificacao} ${pendentesVerificacao > 1 ? 'profissionais aguardam' : 'profissional aguarda'} verificação`
+    : undefined;
 
   return (
     <AppLayout>
@@ -206,12 +212,13 @@ export default function ChancelaEquipe() {
               role="tab"
               aria-selected={aba === 'administracao'}
               onClick={() => trocarAba('administracao')}
+              title={dicaAdministracao}
               className={cn(
                 'ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition',
                 aba === 'administracao' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <Settings2 className="h-4 w-4" aria-hidden /> Administração
+              <Settings2 className="h-4 w-4" aria-hidden /> {rotuloAdministracao}
             </button>
           )}
         </div>

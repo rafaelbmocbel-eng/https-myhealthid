@@ -432,6 +432,16 @@ describe('administração: leitura e filtros', () => {
     expect(filtrarProfissionaisAdmin(lista, 'todos')).toHaveLength(4);
   });
 
+  it('a conta do administrador não conta como aguardando verificação (não há botão Verificar para ela)', () => {
+    const lista = lerProfissionaisAdmin([
+      profissional({ user_id: 'adm', email: 'RafaelBMocbel@gmail.com', registro_profissional: 'CREFITO 3/1234-F' }),
+      profissional({ user_id: 'p', email: 'ana@exemplo.com' }),
+    ]);
+    expect(contarProfissionaisAdmin(lista)).toMatchObject({ todos: 2, pendentes: 1 });
+    expect(filtrarProfissionaisAdmin(lista, 'pendentes').map((p) => p.userId)).toEqual(['p']);
+    expect(filtrarProfissionaisAdmin(lista, 'todos')).toHaveLength(2);
+  });
+
   it('a busca ignora acento e maiúsculas e olha nome, e-mail, registro e perfil', () => {
     const lista = lerProfissionaisAdmin([
       profissional({ user_id: 'a', nome: 'João', sobrenome: 'Álvares', email: 'joao@x.com', registro_profissional: 'CREF 999', perfil_profissional: 'educador_fisico' }),

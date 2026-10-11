@@ -650,6 +650,40 @@ describe('Fila de chancela: aba Administração', () => {
   });
 });
 
+describe('Fila de chancela: contador na aba Administração', () => {
+  const aguardando = (id: string, extra: Record<string, unknown> = {}) => ({
+    user_id: id, nome: 'Pessoa', sobrenome: id, email: `${id}@exemplo.com`, perfil_profissional: 'nutricionista',
+    registro_profissional: 'CRN 1', verificado: false, verificado_em: null, equipe_cientifica: false, equipe_areas: [], created_at: '2026-09-01T00:00:00Z',
+    ...extra,
+  });
+
+  it('mostra quantos profissionais aguardam verificação no rótulo da aba', async () => {
+    h.user = { id: 'adm-1', email: 'rafaelbmocbel@gmail.com' };
+    h.profissionais = [
+      aguardando('u-1'), aguardando('u-2'), aguardando('u-3'),
+      aguardando('u-4', { verificado: true }), aguardando('u-5', { registro_profissional: null }),
+    ];
+    renderizar();
+    const aba = await screen.findByRole('tab', { name: 'Administração (3)' });
+    expect(aba).toHaveAttribute('title', '3 profissionais aguardam verificação');
+  });
+
+  it('sem pendentes o rótulo fica sem número', async () => {
+    h.user = { id: 'adm-1', email: 'rafaelbmocbel@gmail.com' };
+    h.profissionais = [aguardando('u-4', { verificado: true })];
+    renderizar();
+    await screen.findByText('Maria, 34 anos');
+    await waitFor(() => expect(h.rpc.mock.calls.some(([n]) => n === 'profissionais_admin')).toBe(true));
+    expect(screen.getByRole('tab', { name: 'Administração' })).not.toHaveAttribute('title');
+  });
+
+  it('quem não é o administrador não consulta a lista de profissionais', async () => {
+    renderizar();
+    await screen.findByText('Maria, 34 anos');
+    expect(h.rpc.mock.calls.some(([n]) => n === 'profissionais_admin')).toBe(false);
+  });
+});
+
 describe('Fila de chancela: recusar', () => {
   it('exige a mensagem ao cliente e chama a RPC com a nota pública e a interna', async () => {
     renderizar();
