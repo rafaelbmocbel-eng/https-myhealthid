@@ -14,7 +14,7 @@ import {
   textoFichaClinica, textoMyID, textoPresencial, textoQueixaDoCliente, textoQuestionarios,
 } from "../_shared/motores-plano.ts";
 import {
-  barreiraDoCliente, dadosDoPedido, entregarPlano, insumosDoPlano, limitarPedidoTreinoCliente,
+  barreiraDoCliente, barreiraDoProfissional, dadosDoPedido, entregarPlano, insumosDoPlano, limitarPedidoTreinoCliente,
   restringirAInsumosDoCliente,
 } from "../_shared/plano-cliente.ts";
 import { avaliarTriagem, decidirLiberacao, textoTriagemParaPrompt } from "../_shared/triagem-bloqueio.ts";
@@ -107,9 +107,11 @@ Deno.serve(async (req) => {
     const pacienteId = ctx.pacienteId ?? null;
     const pacRow = ctx.paciente ?? null;
 
-    // O cliente só gera se pagar (Premium) e só tem um treino por vez aguardando a equipe científica
-    // (402/409/503 antes de gastar IA); o plano dele passa pela chancela.
-    const barreira = await barreiraDoCliente(admin, { chamador, tipo: "treino", pacienteId, paciente: pacRow });
+    // O cliente só gera se pagar (Premium) e só tem um treino por vez aguardando a equipe científica,
+    // dentro do prazo (402/409/503 antes de gastar IA); o plano dele passa pela chancela. O profissional
+    // só gera depois de verificado pelo administrador (403 profissional_nao_verificado).
+    const barreira = await barreiraDoCliente(admin, { chamador, tipo: "treino", pacienteId, paciente: pacRow })
+      ?? await barreiraDoProfissional(admin, { chamador, userId });
     if (barreira) return json(barreira.corpo, barreira.status);
 
     // O pedido do cliente tem tetos no servidor; o do profissional vale como veio da tela dele.

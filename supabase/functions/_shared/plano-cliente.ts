@@ -4,7 +4,8 @@
 // (Premium), SÓ a partir do que é dele (MyID, formulários que nascem das respostas do MyID,
 // histórico clínico e anamnese nutricional), e o plano só chega a ele depois de CHANCELADO
 // pela equipe científica MyHealthID (tabela plano_cliente_chancela). O caminho do profissional
-// não muda: recebe o plano e decide, como antes.
+// continua recebendo o plano e decidindo, mas agora só para perfil verificado pelo administrador
+// (barreiraDoProfissional). Nutrição do cliente só com o plano Premium nutricional ligado.
 //
 // Lógica PURA (sem Deno nem banco, salvo o `admin` injetado), testada em
 // src/test/planoClienteChancela.test.ts. Os valores que o Rafael pode querer mudar ficam em
@@ -14,12 +15,6 @@ import type { ChamadorTriagem, FocoTriagem } from "./triagem-bloqueio.ts";
 /** Só o que este módulo usa do cliente Supabase (service_role). */
 interface AdminRpc {
   rpc(nome: string, args?: Record<string, unknown>): PromiseLike<{ data: unknown; error: { message?: string; hint?: string } | null }>;
-}
-
-/** Leitura de tabela (cadeia select/eq/limit/maybeSingle) do cliente Supabase service_role. */
-interface AdminLeitura {
-  // deno-lint-ignore no-explicit-any
-  from(tabela: string): any;
 }
 
 export const POLITICA_PLANO_CLIENTE = {
@@ -63,6 +58,27 @@ export const STATUS_HTTP_PLANO_EM_REVISAO = 409;
 export const STATUS_HTTP_VERIFICACAO = 503;
 export const MENSAGEM_ERRO_VERIFICACAO = "Não consegui verificar o seu plano agora. Tente novamente em instantes.";
 const MARCA_PLANO_EM_REVISAO = "plano_em_revisao";
+
+// Teto de pedidos por tipo em 24 horas (o banco decide: plano_cliente_limite_pedidos_24h). Cancelar o pedido
+// libera o seguinte na hora, então sem teto o cliente repetiria gerar e cancelar a cada chamada de IA.
+export const STATUS_HTTP_LIMITE_PEDIDOS = 429;
+export const CODIGO_LIMITE_PEDIDOS = "limite_pedidos";
+const MARCA_LIMITE_PEDIDOS = "limite_pedidos";
+
+// Nutrição Premium desligada (plano_cliente_config.nutricao_premium_ativa): o cliente ainda não gera.
+export const STATUS_HTTP_NUTRICAO_EM_BREVE = 403;
+export const CODIGO_NUTRICAO_EM_BREVE = "nutricao_em_breve";
+export const MENSAGEM_NUTRICAO_EM_BREVE = "O plano nutricional Premium estará disponível em breve.";
+
+// Caminho do PROFISSIONAL: só gera quem o administrador verificou (profiles.verificado).
+export const STATUS_HTTP_PROFISSIONAL_NAO_VERIFICADO = 403;
+export const CODIGO_PROFISSIONAL_NAO_VERIFICADO = "profissional_nao_verificado";
+export const MENSAGEM_PROFISSIONAL_NAO_VERIFICADO = "Seu perfil profissional ainda não foi verificado pela equipe MyHealthID";
+
+export function mensagemLimitePedidos(tipo: FocoTriagem): string {
+  const oQue = tipo === "treino" ? "do seu treino" : "do seu plano alimentar";
+  return `Você já fez vários pedidos ${oQue} nas últimas 24 horas. Para a equipe científica conseguir revisar com calma, tente novamente mais tarde.`;
+}
 
 export function mensagemPlanoEmRevisao(tipo: FocoTriagem): string {
   const oQue = tipo === "treino" ? "um treino" : "um plano alimentar";
@@ -248,6 +264,8 @@ export interface ResultadoGravacao {
   erro: string | null;
   /** Só presente (true) quando já havia plano deste tipo aguardando a equipe (corrida entre gerações). */
   jaEmRevisao?: true;
+  /** Só presente (true) quando o cliente já atingiu o teto de pedidos em 24 horas (corrida entre gerações). */
+  limitePedidos?: true;
 }
 
 export async function gravarParaChancela(
@@ -260,6 +278,9 @@ export async function gravarParaChancela(
       const erro = String(error.message ?? "falha ao gravar");
       if (erro.includes(MARCA_PLANO_EM_REVISAO) || error.hint === MARCA_PLANO_EM_REVISAO) {
         return { ok: false, planoId: null, erro, jaEmRevisao: true };
+      }
+      if (erro.includes(MARCA_LIMITE_PEDIDOS) || error.hint === MARCA_LIMITE_PEDIDOS) {
+        return { ok: false, planoId: null, erro, limitePedidos: true };
       }
       return { ok: false, planoId: null, erro };
     }
@@ -303,6 +324,12 @@ export async function entregarPlano(
       corpo: { error: mensagemPlanoEmRevisao(a.tipo), codigo: MARCA_PLANO_EM_REVISAO },
     };
   }
+  if (g.limitePedidos) {
+    return {
+      status: STATUS_HTTP_LIMITE_PEDIDOS,
+      corpo: { error: mensagemLimitePedidos(a.tipo), codigo: CODIGO_LIMITE_PEDIDOS },
+    };
+  }
   if (!g.ok || !g.planoId) {
     console.error(JSON.stringify({ fn: "entregarPlano", tipo: a.tipo, erro: g.erro }));
     return { status: 500, corpo: { error: MENSAGEM_ERRO_ENVIO_REVISAO } };
@@ -310,30 +337,49 @@ export async function entregarPlano(
   return { status: 200, corpo: respostaPlanoEmRevisao(g.planoId) };
 }
 
-/** Já existe plano deste tipo aguardando a equipe? 'erro' = não deu para saber (quem chama recusa). */
-export async function planoJaEmRevisao(
-  admin: AdminLeitura,
-  pacienteId: string,
-  tipo: FocoTriagem,
-): Promise<"sim" | "nao" | "erro"> {
+export type EstadoPedido = "nenhum" | "no_prazo" | "atrasado" | "limite" | "erro";
+
+/**
+ * Situação do pedido deste tipo que aguarda a equipe: 'nenhum', 'no_prazo' ou 'atrasado' (estourou o
+ * prazo em dias úteis) e 'limite' (nada no prazo, mas o teto de pedidos em 24 horas foi atingido); o banco
+ * decide, `plano_cliente_estado_pedido`. 'erro' = não deu para saber (quem chama recusa).
+ */
+export async function estadoDoPedido(admin: AdminRpc, pacienteId: string, tipo: FocoTriagem): Promise<EstadoPedido> {
   try {
-    const { data, error } = await admin.from("plano_cliente_chancela").select("id")
-      .eq("paciente_id", pacienteId).eq("tipo", tipo).eq("status", "aguardando").limit(1).maybeSingle();
+    const { data, error } = await admin.rpc("plano_cliente_estado_pedido", { p_paciente_id: pacienteId, p_tipo: tipo });
     if (error) return "erro";
-    return data ? "sim" : "nao";
+    return data === "nenhum" || data === "no_prazo" || data === "atrasado" || data === "limite" ? data : "erro";
+  } catch (_e) {
+    return "erro";
+  }
+}
+
+export type EstadoNutricao = "ligada" | "desligada" | "erro";
+
+/** Lê `nutricao_premium_ativa` pela RPC `plano_cliente_config` (service_role). Sem leitura = 'erro'. */
+export async function estadoDaNutricaoPremium(admin: AdminRpc): Promise<EstadoNutricao> {
+  try {
+    const { data, error } = await admin.rpc("plano_cliente_config");
+    if (error) return "erro";
+    const ativa = (data as { nutricao_premium_ativa?: unknown } | null)?.nutricao_premium_ativa;
+    if (ativa === true) return "ligada";
+    return ativa === false ? "desligada" : "erro";
   } catch (_e) {
     return "erro";
   }
 }
 
 /**
- * Barreira do CLIENTE antes de gastar IA: só Premium gera (402) e só um plano por tipo fica
- * aguardando a equipe (409; a equipe pode estar lendo ou editando o plano da fila). Se não der
- * para verificar, recusa (503): nunca "sem dados = liberado". Devolve null quando pode seguir
- * (e sempre para o profissional, que segue o fluxo dele).
+ * Barreira do CLIENTE antes de gastar IA: nutrição só com o plano Premium nutricional ligado (403,
+ * 'nutricao_em_breve'), só Premium gera (402) e só um plano por tipo fica aguardando a equipe (409;
+ * a equipe pode estar lendo ou editando o plano da fila) enquanto o pedido está no prazo. Pedido que
+ * estourou o prazo não barra: o banco o substitui ao gravar o novo. Há um teto de pedidos por tipo em 24
+ * horas, cancelados inclusos (429 'limite_pedidos'), para o ciclo gerar-cancelar não gastar IA sem fim. Se não der para verificar,
+ * recusa (503): nunca "sem dados = liberado". Devolve null quando pode seguir (e sempre para o
+ * profissional, que segue o fluxo dele).
  */
 export async function barreiraDoCliente(
-  admin: AdminLeitura,
+  admin: AdminRpc,
   a: {
     chamador: ChamadorTriagem;
     tipo: FocoTriagem;
@@ -342,17 +388,65 @@ export async function barreiraDoCliente(
   },
 ): Promise<ResultadoEntrega | null> {
   if (a.chamador !== "cliente") return null;
+  if (a.tipo === "nutricao") {
+    const nutricao = await estadoDaNutricaoPremium(admin);
+    if (nutricao === "erro") return { status: STATUS_HTTP_VERIFICACAO, corpo: { error: MENSAGEM_ERRO_VERIFICACAO } };
+    if (nutricao === "desligada") {
+      return {
+        status: STATUS_HTTP_NUTRICAO_EM_BREVE,
+        corpo: { error: MENSAGEM_NUTRICAO_EM_BREVE, codigo: CODIGO_NUTRICAO_EM_BREVE },
+      };
+    }
+  }
   if (!contaPodeGerarPlano(a.paciente?.tipo_conta)) {
     return { status: STATUS_HTTP_SEM_PREMIUM, corpo: { error: MENSAGEM_CLIENTE_SEM_PREMIUM, codigo: "premium_necessario" } };
   }
   if (!a.pacienteId) return { status: 403, corpo: { error: "Sem permissão para gerar plano." } };
-  const emRevisao = await planoJaEmRevisao(admin, a.pacienteId, a.tipo);
-  if (emRevisao === "sim") {
+  const pedido = await estadoDoPedido(admin, a.pacienteId, a.tipo);
+  if (pedido === "no_prazo") {
     return {
       status: STATUS_HTTP_PLANO_EM_REVISAO,
       corpo: { error: mensagemPlanoEmRevisao(a.tipo), codigo: MARCA_PLANO_EM_REVISAO },
     };
   }
-  if (emRevisao === "erro") return { status: STATUS_HTTP_VERIFICACAO, corpo: { error: MENSAGEM_ERRO_VERIFICACAO } };
+  if (pedido === "limite") {
+    return {
+      status: STATUS_HTTP_LIMITE_PEDIDOS,
+      corpo: { error: mensagemLimitePedidos(a.tipo), codigo: CODIGO_LIMITE_PEDIDOS },
+    };
+  }
+  if (pedido === "erro") return { status: STATUS_HTTP_VERIFICACAO, corpo: { error: MENSAGEM_ERRO_VERIFICACAO } };
   return null;
+}
+
+/** O profissional que chama foi verificado pelo administrador? ('erro' = não deu para saber). */
+export async function profissionalFoiVerificado(admin: AdminRpc, userId: string): Promise<"sim" | "nao" | "erro"> {
+  try {
+    const { data, error } = await admin.rpc("profissional_verificado", { p_user_id: userId });
+    if (error) return "erro";
+    if (data === true) return "sim";
+    return data === false ? "nao" : "erro";
+  } catch (_e) {
+    return "erro";
+  }
+}
+
+/**
+ * Barreira do PROFISSIONAL: o caminho profissional das edges de geração (plano devolvido direto, sem
+ * chancela e com sobreposição da triagem) só vale para perfil verificado pelo administrador; o
+ * super-admin (pelo e-mail da conta) sempre vale. Fail-closed: sem resposta do banco, 503. Devolve
+ * null quando pode seguir (e sempre para o cliente, que tem a própria barreira).
+ */
+export async function barreiraDoProfissional(
+  admin: AdminRpc,
+  a: { chamador: ChamadorTriagem; userId: string },
+): Promise<ResultadoEntrega | null> {
+  if (a.chamador !== "profissional") return null;
+  const verificado = await profissionalFoiVerificado(admin, a.userId);
+  if (verificado === "sim") return null;
+  if (verificado === "erro") return { status: STATUS_HTTP_VERIFICACAO, corpo: { error: MENSAGEM_ERRO_VERIFICACAO } };
+  return {
+    status: STATUS_HTTP_PROFISSIONAL_NAO_VERIFICADO,
+    corpo: { error: MENSAGEM_PROFISSIONAL_NAO_VERIFICADO, codigo: CODIGO_PROFISSIONAL_NAO_VERIFICADO },
+  };
 }
