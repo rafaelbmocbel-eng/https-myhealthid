@@ -12,6 +12,7 @@ import {
   descricaoPaciente, mensagemErroChancela, tituloItem, validarRecusa, type ItemFilaChancela,
 } from '@/lib/chancela';
 import { recusarPlanoCliente } from '@/lib/chancelaApi';
+import { avisarClienteDoPlano } from './avisarCliente';
 
 // Recusar: o plano não chega ao cliente. A mensagem pública (curta) é mostrada
 // ao cliente no portal; a nota interna fica só para a equipe.
@@ -45,6 +46,7 @@ export default function RecusarDialog({ open, onOpenChange, item, onRecusado }: 
     try {
       await recusarPlanoCliente({ id: item.id, notaPublica, notaInterna });
       toast.success('Plano recusado. O cliente vê a sua mensagem e pode gerar de novo ou procurar um profissional.');
+      avisarClienteDoPlano(item.id);
       onRecusado();
       onOpenChange(false);
     } catch (e) {

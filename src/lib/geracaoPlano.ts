@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
-import { erroDaFuncao } from '@/lib/fnError';
+import { erroDaFuncao, ErroFuncao } from '@/lib/fnError';
 import {
-  extrairBloqueio, type BloqueioTriagem, type OverrideTriagem, type TipoPlanoGov,
+  extrairBloqueio, formatarDataBR, type BloqueioTriagem, type OverrideTriagem, type TipoPlanoGov,
 } from '@/lib/governanca';
 
 // Chamada das edges gerar-plano-treino / gerar-plano-alimentar. A triagem de
@@ -163,9 +163,40 @@ export function montarPedidoNutricaoCliente(d: DadosPedidoCliente): Record<strin
   };
 }
 
+// ── Erros das edges de geração, em linguagem para quem pediu o plano ─────────
+
+export const CODIGO_NUTRICAO_EM_BREVE = 'nutricao_em_breve';
+export const CODIGO_PROFISSIONAL_NAO_VERIFICADO = 'profissional_nao_verificado';
+
+export const MENSAGEM_NUTRICAO_EM_BREVE = 'O plano nutricional Premium estará disponível em breve.';
+export const ROTULO_NUTRICAO_EM_BREVE = 'Plano nutricional Premium: em breve';
+export const MENSAGEM_PROFISSIONAL_NAO_VERIFICADO =
+  'Seu perfil profissional ainda não foi verificado pela equipe MyHealthID. Informe o seu registro no conselho em Configurações; assim que a equipe verificar, você poderá gerar planos por aqui.';
+
+function codigoDoErro(erro: unknown): string | null {
+  return erro instanceof ErroFuncao ? erro.codigo : null;
+}
+
+/** O servidor recusou a nutrição porque o plano nutricional Premium ainda está desligado. */
+export function ehNutricaoEmBreve(erro: unknown): boolean {
+  return codigoDoErro(erro) === CODIGO_NUTRICAO_EM_BREVE;
+}
+
+/**
+ * Texto do toast quando a geração falha. Os 403 conhecidos ganham mensagem própria (o texto do
+ * servidor pode mudar, o código não); o resto usa o texto do servidor ou o aviso de `padrao`.
+ */
+export function mensagemErroGeracao(erro: unknown, padrao: string = MENSAGEM_GERACAO_FALHOU): string {
+  const codigo = codigoDoErro(erro);
+  if (codigo === CODIGO_NUTRICAO_EM_BREVE) return MENSAGEM_NUTRICAO_EM_BREVE;
+  if (codigo === CODIGO_PROFISSIONAL_NAO_VERIFICADO) return MENSAGEM_PROFISSIONAL_NAO_VERIFICADO;
+  const mensagem = (erro as { message?: unknown } | null)?.message;
+  return typeof mensagem === 'string' && mensagem.trim() ? mensagem : padrao;
+}
+
 // ── Situação do plano do cliente (RPC meu_status_plano_cliente) ──────────────
 
-export type StatusPlanoCliente = 'aguardando' | 'chancelado' | 'recusado';
+export type StatusPlanoCliente = 'aguardando' | 'chancelado' | 'recusado' | 'cancelado';
 
 export interface SituacaoPlanoCliente {
   /** null = o cliente ainda não gerou plano deste tipo (ou o status não pôde ser lido). */
@@ -173,23 +204,52 @@ export interface SituacaoPlanoCliente {
   geradoEm: string | null;
   /** Recado curto da equipe ao cliente (motivo da recusa). */
   notaPublica: string | null;
+  /** Fim do prazo da equipe para este pedido (só enquanto aguarda). */
+  prazoPrevisto: string | null;
+  /** O pedido aguardando estourou o prazo da equipe. */
+  atrasado: boolean;
+  /** O cliente pode pedir outro plano deste tipo (nada aguardando dentro do prazo). */
+  podeRegenerar: boolean;
 }
 
-export const SITUACAO_VAZIA: SituacaoPlanoCliente = { status: null, geradoEm: null, notaPublica: null };
+export const SITUACAO_VAZIA: SituacaoPlanoCliente = {
+  status: null, geradoEm: null, notaPublica: null, prazoPrevisto: null, atrasado: false, podeRegenerar: true,
+};
 
-/** Leitura defensiva de `meu_status_plano_cliente`; qualquer formato inesperado vira "sem status". */
+const STATUS_CONHECIDOS: readonly string[] = ['aguardando', 'chancelado', 'recusado', 'cancelado'];
+
+/**
+ * Leitura defensiva de `meu_status_plano_cliente`; qualquer formato inesperado vira "sem status".
+ * Sem o campo `pode_regenerar` (servidor antigo) vale a regra segura: só gera de novo quem não está aguardando.
+ */
 export function lerSituacaoPlanoCliente(data: unknown): SituacaoPlanoCliente {
   const d = (data && typeof data === 'object' && !Array.isArray(data) ? data : {}) as Record<string, unknown>;
-  const status = d.status === 'aguardando' || d.status === 'chancelado' || d.status === 'recusado' ? d.status : null;
+  const status = typeof d.status === 'string' && STATUS_CONHECIDOS.includes(d.status) ? (d.status as StatusPlanoCliente) : null;
   if (!status) return SITUACAO_VAZIA;
   return {
     status,
     geradoEm: textoDe(d.gerado_em) || null,
     notaPublica: textoDe(d.nota_publica) || null,
+    prazoPrevisto: status === 'aguardando' ? textoDe(d.prazo_previsto) || null : null,
+    atrasado: status === 'aguardando' && d.atrasado === true,
+    podeRegenerar: typeof d.pode_regenerar === 'boolean' ? d.pode_regenerar : status !== 'aguardando',
   };
 }
 
 export const TEXTO_EM_REVISAO = 'Em revisão pela equipe científica MyHealthID — você recebe aqui quando for chancelado';
+
+/** 'Previsão: até dd/mm/aaaa' (fuso de Brasília); '' quando o servidor não informou o prazo. */
+export function textoPrevisao(prazoPrevisto: string | null | undefined): string {
+  const data = formatarDataBR(prazoPrevisto);
+  return data ? `Previsão: até ${data}` : '';
+}
+
+/** Recado acolhedor quando o pedido passou do prazo da equipe. */
+export function textoAtrasado(prazoPrevisto: string | null | undefined): string {
+  const data = formatarDataBR(prazoPrevisto);
+  const previsto = data ? ` (a previsão era até ${data})` : '';
+  return `Sentimos muito: a revisão do seu pedido está levando mais tempo do que o previsto${previsto}. A equipe científica MyHealthID continua com ele. Se preferir não esperar, você pode pedir de novo (o novo pedido substitui este) ou cancelar.`;
+}
 
 /** Primeira linha do aviso de recusa: o recado da equipe ao cliente, sem pontuação sobrando no fim. */
 export function textoRecusado(notaPublica: string | null | undefined): string {
@@ -221,14 +281,21 @@ const ROTULOS_GERAR: Record<TipoPlanoGov, { novo: string; outro: string; denovo:
 };
 
 /**
- * Rótulo e estado do botão de gerar. Enquanto há um plano aguardando a equipe, o botão fica
- * desligado (o servidor também recusa gerar outro do mesmo tipo: HTTP 409). `temChancelado`: o cliente
- * já tem um plano chancelado visível, que continua valendo até o novo ser chancelado.
+ * Rótulo e estado do botão de gerar. Quem decide se pode pedir outro plano é o servidor
+ * (`pode_regenerar`): enquanto há um pedido aguardando dentro do prazo, o botão fica desligado (o
+ * servidor também recusa, HTTP 409). Pedido atrasado, recusado, cancelado ou sem pedido: habilitado.
+ * `temChancelado`: o cliente já tem um plano chancelado visível, que continua valendo até o novo
+ * ser chancelado.
  */
-export function botaoGerar(tipo: TipoPlanoGov, status: StatusPlanoCliente | null, temChancelado: boolean): BotaoGerar {
+export function botaoGerar(
+  tipo: TipoPlanoGov,
+  status: StatusPlanoCliente | null,
+  temChancelado: boolean,
+  podeRegenerar: boolean = status !== 'aguardando',
+): BotaoGerar {
   const r = ROTULOS_GERAR[tipo];
-  if (status === 'aguardando') return { rotulo: r.revisao, desabilitado: true };
-  if (status === 'recusado') return { rotulo: r.denovo, desabilitado: false };
+  if (!podeRegenerar) return { rotulo: status === 'aguardando' ? r.revisao : temChancelado ? r.outro : r.novo, desabilitado: true };
+  if (status === 'aguardando' || status === 'recusado') return { rotulo: r.denovo, desabilitado: false };
   return { rotulo: temChancelado ? r.outro : r.novo, desabilitado: false };
 }
 

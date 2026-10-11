@@ -5,6 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
+import { usePlanoClienteConfig } from '@/hooks/usePlanoClienteConfig';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import PortalErrorState from '@/components/paciente/PortalErrorState';
 import {
   Loader2, Dumbbell, Salad, Sparkles, ChevronRight, Info, ClipboardList, Wand2, Clock, CircleAlert, Stethoscope,
@@ -16,10 +21,15 @@ import TriagemSegurancaCard from '@/components/planos/TriagemSegurancaCard';
 import SeloGovernanca from '@/components/planos/SeloGovernanca';
 import ResumoAcompanhamento from '@/components/planos/ResumoAcompanhamento';
 import {
-  botaoGerar, gerarPlanoDoCliente, lerSituacaoPlanoCliente, mensagemEnviadoParaRevisao, montarPedidoNutricaoCliente,
-  montarPedidoTreinoCliente, SITUACAO_VAZIA, TEXTO_APOS_RECUSA, TEXTO_EM_REVISAO, textoRecusado,
+  botaoGerar, ehNutricaoEmBreve, gerarPlanoDoCliente, mensagemEnviadoParaRevisao, mensagemErroGeracao,
+  MENSAGEM_NUTRICAO_EM_BREVE, montarPedidoNutricaoCliente, montarPedidoTreinoCliente, ROTULO_NUTRICAO_EM_BREVE,
+  SITUACAO_VAZIA, TEXTO_APOS_RECUSA, TEXTO_EM_REVISAO, textoAtrasado, textoPrevisao, textoRecusado,
   type SituacaoPlanoCliente,
 } from '@/lib/geracaoPlano';
+import {
+  buscarSituacaoPlanoCliente, cancelarPedidoPlanoCliente, mensagemErroCancelarPedido, MENSAGEM_PEDIDO_CANCELADO,
+} from '@/lib/planoClienteApi';
+import { rotuloDiasUteis } from '@/lib/chancela';
 import {
   formatarDataBR, lerGovernanca, lerTriagemSalva, origemDoPlanoLiberado, triagemCompleta,
   type BloqueioTriagem, type OrigemPlano, type TipoPlanoGov,
@@ -47,6 +57,7 @@ export function PlanoPersonalizadoSection() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { isFree, isPremium, isLoading: acLoading } = useWellnessAccess();
+  const { config, loading: configLoading } = usePlanoClienteConfig();
   const [loading, setLoading] = useState(true);
   const [erroCarregar, setErroCarregar] = useState(false);
   const [treino, setTreino] = useState<any>(null);
@@ -56,6 +67,10 @@ export function PlanoPersonalizadoSection() {
   const [pacienteId, setPacienteId] = useState<string | null>(null);
   const [temTerapeuta, setTemTerapeuta] = useState(false);
   const [gerando, setGerando] = useState<'' | 'treino' | 'nutricao' | 'tudo'>('');
+  const [cancelando, setCancelando] = useState<'' | TipoPlanoGov>('');
+  const [confirmarCancelar, setConfirmarCancelar] = useState<TipoPlanoGov | null>(null);
+  // O servidor é quem manda: se ele disser "em breve" com a configuração ainda velha na tela, a nutrição some até recarregar.
+  const [nutricaoBarrada, setNutricaoBarrada] = useState(false);
   // Triagem de segurança: a edge pode recusar a geração (nunca é o cliente quem decide
   // prosseguir) e o cliente completa a triagem autodeclarada para o plano ser montado.
   const [bloqueioCliente, setBloqueioCliente] = useState<BloqueioTriagem | null>(null);
@@ -65,15 +80,28 @@ export function PlanoPersonalizadoSection() {
 
   // GERAR o próprio plano: só Premium (o teste grátis de 7 dias não vale). O servidor confere.
   const podeGerar = isPremium;
+  // Nutrição Premium vem desligada de fábrica: enquanto o Rafael não ligar, só o treino é oferecido.
+  const nutricaoLigada = config.nutricao_premium_ativa && !nutricaoBarrada;
+
+  // Sem o status o cliente continua vendo os planos; só não aparece o aviso de revisão. Quando a leitura
+  // falha devolve null e quem chama mantém o que já sabia (um "aguardando" não some por falha de rede).
+  const lerSituacao = async (tipo: TipoPlanoGov): Promise<SituacaoPlanoCliente | null> => {
+    try {
+      return await buscarSituacaoPlanoCliente(tipo);
+    } catch (e) {
+      console.error('[PlanoIA] status do plano indisponível:', e);
+      return null;
+    }
+  };
 
   // Planos por RPC: o que o profissional liberou ou, na falta dele, o que a equipe científica
   // chancelou. Ambas já tiram da resposta a revisão de segurança e a justificativa.
   const carregar = async (pid: string) => {
-    const [t, d, st, sd, dir, anam] = await Promise.all([
+    const [t, d, sitTreino, sitNutricao, dir, anam] = await Promise.all([
       (supabase as any).rpc('meu_plano_liberado', { p_tipo: 'treino' }),
       (supabase as any).rpc('meu_plano_liberado', { p_tipo: 'nutricao' }),
-      (supabase as any).rpc('meu_status_plano_cliente', { p_tipo: 'treino' }),
-      (supabase as any).rpc('meu_status_plano_cliente', { p_tipo: 'nutricao' }),
+      lerSituacao('treino'),
+      lerSituacao('nutricao'),
       // RLS só entrega o que o profissional enviou ao portal — todas as áreas
       (supabase as any).from('diretrizes_profissionais').select('titulo, area, conteudo, updated_at')
         .eq('paciente_id', pid).eq('enviada_portal', true)
@@ -82,12 +110,7 @@ export function PlanoPersonalizadoSection() {
     ]);
     const falha = [t, d, dir].find(r => r.error);
     if (falha) throw falha.error;
-    // Sem o status o cliente continua vendo os planos; só não aparece o aviso de revisão.
-    if (st.error || sd.error) console.error('[PlanoIA] status do plano indisponível:', st.error || sd.error);
-    setSituacao({
-      treino: st.error ? SITUACAO_VAZIA : lerSituacaoPlanoCliente(st.data),
-      nutricao: sd.error ? SITUACAO_VAZIA : lerSituacaoPlanoCliente(sd.data),
-    });
+    setSituacao((atual) => ({ treino: sitTreino ?? atual.treino, nutricao: sitNutricao ?? atual.nutricao }));
     // Falha ao ler a anamnese não derruba a tela: a triagem fica "desconhecida" e o card aparece aberto.
     setTriagemCompletaOk(anam.error ? null : triagemCompleta(lerTriagemSalva(anam.data?.respostas).respostas));
     setTreino(t.data || null);
@@ -125,6 +148,9 @@ export function PlanoPersonalizadoSection() {
     if (!pacienteId) return;
     // Trava do cliente: gerar o próprio plano é Premium. Sem isso, leva ao Premium.
     if (!podeGerar) { navigate(ROTA_ASSINATURA); return; }
+    // Com a nutrição desligada "os dois" é só o treino; o servidor também recusa a nutrição nesse caso.
+    const pedeTreino = alvo === 'treino' || alvo === 'tudo';
+    const pedeNutricao = alvo === 'nutricao' || (alvo === 'tudo' && nutricaoLigada);
     setGerando(alvo);
     // Quando a triagem recusa um dos planos, o outro (se houver) continua; o aviso vem no fim.
     const enviados: TipoPlanoGov[] = [];
@@ -142,13 +168,13 @@ export function PlanoPersonalizadoSection() {
         sexo: (pacRow?.sexo || pacRow?.genero) as string | null | undefined,
       };
 
-      if (alvo === 'treino' || alvo === 'tudo') {
+      if (pedeTreino) {
         const r = await gerarPlanoDoCliente('gerar-plano-treino', montarPedidoTreinoCliente(dados, incomodo));
         if (r.tipo === 'bloqueio') bloqueado = r.bloqueio;
         else enviados.push('treino');
       }
 
-      if (alvo === 'nutricao' || alvo === 'tudo') {
+      if (pedeNutricao) {
         const r = await gerarPlanoDoCliente('gerar-plano-alimentar', montarPedidoNutricaoCliente(dados));
         if (r.tipo === 'bloqueio') bloqueado = bloqueado ?? r.bloqueio;
         else enviados.push('nutricao');
@@ -160,9 +186,15 @@ export function PlanoPersonalizadoSection() {
       } else {
         toast.success(mensagemEnviadoParaRevisao(enviados, !!incomodo));
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       falhou = true;
-      toast.error(e?.message || 'Não consegui gerar o plano agora. Tente de novo em instantes.');
+      if (enviados.length > 0) toast.success(mensagemEnviadoParaRevisao(enviados, !!incomodo));
+      if (ehNutricaoEmBreve(e)) {
+        setNutricaoBarrada(true);
+        toast.info(MENSAGEM_NUTRICAO_EM_BREVE);
+      } else {
+        toast.error(mensagemErroGeracao(e));
+      }
     } finally {
       // O que já foi enviado precisa aparecer como "em revisão" mesmo que o outro pedido tenha falhado;
       // e uma falha pode ser o servidor dizendo que já há um plano em revisão (outra aba, estado velho).
@@ -177,7 +209,25 @@ export function PlanoPersonalizadoSection() {
     }
   };
 
-  if (acLoading || loading) {
+  // O pedido que ainda aguarda a equipe sai da fila; um já decidido pela equipe não é cancelado (o
+  // servidor recusa) e a tela passa a mostrar a decisão.
+  const cancelarPedido = async (tipo: TipoPlanoGov) => {
+    setCancelando(tipo);
+    try {
+      const nova = await cancelarPedidoPlanoCliente(tipo);
+      setSituacao((atual) => ({ ...atual, [tipo]: nova }));
+      toast.success(MENSAGEM_PEDIDO_CANCELADO);
+    } catch (e: unknown) {
+      console.error('[PlanoIA] cancelar pedido error:', e);
+      toast.error(mensagemErroCancelarPedido(e));
+      const atual = await lerSituacao(tipo);
+      if (atual) setSituacao((antes) => ({ ...antes, [tipo]: atual }));
+    } finally {
+      setCancelando('');
+    }
+  };
+
+  if (acLoading || loading || configLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
@@ -189,10 +239,12 @@ export function PlanoPersonalizadoSection() {
   const origemDieta = dieta ? origemDoPlanoLiberado(dieta) : null;
   const gerandoTreino = gerando === 'treino' || gerando === 'tudo';
   const gerandoDieta = gerando === 'nutricao' || gerando === 'tudo';
-  const botaoTreino = botaoGerar('treino', situacao.treino.status, origemTreino === 'equipe_myhealthid');
-  const botaoDieta = botaoGerar('nutricao', situacao.nutricao.status, origemDieta === 'equipe_myhealthid');
-  const nadaAindaGerado = !treino && !dieta && !situacao.treino.status && !situacao.nutricao.status;
+  const botaoTreino = botaoGerar('treino', situacao.treino.status, origemTreino === 'equipe_myhealthid', situacao.treino.podeRegenerar);
+  const botaoDieta = botaoGerar('nutricao', situacao.nutricao.status, origemDieta === 'equipe_myhealthid', situacao.nutricao.podeRegenerar);
+  const jaPediu = (s: SituacaoPlanoCliente) => s.status !== null && s.status !== 'cancelado';
+  const nadaAindaGerado = !treino && !dieta && !jaPediu(situacao.treino) && !jaPediu(situacao.nutricao);
   const emAndamento = (s: SituacaoPlanoCliente) => s.status === 'aguardando' || s.status === 'recusado';
+  const prazoTexto = rotuloDiasUteis(config.prazo_chancela_dias_uteis);
 
   return (
     <div className="space-y-4">
@@ -224,9 +276,9 @@ export function PlanoPersonalizadoSection() {
                       <Wand2 className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold">Gerar meu treino e plano nutricional</p>
+                      <p className="text-sm font-bold">{nutricaoLigada ? 'Gerar meu treino e plano nutricional' : 'Gerar meu treino'}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        Montados a partir do seu MyID, dos formulários que nascem das suas respostas e do seu histórico clínico. Antes de chegar até você, a equipe científica MyHealthID revisa e chancela.
+                        {nutricaoLigada ? 'Montados' : 'Montado'} a partir do seu MyID, dos formulários que nascem das suas respostas e do seu histórico clínico. Antes de chegar até você, a equipe científica MyHealthID revisa e chancela.
                       </p>
                     </div>
                   </div>
@@ -236,20 +288,27 @@ export function PlanoPersonalizadoSection() {
                       {gerandoTreino ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dumbbell className="h-4 w-4" />}
                       {botaoTreino.rotulo}
                     </Button>
-                    <Button variant="outline" className="gap-1.5" disabled={!!gerando || botaoDieta.desabilitado}
-                      onClick={() => gerarPlano('nutricao')}>
-                      {gerandoDieta ? <Loader2 className="h-4 w-4 animate-spin" /> : <Salad className="h-4 w-4" />}
-                      {botaoDieta.rotulo}
-                    </Button>
+                    {nutricaoLigada ? (
+                      <Button variant="outline" className="gap-1.5" disabled={!!gerando || botaoDieta.desabilitado}
+                        onClick={() => gerarPlano('nutricao')}>
+                        {gerandoDieta ? <Loader2 className="h-4 w-4 animate-spin" /> : <Salad className="h-4 w-4" />}
+                        {botaoDieta.rotulo}
+                      </Button>
+                    ) : (
+                      <div className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                        <Salad className="h-4 w-4 shrink-0" aria-hidden />
+                        {ROTULO_NUTRICAO_EM_BREVE}
+                      </div>
+                    )}
                   </div>
-                  {nadaAindaGerado && (
+                  {nutricaoLigada && nadaAindaGerado && (
                     <Button className="w-full gap-1.5" disabled={!!gerando} onClick={() => gerarPlano('tudo')}>
                       {gerando === 'tudo' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                       {gerando === 'tudo' ? 'Enviando seu pedido…' : 'Gerar os dois'}
                     </Button>
                   )}
                   <p className="text-[10px] text-muted-foreground">
-                    Responda a triagem de segurança e o histórico clínico antes para o plano ficar mais preciso. O plano só aparece aqui depois de chancelado pela equipe.
+                    Responda a triagem de segurança e o histórico clínico antes para o plano ficar mais preciso. O plano só aparece aqui depois de chancelado pela equipe, que tem até {prazoTexto} para revisar.
                   </p>
                 </CardContent>
               </Card>
@@ -261,9 +320,11 @@ export function PlanoPersonalizadoSection() {
                   <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-2">
                     <Wand2 className="h-6 w-6" />
                   </div>
-                  <h2 className="text-base font-black">Monte seu treino e nutrição sob medida</h2>
+                  <h2 className="text-base font-black">{nutricaoLigada ? 'Monte seu treino e nutrição sob medida' : 'Monte seu treino sob medida'}</h2>
                   <p className="text-xs text-white/85 mt-1 max-w-sm mx-auto">
-                    Gerar o seu treino e o seu plano nutricional faz parte do <strong>Premium</strong>. Eles são montados a partir do seu MyID, dos formulários e do seu histórico clínico e chancelados pela equipe científica MyHealthID antes de chegar até você.
+                    {nutricaoLigada
+                      ? <>Gerar o seu treino e o seu plano nutricional faz parte do <strong>Premium</strong>. Eles são montados a partir do seu MyID, dos formulários e do seu histórico clínico e chancelados pela equipe científica MyHealthID antes de chegar até você.</>
+                      : <>Gerar o seu treino faz parte do <strong>Premium</strong>. Ele é montado a partir do seu MyID, dos formulários e do seu histórico clínico e chancelado pela equipe científica MyHealthID antes de chegar até você. O plano nutricional Premium estará disponível em breve.</>}
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2 justify-center mt-3">
                     <Button variant="secondary" className="gap-1.5 bg-white text-primary hover:bg-white/90 border-0"
@@ -305,7 +366,14 @@ export function PlanoPersonalizadoSection() {
                   {temPersonal && (
                     <SecaoPlano titulo="🏋️ Personal (treino)">
                       {mapDir(personalDir)}
-                      <AvisoSituacaoPlano situacao={situacao.treino} planoVisivel={origemTreino} />
+                      <AvisoSituacaoPlano
+                        situacao={situacao.treino}
+                        planoVisivel={origemTreino}
+                        nomePedido="treino"
+                        cancelando={cancelando === 'treino'}
+                        ocupado={!!gerando || !!cancelando}
+                        onCancelar={() => setConfirmarCancelar('treino')}
+                      />
                       {treino && pacienteId && origemTreino && (
                         <>
                           <SeloGovernanca conteudo={treino.conteudo} origem={origemTreino} visao="paciente" aprovado />
@@ -315,7 +383,7 @@ export function PlanoPersonalizadoSection() {
                             conteudo={treino.conteudo}
                             // "Senti incômodo" gera um plano novo que volta para a fila; o chancelado
                             // atual segue visível até o novo ser chancelado.
-                            onRegenerarComIncomodo={podeGerar && origemTreino === 'equipe_myhealthid' ? (nota) => gerarPlano('treino', nota) : undefined}
+                            onRegenerarComIncomodo={podeGerar && origemTreino === 'equipe_myhealthid' && situacao.treino.podeRegenerar ? (nota) => gerarPlano('treino', nota) : undefined}
                             regenerando={gerandoTreino}
                           />
                           <ResumoAcompanhamento conteudo={treino.conteudo} aprovacaoEm={lerGovernanca(treino.conteudo)?.aprovacao?.em} />
@@ -327,7 +395,14 @@ export function PlanoPersonalizadoSection() {
                   {temNutri && (
                     <SecaoPlano titulo="🥗 Nutricional">
                       {mapDir(nutriDir)}
-                      <AvisoSituacaoPlano situacao={situacao.nutricao} planoVisivel={origemDieta} />
+                      <AvisoSituacaoPlano
+                        situacao={situacao.nutricao}
+                        planoVisivel={origemDieta}
+                        nomePedido="plano alimentar"
+                        cancelando={cancelando === 'nutricao'}
+                        ocupado={!!gerando || !!cancelando}
+                        onCancelar={() => setConfirmarCancelar('nutricao')}
+                      />
                       {dieta && origemDieta && (
                         <>
                           <SeloGovernanca conteudo={dieta.conteudo} origem={origemDieta} visao="paciente" aprovado />
@@ -349,7 +424,7 @@ export function PlanoPersonalizadoSection() {
                       <p className="text-sm font-medium text-muted-foreground">Nenhum plano ainda</p>
                       <p className="text-xs text-muted-foreground/60 mt-1">
                         {podeGerar
-                          ? 'Toque em "Gerar os dois" acima para pedir o seu — a equipe científica MyHealthID revisa antes de ele chegar até você. Seu profissional também pode montar um.'
+                          ? `Toque em "${nutricaoLigada ? 'Gerar os dois' : 'Gerar treino'}" acima para pedir o seu — a equipe científica MyHealthID revisa antes de ele chegar até você. Seu profissional também pode montar um.`
                           : isFree
                             ? 'Seu profissional pode montar um plano sob medida para você. Assine o Premium para gerar o seu — a equipe científica MyHealthID revisa antes de ele chegar até você.'
                             : 'Seu profissional monta seu plano sob medida — ele aparece aqui assim que for liberado.'}
@@ -365,6 +440,33 @@ export function PlanoPersonalizadoSection() {
               onEncontrar={() => navigate(ROTA_PROFISSIONAIS)}
               onFalar={() => navigate(ROTA_CHAT)}
             />
+
+            <AlertDialog open={confirmarCancelar !== null} onOpenChange={(aberto) => { if (!aberto) setConfirmarCancelar(null); }}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {confirmarCancelar === 'nutricao' ? 'Cancelar o pedido do plano alimentar?' : 'Cancelar o pedido do treino?'}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    O pedido sai da fila da equipe científica MyHealthID. Quando quiser, é só pedir de novo.
+                    {confirmarCancelar === 'treino' && origemTreino === 'equipe_myhealthid' && ' O treino chancelado que você já tem continua valendo.'}
+                    {confirmarCancelar === 'nutricao' && origemDieta === 'equipe_myhealthid' && ' O plano alimentar chancelado que você já tem continua valendo.'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Manter o pedido</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      const tipo = confirmarCancelar;
+                      setConfirmarCancelar(null);
+                      if (tipo) void cancelarPedido(tipo);
+                    }}
+                  >
+                    Cancelar pedido
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             <TriagemBloqueioDialog
               bloqueio={bloqueioCliente}
@@ -420,19 +522,40 @@ function ConviteProfissional({ temTerapeuta, onEncontrar, onFalar }: { temTerape
 }
 
 // Situação do plano que o cliente pediu: o conteúdo só aparece quando chancelado, então
-// enquanto isso ele vê só o status (e o recado da equipe, se foi recusado).
-function AvisoSituacaoPlano({ situacao, planoVisivel }: { situacao: SituacaoPlanoCliente; planoVisivel: OrigemPlano | null }) {
+// enquanto isso ele vê só o status (a previsão da equipe e, se passou do prazo, um recado
+// acolhedor) e, se foi recusado, o recado público da equipe. Pedido aguardando pode ser cancelado.
+function AvisoSituacaoPlano({
+  situacao, planoVisivel, nomePedido, cancelando, ocupado, onCancelar,
+}: {
+  situacao: SituacaoPlanoCliente;
+  planoVisivel: OrigemPlano | null;
+  nomePedido: string;
+  cancelando: boolean;
+  ocupado: boolean;
+  onCancelar: () => void;
+}) {
   const enviadoEm = formatarDataBR(situacao.geradoEm);
   const continuaValendo = planoVisivel === 'equipe_myhealthid';
 
   if (situacao.status === 'aguardando') {
+    const previsao = situacao.atrasado ? '' : textoPrevisao(situacao.prazoPrevisto);
     return (
       <div role="status" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900 dark:bg-amber-950/30">
         <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" aria-hidden />
-        <div className="space-y-0.5">
+        <div className="space-y-1 min-w-0 flex-1">
           <p className="text-xs font-semibold">{TEXTO_EM_REVISAO}</p>
           {enviadoEm && <p className="text-[11px] text-muted-foreground">Pedido enviado em {enviadoEm}.</p>}
+          {previsao && <p className="text-[11px] text-muted-foreground">{previsao}.</p>}
+          {situacao.atrasado && <p className="text-[11px] text-foreground/80">{textoAtrasado(situacao.prazoPrevisto)}</p>}
           {continuaValendo && <p className="text-[11px] text-muted-foreground">O plano abaixo continua valendo até o novo ser chancelado.</p>}
+          <Button
+            type="button" variant="outline" size="sm" className="mt-1 h-7 text-xs"
+            disabled={ocupado} aria-label={`Cancelar pedido do ${nomePedido}`}
+            onClick={onCancelar}
+          >
+            {cancelando ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
+            Cancelar pedido
+          </Button>
         </div>
       </div>
     );

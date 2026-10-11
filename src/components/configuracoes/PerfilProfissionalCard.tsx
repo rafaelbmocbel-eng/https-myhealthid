@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useLenteAtiva, PerfilProfissional } from '@/hooks/useLenteAtiva';
+import RegistroProfissionalSecao, { CHAVE_MINHA_VERIFICACAO } from './RegistroProfissionalSecao';
 
 const OPCOES: { value: PerfilProfissional; label: string; hint: string }[] = [
   { value: 'fisioterapeuta', label: 'Fisioterapeuta', hint: 'Avatar 3D, mapa de dor, raciocínio multidisciplinar' },
@@ -109,6 +110,7 @@ export default function PerfilProfissionalCard() {
     setConfirmacao('');
     qc.invalidateQueries({ queryKey: ['lente-ativa'] });
     qc.invalidateQueries({ queryKey: ['perfil-profissional-status'] });
+    qc.invalidateQueries({ queryKey: [CHAVE_MINHA_VERIFICACAO] });
     toast({
       title: 'Profissão confirmada',
       description: 'Para alterar futuramente, será necessário contatar o suporte.',
@@ -239,6 +241,8 @@ export default function PerfilProfissionalCard() {
             </AlertDialogContent>
           </AlertDialog>
         ) : null}
+
+        <RegistroProfissionalSecao />
       </div>
     </div>
   );

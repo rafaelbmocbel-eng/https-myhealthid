@@ -7,13 +7,16 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invo
 
 import SeloGovernanca from '../components/planos/SeloGovernanca';
 import {
-  lerGovernanca, origemDoPlanoLiberado, rodapeGovernanca, rotuloSeloEquipe, AVISO_PADRAO_PLANO,
+  lerGovernanca, origemDoPlanoLiberado, rodapeGovernanca, rotuloSeloEquipe, AVISO_PADRAO_PLANO, ROTULO_AUTOCHANCELA,
 } from '../lib/governanca';
 import {
-  botaoGerar, gerarPlanoComTriagem, gerarPlanoDoCliente, interpretarRespostaGeracao, interpretarRespostaGeracaoCliente,
-  lerSituacaoPlanoCliente, mensagemEnviadoParaRevisao, montarPedidoNutricaoCliente, montarPedidoTreinoCliente,
-  MENSAGEM_ENVIO_REVISAO_FALHOU, OBJETIVO_PADRAO_CLIENTE, SITUACAO_VAZIA, textoRecusado,
+  botaoGerar, ehNutricaoEmBreve, gerarPlanoComTriagem, gerarPlanoDoCliente, interpretarRespostaGeracao,
+  interpretarRespostaGeracaoCliente, lerSituacaoPlanoCliente, mensagemEnviadoParaRevisao, mensagemErroGeracao,
+  montarPedidoNutricaoCliente, montarPedidoTreinoCliente, MENSAGEM_ENVIO_REVISAO_FALHOU, MENSAGEM_GERACAO_FALHOU,
+  MENSAGEM_NUTRICAO_EM_BREVE, MENSAGEM_PROFISSIONAL_NAO_VERIFICADO, OBJETIVO_PADRAO_CLIENTE, SITUACAO_VAZIA,
+  textoAtrasado, textoPrevisao, textoRecusado,
 } from '../lib/geracaoPlano';
+import { ErroFuncao, erroDaFuncao } from '../lib/fnError';
 
 afterEach(() => {
   cleanup();
@@ -63,6 +66,36 @@ describe('selo da equipe científica MyHealthID', () => {
   it('SeloGovernanca compacto da equipe usa o mesmo rótulo', () => {
     const { container } = render(createElement(SeloGovernanca, { conteudo: chancelado, origem: 'equipe_myhealthid', visao: 'paciente', compacto: true }));
     expect(container.textContent).toContain('Chancelado pela equipe científica MyHealthID');
+  });
+
+  it('autochancela do administrador: o selo termina com "Autochancela (teste interno)"', () => {
+    const c = carimbo({ por_nome: 'Rafael', por_perfil: 'super_admin', em: '2026-10-08T15:00:00Z', versao: 1, autochancela: true });
+    expect(ROTULO_AUTOCHANCELA).toBe('Autochancela (teste interno)');
+    expect(lerGovernanca(c)?.aprovacao?.autochancela).toBe(true);
+    expect(rotuloSeloEquipe(lerGovernanca(c))).toBe(
+      'Chancelado pela equipe científica MyHealthID · Rafael, Administrador(a) · 08/10/2026 · v1 · Autochancela (teste interno)',
+    );
+    expect(rodapeGovernanca(c, { origem: 'equipe_myhealthid' }).selo).toContain('Autochancela (teste interno)');
+  });
+
+  it('só autochancela === true conta; o selo normal não traz o texto', () => {
+    for (const valor of ['true', 1, 'sim', null]) {
+      const c = carimbo({ por_nome: 'Ana', autochancela: valor });
+      expect(lerGovernanca(c)?.aprovacao?.autochancela).toBe(false);
+      expect(rotuloSeloEquipe(lerGovernanca(c))).not.toContain('Autochancela (teste interno)');
+    }
+    expect(rotuloSeloEquipe(lerGovernanca(chancelado))).not.toContain('Autochancela (teste interno)');
+  });
+
+  it('SeloGovernanca da autochancela mostra o aviso e nada de revisão, mesmo se o carimbo vier com sem_revisao', () => {
+    const c = carimbo({
+      por_nome: 'Rafael', por_perfil: 'super_admin', em: '2026-10-08T15:00:00Z', versao: 1,
+      autochancela: true, sem_revisao: true, motivo_sem_revisao: 'IA fora do ar',
+    });
+    const { container } = render(createElement(SeloGovernanca, { conteudo: c, origem: 'equipe_myhealthid', visao: 'paciente' }));
+    const texto = container.textContent ?? '';
+    expect(texto).toContain('Autochancela (teste interno)');
+    expect(texto).not.toMatch(/sem revisão|revisão automática|IA fora do ar/i);
   });
 
   it('o selo do plano do cliente (planos_ia_cliente) continua sem afirmar chancela', () => {
@@ -163,16 +196,53 @@ describe('lerSituacaoPlanoCliente', () => {
   it('lê status, data e recado público', () => {
     expect(lerSituacaoPlanoCliente({ status: 'recusado', gerado_em: '2026-10-08T12:00:00Z', nota_publica: ' Falta o histórico. ' })).toEqual({
       status: 'recusado', geradoEm: '2026-10-08T12:00:00Z', notaPublica: 'Falta o histórico.',
+      prazoPrevisto: null, atrasado: false, podeRegenerar: true,
     });
     expect(lerSituacaoPlanoCliente({ status: 'aguardando', gerado_em: null, nota_publica: null }).status).toBe('aguardando');
     expect(lerSituacaoPlanoCliente({ status: 'chancelado' }).status).toBe('chancelado');
+    expect(lerSituacaoPlanoCliente({ status: 'cancelado' }).status).toBe('cancelado');
   });
 
-  it('sem registro, status desconhecido ou entrada inválida: sem status', () => {
+  it('aguardando traz o prazo previsto, o atraso e se pode pedir de novo', () => {
+    expect(lerSituacaoPlanoCliente({
+      status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null,
+      prazo_previsto: '2026-10-13T02:59:59Z', atrasado: false, pode_regenerar: false,
+    })).toEqual({
+      status: 'aguardando', geradoEm: '2026-10-08T12:00:00Z', notaPublica: null,
+      prazoPrevisto: '2026-10-13T02:59:59Z', atrasado: false, podeRegenerar: false,
+    });
+    const atrasado = lerSituacaoPlanoCliente({ status: 'aguardando', prazo_previsto: '2026-10-08T02:59:59Z', atrasado: true, pode_regenerar: true });
+    expect(atrasado.atrasado).toBe(true);
+    expect(atrasado.podeRegenerar).toBe(true);
+  });
+
+  it('prazo e atraso só valem enquanto aguarda (nada de "atrasado" num pedido já decidido)', () => {
+    const r = lerSituacaoPlanoCliente({ status: 'chancelado', prazo_previsto: '2026-10-08T02:59:59Z', atrasado: true });
+    expect(r.prazoPrevisto).toBeNull();
+    expect(r.atrasado).toBe(false);
+  });
+
+  it('atrasado só é verdadeiro quando o servidor manda exatamente true', () => {
+    for (const atrasado of ['true', 1, 'sim', null, undefined]) {
+      expect(lerSituacaoPlanoCliente({ status: 'aguardando', atrasado }).atrasado).toBe(false);
+    }
+  });
+
+  it('servidor sem pode_regenerar (antigo): só gera de novo quem não está aguardando', () => {
+    expect(lerSituacaoPlanoCliente({ status: 'aguardando' }).podeRegenerar).toBe(false);
+    expect(lerSituacaoPlanoCliente({ status: 'aguardando', pode_regenerar: 'sim' }).podeRegenerar).toBe(false);
+    expect(lerSituacaoPlanoCliente({ status: 'recusado' }).podeRegenerar).toBe(true);
+    expect(lerSituacaoPlanoCliente({ status: 'cancelado' }).podeRegenerar).toBe(true);
+    expect(lerSituacaoPlanoCliente({ status: 'chancelado' }).podeRegenerar).toBe(true);
+  });
+
+  it('sem registro, status desconhecido ou entrada inválida: sem status e liberado para gerar', () => {
     expect(lerSituacaoPlanoCliente({ status: null, gerado_em: null, nota_publica: null })).toEqual(SITUACAO_VAZIA);
     expect(lerSituacaoPlanoCliente({ status: 'substituido' })).toEqual(SITUACAO_VAZIA);
     expect(lerSituacaoPlanoCliente(null)).toEqual(SITUACAO_VAZIA);
     expect(lerSituacaoPlanoCliente([1])).toEqual(SITUACAO_VAZIA);
+    expect(SITUACAO_VAZIA.podeRegenerar).toBe(true);
+    expect(SITUACAO_VAZIA.atrasado).toBe(false);
   });
 });
 
@@ -192,6 +262,31 @@ describe('textos e botões', () => {
     expect(botaoGerar('treino', 'recusado', false)).toEqual({ rotulo: 'Gerar treino de novo', desabilitado: false });
     expect(botaoGerar('treino', 'aguardando', true)).toEqual({ rotulo: 'Treino em revisão', desabilitado: true });
     expect(botaoGerar('nutricao', 'aguardando', false)).toEqual({ rotulo: 'Nutrição em revisão', desabilitado: true });
+  });
+
+  it('botaoGerar obedece o servidor (pode_regenerar): pedido atrasado libera, cancelado volta ao normal', () => {
+    expect(botaoGerar('treino', 'aguardando', false, false)).toEqual({ rotulo: 'Treino em revisão', desabilitado: true });
+    expect(botaoGerar('treino', 'aguardando', true, true)).toEqual({ rotulo: 'Gerar treino de novo', desabilitado: false });
+    expect(botaoGerar('nutricao', 'aguardando', false, true)).toEqual({ rotulo: 'Gerar nutrição de novo', desabilitado: false });
+    expect(botaoGerar('treino', 'cancelado', false, true)).toEqual({ rotulo: 'Gerar treino', desabilitado: false });
+    expect(botaoGerar('treino', 'cancelado', true, true)).toEqual({ rotulo: 'Gerar novo treino', desabilitado: false });
+    expect(botaoGerar('treino', 'recusado', false, false).desabilitado).toBe(true);
+  });
+
+  it('textoPrevisao usa a data de Brasília e fica vazio sem prazo', () => {
+    expect(textoPrevisao('2026-10-13T02:59:59Z')).toBe('Previsão: até 12/10/2026');
+    expect(textoPrevisao('2026-10-13T12:00:00Z')).toBe('Previsão: até 13/10/2026');
+    expect(textoPrevisao(null)).toBe('');
+    expect(textoPrevisao('')).toBe('');
+    expect(textoPrevisao('lixo')).toBe('');
+  });
+
+  it('textoAtrasado é acolhedor, cita a previsão que era e oferece pedir de novo ou cancelar', () => {
+    const t = textoAtrasado('2026-10-08T02:59:59Z');
+    expect(t).toMatch(/^Sentimos muito/);
+    expect(t).toContain('(a previsão era até 07/10/2026)');
+    expect(t).toMatch(/pedir de novo.*cancelar/);
+    expect(textoAtrasado(null)).not.toContain('previsão era');
   });
 
   it('mensagemEnviadoParaRevisao diz o que foi enviado e que o plano chega depois de chancelado', () => {
@@ -249,5 +344,57 @@ describe('pedido do cliente', () => {
     expect(corpo.idade).toBe(41);
     expect(corpo.refeicoes_por_dia).toBe(5);
     expect(montarPedidoNutricaoCliente({ pacienteId: 'p', anamnese: { idade: 'abc' } }).idade).toBeUndefined();
+  });
+});
+
+describe('erros das edges de geração', () => {
+  it('erroDaFuncao guarda o código e o status do corpo da resposta', async () => {
+    const erro = await erroDaFuncao({
+      context: { status: 403, json: async () => ({ error: 'O plano nutricional Premium estará disponível em breve.', codigo: 'nutricao_em_breve' }) },
+    });
+    expect(erro).toBeInstanceOf(ErroFuncao);
+    expect(erro.message).toBe('O plano nutricional Premium estará disponível em breve.');
+    expect(erro.codigo).toBe('nutricao_em_breve');
+    expect(erro.status).toBe(403);
+  });
+
+  it('erroDaFuncao sem código no corpo, corpo ilegível ou erro sem contexto continua devolvendo mensagem', async () => {
+    const semCodigo = await erroDaFuncao({ context: { json: async () => ({ error: 'Créditos de IA esgotados' }) } });
+    expect(semCodigo.message).toBe('Créditos de IA esgotados');
+    expect(semCodigo.codigo).toBeNull();
+    expect(semCodigo.status).toBeNull();
+    const ilegivel = await erroDaFuncao({ message: 'Edge Function returned a non-2xx status code', context: { json: async () => { throw new Error('html'); } } });
+    expect(ilegivel.message).toBe('Edge Function returned a non-2xx status code');
+    expect((await erroDaFuncao(null)).message).toBe('Erro ao chamar a função');
+    const codigoEstranho = await erroDaFuncao({ context: { json: async () => ({ error: 'x', codigo: 42 }) } });
+    expect(codigoEstranho.codigo).toBeNull();
+  });
+
+  it('gerarPlanoDoCliente propaga o código do 403 até a tela', async () => {
+    invoke.mockResolvedValue({
+      data: null,
+      error: { context: { status: 403, json: async () => ({ error: 'O plano nutricional Premium estará disponível em breve.', codigo: 'nutricao_em_breve' }) } },
+    });
+    const erro = await gerarPlanoDoCliente('gerar-plano-alimentar', {}).catch((e: unknown) => e);
+    expect(ehNutricaoEmBreve(erro)).toBe(true);
+    expect(mensagemErroGeracao(erro)).toBe(MENSAGEM_NUTRICAO_EM_BREVE);
+  });
+
+  it('mensagemErroGeracao: códigos conhecidos ganham texto próprio, o resto usa o texto do servidor ou o padrão', () => {
+    expect(mensagemErroGeracao(new ErroFuncao('texto antigo do servidor', 'nutricao_em_breve', 403))).toBe('O plano nutricional Premium estará disponível em breve.');
+    expect(mensagemErroGeracao(new ErroFuncao('Seu perfil profissional ainda não foi verificado pela equipe MyHealthID', 'profissional_nao_verificado', 403)))
+      .toBe(MENSAGEM_PROFISSIONAL_NAO_VERIFICADO);
+    expect(MENSAGEM_PROFISSIONAL_NAO_VERIFICADO).toMatch(/ainda não foi verificado pela equipe MyHealthID/);
+    expect(mensagemErroGeracao(new ErroFuncao('Créditos de IA esgotados', 'sem_creditos', 402))).toBe('Créditos de IA esgotados');
+    expect(mensagemErroGeracao(new Error('Falha qualquer'))).toBe('Falha qualquer');
+    expect(mensagemErroGeracao(new Error('   '))).toBe(MENSAGEM_GERACAO_FALHOU);
+    expect(mensagemErroGeracao(null)).toBe(MENSAGEM_GERACAO_FALHOU);
+    expect(mensagemErroGeracao({}, 'Erro ao gerar')).toBe('Erro ao gerar');
+  });
+
+  it('um Error comum com o mesmo texto não conta como "em breve" (só o código do servidor decide)', () => {
+    expect(ehNutricaoEmBreve(new Error(MENSAGEM_NUTRICAO_EM_BREVE))).toBe(false);
+    expect(ehNutricaoEmBreve(new ErroFuncao('x', 'plano_em_revisao', 409))).toBe(false);
+    expect(ehNutricaoEmBreve(null)).toBe(false);
   });
 });

@@ -19,7 +19,7 @@ import LiberarPlanoDialog from '@/components/planos/LiberarPlanoDialog';
 import TriagemBloqueioDialog from '@/components/planos/TriagemBloqueioDialog';
 import SeloGovernanca from '@/components/planos/SeloGovernanca';
 import ResumoAcompanhamento from '@/components/planos/ResumoAcompanhamento';
-import { gerarPlanoComTriagem, idadeEmAnos, resumoMotivosBloqueio } from '@/lib/geracaoPlano';
+import { gerarPlanoComTriagem, idadeEmAnos, mensagemErroGeracao, resumoMotivosBloqueio } from '@/lib/geracaoPlano';
 import type { BloqueioTriagem, OverrideTriagem } from '@/lib/governanca';
 
 interface Props {
@@ -166,7 +166,7 @@ export default function PlanoAlimentarCard({ pacienteId, autoGerar, ocultarGerad
       onBloqueioAuto?.('liberado');
       qc.invalidateQueries({ queryKey: ['planos-alimentares', pacienteId] });
     },
-    onError: (e: any) => toast.error(e.message || 'Erro ao gerar'),
+    onError: (e: unknown) => toast.error(mensagemErroGeracao(e, 'Erro ao gerar')),
   });
 
   // Cancelar uma decisão manual devolve ao formulário de geração.

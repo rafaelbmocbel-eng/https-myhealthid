@@ -3,8 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, ChevronDown, FileEdit, History, ShieldCheck, Sparkles } from 'lucide-react';
 import {
-  estadoSelo, lerGovernanca, resumoParametros, rotuloSelo, rotuloSeloEquipe, semAprovacao, semParametrosConfirmados,
-  type EstadoSelo, type OrigemPlano,
+  estadoSelo, lerGovernanca, resumoParametros, ROTULO_AUTOCHANCELA, rotuloSelo, rotuloSeloEquipe, semAprovacao,
+  semParametrosConfirmados, type EstadoSelo, type OrigemPlano,
 } from '@/lib/governanca';
 
 // Selo de governança de um plano: quem liberou, quando, em que versão e de onde
@@ -16,6 +16,8 @@ import {
 //  - 'equipe_myhealthid' → plano que o cliente Premium gerou e a equipe científica
 //    chancelou. Vem da RPC `meu_plano_liberado` (só devolve plano com status
 //    'chancelado', carimbado no banco): mostra "Chancelado pela equipe científica ...".
+//    Na autochancela (administrador chancelando o plano da própria conta) o selo diz
+//    "Autochancela (teste interno)". Para o paciente o selo nunca fala de revisão de segurança.
 //  - 'cliente' → planos_ia_cliente. O próprio paciente escreve nessa tabela, então
 //    NADA nela prova revisão ou aprovação: o selo nunca diz "Liberado/aprovado por
 //    profissional" e ignora qualquer `aprovacao` que esteja no conteúdo.
@@ -105,6 +107,12 @@ export default function SeloGovernanca({ conteudo, aprovado, origem, visao = 'pr
         <p className="text-[11px] text-muted-foreground pl-6">
           Plano gerado a partir das suas respostas e chancelado pela equipe científica do MyHealthID. Não substitui o
           acompanhamento de um profissional de saúde.
+        </p>
+      )}
+
+      {daEquipe && apr?.autochancela && (
+        <p className="text-[11px] text-amber-700 dark:text-amber-300 pl-6">
+          {ROTULO_AUTOCHANCELA}: feita pela administração do MyHealthID na própria conta, sem outro revisor da equipe.
         </p>
       )}
 

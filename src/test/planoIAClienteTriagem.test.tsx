@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const h = vi.hoisted(() => ({
   // Objeto estável: o componente recarrega tudo quando a referência de `user` muda.
@@ -11,10 +12,13 @@ const h = vi.hoisted(() => ({
   rpcChamadas: [] as { nome: string; tipo: string }[],
   plano: {} as Record<string, unknown>,
   status: {} as Record<string, unknown>,
+  config: { nutricao_premium_ativa: true, prazo_chancela_dias_uteis: 2 } as Record<string, unknown>,
+  configFalha: false,
+  cancelar: vi.fn(),
   acesso: { isFree: false, isPremium: true, isInTrial: false, isLoading: false },
   terapeutaId: null as string | null,
   anamneseRespostas: null as null | Record<string, unknown>,
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
 vi.mock('sonner', () => ({ toast: h.toast }));
@@ -53,10 +57,17 @@ vi.mock('@/integrations/supabase/client', () => {
   return {
     supabase: {
       functions: { invoke: (...a: unknown[]) => h.invoke(...a) },
-      rpc: (nome: string, args: { p_tipo: string }) => {
-        h.rpcChamadas.push({ nome, tipo: args.p_tipo });
+      rpc: (nome: string, args?: { p_tipo: string }) => {
+        h.rpcChamadas.push({ nome, tipo: args?.p_tipo ?? '' });
+        if (nome === 'plano_cliente_config') {
+          return Promise.resolve(h.configFalha
+            ? { data: null, error: { message: 'Could not find the function public.plano_cliente_config in the schema cache' } }
+            : { data: h.config, error: null });
+        }
+        if (nome === 'cancelar_pedido_plano_cliente') return Promise.resolve(h.cancelar(args));
+        const tipo = args?.p_tipo ?? '';
         const fonte = nome === 'meu_status_plano_cliente' ? h.status : h.plano;
-        return Promise.resolve({ data: fonte[args.p_tipo] ?? null, error: null });
+        return Promise.resolve({ data: fonte[tipo] ?? null, error: null });
       },
       from: (t: string) => construtor(t),
     },
@@ -111,11 +122,14 @@ function Rota() {
 }
 
 function renderizar() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={['/paciente/exercicios']}>
-      <PlanoPersonalizadoSection />
-      <Rota />
-    </MemoryRouter>,
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={['/paciente/exercicios']}>
+        <PlanoPersonalizadoSection />
+        <Rota />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -126,11 +140,15 @@ beforeEach(() => {
   h.rpcChamadas.length = 0;
   h.plano = {};
   h.status = {};
+  h.config = { nutricao_premium_ativa: true, prazo_chancela_dias_uteis: 2 };
+  h.configFalha = false;
+  h.cancelar.mockReset();
   h.acesso = { isFree: false, isPremium: true, isInTrial: false, isLoading: false };
   h.terapeutaId = null;
   h.anamneseRespostas = null;
   h.toast.success.mockReset();
   h.toast.error.mockReset();
+  h.toast.info.mockReset();
 });
 afterEach(() => cleanup());
 
@@ -142,6 +160,7 @@ describe('Plano do cliente Premium: gera, a equipe chancela, só então chega', 
     expect(chamadas).toEqual([
       'meu_plano_liberado:nutricao', 'meu_plano_liberado:treino',
       'meu_status_plano_cliente:nutricao', 'meu_status_plano_cliente:treino',
+      'plano_cliente_config:',
     ]);
     expect(h.tabelasLidas).not.toContain('planos_ia_cliente');
     expect(h.tabelasLidas).not.toContain('planos_treino');
@@ -401,5 +420,259 @@ describe('Triagem de segurança do cliente', () => {
     renderizar();
     const card = await screen.findByTestId('triagem-card');
     expect(card).toHaveAttribute('data-aberto', 'false');
+  });
+});
+
+const PRAZO_FUTURO = '2026-10-13T02:59:59Z';
+
+describe('Prazo da equipe, atraso e cancelamento do pedido', () => {
+  it('aguardando dentro do prazo: mostra a previsão (data de Brasília), o botão de cancelar e o gerar desligado', async () => {
+    h.status.treino = {
+      status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null,
+      prazo_previsto: PRAZO_FUTURO, atrasado: false, pode_regenerar: false,
+    };
+    renderizar();
+    expect(await screen.findByText('Previsão: até 12/10/2026.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancelar pedido do treino' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Treino em revisão' })).toBeDisabled();
+    expect(screen.queryByText(/Sentimos muito/)).not.toBeInTheDocument();
+  });
+
+  it('o servidor decide: pode_regenerar=false mantém o botão desligado mesmo sem prazo na resposta', async () => {
+    h.status.nutricao = { status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null, atrasado: false, pode_regenerar: false };
+    renderizar();
+    expect(await screen.findByRole('button', { name: 'Nutrição em revisão' })).toBeDisabled();
+    expect(screen.queryByText(/Previsão: até/)).not.toBeInTheDocument();
+  });
+
+  it('atrasado: recado acolhedor com a previsão que era, e dá para pedir de novo ou cancelar', async () => {
+    h.status.treino = {
+      status: 'aguardando', gerado_em: '2026-10-05T12:00:00Z', nota_publica: null,
+      prazo_previsto: '2026-10-08T02:59:59Z', atrasado: true, pode_regenerar: true,
+    };
+    h.invoke.mockResolvedValue(recibo());
+    renderizar();
+    expect(await screen.findByText(/Sentimos muito: a revisão do seu pedido está levando mais tempo do que o previsto \(a previsão era até 07\/10\/2026\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/Previsão: até/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancelar pedido do treino' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar treino de novo' }));
+    await waitFor(() => expect(h.invoke).toHaveBeenCalledTimes(1));
+    expect(h.invoke.mock.calls[0][0]).toBe('gerar-plano-treino');
+  });
+
+  it('cancelar pede confirmação, chama a RPC do tipo certo e libera o gerar de novo', async () => {
+    h.status.treino = {
+      status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null,
+      prazo_previsto: PRAZO_FUTURO, atrasado: false, pode_regenerar: false,
+    };
+    h.cancelar.mockReturnValue({
+      data: { status: 'cancelado', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null, prazo_previsto: null, atrasado: false, pode_regenerar: true },
+      error: null,
+    });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar pedido do treino' }));
+
+    expect(await screen.findByText('Cancelar o pedido do treino?')).toBeInTheDocument();
+    expect(h.cancelar).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar pedido' }));
+
+    await waitFor(() => expect(h.cancelar).toHaveBeenCalledWith({ p_tipo: 'treino' }));
+    await waitFor(() => expect(h.toast.success).toHaveBeenCalledWith('Pedido cancelado. Quando quiser, é só pedir de novo.'));
+    expect(screen.queryByText(/Em revisão pela equipe/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gerar treino' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Gerar os dois' })).toBeEnabled();
+    expect(h.toast.error).not.toHaveBeenCalled();
+  });
+
+  it('"Manter o pedido" fecha a confirmação sem cancelar nada', async () => {
+    h.status.nutricao = { status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null, prazo_previsto: PRAZO_FUTURO, atrasado: false, pode_regenerar: false };
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar pedido do plano alimentar' }));
+    expect(await screen.findByText('Cancelar o pedido do plano alimentar?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Manter o pedido' }));
+    await waitFor(() => expect(screen.queryByText('Cancelar o pedido do plano alimentar?')).not.toBeInTheDocument());
+    expect(h.cancelar).not.toHaveBeenCalled();
+    expect(screen.getByText(/Em revisão pela equipe/)).toBeInTheDocument();
+  });
+
+  it('a equipe decidiu antes do cancelamento: avisa e mostra a situação atualizada', async () => {
+    h.status.treino = { status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null, prazo_previsto: PRAZO_FUTURO, atrasado: false, pode_regenerar: false };
+    h.plano.treino = undefined;
+    h.cancelar.mockImplementation(() => {
+      h.status.treino = { status: 'recusado', gerado_em: '2026-10-08T12:00:00Z', nota_publica: 'Falta o histórico.', atrasado: false, pode_regenerar: true };
+      return { data: null, error: { message: 'Este pedido já foi decidido pela equipe e não pode mais ser cancelado.', hint: 'pedido_ja_decidido' } };
+    });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar pedido do treino' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar pedido' }));
+
+    await waitFor(() => expect(h.toast.error).toHaveBeenCalledWith(expect.stringMatching(/A equipe acabou de decidir este pedido/)));
+    expect(await screen.findByText('Recusado: Falta o histórico')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancelar pedido do treino' })).not.toBeInTheDocument();
+  });
+
+  it('falha de rede ao cancelar não apaga a situação: o pedido segue aguardando', async () => {
+    h.status.treino = { status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null, prazo_previsto: PRAZO_FUTURO, atrasado: false, pode_regenerar: false };
+    h.cancelar.mockReturnValue({ data: null, error: { message: 'Failed to fetch' } });
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar pedido do treino' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar pedido' }));
+
+    await waitFor(() => expect(h.toast.error).toHaveBeenCalledWith('Não consegui cancelar o pedido agora. Tente de novo em instantes.'));
+    expect(screen.getByText(/Em revisão pela equipe/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Treino em revisão' })).toBeDisabled();
+  });
+
+  it('pedido cancelado antes: não aparece aviso e o gerar volta ao normal', async () => {
+    h.status.treino = { status: 'cancelado', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null, atrasado: false, pode_regenerar: true };
+    renderizar();
+    expect(await screen.findByRole('button', { name: 'Gerar treino' })).toBeEnabled();
+    expect(screen.queryByText(/Em revisão pela equipe/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cancelar pedido/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Nenhum plano ainda')).toBeInTheDocument();
+  });
+
+  it('"Senti incômodo" some enquanto há um pedido dentro do prazo (o servidor recusaria com 409)', async () => {
+    h.plano.treino = planoChancelado();
+    h.status.treino = { status: 'aguardando', gerado_em: '2026-10-09T12:00:00Z', nota_publica: null, prazo_previsto: PRAZO_FUTURO, atrasado: false, pode_regenerar: false };
+    renderizar();
+    expect(await screen.findByTestId('treino-interativo')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Senti incômodo' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Nutrição Premium desligada: só o treino é oferecido', () => {
+  beforeEach(() => {
+    h.config = { nutricao_premium_ativa: false, prazo_chancela_dias_uteis: 2 };
+  });
+
+  it('troca o botão da nutrição por "em breve" e esconde "Gerar os dois"', async () => {
+    renderizar();
+    expect(await screen.findByRole('button', { name: 'Gerar treino' })).toBeEnabled();
+    expect(screen.getByText('Plano nutricional Premium: em breve')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gerar nutrição' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gerar os dois' })).not.toBeInTheDocument();
+    expect(screen.getByText('Gerar meu treino')).toBeInTheDocument();
+    expect(screen.queryByText('Gerar meu treino e plano nutricional')).not.toBeInTheDocument();
+    expect(screen.getByText(/Toque em "Gerar treino" acima/)).toBeInTheDocument();
+  });
+
+  it('gerar o treino pede só o treino à edge', async () => {
+    h.invoke.mockResolvedValue(recibo());
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar treino' }));
+    await waitFor(() => expect(h.invoke).toHaveBeenCalledTimes(1));
+    expect(h.invoke.mock.calls.map((c) => c[0])).toEqual(['gerar-plano-treino']);
+    expect(h.toast.success).toHaveBeenCalledWith(expect.stringMatching(/^Seu treino foi enviado/));
+  });
+
+  it('se a leitura da configuração falha, vale o padrão seguro: nutrição em breve', async () => {
+    h.config = { nutricao_premium_ativa: true, prazo_chancela_dias_uteis: 2 };
+    h.configFalha = true;
+    renderizar();
+    expect(await screen.findByText('Plano nutricional Premium: em breve')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gerar nutrição' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gerar treino' })).toBeEnabled();
+  });
+
+  it('o plano alimentar já chancelado continua visível; só o gerar some', async () => {
+    h.plano.nutricao = {
+      titulo: 'Plano alimentar', origem: 'equipe_myhealthid', calorias_alvo: 2000,
+      conteudo: { refeicoes: [], _governanca: { aprovacao: { por_nome: 'Bia Lima', por_perfil: 'nutricionista', em: '2026-10-08T15:00:00Z', versao: 2 } } },
+    };
+    renderizar();
+    expect(await screen.findByText('Plano alimentar')).toBeInTheDocument();
+    expect(screen.getByText('Plano nutricional Premium: em breve')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Gerar nov[ao] nutrição/ })).not.toBeInTheDocument();
+  });
+
+  it('um pedido de nutrição que já estava na fila continua podendo ser cancelado', async () => {
+    h.status.nutricao = { status: 'aguardando', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null, prazo_previsto: PRAZO_FUTURO, atrasado: false, pode_regenerar: false };
+    renderizar();
+    expect(await screen.findByRole('button', { name: 'Cancelar pedido do plano alimentar' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Nutrição em revisão' })).not.toBeInTheDocument();
+  });
+
+  it('o convite Premium do free não promete a nutrição agora', async () => {
+    h.acesso = { isFree: true, isPremium: false, isInTrial: false, isLoading: false };
+    renderizar();
+    expect(await screen.findByText('Monte seu treino sob medida')).toBeInTheDocument();
+    expect(screen.getByText(/O plano nutricional Premium estará disponível em breve/)).toBeInTheDocument();
+    expect(screen.queryByText('Monte seu treino e nutrição sob medida')).not.toBeInTheDocument();
+  });
+
+  it('com a nutrição ligada o card volta a oferecer os dois', async () => {
+    h.config = { nutricao_premium_ativa: true, prazo_chancela_dias_uteis: 2 };
+    renderizar();
+    expect(await screen.findByRole('button', { name: 'Gerar nutrição' })).toBeEnabled();
+    expect(screen.getByText('Gerar meu treino e plano nutricional')).toBeInTheDocument();
+    expect(screen.queryByText('Plano nutricional Premium: em breve')).not.toBeInTheDocument();
+  });
+});
+
+describe('403 das edges de geração', () => {
+  const erro403 = (error: string, codigo: string) => ({ data: null, error: { context: { json: async () => ({ error, codigo }), status: 403 } } });
+
+  it('nutricao_em_breve com a tela desatualizada: avisa com gentileza e troca o botão por "em breve"', async () => {
+    h.invoke.mockResolvedValue(erro403('O plano nutricional Premium estará disponível em breve.', 'nutricao_em_breve'));
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar nutrição' }));
+
+    await waitFor(() => expect(h.toast.info).toHaveBeenCalledWith('O plano nutricional Premium estará disponível em breve.'));
+    expect(h.toast.error).not.toHaveBeenCalled();
+    expect(await screen.findByText('Plano nutricional Premium: em breve')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gerar nutrição' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gerar treino' })).toBeEnabled();
+  });
+
+  it('"Gerar os dois": o treino vai para a revisão e a nutrição "em breve" é avisada sem erro', async () => {
+    h.invoke
+      .mockResolvedValueOnce(recibo())
+      .mockResolvedValueOnce(erro403('O plano nutricional Premium estará disponível em breve.', 'nutricao_em_breve'));
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar os dois' }));
+
+    await waitFor(() => expect(h.toast.info).toHaveBeenCalledWith('O plano nutricional Premium estará disponível em breve.'));
+    expect(h.toast.success).toHaveBeenCalledWith(expect.stringMatching(/^Seu treino foi enviado/));
+    expect(h.toast.error).not.toHaveBeenCalled();
+    expect(await screen.findByText('Plano nutricional Premium: em breve')).toBeInTheDocument();
+  });
+
+  it('profissional_nao_verificado vira a mensagem acolhedora, não o texto cru do servidor', async () => {
+    h.invoke.mockResolvedValue(erro403('Seu perfil profissional ainda não foi verificado pela equipe MyHealthID', 'profissional_nao_verificado'));
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Gerar treino' }));
+    await waitFor(() => expect(h.toast.error).toHaveBeenCalledWith(expect.stringMatching(/ainda não foi verificado pela equipe MyHealthID.*poderá gerar planos/)));
+    expect(h.toast.info).not.toHaveBeenCalled();
+  });
+});
+
+describe('Selo do plano chancelado pelo administrador na própria conta', () => {
+  const carimboAutochancela = (extra: Record<string, unknown> = {}) => planoChancelado({
+    conteudo: {
+      fases: [],
+      _governanca: {
+        aprovacao: {
+          por_nome: 'Rafael', por_perfil: 'super_admin', em: '2026-10-08T15:00:00Z', versao: 1, autochancela: true, ...extra,
+        },
+      },
+    },
+  });
+
+  it('mostra "Autochancela (teste interno)" e nunca fala de revisão automática', async () => {
+    h.plano.treino = carimboAutochancela({ sem_revisao: true, motivo_sem_revisao: 'IA fora do ar, conferi o plano à mão' });
+    h.status.treino = { status: 'chancelado', gerado_em: '2026-10-08T12:00:00Z', nota_publica: null, atrasado: false, pode_regenerar: true };
+    const { container } = renderizar();
+    expect(await screen.findByText(/Chancelado pela equipe científica MyHealthID · Rafael, Administrador\(a\) · 08\/10\/2026 · v1 · Autochancela \(teste interno\)/)).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/sem revisão|revisão automática|revisão de segurança/i);
+    expect(container.textContent).not.toContain('IA fora do ar');
+  });
+
+  it('sem autochancela o selo não traz esse texto', async () => {
+    h.plano.treino = planoChancelado();
+    renderizar();
+    expect(await screen.findByText(/Chancelado pela equipe científica MyHealthID · Ana Souza/)).toBeInTheDocument();
+    expect(screen.queryByText(/Autochancela \(teste interno\)/)).not.toBeInTheDocument();
   });
 });

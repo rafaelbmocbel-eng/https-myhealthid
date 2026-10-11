@@ -8,8 +8,8 @@ import PlanoDietaEditor from '@/components/nutricao/PlanoDietaEditor';
 import RevisorSeguranca from '@/components/planos/RevisorSeguranca';
 import { formatarDataBR } from '@/lib/governanca';
 import {
-  ROTULO_TIPO, avisoSemPerfil, descricaoPaciente, rotuloChancelado, situacaoRevisao, tituloItem,
-  type ItemFilaChancela, type StatusFila,
+  AVISO_STATUS_FILA, ROTULO_TIPO, descricaoPaciente, avisoNaoPodeChancelar, rotuloChancelado, rotuloDiasUteisNaFila,
+  situacaoRevisao, tituloItem, type ItemFilaChancela, type StatusFila,
 } from '@/lib/chancela';
 import { salvarEdicaoChancela } from '@/lib/chancelaApi';
 import InsumosTriagemCard from './InsumosTriagemCard';
@@ -46,6 +46,8 @@ export default function ChancelaDetalhe({ item, status, pode, labelExigido, onVo
   const revisao = situacaoRevisao(item);
   const geradoEm = formatarDataBR(item.geradoEm);
   const titulo = tituloItem(item);
+  const diasNaFila = aguardando ? rotuloDiasUteisNaFila(item.diasUteisNaFila) : null;
+  const avisoDoStatus = AVISO_STATUS_FILA[status] ?? null;
 
   const salvarEdicao = async (conteudo: Record<string, unknown>, novoTitulo: string) => {
     await salvarEdicaoChancela(item.id, novoTitulo, conteudo);
@@ -66,7 +68,11 @@ export default function ChancelaDetalhe({ item, status, pode, labelExigido, onVo
           <Badge variant="info" size="md">{ROTULO_TIPO[item.tipo]}</Badge>
           {status === 'chancelado' && <Badge variant="success" size="md">Chancelado</Badge>}
           {status === 'recusado' && <Badge variant="danger" size="md">Recusado</Badge>}
+          {status === 'cancelado' && <Badge variant="neutral" size="md">Cancelado pelo cliente</Badge>}
+          {status === 'substituido' && <Badge variant="neutral" size="md">Substituído</Badge>}
           {aguardando && <Badge variant="warning" size="md">Aguardando chancela</Badge>}
+          {aguardando && item.atrasado && <Badge variant="danger" size="md">ATRASADO</Badge>}
+          {diasNaFila && <Badge variant={item.atrasado ? 'danger' : 'neutral'} size="md">{diasNaFila}</Badge>}
         </div>
         <h2 className="text-lg font-bold leading-tight">{titulo}</h2>
         <p className="text-sm text-muted-foreground">
@@ -75,6 +81,13 @@ export default function ChancelaDetalhe({ item, status, pode, labelExigido, onVo
           {geradoEm ? ` · gerado em ${geradoEm}` : ''}
         </p>
       </header>
+
+      {avisoDoStatus && (
+        <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 text-xs">
+          <Lock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden />
+          <p>{avisoDoStatus}</p>
+        </div>
+      )}
 
       {status === 'chancelado' && (
         <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-xs dark:border-emerald-900 dark:bg-emerald-950/30">
@@ -102,7 +115,7 @@ export default function ChancelaDetalhe({ item, status, pode, labelExigido, onVo
       {aguardando && !pode && (
         <div role="alert" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs dark:border-amber-900 dark:bg-amber-950/30">
           <Lock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" aria-hidden />
-          <p>{avisoSemPerfil(item.tipo, labelExigido)}</p>
+          <p>{avisoNaoPodeChancelar(item, labelExigido)}</p>
         </div>
       )}
 
@@ -114,7 +127,7 @@ export default function ChancelaDetalhe({ item, status, pode, labelExigido, onVo
             <span className="font-semibold flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-primary" aria-hidden /> Revisão de segurança</span>
             {revisao.estado === 'valida' && (
               <>
-                <Badge variant="success" size="md">desta versão</Badge>
+                <Badge variant={revisao.parcial ? 'warning' : 'success'} size="md">{revisao.parcial ? 'desta versão, parcial' : 'desta versão'}</Badge>
                 <BadgeRisco risco={revisao.risco} />
                 {revisao.nFlagsAltas > 0 && <Badge variant="danger" size="md">{revisao.nFlagsAltas} alerta(s) alto(s)</Badge>}
               </>
@@ -127,6 +140,12 @@ export default function ChancelaDetalhe({ item, status, pode, labelExigido, onVo
             )}
             {revisao.estado === 'ausente' && <Badge variant="neutral" size="md">ainda não revisado</Badge>}
           </div>
+          {revisao.estado === 'valida' && revisao.parcial && (
+            <p className="flex items-start gap-1 text-[11px] text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" aria-hidden />
+              O plano é longo e a IA avaliou só o início. Confira o restante; para chancelar, registre a justificativa.
+            </p>
+          )}
           {revisao.estado === 'desatualizada' && (
             <p className="flex items-start gap-1 text-[11px] text-amber-700 dark:text-amber-300">
               <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" aria-hidden />
@@ -183,7 +202,7 @@ export default function ChancelaDetalhe({ item, status, pode, labelExigido, onVo
         onOpenChange={setChancelando}
         item={item}
         pode={pode}
-        revisao={revisao}
+        onRevisado={onAtualizar}
         onChancelado={onConcluido}
       />
       <RecusarDialog open={recusando} onOpenChange={setRecusando} item={item} onRecusado={onConcluido} />

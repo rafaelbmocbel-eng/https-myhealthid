@@ -9,9 +9,14 @@ import {
 } from '../../supabase/functions/_shared/motores-plano';
 import {
   barreiraDoCliente,
+  barreiraDoProfissional,
+  CODIGO_NUTRICAO_EM_BREVE,
+  CODIGO_PROFISSIONAL_NAO_VERIFICADO,
   contaPodeGerarPlano,
   dadosDoPedido,
   entregarPlano,
+  estadoDaNutricaoPremium,
+  estadoDoPedido,
   gravarParaChancela,
   insumosDoPlano,
   limitarPedidoAlimentarCliente,
@@ -19,14 +24,20 @@ import {
   MENSAGEM_CLIENTE_SEM_PREMIUM,
   MENSAGEM_ERRO_ENVIO_REVISAO,
   MENSAGEM_ERRO_VERIFICACAO,
+  MENSAGEM_NUTRICAO_EM_BREVE,
+  MENSAGEM_PROFISSIONAL_NAO_VERIFICADO,
+  mensagemLimitePedidos,
   mensagemPlanoEmRevisao,
   planejarEntregaPlano,
-  planoJaEmRevisao,
   podeUsarFontesDoProfissional,
   POLITICA_PLANO_CLIENTE,
+  profissionalFoiVerificado,
   respostaPlanoEmRevisao,
   restringirAInsumosDoCliente,
+  STATUS_HTTP_LIMITE_PEDIDOS,
+  STATUS_HTTP_NUTRICAO_EM_BREVE,
   STATUS_HTTP_PLANO_EM_REVISAO,
+  STATUS_HTTP_PROFISSIONAL_NAO_VERIFICADO,
   STATUS_HTTP_SEM_PREMIUM,
   STATUS_HTTP_VERIFICACAO,
 } from '../../supabase/functions/_shared/plano-cliente';
@@ -276,51 +287,53 @@ describe('revisão de segurança aceita a tabela do cliente', () => {
   });
 });
 
-describe('o cliente só gera se pagar e só um plano por tipo fica na fila (antes de gastar IA)', () => {
+describe('o cliente só gera se pagar e só um plano por tipo fica na fila, dentro do prazo (antes de gastar IA)', () => {
   const PREMIUM = { tipo_conta: 'wellness_premium' };
 
-  /** Admin que registra os filtros da consulta e devolve a resposta combinada. */
-  function adminDaFila(resposta: Resultado | Error) {
-    const filtros: [string, unknown][] = [];
-    let tabela = '';
-    const chain: Record<string, unknown> = {};
-    chain.select = () => chain;
-    chain.eq = (coluna: string, valor: unknown) => {
-      filtros.push([coluna, valor]);
-      return chain;
+  /** Admin que responde por RPC e registra as chamadas. */
+  function adminRpc(respostas: Record<string, Resultado | Error>) {
+    const chamadas: [string, Record<string, unknown> | undefined][] = [];
+    const admin = {
+      rpc: (nome: string, args?: Record<string, unknown>) => {
+        chamadas.push([nome, args]);
+        const r = respostas[nome];
+        if (r instanceof Error) return Promise.reject(r);
+        return Promise.resolve({ data: null, error: null, ...(r ?? {}) });
+      },
     };
-    chain.limit = () => chain;
-    chain.maybeSingle = () => (resposta instanceof Error ? Promise.reject(resposta) : Promise.resolve({ data: null, error: null, ...resposta }));
-    return { admin: { from: (t: string) => { tabela = t; return chain; } }, filtros, tabela: () => tabela };
+    return { admin, chamadas };
   }
+  const NUTRICAO_LIGADA = { plano_cliente_config: { data: { nutricao_premium_ativa: true, prazo_chancela_dias_uteis: 2 } } };
 
-  it('profissional passa direto, sem consultar a fila', async () => {
-    const f = adminDaFila({ data: { id: 'x' } });
+  it('profissional passa direto neste filtro, sem consultar o banco', async () => {
+    const f = adminRpc({ plano_cliente_estado_pedido: { data: 'no_prazo' } });
     expect(await barreiraDoCliente(f.admin, { chamador: 'profissional', tipo: 'treino', pacienteId: PAC, paciente: { tipo_conta: 'clinico' } })).toBeNull();
-    expect(f.filtros).toEqual([]);
+    expect(f.chamadas).toEqual([]);
   });
 
   it('cliente sem Premium: 402 acolhedor, e nem consulta a fila', async () => {
     for (const tipo_conta of ['wellness_free', 'clinico', null]) {
-      const f = adminDaFila({ data: null });
+      const f = adminRpc({ ...NUTRICAO_LIGADA });
       const r = await barreiraDoCliente(f.admin, { chamador: 'cliente', tipo: 'nutricao', pacienteId: PAC, paciente: { tipo_conta } });
       expect(r).toEqual({ status: STATUS_HTTP_SEM_PREMIUM, corpo: { error: MENSAGEM_CLIENTE_SEM_PREMIUM, codigo: 'premium_necessario' } });
-      expect(f.filtros).toEqual([]);
+      expect(f.chamadas.map((c) => c[0])).not.toContain('plano_cliente_estado_pedido');
     }
-    const semCadastro = await barreiraDoCliente(adminDaFila({ data: null }).admin, { chamador: 'cliente', tipo: 'treino', pacienteId: PAC, paciente: null });
+    const semCadastro = await barreiraDoCliente(adminRpc({}).admin, { chamador: 'cliente', tipo: 'treino', pacienteId: PAC, paciente: null });
     expect(semCadastro?.status).toBe(STATUS_HTTP_SEM_PREMIUM);
   });
 
-  it('cliente Premium sem plano aguardando segue; a consulta filtra paciente, tipo e status', async () => {
-    const f = adminDaFila({ data: null });
+  it('cliente Premium sem pedido aguardando segue; a consulta usa o paciente e o tipo', async () => {
+    const f = adminRpc({ plano_cliente_estado_pedido: { data: 'nenhum' } });
     expect(await barreiraDoCliente(f.admin, { chamador: 'cliente', tipo: 'treino', pacienteId: PAC, paciente: PREMIUM })).toBeNull();
-    expect(f.tabela()).toBe('plano_cliente_chancela');
-    expect(f.filtros).toEqual([['paciente_id', PAC], ['tipo', 'treino'], ['status', 'aguardando']]);
+    expect(f.chamadas).toEqual([['plano_cliente_estado_pedido', { p_paciente_id: PAC, p_tipo: 'treino' }]]);
   });
 
-  it('cliente Premium com plano aguardando: 409 com mensagem do tipo, sem gerar outro', async () => {
+  it('cliente Premium com pedido NO PRAZO: 409 com mensagem do tipo, sem gerar outro', async () => {
     for (const tipo of ['treino', 'nutricao'] as const) {
-      const r = await barreiraDoCliente(adminDaFila({ data: { id: 'p1' } }).admin, { chamador: 'cliente', tipo, pacienteId: PAC, paciente: PREMIUM });
+      const r = await barreiraDoCliente(
+        adminRpc({ ...NUTRICAO_LIGADA, plano_cliente_estado_pedido: { data: 'no_prazo' } }).admin,
+        { chamador: 'cliente', tipo, pacienteId: PAC, paciente: PREMIUM },
+      );
       expect(r).toEqual({ status: STATUS_HTTP_PLANO_EM_REVISAO, corpo: { error: mensagemPlanoEmRevisao(tipo), codigo: 'plano_em_revisao' } });
     }
     expect(STATUS_HTTP_PLANO_EM_REVISAO).toBe(409);
@@ -328,17 +341,61 @@ describe('o cliente só gera se pagar e só um plano por tipo fica na fila (ante
     expect(mensagemPlanoEmRevisao('nutricao')).toMatch(/plano alimentar aguardando/);
   });
 
-  it('não dá para verificar a fila: 503, nunca "sem dados = liberado"', async () => {
-    for (const resposta of [{ error: { message: 'boom' } }, new Error('rede')]) {
-      const r = await barreiraDoCliente(adminDaFila(resposta).admin, { chamador: 'cliente', tipo: 'treino', pacienteId: PAC, paciente: PREMIUM });
+  it('pedido que ESTOUROU o prazo não barra: o banco o substitui ao gravar o novo', async () => {
+    for (const tipo of ['treino', 'nutricao'] as const) {
+      const r = await barreiraDoCliente(
+        adminRpc({ ...NUTRICAO_LIGADA, plano_cliente_estado_pedido: { data: 'atrasado' } }).admin,
+        { chamador: 'cliente', tipo, pacienteId: PAC, paciente: PREMIUM },
+      );
+      expect(r).toBeNull();
+    }
+  });
+
+  it('não dá para verificar o pedido: 503, nunca "sem dados = liberado"', async () => {
+    for (const resposta of [{ error: { message: 'boom' } }, new Error('rede'), { data: 'qualquer' }, { data: null }]) {
+      const r = await barreiraDoCliente(
+        adminRpc({ plano_cliente_estado_pedido: resposta }).admin,
+        { chamador: 'cliente', tipo: 'treino', pacienteId: PAC, paciente: PREMIUM },
+      );
       expect(r).toEqual({ status: STATUS_HTTP_VERIFICACAO, corpo: { error: MENSAGEM_ERRO_VERIFICACAO } });
     }
-    expect(await planoJaEmRevisao(adminDaFila({ data: { id: 'p1' } }).admin, PAC, 'treino')).toBe('sim');
-    expect(await planoJaEmRevisao(adminDaFila({ data: null }).admin, PAC, 'treino')).toBe('nao');
+    expect(await estadoDoPedido(adminRpc({ plano_cliente_estado_pedido: { data: 'no_prazo' } }).admin, PAC, 'treino')).toBe('no_prazo');
+    expect(await estadoDoPedido(adminRpc({ plano_cliente_estado_pedido: { data: 'atrasado' } }).admin, PAC, 'treino')).toBe('atrasado');
+    expect(await estadoDoPedido(adminRpc({ plano_cliente_estado_pedido: { data: 'nenhum' } }).admin, PAC, 'treino')).toBe('nenhum');
+  });
+
+  it('teto de pedidos em 24h (cancelar libera o seguinte, então o teto vale mesmo sem pedido aguardando): 429 antes da IA', async () => {
+    for (const tipo of ['treino', 'nutricao'] as const) {
+      const f = adminRpc({ ...NUTRICAO_LIGADA, plano_cliente_estado_pedido: { data: 'limite' } });
+      const r = await barreiraDoCliente(f.admin, { chamador: 'cliente', tipo, pacienteId: PAC, paciente: PREMIUM });
+      expect(r).toEqual({ status: STATUS_HTTP_LIMITE_PEDIDOS, corpo: { error: mensagemLimitePedidos(tipo), codigo: 'limite_pedidos' } });
+    }
+    expect(STATUS_HTTP_LIMITE_PEDIDOS).toBe(429);
+    expect(mensagemLimitePedidos('treino')).toMatch(/do seu treino nas últimas 24 horas/);
+    expect(mensagemLimitePedidos('nutricao')).toMatch(/do seu plano alimentar nas últimas 24 horas/);
+    expect(mensagemLimitePedidos('treino')).not.toMatch(/\d+ pedidos/);
+    expect(await estadoDoPedido(adminRpc({ plano_cliente_estado_pedido: { data: 'limite' } }).admin, PAC, 'treino')).toBe('limite');
+  });
+
+  it('o profissional não esbarra no teto do cliente', async () => {
+    const f = adminRpc({ plano_cliente_estado_pedido: { data: 'limite' } });
+    expect(await barreiraDoCliente(f.admin, { chamador: 'profissional', tipo: 'treino', pacienteId: PAC, paciente: PREMIUM })).toBeNull();
+    expect(f.chamadas).toEqual([]);
+  });
+
+  it('corrida entre gerações no teto: o banco recusa com limite_pedidos e a resposta é 429, sem plano', async () => {
+    const erroBanco = { message: 'limite_pedidos: o cliente já fez pedidos demais deste tipo de plano nas últimas 24 horas.', hint: 'limite_pedidos' };
+    const admin = { rpc: vi.fn().mockResolvedValue({ data: null, error: erroBanco }) };
+    expect(await gravarParaChancela(admin, { p_paciente_id: PAC, p_tipo: 'nutricao', p_titulo: null, p_objetivo: null, p_conteudo: {} }))
+      .toMatchObject({ ok: false, planoId: null, limitePedidos: true });
+    const r = await entregarPlano(admin, { chamador: 'cliente', tipo: 'nutricao', pacienteId: PAC, plano: PLANO });
+    expect(r.status).toBe(429);
+    expect(r.corpo).toEqual({ error: mensagemLimitePedidos('nutricao'), codigo: 'limite_pedidos' });
+    expect(r.corpo).not.toHaveProperty('plano');
   });
 
   it('cliente sem cadastro resolvido: 403', async () => {
-    const r = await barreiraDoCliente(adminDaFila({ data: null }).admin, { chamador: 'cliente', tipo: 'treino', pacienteId: null, paciente: PREMIUM });
+    const r = await barreiraDoCliente(adminRpc({}).admin, { chamador: 'cliente', tipo: 'treino', pacienteId: null, paciente: PREMIUM });
     expect(r?.status).toBe(403);
   });
 
@@ -356,6 +413,95 @@ describe('o cliente só gera se pagar e só um plano por tipo fica na fila (ante
     const outro = await entregarPlano({ rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } }) }, { chamador: 'cliente', tipo: 'treino', pacienteId: PAC, plano: PLANO });
     expect(outro.status).toBe(500);
     erro.mockRestore();
+  });
+});
+
+describe('nutrição Premium desligada: o cliente ainda não gera plano alimentar', () => {
+  const PREMIUM = { tipo_conta: 'wellness_premium' };
+  const rpc = (resposta: Resultado | Error) => ({
+    rpc: vi.fn((nome: string) => (resposta instanceof Error
+      ? Promise.reject(resposta)
+      : Promise.resolve({ data: null, error: null, ...(nome === 'plano_cliente_config' ? resposta : { data: 'nenhum' }) }))),
+  });
+
+  it('desligada: 403 nutricao_em_breve com a mensagem combinada, ANTES de olhar Premium ou a fila', async () => {
+    const admin = rpc({ data: { nutricao_premium_ativa: false, prazo_chancela_dias_uteis: 2 } });
+    const r = await barreiraDoCliente(admin, { chamador: 'cliente', tipo: 'nutricao', pacienteId: PAC, paciente: PREMIUM });
+    expect(r).toEqual({ status: STATUS_HTTP_NUTRICAO_EM_BREVE, corpo: { error: 'O plano nutricional Premium estará disponível em breve.', codigo: 'nutricao_em_breve' } });
+    expect(STATUS_HTTP_NUTRICAO_EM_BREVE).toBe(403);
+    expect(MENSAGEM_NUTRICAO_EM_BREVE).toBe('O plano nutricional Premium estará disponível em breve.');
+    expect(CODIGO_NUTRICAO_EM_BREVE).toBe('nutricao_em_breve');
+    expect(admin.rpc).toHaveBeenCalledTimes(1);
+    // vale também para quem não é Premium: ninguém recebe nutrição agora, então não se convida a pagar por ela
+    const free = await barreiraDoCliente(rpc({ data: { nutricao_premium_ativa: false } }), { chamador: 'cliente', tipo: 'nutricao', pacienteId: PAC, paciente: { tipo_conta: 'wellness_free' } });
+    expect(free?.corpo).toMatchObject({ codigo: 'nutricao_em_breve' });
+  });
+
+  it('ligada: segue para as demais barreiras (402 sem Premium)', async () => {
+    const admin = rpc({ data: { nutricao_premium_ativa: true } });
+    expect(await barreiraDoCliente(admin, { chamador: 'cliente', tipo: 'nutricao', pacienteId: PAC, paciente: PREMIUM })).toBeNull();
+    const free = await barreiraDoCliente(rpc({ data: { nutricao_premium_ativa: true } }), { chamador: 'cliente', tipo: 'nutricao', pacienteId: PAC, paciente: { tipo_conta: 'wellness_free' } });
+    expect(free?.status).toBe(STATUS_HTTP_SEM_PREMIUM);
+  });
+
+  it('o treino não depende da nutrição: nem consulta a configuração', async () => {
+    const admin = rpc({ data: { nutricao_premium_ativa: false } });
+    expect(await barreiraDoCliente(admin, { chamador: 'cliente', tipo: 'treino', pacienteId: PAC, paciente: PREMIUM })).toBeNull();
+    expect(admin.rpc.mock.calls.map((c) => c[0])).toEqual(['plano_cliente_estado_pedido']);
+  });
+
+  it('o profissional não é afetado: a configuração nem é consultada', async () => {
+    const admin = rpc({ data: { nutricao_premium_ativa: false } });
+    expect(await barreiraDoCliente(admin, { chamador: 'profissional', tipo: 'nutricao', pacienteId: PAC, paciente: PREMIUM })).toBeNull();
+    expect(admin.rpc).not.toHaveBeenCalled();
+  });
+
+  it('sem conseguir ler a configuração (ou resposta torta): 503, nunca "liberado" nem "em breve" enganoso', async () => {
+    for (const resposta of [{ error: { message: 'boom' } }, new Error('rede'), { data: null }, { data: {} }, { data: { nutricao_premium_ativa: 'true' } }]) {
+      const r = await barreiraDoCliente(rpc(resposta), { chamador: 'cliente', tipo: 'nutricao', pacienteId: PAC, paciente: PREMIUM });
+      expect(r).toEqual({ status: STATUS_HTTP_VERIFICACAO, corpo: { error: MENSAGEM_ERRO_VERIFICACAO } });
+    }
+    expect(await estadoDaNutricaoPremium(rpc({ data: { nutricao_premium_ativa: true } }))).toBe('ligada');
+    expect(await estadoDaNutricaoPremium(rpc({ data: { nutricao_premium_ativa: false } }))).toBe('desligada');
+  });
+});
+
+describe('caminho PROFISSIONAL das edges de geração exige perfil verificado', () => {
+  const USER = 'a0000000-0000-4000-8000-000000000005';
+  const rpc = (resposta: Resultado | Error) => ({
+    rpc: vi.fn(() => (resposta instanceof Error ? Promise.reject(resposta) : Promise.resolve({ data: null, error: null, ...resposta }))),
+  });
+
+  it('verificado (ou o super-admin, que o banco reconhece pelo e-mail): segue', async () => {
+    const admin = rpc({ data: true });
+    expect(await barreiraDoProfissional(admin, { chamador: 'profissional', userId: USER })).toBeNull();
+    expect(admin.rpc).toHaveBeenCalledWith('profissional_verificado', { p_user_id: USER });
+  });
+
+  it('não verificado: 403 profissional_nao_verificado com a mensagem combinada', async () => {
+    const r = await barreiraDoProfissional(rpc({ data: false }), { chamador: 'profissional', userId: USER });
+    expect(r).toEqual({
+      status: STATUS_HTTP_PROFISSIONAL_NAO_VERIFICADO,
+      corpo: { error: 'Seu perfil profissional ainda não foi verificado pela equipe MyHealthID', codigo: 'profissional_nao_verificado' },
+    });
+    expect(STATUS_HTTP_PROFISSIONAL_NAO_VERIFICADO).toBe(403);
+    expect(MENSAGEM_PROFISSIONAL_NAO_VERIFICADO).toBe('Seu perfil profissional ainda não foi verificado pela equipe MyHealthID');
+    expect(CODIGO_PROFISSIONAL_NAO_VERIFICADO).toBe('profissional_nao_verificado');
+  });
+
+  it('fail-closed: erro do banco ou resposta torta é 503, nunca verificado', async () => {
+    for (const resposta of [{ error: { message: 'boom' } }, new Error('rede'), { data: null }, { data: 'true' }, { data: 1 }]) {
+      const r = await barreiraDoProfissional(rpc(resposta), { chamador: 'profissional', userId: USER });
+      expect(r).toEqual({ status: STATUS_HTTP_VERIFICACAO, corpo: { error: MENSAGEM_ERRO_VERIFICACAO } });
+    }
+    expect(await profissionalFoiVerificado(rpc({ data: true }), USER)).toBe('sim');
+    expect(await profissionalFoiVerificado(rpc({ data: false }), USER)).toBe('nao');
+  });
+
+  it('o cliente tem a própria barreira: este filtro nem consulta o banco', async () => {
+    const admin = rpc({ data: false });
+    expect(await barreiraDoProfissional(admin, { chamador: 'cliente', userId: USER })).toBeNull();
+    expect(admin.rpc).not.toHaveBeenCalled();
   });
 });
 

@@ -25,7 +25,7 @@ import TriagemBloqueioDialog from '@/components/planos/TriagemBloqueioDialog';
 import SeloGovernanca from '@/components/planos/SeloGovernanca';
 import ResumoAcompanhamento from '@/components/planos/ResumoAcompanhamento';
 import TreinoDocumento from '@/components/paciente/TreinoDocumento';
-import { gerarPlanoComTriagem, idadeEmAnos, resumoMotivosBloqueio } from '@/lib/geracaoPlano';
+import { gerarPlanoComTriagem, idadeEmAnos, mensagemErroGeracao, resumoMotivosBloqueio } from '@/lib/geracaoPlano';
 import { avisoAposEdicao, type BloqueioTriagem, type OverrideTriagem } from '@/lib/governanca';
 
 interface Props {
@@ -149,7 +149,7 @@ export default function PlanoTreinoCard({ pacienteId, autoGerar, ocultarGerador,
       qc.invalidateQueries({ queryKey: ['planos-treino', pacienteId] });
       setRestricoes('');
     },
-    onError: (e: any) => toast.error(e.message || 'Erro ao gerar plano'),
+    onError: (e: unknown) => toast.error(mensagemErroGeracao(e, 'Erro ao gerar plano')),
   });
 
   const cancelarTriagem = () => {

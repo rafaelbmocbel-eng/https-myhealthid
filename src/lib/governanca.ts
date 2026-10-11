@@ -86,6 +86,8 @@ export interface RevisaoSegurancaGov {
   resumo: string | null;
   revisado_em: string | null;
   hash: string | null;
+  /** A IA leu só o início de um plano maior que o limite dela: a revisão é parcial. */
+  plano_truncado?: boolean;
 }
 
 export interface AprovacaoGov {
@@ -98,6 +100,8 @@ export interface AprovacaoGov {
   justificativa: string | null;
   risco_geral: NivelRisco | null;
   sem_revisao: boolean;
+  /** Chancela do super-admin no plano da própria conta (exceção de teste); o selo a mostra. */
+  autochancela: boolean;
 }
 
 export interface GovernancaLida {
@@ -236,6 +240,7 @@ function lerRevisao(v: unknown): RevisaoSegurancaGov | null {
     resumo: texto(o.resumo),
     revisado_em: texto(o.revisado_em),
     hash: texto(o.hash),
+    ...(o.plano_truncado === true ? { plano_truncado: true } : {}),
   };
 }
 
@@ -251,6 +256,7 @@ function lerAprovacao(v: unknown): AprovacaoGov | null {
     justificativa: texto(o.justificativa),
     risco_geral: risco(o.risco_geral),
     sem_revisao: o.sem_revisao === true,
+    autochancela: o.autochancela === true,
   };
 }
 
@@ -414,6 +420,7 @@ export function rotuloSelo(gov: GovernancaLida | null | undefined, aprovado?: bo
 export type OrigemPlano = 'profissional' | 'equipe_myhealthid' | 'cliente';
 
 export const ROTULO_EQUIPE_CIENTIFICA = 'equipe científica MyHealthID';
+export const ROTULO_AUTOCHANCELA = 'Autochancela (teste interno)';
 
 const ROTULO_PERFIL_CHANCELA: Record<string, string> = {
   educador_fisico: 'Educador Físico',
@@ -437,7 +444,9 @@ export function origemDoPlanoLiberado(plano: unknown): 'profissional' | 'equipe_
 
 /**
  * Selo de um plano chancelado: 'Chancelado pela equipe científica MyHealthID · <nome>, <perfil> ·
- * dd/mm/aaaa · v<N>'. Cada parte só entra se o carimbo a trouxer; nada é inventado.
+ * dd/mm/aaaa · v<N>'. Cada parte só entra se o carimbo a trouxer; nada é inventado. Na autochancela
+ * (o administrador chancelando o plano da própria conta) o selo termina com 'Autochancela (teste interno)'.
+ * O selo nunca fala de revisão de segurança: isso é assunto da equipe, não do cliente.
  */
 export function rotuloSeloEquipe(gov: GovernancaLida | null | undefined): string {
   const apr = gov?.aprovacao;
@@ -450,6 +459,7 @@ export function rotuloSeloEquipe(gov: GovernancaLida | null | undefined): string
   if (data) partes.push(data);
   const versao = apr?.versao ?? null;
   if (versao !== null) partes.push(`v${versao}`);
+  if (apr?.autochancela) partes.push(ROTULO_AUTOCHANCELA);
   return partes.join(' · ');
 }
 
