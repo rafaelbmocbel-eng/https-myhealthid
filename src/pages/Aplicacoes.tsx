@@ -17,9 +17,9 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Aplicacao {
   id: string;
   nome: string;
-  /** Nome curto, só para leitores de tela e dicas (a tela mostra apenas o ícone). */
+  /** Nome curto, usado no botão de abrir com paciente. */
   curto: string;
-  /** Lida por leitores de tela; a tela mostra só o ícone e o nome. */
+  /** Lida por leitores de tela. */
   descricao: string;
   icone: typeof Dumbbell;
   /** Classes do azulejo do ícone (claro e escuro). */
@@ -146,10 +146,11 @@ export default function Aplicacoes() {
                 else { setEscolhida(a); setBusca(''); }
               };
               return (
-                <div key={a.id} className="group relative">
-                  <button type="button" onClick={abrir} aria-label={`${a.nome}. ${a.descricao}`} title={a.nome}
-                    className="flex aspect-square w-full items-center justify-center rounded-3xl border border-border/70 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-                    <span className={`flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br ring-1 ${a.cor}`}><Icone className="h-10 w-10" strokeWidth={1.75} /></span>
+                <div key={a.id} className="group relative h-full">
+                  <button type="button" onClick={abrir} aria-label={`${a.nome}. ${a.descricao}`} title={a.descricao}
+                    className="flex h-full min-h-[10.5rem] w-full flex-col items-center justify-start gap-3 rounded-3xl border border-border/70 bg-card px-3 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+                    <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br ring-1 ${a.cor}`}><Icone className="h-10 w-10" strokeWidth={1.75} /></span>
+                    <span lang="pt-BR" className="w-full break-words text-center text-[13px] font-semibold leading-snug text-foreground [hyphens:auto]">{a.nome.replace('eletrotermofototerapia', 'eletrotermo\u00ADfototerapia')}</span>
                   </button>
                   {a.rotaDireta && (
                     <button type="button" onClick={() => { setEscolhida(a); setBusca(''); }} aria-label={`${a.curto} com paciente`} title="Abrir com um paciente"
