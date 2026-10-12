@@ -4,7 +4,7 @@ import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { nomeDocumento } from '@/lib/pdf/entrega';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import { compararMedidas, grau, variacaoTexto, type MedidaSalva } from './comparar';
-import type { Ponto } from './medidas';
+import { nomeDoResultado, type Ponto } from './medidas';
 
 const seguro = (s: string) => String(s).replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/−/g, '-').replace(/–/g, '-').replace(/—/g, '-').replace(/·/g, '-');
 
@@ -107,7 +107,7 @@ export async function gerarRelatorioAngular(d: DadosRelatorioAngular): Promise<{
   }
 
   // Tabela de medidas
-  const linhas = compararMedidas(d.medidas, d.anterior?.medidas ?? []).filter((l) => l.atual);
+  const linhas = compararMedidas(d.medidas, d.anterior?.medidas ?? []).filter((l) => l.atual).map((l) => ({ ...l, nome: nomeDoResultado(l.id) ?? l.nome }));
   const comAnterior = !!d.anterior;
   const alturaLinha = 6.4, alturaCab = 7;
   if (y + alturaCab + alturaLinha * Math.min(linhas.length, 3) + 10 > 280) y = novaPagina();

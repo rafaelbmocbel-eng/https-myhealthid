@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Camera, ClipboardCheck, Copy, FileDown, Film, Grid3x3, Hand, Loader2, Maximize2, MousePointer2, Ruler, Smartphone, Sparkles, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, ClipboardCheck, Copy, Eye, EyeOff, FileDown, Film, Grid3x3, Hand, ImageDown, Loader2, Maximize2, MousePointer2, Palette, Ruler, Smartphone, Sparkles, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -12,18 +12,25 @@ import MarchaVideo from '@/components/angular/MarchaVideo';
 import PontoAPontoVideo from '@/components/angular/PontoAPontoVideo';
 import CameraNivel from '@/components/angular/CameraNivel';
 import LupaFoto from '@/components/angular/LupaFoto';
+import PainelEstilo from '@/components/angular/PainelEstilo';
+import { ItensSvg } from '@/components/angular/MarcacaoSvg';
 import { COR_REFERENCIA, ICONE_MEDIDA, LADO_MEDIDA } from '@/components/angular/iconesMedida';
 import { useGestosFoto } from '@/hooks/useGestosFoto';
 import { parseNum } from '@/components/dosagem/comuns';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { tabela } from '@/lib/dosagem/db';
-import { cmPorPixel, girar, medidasDaVista, rotacaoDoNivel, segmentosDaMedida, type GrupoMedida, type Medida, type Ponto, type Vista } from '@/lib/angular/medidas';
+import { cmPorPixel, medidasDaVista, nomeDoResultado, REFS_COMPASSO, rotacaoDoNivel, segmentosDaMedida, type GrupoMedida, type Medida, type OlharPara, type Ponto, type RefCompasso, type UnidadePrumo, type Vista } from '@/lib/angular/medidas';
 import { giroDaFoto } from '@/lib/angular/sensor';
 import { detectarPose } from '@/lib/angular/detector';
-import { pontosAutomaticos } from '@/lib/angular/pose';
+import { pontosAutomaticos, pontosDoPrumo, type Landmark } from '@/lib/angular/pose';
 import { compararMedidas, grau, variacaoTexto, type MedidaSalva } from '@/lib/angular/comparar';
-import { fotoComMarcacoes, gerarRelatorioAngular, type GrupoDesenho } from '@/lib/angular/relatorio';
+import { gerarRelatorioAngular } from '@/lib/angular/relatorio';
+import {
+  alcaDoPrumo, apoioPelaAlca, baixarBlob, calcularResultados, canvasComMedidas, canvasParaBlob, faltaReferenciaDoPrumo, imagemParaPdf, itensDaAnalise, medidasSalvas,
+  nomeArquivoImagem, type AnaliseFoto,
+} from '@/lib/angular/analise';
+import { escalaDoEstilo, escalaNaTela, lerEstilo, salvarEstilo, type EstiloMarcacao } from '@/lib/angular/estilo';
 import { entregarPdf } from '@/lib/pdf/entrega';
 import { usePacienteDosagem, usePacientesLista } from '@/hooks/useProntuarioSeguranca';
 
@@ -42,7 +49,17 @@ const GRUPOS: { id: GrupoMedida; titulo: string }[] = [
 const CORES = ['#ef4444', '#3b82f6', '#10b981', '#a855f7'];
 const ZOOM_MAX = 5;
 const nf = (n: number, d = 1) => n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
-const rotuloValor = (v: number, un?: 'cm') => `${nf(v)}${un === 'cm' ? ' cm' : '°'}`;
+// Alvo de toque mínimo (px de tela) das alças, para o dedo acertar mesmo com a foto pequena.
+const TOQUE_ATIVA = 16;
+const TOQUE_OUTRAS = 10;
+// Marcando pontos novos o alvo é menor, para um ponto próximo do anterior não ser tomado por arrasto.
+const TOQUE_MARCANDO = 5;
+const TOQUE_ALCA = 18;
+// A prévia pequena nunca afina as retas abaixo de ~1/3 de pixel de tela por unidade de espessura do estilo.
+const ESP_MIN_TELA_PX = 0.33;
+const SUFIXO_ALCA = ':alca';
+const SETA_REF: Record<RefCompasso, typeof ArrowDown> = { baixo: ArrowDown, cima: ArrowUp, esquerda: ArrowLeft, direita: ArrowRight };
+const UNIDADES_PRUMO: { id: UnidadePrumo; nome: string }[] = [{ id: 'graus', nome: 'Graus' }, { id: 'cm', nome: 'cm' }, { id: 'pct', nome: '% da altura' }];
 
 // Análise angular em foto: o profissional marca os pontos (ou deixa o app sugerir) e o app calcula.
 // Nível e escala corrigem a foto torta e dão medidas em centímetros. A foto fica só no navegador.
@@ -74,6 +91,15 @@ export default function AnaliseAngular() {
   const [cameraAberta, setCameraAberta] = useState(false);
   const [inclinacaoCaptura, setInclinacaoCaptura] = useState<number | null>(null);
   const [inverterSensor, setInverterSensor] = useState(false);
+  const [estilo, setEstiloLocal] = useState<EstiloMarcacao>(() => lerEstilo());
+  const [painelEstilo, setPainelEstilo] = useState(false);
+  const [semAlcas, setSemAlcas] = useState(false);
+  const [compassoRef, setCompassoRef] = useState<RefCompasso>('baixo');
+  const [unidadePrumo, setUnidadePrumo] = useState<UnidadePrumo>('graus');
+  const [olhaPara, setOlhaPara] = useState<OlharPara>('direita');
+  const [baixando, setBaixando] = useState(false);
+  const [larguraTela, setLarguraTela] = useState(0);
+  const poseRef = useRef<{ img: HTMLImageElement; lm: Landmark[] } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const vistaRef = useRef<Vista>('frente');
   vistaRef.current = vista;
@@ -82,7 +108,37 @@ export default function AnaliseAngular() {
 
   useEffect(() => () => { if (foto) URL.revokeObjectURL(foto.url); }, [foto]);
 
-  const disponiveis = medidasDaVista(vista);
+  // Largura do SVG na tela: converte pixels de tela em pixels da foto (alvos de toque e rótulo legível).
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const medir = () => setLarguraTela(el.getBoundingClientRect().width);
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [foto, zoom, painelEstilo]);
+
+  const mudarEstilo = (e: EstiloMarcacao) => { setEstiloLocal(e); salvarEstilo(e); };
+
+  // Os botões de zoom ampliam em torno do centro do que está na tela (a pinça já ancora nos dedos).
+  const centroZoom = useRef<{ fx: number; fy: number } | null>(null);
+  const zoomBotao = (novo: (z: number) => number) => {
+    const c = rolagemRef.current;
+    if (c && c.scrollWidth > 0 && c.scrollHeight > 0) {
+      centroZoom.current = { fx: (c.scrollLeft + c.clientWidth / 2) / c.scrollWidth, fy: (c.scrollTop + c.clientHeight / 2) / c.scrollHeight };
+    }
+    setZoom(novo);
+  };
+  useLayoutEffect(() => {
+    const c = rolagemRef.current, k = centroZoom.current;
+    centroZoom.current = null;
+    if (!c || !k) return;
+    c.scrollLeft = k.fx * c.scrollWidth - c.clientWidth / 2;
+    c.scrollTop = k.fy * c.scrollHeight - c.clientHeight / 2;
+  }, [zoom]);
+
+  const disponiveis = useMemo(() => medidasDaVista(vista), [vista]);
   const medidaAtiva: Medida = disponiveis.find((m) => m.id === ativa) ?? disponiveis[0];
   const ptsAtiva = pontos[medidaAtiva.id] ?? [];
   const proximo = ptsAtiva.length < medidaAtiva.pontos.length ? medidaAtiva.pontos[ptsAtiva.length] : null;
@@ -101,18 +157,27 @@ export default function AnaliseAngular() {
     return p && p.length >= 2 && cm ? cmPorPixel(p[0], p[1], cm) : null;
   }, [pontos.escala, escalaCm]);
 
-  const resultados = useMemo(() => disponiveis.flatMap((m) => {
-    if (m.auxiliar) return [];
-    const p = pontos[m.id];
-    if (!p || p.length < m.pontos.length) return [];
-    const r = m.calcular(giro ? p.map((q) => girar(q, -giro)) : p, { cmPorPx });
-    return r ? [{ medida: m, ...r }] : [];
-  }), [disponiveis, pontos, giro, cmPorPx]);
-
-  const medidasAtuais: MedidaSalva[] = [
-    ...resultados.map((r) => ({ id: r.medida.id, graus: Math.round(r.valor * 10) / 10, texto: r.texto, ...(r.medida.unidade ? { unidade: r.medida.unidade } : {}) })),
-  ];
+  // Estado serializável da análise: o mesmo alimenta a tela, o PDF, a imagem baixada e a arte social.
+  const analise: AnaliseFoto = useMemo(() => ({
+    vista, largura: foto?.w ?? 0, altura: foto?.h ?? 0, imagem: foto?.img ?? null, pontos, giro, cmPorPx,
+    opcoes: { compassoRef, unidadePrumo, olhaPara },
+  }), [vista, foto, pontos, giro, cmPorPx, compassoRef, unidadePrumo, olhaPara]);
+  const resultados = useMemo(() => calcularResultados(analise), [analise]);
+  const medidasAtuais: MedidaSalva[] = useMemo(() => medidasSalvas(resultados), [resultados]);
   const temResultado = medidasAtuais.length > 0;
+  const temMarcacao = Object.values(pontos).some((p) => p.length > 0);
+  const faltaPrumo = faltaReferenciaDoPrumo(analise);
+
+  const kEstilo = foto ? escalaDoEstilo(foto.w, foto.h, zoom) : 1;
+  const pxPorUnidade = foto && larguraTela > 0 ? larguraTela / foto.w : 0;
+  const itensTela = useMemo(
+    () => (foto ? itensDaAnalise(analise, estilo, { k: escalaNaTela(kEstilo, pxPorUnidade, estilo.tamanhoRotulo), espMinima: pxPorUnidade > 0 ? (estilo.espessura * ESP_MIN_TELA_PX) / pxPorUnidade : 0 }) : []),
+    [foto, analise, estilo, kEstilo, pxPorUnidade],
+  );
+  const opacidadePorGrupo = useMemo(
+    () => (semAlcas ? undefined : Object.fromEntries(disponiveis.filter((m) => m.id !== medidaAtiva.id).map((m) => [m.id, 0.6]))),
+    [semAlcas, disponiveis, medidaAtiva.id],
+  );
 
   const { data: historico = [] } = useQuery({
     queryKey: ['analise-angular-historico', pacienteId],
@@ -134,7 +199,7 @@ export default function AnaliseAngular() {
     if (!arquivo.type.startsWith('image/')) { toast.error('Escolha um arquivo de imagem.'); return; }
     const url = URL.createObjectURL(arquivo);
     const img = new Image();
-    img.onload = () => { setFoto({ url, w: img.naturalWidth, h: img.naturalHeight, img }); setPontos({}); setUsouIA(false); setZoom(1); setMover(false); setInclinacaoCaptura(inclinacao); setInverterSensor(false); void marcarAutomatico({ img, w: img.naturalWidth, h: img.naturalHeight }, vistaRef.current, true); };
+    img.onload = () => { poseRef.current = null; setFoto({ url, w: img.naturalWidth, h: img.naturalHeight, img }); setPontos({}); setUsouIA(false); setZoom(1); setMover(false); setInclinacaoCaptura(inclinacao); setInverterSensor(false); void marcarAutomatico({ img, w: img.naturalWidth, h: img.naturalHeight }, vistaRef.current, true); };
     img.onerror = () => { URL.revokeObjectURL(url); toast.error('Não consegui abrir essa imagem.'); };
     img.src = url;
   };
@@ -151,8 +216,16 @@ export default function AnaliseAngular() {
   const gestos = useGestosFoto({
     svgRef, rolagemRef, caixaRef, zoom, setZoom, zoomMax: ZOOM_MAX, mover, noPonto: doEvento, podeMarcar: !!proximo,
     aoMarcar: (p) => setPontos((s) => ({ ...s, [medidaAtiva.id]: [...(s[medidaAtiva.id] ?? []), p] })),
-    aoArrastar: (medida, indice, p) => setPontos((s) => ({ ...s, [medida]: (s[medida] ?? []).map((q, i) => (i === indice ? p : q)) })),
-    aoIniciarArrasto: (medida) => setAtiva(medida),
+    aoArrastar: (medida, indice, p) => {
+      if (medida.endsWith(SUFIXO_ALCA)) {
+        // A alça do topo só desloca o fio na horizontal; o apoio mantém a altura.
+        const id = medida.slice(0, -SUFIXO_ALCA.length);
+        setPontos((s) => (s[id]?.[0] ? { ...s, [id]: s[id].map((q, i) => (i === 0 ? apoioPelaAlca(p, q, giro, foto?.w ?? 0) : q)) } : s));
+        return;
+      }
+      setPontos((s) => ({ ...s, [medida]: (s[medida] ?? []).map((q, i) => (i === indice ? p : q)) }));
+    },
+    aoIniciarArrasto: (medida) => setAtiva(medida.endsWith(SUFIXO_ALCA) ? medida.slice(0, -SUFIXO_ALCA.length) : medida),
   });
 
   const desfazer = () => setPontos((s) => ({ ...s, [medidaAtiva.id]: (s[medidaAtiva.id] ?? []).slice(0, -1) }));
@@ -165,6 +238,7 @@ export default function AnaliseAngular() {
     try {
       const lm = await detectarPose(f.img);
       if (!lm) { if (!silencioso) toast.error('Não achei o corpo na foto. Marque os pontos à mão.'); return; }
+      poseRef.current = { img: f.img, lm };
       const sugeridos = pontosAutomaticos(lm, vistaAlvo, f.w, f.h);
       const ids = Object.keys(sugeridos);
       if (!ids.length) { if (!silencioso) toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
@@ -177,6 +251,47 @@ export default function AnaliseAngular() {
       if (!silencioso) toast.error('Não consegui carregar a marcação automática agora. Marque os pontos à mão.');
     } finally {
       setDetectando(false);
+    }
+  };
+
+  // Sugere o apoio e os pontos do fio de prumo da vista atual; o profissional confere e arrasta o que estiver fora.
+  const sugerirPrumo = async () => {
+    if (!foto) return;
+    setDetectando(true);
+    try {
+      let lm = poseRef.current?.img === foto.img ? poseRef.current.lm : null;
+      if (!lm) {
+        lm = await detectarPose(foto.img);
+        if (lm) poseRef.current = { img: foto.img, lm };
+      }
+      if (!lm) { toast.error('Não achei o corpo na foto. Marque os pontos à mão.'); return; }
+      const s = pontosDoPrumo(lm, vista, foto.w, foto.h);
+      if (!s) { toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
+      setPontos((st) => ({ ...st, [s.medidaId]: s.pontos }));
+      if (s.olhaPara) setOlhaPara(s.olhaPara);
+      setAtiva(s.medidaId);
+      toast.success('Sugeri o apoio e os pontos do fio. Confira cada ponto e arraste o que estiver fora do lugar.');
+    } catch {
+      // Sem internet para baixar o modelo, ou navegador sem suporte: segue a marcação manual.
+      toast.error('Não consegui carregar a marcação automática agora. Marque os pontos à mão.');
+    } finally {
+      setDetectando(false);
+    }
+  };
+
+  const baixarImagem = async () => {
+    if (!foto) return;
+    setBaixando(true);
+    try {
+      const cv = canvasComMedidas(analise, estilo, { auxiliares: false });
+      const blob = cv ? await canvasParaBlob(cv) : null;
+      if (!blob) { toast.error('Não consegui gerar a imagem.'); return; }
+      baixarBlob(blob, nomeArquivoImagem(vista));
+      toast.success('Imagem baixada com as marcações.');
+    } catch {
+      toast.error('Não consegui gerar a imagem.');
+    } finally {
+      setBaixando(false);
     }
   };
 
@@ -201,7 +316,7 @@ export default function AnaliseAngular() {
         tipo: 'analise_angular',
         titulo: `Análise angular — vista ${vistaNome}`,
         descricao: `${texto}\n${usouIA ? 'Pontos sugeridos por detecção automática de pose e conferidos pelo profissional' : 'Pontos marcados manualmente'} em foto. ${notaNivel ?? 'Os ângulos usam a horizontal e a vertical da imagem como referência.'} A foto não é armazenada.`,
-        dados_extras: { vista, medidas: medidasAtuais, metodo: usouIA ? 'automatica_conferida' : 'marcacao_manual', nivel_graus: giro, escala_cm_por_px: cmPorPx },
+        dados_extras: { vista, medidas: medidasAtuais, metodo: usouIA ? 'automatica_conferida' : 'marcacao_manual', nivel_graus: giro, escala_cm_por_px: cmPorPx, opcoes: analise.opcoes },
       });
       if (error) throw error;
       toast.success(`Análise registrada no prontuário de ${paciente.nome}.`);
@@ -213,18 +328,11 @@ export default function AnaliseAngular() {
     }
   };
 
-  const desenhos = (): GrupoDesenho[] => disponiveis.flatMap((m) => {
-    const p = pontos[m.id];
-    if (!p?.length) return [];
-    const r = resultados.find((x) => x.medida.id === m.id);
-    return [{ pontos: p, segmentos: segmentosDaMedida(m).filter(([i, j]) => i < p.length && j < p.length), cor: COR_REFERENCIA[m.id] ?? '#facc15', rotulo: r ? rotuloValor(r.valor, m.unidade) : undefined }];
-  });
-
   const gerarPdf = async () => {
     if (!foto || !temResultado) return;
     setGerando(true);
     try {
-      const imagem = comFoto ? fotoComMarcacoes(foto.img, desenhos()) : null;
+      const imagem = comFoto ? imagemParaPdf(analise, estilo) : null;
       const { blob, nome } = await gerarRelatorioAngular({
         paciente: paciente ? `${paciente.nome} ${paciente.sobrenome ?? ''}`.trim() : 'Paciente',
         profissional: profile ? `${profile.nome} ${profile.sobrenome || ''}`.trim() + (profile.crefito ? ` · CREFITO ${profile.crefito}` : '') : undefined,
@@ -248,6 +356,8 @@ export default function AnaliseAngular() {
   const raio = base / Math.sqrt(zoom);
   const proporcao = foto ? foto.w / foto.h : 1;
   const semEscala = medidaAtiva.id === 'regua' && !cmPorPx;
+  const alturaMaxDvh = painelEstilo ? 55 : 75;
+  const toquePx = (css: number) => (pxPorUnidade > 0 ? css / pxPorUnidade : raio * 2);
   const mudarModo = (id: 'foto' | 'marcha') => { const n = new URLSearchParams(sp); if (id === 'marcha') n.set('modo', 'marcha'); else n.delete('modo'); setSp(n, { replace: true }); };
   const mudarPaciente = (v: string) => { const n = new URLSearchParams(sp); if (v) n.set('paciente', v); else n.delete('paciente'); setSp(n, { replace: true }); };
 
@@ -309,9 +419,9 @@ export default function AnaliseAngular() {
                 <div className="space-y-2">
                   <div className="flex items-start gap-2">
                     <div ref={caixaRef} className="relative min-w-0 flex-1">
-                      <div ref={rolagemRef} className="max-h-[75dvh] overflow-auto rounded-2xl border border-border/60 bg-black">
-                        <svg ref={svgRef} viewBox={`0 0 ${foto.w} ${foto.h}`} className={cn('mx-auto block select-none [-webkit-touch-callout:none]', !mover && 'touch-none')}
-                          style={{ width: `min(${zoom * 100}%, calc(75dvh * ${proporcao.toFixed(4)} * ${zoom}))`, cursor: mover ? 'grab' : proximo ? 'crosshair' : 'default' }}
+                      <div ref={rolagemRef} className="overflow-auto rounded-2xl border border-border/60 bg-black" style={{ maxHeight: `${alturaMaxDvh}dvh` }}>
+                        <svg ref={svgRef} viewBox={`0 0 ${foto.w} ${foto.h}`} className={cn('mx-auto block max-w-none select-none [-webkit-touch-callout:none]', !mover && 'touch-none')}
+                          style={{ width: `min(${zoom * 100}%, calc(${alturaMaxDvh}dvh * ${proporcao.toFixed(4)} * ${zoom}))`, cursor: mover ? 'grab' : proximo ? 'crosshair' : 'default' }}
                           onContextMenu={(e) => e.preventDefault()}
                           {...gestos.handlers}>
                           <image href={foto.url} width={foto.w} height={foto.h} />
@@ -325,25 +435,27 @@ export default function AnaliseAngular() {
                           ))}
                         </g>
                       )}
-                      {disponiveis.map((m) => {
+                      <ItensSvg itens={itensTela} opacidadePorGrupo={opacidadePorGrupo} />
+                      {!semAlcas && disponiveis.map((m) => {
                         const p = pontos[m.id] ?? [];
                         const destaque = m.id === medidaAtiva.id;
-                        const r = resultados.find((x) => x.medida.id === m.id);
-                        const cor = COR_REFERENCIA[m.id] ?? '#facc15';
+                        const alca = destaque && m.desenho === 'prumo' && p.length > 0 ? alcaDoPrumo(p[0], foto.h, giro) : null;
                         return (
                           <g key={m.id} opacity={destaque ? 1 : 0.6}>
-                            {segmentosDaMedida(m).filter(([i, j]) => i < p.length && j < p.length).map(([i, j]) => (
-                              <line key={`${i}-${j}`} x1={p[i].x} y1={p[i].y} x2={p[j].x} y2={p[j].y} stroke={cor} strokeWidth={raio / 4} strokeLinecap="round" />
-                            ))}
                             {p.map((q, i) => (
-                              <g key={i} onPointerDown={(e) => gestos.aoPressionarPonto(e, m.id, i)} style={{ cursor: mover ? 'grab' : 'move' }}>
+                              <g key={i} onPointerDown={(e) => gestos.aoPressionarPonto(e, m.id, i)} style={{ cursor: mover ? 'grab' : 'move', pointerEvents: proximo && !destaque ? 'none' : undefined }}>
+                                <circle cx={q.x} cy={q.y} r={Math.max(raio, toquePx(proximo ? TOQUE_MARCANDO : destaque ? TOQUE_ATIVA : TOQUE_OUTRAS))} fill="transparent" />
                                 <circle cx={q.x} cy={q.y} r={raio} fill={CORES[i % CORES.length]} stroke="#fff" strokeWidth={raio / 5} />
                                 <text x={q.x} y={q.y} textAnchor="middle" dominantBaseline="central" fontSize={raio * 1.1} fill="#fff" fontWeight="700" pointerEvents="none">{i + 1}</text>
                               </g>
                             ))}
-                            {r && p.length > 0 && (
-                              <text x={p.reduce((s, q) => s + q.x, 0) / p.length} y={p.reduce((s, q) => s + q.y, 0) / p.length - raio * 2} textAnchor="middle" dominantBaseline="central"
-                                fontSize={raio * 1.4} fontWeight="700" fill="#fff" stroke="#000" strokeWidth={raio / 2.5} strokeLinejoin="round" paintOrder="stroke" pointerEvents="none">{rotuloValor(r.valor, m.unidade)}</text>
+                            {alca && (
+                              <g onPointerDown={(e) => gestos.aoPressionarPonto(e, `${m.id}${SUFIXO_ALCA}`, 0)} style={{ cursor: mover ? 'grab' : 'ew-resize' }} data-testid="alca-prumo">
+                                <circle cx={alca.x} cy={alca.y} r={toquePx(TOQUE_ALCA)} fill="transparent" />
+                                <circle cx={alca.x} cy={alca.y} r={toquePx(12)} fill={estilo.cor} stroke="#fff" strokeWidth={toquePx(2)} />
+                                <path d={`M ${alca.x - toquePx(6.5)} ${alca.y} H ${alca.x + toquePx(6.5)} M ${alca.x - toquePx(6.5)} ${alca.y} l ${toquePx(3)} ${-toquePx(3)} M ${alca.x - toquePx(6.5)} ${alca.y} l ${toquePx(3)} ${toquePx(3)} M ${alca.x + toquePx(6.5)} ${alca.y} l ${-toquePx(3)} ${-toquePx(3)} M ${alca.x + toquePx(6.5)} ${alca.y} l ${-toquePx(3)} ${toquePx(3)}`}
+                                  stroke="#111" strokeWidth={toquePx(2)} strokeLinecap="round" fill="none" pointerEvents="none" />
+                              </g>
                             )}
                           </g>
                         );
@@ -357,7 +469,7 @@ export default function AnaliseAngular() {
                       )}
                     </div>
 
-                    <nav aria-label="Ferramentas de medida" className="flex max-h-[75dvh] w-12 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border/60 bg-card p-1">
+                    <nav aria-label="Ferramentas de medida" className="flex w-14 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border/60 bg-card p-1" style={{ maxHeight: `${alturaMaxDvh}dvh` }}>
                       {GRUPOS.map((g, gi) => {
                         const itens = disponiveis.filter((m) => m.grupo === g.id);
                         if (!itens.length) return null;
@@ -370,7 +482,7 @@ export default function AnaliseAngular() {
                               const ativa = m.id === medidaAtiva.id;
                               return (
                                 <button key={m.id} type="button" onClick={() => setAtiva(m.id)} aria-pressed={ativa} aria-label={m.nome} title={m.nome}
-                                  className={cn('relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors', ativa ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+                                  className={cn('relative flex h-11 w-11 items-center justify-center rounded-xl transition-colors', ativa ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
                                   <Icone className="h-5 w-5" style={!ativa && COR_REFERENCIA[m.id] ? { color: COR_REFERENCIA[m.id] } : undefined} />
                                   {LADO_MEDIDA[m.id] && <span className="absolute bottom-0.5 right-0.5 text-[9px] font-bold leading-none">{LADO_MEDIDA[m.id]}</span>}
                                   {feita && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card" aria-hidden />}
@@ -384,29 +496,35 @@ export default function AnaliseAngular() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-border/60 bg-card p-1" role="toolbar" aria-label="Ações da foto">
-                    <Button size="sm" className="h-9 gap-1.5" onClick={() => void marcarAutomatico()} disabled={detectando} title="Marcar os pontos automaticamente">
+                    <Button size="sm" className="h-10 gap-1.5" onClick={() => void marcarAutomatico()} disabled={detectando} title="Marcar os pontos automaticamente">
                       {detectando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} <span className="hidden sm:inline">Automático</span>
                     </Button>
                     <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
-                    <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Desfazer o último ponto" title="Desfazer" onClick={desfazer} disabled={!ptsAtiva.length}><Undo2 className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Limpar a medida" title="Limpar a medida" onClick={limpar} disabled={!ptsAtiva.length}><Trash2 className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="h-10 w-10" aria-label="Desfazer o último ponto" title="Desfazer" onClick={desfazer} disabled={!ptsAtiva.length}><Undo2 className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="h-10 w-10" aria-label="Limpar a medida" title="Limpar a medida" onClick={limpar} disabled={!ptsAtiva.length}><Trash2 className="h-4 w-4" /></Button>
                     <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
-                    <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Diminuir zoom" title="Diminuir zoom" onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} disabled={zoom <= 1}><ZoomOut className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="h-10 w-10" aria-label="Diminuir zoom" title="Diminuir zoom" onClick={() => zoomBotao((z) => Math.max(1, +(z - 0.5).toFixed(1)))} disabled={zoom <= 1}><ZoomOut className="h-4 w-4" /></Button>
                     <span className="min-w-[2.6rem] text-center text-xs font-semibold tabular-nums">{Math.round(zoom * 100)}%</span>
-                    <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Aumentar zoom" title="Aumentar zoom" onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + 0.5).toFixed(1)))} disabled={zoom >= ZOOM_MAX}><ZoomIn className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Ajustar à tela" title="Ajustar à tela" onClick={() => { setZoom(1); setMover(false); }}><Maximize2 className="h-4 w-4" /></Button>
-                    <Button size="icon" variant={mover ? 'default' : 'ghost'} className="h-9 w-9" aria-pressed={mover} aria-label={mover ? 'Voltar a marcar' : 'Mover a foto com um dedo'} title={mover ? 'Voltar a marcar' : 'Mover a foto com um dedo'} onClick={() => setMover((m) => !m)} disabled={zoom <= 1}>
+                    <Button size="icon" variant="ghost" className="h-10 w-10" aria-label="Aumentar zoom" title="Aumentar zoom" onClick={() => zoomBotao((z) => Math.min(ZOOM_MAX, +(z + 0.5).toFixed(1)))} disabled={zoom >= ZOOM_MAX}><ZoomIn className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="h-10 w-10" aria-label="Ajustar à tela" title="Ajustar à tela" onClick={() => { setZoom(1); setMover(false); }}><Maximize2 className="h-4 w-4" /></Button>
+                    <Button size="icon" variant={mover ? 'default' : 'ghost'} className="h-10 w-10" aria-pressed={mover} aria-label={mover ? 'Voltar a marcar' : 'Mover a foto com um dedo'} title={mover ? 'Voltar a marcar' : 'Mover a foto com um dedo'} onClick={() => setMover((m) => !m)} disabled={zoom <= 1}>
                       {mover ? <Hand className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
                     </Button>
-                    <Button size="icon" variant={grade ? 'default' : 'ghost'} className="h-9 w-9" aria-pressed={grade} aria-label="Grade" title="Grade" onClick={() => setGrade((g) => !g)}><Grid3x3 className="h-4 w-4" /></Button>
+                    <Button size="icon" variant={grade ? 'default' : 'ghost'} className="h-10 w-10" aria-pressed={grade} aria-label="Grade" title="Grade" onClick={() => setGrade((g) => !g)}><Grid3x3 className="h-4 w-4" /></Button>
+                    <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
+                    <Button size="icon" variant={painelEstilo ? 'default' : 'ghost'} className="h-10 w-10" aria-pressed={painelEstilo} aria-label="Estilo das linhas" title="Estilo das linhas (espessura, cor, arco e rótulo)" onClick={() => setPainelEstilo((v) => !v)}><Palette className="h-4 w-4" /></Button>
+                    <Button size="icon" variant={semAlcas ? 'default' : 'ghost'} className="h-10 w-10" aria-pressed={semAlcas} aria-label="Ver só o desenho" title="Ver só o desenho, sem as alças dos pontos" onClick={() => setSemAlcas((v) => !v)}>{semAlcas ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+                    <Button size="icon" variant="ghost" className="h-10 w-10" aria-label="Baixar imagem" title="Baixar a foto com as marcações (PNG)" onClick={() => void baixarImagem()} disabled={!temMarcacao || baixando}>{baixando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}</Button>
                     <span className="ml-auto flex items-center gap-1">
-                      <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Tirar a foto no app" title="Tirar a foto no app" onClick={() => setCameraAberta(true)}><Smartphone className="h-4 w-4" /></Button>
-                      <label className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md hover:bg-accent" title="Trocar a foto" aria-label="Trocar a foto">
+                      <Button size="icon" variant="ghost" className="h-10 w-10" aria-label="Tirar a foto no app" title="Tirar a foto no app" onClick={() => setCameraAberta(true)}><Smartphone className="h-4 w-4" /></Button>
+                      <label className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-md hover:bg-accent" title="Trocar a foto" aria-label="Trocar a foto">
                         <Camera className="h-4 w-4" />
                         <input type="file" accept="image/*" className="sr-only" onChange={(e) => escolherFoto(e.target.files?.[0])} />
                       </label>
                     </span>
                   </div>
+
+                  {painelEstilo && <PainelEstilo estilo={estilo} aoMudar={mudarEstilo} aoFechar={() => setPainelEstilo(false)} />}
 
                   <p className="text-xs text-muted-foreground" role="status">
                     <strong className="text-foreground">{medidaAtiva.nome}.</strong>{' '}
@@ -492,6 +610,57 @@ export default function AnaliseAngular() {
                 )}
                 {semEscala && <p className="rounded-xl bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">Para medir em centímetros, primeiro calibre a escala (em “Referências da foto”).</p>}
                 {medidaAtiva.id === 'cobb' && <p className="rounded-xl bg-muted/40 p-2.5 text-xs text-muted-foreground">Marque as duas retas (por exemplo, as linhas das vértebras limite da curva). O app dá o ângulo entre elas. Em foto, é uma estimativa; o Cobb de referência vem da radiografia.</p>}
+                {medidaAtiva.definicao && medidaAtiva.desenho !== 'prumo' && medidaAtiva.id !== 'compasso-ref' && (
+                  <p className="rounded-xl bg-muted/40 p-2.5 text-xs text-muted-foreground" data-testid="definicao-medida"><strong className="text-foreground">Como é medido.</strong> {medidaAtiva.definicao}</p>
+                )}
+                {medidaAtiva.id === 'compasso-ref' && (
+                  <div className="space-y-2 rounded-xl bg-muted/40 p-2.5 text-xs" data-testid="cartao-compasso-ref">
+                    <p className="text-muted-foreground">{medidaAtiva.definicao}</p>
+                    <p className="font-medium">Medir contra</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {REFS_COMPASSO.map((r) => {
+                        const Seta = SETA_REF[r.id];
+                        return (
+                          <button key={r.id} type="button" aria-pressed={compassoRef === r.id} onClick={() => setCompassoRef(r.id)}
+                            className={cn('flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 text-center font-medium leading-tight', compassoRef === r.id ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50')}>
+                            <Seta className="h-4 w-4 shrink-0" aria-hidden /> {r.nome}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {medidaAtiva.desenho === 'prumo' && (
+                  <div className="space-y-2.5 rounded-xl bg-muted/40 p-2.5 text-xs" data-testid="cartao-prumo">
+                    <p className="text-muted-foreground">{medidaAtiva.definicao} Arraste a alça no topo do fio para posicioná-lo.</p>
+                    <div className="space-y-1">
+                      <p className="font-medium">Mostrar o desvio em</p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {UNIDADES_PRUMO.map((u) => (
+                          <button key={u.id} type="button" aria-pressed={unidadePrumo === u.id} onClick={() => setUnidadePrumo(u.id)}
+                            className={cn('min-h-11 rounded-xl border px-1.5 py-1.5 font-medium leading-tight', unidadePrumo === u.id ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50')}>{u.nome}</button>
+                        ))}
+                      </div>
+                    </div>
+                    {vista === 'perfil' && (
+                      <div className="space-y-1">
+                        <p className="font-medium">O paciente olha para a</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {([['esquerda', ArrowLeft], ['direita', ArrowRight]] as const).map(([lado, Seta]) => (
+                            <button key={lado} type="button" aria-pressed={olhaPara === lado} onClick={() => setOlhaPara(lado)}
+                              className={cn('flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 font-medium', olhaPara === lado ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50')}>
+                              <Seta className="h-4 w-4 shrink-0" aria-hidden /> {lado === 'esquerda' ? 'Esquerda da imagem' : 'Direita da imagem'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <Button size="sm" variant="outline" className="h-11 w-full gap-1.5" onClick={() => void sugerirPrumo()} disabled={detectando || !foto}>
+                      {detectando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Sugerir os pontos do fio
+                    </Button>
+                    {faltaPrumo && <p className="rounded-lg bg-amber-500/10 p-2 text-amber-800 dark:text-amber-300">{faltaPrumo}</p>}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-3">
@@ -509,6 +678,9 @@ export default function AnaliseAngular() {
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   <Button variant="outline" onClick={gerarPdf} disabled={!temResultado || gerando} className="gap-1.5">
                     {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Gerar PDF
+                  </Button>
+                  <Button variant="outline" onClick={() => void baixarImagem()} disabled={!temMarcacao || baixando} className="gap-1.5">
+                    {baixando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />} Baixar imagem
                   </Button>
                   <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={comFoto} onChange={(e) => setComFoto(e.target.checked)} /> Incluir a foto com as marcações</label>
                 </div>
@@ -531,7 +703,7 @@ export default function AnaliseAngular() {
                           <table className="w-full text-xs tabular-nums">
                             <thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2 font-medium">Medida</th><th className="px-2 font-medium">Antes</th><th className="px-2 font-medium">Agora</th><th className="pl-2 font-medium">Variação</th></tr></thead>
                             <tbody>{comparacao.map((l) => (
-                              <tr key={l.id} className="border-t border-border/50"><td className="py-1.5 pr-2">{l.nome}</td><td className="px-2">{grau(l.anterior?.graus, l.atual?.unidade)}</td><td className="px-2">{grau(l.atual?.graus, l.atual?.unidade)}</td><td className="pl-2 font-medium">{variacaoTexto(l.variacao, l.atual?.unidade)}</td></tr>
+                              <tr key={l.id} className="border-t border-border/50"><td className="py-1.5 pr-2">{nomeDoResultado(l.id) ?? l.nome}</td><td className="px-2">{grau(l.anterior?.graus, l.atual?.unidade)}</td><td className="px-2">{grau(l.atual?.graus, l.atual?.unidade)}</td><td className="pl-2 font-medium">{variacaoTexto(l.variacao, l.atual?.unidade)}</td></tr>
                             ))}</tbody>
                           </table>
                           <p className="mt-1.5 text-[11px] text-muted-foreground">Nos desníveis o número não mostra o lado; veja a leitura de cada avaliação.</p>

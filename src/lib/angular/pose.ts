@@ -1,4 +1,4 @@
-import { pontoMedio, type Ponto, type Vista } from './medidas';
+import { pontoMedio, type OlharPara, type Ponto, type Vista } from './medidas';
 
 /** Ponto normalizado (0–1) devolvido pelo detector de pose. */
 export interface Landmark { x: number; y: number; visibility?: number }
@@ -45,6 +45,43 @@ export function pontosAutomaticos(lm: Landmark[], vista: Vista, w: number, h: nu
   if (todos(o, q)) saida['tronco-perfil'] = [o!, q!];
   if (todos(q, j, t)) saida.joelho = [q!, j!, t!];
   return saida;
+}
+
+export interface SugestaoPrumo {
+  medidaId: 'prumo-perfil' | 'prumo-frente';
+  /** Apoio do fio seguido dos pontos, na ordem de marcação da medida. */
+  pontos: Ponto[];
+  /** Lado da imagem para onde o paciente olha (só no perfil, se o nariz for visível). */
+  olhaPara?: OlharPara;
+}
+
+/**
+ * Pontos sugeridos para o fio de prumo a partir da pose. O apoio fica no tornozelo (de perfil) ou
+ * entre os tornozelos; o profissional confere e arrasta o que estiver fora do lugar. De perfil usa o
+ * lado do corpo mais visível. Devolve null se algum ponto não for confiável.
+ */
+export function pontosDoPrumo(lm: Landmark[], vista: Vista, w: number, h: number): SugestaoPrumo | null {
+  const pega = (i: number): Ponto | null => {
+    const l = lm[i];
+    if (!l || (l.visibility ?? 1) < VISIBILIDADE_MINIMA) return null;
+    return { x: l.x * w, y: l.y * h };
+  };
+  const vis = (i: number) => lm[i]?.visibility ?? 0;
+  if (vista === 'perfil') {
+    const somaE = vis(L.ombroE) + vis(L.quadrilE) + vis(L.joelhoE) + vis(L.tornozeloE);
+    const somaD = vis(L.ombroD) + vis(L.quadrilD) + vis(L.joelhoD) + vis(L.tornozeloD);
+    const e = somaE >= somaD;
+    const apoio = pega(e ? L.tornozeloE : L.tornozeloD);
+    const orelha = pega(e ? L.orelhaE : L.orelhaD), ombro = pega(e ? L.ombroE : L.ombroD);
+    const quadril = pega(e ? L.quadrilE : L.quadrilD), joelho = pega(e ? L.joelhoE : L.joelhoD);
+    if (!apoio || !orelha || !ombro || !quadril || !joelho) return null;
+    const nariz = pega(0);
+    return { medidaId: 'prumo-perfil', pontos: [apoio, orelha, ombro, quadril, joelho], ...(nariz ? { olhaPara: nariz.x > orelha.x ? 'direita' as const : 'esquerda' as const } : {}) };
+  }
+  const tD = pega(L.tornozeloD), tE = pega(L.tornozeloE), eD = pega(L.orelhaD), eE = pega(L.orelhaE);
+  const oD = pega(L.ombroD), oE = pega(L.ombroE), qD = pega(L.quadrilD), qE = pega(L.quadrilE);
+  if (!tD || !tE || !eD || !eE || !oD || !oE || !qD || !qE) return null;
+  return { medidaId: 'prumo-frente', pontos: [pontoMedio(tD, tE), pontoMedio(eD, eE), pontoMedio(oD, oE), pontoMedio(qD, qE)] };
 }
 
 export interface Enquadramento { ok: boolean; mensagem: string }
