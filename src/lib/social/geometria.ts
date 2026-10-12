@@ -91,11 +91,14 @@ export function caberNaCaixa(caixaW: number, caixaH: number, w: number, h: numbe
 /** Até quanto da foto pode ser cortado no modo "preencher" para ele ser o modo de partida (o resto vai "inteira", sem cortar o paciente). */
 export const PERDA_MAXIMA_PREENCHER = 0.35;
 
+/** Com as marcações localizadas (e conferido que continuam à vista), a foto pode ser cortada um pouco mais para encher a caixa. */
+export const PERDA_MAXIMA_PREENCHER_COM_MARCAS = 0.6;
+
 /** Modo de partida: preenche a caixa quando o corte é pequeno e mostra a foto inteira quando seria grande. */
-export function ajusteSugerido(caixaW: number, caixaH: number, imgW: number, imgH: number): ModoAjuste {
+export function ajusteSugerido(caixaW: number, caixaH: number, imgW: number, imgH: number, perdaMaxima = PERDA_MAXIMA_PREENCHER): ModoAjuste {
   if (!(caixaW > 0) || !(caixaH > 0) || !(imgW > 0) || !(imgH > 0)) return 'inteira';
   const r = caixaW / caixaH, ri = imgW / imgH;
-  return 1 - Math.min(r / ri, ri / r) <= PERDA_MAXIMA_PREENCHER ? 'preencher' : 'inteira';
+  return 1 - Math.min(r / ri, ri / r) <= perdaMaxima ? 'preencher' : 'inteira';
 }
 
 /**
@@ -149,7 +152,7 @@ export function perfilMedio(perfis: (PerfilMarcas | null | undefined)[]): Perfil
 /** Margem de perda de marcações que o enquadramento automático aceita para preferir o do rosto ao que mostra mais. */
 const TOLERANCIA_ENQUADRAMENTO = 0.015;
 /** Fração mínima das marcações que o modo "preencher" precisa mostrar para ser o de partida. */
-export const VISIVEL_MINIMO_PREENCHER = 0.97;
+export const VISIVEL_MINIMO_PREENCHER = 0.99;
 
 export interface EnquadramentoAutomatico { enquadramento: Enquadramento; /** Fração das marcações que ele mostra (1 sem perfil ou na foto inteira). */ visivel: number }
 

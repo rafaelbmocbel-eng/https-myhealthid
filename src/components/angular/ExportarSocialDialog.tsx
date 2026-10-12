@@ -26,7 +26,7 @@ import {
   type FormatoSocial, type LayoutArte, type TituloModo,
 } from '@/lib/social/formatos';
 import {
-  ENQUADRAMENTO_PADRAO, VISIVEL_MINIMO_PREENCHER, ZOOM_MAX, ZOOM_MIN, ajusteSugerido, arrastarEnquadramento, enquadramentoAutomatico as enquadramentoDeAbertura, janelaDaImagem, perfilMedio, zoomarEnquadramento,
+  ENQUADRAMENTO_PADRAO, PERDA_MAXIMA_PREENCHER_COM_MARCAS, VISIVEL_MINIMO_PREENCHER, ZOOM_MAX, ZOOM_MIN, ajusteSugerido, arrastarEnquadramento, enquadramentoAutomatico as enquadramentoDeAbertura, janelaDaImagem, perfilMedio, zoomarEnquadramento,
   type Enquadramento, type ModoAjuste,
 } from '@/lib/social/geometria';
 import {
@@ -310,7 +310,7 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
     if (ajusteEscolhido) return ajusteEscolhido;
     const p = paineis?.[0], c = layoutAtual.paineis[0];
     if (!p || !c) return 'inteira';
-    const sugerido = ajusteSugerido(c.w, c.h, p.largura, p.altura);
+    const sugerido = ajusteSugerido(c.w, c.h, p.largura, p.altura, perfilMarcas ? PERDA_MAXIMA_PREENCHER_COM_MARCAS : undefined);
     if (sugerido === 'inteira') return sugerido;
     // Preencher corta a foto: só vale se, mesmo bem enquadrado, quase todas as marcações continuam à vista.
     const cabe = layoutAtual.paineis.every((caixa, i) => {
@@ -320,12 +320,15 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
     return cabe ? 'preencher' : 'inteira';
   }, [ajusteEscolhido, paineis, layoutAtual, rostoReferencia, perfilMarcas]);
 
+  // O perfil das marcações é o médio das fotos, então fotos do mesmo tamanho recebem o mesmo enquadramento (a comparação fica justa).
   const enquadramentoAutomatico = useMemo<Enquadramento[]>(() => {
-    // Um só enquadramento para as duas fotos (o da primeira): é o que torna a comparação justa.
-    const p0 = paineis?.[0], c0 = layoutAtual.paineis[0];
-    const unico = p0 && c0 ? enquadramentoDeAbertura(c0, p0.largura, p0.altura, ajuste, rostoReferencia, perfilMarcas).enquadramento : ENQUADRAMENTO_PADRAO;
-    return Array.from({ length: nPaineis }, () => unico);
+    return Array.from({ length: nPaineis }, (_, i) => {
+      const p = paineis?.[i], c = layoutAtual.paineis[i];
+      if (!p || !c) return ENQUADRAMENTO_PADRAO;
+      return enquadramentoDeAbertura(c, p.largura, p.altura, ajuste, rostoReferencia, perfilMarcas).enquadramento;
+    });
   }, [nPaineis, paineis, layoutAtual, ajuste, rostoReferencia, perfilMarcas]);
+
   const enquadramentos = enquadramentoManual ?? enquadramentoAutomatico;
 
   const opcoes = useMemo<OpcoesArte>(() => ({ ...opcoesBase, modoAjuste: ajuste, enquadramentos, modoRosto, rostos }), [opcoesBase, ajuste, enquadramentos, modoRosto, rostos]);
