@@ -75,7 +75,11 @@ export default function PreviaArteSocial({ opcoes, paineis, recursos, escala = 0
       aoIniciarGesto?.();
       gestoRef.current = { i, pontos: new Map([[e.pointerId, p]]), distancia0: 0 };
     }
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Ponteiro já encerrado: o gesto segue pelos eventos que o canvas ainda recebe.
+    }
   };
 
   const aoMover = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -117,7 +121,7 @@ export default function PreviaArteSocial({ opcoes, paineis, recursos, escala = 0
       onPointerMove={aoMover}
       onPointerUp={aoSoltar}
       onPointerCancel={aoSoltar}
-      className="mx-auto block h-auto max-h-[58dvh] w-auto max-w-full select-none rounded-xl bg-[#0a0f1c] shadow-lg"
+      className="mx-auto block h-auto max-h-[50dvh] lg:max-h-[72dvh] w-auto max-w-full select-none rounded-xl bg-[#0a0f1c] shadow-lg"
       style={{ touchAction: 'none', aspectRatio: `${info.largura} / ${info.altura}` }}
     />
   );

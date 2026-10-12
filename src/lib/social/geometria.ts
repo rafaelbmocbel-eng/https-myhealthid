@@ -97,3 +97,17 @@ export function ajusteSugerido(caixaW: number, caixaH: number, imgW: number, img
   const r = caixaW / caixaH, ri = imgW / imgH;
   return 1 - Math.min(r / ri, ri / r) <= PERDA_MAXIMA_PREENCHER ? 'preencher' : 'inteira';
 }
+
+/**
+ * Enquadramento de partida no modo "preencher": a foto é cortada, e cortar a cabeça fora de uma foto de
+ * corpo inteiro seria o pior começo. Com a posição do rosto, a janela sobe até o rosto ficar a
+ * `posicaoDoRosto` (fração) da altura da caixa; sem rosto, fica no centro.
+ */
+export function enquadramentoPorRosto(caixa: Retangulo, imgW: number, imgH: number, modo: ModoAjuste, zoom: number, rosto: { cx: number; cy: number } | null, posicaoDoRosto = 0.24): Enquadramento {
+  const base: Enquadramento = { zoom, cx: 0.5, cy: 0.5 };
+  if (!rosto) return base;
+  const j = janelaDaImagem(caixa, imgW, imgH, modo, base);
+  if (!(j.escala > 0)) return base;
+  const visivel = caixa.h / j.escala / imgH;
+  return { zoom, cx: 0.5, cy: limitar(rosto.cy + (0.5 - posicaoDoRosto) * visivel, 0, 1) };
+}

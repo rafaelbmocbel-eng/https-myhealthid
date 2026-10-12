@@ -26,7 +26,7 @@ import {
   type FormatoSocial, type LayoutArte, type TituloModo,
 } from '@/lib/social/formatos';
 import {
-  ENQUADRAMENTO_PADRAO, ZOOM_MAX, ZOOM_MIN, ajusteSugerido, arrastarEnquadramento, janelaDaImagem, zoomarEnquadramento,
+  ENQUADRAMENTO_PADRAO, ZOOM_MAX, ZOOM_MIN, ajusteSugerido, arrastarEnquadramento, enquadramentoPorRosto, janelaDaImagem, zoomarEnquadramento,
   type Enquadramento, type ModoAjuste,
 } from '@/lib/social/geometria';
 import {
@@ -159,7 +159,8 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   const [paineis, setPaineis] = useState<PainelPronto[] | null>(null);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
   const [ajusteEscolhido, setAjusteEscolhido] = useState<ModoAjuste | null>(null);
-  const [enquadramentos, setEnquadramentos] = useState<Enquadramento[]>([]);
+  // Sem gesto do usuário (`null`), o enquadramento é o automático, que leva o rosto para o alto da caixa.
+  const [enquadramentoManual, setEnquadramentoManual] = useState<Enquadramento[] | null>(null);
   const [juntas, setJuntas] = useState(true);
   const [fotoDoZoom, setFotoDoZoom] = useState(0);
   const [ferramenta, setFerramenta] = useState<FerramentaPrevia>('enquadrar');
@@ -201,7 +202,7 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
     setRotulos(arte.paineis.map((p) => p.rotulo ?? ''));
     setDatas(arte.paineis.map((p) => p.data ?? ''));
     setAjusteEscolhido(null);
-    setEnquadramentos(arte.paineis.map(() => ENQUADRAMENTO_PADRAO));
+    setEnquadramentoManual(null);
     setJuntas(true);
     setFotoDoZoom(0);
     setMulLargura(1);
@@ -276,6 +277,16 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
     return p && c ? ajusteSugerido(c.w, c.h, p.largura, p.altura) : 'inteira';
   }, [ajusteEscolhido, paineis, layoutAtual]);
 
+  const enquadramentoAutomatico = useMemo<Enquadramento[]>(() => {
+    const rostoRef = rostosBase[0] ?? null;
+    return Array.from({ length: nPaineis }, (_, i) => {
+      const p = paineis?.[i], c = layoutAtual.paineis[i];
+      if (!p || !c || ajuste === 'inteira') return ENQUADRAMENTO_PADRAO;
+      return enquadramentoPorRosto(c, p.largura, p.altura, ajuste, 1, rostoRef);
+    });
+  }, [nPaineis, paineis, layoutAtual, ajuste, rostosBase]);
+  const enquadramentos = enquadramentoManual ?? enquadramentoAutomatico;
+
   const opcoes = useMemo<OpcoesArte>(() => ({ ...opcoesBase, modoAjuste: ajuste, enquadramentos, modoRosto, rostos }), [opcoesBase, ajuste, enquadramentos, modoRosto, rostos]);
 
   const mudarPerfil = (i: number, v: string) => setPerfisTexto((l) => l.map((x, k) => (k === i ? v : x)));
@@ -293,26 +304,30 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
     const caixa = layoutAtual.paineis[i], p = paineis?.[i];
     if (!caixa || !p) return;
     if (ferramenta === 'enquadrar') {
-      setEnquadramentos((prev) => aplicar(prev, i, arrastarEnquadramento(prev[i] ?? ENQUADRAMENTO_PADRAO, dx, dy, caixa, p.largura, p.altura, ajuste), juntas));
+      setEnquadramentoManual((prev) => {
+        const lista = prev ?? enquadramentoAutomatico;
+        return aplicar(lista, i, arrastarEnquadramento(lista[i] ?? ENQUADRAMENTO_PADRAO, dx, dy, caixa, p.largura, p.altura, ajuste), juntas);
+      });
     } else if (modoRosto !== 'nenhum') {
       const j = janelaDaImagem(caixa, p.largura, p.altura, ajuste, enquadramentos[i] ?? ENQUADRAMENTO_PADRAO);
       if (!(j.escala > 0)) return;
       setRostosBase((prev) => prev.map((c, k) => (k === i && c ? moverCaixaRosto(c, c.cx + dx / (j.escala * p.largura), c.cy + dy / (j.escala * p.altura)) : c)));
     }
-  }, [layoutAtual, paineis, ferramenta, ajuste, juntas, modoRosto, enquadramentos]);
+  }, [layoutAtual, paineis, ferramenta, ajuste, juntas, modoRosto, enquadramentos, enquadramentoAutomatico]);
 
   const dar = useCallback((i: number, fator: number, foco: { x: number; y: number }) => {
     const caixa = layoutAtual.paineis[i], p = paineis?.[i];
     if (!caixa || !p) return;
-    setEnquadramentos((prev) => {
-      const atual = prev[i] ?? ENQUADRAMENTO_PADRAO;
-      return aplicar(prev, i, zoomarEnquadramento(atual, atual.zoom * fator, caixa, p.largura, p.altura, ajuste, foco), juntas);
+    setEnquadramentoManual((prev) => {
+      const lista = prev ?? enquadramentoAutomatico;
+      const atual = lista[i] ?? ENQUADRAMENTO_PADRAO;
+      return aplicar(lista, i, zoomarEnquadramento(atual, atual.zoom * fator, caixa, p.largura, p.altura, ajuste, foco), juntas);
     });
-  }, [layoutAtual, paineis, ajuste, juntas]);
+  }, [layoutAtual, paineis, ajuste, juntas, enquadramentoAutomatico]);
 
   const mudarZoom = (z: number) => {
     if (!paineis) return;
-    setEnquadramentos((prev) => prev.map((e, k) => {
+    setEnquadramentoManual((prev) => (prev ?? enquadramentoAutomatico).map((e, k) => {
       if (!juntas && k !== fotoDoZoom) return e;
       const caixa = layoutAtual.paineis[k], p = paineis[k];
       return caixa && p ? zoomarEnquadramento(e, z, caixa, p.largura, p.altura, ajuste) : { ...e, zoom: z };
@@ -392,7 +407,7 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
 
   return (
     <Dialog open={aberto} onOpenChange={(o) => { if (!o) aoFechar(); }}>
-      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[calc(100%-2rem)] sm:rounded-lg">
+      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[calc(100%-2rem)] sm:rounded-lg">
         <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3">
           <DialogTitle className="text-base">Arte para Instagram</DialogTitle>
           <DialogDescription className="text-xs">Monte a imagem com as marcações, confira a prévia e baixe já no formato certo.</DialogDescription>
@@ -438,8 +453,8 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
               )}
 
               <Grupo titulo="Enquadramento das fotos" dica={nPaineis >= 2 ? 'Para comparar de verdade, as duas fotos usam o mesmo enquadramento.' : undefined}>
-                <Chips<ModoAjuste> rotulo="Ajuste da foto na caixa" valor={ajuste} aoEscolher={setAjusteEscolhido} colunas="grid-cols-2" opcoes={[{ valor: 'inteira', rotulo: 'Foto inteira', detalhe: 'não corta' }, { valor: 'preencher', rotulo: 'Preencher', detalhe: 'corta o excesso' }]} />
-                {nPaineis >= 2 && <Interruptor rotulo="Mover as duas fotos juntas" marcado={juntas} aoMudar={(v) => { setJuntas(v); if (v) setEnquadramentos((prev) => prev.map(() => prev[fotoDoZoom] ?? ENQUADRAMENTO_PADRAO)); }} />}
+                <Chips<ModoAjuste> rotulo="Ajuste da foto na caixa" valor={ajuste} aoEscolher={(v) => { setAjusteEscolhido(v); setEnquadramentoManual(null); }} colunas="grid-cols-2" opcoes={[{ valor: 'inteira', rotulo: 'Foto inteira', detalhe: 'não corta' }, { valor: 'preencher', rotulo: 'Preencher', detalhe: 'corta o excesso' }]} />
+                {nPaineis >= 2 && <Interruptor rotulo="Mover as duas fotos juntas" marcado={juntas} aoMudar={(v) => { setJuntas(v); if (v) setEnquadramentoManual((prev) => { const lista = prev ?? enquadramentoAutomatico; return lista.map(() => lista[fotoDoZoom] ?? ENQUADRAMENTO_PADRAO); }); }} />}
                 {nPaineis >= 2 && !juntas && (
                   <Chips<string> rotulo="Foto do zoom" valor={String(fotoDoZoom)} aoEscolher={(v) => setFotoDoZoom(Number(v))} colunas="grid-cols-2" opcoes={Array.from({ length: nPaineis }, (_, i) => ({ valor: String(i), rotulo: nomeFoto(i) }))} />
                 )}
