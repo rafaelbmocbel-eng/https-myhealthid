@@ -3,13 +3,17 @@ import '@/lib/pdf/patchJsPdf';
 import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { nomeDocumento } from '@/lib/pdf/entrega';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
+import { canvasDoGrafico, type GraficoParaCanvas } from '@/lib/angular/analiseVideo/graficoCanvas';
+import { COR_LADO, type CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
 
 const AZUL: [number, number, number] = [30, 58, 95];
 const CAB: [number, number, number] = [230, 237, 245];
 const BORDA: [number, number, number] = [208, 214, 222];
 const DOURADO: [number, number, number] = [234, 170, 20];
+const COR_D = COR_LADO.D;
+const COR_E = COR_LADO.E;
 
-const seguro = (s: string) => String(s).replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/−/g, '-').replace(/–/g, '-').replace(/—/g, '-').replace(/·/g, '-');
+const seguro = (s: string) => String(s).replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/−/g, '-').replace(/–/g, '-').replace(/—/g, '-').replace(/·/g, '-').replace(/→/g, '>').replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
 
 export interface CapturaRelatorio {
   /** segundos no vídeo */
@@ -111,4 +115,209 @@ export async function gerarRelatorioVideo(d: DadosRelatorioVideo): Promise<{ blo
 
   molduraEmTodasPaginas(doc);
   return { blob: doc.output('blob'), nome: `Analise_angular_video_${paciente.replace(/[^\w]+/g, '_')}_${d.data.split('/').reverse().join('-')}.pdf` };
+}
+
+// ---------- relatório da análise de gesto (rastreio, gráficos e métricas com referência) ----------
+
+export interface QuadroRelatorio {
+  rotulo: string;
+  imagem: { url: string; w: number; h: number };
+}
+
+export interface GraficoRelatorio {
+  titulo: string;
+  dados: GraficoParaCanvas;
+}
+
+export interface DadosRelatorioGesto {
+  paciente: string;
+  profissional?: string;
+  logoUrl?: string;
+  data: string;
+  modelo: { nome: string; vista: string };
+  /** Duração do trecho analisado e taxas de quadros, para a nota de rodapé. */
+  duracaoS: number;
+  fpsAnalise: number;
+  cartoes: CartaoMetricaUi[];
+  graficos: GraficoRelatorio[];
+  quadros: QuadroRelatorio[];
+  /** Medidas ponto a ponto guardadas no vídeo. */
+  capturas?: CapturaRelatorio[];
+  correcoes: { quadros: number; pontos: number };
+  eventosEditados: number;
+  /** Aviso fixo sobre os valores de referência (vem do motor). */
+  avisoReferencias: string;
+  avisos?: string[];
+}
+
+const NOME_STATUS = { dentro: 'dentro', fora: 'fora', sem_referencia: 'sem ref.' } as const;
+const COR_STATUS: Record<'dentro' | 'fora' | 'sem_referencia', [number, number, number]> = { dentro: [4, 120, 87], fora: [180, 83, 9], sem_referencia: [110, 116, 128] };
+
+/** Texto do valor de um cartão para a tabela: um valor ou "D … · E …". */
+export const valorDoCartaoTexto = (c: CartaoMetricaUi): string => c.valores.map((v) => (v.lado ? `${v.lado} ${v.texto}` : v.texto)).join('  ·  ');
+
+/** Texto da referência de um cartão: a faixa e a fonte curta, ou "sem referência". */
+export const referenciaDoCartaoTexto = (c: CartaoMetricaUi): string =>
+  c.referencias.length ? c.referencias.map((r) => `${r.faixa} (${r.rotulo ?? r.citacao}${r.pmid ? `, PMID ${r.pmid}` : ''})`).join('; ') : 'sem referência';
+
+const situacaoDoCartaoTexto = (c: CartaoMetricaUi): string => c.valores.map((v) => (v.lado ? `${v.lado} ${NOME_STATUS[v.status]}` : NOME_STATUS[v.status])).join(' · ');
+
+export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blob: Blob; nome: string }> {
+  const paciente = nomeDocumento(d.paciente);
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 14, LARG = W - 2 * M, BASE = 282;
+  const t = (txt: string, x: number, y: number, op?: Parameters<jsPDF['text']>[3]) => doc.text(seguro(txt), x, y, op);
+  const novaPagina = () => { doc.addPage(); return 18; };
+  const seg = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  let y = 18;
+  try { await addLogoToDoc(doc, W - M - 16, 10, 16, d.logoUrl); } catch { /* logo é opcional */ }
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...AZUL); t(`Análise de ${d.modelo.nome.toLowerCase()} em vídeo`, M, y); y += 7;
+  doc.setFontSize(11.5); doc.setTextColor(20); t(paciente, M, y); y += 5;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90);
+  t(`${d.modelo.vista} · ${d.data}${d.profissional ? ` · ${d.profissional}` : ''}`, M, y); y += 4;
+  doc.setDrawColor(...DOURADO); doc.setLineWidth(0.5); doc.line(M, y, M + 28, y);
+  doc.setDrawColor(...BORDA); doc.setLineWidth(0.25); doc.line(M + 28, y, W - M, y); y += 8;
+  doc.setTextColor(20);
+
+  const garantir = (h: number) => { if (y + h > BASE) y = novaPagina(); };
+  const titulo = (txt: string) => {
+    garantir(14);
+    doc.setFillColor(...AZUL); doc.roundedRect(M, y - 3.6, 1.4, 5, 0.7, 0.7, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...AZUL); t(txt, M + 4, y); doc.setTextColor(20);
+    y += 5;
+  };
+
+  // Métricas: uma linha por métrica, com valor, referência (só com fonte) e situação.
+  if (d.cartoes.length) {
+    titulo('Métricas');
+    const cols = { nome: M + 3, valor: M + 54, ref: M + 98, sit: M + 152 };
+    const largs = { nome: 48, valor: 42, ref: 52, sit: LARG - 152 - 2 };
+    const cabecalho = () => {
+      doc.setFillColor(...CAB); doc.setDrawColor(...BORDA); doc.setLineWidth(0.3);
+      doc.roundedRect(M, y, LARG, 7, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...AZUL);
+      t('Métrica', cols.nome, y + 4.7); t('Valor', cols.valor, y + 4.7); t('Referência (fonte)', cols.ref, y + 4.7); t('Situação', cols.sit, y + 4.7);
+      doc.setTextColor(20); y += 7;
+    };
+    cabecalho();
+    doc.setFontSize(8.3);
+    d.cartoes.forEach((c) => {
+      doc.setFont('helvetica', 'normal');
+      const nome = doc.splitTextToSize(seguro(c.titulo), largs.nome) as string[];
+      const valor = doc.splitTextToSize(seguro(valorDoCartaoTexto(c)), largs.valor) as string[];
+      const ref = doc.splitTextToSize(seguro(referenciaDoCartaoTexto(c)), largs.ref) as string[];
+      const sit = doc.splitTextToSize(seguro(situacaoDoCartaoTexto(c)), largs.sit) as string[];
+      const linhas = Math.max(nome.length, valor.length, ref.length, sit.length);
+      const alt = linhas * 3.7 + 3;
+      if (y + alt > BASE) { y = novaPagina(); cabecalho(); doc.setFontSize(8.3); }
+      doc.setDrawColor(...BORDA); doc.setLineWidth(0.15); doc.line(M + 2, y, W - M - 2, y);
+      doc.setTextColor(20); doc.text(nome, cols.nome, y + 4);
+      doc.setFont('helvetica', 'bold'); doc.text(valor, cols.valor, y + 4); doc.setFont('helvetica', 'normal');
+      doc.setTextColor(c.referencias.length ? 40 : 110); doc.text(ref, cols.ref, y + 4);
+      const pior = c.valores.some((v) => v.status === 'fora') ? 'fora' : c.valores.some((v) => v.status === 'dentro') ? 'dentro' : 'sem_referencia';
+      doc.setTextColor(...COR_STATUS[pior]); doc.text(sit, cols.sit, y + 4);
+      doc.setTextColor(20);
+      y += alt;
+    });
+    doc.setDrawColor(...BORDA); doc.line(M + 2, y, W - M - 2, y);
+    y += 6;
+  }
+
+  // Gráficos ângulo x tempo, dois por linha.
+  const imagens = d.graficos.map((g) => ({ g, png: (canvasDoGrafico(g.dados, 360, 190, { escala: 3 }))?.toDataURL('image/png') ?? null })).filter((x) => x.png);
+  if (imagens.length) {
+    const wg = (LARG - 4) / 2, hg = (wg * 190) / 360;
+    titulo('Gráficos: ângulo ao longo do tempo');
+    for (let i = 0; i < imagens.length; i += 2) {
+      garantir(hg + 9);
+      imagens.slice(i, i + 2).forEach(({ g, png }, k) => {
+        const x = M + k * (wg + 4);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(60); t(g.titulo, x, y + 1);
+        doc.setDrawColor(...BORDA); doc.setLineWidth(0.3); doc.roundedRect(x, y + 3, wg, hg, 2, 2, 'S');
+        doc.addImage(png as string, 'PNG', x + 0.4, y + 3.4, wg - 0.8, hg - 0.8, undefined, 'FAST');
+      });
+      y += hg + 8;
+    }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60);
+    doc.setFillColor(COR_D); doc.circle(M + 1.5, y - 0.8, 1.2, 'F'); t('Direito', M + 4, y);
+    doc.setFillColor(COR_E); doc.circle(M + 24, y - 0.8, 1.2, 'F'); t('Esquerdo', M + 26.5, y);
+    const haEventos = d.graficos.some((g) => g.dados.marcadores?.length);
+    const haBanda = d.graficos.some((g) => g.dados.bandas?.length);
+    t(`Marcas no gráfico: ${haEventos ? 'contato inicial (linha cheia) e saída do pé (tracejada)' : 'sem eventos'}${haBanda ? '; faixa verde = referência com fonte' : ''}.`, M + 50, y);
+    doc.setTextColor(20);
+    y += 8;
+  }
+
+  // Quadros analisados, dois por linha.
+  if (d.quadros.length) {
+    titulo('Quadros analisados');
+    const wc = (LARG - 5) / 2, hMax = 80;
+    for (let i = 0; i < d.quadros.length; i += 2) {
+      const par = d.quadros.slice(i, i + 2);
+      const hs = par.map((q) => Math.min(hMax, wc / (q.imagem.w / q.imagem.h)));
+      garantir(Math.max(...hs) + 11);
+      par.forEach((q, k) => {
+        const x = M + k * (wc + 5), h = hs[k], w = h * (q.imagem.w / q.imagem.h);
+        doc.setFillColor(255, 255, 255); doc.setDrawColor(...BORDA); doc.setLineWidth(0.4);
+        doc.roundedRect(x, y, w + 3, h + 3, 2.5, 2.5, 'FD');
+        doc.addImage(q.imagem.url, 'JPEG', x + 1.5, y + 1.5, w, h, undefined, 'FAST');
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(70);
+        doc.text(doc.splitTextToSize(seguro(q.rotulo), wc), x, y + h + 7); doc.setTextColor(20);
+      });
+      y += Math.max(...hs) + 11;
+    }
+  }
+
+  // Medidas ponto a ponto guardadas.
+  if (d.capturas?.length) {
+    titulo('Medidas ponto a ponto');
+    doc.setFontSize(9);
+    d.capturas.forEach((c) => {
+      garantir(7);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(20);
+      t(`${seg(c.t)} s · quadro ${c.quadro}`, M + 3, y + 4);
+      t(c.nome, M + 38, y + 4);
+      doc.setFont('helvetica', 'bold'); t(c.valorTexto, M + 140, y + 4);
+      doc.setDrawColor(...BORDA); doc.setLineWidth(0.15); doc.line(M + 2, y + 6, W - M - 2, y + 6);
+      y += 6.4;
+    });
+    y += 5;
+  }
+
+  // Fontes das referências usadas.
+  const fontes = new Map<string, string>();
+  for (const c of d.cartoes) for (const r of c.referencias) fontes.set(r.pmid ?? r.citacao, `${r.citacao}${r.pmid ? ` PMID ${r.pmid}.` : ''}`);
+  if (fontes.size) {
+    titulo('Referências consultadas');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(50);
+    for (const txt of fontes.values()) {
+      const linhas = doc.splitTextToSize(seguro(`- ${txt}`), LARG - 4) as string[];
+      garantir(linhas.length * 3.5 + 1);
+      doc.text(linhas, M + 2, y + 2.5);
+      y += linhas.length * 3.5 + 1;
+    }
+    doc.setTextColor(20);
+    y += 4;
+  }
+
+  // Observações.
+  titulo('Observações');
+  const notas = [
+    d.avisoReferencias,
+    `Pontos do corpo detectados automaticamente em vídeo (${d.fpsAnalise} quadros por segundo, trecho de ${seg(d.duracaoS)} s)${d.correcoes.pontos ? `; ${d.correcoes.pontos} pontos corrigidos à mão em ${d.correcoes.quadros} quadros` : '; nenhum ponto corrigido à mão'}${d.eventosEditados ? `; ${d.eventosEditados} eventos ajustados pelo profissional` : ''}.`,
+    ...(d.avisos ?? []),
+    'Medida de acompanhamento, não é diagnóstico. Os eventos (contato e saída do pé) são sugeridos pelo app e conferidos pelo profissional.',
+  ];
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.3); doc.setTextColor(40);
+  const linhas = doc.splitTextToSize(seguro(notas.map((n) => `- ${n}`).join('\n')), LARG - 8) as string[];
+  const altBox = linhas.length * 3.7 + 5;
+  garantir(altBox);
+  doc.setFillColor(247, 249, 252); doc.setDrawColor(...BORDA); doc.setLineWidth(0.3);
+  doc.roundedRect(M, y, LARG, altBox, 2.2, 2.2, 'FD');
+  doc.setFillColor(...AZUL); doc.roundedRect(M, y, 1.4, altBox, 0.7, 0.7, 'F');
+  doc.text(linhas, M + 6, y + 5);
+
+  molduraEmTodasPaginas(doc);
+  return { blob: doc.output('blob'), nome: `Analise_${d.modelo.nome.toLowerCase().replace(/[^\w]+/g, '_')}_${paciente.replace(/[^\w]+/g, '_')}_${d.data.split('/').reverse().join('-')}.pdf` };
 }

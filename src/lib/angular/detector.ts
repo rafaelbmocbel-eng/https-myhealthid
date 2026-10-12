@@ -82,3 +82,22 @@ export async function detectarVideo(video: HTMLVideoElement, o: OpcoesVideo = {}
   }
   return frames;
 }
+
+/**
+ * Início de uma nova sequência de quadros no detector de vídeo: devolve o deslocamento (ms) que deve ser somado ao tempo do quadro
+ * para os carimbos de tempo continuarem crescendo entre uma análise e outra. Os tempos de uma sequência devem ser crescentes.
+ */
+export function iniciarSequenciaVideo(): number {
+  return ultimoTempoMs + 1000;
+}
+
+/**
+ * Detecta a pose em UM quadro já posicionado (vídeo, canvas ou bitmap), no modo de vídeo do MediaPipe. `tempoMs` deve crescer a cada
+ * chamada de uma mesma sequência (some o deslocamento de `iniciarSequenciaVideo`). Devolve null se não achar uma pessoa.
+ */
+export async function detectarPoseNoQuadro(fonte: HTMLVideoElement | HTMLCanvasElement | ImageBitmap, tempoMs: number): Promise<Landmark[] | null> {
+  const det = await carregarVideo();
+  ultimoTempoMs = Math.max(Math.round(tempoMs), ultimoTempoMs + 1);
+  const r = det.detectForVideo(fonte, ultimoTempoMs);
+  return r.landmarks[0] ?? null;
+}
