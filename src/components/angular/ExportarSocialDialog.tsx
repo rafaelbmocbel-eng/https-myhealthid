@@ -169,6 +169,8 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   const [modoRosto, setModoRosto] = useState<ModoRosto>(inicial.current.modoRosto);
   const [rostosBase, setRostosBase] = useState<(CaixaRosto | null)[]>([]);
   const [rostoAutomatico, setRostoAutomatico] = useState<boolean[]>([]);
+  // Posição do rosto no momento da abertura: o enquadramento automático não pode andar junto com a área arrastada.
+  const [rostoReferencia, setRostoReferencia] = useState<CaixaRosto | null>(null);
   const [mulLargura, setMulLargura] = useState(1);
   const [mulAltura, setMulAltura] = useState(1);
 
@@ -215,6 +217,7 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
         const bases = prontos.map((p, i) => caixaDoRostoPorLandmarks(landmarks?.[i], p.largura, p.altura));
         setRostosBase(bases.map((b, i) => b ?? caixaRostoPadrao(prontos[i].largura, prontos[i].altura)));
         setRostoAutomatico(bases.map((b) => b !== null));
+        setRostoReferencia(bases[0] ?? caixaRostoPadrao(prontos[0].largura, prontos[0].altura));
         setFerramenta(bases.some((b) => b === null) && inicial.current.modoRosto !== 'nenhum' ? 'rosto' : 'enquadrar');
         setPaineis(prontos);
       } catch (e) {
@@ -278,13 +281,12 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   }, [ajusteEscolhido, paineis, layoutAtual]);
 
   const enquadramentoAutomatico = useMemo<Enquadramento[]>(() => {
-    const rostoRef = rostosBase[0] ?? null;
     return Array.from({ length: nPaineis }, (_, i) => {
       const p = paineis?.[i], c = layoutAtual.paineis[i];
       if (!p || !c || ajuste === 'inteira') return ENQUADRAMENTO_PADRAO;
-      return enquadramentoPorRosto(c, p.largura, p.altura, ajuste, 1, rostoRef);
+      return enquadramentoPorRosto(c, p.largura, p.altura, ajuste, 1, rostoReferencia);
     });
-  }, [nPaineis, paineis, layoutAtual, ajuste, rostosBase]);
+  }, [nPaineis, paineis, layoutAtual, ajuste, rostoReferencia]);
   const enquadramentos = enquadramentoManual ?? enquadramentoAutomatico;
 
   const opcoes = useMemo<OpcoesArte>(() => ({ ...opcoesBase, modoAjuste: ajuste, enquadramentos, modoRosto, rostos }), [opcoesBase, ajuste, enquadramentos, modoRosto, rostos]);
@@ -429,12 +431,28 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
                 />
               )}
               {paineis && (
-                <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-3">
-                  <p className="text-xs font-medium text-muted-foreground">Arrastar na prévia</p>
-                  <Chips<FerramentaPrevia>
-                    rotulo="Ferramenta da prévia" valor={ferramenta} aoEscolher={setFerramenta} colunas="grid-cols-2"
-                    opcoes={[{ valor: 'enquadrar', rotulo: 'Enquadrar a foto', detalhe: 'arraste e use pinça' }, ...(modoRosto !== 'nenhum' ? [{ valor: 'rosto' as const, rotulo: 'Posicionar o rosto', detalhe: 'arraste a área' }] : [])]}
-                  />
+                <div className="space-y-3 rounded-2xl border border-border/60 bg-card p-3" data-testid="controles-da-foto">
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Arrastar na prévia</p>
+                    <Chips<FerramentaPrevia>
+                      rotulo="Ferramenta da prévia" valor={ferramenta} aoEscolher={setFerramenta} colunas="grid-cols-2"
+                      opcoes={[{ valor: 'enquadrar', rotulo: 'Enquadrar a foto', detalhe: 'arraste e use pinça' }, ...(modoRosto !== 'nenhum' ? [{ valor: 'rosto' as const, rotulo: 'Posicionar o rosto', detalhe: 'arraste a área' }] : [])]}
+                    />
+                    {modoRosto !== 'nenhum' && algumSemRosto && (
+                      <p role="status" className="rounded-lg bg-amber-500/10 p-2 text-xs font-medium text-amber-800 dark:text-amber-300" data-testid="aviso-rosto-previa">
+                        Não achei o rosto automaticamente. Arraste a área sobre ele e confira na prévia antes de baixar.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5" role="group" aria-label="Enquadramento das fotos">
+                    <Chips<ModoAjuste> rotulo="Ajuste da foto na caixa" valor={ajuste} aoEscolher={(v) => { setAjusteEscolhido(v); setEnquadramentoManual(null); }} colunas="grid-cols-2" opcoes={[{ valor: 'inteira', rotulo: 'Foto inteira', detalhe: 'não corta' }, { valor: 'preencher', rotulo: 'Preencher', detalhe: 'corta o excesso' }]} />
+                    {nPaineis >= 2 && <Interruptor rotulo="Mover as duas fotos juntas" marcado={juntas} aoMudar={(v) => { setJuntas(v); if (v) setEnquadramentoManual((prev) => { const lista = prev ?? enquadramentoAutomatico; return lista.map(() => lista[fotoDoZoom] ?? ENQUADRAMENTO_PADRAO); }); }} />}
+                    {nPaineis >= 2 && !juntas && (
+                      <Chips<string> rotulo="Foto do zoom" valor={String(fotoDoZoom)} aoEscolher={(v) => setFotoDoZoom(Number(v))} colunas="grid-cols-2" opcoes={Array.from({ length: nPaineis }, (_, i) => ({ valor: String(i), rotulo: nomeFoto(i) }))} />
+                    )}
+                    <Deslizante rotulo="Zoom da foto" valor={zoomAtual} min={ZOOM_MIN} max={ZOOM_MAX} passo={0.05} aoMudar={mudarZoom} texto={`${Math.round(zoomAtual * 100)}%`} />
+                    {nPaineis >= 2 && <p className="text-xs text-muted-foreground">Para comparar de verdade, as duas fotos usam o mesmo enquadramento.</p>}
+                  </div>
                 </div>
               )}
             </div>
@@ -451,15 +469,6 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
                   <Chips<LayoutArte> rotulo="Disposição" valor={layoutEf} aoEscolher={(l) => { setLayout(l); setTituloModoEscolhido(null); }} colunas="grid-cols-2" opcoes={layoutsOk.map((l) => ({ valor: l, rotulo: NOMES_LAYOUT[l] }))} />
                 </Grupo>
               )}
-
-              <Grupo titulo="Enquadramento das fotos" dica={nPaineis >= 2 ? 'Para comparar de verdade, as duas fotos usam o mesmo enquadramento.' : undefined}>
-                <Chips<ModoAjuste> rotulo="Ajuste da foto na caixa" valor={ajuste} aoEscolher={(v) => { setAjusteEscolhido(v); setEnquadramentoManual(null); }} colunas="grid-cols-2" opcoes={[{ valor: 'inteira', rotulo: 'Foto inteira', detalhe: 'não corta' }, { valor: 'preencher', rotulo: 'Preencher', detalhe: 'corta o excesso' }]} />
-                {nPaineis >= 2 && <Interruptor rotulo="Mover as duas fotos juntas" marcado={juntas} aoMudar={(v) => { setJuntas(v); if (v) setEnquadramentoManual((prev) => { const lista = prev ?? enquadramentoAutomatico; return lista.map(() => lista[fotoDoZoom] ?? ENQUADRAMENTO_PADRAO); }); }} />}
-                {nPaineis >= 2 && !juntas && (
-                  <Chips<string> rotulo="Foto do zoom" valor={String(fotoDoZoom)} aoEscolher={(v) => setFotoDoZoom(Number(v))} colunas="grid-cols-2" opcoes={Array.from({ length: nPaineis }, (_, i) => ({ valor: String(i), rotulo: nomeFoto(i) }))} />
-                )}
-                <Deslizante rotulo="Zoom da foto" valor={zoomAtual} min={ZOOM_MIN} max={ZOOM_MAX} passo={0.05} aoMudar={mudarZoom} texto={`${Math.round(zoomAtual * 100)}%`} />
-              </Grupo>
 
               <Grupo titulo="Título" dica={DICA_TITULO_SEM_PACIENTE}>
                 <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={70} placeholder="Ex.: Pós-operatório de SLAP" aria-label="Título da arte" className="h-11 text-base" />

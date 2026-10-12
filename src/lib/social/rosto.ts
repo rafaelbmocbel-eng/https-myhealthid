@@ -62,7 +62,7 @@ export function caixaDoRostoPorLandmarks(lm: Landmark[] | null | undefined, larg
 export function caixaRostoPadrao(largura: number, altura: number): CaixaRosto {
   const h = 0.15;
   const w = largura > 0 && altura > 0 ? Math.min(0.9, (h * altura * 0.85) / largura) : 0.2;
-  return { cx: 0.5, cy: 0.12, w, h };
+  return { cx: 0.5, cy: 0.14, w, h };
 }
 
 export const MULTIPLICADOR_MIN = 0.5;

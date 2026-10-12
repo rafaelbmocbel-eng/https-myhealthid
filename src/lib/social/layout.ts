@@ -219,12 +219,14 @@ export function calcularLayoutSocial(p: ParametrosLayout, medir: Medidor): Layou
     const cap = ALTURA_CAPITAL.titulo * aj.fonte;
     // Acento sobre maiúscula (Ó, Ã...) sobe acima das letras e, girado, invade a margem esquerda: abre espaço.
     const acento = TEM_ACENTO_MAIUSCULO.test(aj.linhas.join(' ')) ? aj.fonte * ACENTO_SOBRE_CAPITAL : 0;
+    // A coluna nunca é mais fina que o selo; um título fino fica centralizado sob ele.
+    colunaTitulo = Math.max(aj.espessura + acento, d);
+    const recuo = (colunaTitulo - aj.espessura - acento) / 2;
     titulo = {
       linhas: aj.linhas, fonte: aj.fonte, passo: aj.passo, rotacao: -90,
-      caixa: { x: mg.texto.esq, y: baseFotos - aj.comprimento, w: aj.espessura + acento, h: aj.comprimento },
-      ancora: { x: mg.texto.esq + acento + cap, y: baseFotos },
+      caixa: { x: mg.texto.esq + recuo, y: baseFotos - aj.comprimento, w: aj.espessura + acento, h: aj.comprimento },
+      ancora: { x: mg.texto.esq + recuo + acento + cap, y: baseFotos },
     };
-    colunaTitulo = aj.espessura + acento;
     esqFotos = mg.texto.esq + colunaTitulo + GAP_COLUNA;
     if (d) selo = { cx: mg.texto.esq + d / 2, cy: mg.texto.topo + d / 2, r: d / 2, sobreFoto: false };
   } else if (modo === 'horizontal') {
@@ -305,7 +307,7 @@ export function calcularLayoutSocial(p: ParametrosLayout, medir: Medidor): Layou
       const texto = `@${nome}`;
       const largura = larguraDoTexto(medir, texto, FONTE_PERFIL, 'texto');
       larguraPerfis = Math.max(larguraPerfis, largura);
-      return { texto, x: W - mg.texto.dir, baseY: baseTexto - 8 - (perfis.length - 1 - i) * PASSO_PERFIL, largura };
+      return { texto, x: W - mg.texto.dir, baseY: baseTexto - 14 - (perfis.length - 1 - i) * PASSO_PERFIL, largura };
     });
     perfisLay = { fonte: FONTE_PERFIL, linhas };
   }

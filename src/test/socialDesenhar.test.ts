@@ -1,0 +1,141 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { desenharArteSocial, desenharMolduraSocial, layoutDaArte, type OpcoesArte, type PainelPronto } from '@/lib/social/desenhar';
+
+interface Chamada { nome: string; args: unknown[]; fillStyle?: unknown }
+
+/** Contexto 2D que só anota o que foi pedido: o jsdom não tem canvas, e aqui interessa o QUE é desenhado. */
+function contextoGravador(largura = 1080, altura = 1920) {
+  const chamadas: Chamada[] = [];
+  const estado: Record<string, unknown> = { fillStyle: '#000' };
+  const canvas = { width: largura, height: altura };
+  const gradiente = { addColorStop: vi.fn() };
+  const alvo = { canvas } as Record<string, unknown>;
+  const ctx = new Proxy(alvo, {
+    get(t, prop: string) {
+      if (prop in t) return t[prop];
+      if (prop === 'createLinearGradient' || prop === 'createRadialGradient') return () => gradiente;
+      if (prop === 'measureText') return (s: string) => ({ width: s.length * 10 });
+      return (...args: unknown[]) => { chamadas.push({ nome: prop, args, fillStyle: estado.fillStyle }); };
+    },
+    set(t, prop: string, v) {
+      t[prop] = v;
+      if (prop === 'fillStyle') estado.fillStyle = v;
+      return true;
+    },
+  });
+  return { ctx: ctx as unknown as CanvasRenderingContext2D, chamadas, canvas };
+}
+
+const foto = (w = 1200, h = 1600): PainelPronto => ({ fonte: { width: w, height: h } as unknown as CanvasImageSource, largura: w, altura: h });
+
+const opcoes = (o: Partial<OpcoesArte> = {}): OpcoesArte => ({
+  formato: 'story', layout: 'empilhada', tituloModo: 'vertical', titulo: 'Pós operatório de SLAP', legenda: '3ª Semana de PO',
+  perfis: ['rafaelmocbel', 'myhealthid.app'], rotulos: ['Pré-Sessão', 'Pós-Sessão'], datas: ['11/10/2026', '25/10/2026'], margensStories: true, ...o,
+});
+
+const textos = (cs: Chamada[]) => cs.filter((c) => c.nome === 'fillText').map((c) => c.args[0]);
+
+beforeEach(() => {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+});
+
+describe('desenharArteSocial', () => {
+  it('escreve título em caixa alta, rótulos com data, legenda e perfis com @', () => {
+    const { ctx, chamadas } = contextoGravador();
+    desenharArteSocial(ctx, opcoes(), [foto(), foto()], {}, 1);
+    const t = textos(chamadas);
+    expect(t).toContain('PÓS OPERATÓRIO DE SLAP');
+    expect(t).toContain('Pré-Sessão');
+    expect(t).toContain('Pós-Sessão');
+    expect(t).toContain('11/10/2026');
+    expect(t).toContain('25/10/2026');
+    expect(t).toContain('3ª Semana de PO');
+    expect(t).toContain('@rafaelmocbel');
+    expect(t).toContain('@myhealthid.app');
+  });
+
+  it('desenha cada foto uma vez, sem distorcer (proporção da origem igual à do destino)', () => {
+    const { ctx, chamadas } = contextoGravador();
+    desenharArteSocial(ctx, opcoes({ modoAjuste: 'preencher' }), [foto(), foto()], {}, 1);
+    const fotos = chamadas.filter((c) => c.nome === 'drawImage');
+    expect(fotos).toHaveLength(2);
+    for (const f of fotos) {
+      const [, sx, sy, sw, sh, dx, dy, dw, dh] = f.args as number[];
+      expect(sw / sh).toBeCloseTo(dw / dh, 3);
+      expect(dw).toBeGreaterThan(0);
+      void sx; void sy; void dx; void dy;
+    }
+  });
+
+  it('com o rosto em tarja pinta a tarja opaca, e sem proteção não pinta', () => {
+    const rosto = { cx: 0.5, cy: 0.15, w: 0.2, h: 0.12 };
+    const com = contextoGravador();
+    desenharArteSocial(com.ctx, opcoes({ modoRosto: 'tarja', rostos: [rosto, rosto] }), [foto(), foto()], {}, 1);
+    expect(com.chamadas.filter((c) => c.nome === 'fill' && c.fillStyle === '#080c16')).toHaveLength(2);
+    const sem = contextoGravador();
+    desenharArteSocial(sem.ctx, opcoes({ modoRosto: 'nenhum', rostos: [rosto, rosto] }), [foto(), foto()], {}, 1);
+    expect(sem.chamadas.filter((c) => c.nome === 'fill' && c.fillStyle === '#080c16')).toHaveLength(0);
+  });
+
+  it('sem região de rosto definida não esconde nada, mesmo com o modo ligado', () => {
+    const { ctx, chamadas } = contextoGravador();
+    desenharArteSocial(ctx, opcoes({ modoRosto: 'tarja' }), [foto(), foto()], {}, 1);
+    expect(chamadas.filter((c) => c.nome === 'fill' && c.fillStyle === '#080c16')).toHaveLength(0);
+  });
+
+  it('aplica a escala da prévia sobre o sistema de coordenadas', () => {
+    const { ctx, chamadas } = contextoGravador(648, 1152);
+    desenharArteSocial(ctx, opcoes(), [foto(), foto()], {}, 0.6);
+    expect(chamadas.find((c) => c.nome === 'setTransform')?.args).toEqual([0.6, 0, 0, 0.6, 0, 0]);
+  });
+
+  it('com uma foto só desenha uma foto, mesmo que o layout peça duas', () => {
+    const { ctx, chamadas } = contextoGravador();
+    const layout = desenharArteSocial(ctx, opcoes({ layout: 'lado_a_lado', rotulos: ['Hoje'], datas: [''] }), [foto()], {}, 1);
+    expect(layout.layout).toBe('unica');
+    expect(chamadas.filter((c) => c.nome === 'drawImage')).toHaveLength(1);
+    expect(textos(chamadas)).toContain('Hoje');
+  });
+
+  it('com duas fotos o layout "unica" vira empilhada em vez de descartar uma foto', () => {
+    const { ctx, chamadas } = contextoGravador();
+    const layout = desenharArteSocial(ctx, opcoes({ layout: 'unica' }), [foto(), foto()], {}, 1);
+    expect(layout.layout).toBe('empilhada');
+    expect(chamadas.filter((c) => c.nome === 'drawImage')).toHaveLength(2);
+  });
+
+  it('desenha o selo e o avatar quando existem, e não quando faltam', () => {
+    const imagem = { width: 256, height: 256 } as unknown as CanvasImageSource;
+    const com = contextoGravador();
+    desenharArteSocial(com.ctx, opcoes(), [foto(), foto()], { selo: { imagem, tipo: 'marca' }, avatar: imagem }, 1);
+    expect(com.chamadas.filter((c) => c.nome === 'drawImage')).toHaveLength(4);
+    const sem = contextoGravador();
+    desenharArteSocial(sem.ctx, opcoes(), [foto(), foto()], {}, 1);
+    expect(sem.chamadas.filter((c) => c.nome === 'drawImage')).toHaveLength(2);
+  });
+
+  it('o layout calculado para a prévia é o mesmo usado para pintar', () => {
+    const { ctx } = contextoGravador();
+    const o = opcoes();
+    expect(desenharArteSocial(ctx, o, [foto(), foto()], {}, 1)).toEqual(layoutDaArte(o, 2, {}));
+  });
+});
+
+describe('desenharMolduraSocial (etapa do vídeo)', () => {
+  it('ajusta o canvas ao formato e põe o conteúdo, como uma foto só, dentro da moldura', () => {
+    const { ctx, chamadas, canvas } = contextoGravador(10, 10);
+    const quadro = { width: 720, height: 1280 } as unknown as CanvasImageSource;
+    const layout = desenharMolduraSocial(ctx, 'story', { titulo: 'Marcha', tituloModo: 'vertical', legenda: 'Fase de apoio', perfis: ['rafaelmocbel'], margensStories: true }, quadro);
+    expect([canvas.width, canvas.height]).toEqual([1080, 1920]);
+    expect(layout.layout).toBe('unica');
+    expect(layout.paineis).toHaveLength(1);
+    expect(chamadas.filter((c) => c.nome === 'drawImage')).toHaveLength(1);
+    expect(textos(chamadas)).toEqual(expect.arrayContaining(['MARCHA', 'Fase de apoio', '@rafaelmocbel']));
+  });
+
+  it('respeita a escala ao dimensionar o canvas', () => {
+    const { ctx, canvas } = contextoGravador(10, 10);
+    desenharMolduraSocial(ctx, 'quadrado', {}, { width: 100, height: 100 } as unknown as CanvasImageSource, {}, 0.5);
+    expect([canvas.width, canvas.height]).toEqual([540, 540]);
+  });
+});

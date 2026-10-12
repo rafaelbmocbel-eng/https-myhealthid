@@ -140,7 +140,7 @@ function desenharFundo(ctx: CanvasRenderingContext2D, W: number, H: number) {
 
 /** Sobras da foto "inteira": a própria foto, ampliada e desfocada, escurecida. */
 function desenharFundoDesfocado(ctx: CanvasRenderingContext2D, p: PainelPronto, caixa: Retangulo) {
-  const pw = 32, ph = Math.max(8, Math.round((32 * caixa.h) / caixa.w));
+  const pw = 10, ph = Math.max(4, Math.round((10 * caixa.h) / caixa.w));
   const pequeno = criarCanvas(pw, ph);
   const pc = pequeno.getContext('2d');
   if (!pc) return;
