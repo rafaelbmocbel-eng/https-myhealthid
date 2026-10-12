@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  arcoDoAngulo, coresDoRotulo, escalaDoEstilo, escalaNaTela, ESTILOS, ESTILO_INSTAGRAM, ESTILO_PADRAO, estilosIguais, larguraDoTexto, lerEstilo, normalizarEstilo,
+  arcoDoAngulo, coresDoRotulo, escalaDoEstilo, escurecerCor, escalaNaTela, ESTILOS, ESTILO_INSTAGRAM, ESTILO_PADRAO, estilosIguais, larguraDoTexto, lerEstilo, normalizarEstilo,
   rotuloGraus, rotuloValor, salvarEstilo,
 } from '../lib/angular/estilo';
 
@@ -104,6 +104,25 @@ describe('estilo das marcações', () => {
     expect(p.texto).toBe('#ffffff');
     // trocar a cor das retas leva a borda junto
     expect(coresDoRotulo({ ...ESTILO_INSTAGRAM, cor: '#3b82f6' }).borda).toBe('#3b82f6');
+  });
+
+  it('retas claras sobre a pílula clara do Instagram: texto e borda escuros, nunca branco ou amarelo apagado', () => {
+    const luminancia = (hex: string) => {
+      const n = parseInt(hex.slice(1), 16);
+      const canal = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+      return 0.2126 * canal((n >> 16) & 255) + 0.7152 * canal((n >> 8) & 255) + 0.0722 * canal(n & 255);
+    };
+    const contraste = (a: string, b: string) => { const [x, y] = [luminancia(a), luminancia(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    for (const cor of ['#ffffff', '#facc15']) {
+      const c = coresDoRotulo({ ...ESTILO_INSTAGRAM, cor });
+      expect(c.fundo).toBe('#ffffff');
+      expect(contraste(c.texto, c.fundo!)).toBeGreaterThan(7);
+      expect(contraste(c.borda, c.fundo!)).toBeGreaterThan(7);
+    }
+    // cor escolhida pelo usuário para a borda ou o texto continua valendo
+    expect(coresDoRotulo({ ...ESTILO_INSTAGRAM, cor: '#ffffff', rotuloBorda: '#ff0000', rotuloTexto: '#000000' })).toMatchObject({ borda: '#ff0000', texto: '#000000' });
+    // o preset (verde) continua com o texto verde escurecido e a borda verde
+    expect(coresDoRotulo(ESTILO_INSTAGRAM)).toMatchObject({ texto: escurecerCor(ESTILO_INSTAGRAM.cor), borda: ESTILO_INSTAGRAM.cor });
   });
 
   it('a largura estimada do texto cresce com o texto e com a fonte', () => {

@@ -13,13 +13,13 @@ import type { AnaliseParaExportar } from '@/lib/angular/analise';
 import type { Landmark } from '@/lib/angular/pose';
 import { carregarBrandingClinica } from '@/utils/pdfBranding';
 import {
-  AVISO_CONSELHO, DICA_TITULO_SEM_PACIENTE, TEXTO_CONSENTIMENTO, podeExportar,
+  AVISO_CONSELHO, DICA_TITULO_SEM_PACIENTE, TEXTO_CONSENTIMENTO, TEXTO_ROSTO_CONFERIDO, podeExportar,
 } from '@/lib/social/consentimento';
 import {
   carregarMarcaDoApp, carregarSeloDaClinica, carregarImagem, layoutDaArte, prepararPaineis, renderizarArteSocial,
   type OpcoesArte, type PainelPronto, type RecursosArte, type SeloImagem,
 } from '@/lib/social/desenhar';
-import { baixarBlob, canvasParaPng, compartilharArquivo, nomeArquivoSocial } from '@/lib/social/exportar';
+import { baixarBlob, canvasParaPng, canvasParaPngSincrono, compartilharArquivo, nomeArquivoSocial } from '@/lib/social/exportar';
 import { garantirFontesSociais } from '@/lib/social/fontes';
 import {
   FORMATOS, NOMES_LAYOUT, ORDEM_FORMATOS, layoutEfetivo, layoutSugerido, layoutsDisponiveis, tituloModoSugerido,
@@ -34,7 +34,7 @@ import {
 } from '@/lib/social/perfis';
 import {
   MULTIPLICADOR_MAX, MULTIPLICADOR_MIN, caixaDoRostoPorLandmarks, caixaRostoPadrao, escalarCaixaRosto, moverCaixaRosto,
-  type CaixaRosto, type ModoRosto,
+  type CaixaRosto, type ModoRosto, type ModoRostoProtegido,
 } from '@/lib/social/rosto';
 
 /**
@@ -139,7 +139,9 @@ const aplicar = (lista: Enquadramento[], i: number, novo: Enquadramento, juntas:
 
 export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks, terapeutaId, formatoInicial = 'story' }: ExportarSocialDialogProps) {
   const nPaineis = arte?.paineis.length ?? 0;
-  const inicial = useRef(lerPreferencias());
+  const [inicial] = useState(lerPreferencias);
+  // Último modo que esconde o rosto: é o de toda arte nova e o único que fica lembrado ("Mostrar" vale só para uma arte).
+  const modoProtegido = useRef<ModoRostoProtegido>(inicial.modoRosto);
 
   // ---- conteúdo ----
   const [formato, setFormato] = useState<FormatoSocial>(formatoInicial);
@@ -150,9 +152,9 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   const [rotulos, setRotulos] = useState<string[]>([]);
   const [datas, setDatas] = useState<string[]>([]);
   const [mostrarDatas, setMostrarDatas] = useState(true);
-  const [perfisTexto, setPerfisTexto] = useState<string[]>(() => Array.from({ length: MAX_PERFIS }, (_, i) => inicial.current.perfis[i] ?? ''));
-  const [margensStories, setMargensStories] = useState(inicial.current.margensStories);
-  const [seloModo, setSeloModo] = useState<SeloModo>(inicial.current.seloModo);
+  const [perfisTexto, setPerfisTexto] = useState<string[]>(() => Array.from({ length: MAX_PERFIS }, (_, i) => inicial.perfis[i] ?? ''));
+  const [margensStories, setMargensStories] = useState(inicial.margensStories);
+  const [seloModo, setSeloModo] = useState<SeloModo>(inicial.seloModo);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => lerAvatar());
 
   // ---- fotos ----
@@ -166,18 +168,21 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   const [ferramenta, setFerramenta] = useState<FerramentaPrevia>('enquadrar');
 
   // ---- rosto ----
-  const [modoRosto, setModoRosto] = useState<ModoRosto>(inicial.current.modoRosto);
+  const [modoRosto, setModoRosto] = useState<ModoRosto>(inicial.modoRosto);
   const [rostosBase, setRostosBase] = useState<(CaixaRosto | null)[]>([]);
   const [rostoAutomatico, setRostoAutomatico] = useState<boolean[]>([]);
   // Posição do rosto no momento da abertura: o enquadramento automático não pode andar junto com a área arrastada.
   const [rostoReferencia, setRostoReferencia] = useState<CaixaRosto | null>(null);
   const [mulLargura, setMulLargura] = useState(1);
   const [mulAltura, setMulAltura] = useState(1);
+  // Sem rosto localizado, a área padrão pode não estar sobre ele: o profissional confere na prévia e confirma.
+  const [rostoConferido, setRostoConferido] = useState(false);
 
   // ---- recursos de imagem ----
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [selo, setSelo] = useState<SeloImagem | null>(null);
   const [avatarImg, setAvatarImg] = useState<HTMLImageElement | null>(null);
+  const [logoIndisponivel, setLogoIndisponivel] = useState(false);
 
   // ---- saída ----
   const [autorizado, setAutorizado] = useState(false);
@@ -193,6 +198,8 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
     let cancelado = false;
     const n = arte.paineis.length;
     setAutorizado(false);
+    setModoRosto(modoProtegido.current);
+    setRostoConferido(false);
     setPaineis(null);
     setErroCarga(null);
     setImagemManual(null);
@@ -218,7 +225,7 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
         setRostosBase(bases.map((b, i) => b ?? caixaRostoPadrao(prontos[i].largura, prontos[i].altura)));
         setRostoAutomatico(bases.map((b) => b !== null));
         setRostoReferencia(bases[0] ?? caixaRostoPadrao(prontos[0].largura, prontos[0].altura));
-        setFerramenta(bases.some((b) => b === null) && inicial.current.modoRosto !== 'nenhum' ? 'rosto' : 'enquadrar');
+        setFerramenta(bases.some((b) => b === null) ? 'rosto' : 'enquadrar');
         setPaineis(prontos);
       } catch (e) {
         if (!cancelado) setErroCarga(e instanceof Error ? e.message : 'Não consegui abrir as fotos.');
@@ -228,6 +235,19 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
     // `landmarks` costuma ser recriado a cada render do pai; só vale o que chegou junto com a arte.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto, arte]);
+
+  // Fechado, solta as fotos (até três canvases grandes por foto) e a imagem final. Espera a animação de saída terminar.
+  useEffect(() => {
+    if (aberto) return undefined;
+    const t = window.setTimeout(() => {
+      setPaineis(null);
+      setRostosBase((r) => (r.length ? [] : r));
+      setRostoAutomatico((r) => (r.length ? [] : r));
+      setImagemManual(null);
+      setSelo(null);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [aberto]);
 
   // Logo da clínica (só se houver terapeuta).
   useEffect(() => {
@@ -247,10 +267,12 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
         let s: SeloImagem | null = null;
         if (seloModo === 'marca') s = await carregarMarcaDoApp();
         else if (seloModo === 'clinica') s = await carregarSeloDaClinica(logoUrl);
-        if (!cancelado) setSelo(s);
+        if (cancelado) return;
+        setSelo(s);
+        setLogoIndisponivel(seloModo === 'clinica' && !!logoUrl && s?.tipo === 'marca');
       } catch {
         // Nem a marca do app abriu (assets bloqueados): segue sem selo.
-        if (!cancelado) setSelo(null);
+        if (!cancelado) { setSelo(null); setLogoIndisponivel(false); }
       }
     })();
     return () => { cancelado = true; };
@@ -268,6 +290,10 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   const perfis = useMemo(() => normalizarPerfis(perfisTexto), [perfisTexto]);
   const recursos = useMemo<RecursosArte>(() => ({ selo, avatar: avatarImg }), [selo, avatarImg]);
   const rostos = useMemo(() => rostosBase.map((c) => (c ? escalarCaixaRosto(c, mulLargura, mulAltura) : null)), [rostosBase, mulLargura, mulAltura]);
+  // Sem área de rosto (modo "Mostrar") a única ferramenta é enquadrar, mesmo que a escolha anterior fosse posicionar o rosto.
+  const ferramentaEf: FerramentaPrevia = modoRosto === 'nenhum' ? 'enquadrar' : ferramenta;
+  const algumSemRosto = rostoAutomatico.some((a) => !a);
+  const rostoPendente = modoRosto !== 'nenhum' && algumSemRosto && !rostoConferido;
 
   const opcoesBase = useMemo<OpcoesArte>(() => ({
     formato, layout: layoutEf, tituloModo, titulo, legenda, perfis, margensStories, rotulos, datas, mostrarDatas,
@@ -295,17 +321,29 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   const concluirPerfil = (i: number) => {
     const limpa = perfisTexto.map((x, k) => (k === i ? normalizarPerfil(x) : x));
     setPerfisTexto(limpa);
-    salvarPreferencias({ perfis: normalizarPerfis(limpa), seloModo, margensStories, modoRosto });
+    salvarPreferencias({ perfis: normalizarPerfis(limpa), seloModo, margensStories, modoRosto: modoProtegido.current });
   };
-  const lembrar = (parte: Partial<{ seloModo: SeloModo; margensStories: boolean; modoRosto: ModoRosto }>) => {
-    salvarPreferencias({ perfis, seloModo, margensStories, modoRosto, ...parte });
+  const lembrar = (parte: Partial<{ seloModo: SeloModo; margensStories: boolean; modoRosto: ModoRostoProtegido }>) => {
+    salvarPreferencias({ perfis, seloModo, margensStories, modoRosto: modoProtegido.current, ...parte });
   };
+  const escolherModoRosto = (v: ModoRosto) => {
+    setModoRosto(v);
+    setRostoConferido(false);
+    if (v === 'nenhum') {
+      setFerramenta('enquadrar');
+      return;
+    }
+    modoProtegido.current = v;
+    lembrar({ modoRosto: v });
+  };
+  const mudarMulLargura = (v: number) => { setMulLargura(v); setRostoConferido(false); };
+  const mudarMulAltura = (v: number) => { setMulAltura(v); setRostoConferido(false); };
 
   // ---- gestos na prévia ----
   const arrastar = useCallback((i: number, dx: number, dy: number) => {
     const caixa = layoutAtual.paineis[i], p = paineis?.[i];
     if (!caixa || !p) return;
-    if (ferramenta === 'enquadrar') {
+    if (ferramentaEf === 'enquadrar') {
       setEnquadramentoManual((prev) => {
         const lista = prev ?? enquadramentoAutomatico;
         return aplicar(lista, i, arrastarEnquadramento(lista[i] ?? ENQUADRAMENTO_PADRAO, dx, dy, caixa, p.largura, p.altura, ajuste), juntas);
@@ -313,9 +351,10 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
     } else if (modoRosto !== 'nenhum') {
       const j = janelaDaImagem(caixa, p.largura, p.altura, ajuste, enquadramentos[i] ?? ENQUADRAMENTO_PADRAO);
       if (!(j.escala > 0)) return;
+      setRostoConferido(false);
       setRostosBase((prev) => prev.map((c, k) => (k === i && c ? moverCaixaRosto(c, c.cx + dx / (j.escala * p.largura), c.cy + dy / (j.escala * p.altura)) : c)));
     }
-  }, [layoutAtual, paineis, ferramenta, ajuste, juntas, modoRosto, enquadramentos, enquadramentoAutomatico]);
+  }, [layoutAtual, paineis, ferramentaEf, ajuste, juntas, modoRosto, enquadramentos, enquadramentoAutomatico]);
 
   const dar = useCallback((i: number, fator: number, foco: { x: number; y: number }) => {
     const caixa = layoutAtual.paineis[i], p = paineis?.[i];
@@ -362,13 +401,23 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
     return { blob, nome, arquivo: new File([blob], nome, { type: 'image/png' }) };
   };
 
+  // No toque de Compartilhar não pode haver `await` antes do share (Safari/WebView do iPhone): renderiza e codifica na hora.
+  // As fontes já foram carregadas quando a arte abriu.
+  const montarArquivoNoToque = () => {
+    if (!paineis) throw new Error('As fotos ainda estão carregando.');
+    const { canvas } = renderizarArteSocial(opcoes, paineis, recursos, 1);
+    const blob = canvasParaPngSincrono(canvas);
+    const nome = nomeArquivoSocial(formato, layoutEf);
+    return { blob, nome, arquivo: new File([blob], nome, { type: 'image/png' }) };
+  };
+
   const falha = (e: unknown) => {
     const seguranca = e instanceof Error && e.name === 'SecurityError';
     toast.error(seguranca ? 'A logo da clínica não pôde ser usada. Troque o selo por “Marca MyHealthID” e tente de novo.' : 'Não consegui gerar a imagem. Tente de novo.');
   };
 
   const baixar = async () => {
-    if (!podeExportar(autorizado, ocupado !== null)) return;
+    if (!podeExportar(autorizado, ocupado !== null, rostoPendente)) return;
     setOcupado('baixar');
     try {
       const { blob, nome } = await montarArquivo();
@@ -384,15 +433,17 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   };
 
   const compartilhar = async () => {
-    if (!podeExportar(autorizado, ocupado !== null)) return;
+    if (!podeExportar(autorizado, ocupado !== null, rostoPendente)) return;
     setOcupado('compartilhar');
     try {
-      const { blob, nome, arquivo } = await montarArquivo();
+      const { blob, nome, arquivo } = montarArquivoNoToque();
       const r = await compartilharArquivo(arquivo);
       if (r === 'indisponivel') {
         baixarBlob(blob, nome);
         if (Capacitor.isNativePlatform()) setImagemManual(URL.createObjectURL(blob));
         toast.info('Este aparelho não abre o compartilhamento direto. A imagem foi baixada.');
+      } else if (r === 'bloqueado') {
+        toast.info('O aparelho não abriu o compartilhamento. Toque em Compartilhar de novo ou use Baixar PNG.');
       }
     } catch (e) {
       falha(e);
@@ -402,21 +453,20 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   };
 
   const nomeFoto = (i: number) => (rotulos[i]?.trim() ? rotulos[i].trim() : `Foto ${i + 1}`);
-  const algumSemRosto = rostoAutomatico.some((a) => !a);
   const layoutsOk = layoutsDisponiveis(nPaineis);
   const zoomAtual = enquadramentos[juntas ? 0 : fotoDoZoom]?.zoom ?? 1;
-  const liberado = podeExportar(autorizado, ocupado !== null) && !!paineis;
+  const liberado = podeExportar(autorizado, ocupado !== null, rostoPendente) && !!paineis;
 
   return (
     <Dialog open={aberto} onOpenChange={(o) => { if (!o) aoFechar(); }}>
-      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[calc(100%-2rem)] sm:rounded-lg">
-        <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3">
+      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[calc(100%-2rem)] sm:rounded-lg [&>button]:top-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:[&>button]:top-3">
+        <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))', paddingLeft: 'max(1rem, env(safe-area-inset-left))' }}>
           <DialogTitle className="text-base">Arte para Instagram</DialogTitle>
           <DialogDescription className="text-xs">Monte a imagem com as marcações, confira a prévia e baixe já no formato certo.</DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-testid="corpo-social">
-          <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+          <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
             {/* Prévia */}
             <div className="space-y-3 lg:sticky lg:top-0 lg:self-start">
               {erroCarga && <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{erroCarga}</p>}
@@ -425,7 +475,7 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
               )}
               {paineis && (
                 <PreviaArteSocial
-                  opcoes={opcoes} paineis={paineis} recursos={recursos} escala={ESCALA_PREVIA} ferramenta={ferramenta}
+                  opcoes={opcoes} paineis={paineis} recursos={recursos} escala={ESCALA_PREVIA} ferramenta={ferramentaEf}
                   aoArrastar={arrastar} aoZoom={dar}
                   descricao={`Prévia da arte ${ROTULO_FORMATO[formato]}, ${NOMES_LAYOUT[layoutEf].toLowerCase()}`}
                 />
@@ -435,7 +485,7 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground">Arrastar na prévia</p>
                     <Chips<FerramentaPrevia>
-                      rotulo="Ferramenta da prévia" valor={ferramenta} aoEscolher={setFerramenta} colunas="grid-cols-2"
+                      rotulo="Ferramenta da prévia" valor={ferramentaEf} aoEscolher={setFerramenta} colunas="grid-cols-2"
                       opcoes={[{ valor: 'enquadrar', rotulo: 'Enquadrar a foto', detalhe: 'arraste e use pinça' }, ...(modoRosto !== 'nenhum' ? [{ valor: 'rosto' as const, rotulo: 'Posicionar o rosto', detalhe: 'arraste a área' }] : [])]}
                     />
                     {modoRosto !== 'nenhum' && algumSemRosto && (
@@ -502,7 +552,7 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
                 {perfisTexto.map((p, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="w-5 text-center text-base font-semibold text-muted-foreground" aria-hidden>@</span>
-                    <Input value={p} onChange={(e) => mudarPerfil(i, e.target.value)} onBlur={() => concluirPerfil(i)} maxLength={40} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={i === 0 ? 'seuperfil' : 'outro perfil (opcional)'} aria-label={`Perfil ${i + 1}`} className="h-11 text-base" />
+                    <Input value={p} onChange={(e) => mudarPerfil(i, e.target.value)} onBlur={() => concluirPerfil(i)} maxLength={200} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={i === 0 ? 'seuperfil' : 'outro perfil (opcional)'} aria-label={`Perfil ${i + 1}`} className="h-11 text-base" />
                   </div>
                 ))}
               </Grupo>
@@ -510,14 +560,19 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
               <Grupo titulo="Selo">
                 <Chips<SeloModo> rotulo="Selo no canto" valor={seloModo} aoEscolher={(v) => { setSeloModo(v); lembrar({ seloModo: v }); }} opcoes={[{ valor: 'clinica', rotulo: 'Logo da clínica' }, { valor: 'marca', rotulo: 'MyHealthID' }, { valor: 'nenhum', rotulo: 'Sem selo' }]} />
                 {seloModo === 'clinica' && !logoUrl && <p className="text-xs text-muted-foreground">Nenhuma logo de clínica encontrada: o selo usa a marca do MyHealthID.</p>}
+                {seloModo === 'clinica' && logoIndisponivel && (
+                  <p role="status" className="rounded-lg bg-amber-500/10 p-2 text-xs font-medium text-amber-800 dark:text-amber-300" data-testid="aviso-logo">
+                    Não consegui usar a logo da clínica (o endereço dela não permite o uso em imagens). O selo está com a marca do MyHealthID; reenvie a logo nas configurações da clínica para usá-la aqui.
+                  </p>
+                )}
               </Grupo>
 
               <Grupo titulo="Privacidade do rosto" dica="Escondido por padrão. Desligue só se o paciente autorizou aparecer.">
-                <Chips<ModoRosto> rotulo="Esconder o rosto" valor={modoRosto} aoEscolher={(v) => { setModoRosto(v); lembrar({ modoRosto: v }); if (v === 'nenhum') setFerramenta('enquadrar'); }} opcoes={[{ valor: 'desfoque', rotulo: 'Desfocar' }, { valor: 'tarja', rotulo: 'Tarja' }, { valor: 'nenhum', rotulo: 'Mostrar' }]} />
+                <Chips<ModoRosto> rotulo="Esconder o rosto" valor={modoRosto} aoEscolher={escolherModoRosto} opcoes={[{ valor: 'desfoque', rotulo: 'Desfocar' }, { valor: 'tarja', rotulo: 'Tarja' }, { valor: 'nenhum', rotulo: 'Mostrar' }]} />
                 {modoRosto !== 'nenhum' && (
                   <>
-                    <Deslizante rotulo="Largura da área" valor={mulLargura} min={MULTIPLICADOR_MIN} max={MULTIPLICADOR_MAX} passo={0.05} aoMudar={setMulLargura} texto={`${Math.round(mulLargura * 100)}%`} />
-                    <Deslizante rotulo="Altura da área" valor={mulAltura} min={MULTIPLICADOR_MIN} max={MULTIPLICADOR_MAX} passo={0.05} aoMudar={setMulAltura} texto={`${Math.round(mulAltura * 100)}%`} />
+                    <Deslizante rotulo="Largura da área" valor={mulLargura} min={MULTIPLICADOR_MIN} max={MULTIPLICADOR_MAX} passo={0.05} aoMudar={mudarMulLargura} texto={`${Math.round(mulLargura * 100)}%`} />
+                    <Deslizante rotulo="Altura da área" valor={mulAltura} min={MULTIPLICADOR_MIN} max={MULTIPLICADOR_MAX} passo={0.05} aoMudar={mudarMulAltura} texto={`${Math.round(mulAltura * 100)}%`} />
                     <p className={cn('text-xs', algumSemRosto ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-muted-foreground')} data-testid="dica-rosto">
                       {algumSemRosto
                         ? 'Não achei o rosto automaticamente em alguma foto. Use “Posicionar o rosto” e arraste a área sobre ele.'
@@ -531,11 +586,20 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
         </div>
 
         {/* Autorização e ações: sempre à vista no rodapé do diálogo. */}
-        <div className="shrink-0 space-y-2 border-t border-border/60 bg-background px-4 py-3" data-testid="rodape-social">
+        <div
+          className="max-h-[55dvh] shrink-0 space-y-2 overflow-y-auto overscroll-contain border-t border-border/60 bg-background px-4 pt-3" data-testid="rodape-social"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))', paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}
+        >
           <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-border/60 p-2.5 text-sm">
             <Checkbox checked={autorizado} onCheckedChange={(v) => setAutorizado(v === true)} className="mt-0.5 h-6 w-6" />
             <span className="font-medium leading-snug">{TEXTO_CONSENTIMENTO}</span>
           </label>
+          {modoRosto !== 'nenhum' && algumSemRosto && (
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-2.5 text-sm" data-testid="conferir-rosto">
+              <Checkbox checked={rostoConferido} onCheckedChange={(v) => setRostoConferido(v === true)} className="mt-0.5 h-6 w-6" />
+              <span className="font-medium leading-snug">{TEXTO_ROSTO_CONFERIDO}</span>
+            </label>
+          )}
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> {AVISO_CONSELHO}</p>
           <div className="grid grid-cols-2 gap-2">
             <Button className="h-12 gap-2" onClick={() => void baixar()} disabled={!liberado} data-testid="baixar-png">

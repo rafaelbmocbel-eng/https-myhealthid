@@ -111,10 +111,52 @@ describe('desenharArteSocial', () => {
     expect(m.args.slice(1)).toEqual(f.args.slice(1));
   });
 
-  it('sem região de rosto definida não esconde nada, mesmo com o modo ligado', () => {
+  it('sem região de rosto definida usa a caixa padrão do alto da foto: o rosto não fica à mostra por omissão', () => {
     const { ctx, chamadas } = contextoGravador();
     desenharArteSocial(ctx, opcoes({ modoRosto: 'tarja' }), [foto(), foto()], {}, 1);
-    expect(chamadas.filter((c) => c.nome === 'fill' && c.fillStyle === '#080c16')).toHaveLength(0);
+    expect(chamadas.filter((c) => c.nome === 'fill' && c.fillStyle === '#080c16')).toHaveLength(2);
+  });
+
+  it('sem modoRosto o padrão é esconder (desfoque); só "nenhum" explícito mostra o rosto', () => {
+    const rodar = (o: Partial<OpcoesArte>) => {
+      const gravado = contextoGravador();
+      const original = document.createElement.bind(document);
+      let criados = 0;
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string, opts?: ElementCreationOptions) => {
+        if (tag === 'canvas') criados++;
+        return original(tag, opts);
+      });
+      desenharArteSocial(gravado.ctx, opcoes({ modoAjuste: 'preencher', ...o }), [foto(), foto()], {}, 1);
+      vi.mocked(document.createElement).mockRestore();
+      return criados;
+    };
+    // o desfoque monta canvases temporários para cada rosto; "nenhum" não monta nenhum
+    expect(rodar({})).toBeGreaterThanOrEqual(2);
+    expect(rodar({ modoRosto: 'nenhum' })).toBe(0);
+  });
+
+  it('a moldura do vídeo também esconde o rosto por omissão (caixa padrão), a menos que se peça o contrário', () => {
+    const quadro = { width: 720, height: 1280 } as unknown as CanvasImageSource;
+    const padrao = contextoGravador(10, 10);
+    desenharMolduraSocial(padrao.ctx, 'story', { modoRosto: 'tarja' }, quadro);
+    expect(padrao.chamadas.filter((c) => c.nome === 'fill' && c.fillStyle === '#080c16')).toHaveLength(1);
+    const mostrando = contextoGravador(10, 10);
+    desenharMolduraSocial(mostrando.ctx, 'story', { modoRosto: 'nenhum' }, quadro);
+    expect(mostrando.chamadas.filter((c) => c.nome === 'fill' && c.fillStyle === '#080c16')).toHaveLength(0);
+  });
+
+  it('a sombra da foto acompanha a escala: prévia e arquivo final saem com a mesma proporção', () => {
+    const sombra = (escala: number) => {
+      const { ctx } = contextoGravador(1080 * escala, 1920 * escala);
+      const blur: number[] = [];
+      const alvo = ctx as unknown as Record<string, unknown>;
+      let atual = 0;
+      Object.defineProperty(alvo, 'shadowBlur', { get: () => atual, set: (v: number) => { atual = v; blur.push(v); }, configurable: true });
+      desenharArteSocial(ctx, opcoes(), [foto(), foto()], {}, escala);
+      return blur[0];
+    };
+    expect(sombra(1)).toBe(38);
+    expect(sombra(0.6)).toBeCloseTo(38 * 0.6, 6);
   });
 
   it('aplica a escala da prévia sobre o sistema de coordenadas', () => {

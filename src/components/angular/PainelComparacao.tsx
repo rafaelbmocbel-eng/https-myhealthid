@@ -16,6 +16,8 @@ export const SUFIXO_ALCA = ':alca';
 // Raio de toque dos pontos arrastáveis, em pixels de tela: maior na medida ativa, para as outras não roubarem o toque de quem marca perto.
 const TOQUE_ATIVA = 24;
 const TOQUE_OUTRAS = 12;
+// Marcando pontos novos o alvo é pequeno, para um ponto próximo do anterior (os dois do calcanhar) não ser tomado por arrasto.
+const TOQUE_MARCANDO = 5;
 // A prévia pequena nunca afina as retas abaixo de ~1/3 de pixel de tela por unidade de espessura do estilo.
 const ESP_MIN_TELA_PX = 0.33;
 
@@ -148,13 +150,13 @@ export default function PainelComparacao({
                       <text x={q.x + 19 * un} y={q.y - 19 * un} fontSize={13 * un} fontWeight={700} fill="#ffffff" stroke="#000000" strokeWidth={3 * un} paintOrder="stroke" textAnchor="middle" pointerEvents="none">{i + 1}</text>
                     </>
                   )}
-                  <circle cx={q.x} cy={q.y} r={(ativa ? TOQUE_ATIVA : TOQUE_OUTRAS) * un} fill="transparent" />
+                  <circle cx={q.x} cy={q.y} r={(podeMarcar ? TOQUE_MARCANDO : ativa ? TOQUE_ATIVA : TOQUE_OUTRAS) * un} fill="transparent" />
                 </g>
               );
             })}
             {prumo && alcaPrumo && (
               <g onPointerDown={(e) => gestos.aoPressionarPonto(e, `${prumo.id}${SUFIXO_ALCA}`, 0)} style={{ cursor: mover ? 'grab' : 'ew-resize' }} data-testid="alca-prumo">
-                <circle cx={alcaPrumo.x} cy={alcaPrumo.y} r={TOQUE_ATIVA * un} fill="transparent" />
+                <circle cx={alcaPrumo.x} cy={alcaPrumo.y} r={(podeMarcar ? TOQUE_MARCANDO : TOQUE_ATIVA) * un} fill="transparent" />
                 <circle cx={alcaPrumo.x} cy={alcaPrumo.y} r={12 * un} fill={estilo.cor} stroke="#fff" strokeWidth={2 * un} />
                 <path d={`M ${alcaPrumo.x - 6.5 * un} ${alcaPrumo.y} H ${alcaPrumo.x + 6.5 * un}`} stroke="#111" strokeWidth={2 * un} strokeLinecap="round" fill="none" pointerEvents="none" />
               </g>

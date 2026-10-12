@@ -5,7 +5,7 @@ import { fonteCss, garantirFontesSociais, medidorDoCanvas } from './fontes';
 import { FORMATOS, layoutEfetivo, type FormatoSocial, type LayoutArte, type Retangulo, type TituloModo } from './formatos';
 import { ENQUADRAMENTO_PADRAO, janelaDaImagem, type Enquadramento, type ModoAjuste } from './geometria';
 import { ALTURA_CAPITAL, calcularLayoutSocial, larguraDoTexto, type LayoutSocial, type Medidor, type PilulaLayout, type RotuloLayout, type SeloLayout, type TituloLayout } from './layout';
-import type { CaixaRosto, ModoRosto } from './rosto';
+import { caixaRostoPadrao, type CaixaRosto, type ModoRosto } from './rosto';
 
 /*
  * Compositor da arte social: pinta no canvas o que `calcularLayoutSocial` decidiu. Funciona com uma ou
@@ -28,8 +28,12 @@ export interface OpcoesArte {
   mostrarDatas?: boolean;
   modoAjuste?: ModoAjuste | ModoAjuste[];
   enquadramentos?: Enquadramento[];
+  /**
+   * Como esconder o rosto. Sem informar, vale 'desfoque': mostrar o rosto exige 'nenhum' explícito, e só com a
+   * autorização do paciente (o diálogo `ExportarSocialDialog` cobra essa autorização; quem desenha direto precisa cobrar).
+   */
   modoRosto?: ModoRosto;
-  /** Região do rosto de cada foto (fração da foto); sem ela, o modo de rosto não desenha nada. */
+  /** Região do rosto de cada foto (fração da foto); sem ela, vale a caixa padrão do alto da foto (`caixaRostoPadrao`). */
   rostos?: (CaixaRosto | null | undefined)[];
 }
 
@@ -155,12 +159,18 @@ function desenharFundo(ctx: CanvasRenderingContext2D, W: number, H: number) {
   ctx.fillRect(0, 0, W, H);
 }
 
-/** Sobras da foto "inteira": a própria foto, ampliada e desfocada, escurecida. */
-function desenharFundoDesfocado(ctx: CanvasRenderingContext2D, p: PainelPronto, caixa: Retangulo) {
+const liberarCanvas = (c: HTMLCanvasElement) => {
+  // Zerar o tamanho devolve a memória na hora; o Safari do iPhone demora a recolher canvas descartado.
+  c.width = 0;
+  c.height = 0;
+};
+
+/** A própria foto, ampliada e desfocada, no tamanho da caixa (sem o escurecimento). Null sem canvas. */
+function gerarFundoDesfocado(p: PainelPronto, caixa: Retangulo): HTMLCanvasElement | null {
   const pw = 10, ph = Math.max(4, Math.round((10 * caixa.h) / caixa.w));
   const pequeno = criarCanvas(pw, ph);
   const pc = pequeno.getContext('2d');
-  if (!pc) return;
+  if (!pc) return null;
   pc.imageSmoothingEnabled = true;
   pc.imageSmoothingQuality = 'high';
   const e = Math.max(pw / p.largura, ph / p.altura);
@@ -170,24 +180,45 @@ function desenharFundoDesfocado(ctx: CanvasRenderingContext2D, p: PainelPronto, 
   for (let passo = 0; passo < 8 && (atual.width < alvoW || atual.height < alvoH); passo++) {
     const prox = criarCanvas(Math.min(alvoW, atual.width * 3), Math.min(alvoH, atual.height * 3));
     const c = prox.getContext('2d');
-    if (!c) break;
+    if (!c) { liberarCanvas(prox); break; }
     c.imageSmoothingEnabled = true;
     c.imageSmoothingQuality = 'high';
     c.drawImage(atual, 0, 0, prox.width, prox.height);
+    liberarCanvas(atual);
     atual = prox;
   }
-  ctx.drawImage(atual, caixa.x, caixa.y, caixa.w, caixa.h);
+  return atual;
+}
+
+// O fundo só depende da foto e do tamanho da caixa, mas é caro de montar e a prévia redesenha a cada gesto.
+// A chave é o painel (objeto novo a cada chamada de `desenharMolduraSocial`, então um quadro de vídeo reaproveitado nunca fica velho).
+const fundosDesfocados = new WeakMap<PainelPronto, { chave: string; canvas: HTMLCanvasElement }>();
+
+/** Sobras da foto "inteira": a própria foto, ampliada e desfocada, escurecida. */
+function desenharFundoDesfocado(ctx: CanvasRenderingContext2D, p: PainelPronto, caixa: Retangulo) {
+  const chave = `${Math.ceil(caixa.w)}x${Math.ceil(caixa.h)}:${p.largura}x${p.altura}`;
+  let guardado = fundosDesfocados.get(p);
+  if (guardado?.chave !== chave) {
+    if (guardado) liberarCanvas(guardado.canvas);
+    fundosDesfocados.delete(p);
+    const canvas = gerarFundoDesfocado(p, caixa);
+    guardado = canvas ? { chave, canvas } : undefined;
+    if (guardado) fundosDesfocados.set(p, guardado);
+  }
+  if (!guardado) return;
+  ctx.drawImage(guardado.canvas, caixa.x, caixa.y, caixa.w, caixa.h);
   ctx.fillStyle = 'rgba(6,10,20,0.62)';
   ctx.fillRect(caixa.x, caixa.y, caixa.w, caixa.h);
 }
 
 function desenharPainel(
-  ctx: CanvasRenderingContext2D, caixa: Retangulo, p: PainelPronto, modo: ModoAjuste, enq: Enquadramento, rosto: CaixaRosto | null, modoRosto: ModoRosto,
+  ctx: CanvasRenderingContext2D, caixa: Retangulo, p: PainelPronto, modo: ModoAjuste, enq: Enquadramento, rosto: CaixaRosto, modoRosto: ModoRosto, escala: number,
 ) {
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 38;
-  ctx.shadowOffsetY = 12;
+  // Sombra não acompanha a transformação do contexto: sem multiplicar, a prévia teria um halo maior que o do arquivo.
+  ctx.shadowBlur = 38 * escala;
+  ctx.shadowOffsetY = 12 * escala;
   caminho(ctx, caixa, RAIO_FOTO);
   ctx.fillStyle = '#0a0f1a';
   ctx.fill();
@@ -203,7 +234,7 @@ function desenharPainel(
     ctx.imageSmoothingQuality = 'high';
     const base = p.camadas?.foto ?? p.fonte;
     ctx.drawImage(base, j.origem.x, j.origem.y, j.origem.w, j.origem.h, j.destino.x, j.destino.y, j.destino.w, j.destino.h);
-    if (rosto && modoRosto !== 'nenhum') protegerRosto(ctx, base, p.largura, p.altura, j, caixa, rosto, modoRosto);
+    if (modoRosto !== 'nenhum') protegerRosto(ctx, base, p.largura, p.altura, j, caixa, rosto, modoRosto);
     if (p.camadas) ctx.drawImage(p.camadas.marcacoes, j.origem.x, j.origem.y, j.origem.w, j.origem.h, j.destino.x, j.destino.y, j.destino.w, j.destino.h);
   }
   ctx.restore();
@@ -363,7 +394,7 @@ export function desenharArteSocial(ctx: CanvasRenderingContext2D, o: OpcoesArte,
   ctx.setTransform(escala, 0, 0, escala, 0, 0);
   ctx.clearRect(0, 0, layout.largura, layout.altura);
   desenharFundo(ctx, layout.largura, layout.altura);
-  usados.forEach((p, i) => desenharPainel(ctx, layout.paineis[i], p, ajusteDe(o, i), enquadramentoDe(o, i), o.rostos?.[i] ?? null, o.modoRosto ?? 'nenhum'));
+  usados.forEach((p, i) => desenharPainel(ctx, layout.paineis[i], p, ajusteDe(o, i), enquadramentoDe(o, i), o.rostos?.[i] ?? caixaRostoPadrao(p.largura, p.altura), o.modoRosto ?? 'desfoque', escala));
   if (layout.titulo) desenharTitulo(ctx, layout.titulo);
   layout.rotulos.forEach((r) => desenharRotulo(ctx, r, medidorDoCanvas));
   if (layout.selo && recursos.selo) desenharSelo(ctx, layout.selo, recursos.selo);
@@ -376,6 +407,10 @@ export function desenharArteSocial(ctx: CanvasRenderingContext2D, o: OpcoesArte,
 /**
  * Moldura da arte (fundo, título, rótulo, selo, legenda e perfis) em volta de um único conteúdo, como um
  * quadro de vídeo. O canvas é ajustado ao formato. Para a etapa do vídeo: o conteúdo entra no lugar da foto.
+ *
+ * Esta função não pede a autorização do paciente: quem exporta precisa cobrá-la (o caminho completo é
+ * `arteDeQuadroDeVideo` + `ExportarSocialDialog`). Sem `opcoes.modoRosto` o rosto sai desfocado numa caixa padrão
+ * no alto do quadro; mostrar o rosto exige `modoRosto: 'nenhum'` explícito.
  */
 export function desenharMolduraSocial(
   ctx: CanvasRenderingContext2D, formato: FormatoSocial, opcoes: Omit<OpcoesArte, 'formato' | 'layout'>, conteudoCanvas: CanvasImageSource, recursos: RecursosArte = {}, escala = 1,

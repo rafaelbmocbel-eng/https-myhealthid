@@ -33,17 +33,24 @@ function caminhoArredondado(ctx: CanvasRenderingContext2D, r: Retangulo, raio: n
   ctx.closePath();
 }
 
-/** Amplia `origem` até `w`×`h` em passos de 2x, para o resultado sair liso e não em blocos. */
+// Zerar o tamanho devolve a memória na hora; o Safari do iPhone demora a recolher canvas descartado, e a prévia refaz isto a cada gesto.
+const liberarCanvas = (c: HTMLCanvasElement) => {
+  c.width = 0;
+  c.height = 0;
+};
+
+/** Amplia `origem` até `w`×`h` em passos de 2x, para o resultado sair liso e não em blocos. Os passos intermediários são liberados; `origem` não. */
 function ampliarSuave(origem: HTMLCanvasElement, w: number, h: number): HTMLCanvasElement {
   let atual = origem;
   const alvoW = Math.ceil(w), alvoH = Math.ceil(h);
   for (let passo = 0; passo < 8 && (atual.width < alvoW || atual.height < alvoH); passo++) {
     const prox = criarCanvas(Math.min(alvoW, atual.width * 2), Math.min(alvoH, atual.height * 2));
     const c = prox.getContext('2d');
-    if (!c) return atual;
+    if (!c) { liberarCanvas(prox); return atual; }
     c.imageSmoothingEnabled = true;
     c.imageSmoothingQuality = 'high';
     c.drawImage(atual, 0, 0, prox.width, prox.height);
+    if (atual !== origem) liberarCanvas(atual);
     atual = prox;
   }
   return atual;
@@ -63,7 +70,7 @@ function desfocarRegiao(ctx: CanvasRenderingContext2D, fonte: CanvasImageSource,
   const celula = Math.max(4, Math.min(dw, dh) / 9);
   const pequeno = criarCanvas(dw / celula, dh / celula);
   const pc = pequeno.getContext('2d');
-  if (!pc) return;
+  if (!pc) { liberarCanvas(pequeno); return; }
   pc.imageSmoothingEnabled = true;
   pc.imageSmoothingQuality = 'high';
   pc.drawImage(fonte, x0 * imgW, y0 * imgH, (x1 - x0) * imgW, (y1 - y0) * imgH, 0, 0, pequeno.width, pequeno.height);
@@ -71,7 +78,7 @@ function desfocarRegiao(ctx: CanvasRenderingContext2D, fonte: CanvasImageSource,
   const tmp = ampliarSuave(pequeno, Math.ceil(dw), Math.ceil(dh));
   const final = criarCanvas(dw, dh);
   const fc = final.getContext('2d');
-  if (!fc) return;
+  if (!fc) { liberarCanvas(final); liberarCanvas(tmp); liberarCanvas(pequeno); return; }
   fc.imageSmoothingEnabled = true;
   fc.imageSmoothingQuality = 'high';
   fc.drawImage(tmp, 0, 0, final.width, final.height);
@@ -90,6 +97,9 @@ function desfocarRegiao(ctx: CanvasRenderingContext2D, fonte: CanvasImageSource,
   fc.restore();
 
   ctx.drawImage(final, dx, dy, dw, dh);
+  liberarCanvas(final);
+  liberarCanvas(tmp);
+  liberarCanvas(pequeno);
 }
 
 /** Pinta o desfoque ou a tarja sobre o rosto. Deve ser chamado com o clip da caixa da foto já ativo. */

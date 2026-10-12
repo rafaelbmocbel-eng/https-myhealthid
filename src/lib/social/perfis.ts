@@ -1,4 +1,4 @@
-import type { ModoRosto } from './rosto';
+import type { ModoRostoProtegido } from './rosto';
 
 export const MAX_PERFIS = 3;
 const MAX_CARACTERES_PERFIL = 30;
@@ -36,7 +36,8 @@ export interface PreferenciasSociais {
   perfis: string[];
   seloModo: SeloModo;
   margensStories: boolean;
-  modoRosto: ModoRosto;
+  /** Nunca 'nenhum': mostrar o rosto vale só para a arte em que o profissional escolheu isso. */
+  modoRosto: ModoRostoProtegido;
 }
 
 export const PREFERENCIAS_PADRAO: PreferenciasSociais = { perfis: [], seloModo: 'clinica', margensStories: true, modoRosto: 'desfoque' };
@@ -48,12 +49,12 @@ export function normalizarPreferencias(bruto: unknown): PreferenciasSociais {
   if (!bruto || typeof bruto !== 'object') return PREFERENCIAS_PADRAO;
   const o = bruto as Record<string, unknown>;
   const selo: SeloModo[] = ['clinica', 'marca', 'nenhum'];
-  const rostos: ModoRosto[] = ['nenhum', 'desfoque', 'tarja'];
+  const rostos: ModoRostoProtegido[] = ['desfoque', 'tarja'];
   return {
     perfis: normalizarPerfis(o.perfis),
     seloModo: selo.includes(o.seloModo as SeloModo) ? (o.seloModo as SeloModo) : PREFERENCIAS_PADRAO.seloModo,
     margensStories: typeof o.margensStories === 'boolean' ? o.margensStories : PREFERENCIAS_PADRAO.margensStories,
-    modoRosto: rostos.includes(o.modoRosto as ModoRosto) ? (o.modoRosto as ModoRosto) : PREFERENCIAS_PADRAO.modoRosto,
+    modoRosto: rostos.includes(o.modoRosto as ModoRostoProtegido) ? (o.modoRosto as ModoRostoProtegido) : PREFERENCIAS_PADRAO.modoRosto,
   };
 }
 

@@ -75,7 +75,18 @@ describe('resultados da análise', () => {
     ]);
     expect(salvas[0]).toEqual({ id: 'ombros', graus: 2.3, texto: 't' });
     expect(salvas[1].unidade).toBe('cm');
-    expect(salvas[2]).toMatchObject({ graus: -3.1, unidade: '%' });
+    expect(salvas[2]).toMatchObject({ graus: 3.1, unidade: '%' });
+  });
+
+  it('grava o valor em módulo e o lado em "sentido": o sinal do cálculo nunca vai para as tabelas', () => {
+    const salvas = medidasSalvas([
+      { id: 'retropé-e', medidaId: 'retrope-e', nome: 'x', valor: -4.04, unidade: 'graus', texto: 'Retropé esquerdo: 4,0° em varo.', sentido: 'varo' },
+      { id: 'pelve-perfil', medidaId: 'pelve-perfil', nome: 'x', valor: 6.2, unidade: 'graus', texto: 't', sentido: 'anterior' },
+      { id: 'ombros', medidaId: 'ombros', nome: 'x', valor: 2, unidade: 'graus', texto: 't' },
+    ]);
+    expect(salvas[0]).toEqual({ id: 'retropé-e', graus: 4, texto: 'Retropé esquerdo: 4,0° em varo.', sentido: 'varo' });
+    expect(salvas[1]).toMatchObject({ graus: 6.2, sentido: 'anterior' });
+    expect('sentido' in salvas[2]).toBe(false);
   });
 
   it('o rótulo mostra o valor absoluto', () => {

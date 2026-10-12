@@ -25,14 +25,17 @@ export interface LinhaComparacao {
 const nomeDa = (id: string) => (id === 'sensor' ? 'Inclinação pelo sensor do celular' : nomeDoResultado(id) ?? id);
 
 // Só mostra a variação numérica, sem dizer "melhorou" ou "piorou": não há referência
-// publicada no app para classificar os ângulos, e nos desníveis o número não traz o lado
-// (o lado vem no texto de cada avaliação).
+// publicada no app para classificar os ângulos, e o número não traz o lado (o lado vem no
+// texto e em `sentido` de cada avaliação). Se o lado mudou entre as duas, subtrair os números
+// seria enganoso: a variação fica em branco, como no comparador de fotos (`parearMedidas`).
 export function compararMedidas(atual: MedidaSalva[], anterior: MedidaSalva[]): LinhaComparacao[] {
   const ids = [...new Set([...atual.map((m) => m.id), ...anterior.map((m) => m.id)])];
   return ids.map((id) => {
     const a = atual.find((m) => m.id === id) ?? null;
     const b = anterior.find((m) => m.id === id) ?? null;
-    return { id, nome: nomeDa(id), atual: a, anterior: b, variacao: a && b ? Math.round((a.graus - b.graus) * 10) / 10 : null };
+    const sa = a ? sentidoDe(a) : null, sb = b ? sentidoDe(b) : null;
+    const ladoTrocado = !!sa && !!sb && sa.categoria === sb.categoria && sa.lado !== sb.lado;
+    return { id, nome: nomeDa(id), atual: a, anterior: b, variacao: a && b && !ladoTrocado ? Math.round((a.graus - b.graus) * 10) / 10 : null };
   });
 }
 

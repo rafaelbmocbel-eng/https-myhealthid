@@ -222,14 +222,19 @@ function claro(cor: string): boolean {
 
 export interface CoresDoRotulo { fundo?: string; borda: string; texto: string; contorno?: string }
 
+const TEXTO_ESCURO_ROTULO = '#1f2937';
+
 /** Cores efetivas do rótulo: pílula (com fundo) ou texto solto com contorno. */
 export function coresDoRotulo(e: EstiloMarcacao): CoresDoRotulo {
-  const borda = e.rotuloBorda ?? e.cor;
   if (e.rotuloFundo) {
-    const texto = e.rotuloTexto ?? (claro(e.rotuloFundo) ? escurecerCor(e.cor) : e.cor);
+    const fundoClaro = claro(e.rotuloFundo);
+    // Retas claras (branco, amarelo) sobre pílula clara: a cor delas, mesmo escurecida, some no fundo; o rótulo usa um tom escuro fixo.
+    const semContraste = fundoClaro && claro(e.cor);
+    const borda = e.rotuloBorda ?? (semContraste ? TEXTO_ESCURO_ROTULO : e.cor);
+    const texto = e.rotuloTexto ?? (semContraste ? TEXTO_ESCURO_ROTULO : fundoClaro ? escurecerCor(e.cor) : e.cor);
     return { fundo: e.rotuloFundo, borda, texto };
   }
-  return { borda, texto: e.rotuloTexto ?? '#ffffff', contorno: e.contorno ?? '#000000' };
+  return { borda: e.rotuloBorda ?? e.cor, texto: e.rotuloTexto ?? '#ffffff', contorno: e.contorno ?? '#000000' };
 }
 
 // Larguras (em fração do corpo da fonte) da Helvetica/Arial em negrito: a mesma conta na tela e no

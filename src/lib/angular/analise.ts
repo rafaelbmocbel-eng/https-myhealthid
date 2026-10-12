@@ -132,11 +132,15 @@ export function faltaReferenciaDoPrumo(a: AnaliseFotoJson): string | null {
   return null;
 }
 
-/** Medidas como ficam gravadas na nota do prontuário (`dados_extras.medidas`). */
+/**
+ * Medidas como ficam gravadas na nota do prontuário (`dados_extras.medidas`). O valor vai em módulo e o lado em
+ * `sentido` (varo, valgo, anterior, à frente do fio...), como em `MedidaSalva`: o sinal do cálculo nunca vai para as tabelas.
+ */
 export function medidasSalvas(rs: ResultadoAnalise[]): MedidaSalva[] {
   return rs.map((r) => ({
-    id: r.id, graus: Math.round(r.valor * 10) / 10, texto: r.texto,
+    id: r.id, graus: Math.round(Math.abs(r.valor) * 10) / 10, texto: r.texto,
     ...(r.unidade === 'cm' ? { unidade: 'cm' as const } : r.unidade === '%' ? { unidade: '%' as const } : {}),
+    ...(r.sentido ? { sentido: r.sentido } : {}),
   }));
 }
 

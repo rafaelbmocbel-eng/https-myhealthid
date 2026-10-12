@@ -147,7 +147,7 @@ export async function gerarRelatorioAngular(d: DadosRelatorioAngular): Promise<{
     y += altBox + 3;
     if (comAnterior) {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(100);
-      const f = doc.splitTextToSize(seguro('A variação é a diferença numérica entre as duas avaliações; nos desníveis o número não mostra o lado, que está na leitura de cada avaliação.'), LARG);
+      const f = doc.splitTextToSize(seguro('A variação é a diferença numérica entre as duas avaliações. O número não mostra o lado (direito ou esquerdo, anterior ou posterior, varo ou valgo, à frente ou atrás do fio), que está na leitura de cada avaliação; se o lado mudou, a variação não é calculada.'), LARG);
       doc.text(f, M, y + 2); doc.setTextColor(20);
     }
   }

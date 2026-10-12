@@ -8,6 +8,9 @@ import { limitar } from './geometria';
 
 export type ModoRosto = 'nenhum' | 'desfoque' | 'tarja';
 
+/** Os modos que escondem o rosto: os únicos que o app lembra de uma arte para a outra. */
+export type ModoRostoProtegido = Exclude<ModoRosto, 'nenhum'>;
+
 export interface CaixaRosto { cx: number; cy: number; w: number; h: number }
 
 // Pontos do rosto no modelo de 33 pontos do MediaPipe: nariz, olhos, orelhas e boca.

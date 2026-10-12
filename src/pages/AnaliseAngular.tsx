@@ -29,7 +29,7 @@ import { pontosAutomaticos, pontosDoPrumo, type Landmark } from '@/lib/angular/p
 import { compararMedidas, grau, variacaoTexto, type MedidaSalva } from '@/lib/angular/comparar';
 import { gerarRelatorioAngular } from '@/lib/angular/relatorio';
 import {
-  alcaDoPrumo, analiseDaFotoParaExportar, apoioPelaAlca, baixarBlob, calcularResultados, canvasComMedidas, canvasParaBlob, faltaReferenciaDoPrumo, imagemParaPdf, itensDaAnalise,
+  OPCOES_ANALISE_PADRAO, alcaDoPrumo, analiseDaFotoParaExportar, apoioPelaAlca, baixarBlob, calcularResultados, canvasComMedidas, canvasParaBlob, faltaReferenciaDoPrumo, imagemParaPdf, itensDaAnalise,
   medidasSalvas, nomeArquivoImagem, type AnaliseFoto, type AnaliseParaExportar,
 } from '@/lib/angular/analise';
 import { escalaDoEstilo, escalaNaTela, lerEstilo, salvarEstilo, type EstiloMarcacao } from '@/lib/angular/estilo';
@@ -123,7 +123,7 @@ export default function AnaliseAngular() {
     const ro = new ResizeObserver(medir);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [foto, zoom, painelEstilo, comparando]);
+  }, [foto, zoom, painelEstilo, comparando, modoAnalise]);
 
   const mudarEstilo = (e: EstiloMarcacao) => { setEstiloLocal(e); salvarEstilo(e); };
 
@@ -154,6 +154,11 @@ export default function AnaliseAngular() {
   const ptsAtiva = pontos[medidaAtiva.id] ?? [];
   const proximo = ptsAtiva.length < medidaAtiva.pontos.length ? medidaAtiva.pontos[ptsAtiva.length] : null;
   const completa = (m: Medida) => (pontos[m.id]?.length ?? 0) >= m.pontos.length;
+  // A medida ativa fica por último no SVG: onde pontos de medidas diferentes coincidem (pelve e quadril do joelho), o toque é dela.
+  const medidasDasAlcas = useMemo(
+    () => [...disponiveis].sort((a, b) => Number(a.id === medidaAtiva.id) - Number(b.id === medidaAtiva.id)),
+    [disponiveis, medidaAtiva.id],
+  );
 
   // Referências da foto: giro (nível) e escala (cm por pixel).
   const giroMarcado = useMemo(() => {
@@ -210,7 +215,7 @@ export default function AnaliseAngular() {
     if (!arquivo.type.startsWith('image/')) { toast.error('Escolha um arquivo de imagem.'); return; }
     const url = URL.createObjectURL(arquivo);
     const img = new Image();
-    img.onload = () => { poseRef.current = null; setFoto({ url, w: img.naturalWidth, h: img.naturalHeight, img }); setPontos({}); setUsouIA(false); setZoom(1); setMover(false); setInclinacaoCaptura(inclinacao); setInverterSensor(false); void marcarAutomatico({ img, w: img.naturalWidth, h: img.naturalHeight }, vistaRef.current, true); };
+    img.onload = () => { poseRef.current = null; setFoto({ url, w: img.naturalWidth, h: img.naturalHeight, img }); setPontos({}); setUsouIA(false); setOlhaPara(OPCOES_ANALISE_PADRAO.olhaPara); setZoom(1); setMover(false); setInclinacaoCaptura(inclinacao); setInverterSensor(false); void marcarAutomatico({ img, w: img.naturalWidth, h: img.naturalHeight }, vistaRef.current, true); };
     img.onerror = () => { URL.revokeObjectURL(url); toast.error('Não consegui abrir essa imagem.'); };
     img.src = url;
   };
@@ -467,7 +472,7 @@ export default function AnaliseAngular() {
                         </g>
                       )}
                       <ItensSvg itens={itensTela} opacidadePorGrupo={opacidadePorGrupo} />
-                      {!semAlcas && disponiveis.map((m) => {
+                      {!semAlcas && medidasDasAlcas.map((m) => {
                         const p = pontos[m.id] ?? [];
                         const destaque = m.id === medidaAtiva.id;
                         const alca = destaque && m.desenho === 'prumo' && p.length > 0 ? alcaDoPrumo(p[0], foto.h, giro) : null;
@@ -747,7 +752,7 @@ export default function AnaliseAngular() {
                               <tr key={l.id} className="border-t border-border/50"><td className="py-1.5 pr-2">{nomeDoResultado(l.id) ?? l.nome}</td><td className="px-2">{grau(l.anterior?.graus, l.atual?.unidade)}</td><td className="px-2">{grau(l.atual?.graus, l.atual?.unidade)}</td><td className="pl-2 font-medium">{variacaoTexto(l.variacao, l.atual?.unidade)}</td></tr>
                             ))}</tbody>
                           </table>
-                          <p className="mt-1.5 text-[11px] text-muted-foreground">Nos desníveis o número não mostra o lado; veja a leitura de cada avaliação.</p>
+                          <p className="mt-1.5 text-[11px] text-muted-foreground">O número não mostra o lado (direito ou esquerdo, anterior ou posterior, varo ou valgo, à frente ou atrás do fio): veja a leitura de cada avaliação. Se o lado mudou entre as avaliações, a variação não é calculada.</p>
                         </div>
                       ))}
                     </>

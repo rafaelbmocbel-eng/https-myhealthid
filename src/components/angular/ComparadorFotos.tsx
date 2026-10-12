@@ -9,7 +9,7 @@ import PainelComparacao, { SUFIXO_ALCA, type FotoPainel } from '@/components/ang
 import { COR_REFERENCIA, ICONE_MEDIDA, LADO_MEDIDA } from '@/components/angular/iconesMedida';
 import { cn } from '@/lib/utils';
 import {
-  REFS_COMPASSO, medidasDaVista, segmentosDaMedida, type GrupoMedida, type Medida, type Ponto, type RefCompasso, type UnidadePrumo, type Vista,
+  REFS_COMPASSO, medidasDaVista, segmentosDaMedida, type GrupoMedida, type Medida, type OlharPara, type Ponto, type RefCompasso, type UnidadePrumo, type Vista,
 } from '@/lib/angular/medidas';
 import { giroDaFoto } from '@/lib/angular/sensor';
 import { detectarPose } from '@/lib/angular/detector';
@@ -22,7 +22,7 @@ import {
   TEXTO_NAO_CLASSIFICA, grau, medidasParaComparar, medidasParaExportar, motivoTexto, parearMedidas, variacaoTexto, type LinhaPareada,
 } from '@/lib/angular/comparar';
 import { analiseDoPainel, pontosSemOcultas, pontosSemReferencias } from '@/lib/angular/compararPaineis';
-import { dataBR, fracaoDeRolagem, hojeISO, posicaoDeRolagem, razaoDaCaixa } from '@/lib/angular/compararLayout';
+import { dataBR, fracaoDeRolagem, posicaoDeRolagem, razaoDaCaixa } from '@/lib/angular/compararLayout';
 import { lerEstilo, salvarEstilo, type EstiloMarcacao } from '@/lib/angular/estilo';
 
 /** Foto já analisada na tela principal, para semear um dos dois painéis. */
@@ -84,6 +84,8 @@ interface PainelEstado {
   nivelTipo: 'horizontal' | 'vertical';
   escalaCm: string;
   landmarks: Landmark[] | null;
+  /** Para onde o paciente olha nesta foto (perfil): o sentido do desvio do fio de prumo depende disso, então é dado de cada foto. */
+  olhaPara: OlharPara;
 }
 
 type Dupla<T> = [T, T];
@@ -101,14 +103,17 @@ const UNIDADES_PRUMO: { id: UnidadePrumo; nome: string }[] = [{ id: 'graus', nom
 const limitarZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, +z.toFixed(2)));
 const nf = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-const painelVazio = (rotulo: string): PainelEstado => ({ rotulo, data: '', foto: null, pontos: {}, giroBase: null, cmPorPxBase: null, nivelTipo: 'horizontal', escalaCm: '', landmarks: null });
+const painelVazio = (rotulo: string): PainelEstado => ({
+  rotulo, data: '', foto: null, pontos: {}, giroBase: null, cmPorPxBase: null, nivelTipo: 'horizontal', escalaCm: '', landmarks: null, olhaPara: OPCOES_ANALISE_PADRAO.olhaPara,
+});
 
-function painelDaSemente(s: FotoAnalisada, rotuloPadrao: string, dataPadrao: string): PainelEstado {
+// A data só entra se o integrador a informou: a foto semente pode ser uma foto antiga da galeria, e uma data de hoje inventada iria impressa na arte.
+function painelDaSemente(s: FotoAnalisada, rotuloPadrao: string): PainelEstado {
   const a = s.analise;
   return {
-    ...painelVazio(s.rotulo || rotuloPadrao), data: s.data || dataPadrao,
+    ...painelVazio(s.rotulo || rotuloPadrao), data: s.data ?? '',
     foto: { url: s.url, w: a.largura, h: a.altura, img: a.imagem as HTMLImageElement, propria: false },
-    pontos: pontosSemReferencias(a.pontos), giroBase: a.giro, cmPorPxBase: a.cmPorPx, landmarks: s.landmarks ?? null,
+    pontos: pontosSemReferencias(a.pontos), giroBase: a.giro, cmPorPxBase: a.cmPorPx, landmarks: s.landmarks ?? null, olhaPara: a.opcoes.olhaPara,
   };
 }
 
@@ -116,9 +121,8 @@ function iniciais(atual: FotoAnalisada | null, outra: FotoAnalisada | null, posi
   const base: Dupla<PainelEstado> = [painelVazio(ROTULOS_PADRAO[0]), painelVazio(ROTULOS_PADRAO[1])];
   const i: Indice = posicao === 'pre' ? 0 : 1;
   const j: Indice = i === 0 ? 1 : 0;
-  // A foto que acabou de ser analisada é de hoje; a outra, só com a data que o integrador informar.
-  if (atual) base[i] = painelDaSemente(atual, ROTULOS_PADRAO[i], hojeISO());
-  if (outra) base[j] = painelDaSemente(outra, ROTULOS_PADRAO[j], '');
+  if (atual) base[i] = painelDaSemente(atual, ROTULOS_PADRAO[i]);
+  if (outra) base[j] = painelDaSemente(outra, ROTULOS_PADRAO[j]);
   return base;
 }
 
@@ -195,7 +199,7 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
 
   // Uma análise por foto: a completa (edição) e a sem as medidas escondidas (comparação, tabela e arte).
   const analises = useMemo<Dupla<AnaliseFoto>>(() => {
-    const de = (p: PainelEstado) => analiseDoPainel({ vista, foto: p.foto, pontos: p.pontos, nivelTipo: p.nivelTipo, escalaCm: p.escalaCm, giroBase: p.giroBase, cmPorPxBase: p.cmPorPxBase, opcoes });
+    const de = (p: PainelEstado) => analiseDoPainel({ vista, foto: p.foto, pontos: p.pontos, nivelTipo: p.nivelTipo, escalaCm: p.escalaCm, giroBase: p.giroBase, cmPorPxBase: p.cmPorPxBase, opcoes: { ...opcoes, olhaPara: p.olhaPara } });
     return [de(paineis[0]), de(paineis[1])];
   }, [paineis, vista, opcoes]);
   const visiveis = useMemo<Dupla<AnaliseFoto>>(
@@ -252,7 +256,7 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
   const trocarFoto = (i: Indice, foto: FotoDoPainel, inclinacao: number | null) => {
     const antiga = paineisRef.current[i].foto;
     if (antiga?.propria) URL.revokeObjectURL(antiga.url);
-    atualizar(i, { foto, pontos: {}, giroBase: inclinacao !== null ? giroDaFoto(inclinacao) : null, cmPorPxBase: null, escalaCm: '', landmarks: null });
+    atualizar(i, { foto, pontos: {}, giroBase: inclinacao !== null ? giroDaFoto(inclinacao) : null, cmPorPxBase: null, escalaCm: '', landmarks: null, olhaPara: OPCOES_ANALISE_PADRAO.olhaPara });
     setZooms((s) => (sincronizar ? [1, 1] : (i === 0 ? [1, s[1]] : [s[0], 1])));
     setMover(false);
     setEditando(i);
@@ -298,8 +302,7 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
       if (paineisRef.current[i].foto?.img === f.img) atualizar(i, { landmarks: lm });
       const s = pontosDoPrumo(lm, vista, f.w, f.h);
       if (!s) { toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
-      atualizar(i, (p) => ({ pontos: { ...p.pontos, [s.medidaId]: s.pontos } }));
-      if (s.olhaPara) setOpcoes((o) => ({ ...o, olhaPara: s.olhaPara! }));
+      atualizar(i, (p) => ({ pontos: { ...p.pontos, [s.medidaId]: s.pontos }, ...(s.olhaPara ? { olhaPara: s.olhaPara } : {}) }));
       setAtiva(s.medidaId);
       toast.success('Sugeri o apoio e os pontos do fio. Confira cada ponto e arraste o que estiver fora do lugar.');
     } catch {
@@ -604,11 +607,11 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
           </div>
           {vista === 'perfil' && (
             <div className="space-y-1">
-              <p className="font-medium">O paciente olha para a</p>
+              <p className="font-medium">O paciente olha para a (vale só para esta foto)</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {([['esquerda', ArrowLeft], ['direita', ArrowRight]] as const).map(([lado, Seta]) => (
-                  <button key={lado} type="button" aria-pressed={opcoes.olhaPara === lado} onClick={() => setOpcoes((o) => ({ ...o, olhaPara: lado }))}
-                    className={cn('flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 font-medium', opcoes.olhaPara === lado ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50')}>
+                  <button key={lado} type="button" aria-pressed={pEd.olhaPara === lado} onClick={() => atualizar(editando, { olhaPara: lado })}
+                    className={cn('flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 font-medium', pEd.olhaPara === lado ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50')}>
                     <Seta className="h-4 w-4" aria-hidden /> {lado === 'esquerda' ? 'Esquerda' : 'Direita'} da imagem
                   </button>
                 ))}
@@ -633,7 +636,7 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
           <h2 className="text-base font-semibold">{titulo}</h2>
           <p className="text-xs text-muted-foreground">Vista {vista}. As mesmas medidas marcadas nas duas fotos; as fotos ficam só neste aparelho.</p>
         </div>
-        {onFechar && <Button variant="ghost" size="icon" aria-label="Fechar a comparação" onClick={onFechar}><X className="h-4 w-4" /></Button>}
+        {onFechar && <Button variant="ghost" size="icon" className="shrink-0" aria-label="Fechar a comparação" onClick={onFechar}><X className="h-4 w-4" /></Button>}
       </div>
 
       <Segmentado<'comparar' | 'marcar'> valor={modo} onChange={setModo} rotulo="Modo" opcoes={[{ id: 'comparar', nome: 'Comparar' }, { id: 'marcar', nome: 'Marcar' }]} />
