@@ -174,8 +174,8 @@ export function cartoesDeMetricas(metricas: ResultadoMetrica[], modelo: ModeloGe
 
 /** Marcas extras do gráfico: repetições (agachamento, elevação do braço) e a aterrissagem do salto. */
 export function marcadoresExtras(trilha: TrilhaPose, repeticoes: number[], aterrissagem: number | null): MarcadorGrafico[] {
-  const m: MarcadorGrafico[] = repeticoes.flatMap((i, k) => (trilha.quadros[i] ? [{ id: `rep-${i}`, t: trilha.quadros[i].t, tipo: 'outro' as const, rotulo: `Pico ${k + 1}` }] : []));
-  if (aterrissagem !== null && trilha.quadros[aterrissagem]) m.push({ id: `aterr-${aterrissagem}`, t: trilha.quadros[aterrissagem].t, tipo: 'outro', rotulo: 'Aterrissagem' });
+  const m: MarcadorGrafico[] = repeticoes.flatMap((i, k) => (trilha.quadros[i] ? [{ id: `rep-${i}`, t: trilha.quadros[i].t, tipo: 'outro' as const, rotulo: `Pico ${k + 1}`, legenda: 'pico da repetição' }] : []));
+  if (aterrissagem !== null && trilha.quadros[aterrissagem]) m.push({ id: `aterr-${aterrissagem}`, t: trilha.quadros[aterrissagem].t, tipo: 'outro', rotulo: 'Aterrissagem', legenda: 'aterrissagem' });
   return m;
 }
 

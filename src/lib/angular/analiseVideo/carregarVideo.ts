@@ -27,7 +27,8 @@ export function fpsPorIntervalos(intervalos: number[]): number | null {
   return fpsMaisProximo(1 / mediana);
 }
 
-export const impressaoDoVideo = (v: VideoCarregado): ImpressaoVideo => ({ nome: v.nome, tamanho: v.tamanho, duracao: v.duracao, largura: v.largura, altura: v.altura });
+// O nome do arquivo pode ter o nome do paciente: a impressão guardada (arquivo salvo e rascunho) fica sem ele; o vídeo se reconhece por tamanho, duração e dimensões.
+export const impressaoDoVideo = (v: VideoCarregado): ImpressaoVideo => ({ nome: '', tamanho: v.tamanho, duracao: v.duracao, largura: v.largura, altura: v.altura });
 
 /** Abre o arquivo só para ler duração e dimensões. O endereço devolvido deve ser liberado com `URL.revokeObjectURL`. */
 export function lerMetadadosDoVideo(arquivo: File): Promise<VideoCarregado> {

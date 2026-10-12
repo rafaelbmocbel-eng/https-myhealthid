@@ -22,6 +22,8 @@ interface Props {
   aoIntervalo: (i: IntervaloVideo) => void;
   avisos: string[];
   aoRastrear: () => void;
+  /** Já existe uma análise aberta: volta a ela aplicando o gesto escolhido aos pontos já rastreados (sem rastrear de novo). */
+  aoUsarRastreio?: () => void;
   /** Abre a análise sem rastrear o corpo: só a marcação ponto a ponto, quadro a quadro. */
   aoSoMedir: () => void;
   /** Qual ação é a principal: quem entra pela medida ponto a ponto vê "Só medir" em destaque. */
@@ -37,7 +39,7 @@ const ACOES_INICIAIS = (rastrear: () => void, medir: () => void) => [
 const chip = (ativo: boolean) => cn('flex min-h-11 items-center justify-center rounded-xl border px-3 text-sm font-semibold tabular-nums transition-colors', ativo ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50');
 
 // Segundo passo: o gesto a analisar, o trecho do vídeo e a taxa da análise.
-export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fpsVideo, aoFpsVideo, taxaFps, aoTaxa, intervalo, aoIntervalo, avisos, aoRastrear, aoSoMedir, primario = 'rastrear', aoTrocarVideo }: Props) {
+export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fpsVideo, aoFpsVideo, taxaFps, aoTaxa, intervalo, aoIntervalo, avisos, aoRastrear, aoUsarRastreio, aoSoMedir, primario = 'rastrear', aoTrocarVideo }: Props) {
   const previa = useRef<HTMLVideoElement>(null);
   const taxas = opcoesDeTaxa(fpsVideo);
   const trecho = Math.max(0, intervalo.fim - intervalo.inicio);
@@ -126,13 +128,19 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
       )}
 
       <div className="grid gap-2">
+        {aoUsarRastreio && (
+          <button type="button" onClick={aoUsarRastreio} data-testid="botao-usar-rastreio"
+            className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-base font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/92 active:scale-[0.98]">
+            Voltar à análise com este gesto
+          </button>
+        )}
         {[...ACOES_INICIAIS(aoRastrear, aoSoMedir)]
           .sort((a, b) => (a[0] === primario ? -1 : b[0] === primario ? 1 : 0))
           .map(([id, texto, acao, testid]) => (
             <button key={id} type="button" onClick={acao} data-testid={testid}
               className={cn('flex min-h-14 items-center justify-center gap-2 rounded-2xl px-4 text-base font-semibold transition-all active:scale-[0.98]',
-                id === primario ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/92' : 'border border-border/60 bg-card text-sm hover:bg-muted/50')}>
-              {texto}
+                id === primario && !aoUsarRastreio ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/92' : 'border border-border/60 bg-card text-sm hover:bg-muted/50')}>
+              {aoUsarRastreio && id === 'rastrear' ? 'Rastrear o corpo de novo (apaga as correções)' : texto}
             </button>
           ))}
         <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-2xl border border-border/60 bg-card px-4 text-sm font-medium hover:bg-muted/50">

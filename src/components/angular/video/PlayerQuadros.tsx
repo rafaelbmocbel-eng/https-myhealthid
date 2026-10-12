@@ -8,6 +8,7 @@ import { escalaDoEstilo, escalaNaTela, type EstiloMarcacao } from '@/lib/angular
 import { limitar, quadrosDoDeslize, sensibilidadeDoDeslize } from '@/lib/angular/analiseVideo/tempo';
 import { AUMENTO_LUPA } from '@/components/angular/LupaFoto';
 import { ladoDe } from '@/lib/angular/video/tipos';
+import { alcaMaisProxima } from '@/lib/angular/analiseVideo/marcacoes';
 import LupaQuadro from './LupaQuadro';
 import { COR_CENTRO, COR_LADO, type AlcaUi, type LigacaoUi, type MarcacaoAnguloUi, type PontoPx, type PontosDoQuadro } from '@/lib/angular/analiseVideo/tiposUi';
 
@@ -174,7 +175,22 @@ export default function PlayerQuadros({
   const proporcao = altura > 0 ? largura / altura : 1.78;
   const nomeArrastado = previa?.nome ?? null;
 
+  // A alça mais perto do dedo (dentro do alvo de toque) é a que vai ser arrastada: com pontos próximos (joelhos cruzando na
+  // marcha), a ordem de desenho não decide, a distância decide.
+  const alcaMaisPerto = (e: React.PointerEvent<SVGSVGElement>): string | null => {
+    if (!alcasAtivas || !pontosVisiveis) return null;
+    const dedo = doEvento(e);
+    if (!dedo) return null;
+    return alcaMaisProxima(pontosVisiveis, alcas.map((al) => al.nome), dedo, raioToque);
+  };
+
   const aoPressionar = (e: React.PointerEvent<SVGSVGElement>) => {
+    const alca = dedos.current.size === 0 ? alcaMaisPerto(e) : null;
+    if (alca) {
+      dedos.current.add(e.pointerId);
+      gestos.aoPressionarPonto(e, alca, 0);
+      return;
+    }
     gestos.handlers.onPointerDown(e);
     dedos.current.add(e.pointerId);
     const livre = dedos.current.size === 1 && !(mover && zoom > 1) && !gestosExtra?.podeMarcar && !gestosExtra?.bloqueiaDeslize && !arrasto.current;
@@ -229,7 +245,6 @@ export default function PlayerQuadros({
               </g>
             )}
             {camadaExtra?.({ css, pressionar: (e, id, i) => { dedos.current.add(e.pointerId); gestos.aoPressionarPonto(e, `${PREFIXO_EXTRA}${id}`, i); }, contexto, naLupa: false })}
-            <ItensSvg itens={itens} />
             {pontosVisiveis && mostrarEsqueleto && !alcasAtivas && (
               <g pointerEvents="none">
                 {alcas.map((al) => { const p = pontosVisiveis[al.nome]; return p ? <circle key={al.nome} cx={p.x} cy={p.y} r={raioPonto} fill={p.manual ? '#fbbf24' : corDoPonto(al.nome)} stroke="#fff" strokeWidth={css(1.5)} /> : null; })}
@@ -240,13 +255,14 @@ export default function PlayerQuadros({
               if (!p) return null;
               const ativo = nomeArrastado === al.nome;
               return (
-                <g key={al.nome} style={{ cursor: 'move' }} onPointerDown={(e) => { dedos.current.add(e.pointerId); gestos.aoPressionarPonto(e, al.nome, 0); }} data-testid={`alca-${al.nome}`} role="button" aria-label={`${al.rotulo}: arraste para corrigir`}>
+                <g key={al.nome} pointerEvents="none" data-testid={`alca-${al.nome}`} aria-label={`${al.rotulo}: arraste para corrigir`}>
                   <circle cx={p.x} cy={p.y} r={raioToque} fill="transparent" />
                   <circle cx={p.x} cy={p.y} r={ativo ? raioAlca * 1.2 : raioAlca} fill={p.manual ? '#fbbf24' : corDoPonto(al.nome)} fillOpacity={0.92} stroke="#fff" strokeWidth={css(2)} />
                   {p.manual && <circle cx={p.x} cy={p.y} r={raioAlca * 0.38} fill="#78350f" />}
                 </g>
               );
             })}
+            <ItensSvg itens={itens} />
           </svg>
         </div>
       </div>

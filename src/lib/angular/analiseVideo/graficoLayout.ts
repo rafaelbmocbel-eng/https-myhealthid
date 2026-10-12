@@ -22,6 +22,8 @@ export interface MarcadorGrafico {
   tipo: 'contato' | 'saida' | 'outro';
   lado?: LadoGrafico | null;
   rotulo?: string;
+  /** Texto da legenda dos marcadores de tipo "outro" (ex.: "pico da repetição"). */
+  legenda?: string;
 }
 
 /** Faixa de referência confirmada em fonte; só entra no gráfico com a fonte nomeada. */

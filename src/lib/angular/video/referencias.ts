@@ -159,7 +159,7 @@ export const REFERENCIAS: ReferenciaBiomecanica[] = [
     fonte: GALE_ANDERST_2020,
   }], ['marcha']),
   semReferencia('apoio_pct.marcha', 'apoio_pct', '% do ciclo', [{
-    texto: 'Em 101 adultos saudáveis de 40 a 65 anos (sensores nos calcanhares), a fase de apoio foi em média 62,5% do ciclo na caminhada preferida (60,0% na rápida). O texto aberto traz só as médias, sem a dispersão: por isso não classifica.',
+    texto: 'Em 101 adultos saudáveis de 40 a 65 anos (sensores nos calcanhares), a fase de apoio foi em média 62,5% do ciclo na caminhada preferida (60,0% na rápida). Os desvios-padrão ficam em tabelas que não foram verificadas aqui: por isso não classifica.',
     fonte: BOUTAAYAMOU_2025,
   }], ['marcha']),
   semReferencia('assimetria_tempo_passo.marcha', 'assimetria_tempo_passo', '%', [{
@@ -185,7 +185,7 @@ export const REFERENCIAS: ReferenciaBiomecanica[] = [
   }], ['corrida']),
 
   semReferencia('flexao_joelho_max.agachamento', 'flexao_joelho_max', '°', [{
-    texto: 'Em 30 adultos saudáveis (48,2 ± 7,6 anos), o agachamento profundo com os calcanhares elevados exigiu flexão máxima média do joelho de 157° ± 6° (rastreamento eletromagnético). Descreve a exigência da tarefa, não uma meta para o agachamento comum.',
+    texto: 'Em 30 adultos saudáveis (48,2 ± 7,6 anos), o agachamento de grande amplitude com os calcanhares elevados exigiu flexão máxima média do joelho de 157° ± 6° (rastreamento eletromagnético). Descreve a exigência dessa tarefa, não uma meta para o agachamento comum.',
     fonte: HEMMERICH_2006,
   }], ['agachamento']),
   semReferencia('flexao_quadril_max.agachamento', 'flexao_quadril_max', '°', [{

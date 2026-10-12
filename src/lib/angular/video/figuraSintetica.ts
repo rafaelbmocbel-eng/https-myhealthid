@@ -25,7 +25,7 @@ export interface ConfigFigura {
 
   /** Marcha e corrida: duração da passada (um pé até o mesmo pé), em segundos. */
   tempoPassada: number;
-  /** Marcha: fração da passada em apoio. */
+  /** Marcha: fração da passada que define o tempo das curvas (extensão máxima do quadril e onda do joelho). A saída do pé que o algoritmo mede (ponta do pé mais atrás) vem um pouco depois: use `eventosVerdade` como referência. */
   apoio: number;
   /** Marcha e corrida: atraso do contato do pé E, em fração da passada, além de meia passada (cria assimetria no tempo do passo). */
   atrasoE: number;
@@ -161,17 +161,16 @@ function esqueletoLateral(c: PosturaLateral): { mundo: Record<string, V>; verdad
 
 // ---------- gestos ----------
 
-const cabecaLateralZero = { ombro: 0, cotovelo: 20 };
-
 function marcha(cfg: ConfigFigura, t: number): { postura: PosturaLateral; xPelve: number } {
   const T = cfg.tempoPassada;
   const p: Record<Lado, number> = { D: fracao(t / T), E: fracao(t / T + 0.5 - cfg.atrasoE) };
+  const pExt = cfg.apoio - 0.1;
   const quadril = (q: number) => {
     const flex = 28, ext = -14;
-    return q < cfg.apoio ? flex + (ext - flex) * suave(q / cfg.apoio) : ext + (flex - ext) * suave((q - cfg.apoio) / (1 - cfg.apoio));
+    return q < pExt ? flex + (ext - flex) * suave(q / pExt) : ext + (flex - ext) * suave((q - pExt) / (1 - pExt));
   };
-  const joelho = (q: number) => 4 + 12 * onda(q, 0.13, 0.05) + 56 * onda(q, 0.72, 0.08);
-  const dorsi = (q: number) => 5 * onda(q, 0.38, 0.12) - 14 * onda(q, 0.62, 0.05) - 3 * onda(q, 0.03, 0.03);
+  const joelho = (q: number) => 4 + 12 * onda(q, 0.13, 0.05) + 56 * onda(q, cfg.apoio + 0.12, 0.08);
+  const dorsi = (q: number) => 5 * onda(q, 0.38, 0.12) - 14 * onda(q, cfg.apoio + 0.02, 0.05) - 3 * onda(q, 0.03, 0.03);
   const coxa = { D: quadril(p.D), E: quadril(p.E) };
   const swing = { D: -0.5 * coxa.E, E: -0.5 * coxa.D };
   return {
@@ -308,7 +307,7 @@ function frontal(cfg: ConfigFigura, t: number): { mundo: Record<string, V>; verd
     verdade[`elevacao_tronco_${s}`] = A + sg * lateralTronco;
   }
   verdade.tronco_lateral = lateralTronco;
-  verdade.linha_ombros = 0;
+  verdade.linha_ombros = lateralTronco;
   cabecaFrontal(m, meioOmbro.y + 0.2, meioOmbro.x + dir.x * 0.2);
   return { mundo: m, verdade };
 }
@@ -352,6 +351,8 @@ export function poseSintetica(cfg: ConfigFigura, t: number): PoseSintetica {
   } else {
     const e = frontal(cfg, t);
     mundo = e.mundo; verdade = e.verdade;
+    // as inclinações medidas na imagem (+ = lado direito da imagem mais baixo ou tronco para a direita) trocam de sinal na cena espelhada
+    if (cfg.direcao === -1) for (const k of ['tronco_lateral', 'linha_ombros', 'linha_pelve']) if (verdade[k] !== undefined) verdade[k] = -verdade[k];
   }
 
   const lm: Landmark[] = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0 }));
@@ -397,7 +398,7 @@ export function eventosVerdade(cfg: ConfigFigura, duracao: number): EventosVerda
     for (const lado of ['D', 'E'] as const) {
       const s = lado.toLowerCase();
       const desloc = lado === 'D' ? 0 : T * (0.5 + cfg.atrasoE);
-      for (let k = 0; desloc + (k + 1) * T < duracao; k++) {
+      for (let k = -1; desloc + k * T - T * 0.25 < duracao; k++) {
         let melhorC = -Infinity, tc = 0, melhorS = Infinity, ts = 0;
         for (let t = desloc + k * T - T * 0.25; t < desloc + (k + 1) * T - T * 0.25; t += passo) {
           const q = poseSintetica(cfg, t).mundo;

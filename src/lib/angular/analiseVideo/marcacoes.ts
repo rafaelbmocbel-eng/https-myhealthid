@@ -186,3 +186,19 @@ export function itensDoQuadroAnalisado(quadro: QuadroPose | undefined, c: Contex
   }
   return separarRotulos(ordenarCamadas(itens), c.w, c.h);
 }
+
+/**
+ * Alça sob o dedo: a mais perto dentro do alvo de toque (`raio`, em pixels do vídeo). Com pontos próximos (os joelhos se
+ * cruzando na marcha) a distância decide, não a ordem de desenho. Null se nenhuma estiver ao alcance.
+ */
+export function alcaMaisProxima(pontos: PontosDoQuadro | null, nomes: string[], dedo: PontoPx, raio: number): string | null {
+  if (!pontos) return null;
+  let melhor: { nome: string; d: number } | null = null;
+  for (const nome of nomes) {
+    const q = pontos[nome];
+    if (!q) continue;
+    const d = dist(q, dedo);
+    if (d <= raio && (!melhor || d < melhor.d)) melhor = { nome, d };
+  }
+  return melhor ? melhor.nome : null;
+}

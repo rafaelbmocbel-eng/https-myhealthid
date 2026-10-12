@@ -5,21 +5,31 @@ import type { PontoPose, QuadroPose, TrilhaPose } from './tipos';
  *
  * Cada ponto corrigido à mão vira um quadro-chave (`manual`) e fica "preso" onde o profissional o deixou.
  * Os quadros automáticos ao redor são ajustados assim:
- *  - entre dois quadros-chave consecutivos (a distância é até `maxLacunaS`): interpolação linear da posição;
- *  - antes do primeiro ou depois do último quadro-chave, ou entre dois quadros-chave muito distantes: o desvio
- *    corrigido (manual − automático) é aplicado às vizinhas e some linearmente em `janelaAjusteS`; o resto da
- *    detecção automática é mantida, para uma correção pontual não apagar segundos de rastreio.
+ *  - entre dois quadros-chave consecutivos (a distância é até `maxLacunaS`): interpolação linear entre eles. No modo 'desvio'
+ *    (padrão) interpola-se o DESVIO corrigido (manual − automático) e ele é somado à detecção automática de cada quadro: o
+ *    movimento real que o detector viu é mantido e só o erro sistemático some; onde não há detecção automática (ou no modo
+ *    'posicao'), interpola-se a própria posição em linha reta, como num quadro-chave de animação;
+ *  - fora disso (antes do primeiro, depois do último ou entre dois quadros-chave muito distantes) a detecção automática é
+ *    mantida: uma correção pontual nunca apaga segundos de rastreio. Opcionalmente (`janelaAjusteS` > 0) o desvio corrigido
+ *    se espalha pelas vizinhas e some linearmente. Por padrão NÃO se espalha: um erro isolado do detector (um quadro que
+ *    "pulou") corrigido num quadro só estragaria os vizinhos, que estavam certos; se o viés é persistente, o profissional
+ *    corrige também os vizinhos (ou liga o ajuste).
  * A detecção original fica guardada em `auto`, então remover a correção restaura exatamente o que o detector deu.
  * Nenhuma função altera a trilha recebida: devolvem uma nova, reaproveitando os quadros que não mudaram.
  */
 export interface OpcoesCorrecao {
-  /** Quanto o desvio de um quadro-chave se espalha para as vizinhas automáticas, em segundos (padrão 0,25). */
+  /** Quanto o desvio de um quadro-chave se espalha para as vizinhas automáticas, em segundos (padrão 0: não se espalha). */
   janelaAjusteS?: number;
   /** Maior distância entre dois quadros-chave que ainda é interpolada em linha reta, em segundos (padrão 1,5). */
   maxLacunaS?: number;
+  /**
+   * Como interpolar entre dois quadros-chave: 'desvio' (padrão) soma à detecção automática o desvio interpolado, 'posicao' faz a
+   * posição seguir uma reta entre os quadros-chave (use quando a detecção entre eles está perdida, trocada com a outra perna etc.).
+   */
+  modo?: 'desvio' | 'posicao';
 }
 
-export const JANELA_AJUSTE_S = 0.25;
+export const JANELA_AJUSTE_S = 0;
 export const MAX_LACUNA_S = 1.5;
 
 interface Xyc { x: number; y: number; conf?: number }
@@ -55,6 +65,7 @@ function recalcular(quadros: QuadroPose[], nome: string, fps: number, opc: Opcoe
   for (let f = 0; f < n; f++) if (quadros[f].pontos[nome]?.manual) chaves.push(f);
   const maxLacuna = Math.max(1, Math.round((opc.maxLacunaS ?? MAX_LACUNA_S) * fps));
   const janela = Math.min(Math.max(0, Math.round((opc.janelaAjusteS ?? JANELA_AJUSTE_S) * fps)), Math.floor(maxLacuna / 2));
+  const modo = opc.modo ?? 'desvio';
   const saida = quadros.slice();
   let k = 0;
   for (let f = 0; f < n; f++) {
@@ -69,7 +80,13 @@ function recalcular(quadros: QuadroPose[], nome: string, fps: number, opc: Opcoe
     if (a >= 0 && b >= 0 && b - a <= maxLacuna) {
       const pa = quadros[a].pontos[nome], pb = quadros[b].pontos[nome];
       const s = (f - a) / (b - a);
-      novo = { x: pa.x + (pb.x - pa.x) * s, y: pa.y + (pb.y - pa.y) * s, interp: true };
+      const autoA = baseDe(pa), autoB = baseDe(pb);
+      if (modo === 'desvio' && base && autoA && autoB) {
+        const dx = (pa.x - autoA.x) * (1 - s) + (pb.x - autoB.x) * s, dy = (pa.y - autoA.y) * (1 - s) + (pb.y - autoB.y) * s;
+        novo = { x: base.x + dx, y: base.y + dy, interp: true };
+      } else {
+        novo = { x: pa.x + (pb.x - pa.x) * s, y: pa.y + (pb.y - pa.y) * s, interp: true };
+      }
       if (base) {
         if (base.conf !== undefined) novo.conf = base.conf;
         novo.auto = comoAuto(base);

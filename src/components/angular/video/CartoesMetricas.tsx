@@ -10,7 +10,10 @@ const STATUS: Record<StatusReferencia, { texto: string; Icone: typeof CircleChec
 
 const urlPubMed = (pmid: string) => `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
 
-function Valor({ v, unico }: { v: ValorMetricaUi; unico: boolean }) {
+// Limiar prático (intensidade, por exemplo) não é faixa de normalidade: o texto diz "limiar", não "referência".
+const STATUS_LIMIAR: Partial<Record<StatusReferencia, string>> = { dentro: 'dentro do limiar', fora: 'fora do limiar' };
+
+function Valor({ v, unico, limiar }: { v: ValorMetricaUi; unico: boolean; limiar: boolean }) {
   const s = STATUS[v.status];
   return (
     <div className="min-w-0" data-testid="valor-metrica" data-status={v.status}>
@@ -19,7 +22,7 @@ function Valor({ v, unico }: { v: ValorMetricaUi; unico: boolean }) {
       </p>
       <p className={cn('mt-0.5 flex items-center gap-1 text-[11px] font-medium', s.classe)}>
         <s.Icone className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        <span>{s.texto}</span>
+        <span>{limiar ? STATUS_LIMIAR[v.status] ?? s.texto : s.texto}</span>
       </p>
       {v.incerteza && <p className="text-[10px] text-muted-foreground">{v.incerteza}</p>}
     </div>
@@ -32,7 +35,7 @@ function Cartao({ c }: { c: CartaoMetricaUi }) {
     <li className={cn('flex flex-col gap-1.5 rounded-2xl border bg-card p-3', fora ? 'border-amber-500/50' : 'border-border/60')} data-testid="cartao-metrica">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{c.titulo}</p>
       <div className={cn('grid gap-2', c.valores.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
-        {c.valores.map((v) => <Valor key={v.lado ?? 'unico'} v={v} unico={c.valores.length === 1} />)}
+        {c.valores.map((v) => <Valor key={v.lado ?? 'unico'} v={v} unico={c.valores.length === 1} limiar={c.referencias.length > 0 && c.referencias.every((r) => r.tipo === 'limiar_heuristico')} />)}
       </div>
       {c.detalhe && <p className="text-[11px] leading-snug text-muted-foreground">{c.detalhe}</p>}
       {c.referencias.map((r) => (
@@ -87,7 +90,7 @@ export default function CartoesMetricas({ cartoes, aviso }: { cartoes: CartaoMet
   const comReferencia = cartoes.some((c) => c.referencias.length > 0);
   return (
     <div className="space-y-2">
-      <ul className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 lg:grid-cols-1">
         {cartoes.map((c) => <Cartao key={c.chave} c={c} />)}
       </ul>
       <p className="px-1 text-[11px] leading-snug text-muted-foreground">

@@ -64,8 +64,10 @@ export function pintarGrafico(ctx: CanvasRenderingContext2D, layout: LayoutGrafi
     ctx.setLineDash([]); ctx.globalAlpha = 1;
     if (m.tipo === 'contato') {
       ctx.fillStyle = cor; ctx.beginPath(); ctx.moveTo(m.x - 4, area.y0 - 1); ctx.lineTo(m.x + 4, area.y0 - 1); ctx.lineTo(m.x, area.y0 + 6); ctx.closePath(); ctx.fill();
-    } else {
+    } else if (m.tipo === 'saida') {
       ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(m.x, area.y0 + 2, 3.2, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(m.x, area.y0 - 2); ctx.lineTo(m.x + 4, area.y0 + 2); ctx.lineTo(m.x, area.y0 + 6); ctx.lineTo(m.x - 4, area.y0 + 2); ctx.closePath(); ctx.stroke();
     }
   }
 

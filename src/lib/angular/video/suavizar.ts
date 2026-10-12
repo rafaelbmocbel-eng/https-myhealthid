@@ -62,6 +62,19 @@ function ajusteLocal(xs: number[], ys: number[], ordem: number): number | null {
   return coef ? coef[0] : null;
 }
 
+const cachePesos = new Map<string, number[]>();
+
+/** Pesos do Savitzky–Golay para uma janela completa de 2h+1 amostras: o ajuste é linear, então vale uma convolução fixa. */
+function pesosSG(h: number, ordem: number): number[] {
+  const chave = `${h}:${ordem}`;
+  const guardado = cachePesos.get(chave);
+  if (guardado) return guardado;
+  const xs = Array.from({ length: 2 * h + 1 }, (_, k) => k - h);
+  const pesos = xs.map((_, j) => ajusteLocal(xs, xs.map((__, k) => (k === j ? 1 : 0)), ordem) ?? (j === h ? 1 : 0));
+  cachePesos.set(chave, pesos);
+  return pesos;
+}
+
 function desenrolar(serie: Serie): (number | null)[] {
   const saida: (number | null)[] = [];
   let anterior: number | null = null;
@@ -100,10 +113,19 @@ export function suavizar(serie: Serie, janela: number, opcoes: OpcoesSuavizacao 
   const ordem = Math.max(0, Math.floor(opcoes.ordem ?? 2));
   const n = base.length;
   const saida: (number | null)[] = new Array(n).fill(null);
+  const nulosAte = new Int32Array(n + 1);
+  for (let i = 0; i < n; i++) nulosAte[i + 1] = nulosAte[i] + (base[i] === null ? 1 : 0);
+  const pesos = metodo === 'savitzky_golay' && ordem > 0 && ordem < 2 * h + 1 ? pesosSG(h, ordem) : null;
 
   for (let i = 0; i < n; i++) {
     const centro = base[i];
     if (centro === null) continue;
+    if (pesos && i - h >= 0 && i + h < n && nulosAte[i + h + 1] - nulosAte[i - h] === 0) {
+      let v = 0;
+      for (let k = -h; k <= h; k++) v += pesos[k + h] * (base[i + k] as number);
+      saida[i] = opcoes.circular ? enrolar(v) : v;
+      continue;
+    }
     const xs: number[] = [], ys: number[] = [];
     for (let j = Math.max(0, i - h); j <= Math.min(n - 1, i + h); j++) {
       const v = base[j];

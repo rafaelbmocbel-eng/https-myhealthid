@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { formatarSegundos } from '@/lib/angular/analiseVideo/tempo';
 import { textoDoValor } from '@/lib/angular/analiseVideo/medidaManual';
-import { COR_REFERENCIA as COR_REF, ICONE_MEDIDA, LADO_MEDIDA } from '@/components/angular/iconesMedida';
+import { COR_REFERENCIA as COR_REF, ICONE_MEDIDA } from '@/components/angular/iconesMedida';
 import { MEDIDAS_DO_PAINEL, type MedidasManuais } from './useMedidasManuais';
 
 const nf = (n: number, d = 1) => n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -41,9 +41,9 @@ export default function PainelMedidaManual({ m, temRastreio, tocando, aoIr }: { 
               const ativa = medida?.id === x.id;
               return (
                 <button key={x.id} type="button" aria-pressed={ativa} onClick={() => m.setAtivaId(ativa ? null : x.id)} data-testid={`ferramenta-${x.id}`}
-                  className={cn(botao, 'justify-start text-left', ativa ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50')}>
+                  className={cn(botao, 'min-h-14 justify-start py-1.5 text-left', ativa ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50')}>
                   <Icone className="h-4 w-4 shrink-0" style={!ativa && COR_REF[x.id] ? { color: COR_REF[x.id] } : undefined} aria-hidden />
-                  <span className="min-w-0 flex-1 truncate">{x.nome}{LADO_MEDIDA[x.id] ? ` ${LADO_MEDIDA[x.id]}` : ''}</span>
+                  <span className="min-w-0 flex-1 whitespace-normal text-left text-[13px] leading-tight">{x.nome}</span>
                   <span className={cn('text-[11px] tabular-nums', n >= x.pontos.length ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground')}>{n >= x.pontos.length ? '✓' : `${n}/${x.pontos.length}`}</span>
                 </button>
               );

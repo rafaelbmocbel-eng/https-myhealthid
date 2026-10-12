@@ -160,7 +160,14 @@ export const valorDoCartaoTexto = (c: CartaoMetricaUi): string => c.valores.map(
 export const referenciaDoCartaoTexto = (c: CartaoMetricaUi): string =>
   c.referencias.length ? c.referencias.map((r) => `${r.faixa} (${r.rotulo ?? r.citacao}${r.pmid ? `, PMID ${r.pmid}` : ''})`).join('; ') : 'sem referência';
 
-const situacaoDoCartaoTexto = (c: CartaoMetricaUi): string => c.valores.map((v) => (v.lado ? `${v.lado} ${NOME_STATUS[v.status]}` : NOME_STATUS[v.status])).join(' · ');
+const situacaoDoCartaoTexto = (c: CartaoMetricaUi): string => {
+  const status = new Set(c.valores.map((v) => v.status));
+  if (status.size === 1) return NOME_STATUS[c.valores[0].status];
+  return c.valores.map((v) => (v.lado ? `${v.lado} ${NOME_STATUS[v.status]}` : NOME_STATUS[v.status])).join(' · ');
+};
+
+/** Métrica com algum valor calculado; as que ficaram sem valor (falta escala ou evento) não entram na tabela. */
+export const cartaoTemValor = (c: CartaoMetricaUi): boolean => c.valores.some((v) => v.texto !== '—');
 
 export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blob: Blob; nome: string }> {
   const paciente = nomeDocumento(d.paciente);
@@ -189,7 +196,9 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
   };
 
   // Métricas: uma linha por métrica, com valor, referência (só com fonte) e situação.
-  if (d.cartoes.length) {
+  const cartoes = d.cartoes.filter(cartaoTemValor);
+  const semValor = d.cartoes.filter((c) => !cartaoTemValor(c)).map((c) => c.titulo);
+  if (cartoes.length) {
     titulo('Métricas');
     const cols = { nome: M + 3, valor: M + 54, ref: M + 98, sit: M + 152 };
     const largs = { nome: 48, valor: 42, ref: 52, sit: LARG - 152 - 2 };
@@ -202,7 +211,7 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
     };
     cabecalho();
     doc.setFontSize(8.3);
-    d.cartoes.forEach((c) => {
+    cartoes.forEach((c) => {
       doc.setFont('helvetica', 'normal');
       const nome = doc.splitTextToSize(seguro(c.titulo), largs.nome) as string[];
       const valor = doc.splitTextToSize(seguro(valorDoCartaoTexto(c)), largs.valor) as string[];
@@ -287,7 +296,7 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
 
   // Fontes das referências usadas.
   const fontes = new Map<string, string>();
-  for (const c of d.cartoes) for (const r of c.referencias) fontes.set(r.pmid ?? r.citacao, `${r.citacao}${r.pmid ? ` PMID ${r.pmid}.` : ''}`);
+  for (const c of cartoes) for (const r of c.referencias) fontes.set(r.pmid ?? r.citacao, `${r.citacao}${r.pmid ? ` PMID ${r.pmid}.` : ''}`);
   if (fontes.size) {
     titulo('Referências consultadas');
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(50);
@@ -305,7 +314,8 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
   titulo('Observações');
   const notas = [
     d.avisoReferencias,
-    `Pontos do corpo detectados automaticamente em vídeo (${d.fpsAnalise} quadros por segundo, trecho de ${seg(d.duracaoS)} s)${d.correcoes.pontos ? `; ${d.correcoes.pontos} pontos corrigidos à mão em ${d.correcoes.quadros} quadros` : '; nenhum ponto corrigido à mão'}${d.eventosEditados ? `; ${d.eventosEditados} eventos ajustados pelo profissional` : ''}.`,
+    `Pontos do corpo detectados automaticamente em vídeo (${d.fpsAnalise} quadros por segundo, trecho de ${seg(d.duracaoS)} s)${d.correcoes.pontos ? `; ${d.correcoes.pontos} ${d.correcoes.pontos === 1 ? 'ponto corrigido' : 'pontos corrigidos'} à mão em ${d.correcoes.quadros} ${d.correcoes.quadros === 1 ? 'quadro' : 'quadros'}` : '; nenhum ponto corrigido à mão'}${d.eventosEditados ? `; ${d.eventosEditados} ${d.eventosEditados === 1 ? 'evento ajustado' : 'eventos ajustados'} pelo profissional` : ''}.`,
+    ...(semValor.length ? [`Não calculado neste vídeo (falta escala em cm, câmera parada ou eventos do ciclo): ${semValor.join(', ')}.`] : []),
     ...(d.avisos ?? []),
     'Medida de acompanhamento, não é diagnóstico. Os eventos (contato e saída do pé) são sugeridos pelo app e conferidos pelo profissional.',
   ];

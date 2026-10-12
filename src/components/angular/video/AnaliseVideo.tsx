@@ -11,7 +11,7 @@ import PainelEstilo from '@/components/angular/PainelEstilo';
 import ExportarSocialDialog from '@/components/angular/ExportarSocialDialog';
 import {
   FORMULA_ASSIMETRIA, AVISO_REFERENCIAS, MODELOS_GESTO, adicionarEvento, analisarGesto, detectarEventosCorrida, detectarEventosMarcha, ehCancelamento, landmarksDoRosto,
-  calcularAnguloNoQuadro, modeloDoGesto, moverEvento, pontosCorrigidosNoQuadro, rastrearVideo, removerEvento, type DetectorQuadro, type EventoPasso, type IdGesto, type Lado,
+  calcularAnguloNoQuadro, modeloDoGesto, moverEvento, pontosCorrigidosNoQuadro, rastrearVideo, removerEvento, type DetectorQuadro, type EventoPasso, type IdGesto, type Lado, type QuadroPose,
 } from '@/lib/angular/video';
 import {
   apagarRascunho, lerRascunho, salvarRascunho,
@@ -75,6 +75,11 @@ export interface AnaliseVideoProps {
 }
 
 const nomeCompleto = (p: { nome: string; sobrenome?: string | null } | null | undefined) => (p ? `${p.nome} ${p.sobrenome ?? ''}`.trim() : 'Paciente');
+const nomeDoProfissional = (p: { nome?: string | null; sobrenome?: string | null; crefito?: string | null } | null | undefined): string | undefined => {
+  const nome = [p?.nome, p?.sobrenome].filter(Boolean).join(' ');
+  return nome ? nome + (p?.crefito ? ` · CREFITO ${p.crefito}` : '') : undefined;
+};
+const GRUPOS_AUXILIARES = ['coxa', 'tibia'];
 const hojeBR = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 const dormir = (ms: number) => new Promise((ok) => window.setTimeout(ok, ms));
 
@@ -95,6 +100,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const [taxaFps, setTaxaFps] = useState(30);
   const [intervalo, setIntervalo] = useState<IntervaloVideo>({ inicio: 0, fim: 0 });
   const [progresso, setProgresso] = useState(0);
+  const [aoVivo, setAoVivo] = useState<QuadroPose | null>(null);
   const [rascunho, setRascunho] = useState<{ texto: string; salvoEm: string } | null>(null);
   const [pendente, setPendente] = useState<AnaliseSalva | null>(null);
   const [eventos, setEventos] = useState<EventoPasso[] | null>(null);
@@ -255,22 +261,32 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     const el = videoRef.current;
     if (!el) { toast.error('Não consegui preparar o vídeo.'); setEtapa('modelo'); return; }
     try {
-      const t = await rastrearVideo(el, { fps: taxaFps, intervalo, detector: detectorDeTeste() as DetectorQuadro | undefined, onProgresso: setProgresso, sinal: ac.signal });
+      const t = await rastrearVideo(el, { fps: taxaFps, intervalo, detector: detectorDeTeste() as DetectorQuadro | undefined, onProgresso: setProgresso, onQuadro: (q, i) => { if (i % 2 === 0) setAoVivo(q); }, sinal: ac.signal });
       if (ac.signal.aborted) return;
+      setAoVivo(null);
       edicao.iniciar(t);
       setEventos(null);
       repro.setQuadro(0);
       setAba('metricas');
       setEtapa('analisar');
     } catch (e) {
+      setAoVivo(null);
       if (ehCancelamento(e)) { setEtapa(trilha ? 'analisar' : 'modelo'); return; }
       toast.error(e instanceof Error ? e.message : 'Não consegui rastrear o vídeo agora. Tente de novo com internet.');
       setEtapa(trilha ? 'analisar' : 'modelo');
     }
   };
 
+  const voltarParaAnalise = () => {
+    setGrupoId('');
+    setEventos(null);
+    repro.setQuadro(0);
+    setEtapa('analisar');
+  };
+
   const soMedir = () => {
     if (!video) return;
+    if (trilha) { voltarParaAnalise(); setAba('medir'); return; }
     edicao.iniciar(trilhaVazia(fpsVideo, intervalo.inicio, intervalo.fim, video.largura, video.altura));
     setEventos(null);
     repro.setQuadro(0);
@@ -386,7 +402,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
   const dadosDoRelatorio = () => ({
     paciente: nomeCompleto(paciente),
-    profissional: profile ? `${profile.nome} ${profile.sobrenome || ''}`.trim() + (profile.crefito ? ` · CREFITO ${profile.crefito}` : '') : undefined,
+    profissional: nomeDoProfissional(profile),
     data: hojeBR(),
   });
 
@@ -417,7 +433,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
         modelo: { nome: modelo.nome, vista: modelo.vista === 'lateral' ? 'Vista lateral' : 'Vista frontal' },
         duracaoS: (tempos[tempos.length - 1] ?? 0) - (tempos[0] ?? 0), fpsAnalise: Math.round(trilha.fps),
         cartoes,
-        graficos: grupos.map((g) => ({ titulo: g.nome, dados: { series: seriesDoGrupoDaAnalise(g, analise.series), marcadores, bandas: bandasDoGrupo(g.id, modelo.id), t0: tempos[0] ?? 0, duracao: Math.max(0.1, (tempos[tempos.length - 1] ?? 0) - (tempos[0] ?? 0)) } }))
+        graficos: grupos.filter((g) => !GRUPOS_AUXILIARES.includes(g.id) || g.id === grupo?.id).map((g) => ({ titulo: g.nome, dados: { series: seriesDoGrupoDaAnalise(g, analise.series), marcadores, bandas: bandasDoGrupo(g.id, modelo.id), t0: tempos[0] ?? 0, duracao: Math.max(0.1, (tempos[tempos.length - 1] ?? 0) - (tempos[0] ?? 0)) } }))
           .filter((g) => g.dados.series.some((s) => s.pontos.some((p) => p.v !== null))),
         quadros: imagens.map(({ rotulo, imagem }) => ({ rotulo, imagem })),
         capturas: capturas.map((x) => ({ t: x.t, quadro: x.quadro + 1, nome: x.nome, valorTexto: textoDoValor(x.valor, x.unidade), texto: x.texto })),
@@ -529,7 +545,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
           video={video} modelos={MODELOS_UI} modeloId={modeloId} aoModelo={escolherModelo}
           fpsVideo={fpsVideo} aoFpsVideo={escolherFpsVideo} taxaFps={taxaFps} aoTaxa={setTaxaFps}
           intervalo={intervalo} aoIntervalo={setIntervalo} avisos={avisosVideo}
-          aoRastrear={rastrear} aoSoMedir={soMedir} primario={entrada === 'ponto' ? 'medir' : 'rastrear'}
+          aoRastrear={rastrear} aoUsarRastreio={trilha ? voltarParaAnalise : undefined} aoSoMedir={soMedir} primario={entrada === 'ponto' ? 'medir' : 'rastrear'}
           aoTrocarVideo={escolherVideo}
         />
         {modelo.gravacao.length > 0 && (
@@ -552,7 +568,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
         <PlayerQuadros
           url={video.url} largura={video.largura} altura={video.altura} videoRef={videoRef} quadro={quadro} nQuadros={nQuadros}
-          pontos={etapa === 'analisar' ? pontosTela : null} ligacoes={LIGACOES_CORPO} alcas={alcas} marcacoesDe={marcacoesDe} estilo={estilo}
+          pontos={etapa === 'analisar' ? pontosTela : etapa === 'rastreando' ? pontosParaTela(aoVivo ?? undefined) : null} ligacoes={LIGACOES_CORPO} alcas={alcas} marcacoesDe={marcacoesDe} estilo={estilo}
           mostrarEsqueleto={mostrarEsqueleto} mostrarAngulos={mostrarAngulos} podeCorrigir={podeCorrigir}
           aoCorrigir={corrigir} aoDeslizar={repro.irPara} aviso={avisoQuadro}
           camadaExtra={etapa === 'analisar' ? manual.camada : undefined} aoArrastarExtra={manual.arrastar} gestosExtra={etapa === 'analisar' && aba === 'medir' ? manual.gestos : undefined}
@@ -607,7 +623,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
       </div>
 
       {etapa === 'analisar' && (
-        <aside className="min-w-0 space-y-3 lg:sticky lg:top-4">
+        <aside className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:pr-1">
           <div role="tablist" aria-label="Painel da análise" className="grid grid-cols-5 gap-1 rounded-2xl bg-muted/60 p-1">
             {ABAS.map(({ id, nome, Icone }) => (
               <button key={id} type="button" role="tab" aria-selected={aba === id} onClick={() => setAba(id)} data-testid={`aba-${id}`}
@@ -621,10 +637,12 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
             {aba === 'metricas' && (
               analise ? (
                 <>
-                  <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
-                    <span>Câmera parada (o paciente atravessa o quadro)</span>
-                    <input type="checkbox" checked={cameraFixa} onChange={(e) => setCameraFixa(e.target.checked)} className="h-5 w-5 accent-primary" />
-                  </label>
+                  {modelo.metricas.some((m) => m.requerCameraFixa) && (
+                    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
+                      <span>Câmera parada (o paciente atravessa o quadro)</span>
+                      <input type="checkbox" checked={cameraFixa} onChange={(e) => setCameraFixa(e.target.checked)} className="h-5 w-5 accent-primary" />
+                    </label>
+                  )}
                   <CartoesMetricas cartoes={cartoes} aviso={AVISO_REFERENCIAS} />
                   {[...analise.avisos, ...modelo.avisos].length > 0 && <ul className="space-y-1 text-[11px] leading-snug text-muted-foreground">{[...analise.avisos, ...modelo.avisos].map((a) => <li key={a}>• {a}</li>)}</ul>}
                 </>

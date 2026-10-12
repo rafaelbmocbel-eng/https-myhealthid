@@ -44,10 +44,10 @@ const Fixo = memo(function Fixo({ layout }: { layout: LayoutGrafico }) {
         const contato = m.tipo === 'contato';
         return (
           <g key={m.id} data-testid={`marcador-${m.tipo}`}>
-            <line x1={m.x} x2={m.x} y1={area.y0} y2={area.y1} stroke={cor} strokeOpacity={0.75} strokeWidth={1.2} strokeDasharray={contato ? undefined : '3 3'} />
-            {contato
-              ? <path d={`M${m.x - 4},${area.y0 - 1} L${m.x + 4},${area.y0 - 1} L${m.x},${area.y0 + 6} Z`} fill={cor} />
-              : <circle cx={m.x} cy={area.y0 + 2} r={3.2} fill="none" stroke={cor} strokeWidth={1.5} />}
+            <line x1={m.x} x2={m.x} y1={area.y0} y2={area.y1} stroke={cor} strokeOpacity={0.5} strokeWidth={1} strokeDasharray={contato ? undefined : '3 3'} />
+            {contato && <path d={`M${m.x - 4},${area.y0 - 1} L${m.x + 4},${area.y0 - 1} L${m.x},${area.y0 + 6} Z`} fill={cor} />}
+            {m.tipo === 'saida' && <circle cx={m.x} cy={area.y0 + 2} r={3.2} fill="none" stroke={cor} strokeWidth={1.5} />}
+            {m.tipo === 'outro' && <path d={`M${m.x},${area.y0 - 2} L${m.x + 4},${area.y0 + 2} L${m.x},${area.y0 + 6} L${m.x - 4},${area.y0 + 2} Z`} fill="none" stroke={cor} strokeWidth={1.5} />}
           </g>
         );
       })}
@@ -109,6 +109,7 @@ export default function GraficoAngulo({ titulo, series, marcadores = [], bandas 
         {series.map((s) => <span key={s.id} className="flex items-center gap-1"><span className="inline-block h-0.5 w-4 rounded" style={{ background: s.cor }} aria-hidden />{s.rotulo}</span>)}
         {marcadores.some((m) => m.tipo === 'contato') && <span className="flex items-center gap-1"><span aria-hidden>▼</span> contato inicial</span>}
         {marcadores.some((m) => m.tipo === 'saida') && <span className="flex items-center gap-1"><span aria-hidden>○</span> saída do pé</span>}
+        {[...new Set(marcadores.filter((m) => m.tipo === 'outro' && m.legenda).map((m) => m.legenda))].map((l) => <span key={l} className="flex items-center gap-1"><span aria-hidden>◇</span> {l}</span>)}
         {bandas.map((b) => <span key={b.id} className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded-sm border border-dashed border-emerald-500 bg-emerald-500/15" aria-hidden />{b.rotulo}</span>)}
       </div>
     </figure>

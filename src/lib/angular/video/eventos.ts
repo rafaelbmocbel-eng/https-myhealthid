@@ -17,7 +17,12 @@ export interface EventoPasso {
   t: number;
   /** true enquanto o evento é a sugestão automática; false depois que o profissional o criou ou moveu. */
   sugerido: boolean;
+  /** Instante refinado entre quadros (interpolação do pico), só nas sugestões automáticas; as métricas de tempo usam este valor se existir. */
+  tFino?: number;
 }
+
+/** Instante do evento para as métricas: o refinado, se houver, ou o do quadro. */
+export const tempoDoEvento = (e: EventoPasso): number => e.tFino ?? e.t;
 
 export interface OpcoesEventos {
   /** Para onde o paciente anda (+1 direita da imagem). Sem isto é estimado pela orientação dos pés. */
@@ -29,6 +34,8 @@ export interface OpcoesEventos {
 const DIST_MIN_MARCHA_S = 0.35;
 const DIST_MIN_CORRIDA_S = 0.2;
 const AMPLITUDE_MIN_PCT_ALTURA = 0.03;
+/** Fração da amplitude de altura do calcanhar abaixo do ponto mais baixo que marca o começo do contato (corrida). */
+const LIMIAR_CONTATO = 0.06;
 
 const idDe = (lado: Lado, tipo: EventoPasso['tipo'], i: number) => `${lado}-${tipo}-${i}`;
 
@@ -48,6 +55,18 @@ function prepararSerie(serie: Serie, fps: number): (number | null)[] {
 }
 
 interface Candidato { i: number; v: number }
+
+/**
+ * Deslocamento (−0,5 a 0,5 quadro) do pico verdadeiro em relação ao quadro `i`, pela parábola que passa pelo quadro e seus vizinhos.
+ * Dá instantes entre quadros: sem isso, dois tempos iguais podem parecer diferentes por até um quadro (6% de um passo a 30 quadros/s).
+ */
+export function refinarExtremo(serie: Serie, i: number): number {
+  const a = serie[i - 1], b = serie[i], c = serie[i + 1];
+  if (typeof a !== 'number' || typeof b !== 'number' || typeof c !== 'number') return 0;
+  const den = a - 2 * b + c;
+  if (!Number.isFinite(den) || Math.abs(den) < 1e-9) return 0;
+  return Math.max(-0.5, Math.min(0.5, (0.5 * (a - c)) / den)) + 0;
+}
 
 /**
  * Máximos (ou mínimos) locais com distância mínima e proeminência mínima. Em platôs fica o primeiro quadro; picos a menos de
@@ -85,20 +104,23 @@ export function extremosLocais(serie: Serie, tipo: 'max' | 'min', distMin: numbe
 }
 
 /** Garante a alternância contato → saída em cada lado: de dois eventos iguais seguidos, mantém o mais marcado. */
-function alternar(brutos: { i: number; tipo: EventoPasso['tipo']; v: number }[]): { i: number; tipo: EventoPasso['tipo'] }[] {
+function alternar(brutos: { i: number; tipo: EventoPasso['tipo']; v: number; d?: number }[]): { i: number; tipo: EventoPasso['tipo']; d?: number }[] {
   const ordem = [...brutos].sort((a, b) => a.i - b.i);
-  const saida: { i: number; tipo: EventoPasso['tipo']; v: number }[] = [];
+  const saida: { i: number; tipo: EventoPasso['tipo']; v: number; d?: number }[] = [];
   for (const e of ordem) {
     const ult = saida[saida.length - 1];
     if (ult && ult.tipo === e.tipo) {
       if (e.v > ult.v) saida[saida.length - 1] = e;
     } else saida.push(e);
   }
-  return saida.map(({ i, tipo }) => ({ i, tipo }));
+  return saida.map(({ i, tipo, d }) => ({ i, tipo, d }));
 }
 
-const montar = (trilha: TrilhaPose, lado: Lado, achados: { i: number; tipo: EventoPasso['tipo'] }[]): EventoPasso[] =>
-  achados.map((a) => ({ id: idDe(lado, a.tipo, a.i), lado, tipo: a.tipo, i: a.i, t: trilha.quadros[a.i].t, sugerido: true }));
+const montar = (trilha: TrilhaPose, lado: Lado, achados: { i: number; tipo: EventoPasso['tipo']; d?: number }[]): EventoPasso[] =>
+  achados.map((a) => ({
+    id: idDe(lado, a.tipo, a.i), lado, tipo: a.tipo, i: a.i, t: trilha.quadros[a.i].t, sugerido: true,
+    ...(a.d !== undefined ? { tFino: trilha.quadros[a.i].t + a.d / trilha.fps } : {}),
+  }));
 
 const ordenar = (lista: EventoPasso[]): EventoPasso[] => [...lista].sort((a, b) => a.i - b.i || (a.lado < b.lado ? -1 : 1));
 
@@ -126,8 +148,8 @@ export function detectarEventosMarcha(trilha: TrilhaPose, opcoes: OpcoesEventos 
     if (amplitude < AMPLITUDE_MIN_PCT_ALTURA * trilha.altura) continue;
     const prom = amplitude * 0.3;
     const brutos = [
-      ...extremosLocais(calcanhar, 'max', distMin, prom).map((i) => ({ i, tipo: 'contato' as const, v: calcanhar[i] as number })),
-      ...extremosLocais(ponta, 'min', distMin, prom).map((i) => ({ i, tipo: 'saida' as const, v: -(ponta[i] as number) })),
+      ...extremosLocais(calcanhar, 'max', distMin, prom).map((i) => ({ i, tipo: 'contato' as const, v: calcanhar[i] as number, d: refinarExtremo(calcanhar, i) })),
+      ...extremosLocais(ponta, 'min', distMin, prom).map((i) => ({ i, tipo: 'saida' as const, v: -(ponta[i] as number), d: refinarExtremo(ponta, i) })),
     ];
     eventos.push(...montar(trilha, lado, alternar(brutos)));
   }
@@ -152,20 +174,28 @@ export function detectarEventosCorrida(trilha: TrilhaPose, opcoes: OpcoesEventos
     if (amplitude < AMPLITUDE_MIN_PCT_ALTURA * trilha.altura) continue;
 
     // O calcanhar fica no ponto mais baixo (maior y) durante todo o apoio: o contato é o começo desse trecho.
-    const contatos = extremosLocais(altura, 'max', distMin, amplitude * 0.25, Math.round(0.5 * trilha.fps)).map((pico) => {
-      const limite = (altura[pico] as number) - amplitude * 0.12;
+    const contatos: { i: number; fino: number }[] = extremosLocais(altura, 'max', distMin, amplitude * 0.25, Math.round(0.5 * trilha.fps)).map((pico) => {
+      const limite = (altura[pico] as number) - amplitude * LIMIAR_CONTATO;
       let i = pico;
       while (i > 0 && i > pico - distMin && altura[i - 1] !== null && (altura[i - 1] as number) >= limite) i--;
-      return i;
+      const antes = i > 0 ? altura[i - 1] : null, aqui = altura[i];
+      if (typeof antes === 'number' && typeof aqui === 'number' && aqui > antes) {
+        const fino = i - 1 + Math.min(1, Math.max(0, (limite - antes) / (aqui - antes)));
+        return { i: Math.round(fino), fino };
+      }
+      return { i, fino: i };
     });
-    for (const i of contatos) eventos.push({ id: idDe(lado, 'contato', i), lado, tipo: 'contato', i, t: trilha.quadros[i].t, sugerido: true });
+    for (const c of contatos) {
+      eventos.push({ id: idDe(lado, 'contato', c.i), lado, tipo: 'contato', i: c.i, t: trilha.quadros[c.i].t, sugerido: true, tFino: trilha.quadros[c.i].t + (c.fino - c.i) / trilha.fps });
+    }
 
     const joelho = prepararSerie(grausDaSerie(angulosPorQuadro(trilha, anguloJoelho(lado), { direcao: d })), trilha.fps);
-    const passadas = contatos.slice(1).map((c, k) => c - contatos[k]);
+    const indicesContato = contatos.map((c) => c.i);
+    const passadas = indicesContato.slice(1).map((c, k) => c - indicesContato[k]);
     const tipica = passadas.length ? percentil(passadas, 0.5) : distMin * 4;
-    contatos.forEach((c, k) => {
-      const proximo = k + 1 < contatos.length ? contatos[k + 1] : Math.min(trilha.quadros.length, c + Math.round(tipica));
-      if (k + 1 >= contatos.length && trilha.quadros.length - c < tipica * 0.9) return;
+    indicesContato.forEach((c, k) => {
+      const proximo = k + 1 < indicesContato.length ? indicesContato[k + 1] : Math.min(trilha.quadros.length, c + Math.round(tipica));
+      if (k + 1 >= indicesContato.length && trilha.quadros.length - c < tipica * 0.9) return;
       const fim = proximo - 1;
       if (fim - c < 3) return;
       let pico = -1;
@@ -185,7 +215,10 @@ export function detectarEventosCorrida(trilha: TrilhaPose, opcoes: OpcoesEventos
         const v = joelho[j];
         if (v !== null && (saida < 0 || v < (joelho[saida] as number))) saida = j;
       }
-      if (saida > c) eventos.push({ id: idDe(lado, 'saida', saida), lado, tipo: 'saida', i: saida, t: trilha.quadros[saida].t, sugerido: true });
+      if (saida > c) {
+        const d = refinarExtremo(joelho, saida);
+        eventos.push({ id: idDe(lado, 'saida', saida), lado, tipo: 'saida', i: saida, t: trilha.quadros[saida].t, sugerido: true, tFino: trilha.quadros[saida].t + d / trilha.fps });
+      }
     });
   }
   return ordenar(eventos);
