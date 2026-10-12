@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, ClipboardCheck, Copy, Eye, EyeOff, FileDown, Film, Grid3x3, Hand, ImageDown, Loader2, Maximize2, MousePointer2, Palette, Ruler, Smartphone, Sparkles, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, ClipboardCheck, Columns2, Copy, Eye, EyeOff, FileDown, Film, Grid3x3, Hand, ImageDown, Instagram, Loader2, Maximize2, MousePointer2, Palette, Ruler, Smartphone, Sparkles, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -12,6 +12,8 @@ import MarchaVideo from '@/components/angular/MarchaVideo';
 import PontoAPontoVideo from '@/components/angular/PontoAPontoVideo';
 import CameraNivel from '@/components/angular/CameraNivel';
 import LupaFoto from '@/components/angular/LupaFoto';
+import ComparadorFotos, { type ExtrasDaArte } from '@/components/angular/ComparadorFotos';
+import ExportarSocialDialog from '@/components/angular/ExportarSocialDialog';
 import PainelEstilo from '@/components/angular/PainelEstilo';
 import { ItensSvg } from '@/components/angular/MarcacaoSvg';
 import { COR_REFERENCIA, ICONE_MEDIDA, LADO_MEDIDA } from '@/components/angular/iconesMedida';
@@ -27,8 +29,8 @@ import { pontosAutomaticos, pontosDoPrumo, type Landmark } from '@/lib/angular/p
 import { compararMedidas, grau, variacaoTexto, type MedidaSalva } from '@/lib/angular/comparar';
 import { gerarRelatorioAngular } from '@/lib/angular/relatorio';
 import {
-  alcaDoPrumo, apoioPelaAlca, baixarBlob, calcularResultados, canvasComMedidas, canvasParaBlob, faltaReferenciaDoPrumo, imagemParaPdf, itensDaAnalise, medidasSalvas,
-  nomeArquivoImagem, type AnaliseFoto,
+  alcaDoPrumo, analiseDaFotoParaExportar, apoioPelaAlca, baixarBlob, calcularResultados, canvasComMedidas, canvasParaBlob, faltaReferenciaDoPrumo, imagemParaPdf, itensDaAnalise,
+  medidasSalvas, nomeArquivoImagem, type AnaliseFoto, type AnaliseParaExportar,
 } from '@/lib/angular/analise';
 import { escalaDoEstilo, escalaNaTela, lerEstilo, salvarEstilo, type EstiloMarcacao } from '@/lib/angular/estilo';
 import { entregarPdf } from '@/lib/pdf/entrega';
@@ -98,6 +100,9 @@ export default function AnaliseAngular() {
   const [unidadePrumo, setUnidadePrumo] = useState<UnidadePrumo>('graus');
   const [olhaPara, setOlhaPara] = useState<OlharPara>('direita');
   const [baixando, setBaixando] = useState(false);
+  const [comparando, setComparando] = useState(false);
+  // A arte e os pontos de pose andam juntos: o diálogo recomeça do zero quando a referência da arte muda.
+  const [arteSocial, setArteSocial] = useState<{ arte: AnaliseParaExportar; landmarks: (Landmark[] | null)[] } | null>(null);
   const [larguraTela, setLarguraTela] = useState(0);
   const poseRef = useRef<{ img: HTMLImageElement; lm: Landmark[] } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -105,6 +110,7 @@ export default function AnaliseAngular() {
   vistaRef.current = vista;
   const caixaRef = useRef<HTMLDivElement>(null);
   const rolagemRef = useRef<HTMLDivElement>(null);
+  const comparadorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => { if (foto) URL.revokeObjectURL(foto.url); }, [foto]);
 
@@ -117,9 +123,14 @@ export default function AnaliseAngular() {
     const ro = new ResizeObserver(medir);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [foto, zoom, painelEstilo]);
+  }, [foto, zoom, painelEstilo, comparando]);
 
   const mudarEstilo = (e: EstiloMarcacao) => { setEstiloLocal(e); salvarEstilo(e); };
+
+  // A página estava rolada até a foto: ao abrir a comparação, leva o título dela para a vista.
+  useEffect(() => {
+    if (comparando) comparadorRef.current?.scrollIntoView?.({ block: 'start' });
+  }, [comparando]);
 
   // Os botões de zoom ampliam em torno do centro do que está na tela (a pinça já ancora nos dedos).
   const centroZoom = useRef<{ fx: number; fy: number } | null>(null);
@@ -295,6 +306,14 @@ export default function AnaliseAngular() {
     }
   };
 
+  const abrirArteDaFoto = () => {
+    if (!foto) return;
+    const arte = analiseDaFotoParaExportar(analise, estilo);
+    if (!arte) { toast.error('Não consegui montar a imagem.'); return; }
+    setArteSocial({ arte, landmarks: [poseRef.current?.img === foto.img ? poseRef.current.lm : null] });
+  };
+  const abrirArteDaComparacao = (arte: AnaliseParaExportar, extras: ExtrasDaArte) => setArteSocial({ arte, landmarks: extras.landmarks });
+
   const texto = medidasAtuais.map((m) => `• ${m.texto}`).join('\n');
   const vistaNome = VISTAS.find((v) => v.id === vista)!.nome.toLowerCase();
   const notaNivel = giro !== null && Math.abs(giro) >= 0.05
@@ -395,6 +414,13 @@ export default function AnaliseAngular() {
             </div>
             {modoVideo === 'ponto' ? <PontoAPontoVideo paciente={paciente} /> : <MarchaVideo paciente={paciente} />}
           </div>
+        ) : comparando ? (
+          <div ref={comparadorRef} className="mx-auto w-full max-w-4xl scroll-mt-20">
+            <ComparadorFotos
+              key={foto?.url ?? 'sem-foto'} vista={vista}
+              atual={foto ? { analise, url: foto.url, landmarks: poseRef.current?.img === foto.img ? poseRef.current.lm : null } : null}
+              estilo={estilo} onEstiloChange={mudarEstilo} onExportar={abrirArteDaComparacao} onFechar={() => setComparando(false)} />
+          </div>
         ) : (
           <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
             <div className="space-y-3">
@@ -408,13 +434,18 @@ export default function AnaliseAngular() {
               </div>
 
               {!foto ? (
-                <label className="flex min-h-[260px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card p-6 text-center">
-                  <Camera className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-sm font-semibold">Tirar ou escolher a foto ({vistaNome})</span>
-                  <span className="max-w-sm text-xs text-muted-foreground">Câmera parada na altura do meio do corpo, paciente inteiro no quadro, boa luz e roupa justa. A foto fica só neste aparelho.</span>
-                  <input type="file" accept="image/*" className="sr-only" onChange={(e) => escolherFoto(e.target.files?.[0])} />
-                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={(e) => { e.preventDefault(); setCameraAberta(true); }}><Smartphone className="h-3.5 w-3.5" /> Tirar a foto no app</Button>
-                </label>
+                <>
+                  <label className="flex min-h-[260px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card p-6 text-center">
+                    <Camera className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Tirar ou escolher a foto ({vistaNome})</span>
+                    <span className="max-w-sm text-xs text-muted-foreground">Câmera parada na altura do meio do corpo, paciente inteiro no quadro, boa luz e roupa justa. A foto fica só neste aparelho.</span>
+                    <input type="file" accept="image/*" className="sr-only" onChange={(e) => escolherFoto(e.target.files?.[0])} />
+                    <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={(e) => { e.preventDefault(); setCameraAberta(true); }}><Smartphone className="h-3.5 w-3.5" /> Tirar a foto no app</Button>
+                  </label>
+                  <Button variant="outline" className="h-11 w-full gap-2" onClick={() => setComparando(true)} data-testid="abrir-comparador-vazio">
+                    <Columns2 className="h-4 w-4" /> Comparar duas fotos lado a lado
+                  </Button>
+                </>
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-start gap-2">
@@ -522,6 +553,16 @@ export default function AnaliseAngular() {
                         <input type="file" accept="image/*" className="sr-only" onChange={(e) => escolherFoto(e.target.files?.[0])} />
                       </label>
                     </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" className="h-auto min-h-11 gap-1.5 whitespace-normal px-2 text-[13px] leading-tight" onClick={() => setComparando(true)} data-testid="abrir-comparador">
+                      <Columns2 className="h-4 w-4 shrink-0" /> Comparar lado a lado
+                    </Button>
+                    <Button className="h-auto min-h-11 gap-1.5 whitespace-normal px-2 text-[13px] leading-tight" onClick={abrirArteDaFoto} disabled={!temMarcacao} data-testid="baixar-instagram"
+                      title={temMarcacao ? 'Arte pronta para Stories, Reels ou Feed' : 'Marque uma medida para montar a arte'}>
+                      <Instagram className="h-4 w-4 shrink-0" /> Baixar para Instagram
+                    </Button>
                   </div>
 
                   {painelEstilo && <PainelEstilo estilo={estilo} aoMudar={mudarEstilo} aoFechar={() => setPainelEstilo(false)} />}
@@ -721,6 +762,7 @@ export default function AnaliseAngular() {
           </div>
         )}
       </div>
+      <ExportarSocialDialog aberto={!!arteSocial} aoFechar={() => setArteSocial(null)} arte={arteSocial?.arte ?? null} landmarks={arteSocial?.landmarks} terapeutaId={user?.id} />
       {cameraAberta && <CameraNivel onFechar={() => setCameraAberta(false)} onCapturar={(f, incl) => { setCameraAberta(false); escolherFoto(f, incl); }} />}
     </AppLayout>
   );

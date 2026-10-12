@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, Check, Hand, Link2, Loader2, Maximize2, MousePointer2, Palette, Ruler, Share2, Smartphone, Sparkles, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, Camera, Check, Hand, Link2, Loader2, Maximize2, MousePointer2, Palette, Ruler, Share2, Smartphone, Sparkles, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,9 @@ import {
 } from '@/lib/angular/medidas';
 import { giroDaFoto } from '@/lib/angular/sensor';
 import { detectarPose } from '@/lib/angular/detector';
-import { pontosAutomaticos, pontosDoPrumo } from '@/lib/angular/pose';
+import { pontosAutomaticos, pontosDoPrumo, type Landmark } from '@/lib/angular/pose';
 import {
-  OPCOES_ANALISE_PADRAO, apoioPelaAlca, calcularResultados, canvasComMedidas, faltaReferenciaDoPrumo,
+  OPCOES_ANALISE_PADRAO, apoioPelaAlca, calcularResultados, faltaReferenciaDoPrumo, painelParaExportar,
   type AnaliseFoto, type AnaliseParaExportar, type OpcoesAnalise, type PainelParaExportar,
 } from '@/lib/angular/analise';
 import {
@@ -34,6 +34,13 @@ export interface FotoAnalisada {
   rotulo?: string;
   /** aaaa-mm-dd */
   data?: string;
+  /** Pontos de pose já detectados nesta foto; servem para achar o rosto na arte para Instagram. */
+  landmarks?: Landmark[] | null;
+}
+
+/** Pontos de pose de cada foto da arte, na ordem de `arte.paineis` (null onde não houve detecção). */
+export interface ExtrasDaArte {
+  landmarks: (Landmark[] | null)[];
 }
 
 /**
@@ -42,9 +49,9 @@ export interface FotoAnalisada {
  *   <ComparadorFotos
  *     key={foto.url}                                   // remonte ao trocar a foto semente
  *     vista={vista}
- *     atual={{ analise, url: foto.url }}               // `analise` é o AnaliseFoto da tela; vira o painel "Pós"
+ *     atual={{ analise, url: foto.url, landmarks }}    // `analise` é o AnaliseFoto da tela; vira o painel "Pós"
  *     estilo={estilo} onEstiloChange={mudarEstilo}     // o mesmo estilo das linhas da análise
- *     onExportar={(arte) => abrirDialogoSocial(arte)}  // recebe as fotos já com as marcações
+ *     onExportar={(arte, extras) => abrirDialogoSocial(arte, extras.landmarks)}  // fotos já com as marcações
  *     onFechar={() => setComparando(false)} />
  *
  * A outra foto é carregada aqui dentro (galeria ou câmera) e marcada com as mesmas medidas. As edições feitas
@@ -59,7 +66,7 @@ export interface ComparadorFotosProps {
   estilo?: EstiloMarcacao;
   onEstiloChange?: (e: EstiloMarcacao) => void;
   /** Sem isso, o botão de arte para Instagram não aparece. */
-  onExportar?: (arte: AnaliseParaExportar) => void;
+  onExportar?: (arte: AnaliseParaExportar, extras: ExtrasDaArte) => void;
   onFechar?: () => void;
   titulo?: string;
 }
@@ -76,6 +83,7 @@ interface PainelEstado {
   cmPorPxBase: number | null;
   nivelTipo: 'horizontal' | 'vertical';
   escalaCm: string;
+  landmarks: Landmark[] | null;
 }
 
 type Dupla<T> = [T, T];
@@ -93,14 +101,14 @@ const UNIDADES_PRUMO: { id: UnidadePrumo; nome: string }[] = [{ id: 'graus', nom
 const limitarZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, +z.toFixed(2)));
 const nf = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-const painelVazio = (rotulo: string): PainelEstado => ({ rotulo, data: '', foto: null, pontos: {}, giroBase: null, cmPorPxBase: null, nivelTipo: 'horizontal', escalaCm: '' });
+const painelVazio = (rotulo: string): PainelEstado => ({ rotulo, data: '', foto: null, pontos: {}, giroBase: null, cmPorPxBase: null, nivelTipo: 'horizontal', escalaCm: '', landmarks: null });
 
 function painelDaSemente(s: FotoAnalisada, rotuloPadrao: string, dataPadrao: string): PainelEstado {
   const a = s.analise;
   return {
     ...painelVazio(s.rotulo || rotuloPadrao), data: s.data || dataPadrao,
     foto: { url: s.url, w: a.largura, h: a.altura, img: a.imagem as HTMLImageElement, propria: false },
-    pontos: pontosSemReferencias(a.pontos), giroBase: a.giro, cmPorPxBase: a.cmPorPx,
+    pontos: pontosSemReferencias(a.pontos), giroBase: a.giro, cmPorPxBase: a.cmPorPx, landmarks: s.landmarks ?? null,
   };
 }
 
@@ -244,11 +252,17 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
   const trocarFoto = (i: Indice, foto: FotoDoPainel, inclinacao: number | null) => {
     const antiga = paineisRef.current[i].foto;
     if (antiga?.propria) URL.revokeObjectURL(antiga.url);
-    atualizar(i, { foto, pontos: {}, giroBase: inclinacao !== null ? giroDaFoto(inclinacao) : null, cmPorPxBase: null, escalaCm: '' });
+    atualizar(i, { foto, pontos: {}, giroBase: inclinacao !== null ? giroDaFoto(inclinacao) : null, cmPorPxBase: null, escalaCm: '', landmarks: null });
     setZooms((s) => (sincronizar ? [1, 1] : (i === 0 ? [1, s[1]] : [s[0], 1])));
     setMover(false);
     setEditando(i);
     setModo('marcar');
+  };
+
+  // As fotos trocam de lugar; os nomes (Pré e Pós) ficam onde estão, porque o primeiro lugar é o de cima ou da esquerda na arte.
+  const trocarFotos = () => {
+    setPaineis((s) => [{ ...s[1], rotulo: s[0].rotulo }, { ...s[0], rotulo: s[1].rotulo }]);
+    setEditando((e) => (e === 0 ? 1 : 0));
   };
 
   const marcarAutomatico = async (i: Indice, alvo?: FotoDoPainel, silencioso = false) => {
@@ -258,6 +272,7 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
     try {
       const lm = await detectarPose(f.img);
       if (!lm) { if (!silencioso) toast.error('Não achei o corpo na foto. Marque os pontos à mão.'); return; }
+      if (paineisRef.current[i].foto?.img === f.img) atualizar(i, { landmarks: lm });
       const sugeridos = pontosAutomaticos(lm, vista, f.w, f.h);
       const ids = Object.keys(sugeridos);
       if (!ids.length) { if (!silencioso) toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
@@ -280,6 +295,7 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
     try {
       const lm = await detectarPose(f.img);
       if (!lm) { toast.error('Não achei o corpo na foto. Marque os pontos à mão.'); return; }
+      if (paineisRef.current[i].foto?.img === f.img) atualizar(i, { landmarks: lm });
       const s = pontosDoPrumo(lm, vista, f.w, f.h);
       if (!s) { toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
       atualizar(i, (p) => ({ pontos: { ...p.pontos, [s.medidaId]: s.pontos } }));
@@ -317,13 +333,16 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
 
   const exportar = () => {
     const arte: PainelParaExportar[] = [];
+    const landmarks: (Landmark[] | null)[] = [];
     paineis.forEach((p, i) => {
       if (!p.foto) return;
-      const cv = canvasComMedidas(visiveis[i], estilo, { ladoMax: 2000, auxiliares: false });
-      if (cv) arte.push({ rotulo: rotulo(i as Indice), data: dataBR(p.data) || undefined, imagem: cv, largura: cv.width, altura: cv.height });
+      const painel = painelParaExportar(visiveis[i], estilo, { rotulo: rotulo(i as Indice), data: dataBR(p.data) || undefined, ladoMax: 2000 });
+      if (!painel) return;
+      arte.push(painel);
+      landmarks.push(p.landmarks);
     });
     if (!arte.length) { toast.error('Escolha pelo menos uma foto para exportar.'); return; }
-    onExportar?.({ paineis: arte, medidas: medidasParaExportar(linhas) });
+    onExportar?.({ paineis: arte, medidas: medidasParaExportar(linhas) }, { landmarks });
   };
 
   // ---- blocos de interface ----
@@ -363,9 +382,14 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
     <div className="space-y-3">
       <Segmentado<'lado' | 'empilhada'> valor={disposicao} onChange={setDisposicao} rotulo="Disposição das fotos" opcoes={[{ id: 'lado', nome: 'Lado a lado' }, { id: 'empilhada', nome: 'Empilhadas' }]} />
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-        <Button variant={sincronizar ? 'default' : 'outline'} className="h-10 gap-1.5" aria-pressed={sincronizar} onClick={alternarSincronia} title="Zoom e posição juntos nas duas fotos">
-          <Link2 className="h-4 w-4" /> Zoom junto
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button variant={sincronizar ? 'default' : 'outline'} className="h-10 gap-1.5" aria-pressed={sincronizar} onClick={alternarSincronia} title="Zoom e posição juntos nas duas fotos">
+            <Link2 className="h-4 w-4" /> Zoom junto
+          </Button>
+          <Button variant="outline" className="h-10 gap-1.5" onClick={trocarFotos} disabled={!temFoto} title={`Trocar as fotos de lugar (${rotulo(0)} e ${rotulo(1)})`}>
+            <ArrowLeftRight className="h-4 w-4" /> Trocar
+          </Button>
+        </div>
         {barraZoom}
       </div>
 

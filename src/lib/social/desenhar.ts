@@ -40,7 +40,13 @@ export interface RecursosArte {
   avatar?: CanvasImageSource | null;
 }
 
-export interface PainelPronto { fonte: CanvasImageSource; largura: number; altura: number }
+export interface PainelPronto {
+  fonte: CanvasImageSource;
+  largura: number;
+  altura: number;
+  /** Foto limpa e marcações em camadas, do tamanho de `fonte`: o rosto é escondido na foto e as marcações vêm por cima. */
+  camadas?: { foto: CanvasImageSource; marcacoes: CanvasImageSource };
+}
 
 export const COR_FUNDO_TOPO = '#0a0f1c';
 export const COR_FUNDO_BASE = '#101b30';
@@ -65,12 +71,23 @@ export function carregarImagem(url: string): Promise<HTMLImageElement> {
   });
 }
 
+// Camadas de tamanho diferente deslocariam as marcações em relação à foto: nesse caso vale a imagem já marcada.
+function camadasCombinam(c: { foto: CanvasImageSource; marcacoes: CanvasImageSource }, d: { w: number; h: number }): boolean {
+  const igual = (src: CanvasImageSource) => {
+    const t = dimensoesDaFonte(src);
+    return t.w === d.w && t.h === d.h;
+  };
+  return igual(c.foto) && igual(c.marcacoes);
+}
+
 /** Painéis prontos para pintar: canvases e bitmaps entram como vieram; endereços viram imagens carregadas. */
 export async function prepararPaineis(arte: AnaliseParaExportar): Promise<PainelPronto[]> {
   return Promise.all(arte.paineis.map(async (p) => {
     const fonte: CanvasImageSource = typeof p.imagem === 'string' ? await carregarImagem(p.imagem) : p.imagem;
     const d = dimensoesDaFonte(fonte);
-    return { fonte, largura: d.w || p.largura, altura: d.h || p.altura };
+    const pronto: PainelPronto = { fonte, largura: d.w || p.largura, altura: d.h || p.altura };
+    if (p.camadas && camadasCombinam(p.camadas, d)) pronto.camadas = p.camadas;
+    return pronto;
   }));
 }
 
@@ -184,8 +201,10 @@ function desenharPainel(
   if (j.escala > 0) {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(p.fonte, j.origem.x, j.origem.y, j.origem.w, j.origem.h, j.destino.x, j.destino.y, j.destino.w, j.destino.h);
-    if (rosto && modoRosto !== 'nenhum') protegerRosto(ctx, p.fonte, p.largura, p.altura, j, caixa, rosto, modoRosto);
+    const base = p.camadas?.foto ?? p.fonte;
+    ctx.drawImage(base, j.origem.x, j.origem.y, j.origem.w, j.origem.h, j.destino.x, j.destino.y, j.destino.w, j.destino.h);
+    if (rosto && modoRosto !== 'nenhum') protegerRosto(ctx, base, p.largura, p.altura, j, caixa, rosto, modoRosto);
+    if (p.camadas) ctx.drawImage(p.camadas.marcacoes, j.origem.x, j.origem.y, j.origem.w, j.origem.h, j.destino.x, j.destino.y, j.destino.w, j.destino.h);
   }
   ctx.restore();
 

@@ -205,6 +205,8 @@ export interface OpcoesCanvas extends OpcoesItens {
   larguraMax?: number;
   /** Só a foto, sem marcações. */
   semMarcacoes?: boolean;
+  /** Só as marcações, sobre fundo transparente. */
+  semFoto?: boolean;
 }
 
 /**
@@ -220,7 +222,7 @@ export function canvasComMedidas(a: AnaliseFoto, estilo: EstiloMarcacao, o: Opco
   cv.height = Math.max(1, Math.round(a.altura * reduz));
   const ctx = cv.getContext('2d');
   if (!ctx) return null;
-  ctx.drawImage(a.imagem, 0, 0, cv.width, cv.height);
+  if (!o.semFoto) ctx.drawImage(a.imagem, 0, 0, cv.width, cv.height);
   if (!o.semMarcacoes) {
     ctx.scale(cv.width / a.largura, cv.height / a.altura);
     pintarItens(ctx, itensDaAnalise(a, estilo, { auxiliares: false, ...o, k: o.k }));
@@ -241,6 +243,24 @@ export interface PainelParaExportar {
   imagem: HTMLCanvasElement | ImageBitmap | string;
   largura: number;
   altura: number;
+  /**
+   * A mesma imagem em duas camadas, do tamanho de `imagem`: a foto limpa e só as marcações (fundo transparente).
+   * A arte esconde o rosto na foto limpa e só depois pinta as marcações, para o desfoque não apagar rótulos e linhas.
+   */
+  camadas?: { foto: HTMLCanvasElement | ImageBitmap; marcacoes: HTMLCanvasElement | ImageBitmap };
+}
+
+/** Painel da arte social a partir de uma análise: a foto marcada e as camadas separadas. Null sem foto ou sem canvas. */
+export function painelParaExportar(a: AnaliseFoto, estilo: EstiloMarcacao, o: { rotulo?: string; data?: string; ladoMax?: number } = {}): PainelParaExportar | null {
+  const ladoMax = o.ladoMax ?? 2160;
+  const imagem = canvasComMedidas(a, estilo, { ladoMax, auxiliares: false });
+  const foto = canvasComMedidas(a, estilo, { ladoMax, semMarcacoes: true });
+  const marcacoes = canvasComMedidas(a, estilo, { ladoMax, auxiliares: false, semFoto: true });
+  if (!imagem) return null;
+  return {
+    rotulo: o.rotulo ?? '', data: o.data, imagem, largura: imagem.width, altura: imagem.height,
+    ...(foto && marcacoes ? { camadas: { foto, marcacoes } } : {}),
+  };
 }
 
 /** O que a arte social recebe: uma ou duas fotos marcadas e a lista de medidas. */
@@ -266,11 +286,11 @@ export function medidasParaArte(rs: ResultadoAnalise[], casas: 0 | 1 = 1): { nom
 
 /** Pacote da foto marcada para a arte social; null se a foto não puder ser desenhada. */
 export function analiseDaFotoParaExportar(a: AnaliseFoto, estilo: EstiloMarcacao, o: OpcoesExportar = {}): AnaliseParaExportar | null {
-  const cv = canvasComMedidas(a, estilo, { ladoMax: o.ladoMax ?? 2160, auxiliares: false });
-  if (!cv) return null;
+  const painel = painelParaExportar(a, estilo, o);
+  if (!painel) return null;
   return {
     titulo: o.titulo, legenda: o.legenda,
-    paineis: [{ rotulo: o.rotulo ?? '', data: o.data, imagem: cv, largura: cv.width, altura: cv.height }],
+    paineis: [painel],
     medidas: medidasParaArte(calcularResultados(a), estilo.casasRotulo ?? 1),
   };
 }

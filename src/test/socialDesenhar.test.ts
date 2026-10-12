@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { desenharArteSocial, desenharMolduraSocial, layoutDaArte, type OpcoesArte, type PainelPronto } from '@/lib/social/desenhar';
+import { desenharArteSocial, desenharMolduraSocial, layoutDaArte, prepararPaineis, type OpcoesArte, type PainelPronto } from '@/lib/social/desenhar';
 
 interface Chamada { nome: string; args: unknown[]; fillStyle?: unknown }
 
@@ -75,6 +75,40 @@ describe('desenharArteSocial', () => {
     const sem = contextoGravador();
     desenharArteSocial(sem.ctx, opcoes({ modoRosto: 'nenhum', rostos: [rosto, rosto] }), [foto(), foto()], {}, 1);
     expect(sem.chamadas.filter((c) => c.nome === 'fill' && c.fillStyle === '#080c16')).toHaveLength(0);
+  });
+
+  it('com camadas, esconde o rosto na foto limpa e só depois pinta as marcações por cima', () => {
+    const rosto = { cx: 0.5, cy: 0.15, w: 0.2, h: 0.12 };
+    const limpa = { width: 1200, height: 1600, id: 'limpa' } as unknown as CanvasImageSource;
+    const marcas = { width: 1200, height: 1600, id: 'marcas' } as unknown as CanvasImageSource;
+    const painel: PainelPronto = { ...foto(), camadas: { foto: limpa, marcacoes: marcas } };
+    const { ctx, chamadas } = contextoGravador();
+    desenharArteSocial(ctx, opcoes({ layout: 'unica', modoRosto: 'tarja', rostos: [rosto], modoAjuste: 'preencher' }), [painel], {}, 1);
+    const ordem = chamadas.filter((c) => (c.nome === 'drawImage' && (c.args[0] === limpa || c.args[0] === marcas)) || (c.nome === 'fill' && c.fillStyle === '#080c16'));
+    expect(ordem.map((c) => (c.nome === 'fill' ? 'tarja' : (c.args[0] as { id: string }).id))).toEqual(['limpa', 'tarja', 'marcas']);
+    // a imagem já marcada não é usada: o rosto nunca fica por baixo das marcações sem proteção
+    expect(chamadas.some((c) => c.nome === 'drawImage' && c.args[0] === painel.fonte)).toBe(false);
+  });
+
+  it('só aceita as camadas quando têm o tamanho da imagem marcada; senão vale a imagem já marcada', async () => {
+    const cv = (w: number, h: number) => ({ width: w, height: h }) as unknown as HTMLCanvasElement;
+    const arte = (camadas: { foto: HTMLCanvasElement; marcacoes: HTMLCanvasElement }) => ({
+      paineis: [{ rotulo: '', imagem: cv(1200, 1600), largura: 1200, altura: 1600, camadas }], medidas: [],
+    });
+    const [ok] = await prepararPaineis(arte({ foto: cv(1200, 1600), marcacoes: cv(1200, 1600) }));
+    expect(ok.camadas).toBeDefined();
+    const [torta] = await prepararPaineis(arte({ foto: cv(1200, 1600), marcacoes: cv(600, 800) }));
+    expect(torta.camadas).toBeUndefined();
+  });
+
+  it('as marcações usam o mesmo recorte e destino da foto, sem deslocar', () => {
+    const limpa = { width: 1200, height: 1600 } as unknown as CanvasImageSource;
+    const marcas = { width: 1200, height: 1600 } as unknown as CanvasImageSource;
+    const { ctx, chamadas } = contextoGravador();
+    desenharArteSocial(ctx, opcoes({ layout: 'unica', modoAjuste: 'preencher' }), [{ ...foto(), camadas: { foto: limpa, marcacoes: marcas } }], {}, 1);
+    const f = chamadas.find((c) => c.nome === 'drawImage' && c.args[0] === limpa)!;
+    const m = chamadas.find((c) => c.nome === 'drawImage' && c.args[0] === marcas)!;
+    expect(m.args.slice(1)).toEqual(f.args.slice(1));
   });
 
   it('sem região de rosto definida não esconde nada, mesmo com o modo ligado', () => {

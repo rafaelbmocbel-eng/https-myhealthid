@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  analiseDaFotoParaExportar, analiseDeJson, analiseParaJson, calcularResultados, canvasComMedidas, faltaReferenciaDoPrumo, formatarResultado, itensDaAnalise,
+  analiseDaFotoParaExportar, analiseDeJson, analiseParaJson, calcularResultados, canvasComMedidas, faltaReferenciaDoPrumo, formatarResultado, itensDaAnalise, painelParaExportar,
   medidasSalvas, nomeArquivoImagem, OPCOES_ANALISE_PADRAO, type AnaliseFoto,
 } from '../lib/angular/analise';
 import { ESTILO_INSTAGRAM, ESTILO_PADRAO } from '../lib/angular/estilo';
@@ -331,6 +331,25 @@ describe('canvas', () => {
       expect(p.paineis).toHaveLength(1);
       expect(p.paineis[0]).toMatchObject({ rotulo: 'Pré', data: '11/10/2026', largura: 2160 * 0.75, altura: 2160 });
       expect(p.medidas).toEqual([{ nome: 'Desnível dos ombros', valor: '6°' }]);
+    });
+
+    it('o painel traz também a foto limpa e as marcações em camadas do mesmo tamanho', () => {
+      const { chamadas } = simularCanvas();
+      const painel = painelParaExportar(a, ESTILO_INSTAGRAM, { rotulo: 'Pós' })!;
+      expect(painel.camadas).toBeDefined();
+      const { foto, marcacoes } = painel.camadas!;
+      for (const cv of [foto, marcacoes]) expect([cv.width, cv.height]).toEqual([painel.largura, painel.altura]);
+      expect(new Set([foto, marcacoes, painel.imagem]).size).toBe(3);
+      // 3 canvases: a marcada (foto + marcações), a limpa (só a foto) e a das marcações (sem a foto).
+      expect(chamadas.filter((c) => c.fn === 'drawImage')).toHaveLength(2);
+      expect(chamadas.filter((c) => c.fn === 'fillText')).toHaveLength(2);
+    });
+
+    it('sem a foto, o canvas leva só as marcações', () => {
+      const { chamadas } = simularCanvas();
+      canvasComMedidas(a, ESTILO_INSTAGRAM, { ladoMax: 2000, semFoto: true });
+      expect(chamadas.some((c) => c.fn === 'drawImage')).toBe(false);
+      expect(chamadas.some((c) => c.fn === 'fillText')).toBe(true);
     });
   });
 });

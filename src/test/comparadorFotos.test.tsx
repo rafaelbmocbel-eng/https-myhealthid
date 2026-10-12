@@ -97,6 +97,26 @@ describe('ComparadorFotos', () => {
     expect(arte.medidas.find((m: { nome: string }) => m.nome === 'Desnível dos ombros').valor).toBe('8,5° → 2,9° (−5,6°)');
   });
 
+  it('entrega junto da arte os pontos de pose de cada foto, para achar o rosto', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => fake2d() as unknown as CanvasRenderingContext2D);
+    const onExportar = vi.fn();
+    const lm = [{ x: 0.5, y: 0.1, visibility: 0.9 }];
+    render(<ComparadorFotos vista="frente" atual={{ ...POS, landmarks: lm }} outra={PRE} onExportar={onExportar} />);
+    fireEvent.click(screen.getByRole('button', { name: /Baixar para Instagram/ }));
+    expect(onExportar.mock.calls[0][1]).toEqual({ landmarks: [null, lm] });
+  });
+
+  it('troca as fotos de lugar e mantém os nomes e a diferença coerente', () => {
+    render(<ComparadorFotos vista="frente" atual={POS} outra={PRE} />);
+    expect(within(screen.getByTestId('diferenca-ombros')).getByText('−5,6°')).toBeInTheDocument();
+    expect(screen.getByLabelText('Data da foto Pós')).toHaveValue('2026-10-11');
+    fireEvent.click(screen.getByRole('button', { name: /Trocar/ }));
+    expect(screen.getByLabelText('Nome da foto 1')).toHaveValue('Pré');
+    expect(screen.getByLabelText('Nome da foto 2')).toHaveValue('Pós');
+    expect(screen.getByLabelText('Data da foto Pré')).toHaveValue('2026-10-11');
+    expect(within(screen.getByTestId('diferenca-ombros')).getByText('+5,6°')).toBeInTheDocument();
+  });
+
   it('sem onExportar não mostra o botão de arte', () => {
     render(<ComparadorFotos vista="frente" atual={POS} outra={PRE} />);
     expect(screen.queryByRole('button', { name: /Baixar para Instagram/ })).toBeNull();
