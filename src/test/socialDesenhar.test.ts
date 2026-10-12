@@ -135,6 +135,35 @@ describe('desenharArteSocial', () => {
     expect(rodar({ modoRosto: 'nenhum' })).toBe(0);
   });
 
+  it('o fundo desfocado da foto "inteira" é montado uma vez por tamanho de caixa e reaproveitado nos redesenhos; a moldura do vídeo nunca reaproveita', () => {
+    const fake2d = () => ({ drawImage: vi.fn(), imageSmoothingEnabled: true, imageSmoothingQuality: 'high' }) as unknown as CanvasRenderingContext2D;
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(fake2d as never);
+    const original = document.createElement.bind(document);
+    let criados = 0;
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string, opts?: ElementCreationOptions) => {
+      if (tag === 'canvas') criados++;
+      return original(tag, opts);
+    });
+    const paineis = [foto(), foto()];
+    const desenhar = (o: Partial<OpcoesArte>) => {
+      criados = 0;
+      desenharArteSocial(contextoGravador().ctx, opcoes({ modoRosto: 'nenhum', ...o }), paineis, {}, 1);
+      return criados;
+    };
+    expect(desenhar({})).toBeGreaterThan(0);
+    expect(desenhar({})).toBe(0);
+    expect(desenhar({ formato: 'feed', layout: 'lado_a_lado' })).toBeGreaterThan(0);
+    // quadro de vídeo: o painel é novo a cada chamada, então um canvas reaproveitado com outro quadro nunca mostra o fundo do anterior
+    const quadro = { width: 720, height: 1280 } as unknown as CanvasImageSource;
+    criados = 0;
+    desenharMolduraSocial(contextoGravador(10, 10).ctx, 'quadrado', { modoRosto: 'nenhum' }, quadro);
+    const primeiro = criados;
+    criados = 0;
+    desenharMolduraSocial(contextoGravador(10, 10).ctx, 'quadrado', { modoRosto: 'nenhum' }, quadro);
+    expect(primeiro).toBeGreaterThan(0);
+    expect(criados).toBe(primeiro);
+  });
+
   it('a moldura do vídeo também esconde o rosto por omissão (caixa padrão), a menos que se peça o contrário', () => {
     const quadro = { width: 720, height: 1280 } as unknown as CanvasImageSource;
     const padrao = contextoGravador(10, 10);

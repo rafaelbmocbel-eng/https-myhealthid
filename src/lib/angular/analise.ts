@@ -1,8 +1,8 @@
 import { alturaEmPixels, girar, medidasDaVista, type ContextoMedida, type Medida, type OlharPara, type Ponto, type RefCompasso, type UnidadePrumo, type UnidadeResultado, type Vista } from './medidas';
 import type { MedidaSalva } from './comparar';
-import { contextoDesenho, itensDaMedida, ordenarCamadas, type ItemDesenho } from './desenho';
+import { contextoDesenho, itensDaMedida, ordenarCamadas, separarRotulos, type ItemDesenho } from './desenho';
 import { pintarItens } from './desenharCanvas';
-import { rotuloValor, type EstiloMarcacao } from './estilo';
+import { escalaDoEstiloNaArte, rotuloValor, type EstiloMarcacao } from './estilo';
 
 /*
  * Estado serializável de uma análise em foto e o que se tira dele: resultados, itens de desenho,
@@ -199,7 +199,7 @@ export function itensDaAnalise(a: AnaliseFotoJson, estilo: EstiloMarcacao, o: Op
     }
     return itensDaMedida(m, p, rot, c, { olhaPara: a.opcoes.olhaPara, refCompasso: a.opcoes.compassoRef });
   });
-  return ordenarCamadas(itens);
+  return separarRotulos(ordenarCamadas(itens), a.largura, a.altura);
 }
 
 export interface OpcoesCanvas extends OpcoesItens {
@@ -252,6 +252,11 @@ export interface PainelParaExportar {
    * A arte esconde o rosto na foto limpa e só depois pinta as marcações, para o desfoque não apagar rótulos e linhas.
    */
   camadas?: { foto: HTMLCanvasElement | ImageBitmap; marcacoes: HTMLCanvasElement | ImageBitmap };
+  /**
+   * Refaz a camada de marcações para a foto aparecer na arte com `pxArtePorPxFoto` pixels da arte por pixel de `imagem`:
+   * a espessura e o rótulo ficam do mesmo tamanho na arte, qualquer que seja o tamanho da foto na moldura.
+   */
+  marcacoesNaEscala?: (pxArtePorPxFoto: number) => HTMLCanvasElement | null;
 }
 
 /** Painel da arte social a partir de uma análise: a foto marcada e as camadas separadas. Null sem foto ou sem canvas. */
@@ -261,9 +266,13 @@ export function painelParaExportar(a: AnaliseFoto, estilo: EstiloMarcacao, o: { 
   const foto = canvasComMedidas(a, estilo, { ladoMax, semMarcacoes: true });
   const marcacoes = canvasComMedidas(a, estilo, { ladoMax, auxiliares: false, semFoto: true });
   if (!imagem) return null;
+  // A foto do canvas pode ser menor que a original (`ladoMax`): o desenho é em pixels da original.
+  const reducao = imagem.width / a.largura;
+  const marcacoesNaEscala = (pxArtePorPxFoto: number) =>
+    canvasComMedidas(a, estilo, { ladoMax, auxiliares: false, semFoto: true, k: escalaDoEstiloNaArte(pxArtePorPxFoto * reducao) });
   return {
     rotulo: o.rotulo ?? '', data: o.data, imagem, largura: imagem.width, altura: imagem.height,
-    ...(foto && marcacoes ? { camadas: { foto, marcacoes } } : {}),
+    ...(foto && marcacoes ? { camadas: { foto, marcacoes }, marcacoesNaEscala } : {}),
   };
 }
 

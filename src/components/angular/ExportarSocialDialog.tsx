@@ -16,7 +16,7 @@ import {
   AVISO_CONSELHO, DICA_TITULO_SEM_PACIENTE, TEXTO_CONSENTIMENTO, TEXTO_ROSTO_CONFERIDO, podeExportar,
 } from '@/lib/social/consentimento';
 import {
-  carregarMarcaDoApp, carregarSeloDaClinica, carregarImagem, layoutDaArte, prepararPaineis, renderizarArteSocial,
+  carregarMarcaDoApp, carregarSeloDaClinica, carregarImagem, layoutDaArte, perfilDasMarcacoes, prepararPaineis, renderizarArteSocial,
   type OpcoesArte, type PainelPronto, type RecursosArte, type SeloImagem,
 } from '@/lib/social/desenhar';
 import { baixarBlob, canvasParaPng, canvasParaPngSincrono, compartilharArquivo, nomeArquivoSocial } from '@/lib/social/exportar';
@@ -26,7 +26,7 @@ import {
   type FormatoSocial, type LayoutArte, type TituloModo,
 } from '@/lib/social/formatos';
 import {
-  ENQUADRAMENTO_PADRAO, ZOOM_MAX, ZOOM_MIN, ajusteSugerido, arrastarEnquadramento, enquadramentoPorRosto, janelaDaImagem, zoomarEnquadramento,
+  ENQUADRAMENTO_PADRAO, VISIVEL_MINIMO_PREENCHER, ZOOM_MAX, ZOOM_MIN, ajusteSugerido, arrastarEnquadramento, enquadramentoAutomatico as enquadramentoDeAbertura, janelaDaImagem, perfilMedio, zoomarEnquadramento,
   type Enquadramento, type ModoAjuste,
 } from '@/lib/social/geometria';
 import {
@@ -300,19 +300,32 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   }), [formato, layoutEf, tituloModo, titulo, legenda, perfis, margensStories, rotulos, datas, mostrarDatas]);
   const layoutAtual = useMemo(() => layoutDaArte(opcoesBase, nPaineis, recursos), [opcoesBase, nPaineis, recursos]);
 
+  // Onde estão as marcações de todas as fotos: o enquadramento de abertura nunca corta o que foi medido.
+  const perfilMarcas = useMemo(
+    () => (paineis ? perfilMedio(paineis.map((p) => (p.camadas ? perfilDasMarcacoes(p.camadas.marcacoes, p.largura, p.altura) : null))) : null),
+    [paineis],
+  );
+
   const ajuste: ModoAjuste = useMemo(() => {
     if (ajusteEscolhido) return ajusteEscolhido;
     const p = paineis?.[0], c = layoutAtual.paineis[0];
-    return p && c ? ajusteSugerido(c.w, c.h, p.largura, p.altura) : 'inteira';
-  }, [ajusteEscolhido, paineis, layoutAtual]);
+    if (!p || !c) return 'inteira';
+    const sugerido = ajusteSugerido(c.w, c.h, p.largura, p.altura);
+    if (sugerido === 'inteira') return sugerido;
+    // Preencher corta a foto: só vale se, mesmo bem enquadrado, quase todas as marcações continuam à vista.
+    const cabe = layoutAtual.paineis.every((caixa, i) => {
+      const q = paineis?.[i];
+      return !q || enquadramentoDeAbertura(caixa, q.largura, q.altura, 'preencher', rostoReferencia, perfilMarcas).visivel >= VISIVEL_MINIMO_PREENCHER;
+    });
+    return cabe ? 'preencher' : 'inteira';
+  }, [ajusteEscolhido, paineis, layoutAtual, rostoReferencia, perfilMarcas]);
 
   const enquadramentoAutomatico = useMemo<Enquadramento[]>(() => {
-    return Array.from({ length: nPaineis }, (_, i) => {
-      const p = paineis?.[i], c = layoutAtual.paineis[i];
-      if (!p || !c || ajuste === 'inteira') return ENQUADRAMENTO_PADRAO;
-      return enquadramentoPorRosto(c, p.largura, p.altura, ajuste, 1, rostoReferencia);
-    });
-  }, [nPaineis, paineis, layoutAtual, ajuste, rostoReferencia]);
+    // Um só enquadramento para as duas fotos (o da primeira): é o que torna a comparação justa.
+    const p0 = paineis?.[0], c0 = layoutAtual.paineis[0];
+    const unico = p0 && c0 ? enquadramentoDeAbertura(c0, p0.largura, p0.altura, ajuste, rostoReferencia, perfilMarcas).enquadramento : ENQUADRAMENTO_PADRAO;
+    return Array.from({ length: nPaineis }, () => unico);
+  }, [nPaineis, paineis, layoutAtual, ajuste, rostoReferencia, perfilMarcas]);
   const enquadramentos = enquadramentoManual ?? enquadramentoAutomatico;
 
   const opcoes = useMemo<OpcoesArte>(() => ({ ...opcoesBase, modoAjuste: ajuste, enquadramentos, modoRosto, rostos }), [opcoesBase, ajuste, enquadramentos, modoRosto, rostos]);

@@ -350,6 +350,40 @@ export function ordenarCamadas(itens: ItemDesenho[]): ItemDesenho[] {
   return itens.map((it, i) => ({ it, i })).sort((x, y) => CAMADA[x.it.tipo] - CAMADA[y.it.tipo] || x.i - y.i).map((x) => x.it);
 }
 
+type ItemRotulo = Extract<ItemDesenho, { tipo: 'rotulo' }>;
+
+const caixaDe = (r: ItemRotulo, folga: number) => ({ x0: r.x - r.largura / 2 - folga, x1: r.x + r.largura / 2 + folga, y0: r.y - r.altura / 2 - folga, y1: r.y + r.altura / 2 + folga });
+const seCruzam = (a: ReturnType<typeof caixaDe>, b: ReturnType<typeof caixaDe>) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+
+/**
+ * Afasta rótulos que se cobrem (de medidas diferentes, como "Ombros 4°" e "C7 0°" no meio dos ombros) para
+ * nenhum esconder o outro. O primeiro de cada par fica onde está; o seguinte sobe, desce ou anda para o lado
+ * o mínimo necessário, sempre dentro da foto. Sem lugar livre, o rótulo fica onde estava.
+ */
+export function separarRotulos(itens: ItemDesenho[], w: number, h: number): ItemDesenho[] {
+  const colocados: ReturnType<typeof caixaDe>[] = [];
+  return itens.map((it) => {
+    if (it.tipo !== 'rotulo') return it;
+    const folga = it.altura * 0.08;
+    const ocupado = (r: ItemRotulo) => { const c = caixaDe(r, 0); return colocados.some((o) => seCruzam(c, o)); };
+    let melhor: ItemRotulo = it;
+    if (ocupado(it)) {
+      const passo = it.altura + folga * 2;
+      const candidatos: { dx: number; dy: number }[] = [];
+      for (let k = 1; k <= 4; k++) candidatos.push({ dx: 0, dy: k * passo }, { dx: 0, dy: -k * passo });
+      for (let k = 1; k <= 3; k++) candidatos.push({ dx: k * (it.largura * 0.6 + folga), dy: 0 }, { dx: -k * (it.largura * 0.6 + folga), dy: 0 });
+      candidatos.sort((a, b) => Math.abs(a.dx) + Math.abs(a.dy) - Math.abs(b.dx) - Math.abs(b.dy));
+      for (const c of candidatos) {
+        const t: ItemRotulo = { ...it, x: it.x + c.dx, y: it.y + c.dy };
+        const dentro = t.x - t.largura / 2 >= 0 && t.x + t.largura / 2 <= w && t.y - t.altura / 2 >= 0 && t.y + t.altura / 2 <= h;
+        if (dentro && !ocupado(t)) { melhor = t; break; }
+      }
+    }
+    colocados.push(caixaDe(melhor, folga));
+    return melhor;
+  });
+}
+
 // --- primitivas soltas (canvas e SVG reutilizáveis) --------------------------------------------
 
 /** Itens de um ângulo solto: braços, arco, pontas e rótulo. `graus` vira o texto "118°". */

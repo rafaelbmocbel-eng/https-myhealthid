@@ -136,6 +136,16 @@ export function estilosIguais(a: EstiloMarcacao, b: EstiloMarcacao): boolean {
 export const escalaDoEstilo = (w: number, h: number, zoom = 1) => Math.min(w, h) / 1000 / Math.sqrt(Math.max(1, zoom));
 
 /**
+ * Pixels da arte social (1080 de largura) por unidade do estilo: espessura 9 sai com ~6 px de linha e o
+ * rótulo com ~32 px de fonte, como nas artes de antes e depois. Na arte a foto aparece bem menor que o
+ * original, e o desenho proporcional ao tamanho da foto ficaria fino demais para ler no celular.
+ */
+export const ESCALA_ESTILO_NA_ARTE = 0.7;
+
+/** Pixels da foto por unidade do estilo para a arte, dado quantos pixels da arte cada pixel da foto ocupa. */
+export const escalaDoEstiloNaArte = (pxArtePorPxFoto: number) => (pxArtePorPxFoto > 0 ? ESCALA_ESTILO_NA_ARTE / pxArtePorPxFoto : ESCALA_ESTILO_NA_ARTE);
+
+/**
  * Na tela do celular a foto aparece bem menor que o original; garante que o rótulo tenha pelo menos
  * `rotuloMinimoPx` pixels de tela. `pxPorUnidade` = pixels de tela por pixel da foto.
  */

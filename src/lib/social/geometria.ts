@@ -111,3 +111,76 @@ export function enquadramentoPorRosto(caixa: Retangulo, imgW: number, imgH: numb
   const visivel = caixa.h / j.escala / imgH;
   return { zoom, cx: 0.5, cy: limitar(rosto.cy + (0.5 - posicaoDoRosto) * visivel, 0, 1) };
 }
+
+/** Quanto das marcações (linhas, pontos e rótulos) cai em cada faixa da foto: `colunas` da esquerda para a direita e `linhas` de cima para baixo; cada vetor soma 1. */
+export interface PerfilMarcas { colunas: number[]; linhas: number[] }
+
+/** Soma de `v` (faixas iguais de uma foto de `tam` px) entre `de` e `ate`, em px da foto. */
+function massaEntre(v: number[], tam: number, de: number, ate: number): number {
+  const n = v.length;
+  const largura = tam / n;
+  let s = 0;
+  for (let i = 0; i < n; i++) {
+    const sobra = Math.min((i + 1) * largura, ate) - Math.max(i * largura, de);
+    if (sobra > 0) s += (v[i] * sobra) / largura;
+  }
+  return s;
+}
+
+/**
+ * Fração das marcações que a janela mostra. Como as marcações têm duas dimensões e o perfil só guarda os eixos
+ * separados, é o limite inferior seguro: nunca promete ver mais do que se vê.
+ */
+export function fracaoVisivel(j: JanelaImagem, imgW: number, imgH: number, perfil: PerfilMarcas): number {
+  if (!(j.escala > 0)) return 0;
+  const x = massaEntre(perfil.colunas, imgW, j.origem.x, j.origem.x + j.origem.w);
+  const y = massaEntre(perfil.linhas, imgH, j.origem.y, j.origem.y + j.origem.h);
+  return limitar(x + y - 1, 0, 1);
+}
+
+/** Média de vários perfis (um por foto), para um único enquadramento servir às duas fotos de uma comparação. */
+export function perfilMedio(perfis: (PerfilMarcas | null | undefined)[]): PerfilMarcas | null {
+  const validos = perfis.filter((p): p is PerfilMarcas => !!p);
+  if (!validos.length) return null;
+  const media = (eixo: 'colunas' | 'linhas') => validos[0][eixo].map((_, i) => validos.reduce((s, p) => s + (p[eixo][i] ?? 0), 0) / validos.length);
+  return { colunas: media('colunas'), linhas: media('linhas') };
+}
+
+/** Margem de perda de marcações que o enquadramento automático aceita para preferir o do rosto ao que mostra mais. */
+const TOLERANCIA_ENQUADRAMENTO = 0.015;
+/** Fração mínima das marcações que o modo "preencher" precisa mostrar para ser o de partida. */
+export const VISIVEL_MINIMO_PREENCHER = 0.97;
+
+export interface EnquadramentoAutomatico { enquadramento: Enquadramento; /** Fração das marcações que ele mostra (1 sem perfil ou na foto inteira). */ visivel: number }
+
+/**
+ * Enquadramento de partida: o do rosto no alto (como em `enquadramentoPorRosto`); se ele cortaria marcações, anda
+ * o mínimo para o lado ou para cima/baixo até mostrar o máximo delas. No modo "inteira" nada é cortado.
+ */
+export function enquadramentoAutomatico(caixa: Retangulo, imgW: number, imgH: number, modo: ModoAjuste, rosto: { cx: number; cy: number } | null, perfil: PerfilMarcas | null): EnquadramentoAutomatico {
+  if (modo === 'inteira') return { enquadramento: ENQUADRAMENTO_PADRAO, visivel: 1 };
+  const base = enquadramentoPorRosto(caixa, imgW, imgH, modo, 1, rosto);
+  if (!perfil) return { enquadramento: base, visivel: 1 };
+  const j0 = janelaDaImagem(caixa, imgW, imgH, modo, base);
+  if (!(j0.escala > 0)) return { enquadramento: base, visivel: 1 };
+  const vw = caixa.w / j0.escala, vh = caixa.h / j0.escala;
+
+  const melhorCentro = (v: number[], tam: number, janela: number, atual: number): number => {
+    if (janela >= tam - 0.5) return 0.5;
+    const na = (centroPx: number) => massaEntre(v, tam, centroPx - janela / 2, centroPx + janela / 2);
+    const centroAtual = limitar(atual * tam, janela / 2, tam - janela / 2);
+    let melhor = centroAtual, melhorMassa = na(melhor);
+    const base0 = melhorMassa;
+    for (let k = 0; k <= 40; k++) {
+      const c = janela / 2 + (k / 40) * (tam - janela);
+      const m = na(c);
+      if (m > melhorMassa + 1e-9 || (Math.abs(m - melhorMassa) <= 1e-9 && Math.abs(c - centroAtual) < Math.abs(melhor - centroAtual))) { melhor = c; melhorMassa = m; }
+    }
+    return melhorMassa - base0 > TOLERANCIA_ENQUADRAMENTO ? melhor / tam : atual;
+  };
+
+  const cx = melhorCentro(perfil.colunas, imgW, vw, base.cx);
+  const cy = melhorCentro(perfil.linhas, imgH, vh, base.cy);
+  const enquadramento: Enquadramento = { zoom: 1, cx: limitar(cx, 0, 1), cy: limitar(cy, 0, 1) };
+  return { enquadramento, visivel: fracaoVisivel(janelaDaImagem(caixa, imgW, imgH, modo, enquadramento), imgW, imgH, perfil) };
+}

@@ -145,3 +145,77 @@ describe('ComparadorFotos', () => {
     expect(JSON.parse(localStorage.getItem('myid:angular:estilo-marcacao')!).espessura).toBe(12);
   });
 });
+
+describe('ComparadorFotos: correções de revisão', () => {
+  const P = (x: number, y: number) => ({ x, y });
+  // Fio de prumo de perfil: apoio embaixo e orelha, ombro, quadril e joelho; a orelha fica 30 px à frente do fio.
+  const prumoPerfil = (espelhar: boolean) => {
+    const x = (v: number) => (espelhar ? 200 - v : v);
+    return [P(x(100), 500), P(x(130), 100), P(x(120), 200), P(x(100), 300), P(x(95), 400)];
+  };
+  const fotoPerfil = (olhaPara: 'direita' | 'esquerda', pontos = prumoPerfil(olhaPara === 'esquerda')): FotoAnalisada => ({
+    analise: { vista: 'perfil', largura: 1200, altura: 1600, imagem: new Image(), pontos: { 'prumo-perfil': pontos }, giro: null, cmPorPx: null, opcoes: { ...OPCOES_ANALISE_PADRAO, olhaPara } },
+    url: 'blob:perfil',
+  });
+
+  it('cada foto guarda para onde o paciente olha: pré à direita e pós à esquerda não viram "lado trocado"', () => {
+    render(<ComparadorFotos vista="perfil" atual={fotoPerfil('esquerda')} outra={fotoPerfil('direita')} />);
+    const orelha = within(screen.getByTestId('diferenca-prumo-perfil-orelha-graus'));
+    expect(orelha.queryByText(/O lado mudou/)).toBeNull();
+    expect(orelha.getAllByText('à frente do fio')).toHaveLength(2);
+    expect(orelha.getByText('0,0°', { selector: 'p.font-bold' })).toBeInTheDocument();
+  });
+
+  it('o seletor "olha para" muda só a foto em edição', () => {
+    render(<ComparadorFotos vista="perfil" atual={fotoPerfil('direita')} outra={fotoPerfil('direita', prumoPerfil(false))} />);
+    // as duas fotos têm a orelha à direita do fio, olhando para a direita: iguais
+    expect(within(screen.getByTestId('diferenca-prumo-perfil-orelha-graus')).getAllByText('à frente do fio')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('tab', { name: 'Marcar' }));
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Ferramentas de medida' })).getByRole('button', { name: 'Fio de prumo (perfil)' }));
+    const cartao = within(screen.getByTestId('cartao-prumo'));
+    expect(cartao.getByRole('button', { name: /Direita da imagem/ })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(cartao.getByRole('button', { name: /Esquerda da imagem/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver a comparação' }));
+    // só a foto que estava em edição passou a olhar para a esquerda: a mesma anatomia vira "atrás do fio" nela e fica "à frente" na outra
+    const orelha = within(screen.getByTestId('diferenca-prumo-perfil-orelha-graus'));
+    expect(orelha.getByText('atrás do fio')).toBeInTheDocument();
+    expect(orelha.getByText('à frente do fio')).toBeInTheDocument();
+  });
+
+  it('a foto semente não ganha a data de hoje: a data só vem se o integrador informar', () => {
+    render(<ComparadorFotos vista="frente" atual={foto({ ombros: [{ x: 100, y: 100 }, { x: 300, y: 110 }] })} outra={PRE} />);
+    expect(screen.getByLabelText('Data da foto Pós')).toHaveValue('');
+    expect(screen.getByLabelText('Data da foto Pré')).toHaveValue('');
+  });
+
+  it('o botão de fechar a comparação não encolhe quando o texto ao lado é longo', () => {
+    render(<ComparadorFotos vista="frente" atual={POS} outra={PRE} onFechar={() => undefined} />);
+    expect(screen.getByRole('button', { name: 'Fechar a comparação' })).toHaveClass('shrink-0');
+  });
+
+  const alcas = (container: HTMLElement) => Array.from(container.querySelectorAll('svg circle[fill="transparent"]')).map((c) => Number(c.getAttribute('r')));
+
+  it('marcando pontos novos o alvo de toque da medida ativa é pequeno; completa, volta ao grande', () => {
+    const umPonto = foto({ ombros: [{ x: 100, y: 100 }] });
+    const { container, unmount } = render(<ComparadorFotos vista="frente" atual={umPonto} outra={umPonto} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Marcar' }));
+    expect(alcas(container)).toEqual([5]);
+    unmount();
+
+    const completo = render(<ComparadorFotos vista="frente" atual={POS} outra={PRE} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Marcar' }));
+    const raios = alcas(completo.container);
+    expect(raios).toContain(24);
+    expect(raios).toContain(12);
+    expect(raios).not.toContain(5);
+  });
+
+  it('a alça do fio de prumo também não rouba o toque enquanto ainda faltam pontos', () => {
+    const incompleto = fotoPerfil('direita', prumoPerfil(false).slice(0, 2));
+    const { container } = render(<ComparadorFotos vista="perfil" atual={incompleto} outra={incompleto} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Marcar' }));
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Ferramentas de medida' })).getByRole('button', { name: 'Fio de prumo (perfil)' }));
+    const transparente = container.querySelector('[data-testid="alca-prumo"] circle[fill="transparent"]')!;
+    expect(Number(transparente.getAttribute('r'))).toBe(5);
+  });
+});

@@ -387,7 +387,7 @@ export default function AnaliseAngular() {
 
   return (
     <AppLayout>
-      <div className="container max-w-6xl space-y-5 py-6">
+      <div className="container max-w-6xl space-y-5 px-0 py-6 sm:px-8">
         <PageHeader back="/aplicacoes" title="Análise angular" subtitle="Meça ângulos e desníveis em uma foto, ou ponto a ponto em um vídeo." icon={<Ruler className="icon-md" />} />
 
         <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-3 sm:flex-row sm:items-center">

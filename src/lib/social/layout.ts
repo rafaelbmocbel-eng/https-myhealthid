@@ -28,6 +28,7 @@ export const FONTE_DATA = 26;
 export const ALTURA_PILULA = 88;
 export const DIAMETRO_AVATAR = 64;
 export const FONTE_PILULA = 34;
+const FONTE_PILULA_MIN = 26;
 export const FONTE_PERFIL = 30;
 export const PASSO_PERFIL = 44;
 export const DIAMETRO_SELO = 100;
@@ -36,6 +37,11 @@ const FONTE_TITULO_MAX = 150;
 const MAX_PERFIS = 3;
 const TEM_ACENTO_MAIUSCULO = /[ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜ]/;
 const ACENTO_SOBRE_CAPITAL = 0.2;
+const TEM_CEDILHA = /[ÇçÇ]/;
+/** Quanto a cedilha desce abaixo da linha de base, em fração do corpo da fonte (Bebas Neue). */
+const CEDILHA_SOB_BASE = 0.16;
+/** Distância da base do texto dos perfis à base da arte quando não há pílula para alinhar. */
+const BASE_PERFIS_SEM_PILULA = 14;
 
 export interface AjusteTexto { linhas: string[]; fonte: number; passo: number; /** Espessura do bloco (perpendicular às linhas). */ espessura: number; /** Largura da linha mais comprida. */ comprimento: number }
 
@@ -195,10 +201,12 @@ export function calcularLayoutSocial(p: ParametrosLayout, medir: Medidor): Layou
   const algumTexto = rotulosBrutos.some((r) => r.texto), algumaData = rotulosBrutos.some((r) => r.data);
   const temRotulo = algumTexto || algumaData;
 
-  // ---- rodapé: legenda à esquerda e perfis à direita, alinhados pela base do texto ----
+  // ---- rodapé: legenda à esquerda e perfis à direita; a última linha dos perfis fica na linha de base do texto da pílula ----
   const perfis = (p.perfis ?? []).filter(Boolean).slice(0, MAX_PERFIS);
   const legenda = (p.legenda ?? '').trim();
-  const rodapeH = Math.max(legenda ? ALTURA_PILULA : 0, perfis.length * PASSO_PERFIL);
+  const recuoBasePilula = ALTURA_PILULA / 2 - (ALTURA_CAPITAL.texto * FONTE_PILULA_MIN) / 2;
+  const alturaPerfis = legenda ? (perfis.length - 1) * PASSO_PERFIL + recuoBasePilula + ALTURA_CAPITAL.texto * FONTE_PERFIL : perfis.length * PASSO_PERFIL;
+  const rodapeH = Math.max(legenda ? ALTURA_PILULA : 0, perfis.length ? alturaPerfis : 0);
   const baseTexto = H - mg.texto.base;
   const rodapeY = baseTexto - rodapeH;
   const baseFotos = rodapeH ? rodapeY - GAP_RODAPE : H - mg.fotos.base;
@@ -220,11 +228,13 @@ export function calcularLayoutSocial(p: ParametrosLayout, medir: Medidor): Layou
     // Acento sobre maiúscula (Ó, Ã...) sobe acima das letras e, girado, invade a margem esquerda: abre espaço.
     const acento = TEM_ACENTO_MAIUSCULO.test(aj.linhas.join(' ')) ? aj.fonte * ACENTO_SOBRE_CAPITAL : 0;
     // A coluna nunca é mais fina que o selo; um título fino fica centralizado sob ele.
-    colunaTitulo = Math.max(aj.espessura + acento, d);
-    const recuo = (colunaTitulo - aj.espessura - acento) / 2;
+    // A cedilha (Ç) desce abaixo da base, que girada fica à direita do título: sem espaço, ela encosta na foto.
+    const cedilha = TEM_CEDILHA.test(aj.linhas[aj.linhas.length - 1] ?? '') ? aj.fonte * CEDILHA_SOB_BASE : 0;
+    colunaTitulo = Math.max(aj.espessura + acento + cedilha, d);
+    const recuo = (colunaTitulo - aj.espessura - acento - cedilha) / 2;
     titulo = {
       linhas: aj.linhas, fonte: aj.fonte, passo: aj.passo, rotacao: -90,
-      caixa: { x: mg.texto.esq + recuo, y: baseFotos - aj.comprimento, w: aj.espessura + acento, h: aj.comprimento },
+      caixa: { x: mg.texto.esq + recuo, y: baseFotos - aj.comprimento, w: aj.espessura + acento + cedilha, h: aj.comprimento },
       ancora: { x: mg.texto.esq + recuo + acento + cap, y: baseFotos },
     };
     esqFotos = mg.texto.esq + colunaTitulo + GAP_COLUNA;
@@ -299,27 +309,15 @@ export function calcularLayoutSocial(p: ParametrosLayout, medir: Medidor): Layou
     selo = { cx: b.x + b.w - margem - r, cy: b.y + margem + r, r, sobreFoto: true };
   }
 
-  // ---- perfis (direita) ----
-  let perfisLay: PerfisLayout | null = null;
-  let larguraPerfis = 0;
-  if (perfis.length) {
-    const linhas = perfis.map((nome, i) => {
-      const texto = `@${nome}`;
-      const largura = larguraDoTexto(medir, texto, FONTE_PERFIL, 'texto');
-      larguraPerfis = Math.max(larguraPerfis, largura);
-      return { texto, x: W - mg.texto.dir, baseY: baseTexto - 14 - (perfis.length - 1 - i) * PASSO_PERFIL, largura };
-    });
-    perfisLay = { fonte: FONTE_PERFIL, linhas };
-  }
-
   // ---- pílula da legenda (esquerda) ----
+  const larguraPerfis = Math.max(0, ...perfis.map((nome) => larguraDoTexto(medir, `@${nome}`, FONTE_PERFIL, 'texto')));
   let pilula: PilulaLayout | null = null;
   if (legenda) {
     const padE = p.temAvatar ? 12 : 32, padD = 30, gapAvatar = 18;
     const reservaAvatar = p.temAvatar ? DIAMETRO_AVATAR + gapAvatar : 0;
     const larguraMax = (rodape?.w ?? W) - (perfis.length ? larguraPerfis + GAP_RODAPE_SEPARADOR : 0);
     const espaco = larguraMax - padE - reservaAvatar - padD;
-    const fonte = fonteQueCabe(medir, legenda, 'texto', FONTE_PILULA, espaco, 26);
+    const fonte = fonteQueCabe(medir, legenda, 'texto', FONTE_PILULA, espaco, FONTE_PILULA_MIN);
     const texto = cortarComReticencias(medir, legenda, fonte, 'texto', espaco);
     const w = padE + reservaAvatar + larguraDoTexto(medir, texto, fonte, 'texto') + padD;
     const x = mg.texto.esq, y = baseTexto - ALTURA_PILULA;
@@ -328,6 +326,17 @@ export function calcularLayoutSocial(p: ParametrosLayout, medir: Medidor): Layou
       textoX: x + padE + reservaAvatar, baseY: y + ALTURA_PILULA / 2 + (ALTURA_CAPITAL.texto * fonte) / 2,
       avatar: p.temAvatar ? { cx: x + padE + DIAMETRO_AVATAR / 2, cy: y + ALTURA_PILULA / 2, r: DIAMETRO_AVATAR / 2 } : null,
     };
+  }
+
+  // ---- perfis (direita): a última linha divide a linha de base com o texto da pílula ----
+  let perfisLay: PerfisLayout | null = null;
+  if (perfis.length) {
+    const baseUltima = pilula ? pilula.baseY : baseTexto - BASE_PERFIS_SEM_PILULA;
+    const linhas = perfis.map((nome, i) => {
+      const texto = `@${nome}`;
+      return { texto, x: W - mg.texto.dir, baseY: baseUltima - (perfis.length - 1 - i) * PASSO_PERFIL, largura: larguraDoTexto(medir, texto, FONTE_PERFIL, 'texto') };
+    });
+    perfisLay = { fonte: FONTE_PERFIL, linhas };
   }
 
   return { formato: p.formato, layout: L, largura: W, altura: H, margens: mg, tituloModo: modo, rotulosGirados: girados, regiaoFotos: regiao, paineis, titulo, rotulos, pilula, perfis: perfisLay, selo, rodape };

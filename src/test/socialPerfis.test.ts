@@ -42,6 +42,15 @@ describe('preferências lembradas', () => {
     expect(PREFERENCIAS_PADRAO.margensStories).toBe(true);
   });
 
+  it('"nenhum" (mostrar o rosto) nunca é lembrado: grava e lê como desfoque, e uma preferência antiga também', () => {
+    // @ts-expect-error -- o tipo já impede 'nenhum'; o teste cobre dados que vieram de fora
+    salvarPreferencias({ perfis: [], seloModo: 'clinica', margensStories: true, modoRosto: 'nenhum' });
+    expect(lerPreferencias().modoRosto).toBe('desfoque');
+    localStorage.setItem('myid:social:preferencias', JSON.stringify({ perfis: [], seloModo: 'clinica', margensStories: true, modoRosto: 'nenhum' }));
+    expect(lerPreferencias().modoRosto).toBe('desfoque');
+    expect(normalizarPreferencias({ modoRosto: 'tarja' }).modoRosto).toBe('tarja');
+  });
+
   it('JSON inválido ou valores fora do esperado voltam ao padrão', () => {
     localStorage.setItem('myid:social:preferencias', '{ quebrado');
     expect(lerPreferencias()).toEqual(PREFERENCIAS_PADRAO);

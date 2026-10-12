@@ -3,7 +3,7 @@ import marcaBranca from '@/assets/logo-myhealthid-mark-branco.png';
 import { protegerRosto } from './borrar';
 import { fonteCss, garantirFontesSociais, medidorDoCanvas } from './fontes';
 import { FORMATOS, layoutEfetivo, type FormatoSocial, type LayoutArte, type Retangulo, type TituloModo } from './formatos';
-import { ENQUADRAMENTO_PADRAO, janelaDaImagem, type Enquadramento, type ModoAjuste } from './geometria';
+import { ENQUADRAMENTO_PADRAO, janelaDaImagem, type Enquadramento, type ModoAjuste, type PerfilMarcas } from './geometria';
 import { ALTURA_CAPITAL, calcularLayoutSocial, larguraDoTexto, type LayoutSocial, type Medidor, type PilulaLayout, type RotuloLayout, type SeloLayout, type TituloLayout } from './layout';
 import { caixaRostoPadrao, type CaixaRosto, type ModoRosto } from './rosto';
 
@@ -50,6 +50,8 @@ export interface PainelPronto {
   altura: number;
   /** Foto limpa e marcações em camadas, do tamanho de `fonte`: o rosto é escondido na foto e as marcações vêm por cima. */
   camadas?: { foto: CanvasImageSource; marcacoes: CanvasImageSource };
+  /** Refaz as marcações para a foto ocupar tantos pixels da arte por pixel dela; sem isso, vale `camadas.marcacoes` como veio. */
+  marcacoesNaEscala?: (pxArtePorPxFoto: number) => CanvasImageSource | null;
 }
 
 export const COR_FUNDO_TOPO = '#0a0f1c';
@@ -90,7 +92,10 @@ export async function prepararPaineis(arte: AnaliseParaExportar): Promise<Painel
     const fonte: CanvasImageSource = typeof p.imagem === 'string' ? await carregarImagem(p.imagem) : p.imagem;
     const d = dimensoesDaFonte(fonte);
     const pronto: PainelPronto = { fonte, largura: d.w || p.largura, altura: d.h || p.altura };
-    if (p.camadas && camadasCombinam(p.camadas, d)) pronto.camadas = p.camadas;
+    if (p.camadas && camadasCombinam(p.camadas, d)) {
+      pronto.camadas = p.camadas;
+      if (p.marcacoesNaEscala) pronto.marcacoesNaEscala = p.marcacoesNaEscala;
+    }
     return pronto;
   }));
 }
@@ -119,6 +124,43 @@ export async function carregarSeloDaClinica(logoUrl: string | undefined | null):
     }
   }
   return carregarMarcaDoApp();
+}
+
+const FAIXAS_DO_PERFIL = 48;
+
+/** Onde estão as marcações da foto (camada só com elas, fundo transparente): a soma da opacidade por coluna e por linha, em 48 faixas. Null sem marcações ou sem leitura do canvas. */
+export function perfilDasMarcacoes(camada: CanvasImageSource, largura: number, altura: number): PerfilMarcas | null {
+  if (!(largura > 0) || !(altura > 0) || typeof document === 'undefined') return null;
+  const e = Math.min(1, 192 / Math.max(largura, altura));
+  const w = Math.max(1, Math.round(largura * e)), h = Math.max(1, Math.round(altura * e));
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  try {
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(camada, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    const colunas = new Array<number>(FAIXAS_DO_PERFIL).fill(0), linhas = new Array<number>(FAIXAS_DO_PERFIL).fill(0);
+    let total = 0;
+    for (let y = 0; y < h; y++) {
+      const fy = Math.min(FAIXAS_DO_PERFIL - 1, Math.floor((y / h) * FAIXAS_DO_PERFIL));
+      for (let x = 0; x < w; x++) {
+        const a = data[(y * w + x) * 4 + 3];
+        if (a === 0) continue;
+        colunas[Math.min(FAIXAS_DO_PERFIL - 1, Math.floor((x / w) * FAIXAS_DO_PERFIL))] += a;
+        linhas[fy] += a;
+        total += a;
+      }
+    }
+    if (!(total > 0)) return null;
+    return { colunas: colunas.map((v) => v / total), linhas: linhas.map((v) => v / total) };
+  } catch {
+    // Canvas contaminado (imagem de outra origem) ou sem leitura de pixels: segue sem saber onde estão as marcações.
+    return null;
+  } finally {
+    liberarCanvas(c);
+  }
 }
 
 // ---------- pintura ----------
@@ -211,6 +253,24 @@ function desenharFundoDesfocado(ctx: CanvasRenderingContext2D, p: PainelPronto, 
   ctx.fillRect(caixa.x, caixa.y, caixa.w, caixa.h);
 }
 
+// Refazer as marcações custa um canvas do tamanho da foto: guarda a camada da última escala e só refaz quando o
+// tamanho da foto na arte muda de verdade (passos de ~9%, que não se distinguem no desenho).
+const camadasDeMarcacao = new WeakMap<PainelPronto, { passo: number; camada: CanvasImageSource }>();
+const PASSOS_POR_OITAVA = 8;
+
+function marcacoesDoPainel(p: PainelPronto, escala: number): CanvasImageSource | undefined {
+  if (!p.camadas) return undefined;
+  if (!p.marcacoesNaEscala || !(escala > 0)) return p.camadas.marcacoes;
+  const passo = Math.round(Math.log2(escala) * PASSOS_POR_OITAVA);
+  const guardada = camadasDeMarcacao.get(p);
+  if (guardada?.passo === passo) return guardada.camada;
+  const camada = p.marcacoesNaEscala(2 ** (passo / PASSOS_POR_OITAVA));
+  if (!camada) return p.camadas.marcacoes;
+  if (guardada && guardada.camada instanceof HTMLCanvasElement) liberarCanvas(guardada.camada);
+  camadasDeMarcacao.set(p, { passo, camada });
+  return camada;
+}
+
 function desenharPainel(
   ctx: CanvasRenderingContext2D, caixa: Retangulo, p: PainelPronto, modo: ModoAjuste, enq: Enquadramento, rosto: CaixaRosto, modoRosto: ModoRosto, escala: number,
 ) {
@@ -235,7 +295,8 @@ function desenharPainel(
     const base = p.camadas?.foto ?? p.fonte;
     ctx.drawImage(base, j.origem.x, j.origem.y, j.origem.w, j.origem.h, j.destino.x, j.destino.y, j.destino.w, j.destino.h);
     if (modoRosto !== 'nenhum') protegerRosto(ctx, base, p.largura, p.altura, j, caixa, rosto, modoRosto);
-    if (p.camadas) ctx.drawImage(p.camadas.marcacoes, j.origem.x, j.origem.y, j.origem.w, j.origem.h, j.destino.x, j.destino.y, j.destino.w, j.destino.h);
+    const marcacoes = marcacoesDoPainel(p, j.escala);
+    if (marcacoes) ctx.drawImage(marcacoes, j.origem.x, j.origem.y, j.origem.w, j.origem.h, j.destino.x, j.destino.y, j.destino.w, j.destino.h);
   }
   ctx.restore();
 

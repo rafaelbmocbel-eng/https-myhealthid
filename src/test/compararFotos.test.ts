@@ -17,6 +17,20 @@ describe('comparação que já existia (retrocompatibilidade)', () => {
     expect(l.nome).toBe('Desnível dos ombros');
   });
 
+  it('se o lado mudou entre as avaliações, a variação fica em branco em vez de subtrair números de lados opostos', () => {
+    const [varo] = compararMedidas([m('retrope-e', 2, { sentido: 'valgo' })], [m('retrope-e', 4, { sentido: 'varo' })]);
+    expect(varo.variacao).toBeNull();
+    expect(varo.atual).not.toBeNull();
+    expect(varo.anterior).not.toBeNull();
+    const [mesmoLado] = compararMedidas([m('retrope-e', 2, { sentido: 'varo' })], [m('retrope-e', 4, { sentido: 'varo' })]);
+    expect(mesmoLado.variacao).toBe(-2);
+    // desníveis antigos, só com o lado no texto
+    const [ombros] = compararMedidas([m('ombros', 2, { texto: TEXTO_E })], [m('ombros', 3, { texto: TEXTO_D })]);
+    expect(ombros.variacao).toBeNull();
+    const [prumo] = compararMedidas([m('prumo-perfil-orelha-cm', 1, { unidade: 'cm', sentido: 'atrás do fio' })], [m('prumo-perfil-orelha-cm', 3, { unidade: 'cm', sentido: 'à frente do fio' })]);
+    expect(prumo.variacao).toBeNull();
+  });
+
   it('registros antigos sem unidade seguem em graus; cm e % ganham sufixo', () => {
     expect(grau(12.34)).toBe('12,3°');
     expect(grau(12.34, 'cm')).toBe('12,3 cm');

@@ -32,7 +32,7 @@ export interface FotoAnalisada {
   /** Endereço da foto (o mesmo `blob:` da tela principal). */
   url: string;
   rotulo?: string;
-  /** aaaa-mm-dd */
+  /** aaaa-mm-dd. Sem isso a data fica vazia e nada vai impresso na arte: o comparador não presume a data da foto. */
   data?: string;
   /** Pontos de pose já detectados nesta foto; servem para achar o rosto na arte para Instagram. */
   landmarks?: Landmark[] | null;
@@ -401,7 +401,7 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
           <div key={i} className="min-w-0 space-y-1.5" data-testid={`painel-${i}`}>
             <div className={cn('grid gap-1.5', disposicao === 'lado' ? 'grid-cols-1' : 'grid-cols-[minmax(0,1fr)_minmax(0,10.5rem)]')}>
               <Input value={paineis[i].rotulo} maxLength={24} onChange={(e) => atualizar(i, { rotulo: e.target.value })} aria-label={`Nome da foto ${i + 1}`} placeholder={ROTULOS_PADRAO[i]} className="h-10 text-[16px] font-semibold sm:text-sm" />
-              <Input type="date" value={paineis[i].data} onChange={(e) => atualizar(i, { data: e.target.value })} aria-label={`Data da foto ${rotulo(i)}`} className="h-10 min-w-0 text-[16px] sm:text-sm" />
+              <Input type="date" value={paineis[i].data} onChange={(e) => atualizar(i, { data: e.target.value })} aria-label={`Data da foto ${rotulo(i)}`} className="h-10 min-w-0 px-2 text-[16px] sm:px-3 sm:text-sm" />
             </div>
             <PainelComparacao
               foto={paineis[i].foto} analise={visiveis[i]} medidas={disponiveis} estilo={estilo} zoom={zooms[i]} setZoom={(z) => definirZoom(i, z)} zoomMax={ZOOM_MAX}
