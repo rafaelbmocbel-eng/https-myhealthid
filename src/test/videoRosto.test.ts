@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { caixaRostoPadrao, pontoNaCaixa, type CaixaRosto } from '../lib/social/rosto';
 import {
-  caixaDoRostoEm, caixaDoRostoNoQuadro, caixasDoRosto, landmarksDoRosto, resumoDoRosto, unirCaixas,
+  caixaDoRostoEm, caixaDoRostoNoQuadro, caixasDoRosto, landmarksDoRosto, resumoDoRosto, semPontosDoRosto, unirCaixas,
 } from '../lib/angular/video/rostoPorQuadro';
 import { configurar, poseSintetica, trilhaSintetica } from '../lib/angular/video/detectorFalso';
 import { criarTrilha } from '../lib/angular/video/trilha';
@@ -156,3 +156,23 @@ describe('caixa do rosto por quadro', () => {
     expect(landmarksDoRosto(trilha, 999).every((l) => l.visibility === 0)).toBe(true);
   });
 });
+
+describe('semPontosDoRosto', () => {
+  it('tira nariz, olhos, orelhas e boca e mantém o resto do corpo e os demais campos do quadro', () => {
+    const trilha = trilhaSintetica(configurar('marcha'), 30, 1);
+    const q = trilha.quadros[0];
+    expect(PONTOS_ROSTO.some((n) => q.pontos[n])).toBe(true);
+    const limpo = semPontosDoRosto(q);
+    expect(PONTOS_ROSTO.some((n) => limpo.pontos[n])).toBe(false);
+    expect(limpo.pontos.joelho_d).toEqual(q.pontos.joelho_d);
+    expect(limpo.t).toBe(q.t);
+    expect(limpo.i).toBe(q.i);
+    expect(q.pontos.nariz).toBeDefined();
+  });
+
+  it('devolve o próprio quadro quando não há ponto do rosto', () => {
+    const q = { i: 0, t: 0, pontos: { joelho_d: { x: 1, y: 2 } } };
+    expect(semPontosDoRosto(q)).toBe(q);
+  });
+});
+
