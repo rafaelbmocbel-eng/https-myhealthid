@@ -20,9 +20,9 @@ import {
   type FormatoVideo, type ItemMetricaVideo, type LayoutConteudo, type SuporteGravacao,
 } from './exportarVideoPuro';
 import { corrigirDuracaoDoBlob } from './webmDuracao';
-import { caixasDoRosto, resumoDoRosto, type CaixaDoQuadro, type OrigemCaixa } from './rostoPorQuadro';
+import { caixasDoRosto, resumoDoRosto, semPontosDoRosto, type CaixaDoQuadro, type OrigemCaixa } from './rostoPorQuadro';
 import { garantirDuracao } from './rastrear';
-import { PONTOS_ROSTO, type Intervalo, type QuadroPose, type TrilhaPose } from './tipos';
+import type { Intervalo, QuadroPose, TrilhaPose } from './tipos';
 import { indiceNoTempo } from './trilha';
 
 export * from './exportarVideoPuro';
@@ -506,16 +506,6 @@ export interface Renderizador {
   liberar: () => void;
 }
 
-const NOMES_ROSTO = new Set<string>(PONTOS_ROSTO);
-
-/** O vídeo não desenha os pontos do rosto: com o rosto coberto, eles só entregariam a posição dos olhos e do nariz. */
-function semPontosDoRosto(q: QuadroPose): QuadroPose {
-  if (!PONTOS_ROSTO.some((n) => q.pontos[n])) return q;
-  const pontos: QuadroPose['pontos'] = {};
-  for (const [nome, p] of Object.entries(q.pontos)) if (!NOMES_ROSTO.has(nome)) pontos[nome] = p;
-  return { ...q, pontos };
-}
-
 const subtrair = (s: SerieGrafico, t0: number): SerieGrafico => ({ ...s, pontos: s.pontos.map((p) => ({ t: p.t - t0, v: p.v })) });
 
 function nomeDoGrupo(defs: DefinicaoAngulo[]): string {
@@ -712,14 +702,18 @@ export async function criarPrevia(op: OpcoesExportarVideo): Promise<Previa> {
     if (proprio) fonte.liberar();
     throw e;
   }
+  let liberada = false;
   const mostrar = async (indice: number) => {
+    // Depois de liberada a prévia não mexe mais no vídeo: a gravação pode já estar usando a mesma cópia.
+    if (liberada) return;
     const i = Math.min(op.trilha.quadros.length - 1, Math.max(0, indice));
     await buscarQuadro(fonte.el, tempoDeExibicao(op.trilha.quadros[i].t, op.trilha.fps));
+    if (liberada) return;
     r.desenhar(i);
   };
   return {
     canvas: r.saida, largura: r.largura, altura: r.altura, resumoRosto: r.resumoRosto, nQuadros: op.trilha.quadros.length, mostrar,
-    liberar: () => { r.liberar(); if (proprio) fonte.liberar(); },
+    liberar: () => { liberada = true; r.liberar(); if (proprio) fonte.liberar(); },
   };
 }
 
@@ -944,6 +938,10 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
     fluxo?.getTracks().forEach((t) => t.stop());
     renderizador?.liberar();
     if (proprio) fonte.liberar();
-    if (trava) void trava.release().catch(() => undefined);
+    if (trava) {
+      trava.release().catch(() => {
+        // O sistema já tinha solto a trava de tela (ao minimizar o app, por exemplo): nada a fazer.
+      });
+    }
   }
 }

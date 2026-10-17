@@ -35,7 +35,7 @@ interface Resultado { url: string; nome: string; tipo: string; tamanho: number; 
 const ROTULO_VELOCIDADE: Record<number, string> = { 1: 'normal', 0.5: 'lenta', 0.25: 'bem lenta', 0.1: 'quadro a quadro' };
 
 /** Tamanho da prévia: no celular ela fica fixa no alto, pequena, para as escolhas aparecerem nela; "ampliar" a deixa grande. */
-const classeDaPrevia = (grande: boolean) => `mx-auto block h-auto w-auto max-w-full ${grande ? 'max-h-[60dvh]' : 'max-h-[28dvh]'} lg:max-h-[62dvh]`;
+const classeDaPrevia = (grande: boolean) => `mx-auto block h-auto w-auto max-w-full ${grande ? 'max-h-[60dvh]' : 'max-h-[28dvh]'} lg:max-h-[42dvh]`;
 
 interface PropsBarra { valorInicial: () => number; assinar: (atualizar: ((p: number) => void) | null) => void; aoCancelar: () => void }
 
@@ -234,9 +234,11 @@ export default function ExportarVideoDialog({
   useEffect(() => {
     if (!gravando) return undefined;
     const conteudo = conteudoRef.current;
+    const copiaDoVideo = fonteRef.current?.el;
     const escondidos: [HTMLElement, string][] = [];
     for (const el of Array.from(document.body.children)) {
-      if (!(el instanceof HTMLElement) || (conteudo && el.contains(conteudo))) continue;
+      // A cópia do vídeo que está sendo gravada fica como está: alguns navegadores não entregam quadros de vídeo escondido.
+      if (!(el instanceof HTMLElement) || (conteudo && el.contains(conteudo)) || el === copiaDoVideo) continue;
       escondidos.push([el, el.style.visibility]);
       el.style.visibility = 'hidden';
     }
@@ -391,7 +393,7 @@ export default function ExportarVideoDialog({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-testid="corpo-exportar-video">
           <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
             {/* Prévia: no celular o bloco do alto fica fixo enquanto os controles rolam por baixo (o `contents` põe os filhos direto na grade). */}
-            <div className="contents lg:sticky lg:top-0 lg:block lg:space-y-3 lg:self-start">
+            <div className="contents lg:sticky lg:top-0 lg:block lg:max-h-[calc(94dvh-15rem)] lg:space-y-3 lg:self-start lg:overflow-y-auto">
               <div className="sticky top-0 z-10 -mx-4 space-y-2 bg-background px-4 pb-2 pt-1 lg:static lg:mx-0 lg:bg-transparent lg:p-0">
                 {!suporte.ok && (
                   <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" data-testid="aviso-sem-gravacao">{suporte.motivo}</p>

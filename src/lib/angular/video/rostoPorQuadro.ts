@@ -1,6 +1,6 @@
 import type { Landmark } from '../pose';
 import { caixaDoRostoPorLandmarks, caixaRostoPadrao, type CaixaRosto } from '@/lib/social/rosto';
-import { PONTOS_MEDIAPIPE, PONTOS_ROSTO, type TrilhaPose } from './tipos';
+import { PONTOS_MEDIAPIPE, PONTOS_ROSTO, type QuadroPose, type TrilhaPose } from './tipos';
 
 /**
  * Caixa do rosto por quadro, a partir dos pontos de pose (nariz, olhos, orelhas e boca), para esconder o rosto no vídeo e na arte.
@@ -54,6 +54,16 @@ export function landmarksDoRosto(trilha: TrilhaPose, indice: number): Landmark[]
     if (p) lm[PONTOS_MEDIAPIPE[nome]] = { x: p.x / trilha.largura, y: p.y / trilha.altura, visibility: p.manual ? 1 : p.conf ?? 1 };
   }
   return lm;
+}
+
+const NOMES_ROSTO = new Set<string>(PONTOS_ROSTO);
+
+/** O quadro sem os pontos do rosto: com o rosto coberto, desenhá-los só entregaria a posição dos olhos e do nariz. */
+export function semPontosDoRosto(q: QuadroPose): QuadroPose {
+  if (!PONTOS_ROSTO.some((n) => q.pontos[n])) return q;
+  const pontos: QuadroPose['pontos'] = {};
+  for (const [nome, p] of Object.entries(q.pontos)) if (!NOMES_ROSTO.has(nome)) pontos[nome] = p;
+  return { ...q, pontos };
 }
 
 /** Caixa do rosto de cada quadro da trilha (uma por quadro). */

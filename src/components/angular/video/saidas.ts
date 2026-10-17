@@ -11,6 +11,7 @@ import { tempoDeExibicao, formatarSegundos } from '@/lib/angular/analiseVideo/te
 import { irParaTempoEAguardar } from '@/lib/angular/analiseVideo/videoUtil';
 import type { DefinicaoAngulo } from '@/lib/angular/video/angulos';
 import type { TrilhaPose } from '@/lib/angular/video/tipos';
+import { semPontosDoRosto } from '@/lib/angular/video/rostoPorQuadro';
 import type { Ponto } from '@/lib/angular/medidas';
 
 /*
@@ -30,10 +31,11 @@ export interface ContextoQuadro {
 }
 
 /** Itens (em pixels do vídeo) do quadro `indice`: o rastreio com os ângulos e as medidas guardadas nesse quadro. */
-export function itensDoQuadroIndice(c: ContextoQuadro, indice: number, comEsqueleto = true): ItensDoQuadro {
+export function itensDoQuadroIndice(c: ContextoQuadro, indice: number, comEsqueleto = true, semRosto = false): ItensDoQuadro {
   return (k) => {
     const ctx = contextoDesenho(c.trilha.largura, c.trilha.altura, c.estilo, { k });
-    const base: ItemDesenho[] = comEsqueleto ? itensDoQuadroAnalisado(c.trilha.quadros[indice], ctx, { defs: c.defs, direcao: c.direcao }) : [];
+    const quadro = semRosto && c.trilha.quadros[indice] ? semPontosDoRosto(c.trilha.quadros[indice]) : c.trilha.quadros[indice];
+    const base: ItemDesenho[] = comEsqueleto ? itensDoQuadroAnalisado(quadro, ctx, { defs: c.defs, direcao: c.direcao }) : [];
     const manuais = c.capturas.filter((x) => x.quadro === indice).flatMap((x) => {
       const m = MEDIDAS_VIDEO.find((y) => y.id === x.medidaId);
       return m ? itensManuais(m, x.pontos as Ponto[], ctx, { giro: c.giro, cmPorPx: c.cmPorPx }) : [];
@@ -73,9 +75,9 @@ export async function imagensParaRelatorio(c: ContextoQuadro, indices: number[],
   return saida;
 }
 
-/** Painel da arte social do quadro atual, com as camadas separadas para o rosto ser coberto sem apagar as marcações. */
+/** Painel da arte social do quadro atual, com as camadas separadas para o rosto ser coberto sem apagar as marcações (os pontos do rosto não são desenhados). */
 export function painelDoQuadroAtual(c: ContextoQuadro, indice: number, rotulo = ''): PainelParaExportar | null {
-  return painelDoQuadro(c.video, c.trilha.largura, c.trilha.altura, itensDoQuadroIndice(c, indice), { rotulo });
+  return painelDoQuadro(c.video, c.trilha.largura, c.trilha.altura, itensDoQuadroIndice(c, indice, true, true), { rotulo });
 }
 
 export const rotuloDoQuadro = (c: ContextoQuadro, indice: number, texto?: string): string => {

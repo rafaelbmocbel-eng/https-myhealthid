@@ -412,12 +412,12 @@ export default function AnaliseAngular() {
         {modoAnalise === 'marcha' ? (
           <div className="space-y-3">
             <div role="tablist" aria-label="Tipo de análise em vídeo" className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted/60 p-1.5">
-              {([['ponto', 'Ponto a ponto'], ['auto', 'Marcha automática']] as const).map(([id, rotulo]) => (
+              {([['ponto', 'Ponto a ponto'], ['auto', 'Gesto automático']] as const).map(([id, rotulo]) => (
                 <button key={id} type="button" role="tab" aria-selected={modoVideo === id} onClick={() => setModoVideo(id)}
                   className={cn('rounded-xl px-3 py-2 text-sm font-semibold transition-all', modoVideo === id ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>{rotulo}</button>
               ))}
             </div>
-            {modoVideo === 'ponto' ? <PontoAPontoVideo paciente={paciente} /> : <MarchaVideo paciente={paciente} />}
+            {modoVideo === 'ponto' ? <PontoAPontoVideo paciente={paciente} estilo={estilo} aoMudarEstilo={mudarEstilo} /> : <MarchaVideo paciente={paciente} estilo={estilo} aoMudarEstilo={mudarEstilo} />}
           </div>
         ) : comparando ? (
           <div ref={comparadorRef} className="mx-auto w-full max-w-4xl scroll-mt-20">

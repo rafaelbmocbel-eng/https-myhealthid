@@ -6,13 +6,7 @@ import type { DefinicaoAngulo } from '@/lib/angular/video/angulos';
 import type { FormatoVideo } from '@/lib/angular/video/exportarVideoPuro';
 import type { Intervalo, TrilhaPose } from '@/lib/angular/video/tipos';
 
-/*
- * Ligação com o diálogo "Baixar vídeo analisado" (src/components/angular/video/ExportarVideoDialog.tsx, do módulo de
- * exportação). O arquivo é achado em tempo de build por `import.meta.glob`: se ele existir, o botão abre o diálogo; se
- * não existir, o botão avisa que o recurso não está nesta versão, e o resto da análise segue funcionando e compilando.
- * O diálogo exporta por padrão um componente com as propriedades abaixo e chama `exportarVideoAnalise` com elas.
- */
-
+/** Propriedades do diálogo "Baixar vídeo analisado" (ExportarVideoDialog.tsx), montadas pela tela de análise. */
 export interface PropsExportarVideoDialog {
   aberto: boolean;
   aoFechar: () => void;
@@ -40,17 +34,11 @@ export interface PropsExportarVideoDialog {
   formatoInicial?: FormatoVideo;
 }
 
-type ModuloDialogo = { default: ComponentType<PropsExportarVideoDialog> };
-
-const MODULOS = import.meta.glob<ModuloDialogo>('./ExportarVideoDialog.tsx');
-
 /** O diálogo de exportação de vídeo está presente neste build? */
-export const exportarVideoDisponivel = (): boolean => Object.keys(MODULOS).length > 0;
+export const exportarVideoDisponivel = (): boolean => true;
 
-/** Carrega o diálogo sob demanda (o módulo de exportação é pesado e só importa quando o profissional pede o vídeo). */
+/** Carrega o diálogo sob demanda: o módulo de exportação é pesado e só importa quando o profissional pede o vídeo. */
 export async function carregarExportarVideoDialog(): Promise<ComponentType<PropsExportarVideoDialog> | null> {
-  const carregar = Object.values(MODULOS)[0];
-  if (!carregar) return null;
-  const m = await carregar();
+  const m = await import('./ExportarVideoDialog');
   return m.default ?? null;
 }
