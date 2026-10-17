@@ -17,6 +17,7 @@ const ESP_MIN_TELA_PX = 0.33;
 // Alvo de toque da alça de cada ponto (px de tela): maior que o ponto desenhado para o dedo acertar.
 const TOQUE_ALCA_PX = 26;
 const MOVIMENTO_MINIMO_PX = 0.25;
+const TOQUE_PARADO_PX = 10;
 const PREFIXO_EXTRA = 'extra:';
 
 export interface CamadaApi {
@@ -50,6 +51,9 @@ interface Props {
   podeCorrigir: boolean;
   aoCorrigir: (nome: string, ponto: PontoPx) => void;
   aoDeslizar: (quadro: number) => void;
+  /** O vídeo está tocando: um toque na imagem pausa, para corrigir os pontos no quadro parado. */
+  tocando?: boolean;
+  aoPausar?: () => void;
   alturaMaxDvh?: number;
   /**
    * Camada extra dentro do SVG (medidas feitas à mão), nas coordenadas do vídeo. Recebe a conversão de pixels de tela
@@ -72,7 +76,7 @@ const corDoPonto = (nome: string) => {
 // trocar de quadro e zoom com dois dedos. Quem manda no tempo do vídeo é o pai; aqui só se desenha e se arrasta.
 export default function PlayerQuadros({
   url, largura, altura, videoRef, quadro, nQuadros, pontos, ligacoes, alcas, marcacoesDe, estilo, mostrarEsqueleto, mostrarAngulos, podeCorrigir,
-  aoCorrigir, aoDeslizar, alturaMaxDvh = 46, camadaExtra, aoArrastarExtra, aviso, gestosExtra,
+  aoCorrigir, aoDeslizar, tocando = false, aoPausar, alturaMaxDvh = 46, camadaExtra, aoArrastarExtra, aviso, gestosExtra,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const caixaRef = useRef<HTMLDivElement>(null);
@@ -86,6 +90,9 @@ export default function PlayerQuadros({
   const arrasto = useRef<{ nome: string; inicio: PontoPx } | null>(null);
   const deslize = useRef<{ x0: number; q0: number; id: number } | null>(null);
   const dedos = useRef(new Set<number>());
+  const toqueRapido = useRef<{ x: number; y: number; id: number } | null>(null);
+  const aoCorrigirRef = useRef(aoCorrigir);
+  aoCorrigirRef.current = aoCorrigir;
 
   useEffect(() => {
     const el = svgRef.current;
@@ -133,7 +140,7 @@ export default function PlayerQuadros({
     const p = previaRef.current;
     previaRef.current = null;
     setPrevia(null);
-    if (p && p.nome === a.nome && dist(p, a.inicio) > MOVIMENTO_MINIMO_PX) aoCorrigir(p.nome, { x: p.x, y: p.y });
+    if (p && p.nome === a.nome && dist(p, a.inicio) > MOVIMENTO_MINIMO_PX) aoCorrigirRef.current(p.nome, { x: p.x, y: p.y });
   }, [gestos.lupa]);
 
   // A pose de outro quadro nunca herda uma prévia do anterior.
@@ -193,6 +200,7 @@ export default function PlayerQuadros({
     }
     gestos.handlers.onPointerDown(e);
     dedos.current.add(e.pointerId);
+    toqueRapido.current = tocando && dedos.current.size === 1 ? { x: e.clientX, y: e.clientY, id: e.pointerId } : null;
     const livre = dedos.current.size === 1 && !(mover && zoom > 1) && !gestosExtra?.podeMarcar && !gestosExtra?.bloqueiaDeslize && !arrasto.current;
     if (livre) {
       deslize.current = { x0: e.clientX, q0: quadro, id: e.pointerId };
@@ -212,11 +220,15 @@ export default function PlayerQuadros({
     if (alvo !== quadro) aoDeslizar(alvo);
   };
   const aoSoltar = (e: React.PointerEvent<SVGSVGElement>) => {
+    const t = toqueRapido.current;
+    toqueRapido.current = null;
+    if (t && t.id === e.pointerId && dedos.current.size === 1 && Math.hypot(e.clientX - t.x, e.clientY - t.y) < TOQUE_PARADO_PX) aoPausar?.();
     dedos.current.delete(e.pointerId);
     if (deslize.current?.id === e.pointerId) deslize.current = null;
     gestos.handlers.onPointerUp(e);
   };
   const aoCancelar = (e: React.PointerEvent<SVGSVGElement>) => {
+    toqueRapido.current = null;
     dedos.current.delete(e.pointerId);
     if (deslize.current?.id === e.pointerId) deslize.current = null;
     gestos.handlers.onPointerCancel(e);

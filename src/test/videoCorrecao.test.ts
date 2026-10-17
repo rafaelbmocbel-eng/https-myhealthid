@@ -4,7 +4,7 @@ import {
 } from '../lib/angular/video/correcao';
 import { anguloJoelho, angulosPorQuadro } from '../lib/angular/video/angulos';
 import { criarHistorico, desfazer, refazer, registrar } from '../lib/angular/video/historico';
-import { criarTrilha } from '../lib/angular/video/trilha';
+import { criarTrilha, pontoDoQuadro } from '../lib/angular/video/trilha';
 import type { TrilhaPose } from '../lib/angular/video/tipos';
 
 const congelar = <T,>(o: T): T => {
@@ -234,6 +234,58 @@ describe('modos de interpolação entre quadros-chave: desvio (padrão) e posiç
       c = removerCorrecao(c, 20, 'joelho_d', { modo });
       expect(c).toEqual(t);
     }
+  });
+});
+
+describe('detecção perdida (confiança baixa) entre dois quadros-chave', () => {
+  /** O joelho some do detector nos quadros 3 a 6 (confiança 0,1): as medidas ignoram esses quadros até o profissional corrigi-los. */
+  const perdida = (): TrilhaPose => criarTrilha(10, 640, 480, Array.from({ length: 10 }, (_, i) => ({
+    i, t: i / 10, pontos: { joelho_d: { x: 100 + i, y: 100, conf: i >= 3 && i <= 6 ? 0.1 : 0.9 } },
+  })));
+
+  it('os quadros entre os dois quadros-chave valem nas medidas, em reta, e não herdam a confiança baixa', () => {
+    const t = perdida();
+    expect(pontoDoQuadro(t.quadros[4], 'joelho_d')).toBeNull();
+    for (const modo of ['desvio', 'posicao'] as const) {
+      let c = corrigirPonto(t, 2, 'joelho_d', { x: 200, y: 200 }, { modo });
+      c = corrigirPonto(c, 7, 'joelho_d', { x: 300, y: 300 }, { modo });
+      for (let i = 3; i <= 6; i++) {
+        const p = c.quadros[i].pontos.joelho_d;
+        expect(p.interp, `${modo} interp ${i}`).toBe(true);
+        expect(p.conf, `${modo} conf ${i}`).toBeUndefined();
+        expect(pontoDoQuadro(c.quadros[i], 'joelho_d'), `${modo} usável ${i}`).toEqual({ x: 200 + 20 * (i - 2), y: 200 + 20 * (i - 2) });
+        expect(p.auto, `${modo} auto ${i}`).toEqual({ x: 100 + i, y: 100, conf: 0.1 });
+      }
+    }
+  });
+
+  it('a detecção boa continua guiando a forma (modo desvio) e mantém a confiança dela', () => {
+    const t = perdida();
+    let c = corrigirPonto(t, 1, 'joelho_d', { x: 101 + 10, y: 100 });
+    c = corrigirPonto(c, 8, 'joelho_d', { x: 108 + 10, y: 100 });
+    expect(c.quadros[2].pontos.joelho_d).toMatchObject({ x: 112, y: 100, conf: 0.9, interp: true });
+    // com a detecção perdida no meio, o desvio de 10 px deixa de valer e a posição vai em reta entre os quadros-chave
+    expect(c.quadros[4].pontos.joelho_d.x).toBeCloseTo(111 + (118 - 111) * (3 / 7), 9);
+    expect(c.quadros[4].pontos.joelho_d.conf).toBeUndefined();
+  });
+
+  it('um quadro-chave dado sobre uma detecção perdida não usa o desvio dela: a reta vale também nos quadros bons', () => {
+    const t = perdida();
+    let c = corrigirPonto(t, 3, 'joelho_d', { x: 50, y: 60 });
+    c = corrigirPonto(c, 8, 'joelho_d', { x: 80, y: 90 });
+    for (let i = 4; i <= 7; i++) {
+      const s = (i - 3) / 5;
+      expect(c.quadros[i].pontos.joelho_d.x, `x ${i}`).toBeCloseTo(50 + 30 * s, 9);
+      expect(c.quadros[i].pontos.joelho_d.y, `y ${i}`).toBeCloseTo(60 + 30 * s, 9);
+    }
+  });
+
+  it('remover as correções devolve a detecção perdida exatamente como o detector deu', () => {
+    const t = perdida();
+    let c = corrigirPonto(t, 2, 'joelho_d', { x: 200, y: 200 });
+    c = corrigirPonto(c, 7, 'joelho_d', { x: 300, y: 300 });
+    expect(limparCorrecoes(c)).toEqual(t);
+    expect(removerCorrecao(removerCorrecao(c, 2, 'joelho_d'), 7, 'joelho_d')).toEqual(t);
   });
 });
 

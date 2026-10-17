@@ -185,7 +185,7 @@ export const REFERENCIAS: ReferenciaBiomecanica[] = [
   }], ['corrida']),
 
   semReferencia('flexao_joelho_max.agachamento', 'flexao_joelho_max', '°', [{
-    texto: 'Em 30 adultos saudáveis (48,2 ± 7,6 anos), o agachamento de grande amplitude com os calcanhares elevados exigiu flexão máxima média do joelho de 157° ± 6° (rastreamento eletromagnético). Descreve a exigência dessa tarefa, não uma meta para o agachamento comum.',
+    texto: 'Em 30 adultos saudáveis indianos (48,2 ± 7,6 anos), o agachamento de grande amplitude com os calcanhares elevados exigiu flexão máxima média do joelho de 157° ± 6° (rastreamento eletromagnético). Descreve a exigência dessa tarefa, não uma meta para o agachamento comum.',
     fonte: HEMMERICH_2006,
   }], ['agachamento']),
   semReferencia('flexao_quadril_max.agachamento', 'flexao_quadril_max', '°', [{

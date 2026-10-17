@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { BarChart3, ChevronLeft, Crosshair, Eye, EyeOff, GitCompareArrows, Palette, Redo2, Ruler, Share2, Sparkles, Trash2, Undo2, Waypoints } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +34,7 @@ import type { AlcaUi, MarcacaoAnguloUi, PontosDoQuadro, TipoEvento } from '@/lib
 import type { AnaliseParaExportar } from '@/lib/angular/analise';
 import type { Landmark } from '@/lib/angular/pose';
 import { detectorDeTeste } from './ganchoTeste';
+import { carregarExportarVideoDialog, exportarVideoDisponivel, type PropsExportarVideoDialog } from './exportarVideoLigacao';
 import EnviarVideo from './EnviarVideo';
 import EscolherModelo from './EscolherModelo';
 import PainelRastreio from './PainelRastreio';
@@ -113,6 +114,9 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [registrando, setRegistrando] = useState(false);
   const [arteSocial, setArteSocial] = useState<{ arte: AnaliseParaExportar; landmarks: (Landmark[] | null)[] } | null>(null);
+  const [DialogoVideo, setDialogoVideo] = useState<ComponentType<PropsExportarVideoDialog> | null>(null);
+  const [videoAberto, setVideoAberto] = useState(false);
+  const [preparandoVideo, setPreparandoVideo] = useState(false);
 
   const estilo = estiloExterno ?? estiloLocal;
   const mudarEstilo = (e: EstiloMarcacao) => { setEstiloLocal(e); salvarEstilo(e); aoMudarEstilo?.(e); };
@@ -464,6 +468,25 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     setArteSocial({ arte, landmarks: [temRastreio ? landmarksDoRosto(trilha, quadro) : null] });
   };
 
+  const abrirVideoAnalisado = async () => {
+    if (!trilha || !videoRef.current) return;
+    repro.pausar();
+    if (!DialogoVideo) {
+      setPreparandoVideo(true);
+      try {
+        const C = await carregarExportarVideoDialog();
+        if (!C) { toast.error('A exportação do vídeo analisado não está disponível nesta versão do app.'); return; }
+        setDialogoVideo(() => C);
+      } catch {
+        toast.error('Não consegui abrir a exportação do vídeo. Confira a internet e tente de novo.');
+        return;
+      } finally {
+        setPreparandoVideo(false);
+      }
+    }
+    setVideoAberto(true);
+  };
+
   const resumoLinhas = () => resumoEmLinhas(cartoes, manual.capturas);
 
   const copiar = async () => {
@@ -570,7 +593,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
           url={video.url} largura={video.largura} altura={video.altura} videoRef={videoRef} quadro={quadro} nQuadros={nQuadros}
           pontos={etapa === 'analisar' ? pontosTela : etapa === 'rastreando' ? pontosParaTela(aoVivo ?? undefined) : null} ligacoes={LIGACOES_CORPO} alcas={alcas} marcacoesDe={marcacoesDe} estilo={estilo}
           mostrarEsqueleto={mostrarEsqueleto} mostrarAngulos={mostrarAngulos} podeCorrigir={podeCorrigir}
-          aoCorrigir={corrigir} aoDeslizar={repro.irPara} aviso={avisoQuadro}
+          aoCorrigir={corrigir} aoDeslizar={repro.irPara} tocando={repro.tocando} aoPausar={repro.pausar} aviso={avisoQuadro}
           camadaExtra={etapa === 'analisar' ? manual.camada : undefined} aoArrastarExtra={manual.arrastar} gestosExtra={etapa === 'analisar' && aba === 'medir' ? manual.gestos : undefined}
         />
 
@@ -658,7 +681,8 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
             {aba === 'exportar' && (
               <PainelExportar
                 temAnalise={!!trilha} gerandoPdf={gerandoPdf} registrando={registrando} temPaciente={!!paciente} correcoes={{ quadros: edicao.resumo.quadros, pontos: edicao.resumo.pontos }}
-                aoBaixarVideo={() => toast.info('A exportação do vídeo analisado ainda está sendo ligada.')} aoQuadroInstagram={abrirQuadroInstagram} aoPdf={gerarPdf}
+                videoDisponivel={exportarVideoDisponivel()} preparandoVideo={preparandoVideo}
+                aoBaixarVideo={abrirVideoAnalisado} aoQuadroInstagram={abrirQuadroInstagram} aoPdf={gerarPdf}
                 aoSalvar={salvarArquivo} aoAbrir={abrirArquivo} aoRegistrar={registrar} aoCopiar={copiar}
               />
             )}
@@ -666,6 +690,12 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
         </aside>
       )}
 
+      {DialogoVideo && trilha && (
+        <DialogoVideo
+          aberto={videoAberto} aoFechar={() => setVideoAberto(false)} video={videoRef.current} trilha={trilha} definicoes={defsVisiveis} estilo={estilo}
+          intervalo={{ inicio: tempos[0] ?? 0, fim: tempos[tempos.length - 1] ?? 0 }} direcao={direcao} titulo={modelo.nome} linhasMetricas={resumoLinhas()} terapeutaId={user?.id}
+        />
+      )}
       <ExportarSocialDialog aberto={!!arteSocial} aoFechar={() => setArteSocial(null)} arte={arteSocial?.arte ?? null} landmarks={arteSocial?.landmarks} terapeutaId={user?.id} />
     </div>
   );

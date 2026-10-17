@@ -20,6 +20,9 @@ interface Props {
   registrando: boolean;
   temPaciente: boolean;
   correcoes: { quadros: number; pontos: number };
+  /** O módulo de exportação de vídeo está neste build. */
+  videoDisponivel?: boolean;
+  preparandoVideo?: boolean;
   aoBaixarVideo: () => void;
   aoQuadroInstagram: () => void;
   aoPdf: () => void;
@@ -30,10 +33,10 @@ interface Props {
 }
 
 // Saídas da análise: vídeo analisado, quadro e vídeo no formato do Instagram, PDF, arquivo para retomar e nota do prontuário.
-export default function PainelExportar({ temAnalise, gerandoPdf, registrando, temPaciente, correcoes, aoBaixarVideo, aoQuadroInstagram, aoPdf, aoSalvar, aoAbrir, aoRegistrar, aoCopiar }: Props) {
+export default function PainelExportar({ temAnalise, gerandoPdf, registrando, temPaciente, correcoes, videoDisponivel = true, preparandoVideo = false, aoBaixarVideo, aoQuadroInstagram, aoPdf, aoSalvar, aoAbrir, aoRegistrar, aoCopiar }: Props) {
   return (
     <div className="space-y-3">
-      <Acao primario testid="baixar-video" icone={<Video className="h-4 w-4" />} titulo="Baixar vídeo analisado" detalhe="Com ângulos, gráfico e métricas; pode sair no formato do Instagram" onClick={aoBaixarVideo} desabilitado={!temAnalise} />
+      <Acao primario testid="baixar-video" icone={<Video className="h-4 w-4" />} titulo="Baixar vídeo analisado" detalhe={videoDisponivel ? 'Com ângulos, gráfico e métricas; pode sair no formato do Instagram' : 'Indisponível nesta versão do app'} onClick={aoBaixarVideo} desabilitado={!temAnalise || !videoDisponivel} ocupado={preparandoVideo} />
       <div className="grid grid-cols-2 gap-2">
         <Acao testid="baixar-quadro" icone={<Instagram className="h-4 w-4" />} titulo="Quadro" detalhe="para o Instagram" onClick={aoQuadroInstagram} desabilitado={!temAnalise} />
         <Acao testid="gerar-pdf" icone={<FileDown className="h-4 w-4" />} titulo="PDF" detalhe="métricas e gráficos" onClick={aoPdf} ocupado={gerandoPdf} />

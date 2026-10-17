@@ -1,4 +1,4 @@
-import type { PontoPose, QuadroPose, TrilhaPose } from './tipos';
+import { CONF_MINIMA, type PontoPose, type QuadroPose, type TrilhaPose } from './tipos';
 
 /**
  * Correção quadro a quadro, no estilo stop-motion.
@@ -7,8 +7,9 @@ import type { PontoPose, QuadroPose, TrilhaPose } from './tipos';
  * Os quadros automáticos ao redor são ajustados assim:
  *  - entre dois quadros-chave consecutivos (a distância é até `maxLacunaS`): interpolação linear entre eles. No modo 'desvio'
  *    (padrão) interpola-se o DESVIO corrigido (manual − automático) e ele é somado à detecção automática de cada quadro: o
- *    movimento real que o detector viu é mantido e só o erro sistemático some; onde não há detecção automática (ou no modo
- *    'posicao'), interpola-se a própria posição em linha reta, como num quadro-chave de animação;
+ *    movimento real que o detector viu é mantido e só o erro sistemático some; onde não há detecção automática utilizável (ausente
+ *    ou de confiança baixa, que ainda assim fica guardada em `auto`) ou no modo 'posicao', interpola-se a própria posição em linha reta,
+ *    como num quadro-chave de animação, e o ponto passa a valer nas medidas;
  *  - fora disso (antes do primeiro, depois do último ou entre dois quadros-chave muito distantes) a detecção automática é
  *    mantida: uma correção pontual nunca apaga segundos de rastreio. Opcionalmente (`janelaAjusteS` > 0) o desvio corrigido
  *    se espalha pelas vizinhas e some linearmente. Por padrão NÃO se espalha: um erro isolado do detector (um quadro que
@@ -41,6 +42,9 @@ const baseDe = (p: PontoPose | undefined): Xyc | null => {
   if (p.manual || p.interp) return null;
   return { x: p.x, y: p.y, ...(p.conf !== undefined ? { conf: p.conf } : {}) };
 };
+
+/** A detecção automática é confiável o bastante para servir de base? Uma detecção perdida (confiança baixa) não guia a interpolação. */
+const confiavel = (b: Xyc | null): b is Xyc => !!b && (b.conf ?? 1) >= CONF_MINIMA;
 
 const comoAuto = (b: Xyc): PontoPose['auto'] => ({ x: b.x, y: b.y, ...(b.conf !== undefined ? { conf: b.conf } : {}) });
 
@@ -81,14 +85,15 @@ function recalcular(quadros: QuadroPose[], nome: string, fps: number, opc: Opcoe
       const pa = quadros[a].pontos[nome], pb = quadros[b].pontos[nome];
       const s = (f - a) / (b - a);
       const autoA = baseDe(pa), autoB = baseDe(pb);
-      if (modo === 'desvio' && base && autoA && autoB) {
+      if (modo === 'desvio' && confiavel(base) && confiavel(autoA) && confiavel(autoB)) {
         const dx = (pa.x - autoA.x) * (1 - s) + (pb.x - autoB.x) * s, dy = (pa.y - autoA.y) * (1 - s) + (pb.y - autoB.y) * s;
         novo = { x: base.x + dx, y: base.y + dy, interp: true };
       } else {
         novo = { x: pa.x + (pb.x - pa.x) * s, y: pa.y + (pb.y - pa.y) * s, interp: true };
       }
       if (base) {
-        if (base.conf !== undefined) novo.conf = base.conf;
+        // Entre dois quadros-chave a posição foi dada pelo profissional: não herda a baixa confiança de uma detecção perdida.
+        if (confiavel(base) && base.conf !== undefined) novo.conf = base.conf;
         novo.auto = comoAuto(base);
       }
     } else if (base) {
