@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Download, Film, Image as IconeImagem, Loader2, Share2, ShieldAlert, Square, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { carregarBrandingClinica } from '@/utils/pdfBranding';
 import { ehCancelamento } from '@/lib/angular/video/rastrear';
 import {
   LIMITES_EXPORTACAO, NOMES_FORMATO_VIDEO, ORDEM_FORMATOS_VIDEO, VELOCIDADES_EXPORTACAO, ajustarTrecho, avisoDoTipoDeArquivo, bitrateDoVideo, ehErroExportacao, ehFormatoSocial,
@@ -37,6 +36,29 @@ const ROTULO_VELOCIDADE: Record<number, string> = { 1: 'normal', 0.5: 'lenta', 0
 
 /** Tamanho da prévia: no celular ela fica fixa no alto, pequena, para as escolhas aparecerem nela; "ampliar" a deixa grande. */
 const classeDaPrevia = (grande: boolean) => `mx-auto block h-auto w-auto max-w-full ${grande ? 'max-h-[60dvh]' : 'max-h-[28dvh]'} lg:max-h-[62dvh]`;
+
+interface PropsBarra { valorInicial: () => number; assinar: (atualizar: ((p: number) => void) | null) => void; aoCancelar: () => void }
+
+/**
+ * Barra de progresso da gravação. Tem o próprio estado: o progresso muda a cada quadro gravado e, se o diálogo inteiro
+ * se redesenhasse a cada vez, o celular gastaria o tempo que a gravação precisa.
+ */
+const BarraDeGravacao = memo(function BarraDeGravacao({ valorInicial, assinar, aoCancelar }: PropsBarra) {
+  const [progresso, setProgresso] = useState(valorInicial);
+  useEffect(() => {
+    assinar(setProgresso);
+    return () => assinar(null);
+  }, [assinar]);
+  return (
+    <div className="space-y-2" data-testid="gravando-video">
+      <Progress value={progresso} className="h-3" aria-label="Progresso da gravação" />
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium" role="status">Gravando… {progresso}%</p>
+        <Button type="button" variant="outline" className="h-11 gap-2" onClick={aoCancelar} data-testid="cancelar-gravacao"><Square className="h-4 w-4" aria-hidden /> Cancelar</Button>
+      </div>
+    </div>
+  );
+});
 
 const megabytes = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`;
 
@@ -80,7 +102,6 @@ export default function ExportarVideoDialog({
   const [indicePrevia, setIndicePrevia] = useState(0);
   const [previaGrande, setPreviaGrande] = useState(false);
   const [gravando, setGravando] = useState(false);
-  const [progresso, setProgresso] = useState(0);
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -90,6 +111,17 @@ export default function ExportarVideoDialog({
   const indiceRef = useRef(0);
   const grandeRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
+  const conteudoRef = useRef<HTMLDivElement | null>(null);
+  const progressoRef = useRef(0);
+  const assinanteRef = useRef<((p: number) => void) | null>(null);
+  const assinarProgresso = useCallback((atualizar: ((p: number) => void) | null) => { assinanteRef.current = atualizar; }, []);
+  const lerProgresso = useCallback(() => progressoRef.current, []);
+  const aoProgresso = useCallback((p: number) => {
+    const v = Math.round(p * 100);
+    if (v === progressoRef.current) return;
+    progressoRef.current = v;
+    assinanteRef.current?.(v);
+  }, []);
 
   const social = ehFormatoSocial(formato);
   const temMetricas = (cartoes?.length ?? 0) > 0 || (linhasMetricas?.length ?? 0) > 0;
@@ -113,7 +145,7 @@ export default function ExportarVideoDialog({
     setRostoConferido(false);
     setModoRosto(modoProtegido.current);
     setResultado(null);
-    setProgresso(0);
+    progressoRef.current = 0;
     setFormato(formatoInicial);
     setVelocidade(1);
     setTrecho(trechoPadrao(intervalo, 1));
@@ -163,7 +195,8 @@ export default function ExportarVideoDialog({
   useEffect(() => {
     if (!aberto || !terapeutaId) { setLogoUrl(null); return undefined; }
     let cancelado = false;
-    carregarBrandingClinica(terapeutaId).then((b) => { if (!cancelado) setLogoUrl(b.clinicaLogoUrl ?? null); }).catch(() => {
+    // Carregado só quando há clínica: a configuração de marca puxa o cliente do banco, que o diálogo não precisa para o resto.
+    import('@/utils/pdfBranding').then((m) => m.carregarBrandingClinica(terapeutaId)).then((b) => { if (!cancelado) setLogoUrl(b.clinicaLogoUrl ?? null); }).catch(() => {
       // Sem a logo da clínica o selo usa a marca do app.
     });
     return () => { cancelado = true; };
@@ -195,6 +228,20 @@ export default function ExportarVideoDialog({
   }, [aberto]);
 
   useEffect(() => () => { if (resultado) URL.revokeObjectURL(resultado.url); }, [resultado]);
+
+  // Gravar o canvas depende de o navegador desenhar a página: com a tela de análise inteira ainda por trás do diálogo, o Chrome do
+  // computador chega a gravar só alguns quadros por segundo. Enquanto grava, o resto da página fica escondido (volta ao terminar).
+  useEffect(() => {
+    if (!gravando) return undefined;
+    const conteudo = conteudoRef.current;
+    const escondidos: [HTMLElement, string][] = [];
+    for (const el of Array.from(document.body.children)) {
+      if (!(el instanceof HTMLElement) || (conteudo && el.contains(conteudo))) continue;
+      escondidos.push([el, el.style.visibility]);
+      el.style.visibility = 'hidden';
+    }
+    return () => { for (const [el, antes] of escondidos) el.style.visibility = antes; };
+  }, [gravando]);
 
   const moldura = useMemo<OpcoesSocial | undefined>(() => (social
     ? { autorizado, titulo: tituloArte.trim() || undefined, legenda: legenda.trim() || undefined, perfis, margensStories, selo, avatar: avatarImg }
@@ -275,8 +322,8 @@ export default function ExportarVideoDialog({
   // ---- gravação ----
   const baixar = async () => {
     if (!liberado || !opcoes || !fonteRef.current) return;
+    progressoRef.current = 0;
     setGravando(true);
-    setProgresso(0);
     setResultado(null);
     // Libera a prévia: a gravação precisa da memória e do decodificador de vídeo.
     previaRef.current?.liberar();
@@ -286,7 +333,7 @@ export default function ExportarVideoDialog({
     abortRef.current = ctl;
     const inicio = performance.now();
     try {
-      const blob = await exportarVideoAnalise({ ...opcoes, fonte: fonteRef.current, onProgresso: (p) => setProgresso(Math.round(p * 100)), sinal: ctl.signal });
+      const blob = await exportarVideoAnalise({ ...opcoes, fonte: fonteRef.current, onProgresso: aoProgresso, sinal: ctl.signal });
       const nome = nomeArquivoVideo(formato, titulo, extensaoDoMime(blob.type));
       const arquivo = new File([blob], nome, { type: blob.type });
       baixarBlob(blob, nome);
@@ -335,7 +382,7 @@ export default function ExportarVideoDialog({
 
   return (
     <Dialog open={aberto} onOpenChange={(o) => { if (!o) fechar(); }}>
-      <DialogContent data-testid="dialogo-exportar-video" onOpenAutoFocus={(e) => e.preventDefault()} className="flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[calc(100%-2rem)] sm:rounded-lg [&>button]:top-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:[&>button]:top-3">
+      <DialogContent ref={conteudoRef} data-testid="dialogo-exportar-video" onOpenAutoFocus={(e) => e.preventDefault()} className="flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[calc(100%-2rem)] sm:rounded-lg [&>button]:top-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:[&>button]:top-3">
         <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))', paddingLeft: 'max(1rem, env(safe-area-inset-left))' }}>
           <DialogTitle className="text-base">Baixar vídeo analisado</DialogTitle>
           <DialogDescription className="text-xs">Com as marcações, o gráfico e as métricas. Pode sair em câmera lenta e já no formato do Instagram.</DialogDescription>
@@ -345,7 +392,7 @@ export default function ExportarVideoDialog({
           <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
             {/* Prévia: no celular o bloco do alto fica fixo enquanto os controles rolam por baixo (o `contents` põe os filhos direto na grade). */}
             <div className="contents lg:sticky lg:top-0 lg:block lg:space-y-3 lg:self-start">
-              <div className="sticky top-0 z-10 -mx-4 space-y-2 bg-background/95 px-4 pb-2 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/85 lg:static lg:mx-0 lg:bg-transparent lg:p-0">
+              <div className="sticky top-0 z-10 -mx-4 space-y-2 bg-background px-4 pb-2 pt-1 lg:static lg:mx-0 lg:bg-transparent lg:p-0">
                 {!suporte.ok && (
                   <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" data-testid="aviso-sem-gravacao">{suporte.motivo}</p>
                 )}
@@ -484,13 +531,7 @@ export default function ExportarVideoDialog({
           {problema && problema.codigo !== 'consentimento' && <p role="alert" className="text-xs font-medium text-destructive" data-testid="problema-exportacao">{problema.message}</p>}
 
           {gravando ? (
-            <div className="space-y-2" data-testid="gravando-video">
-              <Progress value={progresso} className="h-3" aria-label="Progresso da gravação" />
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium" role="status">Gravando… {progresso}%</p>
-                <Button type="button" variant="outline" className="h-11 gap-2" onClick={cancelar} data-testid="cancelar-gravacao"><Square className="h-4 w-4" aria-hidden /> Cancelar</Button>
-              </div>
-            </div>
+            <BarraDeGravacao valorInicial={lerProgresso} assinar={assinarProgresso} aoCancelar={cancelar} />
           ) : (
             <div className="grid grid-cols-2 gap-2">
               <Button className="h-12 gap-2" onClick={() => void baixar()} disabled={!liberado} data-testid="baixar-video-arquivo">

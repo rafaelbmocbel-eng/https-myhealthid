@@ -371,6 +371,45 @@ function desenharCartoes(ctx: CanvasRenderingContext2D, l: LayoutConteudo, itens
   });
 }
 
+/** Marcas que existem no gráfico, uma entrada por tipo (e por legenda, nas marcas "outro"). */
+function legendaDasMarcas(marcadores: MarcadorGrafico[]): { tipo: MarcadorGrafico['tipo']; texto: string }[] {
+  const lista: { tipo: MarcadorGrafico['tipo']; texto: string }[] = [];
+  const tem = (tipo: MarcadorGrafico['tipo']) => marcadores.some((m) => m.tipo === tipo);
+  if (tem('contato')) lista.push({ tipo: 'contato', texto: 'contato do pé' });
+  if (tem('saida')) lista.push({ tipo: 'saida', texto: 'saída do pé' });
+  for (const m of marcadores) {
+    if (m.tipo === 'outro' && m.legenda && !lista.some((e) => e.texto === m.legenda)) lista.push({ tipo: 'outro', texto: m.legenda });
+  }
+  return lista;
+}
+
+/** Mesmos desenhos que as marcas do gráfico (triângulo, círculo, losango), em cinza, para a legenda. */
+function glifoDaMarca(ctx: CanvasRenderingContext2D, tipo: MarcadorGrafico['tipo'], x: number, y: number, r: number) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = Math.max(1.2, r * 0.3);
+  ctx.beginPath();
+  if (tipo === 'contato') {
+    ctx.moveTo(x - r, y - r * 0.8);
+    ctx.lineTo(x + r, y - r * 0.8);
+    ctx.lineTo(x, y + r);
+    ctx.closePath();
+    ctx.fill();
+  } else if (tipo === 'saida') {
+    ctx.arc(x, y, r * 0.9, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r, y);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 interface AreaGrafico {
   layout: LayoutGrafico;
   /** Canto superior esquerdo do gráfico no quadro composto. */
@@ -408,6 +447,22 @@ function prepararGrafico(ctx: CanvasRenderingContext2D, l: LayoutConteudo, entra
     ctx.arc(xLegenda, yCab, f * 0.27, 0, Math.PI * 2);
     ctx.fill();
     xLegenda -= f * 0.75;
+  }
+  ctx.font = fonteCss('forte', f * 0.9);
+  const larguraTitulo = Math.min(ctx.measureText(`${entrada.titulo} (°)`).width, r.w * 0.45);
+  // Legenda das marcas do gráfico (contato, saída, picos): entra o que couber ao lado do título.
+  const limiteEsq = r.x + pad + larguraTitulo + f * 1.2;
+  ctx.font = fonteCss('texto', f * 0.6);
+  for (const e of [...legendaDasMarcas(entrada.marcadores)].reverse()) {
+    const w = ctx.measureText(e.texto).width;
+    if (xLegenda - w - f * 1.0 < limiteEsq) break;
+    xLegenda -= w;
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.textAlign = 'left';
+    ctx.fillText(e.texto, xLegenda, yCab);
+    xLegenda -= f * 0.5;
+    glifoDaMarca(ctx, e.tipo, xLegenda, yCab, f * 0.26);
+    xLegenda -= f * 1.0;
   }
   ctx.font = fonteCss('forte', f * 0.9);
   ctx.fillStyle = '#ffffff';

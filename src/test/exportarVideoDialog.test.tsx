@@ -240,6 +240,25 @@ describe('diálogo "Baixar vídeo analisado"', () => {
     await waitFor(() => expect(mocks.baixarBlob).toHaveBeenCalled());
   });
 
+  it('enquanto grava, o resto da página fica escondido (para o navegador desenhar só o diálogo) e tudo volta no fim', async () => {
+    const outro = document.createElement('div');
+    outro.id = 'resto-do-app';
+    outro.style.visibility = 'visible';
+    document.body.appendChild(outro);
+    let seguir: (b: Blob) => void = () => undefined;
+    mocks.exportar.mockImplementation(() => new Promise<Blob>((ok) => { seguir = ok; }));
+    render(<ExportarVideoDialog {...props()} />);
+    await aguardarPrevia();
+    await waitFor(() => expect(botaoBaixar()).toBeEnabled());
+    expect(outro.style.visibility).toBe('visible');
+    fireEvent.click(botaoBaixar());
+    await waitFor(() => expect(outro.style.visibility).toBe('hidden'));
+    expect(screen.getByTestId('dialogo-exportar-video')).toBeVisible();
+    seguir(new Blob(['v'], { type: 'video/webm' }));
+    await waitFor(() => expect(outro.style.visibility).toBe('visible'));
+    outro.remove();
+  });
+
   it('erro da exportação vira aviso em português e o botão volta', async () => {
     mocks.exportar.mockRejectedValue(new ErroExportacao('gravacao', 'O navegador interrompeu a gravação do vídeo.'));
     render(<ExportarVideoDialog {...props()} />);
