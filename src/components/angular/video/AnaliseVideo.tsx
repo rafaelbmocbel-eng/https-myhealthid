@@ -694,6 +694,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
         <DialogoVideo
           aberto={videoAberto} aoFechar={() => setVideoAberto(false)} video={videoRef.current} trilha={trilha} definicoes={defsVisiveis} estilo={estilo}
           intervalo={{ inicio: tempos[0] ?? 0, fim: tempos[tempos.length - 1] ?? 0 }} direcao={direcao} titulo={modelo.nome} linhasMetricas={resumoLinhas()} terapeutaId={user?.id}
+          cartoes={cartoes} series={series} marcadores={marcadores} bandas={bandas}
         />
       )}
       <ExportarSocialDialog aberto={!!arteSocial} aoFechar={() => setArteSocial(null)} arte={arteSocial?.arte ?? null} landmarks={arteSocial?.landmarks} terapeutaId={user?.id} />

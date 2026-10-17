@@ -3,7 +3,6 @@ import { dataParaArquivo } from '@/lib/social/exportar';
 import { FORMATOS, type FormatoSocial, type Retangulo } from '@/lib/social/formatos';
 import type { ModoRosto } from '@/lib/social/rosto';
 import type { Intervalo, TrilhaPose } from './tipos';
-import { indiceNoTempo } from './trilha';
 
 /*
  * Partes puras da exportação do vídeo analisado (sem canvas nem MediaRecorder): formatos, limites, escolha do tipo de arquivo,
@@ -53,6 +52,13 @@ export class ErroExportacao extends Error {
 }
 
 export const ehErroExportacao = (e: unknown): e is ErroExportacao => e instanceof ErroExportacao;
+
+/** Cancelamento pelo profissional: o nome "AbortError" é o mesmo do rastreio, então `ehCancelamento` reconhece os dois. */
+export const erroDeCancelamento = (): Error => {
+  const e = new Error('Gravação cancelada.');
+  e.name = 'AbortError';
+  return e;
+};
 
 // ---------- tipo de arquivo ----------
 
@@ -131,9 +137,15 @@ export const tempoDaFonte = (tSaida: number, intervalo: Intervalo, velocidade: n
 /** Instante do arquivo gerado em que aparece o instante `tFonte` do vídeo de origem. */
 export const tempoDaSaida = (tFonte: number, intervalo: Intervalo, velocidade: number): number => (limitar(tFonte, intervalo.inicio, intervalo.fim) - intervalo.inicio) / velocidade;
 
-/** Índice do quadro da trilha que aparece no instante `tSaida` do arquivo gerado. */
+/**
+ * Índice do quadro da trilha que aparece no instante `tSaida` do arquivo gerado: o último quadro que já começou (como num player), de
+ * modo que em câmera lenta cada quadro aparece pelo mesmo tempo, do primeiro ao último.
+ */
 export function quadroNaSaida(trilha: TrilhaPose, tSaida: number, intervalo: Intervalo, velocidade: number): number {
-  return indiceNoTempo(trilha, tempoDaFonte(tSaida, intervalo, velocidade));
+  const n = trilha.quadros.length;
+  if (!n) return 0;
+  const i = Math.floor((tempoDaFonte(tSaida, intervalo, velocidade) - trilha.quadros[0].t) * trilha.fps + 1e-6);
+  return Math.min(n - 1, Math.max(0, Number.isFinite(i) ? i : 0));
 }
 
 export interface PlanoDeSaida {
@@ -160,6 +172,28 @@ export function planejarSaida(o: { intervalo: Intervalo; velocidade: number; fps
 
 /** Maior trecho (s) do vídeo de origem que cabe no limite de duração do arquivo, na velocidade escolhida. */
 export const trechoMaximoS = (velocidade: number): number => LIMITES_EXPORTACAO.duracaoMaximaSaidaS * velocidade;
+
+/** Trecho de partida: o analisado, cortado no que cabe no limite de duração do arquivo. */
+export function trechoPadrao(limites: Intervalo, velocidade: number): Intervalo {
+  return { inicio: limites.inicio, fim: Math.min(limites.fim, limites.inicio + trechoMaximoS(velocidade)) };
+}
+
+/**
+ * Mantém o trecho dentro de `limites`, com no mínimo `minimo` s e no máximo `maxDuracao` s. O lado que o profissional moveu manda;
+ * o outro cede (e vale também quando a velocidade muda e o trecho deixa de caber).
+ */
+export function ajustarTrecho(t: Intervalo, limites: Intervalo, ladoMovido: 'inicio' | 'fim', maxDuracao: number, minimo: number = LIMITES_EXPORTACAO.trechoMinimoS): Intervalo {
+  const minimoReal = Math.min(minimo, Math.max(0, limites.fim - limites.inicio));
+  let inicio = limitar(t.inicio, limites.inicio, limites.fim), fim = limitar(t.fim, limites.inicio, limites.fim);
+  if (ladoMovido === 'inicio') {
+    inicio = Math.min(inicio, fim - minimoReal);
+    if (fim - inicio > maxDuracao) fim = inicio + maxDuracao;
+  } else {
+    fim = Math.max(fim, inicio + minimoReal);
+    if (fim - inicio > maxDuracao) inicio = fim - maxDuracao;
+  }
+  return { inicio: Math.max(limites.inicio, inicio), fim: Math.min(limites.fim, fim) };
+}
 
 /** Passos de uma barra de progresso de 0 a 1 a partir do instante do arquivo. */
 export const progressoDaSaida = (tSaida: number, duracaoSaidaS: number): number => (duracaoSaidaS > 0 ? limitar(tSaida / duracaoSaidaS, 0, 1) : 1);

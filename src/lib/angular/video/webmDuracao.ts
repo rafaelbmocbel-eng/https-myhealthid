@@ -16,6 +16,8 @@ const ID_DURATION = 0x4489;
 const ID_VOID = 0xec;
 const ID_CUES = 0x1c53bb6b;
 const TAMANHO_DURACAO = 11;
+/** Quanto a duração gravada no arquivo pode diferir da medida sem ser trocada. */
+const TOLERANCIA_DURACAO = 0.25;
 /** Bytes iniciais do arquivo que bastam para achar o cabeçalho (Info vem antes do primeiro Cluster). */
 export const BYTES_DO_CABECALHO = 65536;
 
@@ -124,7 +126,7 @@ export interface CorrecaoWebm {
 
 /**
  * Plano para acrescentar a duração ao cabeçalho do WebM. `cabeca` são os primeiros bytes do arquivo (`BYTES_DO_CABECALHO`).
- * Devolve null quando o arquivo já tem duração ou quando a estrutura não permite acrescentar com segurança.
+ * Devolve null quando o arquivo já tem uma duração coerente com `duracaoS` ou quando a estrutura não permite acrescentar com segurança.
  */
 export function planejarDuracaoWebm(cabeca: Uint8Array, duracaoS: number): CorrecaoWebm | null {
   if (!(duracaoS > 0) || !Number.isFinite(duracaoS)) return null;
@@ -147,8 +149,10 @@ export function planejarDuracaoWebm(cabeca: Uint8Array, duracaoS: number): Corre
   const atual = dentro.find((e) => e.id === ID_DURATION);
   if (atual) {
     const v = lerFloat(cabeca, atual);
-    if (v !== null && Number.isFinite(v) && v > 0) return null;
-    // Duração presente mas zerada: troca o valor no mesmo lugar.
+    const segundos = v !== null && Number.isFinite(v) ? (v * nsPorTick) / 1e9 : 0;
+    // A duração do arquivo difere da medida só por um quadro; muito diferente (ou zero) é o valor provisório que o Chrome grava
+    // quando fecha o cabeçalho antes de acabar, e vale a medida.
+    if (segundos > 0 && Math.abs(segundos - duracaoS) <= duracaoS * TOLERANCIA_DURACAO) return null;
     const copia = cabeca.slice(0, info.fim);
     const view = new DataView(copia.buffer);
     if (atual.fim - atual.inicioDados === 4) view.setFloat32(atual.inicioDados, ticks);
@@ -204,11 +208,21 @@ export function planejarDuracaoWebm(cabeca: Uint8Array, duracaoS: number): Corre
   return { novo, ate: info.fim };
 }
 
+function lerBytes(b: Blob): Promise<Uint8Array> {
+  if (typeof b.arrayBuffer === 'function') return b.arrayBuffer().then((a) => new Uint8Array(a));
+  return new Promise((ok, falha) => {
+    const r = new FileReader();
+    r.onload = () => ok(new Uint8Array(r.result as ArrayBuffer));
+    r.onerror = () => falha(new Error('Não consegui ler o arquivo.'));
+    r.readAsArrayBuffer(b);
+  });
+}
+
 /** Acrescenta a duração a um Blob WebM que não a traz. Qualquer outro arquivo (ou falha) volta como veio. */
 export async function corrigirDuracaoDoBlob(blob: Blob, duracaoS: number): Promise<Blob> {
   if (!/^video\/webm/i.test(blob.type) || typeof blob.slice !== 'function') return blob;
   try {
-    const cabeca = new Uint8Array(await blob.slice(0, BYTES_DO_CABECALHO).arrayBuffer());
+    const cabeca = await lerBytes(blob.slice(0, BYTES_DO_CABECALHO));
     const plano = planejarDuracaoWebm(cabeca, duracaoS);
     if (!plano) return blob;
     return new Blob([plano.novo, blob.slice(plano.ate)], { type: blob.type });

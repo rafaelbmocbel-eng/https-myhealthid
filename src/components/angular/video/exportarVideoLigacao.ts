@@ -1,6 +1,9 @@
 import type { ComponentType } from 'react';
+import type { BandaGrafico, MarcadorGrafico, SerieGrafico } from '@/lib/angular/analiseVideo/graficoLayout';
+import type { CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
 import type { EstiloMarcacao } from '@/lib/angular/estilo';
 import type { DefinicaoAngulo } from '@/lib/angular/video/angulos';
+import type { FormatoVideo } from '@/lib/angular/video/exportarVideoPuro';
 import type { Intervalo, TrilhaPose } from '@/lib/angular/video/tipos';
 
 /*
@@ -29,6 +32,12 @@ export interface PropsExportarVideoDialog {
   /** Texto das métricas já formatadas (uma linha por métrica), para o cartão de métricas do vídeo. */
   linhasMetricas: string[];
   terapeutaId?: string;
+  /** Opcionais: com eles o vídeo traz o mesmo gráfico e os mesmos cartões da tela (símbolo dentro/fora, eventos, faixas confirmadas). */
+  cartoes?: CartaoMetricaUi[];
+  series?: SerieGrafico[];
+  marcadores?: MarcadorGrafico[];
+  bandas?: BandaGrafico[];
+  formatoInicial?: FormatoVideo;
 }
 
 type ModuloDialogo = { default: ComponentType<PropsExportarVideoDialog> };

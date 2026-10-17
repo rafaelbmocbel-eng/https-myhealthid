@@ -15,13 +15,13 @@ import { janelaDaImagem } from '@/lib/social/geometria';
 import { escalarCaixaRosto, type CaixaRosto, type ModoRosto } from '@/lib/social/rosto';
 import type { DefinicaoAngulo } from './angulos';
 import {
-  ErroExportacao, LIMITES_EXPORTACAO, avaliarSuporteGravacao, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida, ehFormatoSocial, itensDeCartoes, itensDeLinhas,
+  ErroExportacao, LIMITES_EXPORTACAO, erroDeCancelamento, avaliarSuporteGravacao, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida, ehFormatoSocial, itensDeCartoes, itensDeLinhas,
   progressoDaSaida, quadroNaSaida, quebrarTexto, rotuloTempo, rotuloVelocidade, tamanhoOriginal, truncarTexto, validarExportacao,
   type FormatoVideo, type ItemMetricaVideo, type LayoutConteudo, type SuporteGravacao,
 } from './exportarVideoPuro';
 import { corrigirDuracaoDoBlob } from './webmDuracao';
 import { caixasDoRosto, resumoDoRosto, type CaixaDoQuadro, type OrigemCaixa } from './rostoPorQuadro';
-import { erroCancelado, garantirDuracao } from './rastrear';
+import { garantirDuracao } from './rastrear';
 import { PONTOS_ROSTO, type Intervalo, type QuadroPose, type TrilhaPose } from './tipos';
 import { indiceNoTempo } from './trilha';
 
@@ -98,6 +98,8 @@ export interface OpcoesExportarVideo {
   ajusteRosto?: AjusteRosto;
   /** Caixa usada onde o rosto não foi localizado. */
   caixaFixa?: CaixaRosto;
+  /** Folga sobre a área do rosto (padrão: `FOLGA_ROSTO_VIDEO`); `ajusteRosto` é o ajuste do profissional, aplicado por cima. */
+  folgaRosto?: AjusteRosto;
   mostrarEsqueleto?: boolean;
   mostrarAngulos?: boolean;
   /** Cópia do vídeo já aberta por `abrirFonteDeVideo` (a prévia e a exportação dividem a mesma). */
@@ -105,6 +107,13 @@ export interface OpcoesExportarVideo {
   /** Como percorrer o vídeo. Padrão: reprodução (suave) com queda automática para busca por quadro. */
   modoFonte?: 'auto' | 'reproducao' | 'busca';
 }
+
+/**
+ * Folga extra sobre a área do rosto estimada pelos pontos de pose, aplicada além da margem do módulo de rosto. Num vídeo o rosto se
+ * vira e se inclina, e de perfil a estimativa da cabeça tem o centro deslocado para a frente (o nariz puxa a média): errar para menos
+ * deixaria a nuca à mostra, errar para mais só cobre um pouco de pescoço. O profissional ainda ajusta o tamanho na prévia.
+ */
+export const FOLGA_ROSTO_VIDEO: AjusteRosto = { mulLargura: 1.3, mulAltura: 1.1 };
 
 export interface ResumoDoRosto { porOrigem: Record<OrigemCaixa, number>; semRosto: boolean }
 
@@ -127,9 +136,9 @@ type VideoComQuadros = HTMLVideoElement & {
 export interface FonteDeVideo { el: HTMLVideoElement; liberar: () => void }
 
 const esperarMs = (ms: number, sinal?: AbortSignal) => new Promise<void>((ok, falha) => {
-  if (sinal?.aborted) { falha(erroCancelado()); return; }
+  if (sinal?.aborted) { falha(erroDeCancelamento()); return; }
   const id = window.setTimeout(() => { sinal?.removeEventListener('abort', aoCancelar); ok(); }, ms);
-  const aoCancelar = () => { window.clearTimeout(id); falha(erroCancelado()); };
+  const aoCancelar = () => { window.clearTimeout(id); falha(erroDeCancelamento()); };
   sinal?.addEventListener('abort', aoCancelar, { once: true });
 });
 
@@ -160,7 +169,7 @@ export async function abrirFonteDeVideo(video: HTMLVideoElement, sinal?: AbortSi
       const limpar = () => { window.clearTimeout(id); el.removeEventListener('loadeddata', aoCarregar); el.removeEventListener('error', aoFalhar); sinal?.removeEventListener('abort', aoCancelar); };
       const aoCarregar = () => { limpar(); ok(); };
       const aoFalhar = () => { limpar(); falha(new ErroExportacao('fonte', 'Não consegui abrir o vídeo para gerar o arquivo.')); };
-      const aoCancelar = () => { limpar(); falha(erroCancelado()); };
+      const aoCancelar = () => { limpar(); falha(erroDeCancelamento()); };
       const id = window.setTimeout(() => { limpar(); falha(new ErroExportacao('fonte', 'O vídeo demorou demais para abrir. Tente de novo.')); }, 20000);
       el.addEventListener('loadeddata', aoCarregar);
       el.addEventListener('error', aoFalhar);
@@ -429,6 +438,12 @@ export interface Renderizador {
   saida: HTMLCanvasElement;
   largura: number;
   altura: number;
+  /** Onde ficam o vídeo, o gráfico e os cartões no quadro composto (antes da moldura). */
+  layout: LayoutConteudo;
+  /** Leva um retângulo do quadro composto para o arquivo (a moldura do Instagram coloca o quadro dentro de uma caixa). */
+  naSaida: (r: Retangulo) => Retangulo;
+  /** Área coberta no quadro `indice`, em pixels do arquivo; null se o rosto estiver à mostra. */
+  rostoNaSaida: (indice: number) => Retangulo | null;
   /** Desenha o quadro `indice` da trilha, com o vídeo já posicionado nele. */
   desenhar: (indice: number) => void;
   caixas: CaixaDoQuadro[];
@@ -519,7 +534,8 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   // ---- rosto ----
   const caixas = caixasDoRosto(trilha, op.caixaFixa ? { caixaFixa: op.caixaFixa } : {});
   const resumo = resumoDoRosto(caixas);
-  const ajuste = op.ajusteRosto ?? { mulLargura: 1, mulAltura: 1 };
+  const folga = op.folgaRosto ?? FOLGA_ROSTO_VIDEO;
+  const ajuste = { mulLargura: folga.mulLargura * (op.ajusteRosto?.mulLargura ?? 1), mulAltura: folga.mulAltura * (op.ajusteRosto?.mulAltura ?? 1) };
   const rv = layout.video;
   const janela = janelaDaImagem(rv, vw, vh, 'inteira');
 
@@ -527,9 +543,21 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   const escalaX = rv.w / vw, escalaY = rv.h / vh;
   const f = layout.fonte;
 
+  const caixaDoIndice = (indice: number) => escalarCaixaRosto(caixas[Math.min(caixas.length - 1, Math.max(0, indice))].caixa, ajuste.mulLargura, ajuste.mulAltura);
+  const naSaida = (r: Retangulo): Retangulo => {
+    if (!caixaArte) return r;
+    const ex = caixaArte.w / layout.largura, ey = caixaArte.h / layout.altura;
+    return { x: caixaArte.x + r.x * ex, y: caixaArte.y + r.y * ey, w: r.w * ex, h: r.h * ey };
+  };
+  const rostoNaSaida = (indice: number): Retangulo | null => {
+    if (op.modoRosto === 'nenhum') return null;
+    const c = caixaDoIndice(indice);
+    return naSaida({ x: rv.x + (c.cx - c.w / 2) * rv.w, y: rv.y + (c.cy - c.h / 2) * rv.h, w: c.w * rv.w, h: c.h * rv.h });
+  };
+
   function cobrirRosto(indice: number) {
     if (op.modoRosto === 'nenhum') return;
-    const caixa = escalarCaixaRosto(caixas[Math.min(caixas.length - 1, Math.max(0, indice))].caixa, ajuste.mulLargura, ajuste.mulAltura);
+    const caixa = caixaDoIndice(indice);
     ctxC.save();
     ctxC.beginPath();
     ctxC.rect(rv.x, rv.y, rv.w, rv.h);
@@ -599,7 +627,7 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   }
 
   return {
-    saida, largura: saida.width, altura: saida.height, desenhar, caixas,
+    saida, largura: saida.width, altura: saida.height, layout, naSaida, rostoNaSaida, desenhar, caixas,
     resumoRosto: { porOrigem: resumo, semRosto: resumo.fixa > 0 },
     liberar: () => { liberarCanvas(base); if (conteudo !== saida) liberarCanvas(conteudo); liberarCanvas(saida); },
   };
@@ -739,7 +767,7 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
   if (problema) throw problema;
   const suporte = suporteDeGravacao();
   if (!suporte.ok || !suporte.escolha) throw new ErroExportacao('sem_gravacao', suporte.motivo ?? 'Este aparelho não grava vídeo.');
-  if (op.sinal?.aborted) throw erroCancelado();
+  if (op.sinal?.aborted) throw erroDeCancelamento();
 
   const proprio = !op.fonte;
   const fonte = op.fonte ?? await abrirFonteDeVideo(op.video, op.sinal);
@@ -806,12 +834,13 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
       await fonteTempo.iniciar();
     }
 
-    gravador.start(1000);
+    // Sem fatias de tempo: o Chrome entrega o WebM já finalizado (com duração e índice de posições) e o Safari, um MP4 inteiro.
+    gravador.start();
     empurrar();
     const inicio = performance.now();
     let n = 0;
     for (;;) {
-      if (op.sinal?.aborted) throw erroCancelado();
+      if (op.sinal?.aborted) throw erroDeCancelamento();
       if (erroSegundoPlano) throw erroSegundoPlano;
       if (erroDeDesenho) throw erroDeDesenho;
       const tSaida = (performance.now() - inicio) / 1000;
@@ -835,7 +864,7 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
     empurrar();
     await esperarMs(periodo * 2, op.sinal);
     empurrar();
-    gravador.requestData();
+    // Só `stop()`: pedir um pedaço antes (`requestData`) obriga o Chrome a fechar o cabeçalho cedo, com uma duração provisória de 1 ms.
     if (gravador.state !== 'inactive') gravador.stop();
     await parou;
     op.onProgresso?.(1);
