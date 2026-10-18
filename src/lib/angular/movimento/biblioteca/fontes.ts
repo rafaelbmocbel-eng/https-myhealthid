@@ -4,7 +4,8 @@ import type { FonteBiblio } from '../tipos';
  * Fontes da biblioteca de hipóteses (agente R). Cada entrada foi conferida no PubMed em VERIFICADO_EM: o `trecho` é cópia LITERAL
  * (em inglês) do resumo indexado, e autores, ano, periódico, volume, páginas e DOI vieram da ferramenta do PubMed, não de memória.
  * Uma fonte por PMID: as entradas da biblioteca reaproveitam o mesmo objeto, então o laudo nunca mostra dois trechos para o mesmo artigo.
- * O ano é o da data de publicação registrada no PubMed (pode ser a da versão eletrônica). Nomes foram reduzidos a caracteres que o PDF imprime.
+ * O ano é o da data de publicação registrada no PubMed (pode ser a da versão eletrônica); quando é a eletrônica e o volume impresso é de outro ano, a
+ * citação escreve "Epub AAAA" em vez de juntar o ano eletrônico ao volume e ao fascículo. Nomes foram reduzidos a caracteres que o PDF imprime.
  * Para incluir uma fonte nova: abrir o resumo no PubMed, copiar o trecho exatamente e registrar PMID e DOI; não parafrasear dentro de `trecho`.
  */
 const VERIFICADO_EM = '2026-10-18';
@@ -12,7 +13,7 @@ const VERIFICADO_EM = '2026-10-18';
 export const FONTES = {
   macrum2011: {
     pmid: '22100617',
-    citacao: 'Macrum E, Bell DR, Boling M, Lewek M, Padua D. Effect of limiting ankle-dorsiflexion range of motion on lower extremity kinematics and muscle-activation patterns during a squat. J Sport Rehabil. 2011;21(2):144-50.',
+    citacao: 'Macrum E, Bell DR, Boling M, Lewek M, Padua D. Effect of limiting ankle-dorsiflexion range of motion on lower extremity kinematics and muscle-activation patterns during a squat. J Sport Rehabil. 21(2):144-50. Epub 2011.',
     ano: 2011,
     periodico: 'J Sport Rehabil',
     doi: '10.1123/jsr.21.2.144',
@@ -142,7 +143,7 @@ export const FONTES = {
   },
   webster2014: {
     pmid: '24934927',
-    citacao: 'Webster KE, Austin DC, Feller JA, Clark RA, McClelland JA. Symmetry of squatting and the effect of fatigue following anterior cruciate ligament reconstruction. Knee Surg Sports Traumatol Arthrosc. 2014;23(11):3208-13.',
+    citacao: 'Webster KE, Austin DC, Feller JA, Clark RA, McClelland JA. Symmetry of squatting and the effect of fatigue following anterior cruciate ligament reconstruction. Knee Surg Sports Traumatol Arthrosc. 23(11):3208-13. Epub 2014.',
     ano: 2014,
     periodico: 'Knee Surg Sports Traumatol Arthrosc',
     doi: '10.1007/s00167-014-3121-3',
@@ -192,7 +193,7 @@ export const FONTES = {
   },
   gomes2020: {
     pmid: '32022631',
-    citacao: 'Gomes J, Neto T, Vaz JR, Schoenfeld BJ, Freitas SR. Is there a relationship between back squat depth, ankle flexibility, and Achilles tendon stiffness? Sports Biomech. 2020;21(7):782-795.',
+    citacao: 'Gomes J, Neto T, Vaz JR, Schoenfeld BJ, Freitas SR. Is there a relationship between back squat depth, ankle flexibility, and Achilles tendon stiffness? Sports Biomech. 21(7):782-795. Epub 2020.',
     ano: 2020,
     periodico: 'Sports Biomech',
     doi: '10.1080/14763141.2019.1690569',
@@ -222,7 +223,7 @@ export const FONTES = {
   },
   generoso2025: {
     pmid: '40391865',
-    citacao: 'Generoso TO, Pelegrinelli ARM, Gonzalez FF, Pallone LV, Locks R, Guadagnin EC, et al. Squatting Biomechanics After Femoroacetabular Impingement Surgery: A Systematic Review and Meta-analysis. Clin J Sport Med. 2025;36(3):296-307.',
+    citacao: 'Generoso TO, Pelegrinelli ARM, Gonzalez FF, Pallone LV, Locks R, Guadagnin EC, et al. Squatting Biomechanics After Femoroacetabular Impingement Surgery: A Systematic Review and Meta-analysis. Clin J Sport Med. 36(3):296-307. Epub 2025.',
     ano: 2025,
     periodico: 'Clin J Sport Med',
     doi: '10.1097/JSM.0000000000001371',
@@ -302,7 +303,7 @@ export const FONTES = {
   },
   vermeulen2023: {
     pmid: '37181257',
-    citacao: 'Vermeulen S, Bleecker C, Blaiser C, Kilinç ÖO, Willems T, Vanrenterghem J, et al. The Effect of Fatigue on Trunk and Pelvic Jump-Landing Biomechanics in View of Lower Extremity Loading: A Systematic Review. J Hum Kinet. 2023;86:73-95.',
+    citacao: 'Vermeulen S, De Bleecker C, De Blaiser C, Kilinç ÖO, Willems T, Vanrenterghem J, et al. The Effect of Fatigue on Trunk and Pelvic Jump-Landing Biomechanics in View of Lower Extremity Loading: A Systematic Review. J Hum Kinet. 2023;86:73-95.',
     ano: 2023,
     periodico: 'J Hum Kinet',
     doi: '10.5114/jhk/159460',
@@ -440,7 +441,7 @@ export const FONTES = {
   },
   krajewski2025: {
     pmid: '39815400',
-    citacao: 'Krajewski KT, Correa Bs JS, Siu R, Cunningham D, Sulzer JS. Mechanisms of Post-stroke Stiff-Knee Gait: A Narrative Review. Am J Phys Med Rehabil. 2025;104(7):e101-e108.',
+    citacao: 'Krajewski KT, Correa JS, Siu R, Cunningham D, Sulzer JS. Mechanisms of Post-stroke Stiff-Knee Gait: A Narrative Review. Am J Phys Med Rehabil. 2025;104(7):e101-e108.',
     ano: 2025,
     periodico: 'Am J Phys Med Rehabil',
     doi: '10.1097/PHM.0000000000002678',

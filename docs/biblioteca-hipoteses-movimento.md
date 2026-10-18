@@ -10,14 +10,14 @@ Informações de artigos recuperadas do PubMed (conferência em 18/10/2026). Cad
 ## Como a curadoria foi feita
 
 - **Busca e conferência no PubMed.** Cada fonte foi buscada e aberta pela ferramenta do PubMed; autores, periódico, volume, páginas, ano e DOI vêm
-  do registro, não de memória. O ano é o da data de publicação registrada no PubMed, que pode ser a da versão eletrônica.
+  do registro, não de memória. O ano é o da data de publicação registrada no PubMed, que pode ser a da versão eletrônica; quando é, e o volume impresso é de outro ano, a citação escreve "Epub AAAA" em vez de juntar o ano eletrônico ao volume e ao fascículo.
 - **Trecho literal.** O campo `trecho` é cópia, em inglês, de passagem do **resumo** indexado. A cópia foi comparada por programa com o resumo
   recuperado (espaços normalizados): nenhum trecho foi parafraseado nem editado. Nenhum texto completo foi lido; tudo o que está afirmado
   vem de resumos.
 - **Linguagem de associação.** Nenhum fator afirma causa. Os textos usam "foi associado a", "pode contribuir" ou atribuem a interpretação aos
   autores. Todo fator tem **ressalva** (população, método, tamanho da amostra, evidência mista ou contraditória). O teste barra verbos causais
   e o vocabulário de julgamento (certo, errado, normal, perfeito, falha).
-- **Força da evidência** segue o tipo do artigo no PubMed: revisão sistemática, metanálise, estudo observacional ou estudo experimental
+- **Tipo de estudo** (o rótulo que a tela, o PDF e o laudo imprimem; antes se chamava "Força da evidência", nome que sugeria apoio forte à hipótese) segue o tipo do artigo no PubMed: revisão sistemática, metanálise, estudo observacional ou estudo experimental
   (manipulação controlada de uma condição). Quando o fator tem fontes de tipos diferentes, o rótulo é o da fonte de maior delineamento que o
   sustenta; fontes que o contradizem ou o deixam inconclusivo entram na ressalva, que diz quando a evidência é mista. Revisão narrativa não conta como revisão sistemática. Sem artigo que sustente, o fator é
   **a confirmar**, com fontes vazias, e a interface escreve "sem referência verificada".
@@ -56,15 +56,15 @@ Diferença entre os lados na flexão máxima do joelho (agachamento).
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Menor mobilidade de dorsiflexão do tornozelo foi associada a menor flexão do joelho no agachamento; se a limitação for diferente entre os lados, pode contribuir para a diferença medida.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: O estudo experimental (30 adultos saudáveis) simulou a limitação com uma cunha sob o antepé, e o estudo transversal comparou pessoas com e sem limitação; nenhum testou uma diferença de dorsiflexão entre os lados. A associação não estabelece causalidade e não confirma o fator em uma pessoa.
    - Fontes: PMID 22100617 (Macrum 2011); PMID 25144599 (Dill 2014).
 2. Déficit de força do quadríceps e antecedente de lesão ou reconstrução do ligamento cruzado anterior foram associados a assimetria entre os membros no agachamento e podem contribuir para a diferença entre os lados.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: População específica: pessoas após lesão ou reconstrução do ligamento cruzado anterior. A assimetria descrita é de momentos articulares e de distribuição de carga, medidos em laboratório, e não necessariamente de ângulo de flexão; as amostras são pequenas e os estudos são observacionais. Não se aplica sem esse antecedente.
    - Fontes: PMID 37441507 (Ishida 2023); PMID 24581172 (Roos 2014).
 3. Preferência de apoio ou dominância de um dos membros pode contribuir para diferenças entre os lados mesmo sem lesão.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: Estudo com 18 adultos saudáveis; a diferença descrita é de força de reação do solo e de centro de pressão, e não de ângulo do joelho. É um único estudo: serve como lembrete de que alguma diferença entre os lados pode existir sem condição clínica.
    - Fontes: PMID 36237648 (Hannan 2022).
 
@@ -81,12 +81,12 @@ Diferença entre os lados na flexão máxima do quadril (agachamento).
 
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
-1. Menor mobilidade de dorsiflexão do tornozelo (e, em homens, de flexão do quadril) foi associada a agachamentos menos profundos, e a dorsiflexão do mesmo lado se associou ao ângulo de flexão do quadril; diferenças dessas mobilidades entre os lados podem contribuir para a diferença medida.
-   - Força da evidência: estudo observacional.
+1. Menor mobilidade de dorsiflexão do tornozelo (e, em homens, de flexão do quadril) foi associada a agachamentos menos profundos, e a dorsiflexão do lado direito predisse o ângulo de flexão do quadril direito, único lado citado no resumo; diferenças dessas mobilidades entre os lados podem contribuir para a diferença medida.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: Kim e colaboradores estudaram 101 adultos saudáveis e relacionaram mobilidade com profundidade, e não com assimetria; a associação variou com o sexo. O estudo de Endo e colaboradores tem 9 homens, usa vídeo bidimensional e também mostra que o movimento de um lado se associa ao do lado oposto, então a diferença medida pode refletir compensação e não restrição local.
    - Fontes: PMID 25964810 (Kim 2015); PMID 32581431 (Endo 2020).
 2. Dor ou alteração estrutural do quadril, como o impacto femoroacetabular, pode estar relacionada a diferenças no agachamento (profundidade, joelho e tornozelo), mas a evidência de que mude o ângulo de flexão do quadril é inconclusiva.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: Evidência inconclusiva: na revisão com metanálise não houve diferença significativa nos parâmetros cinemáticos depois da cirurgia, e os autores sugerem que deformidades ósseas isoladas não explicam as limitações observadas no agachamento. No estudo de 10 pacientes, a cinemática do quadril afetado também não mudou após a cirurgia, embora o joelho e o tornozelo tenham flexionado mais. Serve apenas como lembrete de investigar o quadril.
    - Fontes: PMID 21543687 (Lamontagne 2011); PMID 40391865 (Generoso 2025).
 
@@ -103,15 +103,15 @@ Diferença entre os lados na dorsiflexão máxima do tornozelo (agachamento).
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Instabilidade crônica do tornozelo e dor patelofemoral foram associadas a menor dorsiflexão do tornozelo e a assimetria entre os membros; antecedente desse tipo pode contribuir para a diferença medida.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: Estudos transversais em atletas de basquete mulheres (instabilidade de tornozelo e dor patelofemoral) e em adultos com dor patelofemoral; a dorsiflexão foi medida em testes clínicos e não em vídeo. A associação não indica direção: a menor dorsiflexão pode acompanhar a condição em vez de antecedê-la. No estudo de Emamvirdi a dorsiflexão foi menor nos dois lados, não só no lado afetado.
    - Fontes: PMID 37524846 (Emamvirdi 2023); PMID 35989174 (Hassan 2022).
 2. A rigidez do tendão do calcâneo foi associada ao ângulo de dorsiflexão no ponto mais baixo do agachamento e pode contribuir para a diferença entre os lados.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: Evidência mista: Miyasaka (31 homens jovens saudáveis) encontrou associação, enquanto Gomes (20 adultos saudáveis) viu a dorsiflexão no teste de avanço se associar à rigidez do tendão, mas não viu influência evidente das propriedades mecânicas do tendão do calcâneo sobre a profundidade do agachamento. Ambos medem a rigidez por ultrassom, o que não é possível em vídeo, e nenhum compara os lados.
    - Fontes: PMID 37374309 (Miyasaka 2023); PMID 32022631 (Gomes 2020).
 3. Elevar o calcanhar (calçado com salto, calço ou palmilha) reduziu a dorsiflexão máxima medida no agachamento; calçado ou apoio diferentes entre os lados no vídeo podem contribuir para a diferença.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: 30 homens saudáveis com dorsiflexão restrita, agachamento com carga e análise tridimensional; a elevação era igual nos dois pés. O estudo não testou diferença de apoio entre os lados.
    - Fontes: PMID 42551866 (Cai 2026).
 
@@ -128,20 +128,20 @@ Valgo dinâmico do joelho na descida (agachamento de frente).
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Menor dorsiflexão do tornozelo e diferenças na mobilidade do pé (do médio-pé e do tálus) foram associadas a maior valgo (deslocamento medial) do joelho no agachamento e podem contribuir para o valgo medido.
-   - Força da evidência: estudo experimental.
-   - Ressalva: Resultados não unânimes: em adultos com e sem dor patelofemoral, a dorsiflexão não se correlacionou com o ângulo de projeção frontal (Hassan). Os estudos são de agachamento unipodal ou bipodal em adultos fisicamente ativos ou assintomáticos; o estudo experimental (Macrum) simulou a limitação com uma cunha sob o antepé. A associação não estabelece causalidade.
+   - Tipo de estudo: estudo experimental.
+   - Ressalva: Resultados não unânimes: em adultos com e sem dor patelofemoral, a dorsiflexão medida com o joelho flexionado não se correlacionou com o ângulo de projeção frontal (Hassan). Os estudos são de agachamento unipodal ou bipodal em adultos ativos ou assintomáticos (Macrum, Mauntel, Wyndow) e de teste de descida de degrau em 70 pessoas com dor patelofemoral e 70 assintomáticas (Hassan); o estudo experimental (Macrum) simulou a limitação com uma cunha sob o antepé. A associação não estabelece causalidade.
    - Fontes: PMID 22100617 (Macrum 2011); PMID 23096063 (Mauntel 2013); PMID 26816531 (Wyndow 2016); PMID 35989174 (Hassan 2022).
 2. A fraqueza dos abdutores e dos rotadores externos do quadril é uma hipótese frequente para o valgo, mas as revisões sistemáticas não a sustentam de forma consistente.
-   - Força da evidência: revisão sistemática.
-   - Ressalva: Evidência conflitante em adultos assintomáticos: a revisão de 2012 encontrou pouca evidência a favor e nenhuma conclusão definitiva; a de 2021 descreve a relação como conflitante; a mais recente, com metanálise parcial de 22 artigos, não obteve significância em nenhuma metanálise e conclui que a fraqueza pode não estar associada a maior valgo dinâmico. Uma coativação menor entre glúteos e adutores apareceu em um estudo de 40 pessoas (Mauntel), sem confirmação nas revisões. Não use a força do quadril como explicação por padrão.
+   - Tipo de estudo: revisão sistemática.
+   - Ressalva: Evidência conflitante em adultos assintomáticos: a revisão de 2012 encontrou pouca evidência a favor e nenhuma conclusão definitiva; a de 2021 descreve a relação como conflitante; a mais recente, com metanálise parcial de 22 artigos, não obteve significância em nenhuma metanálise e conclui que a fraqueza pode não estar associada a maior valgo dinâmico. Uma coativação menor entre glúteos e adutores apareceu em um estudo de 40 pessoas (Mauntel); a coativação não foi avaliada nas revisões, que trataram de força. Não use a força do quadril como explicação por padrão.
    - Fontes: PMID 22894982 (Cashman 2012); PMID 34300118 (Alzahrani 2021); PMID 42476040 (Cashman 2026); PMID 23096063 (Mauntel 2013).
 3. Instabilidade crônica do tornozelo e dor patelofemoral foram associadas a maior ângulo de valgo dinâmico; antecedente desse tipo pode contribuir para o valgo medido.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: 60 atletas de basquete mulheres; agachamento unipodal, medido nos dois lados. Estudo transversal: não mostra se o valgo antecede a dor ou a acompanha. Não vale para quem não tem esse antecedente.
    - Fontes: PMID 37524846 (Emamvirdi 2023).
-4. O ângulo de projeção 2D do joelho pode divergir do ângulo tridimensional; parte do valgo medido em vídeo pode refletir a perspectiva da câmera e não só o movimento do joelho.
-   - Força da evidência: meta-análise.
-   - Ressalva: Revisão com metanálise de 16 estudos: a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal e melhor na aterrissagem. Os autores não recomendam a análise 2D quando se exige medida exata. Vale para qualquer valor de valgo deste vídeo: use como observação e não como medida exata.
+4. O ângulo 2D de projeção do joelho concordou mal com o ângulo 3D no agachamento unipodal em uma revisão com metanálise; a medida 2D deste vídeo deve ser lida como observação.
+   - Tipo de estudo: meta-análise.
+   - Ressalva: Revisão com metanálise de 16 estudos: a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal (r = 0,127) e melhor na aterrissagem. Os autores concluem que a evidência atual não sustenta o uso da análise 2D quando se exige medida exata. O resumo não indica a causa da divergência, e o resultado é do agachamento unipodal, não do bipodal medido neste app: use o valgo deste vídeo como observação e não como medida exata.
    - Fontes: PMID 29895235 (Lopes 2018).
 
 **O que conferir na avaliação presencial**
@@ -158,15 +158,15 @@ Deslocamento lateral da pelve em relação à base de apoio (agachamento de fren
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Em atletas após reconstrução do ligamento cruzado anterior, a posição lateral do quadril no agachamento se correlacionou com a assimetria de carga entre os membros; um deslocamento da pelve pode refletir apoio assimétrico.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: População específica: atletas de 0 a 12 meses após reconstrução do ligamento cruzado anterior (Song), homens que voltaram ao esporte (Webster) e adultos com lesão ou reconstrução (Roos), com plataformas de força e análise tridimensional. Correlação não indica que o deslocamento seja a origem da assimetria, e não há dado nestas fontes para pessoas sem esse antecedente. Webster também observou que a carga ficou mais simétrica depois de fadiga.
    - Fontes: PMID 34628200 (Song 2021); PMID 24934927 (Webster 2014); PMID 24581172 (Roos 2014).
 2. Déficit de força do quadríceps de um dos lados foi associado a menor momento extensor do joelho nesse lado no agachamento, o que pode contribuir para um apoio mais carregado no lado oposto.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: 26 pessoas com mais de 1 ano após reconstrução do ligamento cruzado anterior. O estudo mediu momentos articulares com análise tridimensional e não o deslocamento da pelve: a ligação com o deslocamento lateral é uma inferência.
    - Fontes: PMID 37441507 (Ishida 2023).
 3. Preferência de apoio ou dominância de um dos membros pode contribuir para um apoio desigual mesmo sem lesão.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: Estudo com 18 adultos saudáveis; a diferença descrita é de força de reação do solo e de centro de pressão. É um único estudo e não mediu o deslocamento da pelve.
    - Fontes: PMID 36237648 (Hannan 2022).
 
@@ -183,11 +183,11 @@ Inclinação do tronco no ponto mais baixo (agachamento).
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Menor dorsiflexão do tornozelo foi associada a maior flexão do tronco no agachamento, e elevar o calcanhar de quem tem dorsiflexão restrita reduziu a inclinação do tronco para a frente; a limitação de dorsiflexão pode contribuir para a inclinação medida.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: Cai: 30 homens saudáveis com dorsiflexão restrita, agachamento com carga. Da Costa: 30 adultos, agachamento unipodal; a associação foi com a dorsiflexão dinâmica e não com a passiva. Honda: idosos agacharam com menor dorsiflexão e maior flexão do tronco do que adultos jovens, mas os grupos diferem também em idade. Não é possível separar a dorsiflexão de outros fatores em uma pessoa.
    - Fontes: PMID 42551866 (Cai 2026); PMID 33713896 (da 2021); PMID 35193063 (Honda 2022).
 2. Quando o avanço dos joelhos foi restringido durante o agachamento, houve mais inclinação do tronco e da perna para a frente; manter os joelhos atrás dos pés, por instrução ou por estratégia, pode contribuir para a inclinação medida.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: 7 homens treinados, agachamento com barra com carga igual ao peso corporal, filmado em vídeo: amostra pequena e população de pessoas treinadas.
    - Fontes: PMID 14636100 (Fry 2003).
 
@@ -205,11 +205,11 @@ Avanço do joelho em relação à ponta do pé (observação medida). Critério 
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Elevar o calcanhar aumentou o avanço da tíbia e a flexão do joelho no agachamento de homens com dorsiflexão restrita; a mobilidade de dorsiflexão e o apoio do calcanhar podem contribuir para o avanço medido.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: 30 homens saudáveis com dorsiflexão restrita, agachamento com carga e análise tridimensional. O estudo mediu a progressão da tíbia e não a posição do joelho em relação à ponta do pé, e não define limite nem critério.
    - Fontes: PMID 42551866 (Cai 2026).
 2. A forma de executar o agachamento, em especial a instrução de manter os joelhos atrás da ponta dos pés, alterou o avanço e a distribuição do esforço entre joelho, quadril e tronco; a técnica usada pode contribuir para o avanço observado.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: O efeito do avanço do joelho é debatido e não há limite definido. Kernozek (25 mulheres saudáveis, estimativa por modelo) calculou maior estresse patelofemoral quando os joelhos passam dos pés; Fry (7 homens treinados) e List (30 pessoas) descreveram mais inclinação do tronco e mais movimento da coluna torácica quando o avanço é restringido. A restrição, portanto, redistribui o esforço. Por isso o avanço é só observação medida, sem critério ativado.
    - Fontes: PMID 14636100 (Fry 2003); PMID 22990570 (List 2013); PMID 28422563 (Kernozek 2018).
 
@@ -227,15 +227,15 @@ Variação da profundidade entre as repetições (agachamento).
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. A mobilidade de dorsiflexão do tornozelo (e, em homens, a de flexão do quadril) foi associada à profundidade alcançada no agachamento e pode contribuir para a profundidade medida.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: As fontes relacionam a profundidade com a mobilidade (101 adultos em Kim; 20 em Gomes, com vídeo bidimensional; 72 em Walker, com correlação baixa); nenhuma estudou a variação da profundidade entre repetições, então a ligação com a variação é uma inferência. Walker não encontrou associação da força dos abdutores do quadril com a profundidade.
    - Fontes: PMID 32022631 (Gomes 2020); PMID 25964810 (Kim 2015); PMID 42516619 (Walker 2026).
 2. Elevar o calcanhar aumentou a flexão do joelho e do quadril no agachamento de homens com dorsiflexão restrita; mudanças de calçado ou de apoio entre as repetições podem contribuir para a variação da profundidade.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: Um estudo com 30 homens saudáveis; o apoio era igual em cada condição, e a variação entre repetições não foi o desfecho.
    - Fontes: PMID 42551866 (Cai 2026).
 3. A referência de profundidade usada (marca, banco ou instrução) e o ritmo da execução podem contribuir para variar a profundidade entre as repetições.
-   - Força da evidência: a confirmar.
+   - Tipo de estudo: a confirmar.
    - Ressalva: Sem referência verificada nesta biblioteca: decorre da forma de coletar o vídeo e deve ser confirmado com quem acompanhou a gravação.
    - Fontes: nenhuma (sem referência verificada).
 
@@ -252,11 +252,11 @@ Mudança de uma medida da primeira para a última repetição.
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Fadiga muscular ao longo das repetições pode contribuir para a mudança de uma medida da primeira para a última repetição, mas a evidência é inconsistente.
-   - Força da evidência: revisão sistemática.
+   - Tipo de estudo: revisão sistemática.
    - Ressalva: Evidência inconsistente: a revisão de 37 estudos (806 atletas saudáveis) não encontrou consistência quanto aos efeitos da fadiga nos ângulos do quadril, do joelho e do tornozelo; a de 21 estudos descreve predomínio de mais flexão do tronco na aterrissagem depois de fadiga dos membros inferiores. A maior parte dos estudos usa saltos e protocolos de fadiga intensos, bem diferentes de poucas repetições de agachamento; no agachamento, Webster (10 homens após reconstrução do ligamento cruzado anterior) viu a carga ficar mais simétrica com a fadiga. Não há dado nestas fontes para uma série curta.
    - Fontes: PMID 28298066 (Barber-Westin 2017); PMID 37181257 (Vermeulen 2023); PMID 24934927 (Webster 2014).
 2. A adaptação ao movimento nas primeiras repetições e a mudança de ritmo ao longo da série podem contribuir para a mudança observada.
-   - Força da evidência: a confirmar.
+   - Tipo de estudo: a confirmar.
    - Ressalva: Sem referência verificada nesta biblioteca: confira a duração das repetições e se a mudança aparece em mais de uma medida antes de atribuí-la a um fator.
    - Fontes: nenhuma (sem referência verificada).
 
@@ -273,19 +273,19 @@ Diferença entre os lados no tempo de apoio (marcha).
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Dor ou doença articular unilateral, como a osteoartrite de quadril ou a dor no joelho, foi associada a assimetria temporal na marcha (na osteoartrite de quadril, com apoio mais curto no membro afetado); condição desse tipo pode contribuir para a diferença no tempo de apoio.
-   - Força da evidência: meta-análise.
+   - Tipo de estudo: meta-análise.
    - Ressalva: A metanálise (30 artigos) trata de osteoartrite de quadril; Lugade (23 pacientes antes de artroplastia) e Murray (35 homens com dor unilateral no joelho, estudo de 1985) são observacionais. Evidência mista: em pessoas com dor unilateral no joelho de uma coorte, a gravidade da dor não se associou à assimetria temporal (Corrigan). Não se aplica a quem não tem queixa articular.
    - Fontes: PMID 24450373 (Constantinou 2014); PMID 20542608 (Lugade 2010); PMID 4042479 (Murray 1985); PMID 36305013 (Corrigan 2023).
 2. Diferença de comprimento entre os membros inferiores foi associada a desvios e assimetrias da marcha e pode contribuir para a diferença entre os lados.
-   - Força da evidência: revisão sistemática.
+   - Tipo de estudo: revisão sistemática.
    - Ressalva: A revisão (12 estudos) inclui diferença anatômica e diferença simulada com elevações em pessoas saudáveis, sem desfecho específico para este achado. Seeley (26 adultos sem doença) relacionou a diferença leve de comprimento à simetria de momentos e potências do joelho e do tornozelo, e não de ângulos ou tempos. Os autores lembram que outros fatores também contribuem para assimetrias em pessoas sem doença.
    - Fontes: PMID 28600975 (Khamis 2017); PMID 24149783 (Seeley 2010).
 3. Em pessoas com AVC, a assimetria temporal da marcha foi interpretada como possível estratégia de compensação do controle de equilíbrio do lado mais afetado.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: 31 pessoas com AVC subagudo; a assimetria foi medida no tempo de balanço e não no de apoio, e a interpretação é dos autores, que a descrevem como possível e apenas parcial. Não extrapole para pessoas sem doença neurológica.
    - Fontes: PMID 42107174 (Staines 2026).
 4. A variação da velocidade entre as passadas e o erro na marcação dos eventos de contato e de saída do pé podem contribuir para uma diferença no tempo de apoio.
-   - Força da evidência: a confirmar.
+   - Tipo de estudo: a confirmar.
    - Ressalva: Sem referência verificada nesta biblioteca: decorre do método (cada evento tem erro de um quadro e as passadas de cada pé são de instantes diferentes) e deve ser conferido quadro a quadro.
    - Fontes: nenhuma (sem referência verificada).
 
@@ -303,19 +303,19 @@ Diferença entre os lados no pico de flexão do joelho no balanço (marcha).
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Menor força dos flexores plantares e menor velocidade da flexão plantar na saída do pé foram associadas a menor pico de flexão do joelho no balanço e podem contribuir para a diferença entre os lados.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: Apti: 20 adultos jovens saudáveis, com redução experimental da força dos flexores plantares por alongamento passivo e análise tridimensional (o título e o resumo usam linguagem causal; aqui é lido como associação). Fujita: 38 pessoas com AVC crônico, com associação entre a velocidade da flexão plantar na saída do pé e o ângulo de flexão do joelho no balanço. Nenhum compara os lados.
    - Fontes: PMID 27131202 (Apti 2016); PMID 36166956 (Fujita 2022).
 2. Após AVC, alterações neuromotoras (atividade dos extensores do joelho, tônus, incoordenação e propulsão reduzida) são discutidas como mecanismos da menor flexão do joelho no balanço.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: População específica (AVC). Krajewski é uma revisão narrativa que discute esses mecanismos e conclui que ainda falta uma definição comum e mais estudos; Fujita é um estudo transversal. Não extrapole para pessoas sem doença neurológica.
    - Fontes: PMID 36166956 (Fujita 2022); PMID 39815400 (Krajewski 2025).
 3. Osteoartrite de quadril e de joelho foi associada a menor amplitude de movimento do joelho e a menor flexão do joelho mais doloroso na marcha; condição desse tipo pode contribuir para a diferença entre os lados.
-   - Força da evidência: meta-análise.
+   - Tipo de estudo: meta-análise.
    - Ressalva: A metanálise (35 estudos) é de osteoartrite de quadril e descreve amplitudes reduzidas nos ângulos do quadril e sagital do joelho, com grande heterogeneidade entre os estudos; Creaby (91 pessoas com osteoartrite de joelho) descreve menor flexão no joelho mais doloroso. Os resumos não especificam que o pico seja o do balanço: a direção é a mesma, mas não é necessariamente a mesma medida.
    - Fontes: PMID 38046934 (Steingrebe 2023); PMID 22385873 (Creaby 2012).
 4. Diferença de comprimento entre os membros inferiores foi associada a desvios e assimetrias da marcha e pode contribuir para a diferença entre os lados.
-   - Força da evidência: revisão sistemática.
+   - Tipo de estudo: revisão sistemática.
    - Ressalva: A revisão (12 estudos) inclui diferença anatômica e diferença simulada com elevações em pessoas saudáveis, sem desfecho específico para este achado. Seeley (26 adultos sem doença) relacionou a diferença leve de comprimento à simetria de momentos e potências do joelho e do tornozelo, e não de ângulos ou tempos. Os autores lembram que outros fatores também contribuem para assimetrias em pessoas sem doença.
    - Fontes: PMID 28600975 (Khamis 2017); PMID 24149783 (Seeley 2010).
 
@@ -333,15 +333,15 @@ Diferença entre os lados na amplitude do quadril (marcha).
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Osteoartrite e restrição de mobilidade do quadril foram associadas a menor amplitude de movimento do quadril na marcha, e a extensão passiva do quadril se relacionou com a extensão alcançada na marcha; condição desse tipo pode contribuir para a diferença entre os lados.
-   - Força da evidência: meta-análise.
+   - Tipo de estudo: meta-análise.
    - Ressalva: População com osteoartrite de quadril (moderada e grave em Baker); entre pessoas assintomáticas não houve correlação entre a extensão passiva e a extensão na marcha (r = 0,139 no estudo). Os estudos usam análise tridimensional; neste vídeo o ângulo do quadril (ombro–quadril–joelho) inclui o movimento do tronco e da pelve, então a amplitude medida não é a articular pura.
    - Fontes: PMID 38046934 (Steingrebe 2023); PMID 26895694 (Baker 2016).
-2. A menor extensão do quadril na marcha de idosos foi interpretada pelos autores como possível restrição de mobilidade do quadril, mas a evidência de que o alongamento dos flexores mude a cinemática é mista.
-   - Força da evidência: estudo observacional.
+2. A menor extensão do quadril na marcha de idosos foi interpretada pelos autores como possível restrição de mobilidade do quadril; no único estudo citado sobre alongamento dos flexores (20 pessoas, corrida submáxima) o alongamento não mudou a cinemática.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: Kerrigan: 23 idosos saudáveis e 16 idosos com quedas, comparados com 30 adultos jovens (diferença entre grupos e não entre lados); a interpretação de restrição é dos autores. Mettler: em 20 pessoas com extensão passiva limitada, 3 semanas de alongamento dos flexores do quadril aumentaram a extensão passiva sem mudar a cinemática da corrida submáxima. É uma hipótese a confirmar no exame.
    - Fontes: PMID 11239282 (Kerrigan 2001); PMID 29927892 (Mettler 2019).
 3. Diferença de comprimento entre os membros inferiores foi associada a desvios e assimetrias da marcha e pode contribuir para a diferença entre os lados.
-   - Força da evidência: revisão sistemática.
+   - Tipo de estudo: revisão sistemática.
    - Ressalva: A revisão (12 estudos) inclui diferença anatômica e diferença simulada com elevações em pessoas saudáveis, sem desfecho específico para este achado. Seeley (26 adultos sem doença) relacionou a diferença leve de comprimento à simetria de momentos e potências do joelho e do tornozelo, e não de ângulos ou tempos. Os autores lembram que outros fatores também contribuem para assimetrias em pessoas sem doença.
    - Fontes: PMID 28600975 (Khamis 2017); PMID 24149783 (Seeley 2010).
 
@@ -359,19 +359,19 @@ Inclinação do tronco durante a passada (marcha).
 **Possíveis fatores contribuintes (hipóteses para o profissional confirmar)**
 
 1. Uma contratura de flexão do joelho simulada em mulheres saudáveis aumentou a inclinação anterior do tronco e da pelve na marcha; uma limitação de extensão do joelho pode contribuir para a inclinação medida.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: 10 mulheres saudáveis (média de 62 anos) com órtese que simulou a contratura; a contratura menor não mudou o tronco e só a maior mudou. Contratura simulada não equivale a uma condição clínica real.
    - Fontes: PMID 18585042 (Harato 2008).
-2. Pessoas com osteoartrite de joelho caminharam com mais flexão do tronco, e a inclinação anterior do tronco diminuiu depois da artroplastia total do joelho; condição desse tipo pode contribuir para a inclinação medida.
-   - Força da evidência: estudo observacional.
+2. Um estudo encontrou mais flexão do tronco na marcha de pessoas com osteoartrite de joelho e outro, menos inclinação anterior do tronco depois da artroplastia total do joelho; a metanálise não viu aumento claro no plano sagital. Condição desse tipo pode contribuir para a inclinação medida.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: Evidência mista: a metanálise de 32 artigos (Iijima) viu aumento claro da inclinação lateral do tronco e aumento não significativo da flexão do tronco e da pelve; Preece relata aumento médio de 2,6° na flexão do tronco; Tsutsumi (24 pacientes) avaliou os mesmos pacientes antes e depois da cirurgia. A diferença média é pequena e pode ficar dentro da incerteza do vídeo.
    - Fontes: PMID 31254772 (Preece 2019); PMID 42804966 (Tsutsumi 2026); PMID 30904334 (Iijima 2019).
 3. Após fratura de acetábulo, pacientes caminharam com maior inclinação anterior do tronco do que pessoas sem a lesão; condição do quadril pode contribuir para a inclinação medida.
-   - Força da evidência: estudo observacional.
+   - Tipo de estudo: estudo observacional.
    - Ressalva: Série de 15 pacientes comparados com grupos sem lesão; foi a única diferença na posição dos segmentos. Amostra pequena e população específica.
    - Fontes: PMID 11818800 (Borrelli 2002).
 4. Caminhar em subida aumentou a inclinação anterior do tronco e da pelve; piso ou esteira com inclinação durante a gravação pode contribuir para a inclinação medida.
-   - Força da evidência: estudo experimental.
+   - Tipo de estudo: estudo experimental.
    - Ressalva: 8 adultos saudáveis em esteira com 0, 5 e 10% de inclinação; na descida houve inclinação para trás. Mostra o efeito do terreno e vale como lembrete de conferir o nivelamento do local de gravação.
    - Fontes: PMID 11809582 (Leroux 2002).
 
@@ -522,12 +522,12 @@ Lista por PMID, com o trecho literal que o laudo exibe. O mesmo PMID tem sempre 
   - População: 38 pessoas com AVC crônico e joelho rígido na marcha.
   - Trecho literal do resumo: "In the high PC2 group, the timing of peak knee flexion during the swing phase was early, and vastus lateralis activity during the preswing phase negatively correlated with the knee-flexion angle during the swing phase. In the low PC2 group, the angular velocity of ankle plantar flexion at the toe-off was slow, which positively correlated with the knee-flexion angle during the swing phase."
   - Usada em: `assimetria_flexao_joelho_marcha`.
-- **PMID 40391865**: Generoso TO, Pelegrinelli ARM, Gonzalez FF, Pallone LV, Locks R, Guadagnin EC, et al. Squatting Biomechanics After Femoroacetabular Impingement Surgery: A Systematic Review and Meta-analysis. Clin J Sport Med. 2025;36(3):296-307.
+- **PMID 40391865**: Generoso TO, Pelegrinelli ARM, Gonzalez FF, Pallone LV, Locks R, Guadagnin EC, et al. Squatting Biomechanics After Femoroacetabular Impingement Surgery: A Systematic Review and Meta-analysis. Clin J Sport Med. 36(3):296-307. Epub 2025.
   - DOI: [10.1097/JSM.0000000000001371](https://doi.org/10.1097/JSM.0000000000001371). Conferido no PubMed em 2026-10-18.
   - População: Revisão sistemática com metanálise de 6 estudos (5 na metanálise) de pacientes com impacto femoroacetabular, antes e depois da cirurgia.
   - Trecho literal do resumo: "Although most studies reported no significant changes in kinematic or kinetic variables postsurgery, individual studies reported specific increases in squat depth, pelvic sagittal range of motion, anterior pelvic tilt, hip and knee flexion, and ankle dorsiflexion angles. Meta-analysis revealed no significant differences in the kinematic parameters analyzed."
   - Usada em: `assimetria_flexao_quadril`.
-- **PMID 32022631**: Gomes J, Neto T, Vaz JR, Schoenfeld BJ, Freitas SR. Is there a relationship between back squat depth, ankle flexibility, and Achilles tendon stiffness? Sports Biomech. 2020;21(7):782-795.
+- **PMID 32022631**: Gomes J, Neto T, Vaz JR, Schoenfeld BJ, Freitas SR. Is there a relationship between back squat depth, ankle flexibility, and Achilles tendon stiffness? Sports Biomech. 21(7):782-795. Epub 2020.
   - DOI: [10.1080/14763141.2019.1690569](https://doi.org/10.1080/14763141.2019.1690569). Conferido no PubMed em 2026-10-18.
   - População: 20 adultos saudáveis; agachamento com barra analisado em vídeo bidimensional.
   - Trecho literal do resumo: "In conclusion, back squat depth is associated with ankle dorsiflexion ROM when the knee is flexed, without evident influence of global joint and Achilles tendon mechanical properties."
@@ -582,7 +582,7 @@ Lista por PMID, com o trecho literal que o laudo exibe. O mesmo PMID tem sempre 
   - População: 101 adultos saudáveis (64 homens e 37 mulheres).
   - Trecho literal do resumo: "The multiple regression model indicated that ankle dorsiflexion with a flexed knee and the hip flexion ROM were significantly associated with squat depth in male subjects (R(2) = 0.435) and ankle dorsiflexion with an extended knee and dorsiflexor strength were significantly associated with squat depth in female subjects (R(2) = 0.324)."
   - Usada em: `assimetria_flexao_quadril`, `variacao_profundidade`.
-- **PMID 39815400**: Krajewski KT, Correa Bs JS, Siu R, Cunningham D, Sulzer JS. Mechanisms of Post-stroke Stiff-Knee Gait: A Narrative Review. Am J Phys Med Rehabil. 2025;104(7):e101-e108.
+- **PMID 39815400**: Krajewski KT, Correa JS, Siu R, Cunningham D, Sulzer JS. Mechanisms of Post-stroke Stiff-Knee Gait: A Narrative Review. Am J Phys Med Rehabil. 2025;104(7):e101-e108.
   - DOI: [10.1097/PHM.0000000000002678](https://doi.org/10.1097/PHM.0000000000002678). Conferido no PubMed em 2026-10-18.
   - População: Revisão narrativa sobre a marcha com joelho rígido após AVC.
   - Trecho literal do resumo: "We explore evidence for quadriceps hyperreflexia, abnormal tone, motor incoordination, and impaired propulsion."
@@ -612,7 +612,7 @@ Lista por PMID, com o trecho literal que o laudo exibe. O mesmo PMID tem sempre 
   - População: 23 pacientes com osteoartrite de quadril antes de artroplastia (abordagem anterior ou anterolateral) e 10 controles.
   - Trecho literal do resumo: "At presurgery, greater single limb support time and step length asymmetry was demonstrated by both patient groups when compared to controls."
   - Usada em: `assimetria_tempo_apoio`.
-- **PMID 22100617**: Macrum E, Bell DR, Boling M, Lewek M, Padua D. Effect of limiting ankle-dorsiflexion range of motion on lower extremity kinematics and muscle-activation patterns during a squat. J Sport Rehabil. 2011;21(2):144-50.
+- **PMID 22100617**: Macrum E, Bell DR, Boling M, Lewek M, Padua D. Effect of limiting ankle-dorsiflexion range of motion on lower extremity kinematics and muscle-activation patterns during a squat. J Sport Rehabil. 21(2):144-50. Epub 2011.
   - DOI: [10.1123/jsr.21.2.144](https://doi.org/10.1123/jsr.21.2.144). Conferido no PubMed em 2026-10-18.
   - População: 30 adultos saudáveis e fisicamente ativos, sem lesão prévia de membro inferior; agachamento com e sem cunha sob o antepé.
   - Trecho literal do resumo: "Compared with the NW condition, the wedge produced decreased peak knee flexion (P < .001, effect size [ES] = 0.81) and knee-flexion excursion (P < .001, ES = 0.82) while producing increased peak ankle dorsiflexion (P = .006, ES = 0.31), ankle-dorsiflexion excursion (P < .001, ES = 0.31), peak knee-valgus angle (P = .02, ES = 0.21), and MKD (P < .001, ES = 2.92)."
@@ -672,7 +672,7 @@ Lista por PMID, com o trecho literal que o laudo exibe. O mesmo PMID tem sempre 
   - População: 24 pacientes avaliados antes e 1 ano depois de artroplastia total do joelho.
   - Trecho literal do resumo: "After total knee arthroplasty, the mean dynamic sagittal vertical axis and forward trunk inclination during gait decreased (p < 0.01), whereas the mean anterior pelvic tilt increased (p < 0.01)."
   - Usada em: `inclinacao_tronco_marcha`.
-- **PMID 37181257**: Vermeulen S, Bleecker C, Blaiser C, Kilinç ÖO, Willems T, Vanrenterghem J, et al. The Effect of Fatigue on Trunk and Pelvic Jump-Landing Biomechanics in View of Lower Extremity Loading: A Systematic Review. J Hum Kinet. 2023;86:73-95.
+- **PMID 37181257**: Vermeulen S, De Bleecker C, De Blaiser C, Kilinç ÖO, Willems T, Vanrenterghem J, et al. The Effect of Fatigue on Trunk and Pelvic Jump-Landing Biomechanics in View of Lower Extremity Loading: A Systematic Review. J Hum Kinet. 2023;86:73-95.
   - DOI: [10.5114/jhk/159460](https://doi.org/10.5114/jhk/159460). Conferido no PubMed em 2026-10-18.
   - População: Revisão sistemática de 21 estudos com adultos fisicamente ativos; aterrissagem de salto.
   - Trecho literal do resumo: "The results indicate prevailing evidence for more trunk flexion during standardized jump-landing tasks after lower extremity muscle fatigue."
@@ -682,7 +682,7 @@ Lista por PMID, com o trecho literal que o laudo exibe. O mesmo PMID tem sempre 
   - População: 72 adultos saudáveis (59,7% mulheres); agachamento unipodal.
   - Trecho literal do resumo: "Findings are congruent with previous literature regarding the biomechanical influence from ankle mobility to SLS depth; however, hip strength does not appear to affect SLS depth."
   - Usada em: `variacao_profundidade`.
-- **PMID 24934927**: Webster KE, Austin DC, Feller JA, Clark RA, McClelland JA. Symmetry of squatting and the effect of fatigue following anterior cruciate ligament reconstruction. Knee Surg Sports Traumatol Arthrosc. 2014;23(11):3208-13.
+- **PMID 24934927**: Webster KE, Austin DC, Feller JA, Clark RA, McClelland JA. Symmetry of squatting and the effect of fatigue following anterior cruciate ligament reconstruction. Knee Surg Sports Traumatol Arthrosc. 23(11):3208-13. Epub 2014.
   - DOI: [10.1007/s00167-014-3121-3](https://doi.org/10.1007/s00167-014-3121-3). Conferido no PubMed em 2026-10-18.
   - População: 10 homens que voltaram ao esporte após reconstrução do ligamento cruzado anterior e 10 controles; agachamento bipodal antes e depois de fadiga.
   - Trecho literal do resumo: "The ACL group preferentially unloaded the reconstructed limb at baseline, but changed to a more symmetrical load distribution to perform the squat exercise in the fatigue condition. This same loading pattern was seen at both the knee and hip joints."

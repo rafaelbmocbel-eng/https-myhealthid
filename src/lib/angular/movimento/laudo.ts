@@ -10,7 +10,7 @@ import {
   AVISOS_FIXOS, capitalizar, dataBr, ETIQUETA_BETA, fraseAchadosPorGatilho, fraseCriteriosNoResumo, fraseIndisponiveisNoResumo, fraseParaAvaliar,
   fraseRepeticoesCompletas, fraseRepeticoesIdentificadas, INTRO_INDISPONIVEIS, INTRO_MEDIDAS, legendaDaMedida, LEGENDA_RESUMO_MEDIDAS, limiteDoCriterio,
   linhaResumoDoAchado, maisOuMenos, motivoCriterioNaoAplicado, numeroComCasas, ORDEM_GATILHOS, rotuloDaRepeticao, ROTULO_AVISO, ROTULO_RESPONSAVEL, ROTULO_SINALIZADOR, segundosTexto,
-  TEXTO_MEDIDA_SEM_VALOR, TEXTO_MINIMO_REPETICOES, TEXTO_NENHUMA_REPETICAO, TEXTO_SEM_CRITERIOS, TEXTO_SEM_INDISPONIVEIS, textoIncertezaDoAchado, textoMedidaDoAchado,
+  notaDoGatilhoSemEstudo, TEXTO_MEDIDA_SEM_VALOR, TEXTO_MINIMO_REPETICOES, TEXTO_NENHUMA_REPETICAO, TEXTO_SEM_CRITERIOS, TEXTO_SEM_INDISPONIVEIS, textoIncertezaDoAchado, textoMedidaDoAchado,
   taxaEfetivaTexto, textoRepeticoesDoAchado, TITULO_LAUDO, tituloDoAchado, TITULOS, valorComUnidade, comPontoFinal,
 } from './frases';
 import { achadoDoCatalogo, achadosAvaliaveis, GATILHOS, medidaDo, faseDo, protocoloDo } from './protocolos';
@@ -77,7 +77,7 @@ const entradaDe = (biblioteca: Biblioteca, chave: string): EntradaBiblioteca | n
 
 // ---------- hipóteses e itens a conferir ----------
 
-function hipotesesDaEntrada(entrada: EntradaBiblioteca, refs: Registro): HipoteseLaudo[] {
+function hipotesesDaEntrada(entrada: EntradaBiblioteca, refs: Registro, notaDoGatilho: string | null): HipoteseLaudo[] {
   return (entrada.fatores ?? []).map((f) => {
     // Sem fonte, nunca declara força de evidência: a força só vale com a fonte que a sustenta.
     const comFonte = f.forca !== 'a_confirmar' && (f.fontes ?? []).length > 0;
@@ -85,7 +85,9 @@ function hipotesesDaEntrada(entrada: EntradaBiblioteca, refs: Registro): Hipotes
     const populacoes = comFonte
       ? f.fontes.flatMap((fonte, i) => (fonte.populacao && fonte.populacao.trim() ? [`[${numeros[i]}] ${fonte.populacao.trim().replace(/[.;]+$/, '')}`] : []))
       : [];
-    const ressalva = populacoes.length ? `${comPontoFinal(f.ressalva)} População dos estudos: ${populacoes.join('; ')}.` : f.ressalva;
+    const comPopulacao = populacoes.length ? `${comPontoFinal(f.ressalva)} População dos estudos: ${populacoes.join('; ')}.` : f.ressalva;
+    // A nota só vale para fator com fonte: "nenhuma das fontes citadas" não faz sentido onde não há fonte.
+    const ressalva = comFonte && notaDoGatilho ? `${comPontoFinal(comPopulacao)} ${notaDoGatilho}` : comPopulacao;
     return { texto: f.texto, forca: ROTULO_FORCA[comFonte ? f.forca : 'a_confirmar'], ressalva, referencias: numeros };
   });
 }
@@ -107,13 +109,16 @@ function achadoDoLaudo(a: Achado, analise: AnaliseMovimento, protocolo: Protocol
   const descricao = capitalizar(a.descricao.trim() || `${a.titulo}: ${valorComUnidade(a.valor, a.unidade)}.`);
   return {
     achado: a,
-    titulo: tituloDoAchado(a, nomeDaMedida, protocolo.gesto === 'marcha', (protocolo.achados.find((x) => x.chave === a.chave)?.medidas.length ?? 0) > 1),
+    titulo: tituloDoAchado(
+      a, nomeDaMedida, protocolo.gesto === 'marcha', (protocolo.achados.find((x) => x.chave === a.chave)?.medidas.length ?? 0) > 1,
+      numeros.length === 1 ? { rotulo: protocolo.rotuloRepeticao.singular, numero: numeros[0] } : undefined,
+    ),
     descricao,
     situacao: ROTULO_SITUACAO[a.situacao],
     medida: textoMedidaDoAchado(a, nomeDaMedida, medidaDo(protocolo, a.medida)?.porLado ?? false),
     incerteza: textoIncertezaDoAchado(a),
     repeticoes: textoRepeticoesDoAchado(a.gatilho, numeros, protocolo.rotuloRepeticao),
-    hipoteses: entrada ? hipotesesDaEntrada(entrada, refs) : [],
+    hipoteses: entrada ? hipotesesDaEntrada(entrada, refs, notaDoGatilhoSemEstudo(a.chave, a.gatilho)) : [],
     conferir: entrada ? conferirDaEntrada(entrada, refs) : [],
     semBiblioteca: entrada === null,
     limitacoes: unicos(a.limitacoes),
@@ -338,9 +343,11 @@ function tabelaDeCriterios(analise: AnaliseMovimento, protocolo: Protocolo, usad
     titulo: TITULOS.criterios,
     colunas: ['Critério', 'Medida', 'Limite', 'Definido por', 'Fonte', 'Resultado'],
     linhas: usados.map((c) => {
+      // Na diferença entre os lados, `lado` é só o lado de maior média: escrevê-lo ao lado do veredito sugeriria que aquele lado é o que está fora do critério.
+      const porDiferenca = achadoDoCatalogo(c.chave).grandeza === 'diferenca_entre_lados';
       const resultados = analise.achados
         .filter((a) => a.gatilho === 'criterio_profissional' && a.veredito?.criterio.id === c.id)
-        .map((a) => `${a.lado ? `${a.lado} ` : ''}${ROTULO_SITUACAO[a.situacao]}`);
+        .map((a) => `${a.lado && !porDiferenca ? `${protocolo.gesto === 'marcha' ? 'pé' : 'lado'} ${ROTULO_LADO[a.lado]}: ` : ''}${ROTULO_SITUACAO[a.situacao]}`);
       return [
         c.rotulo,
         medidaDo(protocolo, c.metrica)?.nome ?? c.metrica,

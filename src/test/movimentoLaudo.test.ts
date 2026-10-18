@@ -288,7 +288,7 @@ describe('laudo: critério do profissional', () => {
     expect(a.descricao).toContain('Dra. Ana Souza');
     const tab = laudo.metodo.tabelas.find((t) => t.titulo === 'Critérios do profissional usados');
     expect(tab?.colunas).toEqual(['Critério', 'Medida', 'Limite', 'Definido por', 'Fonte', 'Resultado']);
-    expect(tab?.linhas).toEqual([['diferença entre os lados ≤ 5°', 'Flexão máxima do joelho', '≤ 5,0°', 'Dra. Ana Souza', '[3]', 'D fora do critério']]);
+    expect(tab?.linhas).toEqual([['diferença entre os lados ≤ 5°', 'Flexão máxima do joelho', '≤ 5,0°', 'Dra. Ana Souza', '[3]', 'fora do critério']]);
     expect(laudo.resumo.paragrafos.join(' ')).toContain('1 critério definido pelo profissional foi usado');
   });
 

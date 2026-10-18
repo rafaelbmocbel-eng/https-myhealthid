@@ -45,7 +45,7 @@ function Detalhes({ a, laudo }: { a: AchadoLaudo; laudo: LaudoMovimento }) {
                 <li key={`${i}-${h.texto}`} className="space-y-1 rounded-xl bg-muted/40 p-2.5" data-testid="hipotese">
                   <p className="text-xs leading-snug">{h.texto}</p>
                   <p className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                    <span className={selo}>Força da evidência: {h.forca}</span>
+                    <span className={selo}>Tipo de estudo: {h.forca}</span>
                     {h.referencias.length > 0
                       ? <span>Fontes: {marcas(h.referencias)}</span>
                       : <span className={cn(selo, 'font-normal')}>{TEXTO_SEM_REFERENCIA_VERIFICADA}</span>}
@@ -108,7 +108,7 @@ function CartaoAchado({ a, laudo }: { a: AchadoLaudo; laudo: LaudoMovimento }) {
   );
 }
 
-// Achados descritos de forma neutra. As hipóteses vêm da biblioteca curada, com a força da evidência e as fontes; sem fonte verificada, o texto diz.
+// Achados descritos de forma neutra. As hipóteses vêm da biblioteca curada, com o tipo de estudo e as fontes; sem fonte verificada, o texto diz.
 export default function ListaAchados({ laudo }: { laudo: LaudoMovimento }) {
   const total = laudo.achados.length;
   return (

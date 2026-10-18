@@ -17,7 +17,7 @@ export const VALGO_DINAMICO: EntradaBiblioteca = {
       forca: 'experimental',
       fontes: [F.macrum2011, F.mauntel2013, F.wyndow2016, F.hassan2022],
       ressalva:
-        'Resultados não unânimes: em adultos com e sem dor patelofemoral, a dorsiflexão não se correlacionou com o ângulo de projeção frontal (Hassan). Os estudos são de agachamento unipodal ou bipodal em adultos fisicamente ativos ou assintomáticos; o estudo experimental (Macrum) simulou a limitação com uma cunha sob o antepé. A associação não estabelece causalidade.',
+        'Resultados não unânimes: em adultos com e sem dor patelofemoral, a dorsiflexão medida com o joelho flexionado não se correlacionou com o ângulo de projeção frontal (Hassan). Os estudos são de agachamento unipodal ou bipodal em adultos ativos ou assintomáticos (Macrum, Mauntel, Wyndow) e de teste de descida de degrau em 70 pessoas com dor patelofemoral e 70 assintomáticas (Hassan); o estudo experimental (Macrum) simulou a limitação com uma cunha sob o antepé. A associação não estabelece causalidade.',
     },
     {
       id: 'forca_e_coativacao_do_quadril',
@@ -26,7 +26,7 @@ export const VALGO_DINAMICO: EntradaBiblioteca = {
       forca: 'revisao_sistematica',
       fontes: [F.cashman2012, F.alzahrani2021, F.cashman2026, F.mauntel2013],
       ressalva:
-        'Evidência conflitante em adultos assintomáticos: a revisão de 2012 encontrou pouca evidência a favor e nenhuma conclusão definitiva; a de 2021 descreve a relação como conflitante; a mais recente, com metanálise parcial de 22 artigos, não obteve significância em nenhuma metanálise e conclui que a fraqueza pode não estar associada a maior valgo dinâmico. Uma coativação menor entre glúteos e adutores apareceu em um estudo de 40 pessoas (Mauntel), sem confirmação nas revisões. Não use a força do quadril como explicação por padrão.',
+        'Evidência conflitante em adultos assintomáticos: a revisão de 2012 encontrou pouca evidência a favor e nenhuma conclusão definitiva; a de 2021 descreve a relação como conflitante; a mais recente, com metanálise parcial de 22 artigos, não obteve significância em nenhuma metanálise e conclui que a fraqueza pode não estar associada a maior valgo dinâmico. Uma coativação menor entre glúteos e adutores apareceu em um estudo de 40 pessoas (Mauntel); a coativação não foi avaliada nas revisões, que trataram de força. Não use a força do quadril como explicação por padrão.',
     },
     {
       id: 'dor_ou_lesao_previa',
@@ -40,11 +40,11 @@ export const VALGO_DINAMICO: EntradaBiblioteca = {
     {
       id: 'projecao_2d',
       texto:
-        'O ângulo de projeção 2D do joelho pode divergir do ângulo tridimensional; parte do valgo medido em vídeo pode refletir a perspectiva da câmera e não só o movimento do joelho.',
+        'O ângulo 2D de projeção do joelho concordou mal com o ângulo 3D no agachamento unipodal em uma revisão com metanálise; a medida 2D deste vídeo deve ser lida como observação.',
       forca: 'meta_analise',
       fontes: [F.lopes2018],
       ressalva:
-        'Revisão com metanálise de 16 estudos: a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal e melhor na aterrissagem. Os autores não recomendam a análise 2D quando se exige medida exata. Vale para qualquer valor de valgo deste vídeo: use como observação e não como medida exata.',
+        'Revisão com metanálise de 16 estudos: a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal (r = 0,127) e melhor na aterrissagem. Os autores concluem que a evidência atual não sustenta o uso da análise 2D quando se exige medida exata. O resumo não indica a causa da divergência, e o resultado é do agachamento unipodal, não do bipodal medido neste app: use o valgo deste vídeo como observação e não como medida exata.',
     },
   ],
   conferir: [

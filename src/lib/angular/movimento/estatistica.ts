@@ -79,9 +79,18 @@ export function fmt(n: Num, casas = 1): string {
   return arred < 0 ? `−${texto}` : texto;
 }
 
+/** Casas decimais com que a unidade é exibida: tempos em centésimos de segundo; ângulos e percentuais em décimos. */
+const casasDaUnidade = (unidade: string): number => (unidade === 's' ? 2 : 1);
+
+/**
+ * Menor passo que o número exibido distingue (0,1 para ° e %, 0,01 para s). Serve de piso numérico para a incerteza: uma incerteza
+ * menor que o último dígito exibido sairia no laudo como "0,0" e deixaria resíduo de ponto flutuante virar achado. Não é tolerância clínica.
+ */
+export const resolucaoDaUnidade = (unidade: string): number => 10 ** -casasDaUnidade(unidade);
+
 /** Número com unidade: o grau cola no número ("98,2°"); as demais unidades vão depois de um espaço. */
 export function fmtUn(n: Num, unidade: string, casas?: number): string {
-  const c = casas ?? (unidade === 's' ? 2 : 1);
+  const c = casas ?? casasDaUnidade(unidade);
   const t = fmt(n, c);
   if (t === '–') return t;
   return unidade === '°' ? `${t}°` : `${t} ${unidade}`;

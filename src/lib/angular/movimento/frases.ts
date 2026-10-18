@@ -1,7 +1,7 @@
 import { AVISO_ESTIMATIVA_VIDEO } from '../analiseVideo/tiposUi';
 import { finito, fmt, fmtUn } from './estatistica';
 import { ROTULO_LADO } from './vocabulario';
-import type { Achado, CriterioProfissional, ExtracaoMedida, FonteBiblio, OperadorCriterio, PlanoCamera, SinalizadorRepeticao, TipoGatilho } from './tipos';
+import type { Achado, ChaveAchado, CriterioProfissional, ExtracaoMedida, FonteBiblio, OperadorCriterio, PlanoCamera, SinalizadorRepeticao, TipoGatilho } from './tipos';
 
 /*
  * Modelos de frase do laudo (agente L). Tudo é função pura ou constante: o texto do laudo é montado por modelo, sem modelo de
@@ -146,6 +146,31 @@ export function listaDeNumeros(numeros: readonly number[]): string {
 const comPonto = (t: string): string => (/[.!?]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
 export const comPontoFinal = comPonto;
 
+// ---------- hipóteses ----------
+
+/** Achados cujas fontes tratam do valor da medida em si (o nível), não da variação nem da diferença entre os lados. */
+const ACHADOS_DE_NIVEL: ReadonlySet<ChaveAchado> = new Set<ChaveAchado>([
+  'inclinacao_tronco', 'avanco_joelho', 'valgo_dinamico', 'desvio_lateral_pelve', 'inclinacao_tronco_marcha',
+]);
+
+/**
+ * Frase que fecha a ressalva de cada hipótese quando o achado nasceu de um gatilho que as fontes não estudaram: sem ela, "pode contribuir
+ * para a inclinação medida" soa como explicação da variação ou da repetição atípica. Null quando o gatilho é o que a fonte descreve.
+ */
+export function notaDoGatilhoSemEstudo(chave: ChaveAchado, gatilho: TipoGatilho): string | null {
+  if (!ACHADOS_DE_NIVEL.has(chave)) return null;
+  if (gatilho === 'variacao_entre_repeticoes') {
+    return 'Nenhuma das fontes citadas estudou a variação do valor entre repetições da mesma pessoa: a ligação deste fator com a variação medida é inferência.';
+  }
+  if (gatilho === 'repeticao_discrepante') {
+    return 'Nenhuma das fontes citadas estudou uma repetição que difere das demais na mesma pessoa: a ligação deste fator com essa repetição é inferência.';
+  }
+  if (gatilho === 'assimetria_entre_lados' && chave === 'valgo_dinamico') {
+    return 'As fontes citadas comparam, em geral, grupos de pessoas e não os dois lados de uma mesma pessoa: a ligação deste fator com a diferença entre os lados medida aqui é, em boa parte, inferência.';
+  }
+  return null;
+}
+
 // ---------- fontes ----------
 
 /** Só PMID numérico vira link: o PubMed não abre outra coisa. */
@@ -231,13 +256,19 @@ export function linhaResumoDoAchado(titulo: string, a: Achado, situacao: string)
 
 /**
  * Título do achado no laudo: o do catálogo, mais a medida quando o achado vale para várias medidas (a mudança da primeira para a última
- * repetição) e mais o lado quando o achado é de um lado só. O título do critério do profissional já é específico.
+ * repetição), mais o lado quando o achado é de um lado só e mais a repetição quando o achado é de uma repetição discrepante (senão o
+ * cartão dela e o da variação da mesma medida teriam o mesmo título). O título do critério do profissional já é específico.
  */
-export function tituloDoAchado(a: Pick<Achado, 'titulo' | 'gatilho' | 'lado'>, nomeDaMedida: string, marcha: boolean, variasMedidas: boolean): string {
+export function tituloDoAchado(
+  a: Pick<Achado, 'titulo' | 'gatilho' | 'lado'>, nomeDaMedida: string, marcha: boolean, variasMedidas: boolean,
+  repeticao?: { rotulo: string; numero: number },
+): string {
   if (a.gatilho === 'criterio_profissional') return a.titulo;
   const base = variasMedidas ? `${a.titulo}: ${nomeDaMedida}` : a.titulo;
-  if (a.gatilho === 'assimetria_entre_lados' || a.lado === null) return base;
-  return `${base} (${marcha ? 'pé' : 'lado'} ${ROTULO_LADO[a.lado]})`;
+  const detalhes: string[] = [];
+  if (a.gatilho !== 'assimetria_entre_lados' && a.lado !== null) detalhes.push(`${marcha ? 'pé' : 'lado'} ${ROTULO_LADO[a.lado]}`);
+  if (a.gatilho === 'repeticao_discrepante' && repeticao) detalhes.push(`${repeticao.rotulo} ${repeticao.numero}`);
+  return detalhes.length ? `${base} (${detalhes.join(', ')})` : base;
 }
 
 // ---------- achados ----------

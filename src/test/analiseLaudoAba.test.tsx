@@ -173,7 +173,7 @@ describe('análise do agachamento com a trilha sintética', () => {
     const hipoteses = within(a).getAllByTestId('hipotese');
     expect(hipoteses.length).toBeGreaterThan(0);
     for (const h of hipoteses) {
-      expect(h).toHaveTextContent(/Força da evidência: /);
+      expect(h).toHaveTextContent(/Tipo de estudo: /);
       expect(h).toHaveTextContent(/Ressalva: /);
       expect(h.textContent).toMatch(/Fontes: \[\d+\]|sem referência verificada/);
     }
@@ -482,11 +482,11 @@ describe('lista de achados com a biblioteca de fixtures (hipóteses sem fonte)',
     fireEvent.click(within(cartoes[0]).getByRole('button', { name: /Possíveis fatores contribuintes/ }));
     const hipoteses = within(cartoes[0]).getAllByTestId('hipotese');
     expect(hipoteses).toHaveLength(3);
-    expect(hipoteses[0]).toHaveTextContent('Força da evidência: estudo observacional');
+    expect(hipoteses[0]).toHaveTextContent('Tipo de estudo: estudo observacional');
     expect(hipoteses[0]).toHaveTextContent(/Fontes: \[1\] \[2\]/);
-    expect(hipoteses[1]).toHaveTextContent('Força da evidência: a confirmar');
+    expect(hipoteses[1]).toHaveTextContent('Tipo de estudo: a confirmar');
     expect(hipoteses[1]).toHaveTextContent('sem referência verificada');
-    expect(hipoteses[2]).toHaveTextContent('Força da evidência: a confirmar');
+    expect(hipoteses[2]).toHaveTextContent('Tipo de estudo: a confirmar');
     expect(hipoteses[2]).not.toHaveTextContent('experimental');
     expect(hipoteses[2]).toHaveTextContent('sem referência verificada');
 

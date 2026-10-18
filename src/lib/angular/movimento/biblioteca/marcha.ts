@@ -112,7 +112,7 @@ export const ASSIMETRIA_AMPLITUDE_QUADRIL: EntradaBiblioteca = {
     {
       id: 'tensao_dos_flexores_do_quadril',
       texto:
-        'A menor extensão do quadril na marcha de idosos foi interpretada pelos autores como possível restrição de mobilidade do quadril, mas a evidência de que o alongamento dos flexores mude a cinemática é mista.',
+        'A menor extensão do quadril na marcha de idosos foi interpretada pelos autores como possível restrição de mobilidade do quadril; no único estudo citado sobre alongamento dos flexores (20 pessoas, corrida submáxima) o alongamento não mudou a cinemática.',
       forca: 'observacional',
       fontes: [F.kerrigan2001, F.mettler2019],
       ressalva:
@@ -147,7 +147,7 @@ export const INCLINACAO_TRONCO_MARCHA: EntradaBiblioteca = {
     {
       id: 'osteoartrite_de_joelho',
       texto:
-        'Pessoas com osteoartrite de joelho caminharam com mais flexão do tronco, e a inclinação anterior do tronco diminuiu depois da artroplastia total do joelho; condição desse tipo pode contribuir para a inclinação medida.',
+        'Um estudo encontrou mais flexão do tronco na marcha de pessoas com osteoartrite de joelho e outro, menos inclinação anterior do tronco depois da artroplastia total do joelho; a metanálise não viu aumento claro no plano sagital. Condição desse tipo pode contribuir para a inclinação medida.',
       forca: 'observacional',
       fontes: [F.preece2019, F.tsutsumi2026, F.iijima2019],
       ressalva:

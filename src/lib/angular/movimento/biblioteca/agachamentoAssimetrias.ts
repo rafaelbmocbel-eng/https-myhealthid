@@ -62,7 +62,7 @@ export const ASSIMETRIA_FLEXAO_QUADRIL: EntradaBiblioteca = {
     {
       id: 'mobilidade_quadril_tornozelo',
       texto:
-        'Menor mobilidade de dorsiflexão do tornozelo (e, em homens, de flexão do quadril) foi associada a agachamentos menos profundos, e a dorsiflexão do mesmo lado se associou ao ângulo de flexão do quadril; diferenças dessas mobilidades entre os lados podem contribuir para a diferença medida.',
+        'Menor mobilidade de dorsiflexão do tornozelo (e, em homens, de flexão do quadril) foi associada a agachamentos menos profundos, e a dorsiflexão do lado direito predisse o ângulo de flexão do quadril direito, único lado citado no resumo; diferenças dessas mobilidades entre os lados podem contribuir para a diferença medida.',
       forca: 'observacional',
       fontes: [F.kim2015, F.endo2020],
       ressalva:

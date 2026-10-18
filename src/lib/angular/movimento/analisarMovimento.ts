@@ -4,11 +4,13 @@ import { detectarEventosMarcha, type EventoPasso } from '../video/eventos';
 import type { Lado, TrilhaPose } from '../video/tipos';
 import { deteccaoPct, estimarDirecao } from '../video/trilha';
 import { detectarAchados } from './achados';
-import { finito, percentil, resumir, validos } from './estatistica';
-import { FATOR_COBERTURA, fpsEfetivo, incertezaAngularGeral, JANELA_SUAVIZACAO_S, processarSerie, quadroDaTrilha, type SerieProcessada } from './incerteza';
+import { finito, fmt, mediana, percentil, resumir, validos } from './estatistica';
+import {
+  desvioEmPe, expandir, FATOR_COBERTURA, fpsEfetivo, incertezaAngularGeral, JANELA_SUAVIZACAO_S, MIN_QUADROS_EM_PE, processarSerie, quadroDaTrilha, type SerieProcessada,
+} from './incerteza';
 import { calcularMedidas, quadrosDeIncertezaDoTempo } from './medidasPorRepeticao';
 import { DESCRICAO_INCERTEZA, formulaDaIncerteza, indisponiveisDoProtocolo, protocoloDo } from './protocolos';
-import { marcarDuracoesDiscrepantes, repeticoesDaMarcha, repeticoesDoAgachamento, segmentarPicos } from './repeticoes';
+import { marcarDuracoesDiscrepantes, picosRasosNaoContados, repeticoesDaMarcha, repeticoesDoAgachamento, segmentarPicos, type ParametrosPicos } from './repeticoes';
 import {
   brutoAlturaPelve, brutoAvanco, brutoDesvioPelve, brutoProfundidade, brutoQuadrilTornozelo, comoFonte, type Fonte,
 } from './seriesDerivadas';
@@ -23,6 +25,9 @@ import type { AnaliseMovimento, ChaveLado, IdProtocolo, MedidaPorRepeticao, Opco
  *  - agachamento de frente: descida mínima do ponto médio dos quadris de 6% da distância vertical quadril–tornozelo;
  *  - dois fundos distam pelo menos 0,8 s; início e fim por histerese (5% e 15% da amplitude, ver repeticoes.ts);
  *  - os marcos são localizados numa série com uma suavização extra de 0,3 s; as medidas são lidas na série suavizada normal.
+ *
+ * Depois de segmentar, nos agachamentos (que têm trecho em pé) a incerteza ganha um piso medido nesses trechos e o deslocamento lateral da
+ * pelve é lido em relação ao valor em pé do próprio vídeo: assim o jitter lento do detector e a inclinação da câmera não viram achado.
  */
 
 const AMPLITUDE_MIN_JOELHO_GRAUS = 20;
@@ -87,15 +92,29 @@ function construirDeslocamentos(p: Protocolo, trilha: TrilhaPose, direcao: 1 | -
 
 interface Segmentacao { repeticoes: Repeticao[]; eventos: EventoPasso[]; avisos: string[] }
 
+/**
+ * Aviso de picos que passam do mínimo absoluto mas ficam abaixo de 40% da amplitude do vídeo: sem ele, uma repetição rasa entre repetições
+ * bem mais fundas sumiria da lista e da contagem sem rastro, e a queda de profundidade ao longo da série apareceria menor que a real.
+ */
+function avisoDeRasos(quantidade: number, minimo: number, limiteRelativo: number, unidade: string): string {
+  const num = (x: number) => (unidade === '°' ? `${fmt(x, 0)}°` : `${fmt(x, 0)} ${unidade}`);
+  const um = quantidade === 1;
+  return `${quantidade} ${um ? 'possível repetição rasa não foi contada' : 'possíveis repetições rasas não foram contadas'}: ${um ? 'um pico passa' : 'picos passam'} do mínimo de ${num(minimo)} de amplitude, ` +
+    `mas ficam abaixo de 40% da amplitude do vídeo (${num(limiteRelativo)}). Se ${um ? 'for uma repetição' : 'forem repetições'}, a queda de profundidade ao longo da série aparece subestimada: confira o trecho.`;
+}
+
 function segmentarAgachamentoLateral(tempos: readonly number[], angulos: Record<string, SerieProcessada>, fps: number): Segmentacao {
   const joelhos = ['joelho_d', 'joelho_e'].map((id) => angulos[id]).filter((s): s is SerieProcessada => !!s);
   const referencia = paraMarcos(mediaDasSeries(joelhos.map((s) => s.suave), tempos.length), fps);
   const ruido = (incertezaAngularGeral(joelhos.map((s) => s.u)) ?? 0) / FATOR_COBERTURA;
-  const brutas = segmentarPicos(referencia, fps, { amplitudeMin: AMPLITUDE_MIN_JOELHO_GRAUS, proeminenciaMin: AMPLITUDE_MIN_JOELHO_GRAUS, distMinS: DIST_MIN_FUNDOS_S, ruido });
+  const parametros: ParametrosPicos = { amplitudeMin: AMPLITUDE_MIN_JOELHO_GRAUS, proeminenciaMin: AMPLITUDE_MIN_JOELHO_GRAUS, distMinS: DIST_MIN_FUNDOS_S, ruido };
+  const brutas = segmentarPicos(referencia, fps, parametros);
   const avisos: string[] = [];
   if (!brutas.length) {
-    avisos.push(`Não identifiquei repetições do agachamento (é preciso um pico de flexão do joelho com pelo menos ${AMPLITUDE_MIN_JOELHO_GRAUS}° de amplitude): confira se o movimento aparece inteiro no trecho analisado.`);
+    avisos.push(`Não identifiquei repetições do agachamento (é preciso um pico de flexão do joelho com pelo menos ${AMPLITUDE_MIN_JOELHO_GRAUS}° de amplitude): confira se o movimento aparece inteiro no trecho analisado e se os pontos mais baixos distam pelo menos ${DIST_MIN_FUNDOS_S.toString().replace('.', ',')} s entre si.`);
   }
+  const rasos = picosRasosNaoContados(referencia, fps, parametros);
+  if (rasos.quantidade) avisos.push(avisoDeRasos(rasos.quantidade, parametros.proeminenciaMin, rasos.limiteRelativo, '°'));
   return { repeticoes: repeticoesDoAgachamento(tempos, brutas), eventos: [], avisos };
 }
 
@@ -103,12 +122,16 @@ function segmentarAgachamentoFrontal(trilha: TrilhaPose, tempos: readonly number
   const altura = desloc.altura_pelve;
   const escalaVertical = percentil(validos(desloc.quadril_tornozelo?.bruto ?? []).filter((v) => v > 0), 0.9) ?? 0.45 * trilha.altura;
   const minimo = DESCIDA_MIN_QUADRIL * escalaVertical;
-  const brutas = altura
-    ? segmentarPicos(paraMarcos(altura.suave, fps), fps, { amplitudeMin: minimo, proeminenciaMin: minimo, distMinS: DIST_MIN_FUNDOS_S, ruido: (altura.u ?? 0) / FATOR_COBERTURA })
-    : [];
+  const referencia = altura ? paraMarcos(altura.suave, fps) : [];
+  const parametros: ParametrosPicos = { amplitudeMin: minimo, proeminenciaMin: minimo, distMinS: DIST_MIN_FUNDOS_S, ruido: (altura?.u ?? 0) / FATOR_COBERTURA };
+  const brutas = altura ? segmentarPicos(referencia, fps, parametros) : [];
   const avisos: string[] = [];
   if (!brutas.length) {
-    avisos.push(`Não identifiquei repetições do agachamento (é preciso uma descida do ponto médio dos quadris de pelo menos ${Math.round(DESCIDA_MIN_QUADRIL * 100)}% da distância vertical quadril–tornozelo): confira se o corpo inteiro aparece de frente e se o movimento está no trecho analisado.`);
+    avisos.push(`Não identifiquei repetições do agachamento (é preciso uma descida do ponto médio dos quadris de pelo menos ${Math.round(DESCIDA_MIN_QUADRIL * 100)}% da distância vertical quadril–tornozelo): confira se o corpo inteiro aparece de frente, se o movimento está no trecho analisado e se os pontos mais baixos distam pelo menos ${DIST_MIN_FUNDOS_S.toString().replace('.', ',')} s entre si.`);
+  }
+  if (altura) {
+    const rasos = picosRasosNaoContados(referencia, fps, parametros);
+    if (rasos.quantidade) avisos.push(avisoDeRasos(rasos.quantidade, parametros.proeminenciaMin, rasos.limiteRelativo, 'px'));
   }
   return { repeticoes: repeticoesDoAgachamento(tempos, brutas), eventos: [], avisos };
 }
@@ -125,6 +148,51 @@ function segmentarMarcha(trilha: TrilhaPose, opcoes: OpcoesAnalise, direcao: 1 |
   if (r.semSaida) avisos.push(`${r.semSaida} passada(s) sem a saída do pé marcada ficaram sem medidas: marque a saída do pé no quadro a quadro.`);
   return { repeticoes: r.repeticoes, eventos, avisos };
 }
+
+/** Folga, em segundos, entre uma repetição e o trecho em pé: a descida e a subida ainda mexem na série perto dos marcos. */
+const MARGEM_EM_PE_S = 0.3;
+
+/** Quadros fora de qualquer repetição (e de uma margem em volta delas): onde a pessoa está parada e o ângulo verdadeiro é constante. */
+function quadrosEmPe(n: number, repeticoes: Repeticao[], fps: number): boolean[] {
+  const margem = Math.round(MARGEM_EM_PE_S * fps);
+  const emPe = new Array<boolean>(n).fill(true);
+  for (const r of repeticoes) {
+    for (let i = Math.max(0, r.inicioI - margem); i <= Math.min(n - 1, r.fimI + margem); i++) emPe[i] = false;
+  }
+  return emPe;
+}
+
+/** Piso da incerteza em cada série, medido nos trechos em pé; devolve em quantas séries foi possível medir. */
+function aplicarRuidoEmPe(series: SerieProcessada[], emPe: boolean[]): number {
+  let medidas = 0;
+  for (const s of series) {
+    const u = expandir(desvioEmPe(s.suave, emPe));
+    s.uEmPe = u;
+    if (u === null) continue;
+    medidas++;
+    if (s.u === null || u > s.u) s.u = u;
+  }
+  return medidas;
+}
+
+/** Valor da série em pé: a mediana dos quadros em pé; sem eles, a mediana dos valores no início das repetições completas. */
+function nivelEmPe(f: Fonte, emPe: boolean[], repeticoes: Repeticao[]): number | null {
+  const noEmPe = f.suave.filter((v, i) => emPe[i] && finito(v)) as number[];
+  if (noEmPe.length >= MIN_QUADROS_EM_PE) return mediana(noEmPe);
+  const nosInicios = repeticoes.filter((r) => !r.sinalizadores.includes('incompleta')).map((r) => f.suave[r.inicioI]).filter(finito);
+  return nosInicios.length ? mediana(nosInicios) : null;
+}
+
+const descontarNivel = (f: Fonte, nivel: number): Fonte => {
+  const subtrair = (s: (number | null)[]) => s.map((v) => (finito(v) ? v - nivel : null));
+  return { ...f, bruto: subtrair(f.bruto), suave: subtrair(f.suave), referencia: subtrair(f.referencia) };
+};
+
+const AVISO_SEM_TRECHO_EM_PE =
+  'Não há um trecho em pé de pelo menos meio segundo fora das repetições: a incerteza vem só do resíduo da suavização, que não enxerga a oscilação lenta dos pontos do detector, e pode estar subestimada.';
+
+const AVISO_PELVE_SEM_NIVEL_EM_PE =
+  'Sem trecho em pé nem repetição completa, o deslocamento lateral da pelve ficou sem descontar a posição em pé: a inclinação da câmera e a postura inicial dos pés entram no valor.';
 
 function contarPorLado(repeticoes: Repeticao[]): Record<Lado, number> {
   const c: Record<Lado, number> = { D: 0, E: 0 };
@@ -162,6 +230,16 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
   avisos.push(...seg.avisos);
   marcarDuracoesDiscrepantes(repeticoes, quadrosDeIncertezaDoTempo(p) * quadroS);
 
+  if (p.gesto === 'agachamento' && repeticoes.length) {
+    const emPe = quadrosEmPe(quadros.length, repeticoes, fps);
+    if (deslocamentos.desvio_pelve) {
+      const nivel = nivelEmPe(deslocamentos.desvio_pelve, emPe, repeticoes);
+      if (nivel === null) avisos.push(AVISO_PELVE_SEM_NIVEL_EM_PE);
+      else deslocamentos.desvio_pelve = descontarNivel(deslocamentos.desvio_pelve, nivel);
+    }
+    if (aplicarRuidoEmPe([...Object.values(angulos), ...Object.values(deslocamentos)], emPe) === 0) avisos.push(AVISO_SEM_TRECHO_EM_PE);
+  }
+
   const { medidas, resumos, refsPx, comPontosAusentes } = calcularMedidas({ protocolo: p, repeticoes, angulos, deslocamentos, quadroS });
   for (const i of comPontosAusentes) {
     const r = repeticoes[i];
@@ -169,6 +247,10 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
   }
 
   const rotulo = p.rotuloRepeticao;
+  if (comPontosAusentes.size > 0) {
+    const k = comPontosAusentes.size;
+    avisos.push(`${k} ${k === 1 ? rotulo.singular : rotulo.plural} com pontos do corpo ausentes na janela de alguma medida ou em torno do instante do extremo: ${k === 1 ? 'o valor dessa medida ficou' : 'os valores dessas medidas ficaram'} sem medida (coluna Observação). Confira a detecção do membro mais distante da câmera.`);
+  }
   const completas = repeticoes.filter((r) => !r.sinalizadores.includes('incompleta'));
   if (repeticoes.length - completas.length > 0) {
     const k = repeticoes.length - completas.length;

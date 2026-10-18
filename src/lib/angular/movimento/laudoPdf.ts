@@ -348,7 +348,7 @@ export async function gerarPdfLaudo(laudo: LaudoMovimento, opcoes: OpcoesPdfLaud
       for (const h of a.hipoteses) {
         escrever(h.texto, { marcador: '-', x: M + 2, folga: 0.4 });
         const fontes = h.referencias.length ? `Fontes: ${h.referencias.map((n) => `[${n}]`).join(' ')}` : TEXTO_SEM_REFERENCIA_VERIFICADA;
-        escrever(`Força da evidência: ${h.forca} · ${fontes}`, { x: M + 5.6, tam: 8.2, estilo: 'bold', cor: CINZA, folga: 0.3 });
+        escrever(`Tipo de estudo: ${h.forca} · ${fontes}`, { x: M + 5.6, tam: 8.2, estilo: 'bold', cor: CINZA, folga: 0.3 });
         escrever(`Ressalva: ${h.ressalva}`, { x: M + 5.6, tam: 8.2, cor: CINZA, folga: 1.4 });
       }
     } else {

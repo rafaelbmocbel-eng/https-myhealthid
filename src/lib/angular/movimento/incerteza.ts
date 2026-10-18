@@ -7,6 +7,12 @@ import { finito, mediana, type Num } from './estatistica';
  * u = FATOR_COBERTURA × raiz( soma((bruto − suavizado)²) ÷ (n − 1) ) sobre as n amostras em que as duas séries têm valor
  * (as das janelas em que a medida é lida); para tempos, um quadro. Nenhuma tolerância fixa em graus: o número vem do quanto a série
  * bruta de ESTE vídeo se afasta da suavizada.
+ *
+ * O resíduo só enxerga o ruído rápido entre quadros. O jitter de um detector de pose é correlacionado no tempo: passa quase todo pela
+ * suavização, o resíduo despenca e o valor lido continua oscilando de uma repetição para outra. Por isso, onde há trecho em pé (o ângulo
+ * verdadeiro é constante), a incerteza tem um piso: FATOR_COBERTURA × desvio-padrão da própria série suavizada nesses trechos
+ * (`desvioEmPe`, aplicado por analisarMovimento depois de segmentar). Na marcha não há trecho em pé: a incerteza continua só com o resíduo,
+ * e o método do laudo diz que ela é um piso.
  */
 
 /**
@@ -21,6 +27,14 @@ export const expandir = (rms: number | null): number | null => (rms === null ? n
 
 /** Janela de suavização padrão do motor (mesma de analisarGesto), em segundos. */
 export const JANELA_SUAVIZACAO_S = 0.12;
+
+/**
+ * Menor janela de suavização, em amostras. `janelaEmAmostras` impõe 3, e o Savitzky–Golay de ordem 2 em 3 pontos é a identidade: abaixo
+ * de cerca de 29 quadros/s a série "suavizada" seria a bruta, o resíduo seria 0 e a incerteza sairia 0,0 em todas as medidas.
+ */
+export const JANELA_MINIMA_AMOSTRAS = 5;
+
+export const janelaDaSerie = (segundos: number, fps: number): number => Math.max(JANELA_MINIMA_AMOSTRAS, janelaEmAmostras(segundos, fps));
 
 /** Menos amostras que isto e o resíduo não é estimado (a raiz de poucos pontos não diz nada do vídeo). */
 const MIN_AMOSTRAS_RESIDUO = 5;
@@ -70,6 +84,8 @@ export interface SerieProcessada {
   referencia: (number | null)[];
   u: number | null;
   nAmostras: number;
+  /** Incerteza (expandida) estimada nos trechos em pé do vídeo, quando há; já está incluída em `u` e vira piso das incertezas por janela. */
+  uEmPe?: number | null;
 }
 
 const OPCOES_SG = { metodo: 'savitzky_golay', ordem: 2 } as const;
@@ -81,10 +97,30 @@ const OPCOES_SG = { metodo: 'savitzky_golay', ordem: 2 } as const;
 export function processarSerie(bruto: readonly Num[], fps: number, suavizacaoS: number): SerieProcessada {
   const limpo = bruto.map((v) => (finito(v) ? v : null));
   const cheio = preencherLacunas(limpo, Math.max(1, Math.round(0.25 * fps)));
-  const suave = suavizacaoS > 0 ? suavizar(cheio, janelaEmAmostras(suavizacaoS, fps), OPCOES_SG) : cheio;
-  const referencia = suavizacaoS > 0 ? suave : suavizar(cheio, janelaEmAmostras(JANELA_SUAVIZACAO_S, fps), OPCOES_SG);
+  const suave = suavizacaoS > 0 ? suavizar(cheio, janelaDaSerie(suavizacaoS, fps), OPCOES_SG) : cheio;
+  const referencia = suavizacaoS > 0 ? suave : suavizar(cheio, janelaDaSerie(JANELA_SUAVIZACAO_S, fps), OPCOES_SG);
   const r = residuoEntre(limpo, referencia);
   return { bruto: limpo, suave, referencia, u: expandir(r.u), nAmostras: r.n };
+}
+
+/** Menos quadros em pé que isto e o ruído do detector não é estimado por esse caminho (meio segundo a 30 quadros/s). */
+export const MIN_QUADROS_EM_PE = 15;
+
+/**
+ * Desvio-padrão (n − 1) dos valores nos quadros em pé, em conjunto (início e fim do vídeo juntos), em torno da média deles. Onde a pessoa
+ * está parada o ângulo verdadeiro é constante, então o que oscila é o detector, com a correlação no tempo que ele tiver; a oscilação
+ * postural real entra junto, o que só torna a estimativa mais conservadora. null com poucos quadros.
+ */
+export function desvioEmPe(valores: readonly Num[], emPe: readonly boolean[]): number | null {
+  const v: number[] = [];
+  for (let i = 0; i < valores.length; i++) {
+    const x = valores[i];
+    if (emPe[i] && finito(x)) v.push(x);
+  }
+  if (v.length < MIN_QUADROS_EM_PE) return null;
+  const m = v.reduce((a, x) => a + x, 0) / v.length;
+  const sd = Math.sqrt(v.reduce((a, x) => a + (x - m) ** 2, 0) / (v.length - 1));
+  return Number.isFinite(sd) ? sd : null;
 }
 
 /** Taxas de quadros plausíveis para um vídeo de pessoa se movendo; fora disso a janela de suavização explode ou some. */

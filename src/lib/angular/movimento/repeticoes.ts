@@ -1,4 +1,4 @@
-import { eventosDo, extremosLocais, tempoDoEvento, type EventoPasso } from '../video/eventos';
+import { eventosDo, tempoDoEvento, type EventoPasso } from '../video/eventos';
 import type { Lado } from '../video/tipos';
 import { escoreZModificado, finito, mad, mediana, percentil, validos, type Num } from './estatistica';
 import type { Repeticao, SinalizadorRepeticao } from './tipos';
@@ -88,16 +88,84 @@ function fimDoMovimento(s: readonly Num[], pico: number, vale: { i: number; v: n
   return vale.i;
 }
 
-/** Picos da série de referência (a série cresce no fundo da repetição) com início e fim por histerese. */
-export function segmentarPicos(serie: readonly Num[], fps: number, p: ParametrosPicos): RepeticaoBruta[] {
+/**
+ * Máximos locais (o primeiro quadro, num platô) com proeminência mínima e distância mínima entre si. A proeminência é a usual: o pico menos
+ * o maior dos dois pontos mais baixos que o separam de um valor mais alto (ou da ponta da série), um de cada lado. Assim uma repetição
+ * lenta ou com pausa no ponto mais baixo tem a proeminência da repetição inteira (antes, uma janela fixa de ±1,2 s não chegava ao nível em
+ * pé e o pico era descartado em silêncio), e os máximos secundários de um platô ruidoso têm proeminência pequena e não viram repetições.
+ */
+function picosComProeminencia(serie: readonly Num[], distMin: number, proeminenciaMin: number): number[] {
+  const n = serie.length;
+  const h = Math.max(1, Math.floor(distMin / 2));
+  const candidatos: { i: number; v: number }[] = [];
+  for (let i = h; i < n - h; i++) {
+    const v = serie[i];
+    if (!finito(v)) continue;
+    let ehPico = true;
+    for (let j = i - h; j <= i + h && ehPico; j++) {
+      const w = serie[j];
+      if (!finito(w) || j === i) continue;
+      if (w > v || (w === v && j < i)) ehPico = false;
+    }
+    if (!ehPico) continue;
+    let esq = Infinity, dir = Infinity;
+    for (let j = i - 1; j >= 0; j--) {
+      const w = serie[j];
+      if (!finito(w)) continue;
+      if (w > v) break;
+      if (w < esq) esq = w;
+    }
+    for (let j = i + 1; j < n; j++) {
+      const w = serie[j];
+      if (!finito(w)) continue;
+      if (w > v) break;
+      if (w < dir) dir = w;
+    }
+    if (esq === Infinity && dir === Infinity) continue;
+    const piso = Math.max(esq === Infinity ? -Infinity : esq, dir === Infinity ? -Infinity : dir);
+    if (v - piso >= proeminenciaMin) candidatos.push({ i, v });
+  }
+  const aceitos: { i: number; v: number }[] = [];
+  for (const c of [...candidatos].sort((a, b) => b.v - a.v)) {
+    if (aceitos.every((a) => Math.abs(a.i - c.i) >= distMin)) aceitos.push(c);
+  }
+  return aceitos.map((c) => c.i).sort((a, b) => a - b);
+}
+
+/** Amplitude do vídeo (P95 − P5) e distância mínima entre picos, em quadros; null quando a série não tem movimento suficiente para repetição. */
+function geometriaDosPicos(serie: readonly Num[], fps: number, p: ParametrosPicos): { amplitude: number; dist: number } | null {
   const v = validos(serie);
-  if (v.length < 5) return [];
+  if (v.length < 5) return null;
   const p5 = percentil(v, 0.05) as number, p95 = percentil(v, 0.95) as number;
   const amplitude = p95 - p5;
-  if (!(amplitude >= p.amplitudeMin) || !(amplitude > 0)) return [];
+  if (!(amplitude >= p.amplitudeMin) || !(amplitude > 0)) return null;
+  return { amplitude, dist: Math.max(3, Math.round(p.distMinS * fps)) };
+}
+
+/**
+ * Quantos picos passam da proeminência mínima absoluta (20°, no agachamento de lado) mas não da relativa (40% da amplitude do vídeo): são
+ * possíveis repetições rasas que a segmentação não conta. Serve ao aviso da análise; a queda de profundidade ao longo da série ficaria
+ * subestimada sem ele.
+ */
+export function picosRasosNaoContados(serie: readonly Num[], fps: number, p: ParametrosPicos): { quantidade: number; limiteRelativo: number } {
+  const g = geometriaDosPicos(serie, fps, p);
+  if (!g) return { quantidade: 0, limiteRelativo: 0 };
+  const limiteRelativo = Math.max(p.proeminenciaMin, PROEMINENCIA_RELATIVA * g.amplitude);
+  if (!(limiteRelativo > p.proeminenciaMin)) return { quantidade: 0, limiteRelativo };
+  const todos = picosComProeminencia(serie, g.dist, p.proeminenciaMin);
+  const contados = picosComProeminencia(serie, g.dist, limiteRelativo);
+  return { quantidade: todos.filter((i) => contados.every((c) => Math.abs(c - i) >= g.dist)).length, limiteRelativo };
+}
+
+/** Picos da série de referência (a série cresce no fundo da repetição) com início e fim por histerese. */
+export function segmentarPicos(serie: readonly Num[], fps: number, p: ParametrosPicos): RepeticaoBruta[] {
+  const g = geometriaDosPicos(serie, fps, p);
+  if (!g) return [];
+  const v = validos(serie);
+  const p5 = percentil(v, 0.05) as number;
+  const amplitude = g.amplitude;
   const proeminencia = Math.max(p.proeminenciaMin, PROEMINENCIA_RELATIVA * amplitude);
-  const dist = Math.max(3, Math.round(p.distMinS * fps));
-  const picos = extremosLocais(serie, 'max', dist, proeminencia, Math.round(dist * 1.5));
+  const picos = picosComProeminencia(serie, g.dist, proeminencia);
   if (!picos.length) return [];
 
   let primeiro = 0;

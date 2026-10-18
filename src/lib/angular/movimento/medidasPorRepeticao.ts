@@ -1,5 +1,5 @@
 import { faseDo } from './protocolos';
-import { finito, resumir, validos, type Num } from './estatistica';
+import { finito, resolucaoDaUnidade, resumir, validos, type Num } from './estatistica';
 import { expandir, FATOR_COBERTURA, residuoNasJanelas, type SerieProcessada } from './incerteza';
 import type { Fonte } from './seriesDerivadas';
 import type {
@@ -10,10 +10,16 @@ import type {
  * Medidas por repetição e por lado (agente M). Cada medida declara a fase (janela entre dois marcos da repetição) e a extração
  * (máximo, amplitude, média, valor no marco, duração); o valor sai SEMPRE da série suavizada, dentro da janela da repetição.
  * Os arrays têm o comprimento de `repeticoes`, com null onde não houve medida (repetição incompleta, outro pé na marcha ou falta de pontos).
+ * Máximo, mínimo, amplitude e valor no marco só valem se a série BRUTA (sem interpolação) tem pontos em torno do instante do extremo:
+ * quando o detector perde o membro justamente no ponto mais baixo, o que sobra da descida dá um extremo menor que o real, e a diferença
+ * entre os lados sairia como achado sem que nada avisasse.
  */
 
 /** Fração mínima de quadros com valor na janela da fase; abaixo disso a medida da repetição fica sem valor (mesma regra do motor de métricas). */
 const FRACAO_MINIMA_VALIDOS = 0.7;
+
+/** Meia-largura, em segundos, da vizinhança do instante do extremo em que a série bruta precisa ter a mesma fração mínima de pontos. */
+const VIZINHANCA_EXTREMO_S = 0.15;
 
 export interface EntradaMedidas {
   protocolo: Protocolo;
@@ -89,21 +95,39 @@ function extremos(v: number[]): { min: number; max: number; media: number } {
 
 interface Extraido { valor: number | null; faltou: boolean }
 
-function extrair(def: DefMedidaRepeticao, fase: FaseMovimento, rep: Repeticao, suave: readonly Num[] | null, divisor: number | null): Extraido {
+/** O instante do extremo tem pontos brutos (não interpolados) em pelo menos 70% dos quadros de sua vizinhança? */
+function extremoCoberto(bruto: readonly Num[], i: number, meia: number): boolean {
+  let total = 0, com = 0;
+  for (let j = Math.max(0, i - meia); j <= Math.min(bruto.length - 1, i + meia); j++) {
+    total++;
+    if (finito(bruto[j])) com++;
+  }
+  return total > 0 && com >= FRACAO_MINIMA_VALIDOS * total;
+}
+
+function extrair(
+  def: DefMedidaRepeticao, fase: FaseMovimento, rep: Repeticao, serie: Pick<SerieProcessada, 'suave' | 'bruto'> | null, divisor: number | null, meiaExtremo: number,
+): Extraido {
   if (def.extracao === 'duracao') {
     const d = tempoDoMarco(rep, fase.ate) - tempoDoMarco(rep, fase.de);
     return { valor: finito(d) && d >= 0 ? d : null, faltou: false };
   }
-  if (!suave) return { valor: null, faltou: true };
+  if (!serie) return { valor: null, faltou: true };
+  const suave = serie.suave;
   const a = indiceDoMarco(rep, fase.de), b = indiceDoMarco(rep, fase.ate);
   if (def.extracao === 'valor_no_marco') {
     const v = suave[a];
-    return finito(v) ? { valor: v, faltou: false } : { valor: null, faltou: true };
+    return finito(v) && extremoCoberto(serie.bruto, a, meiaExtremo) ? { valor: v, faltou: false } : { valor: null, faltou: true };
   }
-  const trecho = suave.slice(Math.min(a, b), Math.max(a, b) + 1);
+  const inicio = Math.min(a, b);
+  const trecho = suave.slice(inicio, Math.max(a, b) + 1);
   const v = validos(trecho);
   if (!v.length || v.length < FRACAO_MINIMA_VALIDOS * trecho.length) return { valor: null, faltou: true };
   const e = extremos(v);
+  const exigeMaximo = def.extracao === 'maximo' || def.extracao === 'amplitude';
+  const exigeMinimo = def.extracao === 'minimo' || def.extracao === 'amplitude';
+  if (exigeMaximo && !extremoCoberto(serie.bruto, inicio + trecho.findIndex((x) => x === e.max), meiaExtremo)) return { valor: null, faltou: true };
+  if (exigeMinimo && !extremoCoberto(serie.bruto, inicio + trecho.findIndex((x) => x === e.min), meiaExtremo)) return { valor: null, faltou: true };
   let valor: number;
   if (def.extracao === 'maximo') valor = e.max;
   else if (def.extracao === 'minimo') valor = e.min;
@@ -132,11 +156,20 @@ function janelasDaMedida(def: DefMedidaRepeticao, fase: FaseMovimento, repeticoe
   return janelas;
 }
 
-/** Incerteza de um valor da medida: o resíduo nas janelas em que ela é lida; sem amostras suficientes, o resíduo da série inteira. */
+/**
+ * Incerteza de um valor da medida: o resíduo nas janelas em que ela é lida (sem amostras suficientes, o resíduo da série inteira), com
+ * piso na incerteza estimada nos trechos em pé do vídeo, quando há (ver incerteza.ts).
+ */
 function incertezaNasJanelas(serie: SerieProcessada, janelas: readonly Janela[]): number | null {
   const r = residuoNasJanelas(serie.bruto, serie.referencia, janelas);
-  return r.u !== null ? expandir(r.u) : serie.u;
+  const doResiduo = r.u !== null ? expandir(r.u) : serie.u;
+  const piso = serie.uEmPe ?? null;
+  if (doResiduo === null) return piso;
+  return piso !== null ? Math.max(doResiduo, piso) : doResiduo;
 }
+
+/** Nunca informa incerteza menor que o último dígito exibido (ver `resolucaoDaUnidade`). */
+const comPisoDeResolucao = (u: number | null, unidade: string): number | null => (u === null ? null : Math.max(u, resolucaoDaUnidade(unidade)));
 
 export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
   const { protocolo, repeticoes, angulos, deslocamentos, quadroS } = e;
@@ -144,6 +177,7 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
   const resumos: ResumosPorMedida = {};
   const refsPx: ResultadoMedidas['refsPx'] = {};
   const comPontosAusentes = new Set<number>();
+  const meiaExtremo = Math.max(2, Math.round(VIZINHANCA_EXTREMO_S / quadroS));
 
   for (const def of protocolo.medidas) {
     const fase = faseDo(protocolo, def.fase);
@@ -159,19 +193,18 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
       const chave = chaveDaSerie(def.id, lado);
       const fonteDesloc = chave ? deslocamentos[chave] : undefined;
       const serie = chave ? (angulos[chave] ?? fonteDesloc ?? null) : null;
-      const suave = serie ? serie.suave : null;
       const normalizador = def.id === 'descida_pelve' ? deslocamentos.quadril_tornozelo : undefined;
       refsPx[def.id][lado] = def.id === 'descida_pelve' ? (normalizador?.refPx ?? null) : (fonteDesloc?.refPx ?? null);
 
       const uSerie = serie && fase ? incertezaNasJanelas(serie, janelasDaMedida(def, fase, repeticoes, lado, 1 / quadroS)) : (serie?.u ?? null);
       if (def.grandeza === 'tempo') {
         const quadros = quadrosDeIncertezaDoTempo(protocolo);
-        incerteza[lado] = quadros * quadroS;
+        incerteza[lado] = comPisoDeResolucao(quadros * quadroS, def.unidade);
         if (quadros > 1 && lado === lados[0]) avisos.push('Início e fim da repetição são achados por um nível na série suavizada, que oscila com o ruído do vídeo: a incerteza da duração é de dois quadros.');
       } else if (def.id === 'descida_pelve') {
         const ref = normalizador?.refPx ?? null;
-        incerteza[lado] = uSerie !== null && ref !== null && ref > 0 ? (uSerie / ref) * 100 : null;
-      } else incerteza[lado] = uSerie;
+        incerteza[lado] = comPisoDeResolucao(uSerie !== null && ref !== null && ref > 0 ? (uSerie / ref) * 100 : null, def.unidade);
+      } else incerteza[lado] = comPisoDeResolucao(uSerie, def.unidade);
 
       if (!fase) {
         avisos.push(`A fase "${def.fase}" não existe neste protocolo: a medida não foi calculada.`);
@@ -190,7 +223,7 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
           if (!finito(h0) || !(h0 > 0)) { comPontosAusentes.add(r); semPontos++; return null; }
           divisor = h0;
         }
-        const x = extrair(def, fase, rep, suave, divisor);
+        const x = extrair(def, fase, rep, serie, divisor, meiaExtremo);
         if (x.faltou) { comPontosAusentes.add(r); semPontos++; }
         return x.valor;
       });
@@ -200,7 +233,7 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
 
     if (semPontos) {
       const rotulo = semPontos === 1 ? 'valor ficou' : 'valores ficaram';
-      avisos.push(`${semPontos} ${rotulo} sem medida por falta de pontos do corpo na janela da repetição.`);
+      avisos.push(`${semPontos} ${rotulo} sem medida por falta de pontos do corpo na janela da repetição ou em torno do instante do extremo.`);
     }
     medidas.push({ def, valores, incerteza, avisos });
   }
