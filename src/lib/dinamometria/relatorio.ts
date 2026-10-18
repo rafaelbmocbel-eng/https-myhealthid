@@ -5,7 +5,7 @@ import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import {
   type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito, type Unidade,
-  SLOTS, SLOTS_POR_LADO, simetriaSlot, falhaPlato, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stOsc, stZ, interpretar, type Status,
+  SLOTS, SLOTS_HOMOLOGOS, simetriaSlot, falhaPlato, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stOsc, stZ, interpretar, type Status,
 } from './analise';
 import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, proporcaoSVG, itensAvatar, focoArticulacaoSVG, aneisRazao } from './anatomia';
 import { achadosDor, AVISO_DOR } from './dor';
@@ -363,58 +363,60 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
       const cab = ['Músculo', `Pico (${u})`, 'Simetria', `${R.an}/${R.ag}`, 'N/kg', 'Norma (z)', 'RFD 200ms', 'Fadiga', 'Queda platô', 'Oscilação'];
       const wC = [27, 14, 22, 30, 11, 16, 17, 15, 15, 15];
       const xC: number[] = []; wC.reduce((acc, w0) => { xC.push(acc); return acc + w0; }, M);
-      const hL = 7.4;
-      const nLinhas = SLOTS_POR_LADO.filter(k => A.slots[k]).length;
-      const hTab = 7 + nLinhas * hL + 1;
+      // Linhas do antagonista levam a razão e a direção em duas linhas de texto, por isso todas têm a mesma altura.
+      const hL = 9.4;
+      const linhas = SLOTS_HOMOLOGOS.filter(k => A.slots[k]);
+      const primeiroAntagonista = linhas.find(k => k.startsWith('an'));
+      const hTab = 7 + linhas.length * hL + 1;
       doc.setDrawColor(...hexRgb('#D6DEE8')); doc.setLineWidth(0.3);
       doc.roundedRect(M, y, larg, hTab, 2.2, 2.2, 'S');
       doc.setFillColor(...hexRgb('#E6EDF5')); doc.roundedRect(M, y, larg, 7, 2.2, 2.2, 'F'); doc.rect(M, y + 4, larg, 3, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(6.9); doc.setTextColor(...hexRgb(AZUL));
       cab.forEach((h, k) => doc.text(seguro(h), xC[k] + 1.5, y + 4.6));
+      doc.setDrawColor(...hexRgb('#D6DEE8')); doc.line(xC[3], y + 8, xC[3], y + hTab - 1); doc.line(xC[4], y + 8, xC[4], y + hTab - 1);
       let yy = y + 7;
-      for (const lado of ['D', 'E'] as Lado[]) {
-        const doLado = SLOTS_POR_LADO.filter(k => k.endsWith(lado) && A.slots[k]);
-        if (!doLado.length) continue;
-        const y0 = yy;
-        if (lado === 'E' && yy > y + 7) { doc.setDrawColor(...hexRgb('#B9C6D6')); doc.setLineWidth(0.45); doc.line(M + 1, yy, M + larg - 1, yy); doc.setLineWidth(0.3); }
-        for (const k of doLado) {
-          const m = A.slots[k]!;
-          const yb = yy + 4.9;
-          if (k !== doLado[0]) { doc.setDrawColor(...hexRgb('#E8EDF3')); doc.line(M + 1, yy, xC[3], yy); doc.line(xC[4], yy, M + larg - 1, yy); }
-          doc.setFillColor(...hexRgb(COR[lado])); doc.circle(xC[0] + 2.4, yb - 1.1, 1, 'F');
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(30); doc.text(seguro(nomeSlot(av.regiao, k)), xC[0] + 4.4, yb);
-          doc.text(fmt(disp(m.pico), 1), xC[1] + 1.5, yb);
-          doc.setFont('helvetica', 'normal');
-          const sim = simetriaSlot(A, k, c);
-          if (!sim) doc.text('-', xC[2] + 1.5, yb);
-          else if (sim.v >= 99.5) pilula(doc, '100% forte', ['info', ''], xC[2] + 1.2, yb, 7);
-          else pilula(doc, `${fmt(sim.v, 0)}%`, sim.st, xC[2] + 1.2, yb, 7.4);
-          doc.setFontSize(8); doc.setTextColor(40);
-          doc.text(m.nkg == null ? '-' : fmt(m.nkg, 1), xC[4] + 1.5, yb);
-          if (m.z == null) doc.text('-', xC[5] + 1.5, yb); else pilula(doc, fmt(m.z, 1), stZ(m.z), xC[5] + 1.2, yb, 7.2);
-          doc.setFontSize(8); doc.setTextColor(40);
-          doc.text(m.rfd200 == null ? '-' : fmt(disp(m.rfd200), 0), xC[6] + 1.5, yb);
-          if (m.fadiga == null) doc.text('-', xC[7] + 1.5, yb); else pilula(doc, `${fmt(m.fadiga, 0)}%`, stFadiga(m.fadiga, c), xC[7] + 1.2, yb, 7.2);
-          const q = falhaPlato(av.slots[k]?.curva)?.queda;
-          doc.setFontSize(8); doc.setTextColor(40); doc.text(q == null ? '-' : `${fmt(q, 1)}%/s`, xC[8] + 1.5, yb);
-          if (m.oscilacao == null) doc.text('-', xC[9] + 1.5, yb); else pilula(doc, `${fmt(m.oscilacao, 1)}%`, stOsc(m.oscilacao, c), xC[9] + 1.2, yb, 7.2);
-          yy += hL;
+      for (const k of linhas) {
+        const lado: Lado = k.endsWith('D') ? 'D' : 'E';
+        const m = A.slots[k]!;
+        const yb = yy + 5.9;
+        if (yy > y + 7) {
+          if (k === primeiroAntagonista) { doc.setDrawColor(...hexRgb('#B9C6D6')); doc.setLineWidth(0.45); doc.line(M + 1, yy, M + larg - 1, yy); doc.setLineWidth(0.3); }
+          else { doc.setDrawColor(...hexRgb('#E8EDF3')); doc.line(M + 1, yy, M + larg - 1, yy); }
         }
-        // Razão do lado: uma célula que ocupa as linhas daquele lado.
-        const rz = A.razoes[lado];
-        const ym = (y0 + yy) / 2;
-        doc.setDrawColor(...hexRgb('#D6DEE8')); doc.line(xC[3], y0 + 1, xC[3], yy - 1); doc.line(xC[4], y0 + 1, xC[4], yy - 1);
-        if (rz) {
-          const st: Status = rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, c);
-          pilula(doc, `${lado} ${fmt(rz.r * 100, 0)}%`, st, xC[3] + 1.5, ym - 0.6, 7.8, 5);
-          doc.setFontSize(6.4); doc.setTextColor(...hexRgb(tomDe(st).fg)); doc.text(seguro(direcaoRazao(rz, c, R.modo === 'min')), xC[3] + 1.5, ym + 3.4);
-          doc.setTextColor(20);
-        } else { doc.setFontSize(8); doc.text('-', xC[3] + 1.5, ym + 1); }
+        doc.setFillColor(...hexRgb(COR[lado])); doc.circle(xC[0] + 2.4, yb - 1.1, 1, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(30); doc.text(seguro(nomeSlot(av.regiao, k)), xC[0] + 4.4, yb);
+        doc.text(fmt(disp(m.pico), 1), xC[1] + 1.5, yb);
+        doc.setFont('helvetica', 'normal');
+        const sim = simetriaSlot(A, k, c);
+        if (!sim) doc.text('-', xC[2] + 1.5, yb);
+        else if (sim.v >= 99.5) pilula(doc, '100% forte', ['info', ''], xC[2] + 1.2, yb, 7);
+        else pilula(doc, `${fmt(sim.v, 0)}%`, sim.st, xC[2] + 1.2, yb, 7.4);
+        // Razão do lado (antagonista ÷ agonista): na linha do antagonista, com o lado escrito na pílula.
+        if (k.startsWith('an')) {
+          const rz = A.razoes[lado];
+          const ym = yy + hL / 2;
+          if (rz) {
+            const st: Status = rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, c);
+            pilula(doc, `${lado} ${fmt(rz.r * 100, 0)}%`, st, xC[3] + 1.5, ym - 1, 7.8, 4.4);
+            doc.setFontSize(6.4); doc.setTextColor(...hexRgb(tomDe(st).fg)); doc.text(seguro(direcaoRazao(rz, c, R.modo === 'min')), xC[3] + 1.5, ym + 3.2);
+          } else { doc.setFontSize(8); doc.setTextColor(40); doc.text('-', xC[3] + 1.5, yb); }
+        }
+        doc.setFontSize(8); doc.setTextColor(40);
+        doc.text(m.nkg == null ? '-' : fmt(m.nkg, 1), xC[4] + 1.5, yb);
+        if (m.z == null) doc.text('-', xC[5] + 1.5, yb); else pilula(doc, fmt(m.z, 1), stZ(m.z), xC[5] + 1.2, yb, 7.2);
+        doc.setFontSize(8); doc.setTextColor(40);
+        doc.text(m.rfd200 == null ? '-' : fmt(disp(m.rfd200), 0), xC[6] + 1.5, yb);
+        if (m.fadiga == null) doc.text('-', xC[7] + 1.5, yb); else pilula(doc, `${fmt(m.fadiga, 0)}%`, stFadiga(m.fadiga, c), xC[7] + 1.2, yb, 7.2);
+        const q = falhaPlato(av.slots[k]?.curva)?.queda;
+        doc.setFontSize(8); doc.setTextColor(40); doc.text(q == null ? '-' : `${fmt(q, 1)}%/s`, xC[8] + 1.5, yb);
+        if (m.oscilacao == null) doc.text('-', xC[9] + 1.5, yb); else pilula(doc, `${fmt(m.oscilacao, 1)}%`, stOsc(m.oscilacao, c), xC[9] + 1.2, yb, 7.2);
+        doc.setTextColor(20);
+        yy += hL;
       }
       doc.setLineWidth(0.2);
       y += hTab + 3.2;
       doc.setFontSize(6.8); doc.setTextColor(120);
-      y = par2(doc, `RFD em ${u}/s. Simetria: lado mais forte de cada músculo = 100%. ${R.an}/${R.ag}: razão do mesmo lado (referência ${A.razoes.D?.refTxt || A.razoes.E?.refTxt || '-'}). Cores: verde adequado, amarelo atenção, vermelho alterado.`, M, y, larg, 3);
+      y = par2(doc, `RFD em ${u}/s. Simetria: lado mais forte de cada músculo = 100%. ${R.an}/${R.ag}: razão do mesmo lado, na linha de ${R.an} (referência ${A.razoes.D?.refTxt || A.razoes.E?.refTxt || '-'}). Cores: verde adequado, amarelo atenção, vermelho alterado.`, M, y, larg, 3);
       doc.setTextColor(20); y += 2;
     }
 

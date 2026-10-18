@@ -28,7 +28,7 @@ import { celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
   SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
-  resumoCurtoAnalise, stLSI, stDesvio, simetriaSlot, SLOTS_POR_LADO, falhaPlato, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
+  resumoCurtoAnalise, stLSI, stDesvio, simetriaSlot, SLOTS_HOMOLOGOS, falhaPlato, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
 } from '@/lib/dinamometria/analise';
 import { gerarRelatorioDinamometria, gerarRelatorioCliente, gruposBarras, type GrupoBarras, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
 import { mapaMuscularSVG, itensAvatar, COR_STATUS, aneisRazao } from '@/lib/dinamometria/anatomia';
@@ -897,23 +897,21 @@ export default function Dinamometria() {
                           <tr>{['Músculo', `Pico (${u})`, 'Simetria', `${Ap.R.an}/${Ap.R.ag}`, 'Fadiga', 'Falha do platô', 'Oscilação'].map(h => <th key={h} className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}</tr>
                         </thead>
                         <tbody>
-                          {SLOTS_POR_LADO.filter(k => Ap.slots[k]).map(k => {
+                          {SLOTS_HOMOLOGOS.filter(k => Ap.slots[k]).map(k => {
                             const sl = Ap.slots[k]!;
                             const lado: Lado = k.endsWith('D') ? 'D' : 'E';
-                            const doLado = SLOTS_POR_LADO.filter(x => x.endsWith(lado) && Ap.slots[x]);
+                            const primeiroAntagonista = SLOTS_HOMOLOGOS.find(x => x.startsWith('an') && Ap.slots[x]) === k;
                             const sim = simetriaSlot(Ap, k, crit);
-                            const rz = Ap.razoes[lado];
+                            const rz = k.startsWith('an') ? Ap.razoes[lado] : undefined;
                             const fp = falhaPlato(av.slots[k]?.curva);
                             return (
-                              <tr key={k} className={cn('border-t border-border/40', doLado[0] === k && lado === 'E' && 'border-t-2 border-t-border')}>
+                              <tr key={k} className={cn('border-t border-border/40', primeiroAntagonista && 'border-t-2 border-t-border')}>
                                 <td className="px-2.5 py-2 whitespace-nowrap"><Bolinha lado={lado} />{nomeSlot(av.regiao, k)}</td>
                                 <td className="px-2.5 py-2 font-mono font-semibold">{fmt(disp(sl.pico), 1)}</td>
                                 <td className="px-2.5 py-2">{sim ? (sim.v >= 99.5 ? <span className="text-xs text-muted-foreground">100% · forte</span> : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(sim.v, 0)}%</span><Pilula st={sim.st} /></span>) : '—'}</td>
-                                {doLado[0] === k && (
-                                  <td rowSpan={doLado.length} className="px-2.5 py-2 align-middle border-l border-border/40">
-                                    {rz ? <span className="flex flex-col gap-0.5"><span className="font-mono font-semibold">{lado} {fmt(rz.r * 100, 0)}%</span><Pilula st={rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, crit)} /></span> : '—'}
-                                  </td>
-                                )}
+                                <td className="px-2.5 py-2 border-l border-border/40">
+                                  {k.startsWith('an') ? (rz ? <span className="flex flex-col gap-0.5"><span className="font-mono font-semibold">{lado} {fmt(rz.r * 100, 0)}%</span><Pilula st={rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, crit)} /></span> : '—') : null}
+                                </td>
                                 <td className="px-2.5 py-2">{sl.fadiga == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(sl.fadiga, 0)}%</span><Pilula st={stFadiga(sl.fadiga, crit)} /></span>}</td>
                                 <td className="px-2.5 py-2 font-mono whitespace-nowrap">{fp?.queda != null ? `${fmt(fp.queda, 1)}%/s` : '—'}</td>
                                 <td className="px-2.5 py-2">{sl.oscilacao == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(sl.oscilacao, 1)}%</span><Pilula st={stOsc(sl.oscilacao, crit)} /></span>}</td>
@@ -1188,32 +1186,29 @@ export default function Dinamometria() {
                         </tr>
                       </thead>
                       <tbody>
-                        {SLOTS_POR_LADO.filter(k => A.slots[k]).map(k => {
+                        {SLOTS_HOMOLOGOS.filter(k => A.slots[k]).map(k => {
                           const s = A.slots[k]!;
                           const lado: Lado = k.endsWith('D') ? 'D' : 'E';
-                          // Razão do lado: uma célula para as linhas daquele lado (vizinhas).
-                          const doLado = SLOTS_POR_LADO.filter(x => x.endsWith(lado) && A.slots[x]);
-                          const primeiraDoLado = doLado[0] === k;
+                          const primeiroAntagonista = SLOTS_HOMOLOGOS.find(x => x.startsWith('an') && A.slots[x]) === k;
                           const sim = simetriaSlot(A, k, crit);
-                          const rz = A.razoes[lado];
+                          // Razão do lado (antagonista ÷ agonista): fica na linha do antagonista.
+                          const rz = k.startsWith('an') ? A.razoes[lado] : undefined;
                           return (
-                            <tr key={k} className={cn('border-t border-border/40', primeiraDoLado && lado === 'E' && 'border-t-2 border-t-border')}>
+                            <tr key={k} className={cn('border-t border-border/40', primeiroAntagonista && 'border-t-2 border-t-border')}>
                               <td className="px-2.5 py-2 whitespace-nowrap"><Bolinha lado={lado} />{nomeSlot(atual.regiao, k)}</td>
                               <td className="px-2.5 py-2 font-mono">{fmt(disp(s.pico), 1)}</td>
                               <td className="px-2.5 py-2 border-l border-border/40">
                                 {sim ? <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono font-semibold">{fmt(sim.v, 0)}%</span>{sim.v < 99.5 ? <Pilula st={sim.st} /> : <span className="text-[11px] text-muted-foreground">mais forte</span>}</span> : '—'}
                               </td>
-                              {primeiraDoLado && (
-                                <td rowSpan={doLado.length} className="px-2.5 py-2 align-middle border-l border-border/40">
-                                  {rz ? (
-                                    <span className="flex flex-col gap-0.5" title={`${A.R.razaoL} · ${lado === 'D' ? 'direito' : 'esquerdo'} · referência ${rz.refTxt || '—'}`}>
-                                      <span className="text-[11px] text-muted-foreground">{lado === 'D' ? 'Direito' : 'Esquerdo'}</span>
-                                      <span className="font-mono font-semibold">{fmt(rz.r * 100, 0)}%</span>
-                                      <Pilula st={rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, crit)} />
-                                    </span>
-                                  ) : '—'}
-                                </td>
-                              )}
+                              <td className="px-2.5 py-2 align-middle border-l border-border/40">
+                                {k.startsWith('an') ? (rz ? (
+                                  <span className="flex flex-col gap-0.5" title={`${A.R.razaoL} · ${lado === 'D' ? 'direito' : 'esquerdo'} · referência ${rz.refTxt || '—'}`}>
+                                    <span className="text-[11px] text-muted-foreground">{lado === 'D' ? 'Direito' : 'Esquerdo'}</span>
+                                    <span className="font-mono font-semibold">{fmt(rz.r * 100, 0)}%</span>
+                                    <Pilula st={rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, crit)} />
+                                  </span>
+                                ) : '—') : null}
+                              </td>
                               <td className="px-2.5 py-2 font-mono">{s.nkg == null ? '—' : fmt(s.nkg, 1)}</td>
                               <td className="px-2.5 py-2">{s.precisaBraco ? <span className="text-xs text-muted-foreground">informe o braço de alavanca</span> : s.z == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(s.pctNorma, 0)}% · z {fmt(s.z, 1)}</span><Pilula st={stZ(s.z)} /></span>}</td>
                               <td className="px-2.5 py-2 font-mono">{fmt(s.ttp, 2)}</td>

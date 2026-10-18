@@ -330,8 +330,9 @@ export function lsi(s: Sujeito, d: number | null | undefined, e: number | null |
   return d < e ? { v: (d / e) * 100, fraco: 'D', forte: 'E' } : { v: (e / d) * 100, fraco: 'E', forte: 'D' };
 }
 export const stLSI = (v?: number | null, c: Criterios = CRITERIOS_PADRAO): Status => (v == null ? null : v >= c.lsiAdequado ? ['ok', 'Adequado'] : v >= c.lsiImportante ? ['warn', 'Déficit moderado'] : ['bad', 'Déficit importante']);
-// Tabela agrupada por lado: a razão antagonista/agonista ocupa as duas linhas do lado.
-export const SLOTS_POR_LADO: Slot[] = ['agD', 'anD', 'agE', 'anE'];
+// Tabelas com os músculos homólogos em linhas vizinhas (D e E do mesmo músculo, um abaixo do outro):
+// primeiro os agonistas D e E, depois os antagonistas D e E. A razão de cada lado fica na linha do antagonista.
+export const SLOTS_HOMOLOGOS: Slot[] = ['agD', 'agE', 'anD', 'anE'];
 // Simetria por músculo: o lado mais forte vale 100% e o outro, a % dele.
 export function simetriaSlot(A: { slots: Partial<Record<Slot, { pico: number }>> }, k: Slot, c: Criterios = CRITERIOS_PADRAO): { v: number; st: Status } | null {
   const g = k.slice(0, 2);
