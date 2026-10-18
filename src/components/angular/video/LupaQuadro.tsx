@@ -2,8 +2,7 @@ import type { ReactNode, RefObject } from 'react';
 import type { LupaEstado } from '@/hooks/useGestosFoto';
 import { AUMENTO_LUPA, TAMANHO_LUPA } from '@/components/angular/LupaFoto';
 import { COR_CENTRO, COR_LADO, type LigacaoUi, type PontosDoQuadro } from '@/lib/angular/analiseVideo/tiposUi';
-
-const limitar = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
+import { posicaoDaLupa } from '@/lib/angular/analiseVideo/lupa';
 
 // Lupa de 3× do arrasto de um ponto: mostra o quadro parado, o esqueleto e a mira no ponto que o dedo segura.
 export default function LupaQuadro({ lupa, href, w, h, svgRef, caixaRef, pontos, ligacoes, nomeAtivo, extra }: {
@@ -23,8 +22,7 @@ export default function LupaQuadro({ lupa, href, w, h, svgRef, caixaRef, pontos,
   const lado = TAMANHO_LUPA / (AUMENTO_LUPA * escala);
   const un = 1 / (AUMENTO_LUPA * escala);
   const larguraCaixa = caixaRef.current?.clientWidth ?? TAMANHO_LUPA;
-  const esquerda = limitar(lupa.cx - TAMANHO_LUPA / 2, 4, Math.max(4, larguraCaixa - TAMANHO_LUPA - 4));
-  const topo = lupa.cy - TAMANHO_LUPA - 32 < 4 ? lupa.cy + 32 : lupa.cy - TAMANHO_LUPA - 32;
+  const { left: esquerda, top: topo } = posicaoDaLupa({ cx: lupa.cx, cy: lupa.cy, tamanho: TAMANHO_LUPA, larguraCaixa, topoDaCaixaNaTela: caixaRef.current?.getBoundingClientRect().top ?? 0 });
   const cor = (l: LigacaoUi['lado']) => (l ? COR_LADO[l] : COR_CENTRO);
   return (
     <div className="pointer-events-none absolute z-20 overflow-hidden rounded-full border-2 border-white bg-black shadow-xl" style={{ width: TAMANHO_LUPA, height: TAMANHO_LUPA, left: esquerda, top: topo }} aria-hidden data-testid="lupa">

@@ -95,7 +95,7 @@ export function pontosParaTela(quadro: QuadroPose | undefined): PontosDoQuadro |
     const p = quadro.pontos[nome];
     if (!p) continue;
     const usavel = pontoDoQuadro(quadro, nome);
-    if (usavel) saida[nome] = { x: usavel.x, y: usavel.y, ...(p.manual ? { manual: true } : {}) };
+    if (usavel) saida[nome] = { x: usavel.x, y: usavel.y, ...(p.manual ? { manual: true } : p.interp ? { interp: true } : {}) };
   }
   return Object.keys(saida).length ? saida : null;
 }
@@ -183,14 +183,15 @@ export interface OpcoesItensDoQuadro {
 }
 
 /**
- * Itens de desenho (no estilo escolhido) de um quadro: esqueleto fino por lado, ângulos com arco e rótulo, e os pontos.
+ * Itens de desenho (no estilo escolhido) de um quadro: esqueleto por lado (mais fino que os ângulos), ângulos com arco e rótulo, e os pontos.
  * Em pixels do vídeo; `c` traz a escala. Sempre os mesmos itens para a tela, o PDF, a arte e o vídeo exportado.
  */
 export function itensDoQuadroAnalisado(quadro: QuadroPose | undefined, c: ContextoDesenho, o: OpcoesItensDoQuadro): ItemDesenho[] {
   if (!quadro) return [];
   const itens: ItemDesenho[] = [];
   const tela = pontosParaTela(quadro);
-  const finura = Math.max(c.estilo.espessura * c.k * 0.35, 1.6 * c.k);
+  // Visto no celular (arte do Instagram, vídeo exportado) o esqueleto precisa aparecer, mas abaixo dos ângulos, que são a análise.
+  const finura = Math.max(c.estilo.espessura * c.k * 0.5, 3.6 * c.k);
   if (o.esqueleto !== false && tela) {
     for (const l of LIGACOES_CORPO) {
       const a = tela[l.a], b = tela[l.b];
@@ -203,7 +204,7 @@ export function itensDoQuadroAnalisado(quadro: QuadroPose | undefined, c: Contex
   if (o.esqueleto !== false && tela) {
     for (const [nome, p] of Object.entries(tela)) {
       const lado = ladoDe(nome);
-      itens.push(itemPonto(p, 'v', c, { cor: p.manual ? '#fbbf24' : lado ? COR_LADO[lado] : COR_CENTRO, reduzir: 0.7 }));
+      itens.push(itemPonto(p, 'v', c, { cor: p.manual ? '#fbbf24' : lado ? COR_LADO[lado] : COR_CENTRO, reduzir: 0.9 }));
     }
   }
   return separarRotulos(ordenarCamadas(itens), c.w, c.h);

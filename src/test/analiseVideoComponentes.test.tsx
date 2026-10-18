@@ -44,6 +44,13 @@ describe('barra e controles de quadro', () => {
     expect(container.querySelectorAll('[data-marca="saida"]')).toHaveLength(1);
   });
 
+  it('desenha uma faixa para cada trecho interpolado entre quadros-chave', () => {
+    const { container } = render(<BarraQuadros quadro={0} nQuadros={101} aoIr={() => {}} marcas={[]} faixas={[{ de: 10, ate: 30 }, { de: 50, ate: 60 }]} />);
+    expect(container.querySelectorAll('[data-marca="interpolado"]')).toHaveLength(2);
+    const { container: semFaixa } = render(<BarraQuadros quadro={0} nQuadros={101} aoIr={() => {}} marcas={[]} />);
+    expect(semFaixa.querySelectorAll('[data-marca="interpolado"]')).toHaveLength(0);
+  });
+
   it('os botões de quadro e a velocidade chamam o que se espera, com alvos de toque grandes', () => {
     const f = { aoIr: vi.fn(), aoPasso: vi.fn(), aoAlternar: vi.fn(), aoVelocidade: vi.fn() };
     render(<ControlesQuadro quadro={4} nQuadros={90} t={0.13} tocando={false} velocidade={0.25} marcas={[]} {...f} />);
@@ -109,6 +116,21 @@ describe('gráfico ângulo x tempo', () => {
 
 describe('cartões de métricas', () => {
   const base: CartaoMetricaUi = { chave: 'x', titulo: 'Amplitude do joelho', valores: [{ lado: 'D', texto: '55,5°', status: 'sem_referencia' }, { lado: 'E', texto: '50,1°', status: 'sem_referencia' }], referencias: [], contexto: [], avisos: [] };
+
+  it('no celular só os primeiros cartões aparecem de início e um botão mostra as outras métricas', () => {
+    const muitos = Array.from({ length: 9 }, (_, i): CartaoMetricaUi => ({ ...base, chave: `m${i}`, titulo: `Métrica ${i}` }));
+    render(<CartoesMetricas cartoes={muitos} />);
+    const escondidos = () => screen.getAllByTestId('cartao-metrica').filter((li) => li.className.includes('hidden'));
+    expect(escondidos()).toHaveLength(3);
+    fireEvent.click(screen.getByTestId('mostrar-todas-metricas'));
+    expect(escondidos()).toHaveLength(0);
+    expect(screen.queryByTestId('mostrar-todas-metricas')).toBeNull();
+  });
+
+  it('até seis cartões não têm botão de mostrar mais', () => {
+    render(<CartoesMetricas cartoes={[base]} />);
+    expect(screen.queryByTestId('mostrar-todas-metricas')).toBeNull();
+  });
 
   it('sem referência diz "sem referência" e não inventa faixa', () => {
     render(<CartoesMetricas cartoes={[base]} />);

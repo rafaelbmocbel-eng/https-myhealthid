@@ -44,7 +44,7 @@ const Fixo = memo(function Fixo({ layout }: { layout: LayoutGrafico }) {
         const contato = m.tipo === 'contato';
         return (
           <g key={m.id} data-testid={`marcador-${m.tipo}`}>
-            <line x1={m.x} x2={m.x} y1={area.y0} y2={area.y1} stroke={cor} strokeOpacity={0.5} strokeWidth={1} strokeDasharray={contato ? undefined : '3 3'} />
+            <line x1={m.x} x2={m.x} y1={area.y0} y2={area.y1} stroke={cor} strokeOpacity={0.36} strokeWidth={1} strokeDasharray={contato ? undefined : '3 3'} />
             {contato && <path d={`M${m.x - 4},${area.y0 - 1} L${m.x + 4},${area.y0 - 1} L${m.x},${area.y0 + 6} Z`} fill={cor} />}
             {m.tipo === 'saida' && <circle cx={m.x} cy={area.y0 + 2} r={3.2} fill="none" stroke={cor} strokeWidth={1.5} />}
             {m.tipo === 'outro' && <path d={`M${m.x},${area.y0 - 2} L${m.x + 4},${area.y0 + 2} L${m.x},${area.y0 + 6} L${m.x - 4},${area.y0 + 2} Z`} fill="none" stroke={cor} strokeWidth={1.5} />}

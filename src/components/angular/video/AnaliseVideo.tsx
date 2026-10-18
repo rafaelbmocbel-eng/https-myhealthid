@@ -620,7 +620,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
         {etapa === 'analisar' && (
           <>
-            <ControlesQuadro quadro={quadro} nQuadros={nQuadros} t={quadroPose?.t ?? 0} fps={trilha?.fps} tocando={repro.tocando} velocidade={repro.velocidade} marcas={marcas}
+            <ControlesQuadro quadro={quadro} nQuadros={nQuadros} t={quadroPose?.t ?? 0} fps={trilha?.fps} tocando={repro.tocando} velocidade={repro.velocidade} marcas={marcas} faixas={edicao.faixas}
               aoIr={repro.irPara} aoPasso={repro.passo} aoAlternar={repro.alternar} aoVelocidade={repro.setVelocidade} />
 
             <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Ferramentas da análise">
@@ -636,7 +636,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
             {temRastreio && (
               <p className="flex items-start gap-1.5 rounded-xl bg-muted/40 p-2.5 text-xs leading-snug text-muted-foreground">
                 <Crosshair className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span>Arraste um ponto para corrigir: ele fica preso neste quadro (marca amarela na barra) e é interpolado até a próxima correção. Deslize o dedo no vídeo para trocar de quadro.
+                <span>Arraste um ponto para corrigir: vira quadro-chave (bolinha amarela). Entre dois quadros-chave a posição é interpolada (faixa amarela, anel tracejado). Deslize no vídeo para mudar de quadro.
                   {edicao.resumo.pontos > 0 && <strong className="text-foreground"> {edicao.resumo.pontos} {edicao.resumo.pontos === 1 ? 'ponto corrigido' : 'pontos corrigidos'}.</strong>}</span>
               </p>
             )}
@@ -675,12 +675,12 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
             ))}
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-border/60 bg-card p-3" role="tabpanel">
+          <div className={cn('space-y-3', !(analise && (aba === 'metricas' || aba === 'lados')) && 'rounded-2xl border border-border/60 bg-card p-3')} role="tabpanel">
             {aba === 'metricas' && (
               analise ? (
                 <>
                   {modelo.metricas.some((m) => m.requerCameraFixa) && (
-                    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
+                    <label className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card px-3 text-sm">
                       <span>Câmera parada (o paciente atravessa o quadro)</span>
                       <input type="checkbox" checked={cameraFixa} onChange={(e) => setCameraFixa(e.target.checked)} className="h-5 w-5 accent-primary" />
                     </label>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dominioDoEixoY, layoutDoGrafico, passoBonito, ticksDoEixo, valorNoTempo, type SerieGrafico } from '../lib/angular/analiseVideo/graficoLayout';
 import {
-  ajustarIntervalo, avisosDoVideo, estimativaDoRastreio, indiceMaisProximo, intervaloEntreQuadrosMs, intervaloPadrao, marcasDoScrubber, opcoesDeTaxa,
+  ajustarIntervalo, avisosDoVideo, estimativaDoRastreio, faixasInterpoladas, indiceMaisProximo, intervaloEntreQuadrosMs, intervaloPadrao, marcasDoScrubber, opcoesDeTaxa,
   quadrosDoDeslize, sensibilidadeDoDeslize, tempoDeExibicao,
 } from '../lib/angular/analiseVideo/tempo';
 import {
@@ -210,5 +210,20 @@ describe('taxa de quadros do vídeo', () => {
     expect(fpsPorIntervalos([1 / 30, 1 / 30, 1 / 30, 1 / 30, 0.2])).toBe(30);
     expect(fpsPorIntervalos([1 / 120, 1 / 120, 1 / 119, 1 / 121, 1 / 120])).toBe(120);
     expect(fpsPorIntervalos([0.03])).toBeNull();
+  });
+});
+
+describe('faixasInterpoladas: trecho entre dois quadros-chave', () => {
+  const quadro = (interp: boolean, manual = false) => ({ pontos: { joelho_d: { x: 0, y: 0, ...(interp ? { interp: true } : {}), ...(manual ? { manual: true } : {}) } } });
+
+  it('une os quadros ajustados consecutivos e estende até os quadros-chave das pontas', () => {
+    const q = [quadro(false), quadro(false, true), quadro(true), quadro(true), quadro(true), quadro(false, true), quadro(false), quadro(true), quadro(false, true)];
+    expect(faixasInterpoladas(q)).toEqual([{ de: 1, ate: 5 }, { de: 6, ate: 8 }]);
+  });
+
+  it('sem ajuste não há faixa, e os limites da trilha são respeitados', () => {
+    expect(faixasInterpoladas([quadro(false), quadro(false)])).toEqual([]);
+    expect(faixasInterpoladas([quadro(true), quadro(true)])).toEqual([{ de: 0, ate: 1 }]);
+    expect(faixasInterpoladas([])).toEqual([]);
   });
 });

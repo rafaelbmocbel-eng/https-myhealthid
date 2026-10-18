@@ -4,7 +4,7 @@ import {
   CANDIDATOS_MIME, ErroExportacao, LIMITES_EXPORTACAO, MAX_CARTOES_ORIGINAL, MENSAGEM_SEM_GRAVACAO, ORDEM_FORMATOS_VIDEO, VELOCIDADES_EXPORTACAO, ajustarTrecho,
   avaliarSuporteGravacao, avisoDoTipoDeArquivo, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida, ehFormatoSocial, erroDeCancelamento, escolherMime, extensaoDoMime,
   itensDeCartoes, itensDeLinhas, nomeArquivoVideo, nomeSeguroParaArquivo, par, planejarSaida, progressoDaSaida, quadroNaSaida, quebrarTexto, rotuloTempo, rotuloVelocidade,
-  separarReferencia, tamanhoOriginal, tempoDaFonte, tempoDaSaida, trechoMaximoS, trechoPadrao, truncarTexto, validarExportacao, type EntradaValidacao, type LayoutConteudo,
+  retanguloQueCobre, separarReferencia, tamanhoOriginal, temSobraNaArea, tempoDaFonte, tempoDaSaida, trechoMaximoS, trechoPadrao, truncarTexto, validarExportacao, type EntradaValidacao, type LayoutConteudo,
 } from '@/lib/angular/video/exportarVideoPuro';
 import { ehCancelamento } from '@/lib/angular/video/rastrear';
 import { criarTrilha } from '@/lib/angular/video/trilha';
@@ -399,5 +399,25 @@ describe('validação e consentimento', () => {
     expect(e.name).toBe('AbortError');
     expect(ehCancelamento(e)).toBe(true);
     expect(e.message).toBe('Gravação cancelada.');
+  });
+});
+
+describe('fundo das faixas sobrantes', () => {
+  it('temSobraNaArea: só quando o vídeo não ocupa a área toda', () => {
+    const area = { x: 0, y: 100, w: 800, h: 700 };
+    expect(temSobraNaArea({ x: 0, y: 285, w: 800, h: 450 }, area)).toBe(true);
+    expect(temSobraNaArea({ x: 0, y: 100, w: 800, h: 700 }, area)).toBe(false);
+    expect(temSobraNaArea({ x: 0, y: 100, w: 799.5, h: 700 }, area)).toBe(false);
+  });
+
+  it('retanguloQueCobre: cobre o destino sem distorcer e centraliza', () => {
+    const r = retanguloQueCobre(960, 540, 40, 38);
+    expect(r.h).toBeCloseTo(38, 6);
+    expect(r.w / r.h).toBeCloseTo(960 / 540, 6);
+    expect(r.x).toBeCloseTo((40 - r.w) / 2, 6);
+    expect(r.y).toBeCloseTo(0, 6);
+    const retrato = retanguloQueCobre(540, 960, 40, 38);
+    expect(retrato.w).toBeCloseTo(40, 6);
+    expect(retrato.y).toBeLessThan(0);
   });
 });

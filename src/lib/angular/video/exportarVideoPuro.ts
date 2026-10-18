@@ -436,6 +436,16 @@ function layoutFixo(e: EntradaLayoutConteudo, W: number, H: number): LayoutConte
   };
 }
 
+/** O vídeo deixa faixas vazias (mais estreito ou mais baixo que a área dele)? Nesse caso a área ganha um fundo desfocado em vez de tarja preta. */
+export const temSobraNaArea = (video: Retangulo, area: Retangulo): boolean => video.w < area.w - 1 || video.h < area.h - 1;
+
+/** Retângulo, no destino `dw`×`dh`, que o vídeo `vw`×`vh` ocupa ao cobri-lo inteiro sem distorcer, centralizado (pode passar das bordas). */
+export function retanguloQueCobre(vw: number, vh: number, dw: number, dh: number): Retangulo {
+  const e = Math.max(dw / Math.max(1, vw), dh / Math.max(1, vh));
+  const w = vw * e, h = vh * e;
+  return { x: (dw - w) / 2, y: (dh - h) / 2, w, h };
+}
+
 /**
  * Onde ficam o vídeo, o gráfico e os cartões no quadro composto. Com `altura` (a caixa da arte social) tudo é encaixado nela e
  * o vídeo cede espaço aos painéis; sem `altura` o vídeo ocupa a largura toda e os painéis vêm abaixo. Todas as medidas são inteiras e

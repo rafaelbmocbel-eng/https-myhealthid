@@ -1,4 +1,5 @@
-import { CircleCheck, Info, Minus, TriangleAlert } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, CircleCheck, Info, Minus, TriangleAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { COR_LADO, type CartaoMetricaUi, type ValorMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
 import { cartaoTemAlerta, naturezaDasReferencias, situacaoDoValor, type NaturezaReferencia } from '@/lib/angular/analiseVideo/statusReferencia';
@@ -27,10 +28,10 @@ function Valor({ v, unico, natureza }: { v: ValorMetricaUi; unico: boolean; natu
 
 const rotuloDaReferencia = (tipo: CartaoMetricaUi['referencias'][number]['tipo']) => (tipo === 'limiar_heuristico' ? 'Limiar' : tipo === 'faixa_de_medias' ? 'Faixa das médias de grupos' : 'Referência');
 
-function Cartao({ c }: { c: CartaoMetricaUi }) {
+function Cartao({ c, recolhido }: { c: CartaoMetricaUi; recolhido: boolean }) {
   const natureza = naturezaDasReferencias(c.referencias);
   return (
-    <li className={cn('flex flex-col gap-1.5 rounded-2xl border bg-card p-3', cartaoTemAlerta(c) ? 'border-amber-500/50' : 'border-border/60')} data-testid="cartao-metrica">
+    <li className={cn('flex-col gap-1.5 rounded-2xl border bg-card p-3', recolhido ? 'hidden min-[420px]:flex' : 'flex', cartaoTemAlerta(c) ? 'border-amber-500/50' : 'border-border/60')} data-testid="cartao-metrica">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{c.titulo}</p>
       <div className={cn('grid gap-2', c.valores.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
         {c.valores.map((v) => <Valor key={v.lado ?? 'unico'} v={v} unico={c.valores.length === 1} natureza={natureza} />)}
@@ -82,15 +83,24 @@ function Cartao({ c }: { c: CartaoMetricaUi }) {
   );
 }
 
+/** No celular só os primeiros cartões aparecem de início (a lista passa de uma dúzia); em tela larga todos aparecem. */
+const CARTOES_INICIAIS_NO_CELULAR = 6;
+
 // Cartões das métricas do gesto: valor (um por lado), se está dentro ou fora da referência (só com fonte verificada) e a fonte.
 export default function CartoesMetricas({ cartoes, aviso }: { cartoes: CartaoMetricaUi[]; aviso?: string }) {
+  const [todos, setTodos] = useState(false);
   if (!cartoes.length) return <p className="text-xs text-muted-foreground">Sem métricas ainda: faça o rastreio do vídeo.</p>;
   const comReferencia = cartoes.some((c) => c.referencias.length > 0);
   return (
     <div className="space-y-2">
       <ul className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 lg:grid-cols-1">
-        {cartoes.map((c) => <Cartao key={c.chave} c={c} />)}
+        {cartoes.map((c, i) => <Cartao key={c.chave} c={c} recolhido={!todos && i >= CARTOES_INICIAIS_NO_CELULAR} />)}
       </ul>
+      {!todos && cartoes.length > CARTOES_INICIAIS_NO_CELULAR && (
+        <button type="button" onClick={() => setTodos(true)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card text-sm font-semibold min-[420px]:hidden" data-testid="mostrar-todas-metricas">
+          Mostrar as outras {cartoes.length - CARTOES_INICIAIS_NO_CELULAR} métricas <ChevronDown className="h-4 w-4" aria-hidden />
+        </button>
+      )}
       <p className="px-1 text-[11px] leading-snug text-muted-foreground">
         {comReferencia ? 'Referências só aparecem quando há fonte científica verificada (com PMID); as demais métricas ficam “sem referência”. ' : 'Não há valores de referência verificados para estas métricas: o app não inventa limites. Use a comparação entre os lados e entre avaliações. '}
         {aviso}

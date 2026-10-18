@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { corrigirPonto, pontosCorrigidosNoQuadro, quadrosCorrigidos, removerCorrecao, resumoCorrecoes } from '@/lib/angular/video/correcao';
 import { criarHistorico, desfazer, podeDesfazer, podeRefazer, refazer, registrar, type Historico } from '@/lib/angular/video/historico';
+import { faixasInterpoladas } from '@/lib/angular/analiseVideo/tempo';
 import type { TrilhaPose } from '@/lib/angular/video/tipos';
 
 // A trilha de pontos com histórico para desfazer e refazer. Cada correção é um passo; a trilha original nunca é alterada.
@@ -28,10 +29,11 @@ export function useTrilhaEditavel() {
   const refazerUltima = useCallback(() => setHistorico((h) => (h ? refazer(h) : h)), []);
 
   const corrigidos = useMemo(() => (trilha ? quadrosCorrigidos(trilha) : []), [trilha]);
+  const faixas = useMemo(() => (trilha ? faixasInterpoladas(trilha.quadros) : []), [trilha]);
   const resumo = useMemo(() => (trilha ? resumoCorrecoes(trilha) : { quadros: 0, pontos: 0, pontosAjustados: 0 }), [trilha]);
 
   return {
-    trilha, iniciar, corrigir, removerCorrecoesDoQuadro, desfazerUltima, refazerUltima, corrigidos, resumo,
+    trilha, iniciar, corrigir, removerCorrecoesDoQuadro, desfazerUltima, refazerUltima, corrigidos, faixas, resumo,
     podeDesfazer: historico ? podeDesfazer(historico) : false,
     podeRefazer: historico ? podeRefazer(historico) : false,
   };

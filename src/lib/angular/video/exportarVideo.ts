@@ -17,7 +17,7 @@ import { legendaDosAngulos, type DefinicaoAngulo } from './angulos';
 import {
   ErroExportacao, LIMITES_EXPORTACAO, RODAPE_VIDEO, RODAPE_VIDEO_COM_AVISO, erroDeCancelamento, avaliarSuporteGravacao, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida,
   ehFormatoSocial, itensDeCartoes, itensDeLinhas, prefixoDaReferencia, progressoDaSaida, quadroNaSaida, quebrarTexto, rotuloTempo, rotuloVelocidade, tamanhoOriginal, truncarTexto,
-  validarExportacao,
+  retanguloQueCobre, temSobraNaArea, validarExportacao,
   type FormatoVideo, type ItemMetricaVideo, type LayoutConteudo, type SuporteGravacao,
 } from './exportarVideoPuro';
 import { corrigirDuracaoDoBlob } from './webmDuracao';
@@ -228,6 +228,9 @@ export function buscarQuadro(el: HTMLVideoElement, t: number, limiteMs = 4000, s
 const FUNDO_PAINEL = 'rgba(255,255,255,0.06)';
 const BORDA_PAINEL = 'rgba(255,255,255,0.14)';
 const FUNDO_VIDEO = '#05080f';
+/** Largura da cópia minúscula do quadro que vira o fundo desfocado das faixas sobrantes, e o véu que a escurece. */
+const LADO_FUNDO_PX = 40;
+const VEU_FUNDO_VIDEO = 'rgba(5,8,15,0.6)';
 const FUNDO_QUADRO = '#0a0f1c';
 const COR_DENTRO = '#34d399';
 const COR_FORA = '#fbbf24';
@@ -634,6 +637,28 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   const escalaX = rv.w / vw, escalaY = rv.h / vh;
   const f = layout.fonte;
 
+  // Sobra de moldura (vídeo deitado num formato alto): fundo com o próprio quadro escurecido e desfocado, como na arte do Instagram,
+  // em vez de tarja preta. A cópia tem poucos pixels, então nenhum rosto sobrevive nela, e o desfoque sai quase de graça.
+  const av = layout.areaVideo;
+  const sobra = temSobraNaArea(rv, av);
+  const fundoMini = sobra ? criarCanvas(LADO_FUNDO_PX, (LADO_FUNDO_PX * av.h) / av.w) : null;
+  const ctxMini = fundoMini ? contexto2d(fundoMini) : null;
+  const coberturaMini = fundoMini ? retanguloQueCobre(vw, vh, fundoMini.width, fundoMini.height) : null;
+  function pintarFundoDaSobra() {
+    if (!fundoMini || !ctxMini || !coberturaMini) return;
+    ctxMini.drawImage(el, coberturaMini.x, coberturaMini.y, coberturaMini.w, coberturaMini.h);
+    ctxC.save();
+    ctxC.beginPath();
+    ctxC.rect(av.x, av.y, av.w, av.h);
+    ctxC.clip();
+    ctxC.imageSmoothingEnabled = true;
+    ctxC.imageSmoothingQuality = 'high';
+    ctxC.drawImage(fundoMini, av.x, av.y, av.w, av.h);
+    ctxC.fillStyle = VEU_FUNDO_VIDEO;
+    ctxC.fillRect(av.x, av.y, av.w, av.h);
+    ctxC.restore();
+  }
+
   const caixaDoIndice = (indice: number) => escalarCaixaRosto(caixas[Math.min(caixas.length - 1, Math.max(0, indice))].caixa, ajuste.mulLargura, ajuste.mulAltura);
   const naSaida = (r: Retangulo): Retangulo => {
     if (!caixaArte) return r;
@@ -672,6 +697,7 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
     const i = Math.min(trilha.quadros.length - 1, Math.max(0, indice));
     const quadro = trilha.quadros[i];
     ctxC.drawImage(base, 0, 0);
+    pintarFundoDaSobra();
 
     ctxC.save();
     ctxC.beginPath();
@@ -739,7 +765,7 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   return {
     saida, largura: saida.width, altura: saida.height, layout, naSaida, rostoNaSaida, desenhar, repintar, caixas,
     resumoRosto: { porOrigem: resumo, semRosto: resumo.fixa > 0 },
-    liberar: () => { liberarCanvas(base); if (conteudo !== saida) liberarCanvas(conteudo); liberarCanvas(saida); },
+    liberar: () => { liberarCanvas(base); if (fundoMini) liberarCanvas(fundoMini); if (conteudo !== saida) liberarCanvas(conteudo); liberarCanvas(saida); },
   };
 }
 

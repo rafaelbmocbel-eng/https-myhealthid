@@ -1,16 +1,17 @@
 import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { VELOCIDADES, formatarSegundos, limitar, type MarcaScrubber } from '@/lib/angular/analiseVideo/tempo';
+import { VELOCIDADES, formatarSegundos, limitar, type FaixaInterpolada, type MarcaScrubber } from '@/lib/angular/analiseVideo/tempo';
 import { COR_LADO } from '@/lib/angular/analiseVideo/tiposUi';
 
 const FOLGA_PX = 12;
 
 /**
  * Barra de quadros do vídeo: arrastar com o dedo ou usar o teclado muda o quadro. Mostra os quadros corrigidos
- * (bolinha amarela) e os eventos (risco azul = direito, laranja = esquerdo; o contato é mais alto que a saída).
+ * (bolinha amarela), o trecho interpolado entre dois quadros-chave (faixa amarela) e os eventos (risco azul = direito,
+ * laranja = esquerdo; o contato é mais alto que a saída).
  */
-export function BarraQuadros({ quadro, nQuadros, marcas, aoIr }: { quadro: number; nQuadros: number; marcas: MarcaScrubber[]; aoIr: (i: number) => void }) {
+export function BarraQuadros({ quadro, nQuadros, marcas, faixas = [], aoIr }: { quadro: number; nQuadros: number; marcas: MarcaScrubber[]; faixas?: FaixaInterpolada[]; aoIr: (i: number) => void }) {
   const caixa = useRef<HTMLDivElement>(null);
   const arrastando = useRef(false);
   const ultimo = Math.max(0, nQuadros - 1);
@@ -42,6 +43,12 @@ export function BarraQuadros({ quadro, nQuadros, marcas, aoIr }: { quadro: numbe
     >
       <div className="absolute inset-x-3 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted" />
       <div className="absolute left-3 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-primary/50" style={{ width: `calc((100% - ${FOLGA_PX * 2}px) * ${pct / 100})` }} />
+      {faixas.map((f) => (
+        <span
+          key={`f-${f.de}`} aria-hidden data-marca="interpolado" className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-amber-400/80"
+          style={{ left: posicao((f.de / Math.max(1, ultimo)) * 100), width: `calc((100% - ${FOLGA_PX * 2}px) * ${(f.ate - f.de) / Math.max(1, ultimo)})` }}
+        />
+      ))}
       {marcas.map((m) => (m.tipo === 'corrigido' ? (
         <span key={m.chave} aria-hidden data-marca="corrigido" className="absolute top-[7px] h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-amber-400 ring-2 ring-background" style={{ left: posicao(m.pct) }} />
       ) : (
@@ -67,6 +74,7 @@ interface ControlesProps {
   tocando: boolean;
   velocidade: number;
   marcas: MarcaScrubber[];
+  faixas?: FaixaInterpolada[];
   aoIr: (i: number) => void;
   aoPasso: (n: number) => void;
   aoAlternar: () => void;
@@ -74,10 +82,10 @@ interface ControlesProps {
 }
 
 // Barra de quadros, botões de quadro anterior e próximo e velocidades de câmera lenta.
-export default function ControlesQuadro({ quadro, nQuadros, t, fps, tocando, velocidade, marcas, aoIr, aoPasso, aoAlternar, aoVelocidade }: ControlesProps) {
+export default function ControlesQuadro({ quadro, nQuadros, t, fps, tocando, velocidade, marcas, faixas, aoIr, aoPasso, aoAlternar, aoVelocidade }: ControlesProps) {
   return (
     <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-2.5" role="group" aria-label="Controles do vídeo">
-      <BarraQuadros quadro={quadro} nQuadros={nQuadros} marcas={marcas} aoIr={aoIr} />
+      <BarraQuadros quadro={quadro} nQuadros={nQuadros} marcas={marcas} faixas={faixas} aoIr={aoIr} />
       <div className="grid grid-cols-5 gap-1.5">
         <button type="button" className={botaoBase} aria-label="Voltar 10 quadros" onClick={() => aoPasso(-10)}><ChevronsLeft className="h-5 w-5" /></button>
         <button type="button" className={botaoBase} aria-label="Quadro anterior" onClick={() => aoPasso(-1)}><ChevronLeft className="h-5 w-5" /></button>

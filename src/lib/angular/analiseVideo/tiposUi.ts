@@ -12,7 +12,8 @@ export const COR_LADO: Record<Lado, string> = { D: '#2A78D6', E: '#EB6834' };
 export const COR_CENTRO = '#d4d4d8';
 
 export interface PontoPx { x: number; y: number }
-export interface PontoQuadroUi extends PontoPx { manual?: boolean }
+/** `manual`: quadro-chave corrigido à mão; `interp`: posição ajustada por interpolação entre dois quadros-chave. */
+export interface PontoQuadroUi extends PontoPx { manual?: boolean; interp?: boolean }
 export type PontosDoQuadro = Record<string, PontoQuadroUi>;
 
 export interface LigacaoUi { a: string; b: string; lado: Lado | null }

@@ -60,6 +60,28 @@ export function marcasDoScrubber(nQuadros: number, corrigidos: readonly number[]
   ];
 }
 
+/** Trecho de quadros (índices, inclusive) em que algum ponto foi ajustado por interpolação, com os quadros-chave das pontas. */
+export interface FaixaInterpolada { de: number; ate: number }
+
+/**
+ * Trechos da barra de quadros em que a posição de algum ponto vem da interpolação entre dois quadros-chave: o profissional vê de
+ * relance até onde a correção alcança. Quadros ajustados e consecutivos formam um trecho só, que vai de um quadro-chave ao outro.
+ */
+export function faixasInterpoladas(quadros: readonly { pontos: Record<string, { interp?: boolean }> }[]): FaixaInterpolada[] {
+  const faixas: FaixaInterpolada[] = [];
+  const ultimo = quadros.length - 1;
+  let inicio = -1;
+  for (let i = 0; i <= quadros.length; i++) {
+    const ajustado = i < quadros.length && Object.values(quadros[i].pontos).some((p) => p.interp);
+    if (ajustado && inicio < 0) inicio = i;
+    if (!ajustado && inicio >= 0) {
+      faixas.push({ de: Math.max(0, inicio - 1), ate: Math.min(ultimo, i) });
+      inicio = -1;
+    }
+  }
+  return faixas;
+}
+
 export interface AvisoDoVideo { nivel: 'ok' | 'aviso'; mensagens: string[] }
 
 /** Avisos (não bloqueiam) sobre duração, resolução e tamanho do vídeo escolhido. */

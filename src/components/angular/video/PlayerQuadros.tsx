@@ -264,7 +264,16 @@ export default function PlayerQuadros({
             {camadaExtra?.({ css, pressionar: (e, id, i) => { dedos.current.add(e.pointerId); gestos.aoPressionarPonto(e, `${PREFIXO_EXTRA}${id}`, i); }, contexto, naLupa: false })}
             {pontosVisiveis && mostrarEsqueleto && !alcasAtivas && (
               <g pointerEvents="none">
-                {alcas.map((al) => { const p = pontosVisiveis[al.nome]; return p ? <circle key={al.nome} cx={p.x} cy={p.y} r={raioPonto} fill={p.manual ? '#fbbf24' : corDoPonto(al.nome)} stroke="#fff" strokeWidth={css(1.5)} /> : null; })}
+                {alcas.map((al) => {
+                  const p = pontosVisiveis[al.nome];
+                  if (!p) return null;
+                  return (
+                    <g key={al.nome}>
+                      {p.interp && <circle cx={p.x} cy={p.y} r={raioPonto * 2} fill="none" stroke="#fbbf24" strokeWidth={css(2)} strokeDasharray={`${css(3.5)} ${css(3)}`} />}
+                      <circle cx={p.x} cy={p.y} r={raioPonto} fill={p.manual ? '#fbbf24' : corDoPonto(al.nome)} stroke="#fff" strokeWidth={css(1.5)} />
+                    </g>
+                  );
+                })}
               </g>
             )}
             {alcasAtivas && nomesFantasma.map((al) => {
@@ -283,6 +292,7 @@ export default function PlayerQuadros({
               return (
                 <g key={al.nome} pointerEvents="none" data-testid={`alca-${al.nome}`} aria-label={`${al.rotulo}: arraste para corrigir`}>
                   <circle cx={p.x} cy={p.y} r={raioToque} fill="transparent" />
+                  {p.interp && <circle cx={p.x} cy={p.y} r={raioAlca * 1.55} fill="none" stroke="#fbbf24" strokeWidth={css(2.2)} strokeDasharray={`${css(4)} ${css(3.2)}`} />}
                   <circle cx={p.x} cy={p.y} r={ativo ? raioAlca * 1.2 : raioAlca} fill={p.manual ? '#fbbf24' : corDoPonto(al.nome)} fillOpacity={0.92} stroke="#fff" strokeWidth={css(2)} />
                   {p.manual && <circle cx={p.x} cy={p.y} r={raioAlca * 0.38} fill="#78350f" />}
                 </g>
