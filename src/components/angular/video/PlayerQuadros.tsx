@@ -19,6 +19,8 @@ const TOQUE_ALCA_PX = 26;
 const MOVIMENTO_MINIMO_PX = 0.25;
 const TOQUE_PARADO_PX = 10;
 const PREFIXO_EXTRA = 'extra:';
+// A lupa amplia só um pedaço da tela: um quadro de até 1600 px de lado basta e evita travar o primeiro toque em vídeos 4K no celular.
+const LADO_MAX_LUPA_PX = 1600;
 
 export interface CamadaApi {
   /** Pixels de tela → unidades do vídeo, para tamanhos que não dependem do zoom. */
@@ -42,6 +44,8 @@ interface Props {
   pontos: PontosDoQuadro | null;
   ligacoes: LigacaoUi[];
   alcas: AlcaUi[];
+  /** Onde sugerir os pontos que o detector perdeu neste quadro: viram alças tracejadas que o profissional arrasta até o lugar certo. */
+  fantasmas?: PontosDoQuadro;
   /** Ângulos do quadro, calculados dos pontos recebidos (com o ponto arrastado já na posição do dedo). */
   marcacoesDe: (p: PontosDoQuadro) => MarcacaoAnguloUi[];
   estilo: EstiloMarcacao;
@@ -75,7 +79,7 @@ const corDoPonto = (nome: string) => {
 // Vídeo parado no quadro, com esqueleto e ângulos no estilo escolhido, pontos arrastáveis (com lupa), deslizar para
 // trocar de quadro e zoom com dois dedos. Quem manda no tempo do vídeo é o pai; aqui só se desenha e se arrasta.
 export default function PlayerQuadros({
-  url, largura, altura, videoRef, quadro, nQuadros, pontos, ligacoes, alcas, marcacoesDe, estilo, mostrarEsqueleto, mostrarAngulos, podeCorrigir,
+  url, largura, altura, videoRef, quadro, nQuadros, pontos, ligacoes, alcas, fantasmas, marcacoesDe, estilo, mostrarEsqueleto, mostrarAngulos, podeCorrigir,
   aoCorrigir, aoDeslizar, tocando = false, aoPausar, alturaMaxDvh = 46, camadaExtra, aoArrastarExtra, aviso, gestosExtra,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -125,7 +129,7 @@ export default function PlayerQuadros({
       setPrevia(n);
     },
     aoIniciarArrasto: (nome) => {
-      const atual = nome.startsWith(PREFIXO_EXTRA) ? undefined : pontos?.[nome];
+      const atual = nome.startsWith(PREFIXO_EXTRA) ? undefined : pontos?.[nome] ?? fantasmas?.[nome];
       arrasto.current = atual ? { nome, inicio: { x: atual.x, y: atual.y } } : null;
       deslize.current = null;
     },
@@ -147,10 +151,9 @@ export default function PlayerQuadros({
   useEffect(() => { previaRef.current = null; setPrevia(null); arrasto.current = null; }, [quadro]);
 
   const pontosVisiveis = useMemo<PontosDoQuadro | null>(() => {
-    if (!pontos) return null;
-    if (!previa || !pontos[previa.nome]) return pontos;
+    if (!previa || (!pontos?.[previa.nome] && !fantasmas?.[previa.nome])) return pontos;
     return { ...pontos, [previa.nome]: { x: previa.x, y: previa.y, manual: true } };
-  }, [pontos, previa]);
+  }, [pontos, fantasmas, previa]);
 
   const k = escalaNaTela(escalaDoEstilo(largura, altura, zoom), pxPorUnidade, estilo.tamanhoRotulo);
   const contexto = useMemo(
@@ -170,14 +173,16 @@ export default function PlayerQuadros({
     const chave = `${url}#${quadro}`;
     if (lupaFonte.current?.chave === chave) return lupaFonte.current.url;
     const cv = document.createElement('canvas');
-    cv.width = v.videoWidth; cv.height = v.videoHeight;
-    cv.getContext('2d')?.drawImage(v, 0, 0);
+    const reducao = Math.min(1, LADO_MAX_LUPA_PX / Math.max(v.videoWidth, v.videoHeight));
+    cv.width = Math.max(1, Math.round(v.videoWidth * reducao)); cv.height = Math.max(1, Math.round(v.videoHeight * reducao));
+    cv.getContext('2d')?.drawImage(v, 0, 0, cv.width, cv.height);
     const u = cv.toDataURL('image/jpeg', 0.85);
     lupaFonte.current = { chave, url: u };
     return u;
   };
 
-  const alcasAtivas = podeCorrigir && !!pontosVisiveis && !mover;
+  const nomesFantasma = useMemo(() => alcas.filter((al) => !pontosVisiveis?.[al.nome] && !!fantasmas?.[al.nome]), [alcas, pontosVisiveis, fantasmas]);
+  const alcasAtivas = podeCorrigir && (!!pontosVisiveis || nomesFantasma.length > 0) && !mover;
   const larguraLinha = css(2.6), raioPonto = css(4.2), raioAlca = css(8), raioToque = css(TOQUE_ALCA_PX);
   const proporcao = altura > 0 ? largura / altura : 1.78;
   const nomeArrastado = previa?.nome ?? null;
@@ -185,10 +190,10 @@ export default function PlayerQuadros({
   // A alça mais perto do dedo (dentro do alvo de toque) é a que vai ser arrastada: com pontos próximos (joelhos cruzando na
   // marcha), a ordem de desenho não decide, a distância decide.
   const alcaMaisPerto = (e: React.PointerEvent<SVGSVGElement>): string | null => {
-    if (!alcasAtivas || !pontosVisiveis) return null;
+    if (!alcasAtivas) return null;
     const dedo = doEvento(e);
     if (!dedo) return null;
-    return alcaMaisProxima(pontosVisiveis, alcas.map((al) => al.nome), dedo, raioToque);
+    return alcaMaisProxima({ ...fantasmas, ...pontosVisiveis }, alcas.map((al) => al.nome), dedo, raioToque);
   };
 
   const aoPressionar = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -262,8 +267,17 @@ export default function PlayerQuadros({
                 {alcas.map((al) => { const p = pontosVisiveis[al.nome]; return p ? <circle key={al.nome} cx={p.x} cy={p.y} r={raioPonto} fill={p.manual ? '#fbbf24' : corDoPonto(al.nome)} stroke="#fff" strokeWidth={css(1.5)} /> : null; })}
               </g>
             )}
+            {alcasAtivas && nomesFantasma.map((al) => {
+              const p = fantasmas![al.nome];
+              return (
+                <g key={`fantasma-${al.nome}`} pointerEvents="none" data-testid={`alca-fantasma-${al.nome}`} aria-label={`${al.rotulo}: ponto não detectado neste quadro; arraste para posicionar`}>
+                  <circle cx={p.x} cy={p.y} r={raioToque} fill="transparent" />
+                  <circle cx={p.x} cy={p.y} r={raioAlca} fill={corDoPonto(al.nome)} fillOpacity={0.18} stroke="#fff" strokeWidth={css(2)} strokeDasharray={`${css(4)} ${css(3)}`} />
+                </g>
+              );
+            })}
             {alcasAtivas && alcas.map((al) => {
-              const p = pontosVisiveis![al.nome];
+              const p = pontosVisiveis?.[al.nome];
               if (!p) return null;
               const ativo = nomeArrastado === al.nome;
               return (

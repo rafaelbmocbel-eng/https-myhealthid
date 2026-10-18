@@ -25,7 +25,7 @@ import {
   avisosDoVideo, intervaloPadrao, marcasDoScrubber, opcoesDeTaxa, type IntervaloVideo,
 } from '@/lib/angular/analiseVideo/tempo';
 import { lerTextoDoArquivo } from '@/lib/angular/analiseVideo/videoUtil';
-import { LIGACOES_CORPO, marcacoesDoQuadro, pontosDasDefinicoes, pontosParaTela, quadroComPontos, rotuloDoPonto } from '@/lib/angular/analiseVideo/marcacoes';
+import { LIGACOES_CORPO, marcacoesDoQuadro, pontosDasDefinicoes, pontosParaTela, quadroComPontos, rotuloDoPonto, sugestoesDePontosAusentes } from '@/lib/angular/analiseVideo/marcacoes';
 import {
   bandasDoGrupo, cartoesDeMetricas, compararLados, eventoParaUi, grupoInicial, gruposDeArticulacoes, marcadoresDeEventos, marcadoresExtras, modeloParaUi, seriesDoGrupoDaAnalise,
 } from '@/lib/angular/analiseVideo/resultados';
@@ -183,6 +183,10 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   }, [defsVisiveis, modelo.eventos]);
   const pontosTela = useMemo<PontosDoQuadro | null>(() => pontosParaTela(quadroPose), [quadroPose]);
   const marcacoesDe = useCallback((p: PontosDoQuadro): MarcacaoAnguloUi[] => (quadroPose ? marcacoesDoQuadro(defsVisiveis, quadroComPontos(quadroPose, p), direcao) : []), [quadroPose, defsVisiveis, direcao]);
+  const fantasmas = useMemo<PontosDoQuadro>(
+    () => (etapa === 'analisar' && trilha && temRastreio ? sugestoesDePontosAusentes(trilha, quadro, alcas.map((a) => a.nome)) : {}),
+    [etapa, trilha, temRastreio, quadro, alcas],
+  );
   const corrigidosNoQuadro = trilha ? pontosCorrigidosNoQuadro(trilha, quadro) : [];
 
   // ---------- carregar o vídeo ----------
@@ -554,7 +558,10 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
   const emAnalise = etapa === 'analisar' || etapa === 'rastreando';
   const podeCorrigir = etapa === 'analisar' && !repro.tocando && !(aba === 'medir' && manual.ativaId) && temRastreio;
-  const avisoQuadro = etapa === 'analisar' && temRastreio && !pontosTela ? 'Corpo não detectado neste quadro' : null;
+  const temFantasma = Object.keys(fantasmas).length > 0;
+  let avisoQuadro: string | null = null;
+  if (etapa === 'analisar' && temRastreio && !pontosTela) avisoQuadro = temFantasma ? 'Corpo não detectado neste quadro. Arraste os pontos tracejados para posicioná-los.' : 'Corpo não detectado neste quadro';
+  else if (etapa === 'analisar' && podeCorrigir && temFantasma) avisoQuadro = 'Pontos tracejados: não detectados. Arraste até o lugar certo.';
   const avisosVideo = video ? avisosDoVideo({ duracao: video.duracao, largura: video.largura, altura: video.altura, tamanho: video.tamanho }).mensagens : [];
 
   if (etapa === 'enviar' || !video) {
@@ -603,7 +610,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
         <PlayerQuadros
           url={video.url} largura={video.largura} altura={video.altura} videoRef={videoRef} quadro={quadro} nQuadros={nQuadros}
-          pontos={etapa === 'analisar' ? pontosTela : etapa === 'rastreando' ? pontosParaTela(aoVivo ?? undefined) : null} ligacoes={LIGACOES_CORPO} alcas={alcas} marcacoesDe={marcacoesDe} estilo={estilo}
+          pontos={etapa === 'analisar' ? pontosTela : etapa === 'rastreando' ? pontosParaTela(aoVivo ?? undefined) : null} ligacoes={LIGACOES_CORPO} alcas={alcas} fantasmas={fantasmas} marcacoesDe={marcacoesDe} estilo={estilo}
           mostrarEsqueleto={mostrarEsqueleto} mostrarAngulos={mostrarAngulos} podeCorrigir={podeCorrigir}
           aoCorrigir={corrigir} aoDeslizar={repro.irPara} tocando={repro.tocando} aoPausar={repro.pausar} aviso={avisoQuadro}
           camadaExtra={etapa === 'analisar' ? manual.camada : undefined} aoArrastarExtra={manual.arrastar} gestosExtra={etapa === 'analisar' && aba === 'medir' ? manual.gestos : undefined}

@@ -318,4 +318,49 @@ describe('diálogo "Baixar vídeo analisado"', () => {
     await waitFor(() => expect(mocks.exportar).toHaveBeenCalled());
     expect(mocks.exportar.mock.calls[0][0]).toMatchObject({ cartoes, series, marcadores, bandas, direcao: 1, titulo: 'Marcha (caminhada)' });
   });
+  it('o quadro em PNG também espera a conferência do rosto quando o app não o localizou em todos os quadros', async () => {
+    prepararPrevia({ porOrigem: { pose: 60, vizinho: 0, fixa: 40 }, semRosto: true });
+    render(<ExportarVideoDialog {...props()} />);
+    await aguardarPrevia();
+    await waitFor(() => expect(screen.getByTestId('conferir-rosto-video')).toBeInTheDocument());
+    expect(screen.getByTestId('baixar-quadro-previa')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('baixar-quadro-previa'));
+    expect(mocks.png).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText(TEXTO_ROSTO_CONFERIDO));
+    await waitFor(() => expect(screen.getByTestId('baixar-quadro-previa')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('baixar-quadro-previa'));
+    await waitFor(() => expect(mocks.baixarBlob).toHaveBeenCalledTimes(1));
+  });
+
+  it('o texto do rosto só diz "em todos os quadros" quando é verdade: quadros por vizinhança são ditos como tal', async () => {
+    prepararPrevia({ porOrigem: { pose: 90, vizinho: 10, fixa: 0 }, semRosto: false });
+    render(<ExportarVideoDialog {...props()} />);
+    await aguardarPrevia();
+    await waitFor(() => expect(screen.getByTestId('dica-rosto-video')).toHaveTextContent(/em 10% dos quadros a posição vem dos quadros vizinhos/));
+    expect(screen.getByTestId('dica-rosto-video')).not.toHaveTextContent(/em todos os quadros/);
+  });
+
+  it('fora do app nativo não cria endereço de arquivo para o vídeo gravado (a URL ficaria retida sem uso)', async () => {
+    render(<ExportarVideoDialog {...props()} />);
+    await aguardarPrevia();
+    await waitFor(() => expect(botaoBaixar()).toBeEnabled());
+    fireEvent.click(botaoBaixar());
+    await waitFor(() => expect(screen.getByTestId('resultado-video')).toBeInTheDocument());
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('fechar o diálogo durante a gravação devolve a página na hora, sem esperar a gravação terminar de cancelar', async () => {
+    const outro = document.createElement('div');
+    outro.style.visibility = 'visible';
+    document.body.appendChild(outro);
+    mocks.exportar.mockImplementation(() => new Promise<Blob>(() => undefined));
+    const { rerender } = render(<ExportarVideoDialog {...props()} />);
+    await aguardarPrevia();
+    await waitFor(() => expect(botaoBaixar()).toBeEnabled());
+    fireEvent.click(botaoBaixar());
+    await waitFor(() => expect(outro.style.visibility).toBe('hidden'));
+    rerender(<ExportarVideoDialog {...props({ aberto: false })} />);
+    await waitFor(() => expect(outro.style.visibility).toBe('visible'));
+    outro.remove();
+  });
 });

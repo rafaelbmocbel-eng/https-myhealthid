@@ -190,7 +190,7 @@ export function notasDasMetricas(cartoes: CartaoMetricaUi[]): string[] {
   return cartoes.flatMap((c) => {
     const incertezas = [...new Set(c.valores.flatMap((v) => (v.incerteza ? [v.incerteza] : [])))];
     const partes = [c.detalhe, ...incertezas, c.formula ? `Cálculo: ${c.formula}` : undefined, ...c.avisos].filter((x): x is string => !!x);
-    return partes.length ? [`${c.titulo}: ${partes.map((p) => (/[.!?)]$/.test(p) ? p : `${p}.`)).join(' ')}`] : [];
+    return partes.length ? [`${c.titulo}: ${partes.map((p) => (/[.!?]$/.test(p) ? p : `${p}.`)).join(' ')}`] : [];
   });
 }
 

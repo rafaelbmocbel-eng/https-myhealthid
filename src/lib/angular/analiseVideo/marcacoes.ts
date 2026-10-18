@@ -108,10 +108,32 @@ export function quadroComPontos(quadro: QuadroPose, sobre: PontosDoQuadro): Quad
   const pontos = { ...quadro.pontos };
   for (const [nome, p] of Object.entries(sobre)) {
     const atual = pontos[nome];
-    if (!atual) continue;
+    // Um ponto que o detector não achou e o profissional está posicionando (alça fantasma) ainda não existe no quadro.
+    if (!atual) { pontos[nome] = { x: p.x, y: p.y, manual: true, conf: 1 }; continue; }
     if (atual.x !== p.x || atual.y !== p.y) pontos[nome] = { ...atual, x: p.x, y: p.y, manual: true, conf: 1 };
   }
   return { ...quadro, pontos };
+}
+
+/**
+ * Onde sugerir os pontos que o detector perdeu no quadro (ausentes ou com confiança baixa), para o profissional arrastá-los até o lugar
+ * certo e criar o quadro-chave: o valor bruto do próprio quadro, se houver, ou a posição do quadro mais próximo (até `janela` quadros
+ * de distância) em que o ponto é utilizável. Pontos utilizáveis no quadro não entram: já têm alça de verdade.
+ */
+export function sugestoesDePontosAusentes(trilha: TrilhaPose, indice: number, nomes: readonly string[], janela = 15): PontosDoQuadro {
+  const quadro = trilha.quadros[indice];
+  const saida: PontosDoQuadro = {};
+  if (!quadro) return saida;
+  for (const nome of nomes) {
+    if (pontoDoQuadro(quadro, nome)) continue;
+    const bruto = quadro.pontos[nome];
+    if (bruto && Number.isFinite(bruto.x) && Number.isFinite(bruto.y)) { saida[nome] = { x: bruto.x, y: bruto.y }; continue; }
+    for (let d = 1; d <= janela; d++) {
+      const vizinho = pontoDoQuadro(trilha.quadros[indice - d], nome) ?? pontoDoQuadro(trilha.quadros[indice + d], nome);
+      if (vizinho) { saida[nome] = { x: vizinho.x, y: vizinho.y }; break; }
+    }
+  }
+  return saida;
 }
 
 export const LIGACOES_CORPO: LigacaoUi[] = (() => {

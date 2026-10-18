@@ -986,10 +986,11 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
     }
     const duracaoReal = (performance.now() - inicio) / 1000;
     fonteTempo.parar();
+    // Sem repintar, o Chrome não codifica quadro novo: o último quadro analisado ficaria com tempo zero e o arquivo sairia mais curto
+    // (medido: 0,1× em 0,5 s dava 4,7 s em vez de 5 s). O quadro final precisa de uma folga antes do stop() para ser codificado.
+    r.repintar();
     empurrar();
     await esperarMs(periodo * 2, op.sinal);
-    // Sem repintar, o Chrome não codifica quadro novo: o último quadro analisado ficaria com tempo zero e o arquivo sairia mais curto.
-    r.repintar();
     empurrar();
     // Só `stop()`: pedir um pedaço antes (`requestData`) obriga o Chrome a fechar o cabeçalho cedo, com uma duração provisória de 1 ms.
     if (gravador.state !== 'inactive') gravador.stop();
