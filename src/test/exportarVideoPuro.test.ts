@@ -389,6 +389,19 @@ describe('layout do quadro composto', () => {
     confere(original, 1080, 1920);
   });
 
+  it('nas caixas fixas da arte (story, feed, quadrado) a segunda linha da situação não tira cartões: aparecem tantos quanto com uma linha', () => {
+    const caixas = [{ largura: 845, altura: 1148 }, { largura: 857, altura: 1036 }, { largura: 857, altura: 766 }];
+    for (const c of caixas) {
+      for (const grafico of [false, true]) {
+        const base = { larguraVideo: 960, alturaVideo: 540, largura: c.largura, altura: c.altura, grafico, nCartoes: 6, cartaoAlto: true };
+        const uma = calcularLayoutConteudo(base);
+        const duas = calcularLayoutConteudo({ ...base, situacaoEmDuasLinhas: true });
+        expect(duas.cartoesVisiveis, `${c.largura}x${c.altura} grafico ${grafico}`).toBe(uma.cartoesVisiveis);
+        confere(duas, 960, 540);
+      }
+    }
+  });
+
   it('caixa fixa da arte (story, feed, quadrado): tudo cabe nela e o vídeo cede espaço aos painéis', () => {
     const caixas = [{ largura: 972, altura: 1520 }, { largura: 984, altura: 1230 }, { largura: 984, altura: 984 }, { largura: 1080, altura: 1920 }];
     for (const [vw, vh] of videos) {

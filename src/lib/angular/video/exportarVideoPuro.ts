@@ -454,7 +454,9 @@ function layoutNatural(e: EntradaLayoutConteudo, W: number): LayoutConteudo {
 function layoutFixo(e: EntradaLayoutConteudo, W: number, H: number): LayoutConteudo {
   const b = medidasBase(W, e.cartaoAlto, e.situacaoEmDuasLinhas);
   const barra: Retangulo = { x: 0, y: 0, w: W, h: b.alturaBarra };
-  const linhasMaxCartoes = Math.max(1, Math.floor((H * FRACAO_CARTOES_MAX + b.espacoCartoes) / (b.alturaCartao + b.espacoCartoes)));
+  // A linha a mais da situação não pode tirar cartões da arte: a faixa dos cartões cresce na mesma proporção da altura deles.
+  const fracaoCartoes = e.cartaoAlto && e.situacaoEmDuasLinhas ? (FRACAO_CARTOES_MAX * ALTURA_CARTAO_FONTES.comSituacaoEmDuasLinhas) / ALTURA_CARTAO_FONTES.comSituacao : FRACAO_CARTOES_MAX;
+  const linhasMaxCartoes = Math.max(1, Math.floor((H * fracaoCartoes + b.espacoCartoes) / (b.alturaCartao + b.espacoCartoes)));
   const c = e.nCartoes > 0 ? cartoesNaAltura(e.nCartoes, b.colunas, b.alturaCartao, b.espacoCartoes, linhasMaxCartoes) : null;
   const hCartoes = c ? c.altura : 0;
   let hGrafico = e.grafico ? Math.min(Math.round(W * FRACAO_GRAFICO), Math.round(H * FRACAO_GRAFICO)) : 0;
