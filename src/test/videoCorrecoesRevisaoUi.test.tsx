@@ -102,19 +102,22 @@ describe('taxa efetiva da análise', () => {
     intervalo: { inicio: 0, fim }, aoIntervalo: vi.fn(), avisos: [], aoRastrear: vi.fn(), aoSoMedir: vi.fn(), aoTrocarVideo: vi.fn(),
   });
 
-  it('60 q/s num trecho de 30 s avisa que sai a 40 q/s e diz o trecho que mantém os 60', () => {
+  it('60 q/s num trecho de 30 s não cabe: diz o máximo, oferece as saídas e não deixa rastrear (nada é reduzido em silêncio)', () => {
     render(<EscolherModelo {...props(60, 30)} />);
-    const aviso = screen.getByTestId('aviso-taxa-reduzida');
-    expect(aviso).toHaveTextContent(/40 q\/s, e não a 60 q\/s/);
-    expect(aviso).toHaveTextContent(/trecho de até 20 s/);
+    const aviso = screen.getByTestId('aviso-limite-trecho');
+    expect(aviso).toHaveTextContent(/não cabe a 60 q\/s: o máximo é 20 s/);
+    expect(screen.getByTestId('sugerir-taxa')).toHaveTextContent('Para 30 s use até 40 q/s');
+    expect(screen.getByTestId('botao-rastrear')).toBeDisabled();
+    expect(screen.queryByTestId('aviso-taxa-reduzida')).toBeNull();
   });
 
-  it('trecho que cabe no limite não avisa', () => {
+  it('trecho que cabe no limite não avisa e deixa rastrear', () => {
     render(<EscolherModelo {...props(60, 20)} />);
-    expect(screen.queryByTestId('aviso-taxa-reduzida')).toBeNull();
+    expect(screen.queryByTestId('aviso-limite-trecho')).toBeNull();
+    expect(screen.getByTestId('botao-rastrear')).toBeEnabled();
     cleanup();
     render(<EscolherModelo {...props(30, 30)} />);
-    expect(screen.queryByTestId('aviso-taxa-reduzida')).toBeNull();
+    expect(screen.queryByTestId('aviso-limite-trecho')).toBeNull();
   });
 });
 

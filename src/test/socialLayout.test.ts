@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { estimarLargura } from '@/lib/social/fontes';
 import {
-  FORMATOS, ORDEM_FORMATOS, layoutEfetivo, layoutSugerido, layoutsDisponiveis, margensDoFormato, tituloModoSugerido,
+  FORMATOS, ORDEM_FORMATOS, layoutEfetivo, layoutSugerido, layoutsDisponiveis, margensDoFormato, tituloModoSugerido, zonaSeguraDoTexto,
   type FormatoSocial, type LayoutArte, type Retangulo, type TituloModo,
 } from '@/lib/social/formatos';
 import {
   ENQUADRAMENTO_PADRAO, PERDA_MAXIMA_PREENCHER, ZOOM_MAX, ajusteSugerido, arrastarEnquadramento, caberNaCaixa, enquadramentoPorRosto, fracaoDaFotoSob, janelaDaImagem, posicaoNaArte, zoomarEnquadramento,
 } from '@/lib/social/geometria';
 import {
-  ALTURA_PILULA, calcularLayoutSocial, ajustarTitulo, cortarComReticencias, fonteQueCabe, larguraDoTexto, normalizarTitulo, type ParametrosLayout,
+  ALTURA_PILULA, FONTE_NOTA, calcularLayoutSocial, ajustarTitulo, cortarComReticencias, fonteQueCabe, larguraDoTexto, normalizarTitulo, type ParametrosLayout,
 } from '@/lib/social/layout';
 
 const medir = estimarLargura;
@@ -209,6 +209,57 @@ describe('outras disposições', () => {
     expect(l.rotulos).toHaveLength(2);
     expect(l.rotulos[0].texto).toBe('');
     expect(l.rotulos[1].data).toBe('');
+  });
+});
+
+describe('nota fixa no pé da arte (ex.: "Estimativa por vídeo · não é diagnóstico")', () => {
+  const NOTA = 'Estimativa por vídeo · não é diagnóstico · * ver ressalvas no PDF';
+
+  it('sem nota nada muda: não há faixa de nota', () => {
+    expect(calcularLayoutSocial(base(), medir).nota).toBeNull();
+    expect(calcularLayoutSocial(base({ nota: '   ' }), medir).nota).toBeNull();
+  });
+
+  it('no story fica dentro da zona que o Instagram não cobre (14% de cima e 20% de baixo), com ou sem as margens de Stories', () => {
+    const zona = zonaSeguraDoTexto('story');
+    expect(zona).toEqual({ topo: 269, base: 1536 });
+    for (const margensStories of [true, false]) {
+      for (const legenda of ['3ª Semana de PO', '']) {
+        const l = calcularLayoutSocial(base({ nota: NOTA, margensStories, nPaineis: 1, layout: 'unica', legenda, perfis: legenda ? ['rafael'] : [] }), medir);
+        expect(l.nota, `${margensStories} ${legenda}`).not.toBeNull();
+        const n = l.nota!;
+        expect(n.caixa.y).toBeGreaterThanOrEqual(zona.topo);
+        expect(n.caixa.y + n.caixa.h).toBeLessThanOrEqual(zona.base);
+        expect(n.baseY).toBeLessThanOrEqual(zona.base);
+        expect(dentroDe(n.caixa, 1080, 1920)).toBe(true);
+      }
+    }
+  });
+
+  it('nos outros formatos fica longe da borda e nunca sobre as fotos, a pílula ou os perfis', () => {
+    for (const formato of ['story', 'feed', 'quadrado'] as FormatoSocial[]) {
+      const l = calcularLayoutSocial(base({ formato, nota: NOTA, nPaineis: 1, layout: 'unica', tituloModo: 'horizontal' }), medir);
+      const n = l.nota!;
+      expect(FORMATOS[formato].altura - (n.caixa.y + n.caixa.h)).toBeGreaterThanOrEqual(48);
+      for (const painel of l.paineis) expect(sobrepoe(n.caixa, painel), formato).toBe(false);
+      if (l.pilula) expect(sobrepoe(n.caixa, l.pilula.caixa), formato).toBe(false);
+      if (l.rodape) expect(sobrepoe(n.caixa, l.rodape), formato).toBe(false);
+    }
+  });
+
+  it('o texto é proporcional ao quadro (2,4% da largura), legível no celular, e nunca é cortado: se não couber, o corpo encolhe', () => {
+    const l = calcularLayoutSocial(base({ nota: NOTA, nPaineis: 1, layout: 'unica' }), medir);
+    expect(l.nota!.texto).toBe(NOTA);
+    expect(l.nota!.fonte).toBeGreaterThanOrEqual(20);
+    expect(larguraDoTexto(medir, NOTA, l.nota!.fonte, 'texto')).toBeLessThanOrEqual(l.nota!.caixa.w + 0.5);
+    const curta = calcularLayoutSocial(base({ nota: 'Estimativa por vídeo · não é diagnóstico', nPaineis: 1, layout: 'unica' }), medir);
+    expect(curta.nota!.fonte).toBe(FONTE_NOTA);
+    expect(FONTE_NOTA / 1080).toBeGreaterThan(0.023);
+  });
+
+  it('a nota é centralizada na largura da arte', () => {
+    const l = calcularLayoutSocial(base({ nota: NOTA, nPaineis: 1, layout: 'unica' }), medir);
+    expect(l.nota!.centroX).toBe(540);
   });
 });
 

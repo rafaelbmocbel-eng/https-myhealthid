@@ -1,4 +1,4 @@
-import { FORMATOS, layoutEfetivo, margensDoFormato, type FormatoSocial, type LayoutArte, type MargensArte, type Retangulo, type TituloModo } from './formatos';
+import { FORMATOS, layoutEfetivo, margensDoFormato, zonaSeguraDoTexto, type FormatoSocial, type LayoutArte, type MargensArte, type Retangulo, type TituloModo } from './formatos';
 import { limitar } from './geometria';
 
 /*
@@ -31,6 +31,13 @@ export const FONTE_PILULA = 34;
 const FONTE_PILULA_MIN = 26;
 export const FONTE_PERFIL = 30;
 export const PASSO_PERFIL = 44;
+/** Nota fixa da arte (ex.: aviso de que a medida não é diagnóstico): pequena, mas legível no celular (2,4% da largura de 1080 px). */
+export const FONTE_NOTA = 26;
+const FONTE_NOTA_MIN = 20;
+export const ALTURA_NOTA = 36;
+const GAP_NOTA = 24;
+/** Folga entre a nota e o limite da zona segura (no story, o início da faixa que o Instagram cobre embaixo). */
+const FOLGA_NOTA = 14;
 export const DIAMETRO_SELO = 100;
 export const PASSO_TITULO = 0.92;
 const FONTE_TITULO_MAX = 150;
@@ -127,6 +134,17 @@ export interface ParametrosLayout {
   temAvatar?: boolean;
   temSelo?: boolean;
   perfis?: string[];
+  /** Nota de uma linha, centralizada no pé da arte, sempre fora das faixas que a interface do Instagram cobre. Nunca é cortada: o corpo encolhe. */
+  nota?: string;
+}
+
+export interface NotaLayout {
+  texto: string;
+  fonte: number;
+  caixa: Retangulo;
+  /** Centro horizontal do texto. */
+  centroX: number;
+  baseY: number;
 }
 
 export interface TituloLayout {
@@ -183,6 +201,7 @@ export interface LayoutSocial {
   perfis: PerfisLayout | null;
   selo: SeloLayout | null;
   rodape: Retangulo | null;
+  nota: NotaLayout | null;
 }
 
 export const normalizarTitulo = (t: string | undefined) => (t ?? '').trim().replace(/\s+/g, ' ').toLocaleUpperCase('pt-BR');
@@ -207,9 +226,23 @@ export function calcularLayoutSocial(p: ParametrosLayout, medir: Medidor): Layou
   const recuoBasePilula = ALTURA_PILULA / 2 - (ALTURA_CAPITAL.texto * FONTE_PILULA_MIN) / 2;
   const alturaPerfis = legenda ? (perfis.length - 1) * PASSO_PERFIL + recuoBasePilula + ALTURA_CAPITAL.texto * FONTE_PERFIL : perfis.length * PASSO_PERFIL;
   const rodapeH = Math.max(legenda ? ALTURA_PILULA : 0, perfis.length ? alturaPerfis : 0);
-  const baseTexto = H - mg.texto.base;
+
+  // ---- nota: a faixa mais baixa da arte; legenda, perfis e fotos acabam acima dela ----
+  const textoNota = (p.nota ?? '').trim();
+  let nota: NotaLayout | null = null;
+  let baseTexto = H - mg.texto.base;
+  let baseFotosMax = H - mg.fotos.base;
+  if (textoNota) {
+    const larguraNota = W - mg.texto.esq - mg.texto.dir;
+    const fonte = fonteQueCabe(medir, textoNota, 'texto', FONTE_NOTA, larguraNota, FONTE_NOTA_MIN);
+    const baseDaNota = Math.min(H - mg.texto.base, zonaSeguraDoTexto(p.formato).base) - FOLGA_NOTA;
+    const caixa: Retangulo = { x: mg.texto.esq, y: baseDaNota - ALTURA_NOTA, w: larguraNota, h: ALTURA_NOTA };
+    nota = { texto: textoNota, fonte, caixa, centroX: W / 2, baseY: caixa.y + caixa.h / 2 + (ALTURA_CAPITAL.texto * fonte) / 2 };
+    baseTexto = caixa.y - GAP_NOTA;
+    baseFotosMax = baseTexto;
+  }
   const rodapeY = baseTexto - rodapeH;
-  const baseFotos = rodapeH ? rodapeY - GAP_RODAPE : H - mg.fotos.base;
+  const baseFotos = rodapeH ? rodapeY - GAP_RODAPE : baseFotosMax;
   const rodape: Retangulo | null = rodapeH ? { x: mg.texto.esq, y: rodapeY, w: W - mg.texto.esq - mg.texto.dir, h: rodapeH } : null;
 
   // ---- cabeçalho ou coluna lateral do título ----
@@ -339,5 +372,5 @@ export function calcularLayoutSocial(p: ParametrosLayout, medir: Medidor): Layou
     perfisLay = { fonte: FONTE_PERFIL, linhas };
   }
 
-  return { formato: p.formato, layout: L, largura: W, altura: H, margens: mg, tituloModo: modo, rotulosGirados: girados, regiaoFotos: regiao, paineis, titulo, rotulos, pilula, perfis: perfisLay, selo, rodape };
+  return { formato: p.formato, layout: L, largura: W, altura: H, margens: mg, tituloModo: modo, rotulosGirados: girados, regiaoFotos: regiao, paineis, titulo, rotulos, pilula, perfis: perfisLay, selo, rodape, nota };
 }

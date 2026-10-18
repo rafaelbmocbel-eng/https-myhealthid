@@ -3,6 +3,7 @@ import type { CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
 import {
   CANDIDATOS_MIME, ErroExportacao, LIMITES_EXPORTACAO, MAX_CARTOES_ORIGINAL, MENSAGEM_SEM_GRAVACAO, ORDEM_FORMATOS_VIDEO, VELOCIDADES_EXPORTACAO, ajustarTrecho,
   avaliarSuporteGravacao, avisoDoTipoDeArquivo, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida, ehFormatoSocial, erroDeCancelamento, escolherMime, extensaoDoMime,
+  FRACAO_FONTE_RODAPE, RODAPE_VIDEO, RODAPE_VIDEO_COM_AVISO, prefixoDaReferencia, situacaoSemFonte,
   itensDeCartoes, itensDeLinhas, nomeArquivoVideo, nomeSeguroParaArquivo, par, planejarSaida, progressoDaSaida, quadroNaSaida, quebrarTexto, rotuloTempo, rotuloVelocidade,
   retanguloQueCobre, separarReferencia, tamanhoOriginal, temSobraNaArea, tempoDaFonte, tempoDaSaida, trechoMaximoS, trechoPadrao, truncarTexto, validarExportacao, type EntradaValidacao, type LayoutConteudo,
 } from '@/lib/angular/video/exportarVideoPuro';
@@ -238,6 +239,40 @@ describe('textos', () => {
     expect(itens[0].referencia).toBe('≥ 100 passos/min · Tudor-Locke et al., 2018 · PMID 30000001');
     expect(itens[0].valores[0].status).toBe('dentro');
     expect(itens[1].referencia).toBeNull();
+    // sem faixa de médias nem limiar não há situação em texto: o cartão segue só com o símbolo
+    expect(itens[0].situacao).toBeUndefined();
+    expect(itens[1].situacao).toBeUndefined();
+  });
+
+  it('limiar e faixa de médias: o mesmo símbolo neutro dos dois lados e a situação em texto com a fonte; a referência diz o que é', () => {
+    const limiar = (valor: number, status: 'dentro' | 'fora'): CartaoMetricaUi => ({
+      chave: 'cadencia', titulo: 'Cadência', valores: [{ lado: null, texto: `${valor} passos/min`, status, ...(status === 'dentro' ? { dentroDe: ['cadencia.tudor2018'] } : {}) }],
+      referencias: [{ chave: 'cadencia.tudor2018', faixa: '≥ 100 passos/min', populacao: 'Adultos', citacao: 'Tudor-Locke C, et al. 2018', rotulo: 'Tudor-Locke et al., 2018', pmid: '29858465', tipo: 'limiar_heuristico', limiteMin: '100 passos/min' }],
+      contexto: [], avisos: [],
+    });
+    const [dentro] = itensDeCartoes([limiar(109, 'dentro')]);
+    const [fora] = itensDeCartoes([limiar(90, 'fora')]);
+    expect(dentro.valores[0].status).toBe('neutro');
+    expect(fora.valores[0].status).toBe('neutro');
+    expect(dentro.situacao).toBe('acima do limiar de 100 passos/min (Tudor-Locke et al., 2018)');
+    expect(fora.situacao).toBe('abaixo do limiar de 100 passos/min (Tudor-Locke et al., 2018)');
+    expect(prefixoDaReferencia(dentro.natureza)).toBe('Limiar: ');
+    expect(prefixoDaReferencia('faixa_de_medias')).toBe('Médias do estudo: ');
+    expect(prefixoDaReferencia('normalidade')).toBe('Ref.: ');
+  });
+
+  it('situacaoSemFonte tira só o rótulo entre parênteses do fim, mantendo o resto', () => {
+    expect(situacaoSemFonte('acima do limiar de 100 passos/min (Tudor-Locke et al., 2018)')).toBe('acima do limiar de 100 passos/min');
+    expect(situacaoSemFonte('D dentro · E fora da faixa das médias do estudo (Bohannon e Andrews, 2011)')).toBe('D dentro · E fora da faixa das médias do estudo');
+    expect(situacaoSemFonte('sem referência')).toBe('sem referência');
+  });
+});
+
+describe('aviso fixo do vídeo', () => {
+  it('é o mesmo texto em todo lugar e o aviso de ressalvas só o acrescenta', () => {
+    expect(RODAPE_VIDEO).toBe('Estimativa por vídeo · não é diagnóstico');
+    expect(RODAPE_VIDEO_COM_AVISO.startsWith(RODAPE_VIDEO)).toBe(true);
+    expect(RODAPE_VIDEO_COM_AVISO).toMatch(/ressalvas no PDF/);
   });
 });
 
@@ -297,12 +332,52 @@ describe('layout do quadro composto', () => {
     confere(l, 1080, 1920);
   });
 
-  it('sem gráfico nem cartões o quadro é o vídeo com a faixa do topo', () => {
+  it('sem gráfico nem cartões o quadro é a faixa do topo, o vídeo e a faixa do aviso no pé', () => {
     const l = tamanhoOriginal(1280, 720, false, 0);
     expect(l.largura).toBe(1080);
     expect(l.grafico).toBeNull();
     expect(l.cartoes).toBeNull();
-    expect(l.altura).toBe(par(l.barra.h + (1080 * 720) / 1280));
+    expect(l.rodape).not.toBeNull();
+    expect(l.areaVideo.h).toBe(par((1080 * 720) / 1280));
+    expect(l.altura).toBe(par(l.barra.h + l.areaVideo.h + (l.rodape?.h ?? 0)));
+  });
+
+  it('formato original: o aviso tem faixa própria abaixo de tudo, proporcional ao quadro e longe da borda de baixo', () => {
+    for (const [vw, vh] of videos) {
+      for (const grafico of [true, false]) {
+        for (const n of [0, 3, 12]) {
+          const l = tamanhoOriginal(vw, vh, grafico, n, n > 0);
+          const r = l.rodape;
+          expect(r).not.toBeNull();
+          if (!r) continue;
+          let fim = l.areaVideo.y + l.areaVideo.h;
+          for (const painel of [l.grafico, l.cartoes]) if (painel) fim = Math.max(fim, painel.y + painel.h);
+          expect(r.y).toBeGreaterThanOrEqual(fim);
+          expect(r.y + r.h).toBeLessThanOrEqual(l.altura);
+          expect(r.w).toBe(l.largura);
+          // corpo ~2,4% da largura (9 pt num celular de 390 pt com o quadro de 1080 px na tela toda)
+          expect(l.fonteRodape).toBeGreaterThanOrEqual(Math.round(l.largura * FRACAO_FONTE_RODAPE) - 1);
+          expect(l.fonteRodape).toBeGreaterThanOrEqual(10);
+          // linha de base do texto, no centro da faixa: longe do pé do quadro (mais de uma altura de letra)
+          expect(l.altura - (r.y + r.h / 2)).toBeGreaterThan(l.fonteRodape * 1.2);
+        }
+      }
+    }
+  });
+
+  it('nos formatos sociais o aviso vai na moldura da arte, não no conteúdo', () => {
+    const l = calcularLayoutConteudo({ larguraVideo: 1280, alturaVideo: 720, largura: 972, altura: 1300, grafico: true, nCartoes: 4 });
+    expect(l.rodape).toBeNull();
+  });
+
+  it('cartões com a linha da situação ficam mais altos, e o quadro continua cabendo no limite', () => {
+    const normal = calcularLayoutConteudo({ larguraVideo: 1280, alturaVideo: 720, largura: 972, altura: 1300, grafico: true, nCartoes: 4 });
+    const alto = calcularLayoutConteudo({ larguraVideo: 1280, alturaVideo: 720, largura: 972, altura: 1300, grafico: true, nCartoes: 4, cartaoAlto: true });
+    expect(alto.alturaCartao).toBeGreaterThan(normal.alturaCartao);
+    confere(alto, 1280, 720);
+    const original = tamanhoOriginal(1080, 1920, true, 8, true);
+    expect(original.altura).toBeLessThanOrEqual(LIMITES_EXPORTACAO.alturaMaxima);
+    confere(original, 1080, 1920);
   });
 
   it('caixa fixa da arte (story, feed, quadrado): tudo cabe nela e o vídeo cede espaço aos painéis', () => {

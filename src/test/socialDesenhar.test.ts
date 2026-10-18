@@ -224,6 +224,25 @@ describe('desenharArteSocial', () => {
     const o = opcoes();
     expect(desenharArteSocial(ctx, o, [foto(), foto()], {}, 1)).toEqual(layoutDaArte(o, 2, {}));
   });
+
+  it('a nota é escrita inteira, centralizada, na zona que o Instagram não cobre, sem sobrepor a pílula nem os perfis', () => {
+    const { ctx, chamadas } = contextoGravador();
+    const nota = 'Estimativa por vídeo · não é diagnóstico';
+    const layout = desenharArteSocial(ctx, opcoes({ nota, layout: 'unica' }), [foto()], {}, 1);
+    expect(textos(chamadas)).toContain(nota);
+    const n = layout.nota!;
+    expect(n.baseY).toBeLessThanOrEqual(1536);
+    expect(n.caixa.y).toBeGreaterThanOrEqual(269);
+    expect(layout.pilula!.caixa.y + layout.pilula!.caixa.h).toBeLessThanOrEqual(n.caixa.y);
+    const desenho = chamadas.find((c) => c.nome === 'fillText' && c.args[0] === nota)!;
+    expect(desenho.args.slice(1)).toEqual([540, n.baseY]);
+  });
+
+  it('sem nota nada é escrito além do que já era', () => {
+    const { ctx, chamadas } = contextoGravador();
+    desenharArteSocial(ctx, opcoes(), [foto(), foto()], {}, 1);
+    expect(textos(chamadas).join('|')).not.toMatch(/diagnóstico/);
+  });
 });
 
 describe('desenharMolduraSocial (etapa do vídeo)', () => {

@@ -4,7 +4,7 @@ import { protegerRosto } from './borrar';
 import { fonteCss, garantirFontesSociais, medidorDoCanvas } from './fontes';
 import { FORMATOS, layoutEfetivo, type FormatoSocial, type LayoutArte, type Retangulo, type TituloModo } from './formatos';
 import { ENQUADRAMENTO_PADRAO, janelaDaImagem, type Enquadramento, type ModoAjuste, type PerfilMarcas } from './geometria';
-import { ALTURA_CAPITAL, calcularLayoutSocial, larguraDoTexto, type LayoutSocial, type Medidor, type PilulaLayout, type RotuloLayout, type SeloLayout, type TituloLayout } from './layout';
+import { ALTURA_CAPITAL, calcularLayoutSocial, larguraDoTexto, type LayoutSocial, type Medidor, type NotaLayout, type PilulaLayout, type RotuloLayout, type SeloLayout, type TituloLayout } from './layout';
 import { caixaRostoPadrao, type CaixaRosto, type ModoRosto } from './rosto';
 
 /*
@@ -35,6 +35,8 @@ export interface OpcoesArte {
   modoRosto?: ModoRosto;
   /** Região do rosto de cada foto (fração da foto); sem ela, vale a caixa padrão do alto da foto (`caixaRostoPadrao`). */
   rostos?: (CaixaRosto | null | undefined)[];
+  /** Nota de uma linha no pé da arte, dentro da zona que o Instagram não cobre (ex.: "Estimativa por vídeo · não é diagnóstico"). */
+  nota?: string;
 }
 
 export interface SeloImagem { imagem: CanvasImageSource; /** "logo" ganha um fundo claro para qualquer logo ser legível; "marca" é a marca branca do app. */ tipo: 'marca' | 'logo' }
@@ -431,6 +433,16 @@ function desenharPerfis(ctx: CanvasRenderingContext2D, linhas: { texto: string; 
   ctx.restore();
 }
 
+function desenharNota(ctx: CanvasRenderingContext2D, n: NotaLayout) {
+  ctx.save();
+  ctx.font = fonteCss('texto', n.fonte);
+  ctx.fillStyle = 'rgba(255,255,255,0.82)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(n.texto, n.centroX, n.baseY);
+  ctx.restore();
+}
+
 const enquadramentoDe = (o: OpcoesArte, i: number): Enquadramento => o.enquadramentos?.[i] ?? ENQUADRAMENTO_PADRAO;
 const ajusteDe = (o: OpcoesArte, i: number): ModoAjuste => (Array.isArray(o.modoAjuste) ? o.modoAjuste[i] : o.modoAjuste) ?? 'inteira';
 
@@ -440,7 +452,7 @@ export function layoutDaArte(o: OpcoesArte, nPaineis: number, recursos: Recursos
   return calcularLayoutSocial({
     formato: o.formato, layout: o.layout, nPaineis, margensStories: o.margensStories !== false,
     titulo: o.titulo, tituloModo: o.tituloModo ?? 'vertical', rotulos: o.rotulos, datas: mostrarDatas ? o.datas : [],
-    legenda: o.legenda, temAvatar: !!recursos.avatar, temSelo: !!recursos.selo, perfis: o.perfis,
+    legenda: o.legenda, temAvatar: !!recursos.avatar, temSelo: !!recursos.selo, perfis: o.perfis, nota: o.nota,
   }, medir);
 }
 
@@ -461,6 +473,7 @@ export function desenharArteSocial(ctx: CanvasRenderingContext2D, o: OpcoesArte,
   if (layout.selo && recursos.selo) desenharSelo(ctx, layout.selo, recursos.selo);
   if (layout.pilula) desenharPilula(ctx, layout.pilula, recursos.avatar);
   if (layout.perfis) desenharPerfis(ctx, layout.perfis.linhas, layout.perfis.fonte);
+  if (layout.nota) desenharNota(ctx, layout.nota);
   ctx.restore();
   return layout;
 }

@@ -3,9 +3,8 @@ import { Activity, ArrowDownToLine, ArrowUpFromLine, Dumbbell, Footprints, Hand,
 import { cn } from '@/lib/utils';
 import type { VideoCarregado } from '@/lib/angular/analiseVideo/carregarVideo';
 import { FPS_COMUNS } from '@/lib/angular/analiseVideo/carregarVideo';
-import { DURACAO_SUGERIDA_S, ajustarIntervalo, estimativaDoRastreio, formatarSegundos, opcoesDeTaxa, type IntervaloVideo } from '@/lib/angular/analiseVideo/tempo';
+import { ajustarIntervalo, estimativaDoRastreio, formatarSegundos, maiorTaxaQueComporta, opcoesDeTaxa, taxaMaximaParaTrecho, trechoCabeNaTaxa, trechoMaximoS, type IntervaloVideo } from '@/lib/angular/analiseVideo/tempo';
 import type { ModeloUi } from '@/lib/angular/analiseVideo/tiposUi';
-import { MAX_QUADROS_PADRAO, planejarQuadros } from '@/lib/angular/video/rastrear';
 
 const ICONES: [string, LucideIcon][] = [['marcha', Footprints], ['corrida', Zap], ['agach', Dumbbell], ['salto', ArrowDownToLine], ['aterr', ArrowDownToLine], ['bra', ArrowUpFromLine], ['ombro', Hand], ['livre', Ruler]];
 const iconeDoModelo = (id: string): LucideIcon => ICONES.find(([k]) => id.toLowerCase().includes(k))?.[1] ?? Activity;
@@ -44,12 +43,14 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
   const previa = useRef<HTMLVideoElement>(null);
   const taxas = opcoesDeTaxa(fpsVideo);
   const trecho = Math.max(0, intervalo.fim - intervalo.inicio);
-  // O motor limita a análise a MAX_QUADROS_PADRAO quadros e reduz a taxa em trechos longos: a tela diz a taxa que realmente sai.
-  const plano = planejarQuadros(Math.max(trecho, 0.1), taxaFps, MAX_QUADROS_PADRAO);
-  const taxaReduzida = trecho > 0 && plano.fps < taxaFps - 0.05;
   const nf = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  // Cada taxa tem o seu trecho máximo (limite de quadros ÷ taxa): a seleção trava nele, então a taxa escolhida é a que sai e o motor nunca a reduz em silêncio.
+  const trechoMax = trechoMaximoS(taxaFps);
+  const cabe = trechoCabeNaTaxa(trecho, taxaFps);
+  const candidata = cabe ? null : maiorTaxaQueComporta(trecho, fpsVideo);
+  const sugestao = candidata && trechoCabeNaTaxa(trecho, candidata.fps) ? candidata : null;
   const mover = (lado: 'inicio' | 'fim', valor: number) => {
-    const novo = ajustarIntervalo({ ...intervalo, [lado]: valor }, video.duracao, lado);
+    const novo = ajustarIntervalo({ ...intervalo, [lado]: valor }, video.duracao, lado, trechoMax);
     aoIntervalo(novo);
     if (previa.current) previa.current.currentTime = lado === 'inicio' ? novo.inicio : Math.max(novo.inicio, novo.fim - 0.05);
   };
@@ -80,7 +81,7 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
             </label>
           </div>
         )}
-        {video.duracao > DURACAO_SUGERIDA_S && <p className="text-xs text-muted-foreground">O trecho analisado tem no máximo {DURACAO_SUGERIDA_S} s.</p>}
+        <p className="text-xs text-muted-foreground" role="status" data-testid="limite-trecho">A {nf(taxaFps)} q/s o trecho máximo é <strong className="text-foreground">{nf(trechoMax)} s</strong>.</p>
       </section>
 
       <section className="space-y-2" aria-label="Gesto a analisar">
@@ -119,15 +120,34 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
           <>
             <h3 className="pt-1 text-sm font-semibold">Detalhe da análise</h3>
             <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Detalhe da análise">
-              {taxas.map((t) => <button key={t.id} type="button" aria-pressed={taxaFps === t.fps} onClick={() => aoTaxa(t.fps)} className={cn(chip(taxaFps === t.fps), 'flex-col leading-tight')}>{t.nome}<span className="text-[11px] font-normal text-muted-foreground">{t.fps} q/s</span></button>)}
+              {taxas.map((t) => (
+                <button key={t.id} type="button" aria-pressed={taxaFps === t.fps} onClick={() => aoTaxa(t.fps)} data-testid={`taxa-${t.id}`} className={cn(chip(taxaFps === t.fps), 'flex-col leading-tight')}>
+                  {t.nome}
+                  <span className="text-[11px] font-normal text-muted-foreground">{t.fps} q/s</span>
+                  <span className="text-[11px] font-normal text-muted-foreground">trecho até {nf(trechoMaximoS(t.fps))} s</span>
+                </button>
+              ))}
             </div>
           </>
         )}
-        <p className="text-xs text-muted-foreground">Estimativa: cerca de {estimativaDoRastreio(trecho, plano.fps)} s para rastrear. A primeira vez baixa o modelo de detecção (cerca de 6 MB); deixe a tela aberta.</p>
-        {taxaReduzida && (
-          <p className="rounded-xl bg-amber-500/10 p-2.5 text-xs leading-snug text-amber-800 dark:text-amber-300" role="status" data-testid="aviso-taxa-reduzida">
-            Este trecho de {formatarSegundos(trecho, 1)} seria analisado a {nf(plano.fps)} q/s, e não a {taxaFps} q/s: o limite é de {MAX_QUADROS_PADRAO.toLocaleString('pt-BR')} quadros por análise. Para manter {taxaFps} q/s, use um trecho de até {nf(MAX_QUADROS_PADRAO / taxaFps)} s; a {nf(plano.fps)} q/s cada quadro vale cerca de {Math.round(1000 / plano.fps)} ms nos tempos de contato e de voo.
-          </p>
+        <p className="text-xs text-muted-foreground">Estimativa: cerca de {estimativaDoRastreio(trecho, taxaFps)} s para rastrear. A primeira vez baixa o modelo de detecção (cerca de 6 MB); deixe a tela aberta.</p>
+        {!cabe && (
+          <div className="space-y-2 rounded-xl bg-amber-500/10 p-2.5 text-xs leading-snug text-amber-800 dark:text-amber-300" role="alert" id="aviso-limite-trecho" data-testid="aviso-limite-trecho">
+            <p>O trecho de {formatarSegundos(trecho, 1)} não cabe a {nf(taxaFps)} q/s: o máximo é {nf(trechoMax)} s. Escolha uma opção; a análise nunca reduz a taxa sozinha.</p>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              <button type="button" onClick={() => mover('fim', intervalo.fim)} data-testid="reduzir-trecho"
+                className="flex min-h-12 flex-col items-center justify-center rounded-xl border border-amber-700/40 bg-background px-3 py-1.5 text-center text-sm font-semibold text-foreground hover:bg-muted/50">
+                Reduzir o trecho para {nf(trechoMax)} s
+              </button>
+              {sugestao && (
+                <button type="button" onClick={() => aoTaxa(sugestao.fps)} data-testid="sugerir-taxa"
+                  className="flex min-h-12 flex-col items-center justify-center rounded-xl border border-amber-700/40 bg-background px-3 py-1.5 text-center text-sm font-semibold text-foreground hover:bg-muted/50">
+                  Para {nf(trecho)} s use até {taxaMaximaParaTrecho(trecho)} q/s
+                  <span className="text-[11px] font-normal text-muted-foreground">Escolher {sugestao.fps} q/s</span>
+                </button>
+              )}
+            </div>
+          </div>
         )}
       </section>
 
@@ -147,8 +167,8 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
         {[...ACOES_INICIAIS(aoRastrear, aoSoMedir)]
           .sort((a, b) => (a[0] === primario ? -1 : b[0] === primario ? 1 : 0))
           .map(([id, texto, acao, testid]) => (
-            <button key={id} type="button" onClick={acao} data-testid={testid}
-              className={cn('flex min-h-14 items-center justify-center gap-2 rounded-2xl px-4 text-base font-semibold transition-all active:scale-[0.98]',
+            <button key={id} type="button" onClick={acao} data-testid={testid} disabled={id === 'rastrear' && !cabe} aria-describedby={id === 'rastrear' && !cabe ? 'aviso-limite-trecho' : undefined}
+              className={cn('flex min-h-14 items-center justify-center gap-2 rounded-2xl px-4 text-base font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100',
                 id === primario && !aoUsarRastreio ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/92' : 'border border-border/60 bg-card text-sm hover:bg-muted/50')}>
               {aoUsarRastreio && id === 'rastrear' ? 'Rastrear o corpo de novo (apaga as correções)' : texto}
             </button>

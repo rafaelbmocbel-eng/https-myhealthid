@@ -17,7 +17,7 @@ import { legendaDosAngulos, type DefinicaoAngulo } from './angulos';
 import {
   ErroExportacao, LIMITES_EXPORTACAO, RODAPE_VIDEO, RODAPE_VIDEO_COM_AVISO, erroDeCancelamento, avaliarSuporteGravacao, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida,
   ehFormatoSocial, itensDeCartoes, itensDeLinhas, prefixoDaReferencia, progressoDaSaida, quadroNaSaida, quebrarTexto, rotuloTempo, rotuloVelocidade, tamanhoOriginal, truncarTexto,
-  retanguloQueCobre, temSobraNaArea, validarExportacao,
+  retanguloQueCobre, situacaoSemFonte, temSobraNaArea, validarExportacao,
   type FormatoVideo, type ItemMetricaVideo, type LayoutConteudo, type SuporteGravacao,
 } from './exportarVideoPuro';
 import { corrigirDuracaoDoBlob } from './webmDuracao';
@@ -271,8 +271,8 @@ function contexto2d(c: HTMLCanvasElement): CanvasRenderingContext2D {
   return ctx;
 }
 
-/** Faixa do topo, parte fixa: o nome do gesto e a velocidade e, embaixo, o aviso de que é uma estimativa por vídeo. */
-function desenharBarraFixa(ctx: CanvasRenderingContext2D, l: LayoutConteudo, etiqueta: string, rodape: string) {
+/** Faixa do topo, parte fixa: o nome do gesto e a velocidade. */
+function desenharBarraFixa(ctx: CanvasRenderingContext2D, l: LayoutConteudo, etiqueta: string) {
   const f = l.fonte, b = l.barra;
   ctx.save();
   ctx.fillStyle = 'rgba(255,255,255,0.05)';
@@ -283,10 +283,7 @@ function desenharBarraFixa(ctx: CanvasRenderingContext2D, l: LayoutConteudo, eti
   ctx.textAlign = 'left';
   ctx.font = fonteCss('forte', f * 0.88);
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(truncarTexto(etiqueta, b.w * 0.58, (t) => ctx.measureText(t).width), b.x + l.margem, b.y + b.h * 0.38 + f * 0.03);
-  ctx.font = fonteCss('texto', f * 0.6);
-  ctx.fillStyle = 'rgba(255,255,255,0.62)';
-  ctx.fillText(truncarTexto(rodape, b.w - 2 * l.margem, (t) => ctx.measureText(t).width), b.x + l.margem, b.y + b.h * 0.78 + f * 0.02);
+  ctx.fillText(truncarTexto(etiqueta, b.w * 0.58, (t) => ctx.measureText(t).width), b.x + l.margem, b.y + b.h * 0.5 + f * 0.03);
   ctx.restore();
 }
 
@@ -298,11 +295,31 @@ function desenharTempo(ctx: CanvasRenderingContext2D, l: LayoutConteudo, texto: 
   ctx.textAlign = 'right';
   ctx.font = fonteCss('texto', f * 0.84);
   ctx.fillStyle = 'rgba(255,255,255,0.86)';
-  ctx.fillText(texto, b.x + b.w - l.margem, b.y + b.h * 0.38 + f * 0.03);
+  ctx.fillText(texto, b.x + b.w - l.margem, b.y + b.h * 0.5 + f * 0.03);
   ctx.restore();
 }
 
-/** 'neutro' é o "fora" de uma faixa que não é de normalidade (média de grupos, limiar): informa sem alertar. */
+/**
+ * Aviso no pé do quadro (formato original): o corpo é proporcional ao quadro para ser lido no celular, e o texto nunca é cortado,
+ * porque o aviso é obrigatório: se não couber, o corpo encolhe até caber.
+ */
+function desenharRodape(ctx: CanvasRenderingContext2D, l: LayoutConteudo, texto: string) {
+  const r = l.rodape;
+  if (!r) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(r.x, r.y, r.w, 1);
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.82)';
+  const corpo = corpoQueCabe(ctx, texto, r.w - 2 * l.margem, l.fonteRodape, 8);
+  ctx.fillText(texto, r.x + r.w / 2, r.y + r.h / 2 + corpo * 0.36);
+  ctx.restore();
+}
+
+const tipoDeIcone = (s: ItemMetricaVideo['valores'][number]['status']): 'dentro' | 'fora' | 'neutro' | null => (s === 'dentro' || s === 'fora' || s === 'neutro' ? s : null);
+
+/** 'neutro' é o símbolo de faixa de médias e limiar (que não são de normalidade): informa nos dois lados, sem aprovar nem alertar. */
 function iconeStatus(ctx: CanvasRenderingContext2D, status: 'dentro' | 'fora' | 'neutro', cx: number, cy: number, r: number) {
   ctx.save();
   ctx.beginPath();
@@ -331,6 +348,21 @@ function iconeStatus(ctx: CanvasRenderingContext2D, status: 'dentro' | 'fora' | 
   }
   ctx.stroke();
   ctx.restore();
+}
+
+/**
+ * Deixa em `ctx.font` o maior corpo (entre `minimo` e `inicial`) com que o texto cabe em `largura`. A largura do texto não escala em linha
+ * reta com o corpo (hinting em corpos pequenos): depois de encolher na proporção, confere a largura medida e ainda desce um pouco se preciso.
+ */
+function corpoQueCabe(ctx: CanvasRenderingContext2D, texto: string, largura: number, inicial: number, minimo: number): number {
+  let corpo = inicial;
+  for (let i = 0; i < 12; i++) {
+    ctx.font = fonteCss('texto', corpo);
+    const w = ctx.measureText(texto).width;
+    if (w <= largura || corpo <= minimo) break;
+    corpo = Math.max(minimo, Math.min(corpo * 0.98, (corpo * largura) / w));
+  }
+  return corpo;
 }
 
 function desenharCartoes(ctx: CanvasRenderingContext2D, l: LayoutConteudo, itens: ItemMetricaVideo[]) {
@@ -369,7 +401,7 @@ function desenharCartoes(ctx: CanvasRenderingContext2D, l: LayoutConteudo, itens
       const etiqueta = v.lado ? `${v.lado}` : '';
       const tamEtiqueta = etiqueta ? ctx.measureText(etiqueta).width + f * 0.28 : 0;
       const tamValor = ctx.measureText(v.texto).width;
-      const precisaIcone = v.status === 'dentro' || v.status === 'fora' || v.status === 'fora_neutro';
+      const precisaIcone = tipoDeIcone(v.status) !== null;
       return { etiqueta, tamEtiqueta, tamValor, precisaIcone, total: tamEtiqueta + tamValor + (precisaIcone ? rIcone * 2.5 : 0) };
     });
     // O erro de medida do vídeo (ex.: "± 6,2%") só entra se couber junto de todos os valores; senão fica no PDF.
@@ -385,7 +417,8 @@ function desenharCartoes(ctx: CanvasRenderingContext2D, l: LayoutConteudo, itens
       ctx.fillStyle = '#ffffff';
       ctx.fillText(v.texto, x + tamEtiqueta, yValor);
       x += tamEtiqueta + tamValor;
-      if (precisaIcone) { iconeStatus(ctx, v.status === 'dentro' ? 'dentro' : v.status === 'fora' ? 'fora' : 'neutro', x + rIcone * 1.5, yValor - f * 0.4, rIcone); x += rIcone * 2.5; }
+      const tipoIcone = tipoDeIcone(v.status);
+      if (precisaIcone && tipoIcone) { iconeStatus(ctx, tipoIcone, x + rIcone * 1.5, yValor - f * 0.4, rIcone); x += rIcone * 2.5; }
       if (comIncerteza && v.incerteza) {
         ctx.font = fonteCss('texto', f * 0.6);
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -396,16 +429,24 @@ function desenharCartoes(ctx: CanvasRenderingContext2D, l: LayoutConteudo, itens
       x += f * 0.7;
     }
 
-    ctx.fillStyle = it.referencia ? 'rgba(167,243,208,0.92)' : 'rgba(255,255,255,0.5)';
-    const textoRef = it.referencia ? `${prefixoDaReferencia(it.natureza)}${it.referencia}` : 'sem referência';
-    // A referência com a fonte e o PMID vale mais que o tamanho da letra: encolhe um pouco antes de cortar com reticências.
-    let tamRef = f * 0.64;
-    ctx.font = fonteCss('texto', tamRef);
-    const larguraRef = ctx.measureText(textoRef).width;
-    if (larguraRef > largTexto) {
-      tamRef = Math.max(f * 0.5, (tamRef * largTexto) / larguraRef);
-      ctx.font = fonteCss('texto', tamRef);
+    // Situação em texto neutro e com a fonte, igual para dentro e para fora. Cortar com reticências esconderia o rótulo da fonte: antes
+    // disso o corpo encolhe um pouco e, se ainda não couber, o rótulo sai deste texto (a linha da referência, logo abaixo, o traz).
+    if (it.situacao) {
+      let texto = it.situacao;
+      corpoQueCabe(ctx, texto, largTexto, f * 0.62, f * 0.55);
+      if (ctx.measureText(texto).width > largTexto) {
+        texto = situacaoSemFonte(texto);
+        corpoQueCabe(ctx, texto, largTexto, f * 0.62, f * 0.5);
+      }
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fillText(truncarTexto(texto, largTexto, (t) => ctx.measureText(t).width), r.x + pad, yValor + f * 1.0);
     }
+
+    ctx.fillStyle = it.referencia ? 'rgba(167,243,208,0.92)' : 'rgba(255,255,255,0.5)';
+    // Com a linha da situação logo acima ("… da faixa das médias do estudo"), o prefixo seria repetição e comeria o espaço do PMID.
+    const textoRef = it.referencia ? `${it.situacao ? '' : prefixoDaReferencia(it.natureza)}${it.referencia}` : 'sem referência';
+    // A referência com a fonte e o PMID vale mais que o tamanho da letra: encolhe um pouco antes de cortar com reticências.
+    corpoQueCabe(ctx, textoRef, largTexto, f * 0.64, f * 0.5);
     ctx.fillText(truncarTexto(textoRef, largTexto, (t) => ctx.measureText(t).width), r.x + pad, r.y + r.h - pad * 0.7);
     ctx.restore();
   });
@@ -582,6 +623,9 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   const bandas = op.bandas ?? [];
 
   const itensMetricas = op.mostrarMetricas ? (op.cartoes?.length ? itensDeCartoes(op.cartoes) : itensDeLinhas(op.linhasMetricas ?? [])) : [];
+  // O aviso vai em todo arquivo (vídeo e quadro PNG): no original, na faixa do pé; nos formatos sociais, na moldura da arte.
+  const avisoVideo = itensMetricas.some((i) => i.comAviso) ? RODAPE_VIDEO_COM_AVISO : RODAPE_VIDEO;
+  const cartaoAlto = itensMetricas.some((i) => i.situacao);
 
   // ---- tamanho do quadro composto e do arquivo ----
   const social = ehFormatoSocial(op.formato);
@@ -598,14 +642,15 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
       rotulos: [m?.rotulo ?? ''], datas: [m?.data ?? ''], mostrarDatas: !!m?.data, modoAjuste: 'inteira',
       // O conteúdo já chega com o rosto coberto por este módulo; a arte não deve cobrir de novo um pedaço do gráfico.
       modoRosto: 'nenhum',
+      nota: avisoVideo,
     };
     const arte = layoutDaArte({ ...opcoesArte, formato: formatoSocial, layout: 'unica' }, 1, recursos);
     caixaArte = arte.paineis[0];
-    layout = calcularLayoutConteudo({ larguraVideo: vw, alturaVideo: vh, largura: Math.round(caixaArte.w), altura: Math.round(caixaArte.h), grafico: temGrafico, nCartoes: itensMetricas.length });
+    layout = calcularLayoutConteudo({ larguraVideo: vw, alturaVideo: vh, largura: Math.round(caixaArte.w), altura: Math.round(caixaArte.h), grafico: temGrafico, nCartoes: itensMetricas.length, cartaoAlto });
     saida = criarCanvas(FORMATOS[formatoSocial].largura, FORMATOS[formatoSocial].altura);
     moldura = { opcoesArte, recursos };
   } else {
-    layout = tamanhoOriginal(vw, vh, temGrafico, itensMetricas.length);
+    layout = tamanhoOriginal(vw, vh, temGrafico, itensMetricas.length, cartaoAlto);
     saida = criarCanvas(layout.largura, layout.altura);
   }
   const conteudo = social ? criarCanvas(layout.largura, layout.altura) : saida;
@@ -621,7 +666,8 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   ctxB.fillRect(0, 0, layout.largura, layout.altura);
   ctxB.fillStyle = FUNDO_VIDEO;
   ctxB.fillRect(layout.areaVideo.x, layout.areaVideo.y, layout.areaVideo.w, layout.areaVideo.h);
-  desenharBarraFixa(ctxB, layout, etiquetaTopo, itensMetricas.some((i) => i.comAviso) ? RODAPE_VIDEO_COM_AVISO : RODAPE_VIDEO);
+  desenharBarraFixa(ctxB, layout, etiquetaTopo);
+  desenharRodape(ctxB, layout, avisoVideo);
   const area = temGrafico ? prepararGrafico(ctxB, layout, { titulo: nomeDoGrupo(op.definicoes) || 'Ângulo', legendaSinal: legendaDosAngulos(op.definicoes), series: seriesRel, marcadores: marcadoresRel, bandas, t0, duracao }) : null;
   desenharCartoes(ctxB, layout, itensMetricas);
 

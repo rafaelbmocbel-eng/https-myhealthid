@@ -154,13 +154,38 @@ describe('cartões de métricas', () => {
 
   it('fora da referência chama atenção; limiar prático diz "limiar"', () => {
     const fora: CartaoMetricaUi = { ...base, valores: [{ lado: null, texto: '20°', status: 'fora' }], referencias: [{ faixa: '30 a 40°', populacao: 'p', citacao: 'c', pmid: '1' }] };
-    const limiar: CartaoMetricaUi = { ...base, chave: 'y', titulo: 'Cadência', valores: [{ lado: null, texto: '109 passos/min', status: 'dentro' }], referencias: [{ faixa: '≥ 100 passos/min', populacao: 'p', citacao: 'c', pmid: '2', tipo: 'limiar_heuristico' }] };
+    const limiar: CartaoMetricaUi = { ...base, chave: 'y', titulo: 'Cadência', valores: [{ lado: null, texto: '109 passos/min', status: 'dentro' }], referencias: [{ faixa: '≥ 100 passos/min', populacao: 'p', citacao: 'c', rotulo: 'Tudor-Locke et al., 2018', pmid: '2', tipo: 'limiar_heuristico', limiteMin: '100 passos/min' }] };
     render(<CartoesMetricas cartoes={[fora, limiar]} />);
     expect(screen.getByText('fora da referência')).toBeInTheDocument();
-    expect(screen.getByText('dentro do limiar')).toBeInTheDocument();
+    expect(screen.getByText('acima do limiar de 100 passos/min (Tudor-Locke et al., 2018)')).toBeInTheDocument();
     expect(screen.queryByText('dentro da referência')).toBeNull();
+    expect(screen.queryByText(/dentro do limiar|fora do limiar/)).toBeNull();
     const [primeiro] = screen.getAllByTestId('cartao-metrica');
     expect(primeiro.className).toMatch(/border-amber/);
+  });
+
+  it('faixa de médias e limiar: dentro e fora têm o mesmo texto neutro, o mesmo ícone e o mesmo tom (sem verde de aprovação nem âmbar de alerta)', () => {
+    const refMedias = [{ chave: 'a', faixa: '94,3 a 143,4 cm/s', populacao: 'p', citacao: 'c', rotulo: 'Bohannon e Andrews, 2011', pmid: '21820535', tipo: 'faixa_de_medias' as const }];
+    const refLimiar = [{ chave: 'b', faixa: '≥ 100 passos/min', populacao: 'p', citacao: 'c', rotulo: 'Tudor-Locke et al., 2018', pmid: '29858465', tipo: 'limiar_heuristico' as const, limiteMin: '100 passos/min' }];
+    const cartoes: CartaoMetricaUi[] = [
+      { ...base, chave: 'm1', titulo: 'Velocidade A', valores: [{ lado: null, texto: '100,0 cm/s', status: 'dentro', dentroDe: ['a'] }], referencias: refMedias },
+      { ...base, chave: 'm2', titulo: 'Velocidade B', valores: [{ lado: null, texto: '150,0 cm/s', status: 'fora' }], referencias: refMedias },
+      { ...base, chave: 'l1', titulo: 'Cadência A', valores: [{ lado: null, texto: '109 passos/min', status: 'dentro', dentroDe: ['b'] }], referencias: refLimiar },
+      { ...base, chave: 'l2', titulo: 'Cadência B', valores: [{ lado: null, texto: '90 passos/min', status: 'fora' }], referencias: refLimiar },
+    ];
+    const { container } = render(<CartoesMetricas cartoes={cartoes} />);
+    expect(screen.getByText('dentro da faixa das médias do estudo (Bohannon e Andrews, 2011)')).toBeInTheDocument();
+    expect(screen.getByText('fora da faixa das médias do estudo (Bohannon e Andrews, 2011)')).toBeInTheDocument();
+    expect(screen.getByText('acima do limiar de 100 passos/min (Tudor-Locke et al., 2018)')).toBeInTheDocument();
+    expect(screen.getByText('abaixo do limiar de 100 passos/min (Tudor-Locke et al., 2018)')).toBeInTheDocument();
+    const linhas = screen.getAllByTestId('valor-metrica').map((el) => el.querySelector('p:nth-of-type(2)') as HTMLElement);
+    expect(linhas).toHaveLength(4);
+    // mesmo tom e mesmo ícone nos quatro casos
+    expect(new Set(linhas.map((p) => p.className)).size).toBe(1);
+    expect(new Set(linhas.map((p) => p.querySelector('svg')?.getAttribute('class'))).size).toBe(1);
+    expect(container.innerHTML).not.toMatch(/emerald|amber/);
+    expect(container.querySelector('.lucide-circle-check, .lucide-triangle-alert')).toBeNull();
+    for (const li of screen.getAllByTestId('cartao-metrica')) expect(li.className).not.toMatch(/border-amber/);
   });
 
   it('sem referência, a literatura aparece como contexto com a fonte e a fórmula fica disponível', () => {

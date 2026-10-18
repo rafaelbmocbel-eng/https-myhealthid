@@ -4,7 +4,7 @@ import { ItensSvg } from '@/components/angular/MarcacaoSvg';
 import { ordenarCamadas, separarRotulos } from '@/lib/angular/desenho';
 import { cmPorPixel, rotacaoDoNivel, type Medida, type Ponto } from '@/lib/angular/medidas';
 import { MEDIDAS_VIDEO } from '@/lib/angular/medidasVideo';
-import { itensManuais, resultadoManual, sugerirDaTrilha, textoDoValor, type CapturaManual } from '@/lib/angular/analiseVideo/medidaManual';
+import { itensManuais, resultadoManual, situarCapturas, sugerirDaTrilha, textoDoValor, trechoDaTrilha, type CapturaManual } from '@/lib/angular/analiseVideo/medidaManual';
 import type { QuadroPose } from '@/lib/angular/video/tipos';
 import type { CamadaApi } from './PlayerQuadros';
 
@@ -20,11 +20,14 @@ interface Opcoes {
   /** Pose do quadro atual (para sugerir os pontos); null sem rastreio. */
   quadroPose: QuadroPose | undefined;
   tocando: boolean;
+  /** Instantes dos quadros da trilha atual: é por eles que se sabe quais medidas guardadas estão dentro do trecho. */
+  tempos: readonly number[];
+  fps?: number;
 }
 
 // Medidas feitas à mão no quadro (ponto a ponto): ferramenta ativa, pontos em andamento, referências de nível e escala
 // e as medidas guardadas. Entrega a camada que o player desenha e os gestos que o player usa para marcar.
-export function useMedidasManuais({ quadro, t, largura, altura, quadroPose, tocando }: Opcoes) {
+export function useMedidasManuais({ quadro, t, largura, altura, quadroPose, tocando, tempos, fps }: Opcoes) {
   const [ativaId, setAtivaId] = useState<string | null>(null);
   const [pontos, setPontos] = useState<Record<string, Ponto[]>>({});
   const [refs, setRefs] = useState<Record<string, Ponto[]>>({});
@@ -83,9 +86,18 @@ export function useMedidasManuais({ quadro, t, largura, altura, quadroPose, toca
     setPontos((s) => ({ ...s, [medida.id]: [] }));
     return c;
   };
-  const remover = (uid: string) => setCapturas((l) => l.filter((c) => c.uid !== uid));
+  /** Remove a medida da lista e a devolve, para quem remove poder oferecer o desfazer. */
+  const remover = (uid: string): CapturaManual | undefined => {
+    const c = capturas.find((x) => x.uid === uid);
+    if (c) setCapturas((l) => l.filter((x) => x.uid !== uid));
+    return c;
+  };
+  const reinserir = (c: CapturaManual) => setCapturas((l) => (l.some((x) => x.uid === c.uid) ? l : [...l, c].sort((a, b) => a.t - b.t)));
 
-  const daqui = capturas.filter((c) => c.quadro === quadro);
+  // A lista guardada (`capturas`) é a que se salva no arquivo; o que vale na análise (quadro, PDF, vídeo, resumo) é só o que está dentro do trecho atual.
+  const { dentro: noTrecho, fora: foraDoTrecho } = useMemo(() => situarCapturas(capturas, tempos, fps), [capturas, tempos, fps]);
+  const trecho = useMemo(() => trechoDaTrilha(tempos, fps), [tempos, fps]);
+  const daqui = noTrecho.filter((c) => c.quadro === quadro);
 
   /** Camada do player: referências, medidas guardadas neste quadro e a medida em andamento, com alças para arrastar. */
   const camada = (api: CamadaApi): ReactNode => {
@@ -116,7 +128,7 @@ export function useMedidasManuais({ quadro, t, largura, altura, quadroPose, toca
 
   return {
     ativaId, setAtivaId, medida, ehRef, ptsAtiva, proximo, pontos, refs, capturas, resultado, giro, cmPorPx, nivelTipo, setNivelTipo, escalaCm, setEscalaCm,
-    marcar, arrastar, desfazerPonto, limpar, sugerir, guardar, remover, camada, gestos, daqui,
+    marcar, arrastar, desfazerPonto, limpar, sugerir, guardar, remover, reinserir, camada, gestos, daqui, noTrecho, foraDoTrecho, trecho,
     restaurar: (c: CapturaManual[], rf?: Record<string, Ponto[]>, escala?: string, nivel?: 'horizontal' | 'vertical') => {
       setCapturas(c);
       if (rf) setRefs(rf);

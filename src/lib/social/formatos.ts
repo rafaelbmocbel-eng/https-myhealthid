@@ -62,6 +62,20 @@ export interface MargensArte {
   fotos: { topo: number; base: number; esq: number; dir: number };
 }
 
+/** Fração da altura do story que a interface do Instagram cobre: barra de progresso e perfil em cima; caixa de resposta e legenda embaixo. */
+export const COBERTURA_STORY = { topo: 0.14, base: 0.2 } as const;
+
+/**
+ * Faixa vertical (em pixels de arte) onde um texto que não pode ser coberto fica: no story, entre as faixas da interface do
+ * Instagram (independe de `margensStories`: um aviso não pode sumir); nos outros formatos, dentro das margens do texto.
+ */
+export function zonaSeguraDoTexto(formato: FormatoSocial): { topo: number; base: number } {
+  const H = FORMATOS[formato].altura;
+  if (formato === 'story') return { topo: Math.round(H * COBERTURA_STORY.topo), base: Math.round(H * (1 - COBERTURA_STORY.base)) };
+  const m = margensDoFormato(formato, false).texto;
+  return { topo: m.topo, base: H - m.base };
+}
+
 /**
  * No story e no Reels a interface do Instagram cobre uma faixa no topo (barra de progresso e perfil) e
  * uma maior embaixo (caixa de resposta e legenda). Com `margensStories` o texto fica fora dessas faixas;

@@ -22,7 +22,7 @@ import {
 import { estimarFps, impressaoDoVideo, lerMetadadosDoVideo, type VideoCarregado } from '@/lib/angular/analiseVideo/carregarVideo';
 import { trilhaVazia } from '@/lib/angular/analiseVideo/trilhaVazia';
 import {
-  avisosDoVideo, intervaloPadrao, marcasDoScrubber, opcoesDeTaxa, type IntervaloVideo,
+  avisosDoVideo, formatarSegundos, intervaloPadrao, marcasDoScrubber, opcoesDeTaxa, taxaInicial, trechoCabeNaTaxa, trechoMaximoS, type IntervaloVideo,
 } from '@/lib/angular/analiseVideo/tempo';
 import { lerTextoDoArquivo } from '@/lib/angular/analiseVideo/videoUtil';
 import { LIGACOES_CORPO, marcacoesDoQuadro, pontosDasDefinicoes, pontosParaTela, quadroComPontos, rotuloDoPonto, sugestoesDePontosAusentes } from '@/lib/angular/analiseVideo/marcacoes';
@@ -30,7 +30,7 @@ import {
   bandasDoGrupo, cartoesDeMetricas, compararLados, eventoParaUi, grupoInicial, gruposDeArticulacoes, marcadoresDeEventos, marcadoresExtras, modeloParaUi, seriesDoGrupoDaAnalise,
 } from '@/lib/angular/analiseVideo/resultados';
 import { remapearCapturas, textoDoValor, type CapturaManual } from '@/lib/angular/analiseVideo/medidaManual';
-import type { AlcaUi, MarcacaoAnguloUi, PontosDoQuadro, TipoEvento } from '@/lib/angular/analiseVideo/tiposUi';
+import { AVISO_ESTIMATIVA_VIDEO, type AlcaUi, type MarcacaoAnguloUi, type PontosDoQuadro, type TipoEvento } from '@/lib/angular/analiseVideo/tiposUi';
 import type { AnaliseParaExportar } from '@/lib/angular/analise';
 import type { Landmark } from '@/lib/angular/pose';
 import { detectorDeTeste } from './ganchoTeste';
@@ -146,7 +146,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const grupos = useMemo(() => gruposDeArticulacoes(modelo.articulacoes), [modelo]);
   const grupo = grupos.find((g) => g.id === grupoId) ?? grupos[0];
 
-  const manual = useMedidasManuais({ quadro, t: quadroPose?.t ?? 0, largura: video?.largura ?? 1, altura: video?.altura ?? 1, quadroPose, tocando: repro.tocando });
+  const manual = useMedidasManuais({ quadro, t: quadroPose?.t ?? 0, largura: video?.largura ?? 1, altura: video?.altura ?? 1, quadroPose, tocando: repro.tocando, tempos, fps });
 
   const analise = useMemo(
     () => (temRastreio && trilha ? analisarGesto(modelo, trilha, { eventos: eventos ?? undefined, escalaCmPorPx: manual.cmPorPx, cameraFixa }) : null),
@@ -228,7 +228,8 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
       void estimarFps(v.url).then((est) => {
         if (!est || fpsEscolhido.current) return;
         setFpsVideo(est);
-        setTaxaFps(Math.min(est, modelo.fpsSugerido));
+        const padrao = intervaloPadrao(v.duracao);
+        setTaxaFps(taxaInicial(modelo.fpsSugerido, padrao.fim - padrao.inicio, est));
       });
       void lerRascunho(chaveDoRascunho(impressaoDoVideo(v))).then((texto) => {
         if (!texto) return;
@@ -248,7 +249,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     setGrupoId('');
     setEventos(null);
     fpsEscolhido.current = true;
-    setTaxaFps(Math.min(fpsVideo, novo.fpsSugerido));
+    setTaxaFps(taxaInicial(novo.fpsSugerido, intervalo.fim - intervalo.inicio, fpsVideo));
   };
   const escolherFpsVideo = (f: number) => {
     fpsEscolhido.current = true;
@@ -266,6 +267,13 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
   const rastrear = async () => {
     if (!video) return;
+    // A tela não deixa chegar aqui com um trecho que não cabe na taxa; se chegar, o motor reduziria a taxa em silêncio, então volta para o profissional decidir.
+    if (!trechoCabeNaTaxa(intervalo.fim - intervalo.inicio, taxaFps)) {
+      toast.error(`A ${taxaFps.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} q/s o trecho máximo é ${trechoMaximoS(taxaFps)} s. Reduza o trecho ou escolha uma taxa menor.`);
+      repro.pausar();
+      setEtapa('modelo');
+      return;
+    }
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -281,9 +289,11 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
       setPreparandoModelo(false);
       edicao.iniciar(t);
       // As medidas guardadas apontam o quadro por índice; a trilha nova pode ter outra taxa, então elas acompanham o instante.
-      const remapeadas = remapearCapturas(manual.capturas, t.quadros.map((q) => q.t));
+      // As que ficam fora do novo trecho continuam na lista (só o profissional as remove) e voltam a valer se um trecho futuro incluir o instante.
+      const remapeadas = remapearCapturas(manual.capturas, t.quadros.map((q) => q.t), t.fps);
       manual.restaurar(remapeadas.capturas);
-      if (remapeadas.descartadas > 0) toast.warning(`${remapeadas.descartadas} ${remapeadas.descartadas === 1 ? 'medida guardada ficou' : 'medidas guardadas ficaram'} fora do trecho rastreado e ${remapeadas.descartadas === 1 ? 'foi removida' : 'foram removidas'}.`);
+      const fora = remapeadas.foraDoTrecho;
+      if (fora > 0) toast.info(`${fora} ${fora === 1 ? 'medida guardada está fora do trecho atual' : 'medidas guardadas estão fora do trecho atual'}. Na aba Medir ${fora === 1 ? 'ela continua' : 'elas continuam'} na lista, sem entrar no PDF nem no vídeo exportado.`);
       setEventos(null);
       repro.setQuadro(0);
       setAba('metricas');
@@ -417,7 +427,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const contextoQuadro = (): ContextoQuadro | null => {
     const v = videoRef.current;
     if (!v || !trilha) return null;
-    return { video: v, trilha, estilo, defs: defsVisiveis, direcao, capturas: manual.capturas, giro: manual.giro, cmPorPx: manual.cmPorPx };
+    return { video: v, trilha, estilo, defs: defsVisiveis, direcao, capturas: manual.noTrecho, giro: manual.giro, cmPorPx: manual.cmPorPx };
   };
 
   const dadosDoRelatorio = () => ({
@@ -432,14 +442,16 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     repro.pausar();
     setGerandoPdf(true);
     try {
-      const capturas = manual.capturas;
+      const capturas = manual.noTrecho;
+      const fora = manual.foraDoTrecho.length;
+      const notaFora = fora > 0 ? `${fora} ${fora === 1 ? 'medida guardada em instante fora do trecho analisado não entrou' : 'medidas guardadas em instantes fora do trecho analisado não entraram'} neste relatório.` : undefined;
       if (!analise) {
-        if (!capturas.length) { toast.error('Guarde ao menos uma medida, ou rastreie o corpo, para gerar o PDF.'); return; }
+        if (!capturas.length) { toast.error(fora > 0 ? 'As medidas guardadas estão fora do trecho atual e não entram no PDF. Guarde uma medida dentro do trecho ou rastreie o corpo.' : 'Guarde ao menos uma medida, ou rastreie o corpo, para gerar o PDF.'); return; }
         const imagens = await imagensParaRelatorio(c, [...new Set(capturas.map((x) => x.quadro))], (i) => rotuloDoQuadro(c, i), quadro);
         const porQuadro = new Map(imagens.map((m) => [m.indice, m]));
         const { blob, nome } = await gerarRelatorioVideo({
           ...dadosDoRelatorio(), fps: Math.round(trilha.fps),
-          notaExtra: manual.giro !== null && Math.abs(manual.giro) >= 0.05 ? `Imagem nivelada por uma referência ${manual.nivelTipo} marcada (correção de ${Math.abs(manual.giro).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}°).` : undefined,
+          notaExtra: [manual.giro !== null && Math.abs(manual.giro) >= 0.05 ? `Imagem nivelada por uma referência ${manual.nivelTipo} marcada (correção de ${Math.abs(manual.giro).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}°).` : undefined, notaFora].filter(Boolean).join(' ') || undefined,
           capturas: capturas.map((x) => ({ t: x.t, quadro: x.quadro + 1, nome: x.nome, valorTexto: textoDoValor(x.valor, x.unidade), texto: x.texto, imagem: porQuadro.get(x.quadro)?.imagem ?? null })),
         });
         entregarPdf({ blob, nome, pacienteId: paciente?.id ?? null, titulo: 'Análise angular em vídeo' });
@@ -460,7 +472,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
         correcoes: { quadros: edicao.resumo.quadros, pontos: edicao.resumo.pontos },
         eventosEditados: eventosAtuais.filter((e) => !e.sugerido).length,
         avisoReferencias: AVISO_REFERENCIAS,
-        avisos: [...analise.avisos, ...modelo.avisos],
+        avisos: [...analise.avisos, ...modelo.avisos, ...(notaFora ? [notaFora] : [])],
       });
       entregarPdf({ blob, nome, pacienteId: paciente?.id ?? null, titulo: `Análise de ${modelo.nome.toLowerCase()}` });
     } catch {
@@ -480,7 +492,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
       const g = calcularAnguloNoQuadro(d, quadroPose, direcao);
       return g === null ? [] : [{ nome: d.nome, valor: rotuloGraus(g, estilo.casasRotulo ?? 1) }];
     });
-    const arte: AnaliseParaExportar = { paineis: [painel], medidas };
+    const arte: AnaliseParaExportar = { paineis: [painel], medidas, nota: AVISO_ESTIMATIVA_VIDEO };
     setArteSocial({ arte, landmarks: [temRastreio ? landmarksDoRosto(trilha, quadro) : null] });
   };
 
@@ -503,7 +515,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     setVideoAberto(true);
   };
 
-  const resumoLinhas = () => resumoEmLinhas(cartoes, manual.capturas);
+  const resumoLinhas = () => resumoEmLinhas(cartoes, manual.noTrecho);
 
   const copiar = async () => {
     try { await navigator.clipboard.writeText(`Análise de ${modelo.nome} por vídeo\n${resumoLinhas().join('\n')}`); toast.success('Resumo copiado.'); } catch { toast.error('Não consegui copiar.'); }
@@ -524,7 +536,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
             metricas: analise.metricas.filter((m) => m.valor !== null).map((m) => ({ metrica: m.metrica, lado: m.lado, valor: Math.round((m.valor as number) * 100) / 100, unidade: m.unidade })),
             correcoes: edicao.resumo, eventos_editados: eventosAtuais.filter((e) => !e.sugerido).length,
           } : {}),
-          capturas: manual.capturas.map((x) => ({ id: x.medidaId, t: x.t, quadro: x.quadro, valor: Math.round(x.valor * 10) / 10, ...(x.unidade === 'cm' ? { unidade: 'cm' } : {}) })),
+          capturas: manual.noTrecho.map((x) => ({ id: x.medidaId, t: x.t, quadro: x.quadro, valor: Math.round(x.valor * 10) / 10, ...(x.unidade === 'cm' ? { unidade: 'cm' } : {}) })),
           nivel_graus: manual.giro, escala_cm_por_px: manual.cmPorPx,
         },
       });
@@ -607,6 +619,11 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
           <button type="button" onClick={trocarGesto} disabled={etapa === 'rastreando'} className={cn(botaoIcone, 'shrink-0')} aria-label="Trocar o gesto ou o trecho"><ChevronLeft className="h-4 w-4" /> Trocar</button>
           <p className="min-w-0 flex-1 truncate text-sm font-semibold" data-testid="nome-modelo">{modelo.nome}<span className="ml-1.5 text-xs font-normal text-muted-foreground">{modelo.vista === 'lateral' ? 'vista lateral' : 'vista frontal'}</span></p>
         </div>
+        {etapa === 'analisar' && trilha && (
+          <p className="-mt-1 px-1 text-xs tabular-nums text-muted-foreground" data-testid="taxa-efetiva">
+            {temRastreio ? 'Rastreado' : 'Quadros'} a <strong className="text-foreground">{fps.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} q/s</strong> · {nQuadros.toLocaleString('pt-BR')} quadros · {formatarSegundos(nQuadros / fps, 1)}
+          </p>
+        )}
 
         <PlayerQuadros
           url={video.url} largura={video.largura} altura={video.altura} videoRef={videoRef} quadro={quadro} nQuadros={nQuadros}

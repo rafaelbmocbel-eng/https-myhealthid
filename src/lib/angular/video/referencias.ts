@@ -145,7 +145,7 @@ export const REFERENCIAS: ReferenciaBiomecanica[] = [
     chave: 'velocidade_marcha.bohannon2011', metrica: 'velocidade_marcha', unidade: 'cm/s',
     populacao: 'Adultos aparentemente saudáveis (metanálise de 41 artigos, 23.111 pessoas); ritmo normal em 3 a 30 m.',
     faixa: { min: 94.3, max: 143.4 }, fonte: BOHANNON_ANDREWS_2011, estatuto: 'confirmada', tipo: 'faixa_de_medias', aplicaA: ['marcha'],
-    nota: 'Vai da menor à maior média entre os grupos por sexo e década (mulheres de 80 a 99 anos: 94,3; homens de 40 a 49 anos: 143,4). Não é intervalo individual; inclui idosos. Os autores ressalvam que os dados podem não servir de padrão de normalidade se a velocidade for medida em distâncias curtas, a partir do comando de largada, ou se houver curva.',
+    nota: 'Vai da menor à maior média entre os grupos por sexo e década (mulheres de 80 a 99 anos: 94,3; homens de 40 a 49 anos: 143,4). Não é intervalo individual; inclui idosos. A metanálise incluiu adultos aparentemente saudáveis andando em ritmo normal por percursos de 3 a 30 m. Os autores ressalvam que os dados podem não servir de padrão de normalidade se a velocidade for medida em distâncias curtas, a partir do comando "vá" (partida parada), ou se houver curva. A velocidade estimada por vídeo costuma vir de um trecho curto, caso em que a ressalva dos autores provavelmente se aplica.',
   },
   {
     chave: 'cadencia.tudor2018', metrica: 'cadencia', unidade: 'passos/min',
@@ -264,6 +264,12 @@ export function montarCartao(resultado: ResultadoMetrica, modeloId?: string): Ca
 export const montarCartoes = (resultados: ResultadoMetrica[], modeloId?: string): CartaoMetrica[] => resultados.map((r) => montarCartao(r, modeloId));
 
 const num = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+
+/** Um limite da faixa com a unidade, ex.: "100 passos/min"; undefined se a faixa não tem esse limite. */
+export function descreverLimite(ref: ReferenciaBiomecanica, qual: 'min' | 'max'): string | undefined {
+  const v = ref.faixa[qual];
+  return v === undefined ? undefined : `${num(v)} ${ref.unidade}`;
+}
 
 export function descreverFaixa(ref: ReferenciaBiomecanica): string {
   const { min, max } = ref.faixa;

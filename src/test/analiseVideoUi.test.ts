@@ -129,8 +129,10 @@ describe('tempo e quadros do player', () => {
   it('o trecho padrão e o ajuste respeitam o limite de 30 s', () => {
     expect(intervaloPadrao(75)).toEqual({ inicio: 0, fim: 30 });
     expect(intervaloPadrao(12)).toEqual({ inicio: 0, fim: 12 });
-    expect(ajustarIntervalo({ inicio: 10, fim: 70 }, 75, 'inicio')).toEqual({ inicio: 10, fim: 40 });
-    expect(ajustarIntervalo({ inicio: 10, fim: 70 }, 75, 'fim')).toEqual({ inicio: 40, fim: 70 });
+    // O lado movido trava no limite e o outro fica onde estava: o trecho não é empurrado nem encurtado sozinho.
+    expect(ajustarIntervalo({ inicio: 10, fim: 70 }, 75, 'inicio')).toEqual({ inicio: 40, fim: 70 });
+    expect(ajustarIntervalo({ inicio: 10, fim: 70 }, 75, 'fim')).toEqual({ inicio: 10, fim: 40 });
+    expect(ajustarIntervalo({ inicio: 10, fim: 70 }, 75, 'fim', 20)).toEqual({ inicio: 10, fim: 30 });
     expect(ajustarIntervalo({ inicio: 5, fim: 4 }, 75, 'fim').fim).toBeGreaterThan(5);
   });
 

@@ -3,7 +3,7 @@ import { COR_LADO, type CartaoMetricaUi, type ContextoUi, type EventoUi, type Mo
 import { angulosPorQuadro, type AmostraAngulo, type DefinicaoAngulo } from '@/lib/angular/video/angulos';
 import type { EventoPasso } from '@/lib/angular/video/eventos';
 import type { ModeloGesto } from '@/lib/angular/video/modelos';
-import { REFERENCIAS, descreverFaixa, montarCartao, type ReferenciaBiomecanica } from '@/lib/angular/video/referencias';
+import { REFERENCIAS, descreverFaixa, descreverLimite, montarCartao, type ReferenciaBiomecanica } from '@/lib/angular/video/referencias';
 import { indiceAssimetria } from '@/lib/angular/video/metricas';
 import { janelaEmAmostras, suavizar } from '@/lib/angular/video/suavizar';
 import type { ResultadoMetrica, TrilhaPose } from '@/lib/angular/video/tipos';
@@ -127,6 +127,7 @@ const SEM_LADO_NO_NOME = (nome: string) => nome.replace(/\s*\((direito|esquerdo)
 
 const referenciaParaUi = (r: ReferenciaBiomecanica): ReferenciaUi => ({
   chave: r.chave, faixa: descreverFaixa(r), populacao: r.populacao, citacao: r.fonte.citacao, rotulo: r.fonte.rotulo, pmid: r.fonte.pmid, nota: r.nota, tipo: r.tipo,
+  limiteMin: descreverLimite(r, 'min'), limiteMax: descreverLimite(r, 'max'),
 });
 
 /**

@@ -65,18 +65,44 @@ export function sugerirDaTrilha(id: string, quadro: QuadroPose | undefined): Pon
   return pts.every((p): p is { x: number; y: number } => p !== null) ? pts : null;
 }
 
+/** Faixa de tempo que a trilha atual cobre; `passo` é o intervalo entre quadros, a tolerância das pontas. */
+export interface TrechoDaTrilha { inicio: number; fim: number; passo: number }
+
+/** Trecho coberto pelos instantes (crescentes) da trilha; null sem quadros. `fps` só vale para trilha de um quadro só. */
+export function trechoDaTrilha(tempos: readonly number[], fps?: number): TrechoDaTrilha | null {
+  if (!tempos.length) return null;
+  const fim = tempos[tempos.length - 1];
+  const passo = tempos.length > 1 ? (fim - tempos[0]) / (tempos.length - 1) : 1 / Math.max(1, fps ?? 30);
+  return { inicio: tempos[0], fim, passo };
+}
+
+/** O instante cai no trecho? Vale até um quadro além de cada ponta, que é o que o quadro mais próximo ainda representa. */
+export const instanteNoTrecho = (t: number, trecho: TrechoDaTrilha | null): boolean =>
+  !!trecho && t >= trecho.inicio - trecho.passo - 1e-6 && t <= trecho.fim + trecho.passo + 1e-6;
+
 /**
- * Leva as medidas guardadas para uma trilha nova (outra taxa ou outro trecho): cada uma passa a apontar o quadro mais perto do seu
- * instante. As que ficam a mais de um quadro de qualquer quadro da trilha (fora do trecho rastreado) são descartadas e contadas.
+ * Separa as medidas guardadas entre as que valem na trilha atual e as que ficaram fora do trecho. É só leitura: nada é apagado nem
+ * ganha campo novo (o arquivo salvo segue igual), e o `t` da medida continua valendo no mesmo vídeo, então ela volta a valer se um
+ * trecho novo incluir o instante. As de dentro apontam o quadro mais perto do seu instante, também quando a taxa da trilha mudou.
  */
-export function remapearCapturas(capturas: readonly CapturaManual[], tempos: readonly number[]): { capturas: CapturaManual[]; descartadas: number } {
-  if (!tempos.length) return { capturas: [], descartadas: capturas.length };
-  const passo = tempos.length > 1 ? (tempos[tempos.length - 1] - tempos[0]) / (tempos.length - 1) : Infinity;
-  const mantidas: CapturaManual[] = [];
+export function situarCapturas(capturas: readonly CapturaManual[], tempos: readonly number[], fps?: number): { dentro: CapturaManual[]; fora: CapturaManual[] } {
+  const trecho = trechoDaTrilha(tempos, fps);
+  const dentro: CapturaManual[] = [], fora: CapturaManual[] = [];
   for (const c of capturas) {
+    if (!instanteNoTrecho(c.t, trecho)) { fora.push(c); continue; }
     const i = indiceMaisProximo(tempos, c.t);
-    if (Math.abs(tempos[i] - c.t) > passo + 1e-6) continue;
-    mantidas.push(i === c.quadro ? c : { ...c, quadro: i });
+    dentro.push(i === c.quadro ? c : { ...c, quadro: i });
   }
-  return { capturas: mantidas, descartadas: capturas.length - mantidas.length };
+  return { dentro, fora };
+}
+
+/**
+ * Leva as medidas guardadas para uma trilha nova (outra taxa ou outro trecho): as de dentro passam a apontar o quadro mais perto do seu
+ * instante e as de fora ficam como estão, na lista, só contadas. Nenhuma é descartada.
+ */
+export function remapearCapturas(capturas: readonly CapturaManual[], tempos: readonly number[], fps?: number): { capturas: CapturaManual[]; foraDoTrecho: number } {
+  const { dentro, fora } = situarCapturas(capturas, tempos, fps);
+  const ordem = new Map(capturas.map((c, k) => [c.uid, k]));
+  const todas = [...dentro, ...fora].sort((a, b) => a.t - b.t || (ordem.get(a.uid) ?? 0) - (ordem.get(b.uid) ?? 0));
+  return { capturas: todas, foraDoTrecho: fora.length };
 }

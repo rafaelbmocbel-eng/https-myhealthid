@@ -295,9 +295,10 @@ export default function ExportarSocialDialog({ aberto, aoFechar, arte, landmarks
   const algumSemRosto = rostoAutomatico.some((a) => !a);
   const rostoPendente = modoRosto !== 'nenhum' && algumSemRosto && !rostoConferido;
 
+  const nota = arte?.nota;
   const opcoesBase = useMemo<OpcoesArte>(() => ({
-    formato, layout: layoutEf, tituloModo, titulo, legenda, perfis, margensStories, rotulos, datas, mostrarDatas,
-  }), [formato, layoutEf, tituloModo, titulo, legenda, perfis, margensStories, rotulos, datas, mostrarDatas]);
+    formato, layout: layoutEf, tituloModo, titulo, legenda, perfis, margensStories, rotulos, datas, mostrarDatas, nota,
+  }), [formato, layoutEf, tituloModo, titulo, legenda, perfis, margensStories, rotulos, datas, mostrarDatas, nota]);
   const layoutAtual = useMemo(() => layoutDaArte(opcoesBase, nPaineis, recursos), [opcoesBase, nPaineis, recursos]);
 
   // Onde estão as marcações de todas as fotos: o enquadramento de abertura nunca corta o que foi medido.

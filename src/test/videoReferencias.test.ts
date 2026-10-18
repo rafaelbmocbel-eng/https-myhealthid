@@ -75,6 +75,35 @@ describe('tabela de referências: só o que foi verificado em fonte real', () =>
     for (const c of ['velocidade_marcha.bohannon1997', 'velocidade_marcha.bohannon2011']) expect(por(c).tipo).toBe('faixa_de_medias');
   });
 
+  it('a nota de Bohannon e Andrews (2011) traz a inclusão, a ressalva dos autores com o comando "vá" e o aviso sobre trecho curto em vídeo', () => {
+    const r = REFERENCIAS.find((x) => x.chave === 'velocidade_marcha.bohannon2011') as ReferenciaBiomecanica;
+    const nota = r.nota ?? '';
+    // inclusão do resumo no PubMed: adultos aparentemente saudáveis, ritmo normal, percursos de 3 a 30 m
+    expect(nota).toMatch(/adultos aparentemente saudáveis/);
+    expect(nota).toMatch(/ritmo normal/);
+    expect(nota).toMatch(/3 a 30 m/);
+    // ressalva dos autores: distâncias curtas a partir do comando 'go' (parado) ou com curva
+    expect(nota).toMatch(/distâncias curtas/);
+    expect(nota).toMatch(/comando "vá" \(partida parada\)/);
+    expect(nota).not.toMatch(/comando de largada/);
+    expect(nota).toMatch(/curva/);
+    // o que o app acrescenta: o vídeo costuma medir um trecho curto
+    expect(nota).toMatch(/velocidade estimada por vídeo costuma vir de um trecho curto/);
+    expect(nota).toMatch(/provavelmente se aplica/);
+    // a fonte e os números não mudam
+    expect(r.fonte.pmid).toBe('21820535');
+    expect(r.faixa).toEqual({ min: 94.3, max: 143.4 });
+    expect(r.fonte.trecho).toBe('The gait speed was homogeneous within strata and ranged from a mean of 143.4 cm/second for men aged 40 to 49 years to a mean of 94.3 cm/second for women aged 80 to 99 years.');
+  });
+
+  it('a ressalva de curta distância é só da fonte que a faz: nenhuma outra referência ganha uma equivalente', () => {
+    for (const r of REFERENCIAS.filter((x) => x.chave !== 'velocidade_marcha.bohannon2011')) expect(r.nota ?? '', r.chave).not.toMatch(/comando "vá"|distâncias curtas/);
+  });
+
+  it('as notas das referências confirmadas não julgam o paciente (nada de certo, errado, anormal ou perfeito)', () => {
+    for (const r of confirmadas) expect(r.nota ?? '', r.chave).not.toMatch(/\b(certo|errado|anormal|perfeito)\b/i);
+  });
+
   it('há um aviso geral sobre comparar vídeo com estudos de outros métodos', () => {
     expect(AVISO_REFERENCIAS).toContain('outros métodos');
     expect(AVISO_REFERENCIAS).toContain('diagnóstico');

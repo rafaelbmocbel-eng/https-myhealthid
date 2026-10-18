@@ -280,6 +280,8 @@ export function painelParaExportar(a: AnaliseFoto, estilo: EstiloMarcacao, o: { 
 export interface AnaliseParaExportar {
   titulo?: string;
   legenda?: string;
+  /** Nota fixa no pé da arte, fora das faixas que o Instagram cobre (ex.: "Estimativa por vídeo · não é diagnóstico"). */
+  nota?: string;
   paineis: PainelParaExportar[];
   medidas: { nome: string; valor: string }[];
 }

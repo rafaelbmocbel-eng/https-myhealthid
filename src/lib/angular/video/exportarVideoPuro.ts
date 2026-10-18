@@ -1,5 +1,5 @@
-import { naturezaDasReferencias, referenciaPrincipal, situacaoDoValor, type NaturezaReferencia } from '@/lib/angular/analiseVideo/statusReferencia';
-import type { CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
+import { naturezaDasReferencias, referenciaPrincipal, situacaoDoCartaoTexto, situacaoEhNeutra, type NaturezaReferencia } from '@/lib/angular/analiseVideo/statusReferencia';
+import { AVISO_ESTIMATIVA_VIDEO, type CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
 import { dataParaArquivo } from '@/lib/social/exportar';
 import { FORMATOS, type FormatoSocial, type Retangulo } from '@/lib/social/formatos';
 import type { ModoRosto } from '@/lib/social/rosto';
@@ -248,8 +248,8 @@ export function quebrarTexto(texto: string, larguraMax: number, medir: (t: strin
 
 // ---------- cartões de métricas do vídeo ----------
 
-/** 'fora_neutro': fora de uma faixa que não é de normalidade (média de grupos ou limiar), mostrado sem alerta. */
-export type StatusMetricaVideo = 'dentro' | 'fora' | 'fora_neutro' | 'sem_referencia' | 'desconhecido';
+/** 'neutro': há faixa de médias ou limiar (que não é de normalidade): dentro e fora têm o mesmo símbolo neutro, e o texto da situação diz qual. */
+export type StatusMetricaVideo = 'dentro' | 'fora' | 'neutro' | 'sem_referencia' | 'desconhecido';
 
 export interface ValorMetricaVideo {
   lado: 'D' | 'E' | null;
@@ -267,17 +267,22 @@ export interface ItemMetricaVideo {
   referencia: string | null;
   /** O que a faixa é (normalidade, média de grupos ou limiar); só existe com referência. */
   natureza?: NaturezaReferencia;
+  /** Situação em texto neutro, com o rótulo da fonte (ex.: "acima do limiar de 100 passos/min (Tudor-Locke et al., 2018)"); só para faixa de médias e limiar. */
+  situacao?: string;
   /** Há ressalvas desta métrica (erro de um quadro, poucos ciclos...): o cartão leva um asterisco e o detalhe vai no PDF. */
   comAviso?: boolean;
 }
 
-/** Rodapé fixo do vídeo analisado: a pose estimada em vídeo comum não é medida de laboratório nem diagnóstico. */
-export const RODAPE_VIDEO = 'Estimativa por vídeo · não é diagnóstico';
-export const RODAPE_VIDEO_COM_AVISO = 'Estimativa por vídeo · não é diagnóstico · * ver ressalvas no PDF';
+/** Rodapé fixo do vídeo analisado e do quadro (PNG): a pose estimada em vídeo comum não é medida de laboratório nem diagnóstico. */
+export const RODAPE_VIDEO = AVISO_ESTIMATIVA_VIDEO;
+export const RODAPE_VIDEO_COM_AVISO = `${AVISO_ESTIMATIVA_VIDEO} · * ver ressalvas no PDF`;
+
+/** A situação sem o rótulo da fonte (entre parênteses, no fim): o cartão do vídeo cai para ela quando o texto inteiro não cabe, e a linha da referência traz a fonte. */
+export const situacaoSemFonte = (texto: string): string => texto.replace(/\s*\([^()]*\)\s*$/, '');
 
 /** Início do texto da referência no cartão: só a faixa de normalidade se chama "Ref."; os outros tipos dizem o que são. */
 export const prefixoDaReferencia = (natureza: NaturezaReferencia | undefined): string =>
-  natureza === 'faixa_de_medias' ? 'Médias de grupos: ' : natureza === 'limiar_heuristico' ? 'Limiar: ' : 'Ref.: ';
+  natureza === 'faixa_de_medias' ? 'Médias do estudo: ' : natureza === 'limiar_heuristico' ? 'Limiar: ' : 'Ref.: ';
 
 /**
  * Cartões estruturados da tela de análise. Só entra como referência o que o motor confirmou em fonte (`referencias`). O cartão mostra a
@@ -289,12 +294,18 @@ export function itensDeCartoes(cartoes: CartaoMetricaUi[]): ItemMetricaVideo[] {
     const r = referenciaPrincipal(c);
     const referencia = r ? `${r.faixa} · ${r.rotulo ?? r.citacao}${r.pmid ? ` · PMID ${r.pmid}` : ''}` : null;
     const natureza = naturezaDasReferencias(c.referencias);
+    // Faixa de médias e limiar: dentro e fora ganham o mesmo símbolo neutro e o texto da situação (com a fonte) diz qual dos dois.
+    const neutra = situacaoEhNeutra(natureza);
     const valores = c.valores.map((v): ValorMetricaVideo => ({
       lado: v.lado, texto: v.texto,
-      status: v.status === 'fora' && !situacaoDoValor('fora', natureza).alerta ? 'fora_neutro' : v.status,
+      status: neutra && v.status !== 'sem_referencia' ? 'neutro' : v.status,
       ...(v.incertezaCurta ? { incerteza: v.incertezaCurta } : {}),
     }));
-    return [{ titulo: c.titulo, valores, referencia, ...(r ? { natureza } : {}), ...(c.avisos.length ? { comAviso: true } : {}) }];
+    const comSituacao = !!r && neutra && c.valores.some((v) => v.status !== 'sem_referencia');
+    return [{
+      titulo: c.titulo, valores, referencia, ...(r ? { natureza } : {}), ...(comSituacao ? { situacao: situacaoDoCartaoTexto(c) } : {}),
+      ...(c.avisos.length ? { comAviso: true } : {}),
+    }];
   });
 }
 
@@ -337,6 +348,8 @@ export interface EntradaLayoutConteudo {
   alturaMaxima?: number;
   grafico: boolean;
   nCartoes: number;
+  /** Os cartões levam uma linha a mais (a situação do valor em texto) e ficam mais altos. */
+  cartaoAlto?: boolean;
 }
 
 export interface LayoutConteudo {
@@ -357,7 +370,17 @@ export interface LayoutConteudo {
   /** Corpo base do texto, em px. */
   fonte: number;
   margem: number;
+  /**
+   * Faixa do aviso "Estimativa por vídeo · não é diagnóstico", no pé do quadro, só no formato original. Nos formatos sociais o aviso
+   * fica na moldura da arte (dentro da zona que o Instagram não cobre), então aqui é null.
+   */
+  rodape: Retangulo | null;
+  /** Corpo do aviso: proporcional ao quadro, para ser lido no celular. */
+  fonteRodape: number;
 }
+
+/** Corpo do aviso do rodapé em fração da largura do quadro (1080 px → 26 px, ou 9,4 pt num celular de 390 pt de largura). */
+export const FRACAO_FONTE_RODAPE = 0.024;
 
 export const par = (n: number): number => Math.max(2, 2 * Math.round(n / 2));
 
@@ -369,10 +392,14 @@ const FRACAO_GRAFICO_MIN = 0.2;
 const FRACAO_CARTOES_MAX = 0.3;
 const FRACAO_VIDEO_MIN = 0.34;
 
-function medidasBase(W: number) {
+function medidasBase(W: number, cartaoAlto = false) {
   const margem = Math.max(6, Math.round(W * 0.022));
   const fonte = Math.max(11, Math.round(W * 0.026));
-  return { margem, fonte, colunas: (W >= 560 ? 2 : 1) as 1 | 2, alturaCartao: Math.round(fonte * 3.8), espacoCartoes: Math.max(4, Math.round(margem * 0.6)), alturaBarra: Math.round(fonte * 2.2) };
+  const fonteRodape = Math.max(10, Math.round(W * FRACAO_FONTE_RODAPE));
+  return {
+    margem, fonte, fonteRodape, colunas: (W >= 560 ? 2 : 1) as 1 | 2, alturaCartao: Math.round(fonte * (cartaoAlto ? 4.65 : 3.8)), espacoCartoes: Math.max(4, Math.round(margem * 0.6)),
+    alturaBarra: Math.round(fonte * 1.8), alturaRodape: Math.round(fonteRodape * 3.6),
+  };
 }
 
 function cartoesNaAltura(n: number, colunas: number, alturaCartao: number, espaco: number, linhasMax: number): { linhas: number; visiveis: number; altura: number } {
@@ -387,7 +414,7 @@ function ajustarVideo(area: Retangulo, aw: number, ah: number): Retangulo {
 }
 
 function layoutNatural(e: EntradaLayoutConteudo, W: number): LayoutConteudo {
-  const b = medidasBase(W);
+  const b = medidasBase(W, e.cartaoAlto);
   const barra: Retangulo = { x: 0, y: 0, w: W, h: b.alturaBarra };
   const hv = par((W * e.alturaVideo) / e.larguraVideo);
   let y = barra.h + hv;
@@ -407,13 +434,18 @@ function layoutNatural(e: EntradaLayoutConteudo, W: number): LayoutConteudo {
     cartoes = { x: b.margem, y, w: W - 2 * b.margem, h: c.altura };
     y += c.altura;
   }
-  const altura = par(grafico || cartoes ? y + b.margem : barra.h + hv);
+  // A faixa do aviso fecha o quadro: o texto fica longe da borda de baixo e abaixo de tudo, nunca sobre o vídeo, o gráfico ou os cartões.
+  const rodape: Retangulo = { x: 0, y: y + (grafico || cartoes ? b.margem : 0), w: W, h: b.alturaRodape };
+  const altura = par(rodape.y + rodape.h);
   const areaVideo = { x: 0, y: barra.h, w: W, h: hv };
-  return { largura: W, altura, barra, video: areaVideo, areaVideo, grafico, cartoes, colunas: b.colunas, alturaCartao: b.alturaCartao, espacoCartoes: b.espacoCartoes, cartoesVisiveis: visiveis, fonte: b.fonte, margem: b.margem };
+  return {
+    largura: W, altura, barra, video: areaVideo, areaVideo, grafico, cartoes, colunas: b.colunas, alturaCartao: b.alturaCartao, espacoCartoes: b.espacoCartoes,
+    cartoesVisiveis: visiveis, fonte: b.fonte, margem: b.margem, rodape, fonteRodape: b.fonteRodape,
+  };
 }
 
 function layoutFixo(e: EntradaLayoutConteudo, W: number, H: number): LayoutConteudo {
-  const b = medidasBase(W);
+  const b = medidasBase(W, e.cartaoAlto);
   const barra: Retangulo = { x: 0, y: 0, w: W, h: b.alturaBarra };
   const linhasMaxCartoes = Math.max(1, Math.floor((H * FRACAO_CARTOES_MAX + b.espacoCartoes) / (b.alturaCartao + b.espacoCartoes)));
   const c = e.nCartoes > 0 ? cartoesNaAltura(e.nCartoes, b.colunas, b.alturaCartao, b.espacoCartoes, linhasMaxCartoes) : null;
@@ -433,6 +465,7 @@ function layoutFixo(e: EntradaLayoutConteudo, W: number, H: number): LayoutConte
   return {
     largura: W, altura: H, barra, video: ajustarVideo(areaVideo, e.larguraVideo, e.alturaVideo), areaVideo, grafico, cartoes, colunas: b.colunas,
     alturaCartao: b.alturaCartao, espacoCartoes: b.espacoCartoes, cartoesVisiveis: c ? c.visiveis : 0, fonte: b.fonte, margem: b.margem,
+    rodape: null, fonteRodape: b.fonteRodape,
   };
 }
 
@@ -468,9 +501,9 @@ export function calcularLayoutConteudo(e: EntradaLayoutConteudo): LayoutConteudo
 }
 
 /** Tamanho do quadro composto do formato "original": a largura do vídeo, no máximo 1080, e a altura que o conteúdo pede, no máximo 1920. */
-export function tamanhoOriginal(larguraVideo: number, alturaVideo: number, grafico: boolean, nCartoes: number): LayoutConteudo {
+export function tamanhoOriginal(larguraVideo: number, alturaVideo: number, grafico: boolean, nCartoes: number, cartaoAlto = false): LayoutConteudo {
   const largura = Math.min(LIMITES_EXPORTACAO.larguraMaxima, Math.max(480, larguraVideo));
-  return calcularLayoutConteudo({ larguraVideo, alturaVideo, largura, grafico, nCartoes, alturaMaxima: LIMITES_EXPORTACAO.alturaMaxima });
+  return calcularLayoutConteudo({ larguraVideo, alturaVideo, largura, grafico, nCartoes, cartaoAlto, alturaMaxima: LIMITES_EXPORTACAO.alturaMaxima });
 }
 
 export const dimensoesDoFormato = (f: FormatoSocial): { largura: number; altura: number } => ({ largura: FORMATOS[f].largura, altura: FORMATOS[f].altura });

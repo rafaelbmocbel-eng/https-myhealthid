@@ -6,7 +6,7 @@
 export const VELOCIDADES = [0.1, 0.25, 0.5, 1] as const;
 export type Velocidade = (typeof VELOCIDADES)[number];
 
-import { LIMITES_VIDEO } from '@/lib/angular/video/rastrear';
+import { LIMITES_VIDEO, MAX_QUADROS_PADRAO } from '@/lib/angular/video/rastrear';
 
 // Os limites de duração e tamanho são os do motor de rastreio, para a tela e o motor concordarem.
 export const DURACAO_SUGERIDA_S = LIMITES_VIDEO.duracaoSugeridaS;
@@ -103,17 +103,45 @@ export function intervaloPadrao(duracao: number, max = DURACAO_SUGERIDA_S): Inte
   return { inicio: 0, fim: Math.min(d, max) };
 }
 
-/** Mantém o trecho dentro do vídeo, com no mínimo `minimo` s e no máximo `max` s (o lado movido cede ao outro). */
-export function ajustarIntervalo(i: IntervaloVideo, duracao: number, ladoMovido: 'inicio' | 'fim', max = DURACAO_SUGERIDA_S, minimo = 0.5): IntervaloVideo {
+/**
+ * Mantém o trecho dentro do vídeo, com no mínimo `minimo` s e no máximo `max` s. O lado movido trava no limite e o outro fica onde
+ * estava: o trecho escolhido nunca é deslocado nem encurtado sem o profissional pedir.
+ */
+export function ajustarIntervalo(i: IntervaloVideo, duracao: number, ladoMovido: 'inicio' | 'fim', max: number = DURACAO_SUGERIDA_S, minimo = 0.5): IntervaloVideo {
   let inicio = limitar(i.inicio, 0, duracao), fim = limitar(i.fim, 0, duracao);
   if (ladoMovido === 'inicio') {
-    inicio = Math.min(inicio, fim - minimo);
-    if (fim - inicio > max) fim = inicio + max;
+    inicio = Math.max(Math.min(inicio, fim - minimo), fim - max);
   } else {
-    fim = Math.max(fim, inicio + minimo);
-    if (fim - inicio > max) inicio = fim - max;
+    fim = Math.min(Math.max(fim, inicio + minimo), inicio + max);
   }
   return { inicio: Math.max(0, inicio), fim: Math.min(duracao, fim) };
+}
+
+const taxaValida = (taxaFps: number): number => (Number.isFinite(taxaFps) && taxaFps > 0 ? taxaFps : 1);
+
+/** Trecho mais longo (s inteiros) que o motor rastreia sem reduzir a taxa: floor(limite de quadros ÷ taxa). */
+export const trechoMaximoPorQuadrosS = (taxaFps: number, maxQuadros = MAX_QUADROS_PADRAO): number => Math.floor(maxQuadros / taxaValida(taxaFps) + 1e-9);
+
+/** Trecho máximo que a tela deixa escolher a esta taxa: o do limite de quadros, nunca acima do máximo de produto (DURACAO_SUGERIDA_S). */
+export const trechoMaximoS = (taxaFps: number, maxQuadros = MAX_QUADROS_PADRAO, maxProduto: number = DURACAO_SUGERIDA_S): number => Math.min(maxProduto, trechoMaximoPorQuadrosS(taxaFps, maxQuadros));
+
+/** O trecho de `trechoS` segundos cabe nesta taxa sem o motor reduzi-la? (A tela é mais estrita que o motor: 1 ms a mais já conta como não cabe.) */
+export const trechoCabeNaTaxa = (trechoS: number, taxaFps: number, maxQuadros = MAX_QUADROS_PADRAO): boolean => trechoS <= trechoMaximoS(taxaFps, maxQuadros) + 1e-6;
+
+/** Maior taxa (q/s, inteira) que comporta o trecho: floor(limite de quadros ÷ trecho). */
+export const taxaMaximaParaTrecho = (trechoS: number, maxQuadros = MAX_QUADROS_PADRAO): number => Math.floor(maxQuadros / Math.max(trechoS, 0.1) + 1e-9);
+
+/** A maior taxa oferecida para este vídeo que comporta o trecho; null só se nenhuma comportar (não acontece com trechos de até 30 s). */
+export function maiorTaxaQueComporta(trechoS: number, fpsVideo: number, maxQuadros = MAX_QUADROS_PADRAO): OpcaoTaxa | null {
+  const limite = taxaMaximaParaTrecho(trechoS, maxQuadros);
+  return opcoesDeTaxa(fpsVideo).filter((o) => o.fps <= limite).pop() ?? null;
+}
+
+/** Taxa a pré-selecionar: a desejada, ou a maior oferecida abaixo dela que comporta o trecho (nunca uma que o motor teria de reduzir). */
+export function taxaInicial(desejadaFps: number, trechoS: number, fpsVideo: number, maxQuadros = MAX_QUADROS_PADRAO): number {
+  const opcoes = opcoesDeTaxa(fpsVideo);
+  const teto = Math.min(desejadaFps, taxaMaximaParaTrecho(trechoS, maxQuadros));
+  return opcoes.filter((o) => o.fps <= teto).pop()?.fps ?? opcoes[0].fps;
 }
 
 export interface OpcaoTaxa { id: 'rapida' | 'detalhada' | 'maxima'; nome: string; fps: number }

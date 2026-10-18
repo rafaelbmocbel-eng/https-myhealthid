@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { remapearCapturas, type CapturaManual } from '../lib/angular/analiseVideo/medidaManual';
 import { quadroComPontos, sugestoesDePontosAusentes } from '../lib/angular/analiseVideo/marcacoes';
-import { cartaoTemAlerta, naturezaDasReferencias, referenciaPrincipal, situacaoDoValor } from '../lib/angular/analiseVideo/statusReferencia';
+import { cartaoTemAlerta, naturezaDasReferencias, referenciaPrincipal, situacaoDoCartaoTexto, situacaoDoValor, situacaoEhNeutra } from '../lib/angular/analiseVideo/statusReferencia';
 import { cartoesDeMetricas } from '../lib/angular/analiseVideo/resultados';
 import type { CartaoMetricaUi } from '../lib/angular/analiseVideo/tiposUi';
 import { incertezaDoCartaoTexto, notasDasMetricas, referenciaDoCartaoTexto } from '../lib/angular/relatorioVideo';
@@ -19,19 +19,23 @@ describe('medidas guardadas acompanham o instante quando a trilha muda de taxa',
   it('vídeo a 60 q/s medido à mão e depois rastreado a 30 q/s: a medida de 1,70 s aponta o quadro 51, não o 103', () => {
     const tempos30 = Array.from({ length: 179 }, (_, i) => i / 30);
     const r = remapearCapturas([captura(103, 1.7)], tempos30);
-    expect(r.descartadas).toBe(0);
+    expect(r.foraDoTrecho).toBe(0);
     expect(r.capturas[0].quadro).toBe(51);
     expect(tempos30[r.capturas[0].quadro]).toBeCloseTo(1.7, 6);
   });
 
-  it('não mexe nas medidas que já apontam o quadro certo e descarta as que ficaram fora do trecho rastreado', () => {
+  it('não mexe nas medidas que já apontam o quadro certo e mantém na lista, sem apagar, as que ficaram fora do trecho rastreado', () => {
     const tempos = Array.from({ length: 31 }, (_, i) => 2 + i / 30);
     const ok = captura(5, 2 + 5 / 30);
-    const r = remapearCapturas([ok, captura(10, 0.5), captura(3000, 40)], tempos);
-    expect(r.capturas).toHaveLength(1);
-    expect(r.capturas[0]).toBe(ok);
-    expect(r.descartadas).toBe(2);
-    expect(remapearCapturas([ok], []).descartadas).toBe(1);
+    const fora1 = captura(10, 0.5), fora2 = captura(3000, 40);
+    const r = remapearCapturas([ok, fora1, fora2], tempos);
+    expect(r.capturas).toHaveLength(3);
+    expect(r.capturas.find((c) => c.uid === ok.uid)).toBe(ok);
+    expect(r.capturas.find((c) => c.uid === fora1.uid)).toBe(fora1);
+    expect(r.capturas.find((c) => c.uid === fora2.uid)).toBe(fora2);
+    expect(r.foraDoTrecho).toBe(2);
+    expect(remapearCapturas([ok], []).foraDoTrecho).toBe(1);
+    expect(remapearCapturas([ok], []).capturas).toEqual([ok]);
   });
 });
 
@@ -73,10 +77,58 @@ describe('o que "dentro" e "fora" querem dizer', () => {
     expect(naturezaDasReferencias([{ tipo: 'limiar_heuristico' }])).toBe('limiar_heuristico');
     expect(naturezaDasReferencias([{ tipo: 'faixa_de_medias' }, {}])).toBe('normalidade');
     expect(situacaoDoValor('fora', 'normalidade')).toEqual({ texto: 'fora da referência', alerta: true });
-    expect(situacaoDoValor('fora', 'faixa_de_medias')).toEqual({ texto: 'fora da faixa das médias de grupos', alerta: false });
+    expect(situacaoDoValor('fora', 'faixa_de_medias')).toEqual({ texto: 'fora da faixa das médias do estudo', alerta: false });
     expect(situacaoDoValor('fora', 'limiar_heuristico').alerta).toBe(false);
-    expect(situacaoDoValor('dentro', 'faixa_de_medias').texto).toBe('dentro da faixa das médias de grupos');
+    expect(situacaoDoValor('dentro', 'faixa_de_medias').texto).toBe('dentro da faixa das médias do estudo');
     expect(situacaoDoValor('sem_referencia', 'normalidade').texto).toBe('sem referência');
+  });
+
+  const bohannon11 = { rotulo: 'Bohannon e Andrews, 2011', citacao: 'Bohannon RW, Williams Andrews A.' };
+  const bohannon97 = { rotulo: 'Bohannon, 1997', citacao: 'Bohannon RW.' };
+  const tudor = { rotulo: 'Tudor-Locke et al., 2018', citacao: 'Tudor-Locke C, et al.', limiteMin: '100 passos/min' };
+
+  it('faixa de médias: dentro e fora são o mesmo texto neutro, sempre com o rótulo da fonte', () => {
+    expect(situacaoDoValor('dentro', 'faixa_de_medias', [bohannon11])).toEqual({ texto: 'dentro da faixa das médias do estudo (Bohannon e Andrews, 2011)', alerta: false });
+    expect(situacaoDoValor('fora', 'faixa_de_medias', [bohannon11])).toEqual({ texto: 'fora da faixa das médias do estudo (Bohannon e Andrews, 2011)', alerta: false });
+    expect(situacaoDoValor('fora', 'faixa_de_medias', [bohannon97, bohannon11]).texto).toBe('fora da faixa das médias do estudo (Bohannon, 1997; Bohannon e Andrews, 2011)');
+    expect(situacaoEhNeutra('faixa_de_medias')).toBe(true);
+    expect(situacaoEhNeutra('limiar_heuristico')).toBe(true);
+    expect(situacaoEhNeutra('normalidade')).toBe(false);
+  });
+
+  it('limiar: acima/abaixo do limiar de <valor><unidade>, nunca dentro/fora, com a fonte', () => {
+    expect(situacaoDoValor('dentro', 'limiar_heuristico', [tudor])).toEqual({ texto: 'acima do limiar de 100 passos/min (Tudor-Locke et al., 2018)', alerta: false });
+    expect(situacaoDoValor('fora', 'limiar_heuristico', [tudor])).toEqual({ texto: 'abaixo do limiar de 100 passos/min (Tudor-Locke et al., 2018)', alerta: false });
+    expect(situacaoDoValor('dentro', 'limiar_heuristico', [{ ...tudor, limiteMin: undefined, limiteMax: '8 s' }]).texto).toBe('abaixo do limiar de 8 s (Tudor-Locke et al., 2018)');
+    for (const status of ['dentro', 'fora'] as const) expect(situacaoDoValor(status, 'limiar_heuristico', [tudor]).texto).not.toMatch(/dentro|fora/);
+    expect(situacaoDoValor('fora', 'limiar_heuristico').texto).toBe('abaixo do limiar');
+  });
+
+  it('o cartão da cadência (limiar) diz acima/abaixo do limiar de 100 passos/min, vindo da tabela de referências', () => {
+    const cadencia = (v: number): ResultadoMetrica => ({ id: 'cadencia', metrica: 'cadencia', nome: 'Cadência', valor: v, unidade: 'passos/min', lado: null, avisos: [] });
+    const acima = cartoesDeMetricas([cadencia(109)], modeloDoGesto('marcha'))[0];
+    const abaixo = cartoesDeMetricas([cadencia(90)], modeloDoGesto('marcha'))[0];
+    expect(acima.referencias[0].limiteMin).toBe('100 passos/min');
+    expect(situacaoDoCartaoTexto(acima)).toBe('acima do limiar de 100 passos/min (Tudor-Locke et al., 2018)');
+    expect(situacaoDoCartaoTexto(abaixo)).toBe('abaixo do limiar de 100 passos/min (Tudor-Locke et al., 2018)');
+    expect(cartaoTemAlerta(abaixo)).toBe(false);
+  });
+
+  it('a situação de um lado só cita as faixas que o valor satisfaz; fora, cita todas', () => {
+    const c = (v: number) => cartoesDeMetricas([{ id: 'velocidade_marcha', metrica: 'velocidade_marcha', nome: 'Velocidade da marcha', valor: v, unidade: 'cm/s', lado: null, avisos: [] }], modeloDoGesto('marcha'))[0];
+    expect(situacaoDoCartaoTexto(c(100))).toBe('dentro da faixa das médias do estudo (Bohannon e Andrews, 2011)');
+    expect(situacaoDoCartaoTexto(c(135))).toBe('dentro da faixa das médias do estudo (Bohannon, 1997; Bohannon e Andrews, 2011)');
+    expect(situacaoDoCartaoTexto(c(150))).toBe('fora da faixa das médias do estudo (Bohannon, 1997; Bohannon e Andrews, 2011)');
+  });
+
+  it('lados com situações diferentes dividem a frase: "D dentro · E fora da faixa … (fonte)"', () => {
+    const base = cartoesDeMetricas([{ id: 'velocidade_marcha', metrica: 'velocidade_marcha', nome: 'Velocidade da marcha', valor: 100, unidade: 'cm/s', lado: null, avisos: [] }], modeloDoGesto('marcha'))[0];
+    const refs = base.referencias.filter((r) => r.pmid === '21820535');
+    const duplo: CartaoMetricaUi = {
+      ...base, referencias: refs,
+      valores: [{ lado: 'D', texto: '100 cm/s', status: 'dentro', dentroDe: [refs[0].chave as string] }, { lado: 'E', texto: '150 cm/s', status: 'fora' }],
+    };
+    expect(situacaoDoCartaoTexto(duplo)).toBe('D dentro · E fora da faixa das médias do estudo (Bohannon e Andrews, 2011)');
   });
 });
 
@@ -91,7 +143,10 @@ describe('cartão do vídeo mostra a faixa que explica o "dentro"', () => {
     const [item] = itensDeCartoes([c]);
     expect(item.referencia).toBe('94,3 a 143,4 cm/s · Bohannon e Andrews, 2011 · PMID 21820535');
     expect(item.natureza).toBe('faixa_de_medias');
-    expect(item.valores[0].status).toBe('dentro');
+    // dentro e fora têm o mesmo símbolo neutro (nada de aprovação verde); quem diferencia é o texto, com a fonte
+    expect(item.valores[0].status).toBe('neutro');
+    expect(item.situacao).toBe('dentro da faixa das médias do estudo (Bohannon e Andrews, 2011)');
+    expect(item.referencia).not.toBeNull();
   });
 
   it('145 cm/s só está na faixa de 1997 e o cartão mostra essa; 135 está nas duas e mostra a primeira', () => {
@@ -100,13 +155,26 @@ describe('cartão do vídeo mostra a faixa que explica o "dentro"', () => {
     expect(referenciaPrincipal(cartaoDaVelocidade(100))?.rotulo).toBe('Bohannon e Andrews, 2011');
   });
 
-  it('150 cm/s (acima das duas faixas de médias) não vira alerta: fora neutro no vídeo, sem alerta no cartão', () => {
+  it('150 cm/s (acima das duas faixas de médias) não vira alerta: fora tem o mesmo símbolo neutro do dentro, no vídeo e no cartão', () => {
     const c = cartaoDaVelocidade(150);
     expect(c.valores[0].status).toBe('fora');
     expect(cartaoTemAlerta(c)).toBe(false);
     const [item] = itensDeCartoes([c]);
-    expect(item.valores[0].status).toBe('fora_neutro');
+    const [dentro] = itensDeCartoes([cartaoDaVelocidade(100)]);
+    expect(item.valores[0].status).toBe('neutro');
+    expect(item.valores[0].status).toBe(dentro.valores[0].status);
+    expect(item.situacao).toBe('fora da faixa das médias do estudo (Bohannon, 1997; Bohannon e Andrews, 2011)');
     expect(item.referencia).toMatch(/PMID 9143432$/);
+  });
+
+  it('o cartão da cadência no vídeo diz acima/abaixo do limiar e tem o mesmo símbolo neutro dos dois lados', () => {
+    const cadencia = (v: number): ResultadoMetrica => ({ id: 'cadencia', metrica: 'cadencia', nome: 'Cadência', valor: v, unidade: 'passos/min', lado: null, avisos: [] });
+    const [acima] = itensDeCartoes(cartoesDeMetricas([cadencia(109)], modeloDoGesto('marcha')));
+    const [abaixo] = itensDeCartoes(cartoesDeMetricas([cadencia(90)], modeloDoGesto('marcha')));
+    expect(acima.valores[0].status).toBe('neutro');
+    expect(abaixo.valores[0].status).toBe('neutro');
+    expect(acima.situacao).toBe('acima do limiar de 100 passos/min (Tudor-Locke et al., 2018)');
+    expect(abaixo.situacao).toBe('abaixo do limiar de 100 passos/min (Tudor-Locke et al., 2018)');
   });
 
   it('a nota de Bohannon e Andrews traz a ressalva de distância curta e curva', () => {
@@ -117,7 +185,7 @@ describe('cartão do vídeo mostra a faixa que explica o "dentro"', () => {
 
   it('o PDF diz o que cada faixa é', () => {
     const texto = referenciaDoCartaoTexto(cartaoDaVelocidade(100));
-    expect(texto).toMatch(/médias de grupos/);
+    expect(texto).toMatch(/médias do estudo/);
     expect(texto).toMatch(/PMID 21820535/);
   });
 });

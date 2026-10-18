@@ -69,7 +69,7 @@ interface ControlesProps {
   quadro: number;
   nQuadros: number;
   t: number;
-  /** Quadros por segundo efetivos da análise (podem ser menos que o pedido em trechos longos). */
+  /** Quadros por segundo da análise (a taxa que o profissional escolheu: a tela não deixa o motor reduzi-la). */
   fps?: number;
   tocando: boolean;
   velocidade: number;

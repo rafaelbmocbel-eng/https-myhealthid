@@ -51,7 +51,13 @@ export interface ReferenciaUi {
   nota?: string;
   /** Faixa entre médias de grupos, ou limiar prático (ex.: intensidade): não é o mesmo que normalidade. */
   tipo?: 'faixa_de_medias' | 'limiar_heuristico';
+  /** Limites da faixa com a unidade (ex.: "100 passos/min"): o limiar aparece por extenso no texto da situação. */
+  limiteMin?: string;
+  limiteMax?: string;
 }
+
+/** Aviso fixo das saídas do vídeo (vídeo exportado, quadro, PDF): a pose estimada em vídeo comum não é medida de laboratório nem diagnóstico. */
+export const AVISO_ESTIMATIVA_VIDEO = 'Estimativa por vídeo · não é diagnóstico';
 
 /** O que a literatura verificada relata quando não há faixa para classificar o valor. */
 export interface ContextoUi { texto: string; citacao: string; pmid?: string }

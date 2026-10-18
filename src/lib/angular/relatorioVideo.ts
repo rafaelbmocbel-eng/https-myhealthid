@@ -4,8 +4,8 @@ import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { nomeDocumento } from '@/lib/pdf/entrega';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import { canvasDoGrafico, type GraficoParaCanvas } from '@/lib/angular/analiseVideo/graficoCanvas';
-import { COR_LADO, type CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
-import { cartaoTemAlerta, naturezaDasReferencias, situacaoDoValor } from '@/lib/angular/analiseVideo/statusReferencia';
+import { AVISO_ESTIMATIVA_VIDEO, COR_LADO, type CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
+import { cartaoTemAlerta, naturezaDasReferencias, situacaoDoCartaoTexto, situacaoEhNeutra } from '@/lib/angular/analiseVideo/statusReferencia';
 
 const AZUL: [number, number, number] = [30, 58, 95];
 const CAB: [number, number, number] = [230, 237, 245];
@@ -114,6 +114,7 @@ export async function gerarRelatorioVideo(d: DadosRelatorioVideo): Promise<{ blo
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(110);
   doc.text(rodape, M, 287 - rodape.length * 3.3);
 
+  avisoEmTodasPaginas(doc, t);
   molduraEmTodasPaginas(doc);
   return { blob: doc.output('blob'), nome: `Analise_angular_video_${paciente.replace(/[^\w]+/g, '_')}_${d.data.split('/').reverse().join('-')}.pdf` };
 }
@@ -161,7 +162,7 @@ export const valorDoCartaoTexto = (c: CartaoMetricaUi): string => c.valores.map(
 /** Erro de medida que o vídeo impõe ao valor (ex.: "± 6,2%"), sem repetir quando os dois lados têm o mesmo; vazio se não houver. */
 export const incertezaDoCartaoTexto = (c: CartaoMetricaUi): string => [...new Set(c.valores.flatMap((v) => (v.incertezaCurta ? [v.incertezaCurta] : [])))].join(' · ');
 
-const ROTULO_TIPO: Record<string, string> = { faixa_de_medias: 'faixa das médias de grupos, não é intervalo individual', limiar_heuristico: 'limiar prático, não é faixa de normalidade' };
+const ROTULO_TIPO: Record<string, string> = { faixa_de_medias: 'faixa das médias do estudo, não é intervalo individual', limiar_heuristico: 'limiar prático, não é faixa de normalidade' };
 
 /** Texto da referência de um cartão: a faixa, a fonte curta e o que a faixa é, ou "sem referência". */
 export const referenciaDoCartaoTexto = (c: CartaoMetricaUi): string =>
@@ -169,18 +170,24 @@ export const referenciaDoCartaoTexto = (c: CartaoMetricaUi): string =>
     ? c.referencias.map((r) => `${r.faixa} (${r.rotulo ?? r.citacao}${r.pmid ? `, PMID ${r.pmid}` : ''}${r.tipo ? `; ${ROTULO_TIPO[r.tipo]}` : ''})`).join('; ')
     : 'sem referência';
 
-const situacaoDoCartaoTexto = (c: CartaoMetricaUi): string => {
-  const natureza = naturezaDasReferencias(c.referencias);
-  const textos = c.valores.map((v) => situacaoDoValor(v.status, natureza).texto);
-  if (new Set(textos).size === 1) return textos[0];
-  return c.valores.map((v, k) => (v.lado ? `${v.lado} ${textos[k]}` : textos[k])).join(' · ');
-};
-
-/** Cor da situação: só o "fora" de uma faixa de normalidade chama atenção; "fora" de média de grupos ou de limiar fica neutro. */
+/** Cor da situação: só o "fora" de uma faixa de normalidade chama atenção; faixa de médias e limiar são neutros dos dois lados. */
 const corDaSituacao = (c: CartaoMetricaUi): [number, number, number] => {
   if (cartaoTemAlerta(c)) return [...COR_STATUS.alerta];
+  if (situacaoEhNeutra(naturezaDasReferencias(c.referencias))) return [...COR_STATUS.neutro];
   return c.valores.some((v) => v.status === 'dentro') ? [...COR_STATUS.dentro] : [...COR_STATUS.neutro];
 };
+
+/** O aviso do vídeo no pé de cada página, dentro da moldura: a estimativa por vídeo não é diagnóstico. */
+function avisoEmTodasPaginas(doc: jsPDF, texto: (txt: string, x: number, y: number, op?: Parameters<jsPDF['text']>[3]) => void) {
+  const total = doc.getNumberOfPages();
+  const inicial = doc.getCurrentPageInfo().pageNumber;
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.6); doc.setTextColor(95);
+    texto(AVISO_ESTIMATIVA_VIDEO, 105, 288.6, { align: 'center' });
+  }
+  doc.setPage(inicial);
+}
 
 /**
  * Ressalvas de cada métrica que o relatório não pode perder: o que ela mede, quantas observações e o desvio-padrão, o erro de um quadro
@@ -228,8 +235,9 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
   const semValor = d.cartoes.filter((c) => !cartaoTemValor(c)).map((c) => c.titulo);
   if (cartoes.length) {
     titulo('Métricas');
-    const cols = { nome: M + 3, valor: M + 54, ref: M + 98, sit: M + 152 };
-    const largs = { nome: 48, valor: 42, ref: 52, sit: LARG - 152 - 2 };
+    // A situação leva a frase e o rótulo da fonte ("dentro da faixa das médias do estudo (Bohannon e Andrews, 2011)"): precisa de coluna larga.
+    const cols = { nome: M + 3, valor: M + 42, ref: M + 86, sit: M + 134 };
+    const largs = { nome: 36, valor: 41, ref: 45, sit: LARG - 134 - 2 };
     const cabecalho = () => {
       doc.setFillColor(...CAB); doc.setDrawColor(...BORDA); doc.setLineWidth(0.3);
       doc.roundedRect(M, y, LARG, 7, 2, 2, 'F');
@@ -388,6 +396,7 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
   doc.setFillColor(...AZUL); doc.roundedRect(M, y, 1.4, altBox, 0.7, 0.7, 'F');
   doc.text(linhas, M + 6, y + 5);
 
+  avisoEmTodasPaginas(doc, t);
   molduraEmTodasPaginas(doc);
   return { blob: doc.output('blob'), nome: `Analise_${d.modelo.nome.toLowerCase().replace(/[^\w]+/g, '_')}_${paciente.replace(/[^\w]+/g, '_')}_${d.data.split('/').reverse().join('-')}.pdf` };
 }

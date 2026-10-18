@@ -2,16 +2,18 @@ import { useState } from 'react';
 import { ChevronDown, CircleCheck, Info, Minus, TriangleAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { COR_LADO, type CartaoMetricaUi, type ValorMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
-import { cartaoTemAlerta, naturezaDasReferencias, situacaoDoValor, type NaturezaReferencia } from '@/lib/angular/analiseVideo/statusReferencia';
+import { cartaoTemAlerta, naturezaDasReferencias, situacaoDoCartaoValor, situacaoEhNeutra, type NaturezaReferencia } from '@/lib/angular/analiseVideo/statusReferencia';
 
 const urlPubMed = (pmid: string) => `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
 
-function Valor({ v, unico, natureza }: { v: ValorMetricaUi; unico: boolean; natureza: NaturezaReferencia }) {
-  const situacao = situacaoDoValor(v.status, natureza);
+function Valor({ c, v, unico, natureza }: { c: CartaoMetricaUi; v: ValorMetricaUi; unico: boolean; natureza: NaturezaReferencia }) {
+  const situacao = situacaoDoCartaoValor(c, v);
   let Icone = Minus, classe = 'text-muted-foreground';
-  if (v.status === 'dentro') { Icone = CircleCheck; classe = 'text-emerald-700 dark:text-emerald-400'; }
+  if (v.status !== 'sem_referencia' && situacaoEhNeutra(natureza)) {
+    // Faixa de médias e limiar: dentro e fora têm o mesmo ícone e o mesmo tom, sem aprovação nem alerta.
+    Icone = Info;
+  } else if (v.status === 'dentro') { Icone = CircleCheck; classe = 'text-emerald-700 dark:text-emerald-400'; }
   else if (v.status === 'fora' && situacao.alerta) { Icone = TriangleAlert; classe = 'text-amber-700 dark:text-amber-400'; }
-  else if (v.status === 'fora') Icone = Info;
   return (
     <div className="min-w-0" data-testid="valor-metrica" data-status={v.status}>
       <p className={cn('font-semibold leading-tight tabular-nums', unico ? 'text-2xl' : 'text-xl')} style={v.lado ? { color: COR_LADO[v.lado] } : undefined}>
@@ -26,7 +28,7 @@ function Valor({ v, unico, natureza }: { v: ValorMetricaUi; unico: boolean; natu
   );
 }
 
-const rotuloDaReferencia = (tipo: CartaoMetricaUi['referencias'][number]['tipo']) => (tipo === 'limiar_heuristico' ? 'Limiar' : tipo === 'faixa_de_medias' ? 'Faixa das médias de grupos' : 'Referência');
+const rotuloDaReferencia = (tipo: CartaoMetricaUi['referencias'][number]['tipo']) => (tipo === 'limiar_heuristico' ? 'Limiar' : tipo === 'faixa_de_medias' ? 'Faixa das médias do estudo' : 'Referência');
 
 function Cartao({ c, recolhido }: { c: CartaoMetricaUi; recolhido: boolean }) {
   const natureza = naturezaDasReferencias(c.referencias);
@@ -34,7 +36,7 @@ function Cartao({ c, recolhido }: { c: CartaoMetricaUi; recolhido: boolean }) {
     <li className={cn('flex-col gap-1.5 rounded-2xl border bg-card p-3', recolhido ? 'hidden min-[420px]:flex' : 'flex', cartaoTemAlerta(c) ? 'border-amber-500/50' : 'border-border/60')} data-testid="cartao-metrica">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{c.titulo}</p>
       <div className={cn('grid gap-2', c.valores.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
-        {c.valores.map((v) => <Valor key={v.lado ?? 'unico'} v={v} unico={c.valores.length === 1} natureza={natureza} />)}
+        {c.valores.map((v) => <Valor key={v.lado ?? 'unico'} c={c} v={v} unico={c.valores.length === 1} natureza={natureza} />)}
       </div>
       {c.detalhe && <p className="text-[11px] leading-snug text-muted-foreground">{c.detalhe}</p>}
       {c.referencias.map((r) => (
