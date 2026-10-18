@@ -126,7 +126,7 @@ export function formatarMetrica(valor: number | null, unidade: string): string {
 const SEM_LADO_NO_NOME = (nome: string) => nome.replace(/\s*\((direito|esquerdo)\)\s*$/i, '');
 
 const referenciaParaUi = (r: ReferenciaBiomecanica): ReferenciaUi => ({
-  faixa: descreverFaixa(r), populacao: r.populacao, citacao: r.fonte.citacao, rotulo: r.fonte.rotulo, pmid: r.fonte.pmid, nota: r.nota, tipo: r.tipo,
+  chave: r.chave, faixa: descreverFaixa(r), populacao: r.populacao, citacao: r.fonte.citacao, rotulo: r.fonte.rotulo, pmid: r.fonte.pmid, nota: r.nota, tipo: r.tipo,
 });
 
 /**
@@ -150,12 +150,16 @@ export function cartoesDeMetricas(metricas: ResultadoMetrica[], modelo: ModeloGe
       for (const a of c.avaliacoes) referencias.set(a.ref.chave, referenciaParaUi(a.ref));
       for (const x of c.contexto) contexto.set(`${x.fonte.pmid ?? x.fonte.citacao}|${x.texto.slice(0, 40)}`, { texto: x.texto, citacao: x.fonte.citacao, pmid: x.fonte.pmid });
     }
-    const valores: ValorMetricaUi[] = rs.map((r, k) => ({
-      lado: r.lado,
-      texto: formatarMetrica(r.valor, r.unidade),
-      status: (cartoes[k].classe satisfies StatusReferencia) as StatusReferencia,
-      ...(r.incerteza !== undefined ? { incerteza: `± ${formatarMetrica(r.incerteza, r.unidade)} (resolução do vídeo)` } : {}),
-    }));
+    const valores: ValorMetricaUi[] = rs.map((r, k) => {
+      const dentroDe = cartoes[k].avaliacoes.filter((a) => a.classe === 'dentro').map((a) => a.ref.chave);
+      return {
+        lado: r.lado,
+        texto: formatarMetrica(r.valor, r.unidade),
+        status: (cartoes[k].classe satisfies StatusReferencia) as StatusReferencia,
+        ...(r.incerteza !== undefined ? { incerteza: `± ${formatarMetrica(r.incerteza, r.unidade)} (resolução do vídeo)`, incertezaCurta: `± ${formatarMetrica(r.incerteza, r.unidade)}` } : {}),
+        ...(dentroDe.length ? { dentroDe } : {}),
+      };
+    });
     const primeiro = rs[0];
     const observacoes = rs.find((r) => r.n !== undefined && r.n > 0);
     const detalhe = [primeiro.detalhe, observacoes ? `${observacoes.n} ${observacoes.n === 1 ? 'observação' : 'observações'}${observacoes.dp !== undefined ? `, desvio-padrão ${formatarMetrica(observacoes.dp, observacoes.unidade)}` : ''}` : undefined].filter(Boolean).join(' · ');

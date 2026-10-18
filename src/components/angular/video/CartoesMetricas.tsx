@@ -1,46 +1,44 @@
-import { CircleCheck, Minus, TriangleAlert } from 'lucide-react';
+import { CircleCheck, Info, Minus, TriangleAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { COR_LADO, type CartaoMetricaUi, type StatusReferencia, type ValorMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
-
-const STATUS: Record<StatusReferencia, { texto: string; Icone: typeof CircleCheck; classe: string }> = {
-  dentro: { texto: 'dentro da referência', Icone: CircleCheck, classe: 'text-emerald-700 dark:text-emerald-400' },
-  fora: { texto: 'fora da referência', Icone: TriangleAlert, classe: 'text-amber-700 dark:text-amber-400' },
-  sem_referencia: { texto: 'sem referência', Icone: Minus, classe: 'text-muted-foreground' },
-};
+import { COR_LADO, type CartaoMetricaUi, type ValorMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
+import { cartaoTemAlerta, naturezaDasReferencias, situacaoDoValor, type NaturezaReferencia } from '@/lib/angular/analiseVideo/statusReferencia';
 
 const urlPubMed = (pmid: string) => `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
 
-// Limiar prático (intensidade, por exemplo) não é faixa de normalidade: o texto diz "limiar", não "referência".
-const STATUS_LIMIAR: Partial<Record<StatusReferencia, string>> = { dentro: 'dentro do limiar', fora: 'fora do limiar' };
-
-function Valor({ v, unico, limiar }: { v: ValorMetricaUi; unico: boolean; limiar: boolean }) {
-  const s = STATUS[v.status];
+function Valor({ v, unico, natureza }: { v: ValorMetricaUi; unico: boolean; natureza: NaturezaReferencia }) {
+  const situacao = situacaoDoValor(v.status, natureza);
+  let Icone = Minus, classe = 'text-muted-foreground';
+  if (v.status === 'dentro') { Icone = CircleCheck; classe = 'text-emerald-700 dark:text-emerald-400'; }
+  else if (v.status === 'fora' && situacao.alerta) { Icone = TriangleAlert; classe = 'text-amber-700 dark:text-amber-400'; }
+  else if (v.status === 'fora') Icone = Info;
   return (
     <div className="min-w-0" data-testid="valor-metrica" data-status={v.status}>
       <p className={cn('font-semibold leading-tight tabular-nums', unico ? 'text-2xl' : 'text-xl')} style={v.lado ? { color: COR_LADO[v.lado] } : undefined}>
         {v.lado && <span className="mr-1 text-xs font-bold opacity-80">{v.lado}</span>}{v.texto}
       </p>
-      <p className={cn('mt-0.5 flex items-center gap-1 text-[11px] font-medium', s.classe)}>
-        <s.Icone className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        <span>{limiar ? STATUS_LIMIAR[v.status] ?? s.texto : s.texto}</span>
+      <p className={cn('mt-0.5 flex items-center gap-1 text-[11px] font-medium', classe)}>
+        <Icone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span>{situacao.texto}</span>
       </p>
       {v.incerteza && <p className="text-[10px] text-muted-foreground">{v.incerteza}</p>}
     </div>
   );
 }
 
+const rotuloDaReferencia = (tipo: CartaoMetricaUi['referencias'][number]['tipo']) => (tipo === 'limiar_heuristico' ? 'Limiar' : tipo === 'faixa_de_medias' ? 'Faixa das médias de grupos' : 'Referência');
+
 function Cartao({ c }: { c: CartaoMetricaUi }) {
-  const fora = c.valores.some((v) => v.status === 'fora');
+  const natureza = naturezaDasReferencias(c.referencias);
   return (
-    <li className={cn('flex flex-col gap-1.5 rounded-2xl border bg-card p-3', fora ? 'border-amber-500/50' : 'border-border/60')} data-testid="cartao-metrica">
+    <li className={cn('flex flex-col gap-1.5 rounded-2xl border bg-card p-3', cartaoTemAlerta(c) ? 'border-amber-500/50' : 'border-border/60')} data-testid="cartao-metrica">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{c.titulo}</p>
       <div className={cn('grid gap-2', c.valores.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
-        {c.valores.map((v) => <Valor key={v.lado ?? 'unico'} v={v} unico={c.valores.length === 1} limiar={c.referencias.length > 0 && c.referencias.every((r) => r.tipo === 'limiar_heuristico')} />)}
+        {c.valores.map((v) => <Valor key={v.lado ?? 'unico'} v={v} unico={c.valores.length === 1} natureza={natureza} />)}
       </div>
       {c.detalhe && <p className="text-[11px] leading-snug text-muted-foreground">{c.detalhe}</p>}
       {c.referencias.map((r) => (
         <p key={`ref-${r.faixa}-${r.pmid}`} className="text-[11px] leading-snug text-muted-foreground" data-testid="linha-referencia">
-          <span className="font-medium text-foreground">{r.tipo === 'limiar_heuristico' ? 'Limiar' : 'Referência'}:</span> {r.faixa} ({r.rotulo ?? r.citacao}{r.pmid ? `, PMID ${r.pmid}` : ''}). {r.nota}
+          <span className="font-medium text-foreground">{rotuloDaReferencia(r.tipo)}:</span> {r.faixa} ({r.rotulo ?? r.citacao}{r.pmid ? `, PMID ${r.pmid}` : ''}). {r.nota}
         </p>
       ))}
       {c.referencias.length > 0 && (

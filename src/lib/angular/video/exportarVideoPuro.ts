@@ -1,3 +1,4 @@
+import { naturezaDasReferencias, referenciaPrincipal, situacaoDoValor, type NaturezaReferencia } from '@/lib/angular/analiseVideo/statusReferencia';
 import type { CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
 import { dataParaArquivo } from '@/lib/social/exportar';
 import { FORMATOS, type FormatoSocial, type Retangulo } from '@/lib/social/formatos';
@@ -247,25 +248,53 @@ export function quebrarTexto(texto: string, larguraMax: number, medir: (t: strin
 
 // ---------- cartões de métricas do vídeo ----------
 
-export type StatusMetricaVideo = 'dentro' | 'fora' | 'sem_referencia' | 'desconhecido';
+/** 'fora_neutro': fora de uma faixa que não é de normalidade (média de grupos ou limiar), mostrado sem alerta. */
+export type StatusMetricaVideo = 'dentro' | 'fora' | 'fora_neutro' | 'sem_referencia' | 'desconhecido';
 
-export interface ValorMetricaVideo { lado: 'D' | 'E' | null; texto: string; status: StatusMetricaVideo }
+export interface ValorMetricaVideo {
+  lado: 'D' | 'E' | null;
+  texto: string;
+  status: StatusMetricaVideo;
+  /** Erro de medida que o vídeo impõe, curto (ex.: "± 6,2%"). */
+  incerteza?: string;
+}
 
 /** Um cartão de métrica no vídeo: título, valores (um por lado) e a referência com a fonte, quando existe. */
 export interface ItemMetricaVideo {
   titulo: string;
   valores: ValorMetricaVideo[];
-  /** Faixa e fonte, ex.: "127,2 a 146,2 cm/s · Bohannon, 1997 · PMID 9140883". Null sem referência confirmada. */
+  /** Faixa e fonte, ex.: "127,2 a 146,2 cm/s · Bohannon, 1997 · PMID 9143432". Null sem referência confirmada. */
   referencia: string | null;
+  /** O que a faixa é (normalidade, média de grupos ou limiar); só existe com referência. */
+  natureza?: NaturezaReferencia;
+  /** Há ressalvas desta métrica (erro de um quadro, poucos ciclos...): o cartão leva um asterisco e o detalhe vai no PDF. */
+  comAviso?: boolean;
 }
 
-/** Cartões estruturados da tela de análise. Só entra como referência o que o motor confirmou em fonte (`referencias`). */
+/** Rodapé fixo do vídeo analisado: a pose estimada em vídeo comum não é medida de laboratório nem diagnóstico. */
+export const RODAPE_VIDEO = 'Estimativa por vídeo · não é diagnóstico';
+export const RODAPE_VIDEO_COM_AVISO = 'Estimativa por vídeo · não é diagnóstico · * ver ressalvas no PDF';
+
+/** Início do texto da referência no cartão: só a faixa de normalidade se chama "Ref."; os outros tipos dizem o que são. */
+export const prefixoDaReferencia = (natureza: NaturezaReferencia | undefined): string =>
+  natureza === 'faixa_de_medias' ? 'Médias de grupos: ' : natureza === 'limiar_heuristico' ? 'Limiar: ' : 'Ref.: ';
+
+/**
+ * Cartões estruturados da tela de análise. Só entra como referência o que o motor confirmou em fonte (`referencias`). O cartão mostra a
+ * faixa que explica o "dentro" (ou, se nenhuma contém o valor, a primeira): nunca uma faixa que o valor não satisfaz ao lado de um "dentro".
+ */
 export function itensDeCartoes(cartoes: CartaoMetricaUi[]): ItemMetricaVideo[] {
   return cartoes.flatMap((c) => {
     if (!c.valores.length || c.valores.every((v) => v.texto === '—')) return [];
-    const r = c.referencias[0];
+    const r = referenciaPrincipal(c);
     const referencia = r ? `${r.faixa} · ${r.rotulo ?? r.citacao}${r.pmid ? ` · PMID ${r.pmid}` : ''}` : null;
-    return [{ titulo: c.titulo, valores: c.valores.map((v) => ({ lado: v.lado, texto: v.texto, status: v.status })), referencia }];
+    const natureza = naturezaDasReferencias(c.referencias);
+    const valores = c.valores.map((v): ValorMetricaVideo => ({
+      lado: v.lado, texto: v.texto,
+      status: v.status === 'fora' && !situacaoDoValor('fora', natureza).alerta ? 'fora_neutro' : v.status,
+      ...(v.incertezaCurta ? { incerteza: v.incertezaCurta } : {}),
+    }));
+    return [{ titulo: c.titulo, valores, referencia, ...(r ? { natureza } : {}), ...(c.avisos.length ? { comAviso: true } : {}) }];
   });
 }
 
@@ -418,8 +447,11 @@ export function calcularLayoutConteudo(e: EntradaLayoutConteudo): LayoutConteudo
   if (e.altura !== undefined) return layoutFixo(e, W, par(e.altura));
   const max = e.alturaMaxima ?? LIMITES_EXPORTACAO.alturaMaxima;
   let l = layoutNatural(e, W);
-  for (let i = 0; i < 6 && l.altura > max; i++) {
-    W = par(Math.floor((W * max) / l.altura));
+  // Encolhe a largura na proporção; `par` arredonda para o par mais próximo e poderia devolver a mesma largura, então cada volta
+  // desce pelo menos 2 px (o laço termina porque a largura cai sempre) e nunca passa do máximo.
+  for (let i = 0; l.altura > max && W > 120 && i < 400; i++) {
+    const proporcional = 2 * Math.floor((W * max) / l.altura / 2);
+    W = Math.max(2, Math.min(proporcional, W - 2));
     l = layoutNatural(e, W);
   }
   return l;

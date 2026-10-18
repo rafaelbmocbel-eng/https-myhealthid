@@ -36,6 +36,8 @@ export type StatusReferencia = 'dentro' | 'fora' | 'sem_referencia';
 
 /** Referência confirmada em fonte, já formatada. Só existe para o que foi verificado (com PMID). */
 export interface ReferenciaUi {
+  /** Chave da referência na tabela do motor (liga o valor à faixa que o classificou). */
+  chave?: string;
   /** Texto da faixa, ex.: "127,2 a 146,2 cm/s" ou "≥ 100 passos/min". */
   faixa: string;
   populacao: string;
@@ -59,6 +61,10 @@ export interface ValorMetricaUi {
   status: StatusReferencia;
   /** Incerteza que o próprio vídeo impõe, já formatada (ex.: "± 1 quadro, 33 ms"). */
   incerteza?: string;
+  /** Só o valor da incerteza, para espaços pequenos (ex.: "± 6,2%"). */
+  incertezaCurta?: string;
+  /** Chaves das referências cuja faixa contém este valor: a que explica o "dentro". */
+  dentroDe?: string[];
 }
 
 export interface CartaoMetricaUi {
