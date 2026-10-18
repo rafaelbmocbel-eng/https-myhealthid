@@ -18,6 +18,8 @@ export interface OpcoesRastreio {
   maxQuadros?: number;
   /** Progresso de 0 a 1. */
   onProgresso?: (p: number) => void;
+  /** Verdadeiro enquanto o primeiro quadro não volta: nele o detector baixa o motor e o modelo (cerca de 6 MB), o que pode demorar. */
+  onPreparando?: (preparando: boolean) => void;
   /** Chamado a cada quadro pronto (para mostrar o esqueleto enquanto rastreia). */
   onQuadro?: (quadro: QuadroPose, indice: number, total: number) => void;
   /** Cancelamento: a promessa é rejeitada com um erro de nome "AbortError". */
@@ -54,6 +56,17 @@ export function avaliarVideoParaAnalise(v: { duracaoS: number; tamanhoBytes?: nu
     avisos.push(`O arquivo tem ${Math.round(v.tamanhoBytes / 1024 / 1024)} MB: arquivos grandes podem demorar para abrir.`);
   }
   return { avisos, bloqueado };
+}
+
+/** Espera a promessa, mas devolve o controle na hora se o sinal for cancelado (a promessa original segue sozinha, sem ninguém esperando). */
+function esperarOuCancelar<T>(promessa: Promise<T>, sinal?: AbortSignal): Promise<T> {
+  if (!sinal) return promessa;
+  return new Promise<T>((resolve, reject) => {
+    if (sinal.aborted) { reject(erroCancelado()); return; }
+    const aoCancelar = () => reject(erroCancelado());
+    sinal.addEventListener('abort', aoCancelar, { once: true });
+    promessa.then(resolve, reject).finally(() => sinal.removeEventListener('abort', aoCancelar));
+  });
 }
 
 function aguardarEvento(video: HTMLVideoElement, nome: string, limiteMs: number, sinal?: AbortSignal): Promise<void> {
@@ -135,14 +148,18 @@ export async function rastrearVideo(video: HTMLVideoElement, opcoes: OpcoesRastr
     if (sinal?.aborted) throw erroCancelado();
     let lm = null;
     try {
-      lm = await detector(video, t);
+      if (i === 0) opcoes.onPreparando?.(true);
+      lm = await esperarOuCancelar(detector(video, t), sinal);
       seguidas = 0;
     } catch (e) {
+      if (sinal?.aborted) throw erroCancelado();
       seguidas++;
       if (seguidas >= 5) {
         const motivo = e instanceof Error && e.message ? ` (${e.message})` : '';
         throw new Error(`O detector de pose falhou${motivo}. Verifique a conexão para baixar o modelo na primeira análise e tente de novo.`);
       }
+    } finally {
+      if (i === 0) opcoes.onPreparando?.(false);
     }
     const quadro: QuadroPose = { i, t, pontos: pontosDeLandmarks(lm, largura, altura) };
     quadros.push(quadro);

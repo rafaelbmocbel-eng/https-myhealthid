@@ -5,6 +5,7 @@ import type { VideoCarregado } from '@/lib/angular/analiseVideo/carregarVideo';
 import { FPS_COMUNS } from '@/lib/angular/analiseVideo/carregarVideo';
 import { DURACAO_SUGERIDA_S, ajustarIntervalo, estimativaDoRastreio, formatarSegundos, opcoesDeTaxa, type IntervaloVideo } from '@/lib/angular/analiseVideo/tempo';
 import type { ModeloUi } from '@/lib/angular/analiseVideo/tiposUi';
+import { MAX_QUADROS_PADRAO, planejarQuadros } from '@/lib/angular/video/rastrear';
 
 const ICONES: [string, LucideIcon][] = [['marcha', Footprints], ['corrida', Zap], ['agach', Dumbbell], ['salto', ArrowDownToLine], ['aterr', ArrowDownToLine], ['bra', ArrowUpFromLine], ['ombro', Hand], ['livre', Ruler]];
 const iconeDoModelo = (id: string): LucideIcon => ICONES.find(([k]) => id.toLowerCase().includes(k))?.[1] ?? Activity;
@@ -43,6 +44,10 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
   const previa = useRef<HTMLVideoElement>(null);
   const taxas = opcoesDeTaxa(fpsVideo);
   const trecho = Math.max(0, intervalo.fim - intervalo.inicio);
+  // O motor limita a análise a MAX_QUADROS_PADRAO quadros e reduz a taxa em trechos longos: a tela diz a taxa que realmente sai.
+  const plano = planejarQuadros(Math.max(trecho, 0.1), taxaFps, MAX_QUADROS_PADRAO);
+  const taxaReduzida = trecho > 0 && plano.fps < taxaFps - 0.05;
+  const nf = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
   const mover = (lado: 'inicio' | 'fim', valor: number) => {
     const novo = ajustarIntervalo({ ...intervalo, [lado]: valor }, video.duracao, lado);
     aoIntervalo(novo);
@@ -118,7 +123,12 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
             </div>
           </>
         )}
-        <p className="text-xs text-muted-foreground">Estimativa: cerca de {estimativaDoRastreio(trecho, taxaFps)} s para rastrear. A primeira vez baixa o modelo de detecção (cerca de 6 MB); deixe a tela aberta.</p>
+        <p className="text-xs text-muted-foreground">Estimativa: cerca de {estimativaDoRastreio(trecho, plano.fps)} s para rastrear. A primeira vez baixa o modelo de detecção (cerca de 6 MB); deixe a tela aberta.</p>
+        {taxaReduzida && (
+          <p className="rounded-xl bg-amber-500/10 p-2.5 text-xs leading-snug text-amber-800 dark:text-amber-300" role="status" data-testid="aviso-taxa-reduzida">
+            Este trecho de {formatarSegundos(trecho, 1)} seria analisado a {nf(plano.fps)} q/s, e não a {taxaFps} q/s: o limite é de {MAX_QUADROS_PADRAO.toLocaleString('pt-BR')} quadros por análise. Para manter {taxaFps} q/s, use um trecho de até {nf(MAX_QUADROS_PADRAO / taxaFps)} s; a {nf(plano.fps)} q/s cada quadro vale cerca de {Math.round(1000 / plano.fps)} ms nos tempos de contato e de voo.
+          </p>
+        )}
       </section>
 
       {avisos.length > 0 && (

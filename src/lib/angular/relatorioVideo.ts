@@ -5,6 +5,7 @@ import { nomeDocumento } from '@/lib/pdf/entrega';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import { canvasDoGrafico, type GraficoParaCanvas } from '@/lib/angular/analiseVideo/graficoCanvas';
 import { COR_LADO, type CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
+import { cartaoTemAlerta, naturezaDasReferencias, situacaoDoValor } from '@/lib/angular/analiseVideo/statusReferencia';
 
 const AZUL: [number, number, number] = [30, 58, 95];
 const CAB: [number, number, number] = [230, 237, 245];
@@ -127,6 +128,8 @@ export interface QuadroRelatorio {
 export interface GraficoRelatorio {
   titulo: string;
   dados: GraficoParaCanvas;
+  /** Sentido do sinal dos ângulos deste gráfico (ex.: "0° = estendido; negativo = extensão"). */
+  legendaSinal?: string;
 }
 
 export interface DadosRelatorioGesto {
@@ -150,21 +153,46 @@ export interface DadosRelatorioGesto {
   avisos?: string[];
 }
 
-const NOME_STATUS = { dentro: 'dentro', fora: 'fora', sem_referencia: 'sem ref.' } as const;
-const COR_STATUS: Record<'dentro' | 'fora' | 'sem_referencia', [number, number, number]> = { dentro: [4, 120, 87], fora: [180, 83, 9], sem_referencia: [110, 116, 128] };
+const COR_STATUS = { dentro: [4, 120, 87], alerta: [180, 83, 9], neutro: [110, 116, 128] } as const satisfies Record<string, [number, number, number]>;
 
 /** Texto do valor de um cartão para a tabela: um valor ou "D … · E …". */
 export const valorDoCartaoTexto = (c: CartaoMetricaUi): string => c.valores.map((v) => (v.lado ? `${v.lado} ${v.texto}` : v.texto)).join('  ·  ');
 
-/** Texto da referência de um cartão: a faixa e a fonte curta, ou "sem referência". */
+/** Erro de medida que o vídeo impõe ao valor (ex.: "± 6,2%"), sem repetir quando os dois lados têm o mesmo; vazio se não houver. */
+export const incertezaDoCartaoTexto = (c: CartaoMetricaUi): string => [...new Set(c.valores.flatMap((v) => (v.incertezaCurta ? [v.incertezaCurta] : [])))].join(' · ');
+
+const ROTULO_TIPO: Record<string, string> = { faixa_de_medias: 'faixa das médias de grupos, não é intervalo individual', limiar_heuristico: 'limiar prático, não é faixa de normalidade' };
+
+/** Texto da referência de um cartão: a faixa, a fonte curta e o que a faixa é, ou "sem referência". */
 export const referenciaDoCartaoTexto = (c: CartaoMetricaUi): string =>
-  c.referencias.length ? c.referencias.map((r) => `${r.faixa} (${r.rotulo ?? r.citacao}${r.pmid ? `, PMID ${r.pmid}` : ''})`).join('; ') : 'sem referência';
+  c.referencias.length
+    ? c.referencias.map((r) => `${r.faixa} (${r.rotulo ?? r.citacao}${r.pmid ? `, PMID ${r.pmid}` : ''}${r.tipo ? `; ${ROTULO_TIPO[r.tipo]}` : ''})`).join('; ')
+    : 'sem referência';
 
 const situacaoDoCartaoTexto = (c: CartaoMetricaUi): string => {
-  const status = new Set(c.valores.map((v) => v.status));
-  if (status.size === 1) return NOME_STATUS[c.valores[0].status];
-  return c.valores.map((v) => (v.lado ? `${v.lado} ${NOME_STATUS[v.status]}` : NOME_STATUS[v.status])).join(' · ');
+  const natureza = naturezaDasReferencias(c.referencias);
+  const textos = c.valores.map((v) => situacaoDoValor(v.status, natureza).texto);
+  if (new Set(textos).size === 1) return textos[0];
+  return c.valores.map((v, k) => (v.lado ? `${v.lado} ${textos[k]}` : textos[k])).join(' · ');
 };
+
+/** Cor da situação: só o "fora" de uma faixa de normalidade chama atenção; "fora" de média de grupos ou de limiar fica neutro. */
+const corDaSituacao = (c: CartaoMetricaUi): [number, number, number] => {
+  if (cartaoTemAlerta(c)) return [...COR_STATUS.alerta];
+  return c.valores.some((v) => v.status === 'dentro') ? [...COR_STATUS.dentro] : [...COR_STATUS.neutro];
+};
+
+/**
+ * Ressalvas de cada métrica que o relatório não pode perder: o que ela mede, quantas observações e o desvio-padrão, o erro de um quadro
+ * do vídeo, a fórmula do índice e os avisos do cálculo. Uma linha por métrica que tenha algo a dizer.
+ */
+export function notasDasMetricas(cartoes: CartaoMetricaUi[]): string[] {
+  return cartoes.flatMap((c) => {
+    const incertezas = [...new Set(c.valores.flatMap((v) => (v.incerteza ? [v.incerteza] : [])))];
+    const partes = [c.detalhe, ...incertezas, c.formula ? `Cálculo: ${c.formula}` : undefined, ...c.avisos].filter((x): x is string => !!x);
+    return partes.length ? [`${c.titulo}: ${partes.map((p) => (/[.!?)]$/.test(p) ? p : `${p}.`)).join(' ')}`] : [];
+  });
+}
 
 /** Métrica com algum valor calculado; as que ficaram sem valor (falta escala ou evento) não entram na tabela. */
 export const cartaoTemValor = (c: CartaoMetricaUi): boolean => c.valores.some((v) => v.texto !== '—');
@@ -215,17 +243,22 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
       doc.setFont('helvetica', 'normal');
       const nome = doc.splitTextToSize(seguro(c.titulo), largs.nome) as string[];
       const valor = doc.splitTextToSize(seguro(valorDoCartaoTexto(c)), largs.valor) as string[];
+      const incerteza = incertezaDoCartaoTexto(c);
       const ref = doc.splitTextToSize(seguro(referenciaDoCartaoTexto(c)), largs.ref) as string[];
       const sit = doc.splitTextToSize(seguro(situacaoDoCartaoTexto(c)), largs.sit) as string[];
-      const linhas = Math.max(nome.length, valor.length, ref.length, sit.length);
+      const linhas = Math.max(nome.length, valor.length + (incerteza ? 1 : 0), ref.length, sit.length);
       const alt = linhas * 3.7 + 3;
       if (y + alt > BASE) { y = novaPagina(); cabecalho(); doc.setFontSize(8.3); }
       doc.setDrawColor(...BORDA); doc.setLineWidth(0.15); doc.line(M + 2, y, W - M - 2, y);
       doc.setTextColor(20); doc.text(nome, cols.nome, y + 4);
       doc.setFont('helvetica', 'bold'); doc.text(valor, cols.valor, y + 4); doc.setFont('helvetica', 'normal');
+      if (incerteza) {
+        doc.setFontSize(7.2); doc.setTextColor(100);
+        doc.text(seguro(`${incerteza} (erro de medida do vídeo)`), cols.valor, y + 4 + valor.length * 3.7);
+        doc.setFontSize(8.3);
+      }
       doc.setTextColor(c.referencias.length ? 40 : 110); doc.text(ref, cols.ref, y + 4);
-      const pior = c.valores.some((v) => v.status === 'fora') ? 'fora' : c.valores.some((v) => v.status === 'dentro') ? 'dentro' : 'sem_referencia';
-      doc.setTextColor(...COR_STATUS[pior]); doc.text(sit, cols.sit, y + 4);
+      doc.setTextColor(...corDaSituacao(c)); doc.text(sit, cols.sit, y + 4);
       doc.setTextColor(20);
       y += alt;
     });
@@ -255,7 +288,19 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
     const haBanda = d.graficos.some((g) => g.dados.bandas?.length);
     t(`Marcas no gráfico: ${haEventos ? 'contato inicial (linha cheia) e saída do pé (tracejada)' : 'sem eventos'}${haBanda ? '; faixa verde = referência com fonte' : ''}.`, M + 50, y);
     doc.setTextColor(20);
-    y += 8;
+    y += 5;
+    const sinais = [...new Set(d.graficos.filter((g) => g.legendaSinal).map((g) => `${g.titulo}: ${g.legendaSinal}`))];
+    if (sinais.length) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(70);
+      for (const txt of sinais) {
+        const linhas = doc.splitTextToSize(seguro(`Sinal - ${txt}`), LARG - 4) as string[];
+        garantir(linhas.length * 3.4 + 1);
+        doc.text(linhas, M + 2, y + 2.5);
+        y += linhas.length * 3.4 + 0.8;
+      }
+      doc.setTextColor(20);
+    }
+    y += 4;
   }
 
   // Quadros analisados, dois por linha.
@@ -301,6 +346,21 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
     titulo('Referências consultadas');
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(50);
     for (const txt of fontes.values()) {
+      const linhas = doc.splitTextToSize(seguro(`- ${txt}`), LARG - 4) as string[];
+      garantir(linhas.length * 3.5 + 1);
+      doc.text(linhas, M + 2, y + 2.5);
+      y += linhas.length * 3.5 + 1;
+    }
+    doc.setTextColor(20);
+    y += 4;
+  }
+
+  // Ressalvas das métricas: observações, desvio-padrão, erro de um quadro, fórmula e avisos do cálculo.
+  const ressalvas = notasDasMetricas(cartoes);
+  if (ressalvas.length) {
+    titulo('Como ler cada métrica');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(50);
+    for (const txt of ressalvas) {
       const linhas = doc.splitTextToSize(seguro(`- ${txt}`), LARG - 4) as string[];
       garantir(linhas.length * 3.5 + 1);
       doc.text(linhas, M + 2, y + 2.5);

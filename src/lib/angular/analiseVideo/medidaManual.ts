@@ -1,6 +1,7 @@
 import { itensDaMedida, type ContextoDesenho, type ItemDesenho } from '@/lib/angular/desenho';
 import { rotuloValor } from '@/lib/angular/estilo';
 import { girar, type Medida, type Ponto } from '@/lib/angular/medidas';
+import { indiceMaisProximo } from './tempo';
 import type { QuadroPose } from '@/lib/angular/video/tipos';
 import { pontoDoQuadro } from '@/lib/angular/video/trilha';
 
@@ -62,4 +63,20 @@ export function sugerirDaTrilha(id: string, quadro: QuadroPose | undefined): Pon
   const lado: 'd' | 'e' = id.endsWith('-d') ? 'd' : id.endsWith('-e') ? 'e' : confianca('e') >= confianca('d') ? 'e' : 'd';
   const pts = partes.map((p) => pontoDoQuadro(quadro, `${p}_${lado}`));
   return pts.every((p): p is { x: number; y: number } => p !== null) ? pts : null;
+}
+
+/**
+ * Leva as medidas guardadas para uma trilha nova (outra taxa ou outro trecho): cada uma passa a apontar o quadro mais perto do seu
+ * instante. As que ficam a mais de um quadro de qualquer quadro da trilha (fora do trecho rastreado) são descartadas e contadas.
+ */
+export function remapearCapturas(capturas: readonly CapturaManual[], tempos: readonly number[]): { capturas: CapturaManual[]; descartadas: number } {
+  if (!tempos.length) return { capturas: [], descartadas: capturas.length };
+  const passo = tempos.length > 1 ? (tempos[tempos.length - 1] - tempos[0]) / (tempos.length - 1) : Infinity;
+  const mantidas: CapturaManual[] = [];
+  for (const c of capturas) {
+    const i = indiceMaisProximo(tempos, c.t);
+    if (Math.abs(tempos[i] - c.t) > passo + 1e-6) continue;
+    mantidas.push(i === c.quadro ? c : { ...c, quadro: i });
+  }
+  return { capturas: mantidas, descartadas: capturas.length - mantidas.length };
 }

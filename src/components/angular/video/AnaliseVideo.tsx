@@ -11,7 +11,7 @@ import PainelEstilo from '@/components/angular/PainelEstilo';
 import ExportarSocialDialog from '@/components/angular/ExportarSocialDialog';
 import {
   FORMULA_ASSIMETRIA, AVISO_REFERENCIAS, MODELOS_GESTO, adicionarEvento, analisarGesto, detectarEventosCorrida, detectarEventosMarcha, ehCancelamento, landmarksDoRosto,
-  calcularAnguloNoQuadro, modeloDoGesto, moverEvento, pontosCorrigidosNoQuadro, rastrearVideo, removerEvento, type DetectorQuadro, type EventoPasso, type IdGesto, type Lado, type QuadroPose,
+  calcularAnguloNoQuadro, legendaDosAngulos, modeloDoGesto, moverEvento, pontosCorrigidosNoQuadro, rastrearVideo, removerEvento, type DetectorQuadro, type EventoPasso, type IdGesto, type Lado, type QuadroPose,
 } from '@/lib/angular/video';
 import {
   apagarRascunho, lerRascunho, salvarRascunho,
@@ -29,7 +29,7 @@ import { LIGACOES_CORPO, marcacoesDoQuadro, pontosDasDefinicoes, pontosParaTela,
 import {
   bandasDoGrupo, cartoesDeMetricas, compararLados, eventoParaUi, grupoInicial, gruposDeArticulacoes, marcadoresDeEventos, marcadoresExtras, modeloParaUi, seriesDoGrupoDaAnalise,
 } from '@/lib/angular/analiseVideo/resultados';
-import { textoDoValor, type CapturaManual } from '@/lib/angular/analiseVideo/medidaManual';
+import { remapearCapturas, textoDoValor, type CapturaManual } from '@/lib/angular/analiseVideo/medidaManual';
 import type { AlcaUi, MarcacaoAnguloUi, PontosDoQuadro, TipoEvento } from '@/lib/angular/analiseVideo/tiposUi';
 import type { AnaliseParaExportar } from '@/lib/angular/analise';
 import type { Landmark } from '@/lib/angular/pose';
@@ -101,6 +101,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const [taxaFps, setTaxaFps] = useState(30);
   const [intervalo, setIntervalo] = useState<IntervaloVideo>({ inicio: 0, fim: 0 });
   const [progresso, setProgresso] = useState(0);
+  const [preparandoModelo, setPreparandoModelo] = useState(false);
   const [aoVivo, setAoVivo] = useState<QuadroPose | null>(null);
   const [rascunho, setRascunho] = useState<{ texto: string; salvoEm: string } | null>(null);
   const [pendente, setPendente] = useState<AnaliseSalva | null>(null);
@@ -199,6 +200,12 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     setAbrindo(true);
     try {
       const v = await lerMetadadosDoVideo(f);
+      // Com uma análise aberta esperando o vídeo, só o vídeo dela serve: um vídeo errado não entra no estado nem apaga o arquivo aberto.
+      if (pendente && !mesmaImpressao(pendente.video, impressaoDoVideo(v))) {
+        URL.revokeObjectURL(v.url);
+        toast.error('Este vídeo não é o da análise salva (tamanho ou duração diferentes). Escolha o arquivo original.');
+        return;
+      }
       abortRef.current?.abort();
       reiniciar();
       setVideo(v);
@@ -210,8 +217,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
       if (pendente) {
         const a = pendente;
         setPendente(null);
-        if (!mesmaImpressao(a.video, impressaoDoVideo(v))) toast.error('Este vídeo não é o da análise salva (tamanho ou duração diferentes). Escolha o arquivo original.');
-        else restaurar(a, v);
+        restaurar(a, v);
         return;
       }
       setEtapa('modelo');
@@ -265,16 +271,22 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     const el = videoRef.current;
     if (!el) { toast.error('Não consegui preparar o vídeo.'); setEtapa('modelo'); return; }
     try {
-      const t = await rastrearVideo(el, { fps: taxaFps, intervalo, detector: detectorDeTeste() as DetectorQuadro | undefined, onProgresso: setProgresso, onQuadro: (q, i) => { if (i % 2 === 0) setAoVivo(q); }, sinal: ac.signal });
+      const t = await rastrearVideo(el, { fps: taxaFps, intervalo, detector: detectorDeTeste() as DetectorQuadro | undefined, onProgresso: setProgresso, onPreparando: setPreparandoModelo, onQuadro: (q, i) => { if (i % 2 === 0) setAoVivo(q); }, sinal: ac.signal });
       if (ac.signal.aborted) return;
       setAoVivo(null);
+      setPreparandoModelo(false);
       edicao.iniciar(t);
+      // As medidas guardadas apontam o quadro por índice; a trilha nova pode ter outra taxa, então elas acompanham o instante.
+      const remapeadas = remapearCapturas(manual.capturas, t.quadros.map((q) => q.t));
+      manual.restaurar(remapeadas.capturas);
+      if (remapeadas.descartadas > 0) toast.warning(`${remapeadas.descartadas} ${remapeadas.descartadas === 1 ? 'medida guardada ficou' : 'medidas guardadas ficaram'} fora do trecho rastreado e ${remapeadas.descartadas === 1 ? 'foi removida' : 'foram removidas'}.`);
       setEventos(null);
       repro.setQuadro(0);
       setAba('metricas');
       setEtapa('analisar');
     } catch (e) {
       setAoVivo(null);
+      setPreparandoModelo(false);
       if (ehCancelamento(e)) { setEtapa(trilha ? 'analisar' : 'modelo'); return; }
       toast.error(e instanceof Error ? e.message : 'Não consegui rastrear o vídeo agora. Tente de novo com internet.');
       setEtapa(trilha ? 'analisar' : 'modelo');
@@ -356,7 +368,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     try {
       const r = lerAnaliseSalva(await lerTextoDoArquivo(f));
       if (!r.ok) { toast.error('erro' in r ? r.erro : 'Não consegui abrir a análise.'); return; }
-      if (video) {
+      if (video && etapa !== 'enviar') {
         if (!mesmaImpressao(r.analise.video, impressaoDoVideo(video))) { toast.error('Essa análise é de outro vídeo. Escolha o vídeo dela para retomar.'); return; }
         restaurar(r.analise, video);
         return;
@@ -437,7 +449,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
         modelo: { nome: modelo.nome, vista: modelo.vista === 'lateral' ? 'Vista lateral' : 'Vista frontal' },
         duracaoS: (tempos[tempos.length - 1] ?? 0) - (tempos[0] ?? 0), fpsAnalise: Math.round(trilha.fps),
         cartoes,
-        graficos: grupos.filter((g) => !GRUPOS_AUXILIARES.includes(g.id) || g.id === grupo?.id).map((g) => ({ titulo: g.nome, dados: { series: seriesDoGrupoDaAnalise(g, analise.series), marcadores, bandas: bandasDoGrupo(g.id, modelo.id), t0: tempos[0] ?? 0, duracao: Math.max(0.1, (tempos[tempos.length - 1] ?? 0) - (tempos[0] ?? 0)) } }))
+        graficos: grupos.filter((g) => !GRUPOS_AUXILIARES.includes(g.id) || g.id === grupo?.id).map((g) => ({ titulo: g.nome, legendaSinal: legendaDosAngulos(g.defs), dados: { series: seriesDoGrupoDaAnalise(g, analise.series), marcadores, bandas: bandasDoGrupo(g.id, modelo.id), t0: tempos[0] ?? 0, duracao: Math.max(0.1, (tempos[tempos.length - 1] ?? 0) - (tempos[0] ?? 0)) } }))
           .filter((g) => g.dados.series.some((s) => s.pontos.some((p) => p.v !== null))),
         quadros: imagens.map(({ rotulo, imagem }) => ({ rotulo, imagem })),
         capturas: capturas.map((x) => ({ t: x.t, quadro: x.quadro + 1, nome: x.nome, valorTexto: textoDoValor(x.valor, x.unidade), texto: x.texto })),
@@ -597,11 +609,11 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
           camadaExtra={etapa === 'analisar' ? manual.camada : undefined} aoArrastarExtra={manual.arrastar} gestosExtra={etapa === 'analisar' && aba === 'medir' ? manual.gestos : undefined}
         />
 
-        {etapa === 'rastreando' && <PainelRastreio progresso={progresso} aoCancelar={() => abortRef.current?.abort()} />}
+        {etapa === 'rastreando' && <PainelRastreio progresso={progresso} aoCancelar={() => abortRef.current?.abort()} texto={preparandoModelo ? 'Baixando o modelo de detecção…' : undefined} />}
 
         {etapa === 'analisar' && (
           <>
-            <ControlesQuadro quadro={quadro} nQuadros={nQuadros} t={quadroPose?.t ?? 0} tocando={repro.tocando} velocidade={repro.velocidade} marcas={marcas}
+            <ControlesQuadro quadro={quadro} nQuadros={nQuadros} t={quadroPose?.t ?? 0} fps={trilha?.fps} tocando={repro.tocando} velocidade={repro.velocidade} marcas={marcas}
               aoIr={repro.irPara} aoPasso={repro.passo} aoAlternar={repro.alternar} aoVelocidade={repro.setVelocidade} />
 
             <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Ferramentas da análise">
@@ -631,7 +643,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
                   ))}
                 </div>
                 <GraficoAngulo titulo={grupo.nome} series={series} marcadores={marcadores} bandas={bandas} t0={tempos[0] ?? 0} duracao={Math.max(0.1, (tempos[tempos.length - 1] ?? 0) - (tempos[0] ?? 0))}
-                  t={quadroPose?.t ?? 0} aoIrPara={(t) => repro.irPara(Math.round((t - (tempos[0] ?? 0)) * fps))} />
+                  t={quadroPose?.t ?? 0} aoIrPara={(t) => repro.irPara(Math.round((t - (tempos[0] ?? 0)) * fps))} legendaSinal={legendaDosAngulos(grupo.defs)} />
                 <p className="text-[11px] leading-snug text-muted-foreground">Toque ou arraste no gráfico para ir ao instante. A curva é suavizada só para o desenho; a medida usa os pontos do vídeo.</p>
               </section>
             ) : (

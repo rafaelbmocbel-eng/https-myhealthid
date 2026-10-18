@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useState, type RefObject } from 'react';
 import { indiceMaisProximo, intervaloEntreQuadrosMs, limitar, tempoDeExibicao } from '@/lib/angular/analiseVideo/tempo';
 
 interface Opcoes {
@@ -17,7 +17,8 @@ export function useReproducao({ videoRef, tempos, fps, ativo }: Opcoes) {
   const [velocidade, setVelocidadeEstado] = useState(0.25);
   const n = tempos.length;
   const ultimo = Math.max(0, n - 1);
-  const emPassos = useRef(false);
+  // Aparelhos que não aceitam a câmera lenta pedida (iPhone) tocam quadro a quadro, pelos tempos da trilha, com o vídeo buscado a cada passo.
+  const [emPassos, setEmPassos] = useState(false);
 
   const pausar = useCallback(() => {
     videoRef.current?.pause();
@@ -31,14 +32,14 @@ export function useReproducao({ videoRef, tempos, fps, ativo }: Opcoes) {
 
   const passo = useCallback((d: number) => { irPara(quadro + d); }, [irPara, quadro]);
 
-  // O vídeo para no quadro pedido (e no quadro 0 quando uma trilha nova chega).
+  // O vídeo para no quadro pedido (e no quadro 0 quando uma trilha nova chega). No modo em passos o vídeo também acompanha cada quadro.
   useEffect(() => {
-    if (!ativo || tocando || !n) return;
+    if (!ativo || (tocando && !emPassos) || !n) return;
     const v = videoRef.current;
     if (!v) return;
     const alvo = tempoDeExibicao(tempos[limitar(quadro, 0, ultimo)], fps);
     if (Math.abs(v.currentTime - alvo) > 1e-4) v.currentTime = alvo;
-  }, [quadro, tocando, ativo, n, tempos, fps, ultimo, videoRef]);
+  }, [quadro, tocando, emPassos, ativo, n, tempos, fps, ultimo, videoRef]);
 
   useEffect(() => { setQuadro((q) => limitar(q, 0, ultimo)); }, [ultimo]);
 
@@ -57,9 +58,13 @@ export function useReproducao({ videoRef, tempos, fps, ativo }: Opcoes) {
     v.currentTime = tempoDeExibicao(tempos[inicio], fps);
     v.playbackRate = velocidade;
     // Alguns navegadores (iPhone) não toleram câmera lenta extrema: se a taxa não foi aceita, toca quadro a quadro pelos tempos da trilha.
-    emPassos.current = Math.abs(v.playbackRate - velocidade) > 0.01;
-    if (!emPassos.current) void v.play().catch(() => { emPassos.current = true; });
+    const taxaAceita = Math.abs(v.playbackRate - velocidade) <= 0.01;
+    setEmPassos(!taxaAceita);
     setTocando(true);
+    if (taxaAceita) {
+      // Se o navegador recusar tocar (política de reprodução), troca para o modo em passos em vez de deixar o contador andar sobre imagem parada.
+      void Promise.resolve(v.play()).catch(() => { setEmPassos(true); });
+    }
   }, [videoRef, n, tocando, pausar, quadro, ultimo, tempos, fps, velocidade]);
 
   // Acompanha o vídeo tocando (ou avança os quadros por tempo, no modo em passos).
@@ -68,16 +73,10 @@ export function useReproducao({ videoRef, tempos, fps, ativo }: Opcoes) {
     const v = videoRef.current;
     if (!v || !n) return;
     let id = 0;
-    let timer = 0;
     const fim = () => { v.pause(); setTocando(false); setQuadro(ultimo); };
-    if (emPassos.current) {
+    if (emPassos) {
       v.pause();
-      timer = window.setInterval(() => {
-        setQuadro((q) => {
-          if (q >= ultimo) { window.clearInterval(timer); setTocando(false); return ultimo; }
-          return q + 1;
-        });
-      }, intervaloEntreQuadrosMs(fps, velocidade));
+      const timer = window.setInterval(() => { setQuadro((q) => Math.min(q + 1, ultimo)); }, intervaloEntreQuadrosMs(fps, velocidade));
       return () => window.clearInterval(timer);
     }
     const tick = () => {
@@ -87,7 +86,10 @@ export function useReproducao({ videoRef, tempos, fps, ativo }: Opcoes) {
     };
     id = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(id);
-  }, [tocando, videoRef, n, tempos, ultimo, fps, velocidade]);
+  }, [tocando, emPassos, videoRef, n, tempos, ultimo, fps, velocidade]);
+
+  // No modo em passos, o último quadro encerra a reprodução.
+  useEffect(() => { if (tocando && emPassos && quadro >= ultimo) setTocando(false); }, [tocando, emPassos, quadro, ultimo]);
 
   // Sair da tela com o vídeo tocando não deixa som nem consumo de bateria.
   useEffect(() => () => { videoRef.current?.pause(); }, [videoRef]);

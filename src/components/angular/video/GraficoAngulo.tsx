@@ -70,10 +70,12 @@ interface Props {
   t: number;
   aoIrPara: (t: number) => void;
   unidade?: string;
+  /** Sentido do sinal dos ângulos (ex.: "0° = estendido; negativo = extensão"). */
+  legendaSinal?: string;
 }
 
 // Gráfico ângulo x tempo: uma curva por lado, eventos, faixa de referência (só se confirmada) e o cursor do quadro.
-export default function GraficoAngulo({ titulo, series, marcadores = [], bandas = [], t0, duracao, t, aoIrPara, unidade = '°' }: Props) {
+export default function GraficoAngulo({ titulo, series, marcadores = [], bandas = [], t0, duracao, t, aoIrPara, unidade = '°', legendaSinal }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const layout = useMemo(() => layoutDoGrafico(series, marcadores, bandas, { largura: L, altura: A, t0, duracao, unidade }), [series, marcadores, bandas, t0, duracao, unidade]);
   const x = layout.xDoTempo(Math.min(Math.max(t, t0), t0 + duracao));
@@ -112,6 +114,7 @@ export default function GraficoAngulo({ titulo, series, marcadores = [], bandas 
         {[...new Set(marcadores.filter((m) => m.tipo === 'outro' && m.legenda).map((m) => m.legenda))].map((l) => <span key={l} className="flex items-center gap-1"><span aria-hidden>◇</span> {l}</span>)}
         {bandas.map((b) => <span key={b.id} className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded-sm border border-dashed border-emerald-500 bg-emerald-500/15" aria-hidden />{b.rotulo}</span>)}
       </div>
+      {legendaSinal && <p className="text-[11px] leading-snug text-muted-foreground" data-testid="legenda-sinal">{legendaSinal}</p>}
     </figure>
   );
 }

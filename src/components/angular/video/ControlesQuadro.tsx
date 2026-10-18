@@ -26,7 +26,8 @@ export function BarraQuadros({ quadro, nQuadros, marcas, aoIr }: { quadro: numbe
   const teclas = (e: KeyboardEvent) => {
     const passo = e.shiftKey ? 10 : 1;
     const mapa: Record<string, number> = { ArrowLeft: quadro - passo, ArrowDown: quadro - passo, ArrowRight: quadro + passo, ArrowUp: quadro + passo, PageDown: quadro - 10, PageUp: quadro + 10, Home: 0, End: ultimo };
-    if (e.key in mapa) { e.preventDefault(); aoIr(limitar(mapa[e.key], 0, ultimo)); }
+    // stopPropagation: o atalho de teclado da tela (setas = quadro anterior e seguinte) também escuta a janela e somaria o passo duas vezes.
+    if (e.key in mapa) { e.preventDefault(); e.stopPropagation(); aoIr(limitar(mapa[e.key], 0, ultimo)); }
   };
 
   return (
@@ -61,6 +62,8 @@ interface ControlesProps {
   quadro: number;
   nQuadros: number;
   t: number;
+  /** Quadros por segundo efetivos da análise (podem ser menos que o pedido em trechos longos). */
+  fps?: number;
   tocando: boolean;
   velocidade: number;
   marcas: MarcaScrubber[];
@@ -71,7 +74,7 @@ interface ControlesProps {
 }
 
 // Barra de quadros, botões de quadro anterior e próximo e velocidades de câmera lenta.
-export default function ControlesQuadro({ quadro, nQuadros, t, tocando, velocidade, marcas, aoIr, aoPasso, aoAlternar, aoVelocidade }: ControlesProps) {
+export default function ControlesQuadro({ quadro, nQuadros, t, fps, tocando, velocidade, marcas, aoIr, aoPasso, aoAlternar, aoVelocidade }: ControlesProps) {
   return (
     <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-2.5" role="group" aria-label="Controles do vídeo">
       <BarraQuadros quadro={quadro} nQuadros={nQuadros} marcas={marcas} aoIr={aoIr} />
@@ -95,7 +98,7 @@ export default function ControlesQuadro({ quadro, nQuadros, t, tocando, velocida
         </div>
       </div>
       <p className="text-center text-xs font-medium tabular-nums text-muted-foreground" role="status" aria-live="off" data-testid="posicao-quadro">
-        Quadro {quadro + 1} de {nQuadros} · {formatarSegundos(t)}
+        Quadro {quadro + 1} de {nQuadros} · {formatarSegundos(t)}{fps ? ` · ${fps.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} q/s` : ''}
       </p>
     </div>
   );

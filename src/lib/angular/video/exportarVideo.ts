@@ -13,10 +13,11 @@ import { fonteCss, garantirFontesSociais } from '@/lib/social/fontes';
 import { FORMATOS, type FormatoSocial, type Retangulo, type TituloModo } from '@/lib/social/formatos';
 import { janelaDaImagem } from '@/lib/social/geometria';
 import { escalarCaixaRosto, type CaixaRosto, type ModoRosto } from '@/lib/social/rosto';
-import type { DefinicaoAngulo } from './angulos';
+import { legendaDosAngulos, type DefinicaoAngulo } from './angulos';
 import {
-  ErroExportacao, LIMITES_EXPORTACAO, erroDeCancelamento, avaliarSuporteGravacao, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida, ehFormatoSocial, itensDeCartoes, itensDeLinhas,
-  progressoDaSaida, quadroNaSaida, quebrarTexto, rotuloTempo, rotuloVelocidade, tamanhoOriginal, truncarTexto, validarExportacao,
+  ErroExportacao, LIMITES_EXPORTACAO, RODAPE_VIDEO, RODAPE_VIDEO_COM_AVISO, erroDeCancelamento, avaliarSuporteGravacao, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida,
+  ehFormatoSocial, itensDeCartoes, itensDeLinhas, prefixoDaReferencia, progressoDaSaida, quadroNaSaida, quebrarTexto, rotuloTempo, rotuloVelocidade, tamanhoOriginal, truncarTexto,
+  validarExportacao,
   type FormatoVideo, type ItemMetricaVideo, type LayoutConteudo, type SuporteGravacao,
 } from './exportarVideoPuro';
 import { corrigirDuracaoDoBlob } from './webmDuracao';
@@ -189,30 +190,34 @@ export async function abrirFonteDeVideo(video: HTMLVideoElement, sinal?: AbortSi
  * Mostra o quadro de `t` e espera ele estar pronto para ser desenhado. Registra o aviso de quadro apresentado antes da busca (quando o
  * navegador tem) porque o Safari às vezes avisa "buscou" antes de o quadro novo estar na tela.
  */
-export function buscarQuadro(el: HTMLVideoElement, t: number, limiteMs = 4000): Promise<void> {
+export function buscarQuadro(el: HTMLVideoElement, t: number, limiteMs = 4000, sinal?: AbortSignal): Promise<void> {
   const v = el as VideoComQuadros;
-  return new Promise<void>((ok) => {
+  return new Promise<void>((ok, falha) => {
+    if (sinal?.aborted) { falha(erroDeCancelamento()); return; }
     const alvo = Number.isFinite(el.duration) ? Math.min(Math.max(0, t), el.duration) : Math.max(0, t);
     if (Math.abs(el.currentTime - alvo) < 1e-3 && el.readyState >= 2 && !el.seeking) { ok(); return; }
     let buscou = false, apresentou = typeof v.requestVideoFrameCallback !== 'function', encerrou = false;
-    let idQuadro = 0;
-    const fim = () => {
+    let idQuadro = 0, idFolga = 0;
+    const fim = (erro?: Error) => {
       if (encerrou) return;
       encerrou = true;
       window.clearTimeout(idLimite);
       window.clearTimeout(idFolga);
       el.removeEventListener('seeked', aoBuscar);
+      sinal?.removeEventListener('abort', aoCancelar);
       if (idQuadro && typeof v.cancelVideoFrameCallback === 'function') v.cancelVideoFrameCallback(idQuadro);
-      ok();
+      if (erro) falha(erro); else ok();
     };
-    let idFolga = 0;
+    // Cancelar (ou fechar o diálogo) não espera a busca: sem isto o "seeked" que nunca chega prende a gravação até o limite de tempo.
+    const aoCancelar = () => fim(erroDeCancelamento());
     const aoBuscar = () => {
       buscou = true;
       if (apresentou) { fim(); return; }
-      idFolga = window.setTimeout(fim, 120);
+      idFolga = window.setTimeout(() => fim(), 120);
     };
-    const idLimite = window.setTimeout(fim, limiteMs);
+    const idLimite = window.setTimeout(() => fim(), limiteMs);
     el.addEventListener('seeked', aoBuscar);
+    sinal?.addEventListener('abort', aoCancelar, { once: true });
     if (!apresentou) idQuadro = v.requestVideoFrameCallback!(() => { apresentou = true; if (buscou) fim(); });
     el.currentTime = alvo;
   });
@@ -263,8 +268,8 @@ function contexto2d(c: HTMLCanvasElement): CanvasRenderingContext2D {
   return ctx;
 }
 
-/** Faixa do topo, parte fixa: o nome do gesto e a velocidade. */
-function desenharBarraFixa(ctx: CanvasRenderingContext2D, l: LayoutConteudo, etiqueta: string) {
+/** Faixa do topo, parte fixa: o nome do gesto e a velocidade e, embaixo, o aviso de que é uma estimativa por vídeo. */
+function desenharBarraFixa(ctx: CanvasRenderingContext2D, l: LayoutConteudo, etiqueta: string, rodape: string) {
   const f = l.fonte, b = l.barra;
   ctx.save();
   ctx.fillStyle = 'rgba(255,255,255,0.05)';
@@ -275,7 +280,10 @@ function desenharBarraFixa(ctx: CanvasRenderingContext2D, l: LayoutConteudo, eti
   ctx.textAlign = 'left';
   ctx.font = fonteCss('forte', f * 0.88);
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(truncarTexto(etiqueta, b.w * 0.58, (t) => ctx.measureText(t).width), b.x + l.margem, b.y + b.h / 2 + f * 0.03);
+  ctx.fillText(truncarTexto(etiqueta, b.w * 0.58, (t) => ctx.measureText(t).width), b.x + l.margem, b.y + b.h * 0.38 + f * 0.03);
+  ctx.font = fonteCss('texto', f * 0.6);
+  ctx.fillStyle = 'rgba(255,255,255,0.62)';
+  ctx.fillText(truncarTexto(rodape, b.w - 2 * l.margem, (t) => ctx.measureText(t).width), b.x + l.margem, b.y + b.h * 0.78 + f * 0.02);
   ctx.restore();
 }
 
@@ -287,15 +295,16 @@ function desenharTempo(ctx: CanvasRenderingContext2D, l: LayoutConteudo, texto: 
   ctx.textAlign = 'right';
   ctx.font = fonteCss('texto', f * 0.84);
   ctx.fillStyle = 'rgba(255,255,255,0.86)';
-  ctx.fillText(texto, b.x + b.w - l.margem, b.y + b.h / 2 + f * 0.03);
+  ctx.fillText(texto, b.x + b.w - l.margem, b.y + b.h * 0.38 + f * 0.03);
   ctx.restore();
 }
 
-function iconeStatus(ctx: CanvasRenderingContext2D, status: 'dentro' | 'fora', cx: number, cy: number, r: number) {
+/** 'neutro' é o "fora" de uma faixa que não é de normalidade (média de grupos, limiar): informa sem alertar. */
+function iconeStatus(ctx: CanvasRenderingContext2D, status: 'dentro' | 'fora' | 'neutro', cx: number, cy: number, r: number) {
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = status === 'dentro' ? COR_DENTRO : COR_FORA;
+  ctx.fillStyle = status === 'dentro' ? COR_DENTRO : status === 'fora' ? COR_FORA : 'rgba(255,255,255,0.45)';
   ctx.fill();
   ctx.strokeStyle = '#0a0f1c';
   ctx.lineWidth = Math.max(1.4, r * 0.28);
@@ -306,11 +315,16 @@ function iconeStatus(ctx: CanvasRenderingContext2D, status: 'dentro' | 'fora', c
     ctx.moveTo(cx - r * 0.48, cy + r * 0.02);
     ctx.lineTo(cx - r * 0.1, cy + r * 0.4);
     ctx.lineTo(cx + r * 0.52, cy - r * 0.36);
-  } else {
+  } else if (status === 'fora') {
     ctx.moveTo(cx, cy - r * 0.5);
     ctx.lineTo(cx, cy + r * 0.12);
     ctx.moveTo(cx, cy + r * 0.45);
     ctx.lineTo(cx, cy + r * 0.46);
+  } else {
+    ctx.moveTo(cx, cy - r * 0.48);
+    ctx.lineTo(cx, cy - r * 0.47);
+    ctx.moveTo(cx, cy - r * 0.1);
+    ctx.lineTo(cx, cy + r * 0.5);
   }
   ctx.stroke();
   ctx.restore();
@@ -341,31 +355,54 @@ function desenharCartoes(ctx: CanvasRenderingContext2D, l: LayoutConteudo, itens
     }
     ctx.font = fonteCss('texto', f * 0.76);
     ctx.fillStyle = 'rgba(255,255,255,0.74)';
-    ctx.fillText(truncarTexto(it.titulo, largTexto, (t) => ctx.measureText(t).width), r.x + pad, r.y + pad + f * 0.72);
+    ctx.fillText(truncarTexto(it.comAviso ? `${it.titulo} *` : it.titulo, largTexto, (t) => ctx.measureText(t).width), r.x + pad, r.y + pad + f * 0.72);
 
     // valores: "D 62,3°  E 60,1°", cada lado na sua cor, com o símbolo de dentro/fora da faixa quando há referência
     const yValor = r.y + pad + f * 0.72 + f * 1.3;
     ctx.font = fonteCss('forte', f * 1.15);
     let x = r.x + pad;
     const rIcone = f * 0.42;
-    for (const v of it.valores) {
+    const tamanhos = it.valores.map((v) => {
       const etiqueta = v.lado ? `${v.lado}` : '';
       const tamEtiqueta = etiqueta ? ctx.measureText(etiqueta).width + f * 0.28 : 0;
       const tamValor = ctx.measureText(v.texto).width;
-      const precisaIcone = v.status === 'dentro' || v.status === 'fora';
-      const total = tamEtiqueta + tamValor + (precisaIcone ? rIcone * 2.5 : 0);
+      const precisaIcone = v.status === 'dentro' || v.status === 'fora' || v.status === 'fora_neutro';
+      return { etiqueta, tamEtiqueta, tamValor, precisaIcone, total: tamEtiqueta + tamValor + (precisaIcone ? rIcone * 2.5 : 0) };
+    });
+    // O erro de medida do vídeo (ex.: "± 6,2%") só entra se couber junto de todos os valores; senão fica no PDF.
+    ctx.font = fonteCss('texto', f * 0.6);
+    const tamIncerteza = it.valores.map((v) => (v.incerteza ? ctx.measureText(v.incerteza).width + f * 0.3 : 0));
+    const somaComIncerteza = tamanhos.reduce((a, t, k) => a + t.total + tamIncerteza[k] + f * 0.7, 0);
+    const comIncerteza = somaComIncerteza <= r.w - 2 * pad + f * 0.7;
+    ctx.font = fonteCss('forte', f * 1.15);
+    for (const [k, v] of it.valores.entries()) {
+      const { etiqueta, tamEtiqueta, tamValor, precisaIcone, total } = tamanhos[k];
       if (x + total > r.x + r.w - pad + 1) break;
       if (etiqueta) { ctx.fillStyle = COR_LADO[v.lado as 'D' | 'E']; ctx.fillText(etiqueta, x, yValor); }
       ctx.fillStyle = '#ffffff';
       ctx.fillText(v.texto, x + tamEtiqueta, yValor);
       x += tamEtiqueta + tamValor;
-      if (precisaIcone) { iconeStatus(ctx, v.status as 'dentro' | 'fora', x + rIcone * 1.5, yValor - f * 0.4, rIcone); x += rIcone * 2.5; }
+      if (precisaIcone) { iconeStatus(ctx, v.status === 'dentro' ? 'dentro' : v.status === 'fora' ? 'fora' : 'neutro', x + rIcone * 1.5, yValor - f * 0.4, rIcone); x += rIcone * 2.5; }
+      if (comIncerteza && v.incerteza) {
+        ctx.font = fonteCss('texto', f * 0.6);
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText(v.incerteza, x + f * 0.15, yValor);
+        ctx.font = fonteCss('forte', f * 1.15);
+        x += tamIncerteza[k];
+      }
       x += f * 0.7;
     }
 
-    ctx.font = fonteCss('texto', f * 0.64);
     ctx.fillStyle = it.referencia ? 'rgba(167,243,208,0.92)' : 'rgba(255,255,255,0.5)';
-    const textoRef = it.referencia ? `Ref.: ${it.referencia}` : 'sem referência';
+    const textoRef = it.referencia ? `${prefixoDaReferencia(it.natureza)}${it.referencia}` : 'sem referência';
+    // A referência com a fonte e o PMID vale mais que o tamanho da letra: encolhe um pouco antes de cortar com reticências.
+    let tamRef = f * 0.64;
+    ctx.font = fonteCss('texto', tamRef);
+    const larguraRef = ctx.measureText(textoRef).width;
+    if (larguraRef > largTexto) {
+      tamRef = Math.max(f * 0.5, (tamRef * largTexto) / larguraRef);
+      ctx.font = fonteCss('texto', tamRef);
+    }
     ctx.fillText(truncarTexto(textoRef, largTexto, (t) => ctx.measureText(t).width), r.x + pad, r.y + r.h - pad * 0.7);
     ctx.restore();
   });
@@ -420,7 +457,7 @@ interface AreaGrafico {
   larguraCurva: number;
 }
 
-function prepararGrafico(ctx: CanvasRenderingContext2D, l: LayoutConteudo, entrada: { titulo: string; series: SerieGrafico[]; marcadores: MarcadorGrafico[]; bandas: BandaGrafico[]; t0: number; duracao: number }): AreaGrafico | null {
+function prepararGrafico(ctx: CanvasRenderingContext2D, l: LayoutConteudo, entrada: { titulo: string; legendaSinal: string; series: SerieGrafico[]; marcadores: MarcadorGrafico[]; bandas: BandaGrafico[]; t0: number; duracao: number }): AreaGrafico | null {
   const r = l.grafico;
   if (!r) return null;
   const f = l.fonte;
@@ -469,14 +506,21 @@ function prepararGrafico(ctx: CanvasRenderingContext2D, l: LayoutConteudo, entra
   ctx.textAlign = 'left';
   ctx.fillText(truncarTexto(`${entrada.titulo} (°)`, Math.max(20, xLegenda - (r.x + pad)), (t) => ctx.measureText(t).width), r.x + pad, yCab);
 
-  let hNota = 0;
-  if (entrada.bandas.length) {
-    ctx.font = fonteCss('texto', f * 0.62);
-    const linhas = quebrarTexto(entrada.bandas.map((b) => b.rotulo).join(' · '), r.w - 2 * pad, (t) => ctx.measureText(t).width, 2);
-    hNota = Math.round(linhas.length * f * 0.8 + pad * 0.3);
-    ctx.fillStyle = 'rgba(167,243,208,0.92)';
+  // Notas do pé do gráfico: o sentido do sinal dos ângulos (sem ele, "−12°" não diz se é extensão) e as faixas de referência com fonte.
+  const notas: { linhas: string[]; cor: string }[] = [];
+  ctx.font = fonteCss('texto', f * 0.62);
+  const medir = (t: string) => ctx.measureText(t).width;
+  if (entrada.legendaSinal) notas.push({ linhas: quebrarTexto(entrada.legendaSinal, r.w - 2 * pad, medir, 2), cor: 'rgba(255,255,255,0.66)' });
+  if (entrada.bandas.length) notas.push({ linhas: quebrarTexto(entrada.bandas.map((b) => b.rotulo).join(' · '), r.w - 2 * pad, medir, 2), cor: 'rgba(167,243,208,0.92)' });
+  const totalLinhas = notas.reduce((a, n) => a + n.linhas.length, 0);
+  const hNota = totalLinhas ? Math.round(totalLinhas * f * 0.8 + pad * 0.3) : 0;
+  if (totalLinhas) {
     ctx.textBaseline = 'alphabetic';
-    linhas.forEach((ln, i) => ctx.fillText(ln, r.x + pad, r.y + r.h - pad * 0.5 - (linhas.length - 1 - i) * f * 0.8));
+    let yLinha = r.y + r.h - pad * 0.5 - (totalLinhas - 1) * f * 0.8;
+    for (const n of notas) {
+      ctx.fillStyle = n.cor;
+      for (const ln of n.linhas) { ctx.fillText(ln, r.x + pad, yLinha); yLinha += f * 0.8; }
+    }
   }
   ctx.restore();
 
@@ -501,6 +545,8 @@ export interface Renderizador {
   rostoNaSaida: (indice: number) => Retangulo | null;
   /** Desenha o quadro `indice` da trilha, com o vídeo já posicionado nele. */
   desenhar: (indice: number) => void;
+  /** Marca o canvas de saída como repintado, sem mudar a imagem: o Chrome só codifica um quadro novo quando o canvas é repintado. */
+  repintar: () => void;
   caixas: CaixaDoQuadro[];
   resumoRosto: ResumoDoRosto;
   liberar: () => void;
@@ -572,8 +618,8 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   ctxB.fillRect(0, 0, layout.largura, layout.altura);
   ctxB.fillStyle = FUNDO_VIDEO;
   ctxB.fillRect(layout.areaVideo.x, layout.areaVideo.y, layout.areaVideo.w, layout.areaVideo.h);
-  desenharBarraFixa(ctxB, layout, etiquetaTopo);
-  const area = temGrafico ? prepararGrafico(ctxB, layout, { titulo: nomeDoGrupo(op.definicoes) || 'Ângulo', series: seriesRel, marcadores: marcadoresRel, bandas, t0, duracao }) : null;
+  desenharBarraFixa(ctxB, layout, etiquetaTopo, itensMetricas.some((i) => i.comAviso) ? RODAPE_VIDEO_COM_AVISO : RODAPE_VIDEO);
+  const area = temGrafico ? prepararGrafico(ctxB, layout, { titulo: nomeDoGrupo(op.definicoes) || 'Ângulo', legendaSinal: legendaDosAngulos(op.definicoes), series: seriesRel, marcadores: marcadoresRel, bandas, t0, duracao }) : null;
   desenharCartoes(ctxB, layout, itensMetricas);
 
   // ---- rosto ----
@@ -607,10 +653,15 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
     ctxC.beginPath();
     ctxC.rect(rv.x, rv.y, rv.w, rv.h);
     ctxC.clip();
+    let coberto = false;
     try {
-      protegerRosto(ctxC, el, vw, vh, janela, rv, caixa, op.modoRosto);
+      coberto = protegerRosto(ctxC, el, vw, vh, janela, rv, caixa, op.modoRosto);
     } catch {
-      // Se o desfoque falhar, a tarja sólida cobre a mesma área: o rosto nunca segue para o arquivo sem cobertura.
+      // Se o desfoque falhar, a tarja sólida cobre a mesma área (abaixo).
+      coberto = false;
+    }
+    // O rosto nunca segue para o arquivo sem cobertura, nem quando o desfoque desiste em silêncio.
+    if (!coberto) {
       ctxC.fillStyle = '#080c16';
       ctxC.fillRect(rv.x + (caixa.cx - caixa.w / 2) * rv.w, rv.y + (caixa.cy - caixa.h / 2) * rv.h, caixa.w * rv.w, caixa.h * rv.h);
     }
@@ -657,22 +708,36 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
       retanguloArredondado(ctxS, caixaArte, RAIO_ARTE);
       ctxS.clip();
       ctxS.drawImage(conteudo, 0, 0, conteudo.width, conteudo.height, caixaArte.x, caixaArte.y, caixaArte.w, caixaArte.h);
+      // O contorno por quadro fica dentro do recorte (metade interna, refeita a cada quadro): a metade de fora não é repintada e
+      // acumularia opacidade quadro a quadro. Ela é desenhada uma só vez, na moldura.
+      contornoDaArte(ctxS, caixaArte);
       ctxS.restore();
-      retanguloArredondado(ctxS, caixaArte, RAIO_ARTE);
-      ctxS.lineWidth = 2;
-      ctxS.strokeStyle = 'rgba(255,255,255,0.16)';
-      ctxS.stroke();
     }
+  }
+
+  function contornoDaArte(c: CanvasRenderingContext2D, caixa: Retangulo) {
+    retanguloArredondado(c, caixa, RAIO_ARTE);
+    c.lineWidth = 2;
+    c.strokeStyle = 'rgba(255,255,255,0.16)';
+    c.stroke();
+  }
+
+  function repintar() {
+    ctxS.save();
+    ctxS.globalCompositeOperation = 'copy';
+    ctxS.drawImage(saida, 0, 0);
+    ctxS.restore();
   }
 
   // A moldura (fundo, título, selo, legenda, perfis) é pintada uma vez; depois só o miolo muda a cada quadro.
   if (formatoSocial && moldura) {
     ctxC.drawImage(base, 0, 0);
     desenharMolduraSocial(ctxS, formatoSocial, moldura.opcoesArte, conteudo, moldura.recursos, 1);
+    if (caixaArte) contornoDaArte(ctxS, caixaArte);
   }
 
   return {
-    saida, largura: saida.width, altura: saida.height, layout, naSaida, rostoNaSaida, desenhar, caixas,
+    saida, largura: saida.width, altura: saida.height, layout, naSaida, rostoNaSaida, desenhar, repintar, caixas,
     resumoRosto: { porOrigem: resumo, semRosto: resumo.fixa > 0 },
     liberar: () => { liberarCanvas(base); if (conteudo !== saida) liberarCanvas(conteudo); liberarCanvas(saida); },
   };
@@ -707,7 +772,7 @@ export async function criarPrevia(op: OpcoesExportarVideo): Promise<Previa> {
     // Depois de liberada a prévia não mexe mais no vídeo: a gravação pode já estar usando a mesma cópia.
     if (liberada) return;
     const i = Math.min(op.trilha.quadros.length - 1, Math.max(0, indice));
-    await buscarQuadro(fonte.el, tempoDeExibicao(op.trilha.quadros[i].t, op.trilha.fps));
+    await buscarQuadro(fonte.el, tempoDeExibicao(op.trilha.quadros[i].t, op.trilha.fps), undefined, op.sinal);
     if (liberada) return;
     r.desenhar(i);
   };
@@ -737,7 +802,7 @@ function fonteDeBusca(op: OpcoesExportarVideo, el: HTMLVideoElement, r: Renderiz
     passo: async (tSaida) => {
       const i = quadroNaSaida(op.trilha, tSaida, op.intervalo, op.velocidade);
       if (i === desenhado) return;
-      await buscarQuadro(el, tempoDeExibicao(op.trilha.quadros[i].t, op.trilha.fps));
+      await buscarQuadro(el, tempoDeExibicao(op.trilha.quadros[i].t, op.trilha.fps), undefined, op.sinal);
       r.desenhar(i);
       desenhado = i;
     },
@@ -770,7 +835,7 @@ function fonteDeReproducao(op: OpcoesExportarVideo, el: HTMLVideoElement, r: Ren
   return {
     modo: 'reproducao',
     iniciar: async () => {
-      await buscarQuadro(el, tempoDeExibicao(trilha.quadros[indiceNoTempo(trilha, intervalo.inicio)].t, trilha.fps));
+      await buscarQuadro(el, tempoDeExibicao(trilha.quadros[indiceNoTempo(trilha, intervalo.inicio)].t, trilha.fps), undefined, op.sinal);
       el.playbackRate = op.velocidade;
       await Promise.race([
         el.play(),
@@ -827,6 +892,7 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
   let gravador: MediaRecorder | null = null;
   let erroSegundoPlano: ErroExportacao | null = null;
   let erroDeDesenho: unknown = null;
+  let erroGravacao: ErroExportacao | null = null;
   const aoOcultar = () => {
     if (document.visibilityState === 'hidden') erroSegundoPlano = new ErroExportacao('segundo_plano', 'A gravação parou porque o app saiu da tela. Mantenha o app aberto até o fim e tente de novo.');
   };
@@ -842,7 +908,7 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
 
     // Primeiro quadro pronto antes de gravar, para o arquivo não começar vazio.
     const iInicio = quadroNaSaida(op.trilha, 0, op.intervalo, op.velocidade);
-    await buscarQuadro(fonte.el, tempoDeExibicao(op.trilha.quadros[iInicio].t, op.trilha.fps));
+    await buscarQuadro(fonte.el, tempoDeExibicao(op.trilha.quadros[iInicio].t, op.trilha.fps), undefined, op.sinal);
     r.desenhar(iInicio);
 
     fluxo = r.saida.captureStream(0);
@@ -853,6 +919,7 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
       fluxo = r.saida.captureStream(fps);
     }
     const empurrar = () => { if (manual) faixa!.requestFrame!(); };
+    const gravadorParado = () => gravador?.state === 'inactive';
 
     const opcoesGravador: MediaRecorderOptions = { mimeType: suporte.escolha.mime, videoBitsPerSecond: bitrateDoVideo(r.largura, r.altura, fps) };
     gravador = new MediaRecorder(fluxo, opcoesGravador);
@@ -860,7 +927,14 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
     gravador.ondataavailable = (e) => { if (e.data && e.data.size > 0) pedacos.push(e.data); };
     const parou = new Promise<void>((ok, falha) => {
       gravador!.onstop = () => ok();
-      gravador!.onerror = () => falha(new ErroExportacao('gravacao', 'O navegador interrompeu a gravação do vídeo. Tente de novo com um trecho menor.'));
+      gravador!.onerror = () => {
+        // O laço de gravação olha `erroGravacao` a cada passo: o erro aparece na hora, e não só ao fim do trecho.
+        erroGravacao = new ErroExportacao('gravacao', 'O navegador interrompeu a gravação do vídeo. Tente de novo com um trecho menor.');
+        falha(erroGravacao);
+      };
+    });
+    parou.catch(() => {
+      // A rejeição é tratada onde `parou` é aguardada ou, antes disso, pelo laço (via `erroGravacao`); aqui só evita rejeição sem tratamento.
     });
 
     // Reprodução suave quando o navegador entrega os quadros; busca por quadro quando não (ou quando a reprodução falha).
@@ -892,6 +966,8 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
       if (op.sinal?.aborted) throw erroDeCancelamento();
       if (erroSegundoPlano) throw erroSegundoPlano;
       if (erroDeDesenho) throw erroDeDesenho;
+      if (erroGravacao) throw erroGravacao;
+      if (gravadorParado()) throw new ErroExportacao('gravacao', 'O navegador interrompeu a gravação do vídeo. Tente de novo com um trecho menor.');
       const tSaida = (performance.now() - inicio) / 1000;
       if (fonteTempo.terminou(tSaida)) break;
       try {
@@ -912,6 +988,8 @@ export async function exportarVideoAnalise(op: OpcoesExportarVideo): Promise<Blo
     fonteTempo.parar();
     empurrar();
     await esperarMs(periodo * 2, op.sinal);
+    // Sem repintar, o Chrome não codifica quadro novo: o último quadro analisado ficaria com tempo zero e o arquivo sairia mais curto.
+    r.repintar();
     empurrar();
     // Só `stop()`: pedir um pedaço antes (`requestData`) obriga o Chrome a fechar o cabeçalho cedo, com uma duração provisória de 1 ms.
     if (gravador.state !== 'inactive') gravador.stop();

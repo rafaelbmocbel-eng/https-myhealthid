@@ -60,6 +60,15 @@ const BarraDeGravacao = memo(function BarraDeGravacao({ valorInicial, assinar, a
   );
 });
 
+/** O que o app sabe do rosto: só afirma "em todos os quadros" quando é verdade; quadros por vizinhança ou área fixa são ditos como estimativa. */
+function textoDoRosto(r: ResumoDoRosto): string {
+  if (r.semRosto) {
+    return `Em ${Math.round(r.porOrigem.fixa)}% dos quadros não localizei o rosto com segurança (o paciente saiu do quadro ou o corpo não foi detectado): a cobertura deles é uma estimativa, a última posição conhecida mais uma área fixa no alto. Passe pelos quadros na prévia e confira se ele está coberto.`;
+  }
+  if (r.porOrigem.vizinho > 0) return `Rosto localizado pelos pontos do corpo; em ${Math.round(r.porOrigem.vizinho)}% dos quadros a posição vem dos quadros vizinhos. Confira na prévia.`;
+  return 'Rosto localizado pelos pontos do corpo em todos os quadros. Confira na prévia.';
+}
+
 const megabytes = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`;
 
 export default function ExportarVideoDialog({
@@ -227,12 +236,15 @@ export default function ExportarVideoDialog({
     return () => { cancelado = true; };
   }, [aberto]);
 
-  useEffect(() => () => { if (resultado) URL.revokeObjectURL(resultado.url); }, [resultado]);
+  useEffect(() => () => { if (resultado?.url) URL.revokeObjectURL(resultado.url); }, [resultado]);
+
+  // Fechar o diálogo solta o arquivo gravado (dezenas de MB): o profissional segue corrigindo pontos com o diálogo montado por baixo.
+  useEffect(() => { if (!aberto) setResultado(null); }, [aberto]);
 
   // Gravar o canvas depende de o navegador desenhar a página: com a tela de análise inteira ainda por trás do diálogo, o Chrome do
   // computador chega a gravar só alguns quadros por segundo. Enquanto grava, o resto da página fica escondido (volta ao terminar).
   useEffect(() => {
-    if (!gravando) return undefined;
+    if (!gravando || !aberto) return undefined;
     const conteudo = conteudoRef.current;
     const copiaDoVideo = fonteRef.current?.el;
     const escondidos: [HTMLElement, string][] = [];
@@ -243,7 +255,7 @@ export default function ExportarVideoDialog({
       el.style.visibility = 'hidden';
     }
     return () => { for (const [el, antes] of escondidos) el.style.visibility = antes; };
-  }, [gravando]);
+  }, [gravando, aberto]);
 
   const moldura = useMemo<OpcoesSocial | undefined>(() => (social
     ? { autorizado, titulo: tituloArte.trim() || undefined, legenda: legenda.trim() || undefined, perfis, margensStories, selo, avatar: avatarImg }
@@ -339,7 +351,8 @@ export default function ExportarVideoDialog({
       const nome = nomeArquivoVideo(formato, titulo, extensaoDoMime(blob.type));
       const arquivo = new File([blob], nome, { type: blob.type });
       baixarBlob(blob, nome);
-      setResultado({ url: URL.createObjectURL(blob), nome, tipo: blob.type, tamanho: blob.size, arquivo, duracaoS: (performance.now() - inicio) / 1000 });
+      // A prévia do arquivo só aparece no app nativo; no navegador o download já entregou o arquivo e a URL ficaria retida sem uso.
+      setResultado({ url: Capacitor.isNativePlatform() ? URL.createObjectURL(blob) : '', nome, tipo: blob.type, tamanho: blob.size, arquivo, duracaoS: (performance.now() - inicio) / 1000 });
       toast.success('Vídeo pronto. Confira em Arquivos ou Downloads.');
     } catch (e) {
       if (ehCancelamento(e)) toast.info('Gravação cancelada.');
@@ -366,7 +379,7 @@ export default function ExportarVideoDialog({
 
   const baixarQuadro = async () => {
     const p = previaRef.current;
-    if (!p || gravando || (precisaAutorizacao && !autorizado)) return;
+    if (!p || gravando || rostoPendente || (precisaAutorizacao && !autorizado)) return;
     try {
       const png = await canvasParaPng(p.canvas);
       baixarBlob(png, `quadro-${formato}-${dataParaArquivo()}.png`);
@@ -434,12 +447,10 @@ export default function ExportarVideoDialog({
                 <div className="space-y-2 rounded-2xl border border-border/60 bg-card p-3">
                   {modoRosto !== 'nenhum' && resumoRosto && (
                     <p className={resumoRosto.semRosto ? 'rounded-lg bg-amber-500/10 p-2 text-xs font-medium text-amber-800 dark:text-amber-300' : 'text-xs text-muted-foreground'} data-testid="dica-rosto-video" role={resumoRosto.semRosto ? 'status' : undefined}>
-                      {resumoRosto.semRosto
-                        ? `Em ${Math.round(resumoRosto.porOrigem.fixa)}% dos quadros não achei o rosto: uma área fixa no alto do vídeo o cobre. Passe pelos quadros na prévia e confira se ele está coberto.`
-                        : 'Rosto localizado pelos pontos do corpo em todos os quadros. Confira na prévia.'}
+                      {textoDoRosto(resumoRosto)}
                     </p>
                   )}
-                  <Button type="button" variant="outline" className="h-11 w-full gap-2" onClick={() => void baixarQuadro()} disabled={!previaRef.current || (precisaAutorizacao && !autorizado)} data-testid="baixar-quadro-previa">
+                  <Button type="button" variant="outline" className="h-11 w-full gap-2" onClick={() => void baixarQuadro()} disabled={!previaRef.current || rostoPendente || (precisaAutorizacao && !autorizado)} data-testid="baixar-quadro-previa">
                     <IconeImagem className="h-4 w-4" aria-hidden /> Baixar este quadro (PNG)
                   </Button>
                   {precisaAutorizacao && !autorizado && <p className="text-[11px] text-muted-foreground">Marque a autorização do paciente (no rodapé) para baixar o quadro ou o vídeo.</p>}

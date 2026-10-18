@@ -208,7 +208,7 @@ export const anguloQuadril = (lado: Lado, assinado = true): AnguloTresPontos => 
 export const anguloTornozelo = (lado: Lado): AnguloEntreSegmentos => ({
   id: `tornozelo_${sfx(lado)}`, nome: `Tornozelo ${lateral(lado)}`, lado, tipo: 'entre_segmentos',
   a: [`tornozelo_${sfx(lado)}`, `joelho_${sfx(lado)}`], b: [`calcanhar_${sfx(lado)}`, `pe_${sfx(lado)}`], desloc: 90, escala: -1,
-  descricao: 'Dorsiflexão do tornozelo em relação à posição neutra (perna a 90° do eixo do pé).',
+  descricao: 'Dorsiflexão do tornozelo: 0° = neutro (perna a 90° do eixo do pé), + = dorsiflexão, − = flexão plantar. Na medida manual do tornozelo o neutro é 90° (ângulo perna-pé), por isso os números diferem.',
 });
 
 /** Inclinação do tronco (quadril → ombro) em relação à vertical; positivo = inclinado para a frente. */
@@ -270,3 +270,11 @@ export const linhaDaPelve: AnguloSegmento = {
   id: 'linha_pelve', nome: 'Linha da pelve', lado: null, tipo: 'segmento', de: 'quadril_e', para: 'quadril_d', referencia: 'horizontal', assinado: true,
   descricao: 'Inclinação da linha entre os quadris em relação à horizontal.',
 };
+
+/**
+ * Legenda do sentido do sinal dos ângulos de um conjunto de definições (uma frase por descrição diferente). Sem ela, um "−12°" no
+ * gráfico não diz se é extensão, hiperextensão ou inclinação para trás.
+ */
+export function legendaDosAngulos(defs: readonly DefinicaoAngulo[]): string {
+  return [...new Set(defs.map((d) => d.descricao).filter((d): d is string => !!d))].join(' ');
+}
