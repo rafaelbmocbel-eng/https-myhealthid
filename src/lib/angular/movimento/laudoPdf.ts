@@ -272,6 +272,7 @@ export async function gerarPdfLaudo(laudo: LaudoMovimento, opcoes: OpcoesPdfLaud
 
   secaoDeTexto(laudo.resumo);
   secaoDeTexto(laudo.medidasPorRepeticao);
+  if (laudo.pontosPerdidos) secaoDeTexto(laudo.pontosPerdidos);
 
   // ---------- gráficos ----------
 

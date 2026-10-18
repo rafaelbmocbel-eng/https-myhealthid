@@ -50,6 +50,8 @@ import { useMedidasManuais } from './useMedidasManuais';
 import { useReproducao } from './useReproducao';
 import { useTrilhaEditavel } from './useTrilhaEditavel';
 import { useEstadoLaudo } from './laudo/useEstadoLaudo';
+import { fraseContagemPontos, useContagemPontosAConferir } from './laudo/useContagemPontosAConferir';
+import type { AlvoDeCorrecao } from './laudo/PontosAConferir';
 import { imagensParaRelatorio, painelDoQuadroAtual, quadrosDosExtremos, resumoEmLinhas, rotuloDoQuadro, type ContextoQuadro } from './saidas';
 
 type Etapa = 'enviar' | 'modelo' | 'rastreando' | 'analisar';
@@ -123,6 +125,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const [DialogoVideo, setDialogoVideo] = useState<ComponentType<PropsExportarVideoDialog> | null>(null);
   const [videoAberto, setVideoAberto] = useState(false);
   const [preparandoVideo, setPreparandoVideo] = useState(false);
+  const [pontoCorrigindo, setPontoCorrigindo] = useState<{ nome: string; quadro: number } | null>(null);
 
   const estilo = estiloExterno ?? estiloLocal;
   const mudarEstilo = (e: EstiloMarcacao) => { setEstiloLocal(e); salvarEstilo(e); aoMudarEstilo?.(e); };
@@ -159,6 +162,8 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     [temRastreio, trilha, modelo, eventos, manual.cmPorPx, cameraFixa],
   );
   const direcao = analise?.direcao ?? 1;
+  const protocoloDoLaudo = useMemo(() => estadoLaudo.protocolos.find((p) => p.id === estadoLaudo.protocoloId) ?? null, [estadoLaudo.protocolos, estadoLaudo.protocoloId]);
+  const pontosAConferir = useContagemPontosAConferir({ protocolo: protocoloDoLaudo, trilha: temRastreio ? trilha : null, eventos, direcao });
 
   // As sugestões de eventos do primeiro cálculo viram a lista editável do profissional.
   useEffect(() => {
@@ -185,8 +190,9 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const alcas = useMemo<AlcaUi[]>(() => {
     const nomes = pontosDasDefinicoes(defsVisiveis);
     if (modelo.eventos) for (const n of ['calcanhar_d', 'calcanhar_e', 'pe_d', 'pe_e']) if (!nomes.includes(n)) nomes.push(n);
+    if (pontoCorrigindo && !nomes.includes(pontoCorrigindo.nome)) nomes.push(pontoCorrigindo.nome);
     return nomes.map((nome) => ({ nome, rotulo: rotuloDoPonto(nome) }));
-  }, [defsVisiveis, modelo.eventos]);
+  }, [defsVisiveis, modelo.eventos, pontoCorrigindo]);
   const pontosTela = useMemo<PontosDoQuadro | null>(() => pontosParaTela(quadroPose), [quadroPose]);
   const marcacoesDe = useCallback((p: PontosDoQuadro): MarcacaoAnguloUi[] => (quadroPose ? marcacoesDoQuadro(defsVisiveis, quadroComPontos(quadroPose, p), direcao) : []), [quadroPose, defsVisiveis, direcao]);
   const fantasmas = useMemo<PontosDoQuadro>(
@@ -203,6 +209,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const reiniciar = () => {
     edicao.iniciar(null); setEventos(null); manual.restaurar([], {}, '');
     estadoLaudo.restaurar();
+    setPontoCorrigindo(null);
     repro.setQuadro(0);
   };
 
@@ -335,7 +342,17 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
   // ---------- correções, eventos ----------
 
-  const corrigir = useCallback((nome: string, p: { x: number; y: number }) => edicao.corrigir(quadro, nome, p), [edicao, quadro]);
+  const corrigir = useCallback((nome: string, p: { x: number; y: number }) => {
+    edicao.corrigir(quadro, nome, p);
+    setPontoCorrigindo((atual) => (atual && atual.nome === nome ? null : atual));
+  }, [edicao, quadro]);
+
+  // "Ir ao quadro" dos pontos a conferir: o player para no quadro com o ponto destacado, e a página sobe até ele (no celular o player fica acima das abas).
+  const irAoPontoPerdido = ({ quadro: destino, ponto }: AlvoDeCorrecao) => {
+    setPontoCorrigindo({ nome: ponto, quadro: destino });
+    repro.irPara(destino);
+    videoRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  };
 
   const adicionarEv = (tipo: TipoEvento, lado: Lado) => { if (trilha) setEventos((l) => adicionarEvento(l ?? [], trilha, lado, tipo, quadro)); };
   const moverEv = (id: string) => { if (trilha) setEventos((l) => moverEvento(l ?? [], trilha, id, quadro)); };
@@ -585,6 +602,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const temFantasma = Object.keys(fantasmas).length > 0;
   let avisoQuadro: string | null = null;
   if (etapa === 'analisar' && temRastreio && !pontosTela) avisoQuadro = temFantasma ? 'Corpo não detectado neste quadro. Arraste os pontos tracejados para posicioná-los.' : 'Corpo não detectado neste quadro';
+  else if (etapa === 'analisar' && podeCorrigir && pontoCorrigindo && pontoCorrigindo.quadro === quadro) avisoQuadro = `Corrija ${rotuloDoPonto(pontoCorrigindo.nome).toLowerCase()} (anel laranja): arraste até a posição da articulação.`;
   else if (etapa === 'analisar' && podeCorrigir && temFantasma) avisoQuadro = 'Pontos tracejados: não detectados. Arraste até o lugar certo.';
   const avisosVideo = video ? avisosDoVideo({ duracao: video.duracao, largura: video.largura, altura: video.altura, tamanho: video.tamanho }).mensagens : [];
 
@@ -639,7 +657,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
         <PlayerQuadros
           url={video.url} largura={video.largura} altura={video.altura} videoRef={videoRef} quadro={quadro} nQuadros={nQuadros}
-          pontos={etapa === 'analisar' ? pontosTela : etapa === 'rastreando' ? pontosParaTela(aoVivo ?? undefined) : null} ligacoes={LIGACOES_CORPO} alcas={alcas} fantasmas={fantasmas} marcacoesDe={marcacoesDe} estilo={estilo}
+          pontos={etapa === 'analisar' ? pontosTela : etapa === 'rastreando' ? pontosParaTela(aoVivo ?? undefined) : null} ligacoes={LIGACOES_CORPO} alcas={alcas} fantasmas={fantasmas} pontoEmDestaque={pontoCorrigindo && pontoCorrigindo.quadro === quadro ? pontoCorrigindo.nome : null} marcacoesDe={marcacoesDe} estilo={estilo}
           mostrarEsqueleto={mostrarEsqueleto} mostrarAngulos={mostrarAngulos} podeCorrigir={podeCorrigir}
           aoCorrigir={corrigir} aoDeslizar={repro.irPara} tocando={repro.tocando} aoPausar={repro.pausar} aviso={avisoQuadro}
           camadaExtra={etapa === 'analisar' ? manual.camada : undefined} aoArrastarExtra={manual.arrastar} gestosExtra={etapa === 'analisar' && aba === 'medir' ? manual.gestos : undefined}
@@ -696,13 +714,20 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
       {etapa === 'analisar' && (
         <aside className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:pr-1">
           <div role="tablist" aria-label="Painel da análise" className="grid grid-cols-6 gap-1 rounded-2xl bg-muted/60 p-1">
-            {ABAS.map(({ id, nome, Icone, selo }) => (
-              <button key={id} type="button" role="tab" aria-selected={aba === id} onClick={() => setAba(id)} data-testid={`aba-${id}`} aria-label={selo ? `${nome} (${selo})` : undefined}
-                className={cn('flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-semibold transition-all', aba === id ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-                <Icone className="h-4 w-4" aria-hidden />{nome}
-                {selo && <span className="text-[9px] font-medium uppercase leading-none tracking-wide text-muted-foreground" aria-hidden>{selo}</span>}
-              </button>
-            ))}
+            {ABAS.map(({ id, nome, Icone, selo }) => {
+              const aConferir = id === 'laudo' ? pontosAConferir : 0;
+              const rotulo = selo ? `${nome} (${selo})${aConferir > 0 ? ` · ${fraseContagemPontos(aConferir)}` : ''}` : undefined;
+              return (
+                <button key={id} type="button" role="tab" aria-selected={aba === id} onClick={() => setAba(id)} data-testid={`aba-${id}`} aria-label={rotulo} title={aConferir > 0 ? rotulo : undefined}
+                  className={cn('relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-semibold transition-all', aba === id ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+                  <Icone className="h-4 w-4" aria-hidden />{nome}
+                  {selo && <span className="text-[9px] font-medium uppercase leading-none tracking-wide text-muted-foreground" aria-hidden>{selo}</span>}
+                  {aConferir > 0 && (
+                    <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-black" aria-hidden data-testid="contagem-pontos-a-conferir">{aConferir}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <div className={cn('space-y-3', !(analise && (aba === 'metricas' || aba === 'lados')) && 'rounded-2xl border border-border/60 bg-card p-3')} role="tabpanel">
@@ -734,7 +759,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
                   video={{ nome: video.nome, duracaoS: video.duracao, largura: video.largura, altura: video.altura }}
                   trecho={tempos.length ? { inicio: tempos[0], fim: tempos[tempos.length - 1] } : undefined}
                   quadrosChaveCorrigidos={edicao.resumo.quadros} medidasManuaisForaDoTrecho={manual.foraDoTrecho.length}
-                  paciente={paciente ? nomeCompleto(paciente) : undefined} profissional={nomeDoProfissional(profile)}
+                  paciente={paciente ? nomeCompleto(paciente) : undefined} profissional={nomeDoProfissional(profile)} aoIrAoQuadro={irAoPontoPerdido}
                 />
               </Suspense>
             )}

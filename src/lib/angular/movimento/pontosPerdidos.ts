@@ -1,0 +1,266 @@
+import { pontosDasDefinicoes, rotuloDoPonto } from '../analiseVideo/marcacoes';
+import type { TrilhaPose } from '../video/tipos';
+import { pontoUsavel } from '../video/trilha';
+import { finito, type Num } from './estatistica';
+import { instanteDaLeitura, motivoDoPontoPerdido } from './frasesPontosPerdidos';
+import { FRACAO_MINIMA_VALIDOS, type FalhaDePontos } from './medidasPorRepeticao';
+import { faseDo, medidaDo } from './protocolos';
+import type {
+  ChaveLado, EntradaPontoPerdido, PontoFaltante, PontosPerdidos, Protocolo, Repeticao, ResumoPontoPerdido,
+} from './tipos';
+
+/*
+ * Pontos perdidos (agente P): transforma as medidas que ficaram sem valor por falta de pontos (`FalhaDePontos`, registradas por
+ * medidasPorRepeticao.ts) no que o profissional precisa para corrigir à mão: quais pontos do corpo, em que quadros e em que instante.
+ * Não muda nenhum número medido nem a regra de 70%: o rigor é o mesmo, só deixa de ser silencioso.
+ */
+
+export const pontosPerdidosVazios = (): PontosPerdidos => ({ entradas: [], porPonto: [] });
+
+const sfx = (chave: string): string => chave.slice(-1);
+
+/** Pontos reais da trilha de que a série de uma medida depende, quando a série não é um ângulo do protocolo. */
+function pontosDoDeslocamento(chave: string): string[] {
+  if (chave === 'avanco_d' || chave === 'avanco_e') return [`joelho_${sfx(chave)}`, `pe_${sfx(chave)}`];
+  switch (chave) {
+    case 'profundidade': return ['quadril_d', 'joelho_d', 'quadril_e', 'joelho_e'];
+    case 'desvio_pelve':
+    case 'quadril_tornozelo': return ['quadril_d', 'quadril_e', 'tornozelo_d', 'tornozelo_e'];
+    case 'altura_pelve': return ['quadril_d', 'quadril_e'];
+    default: return [];
+  }
+}
+
+/** Pontos do corpo (nomes da trilha, sem os virtuais `_medio`) de que depende a série de uma medida. */
+export function pontosDaSerie(protocolo: Protocolo, chave: string): string[] {
+  const def = protocolo.articulacoes.find((d) => d.id === chave);
+  return def ? pontosDasDefinicoes([def]) : pontosDoDeslocamento(chave);
+}
+
+/** Índices em ordem crescente → faixas contínuas [de, até] inclusive. */
+export function emFaixas(indices: readonly number[]): [number, number][] {
+  const faixas: [number, number][] = [];
+  for (const i of [...indices].sort((a, b) => a - b)) {
+    const ultima = faixas[faixas.length - 1];
+    if (ultima && i <= ultima[1] + 1) ultima[1] = Math.max(ultima[1], i);
+    else faixas.push([i, i]);
+  }
+  return faixas;
+}
+
+/** Estende cada faixa para os dois lados enquanto o ponto continua sem detecção confiável: o buraco inteiro da trilha, não só a parte dentro da janela. */
+function estenderFaixas(faixas: readonly (readonly [number, number])[], semPonto: (i: number) => boolean, n: number): [number, number][] {
+  const estendidas = faixas.map(([de, ate]): [number, number] => {
+    let a = de, b = ate;
+    while (a > 0 && semPonto(a - 1)) a--;
+    while (b < n - 1 && semPonto(b + 1)) b++;
+    return [a, b];
+  });
+  return emFaixas(estendidas.flatMap(([a, b]) => Array.from({ length: b - a + 1 }, (_, k) => a + k)));
+}
+
+const quadrosDasFaixas = (faixas: readonly (readonly [number, number])[]): number[] => {
+  const q: number[] = [];
+  for (const [de, ate] of faixas) for (let i = de; i <= ate; i++) q.push(i);
+  return q;
+};
+
+/** Menor número de quadros que cumpre a regra de 70% numa janela de `total` quadros (a mesma comparação do motor). */
+function quadrosMinimos(total: number): number {
+  let k = 0;
+  while (k < FRACAO_MINIMA_VALIDOS * total) k++;
+  return k;
+}
+
+const ordemDoLado: Record<ChaveLado, number> = { D: 0, E: 1, unico: 2 };
+
+export interface EntradaDoDiagnostico {
+  protocolo: Protocolo;
+  trilha: TrilhaPose;
+  repeticoes: readonly Repeticao[];
+  falhas: readonly FalhaDePontos[];
+  /** Séries brutas (sem interpolação) por chave de série: ângulos e deslocamentos. */
+  brutos: Readonly<Record<string, readonly Num[]>>;
+  /** Instante de cada quadro da trilha, em segundos. */
+  tempos: readonly number[];
+}
+
+function entradaDaFalha(f: FalhaDePontos, e: EntradaDoDiagnostico): EntradaPontoPerdido | null {
+  const { protocolo, trilha, tempos } = e;
+  const n = trilha.quadros.length;
+  const bruto = e.brutos[f.serie];
+  const def = medidaDo(protocolo, f.medida);
+  const rep = e.repeticoes[f.repeticao];
+  if (!bruto || !def || !rep || n === 0) return null;
+  const de = Math.max(0, f.janela[0]), ate = Math.min(n - 1, f.janela[1]);
+  if (de > ate) return null;
+
+  const semMedida: number[] = [];
+  for (let j = de; j <= ate; j++) if (!finito(bruto[j])) semMedida.push(j);
+  if (!semMedida.length) return null;
+
+  const total = ate - de + 1;
+  const pontos: PontoFaltante[] = [];
+  for (const nome of pontosDaSerie(protocolo, f.serie)) {
+    const semPonto = (j: number): boolean => !pontoUsavel(trilha.quadros[j]?.pontos[nome]);
+    const quadros = semMedida.filter(semPonto);
+    if (quadros.length) pontos.push({ ponto: nome, rotulo: rotuloDoPonto(nome), quadrosSemPonto: quadros.length, quadrosNaJanela: total, faixas: estenderFaixas(emFaixas(quadros), semPonto, n) });
+  }
+  // Série sem nenhum ponto faltando (por exemplo, tornozelos alinhados): não há o que arrastar, e o aviso geral da análise já explica.
+  if (!pontos.length) return null;
+  pontos.sort((a, b) => b.quadrosSemPonto - a.quadrosSemPonto);
+
+  let extremoI: number;
+  if (f.extremoI !== null) {
+    extremoI = Math.min(Math.max(f.extremoI, 0), n - 1);
+  } else {
+    const semAlgumPonto = quadrosDasFaixas(pontos.flatMap((p) => p.faixas)).filter((j) => j >= de && j <= ate);
+    const alvo = rep.fundoI >= de && rep.fundoI <= ate ? rep.fundoI : Math.round((de + ate) / 2);
+    extremoI = semAlgumPonto.reduce((melhor, j) => (Math.abs(j - alvo) < Math.abs(melhor - alvo) ? j : melhor), semAlgumPonto[0]);
+  }
+
+  const fase = faseDo(protocolo, def.fase);
+  const tempoDe = (i: number): number => (finito(tempos[i]) ? tempos[i] : 0);
+  const janela = { inicioI: de, fimI: ate, extremoI, inicioT: tempoDe(de), fimT: tempoDe(ate), extremoT: tempoDe(extremoI) };
+  const minimos = quadrosMinimos(total);
+  return {
+    id: `${f.medida}:${f.lado}:${f.repeticao}:${f.serie}`,
+    medida: f.medida,
+    nomeMedida: def.nome,
+    lado: f.lado,
+    repeticao: f.repeticao,
+    numero: rep.numero,
+    regra: f.regra,
+    pontos,
+    janela,
+    quadrosComValor: total - semMedida.length,
+    quadrosNaJanela: total,
+    quadrosMinimos: minimos,
+    motivo: motivoDoPontoPerdido({
+      regra: f.regra,
+      rotulosDosPontos: pontos.map((p) => p.rotulo),
+      quadrosSemMedida: semMedida.length,
+      quadrosNaJanela: total,
+      quadrosMinimos: minimos,
+      inicioT: janela.inicioT,
+      fimT: janela.fimT,
+      extremoT: janela.extremoT,
+      instante: instanteDaLeitura(def.extracao, fase?.nome ?? def.fase, f.serie === 'quadril_tornozelo'),
+      nomeDaFase: fase?.nome ?? def.fase,
+    }),
+  };
+}
+
+function resumoPorPonto(entradas: readonly EntradaPontoPerdido[]): ResumoPontoPerdido[] {
+  const acumulado = new Map<string, { rotulo: string; sem: Set<number>; analisados: Set<number>; entradas: number }>();
+  for (const e of entradas) {
+    for (const p of e.pontos) {
+      const a = acumulado.get(p.ponto) ?? { rotulo: p.rotulo, sem: new Set<number>(), analisados: new Set<number>(), entradas: 0 };
+      quadrosDasFaixas(p.faixas).filter((q) => q >= e.janela.inicioI && q <= e.janela.fimI).forEach((q) => a.sem.add(q));
+      for (let i = e.janela.inicioI; i <= e.janela.fimI; i++) a.analisados.add(i);
+      a.entradas++;
+      acumulado.set(p.ponto, a);
+    }
+  }
+  return [...acumulado.entries()]
+    .map(([ponto, a]) => ({ ponto, rotulo: a.rotulo, quadrosSemPonto: a.sem.size, quadrosAnalisados: a.analisados.size, entradas: a.entradas }))
+    .sort((a, b) => b.quadrosSemPonto - a.quadrosSemPonto || a.ponto.localeCompare(b.ponto));
+}
+
+/**
+ * Lista, por medida, repetição e lado sem valor, os pontos do corpo que faltaram, a janela de quadros e o motivo; mais o resumo por
+ * ponto. Só entra aqui medida em que algum ponto do corpo realmente não tinha detecção confiável nos quadros sem medida.
+ */
+export function diagnosticarPontosPerdidos(e: EntradaDoDiagnostico): PontosPerdidos {
+  const ordemMedida = new Map(e.protocolo.medidas.map((m, i) => [m.id, i]));
+  const entradas = e.falhas
+    .map((f) => entradaDaFalha(f, e))
+    .filter((x): x is EntradaPontoPerdido => x !== null)
+    .sort((a, b) => a.repeticao - b.repeticao || (ordemMedida.get(a.medida) ?? 0) - (ordemMedida.get(b.medida) ?? 0) || ordemDoLado[a.lado] - ordemDoLado[b.lado] || a.id.localeCompare(b.id));
+  return { entradas, porPonto: resumoPorPonto(entradas) };
+}
+
+// ---------- itens a corrigir (o que a tela mostra) ----------
+
+/**
+ * Um trecho de quadros sem ponto de um ponto do corpo, numa repetição: o que o profissional corrige de uma vez. Medidas da mesma
+ * repetição que dependem do mesmo ponto e perderam quadros que se tocam são o mesmo buraco da trilha, então a tela mostra um item só,
+ * com a lista das medidas que ele impede.
+ */
+export interface ItemACorrigir {
+  chave: string;
+  repeticao: number;
+  numero: number;
+  ponto: string;
+  rotulo: string;
+  /** Quadros sem ponto confiável, em faixas contínuas [de, até] (0-based, inclusive). */
+  faixas: [number, number][];
+  quadrosSemPonto: number;
+  primeiroQuadro: number;
+  ultimoQuadro: number;
+  /** Quadro (0-based) para onde ir: o do extremo que as medidas leem, dentro do trecho sem ponto quando há. */
+  quadro: number;
+  tempoS: number;
+  medidas: { id: string; nome: string; lado: ChaveLado }[];
+  entradas: EntradaPontoPerdido[];
+}
+
+interface Trecho {
+  de: number;
+  ate: number;
+  entradas: EntradaPontoPerdido[];
+  faixas: [number, number][];
+}
+
+/** Junta, por repetição e ponto, as faixas sem ponto que se sobrepõem ou se encostam, levando junto as entradas a que pertencem. */
+function trechosDoPonto(entradas: readonly EntradaPontoPerdido[], ponto: string): Trecho[] {
+  const itens = entradas.flatMap((e) => (e.pontos.find((p) => p.ponto === ponto)?.faixas ?? []).map((f) => ({ f, e })));
+  itens.sort((a, b) => a.f[0] - b.f[0] || a.f[1] - b.f[1]);
+  const trechos: Trecho[] = [];
+  for (const { f, e } of itens) {
+    const ultimo = trechos[trechos.length - 1];
+    if (ultimo && f[0] <= ultimo.ate + 1) {
+      ultimo.ate = Math.max(ultimo.ate, f[1]);
+      ultimo.faixas.push([f[0], f[1]]);
+      if (!ultimo.entradas.includes(e)) ultimo.entradas.push(e);
+    } else {
+      trechos.push({ de: f[0], ate: f[1], entradas: [e], faixas: [[f[0], f[1]]] });
+    }
+  }
+  return trechos;
+}
+
+/** Escolhe o quadro do extremo: entre os extremos das medidas do trecho, o do meio dos que caem dentro dele; senão o mais perto. */
+function quadroDoItem(t: Trecho): { quadro: number; tempoS: number } {
+  const candidatos = t.entradas.map((e) => ({ quadro: e.janela.extremoI, tempoS: e.janela.extremoT })).sort((a, b) => a.quadro - b.quadro);
+  const dentro = candidatos.filter((c) => c.quadro >= t.de && c.quadro <= t.ate);
+  if (dentro.length) return dentro[Math.floor((dentro.length - 1) / 2)];
+  const meio = (t.de + t.ate) / 2;
+  return candidatos.reduce((melhor, c) => (Math.abs(c.quadro - meio) < Math.abs(melhor.quadro - meio) ? c : melhor), candidatos[0]);
+}
+
+export function agruparItensACorrigir(p: PontosPerdidos): ItemACorrigir[] {
+  const repeticoes = [...new Set(p.entradas.map((e) => e.repeticao))].sort((a, b) => a - b);
+  const itens: ItemACorrigir[] = [];
+  for (const repeticao of repeticoes) {
+    const daRepeticao = p.entradas.filter((e) => e.repeticao === repeticao);
+    const nomes = [...new Set(daRepeticao.flatMap((e) => e.pontos.map((x) => x.ponto)))];
+    for (const ponto of nomes) {
+      for (const t of trechosDoPonto(daRepeticao, ponto)) {
+        const faixas = emFaixas(t.faixas.flatMap(([de, ate]) => quadrosDasFaixas([[de, ate]])));
+        const { quadro, tempoS } = quadroDoItem(t);
+        const medidas: ItemACorrigir['medidas'] = [];
+        for (const e of t.entradas) if (!medidas.some((m) => m.id === e.medida && m.lado === e.lado)) medidas.push({ id: e.medida, nome: e.nomeMedida, lado: e.lado });
+        itens.push({
+          chave: `${repeticao}:${ponto}:${t.de}`, repeticao, numero: t.entradas[0].numero, ponto,
+          rotulo: t.entradas[0].pontos.find((x) => x.ponto === ponto)?.rotulo ?? ponto,
+          faixas, quadrosSemPonto: quadrosDasFaixas(faixas).length, primeiroQuadro: t.de, ultimoQuadro: t.ate, quadro, tempoS, medidas, entradas: t.entradas,
+        });
+      }
+    }
+  }
+  return itens.sort((a, b) => a.repeticao - b.repeticao || a.primeiroQuadro - b.primeiroQuadro || a.ponto.localeCompare(b.ponto));
+}
+
+/** Quantos itens a corrigir há: é o número do rótulo da aba ("3 pontos a conferir"). */
+export const contarItensACorrigir = (p: PontosPerdidos): number => agruparItensACorrigir(p).length;

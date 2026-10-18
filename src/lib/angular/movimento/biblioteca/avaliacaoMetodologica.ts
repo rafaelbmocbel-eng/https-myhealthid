@@ -452,7 +452,7 @@ export const AVALIACAO: Record<string, AvaliacaoFonte> = {
     limitacoes: [
       'Transversal: associações, não causa.',
       'Só adultos na faixa dos 20 anos.',
-      'Regressão por etapas com seis preditores: R² de 0,435 (homens) e 0,324 (mulheres), sem validação em outra amostra.',
+      'Regressão por etapas com vários preditores: R² de 0,435 (homens) e 0,324 (mulheres), sem validação em outra amostra.',
     ],
     aplicabilidade: { grau: 'parcial', nota: 'Profundidade medida em imagem 2D no plano sagital, como no app, mas é profundidade e não o ângulo do quadril nem a assimetria.' },
     limitacaoPrincipal: '101 adultos jovens saudáveis; associação com a profundidade (não com o ângulo do quadril nem a assimetria); regressão por etapas sem validação externa.',

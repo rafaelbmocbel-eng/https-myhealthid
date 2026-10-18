@@ -7,6 +7,10 @@ import { BIBLIOTECA } from './biblioteca';
 import { criterioAplicavel, criterioValidoNoProtocolo } from './criterios';
 import { finito, fmt } from './estatistica';
 import {
+  faixasEmTexto, fraseMedidasSemValor, listaDeRotulos, segundosEmTexto, TEXTO_INTRO_PONTOS_PERDIDOS_NO_LAUDO, TEXTO_METODO_PONTOS_PERDIDOS, TEXTO_REGRA_PONTOS_PERDIDOS,
+  TITULO_PONTOS_PERDIDOS,
+} from './frasesPontosPerdidos';
+import {
   AVISOS_FIXOS, capitalizar, dataBr, ETIQUETA_BETA, fraseAchadosPorGatilho, fraseCriteriosNoResumo, fraseIndisponiveisNoResumo, fraseParaAvaliar,
   fraseRepeticoesCompletas, fraseRepeticoesIdentificadas, INTRO_INDISPONIVEIS, INTRO_MEDIDAS, legendaDaMedida, LEGENDA_RESUMO_MEDIDAS, limiteDoCriterio,
   linhaResumoDoAchado, maisOuMenos, motivoCriterioNaoAplicado, numeroComCasas, ORDEM_GATILHOS, rotuloDaRepeticao, ROTULO_AVISO, ROTULO_RESPONSAVEL, ROTULO_SINALIZADOR, segundosTexto,
@@ -40,6 +44,7 @@ import { ROTULO_FORCA, ROTULO_LADO, ROTULO_PLANO, ROTULO_SITUACAO } from './voca
 export const ID_SECAO = {
   resumo: 'resumo',
   medidas: 'medidas',
+  pontosPerdidos: 'pontos-perdidos',
   indisponiveis: 'indisponiveis',
   metodo: 'metodo',
   limitacoes: 'limitacoes',
@@ -273,6 +278,26 @@ function secaoDeMedidas(analise: AnaliseMovimento, protocolo: Protocolo): SecaoL
   });
 }
 
+// ---------- pontos perdidos ----------
+
+const ladoNaFrase = (l: ChaveLado, marcha: boolean): string => (l === 'unico' ? '' : ` (${marcha ? 'pé' : 'lado'} ${ROTULO_LADO[l]})`);
+
+/** Seção que lista o que ficou de fora por pontos perdidos; null quando nada ficou (depois da correção a seção some). */
+function secaoDePontosPerdidos(analise: AnaliseMovimento, protocolo: Protocolo): SecaoLaudo | null {
+  const entradas = analise.pontosPerdidos?.entradas ?? [];
+  if (!entradas.length) return null;
+  const marcha = protocolo.gesto === 'marcha';
+  const nome = capitalizar(protocolo.rotuloRepeticao.singular);
+  const itens = entradas.map((e) => {
+    const pontos = e.pontos.map((p) => `${listaDeRotulos([p.rotulo])} em ${p.quadrosSemPonto} de ${p.quadrosNaJanela} quadros da janela (sem ponto nos quadros ${faixasEmTexto(p.faixas)})`).join('; ');
+    return `${nome} ${e.numero} · ${e.nomeMedida}${ladoNaFrase(e.lado, marcha)}: sem ponto confiável de ${pontos}, na janela de ${segundosEmTexto(e.janela.inicioT)} a ${segundosEmTexto(e.janela.fimT)}.`;
+  });
+  return secao(ID_SECAO.pontosPerdidos, TITULO_PONTOS_PERDIDOS, {
+    paragrafos: [TEXTO_INTRO_PONTOS_PERDIDOS_NO_LAUDO, `Regra: ${TEXTO_REGRA_PONTOS_PERDIDOS}`],
+    itens,
+  });
+}
+
 // ---------- gráficos ----------
 
 function marcosDasRepeticoes(analise: AnaliseMovimento): MarcadorGrafico[] {
@@ -305,12 +330,14 @@ function secaoDeResumo(analise: AnaliseMovimento, protocolo: Protocolo, criterio
   const completas = analise.repeticoes.filter((r) => !r.sinalizadores.includes('incompleta')).length;
   const contagem: Partial<Record<TipoGatilho, number>> = {};
   for (const a of analise.achados) contagem[a.gatilho] = (contagem[a.gatilho] ?? 0) + 1;
+  const semValor = analise.pontosPerdidos?.entradas.length ?? 0;
   const paragrafos = [
     `Protocolo: ${protocolo.nome}.`,
     fraseRepeticoesIdentificadas(protocolo.rotuloRepeticao, completas, analise.repeticoes.length),
     fraseAchadosPorGatilho(contagem),
     fraseCriteriosNoResumo(criterios.usados.length),
     fraseIndisponiveisNoResumo(analise.indisponiveis.length, analise.planoFilmado),
+    ...(semValor > 0 ? [fraseMedidasSemValor(semValor)] : []),
     ...analise.avisos.map((aviso) => `Aviso da análise: ${comPontoFinal(aviso)}`),
   ].filter((p) => p.length > 0);
   return secao(ID_SECAO.resumo, TITULOS.resumo, { paragrafos, itens: achados.map((a) => linhaResumoDoAchado(a.titulo, a.achado, a.situacao)) });
@@ -372,6 +399,7 @@ function secaoDeMetodo(analise: AnaliseMovimento, contexto: ContextoLaudo, proto
     `Incerteza estimada do vídeo: ${inc.formula}`,
     `O que a incerteza estimada é e o que não é: ${inc.descricao}`,
     angular,
+    TEXTO_METODO_PONTOS_PERDIDOS,
     TEXTO_METODO_FONTES,
   ];
   const itens: string[] = [];
@@ -401,6 +429,7 @@ export function montarLaudo(analise: AnaliseMovimento, contexto: ContextoLaudo, 
     cabecalho: cabecalhoDoLaudo(analise, contexto, protocolo),
     resumo: secaoDeResumo(analise, protocolo, criterios, achados),
     medidasPorRepeticao: secaoDeMedidas(analise, protocolo),
+    pontosPerdidos: secaoDePontosPerdidos(analise, protocolo),
     achados,
     indisponiveis: secaoDeIndisponiveis(analise),
     metodo,

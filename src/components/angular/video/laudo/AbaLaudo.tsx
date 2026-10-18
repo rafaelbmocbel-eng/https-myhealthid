@@ -10,6 +10,7 @@ import type { TrilhaPose } from '@/lib/angular/video/tipos';
 import Disclosure from './Disclosure';
 import EditorCriterios from './EditorCriterios';
 import ListaAchados from './ListaAchados';
+import PontosAConferir, { type AlvoDeCorrecao } from './PontosAConferir';
 import SeletorProtocolo from './SeletorProtocolo';
 import TabelaRepeticoes from './TabelaRepeticoes';
 import TabelaTexto from './TabelaTexto';
@@ -37,6 +38,8 @@ export interface PropsAbaLaudo {
   profissional?: string;
   /** AAAA-MM-DD; sem ele vale o dia de hoje (fuso de São Paulo). */
   data?: string;
+  /** "Ir ao quadro" dos pontos a conferir: leva o player ao quadro e destaca o ponto que o profissional vai arrastar. */
+  aoIrAoQuadro?: (alvo: AlvoDeCorrecao) => void;
   /** Pontos de troca para os testes: o PDF é gerado sob demanda (jsPDF fora do pacote principal) e baixado pelo navegador. */
   gerarPdf?: (laudo: LaudoMovimento) => Promise<Blob>;
   baixar?: (blob: Blob, nome: string) => void;
@@ -57,7 +60,8 @@ interface CalculadoProps extends Omit<PropsAbaLaudo, 'trilha' | 'vistaDeclarada'
 
 // Os hooks ficam aqui, num componente que só existe com trilha e protocolo: a casca (AbaLaudo) decide o que mostrar sem hooks depois de retorno antecipado.
 function LaudoCalculado({
-  estado, protocolo, trilha, escalaCmPorPixel, eventos, direcao, video, trecho, quadrosChaveCorrigidos, medidasManuaisForaDoTrecho, paciente, profissional, data, gerarPdf = gerarPdfSobDemanda, baixar = baixarBlob,
+  estado, protocolo, trilha, escalaCmPorPixel, eventos, direcao, video, trecho, quadrosChaveCorrigidos, medidasManuaisForaDoTrecho, paciente, profissional, data, aoIrAoQuadro,
+  gerarPdf = gerarPdfSobDemanda, baixar = baixarBlob,
 }: CalculadoProps) {
   const [gerando, setGerando] = useState(false);
   const dia = useMemo(() => data ?? hojeIso(), [data]);
@@ -100,6 +104,8 @@ function LaudoCalculado({
   return (
     <div className="space-y-4" aria-busy={atualizando} data-testid="laudo-calculado">
       {atualizando && <p className="text-xs text-muted-foreground" role="status">Atualizando o laudo com as últimas correções…</p>}
+
+      <PontosAConferir pontosPerdidos={analise.pontosPerdidos} protocolo={protocolo} aoIrAoQuadro={aoIrAoQuadro} />
 
       <section className="space-y-2" aria-labelledby="laudo-resumo-titulo" data-testid="resumo-do-laudo">
         <h3 id="laudo-resumo-titulo" className="text-sm font-semibold">{laudo.resumo.titulo}</h3>

@@ -25,7 +25,8 @@ describe('laudo: seções, ordem e cabeçalho', () => {
   }), BIBLIOTECA_FIXA);
 
   it('tem as seções na ordem do laudo e o rodapé fixo', () => {
-    expect(Object.keys(laudo)).toEqual(['protocolo', 'cabecalho', 'resumo', 'medidasPorRepeticao', 'achados', 'indisponiveis', 'metodo', 'limitacoes', 'graficos', 'referencias', 'rodape']);
+    expect(Object.keys(laudo)).toEqual(['protocolo', 'cabecalho', 'resumo', 'medidasPorRepeticao', 'pontosPerdidos', 'achados', 'indisponiveis', 'metodo', 'limitacoes', 'graficos', 'referencias', 'rodape']);
+    expect(laudo.pontosPerdidos).toBeNull();
     expect([laudo.resumo.id, laudo.medidasPorRepeticao.id, laudo.indisponiveis.id, laudo.metodo.id, laudo.limitacoes.id]).toEqual([
       ID_SECAO.resumo, ID_SECAO.medidas, ID_SECAO.indisponiveis, ID_SECAO.metodo, ID_SECAO.limitacoes,
     ]);

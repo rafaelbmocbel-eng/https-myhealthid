@@ -82,7 +82,7 @@ export function analiseFixa(id: IdProtocolo = 'agachamento_lateral', achados: Ac
   for (const def of p.articulacoes) series[def.id] = Array.from({ length: 120 }, (_, i) => ({ t: i / 30, graus: 30 + 20 * Math.sin(i / 10) }));
   return {
     protocolo: id, planoFilmado: p.planoFilmado, direcao: 1, repeticoes, medidas, resumos, achados,
-    indisponiveis: indisponiveisDoProtocolo(p),
+    indisponiveis: indisponiveisDoProtocolo(p), pontosPerdidos: { entradas: [], porPonto: [] },
     incerteza: { angularGraus: 1.4, quadroS: 1 / 30, nAmostras: 480, formula: formulaDaIncerteza(p), descricao: 'Estimada do próprio vídeo; não é intervalo de confiança.' },
     series, eventos: [], avisos: [], ...extra,
   };

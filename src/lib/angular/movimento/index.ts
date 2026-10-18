@@ -13,6 +13,7 @@ export * from './vocabulario';
 export * from './protocolos';
 export * from './criterios';
 export * from './analisarMovimento';
+export * from './pontosPerdidos';
 export * from './laudo';
 export * from './laudoPdf';
 export * from './biblioteca';

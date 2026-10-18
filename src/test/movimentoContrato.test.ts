@@ -279,7 +279,8 @@ describe('formatos dos tipos', () => {
         id: 'a1', chave: 'assimetria_flexao_joelho', titulo: 'x', descricao: 'x', medida: 'flexao_joelho_max', lado: 'D', repeticoes: [0], valor: 2, unidade: '°',
         valoresPorLado: { D: 90, E: 88 }, incerteza: 1, superaIncerteza: true, gatilho: 'assimetria_entre_lados', situacao: 'sem_referencia', planoCamera: 'lateral', limitacoes: [],
       }],
-      indisponiveis: [], incerteza: { angularGraus: 1, quadroS: 0.066, nAmostras: 100, formula: 'x', descricao: 'x' }, series: {}, eventos: [], avisos: [],
+      indisponiveis: [], pontosPerdidos: { entradas: [], porPonto: [] },
+      incerteza: { angularGraus: 1, quadroS: 0.066, nAmostras: 100, formula: 'x', descricao: 'x' }, series: {}, eventos: [], avisos: [],
     };
     const contexto: ContextoLaudo = {
       video: { nome: 'agachamento.mp4' }, data: '2026-10-18', taxaEfetivaFps: 15, quadrosChaveCorrigidos: 0, medidasManuaisForaDoTrecho: 0, responsavelRevisao: '', criterios: [criterio],
@@ -287,7 +288,7 @@ describe('formatos dos tipos', () => {
     const laudo: LaudoMovimento = {
       protocolo: 'agachamento_lateral', cabecalho: { titulo: 'x', subtitulo: 'x', etiqueta: 'beta', linhas: [] },
       resumo: { id: 'resumo', titulo: 'x', paragrafos: [], itens: [], tabelas: [] }, medidasPorRepeticao: { id: 'medidas', titulo: 'x', paragrafos: [], itens: [], tabelas: [] },
-      achados: [], indisponiveis: { id: 'indisponiveis', titulo: 'x', paragrafos: [], itens: [], tabelas: [] }, metodo: { id: 'metodo', titulo: 'x', paragrafos: [], itens: [], tabelas: [] },
+      pontosPerdidos: null, achados: [], indisponiveis: { id: 'indisponiveis', titulo: 'x', paragrafos: [], itens: [], tabelas: [] }, metodo: { id: 'metodo', titulo: 'x', paragrafos: [], itens: [], tabelas: [] },
       limitacoes: { id: 'limitacoes', titulo: 'x', paragrafos: [], itens: [], tabelas: [] }, graficos: [], referencias: [], rodape: 'Estimativa por vídeo · não é diagnóstico',
     };
     expect(analise.achados[0].chave).toBe('assimetria_flexao_joelho');

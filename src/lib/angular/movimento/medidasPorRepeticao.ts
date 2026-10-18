@@ -16,10 +16,30 @@ import type {
  */
 
 /** Fração mínima de quadros com valor na janela da fase; abaixo disso a medida da repetição fica sem valor (mesma regra do motor de métricas). */
-const FRACAO_MINIMA_VALIDOS = 0.7;
+export const FRACAO_MINIMA_VALIDOS = 0.7;
 
 /** Meia-largura, em segundos, da vizinhança do instante do extremo em que a série bruta precisa ter a mesma fração mínima de pontos. */
-const VIZINHANCA_EXTREMO_S = 0.15;
+export const VIZINHANCA_EXTREMO_S = 0.15;
+
+/**
+ * Medida que ficou sem valor por falta de pontos, com a janela de quadros que a regra olhou: `pontosPerdidos.ts` transforma isto no que
+ * o profissional vê (quais pontos, onde, o que corrigir). Registrar a falha não muda nenhum valor: o rigor da regra continua o mesmo.
+ */
+export interface FalhaDePontos {
+  medida: string;
+  lado: ChaveLado;
+  /** Posição (0-based) da repetição. */
+  repeticao: number;
+  /** Chave da série (de `angulos` ou `deslocamentos`) que ficou sem pontos. */
+  serie: string;
+  regra: 'extremo' | 'fase';
+  /** Quadros [de, até] (inclusive) que a regra olhou. */
+  janela: readonly [number, number];
+  /** Quadro do extremo (regra 'extremo'); null na regra 'fase', que não tem um extremo definido. */
+  extremoI: number | null;
+}
+
+type OrigemDaFalha = Pick<FalhaDePontos, 'regra' | 'janela' | 'extremoI'>;
 
 export interface EntradaMedidas {
   protocolo: Protocolo;
@@ -48,6 +68,8 @@ export interface ResultadoMedidas {
   refsPx: Record<string, Partial<Record<ChaveLado, number | null>>>;
   /** Posições das repetições em que faltaram pontos do corpo para alguma medida. */
   comPontosAusentes: Set<number>;
+  /** Cada medida, repetição e lado que ficou sem valor por falta de pontos, com a janela olhada (ver `FalhaDePontos`). */
+  falhas: FalhaDePontos[];
 }
 
 /** Chave da série que alimenta a medida, por lado; null para os tempos (que não usam série). */
@@ -93,17 +115,25 @@ function extremos(v: number[]): { min: number; max: number; media: number } {
   return { min, max, media: soma / v.length };
 }
 
-interface Extraido { valor: number | null; faltou: boolean }
+interface Extraido { valor: number | null; faltou: boolean; falha?: OrigemDaFalha }
+
+/** Quadros [de, até] da vizinhança do extremo, limitados à série. */
+const vizinhancaDoExtremo = (n: number, i: number, meia: number): [number, number] => [Math.max(0, i - meia), Math.min(n - 1, i + meia)];
 
 /** O instante do extremo tem pontos brutos (não interpolados) em pelo menos 70% dos quadros de sua vizinhança? */
 function extremoCoberto(bruto: readonly Num[], i: number, meia: number): boolean {
+  const [de, ate] = vizinhancaDoExtremo(bruto.length, i, meia);
   let total = 0, com = 0;
-  for (let j = Math.max(0, i - meia); j <= Math.min(bruto.length - 1, i + meia); j++) {
+  for (let j = de; j <= ate; j++) {
     total++;
     if (finito(bruto[j])) com++;
   }
   return total > 0 && com >= FRACAO_MINIMA_VALIDOS * total;
 }
+
+const faltaNoExtremo = (n: number, i: number, meia: number): Extraido => ({
+  valor: null, faltou: true, falha: { regra: 'extremo', janela: vizinhancaDoExtremo(n, i, meia), extremoI: i },
+});
 
 function extrair(
   def: DefMedidaRepeticao, fase: FaseMovimento, rep: Repeticao, serie: Pick<SerieProcessada, 'suave' | 'bruto'> | null, divisor: number | null, meiaExtremo: number,
@@ -117,17 +147,19 @@ function extrair(
   const a = indiceDoMarco(rep, fase.de), b = indiceDoMarco(rep, fase.ate);
   if (def.extracao === 'valor_no_marco') {
     const v = suave[a];
-    return finito(v) && extremoCoberto(serie.bruto, a, meiaExtremo) ? { valor: v, faltou: false } : { valor: null, faltou: true };
+    return finito(v) && extremoCoberto(serie.bruto, a, meiaExtremo) ? { valor: v, faltou: false } : faltaNoExtremo(serie.bruto.length, a, meiaExtremo);
   }
   const inicio = Math.min(a, b);
-  const trecho = suave.slice(inicio, Math.max(a, b) + 1);
+  const fim = Math.max(a, b);
+  const trecho = suave.slice(inicio, fim + 1);
   const v = validos(trecho);
-  if (!v.length || v.length < FRACAO_MINIMA_VALIDOS * trecho.length) return { valor: null, faltou: true };
+  if (!v.length || v.length < FRACAO_MINIMA_VALIDOS * trecho.length) return { valor: null, faltou: true, falha: { regra: 'fase', janela: [inicio, fim], extremoI: null } };
   const e = extremos(v);
   const exigeMaximo = def.extracao === 'maximo' || def.extracao === 'amplitude';
   const exigeMinimo = def.extracao === 'minimo' || def.extracao === 'amplitude';
-  if (exigeMaximo && !extremoCoberto(serie.bruto, inicio + trecho.findIndex((x) => x === e.max), meiaExtremo)) return { valor: null, faltou: true };
-  if (exigeMinimo && !extremoCoberto(serie.bruto, inicio + trecho.findIndex((x) => x === e.min), meiaExtremo)) return { valor: null, faltou: true };
+  const iMaximo = inicio + trecho.findIndex((x) => x === e.max), iMinimo = inicio + trecho.findIndex((x) => x === e.min);
+  if (exigeMaximo && !extremoCoberto(serie.bruto, iMaximo, meiaExtremo)) return faltaNoExtremo(serie.bruto.length, iMaximo, meiaExtremo);
+  if (exigeMinimo && !extremoCoberto(serie.bruto, iMinimo, meiaExtremo)) return faltaNoExtremo(serie.bruto.length, iMinimo, meiaExtremo);
   let valor: number;
   if (def.extracao === 'maximo') valor = e.max;
   else if (def.extracao === 'minimo') valor = e.min;
@@ -177,6 +209,7 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
   const resumos: ResumosPorMedida = {};
   const refsPx: ResultadoMedidas['refsPx'] = {};
   const comPontosAusentes = new Set<number>();
+  const falhas: FalhaDePontos[] = [];
   const meiaExtremo = Math.max(2, Math.round(VIZINHANCA_EXTREMO_S / quadroS));
 
   for (const def of protocolo.medidas) {
@@ -217,14 +250,28 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
       const arr: (number | null)[] = repeticoes.map((rep, r) => {
         if (rep.sinalizadores.includes('incompleta')) return null;
         if (def.porLado && rep.lado !== null && rep.lado !== lado) return null;
+        const registrar = (serieFalha: string | null, origem: OrigemDaFalha | undefined) => {
+          if (serieFalha && origem) falhas.push({ medida: def.id, lado, repeticao: r, serie: serieFalha, ...origem });
+        };
         let divisor: number | null = null;
         if (def.id === 'descida_pelve') {
           const h0 = normalizador?.suave[rep.inicioI];
-          if (!finito(h0) || !(h0 > 0)) { comPontosAusentes.add(r); semPontos++; return null; }
+          if (!finito(h0) || !(h0 > 0)) {
+            comPontosAusentes.add(r);
+            semPontos++;
+            registrar('quadril_tornozelo', faltaNoExtremo(deslocamentos.quadril_tornozelo?.bruto.length ?? 0, rep.inicioI, meiaExtremo).falha);
+            // A altura da pelve pode ter perdido pontos também: o profissional vê as duas causas de uma vez, em vez de uma de cada vez.
+            registrar(chave, extrair(def, fase, rep, serie, 1, meiaExtremo).falha);
+            return null;
+          }
           divisor = h0;
         }
         const x = extrair(def, fase, rep, serie, divisor, meiaExtremo);
-        if (x.faltou) { comPontosAusentes.add(r); semPontos++; }
+        if (x.faltou) {
+          comPontosAusentes.add(r);
+          semPontos++;
+          registrar(chave, x.falha);
+        }
         return x.valor;
       });
       valores[lado] = arr;
@@ -237,5 +284,5 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
     }
     medidas.push({ def, valores, incerteza, avisos });
   }
-  return { medidas, resumos, refsPx, comPontosAusentes };
+  return { medidas, resumos, refsPx, comPontosAusentes, falhas };
 }

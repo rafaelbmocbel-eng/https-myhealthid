@@ -318,6 +318,80 @@ export interface OpcoesAnalise {
   suavizacaoS?: number;
 }
 
+// ---------- pontos perdidos ----------
+
+/**
+ * Janela de quadros lida por uma medida que ficou sem valor por falta de pontos. Os índices (0-based) apontam para `trilha.quadros`;
+ * os tempos são absolutos no vídeo, como em QuadroPose.t. `extremoI` é o quadro do extremo que a medida lê (máximo, mínimo ou
+ * marco); quando a falta cobre a fase inteira e não há extremo, é o quadro sem ponto mais perto do ponto mais baixo da repetição.
+ */
+export interface JanelaPontosPerdidos {
+  inicioI: number;
+  fimI: number;
+  extremoI: number;
+  inicioT: number;
+  fimT: number;
+  extremoT: number;
+}
+
+/** Um ponto do corpo (nome do landmark da trilha) que impediu a medida, com os quadros da janela em que não havia detecção confiável. */
+export interface PontoFaltante {
+  ponto: string;
+  /** "Joelho esquerdo". */
+  rotulo: string;
+  /** Quadros da janela analisada em que este ponto não tinha detecção confiável e a medida ficou sem valor. */
+  quadrosSemPonto: number;
+  quadrosNaJanela: number;
+  /**
+   * O buraco inteiro do ponto na trilha, em faixas contínuas [de, até] (índices 0-based, inclusive): continua além da janela enquanto o
+   * ponto segue sem detecção confiável, porque é do primeiro ao último quadro dele que o profissional precisa para corrigir à mão.
+   */
+  faixas: [number, number][];
+}
+
+/**
+ * Uma medida de uma repetição, num lado, que ficou sem valor por pontos perdidos. A regra do motor (medidasPorRepeticao.ts) é manter
+ * o rigor: nenhum valor é preenchido; esta lista só diz ao profissional onde corrigir os pontos à mão para a medida passar a existir.
+ *  - 'extremo': faltou ponto em torno do instante do extremo (±0,15 s) ou do marco em que a medida é lida;
+ *  - 'fase': faltou ponto em boa parte da fase que a medida percorre.
+ */
+export interface EntradaPontoPerdido {
+  /** Determinístico (medida:lado:repetição:série): serve de chave React. */
+  id: string;
+  medida: string;
+  nomeMedida: string;
+  lado: ChaveLado;
+  /** Posição (0-based) em `AnaliseMovimento.repeticoes`. */
+  repeticao: number;
+  /** 1, 2, 3... como o profissional lê. */
+  numero: number;
+  regra: 'extremo' | 'fase';
+  /** Pontos sem detecção confiável na janela, o de mais quadros perdidos primeiro. */
+  pontos: PontoFaltante[];
+  janela: JanelaPontosPerdidos;
+  /** Quadros da janela com valor medido na série bruta (sem interpolação) e o mínimo que a regra exige (70% da janela). */
+  quadrosComValor: number;
+  quadrosNaJanela: number;
+  quadrosMinimos: number;
+  /** Frase pronta em português: o que faltou, onde e por que a medida não foi calculada. */
+  motivo: string;
+}
+
+/** Resumo por ponto: quantos quadros ficaram sem ponto confiável nas janelas analisadas (quadros distintos, sem contar duas vezes). */
+export interface ResumoPontoPerdido {
+  ponto: string;
+  rotulo: string;
+  quadrosSemPonto: number;
+  quadrosAnalisados: number;
+  /** Quantas medidas sem valor dependem dele. */
+  entradas: number;
+}
+
+export interface PontosPerdidos {
+  entradas: EntradaPontoPerdido[];
+  porPonto: ResumoPontoPerdido[];
+}
+
 export interface AnaliseMovimento {
   protocolo: IdProtocolo;
   planoFilmado: PlanoCamera;
@@ -328,6 +402,8 @@ export interface AnaliseMovimento {
   resumos: ResumosPorMedida;
   achados: Achado[];
   indisponiveis: AchadoIndisponivel[];
+  /** O que ficou sem valor por pontos perdidos e onde corrigir; não altera nenhum número medido. */
+  pontosPerdidos: PontosPerdidos;
   incerteza: IncertezaEstimada;
   /** Séries angulares suavizadas usadas nas medidas, por id de articulação (para os gráficos). */
   series: Record<string, AmostraAngulo[]>;
@@ -521,6 +597,8 @@ export interface LaudoMovimento {
   resumo: SecaoLaudo;
   /** Uma tabela por medida: linhas = repetições, colunas = lados; no fim, média, desvio-padrão e n. */
   medidasPorRepeticao: SecaoLaudo;
+  /** Medidas que ficaram sem valor por pontos perdidos, enquanto não forem corrigidos; null quando não há nenhuma (a seção some). */
+  pontosPerdidos: SecaoLaudo | null;
   achados: AchadoLaudo[];
   /** Achados que exigem outro plano de câmera e como obtê-los. */
   indisponiveis: SecaoLaudo;

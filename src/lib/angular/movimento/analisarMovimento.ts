@@ -10,6 +10,7 @@ import {
   type SerieProcessada,
 } from './incerteza';
 import { calcularMedidas, quadrosDeIncertezaDoTempo } from './medidasPorRepeticao';
+import { diagnosticarPontosPerdidos, pontosPerdidosVazios } from './pontosPerdidos';
 import { DESCRICAO_INCERTEZA, formulaDaIncerteza, indisponiveisDoProtocolo, protocoloDo } from './protocolos';
 import { marcarDuracoesDiscrepantes, picosRasosNaoContados, repeticoesDaMarcha, repeticoesDoAgachamento, segmentarPicos, type ParametrosPicos } from './repeticoes';
 import {
@@ -256,7 +257,11 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
     if (aplicarRuidoEmPe([...angulares, ...Object.values(deslocamentos)], angulares, emPe, janelaMedida, janelaReferencia) === 0) avisos.push(AVISO_SEM_TRECHO_EM_PE);
   }
 
-  const { medidas, resumos, refsPx, comPontosAusentes } = calcularMedidas({ protocolo: p, repeticoes, angulos, deslocamentos, quadroS });
+  const { medidas, resumos, refsPx, comPontosAusentes, falhas } = calcularMedidas({ protocolo: p, repeticoes, angulos, deslocamentos, quadroS });
+  const pontosPerdidos = diagnosticarPontosPerdidos({
+    protocolo: p, trilha, repeticoes, falhas, tempos,
+    brutos: Object.fromEntries([...Object.entries(angulos), ...Object.entries(deslocamentos)].map(([chave, s]) => [chave, s.bruto])),
+  });
   for (const i of comPontosAusentes) {
     const r = repeticoes[i];
     if (r && !r.sinalizadores.includes('pontos_ausentes')) r.sinalizadores.push('pontos_ausentes');
@@ -302,6 +307,7 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
     resumos,
     achados,
     indisponiveis: indisponiveisDoProtocolo(p),
+    pontosPerdidos,
     incerteza: {
       angularGraus: incertezaAngularGeral(usadas.map((s) => s.u)),
       quadroS,
@@ -332,7 +338,7 @@ function analiseSemMedidas(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnali
   });
   return {
     protocolo: p.id, planoFilmado: p.planoFilmado, direcao: opcoes.direcao ?? 1, repeticoes: [], medidas, resumos, achados: [],
-    indisponiveis: indisponiveisDoProtocolo(p),
+    indisponiveis: indisponiveisDoProtocolo(p), pontosPerdidos: pontosPerdidosVazios(),
     incerteza: { angularGraus: null, quadroS: quadroDaTrilha(trilha), nAmostras: 0, formula: formulaDaIncerteza(p), descricao: DESCRICAO_INCERTEZA },
     series: Object.fromEntries(p.articulacoes.filter((d) => !!d).map((d) => [d.id, [] as AmostraAngulo[]])), eventos: [], avisos,
   };

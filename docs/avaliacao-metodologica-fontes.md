@@ -116,7 +116,7 @@ Regras de rigor que pesaram nas decisões:
 
 ## O que o laudo passa a mostrar
 
-Cada fonte exibida (tela, PDF e relatório) traz **"Qualidade metodológica: alta/moderada"** e a **limitação principal** em uma frase. O método do laudo ganha:
+Cada fonte exibida (tela e PDF) traz **"Qualidade metodológica: alta/moderada"** e a **limitação principal** em uma frase. O método do laudo ganha:
 *"Fontes escolhidas por critérios metodológicos explícitos; avaliação feita pelo MyHealthID a partir do resumo e do texto completo indexado, a ser conferida
 pelo time científico."* Fonte de qualidade `baixa` só poderia ficar com a ressalva dita no fator; nesta rodada nenhuma ficou.
 
@@ -137,9 +137,37 @@ Foram avaliadas **55 fontes**: as 51 da curadoria anterior e 4 incluídas nesta 
 
 **Itens a conferir:** antes 47 (25 com fonte e 22 sem); depois 47 (25 com fonte e 22 sem referência verificada). Todo item com fonte aponta para uma fonte retida.
 
+### Onde os itens ficaram "não avaliável" (fontes mantidas)
+
+Contagem por item entre as fontes mantidas: é o mapa do que o time científico precisa conferir no artigo completo.
+
+**Revisões sistemáticas (11 mantidas)**
+
+| Item | atende | parcialmente | não atende | não avaliável |
+| --- | --- | --- | --- | --- |
+| Protocolo ou registro prévio | 3 | 0 | 1 | 7 |
+| Busca abrangente | 7 | 4 | 0 | 0 |
+| Risco de viés dos incluídos | 7 | 1 | 0 | 3 |
+| Síntese adequada | 9 | 2 | 0 | 0 |
+| Heterogeneidade tratada | 3 | 5 | 0 | 3 |
+| Conflito de interesse declarado | 0 | 0 | 0 | 11 |
+| Veículo (auxiliar) | 8 | 0 | 0 | 3 |
+
+**Estudos primários (25 mantidas)**
+
+| Item | atende | parcialmente | não atende | não avaliável |
+| --- | --- | --- | --- | --- |
+| Tamanho e justificativa da amostra | 4 | 8 | 0 | 13 |
+| População descrita e adequada | 13 | 12 | 0 | 0 |
+| Validade e confiabilidade da medida | 19 | 6 | 0 | 0 |
+| Controle de confundidores | 2 | 16 | 1 | 6 |
+| Desfecho definido | 17 | 8 | 0 | 0 |
+| Comparações múltiplas | 2 | 7 | 0 | 16 |
+| Veículo (auxiliar) | 21 | 0 | 0 | 4 |
+
 ### Quadro por fonte
 
-Ordem: decisão (mantidas primeiro) e, dentro dela, ano. "Lido": resumo ou métodos e limitações do texto completo no PubMed Central. "Onde é usada": chave do achado e fator ou item a conferir.
+Ordem: decisão (mantidas primeiro) e, dentro dela, ordem alfabética do primeiro autor. "Lido": resumo ou métodos e limitações do texto completo no PubMed Central. "Onde é usada": chave do achado e fator ou item a conferir.
 
 | Fonte | Desenho | Lido | Qualidade | Decisão | Aplicabilidade | Onde é usada |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -694,7 +722,7 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 - **Limitações:**
   - Transversal: associações, não causa.
   - Só adultos na faixa dos 20 anos.
-  - Regressão por etapas com seis preditores: R² de 0,435 (homens) e 0,324 (mulheres), sem validação em outra amostra.
+  - Regressão por etapas com vários preditores: R² de 0,435 (homens) e 0,324 (mulheres), sem validação em outra amostra.
 - **Justificativa:** Amostra grande, medida 2D sagital e homens e mulheres separados; fica com ressalva pela amostra jovem e pela regressão por etapas.
 - **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 101 adultos jovens saudáveis; associação com a profundidade (não com o ângulo do quadril nem a assimetria); regressão por etapas sem validação externa.
 
@@ -1229,3 +1257,38 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 - **Justificativa:** Amostra de 10 por grupo entre pessoas, só homens, e conclusão prática além do medido. Strong 2023 traz amostra maior, três momentos e controles.
 
 <!-- FIM-RESULTADO -->
+
+## O que ficou sem fonte
+
+Depois da avaliação, quatro fatores estão **a confirmar** (a interface escreve "sem referência verificada"): `restricao_do_avanco_do_joelho` (única fonte que media o tronco nessa condição
+tem 7 participantes e foi removida), `referencia_de_profundidade_e_ritmo`, `familiarizacao_e_ritmo` e `velocidade_e_eventos` (os três decorrem da forma de coletar o vídeo).
+Vinte e dois itens a conferir seguem sem fonte (sugestões de método ou de exame). Quatro fatores foram eliminados por falta de fonte retida: `equilibrio_apos_avc` e
+`alteracoes_neuromotoras_apos_avc` (AVC), `tensao_dos_flexores_do_quadril` e `condicao_do_quadril` da marcha. A lista completa, com os textos, está em
+`docs/biblioteca-hipoteses-movimento.md`.
+
+## Limites desta avaliação e o que o time científico deve conferir
+
+1. **Um único leitor.** Não houve dupla leitura nem pontuação formal de instrumento. Recomendo dupla leitura das fontes que sustentam fatores com tipo de estudo mais forte:
+   Lima 2017, Lopes 2018, Alzahrani 2021, Cashman 2026, Constantinou 2014, Steingrebe 2023, Generoso 2025 e Vermeulen 2023.
+2. **Resumo na maior parte.** Só 15 das 55 fontes tiveram métodos e limitações lidos no texto completo (13 das 36 mantidas e 2 das 19 removidas). Os itens "não avaliável" (quadros acima) pedem o artigo completo:
+   conflito de interesse e financiamento (nenhuma revisão tem esse item verificado), correção para comparações múltiplas, justificativa do tamanho da amostra e registro do protocolo.
+3. **Conflito de interesse e financiamento** não foram avaliados em nenhuma fonte além do que o texto lido mostrou por acaso.
+4. **Veículo e retratação.** Não consultei o catálogo da NLM. O item de veículo é auxiliar e não decidiu nenhuma fonte. Nos tipos de publicação dos registros recuperados, nenhuma das 55 fontes consta
+   como retratada nem com expressão de preocupação; não busquei erratas nem comentários posteriores.
+5. **Registros do PubMed com inconsistência.** Staines 2026 está rotulado como ensaio clínico randomizado, mas o resumo descreve análise transversal. O resumo de Seeley 2010 descreve como
+   significativas diferenças com p de 0,22 a 0,40. Nos dois casos a fonte foi removida por motivos independentes; o time pode conferir os artigos.
+6. **Decisões sensíveis, para o time confirmar:**
+   - Barber-Westin 2017 foi removida por busca em uma única base e ausência de risco de viés no resumo; se o artigo completo mostrar outra coisa, pode voltar.
+   - Cashman 2026 (revisão mais recente sobre força do quadril e valgo) ficou como moderada por itens não avaliáveis; o resumo não cita registro nem risco de viés.
+   - Haberkamp 2022 valida uma estimativa de pose 2D (OpenPose) em adolescentes; o modelo de pose deste app é outro, então a concordância medida não se transfere sem validação própria.
+   - Baker 2016 e Preece 2019 não informam, no resumo, o número de participantes.
+   - A elevação do calcanhar (Cai 2026) sustenta quatro fatores (dorsiflexão, tronco, avanço do joelho e profundidade) com uma só fonte: um experimento de 30 homens com dorsiflexão restrita, sem grupo de comparação.
+7. **Nenhum limite clínico.** A biblioteca continua sem propor valores de referência: as fontes comparam grupos, não dizem quantos graus de diferença entre os lados indicam condição.
+
+## Mudanças no produto
+
+- `FonteBiblio` ganhou `qualidade` e `limitacaoPrincipal`; `fontes.ts` os preenche a partir de `avaliacaoMetodologica.ts` e não contém fonte removida.
+- Cada fonte exibida no laudo (tela e PDF) mostra "Qualidade metodológica" e a limitação principal; o método do laudo traz a frase das fontes escolhidas por critérios explícitos e a conferir.
+- O teste `src/test/movimentoBiblioteca.test.ts` barra: fonte sem avaliação; fonte removida que ainda é citada; fator com força e sem fonte retida; qualidade baixa sem ressalva; nível "alta" sem os itens
+  críticos atendidos ou lido só pelo resumo; limitação principal com verbo causal ou juízo sobre o corpo; e este documento fora de sincronia com os dados.
+- Para repetir a avaliação de uma fonte nova, veja "Como incluir ou alterar uma fonte" em `docs/biblioteca-hipoteses-movimento.md`.

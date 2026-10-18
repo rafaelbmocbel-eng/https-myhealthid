@@ -17,6 +17,8 @@ export function resumoDoLaudoEmTexto(laudo: LaudoMovimento): string {
   linhas.push('', laudo.resumo.titulo, ...laudo.resumo.paragrafos);
   if (laudo.resumo.itens.length) linhas.push('', `${TITULOS.achados}:`, ...laudo.resumo.itens.map((i) => `- ${i}`));
 
+  if (laudo.pontosPerdidos?.itens.length) linhas.push('', `${laudo.pontosPerdidos.titulo}:`, ...laudo.pontosPerdidos.itens.map((i) => `- ${i}`));
+
   if (laudo.indisponiveis.itens.length) linhas.push('', `${laudo.indisponiveis.titulo}:`, ...laudo.indisponiveis.itens.map((i) => `- ${i}`));
 
   const criterios = laudo.metodo.tabelas.find((t) => t.titulo === TITULOS.criterios);

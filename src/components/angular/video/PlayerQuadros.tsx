@@ -46,6 +46,8 @@ interface Props {
   alcas: AlcaUi[];
   /** Onde sugerir os pontos que o detector perdeu neste quadro: viram alças tracejadas que o profissional arrasta até o lugar certo. */
   fantasmas?: PontosDoQuadro;
+  /** Ponto a corrigir (vindo de "Pontos a conferir"): ganha um anel de destaque na alça, ou na alça tracejada se o quadro não o detectou. */
+  pontoEmDestaque?: string | null;
   /** Ângulos do quadro, calculados dos pontos recebidos (com o ponto arrastado já na posição do dedo). */
   marcacoesDe: (p: PontosDoQuadro) => MarcacaoAnguloUi[];
   estilo: EstiloMarcacao;
@@ -80,7 +82,7 @@ const corDoPonto = (nome: string) => {
 // trocar de quadro e zoom com dois dedos. Quem manda no tempo do vídeo é o pai; aqui só se desenha e se arrasta.
 export default function PlayerQuadros({
   url, largura, altura, videoRef, quadro, nQuadros, pontos, ligacoes, alcas, fantasmas, marcacoesDe, estilo, mostrarEsqueleto, mostrarAngulos, podeCorrigir,
-  aoCorrigir, aoDeslizar, tocando = false, aoPausar, alturaMaxDvh = 46, camadaExtra, aoArrastarExtra, aviso, gestosExtra,
+  aoCorrigir, aoDeslizar, tocando = false, aoPausar, alturaMaxDvh = 46, camadaExtra, aoArrastarExtra, aviso, gestosExtra, pontoEmDestaque = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const caixaRef = useRef<HTMLDivElement>(null);
@@ -282,6 +284,7 @@ export default function PlayerQuadros({
                 <g key={`fantasma-${al.nome}`} pointerEvents="none" data-testid={`alca-fantasma-${al.nome}`} aria-label={`${al.rotulo}: ponto não detectado neste quadro; arraste para posicionar`}>
                   <circle cx={p.x} cy={p.y} r={raioToque} fill="transparent" />
                   <circle cx={p.x} cy={p.y} r={raioAlca} fill={corDoPonto(al.nome)} fillOpacity={0.18} stroke="#fff" strokeWidth={css(2)} strokeDasharray={`${css(4)} ${css(3)}`} />
+                  {al.nome === pontoEmDestaque && <circle cx={p.x} cy={p.y} r={raioAlca * 2.1} fill="none" stroke="#f97316" strokeWidth={css(3)} className="motion-safe:animate-pulse" data-testid="destaque-do-ponto" />}
                 </g>
               );
             })}
@@ -295,6 +298,7 @@ export default function PlayerQuadros({
                   {p.interp && <circle cx={p.x} cy={p.y} r={raioAlca * 1.55} fill="none" stroke="#fbbf24" strokeWidth={css(2.2)} strokeDasharray={`${css(4)} ${css(3.2)}`} />}
                   <circle cx={p.x} cy={p.y} r={ativo ? raioAlca * 1.2 : raioAlca} fill={p.manual ? '#fbbf24' : corDoPonto(al.nome)} fillOpacity={0.92} stroke="#fff" strokeWidth={css(2)} />
                   {p.manual && <circle cx={p.x} cy={p.y} r={raioAlca * 0.38} fill="#78350f" />}
+                  {al.nome === pontoEmDestaque && <circle cx={p.x} cy={p.y} r={raioAlca * 2.1} fill="none" stroke="#f97316" strokeWidth={css(3)} className="motion-safe:animate-pulse" data-testid="destaque-do-ponto" />}
                 </g>
               );
             })}
