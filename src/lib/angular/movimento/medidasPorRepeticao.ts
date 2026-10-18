@@ -157,12 +157,12 @@ function janelasDaMedida(def: DefMedidaRepeticao, fase: FaseMovimento, repeticoe
 }
 
 /**
- * Incerteza de um valor da medida: o resíduo nas janelas em que ela é lida (sem amostras suficientes, o resíduo da série inteira), com
- * piso na incerteza estimada nos trechos em pé do vídeo, quando há (ver incerteza.ts).
+ * Incerteza de um valor da medida: o resíduo nas janelas em que ela é lida (sem amostras suficientes, o resíduo da série inteira), vezes o
+ * fator de coloração do ruído e com piso na incerteza estimada nos trechos em pé do vídeo, quando há (ver incerteza.ts).
  */
 function incertezaNasJanelas(serie: SerieProcessada, janelas: readonly Janela[]): number | null {
   const r = residuoNasJanelas(serie.bruto, serie.referencia, janelas);
-  const doResiduo = r.u !== null ? expandir(r.u) : serie.u;
+  const doResiduo = r.u !== null ? expandir(r.u) * (serie.coloracao ?? 1) : serie.u;
   const piso = serie.uEmPe ?? null;
   if (doResiduo === null) return piso;
   return piso !== null ? Math.max(doResiduo, piso) : doResiduo;

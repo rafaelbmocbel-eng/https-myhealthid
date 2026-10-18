@@ -1,6 +1,6 @@
 import { avaliarCriterio, criterioAplicavel, criterioValidoNoProtocolo } from './criterios';
 import { escoreZModificado, finito, fmt, fmtUn, mad, mediana } from './estatistica';
-import { achadoDoCatalogo, achadosAvaliaveis, GATILHOS } from './protocolos';
+import { achadoDoCatalogo, achadosAvaliaveis, FATOR_MULTIPLAS_COMPARACOES, GATILHOS } from './protocolos';
 import type {
   Achado, AchadoDoProtocolo, ChaveLado, CriterioProfissional, DefAchado, DefMedidaRepeticao, Lado, MedidaPorRepeticao, Protocolo, Repeticao, ResumoMedida,
   ResumosPorMedida, TipoGatilho,
@@ -14,8 +14,10 @@ import { ROTULO_LADO, ROTULO_SITUACAO } from './vocabulario';
  * Regras (as mesmas que o laudo imprime), com u = incerteza de um valor da medida (a expandida, ver FATOR_COBERTURA em incerteza.ts) e
  * dp = desvio-padrão entre repetições:
  *   (a) |média D − média E| > raiz(uD² + uE²) e > max(dpD, dpE); sem par D/E, |média| > u e > dp;
- *   (b) dp > u;  (c) |última − primeira| > raiz(2) × u;
- *   (d) |M| > 3,5 (escore z modificado) e |valor − mediana| > u, com MAD > 0.
+ *   (b) dp > u;  (c) |última − primeira| > F × raiz(2) × u;
+ *   (d) |M| > 3,5 (escore z modificado) e |valor − mediana| > F × u, com MAD > 0;
+ * em que F = FATOR_MULTIPLAS_COMPARACOES (protocolos.ts). u nunca é menor que o último dígito exibido (medidasPorRepeticao.ts), então
+ * série sem ruído não gera achado por resíduo de ponto flutuante.
  */
 
 export interface EntradaAchados {
@@ -30,6 +32,9 @@ export interface EntradaAchados {
 }
 
 const LIMITE_ESCORE_Z = 3.5;
+
+/** "o dobro" para 2, "N vezes" para os outros: o texto do achado diz quanto a regra exige além da incerteza. */
+const textoDoFator = (): string => (FATOR_MULTIPLAS_COMPARACOES === 2 ? 'o dobro' : `${fmt(FATOR_MULTIPLAS_COMPARACOES, 1)} vezes`);
 
 const gatilhoMinimo = (g: TipoGatilho): number => GATILHOS[g].minimoRepeticoes;
 
@@ -160,7 +165,7 @@ class Construtor {
       const u = m.incerteza[l] ?? null;
       if (!r || r.n < minimo || r.tendencia === null || r.iPrimeira === null || r.iUltima === null || u === null) continue;
       const uDif = Math.SQRT2 * u;
-      if (!(Math.abs(r.tendencia) > uDif)) continue;
+      if (!(Math.abs(r.tendencia) > FATOR_MULTIPLAS_COMPARACOES * uDif)) continue;
       const lado = ladoDaChave(l);
       const un = m.def.unidade;
       const verbo = r.tendencia > 0 ? 'aumentou' : 'diminuiu';
@@ -169,7 +174,7 @@ class Construtor {
         gatilho: 'tendencia_primeira_ultima', lado, repeticoes: [r.iPrimeira, r.iUltima], valor: r.tendencia, incerteza: uDif,
         descricao:
           `${nomeDaMedida(m.def)}${fraseLado(this.e.protocolo, lado)}: da primeira (${fmtUn(r.primeira, un)}) para a última ${rot.singular} (${fmtUn(r.ultima, un)}) ` +
-          `a medida ${verbo} ${fmtUn(Math.abs(r.tendencia), un)}, mais que a incerteza estimada da diferença (${fmtUn(uDif, un)}).`,
+          `a medida ${verbo} ${fmtUn(Math.abs(r.tendencia), un)}, mais que ${textoDoFator()} da incerteza estimada da diferença (${fmtUn(uDif, un)}).`,
       });
     }
   }
@@ -189,7 +194,7 @@ class Construtor {
       const un = m.def.unidade;
       for (const it of itens) {
         const z = escoreZModificado(it.v, med, madValor);
-        if (z === null || !(Math.abs(z) > LIMITE_ESCORE_Z) || !(Math.abs(it.v - med) > u)) continue;
+        if (z === null || !(Math.abs(z) > LIMITE_ESCORE_Z) || !(Math.abs(it.v - med) > FATOR_MULTIPLAS_COMPARACOES * u)) continue;
         const lado = ladoDaChave(l);
         const desvio = it.v - med;
         const rot = this.e.protocolo.rotuloRepeticao.singular;
@@ -198,7 +203,7 @@ class Construtor {
           descricao:
             `${nomeDaMedida(m.def)}${fraseLado(this.e.protocolo, lado)}: a ${rot} ${this.e.repeticoes[it.i]?.numero ?? it.i + 1} mediu ${fmtUn(it.v, un)}, ` +
             `${fmtUn(Math.abs(desvio), un)} ${desvio > 0 ? 'acima' : 'abaixo'} da mediana das repetições (${fmtUn(med, un)}); ` +
-            `critério estatístico de valor atípico (escore z modificado de ${fmt(z, 1)}), não limite clínico.`,
+            `critério estatístico de valor atípico (escore z modificado de ${fmt(z, 1)}) e desvio maior que ${textoDoFator()} da incerteza estimada de um valor (${fmtUn(u, un)}), não limite clínico.`,
         });
       }
     }

@@ -174,7 +174,7 @@ describe('protocolos', () => {
     for (const p of PROTOCOLOS) {
       const todas = p.limitacoes.join(' ');
       expect(todas, p.id).toMatch(/duas dimensões/);
-      expect(todas, p.id).toMatch(/um quadro/);
+      expect(todas, p.id).toMatch(/(um|dois) quadros?/);
       expect(todas, p.id).toMatch(/curvatura da coluna \(inclusive a lombar\)/);
     }
   });

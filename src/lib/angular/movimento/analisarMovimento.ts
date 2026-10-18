@@ -6,7 +6,8 @@ import { deteccaoPct, estimarDirecao } from '../video/trilha';
 import { detectarAchados } from './achados';
 import { finito, fmt, mediana, percentil, resumir, validos } from './estatistica';
 import {
-  desvioEmPe, expandir, FATOR_COBERTURA, fpsEfetivo, incertezaAngularGeral, JANELA_SUAVIZACAO_S, MIN_QUADROS_EM_PE, processarSerie, quadroDaTrilha, type SerieProcessada,
+  coloracaoDoRuido, desvioEmPe, expandir, FATOR_COBERTURA, fpsEfetivo, incertezaAngularGeral, JANELA_SUAVIZACAO_S, janelaDaSerie, MIN_QUADROS_EM_PE, processarSerie, quadroDaTrilha,
+  type SerieProcessada,
 } from './incerteza';
 import { calcularMedidas, quadrosDeIncertezaDoTempo } from './medidasPorRepeticao';
 import { DESCRICAO_INCERTEZA, formulaDaIncerteza, indisponiveisDoProtocolo, protocoloDo } from './protocolos';
@@ -162,15 +163,27 @@ function quadrosEmPe(n: number, repeticoes: Repeticao[], fps: number): boolean[]
   return emPe;
 }
 
-/** Piso da incerteza em cada série, medido nos trechos em pé; devolve em quantas séries foi possível medir. */
-function aplicarRuidoEmPe(series: SerieProcessada[], emPe: boolean[]): number {
+/**
+ * Piso e fator de coloração da incerteza de cada série, medidos nos trechos em pé (ver incerteza.ts); devolve em quantas séries foi
+ * possível medir. A incerteza geral da série passa a ser o maior entre o resíduo corrigido pela coloração e o piso.
+ * A coloração é uma propriedade do detector (quão suave é a trajetória dos pontos), então cada série usa o maior entre o fator dela e a
+ * mediana dos fatores das séries angulares: numa razão como a profundidade (quadril abaixo do joelho ÷ coxa), que quase não oscila em pé,
+ * o fator da própria série é impreciso.
+ */
+function aplicarRuidoEmPe(series: SerieProcessada[], angulares: SerieProcessada[], emPe: boolean[], janelaMedida: number, janelaReferencia: number): number {
+  const proprio = new Map<SerieProcessada, number | null>(series.map((s) => [s, coloracaoDoRuido(s, emPe, janelaMedida, janelaReferencia)]));
+  const global = mediana(angulares.map((s) => proprio.get(s) ?? null).filter(finito)) ?? 1;
   let medidas = 0;
   for (const s of series) {
-    const u = expandir(desvioEmPe(s.suave, emPe));
-    s.uEmPe = u;
-    if (u === null) continue;
+    const uPe = expandir(desvioEmPe(s.suave, emPe));
+    const k = proprio.get(s) ?? null;
+    const fator = Math.max(k ?? 1, global);
+    s.uEmPe = uPe;
+    s.coloracao = fator;
+    if (uPe === null && k === null) continue;
     medidas++;
-    if (s.u === null || u > s.u) s.u = u;
+    const corrigido = s.u === null ? null : s.u * fator;
+    s.u = corrigido === null ? uPe : Math.max(corrigido, uPe ?? 0);
   }
   return medidas;
 }
@@ -237,7 +250,10 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
       if (nivel === null) avisos.push(AVISO_PELVE_SEM_NIVEL_EM_PE);
       else deslocamentos.desvio_pelve = descontarNivel(deslocamentos.desvio_pelve, nivel);
     }
-    if (aplicarRuidoEmPe([...Object.values(angulos), ...Object.values(deslocamentos)], emPe) === 0) avisos.push(AVISO_SEM_TRECHO_EM_PE);
+    const janelaMedida = suavizacaoS > 0 ? janelaDaSerie(suavizacaoS, fps) : 1;
+    const janelaReferencia = suavizacaoS > 0 ? janelaMedida : janelaDaSerie(JANELA_SUAVIZACAO_S, fps);
+    const angulares = Object.values(angulos);
+    if (aplicarRuidoEmPe([...angulares, ...Object.values(deslocamentos)], angulares, emPe, janelaMedida, janelaReferencia) === 0) avisos.push(AVISO_SEM_TRECHO_EM_PE);
   }
 
   const { medidas, resumos, refsPx, comPontosAusentes } = calcularMedidas({ protocolo: p, repeticoes, angulos, deslocamentos, quadroS });

@@ -178,7 +178,7 @@ describe('laudo: achados, hipóteses e itens a conferir', () => {
     expect(a2.repeticoes).toBe('Repetições envolvidas: 1 a 4.');
     expect(a3.repeticoes).toBe('Repetição discrepante: 3.');
     expect(a3.medida).toContain('Valor do achado: −12,4 % do comprimento do pé.');
-    expect(a3.titulo).toBe('Avanço do joelho em relação à ponta do pé (observação medida) (lado direito)');
+    expect(a3.titulo).toBe('Avanço do joelho em relação à ponta do pé (observação medida) (lado direito, repetição 3)');
   });
 
   it('o título do achado nomeia a medida e o lado quando o catálogo não o faz', () => {
@@ -364,7 +364,7 @@ describe('laudo: achados indisponíveis, método e limitações', () => {
       GATILHOS.assimetria_entre_lados.nome, GATILHOS.variacao_entre_repeticoes.nome, GATILHOS.tendencia_primeira_ultima.nome, GATILHOS.repeticao_discrepante.nome,
     ]);
     expect(regras.linhas[0][1]).toBe(GATILHOS.assimetria_entre_lados.regra);
-    expect(regras.linhas.map((r) => r[2])).toEqual(['3', '3', '3', '4']);
+    expect(regras.linhas.map((r) => r[2])).toEqual(['3', '3', '3', '5']);
     expect(regras.linhas.map((r) => r[3])).toEqual(['nenhum', '1', 'nenhum', 'nenhum']);
     expect(regras.legenda).toBe(frases.TEXTO_MINIMO_REPETICOES);
   });

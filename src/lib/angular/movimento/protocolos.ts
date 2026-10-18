@@ -55,7 +55,8 @@ export const CATALOGO_ACHADOS: Record<ChaveAchado, DefAchado> = {
   desvio_lateral_pelve: {
     chave: 'desvio_lateral_pelve',
     titulo: 'Deslocamento lateral da pelve em relação à base de apoio',
-    oQueCompara: 'Posição horizontal do ponto médio dos quadris em relação ao ponto médio dos tornozelos, no ponto mais baixo, em % da base de apoio. Positivo = para o lado direito do paciente.',
+    oQueCompara:
+      'Posição horizontal do ponto médio dos quadris em relação ao ponto médio dos tornozelos, no ponto mais baixo, em % da base de apoio, menos o mesmo valor em pé no próprio vídeo. Positivo = para o lado direito do paciente.',
     gatilhos: ['assimetria_entre_lados', 'repeticao_discrepante', 'criterio_profissional'],
     grandeza: 'modulo_da_media',
   },
@@ -135,6 +136,14 @@ export function achadoDoCatalogo(chave: ChaveAchado): DefAchado {
  * (MedidaPorRepeticao.incerteza); dp é o desvio-padrão amostral (n − 1) dos v. `minimoRepeticoes` é decisão de engenharia, para
  * a estatística não oscilar com 1 ou 2 valores; não é limite clínico. Abaixo dele o gatilho simplesmente não é avaliado.
  */
+/**
+ * Fator de múltiplas comparações das regras (c) e (d). Cada vídeo compara cerca de dez medidas; com o limite simples (raiz(2) × u na
+ * tendência, u no desvio da repetição) mais de uma em cada cinco séries de repetições idênticas e só ruído disparava uma delas (medido com
+ * 60 sementes e ruído branco de 1 e 2 px). Com 2, isso cai a 0 com ruído branco, e uma tendência de 15° no joelho ainda passa com folga.
+ * Não é limite clínico; vale só como correção estatística e aparece no texto das regras.
+ */
+export const FATOR_MULTIPLAS_COMPARACOES = 2;
+
 export const GATILHOS: Record<TipoGatilho, DefGatilho> = {
   assimetria_entre_lados: {
     tipo: 'assimetria_entre_lados',
@@ -155,8 +164,10 @@ export const GATILHOS: Record<TipoGatilho, DefGatilho> = {
     tipo: 'tendencia_primeira_ultima',
     nome: 'Mudança da primeira para a última repetição maior que a incerteza',
     regra:
-      'Toma a primeira e a última repetição com valor, por lado. Dispara quando |última − primeira| é maior que a incerteza da diferença entre ' +
-      'dois valores, raiz(2) × u. O sinal da diferença é mantido no achado (positivo = a medida aumentou).',
+      'Toma a primeira e a última repetição com valor, por lado. Dispara quando |última − primeira| é maior que 2 × a incerteza da diferença entre ' +
+      'dois valores, 2 × raiz(2) × u. O 2 extra compensa as várias medidas comparadas num mesmo vídeo (cerca de dez); sem ele, ruído sozinho ' +
+      'disparava a tendência em mais de uma em cada cinco séries de repetições idênticas. O sinal da diferença é mantido no achado ' +
+      '(positivo = a medida aumentou).',
     minimoRepeticoes: 3,
   },
   repeticao_discrepante: {
@@ -164,9 +175,9 @@ export const GATILHOS: Record<TipoGatilho, DefGatilho> = {
     nome: 'Repetição discrepante em relação à mediana',
     regra:
       'Escore z modificado (Iglewicz e Hoaglin, 1993): M = 0,6745 × (valor − mediana) ÷ MAD, com MAD = mediana de |valor − mediana|. ' +
-      'Dispara para a repetição com |M| maior que 3,5 e |valor − mediana| maior que a incerteza u. Se MAD = 0, não é avaliado. ' +
-      'É um critério estatístico de valor atípico, não um limite clínico.',
-    minimoRepeticoes: 4,
+      'Dispara para a repetição com |M| maior que 3,5 e |valor − mediana| maior que 2 × u (o 2 compensa as várias medidas comparadas ' +
+      'num mesmo vídeo, como na tendência). Se MAD = 0, não é avaliado. É um critério estatístico de valor atípico, não um limite clínico.',
+    minimoRepeticoes: 5,
   },
   criterio_profissional: {
     tipo: 'criterio_profissional',
@@ -187,32 +198,66 @@ export const GATILHOS: Record<TipoGatilho, DefGatilho> = {
  */
 export const FORMULAS_INCERTEZA: Record<GrandezaMedida, string> = {
   angulo:
-    'Ângulos: u = 2 × raiz( soma((bruto − suavizado)²) ÷ (n − 1) ), em que 2 é o fator de cobertura (cerca de 95% se o erro for gaussiano) e a soma percorre ' +
-    'as n amostras das janelas em que a medida é lida e em que a série bruta e a suavizada têm valor; ' +
-    'cada medida usa a série da sua articulação, e a incerteza angular geral do vídeo é a mediana de u entre as séries angulares do protocolo.',
-  deslocamento: 'Deslocamentos: o mesmo cálculo (fator de cobertura 2 e resíduo bruto − suavizado), feito sobre a série normalizada da própria medida (por exemplo, % da coxa).',
-  tempo: 'Tempos: u = 1 ÷ taxa efetiva da trilha (um quadro).',
+    'Ângulos: u = 2 × raiz( soma((bruto − suavizado)²) ÷ (n − 1) ) × c, em que 2 é o fator de cobertura (cerca de 95% se o erro for gaussiano), ' +
+    'a soma percorre as n amostras das janelas em que a medida é lida e em que a série bruta e a suavizada têm valor, e c ≥ 1 mede o quanto o ruído ' +
+    'do detector é mais lento que um ruído branco (nos trechos em pé do vídeo: desvio-padrão da série suavizada ÷ resíduo, dividido pelo valor esperado ' +
+    'para ruído branco; c = 1 sem trecho em pé). Onde há trecho em pé, u também nunca fica abaixo de 2 × o desvio-padrão da série suavizada nesses ' +
+    'trechos, onde o ângulo verdadeiro é constante. u nunca é informado abaixo do último dígito exibido (0,1° ou 0,1%). ' +
+    'Cada medida usa a série da sua articulação, e a incerteza angular geral do vídeo é a mediana de u entre as séries angulares do protocolo.',
+  deslocamento:
+    'Deslocamentos: o mesmo cálculo (fator de cobertura 2, resíduo bruto − suavizado, fator de coloração c e piso medido em pé), ' +
+    'feito sobre a série normalizada da própria medida (por exemplo, % da coxa).',
+  tempo: 'Tempos: u = n ÷ taxa efetiva da trilha, com n em quadros.',
+};
+
+const DETALHE_DO_TEMPO = {
+  agachamento:
+    'Na duração da repetição do agachamento, n = 2 (o fator de cobertura sobre o erro de um quadro: o início e o fim vêm do cruzamento de um nível numa série ruidosa).',
+  marcha: 'Nos eventos da marcha, n = 1 (contato e saída do pé têm o instante refinado entre quadros).',
 };
 
 export const DESCRICAO_INCERTEZA =
-  'Estimada do próprio vídeo, pelo quanto a série bruta se afasta da suavizada. Não capta erro sistemático do detector (um ponto deslocado de forma constante, por exemplo) nem o efeito da perspectiva: não é intervalo de confiança da medida.';
+  'Estimada do próprio vídeo, pelo quanto a série bruta se afasta da suavizada e, nos agachamentos, pelo quanto a série oscila nos trechos em pé. ' +
+  'É um piso, não um intervalo de confiança: não capta erro sistemático do detector (um ponto deslocado de forma constante, por exemplo) nem o efeito ' +
+  'da perspectiva e, na marcha, que não tem trecho em pé, só enxerga o ruído rápido entre quadros, de modo que uma oscilação lenta dos pontos pode ' +
+  'aparecer como variação entre passadas.';
 
 /** Texto da fórmula da incerteza para um protocolo: só as grandezas que ele realmente usa, na ordem angulo, deslocamento, tempo. */
 export function formulaDaIncerteza(p: Protocolo): string {
   const usadas = new Set(p.medidas.map((m) => m.grandeza));
-  return (['angulo', 'deslocamento', 'tempo'] as const).filter((g) => usadas.has(g)).map((g) => FORMULAS_INCERTEZA[g]).join(' ');
+  return (['angulo', 'deslocamento', 'tempo'] as const)
+    .filter((g) => usadas.has(g))
+    .map((g) => (g === 'tempo' ? `${FORMULAS_INCERTEZA.tempo} ${DETALHE_DO_TEMPO[p.gesto === 'marcha' ? 'marcha' : 'agachamento']}` : FORMULAS_INCERTEZA[g]))
+    .join(' ');
 }
 
 // ---------- limitações ----------
 
-const LIMITACOES_COMUNS = [
-  'A medida é feita em duas dimensões e só vale no plano filmado: o movimento fora desse plano (rotação, profundidade) não é captado e altera os ângulos.',
-  'O instante de cada marco da repetição e os tempos têm erro de um quadro (1 ÷ taxa efetiva do vídeo).',
-  'Diferença menor que a incerteza estimada do próprio vídeo não é tratada como achado.',
-  'O modelo de pose estima as articulações pela imagem: não mede a curvatura da coluna (inclusive a lombar) nem a rotação da pelve, e roupa larga, oclusão e pouca luz reduzem a confiabilidade dos pontos.',
-  'A incerteza estimada vem do resíduo entre a série bruta e a suavizada; ela não capta erro sistemático do detector.',
-  'Os achados descrevem medidas. As hipóteses de fatores contribuintes são para o profissional confirmar na avaliação presencial e não são diagnóstico.',
-];
+const TEMPO_DAS_LIMITACOES = {
+  agachamento:
+    'O ponto mais baixo, o início e o fim de cada repetição são achados na série suavizada, e a duração da repetição tem incerteza de dois quadros (2 ÷ taxa efetiva do vídeo).',
+  marcha: 'Os eventos de contato e de saída do pé e os tempos têm erro de um quadro (1 ÷ taxa efetiva do vídeo).',
+};
+
+const INCERTEZA_DAS_LIMITACOES = {
+  agachamento:
+    'A incerteza estimada é um piso: vem do resíduo entre a série bruta e a suavizada e da oscilação da série nos trechos em pé; não capta erro sistemático do detector.',
+  marcha:
+    'A incerteza estimada é um piso: vem só do resíduo entre a série bruta e a suavizada (não há trecho em pé na marcha para medir a oscilação lenta dos pontos); não capta erro sistemático do detector, e uma oscilação lenta pode aparecer como variação entre passadas.',
+};
+
+const limitacoesComuns = (gesto: IdGesto): string[] => {
+  const g = gesto === 'marcha' ? 'marcha' : 'agachamento';
+  return [
+    'A medida é feita em duas dimensões e só vale no plano filmado: o movimento fora desse plano (rotação, profundidade) não é captado e altera os ângulos.',
+    'A câmera precisa estar nivelada e parada: a inclinação da imagem soma um valor fixo à inclinação do tronco e desloca o avanço do joelho, a profundidade e o deslocamento da pelve, e pés fora do eixo também alteram essas medidas.',
+    TEMPO_DAS_LIMITACOES[g],
+    'Diferença menor que a incerteza estimada do próprio vídeo não é tratada como achado.',
+    'O modelo de pose estima as articulações pela imagem: não mede a curvatura da coluna (inclusive a lombar) nem a rotação da pelve, e roupa larga, oclusão e pouca luz reduzem a confiabilidade dos pontos.',
+    INCERTEZA_DAS_LIMITACOES[g],
+    'Os achados descrevem medidas. As hipóteses de fatores contribuintes são para o profissional confirmar na avaliação presencial e não são diagnóstico.',
+  ];
+};
 
 // ---------- fases ----------
 
@@ -278,7 +323,8 @@ const MEDIDAS_AGACHAMENTO_FRONTAL: DefMedidaRepeticao[] = [
   {
     id: 'desvio_lateral_pelve_fundo', nome: 'Deslocamento lateral da pelve no ponto mais baixo', unidade: '% da base de apoio', porLado: false, fase: 'fundo', extracao: 'valor_no_marco', grandeza: 'deslocamento', planoCamera: 'frontal',
     formula:
-      '(posição horizontal do ponto médio dos quadris − posição horizontal do ponto médio dos tornozelos) ÷ distância horizontal entre os tornozelos × 100, no ponto mais baixo; ' +
+      '(posição horizontal do ponto médio dos quadris − posição horizontal do ponto médio dos tornozelos) ÷ distância horizontal entre os tornozelos × 100, no ponto mais baixo, ' +
+      'menos o mesmo valor em pé (mediana dos quadros fora das repetições; sem eles, a mediana dos valores no início das repetições), para a inclinação da câmera e a postura inicial dos pés não entrarem como deslocamento; ' +
       'positivo = pelve deslocada para o lado direito do paciente, negativo = para o esquerdo (o sentido vem da posição relativa dos quadris D e E na imagem)',
   },
   {
@@ -359,6 +405,7 @@ const ACHADOS_AGACHAMENTO_FRONTAL: AchadoDoProtocolo[] = [
     limitacoes: [
       'A base de apoio é a distância entre os tornozelos na imagem: mudar os pés durante a repetição altera a referência.',
       'A medida não separa o deslocamento da pelve da inclinação do tronco.',
+      'O valor em pé é descontado, mas a inclinação da câmera ainda soma uma parte menor ao valor no ponto mais baixo (a pelve fica mais perto dos tornozelos): confira se a câmera estava nivelada.',
     ],
   },
   semMedida('inclinacao_tronco', 'lateral'),
@@ -368,15 +415,20 @@ const ACHADOS_AGACHAMENTO_FRONTAL: AchadoDoProtocolo[] = [
 ];
 
 const LIM_PASSADA = 'Cada passada pertence a um pé: a comparação entre os lados usa passadas de instantes diferentes, e a velocidade pode mudar entre elas.';
+const LIM_RUIDO_LENTO =
+  'Na marcha não há trecho em pé para medir a oscilação lenta dos pontos do detector: a incerteza vem só do resíduo da suavização, e uma oscilação lenta pode aparecer como diferença ou variação entre passadas.';
 
 const ACHADOS_MARCHA_LATERAL: AchadoDoProtocolo[] = [
   {
     chave: 'assimetria_tempo_apoio', planoExigido: 'lateral', medidas: ['tempo_apoio'],
-    limitacoes: [LIM_PASSADA, 'Depende dos eventos de contato e saída do pé, cada um com erro de um quadro: confira-os quadro a quadro.'],
+    limitacoes: [LIM_PASSADA, 'Depende dos eventos de contato e saída do pé, cada um com erro de um quadro: confira-os quadro a quadro.', LIM_RUIDO_LENTO],
   },
-  { chave: 'assimetria_flexao_joelho_marcha', planoExigido: 'lateral', medidas: ['flexao_joelho_pico_balanco'], limitacoes: [LIM_PASSADA, LIM_LADOS_LATERAL] },
-  { chave: 'assimetria_amplitude_quadril', planoExigido: 'lateral', medidas: ['amplitude_quadril'], limitacoes: [LIM_PASSADA, LIM_LADOS_LATERAL] },
-  { chave: 'inclinacao_tronco_marcha', planoExigido: 'lateral', medidas: ['inclinacao_tronco_media'], limitacoes: ['É a inclinação da reta quadril–ombro: não informa a curvatura da coluna.'] },
+  { chave: 'assimetria_flexao_joelho_marcha', planoExigido: 'lateral', medidas: ['flexao_joelho_pico_balanco'], limitacoes: [LIM_PASSADA, LIM_LADOS_LATERAL, LIM_RUIDO_LENTO] },
+  { chave: 'assimetria_amplitude_quadril', planoExigido: 'lateral', medidas: ['amplitude_quadril'], limitacoes: [LIM_PASSADA, LIM_LADOS_LATERAL, LIM_RUIDO_LENTO] },
+  {
+    chave: 'inclinacao_tronco_marcha', planoExigido: 'lateral', medidas: ['inclinacao_tronco_media'],
+    limitacoes: ['É a inclinação da reta quadril–ombro: não informa a curvatura da coluna.', LIM_RUIDO_LENTO],
+  },
 ];
 
 // ---------- gravação ----------
@@ -406,8 +458,11 @@ export const PROTOCOLOS: Protocolo[] = [
     rotuloRepeticao: { singular: 'repetição', plural: 'repetições' },
     descricao: 'Flexão de joelho, quadril e tornozelo, inclinação do tronco, avanço do joelho e profundidade, por repetição e por lado.',
     segmentacao:
-      'As repetições são os picos de flexão do joelho (média dos dois lados) na série suavizada: o início e o fim são os pontos em pé antes e depois de cada pico, ' +
-      'e o ponto mais baixo é o próprio pico. Picos que tocam as pontas do trecho analisado ficam como incompletos.',
+      'As repetições são os picos da flexão média dos dois joelhos, na série suavizada de novo por 0,3 s. Um pico conta se sobe, acima do ponto mais baixo que o separa ' +
+      'de um valor maior, pelo menos 20° e pelo menos 40% da amplitude do vídeo (P95 − P5 da série), e se fica a 0,8 s ou mais do pico vizinho; picos acima de 20° mas ' +
+      'abaixo de 40% da amplitude não são contados e entram num aviso. O ponto mais baixo é o centro da região contínua a até 5% da amplitude abaixo do topo. O início e o fim ' +
+      'são os pontos em que a série deixa o nível em pé (5% da amplitude da repetição), com histerese: o movimento só vale depois de passar de 15%. A repetição que toca ' +
+      'a ponta do trecho analisado e não parte do nível em pé fica como incompleta e sem medidas.',
     fases: FASES_AGACHAMENTO,
     gravacao: GRAVAR_AGACHAMENTO,
     fpsSugerido: modeloDoGesto('agachamento').fpsSugerido,
@@ -415,7 +470,7 @@ export const PROTOCOLOS: Protocolo[] = [
     medidas: MEDIDAS_AGACHAMENTO_LATERAL,
     achados: ACHADOS_AGACHAMENTO_LATERAL,
     limitacoes: [
-      ...LIMITACOES_COMUNS,
+      ...limitacoesComuns('agachamento'),
       'De lado, os dois membros ficam sobrepostos: o detector os confunde mais facilmente no ponto mais baixo e o membro mais distante da câmera é menos confiável. Confira o quadro de maior flexão.',
       'O valgo dinâmico e o deslocamento lateral da pelve exigem a vista frontal e não são avaliados neste vídeo.',
     ],
@@ -428,8 +483,11 @@ export const PROTOCOLOS: Protocolo[] = [
     rotuloRepeticao: { singular: 'repetição', plural: 'repetições' },
     descricao: 'Valgo do joelho, deslocamento lateral da pelve e descida da pelve, por repetição e por lado.',
     segmentacao:
-      'De frente a flexão do joelho quase não aparece no plano da imagem, por isso as repetições são os vales da altura do ponto médio dos quadris na série suavizada: ' +
-      'o ponto mais baixo é o vale, e o início e o fim são os pontos em pé antes e depois dele. Vales que tocam as pontas do trecho analisado ficam como incompletos.',
+      'De frente a flexão do joelho quase não aparece no plano da imagem, por isso as repetições são as descidas do ponto médio dos quadris (a altura na imagem cresce quando ' +
+      'a pelve desce), na série suavizada de novo por 0,3 s. Uma descida conta se passa, acima do ponto mais baixo que a separa de um valor maior, de 6% da distância vertical ' +
+      'quadril–tornozelo e de 40% da amplitude do vídeo (P95 − P5 da série), e se fica a 0,8 s ou mais da vizinha. O ponto mais baixo é o centro da região contínua a até ' +
+      '5% da amplitude abaixo do topo; o início e o fim são os pontos em que a série deixa o nível em pé (5% da amplitude), com histerese de 15%. A repetição que toca a ' +
+      'ponta do trecho analisado e não parte do nível em pé fica como incompleta e sem medidas.',
     fases: FASES_AGACHAMENTO,
     gravacao: GRAVAR_AGACHAMENTO,
     fpsSugerido: modeloDoGesto('agachamento').fpsSugerido,
@@ -437,7 +495,7 @@ export const PROTOCOLOS: Protocolo[] = [
     medidas: MEDIDAS_AGACHAMENTO_FRONTAL,
     achados: ACHADOS_AGACHAMENTO_FRONTAL,
     limitacoes: [
-      ...LIMITACOES_COMUNS,
+      ...limitacoesComuns('agachamento'),
       'De frente, a flexão do joelho, do quadril e do tornozelo fica quase toda fora do plano da imagem: não é medida neste vídeo (exige a vista lateral).',
       'O valgo é um ângulo de projeção 2D: a rotação do quadril e do pé muda a leitura.',
     ],
@@ -461,7 +519,7 @@ export const PROTOCOLOS: Protocolo[] = [
     medidas: MEDIDAS_MARCHA_LATERAL,
     achados: ACHADOS_MARCHA_LATERAL,
     limitacoes: [
-      ...LIMITACOES_COMUNS,
+      ...limitacoesComuns('marcha'),
       'Na gravação de lado, a perna mais distante da câmera é menos confiável: dê mais peso à perna mais próxima.',
       'O vídeo não separa a rotação nem a inclinação da pelve: os ângulos são projeções no plano da imagem.',
       'Os eventos de contato e saída do pé são sugestões com erro de um quadro; os tempos de apoio só valem depois de conferidos quadro a quadro.',

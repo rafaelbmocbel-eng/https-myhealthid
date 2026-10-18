@@ -40,11 +40,11 @@ export const VALGO_DINAMICO: EntradaBiblioteca = {
     {
       id: 'projecao_2d',
       texto:
-        'O ângulo 2D de projeção do joelho concordou mal com o ângulo 3D no agachamento unipodal em uma revisão com metanálise; a medida 2D deste vídeo deve ser lida como observação.',
+        'O ângulo 2D de projeção do joelho concordou mal com o ângulo 3D no agachamento unipodal em uma revisão com metanálise; a medida 2D deste vídeo pode estar distante do ângulo real e deve ser lida como observação.',
       forca: 'meta_analise',
       fontes: [F.lopes2018],
       ressalva:
-        'Revisão com metanálise de 16 estudos: a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal (r = 0,127) e melhor na aterrissagem. Os autores concluem que a evidência atual não sustenta o uso da análise 2D quando se exige medida exata. O resumo não indica a causa da divergência, e o resultado é do agachamento unipodal, não do bipodal medido neste app: use o valgo deste vídeo como observação e não como medida exata.',
+        'Revisão com metanálise de 16 estudos: a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal (r = 0,127) e melhor na aterrissagem. Os autores concluem que a evidência atual não sustenta o uso da análise 2D quando se exige medida exata. O resumo não explica por que o ângulo 2D e o 3D divergem, e o resultado é do agachamento unipodal, não do bipodal medido neste app: use o valgo deste vídeo como observação e não como medida exata.',
     },
   ],
   conferir: [

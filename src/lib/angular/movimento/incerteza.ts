@@ -10,9 +10,12 @@ import { finito, mediana, type Num } from './estatistica';
  *
  * O resíduo só enxerga o ruído rápido entre quadros. O jitter de um detector de pose é correlacionado no tempo: passa quase todo pela
  * suavização, o resíduo despenca e o valor lido continua oscilando de uma repetição para outra. Por isso, onde há trecho em pé (o ângulo
- * verdadeiro é constante), a incerteza tem um piso: FATOR_COBERTURA × desvio-padrão da própria série suavizada nesses trechos
- * (`desvioEmPe`, aplicado por analisarMovimento depois de segmentar). Na marcha não há trecho em pé: a incerteza continua só com o resíduo,
- * e o método do laudo diz que ela é um piso.
+ * verdadeiro é constante), a incerteza tem duas correções, aplicadas por analisarMovimento depois de segmentar:
+ *  - piso: FATOR_COBERTURA × desvio-padrão da própria série suavizada nesses trechos (`desvioEmPe`);
+ *  - coloração: quanto mais ruído passa pela suavização do que passaria se o ruído fosse branco (`coloracaoDoRuido`), por quanto o resíduo
+ *    de cada janela de leitura é multiplicado. Vale para medidas que dependem da postura (a razão quadril–joelho quase não oscila em pé e
+ *    oscila muito com a coxa na horizontal), em que o piso medido em pé não serve.
+ * Na marcha não há trecho em pé: a incerteza continua só com o resíduo, e o método do laudo diz que ela é um piso.
  */
 
 /**
@@ -86,6 +89,8 @@ export interface SerieProcessada {
   nAmostras: number;
   /** Incerteza (expandida) estimada nos trechos em pé do vídeo, quando há; já está incluída em `u` e vira piso das incertezas por janela. */
   uEmPe?: number | null;
+  /** Fator (≥ 1) pelo qual o resíduo de cada janela é multiplicado por o ruído do detector ser mais lento que um ruído branco (1 se não medido). */
+  coloracao?: number;
 }
 
 const OPCOES_SG = { metodo: 'savitzky_golay', ordem: 2 } as const;
@@ -102,6 +107,12 @@ export function processarSerie(bruto: readonly Num[], fps: number, suavizacaoS: 
   const r = residuoEntre(limpo, referencia);
   return { bruto: limpo, suave, referencia, u: expandir(r.u), nAmostras: r.n };
 }
+
+/**
+ * Peso central do Savitzky–Golay de ordem 2 numa janela de w amostras: a variância do valor suavizado, em unidades da variância de um ruído
+ * branco (1 para w = 3, a identidade). O resíduo bruto − suavizado tem variância (1 − peso) vezes a do ruído branco.
+ */
+export const pesoCentralSG = (w: number): number => (w <= 3 ? 1 : (3 * (3 * w * w - 7)) / (4 * w * (w * w - 4)));
 
 /** Menos quadros em pé que isto e o ruído do detector não é estimado por esse caminho (meio segundo a 30 quadros/s). */
 export const MIN_QUADROS_EM_PE = 15;
@@ -121,6 +132,28 @@ export function desvioEmPe(valores: readonly Num[], emPe: readonly boolean[]): n
   const m = v.reduce((a, x) => a + x, 0) / v.length;
   const sd = Math.sqrt(v.reduce((a, x) => a + (x - m) ** 2, 0) / (v.length - 1));
   return Number.isFinite(sd) ? sd : null;
+}
+
+/**
+ * Quanto o ruído do detector é mais lento que um ruído branco, medido nos quadros em pé: (desvio-padrão da série medida ÷ resíduo bruto −
+ * referência) comparado com o que um ruído branco daria com as mesmas janelas, sqrt(peso(janela medida) ÷ (1 − peso(janela de referência))).
+ * Ruído branco dá cerca de 1; jitter correlacionado no tempo passa quase todo pela suavização, o resíduo cai e o fator sobe. Nunca abaixo de
+ * 1, para a correção só aumentar a incerteza; null sem quadros em pé suficientes ou sem resíduo.
+ * `janelaMedida` = 1 quando a série medida é a bruta (suavização desligada).
+ */
+export function coloracaoDoRuido(s: SerieProcessada, emPe: readonly boolean[], janelaMedida: number, janelaReferencia: number): number | null {
+  const sd = desvioEmPe(s.suave, emPe);
+  const b: Num[] = [], r: Num[] = [];
+  for (let i = 0; i < s.bruto.length; i++) {
+    if (!emPe[i]) continue;
+    b.push(s.bruto[i]);
+    r.push(s.referencia[i]);
+  }
+  const resid = residuoEntre(b, r).u;
+  if (sd === null || resid === null || !(resid > 0)) return null;
+  const esperado = Math.sqrt(pesoCentralSG(janelaMedida) / (1 - pesoCentralSG(janelaReferencia)));
+  const fator = sd / resid / esperado;
+  return Number.isFinite(fator) ? Math.max(1, fator) : null;
 }
 
 /** Taxas de quadros plausíveis para um vídeo de pessoa se movendo; fora disso a janela de suavização explode ou some. */

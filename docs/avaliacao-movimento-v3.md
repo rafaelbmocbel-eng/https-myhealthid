@@ -129,12 +129,14 @@ Achado que exige o outro plano não é calculado: vira `indisponiveis`, com o mo
 - **Sem juízo.** Sem critério ativo, todo achado tem `situacao: 'sem_referencia'`. Veredito (dentro do critério, no limite, fora do
   critério) só existe com critério do profissional ativo, aplicável e válido para a medida do protocolo. Critério debatido
   (avanço do joelho além do pé) fica desligado por padrão e sem valor presumido.
-- **Incerteza do próprio vídeo.** Estimada empiricamente (resíduo entre a série bruta e a suavizada para ângulos e deslocamentos;
-  um quadro para tempos). A fórmula (`FORMULAS_INCERTEZA`, `formulaDaIncerteza`) entra no método do laudo. Nenhuma tolerância fixa
-  em graus.
+- **Incerteza do próprio vídeo.** Estimada empiricamente (resíduo entre a série bruta e a suavizada para ângulos e deslocamentos, com piso
+  e fator de coloração medidos nos trechos em pé quando há; um quadro para tempos, dois na duração da repetição do agachamento). A
+  fórmula (`FORMULAS_INCERTEZA`, `formulaDaIncerteza`) entra no método do laudo. Nenhuma tolerância fixa em graus. É um piso, não um
+  intervalo de confiança.
 - **Gatilhos.** Um achado só existe se um gatilho disparar: (a) diferença entre lados maior que a incerteza e que a variação entre
   repetições; (b) variação entre repetições maior que a incerteza; (c) mudança da primeira para a última repetição maior que a
-  incerteza; (d) repetição discrepante (escore z modificado de Iglewicz e Hoaglin, 1993: critério estatístico, não clínico);
+  incerteza; (d) repetição discrepante (escore z modificado de Iglewicz e Hoaglin, 1993: critério estatístico, não clínico; mínimo de 5 repetições);
+  (c) e (d) exigem o dobro da incerteza (`FATOR_MULTIPLAS_COMPARACOES`), por causa das cerca de dez comparações por vídeo;
   (e) critério do profissional. As regras literais e o mínimo de repetições de cada uma estão em `GATILHOS` (`protocolos.ts`); M
   implementa o que está escrito ali e L imprime o mesmo texto. Sem gatilho, a medida continua na tabela como observação.
 - **Biblioteca.** O laudo só repete causas e itens a conferir que estão em `BIBLIOTECA`; chave sem entrada = "sem hipóteses
@@ -155,8 +157,10 @@ Achado que exige o outro plano não é calculado: vira `indisponiveis`, com o mo
 ### Motor de análise: decisões de implementação (`analisarMovimento.ts` e módulos auxiliares)
 
 - **Repetições do agachamento.** Os fundos são os picos da série de referência (flexão média do joelho, de lado; altura do ponto médio
-  dos quadris, de frente), com amplitude mínima de 20° (de lado) ou de 6% da distância vertical quadril–tornozelo (de frente) e pelo
-  menos 0,8 s entre fundos. Início e fim usam histerese (o movimento é confirmado a 15% da amplitude e o marco é posto onde a série
+  dos quadris, de frente), com amplitude mínima de 20° (de lado) ou de 6% da distância vertical quadril–tornozelo (de frente), proeminência
+  de pelo menos 40% da amplitude do vídeo (medida contra o ponto mais baixo até um valor maior, e não numa janela fixa: repetição lenta ou
+  com pausa no fundo conta) e pelo menos 0,8 s entre fundos; picos acima do mínimo absoluto mas abaixo dos 40% não são contados e entram
+  num aviso da análise. Início e fim usam histerese (o movimento é confirmado a 15% da amplitude e o marco é posto onde a série
   deixou os 5%), e o ponto mais baixo é o centro da região a 5% do topo, que não oscila com o ruído como o quadro de máximo. Repetição
   que não parte do nível em pé na ponta do trecho fica como `incompleta`, sem valores.
 - **Incerteza.** O resíduo bruto − suavizado é lido só nas janelas em que a medida é lida (fase inteira, ou ±0,3 s do marco), porque o
@@ -164,6 +168,23 @@ Achado que exige o outro plano não é calculado: vira `indisponiveis`, com o mo
   incerteza" é 1 desvio-padrão do ruído, e um vídeo com repetições idênticas e só ruído disparava variação e tendência em cerca de um
   terço das medidas. Tempos: um quadro na marcha (eventos com instante refinado) e dois quadros na duração das repetições do
   agachamento (início e fim vêm do cruzamento de um nível numa série ruidosa).
+- **Piso e coloração da incerteza.** O resíduo só enxerga o ruído rápido; o jitter correlacionado de um detector de pose passa pela
+  suavização. Nos agachamentos, depois de segmentar, a incerteza de cada série tem piso em 2 × o desvio-padrão da série suavizada nos
+  trechos em pé (fora das repetições, com folga de 0,3 s; pelo menos 15 quadros), e o resíduo de cada janela é multiplicado pelo fator de
+  coloração (quanto o ruído é mais lento que um ruído branco, medido em pé e nunca abaixo de 1; cada série usa o maior entre o dela e a
+  mediana das séries angulares). Na marcha não há trecho em pé e a incerteza continua só com o resíduo, com a limitação escrita no achado
+  e no método. A suavização usa pelo menos 5 amostras (com 3, o Savitzky–Golay de ordem 2 é a identidade e a incerteza saía 0 abaixo de
+  29 quadros/s) e a incerteza nunca é informada abaixo do último dígito exibido (0,1° ou 0,1%, 0,01 s). Medido com ruído sintético,
+  repetições idênticas e só ruído branco de 1 a 2 px dão achado em 0 a 2% dos vídeos (eram 33 a 50%); com jitter correlacionado forte
+  (AR(1) de 0,9, 2 px), 10 a 11% nos agachamentos; na marcha continua alto (sem trecho em pé), então vale conferir com vídeo real antes
+  de liberar a aba.
+- **Medida no extremo.** Máximo, mínimo, amplitude e valor no marco só valem se a série bruta (sem interpolação) tem pontos em pelo menos
+  70% dos quadros de ±0,15 s em torno do instante do extremo; senão a repetição daquele lado fica sem valor, com o sinalizador "pontos
+  ausentes" e um aviso da análise (o membro mais distante perdendo pontos no fundo enviesava a flexão máxima para baixo).
+- **Deslocamento lateral da pelve.** Lido em relação ao valor em pé do próprio vídeo (mediana dos quadros fora das repetições): a
+  postura inicial e a inclinação fixa da câmera não viram deslocamento. A inclinação da câmera ainda soma cerca de 1,7% da base por grau
+  (a pelve fica mais perto dos tornozelos no fundo), e na vista lateral ela soma à inclinação do tronco: o laudo pede a conferência do
+  nivelamento.
 - **Critério do profissional.** O veredito mora só no achado do gatilho (e); os achados dos gatilhos (a) a (d) ficam sempre "sem
   referência". Sem escala em cm, `equivalenteCm` não é preenchido; com ela, só as medidas de deslocamento têm o equivalente.
 - **Comprimento do pé.** O avanço do joelho divide pela mediana do comprimento calcanhar–ponta no vídeo, não pelo valor de cada quadro,

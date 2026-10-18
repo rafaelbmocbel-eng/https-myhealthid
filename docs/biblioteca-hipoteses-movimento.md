@@ -24,6 +24,11 @@ Informações de artigos recuperadas do PubMed (conferência em 18/10/2026). Cad
 - **População.** Cada fonte registra quem foi estudado (atletas, idosos, pacientes com dor, AVC, osteoartrite) para ninguém extrapolar.
 - **Medida diferente do vídeo.** A maioria das fontes usa captura 3D, plataformas de força ou exame clínico (algumas usam vídeo 2D) e compara grupos ou condições. Nenhuma
   validou a medida deste vídeo, e poucas estudaram a diferença entre os lados: as ressalvas dizem quando a ligação com o achado é uma inferência.
+- **Nota do gatilho.** Nas entradas cujas fontes tratam do valor da medida em si (`inclinacao_tronco`, `avanco_joelho`, `valgo_dinamico`,
+  `desvio_lateral_pelve` e `inclinacao_tronco_marcha`), o laudo fecha a ressalva de cada hipótese com uma nota quando o achado nasce da
+  variação entre repetições ou de uma repetição discrepante (e, no valgo, da diferença entre os lados): nenhuma das fontes citadas estudou
+  isso, e a ligação do fator com o achado é inferência. A nota é montada em `notaDoGatilhoSemEstudo` (`frases.ts`) e não vale para fator
+  "a confirmar" nem para achado de critério do profissional.
 - **Sem limites.** A biblioteca não define valor de referência, limite nem critério para nenhum achado. Os números que aparecem são da fonte
   (ressalvas e trechos) e não são limites do produto. O avanço do joelho segue como observação medida, com o debate registrado.
 
@@ -139,9 +144,9 @@ Valgo dinâmico do joelho na descida (agachamento de frente).
    - Tipo de estudo: estudo observacional.
    - Ressalva: 60 atletas de basquete mulheres; agachamento unipodal, medido nos dois lados. Estudo transversal: não mostra se o valgo antecede a dor ou a acompanha. Não vale para quem não tem esse antecedente.
    - Fontes: PMID 37524846 (Emamvirdi 2023).
-4. O ângulo 2D de projeção do joelho concordou mal com o ângulo 3D no agachamento unipodal em uma revisão com metanálise; a medida 2D deste vídeo deve ser lida como observação.
+4. O ângulo 2D de projeção do joelho concordou mal com o ângulo 3D no agachamento unipodal em uma revisão com metanálise; a medida 2D deste vídeo pode estar distante do ângulo real e deve ser lida como observação.
    - Tipo de estudo: meta-análise.
-   - Ressalva: Revisão com metanálise de 16 estudos: a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal (r = 0,127) e melhor na aterrissagem. Os autores concluem que a evidência atual não sustenta o uso da análise 2D quando se exige medida exata. O resumo não indica a causa da divergência, e o resultado é do agachamento unipodal, não do bipodal medido neste app: use o valgo deste vídeo como observação e não como medida exata.
+   - Ressalva: Revisão com metanálise de 16 estudos: a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal (r = 0,127) e melhor na aterrissagem. Os autores concluem que a evidência atual não sustenta o uso da análise 2D quando se exige medida exata. O resumo não explica por que o ângulo 2D e o 3D divergem, e o resultado é do agachamento unipodal, não do bipodal medido neste app: use o valgo deste vídeo como observação e não como medida exata.
    - Fontes: PMID 29895235 (Lopes 2018).
 
 **O que conferir na avaliação presencial**
