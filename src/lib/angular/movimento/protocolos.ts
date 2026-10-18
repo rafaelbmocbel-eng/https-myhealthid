@@ -116,7 +116,9 @@ export const CATALOGO_ACHADOS: Record<ChaveAchado, DefAchado> = {
     chave: 'inclinacao_tronco_marcha',
     titulo: 'Inclinação do tronco durante a passada',
     oQueCompara: 'Média da inclinação da reta quadril–ombro com a vertical ao longo de cada passada e sua variação entre as passadas.',
-    gatilhos: ['variacao_entre_repeticoes', 'repeticao_discrepante', 'criterio_profissional'],
+    // Sem trecho em pé não há como medir o jitter correlacionado do detector: com ruído desse tipo quase todo vídeo simétrico gerava
+    // 'variação do tronco' (revisão da Etapa 3). A medida segue na tabela; só vira achado por critério do profissional até a validação com vídeo real.
+    gatilhos: ['criterio_profissional'],
     grandeza: 'media',
   },
 };
