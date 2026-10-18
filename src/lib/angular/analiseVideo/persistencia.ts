@@ -8,6 +8,8 @@
 import { lerTrilha, serializarTrilha } from '@/lib/angular/video/trilha';
 import type { EventoPasso } from '@/lib/angular/video/eventos';
 import type { TrilhaPose } from '@/lib/angular/video/tipos';
+import type { CriterioProfissional, IdProtocolo } from '@/lib/angular/movimento/tipos';
+import { lerCriteriosSalvos, lerProtocoloSalvo } from './criteriosSalvos';
 
 export const APP_ANALISE = 'myhealthid-analise-video';
 export const VERSAO_ANALISE = 1;
@@ -32,6 +34,9 @@ export interface AnaliseSalva {
   cmPorPx: number | null;
   /** Dados da interface que não afetam o cálculo (articulação aberta, medidas manuais etc.). */
   extras: Record<string, unknown>;
+  /** Etapa 3 (opcional): critérios do profissional e protocolo do laudo. Arquivos antigos não os têm e abrem normalmente. */
+  criterios?: CriterioProfissional[];
+  protocoloMovimento?: IdProtocolo;
 }
 
 export type EntradaAnalise = Omit<AnaliseSalva, 'app' | 'versao' | 'salvoEm'> & { salvoEm?: string };
@@ -75,9 +80,12 @@ export function lerAnaliseSalva(texto: string): ResultadoLeitura {
   }
   if (!trilha.quadros.length) return { ok: false, erro: 'A análise salva não tem nenhum quadro.' };
   const intervalo = ehObjeto(bruto.intervalo) && ehNumero(bruto.intervalo.inicio) && ehNumero(bruto.intervalo.fim) ? { inicio: bruto.intervalo.inicio, fim: bruto.intervalo.fim } : { inicio: 0, fim: bruto.video.duracao };
+  const criterios = lerCriteriosSalvos(bruto.criterios);
+  const protocoloMovimento = lerProtocoloSalvo(bruto.protocoloMovimento);
   return {
     ok: true,
     analise: {
+      ...(criterios ? { criterios } : {}), ...(protocoloMovimento ? { protocoloMovimento } : {}),
       app: APP_ANALISE, versao: bruto.versao, salvoEm: typeof bruto.salvoEm === 'string' ? bruto.salvoEm : '',
       video: bruto.video, modeloId: bruto.modeloId, fpsVideo: ehNumero(bruto.fpsVideo) && bruto.fpsVideo > 0 ? bruto.fpsVideo : trilha.fps,
       intervalo, trilha, eventos: eventosValidos(bruto.eventos) ? bruto.eventos : null,

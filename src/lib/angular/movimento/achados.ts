@@ -11,7 +11,8 @@ import { ROTULO_LADO, ROTULO_SITUACAO } from './vocabulario';
  * Achados (agente M). Um achado só existe se um gatilho de GATILHOS (protocolos.ts) disparar; nenhum gatilho usa limite clínico.
  * Sem critério do profissional ativo, aplicável e válido, todo achado é "sem referência" (observação medida); o veredito vive
  * só nos achados do gatilho (e), que são separados dos demais.
- * Regras (as mesmas que o laudo imprime), com u = incerteza de um valor da medida e dp = desvio-padrão entre repetições:
+ * Regras (as mesmas que o laudo imprime), com u = incerteza de um valor da medida (a expandida, ver FATOR_COBERTURA em incerteza.ts) e
+ * dp = desvio-padrão entre repetições:
  *   (a) |média D − média E| > raiz(uD² + uE²) e > max(dpD, dpE); sem par D/E, |média| > u e > dp;
  *   (b) dp > u;  (c) |última − primeira| > raiz(2) × u;
  *   (d) |M| > 3,5 (escore z modificado) e |valor − mediana| > u, com MAD > 0.

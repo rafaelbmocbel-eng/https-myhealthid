@@ -151,3 +151,24 @@ Achado que exige o outro plano não é calculado: vira `indisponiveis`, com o mo
   protocolo e em cada achado de assimetria.
 - A recomendação de gravação da marcha para esta etapa é de pelo menos 10 passos (5 de cada pé), para haver passadas suficientes por
   pé para as estatísticas dos gatilhos.
+
+### Motor de análise: decisões de implementação (`analisarMovimento.ts` e módulos auxiliares)
+
+- **Repetições do agachamento.** Os fundos são os picos da série de referência (flexão média do joelho, de lado; altura do ponto médio
+  dos quadris, de frente), com amplitude mínima de 20° (de lado) ou de 6% da distância vertical quadril–tornozelo (de frente) e pelo
+  menos 0,8 s entre fundos. Início e fim usam histerese (o movimento é confirmado a 15% da amplitude e o marco é posto onde a série
+  deixou os 5%), e o ponto mais baixo é o centro da região a 5% do topo, que não oscila com o ruído como o quadro de máximo. Repetição
+  que não parte do nível em pé na ponta do trecho fica como `incompleta`, sem valores.
+- **Incerteza.** O resíduo bruto − suavizado é lido só nas janelas em que a medida é lida (fase inteira, ou ±0,3 s do marco), porque o
+  ruído depende da postura, e é multiplicado pelo fator de cobertura 2 (`FATOR_COBERTURA`, `incerteza.ts`). Sem o fator, "maior que a
+  incerteza" é 1 desvio-padrão do ruído, e um vídeo com repetições idênticas e só ruído disparava variação e tendência em cerca de um
+  terço das medidas. Tempos: um quadro na marcha (eventos com instante refinado) e dois quadros na duração das repetições do
+  agachamento (início e fim vêm do cruzamento de um nível numa série ruidosa).
+- **Critério do profissional.** O veredito mora só no achado do gatilho (e); os achados dos gatilhos (a) a (d) ficam sempre "sem
+  referência". Sem escala em cm, `equivalenteCm` não é preenchido; com ela, só as medidas de deslocamento têm o equivalente.
+- **Comprimento do pé.** O avanço do joelho divide pela mediana do comprimento calcanhar–ponta no vídeo, não pelo valor de cada quadro,
+  porque o pé é rígido e o ruído de um quadro não deve mudar a escala.
+- **Eventos da marcha.** Intervalos entre contatos do mesmo pé fora de 0,6 a 2,5 s não são passadas (mesma regra do motor de métricas);
+  passada sem a saída do pé fica `incompleta`.
+- **Tolerância a dado ruim.** Trilha vazia, quadros nulos, coordenadas inválidas, taxa de quadros implausível e pontos de baixa
+  confiança não lançam: a análise sai com a estrutura completa e os `avisos` dizem o que faltou.

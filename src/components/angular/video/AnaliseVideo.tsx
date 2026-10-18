@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
-import { BarChart3, ChevronLeft, Crosshair, Eye, EyeOff, GitCompareArrows, Palette, Redo2, Ruler, Share2, Sparkles, Trash2, Undo2, Waypoints } from 'lucide-react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { BarChart3, ChevronLeft, Crosshair, Eye, EyeOff, FileText, GitCompareArrows, Palette, Redo2, Ruler, Share2, Sparkles, Trash2, Undo2, Waypoints } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -49,17 +49,22 @@ import PainelExportar from './PainelExportar';
 import { useMedidasManuais } from './useMedidasManuais';
 import { useReproducao } from './useReproducao';
 import { useTrilhaEditavel } from './useTrilhaEditavel';
+import { useEstadoLaudo } from './laudo/useEstadoLaudo';
 import { imagensParaRelatorio, painelDoQuadroAtual, quadrosDosExtremos, resumoEmLinhas, rotuloDoQuadro, type ContextoQuadro } from './saidas';
 
 type Etapa = 'enviar' | 'modelo' | 'rastreando' | 'analisar';
-type Aba = 'metricas' | 'eventos' | 'lados' | 'medir' | 'exportar';
+// A aba Laudo (Etapa 3, beta) carrega o motor de movimento, o laudo e a biblioteca de hipóteses só quando é aberta.
+const AbaLaudo = lazy(() => import('./laudo/AbaLaudo'));
+
+type Aba = 'metricas' | 'eventos' | 'lados' | 'medir' | 'laudo' | 'exportar';
 
 const MODELOS_UI = MODELOS_GESTO.map(modeloParaUi);
-const ABAS: { id: Aba; nome: string; Icone: typeof Ruler }[] = [
+const ABAS: { id: Aba; nome: string; Icone: typeof Ruler; selo?: string }[] = [
   { id: 'metricas', nome: 'Métricas', Icone: BarChart3 },
   { id: 'eventos', nome: 'Eventos', Icone: Waypoints },
   { id: 'lados', nome: 'D × E', Icone: GitCompareArrows },
   { id: 'medir', nome: 'Medir', Icone: Ruler },
+  { id: 'laudo', nome: 'Laudo', Icone: FileText, selo: 'beta' },
   { id: 'exportar', nome: 'Exportar', Icone: Share2 },
 ];
 
@@ -143,6 +148,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
   const temRastreio = useMemo(() => !!trilha && trilha.quadros.some((q) => Object.keys(q.pontos).length > 0), [trilha]);
   const modelo = modeloDoGesto(modeloId);
+  const estadoLaudo = useEstadoLaudo(modeloId, modelo.vista);
   const grupos = useMemo(() => gruposDeArticulacoes(modelo.articulacoes), [modelo]);
   const grupo = grupos.find((g) => g.id === grupoId) ?? grupos[0];
 
@@ -196,6 +202,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
   const reiniciar = () => {
     edicao.iniciar(null); setEventos(null); manual.restaurar([], {}, '');
+    estadoLaudo.restaurar();
     repro.setQuadro(0);
   };
 
@@ -350,8 +357,10 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     return {
       video: impressaoDoVideo(video), modeloId, fpsVideo, intervalo, trilha, eventos, cmPorPx: manual.cmPorPx,
       extras: { grupoId, cameraFixa, capturas: manual.capturas, refs: manual.refs, escalaCm: manual.escalaCm, nivelTipo: manual.nivelTipo },
+      ...(estadoLaudo.criterios.length ? { criterios: estadoLaudo.criterios } : {}),
+      ...(estadoLaudo.protocoloEscolhido ? { protocoloMovimento: estadoLaudo.protocoloEscolhido } : {}),
     };
-  }, [video, trilha, modeloId, fpsVideo, intervalo, eventos, manual.cmPorPx, manual.capturas, manual.refs, manual.escalaCm, manual.nivelTipo, grupoId, cameraFixa]);
+  }, [video, trilha, modeloId, fpsVideo, intervalo, eventos, manual.cmPorPx, manual.capturas, manual.refs, manual.escalaCm, manual.nivelTipo, grupoId, cameraFixa, estadoLaudo.criterios, estadoLaudo.protocoloEscolhido]);
 
   const restaurar = (a: AnaliseSalva, v: VideoCarregado) => {
     const id = MODELOS_GESTO.some((m) => m.id === a.modeloId) ? (a.modeloId as IdGesto) : modeloId;
@@ -371,6 +380,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     );
     if (typeof ex.grupoId === 'string') setGrupoId(ex.grupoId);
     if (typeof ex.cameraFixa === 'boolean') setCameraFixa(ex.cameraFixa);
+    estadoLaudo.restaurar(a.criterios, a.protocoloMovimento);
     repro.setQuadro(0);
     setVideo(v);
     setAba(Array.isArray(ex.capturas) && ex.capturas.length && !a.trilha.quadros.some((q) => Object.keys(q.pontos).length) ? 'medir' : 'metricas');
@@ -685,11 +695,12 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
 
       {etapa === 'analisar' && (
         <aside className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:pr-1">
-          <div role="tablist" aria-label="Painel da análise" className="grid grid-cols-5 gap-1 rounded-2xl bg-muted/60 p-1">
-            {ABAS.map(({ id, nome, Icone }) => (
-              <button key={id} type="button" role="tab" aria-selected={aba === id} onClick={() => setAba(id)} data-testid={`aba-${id}`}
+          <div role="tablist" aria-label="Painel da análise" className="grid grid-cols-6 gap-1 rounded-2xl bg-muted/60 p-1">
+            {ABAS.map(({ id, nome, Icone, selo }) => (
+              <button key={id} type="button" role="tab" aria-selected={aba === id} onClick={() => setAba(id)} data-testid={`aba-${id}`} aria-label={selo ? `${nome} (${selo})` : undefined}
                 className={cn('flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-semibold transition-all', aba === id ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
                 <Icone className="h-4 w-4" aria-hidden />{nome}
+                {selo && <span className="text-[9px] font-medium uppercase leading-none tracking-wide text-muted-foreground" aria-hidden>{selo}</span>}
               </button>
             ))}
           </div>
@@ -716,6 +727,17 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
             )}
             {aba === 'lados' && (analise ? <CompararLados linhas={linhasLados} formula={FORMULA_ASSIMETRIA} /> : <p className="text-xs text-muted-foreground">A comparação aparece depois do rastreio.</p>)}
             {aba === 'medir' && <PainelMedidaManual m={manual} temRastreio={temRastreio} tocando={repro.tocando} aoIr={repro.irPara} />}
+            {aba === 'laudo' && (
+              <Suspense fallback={<p className="text-xs text-muted-foreground" role="status">Carregando o laudo…</p>}>
+                <AbaLaudo
+                  estado={estadoLaudo} vistaDeclarada={modelo.vista} trilha={temRastreio ? trilha : null} escalaCmPorPixel={manual.cmPorPx} eventos={eventos} direcao={direcao}
+                  video={{ nome: video.nome, duracaoS: video.duracao, largura: video.largura, altura: video.altura }}
+                  trecho={tempos.length ? { inicio: tempos[0], fim: tempos[tempos.length - 1] } : undefined}
+                  quadrosChaveCorrigidos={edicao.resumo.quadros} medidasManuaisForaDoTrecho={manual.foraDoTrecho.length}
+                  paciente={paciente ? nomeCompleto(paciente) : undefined} profissional={nomeDoProfissional(profile)}
+                />
+              </Suspense>
+            )}
             {aba === 'exportar' && (
               <PainelExportar
                 temAnalise={!!trilha} gerandoPdf={gerandoPdf} registrando={registrando} temPaciente={!!paciente} correcoes={{ quadros: edicao.resumo.quadros, pontos: edicao.resumo.pontos }}

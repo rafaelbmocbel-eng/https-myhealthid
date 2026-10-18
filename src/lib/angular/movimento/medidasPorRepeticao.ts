@@ -168,8 +168,7 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
         const quadros = quadrosDeIncertezaDoTempo(protocolo);
         incerteza[lado] = quadros * quadroS;
         if (quadros > 1 && lado === lados[0]) avisos.push('Início e fim da repetição são achados por um nível na série suavizada, que oscila com o ruído do vídeo: a incerteza da duração é de dois quadros.');
-      }
-      else if (def.id === 'descida_pelve') {
+      } else if (def.id === 'descida_pelve') {
         const ref = normalizador?.refPx ?? null;
         incerteza[lado] = uSerie !== null && ref !== null && ref > 0 ? (uSerie / ref) * 100 : null;
       } else incerteza[lado] = uSerie;
