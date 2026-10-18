@@ -195,12 +195,12 @@ const App = () => (
                 <Route path="/pendencias" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/vitrine" element={<ProfessionalGuard><ModuloGuard modulo="funil_vendas"><Vitrine /></ModuloGuard></ProfessionalGuard>} />
                 <Route path="/pacientes/:id" element={<ProfessionalGuard><PacientePerfil /></ProfessionalGuard>} />
-                <Route path="/aplicacoes" element={<ProfessionalGuard><Aplicacoes /></ProfessionalGuard>} />
-                <Route path="/pacientes/:id/dinamometria" element={<ProfessionalGuard><Dinamometria /></ProfessionalGuard>} />
-                <Route path="/pacientes/:id/dinamometria/treino" element={<ProfessionalGuard><DinamometriaTreino /></ProfessionalGuard>} />
-                <Route path="/dinamometria" element={<ProfessionalGuard><DinamometriaInicio /></ProfessionalGuard>} />
-                <Route path="/dosagem" element={<ProfessionalGuard><Dosagem /></ProfessionalGuard>} />
-                <Route path="/analise-angular" element={<ProfessionalGuard><AnaliseAngular /></ProfessionalGuard>} />
+                <Route path="/aplicacoes" element={<ProfessionalGuard><ModuloGuard modulo="aplicacoes"><Aplicacoes /></ModuloGuard></ProfessionalGuard>} />
+                <Route path="/pacientes/:id/dinamometria" element={<ProfessionalGuard><ModuloGuard modulo="aplicacoes"><Dinamometria /></ModuloGuard></ProfessionalGuard>} />
+                <Route path="/pacientes/:id/dinamometria/treino" element={<ProfessionalGuard><ModuloGuard modulo="aplicacoes"><DinamometriaTreino /></ModuloGuard></ProfessionalGuard>} />
+                <Route path="/dinamometria" element={<ProfessionalGuard><ModuloGuard modulo="aplicacoes"><DinamometriaInicio /></ModuloGuard></ProfessionalGuard>} />
+                <Route path="/dosagem" element={<ProfessionalGuard><ModuloGuard modulo="aplicacoes"><Dosagem /></ModuloGuard></ProfessionalGuard>} />
+                <Route path="/analise-angular" element={<ProfessionalGuard><ModuloGuard modulo="aplicacoes"><AnaliseAngular /></ModuloGuard></ProfessionalGuard>} />
                 <Route path="/protocolos" element={<Navigate to="/pacientes" replace />} />
 
                 <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />

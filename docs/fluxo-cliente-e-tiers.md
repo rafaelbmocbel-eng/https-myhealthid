@@ -309,3 +309,15 @@ Atualização do pacote de segurança (decisões do Rafael, 08/10/2026, migratio
    super-admin**: a RPC confere `eh_super_admin()` pelo e-mail do JWT, então no editor SQL (sem sessão) ela recusa
    com "Apenas o administrador MyHealthID". O mesmo vale para `verificar_profissional` e `profissionais_admin`.
    Antes de ligar, ter ao menos um nutricionista verificado na equipe com a área `nutricao`.
+
+## Atualização (decisão do Rafael — 18/10/2026) — Aplicações e laudo do movimento só para quem paga
+
+- **Aplicações** (dinamometria, dosagem e análise angular, incluindo a aba "Laudo (beta)" e o PDF do laudo do movimento) são o módulo
+  de plano `aplicacoes`: só profissional com plano pago (ou em período de teste do plano) usa. Sem assinatura vigente, o item some do menu
+  e as rotas redirecionam para `/precos`.
+- **Quem vê o laudo** é só quem paga. O laudo continua sem ir ao cliente: se for liberado a ele, só ao cliente Premium e depois de decisão
+  explícita do Rafael.
+- O módulo entra nos planos pagos ativos (Essencial, Profissional e Clínica) por migração; o Rafael pode retirar de um plano no Admin
+  (cada plano edita o que abre). O dono do produto (super-admin) acessa sempre.
+- Implementação: módulo em `src/lib/modulosPlano.ts`, guarda `ModuloGuard` nas seis rotas das aplicações e filtro do menu em
+  `AppSidebar.tsx`; migração `20261018220000_modulo_aplicacoes_planos.sql`; testes em `src/test/aplicacoesPlanoPago.test.tsx`.

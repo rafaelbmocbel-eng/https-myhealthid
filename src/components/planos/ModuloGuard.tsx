@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { usePlanoAtivo, temAcessoModulo } from '@/hooks/usePlanoAtivo';
+import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 
 /**
  * Guarda de ROTA por módulo de plano. Se o plano do usuário não libera o módulo,
@@ -9,7 +10,8 @@ import { usePlanoAtivo, temAcessoModulo } from '@/hooks/usePlanoAtivo';
  */
 export default function ModuloGuard({ modulo, children }: { modulo: string; children: ReactNode }) {
   const { data: plano, isLoading } = usePlanoAtivo();
+  const superAdmin = useIsSuperAdmin();
   if (isLoading) return null;
-  if (!temAcessoModulo(plano, modulo)) return <Navigate to="/precos" replace />;
+  if (!superAdmin && !temAcessoModulo(plano, modulo)) return <Navigate to="/precos" replace />;
   return <>{children}</>;
 }
