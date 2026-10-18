@@ -5,7 +5,7 @@ import {
 } from '@/lib/angular/video/caixaFixaRosto';
 import { configurar, trilhaSintetica } from '@/lib/angular/video/figuraSintetica';
 import { FOLGA_ROSTO_VIDEO, ajusteTotalDoRosto } from '@/lib/angular/video/exportarVideo';
-import { caixasDoRosto, type OrigemCaixa } from '@/lib/angular/video/rostoPorQuadro';
+import { caixasDoRosto, caixasPropriasDoRosto, type OrigemCaixa } from '@/lib/angular/video/rostoPorQuadro';
 import { caixaRostoPadrao, escalarCaixaRosto, type CaixaRosto } from '@/lib/social/rosto';
 
 const bordas = (c: CaixaRosto) => ({ esq: c.cx - c.w / 2, dir: c.cx + c.w / 2, topo: c.cy - c.h / 2, base: c.cy + c.h / 2 });
@@ -166,5 +166,35 @@ describe('caixa fixa do rosto: ir ao próximo quadro sem rosto localizado', () =
   it('o quadro atual fora do trecho não atrapalha', () => {
     expect(proximoQuadroSemRosto(o('ppfppfpp'), 0, 3, 7)).toBe(5);
     expect(proximoQuadroSemRosto(o('ppfppfpp'), 7, 3, 7)).toBe(5);
+  });
+});
+
+describe('caixa fixa do rosto: refazer a cobertura sem recalcular os pontos', () => {
+  const trilha = trilhaSintetica(configurar('agachamento', { largura: 540, altura: 960 }), 30, 3, { ausentes: (t) => (t >= 1 && t < 2 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : false) });
+  const fixa = caixaFixaNaPosicao(540, 960, { cx: 0.4, cy: 0.3 });
+
+  it('com as caixas próprias já calculadas o resultado é idêntico ao do cálculo completo', () => {
+    const proprias = caixasPropriasDoRosto(trilha);
+    expect(proprias).toHaveLength(trilha.quadros.length);
+    expect(proprias.some((c) => c === null)).toBe(true);
+    expect(caixasDoRosto(trilha, { proprias, caixaFixa: fixa })).toEqual(caixasDoRosto(trilha, { caixaFixa: fixa }));
+    expect(caixasDoRosto(trilha, { proprias })).toEqual(caixasDoRosto(trilha));
+  });
+
+  it('as caixas próprias não dependem da caixa fixa: só a união e a caixa fixa mudam quando ela se move', () => {
+    const proprias = caixasPropriasDoRosto(trilha);
+    const a = caixasDoRosto(trilha, { proprias, caixaFixa: caixaFixaNaPosicao(540, 960, { cx: 0.2, cy: 0.2 }) });
+    const b = caixasDoRosto(trilha, { proprias, caixaFixa: caixaFixaNaPosicao(540, 960, { cx: 0.8, cy: 0.7 }) });
+    expect(a.map((c) => c.origem)).toEqual(b.map((c) => c.origem));
+    const i = a.findIndex((c) => c.origem === 'fixa');
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(a[i].caixa).not.toEqual(b[i].caixa);
+    const comRosto = a.findIndex((c, k) => c.origem === 'pose' && a.slice(Math.max(0, k - 3), k + 4).every((x) => x.origem === 'pose'));
+    expect(a[comRosto].caixa).toEqual(b[comRosto].caixa);
+  });
+
+  it('caixas próprias de outro tamanho são ignoradas (nunca desalinham a cobertura dos quadros)', () => {
+    const curtas = caixasPropriasDoRosto(trilha).slice(0, 10);
+    expect(caixasDoRosto(trilha, { proprias: curtas, caixaFixa: fixa })).toEqual(caixasDoRosto(trilha, { caixaFixa: fixa }));
   });
 });

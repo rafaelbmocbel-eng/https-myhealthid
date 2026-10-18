@@ -100,8 +100,8 @@ describe('diálogo de exportação: caixa do rosto arrastável nos quadros sem r
     await aguardarPrevia();
     await waitFor(() => expect(caixa()).toBeInTheDocument());
     expect(screen.getByTestId('dica-rosto-video')).toHaveTextContent(/Em 50% dos quadros não localizei o rosto/);
-    expect(screen.getByTestId('dica-rosto-video')).toHaveTextContent(/Arraste a caixa tracejada sobre o rosto/);
-    expect(screen.getByTestId('situacao-caixa-rosto')).toHaveTextContent(/Neste quadro o rosto não foi localizado/);
+    expect(screen.getByTestId('dica-rosto-video')).toHaveTextContent(/caixa fixa que você pode mover/);
+    expect(screen.getByTestId('situacao-caixa-rosto')).toHaveTextContent(/arraste-a até o rosto, ou use as setas do teclado/);
     expect(conferir()).toBeInTheDocument();
     expect(botaoBaixar()).toBeDisabled();
   });

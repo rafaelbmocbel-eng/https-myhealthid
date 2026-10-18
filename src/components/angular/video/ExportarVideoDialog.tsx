@@ -71,7 +71,7 @@ const BarraDeGravacao = memo(function BarraDeGravacao({ valorInicial, assinar, a
 /** O que o app sabe do rosto: só afirma "em todos os quadros" quando é verdade; quadros por vizinhança ou área fixa são ditos como estimativa. */
 function textoDoRosto(r: ResumoDoRosto): string {
   if (r.semRosto) {
-    return `Em ${Math.round(r.porOrigem.fixa)}% dos quadros não localizei o rosto com segurança (o paciente saiu do quadro ou o corpo não foi detectado): neles a cobertura é uma estimativa, a última posição conhecida mais uma caixa fixa que você pode mover. Arraste a caixa tracejada sobre o rosto na prévia (ou use as setas do teclado com ela selecionada) e passe pelos quadros para conferir se ele está coberto.`;
+    return `Em ${Math.round(r.porOrigem.fixa)}% dos quadros não localizei o rosto com segurança (o paciente saiu do quadro ou o corpo não foi detectado): neles a cobertura é uma estimativa, a última posição conhecida mais uma caixa fixa que você pode mover. Passe pelos quadros na prévia e confira se o rosto está coberto.`;
   }
   if (r.porOrigem.vizinho > 0) return `Rosto localizado pelos pontos do corpo; em ${Math.round(r.porOrigem.vizinho)}% dos quadros a posição vem dos quadros vizinhos. Confira na prévia.`;
   return 'Rosto localizado pelos pontos do corpo em todos os quadros. Confira na prévia.';
@@ -533,7 +533,7 @@ export default function ExportarVideoDialog({
                     <div className="space-y-2" data-testid="controle-caixa-rosto">
                       <p className="text-xs text-muted-foreground" data-testid="situacao-caixa-rosto">
                         {origemDoQuadroAtual === 'fixa'
-                          ? 'Neste quadro o rosto não foi localizado: a cobertura usa a caixa tracejada da prévia. Arraste-a até cobrir o rosto; a posição vale para todos os quadros sem rosto localizado.'
+                          ? 'Neste quadro a cobertura usa a caixa tracejada da prévia: arraste-a até o rosto, ou use as setas do teclado com ela selecionada. A posição vale para todos os quadros sem rosto localizado.'
                           : 'Neste quadro o rosto foi localizado e a cobertura o acompanha. A caixa só aparece nos quadros sem rosto localizado.'}
                       </p>
                       {(origemDoQuadroAtual !== 'fixa' || caixaMovida) && (

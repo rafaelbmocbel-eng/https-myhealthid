@@ -23,4 +23,5 @@ export * from './modelos';
 export * from './metricas';
 export * from './referencias';
 export * from './rostoPorQuadro';
+export * from './caixaFixaRosto';
 export * from './rastrear';

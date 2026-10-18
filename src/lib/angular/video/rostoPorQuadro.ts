@@ -8,7 +8,8 @@ import { PONTOS_MEDIAPIPE, PONTOS_ROSTO, type QuadroPose, type TrilhaPose } from
  * amostra e outra) e cresce por uma margem. Um quadro sem rosto detectado só é dado como coberto ('vizinho') quando há rosto detectado
  * dos DOIS lados dele: a união das duas caixas cobre o trajeto entre elas. Com um vizinho só, ou nenhum, o rosto pode ter ido para
  * qualquer lugar (o paciente saindo ou entrando no quadro): o quadro vira 'fixa', cobre a última posição conhecida e a caixa fixa,
- * e o app pede ao profissional que confira a cobertura na prévia.
+ * e o app pede ao profissional que confira a cobertura na prévia. A caixa fixa pode ser arrastada por ele até o rosto (caixaFixaRosto.ts):
+ * a posição escolhida vale para todos os quadros 'fixa', e a união com a última posição conhecida continua valendo.
  */
 export type OrigemCaixa = 'pose' | 'vizinho' | 'fixa';
 
@@ -23,6 +24,8 @@ export interface OpcoesRosto {
   folgaTemporalS?: number;
   /** Multiplicador de largura e altura aplicado depois da união. */
   margem?: number;
+  /** Caixas próprias de cada quadro (de `caixasPropriasDoRosto`), para refazer a cobertura sem recalcular os pontos; ignoradas se não houver uma por quadro. */
+  proprias?: (CaixaRosto | null)[];
 }
 
 const MAX_LACUNA_S = 0.5;
@@ -71,6 +74,11 @@ export function semPontosDoRosto(q: QuadroPose): QuadroPose {
   return { ...q, pontos };
 }
 
+/** Caixa de cada quadro só pelos pontos do próprio quadro (null onde o rosto não foi localizado). Não depende da caixa fixa. */
+export function caixasPropriasDoRosto(trilha: TrilhaPose): (CaixaRosto | null)[] {
+  return trilha.quadros.map((_, i) => caixaDoRostoPorLandmarks(landmarksDoRosto(trilha, i), trilha.largura, trilha.altura));
+}
+
 /** Caixa do rosto de cada quadro da trilha (uma por quadro). */
 export function caixasDoRosto(trilha: TrilhaPose, opcoes: OpcoesRosto = {}): CaixaDoQuadro[] {
   const n = trilha.quadros.length;
@@ -79,7 +87,7 @@ export function caixasDoRosto(trilha: TrilhaPose, opcoes: OpcoesRosto = {}): Cai
   const folga = Math.max(0, Math.round((opcoes.folgaTemporalS ?? FOLGA_TEMPORAL_S) * trilha.fps));
   const margem = Math.max(1, opcoes.margem ?? MARGEM_ROSTO);
 
-  const proprias: (CaixaRosto | null)[] = trilha.quadros.map((_, i) => caixaDoRostoPorLandmarks(landmarksDoRosto(trilha, i), trilha.largura, trilha.altura));
+  const proprias = opcoes.proprias?.length === n ? opcoes.proprias : caixasPropriasDoRosto(trilha);
 
   const base: CaixaDoQuadro[] = proprias.map((c, i) => {
     if (c) return { caixa: c, origem: 'pose' as const };

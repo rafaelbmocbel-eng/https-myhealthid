@@ -21,7 +21,7 @@ import {
   type FormatoVideo, type ItemMetricaVideo, type LayoutConteudo, type SuporteGravacao,
 } from './exportarVideoPuro';
 import { corrigirDuracaoDoBlob } from './webmDuracao';
-import { caixasDoRosto, resumoDoRosto, semPontosDoRosto, type CaixaDoQuadro, type OrigemCaixa } from './rostoPorQuadro';
+import { caixasDoRosto, caixasPropriasDoRosto, resumoDoRosto, semPontosDoRosto, type CaixaDoQuadro, type OrigemCaixa } from './rostoPorQuadro';
 import { garantirDuracao } from './rastrear';
 import type { Intervalo, QuadroPose, TrilhaPose } from './tipos';
 import { indiceNoTempo } from './trilha';
@@ -685,7 +685,9 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   desenharCartoes(ctxB, layout, itensMetricas);
 
   // ---- rosto ----
-  const calcularCaixas = (caixaFixa?: CaixaRosto) => caixasDoRosto(trilha, caixaFixa ? { caixaFixa } : {});
+  // Os pontos do rosto não mudam quando a caixa fixa é movida: só a união e a caixa fixa são refeitas a cada gesto de arrasto.
+  const propriasDoRosto = caixasPropriasDoRosto(trilha);
+  const calcularCaixas = (caixaFixa?: CaixaRosto) => caixasDoRosto(trilha, caixaFixa ? { caixaFixa, proprias: propriasDoRosto } : { proprias: propriasDoRosto });
   let caixas = calcularCaixas(op.caixaFixa);
   // A origem de cada quadro não depende de onde a caixa fixa está: o resumo (e o aviso de quadros sem rosto) vale para qualquer posição.
   const resumo = resumoDoRosto(caixas);
