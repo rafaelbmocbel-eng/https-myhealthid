@@ -1,5 +1,5 @@
 import type { DetectorQuadro, Intervalo, QuadroPose, TrilhaPose } from './tipos';
-import { criarTrilha, pontosDeLandmarks } from './trilha';
+import { criarTrilha, pontosDeLandmarks, tempoDeExibicao } from './trilha';
 
 export const FPS_PADRAO = 30;
 /** Máximo de quadros rastreados em uma análise (40 s a 30 quadros/s): acima disso a taxa é reduzida para o aparelho aguentar. */
@@ -131,7 +131,7 @@ export async function rastrearVideo(video: HTMLVideoElement, opcoes: OpcoesRastr
   for (let i = 0; i < total; i++) {
     if (sinal?.aborted) throw erroCancelado();
     const t = inicio + i / fps;
-    await posicionar(video, Math.min(t, Math.max(0, duracaoTotal - 0.001)), sinal);
+    await posicionar(video, Math.min(tempoDeExibicao(t, fps), Math.max(0, duracaoTotal - 0.001)), sinal);
     if (sinal?.aborted) throw erroCancelado();
     let lm = null;
     try {

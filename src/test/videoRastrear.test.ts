@@ -8,6 +8,7 @@ import { configurar, detectorFalso, poseSintetica } from '../lib/angular/video/d
 import { anguloJoelho, angulosPorQuadro } from '../lib/angular/video/angulos';
 import { analisarGesto } from '../lib/angular/video/metricas';
 import type { DetectorQuadro } from '../lib/angular/video/tipos';
+import { tempoDeExibicao } from '../lib/angular/video/trilha';
 
 describe('planejarQuadros', () => {
   it('usa a taxa pedida quando cabe no limite de quadros', () => {
@@ -70,11 +71,18 @@ describe('rastrearVideo com vídeo e detector falsos', () => {
     const buscas: number[] = [];
     const video = criarVideoFalso({ duracao: 1, buscas });
     await rastrearVideo(video, { fps: 10, detector: detectorFalso(cfg) });
-    // o primeiro quadro (0 s) não exige busca, porque o vídeo já está no início; depois cada instante é pedido em ordem e o fim volta a 0
-    expect(buscas.slice(0, 9).map((t) => Math.round(t * 100) / 100)).toEqual([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]);
-    expect(buscas[9]).toBe(0);
-    expect(buscas).toHaveLength(10);
+    // cada quadro é buscado no mesmo instante de exibição do player; o fim volta o vídeo a 0
+    expect(buscas.slice(0, 10)).toEqual(Array.from({ length: 10 }, (_, i) => expect.closeTo(tempoDeExibicao(i / 10, 10), 9)));
+    expect(buscas[10]).toBe(0);
+    expect(buscas).toHaveLength(11);
     expect(video.currentTime).toBe(0);
+  });
+
+  it('o rastreio e o player param o vídeo no mesmo instante de cada quadro (a pose é a da imagem mostrada)', async () => {
+    const buscas: number[] = [];
+    const trilha = await rastrearVideo(criarVideoFalso({ duracao: 2, buscas }), { fps: 30, intervalo: { inicio: 0.5, fim: 1.5 }, detector: detectorFalso(cfg) });
+    const exibicao = trilha.quadros.map((q) => tempoDeExibicao(q.t, trilha.fps));
+    expect(buscas.slice(0, trilha.quadros.length)).toEqual(exibicao.map((x) => expect.closeTo(x, 9)));
   });
 
   it('o detector recebe o vídeo e o instante exato de cada quadro', async () => {

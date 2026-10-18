@@ -24,6 +24,14 @@ export function trilhaDeLandmarks(quadros: { t: number; lm: Landmark[] | null }[
   return criarTrilha(fps, largura, altura, quadros.map((q, i) => ({ i, t: q.t, pontos: pontosDeLandmarks(q.lm, largura, altura) })));
 }
 
+/**
+ * Instante em que o vídeo é parado para mostrar o quadro de tempo `t`: um pouco depois do início do quadro,
+ * porque parar exatamente no carimbo de tempo pode mostrar o quadro anterior por erro de arredondamento
+ * (vídeos a 29,97 ou 59,94 q/s têm carimbos que não caem em i/30). O rastreio, o player e as exportações usam esta mesma regra
+ * para a pose de um quadro ser a da imagem que o profissional vê.
+ */
+export const tempoDeExibicao = (t: number, fps: number): number => t + 0.25 / Math.max(1, fps);
+
 export const duracaoDaTrilha = (trilha: TrilhaPose): number => (trilha.quadros.length > 1 ? trilha.quadros[trilha.quadros.length - 1].t - trilha.quadros[0].t : 0);
 
 /** Índice do quadro mais próximo do instante `t` (em segundos do vídeo), limitado à trilha. */

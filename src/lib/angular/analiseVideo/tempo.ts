@@ -30,11 +30,7 @@ export function indiceMaisProximo(tempos: readonly number[], t: number): number 
   return t - tempos[lo] <= tempos[hi] - t ? lo : hi;
 }
 
-/**
- * Instante em que o vídeo é parado para mostrar o quadro de tempo `t`: um pouco depois do início do quadro,
- * porque parar exatamente no carimbo de tempo pode mostrar o quadro anterior por erro de arredondamento.
- */
-export const tempoDeExibicao = (t: number, fps: number): number => t + 0.25 / Math.max(1, fps);
+export { tempoDeExibicao } from '@/lib/angular/video/trilha';
 
 /** Intervalo entre quadros (ms) para tocar quadro a quadro na velocidade pedida. */
 export const intervaloEntreQuadrosMs = (fps: number, velocidade: number): number => 1000 / (Math.max(1, fps) * Math.max(0.01, velocidade));
