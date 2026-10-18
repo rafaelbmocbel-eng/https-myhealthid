@@ -164,6 +164,37 @@ describe('trilhas degeneradas: nenhuma exceção, listas vazias e avisos', () =>
       ? ({ i, t: i / 30 } as unknown as QuadroPose)
       : quadro(i, i / 30, { joelho_d: {} as never, quadril_d: { x: 1 } as never, nariz: null as never })));
     paraTodos(trilhaDe(quadros), 'pontos malformados');
+    const comNulos = [null, undefined, 5, 'x', ...quadros] as unknown as QuadroPose[];
+    paraTodos(trilhaDe(comNulos, 0), 'quadros nulos e taxa inválida');
+  });
+
+  it('protocolo montado à mão com fase ou medida desconhecida não lança: avisa e deixa a medida sem valor', () => {
+    const base = protocoloDo('agachamento_lateral');
+    const p = { ...base, medidas: [{ ...base.medidas[0], fase: 'inexistente' }, { ...base.medidas[1], id: 'medida_nova' }, ...base.medidas.slice(2)] };
+    const a = analisarMovimento(p, trilhaAgachamentoLateral({ ruidoPx: 1, semente: 2 }));
+    expect(a.avisos.join(' ')).not.toMatch(/Erro interno/);
+    expect(a.medidas[0].avisos.join(' ')).toMatch(/fase "inexistente"/);
+    expect(a.medidas[0].valores.D?.every((v) => v === null)).toBe(true);
+    expect(a.medidas[1].valores.D?.every((v) => v === null)).toBe(true);
+    expect(a.repeticoes).toHaveLength(5);
+  });
+
+  it('um erro inesperado vira aviso visível e uma análise com a estrutura completa e sem valores', () => {
+    const base = protocoloDo('agachamento_lateral');
+    const quebrado = { ...base, articulacoes: [null as never, ...base.articulacoes] };
+    const a = analisarMovimento(quebrado, trilhaAgachamentoLateral({}));
+    expect(a.avisos.join(' ')).toMatch(/Erro interno ao analisar este vídeo/);
+    expect(a.repeticoes).toEqual([]);
+    expect(a.achados).toEqual([]);
+    expect(a.medidas.map((m) => m.def.id)).toEqual(base.medidas.map((m) => m.id));
+    for (const m of a.medidas) {
+      for (const l of m.def.porLado ? (['D', 'E'] as const) : (['unico'] as const)) {
+        expect(m.valores[l]).toEqual([]);
+        expect(a.resumos[m.def.id][l]?.n).toBe(0);
+      }
+    }
+    expect(a.indisponiveis.length).toBeGreaterThan(0);
+    expect(a.incerteza.formula.length).toBeGreaterThan(20);
   });
 
   it('opções estranhas: suavização inválida, escala inválida, eventos inválidos e critérios com valor inválido', () => {

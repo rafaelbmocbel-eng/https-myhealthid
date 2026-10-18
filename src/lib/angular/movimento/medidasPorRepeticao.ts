@@ -25,6 +25,13 @@ export interface EntradaMedidas {
   quadroS: number;
 }
 
+/**
+ * Quadros de incerteza de um tempo. Na marcha os marcos são eventos (contato e saída do pé, com instante refinado entre quadros): um
+ * quadro. No agachamento o início e o fim vêm do cruzamento de um nível numa série ruidosa, e o instante oscila mais que um quadro
+ * quando o vídeo é ruidoso: dois quadros (o fator de cobertura sobre o erro de um quadro).
+ */
+export const quadrosDeIncertezaDoTempo = (protocolo: Protocolo): number => (protocolo.gesto === 'marcha' ? 1 : FATOR_COBERTURA);
+
 /** Meia-largura, em segundos, da vizinhança do marco em que se estima a incerteza de uma medida lida num instante só. */
 const VIZINHANCA_MARCO_S = 0.3;
 
@@ -157,7 +164,11 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
       refsPx[def.id][lado] = def.id === 'descida_pelve' ? (normalizador?.refPx ?? null) : (fonteDesloc?.refPx ?? null);
 
       const uSerie = serie && fase ? incertezaNasJanelas(serie, janelasDaMedida(def, fase, repeticoes, lado, 1 / quadroS)) : (serie?.u ?? null);
-      if (def.grandeza === 'tempo') incerteza[lado] = FATOR_COBERTURA * quadroS;
+      if (def.grandeza === 'tempo') {
+        const quadros = quadrosDeIncertezaDoTempo(protocolo);
+        incerteza[lado] = quadros * quadroS;
+        if (quadros > 1 && lado === lados[0]) avisos.push('Início e fim da repetição são achados por um nível na série suavizada, que oscila com o ruído do vídeo: a incerteza da duração é de dois quadros.');
+      }
       else if (def.id === 'descida_pelve') {
         const ref = normalizador?.refPx ?? null;
         incerteza[lado] = uSerie !== null && ref !== null && ref > 0 ? (uSerie / ref) * 100 : null;

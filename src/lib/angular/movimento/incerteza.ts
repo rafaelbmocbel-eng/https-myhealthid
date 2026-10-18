@@ -100,7 +100,7 @@ export function fpsEfetivo(trilha: TrilhaPose): { fps: number; declarada: boolea
   if (fpsPlausivel(trilha.fps)) return { fps: trilha.fps, declarada: true };
   const passos: number[] = [];
   for (let i = 1; i < trilha.quadros.length; i++) {
-    const d = trilha.quadros[i].t - trilha.quadros[i - 1].t;
+    const d = (trilha.quadros[i]?.t as number) - (trilha.quadros[i - 1]?.t as number);
     if (finito(d) && d > 0) passos.push(d);
   }
   const d = mediana(passos);

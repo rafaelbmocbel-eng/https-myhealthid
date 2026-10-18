@@ -191,7 +191,7 @@ export const FORMULAS_INCERTEZA: Record<GrandezaMedida, string> = {
     'as n amostras das janelas em que a medida é lida e em que a série bruta e a suavizada têm valor; ' +
     'cada medida usa a série da sua articulação, e a incerteza angular geral do vídeo é a mediana de u entre as séries angulares do protocolo.',
   deslocamento: 'Deslocamentos: o mesmo cálculo (fator de cobertura 2 e resíduo bruto − suavizado), feito sobre a série normalizada da própria medida (por exemplo, % da coxa).',
-  tempo: 'Tempos: u = 2 × (1 ÷ taxa efetiva da trilha), isto é, dois quadros: o erro de um quadro com o mesmo fator de cobertura 2.',
+  tempo: 'Tempos: u = 1 ÷ taxa efetiva da trilha (um quadro).',
 };
 
 export const DESCRICAO_INCERTEZA =

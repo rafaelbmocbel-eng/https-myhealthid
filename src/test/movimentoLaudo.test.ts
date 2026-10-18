@@ -64,6 +64,16 @@ describe('laudo: seções, ordem e cabeçalho', () => {
     expect(preenchido.cabecalho.linhas.find((l) => l.rotulo === 'Responsável pela revisão')?.valor).toBe('Dra. Revisora');
   });
 
+  it('taxa efetiva ausente ou inválida aparece como "não informada", sem inventar valor', () => {
+    for (const taxa of [0, Number.NaN, -5]) {
+      const l = montarLaudo(analiseFixa(), contexto({ taxaEfetivaFps: taxa }), BIBLIOTECA_FIXA);
+      expect(l.cabecalho.linhas.find((x) => x.rotulo === 'Taxa efetiva de quadros')?.valor).toBe('não informada');
+      expect(l.metodo.paragrafos.join(' ')).toContain('na taxa efetiva da trilha (não informada)');
+    }
+    const ok = montarLaudo(analiseFixa(), contexto({ taxaEfetivaFps: 29.97 }), BIBLIOTECA_FIXA);
+    expect(ok.cabecalho.linhas.find((x) => x.rotulo === 'Taxa efetiva de quadros')?.valor).toBe('29,97 quadros por segundo');
+  });
+
   it('sem trecho, sem paciente e sem medida manual fora do trecho, as linhas opcionais não aparecem', () => {
     const l = montarLaudo(analiseFixa(), contexto(), BIBLIOTECA_FIXA);
     const rotulos = l.cabecalho.linhas.map((x) => x.rotulo);
@@ -177,6 +187,15 @@ describe('laudo: achados, hipóteses e itens a conferir', () => {
     expect(l.achados[0].titulo).toBe('Mudança de uma medida da primeira para a última repetição: Flexão máxima do quadril (lado esquerdo)');
     expect(l.achados[0].repeticoes).toBe('Repetições comparadas: a primeira e a última com valor (1 e 4).');
     expect(l.resumo.itens[0]).toContain('Flexão máxima do quadril (lado esquerdo)');
+  });
+
+  it('medida sem par D/E (deslocamento da pelve) diz para que lado o valor aponta, em vez de "média por lado"', () => {
+    const f = protocoloDo('agachamento_frontal');
+    const pelve = achado('desvio_lateral_pelve', f, { lado: 'E', valoresPorLado: { E: -3.2 }, valor: 3.2, incerteza: 1.1 });
+    const l = montarLaudo(analiseFixa('agachamento_frontal', [pelve]), contexto(), BIBLIOTECA_FIXA);
+    expect(l.achados[0].medida).toContain('Média: 3,2 % da base de apoio, para o lado esquerdo do paciente.');
+    expect(l.achados[0].medida).not.toContain('Média por lado');
+    expect(l.achados[0].titulo).toBe('Deslocamento lateral da pelve em relação à base de apoio');
   });
 
   it('achado dentro da incerteza diz que está dentro da incerteza do vídeo; sem incerteza estimada, diz que não comparou', () => {

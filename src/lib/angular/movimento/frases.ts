@@ -122,6 +122,9 @@ export function fpsTexto(fps: number): string {
   return t.includes(',') ? t.replace(/0+$/, '').replace(/,$/, '') : t;
 }
 
+/** "30 quadros por segundo"; taxa ausente ou inválida vira "não informada", sem inventar valor. */
+export const taxaEfetivaTexto = (fps: number | null | undefined): string => (finito(fps) && fps > 0 ? `${fpsTexto(fps)} quadros por segundo` : 'não informada');
+
 export const segundosTexto = (s: number | null | undefined): string => `${fmt(s, 1)} s`;
 
 /** [1,2,3,5] → "1 a 3 e 5"; [2,4,6] → "2, 4 e 6"; [1,2] → "1 e 2". Corridas de três ou mais viram intervalo. */
@@ -227,34 +230,33 @@ export function linhaResumoDoAchado(titulo: string, a: Achado, situacao: string)
 }
 
 /**
- * Título do achado no laudo: o do catálogo, mais a medida quando o título não a nomeia (a mudança da primeira para a última repetição
- * vale para várias medidas) e mais o lado quando o achado é de um lado só. O título do critério do profissional já é específico.
+ * Título do achado no laudo: o do catálogo, mais a medida quando o achado vale para várias medidas (a mudança da primeira para a última
+ * repetição) e mais o lado quando o achado é de um lado só. O título do critério do profissional já é específico.
  */
-export function tituloDoAchado(a: Pick<Achado, 'titulo' | 'gatilho' | 'lado'>, nomeDaMedida: string, marcha: boolean): string {
+export function tituloDoAchado(a: Pick<Achado, 'titulo' | 'gatilho' | 'lado'>, nomeDaMedida: string, marcha: boolean, variasMedidas: boolean): string {
   if (a.gatilho === 'criterio_profissional') return a.titulo;
-  const nomeadaNoTitulo = a.titulo.toLowerCase().includes(nomeDaMedida.toLowerCase());
-  const base = nomeadaNoTitulo ? a.titulo : `${a.titulo}: ${nomeDaMedida}`;
+  const base = variasMedidas ? `${a.titulo}: ${nomeDaMedida}` : a.titulo;
   if (a.gatilho === 'assimetria_entre_lados' || a.lado === null) return base;
   return `${base} (${marcha ? 'pé' : 'lado'} ${ROTULO_LADO[a.lado]})`;
 }
 
 // ---------- achados ----------
 
-export function textoMedidaDoAchado(a: Achado, nomeDaMedida: string, definidoPor?: string): string {
+export function textoMedidaDoAchado(a: Achado, nomeDaMedida: string, porLado: boolean): string {
   const partes = [`Medida: ${nomeDaMedida}.`, `Valor do achado: ${valorDoAchadoTexto(a)}.`];
-  const lados = valoresPorLadoTexto(a.valoresPorLado, a.unidade);
-  if (lados) partes.push(`Média por lado: ${lados}.`);
-  else if (a.valoresPorLado) {
-    const unico = (['D', 'E'] as const).find((l) => finito(a.valoresPorLado?.[l]));
-    if (unico) partes.push(`Média: ${valorComUnidade(a.valoresPorLado[unico], a.unidade)} (sinal conforme a definição da medida).`);
+  if (porLado) {
+    const lados = valoresPorLadoTexto(a.valoresPorLado, a.unidade);
+    if (lados) partes.push(`Média por lado: ${lados}.`);
+  } else if (a.valoresPorLado) {
+    // Medida sem par D/E (deslocamento lateral da pelve): o lado diz para onde o valor aponta, não de qual membro ele vem.
+    const lado = (['D', 'E'] as const).find((l) => finito(a.valoresPorLado?.[l]));
+    if (lado) partes.push(`Média: ${valorComUnidade(Math.abs(a.valoresPorLado[lado] as number), a.unidade)}, para o lado ${ROTULO_LADO[lado]} do paciente.`);
   }
   if (a.equivalenteCm !== undefined) {
     partes.push(a.equivalenteCm === null ? 'Equivalente em cm não calculado: falta a referência em pixels.' : `Equivalente aproximado: ${fmtUn(a.equivalenteCm, 'cm', 1)}, com a escala informada.`);
   }
   partes.push(`Gatilho: ${GATILHO_CURTO[a.gatilho]}.`);
-  if (a.veredito) {
-    partes.push(`Critério: ${a.veredito.criterio.rotulo}, definido por ${definidoPor ?? a.veredito.criterio.definidoPor}.`);
-  }
+  if (a.veredito) partes.push(`Critério: ${a.veredito.criterio.rotulo}, definido por ${a.veredito.criterio.definidoPor}.`);
   return partes.join(' ');
 }
 

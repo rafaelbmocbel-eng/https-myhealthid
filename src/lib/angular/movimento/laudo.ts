@@ -7,11 +7,11 @@ import { BIBLIOTECA } from './biblioteca';
 import { criterioAplicavel, criterioValidoNoProtocolo } from './criterios';
 import { finito, fmt } from './estatistica';
 import {
-  AVISOS_FIXOS, capitalizar, dataBr, ETIQUETA_BETA, fpsTexto, fraseAchadosPorGatilho, fraseCriteriosNoResumo, fraseIndisponiveisNoResumo, fraseParaAvaliar,
+  AVISOS_FIXOS, capitalizar, dataBr, ETIQUETA_BETA, fraseAchadosPorGatilho, fraseCriteriosNoResumo, fraseIndisponiveisNoResumo, fraseParaAvaliar,
   fraseRepeticoesCompletas, fraseRepeticoesIdentificadas, INTRO_INDISPONIVEIS, INTRO_MEDIDAS, legendaDaMedida, LEGENDA_RESUMO_MEDIDAS, limiteDoCriterio,
   linhaResumoDoAchado, maisOuMenos, motivoCriterioNaoAplicado, numeroComCasas, ORDEM_GATILHOS, rotuloDaRepeticao, ROTULO_AVISO, ROTULO_RESPONSAVEL, ROTULO_SINALIZADOR, segundosTexto,
   TEXTO_MEDIDA_SEM_VALOR, TEXTO_MINIMO_REPETICOES, TEXTO_NENHUMA_REPETICAO, TEXTO_SEM_CRITERIOS, TEXTO_SEM_INDISPONIVEIS, textoIncertezaDoAchado, textoMedidaDoAchado,
-  textoRepeticoesDoAchado, TITULO_LAUDO, tituloDoAchado, TITULOS, valorComUnidade, comPontoFinal,
+  taxaEfetivaTexto, textoRepeticoesDoAchado, TITULO_LAUDO, tituloDoAchado, TITULOS, valorComUnidade, comPontoFinal,
 } from './frases';
 import { achadoDoCatalogo, achadosAvaliaveis, GATILHOS, medidaDo, faseDo, protocoloDo } from './protocolos';
 import type {
@@ -107,10 +107,10 @@ function achadoDoLaudo(a: Achado, analise: AnaliseMovimento, protocolo: Protocol
   const descricao = capitalizar(a.descricao.trim() || `${a.titulo}: ${valorComUnidade(a.valor, a.unidade)}.`);
   return {
     achado: a,
-    titulo: tituloDoAchado(a, nomeDaMedida, protocolo.gesto === 'marcha'),
+    titulo: tituloDoAchado(a, nomeDaMedida, protocolo.gesto === 'marcha', (protocolo.achados.find((x) => x.chave === a.chave)?.medidas.length ?? 0) > 1),
     descricao,
     situacao: ROTULO_SITUACAO[a.situacao],
-    medida: textoMedidaDoAchado(a, nomeDaMedida),
+    medida: textoMedidaDoAchado(a, nomeDaMedida, medidaDo(protocolo, a.medida)?.porLado ?? false),
     incerteza: textoIncertezaDoAchado(a),
     repeticoes: textoRepeticoesDoAchado(a.gatilho, numeros, protocolo.rotuloRepeticao),
     hipoteses: entrada ? hipotesesDaEntrada(entrada, refs) : [],
@@ -140,7 +140,7 @@ function cabecalhoDoLaudo(analise: AnaliseMovimento, contexto: ContextoLaudo, pr
   linhas.push(
     { rotulo: 'Protocolo', valor: protocolo.nome },
     { rotulo: 'Plano de câmera', valor: ROTULO_PLANO[analise.planoFilmado] },
-    { rotulo: 'Taxa efetiva de quadros', valor: `${fpsTexto(contexto.taxaEfetivaFps)} quadros por segundo` },
+    { rotulo: 'Taxa efetiva de quadros', valor: taxaEfetivaTexto(contexto.taxaEfetivaFps) },
   );
   if (contexto.trecho) linhas.push({ rotulo: 'Trecho analisado', valor: `de ${segundosTexto(contexto.trecho.inicio)} a ${segundosTexto(contexto.trecho.fim)}` });
   linhas.push(
@@ -361,7 +361,7 @@ function secaoDeMetodo(analise: AnaliseMovimento, contexto: ContextoLaudo, proto
     : `Incerteza angular geral não estimada neste vídeo (amostras insuficientes). Um quadro equivale a ${fmt(inc.quadroS, 3)} s.`;
   const paragrafos = [
     `Identificação das repetições: ${comPontoFinal(protocolo.segmentacao)}`,
-    `As medidas são lidas na série suavizada de cada articulação, na taxa efetiva de ${fpsTexto(contexto.taxaEfetivaFps)} quadros por segundo. Os pontos do corpo vêm de um modelo de pose que roda no dispositivo, e o profissional pode corrigir os pontos quadro a quadro.`,
+    `As medidas são lidas na série suavizada de cada articulação, na taxa efetiva da trilha (${taxaEfetivaTexto(contexto.taxaEfetivaFps)}). Os pontos do corpo vêm de um modelo de pose que roda no dispositivo, e o profissional pode corrigir os pontos quadro a quadro.`,
     `Incerteza estimada do vídeo: ${inc.formula}`,
     `O que a incerteza estimada é e o que não é: ${inc.descricao}`,
     angular,

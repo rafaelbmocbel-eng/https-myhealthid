@@ -285,8 +285,10 @@ export async function gerarPdfLaudo(laudo: LaudoMovimento, opcoes: OpcoesPdfLaud
     return { g, png };
   }).filter((x) => x.png);
   if (imagens.length) {
-    titulo(TITULOS.graficos);
     const wg = (LARG - 4) / 2, hg = (wg * 190) / 360;
+    garantir(16 + hg + 10);
+    titulo(TITULOS.graficos);
+    y += 1.5;
     for (let i = 0; i < imagens.length; i += 2) {
       garantir(hg + 10);
       imagens.slice(i, i + 2).forEach(({ g, png }, k) => {
@@ -371,6 +373,7 @@ export async function gerarPdfLaudo(laudo: LaudoMovimento, opcoes: OpcoesPdfLaud
     y += 4;
   };
 
+  garantir(16 + 34);
   titulo(TITULOS.achados);
   if (!laudo.achados.length) escrever(TEXTO_SEM_ACHADOS, { folga: 3 });
   laudo.achados.forEach((a, i) => { desenharAchado(a, i); });

@@ -1,26 +1,28 @@
 import { angulosPorQuadro, type AmostraAngulo } from '../video/angulos';
+import { janelaEmAmostras, suavizar } from '../video/suavizar';
 import { detectarEventosMarcha, type EventoPasso } from '../video/eventos';
 import type { Lado, TrilhaPose } from '../video/tipos';
 import { deteccaoPct, estimarDirecao } from '../video/trilha';
 import { detectarAchados } from './achados';
-import { finito, percentil, validos } from './estatistica';
+import { finito, percentil, resumir, validos } from './estatistica';
 import { FATOR_COBERTURA, fpsEfetivo, incertezaAngularGeral, JANELA_SUAVIZACAO_S, processarSerie, quadroDaTrilha, type SerieProcessada } from './incerteza';
-import { calcularMedidas } from './medidasPorRepeticao';
+import { calcularMedidas, quadrosDeIncertezaDoTempo } from './medidasPorRepeticao';
 import { DESCRICAO_INCERTEZA, formulaDaIncerteza, indisponiveisDoProtocolo, protocoloDo } from './protocolos';
 import { marcarDuracoesDiscrepantes, repeticoesDaMarcha, repeticoesDoAgachamento, segmentarPicos } from './repeticoes';
 import {
   brutoAlturaPelve, brutoAvanco, brutoDesvioPelve, brutoProfundidade, brutoQuadrilTornozelo, comoFonte, type Fonte,
 } from './seriesDerivadas';
-import type { AnaliseMovimento, IdProtocolo, OpcoesAnalise, Protocolo, Repeticao } from './tipos';
+import type { AnaliseMovimento, ChaveLado, IdProtocolo, MedidaPorRepeticao, OpcoesAnalise, Protocolo, Repeticao } from './tipos';
 
 /*
  * Motor da Etapa 3 (agente M): trilha de pose → repetições, medidas por repetição e por lado, resumos, incerteza do vídeo e achados.
  * Puro, determinístico, sem rede e sem modelo de linguagem. Mede e descreve; não treina, não dá nota e não diagnostica.
  *
- * Decisões de engenharia da segmentação (não são limites clínicos; o laudo as mostra em `protocolo.segmentacao`):
+ * Parâmetros de engenharia da segmentação (não são limites clínicos; `protocolo.segmentacao` descreve o método, e estes são os números):
  *  - agachamento de lado: amplitude mínima de 20° na flexão média do joelho, como o motor de métricas (metricas.ts);
- *  - agachamento de frente: descida mínima do quadril de 6% da distância vertical quadril–tornozelo;
- *  - dois fundos distam pelo menos 0,8 s; início e fim por histerese (ver repeticoes.ts).
+ *  - agachamento de frente: descida mínima do ponto médio dos quadris de 6% da distância vertical quadril–tornozelo;
+ *  - dois fundos distam pelo menos 0,8 s; início e fim por histerese (5% e 15% da amplitude, ver repeticoes.ts);
+ *  - os marcos são localizados numa série com uma suavização extra de 0,3 s; as medidas são lidas na série suavizada normal.
  */
 
 const AMPLITUDE_MIN_JOELHO_GRAUS = 20;
@@ -50,6 +52,16 @@ function trilhaSegura(trilha: TrilhaPose | null | undefined): { trilha: TrilhaPo
   };
 }
 
+/** Janela, em segundos, da suavização extra usada só para localizar os marcos das repetições. */
+const JANELA_MARCOS_S = 0.3;
+
+/**
+ * Série de referência para localizar início, fundo e fim: a suavizada mais uma passada de 0,3 s. O cruzamento de um nível numa série
+ * ruidosa oscila de um quadro para o outro e faria a duração da repetição variar mais que o erro de um quadro; as medidas continuam
+ * lidas na série suavizada normal.
+ */
+const paraMarcos = (serie: (number | null)[], fps: number): (number | null)[] => suavizar(serie, janelaEmAmostras(JANELA_MARCOS_S, fps), { metodo: 'savitzky_golay', ordem: 2 });
+
 /** Média, quadro a quadro, das séries com valor (null quando nenhuma tem). */
 function mediaDasSeries(series: (number | null)[][], n: number): (number | null)[] {
   return Array.from({ length: n }, (_, i) => {
@@ -77,7 +89,7 @@ interface Segmentacao { repeticoes: Repeticao[]; eventos: EventoPasso[]; avisos:
 
 function segmentarAgachamentoLateral(tempos: readonly number[], angulos: Record<string, SerieProcessada>, fps: number): Segmentacao {
   const joelhos = ['joelho_d', 'joelho_e'].map((id) => angulos[id]).filter((s): s is SerieProcessada => !!s);
-  const referencia = mediaDasSeries(joelhos.map((s) => s.suave), tempos.length);
+  const referencia = paraMarcos(mediaDasSeries(joelhos.map((s) => s.suave), tempos.length), fps);
   const ruido = (incertezaAngularGeral(joelhos.map((s) => s.u)) ?? 0) / FATOR_COBERTURA;
   const brutas = segmentarPicos(referencia, fps, { amplitudeMin: AMPLITUDE_MIN_JOELHO_GRAUS, proeminenciaMin: AMPLITUDE_MIN_JOELHO_GRAUS, distMinS: DIST_MIN_FUNDOS_S, ruido });
   const avisos: string[] = [];
@@ -92,7 +104,7 @@ function segmentarAgachamentoFrontal(trilha: TrilhaPose, tempos: readonly number
   const escalaVertical = percentil(validos(desloc.quadril_tornozelo?.bruto ?? []).filter((v) => v > 0), 0.9) ?? 0.45 * trilha.altura;
   const minimo = DESCIDA_MIN_QUADRIL * escalaVertical;
   const brutas = altura
-    ? segmentarPicos(altura.suave, fps, { amplitudeMin: minimo, proeminenciaMin: minimo, distMinS: DIST_MIN_FUNDOS_S, ruido: (altura.u ?? 0) / FATOR_COBERTURA })
+    ? segmentarPicos(paraMarcos(altura.suave, fps), fps, { amplitudeMin: minimo, proeminenciaMin: minimo, distMinS: DIST_MIN_FUNDOS_S, ruido: (altura.u ?? 0) / FATOR_COBERTURA })
     : [];
   const avisos: string[] = [];
   if (!brutas.length) {
@@ -148,7 +160,7 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
   else seg = segmentarAgachamentoLateral(tempos, angulos, fps);
   const { repeticoes, eventos } = seg;
   avisos.push(...seg.avisos);
-  marcarDuracoesDiscrepantes(repeticoes, FATOR_COBERTURA * quadroS);
+  marcarDuracoesDiscrepantes(repeticoes, quadrosDeIncertezaDoTempo(p) * quadroS);
 
   const { medidas, resumos, refsPx, comPontosAusentes } = calcularMedidas({ protocolo: p, repeticoes, angulos, deslocamentos, quadroS });
   for (const i of comPontosAusentes) {
@@ -205,6 +217,29 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
   };
 }
 
+/** Análise com a estrutura completa e nenhum valor, para quando nada pôde ser calculado. */
+function analiseSemMedidas(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise, avisos: string[]): AnaliseMovimento {
+  const resumos: AnaliseMovimento['resumos'] = {};
+  const medidas = p.medidas.map((def) => {
+    const lados: ChaveLado[] = def.porLado ? ['D', 'E'] : ['unico'];
+    const valores: MedidaPorRepeticao['valores'] = {};
+    const incerteza: MedidaPorRepeticao['incerteza'] = {};
+    resumos[def.id] = {};
+    for (const l of lados) {
+      valores[l] = [];
+      incerteza[l] = null;
+      resumos[def.id][l] = resumir([]);
+    }
+    return { def, valores, incerteza, avisos: [] };
+  });
+  return {
+    protocolo: p.id, planoFilmado: p.planoFilmado, direcao: opcoes.direcao ?? 1, repeticoes: [], medidas, resumos, achados: [],
+    indisponiveis: indisponiveisDoProtocolo(p),
+    incerteza: { angularGraus: null, quadroS: quadroDaTrilha(trilha), nAmostras: 0, formula: formulaDaIncerteza(p), descricao: DESCRICAO_INCERTEZA },
+    series: Object.fromEntries(p.articulacoes.filter((d) => !!d).map((d) => [d.id, [] as AmostraAngulo[]])), eventos: [], avisos,
+  };
+}
+
 /**
  * Analisa uma trilha no protocolo escolhido. Nunca lança por dados ruins (trilha vazia, poucos pontos, lacunas): devolve listas
  * vazias e explica em `avisos`. Só um id de protocolo desconhecido lança (erro de programação, como em `protocoloDo`).
@@ -219,11 +254,6 @@ export function analisarMovimento(protocolo: Protocolo | IdProtocolo, trilha: Tr
   } catch (erro) {
     // Rede de segurança: um erro inesperado não derruba a tela do profissional; o aviso torna o problema visível.
     const motivo = erro instanceof Error ? erro.message : String(erro);
-    return {
-      protocolo: p.id, planoFilmado: p.planoFilmado, direcao: opcoes.direcao ?? 1, repeticoes: [],
-      medidas: p.medidas.map((def) => ({ def, valores: {}, incerteza: {}, avisos: [] })), resumos: {}, achados: [], indisponiveis: indisponiveisDoProtocolo(p),
-      incerteza: { angularGraus: null, quadroS: quadroDaTrilha(t), nAmostras: 0, formula: formulaDaIncerteza(p), descricao: DESCRICAO_INCERTEZA },
-      series: {}, eventos: [], avisos: [`Erro interno ao analisar este vídeo (${motivo}). Nenhuma medida foi calculada.`],
-    };
+    return analiseSemMedidas(p, t, opcoes, [...avisosDaTrilha, `Erro interno ao analisar este vídeo (${motivo}). Nenhuma medida foi calculada.`]);
   }
 }
