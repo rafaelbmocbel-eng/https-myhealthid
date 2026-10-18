@@ -79,3 +79,75 @@ profissional defina.
    os que tiverem fonte?
 
 Enquanto não houver decisão, o protótipo é visível só para o profissional.
+
+## Implementação (Etapa 3, primeira fatia)
+
+Primeira fatia: agachamento (vista lateral e vista frontal) e marcha (vista lateral). Tudo roda no dispositivo: nenhuma chamada
+de rede nova, nenhum envio de vídeo e **nenhum modelo de linguagem** (o texto do laudo vem de modelos de frase, para ser
+testável). A interface fica em Aplicações > Análise angular > Análise em vídeo, rotulada "beta", e reaproveita o motor de
+`src/lib/angular/video/*` (rastreio, ângulos, suavização, eventos, correção manual).
+
+### Mapa de arquivos e donos
+
+Código novo em `src/lib/angular/movimento/` (módulos puros, sem React).
+
+| Arquivo | Dono | Conteúdo |
+| --- | --- | --- |
+| `tipos.ts` | Arquiteto | Todos os tipos do contrato (protocolo, repetição, medida, achado, critério, fonte, fator, laudo). Só tipos. |
+| `vocabulario.ts` | Arquiteto | Rótulos (situação, força da evidência, lado, plano) e `termoProibido` (certo, errado, normal, perfeito, falha...). |
+| `protocolos.ts` | Arquiteto | Catálogo dos 13 achados, os 5 gatilhos (`GATILHOS`), os 3 protocolos (`PROTOCOLOS`), fórmulas da incerteza e auxiliares (`protocoloDo`, `protocolosDoGesto`, `achadosAvaliaveis`, `indisponiveisDoProtocolo`, `formulaDaIncerteza`). |
+| `criterios.ts` | Arquiteto | Critério do profissional: `novoCriterio` (sempre desligado), `criterioAplicavel`, `criterioValidoNoProtocolo`, `avaliarCriterio` (dentro, no limite, fora). |
+| `analisarMovimento.ts` | M | `analisarMovimento(protocolo, trilha, opcoes?)`: repetições, medidas por repetição e por lado, resumos, incerteza, achados. |
+| `laudo.ts` | L | `montarLaudo(analise, contexto, biblioteca?)`: laudo estruturado, textos determinísticos. |
+| `laudoPdf.ts` | L | `gerarPdfLaudo(laudo)`: PDF com jsPDF, no padrão de `relatorioVideo.ts`, rodapé fixo "Estimativa por vídeo · não é diagnóstico". |
+| `biblioteca/` | R | `BIBLIOTECA` e `entradaDaBiblioteca(chave)`: fatores contribuintes e itens a conferir, cada um com fonte verificada ou marcado "a confirmar". |
+| `index.ts` | Arquiteto | Reexporta tudo (importar `laudoPdf` sob demanda na tela, para o jsPDF não entrar no pacote principal). |
+| `src/test/movimentoContrato.test.ts` | Arquiteto | Teste de contrato: protocolos, catálogo, gatilhos, critérios, vocabulário e regras da biblioteca. |
+| Tela em `src/components/angular/video/` | Interface | Escolha do protocolo, tabela por repetição e por lado, achados, critério do profissional, laudo e PDF. |
+
+### Fluxo de dados
+
+```
+vídeo → rastrearVideo → TrilhaPose (motor ../video; pontos corrigidos pelo profissional)
+      → analisarMovimento(protocolo, trilha, { criterios, escalaCmPorPixel, eventos? })   → AnaliseMovimento
+      → montarLaudo(analise, contexto, BIBLIOTECA)                                        → LaudoMovimento
+      → tela (renderiza as seções do laudo)  |  gerarPdfLaudo(laudo) → Blob (PDF)
+```
+
+O plano de câmera é uma propriedade **declarada** pelo protocolo escolhido (`planoFilmado`); o rastreio é o mesmo para todos.
+Achado que exige o outro plano não é calculado: vira `indisponiveis`, com o motivo e o que gravar para obtê-lo
+(`indisponiveisDoProtocolo`), e a tela avisa.
+
+### Regras do contrato que os construtores precisam respeitar
+
+- **Repetições e marcos.** Toda repetição tem três marcos (`inicio`, `fundo`, `fim`). No agachamento, `fundo` é o ponto mais baixo;
+  na marcha, uma repetição é uma passada (contato do pé até o contato seguinte do mesmo pé) e `fundo` é a saída do pé. As fases
+  são janelas entre marcos; cada medida declara a fase e a extração (`valor_no_marco`, `maximo`, `amplitude`, `media`, `duracao`).
+- **Alinhamento.** Cada array de `MedidaPorRepeticao.valores` tem o comprimento de `repeticoes`, com `null` onde não houve medida.
+  Na marcha, numa medida por lado, `valores.D` só tem número nas passadas do pé D e `valores.E` nas do pé E. As posições (0-based)
+  são o que `Achado.repeticoes` guarda; `Repeticao.numero` (1-based) é só para leitura.
+- **Sem juízo.** Sem critério ativo, todo achado tem `situacao: 'sem_referencia'`. Veredito (dentro do critério, no limite, fora do
+  critério) só existe com critério do profissional ativo, aplicável e válido para a medida do protocolo. Critério debatido
+  (avanço do joelho além do pé) fica desligado por padrão e sem valor presumido.
+- **Incerteza do próprio vídeo.** Estimada empiricamente (resíduo entre a série bruta e a suavizada para ângulos e deslocamentos;
+  um quadro para tempos). A fórmula (`FORMULAS_INCERTEZA`, `formulaDaIncerteza`) entra no método do laudo. Nenhuma tolerância fixa
+  em graus.
+- **Gatilhos.** Um achado só existe se um gatilho disparar: (a) diferença entre lados maior que a incerteza e que a variação entre
+  repetições; (b) variação entre repetições maior que a incerteza; (c) mudança da primeira para a última repetição maior que a
+  incerteza; (d) repetição discrepante (escore z modificado de Iglewicz e Hoaglin, 1993: critério estatístico, não clínico);
+  (e) critério do profissional. As regras literais e o mínimo de repetições de cada uma estão em `GATILHOS` (`protocolos.ts`); M
+  implementa o que está escrito ali e L imprime o mesmo texto. Sem gatilho, a medida continua na tabela como observação.
+- **Biblioteca.** O laudo só repete causas e itens a conferir que estão em `BIBLIOTECA`; chave sem entrada = "sem hipóteses
+  curadas". Fonte só com PMID conferido e trecho literal do resumo; sem isso, o fator entra como "a confirmar".
+- **Texto.** Português do Brasil, sem as palavras de `VOCABULARIO_PROIBIDO`, e apenas caracteres que o gerador de PDF imprime
+  (Latin-1 mais ≥ ≤ − – — · → e aspas); por isso as fórmulas escrevem `raiz(...)` em vez de símbolos fora dessa lista.
+- **Laudo.** `responsavelRevisao` sai em branco quando o contexto não o traz. Rodapé fixo `AVISO_ESTIMATIVA_VIDEO`.
+
+### Decisões de produto registradas nesta fatia
+
+- O valgo dinâmico simétrico e alto, sem critério definido, aparece só na tabela de medidas (não vira achado), porque nenhum gatilho
+  sem limite clínico o captura. Se o Rafael quiser destacá-lo, o caminho é um critério do profissional.
+- A comparação D×E no agachamento de lado depende do membro mais distante da câmera, que é menos confiável; a limitação consta no
+  protocolo e em cada achado de assimetria.
+- A recomendação de gravação da marcha para esta etapa é de pelo menos 10 passos (5 de cada pé), para haver passadas suficientes por
+  pé para as estatísticas dos gatilhos.

@@ -99,7 +99,12 @@ export interface Repeticao {
  */
 export type GrandezaMedida = 'angulo' | 'deslocamento' | 'tempo';
 
-/** Como o valor da fase vira um número. */
+/**
+ * Como o valor da fase vira um número, sempre sobre a série SUAVIZADA, na janela [de, ate] da fase da repetição:
+ *  - valor_no_marco: valor no marco `de` da fase (a fase é um instante: de === ate);
+ *  - maximo / minimo: extremo da janela; amplitude: máximo − mínimo da janela; media: média da janela;
+ *  - duracao: tempo do marco `ate` − tempo do marco `de`, em segundos.
+ */
 export type ExtracaoMedida = 'valor_no_marco' | 'maximo' | 'minimo' | 'amplitude' | 'media' | 'duracao';
 
 export interface DefMedidaRepeticao {
@@ -339,6 +344,8 @@ export interface Protocolo {
   planoFilmado: PlanoCamera;
   rotuloRepeticao: { singular: string; plural: string };
   descricao: string;
+  /** Como as repetições são identificadas, em texto legível: entra no método do laudo para o profissional conferir a segmentação. */
+  segmentacao: string;
   fases: FaseMovimento[];
   /** Orientações de gravação por plano; o outro plano orienta como obter os achados indisponíveis. */
   gravacao: Partial<Record<PlanoCamera, string[]>>;
