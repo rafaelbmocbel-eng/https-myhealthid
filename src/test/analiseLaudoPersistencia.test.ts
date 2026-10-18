@@ -16,7 +16,7 @@ const criterio = (extra: Partial<CriterioProfissional> = {}): CriterioProfission
 
 const ler = (texto: string) => {
   const r = lerAnaliseSalva(texto);
-  if (!r.ok) throw new Error(r.erro);
+  if (!r.ok) throw new Error('erro' in r ? r.erro : 'análise não lida');
   return r.analise;
 };
 

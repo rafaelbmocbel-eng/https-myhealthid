@@ -250,6 +250,8 @@ describe('análise do agachamento com a trilha sintética', () => {
     expect(within(lim).getAllByRole('listitem').length).toBeGreaterThanOrEqual(3);
     expect(lim).toHaveTextContent(/duas dimensões|plano/i);
     expect(screen.getByRole('heading', { name: /Limitações/ })).toBeInTheDocument();
+    const medidas = screen.getByTestId('medidas-por-repeticao');
+    expect(lim.compareDocumentPosition(medidas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('o método traz a fórmula da incerteza e as regras dos gatilhos, recolhido por padrão', async () => {

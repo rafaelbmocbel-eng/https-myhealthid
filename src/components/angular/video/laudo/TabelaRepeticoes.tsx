@@ -44,6 +44,7 @@ function resumoDaMedida(analise: AnaliseMovimento, m: MedidaPorRepeticao): strin
   return `${m.def.porLado ? 'Médias ' : ''}${partes.join(' · ')} · ${textoN}`;
 }
 
+// O CSS global do app põe `table { display: block }` no celular, o que encolhe as colunas: a classe `table` das tabelas daqui restaura o layout.
 function BlocoMedida({ analise, protocolo, m, destaques, aberto }: { analise: AnaliseMovimento; protocolo: Protocolo; m: MedidaPorRepeticao; destaques: Set<string>; aberto: boolean }) {
   const def = m.def;
   const marcha = protocolo.gesto === 'marcha';
@@ -59,7 +60,7 @@ function BlocoMedida({ analise, protocolo, m, destaques, aberto }: { analise: An
   return (
     <Disclosure titulo={`${def.nome} (${def.unidade})`} resumo={resumoDaMedida(analise, m)} iniciaAberto={aberto} testid={`medida-${def.id}`}>
       <div className="overflow-hidden rounded-xl border border-border/60">
-        <table className="w-full table-fixed text-xs tabular-nums">
+        <table className="table w-full table-fixed text-xs tabular-nums">
           <caption className="sr-only">{def.nome} ({def.unidade}) por {protocolo.rotuloRepeticao.singular}{def.porLado ? ' e por lado' : ''}</caption>
           <thead className="bg-muted/60">
             <tr>
@@ -111,7 +112,7 @@ function RepeticoesIdentificadas({ analise, protocolo }: Props) {
   return (
     <Disclosure titulo={`${capitalizar(rot.plural)} identificadas`} resumo={`${fraseRepeticoesCompletas(rot.singular, rot.plural, completas, analise.repeticoes.length)} · tempos no vídeo`} testid="repeticoes-identificadas">
       <div className="overflow-hidden rounded-xl border border-border/60">
-        <table className="w-full table-fixed text-xs tabular-nums">
+        <table className="table w-full table-fixed text-xs tabular-nums">
           <caption className="sr-only">{capitalizar(rot.plural)} identificadas e seus marcos de tempo no vídeo</caption>
           <thead className="bg-muted/60">
             <tr>

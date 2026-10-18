@@ -115,6 +115,11 @@ function LaudoCalculado({
 
       <ListaAchados laudo={laudo} />
 
+      <section className="space-y-2 rounded-2xl border border-border/60 bg-card p-3" aria-labelledby="laudo-limitacoes-titulo" data-testid="limitacoes-do-laudo">
+        <h3 id="laudo-limitacoes-titulo" className="text-sm font-semibold">{laudo.limitacoes.titulo}</h3>
+        <ul className="space-y-1.5 text-xs leading-snug">{laudo.limitacoes.itens.map((l) => <li key={l}>• {l}</li>)}</ul>
+      </section>
+
       <TabelaRepeticoes analise={analise} protocolo={protocolo} />
 
       <EditorCriterios protocolo={protocolo} criterios={estado.criterios} aoAtualizar={estado.mudarCriterios} analise={analise} profissional={profissional} />
@@ -144,11 +149,6 @@ function LaudoCalculado({
           {metodoTabelas.map((t) => <TabelaTexto key={t.titulo ?? t.colunas.join('|')} tabela={t} />)}
         </div>
       </Disclosure>
-
-      <section className="space-y-2 rounded-2xl border border-border/60 bg-card p-3" aria-labelledby="laudo-limitacoes-titulo" data-testid="limitacoes-do-laudo">
-        <h3 id="laudo-limitacoes-titulo" className="text-sm font-semibold">{laudo.limitacoes.titulo}</h3>
-        <ul className="space-y-1.5 text-xs leading-snug">{laudo.limitacoes.itens.map((l) => <li key={l}>• {l}</li>)}</ul>
-      </section>
 
       <section className="space-y-2" aria-labelledby="laudo-saidas-titulo">
         <h3 id="laudo-saidas-titulo" className="text-sm font-semibold">Saídas do laudo</h3>

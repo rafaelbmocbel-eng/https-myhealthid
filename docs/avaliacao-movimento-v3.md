@@ -172,3 +172,28 @@ Achado que exige o outro plano não é calculado: vira `indisponiveis`, com o mo
   passada sem a saída do pé fica `incompleta`.
 - **Tolerância a dado ruim.** Trilha vazia, quadros nulos, coordenadas inválidas, taxa de quadros implausível e pontos de baixa
   confiança não lançam: a análise sai com a estrutura completa e os `avisos` dizem o que faltou.
+
+### Interface: aba "Laudo (beta)" (`src/components/angular/video/laudo/`)
+
+- **Onde fica.** Sexta aba do painel da análise em vídeo, ao lado de Métricas, Eventos, D × E, Medir e Exportar. O módulo é carregado sob
+  demanda (`lazy`): o motor de movimento, o laudo, a biblioteca e o jsPDF só entram no pacote quando o profissional abre a aba ou baixa o PDF.
+  `AnaliseVideo.tsx` só liga a aba: passa a trilha atual (com as correções do profissional), a escala, os eventos conferidos, a direção,
+  o trecho e a contagem de medidas manuais fora do trecho (que não entram no laudo; a tela traz a nota).
+- **Aviso fixo no topo:** "Protótipo (beta) · apoio à avaliação do profissional · não é diagnóstico".
+- **Protocolo e plano de câmera.** O padrão é o protocolo da vista que o profissional declarou ao escolher o gesto (`useEstadoLaudo`).
+  Escolher o protocolo de outro plano mostra o aviso "Confira o plano de câmera" e a lista dos achados que ficam indisponíveis, com o que
+  gravar para obtê-los (a mesma lista de `indisponiveisDoProtocolo` que o laudo e o PDF usam).
+- **Cálculo.** `useAnaliseMovimento` chama `analisarMovimento` e `montarLaudo` no dispositivo, sem rede e sem modelo de linguagem, e
+  recalcula quando a trilha, o protocolo ou os critérios mudam (o valor adiado mantém a tela fluida enquanto o profissional arrasta um ponto).
+- **Conteúdo, nesta ordem:** resumo; achados em texto neutro (cada um expansível, com hipóteses, força da evidência, fontes ou "sem
+  referência verificada" e itens a conferir); limitações (sempre abertas); medidas por repetição e por lado, com realce neutro (fundo
+  cinza e negrito, sem cor de aprovação ou de alerta) nos valores citados em achado de repetição discrepante ou de primeira e última
+  repetição; editor de critérios do profissional; achados indisponíveis; método (recolhido); botões "Baixar laudo (PDF)" e "Copiar resumo".
+- **Critérios do profissional.** Nascem desligados e sem valor; o app nunca sugere limite. Só ligam com valor numérico e com o nome de
+  quem os definiu (apagar um dos dois desliga o critério). Critério de medida de outro protocolo fica guardado, mas não se aplica. O
+  avanço do joelho mostra a nota de critério debatido. Ficam no estado da análise e, de forma opcional, no `.json` salvo e no rascunho
+  (`criterios` e `protocoloMovimento` em `persistencia.ts`, lidos por `criteriosSalvos.ts`): arquivos antigos, sem os campos, abrem
+  normalmente, e o que vier malformado é descartado em vez de gerar veredito com um limite que ninguém definiu.
+- **Celular (390 × 860).** Sem rolagem horizontal (as tabelas usam a classe `table` porque o CSS global põe `table { display: block }`
+  no celular), alvos de toque de 44 px, foco visível, rótulos acessíveis, modo escuro pelos tokens do tema.
+- **Testes:** `src/test/analiseLaudo*.test.ts(x)` (aba, editor de critérios, estado, persistência e integração com `AnaliseVideo`).
