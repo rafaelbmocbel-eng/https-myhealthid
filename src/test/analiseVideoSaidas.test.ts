@@ -115,7 +115,7 @@ describe('resumos e comparação', () => {
 
   it('o resumo em linhas traz os valores, a fonte da referência e as medidas à mão', () => {
     const linhas = resumoEmLinhas(cartoes, [{ uid: 'u', medidaId: 'livre', nome: 'Ângulo livre (3 pontos)', t: 1.5, quadro: 44, pontos: [], valor: 90, unidade: 'graus', texto: '' }]);
-    expect(linhas.find((l) => l.startsWith('• Cadência'))).toMatch(/109 passos\/min \(referência: ≥ 100 passos\/min, Tudor-Locke et al\., 2018, PMID 29858465\)/);
+    expect(linhas.find((l) => l.startsWith('• Cadência'))).toMatch(/109 passos\/min \(referência: ≥ 100 passos\/min, Tudor-Locke et al\., 2018, PMID 29858465 — limiar prático, não é faixa de normalidade\)/);
     expect(linhas.find((l) => l.startsWith('• Amplitude do joelho'))).toMatch(/D 55,5° · E 55,5°/);
     expect(linhas[linhas.length - 1]).toBe('• 1,50 s (quadro 45) — Ângulo livre (3 pontos): 90,0°');
   });

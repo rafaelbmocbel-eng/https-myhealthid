@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { instanteNoTrecho, remapearCapturas, situarCapturas, trechoDaTrilha, type CapturaManual } from '../lib/angular/analiseVideo/medidaManual';
+import { instanteNoTrecho, notaMedidasForaDoTrecho, remapearCapturas, situarCapturas, trechoDaTrilha, type CapturaManual } from '../lib/angular/analiseVideo/medidaManual';
 import { lerAnaliseSalva, serializarAnalise } from '../lib/angular/analiseVideo/persistencia';
 import { trilhaVazia } from '../lib/angular/analiseVideo/trilhaVazia';
 import { resumoEmLinhas } from '../components/angular/video/saidas';
@@ -104,6 +104,13 @@ describe('medidas guardadas dentro e fora do trecho (derivado na leitura, nada �
     expect(linhas).toHaveLength(1);
     expect(linhas[0]).toMatch(/2,40 s \(quadro 13\) — Joelho direito: 40,0°/);
     expect(resumoEmLinhas([], r.fora)).toHaveLength(2);
+  });
+
+  it('a nota das medidas deixadas de fora concorda em número e diz de qual saída elas ficaram de fora', () => {
+    expect(notaMedidasForaDoTrecho(0, 'registro')).toBeUndefined();
+    expect(notaMedidasForaDoTrecho(1, 'relatório')).toBe('1 medida guardada em instante fora do trecho analisado não entrou neste relatório.');
+    expect(notaMedidasForaDoTrecho(2, 'resumo')).toBe('2 medidas guardadas em instantes fora do trecho analisado não entraram neste resumo.');
+    expect(notaMedidasForaDoTrecho(3, 'registro')).toMatch(/neste registro\.$/);
   });
 });
 

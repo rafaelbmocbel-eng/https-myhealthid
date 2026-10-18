@@ -29,7 +29,7 @@ import { LIGACOES_CORPO, marcacoesDoQuadro, pontosDasDefinicoes, pontosParaTela,
 import {
   bandasDoGrupo, cartoesDeMetricas, compararLados, eventoParaUi, grupoInicial, gruposDeArticulacoes, marcadoresDeEventos, marcadoresExtras, modeloParaUi, seriesDoGrupoDaAnalise,
 } from '@/lib/angular/analiseVideo/resultados';
-import { remapearCapturas, textoDoValor, type CapturaManual } from '@/lib/angular/analiseVideo/medidaManual';
+import { notaMedidasForaDoTrecho, remapearCapturas, textoDoValor, type CapturaManual } from '@/lib/angular/analiseVideo/medidaManual';
 import { AVISO_ESTIMATIVA_VIDEO, type AlcaUi, type MarcacaoAnguloUi, type PontosDoQuadro, type TipoEvento } from '@/lib/angular/analiseVideo/tiposUi';
 import type { AnaliseParaExportar } from '@/lib/angular/analise';
 import type { Landmark } from '@/lib/angular/pose';
@@ -293,7 +293,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
       const remapeadas = remapearCapturas(manual.capturas, t.quadros.map((q) => q.t), t.fps);
       manual.restaurar(remapeadas.capturas);
       const fora = remapeadas.foraDoTrecho;
-      if (fora > 0) toast.info(`${fora} ${fora === 1 ? 'medida guardada está fora do trecho atual' : 'medidas guardadas estão fora do trecho atual'}. Na aba Medir ${fora === 1 ? 'ela continua' : 'elas continuam'} na lista, sem entrar no PDF nem no vídeo exportado.`);
+      if (fora > 0) toast.info(`${fora} ${fora === 1 ? 'medida guardada está fora do trecho atual' : 'medidas guardadas estão fora do trecho atual'}. Na aba Medir ${fora === 1 ? 'ela continua' : 'elas continuam'} na lista, sem entrar no PDF, no vídeo exportado, no resumo copiado nem no registro no prontuário.`);
       setEventos(null);
       repro.setQuadro(0);
       setAba('metricas');
@@ -444,7 +444,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
     try {
       const capturas = manual.noTrecho;
       const fora = manual.foraDoTrecho.length;
-      const notaFora = fora > 0 ? `${fora} ${fora === 1 ? 'medida guardada em instante fora do trecho analisado não entrou' : 'medidas guardadas em instantes fora do trecho analisado não entraram'} neste relatório.` : undefined;
+      const notaFora = notaMedidasForaDoTrecho(fora, 'relatório');
       if (!analise) {
         if (!capturas.length) { toast.error(fora > 0 ? 'As medidas guardadas estão fora do trecho atual e não entram no PDF. Guarde uma medida dentro do trecho ou rastreie o corpo.' : 'Guarde ao menos uma medida, ou rastreie o corpo, para gerar o PDF.'); return; }
         const imagens = await imagensParaRelatorio(c, [...new Set(capturas.map((x) => x.quadro))], (i) => rotuloDoQuadro(c, i), quadro);
@@ -516,9 +516,11 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   };
 
   const resumoLinhas = () => resumoEmLinhas(cartoes, manual.noTrecho);
+  // Fica fora de `resumoLinhas`: essas linhas também alimentam os cartões do vídeo exportado, onde a nota seria lida como uma métrica.
+  const resumoComNota = (saida: 'resumo' | 'registro') => [...resumoLinhas(), notaMedidasForaDoTrecho(manual.foraDoTrecho.length, saida)].filter(Boolean).join('\n');
 
   const copiar = async () => {
-    try { await navigator.clipboard.writeText(`Análise de ${modelo.nome} por vídeo\n${resumoLinhas().join('\n')}`); toast.success('Resumo copiado.'); } catch { toast.error('Não consegui copiar.'); }
+    try { await navigator.clipboard.writeText(`Análise de ${modelo.nome} por vídeo\n${resumoComNota('resumo')}`); toast.success('Resumo copiado.'); } catch { toast.error('Não consegui copiar.'); }
   };
 
   const registrar = async () => {
@@ -529,7 +531,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
       const { error } = await tabela('notas_prontuario').insert({
         paciente_id: paciente.id, terapeuta_id: user.id, tipo: 'analise_angular',
         titulo: comRastreio ? `Análise angular — ${modelo.nome} por vídeo` : 'Análise angular — ponto a ponto em vídeo',
-        descricao: `${resumoLinhas().join('\n')}\n${comRastreio ? `Pontos do corpo detectados automaticamente em vídeo (${Math.round(trilha.fps)} quadros por segundo)${edicao.resumo.pontos ? ` e corrigidos à mão em ${edicao.resumo.quadros} quadros` : ''}; valores de referência só quando há fonte verificada. ` : `Pontos marcados pelo profissional em quadros do vídeo (${Math.round(trilha.fps)} quadros por segundo). `}Medida de acompanhamento, não é diagnóstico. O vídeo não é armazenado.`,
+        descricao: `${resumoComNota('registro')}\n${comRastreio ? `Pontos do corpo detectados automaticamente em vídeo (${Math.round(trilha.fps)} quadros por segundo)${edicao.resumo.pontos ? ` e corrigidos à mão em ${edicao.resumo.quadros} quadros` : ''}; valores de referência só quando há fonte verificada. ` : `Pontos marcados pelo profissional em quadros do vídeo (${Math.round(trilha.fps)} quadros por segundo). `}Medida de acompanhamento, não é diagnóstico. O vídeo não é armazenado.`,
         dados_extras: {
           metodo: comRastreio ? 'video_gesto' : 'video_ponto_a_ponto', gesto: modelo.id, fps_analise: trilha.fps,
           ...(analise ? {
@@ -598,7 +600,7 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
         <EscolherModelo
           video={video} modelos={MODELOS_UI} modeloId={modeloId} aoModelo={escolherModelo}
           fpsVideo={fpsVideo} aoFpsVideo={escolherFpsVideo} taxaFps={taxaFps} aoTaxa={setTaxaFps}
-          intervalo={intervalo} aoIntervalo={setIntervalo} avisos={avisosVideo}
+          intervalo={intervalo} aoIntervalo={setIntervalo} avisos={avisosVideo} fpsSugerido={modelo.fpsSugerido}
           aoRastrear={rastrear} aoUsarRastreio={trilha ? voltarParaAnalise : undefined} aoSoMedir={soMedir} primario={entrada === 'ponto' ? 'medir' : 'rastrear'}
           aoTrocarVideo={escolherVideo}
         />

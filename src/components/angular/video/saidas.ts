@@ -7,6 +7,7 @@ import { itensDoQuadroAnalisado } from '@/lib/angular/analiseVideo/marcacoes';
 import { imagemDoQuadro, painelDoQuadro, type ItensDoQuadro } from '@/lib/angular/analiseVideo/quadroMarcado';
 import type { QuadroRelatorio } from '@/lib/angular/relatorioVideo';
 import type { CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
+import { ROTULO_NATUREZA, naturezaDasReferencias } from '@/lib/angular/analiseVideo/statusReferencia';
 import { tempoDeExibicao, formatarSegundos } from '@/lib/angular/analiseVideo/tempo';
 import { irParaTempoEAguardar } from '@/lib/angular/analiseVideo/videoUtil';
 import type { DefinicaoAngulo } from '@/lib/angular/video/angulos';
@@ -89,7 +90,10 @@ export const rotuloDoQuadro = (c: ContextoQuadro, indice: number, texto?: string
 export function resumoEmLinhas(cartoes: CartaoMetricaUi[], capturas: CapturaManual[]): string[] {
   const linhas = cartoes.map((c) => {
     const valores = c.valores.map((v) => (v.lado ? `${v.lado} ${v.texto}` : v.texto)).join(' · ');
-    const ref = c.referencias.length ? ` (referência: ${c.referencias.map((r) => `${r.faixa}, ${r.rotulo ?? r.citacao}${r.pmid ? `, PMID ${r.pmid}` : ''}`).join('; ')})` : '';
+    // Fora da faixa de normalidade o texto diz o que a referência é: lido sem a tela, "abaixo de ≥ 100" não pode parecer alteração.
+    const natureza = naturezaDasReferencias(c.referencias);
+    const tipo = natureza === 'normalidade' ? '' : ` — ${ROTULO_NATUREZA[natureza]}`;
+    const ref = c.referencias.length ? ` (referência: ${c.referencias.map((r) => `${r.faixa}, ${r.rotulo ?? r.citacao}${r.pmid ? `, PMID ${r.pmid}` : ''}`).join('; ')}${tipo})` : '';
     return `• ${c.titulo}: ${valores}${ref}`;
   });
   const manuais = capturas.map((x) => `• ${formatarSegundos(x.t)} (quadro ${x.quadro + 1}) — ${x.nome}: ${textoDoValor(x.valor, x.unidade)}`);

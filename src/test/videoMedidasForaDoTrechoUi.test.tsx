@@ -8,11 +8,11 @@ import type { VideoCarregado } from '../lib/angular/analiseVideo/carregarVideo';
 import { serializarAnalise } from '../lib/angular/analiseVideo/persistencia';
 import { trilhaVazia } from '../lib/angular/analiseVideo/trilhaVazia';
 
-const mocks = vi.hoisted(() => ({ ler: vi.fn(), rastrear: vi.fn(), baixarBlob: vi.fn() }));
+const mocks = vi.hoisted(() => ({ ler: vi.fn(), rastrear: vi.fn(), baixarBlob: vi.fn(), inserir: vi.fn(), usuario: null as { id: string } | null }));
 
 vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), info: vi.fn(), warning: vi.fn() }) }));
-vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: null, profile: null }) }));
-vi.mock('@/lib/dosagem/db', () => ({ tabela: vi.fn() }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: mocks.usuario, profile: null }) }));
+vi.mock('@/lib/dosagem/db', () => ({ tabela: () => ({ insert: mocks.inserir }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/utils/pdfBranding', () => ({ carregarBrandingClinica: async () => ({}) }));
 vi.mock('@/lib/pdf/entrega', () => ({ entregarPdf: vi.fn(), baixarBlob: mocks.baixarBlob }));
@@ -93,7 +93,7 @@ describe('lista de medidas guardadas com a marca "fora do trecho atual"', () => 
     expect(normais[0]).toHaveTextContent('2,40 s · quadro 13');
     const area = screen.getByTestId('medidas-fora-do-trecho');
     expect(area).toHaveTextContent(/Estas medidas estão fora do trecho atual \(2,0 s a 5,0 s\)/);
-    expect(area).toHaveTextContent(/fora do gráfico, dos cartões, do PDF e do vídeo exportado/);
+    expect(area).toHaveTextContent(/fora do gráfico, dos cartões, do PDF, do vídeo exportado, do resumo copiado e do registro no prontuário/);
     expect(area).toHaveTextContent(/Se o trecho voltar a incluir o instante, elas voltam a valer/);
     const fora = screen.getAllByTestId('captura-fora-do-trecho');
     expect(fora).toHaveLength(2);
@@ -191,8 +191,8 @@ describe('análise completa: re-rastrear com outro trecho mantém as medidas gua
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, writable: true, value: vi.fn(() => 'blob:x') });
   });
 
-  async function abrirAnalise() {
-    render(<AnaliseVideo paciente={null} entrada="ponto" />);
+  async function abrirAnalise(paciente: { id: string; nome: string } | null = null) {
+    render(<AnaliseVideo paciente={paciente} entrada="ponto" />);
     fireEvent.change(screen.getByTestId('entrada-analise'), { target: { files: [arquivoDaAnalise()] } });
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Análise aberta/));
     fireEvent.change(screen.getByTestId('entrada-video'), { target: { files: [new File(['a'], 'a.mp4', { type: 'video/mp4' })] } });
@@ -270,5 +270,33 @@ describe('análise completa: re-rastrear com outro trecho mantém as medidas gua
     expect(resumo).toMatch(/2,40 s/);
     expect(resumo).not.toMatch(/0,10 s/);
     expect(resumo).not.toMatch(/7,00 s/);
+    // quem lê o resumo depois não vê a lista: a nota diz que há outras medidas guardadas que não entraram
+    expect(resumo).toMatch(/\n2 medidas guardadas em instantes fora do trecho analisado não entraram neste resumo\.$/);
+  });
+
+  it('o registro no prontuário leva a mesma nota das medidas deixadas de fora, e nada quando todas estão no trecho', async () => {
+    mocks.usuario = { id: 'u1' };
+    mocks.inserir.mockReset();
+    mocks.inserir.mockResolvedValue({ error: null });
+    try {
+      await abrirAnalise({ id: 'p1', nome: 'Ana' });
+      fireEvent.click(screen.getByTestId('aba-exportar'));
+      fireEvent.click(screen.getByTestId('registrar-prontuario'));
+      await waitFor(() => expect(mocks.inserir).toHaveBeenCalledTimes(1));
+      const nota = (mocks.inserir.mock.calls[0] as unknown as [{ descricao: string; dados_extras: { capturas: { t: number }[] } }])[0];
+      expect(nota.descricao).toMatch(/2,40 s/);
+      expect(nota.descricao).not.toMatch(/7,00 s/);
+      expect(nota.descricao).toMatch(/\n2 medidas guardadas em instantes fora do trecho analisado não entraram neste registro\.\n/);
+      // a lista estruturada segue só com as de dentro; o arquivo da análise guarda todas
+      expect(nota.dados_extras.capturas).toHaveLength(1);
+    } finally {
+      mocks.usuario = null;
+    }
+  });
+
+  it('o aviso depois de rastrear diz todas as saídas de onde as medidas de fora ficam', async () => {
+    await abrirAnalise();
+    await rastrearDe(3.5, 5);
+    expect(toast.info).toHaveBeenLastCalledWith(expect.stringMatching(/sem entrar no PDF, no vídeo exportado, no resumo copiado nem no registro no prontuário/));
   });
 });

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import EscolherModelo from '../components/angular/video/EscolherModelo';
 import type { VideoCarregado } from '../lib/angular/analiseVideo/carregarVideo';
@@ -12,19 +12,19 @@ afterEach(cleanup);
 const video = (duracao = 40): VideoCarregado => ({ url: 'blob:x', arquivo: new File([''], 'v.webm'), nome: 'v.webm', tamanho: 1000, duracao, largura: 640, altura: 480 });
 const modelos: ModeloUi[] = [{ id: 'marcha', nome: 'Marcha (caminhada)', vista: 'Vista lateral', descricao: 'd', itens: [], comEventos: true }];
 
-const props = (o: { taxaFps: number; intervalo: IntervaloVideo; fpsVideo?: number; duracao?: number }) => ({
+const props = (o: { taxaFps: number; intervalo: IntervaloVideo; fpsVideo?: number; duracao?: number; fpsSugerido?: number }) => ({
   video: video(o.duracao), modelos, modeloId: 'marcha', aoModelo: vi.fn(), fpsVideo: o.fpsVideo ?? 240, aoFpsVideo: vi.fn(), taxaFps: o.taxaFps, aoTaxa: vi.fn(),
-  intervalo: o.intervalo, aoIntervalo: vi.fn(), avisos: [], aoRastrear: vi.fn(), aoSoMedir: vi.fn(), aoTrocarVideo: vi.fn(),
+  intervalo: o.intervalo, aoIntervalo: vi.fn(), avisos: [], aoRastrear: vi.fn(), aoSoMedir: vi.fn(), aoTrocarVideo: vi.fn(), fpsSugerido: o.fpsSugerido,
 });
 
 /** Tela com estado de verdade, como no app: o pai guarda a taxa e o trecho; `aoRastrear` registra o que o motor receberia. */
-function Tela({ taxaInicial, intervaloInicial, aoRastrear, fpsVideo = 240 }: { taxaInicial: number; intervaloInicial: IntervaloVideo; aoRastrear: (taxa: number, i: IntervaloVideo) => void; fpsVideo?: number }) {
+function Tela({ taxaInicial, intervaloInicial, aoRastrear, fpsVideo = 240, fpsSugerido }: { taxaInicial: number; intervaloInicial: IntervaloVideo; aoRastrear: (taxa: number, i: IntervaloVideo) => void; fpsVideo?: number; fpsSugerido?: number }) {
   const [taxa, setTaxa] = useState(taxaInicial);
   const [intervalo, setIntervalo] = useState(intervaloInicial);
   return (
     <EscolherModelo
       video={video()} modelos={modelos} modeloId="marcha" aoModelo={() => {}} fpsVideo={fpsVideo} aoFpsVideo={() => {}} taxaFps={taxa} aoTaxa={setTaxa}
-      intervalo={intervalo} aoIntervalo={setIntervalo} avisos={[]} aoRastrear={() => aoRastrear(taxa, intervalo)} aoSoMedir={() => {}} aoTrocarVideo={() => {}}
+      intervalo={intervalo} aoIntervalo={setIntervalo} avisos={[]} aoRastrear={() => aoRastrear(taxa, intervalo)} aoSoMedir={() => {}} aoTrocarVideo={() => {}} fpsSugerido={fpsSugerido}
     />
   );
 }
@@ -175,5 +175,120 @@ describe('fluxo completo na tela com estado (como no app)', () => {
       }
       unmount();
     }
+  });
+});
+
+describe('foco depois de resolver o aviso de limite (teclado e leitor de tela)', () => {
+  const tela = () => render(<Tela taxaInicial={30} intervaloInicial={{ inicio: 3, fim: 33 }} aoRastrear={() => {}} />);
+
+  it('"Reduzir o trecho" some com o aviso e o foco vai para o botão de rastrear, já liberado', () => {
+    tela();
+    fireEvent.click(screen.getByTestId('taxa-maxima'));
+    const reduzir = screen.getByTestId('reduzir-trecho');
+    act(() => reduzir.focus());
+    expect(document.activeElement).toBe(reduzir);
+    fireEvent.click(reduzir);
+    expect(screen.queryByTestId('aviso-limite-trecho')).toBeNull();
+    expect(screen.getByTestId('botao-rastrear')).toBeEnabled();
+    expect(document.activeElement).toBe(screen.getByTestId('botao-rastrear'));
+  });
+
+  it('"Escolher N q/s" também leva o foco para o botão de rastrear', () => {
+    tela();
+    fireEvent.click(screen.getByTestId('taxa-detalhada'));
+    const sugerir = screen.getByTestId('sugerir-taxa');
+    act(() => sugerir.focus());
+    fireEvent.click(sugerir);
+    expect(screen.queryByTestId('aviso-limite-trecho')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByTestId('botao-rastrear'));
+  });
+
+  it('resolver o limite por outro botão (a taxa rápida) não rouba o foco de quem está nele', () => {
+    tela();
+    fireEvent.click(screen.getByTestId('taxa-maxima'));
+    const rapida = screen.getByTestId('taxa-rapida');
+    act(() => rapida.focus());
+    fireEvent.click(rapida);
+    expect(screen.queryByTestId('aviso-limite-trecho')).toBeNull();
+    expect(document.activeElement).toBe(rapida);
+  });
+
+  it('o foco que sobrou de um clique de aviso não vira salto de foco depois: o botão de rastrear só o recebe uma vez', () => {
+    tela();
+    fireEvent.click(screen.getByTestId('taxa-maxima'));
+    fireEvent.click(screen.getByTestId('reduzir-trecho'));
+    const rastrear = screen.getByTestId('botao-rastrear');
+    expect(document.activeElement).toBe(rastrear);
+    const rapida = screen.getByTestId('taxa-rapida');
+    act(() => rapida.focus());
+    fireEvent.click(rapida);
+    expect(document.activeElement).toBe(rapida);
+  });
+});
+
+describe('a taxa que o gesto pede e não coube no trecho não é rebaixada em silêncio', () => {
+  const corrida = { fpsVideo: 60, fpsSugerido: 60 };
+
+  it('corrida (60 q/s) num vídeo de 60 q/s com trecho de 30 s: a tela diz a sugestão, o máximo do trecho e a taxa em que ficou', () => {
+    render(<EscolherModelo {...props({ taxaFps: 30, intervalo: { inicio: 0, fim: 30 }, ...corrida })} />);
+    const aviso = screen.getByTestId('aviso-taxa-do-gesto');
+    expect(aviso).toHaveTextContent('A sugestão para Marcha (caminhada) é 60 q/s');
+    expect(aviso).toHaveTextContent('um trecho de 30,0 s comporta até 40 q/s');
+    expect(aviso).toHaveTextContent('a análise ficou em 30 q/s');
+    expect(aviso).toHaveTextContent('O trecho não foi encurtado.');
+    expect(screen.getByTestId('usar-taxa-do-gesto')).toHaveTextContent('Usar 60 q/s e reduzir o trecho para 20 s');
+    expect(aviso).toHaveAttribute('role', 'status');
+    // o rastreio continua liberado: é só informação, a decisão é do profissional
+    expect(screen.getByTestId('botao-rastrear')).toBeEnabled();
+  });
+
+  it('o botão encurta o trecho só quando tocado e escolhe a taxa do gesto', () => {
+    const p = props({ taxaFps: 30, intervalo: { inicio: 2, fim: 32 }, ...corrida });
+    render(<EscolherModelo {...p} />);
+    expect(p.aoIntervalo).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('usar-taxa-do-gesto'));
+    expect(p.aoTaxa).toHaveBeenCalledWith(60);
+    expect(p.aoIntervalo).toHaveBeenLastCalledWith({ inicio: 2, fim: 22 });
+  });
+
+  it('com estado de verdade: toca no botão, a taxa vira 60, o trecho 20 s, o aviso some e o foco vai para o botão de rastrear', () => {
+    const rastreios: [number, IntervaloVideo][] = [];
+    render(<Tela taxaInicial={30} intervaloInicial={{ inicio: 0, fim: 30 }} fpsVideo={60} fpsSugerido={60} aoRastrear={(t, i) => rastreios.push([t, i])} />);
+    const botao = screen.getByTestId('usar-taxa-do-gesto');
+    act(() => botao.focus());
+    fireEvent.click(botao);
+    expect(screen.queryByTestId('aviso-taxa-do-gesto')).toBeNull();
+    expect(screen.getByTestId('taxa-detalhada')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('limite-trecho')).toHaveTextContent('A 60 q/s o trecho máximo é 20 s.');
+    expect(document.activeElement).toBe(screen.getByTestId('botao-rastrear'));
+    fireEvent.click(screen.getByTestId('botao-rastrear'));
+    expect(rastreios).toEqual([[60, { inicio: 0, fim: 20 }]]);
+  });
+
+  it('não aparece quando a taxa do gesto cabe no trecho, mesmo com o profissional numa taxa menor de propósito', () => {
+    render(<EscolherModelo {...props({ taxaFps: 30, intervalo: { inicio: 0, fim: 15 }, ...corrida })} />);
+    expect(screen.queryByTestId('aviso-taxa-do-gesto')).toBeNull();
+  });
+
+  it('não aparece quando a análise já está na taxa do gesto, nem quando o gesto pede 30 q/s ou menos', () => {
+    const { rerender } = render(<EscolherModelo {...props({ taxaFps: 60, intervalo: { inicio: 0, fim: 15 }, ...corrida })} />);
+    expect(screen.queryByTestId('aviso-taxa-do-gesto')).toBeNull();
+    rerender(<EscolherModelo {...props({ taxaFps: 30, intervalo: { inicio: 0, fim: 30 }, fpsVideo: 60, fpsSugerido: 30 })} />);
+    expect(screen.queryByTestId('aviso-taxa-do-gesto')).toBeNull();
+    rerender(<EscolherModelo {...props({ taxaFps: 30, intervalo: { inicio: 0, fim: 30 }, fpsVideo: 60, fpsSugerido: 15 })} />);
+    expect(screen.queryByTestId('aviso-taxa-do-gesto')).toBeNull();
+    rerender(<EscolherModelo {...props({ taxaFps: 30, intervalo: { inicio: 0, fim: 30 }, fpsVideo: 60 })} />);
+    expect(screen.queryByTestId('aviso-taxa-do-gesto')).toBeNull();
+  });
+
+  it('vídeo de 30 q/s não tem taxa maior para oferecer: sem aviso', () => {
+    render(<EscolherModelo {...props({ taxaFps: 30, intervalo: { inicio: 0, fim: 30 }, fpsVideo: 30, fpsSugerido: 60 })} />);
+    expect(screen.queryByTestId('aviso-taxa-do-gesto')).toBeNull();
+  });
+
+  it('com o aviso de limite aberto (a taxa escolhida não cabe) só ele fala: os dois não aparecem juntos', () => {
+    render(<EscolherModelo {...props({ taxaFps: 120, intervalo: { inicio: 0, fim: 30 }, fpsVideo: 240, fpsSugerido: 60 })} />);
+    expect(screen.getByTestId('aviso-limite-trecho')).toBeInTheDocument();
+    expect(screen.queryByTestId('aviso-taxa-do-gesto')).toBeNull();
   });
 });

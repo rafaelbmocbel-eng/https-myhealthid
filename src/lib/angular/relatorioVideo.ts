@@ -4,8 +4,8 @@ import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { nomeDocumento } from '@/lib/pdf/entrega';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import { canvasDoGrafico, type GraficoParaCanvas } from '@/lib/angular/analiseVideo/graficoCanvas';
-import { AVISO_ESTIMATIVA_VIDEO, COR_LADO, type CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
-import { cartaoTemAlerta, naturezaDasReferencias, situacaoDoCartaoTexto, situacaoEhNeutra } from '@/lib/angular/analiseVideo/statusReferencia';
+import { AVISO_ESTIMATIVA_VIDEO, COR_LADO, type CartaoMetricaUi, type ReferenciaUi } from '@/lib/angular/analiseVideo/tiposUi';
+import { ROTULO_NATUREZA, cartaoTemAlerta, naturezaDasReferencias, referenciasDoValor, situacaoDoCartaoTexto, situacaoEhNeutra } from '@/lib/angular/analiseVideo/statusReferencia';
 
 const AZUL: [number, number, number] = [30, 58, 95];
 const CAB: [number, number, number] = [230, 237, 245];
@@ -162,7 +162,7 @@ export const valorDoCartaoTexto = (c: CartaoMetricaUi): string => c.valores.map(
 /** Erro de medida que o vídeo impõe ao valor (ex.: "± 6,2%"), sem repetir quando os dois lados têm o mesmo; vazio se não houver. */
 export const incertezaDoCartaoTexto = (c: CartaoMetricaUi): string => [...new Set(c.valores.flatMap((v) => (v.incertezaCurta ? [v.incertezaCurta] : [])))].join(' · ');
 
-const ROTULO_TIPO: Record<string, string> = { faixa_de_medias: 'faixa das médias do estudo, não é intervalo individual', limiar_heuristico: 'limiar prático, não é faixa de normalidade' };
+const ROTULO_TIPO: Record<string, string> = ROTULO_NATUREZA;
 
 /** Texto da referência de um cartão: a faixa, a fonte curta e o que a faixa é, ou "sem referência". */
 export const referenciaDoCartaoTexto = (c: CartaoMetricaUi): string =>
@@ -198,8 +198,26 @@ export function notasDasMetricas(cartoes: CartaoMetricaUi[]): string[] {
   return cartoes.flatMap((c) => {
     const incertezas = [...new Set(c.valores.flatMap((v) => (v.incerteza ? [v.incerteza] : [])))];
     const partes = [c.detalhe, ...incertezas, c.formula ? `Cálculo: ${c.formula}` : undefined, ...c.avisos].filter((x): x is string => !!x);
-    return partes.length ? [`${c.titulo}: ${partes.map((p) => (/[.!?]$/.test(p) ? p : `${p}.`)).join(' ')}`] : [];
+    return [
+      ...(partes.length ? [`${c.titulo}: ${partes.map(comPonto).join(' ')}`] : []),
+      ...notasDasFontes(c),
+    ];
   });
+}
+
+const comPonto = (p: string): string => (/[.!?]$/.test(p) ? p : `${p}.`);
+
+/**
+ * A ressalva de cada fonte que classificou algum valor do cartão (a mesma nota da tela): sem ela, "dentro da faixa das médias do estudo"
+ * apareceria no PDF sem o limite que os autores dão ao uso da faixa (trecho curto, partida parada, curva).
+ */
+function notasDasFontes(c: CartaoMetricaUi): string[] {
+  const usadas = new Map<string, ReferenciaUi>();
+  for (const v of c.valores) {
+    if (v.status === 'sem_referencia') continue;
+    for (const r of referenciasDoValor(c, v)) usadas.set(r.chave ?? `${r.faixa}|${r.pmid ?? ''}`, r);
+  }
+  return [...usadas.values()].flatMap((r) => (r.nota ? [`${c.titulo}, ${r.rotulo ?? r.citacao}: ${comPonto(r.nota)}`] : []));
 }
 
 /** Métrica com algum valor calculado; as que ficaram sem valor (falta escala ou evento) não entram na tabela. */

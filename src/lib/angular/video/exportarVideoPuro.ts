@@ -277,9 +277,6 @@ export interface ItemMetricaVideo {
 export const RODAPE_VIDEO = AVISO_ESTIMATIVA_VIDEO;
 export const RODAPE_VIDEO_COM_AVISO = `${AVISO_ESTIMATIVA_VIDEO} · * ver ressalvas no PDF`;
 
-/** A situação sem o rótulo da fonte (entre parênteses, no fim): o cartão do vídeo cai para ela quando o texto inteiro não cabe, e a linha da referência traz a fonte. */
-export const situacaoSemFonte = (texto: string): string => texto.replace(/\s*\([^()]*\)\s*$/, '');
-
 /** Início do texto da referência no cartão: só a faixa de normalidade se chama "Ref."; os outros tipos dizem o que são. */
 export const prefixoDaReferencia = (natureza: NaturezaReferencia | undefined): string =>
   natureza === 'faixa_de_medias' ? 'Médias do estudo: ' : natureza === 'limiar_heuristico' ? 'Limiar: ' : 'Ref.: ';
@@ -350,6 +347,8 @@ export interface EntradaLayoutConteudo {
   nCartoes: number;
   /** Os cartões levam uma linha a mais (a situação do valor em texto) e ficam mais altos. */
   cartaoAlto?: boolean;
+  /** Com `cartaoAlto`: a situação não cabe numa linha (rótulo da fonte por extenso) e ocupa duas; o cartão ganha mais uma linha. */
+  situacaoEmDuasLinhas?: boolean;
 }
 
 export interface LayoutConteudo {
@@ -392,12 +391,20 @@ const FRACAO_GRAFICO_MIN = 0.2;
 const FRACAO_CARTOES_MAX = 0.3;
 const FRACAO_VIDEO_MIN = 0.34;
 
-function medidasBase(W: number, cartaoAlto = false) {
+/** Altura do cartão em corpos de letra: o cartão comum, o com a linha da situação e o com a situação quebrada em duas linhas. */
+export const ALTURA_CARTAO_FONTES = { comum: 3.8, comSituacao: 4.65, comSituacaoEmDuasLinhas: 5.35 } as const;
+
+function alturaEmFontes(cartaoAlto: boolean, duasLinhas: boolean): number {
+  if (!cartaoAlto) return ALTURA_CARTAO_FONTES.comum;
+  return duasLinhas ? ALTURA_CARTAO_FONTES.comSituacaoEmDuasLinhas : ALTURA_CARTAO_FONTES.comSituacao;
+}
+
+function medidasBase(W: number, cartaoAlto = false, duasLinhas = false) {
   const margem = Math.max(6, Math.round(W * 0.022));
   const fonte = Math.max(11, Math.round(W * 0.026));
   const fonteRodape = Math.max(10, Math.round(W * FRACAO_FONTE_RODAPE));
   return {
-    margem, fonte, fonteRodape, colunas: (W >= 560 ? 2 : 1) as 1 | 2, alturaCartao: Math.round(fonte * (cartaoAlto ? 4.65 : 3.8)), espacoCartoes: Math.max(4, Math.round(margem * 0.6)),
+    margem, fonte, fonteRodape, colunas: (W >= 560 ? 2 : 1) as 1 | 2, alturaCartao: Math.round(fonte * alturaEmFontes(cartaoAlto, duasLinhas)), espacoCartoes: Math.max(4, Math.round(margem * 0.6)),
     alturaBarra: Math.round(fonte * 1.8), alturaRodape: Math.round(fonteRodape * 3.6),
   };
 }
@@ -414,7 +421,7 @@ function ajustarVideo(area: Retangulo, aw: number, ah: number): Retangulo {
 }
 
 function layoutNatural(e: EntradaLayoutConteudo, W: number): LayoutConteudo {
-  const b = medidasBase(W, e.cartaoAlto);
+  const b = medidasBase(W, e.cartaoAlto, e.situacaoEmDuasLinhas);
   const barra: Retangulo = { x: 0, y: 0, w: W, h: b.alturaBarra };
   const hv = par((W * e.alturaVideo) / e.larguraVideo);
   let y = barra.h + hv;
@@ -445,7 +452,7 @@ function layoutNatural(e: EntradaLayoutConteudo, W: number): LayoutConteudo {
 }
 
 function layoutFixo(e: EntradaLayoutConteudo, W: number, H: number): LayoutConteudo {
-  const b = medidasBase(W, e.cartaoAlto);
+  const b = medidasBase(W, e.cartaoAlto, e.situacaoEmDuasLinhas);
   const barra: Retangulo = { x: 0, y: 0, w: W, h: b.alturaBarra };
   const linhasMaxCartoes = Math.max(1, Math.floor((H * FRACAO_CARTOES_MAX + b.espacoCartoes) / (b.alturaCartao + b.espacoCartoes)));
   const c = e.nCartoes > 0 ? cartoesNaAltura(e.nCartoes, b.colunas, b.alturaCartao, b.espacoCartoes, linhasMaxCartoes) : null;
@@ -501,9 +508,9 @@ export function calcularLayoutConteudo(e: EntradaLayoutConteudo): LayoutConteudo
 }
 
 /** Tamanho do quadro composto do formato "original": a largura do vídeo, no máximo 1080, e a altura que o conteúdo pede, no máximo 1920. */
-export function tamanhoOriginal(larguraVideo: number, alturaVideo: number, grafico: boolean, nCartoes: number, cartaoAlto = false): LayoutConteudo {
+export function tamanhoOriginal(larguraVideo: number, alturaVideo: number, grafico: boolean, nCartoes: number, cartaoAlto = false, situacaoEmDuasLinhas = false): LayoutConteudo {
   const largura = Math.min(LIMITES_EXPORTACAO.larguraMaxima, Math.max(480, larguraVideo));
-  return calcularLayoutConteudo({ larguraVideo, alturaVideo, largura, grafico, nCartoes, cartaoAlto, alturaMaxima: LIMITES_EXPORTACAO.alturaMaxima });
+  return calcularLayoutConteudo({ larguraVideo, alturaVideo, largura, grafico, nCartoes, cartaoAlto, situacaoEmDuasLinhas, alturaMaxima: LIMITES_EXPORTACAO.alturaMaxima });
 }
 
 export const dimensoesDoFormato = (f: FormatoSocial): { largura: number; altura: number } => ({ largura: FORMATOS[f].largura, altura: FORMATOS[f].altura });

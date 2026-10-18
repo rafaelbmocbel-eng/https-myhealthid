@@ -118,7 +118,7 @@ export default function PainelMedidaManual({ m, temRastreio, tocando, aoIr }: { 
             {foraDoTrecho.length > 0 && (
               <div className="space-y-1.5 rounded-xl bg-muted/40 p-2" data-testid="medidas-fora-do-trecho">
                 <p className="px-1 text-xs leading-snug text-muted-foreground">
-                  {foraDoTrecho.length === 1 ? 'Esta medida está' : 'Estas medidas estão'} fora do trecho atual ({trechoAtual}): {foraDoTrecho.length === 1 ? 'fica' : 'ficam'} fora do gráfico, dos cartões, do PDF e do vídeo exportado. Se o trecho voltar a incluir o instante, {foraDoTrecho.length === 1 ? 'ela volta' : 'elas voltam'} a valer.
+                  {foraDoTrecho.length === 1 ? 'Esta medida está' : 'Estas medidas estão'} fora do trecho atual ({trechoAtual}): {foraDoTrecho.length === 1 ? 'fica' : 'ficam'} fora do gráfico, dos cartões, do PDF, do vídeo exportado, do resumo copiado e do registro no prontuário (o arquivo da análise guarda todas). Se o trecho voltar a incluir o instante, {foraDoTrecho.length === 1 ? 'ela volta' : 'elas voltam'} a valer.
                 </p>
                 <ul className="space-y-1.5">
                   {foraDoTrecho.map((c) => (

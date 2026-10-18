@@ -78,18 +78,22 @@ describe('tabela de referências: só o que foi verificado em fonte real', () =>
   it('a nota de Bohannon e Andrews (2011) traz a inclusão, a ressalva dos autores com o comando "vá" e o aviso sobre trecho curto em vídeo', () => {
     const r = REFERENCIAS.find((x) => x.chave === 'velocidade_marcha.bohannon2011') as ReferenciaBiomecanica;
     const nota = r.nota ?? '';
-    // inclusão do resumo no PubMed: adultos aparentemente saudáveis, ritmo normal, percursos de 3 a 30 m
+    // inclusão do resumo no PubMed: adultos aparentemente saudáveis, "normal pace" (aqui, ritmo habitual), percursos de 3 a 30 m
     expect(nota).toMatch(/adultos aparentemente saudáveis/);
-    expect(nota).toMatch(/ritmo normal/);
+    expect(nota).toMatch(/ritmo habitual/);
+    expect(nota).not.toMatch(/ritmo normal/);
+    expect(r.populacao).not.toMatch(/ritmo normal/);
     expect(nota).toMatch(/3 a 30 m/);
-    // ressalva dos autores: distâncias curtas a partir do comando 'go' (parado) ou com curva
-    expect(nota).toMatch(/distâncias curtas/);
-    expect(nota).toMatch(/comando "vá" \(partida parada\)/);
+    // ressalva dos autores, em duas condições como no resumo: distâncias curtas a partir do comando 'go', ou curva
+    const [, aposAutores, doApp] = /(Os autores ressalvam[^.]*\.)\s*(.*)$/.exec(nota) ?? [];
+    expect(aposAutores).toBe('Os autores ressalvam que os dados podem não servir de padrão de normalidade se a velocidade for medida em distâncias curtas a partir do comando "vá", ou se houver curva.');
     expect(nota).not.toMatch(/comando de largada/);
-    expect(nota).toMatch(/curva/);
+    // a glosa "partida parada" é do app, nunca atribuída aos autores
+    expect(aposAutores).not.toMatch(/partida parada|parad[ao]/);
     // o que o app acrescenta: o vídeo costuma medir um trecho curto
-    expect(nota).toMatch(/velocidade estimada por vídeo costuma vir de um trecho curto/);
-    expect(nota).toMatch(/provavelmente se aplica/);
+    expect(doApp).toMatch(/velocidade estimada por vídeo costuma vir de um trecho curto/);
+    expect(doApp).toMatch(/pessoa parada ou inclui curva/);
+    expect(doApp).toMatch(/provavelmente se aplica/);
     // a fonte e os números não mudam
     expect(r.fonte.pmid).toBe('21820535');
     expect(r.faixa).toEqual({ min: 94.3, max: 143.4 });

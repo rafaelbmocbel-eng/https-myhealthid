@@ -14,6 +14,12 @@ export function naturezaDasReferencias(refs: readonly Pick<ReferenciaUi, 'tipo'>
   return refs.some((r) => r.tipo === 'faixa_de_medias') ? 'faixa_de_medias' : 'limiar_heuristico';
 }
 
+/** O que a faixa é, dito por extenso, quando não é de normalidade: acompanha a referência no PDF, no resumo copiado e no prontuário. */
+export const ROTULO_NATUREZA: Record<Exclude<NaturezaReferencia, 'normalidade'>, string> = {
+  faixa_de_medias: 'faixa das médias do estudo, não é intervalo individual',
+  limiar_heuristico: 'limiar prático, não é faixa de normalidade',
+};
+
 export interface SituacaoDoValor {
   texto: string;
   /** Só um "fora" de faixa de normalidade chama atenção (triângulo âmbar); os outros ficam em tom neutro. */

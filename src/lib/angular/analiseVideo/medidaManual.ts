@@ -106,3 +106,12 @@ export function remapearCapturas(capturas: readonly CapturaManual[], tempos: rea
   const todas = [...dentro, ...fora].sort((a, b) => a.t - b.t || (ordem.get(a.uid) ?? 0) - (ordem.get(b.uid) ?? 0));
   return { capturas: todas, foraDoTrecho: fora.length };
 }
+
+/**
+ * Aviso de que medidas guardadas ficaram de fora de uma saída (PDF, resumo copiado, registro no prontuário). Quem lê depois só tem a
+ * saída, então ela precisa dizer que existem outras medidas; o arquivo da análise guarda todas.
+ */
+export function notaMedidasForaDoTrecho(fora: number, saida: 'relatório' | 'resumo' | 'registro'): string | undefined {
+  if (fora <= 0) return undefined;
+  return `${fora} ${fora === 1 ? 'medida guardada em instante fora do trecho analisado não entrou' : 'medidas guardadas em instantes fora do trecho analisado não entraram'} neste ${saida}.`;
+}

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Activity, ArrowDownToLine, ArrowUpFromLine, Dumbbell, Footprints, Hand, Ruler, Zap, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { VideoCarregado } from '@/lib/angular/analiseVideo/carregarVideo';
@@ -26,6 +26,8 @@ interface Props {
   aoUsarRastreio?: () => void;
   /** Abre a análise sem rastrear o corpo: só a marcação ponto a ponto, quadro a quadro. */
   aoSoMedir: () => void;
+  /** Taxa (q/s) que o gesto escolhido pede. Se a análise ficou abaixo dela porque o trecho não comporta, a tela diz isso. */
+  fpsSugerido?: number;
   /** Qual ação é a principal: quem entra pela medida ponto a ponto vê "Só medir" em destaque. */
   primario?: 'rastrear' | 'medir';
   aoTrocarVideo: (arquivo: File) => void;
@@ -39,7 +41,7 @@ const ACOES_INICIAIS = (rastrear: () => void, medir: () => void) => [
 const chip = (ativo: boolean) => cn('flex min-h-11 items-center justify-center rounded-xl border px-3 text-sm font-semibold tabular-nums transition-colors', ativo ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50');
 
 // Segundo passo: o gesto a analisar, o trecho do vídeo e a taxa da análise.
-export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fpsVideo, aoFpsVideo, taxaFps, aoTaxa, intervalo, aoIntervalo, avisos, aoRastrear, aoUsarRastreio, aoSoMedir, primario = 'rastrear', aoTrocarVideo }: Props) {
+export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fpsVideo, aoFpsVideo, taxaFps, aoTaxa, intervalo, aoIntervalo, avisos, aoRastrear, aoUsarRastreio, aoSoMedir, fpsSugerido, primario = 'rastrear', aoTrocarVideo }: Props) {
   const previa = useRef<HTMLVideoElement>(null);
   const taxas = opcoesDeTaxa(fpsVideo);
   const trecho = Math.max(0, intervalo.fim - intervalo.inicio);
@@ -55,6 +57,27 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
     if (previa.current) previa.current.currentTime = lado === 'inicio' ? novo.inicio : Math.max(novo.inicio, novo.fim - 0.05);
   };
   const modelo = modelos.find((m) => m.id === modeloId);
+
+  // As opções do aviso de limite somem quando resolvem o limite, levando o foco junto: quem usa teclado ou leitor de tela cairia no topo da página.
+  // O foco vai para o botão de rastrear, que acabou de ser liberado, e só se o limite foi mesmo resolvido (sem estado que sobre para depois).
+  const botaoRastrear = useRef<HTMLButtonElement>(null);
+  const [focarRastrear, setFocarRastrear] = useState(false);
+  useEffect(() => {
+    if (!focarRastrear) return;
+    setFocarRastrear(false);
+    if (cabe) botaoRastrear.current?.focus();
+  }, [focarRastrear, cabe]);
+
+  // A taxa que o gesto pede é a maior oferecida até a sugerida. Se ela não cabe no trecho, a taxa pré-selecionada desce para a que cabe: isso precisa estar escrito.
+  const taxaDoGesto = fpsSugerido ? taxas.filter((o) => o.fps <= fpsSugerido).pop() : undefined;
+  const abaixoDoGesto = cabe && taxaDoGesto && taxaFps < taxaDoGesto.fps && !trechoCabeNaTaxa(trecho, taxaDoGesto.fps) ? taxaDoGesto : null;
+  const usarTaxaDoGesto = (fps: number) => {
+    const novo = ajustarIntervalo(intervalo, video.duracao, 'fim', trechoMaximoS(fps));
+    setFocarRastrear(true);
+    aoIntervalo(novo);
+    aoTaxa(fps);
+    if (previa.current) previa.current.currentTime = Math.max(novo.inicio, novo.fim - 0.05);
+  };
 
   return (
     <div className="space-y-4">
@@ -130,17 +153,29 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
             </div>
           </>
         )}
+        {abaixoDoGesto && (
+          <div className="space-y-2 rounded-xl bg-muted/50 p-2.5 text-xs leading-snug text-muted-foreground" role="status" data-testid="aviso-taxa-do-gesto">
+            <p>
+              A sugestão para {modelo?.nome ?? 'este gesto'} é <strong className="text-foreground">{nf(abaixoDoGesto.fps)} q/s</strong>, mas um trecho de {formatarSegundos(trecho, 1)} comporta
+              até {taxaMaximaParaTrecho(trecho)} q/s: a análise ficou em <strong className="text-foreground">{nf(taxaFps)} q/s</strong>. O trecho não foi encurtado.
+            </p>
+            <button type="button" onClick={() => usarTaxaDoGesto(abaixoDoGesto.fps)} data-testid="usar-taxa-do-gesto"
+              className="flex min-h-11 w-full items-center justify-center rounded-xl border border-border/60 bg-background px-3 py-1.5 text-center text-sm font-semibold text-foreground hover:bg-muted/50">
+              Usar {nf(abaixoDoGesto.fps)} q/s e reduzir o trecho para {nf(trechoMaximoS(abaixoDoGesto.fps))} s
+            </button>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">Estimativa: cerca de {estimativaDoRastreio(trecho, taxaFps)} s para rastrear. A primeira vez baixa o modelo de detecção (cerca de 6 MB); deixe a tela aberta.</p>
         {!cabe && (
           <div className="space-y-2 rounded-xl bg-amber-500/10 p-2.5 text-xs leading-snug text-amber-800 dark:text-amber-300" role="alert" id="aviso-limite-trecho" data-testid="aviso-limite-trecho">
             <p>O trecho de {formatarSegundos(trecho, 1)} não cabe a {nf(taxaFps)} q/s: o máximo é {nf(trechoMax)} s. Escolha uma opção; a análise nunca reduz a taxa sozinha.</p>
             <div className="grid gap-1.5 sm:grid-cols-2">
-              <button type="button" onClick={() => mover('fim', intervalo.fim)} data-testid="reduzir-trecho"
+              <button type="button" onClick={() => { setFocarRastrear(true); mover('fim', intervalo.fim); }} data-testid="reduzir-trecho"
                 className="flex min-h-12 flex-col items-center justify-center rounded-xl border border-amber-700/40 bg-background px-3 py-1.5 text-center text-sm font-semibold text-foreground hover:bg-muted/50">
                 Reduzir o trecho para {nf(trechoMax)} s
               </button>
               {sugestao && (
-                <button type="button" onClick={() => aoTaxa(sugestao.fps)} data-testid="sugerir-taxa"
+                <button type="button" onClick={() => { setFocarRastrear(true); aoTaxa(sugestao.fps); }} data-testid="sugerir-taxa"
                   className="flex min-h-12 flex-col items-center justify-center rounded-xl border border-amber-700/40 bg-background px-3 py-1.5 text-center text-sm font-semibold text-foreground hover:bg-muted/50">
                   Para {nf(trecho)} s use até {taxaMaximaParaTrecho(trecho)} q/s
                   <span className="text-[11px] font-normal text-muted-foreground">Escolher {sugestao.fps} q/s</span>
@@ -167,7 +202,7 @@ export default function EscolherModelo({ video, modelos, modeloId, aoModelo, fps
         {[...ACOES_INICIAIS(aoRastrear, aoSoMedir)]
           .sort((a, b) => (a[0] === primario ? -1 : b[0] === primario ? 1 : 0))
           .map(([id, texto, acao, testid]) => (
-            <button key={id} type="button" onClick={acao} data-testid={testid} disabled={id === 'rastrear' && !cabe} aria-describedby={id === 'rastrear' && !cabe ? 'aviso-limite-trecho' : undefined}
+            <button key={id} ref={id === 'rastrear' ? botaoRastrear : undefined} type="button" onClick={acao} data-testid={testid} disabled={id === 'rastrear' && !cabe} aria-describedby={id === 'rastrear' && !cabe ? 'aviso-limite-trecho' : undefined}
               className={cn('flex min-h-14 items-center justify-center gap-2 rounded-2xl px-4 text-base font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100',
                 id === primario && !aoUsarRastreio ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/92' : 'border border-border/60 bg-card text-sm hover:bg-muted/50')}>
               {aoUsarRastreio && id === 'rastrear' ? 'Rastrear o corpo de novo (apaga as correções)' : texto}

@@ -155,9 +155,9 @@ describe('cartões do vídeo: situação neutra e igual nos dois lados', () => {
     expect(textos.some((t) => /^acima do limiar de 100 passos\/min/.test(t))).toBe(true);
     expect(textos.some((t) => /^abaixo do limiar de 100 passos\/min/.test(t))).toBe(true);
     expect(textos.some((t) => /(dentro|fora) do limiar|médias de grupos/.test(t))).toBe(false);
-    // quando o rótulo não cabe na linha da situação, a linha da referência logo abaixo sempre traz a fonte
+    // o rótulo da fonte nunca sai da frase da situação: se não cabe numa linha, a frase quebra e o rótulo fecha a segunda
     for (const i of textos.keys()) {
-      if (/^(dentro|fora) da faixa das médias do estudo|^(acima|abaixo) do limiar/.test(textos[i]) && !/\(.+\)$/.test(textos[i])) expect(textos[i + 1]).toMatch(/Bohannon|Tudor-Locke/);
+      if (/^(dentro|fora) da faixa das médias do estudo|^(acima|abaixo) do limiar/.test(textos[i]) && !/\(.+\)$/.test(textos[i])) expect(textos[i + 1]).toMatch(/\)$/);
     }
     r.liberar();
   });

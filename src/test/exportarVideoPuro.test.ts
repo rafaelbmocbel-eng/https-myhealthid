@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { CartaoMetricaUi } from '@/lib/angular/analiseVideo/tiposUi';
 import {
-  CANDIDATOS_MIME, ErroExportacao, LIMITES_EXPORTACAO, MAX_CARTOES_ORIGINAL, MENSAGEM_SEM_GRAVACAO, ORDEM_FORMATOS_VIDEO, VELOCIDADES_EXPORTACAO, ajustarTrecho,
+  ALTURA_CARTAO_FONTES, CANDIDATOS_MIME, ErroExportacao, LIMITES_EXPORTACAO, MAX_CARTOES_ORIGINAL, MENSAGEM_SEM_GRAVACAO, ORDEM_FORMATOS_VIDEO, VELOCIDADES_EXPORTACAO, ajustarTrecho,
   avaliarSuporteGravacao, avisoDoTipoDeArquivo, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida, ehFormatoSocial, erroDeCancelamento, escolherMime, extensaoDoMime,
-  FRACAO_FONTE_RODAPE, RODAPE_VIDEO, RODAPE_VIDEO_COM_AVISO, prefixoDaReferencia, situacaoSemFonte,
+  FRACAO_FONTE_RODAPE, RODAPE_VIDEO, RODAPE_VIDEO_COM_AVISO, prefixoDaReferencia,
   itensDeCartoes, itensDeLinhas, nomeArquivoVideo, nomeSeguroParaArquivo, par, planejarSaida, progressoDaSaida, quadroNaSaida, quebrarTexto, rotuloTempo, rotuloVelocidade,
   retanguloQueCobre, separarReferencia, tamanhoOriginal, temSobraNaArea, tempoDaFonte, tempoDaSaida, trechoMaximoS, trechoPadrao, truncarTexto, validarExportacao, type EntradaValidacao, type LayoutConteudo,
 } from '@/lib/angular/video/exportarVideoPuro';
@@ -261,11 +261,6 @@ describe('textos', () => {
     expect(prefixoDaReferencia('normalidade')).toBe('Ref.: ');
   });
 
-  it('situacaoSemFonte tira só o rótulo entre parênteses do fim, mantendo o resto', () => {
-    expect(situacaoSemFonte('acima do limiar de 100 passos/min (Tudor-Locke et al., 2018)')).toBe('acima do limiar de 100 passos/min');
-    expect(situacaoSemFonte('D dentro · E fora da faixa das médias do estudo (Bohannon e Andrews, 2011)')).toBe('D dentro · E fora da faixa das médias do estudo');
-    expect(situacaoSemFonte('sem referência')).toBe('sem referência');
-  });
 });
 
 describe('aviso fixo do vídeo', () => {
@@ -376,6 +371,20 @@ describe('layout do quadro composto', () => {
     expect(alto.alturaCartao).toBeGreaterThan(normal.alturaCartao);
     confere(alto, 1280, 720);
     const original = tamanhoOriginal(1080, 1920, true, 8, true);
+    expect(original.altura).toBeLessThanOrEqual(LIMITES_EXPORTACAO.alturaMaxima);
+    confere(original, 1080, 1920);
+  });
+
+  it('com a situação em duas linhas o cartão ganha mais uma linha, em qualquer formato, e tudo continua cabendo', () => {
+    const uma = calcularLayoutConteudo({ larguraVideo: 1280, alturaVideo: 720, largura: 972, altura: 1300, grafico: true, nCartoes: 4, cartaoAlto: true });
+    const duas = calcularLayoutConteudo({ larguraVideo: 1280, alturaVideo: 720, largura: 972, altura: 1300, grafico: true, nCartoes: 4, cartaoAlto: true, situacaoEmDuasLinhas: true });
+    expect(duas.alturaCartao).toBeGreaterThan(uma.alturaCartao);
+    expect(duas.alturaCartao).toBeCloseTo(duas.fonte * ALTURA_CARTAO_FONTES.comSituacaoEmDuasLinhas, 0);
+    confere(duas, 1280, 720);
+    // sem o cartão alto a segunda linha não vale nada: o cartão comum não muda
+    const comum = calcularLayoutConteudo({ larguraVideo: 1280, alturaVideo: 720, largura: 972, altura: 1300, grafico: true, nCartoes: 4, situacaoEmDuasLinhas: true });
+    expect(comum.alturaCartao).toBe(calcularLayoutConteudo({ larguraVideo: 1280, alturaVideo: 720, largura: 972, altura: 1300, grafico: true, nCartoes: 4 }).alturaCartao);
+    const original = tamanhoOriginal(1080, 1920, true, 8, true, true);
     expect(original.altura).toBeLessThanOrEqual(LIMITES_EXPORTACAO.alturaMaxima);
     confere(original, 1080, 1920);
   });

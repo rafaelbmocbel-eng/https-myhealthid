@@ -17,7 +17,7 @@ import { legendaDosAngulos, type DefinicaoAngulo } from './angulos';
 import {
   ErroExportacao, LIMITES_EXPORTACAO, RODAPE_VIDEO, RODAPE_VIDEO_COM_AVISO, erroDeCancelamento, avaliarSuporteGravacao, bitrateDoVideo, calcularLayoutConteudo, duracaoDaSaida,
   ehFormatoSocial, itensDeCartoes, itensDeLinhas, prefixoDaReferencia, progressoDaSaida, quadroNaSaida, quebrarTexto, rotuloTempo, rotuloVelocidade, tamanhoOriginal, truncarTexto,
-  retanguloQueCobre, situacaoSemFonte, temSobraNaArea, validarExportacao,
+  retanguloQueCobre, temSobraNaArea, validarExportacao,
   type FormatoVideo, type ItemMetricaVideo, type LayoutConteudo, type SuporteGravacao,
 } from './exportarVideoPuro';
 import { corrigirDuracaoDoBlob } from './webmDuracao';
@@ -371,6 +371,41 @@ function corpoQueCabe(ctx: CanvasRenderingContext2D, texto: string, largura: num
   return corpo;
 }
 
+const RECUO_TEXTO_CARTAO = 0.55;
+/** Distância entre a linha do valor e a primeira linha da situação, e entre as linhas da situação, em corpos de letra. */
+const SITUACAO_ABAIXO_DO_VALOR = 1.0;
+const ENTRELINHA_SITUACAO = 0.68;
+
+/** Largura útil do texto dentro de um cartão do layout (descontadas as margens internas). */
+function larguraTextoDoCartao(l: LayoutConteudo): number {
+  const wCard = ((l.cartoes?.w ?? 0) - (l.colunas - 1) * l.espacoCartoes) / l.colunas;
+  return wCard - 2 * l.fonte * RECUO_TEXTO_CARTAO;
+}
+
+/**
+ * A situação nunca perde o rótulo da fonte nem é cortada: cabe numa linha (corpo entre 0,55 e 0,62 do corpo base) ou quebra em duas,
+ * com o corpo descendo até 0,5 se for preciso. Deixa em `ctx.font` o corpo escolhido.
+ */
+function linhasDaSituacao(ctx: CanvasRenderingContext2D, texto: string, largura: number, f: number): string[] {
+  corpoQueCabe(ctx, texto, largura, f * 0.62, f * 0.55);
+  if (ctx.measureText(texto).width <= largura) return [texto];
+  let linhas: string[] = [texto];
+  for (const fator of [0.6, 0.56, 0.52, 0.5]) {
+    ctx.font = fonteCss('texto', f * fator);
+    linhas = quebrarTexto(texto, largura, (t) => ctx.measureText(t).width, 3);
+    if (linhas.length <= 2) return linhas;
+  }
+  return quebrarTexto(texto, largura, (t) => ctx.measureText(t).width, 2);
+}
+
+/** Alguma situação não cabe numa linha neste layout? Então os cartões precisam da altura de duas linhas. */
+function situacaoPedeDuasLinhas(itens: ItemMetricaVideo[], l: LayoutConteudo): boolean {
+  if (!l.cartoes) return false;
+  const ctx = contexto2d(criarCanvas(2, 2));
+  const largura = larguraTextoDoCartao(l);
+  return itens.some((it) => !!it.situacao && linhasDaSituacao(ctx, it.situacao, largura, l.fonte).length > 1);
+}
+
 function desenharCartoes(ctx: CanvasRenderingContext2D, l: LayoutConteudo, itens: ItemMetricaVideo[]) {
   if (!l.cartoes || !itens.length) return;
   const f = l.fonte;
@@ -378,7 +413,7 @@ function desenharCartoes(ctx: CanvasRenderingContext2D, l: LayoutConteudo, itens
   const wCard = (l.cartoes.w - (l.colunas - 1) * g) / l.colunas;
   const ocultos = Math.max(0, itens.length - l.cartoesVisiveis);
   const lista: (ItemMetricaVideo | { resto: number })[] = ocultos > 0 ? [...itens.slice(0, l.cartoesVisiveis - 1), { resto: ocultos + 1 }] : itens;
-  const pad = f * 0.55;
+  const pad = f * RECUO_TEXTO_CARTAO;
   lista.forEach((it, k) => {
     const col = k % l.colunas, lin = Math.floor(k / l.colunas);
     const r: Retangulo = { x: l.cartoes!.x + col * (wCard + g), y: l.cartoes!.y + lin * (l.alturaCartao + g), w: wCard, h: l.alturaCartao };
@@ -435,20 +470,18 @@ function desenharCartoes(ctx: CanvasRenderingContext2D, l: LayoutConteudo, itens
       x += f * 0.7;
     }
 
-    // Situação em texto neutro e com a fonte, igual para dentro e para fora. Cortar com reticências esconderia o rótulo da fonte: antes
-    // disso o corpo encolhe um pouco e, se ainda não couber, o rótulo sai deste texto (a linha da referência, logo abaixo, o traz).
+    // Situação em texto neutro e com a fonte, igual para dentro e para fora. Cortar com reticências esconderia o rótulo da fonte: o corpo
+    // encolhe um pouco e, se ainda não couber, o texto quebra em duas linhas (o cartão reserva essa linha), com o rótulo sempre junto da frase.
     if (it.situacao) {
-      let texto = it.situacao;
-      corpoQueCabe(ctx, texto, largTexto, f * 0.62, f * 0.55);
-      if (ctx.measureText(texto).width > largTexto) {
-        texto = situacaoSemFonte(texto);
-        corpoQueCabe(ctx, texto, largTexto, f * 0.62, f * 0.5);
-      }
+      const linhas = linhasDaSituacao(ctx, it.situacao, largTexto, f);
       ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.fillText(truncarTexto(texto, largTexto, (t) => ctx.measureText(t).width), r.x + pad, yValor + f * 1.0);
+      linhas.forEach((linha, n) => ctx.fillText(linha, r.x + pad, yValor + f * (SITUACAO_ABAIXO_DO_VALOR + n * ENTRELINHA_SITUACAO)));
     }
 
-    ctx.fillStyle = it.referencia ? 'rgba(167,243,208,0.92)' : 'rgba(255,255,255,0.5)';
+    // Faixa de médias e limiar são neutros dos dois lados (nem aprovação, nem alerta): a linha da fonte não leva o verde de "dentro".
+    const referenciaNeutra = it.natureza !== undefined && it.natureza !== 'normalidade';
+    if (!it.referencia) ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    else ctx.fillStyle = referenciaNeutra ? 'rgba(255,255,255,0.62)' : 'rgba(167,243,208,0.92)';
     // Com a linha da situação logo acima ("… da faixa das médias do estudo"), o prefixo seria repetição e comeria o espaço do PMID.
     const textoRef = it.referencia ? `${it.situacao ? '' : prefixoDaReferencia(it.natureza)}${it.referencia}` : 'sem referência';
     // A referência com a fonte e o PMID vale mais que o tamanho da letra: encolhe um pouco antes de cortar com reticências.
@@ -642,8 +675,6 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
 
   // ---- tamanho do quadro composto e do arquivo ----
   const social = ehFormatoSocial(op.formato);
-  let layout: LayoutConteudo;
-  let saida: HTMLCanvasElement;
   let caixaArte: Retangulo | null = null;
   let moldura: { opcoesArte: Omit<OpcoesArte, 'formato' | 'layout'>; recursos: RecursosArte } | null = null;
   const formatoSocial = social ? (op.formato as FormatoSocial) : null;
@@ -659,13 +690,20 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
     };
     const arte = layoutDaArte({ ...opcoesArte, formato: formatoSocial, layout: 'unica' }, 1, recursos);
     caixaArte = arte.paineis[0];
-    layout = calcularLayoutConteudo({ larguraVideo: vw, alturaVideo: vh, largura: Math.round(caixaArte.w), altura: Math.round(caixaArte.h), grafico: temGrafico, nCartoes: itensMetricas.length, cartaoAlto });
-    saida = criarCanvas(FORMATOS[formatoSocial].largura, FORMATOS[formatoSocial].altura);
     moldura = { opcoesArte, recursos };
-  } else {
-    layout = tamanhoOriginal(vw, vh, temGrafico, itensMetricas.length, cartaoAlto);
-    saida = criarCanvas(layout.largura, layout.altura);
   }
+  const layoutDoQuadro = (situacaoEmDuasLinhas: boolean): LayoutConteudo => {
+    if (caixaArte) {
+      return calcularLayoutConteudo({
+        larguraVideo: vw, alturaVideo: vh, largura: Math.round(caixaArte.w), altura: Math.round(caixaArte.h), grafico: temGrafico, nCartoes: itensMetricas.length, cartaoAlto, situacaoEmDuasLinhas,
+      });
+    }
+    return tamanhoOriginal(vw, vh, temGrafico, itensMetricas.length, cartaoAlto, situacaoEmDuasLinhas);
+  };
+  let layout = layoutDoQuadro(false);
+  // A frase da situação traz o rótulo da fonte e quase nunca cabe numa linha: se alguma não couber, os cartões ganham a segunda linha.
+  if (cartaoAlto && situacaoPedeDuasLinhas(itensMetricas, layout)) layout = layoutDoQuadro(true);
+  const saida = formatoSocial ? criarCanvas(FORMATOS[formatoSocial].largura, FORMATOS[formatoSocial].altura) : criarCanvas(layout.largura, layout.altura);
   const conteudo = social ? criarCanvas(layout.largura, layout.altura) : saida;
   const ctxC = contexto2d(conteudo);
   const ctxS = social ? contexto2d(saida) : ctxC;
