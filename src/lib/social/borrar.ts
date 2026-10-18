@@ -56,21 +56,22 @@ function ampliarSuave(origem: HTMLCanvasElement, w: number, h: number): HTMLCanv
   return atual;
 }
 
-function desfocarRegiao(ctx: CanvasRenderingContext2D, fonte: CanvasImageSource, imgW: number, imgH: number, rosto: CaixaRosto, janela: JanelaImagem, caixaPainel: Retangulo) {
+/** Devolve false quando não conseguiu desfocar (canvas temporário não alocado): quem chama põe a tarja no lugar. */
+function desfocarRegiao(ctx: CanvasRenderingContext2D, fonte: CanvasImageSource, imgW: number, imgH: number, rosto: CaixaRosto, janela: JanelaImagem, caixaPainel: Retangulo): boolean {
   // A região é um pouco maior que a caixa: o desfoque esmaece nas bordas e o rosto fica no miolo opaco.
   const w = rosto.w * 1.1, h = rosto.h * 1.1;
   const x0 = Math.max(0, rosto.cx - w / 2), x1 = Math.min(1, rosto.cx + w / 2);
   const y0 = Math.max(0, rosto.cy - h / 2), y1 = Math.min(1, rosto.cy + h / 2);
-  if (x1 <= x0 || y1 <= y0) return;
+  if (x1 <= x0 || y1 <= y0) return true;
   const a = posicaoNaArte(janela, imgW, imgH, x0, y0, caixaPainel), b = posicaoNaArte(janela, imgW, imgH, x1, y1, caixaPainel);
   const dx = a.x, dy = a.y, dw = b.x - a.x, dh = b.y - a.y;
-  if (dw < 2 || dh < 2) return;
+  if (dw < 2 || dh < 2) return true;
 
   // Cerca de 9 células na menor dimensão: some traço de olho, boca e contorno, e a cor da pele fica.
   const celula = Math.max(4, Math.min(dw, dh) / 9);
   const pequeno = criarCanvas(dw / celula, dh / celula);
   const pc = pequeno.getContext('2d');
-  if (!pc) { liberarCanvas(pequeno); return; }
+  if (!pc) { liberarCanvas(pequeno); return false; }
   pc.imageSmoothingEnabled = true;
   pc.imageSmoothingQuality = 'high';
   pc.drawImage(fonte, x0 * imgW, y0 * imgH, (x1 - x0) * imgW, (y1 - y0) * imgH, 0, 0, pequeno.width, pequeno.height);
@@ -78,7 +79,7 @@ function desfocarRegiao(ctx: CanvasRenderingContext2D, fonte: CanvasImageSource,
   const tmp = ampliarSuave(pequeno, Math.ceil(dw), Math.ceil(dh));
   const final = criarCanvas(dw, dh);
   const fc = final.getContext('2d');
-  if (!fc) { liberarCanvas(final); liberarCanvas(tmp); liberarCanvas(pequeno); return; }
+  if (!fc) { liberarCanvas(final); liberarCanvas(tmp); liberarCanvas(pequeno); return false; }
   fc.imageSmoothingEnabled = true;
   fc.imageSmoothingQuality = 'high';
   fc.drawImage(tmp, 0, 0, final.width, final.height);
@@ -100,17 +101,10 @@ function desfocarRegiao(ctx: CanvasRenderingContext2D, fonte: CanvasImageSource,
   liberarCanvas(final);
   liberarCanvas(tmp);
   liberarCanvas(pequeno);
+  return true;
 }
 
-/** Pinta o desfoque ou a tarja sobre o rosto. Deve ser chamado com o clip da caixa da foto já ativo. */
-export function protegerRosto(
-  ctx: CanvasRenderingContext2D, fonte: CanvasImageSource, imgW: number, imgH: number, janela: JanelaImagem, caixaPainel: Retangulo, rosto: CaixaRosto, modo: Exclude<ModoRosto, 'nenhum'>,
-): void {
-  if (!(janela.escala > 0)) return;
-  if (modo === 'desfoque') {
-    desfocarRegiao(ctx, fonte, imgW, imgH, rosto, janela, caixaPainel);
-    return;
-  }
+function pintarTarja(ctx: CanvasRenderingContext2D, imgW: number, imgH: number, janela: JanelaImagem, caixaPainel: Retangulo, rosto: CaixaRosto) {
   const r = caixaDoRostoNaArte(rosto, janela, imgW, imgH, caixaPainel);
   if (r.w < 2 || r.h < 2) return;
   ctx.save();
@@ -121,4 +115,18 @@ export function protegerRosto(
   ctx.strokeStyle = 'rgba(255,255,255,0.12)';
   ctx.stroke();
   ctx.restore();
+}
+
+/**
+ * Pinta o desfoque ou a tarja sobre o rosto. Deve ser chamado com o clip da caixa da foto já ativo.
+ * Se o desfoque não puder ser feito (memória de canvas esgotada, comum no iPhone), a tarja cobre no lugar: o rosto não fica à mostra
+ * em silêncio. Devolve false só quando nada pôde ser coberto (enquadramento inválido); quem chama decide o que fazer.
+ */
+export function protegerRosto(
+  ctx: CanvasRenderingContext2D, fonte: CanvasImageSource, imgW: number, imgH: number, janela: JanelaImagem, caixaPainel: Retangulo, rosto: CaixaRosto, modo: Exclude<ModoRosto, 'nenhum'>,
+): boolean {
+  if (!(janela.escala > 0)) return false;
+  if (modo === 'desfoque' && desfocarRegiao(ctx, fonte, imgW, imgH, rosto, janela, caixaPainel)) return true;
+  pintarTarja(ctx, imgW, imgH, janela, caixaPainel, rosto);
+  return true;
 }
