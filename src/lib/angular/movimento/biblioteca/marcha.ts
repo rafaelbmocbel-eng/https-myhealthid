@@ -22,7 +22,7 @@ export const ASSIMETRIA_TEMPO_APOIO: EntradaBiblioteca = {
     {
       id: 'dor_ou_doenca_articular_unilateral',
       texto:
-        'Dor ou doença articular unilateral, como a osteoartrite de quadril ou a dor no joelho, foi associada a assimetria temporal na marcha, com apoio mais curto no membro afetado; condição desse tipo pode contribuir para a diferença no tempo de apoio.',
+        'Dor ou doença articular unilateral, como a osteoartrite de quadril ou a dor no joelho, foi associada a assimetria temporal na marcha (na osteoartrite de quadril, com apoio mais curto no membro afetado); condição desse tipo pode contribuir para a diferença no tempo de apoio.',
       forca: 'meta_analise',
       fontes: [F.constantinou2014, F.lugade2010, F.murray1985, F.corrigan2023],
       ressalva:

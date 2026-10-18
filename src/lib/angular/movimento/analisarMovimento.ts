@@ -4,7 +4,7 @@ import type { Lado, TrilhaPose } from '../video/tipos';
 import { deteccaoPct, estimarDirecao } from '../video/trilha';
 import { detectarAchados } from './achados';
 import { finito, percentil, validos } from './estatistica';
-import { incertezaAngularGeral, JANELA_SUAVIZACAO_S, processarSerie, quadroDaTrilha, type SerieProcessada } from './incerteza';
+import { FATOR_COBERTURA, fpsEfetivo, incertezaAngularGeral, JANELA_SUAVIZACAO_S, processarSerie, quadroDaTrilha, type SerieProcessada } from './incerteza';
 import { calcularMedidas } from './medidasPorRepeticao';
 import { DESCRICAO_INCERTEZA, formulaDaIncerteza, indisponiveisDoProtocolo, protocoloDo } from './protocolos';
 import { marcarDuracoesDiscrepantes, repeticoesDaMarcha, repeticoesDoAgachamento, segmentarPicos } from './repeticoes';
@@ -32,6 +32,24 @@ const sfx = (l: Lado) => l.toLowerCase();
 
 const trilhaVazia = (): TrilhaPose => ({ fps: 30, largura: 1, altura: 1, quadros: [] });
 
+/**
+ * Trilha com a estrutura que o motor lê: sem lista de quadros vira vazia, quadro sem pontos vira quadro sem pontos e taxa de quadros
+ * implausível é trocada pela efetiva (com aviso). A trilha recebida não é alterada.
+ */
+function trilhaSegura(trilha: TrilhaPose | null | undefined): { trilha: TrilhaPose; avisos: string[] } {
+  if (!trilha || !Array.isArray(trilha.quadros)) return { trilha: trilhaVazia(), avisos: [] };
+  const integro = trilha.quadros.every((q) => !!q && typeof q === 'object' && !!q.pontos && typeof q.pontos === 'object');
+  const { fps, declarada } = fpsEfetivo(trilha);
+  if (integro && declarada) return { trilha, avisos: [] };
+  return {
+    trilha: {
+      fps, largura: trilha.largura, altura: trilha.altura,
+      quadros: integro ? trilha.quadros : trilha.quadros.map((q, i) => ({ i, t: q?.t as number, pontos: q && typeof q.pontos === 'object' && q.pontos ? q.pontos : {} })),
+    },
+    avisos: declarada ? [] : [`A taxa de quadros da trilha (${String(trilha.fps)}) não é plausível: usei ${Math.round(fps * 100) / 100} quadros/s, pelos tempos dos quadros.`],
+  };
+}
+
 /** Média, quadro a quadro, das séries com valor (null quando nenhuma tem). */
 function mediaDasSeries(series: (number | null)[][], n: number): (number | null)[] {
   return Array.from({ length: n }, (_, i) => {
@@ -57,30 +75,30 @@ function construirDeslocamentos(p: Protocolo, trilha: TrilhaPose, direcao: 1 | -
 
 interface Segmentacao { repeticoes: Repeticao[]; eventos: EventoPasso[]; avisos: string[] }
 
-function segmentarAgachamentoLateral(trilha: TrilhaPose, angulos: Record<string, SerieProcessada>, fps: number): Segmentacao {
+function segmentarAgachamentoLateral(tempos: readonly number[], angulos: Record<string, SerieProcessada>, fps: number): Segmentacao {
   const joelhos = ['joelho_d', 'joelho_e'].map((id) => angulos[id]).filter((s): s is SerieProcessada => !!s);
-  const referencia = mediaDasSeries(joelhos.map((s) => s.suave), trilha.quadros.length);
-  const ruido = incertezaAngularGeral(joelhos.map((s) => s.u)) ?? 0;
+  const referencia = mediaDasSeries(joelhos.map((s) => s.suave), tempos.length);
+  const ruido = (incertezaAngularGeral(joelhos.map((s) => s.u)) ?? 0) / FATOR_COBERTURA;
   const brutas = segmentarPicos(referencia, fps, { amplitudeMin: AMPLITUDE_MIN_JOELHO_GRAUS, proeminenciaMin: AMPLITUDE_MIN_JOELHO_GRAUS, distMinS: DIST_MIN_FUNDOS_S, ruido });
   const avisos: string[] = [];
   if (!brutas.length) {
     avisos.push(`Não identifiquei repetições do agachamento (é preciso um pico de flexão do joelho com pelo menos ${AMPLITUDE_MIN_JOELHO_GRAUS}° de amplitude): confira se o movimento aparece inteiro no trecho analisado.`);
   }
-  return { repeticoes: repeticoesDoAgachamento(trilha, brutas), eventos: [], avisos };
+  return { repeticoes: repeticoesDoAgachamento(tempos, brutas), eventos: [], avisos };
 }
 
-function segmentarAgachamentoFrontal(trilha: TrilhaPose, desloc: Record<string, Fonte>, fps: number): Segmentacao {
+function segmentarAgachamentoFrontal(trilha: TrilhaPose, tempos: readonly number[], desloc: Record<string, Fonte>, fps: number): Segmentacao {
   const altura = desloc.altura_pelve;
   const escalaVertical = percentil(validos(desloc.quadril_tornozelo?.bruto ?? []).filter((v) => v > 0), 0.9) ?? 0.45 * trilha.altura;
   const minimo = DESCIDA_MIN_QUADRIL * escalaVertical;
   const brutas = altura
-    ? segmentarPicos(altura.suave, fps, { amplitudeMin: minimo, proeminenciaMin: minimo, distMinS: DIST_MIN_FUNDOS_S, ruido: altura.u ?? 0 })
+    ? segmentarPicos(altura.suave, fps, { amplitudeMin: minimo, proeminenciaMin: minimo, distMinS: DIST_MIN_FUNDOS_S, ruido: (altura.u ?? 0) / FATOR_COBERTURA })
     : [];
   const avisos: string[] = [];
   if (!brutas.length) {
     avisos.push(`Não identifiquei repetições do agachamento (é preciso uma descida do ponto médio dos quadris de pelo menos ${Math.round(DESCIDA_MIN_QUADRIL * 100)}% da distância vertical quadril–tornozelo): confira se o corpo inteiro aparece de frente e se o movimento está no trecho analisado.`);
   }
-  return { repeticoes: repeticoesDoAgachamento(trilha, brutas), eventos: [], avisos };
+  return { repeticoes: repeticoesDoAgachamento(tempos, brutas), eventos: [], avisos };
 }
 
 function segmentarMarcha(trilha: TrilhaPose, opcoes: OpcoesAnalise, direcao: 1 | -1): Segmentacao {
@@ -90,7 +108,7 @@ function segmentarMarcha(trilha: TrilhaPose, opcoes: OpcoesAnalise, direcao: 1 |
   const avisos: string[] = [];
   if (eventos.length < recebidos.length) avisos.push(`${recebidos.length - eventos.length} evento(s) de contato ou saída do pé estavam fora do trecho analisado e foram ignorados.`);
   if (!eventos.some((e) => e.tipo === 'contato')) avisos.push('Não achei contatos do pé no chão: sem eles não há passadas. Marque os contatos e as saídas no quadro a quadro.');
-  const r = repeticoesDaMarcha(trilha, eventos);
+  const r = repeticoesDaMarcha(eventos);
   if (r.ignoradas) avisos.push(`${r.ignoradas} intervalo(s) entre contatos do mesmo pé fora de 0,6 a 2,5 s foram ignorados (provável contato perdido ou pausa): confira os eventos.`);
   if (r.semSaida) avisos.push(`${r.semSaida} passada(s) sem a saída do pé marcada ficaram sem medidas: marque a saída do pé no quadro a quadro.`);
   return { repeticoes: r.repeticoes, eventos, avisos };
@@ -106,6 +124,7 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
   const quadros = trilha.quadros;
   const quadroS = quadroDaTrilha(trilha);
   const fps = 1 / quadroS;
+  const tempos = quadros.map((q, i) => (finito(q.t) ? q.t : i * quadroS));
   const direcao = opcoes.direcao ?? (quadros.length ? estimarDirecao(trilha) : 1);
   const suavizacaoS = finito(opcoes.suavizacaoS) && opcoes.suavizacaoS >= 0 ? opcoes.suavizacaoS : JANELA_SUAVIZACAO_S;
   const avisos: string[] = [];
@@ -125,11 +144,11 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
   let seg: Segmentacao;
   if (!quadros.length) seg = { repeticoes: [], eventos: [], avisos: [] };
   else if (p.gesto === 'marcha') seg = segmentarMarcha(trilha, opcoes, direcao);
-  else if (p.planoFilmado === 'frontal') seg = segmentarAgachamentoFrontal(trilha, deslocamentos, fps);
-  else seg = segmentarAgachamentoLateral(trilha, angulos, fps);
+  else if (p.planoFilmado === 'frontal') seg = segmentarAgachamentoFrontal(trilha, tempos, deslocamentos, fps);
+  else seg = segmentarAgachamentoLateral(tempos, angulos, fps);
   const { repeticoes, eventos } = seg;
   avisos.push(...seg.avisos);
-  marcarDuracoesDiscrepantes(repeticoes, quadroS);
+  marcarDuracoesDiscrepantes(repeticoes, FATOR_COBERTURA * quadroS);
 
   const { medidas, resumos, refsPx, comPontosAusentes } = calcularMedidas({ protocolo: p, repeticoes, angulos, deslocamentos, quadroS });
   for (const i of comPontosAusentes) {
@@ -160,7 +179,7 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
 
   const series: Record<string, AmostraAngulo[]> = {};
   for (const def of p.articulacoes) {
-    series[def.id] = quadros.map((q, i) => ({ t: q.t, graus: angulos[def.id].suave[i] ?? null }));
+    series[def.id] = quadros.map((_, i) => ({ t: tempos[i], graus: angulos[def.id].suave[i] ?? null }));
   }
   const usadas = Object.values(angulos);
 
@@ -192,9 +211,11 @@ function analisar(p: Protocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise): Anal
  */
 export function analisarMovimento(protocolo: Protocolo | IdProtocolo, trilha: TrilhaPose, opcoes: OpcoesAnalise = {}): AnaliseMovimento {
   const p = typeof protocolo === 'string' ? protocoloDo(protocolo) : protocolo;
-  const t = trilha && Array.isArray(trilha.quadros) ? trilha : trilhaVazia();
+  const { trilha: t, avisos: avisosDaTrilha } = trilhaSegura(trilha);
   try {
-    return analisar(p, t, opcoes);
+    const a = analisar(p, t, opcoes);
+    a.avisos.unshift(...avisosDaTrilha);
+    return a;
   } catch (erro) {
     // Rede de segurança: um erro inesperado não derruba a tela do profissional; o aviso torna o problema visível.
     const motivo = erro instanceof Error ? erro.message : String(erro);

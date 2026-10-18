@@ -187,10 +187,11 @@ export const GATILHOS: Record<TipoGatilho, DefGatilho> = {
  */
 export const FORMULAS_INCERTEZA: Record<GrandezaMedida, string> = {
   angulo:
-    'Ângulos: u = raiz( soma((bruto − suavizado)²) ÷ (n − 1) ), sobre as n amostras em que a série bruta e a suavizada têm valor; ' +
+    'Ângulos: u = 2 × raiz( soma((bruto − suavizado)²) ÷ (n − 1) ), em que 2 é o fator de cobertura (cerca de 95% se o erro for gaussiano) e a soma percorre ' +
+    'as n amostras das janelas em que a medida é lida e em que a série bruta e a suavizada têm valor; ' +
     'cada medida usa a série da sua articulação, e a incerteza angular geral do vídeo é a mediana de u entre as séries angulares do protocolo.',
-  deslocamento: 'Deslocamentos: o mesmo resíduo (bruto − suavizado), calculado sobre a série normalizada da própria medida (por exemplo, % da coxa).',
-  tempo: 'Tempos: u = 1 ÷ taxa efetiva da trilha (um quadro).',
+  deslocamento: 'Deslocamentos: o mesmo cálculo (fator de cobertura 2 e resíduo bruto − suavizado), feito sobre a série normalizada da própria medida (por exemplo, % da coxa).',
+  tempo: 'Tempos: u = 2 × (1 ÷ taxa efetiva da trilha), isto é, dois quadros: o erro de um quadro com o mesmo fator de cobertura 2.',
 };
 
 export const DESCRICAO_INCERTEZA =

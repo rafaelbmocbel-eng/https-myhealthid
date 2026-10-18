@@ -1,6 +1,6 @@
 import { faseDo } from './protocolos';
 import { finito, resumir, validos, type Num } from './estatistica';
-import type { SerieProcessada } from './incerteza';
+import { expandir, FATOR_COBERTURA, residuoNasJanelas, type SerieProcessada } from './incerteza';
 import type { Fonte } from './seriesDerivadas';
 import type {
   ChaveLado, DefMedidaRepeticao, FaseMovimento, MarcoRepeticao, MedidaPorRepeticao, Protocolo, Repeticao, ResumosPorMedida, ValoresPorLado,
@@ -24,6 +24,9 @@ export interface EntradaMedidas {
   deslocamentos: Record<string, Fonte>;
   quadroS: number;
 }
+
+/** Meia-largura, em segundos, da vizinhança do marco em que se estima a incerteza de uma medida lida num instante só. */
+const VIZINHANCA_MARCO_S = 0.3;
 
 export interface ResultadoMedidas {
   medidas: MedidaPorRepeticao[];
@@ -103,7 +106,29 @@ function extrair(def: DefMedidaRepeticao, fase: FaseMovimento, rep: Repeticao, s
     if (!(divisor > 0)) return { valor: null, faltou: true };
     valor = (valor / divisor) * 100;
   }
-  return { valor, faltou: false };
+  return finito(valor) ? { valor, faltou: false } : { valor: null, faltou: true };
+}
+
+type Janela = readonly [number, number];
+
+/** Janelas (índices de quadro) em que a medida é lida: a fase inteira, ou a vizinhança do marco quando a medida é lida num instante só. */
+function janelasDaMedida(def: DefMedidaRepeticao, fase: FaseMovimento, repeticoes: Repeticao[], lado: ChaveLado, fps: number): Janela[] {
+  const meia = Math.max(2, Math.round(VIZINHANCA_MARCO_S * fps));
+  const janelas: Janela[] = [];
+  for (const rep of repeticoes) {
+    if (rep.sinalizadores.includes('incompleta')) continue;
+    if (def.porLado && rep.lado !== null && rep.lado !== lado) continue;
+    const a = indiceDoMarco(rep, fase.de), b = indiceDoMarco(rep, fase.ate);
+    if (def.extracao === 'valor_no_marco') janelas.push([Math.max(rep.inicioI, a - meia), Math.min(rep.fimI, a + meia)]);
+    else janelas.push([a, b]);
+  }
+  return janelas;
+}
+
+/** Incerteza de um valor da medida: o resíduo nas janelas em que ela é lida; sem amostras suficientes, o resíduo da série inteira. */
+function incertezaNasJanelas(serie: SerieProcessada, janelas: readonly Janela[]): number | null {
+  const r = residuoNasJanelas(serie.bruto, serie.referencia, janelas);
+  return r.u !== null ? expandir(r.u) : serie.u;
 }
 
 export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
@@ -131,11 +156,12 @@ export function calcularMedidas(e: EntradaMedidas): ResultadoMedidas {
       const normalizador = def.id === 'descida_pelve' ? deslocamentos.quadril_tornozelo : undefined;
       refsPx[def.id][lado] = def.id === 'descida_pelve' ? (normalizador?.refPx ?? null) : (fonteDesloc?.refPx ?? null);
 
-      if (def.grandeza === 'tempo') incerteza[lado] = quadroS;
+      const uSerie = serie && fase ? incertezaNasJanelas(serie, janelasDaMedida(def, fase, repeticoes, lado, 1 / quadroS)) : (serie?.u ?? null);
+      if (def.grandeza === 'tempo') incerteza[lado] = FATOR_COBERTURA * quadroS;
       else if (def.id === 'descida_pelve') {
         const ref = normalizador?.refPx ?? null;
-        incerteza[lado] = serie && serie.u !== null && ref !== null && ref > 0 ? (serie.u / ref) * 100 : null;
-      } else incerteza[lado] = serie ? serie.u : null;
+        incerteza[lado] = uSerie !== null && ref !== null && ref > 0 ? (uSerie / ref) * 100 : null;
+      } else incerteza[lado] = uSerie;
 
       if (!fase) {
         avisos.push(`A fase "${def.fase}" não existe neste protocolo: a medida não foi calculada.`);

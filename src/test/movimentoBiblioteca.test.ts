@@ -16,7 +16,7 @@ const PDF_SEGURO = new RegExp('^[\\x20-\\x7E\\u00A0-\\u00FF≥≤−–—·→�
 const VERBO_CAUSAL =
   /\b(causa|causam|causou|causando|provoca|provocam|provocou|diagnostica|diagnosticam|determina|determinam|origina|originam|gera|geram|induz|induzem|resulta|resultam|resultou|leva a|levam a|levou a|responsável por|devido a)\b/i;
 
-const MARCA_DE_HIPOTESE = /(associad|pode(m)? contribuir|hipótese|interpretad|discutid|relacion|correlacion)/i;
+const MARCA_DE_HIPOTESE = /(associad|pode(m)? (contribuir|refletir|divergir|estar)|hipótese|interpretad|discutid|relacion|correlacion)/i;
 
 const entradas = (): [string, EntradaBiblioteca][] => Object.entries(BIBLIOTECA);
 

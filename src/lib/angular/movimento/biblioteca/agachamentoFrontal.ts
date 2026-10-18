@@ -13,7 +13,7 @@ export const VALGO_DINAMICO: EntradaBiblioteca = {
     {
       id: 'mobilidade_tornozelo_pe',
       texto:
-        'Menor dorsiflexão do tornozelo e maior mobilidade do pé foram associadas a maior valgo (deslocamento medial) do joelho no agachamento e podem contribuir para o valgo medido.',
+        'Menor dorsiflexão do tornozelo e diferenças na mobilidade do pé (do médio-pé e do tálus) foram associadas a maior valgo (deslocamento medial) do joelho no agachamento e podem contribuir para o valgo medido.',
       forca: 'experimental',
       fontes: [F.macrum2011, F.mauntel2013, F.wyndow2016, F.hassan2022],
       ressalva:

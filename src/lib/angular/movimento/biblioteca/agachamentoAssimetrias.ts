@@ -62,7 +62,7 @@ export const ASSIMETRIA_FLEXAO_QUADRIL: EntradaBiblioteca = {
     {
       id: 'mobilidade_quadril_tornozelo',
       texto:
-        'Menor mobilidade de flexão do quadril e de dorsiflexão do tornozelo foi associada a agachamentos menos profundos, e a dorsiflexão do mesmo lado se associou ao ângulo de flexão do quadril; diferenças dessas mobilidades entre os lados podem contribuir para a diferença medida.',
+        'Menor mobilidade de dorsiflexão do tornozelo (e, em homens, de flexão do quadril) foi associada a agachamentos menos profundos, e a dorsiflexão do mesmo lado se associou ao ângulo de flexão do quadril; diferenças dessas mobilidades entre os lados podem contribuir para a diferença medida.',
       forca: 'observacional',
       fontes: [F.kim2015, F.endo2020],
       ressalva:
@@ -71,9 +71,9 @@ export const ASSIMETRIA_FLEXAO_QUADRIL: EntradaBiblioteca = {
     {
       id: 'condicao_do_quadril',
       texto:
-        'Dor ou alteração estrutural do quadril, como o impacto femoroacetabular, foi estudada no agachamento, mas a evidência de que mude o ângulo de flexão do quadril é inconclusiva.',
-      forca: 'revisao_sistematica',
-      fontes: [F.generoso2025, F.lamontagne2011],
+        'Dor ou alteração estrutural do quadril, como o impacto femoroacetabular, pode estar relacionada a diferenças no agachamento (profundidade, joelho e tornozelo), mas a evidência de que mude o ângulo de flexão do quadril é inconclusiva.',
+      forca: 'observacional',
+      fontes: [F.lamontagne2011, F.generoso2025],
       ressalva:
         'Evidência inconclusiva: na revisão com metanálise não houve diferença significativa nos parâmetros cinemáticos depois da cirurgia, e os autores sugerem que deformidades ósseas isoladas não explicam as limitações observadas no agachamento. No estudo de 10 pacientes, a cinemática do quadril afetado também não mudou após a cirurgia, embora o joelho e o tornozelo tenham flexionado mais. Serve apenas como lembrete de investigar o quadril.',
     },
@@ -111,7 +111,7 @@ export const ASSIMETRIA_DORSIFLEXAO: EntradaBiblioteca = {
       forca: 'observacional',
       fontes: [F.miyasaka2023, F.gomes2020],
       ressalva:
-        'Evidência mista: Miyasaka (31 homens jovens saudáveis) encontrou associação, enquanto Gomes (20 adultos saudáveis) não viu influência evidente das propriedades mecânicas do tendão do calcâneo sobre a profundidade do agachamento. Ambos medem a rigidez por ultrassom, o que não é possível em vídeo, e nenhum compara os lados.',
+        'Evidência mista: Miyasaka (31 homens jovens saudáveis) encontrou associação, enquanto Gomes (20 adultos saudáveis) viu a dorsiflexão no teste de avanço se associar à rigidez do tendão, mas não viu influência evidente das propriedades mecânicas do tendão do calcâneo sobre a profundidade do agachamento. Ambos medem a rigidez por ultrassom, o que não é possível em vídeo, e nenhum compara os lados.',
     },
     {
       id: 'elevacao_do_calcanhar',

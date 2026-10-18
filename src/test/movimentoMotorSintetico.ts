@@ -104,8 +104,9 @@ export interface VerdadeAgachamento {
   fim: number[];
 }
 
-export function verdadeAgachamento(c: { reps?: number; periodo?: number; repouso?: number }): VerdadeAgachamento {
-  const reps = c.reps ?? 5, T = c.periodo ?? 3, r0 = c.repouso ?? 1;
+export function verdadeAgachamento(c: object = {}): VerdadeAgachamento {
+  const cfg = c as { reps?: number; periodo?: number; repouso?: number };
+  const reps = cfg.reps ?? 5, T = cfg.periodo ?? 3, r0 = cfg.repouso ?? 1;
   return {
     duracao: 2 * r0 + reps * T,
     inicio: Array.from({ length: reps }, (_, r) => r0 + r * T),

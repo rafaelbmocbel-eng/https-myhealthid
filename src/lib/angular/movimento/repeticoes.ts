@@ -1,5 +1,5 @@
 import { eventosDo, extremosLocais, tempoDoEvento, type EventoPasso } from '../video/eventos';
-import type { Lado, TrilhaPose } from '../video/tipos';
+import type { Lado } from '../video/tipos';
 import { escoreZModificado, finito, mad, mediana, percentil, validos, type Num } from './estatistica';
 import type { Repeticao, SinalizadorRepeticao } from './tipos';
 
@@ -16,6 +16,8 @@ import type { Repeticao, SinalizadorRepeticao } from './tipos';
 const FRACAO_REPOUSO = 0.05;
 /** Fração da amplitude que confirma que o movimento começou (nível alto da histerese). */
 const FRACAO_MOVIMENTO = 0.15;
+/** Largura, em fração da amplitude abaixo do topo, da região usada para achar o centro do ponto mais baixo. */
+const FRACAO_PLATO = 0.05;
 /** Quanto o nível em pé da ponta do trecho pode estar acima do nível em pé do vídeo, em fração da amplitude, para a repetição contar como completa. */
 const TOLERANCIA_EM_PE = 0.2;
 /** Menor proeminência relativa de um pico para ser uma repetição, como no motor de métricas (metricas.ts). */
@@ -43,6 +45,17 @@ function minimoNoTrecho(s: readonly Num[], de: number, ate: number): { i: number
     if (finito(v) && (melhor === null || v < melhor.v)) melhor = { i: j, v };
   }
   return melhor;
+}
+
+/**
+ * Ponto mais baixo da repetição: o centro da região contínua em torno do pico que fica a até `nivel` do topo. O quadro de máximo de uma
+ * série com ruído oscila por vários quadros quando o fundo é achatado; o centro da região é estável e, num fundo mantido, cai no meio da pausa.
+ */
+function centroDoFundo(s: readonly Num[], pico: number, nivel: number): number {
+  let esq = pico, dir = pico;
+  while (esq - 1 >= 0 && finito(s[esq - 1]) && (s[esq - 1] as number) >= nivel) esq--;
+  while (dir + 1 < s.length && finito(s[dir + 1]) && (s[dir + 1] as number) >= nivel) dir++;
+  return Math.round((esq + dir) / 2);
 }
 
 /** Início do movimento antes do pico: a última passagem pelo nível baixo antes da primeira passagem pelo nível alto. */
@@ -92,13 +105,20 @@ export function segmentarPicos(serie: readonly Num[], fps: number, p: Parametros
   let ultimo = serie.length - 1;
   while (ultimo > 0 && !finito(serie[ultimo])) ultimo--;
 
+  // Nível em pé do vídeo inteiro (média do décimo mais baixo): a mesma referência para toda repetição, para que o mínimo ruidoso de um
+  // trecho em pé longo (a primeira e a última repetição) não desloque o início e o fim em relação às repetições do meio.
+  const baixos = [...v].sort((a, b) => a - b).slice(0, Math.max(3, Math.round(v.length * 0.1)));
+  const emPe = baixos.reduce((acc, x) => acc + x, 0) / baixos.length;
+
   const saida: RepeticaoBruta[] = [];
-  picos.forEach((pico, k) => {
-    const vp = serie[pico] as number;
-    const valeE = minimoNoTrecho(serie, k > 0 ? picos[k - 1] : primeiro, pico);
-    const valeD = minimoNoTrecho(serie, pico, k + 1 < picos.length ? picos[k + 1] : ultimo);
+  picos.forEach((picoBruto, k) => {
+    const vp = serie[picoBruto] as number;
+    const valeE = minimoNoTrecho(serie, k > 0 ? picos[k - 1] : primeiro, picoBruto);
+    const valeD = minimoNoTrecho(serie, picoBruto, k + 1 < picos.length ? picos[k + 1] : ultimo);
     if (!valeE || !valeD) return;
-    const niveis = (base: number) => {
+    const pico = centroDoFundo(serie, picoBruto, vp - Math.max(FRACAO_PLATO * (vp - (valeE.v + valeD.v) / 2), p.ruido));
+    const niveis = (valeLocal: number) => {
+      const base = Math.max(emPe, valeLocal);
       const a = vp - base;
       return { alto: base + Math.max(FRACAO_MOVIMENTO * a, 3 * p.ruido), baixo: base + Math.max(FRACAO_REPOUSO * a, p.ruido) };
     };
@@ -113,8 +133,8 @@ export function segmentarPicos(serie: readonly Num[], fps: number, p: Parametros
   return saida;
 }
 
-/** Duração plausível: a repetição cujo tempo se afasta da mediana pelo critério do escore z modificado e por mais de um quadro. */
-export function marcarDuracoesDiscrepantes(repeticoes: Repeticao[], quadroS: number): void {
+/** Duração discrepante: a repetição cujo tempo se afasta da mediana pelo critério do escore z modificado e por mais que a incerteza do tempo. */
+export function marcarDuracoesDiscrepantes(repeticoes: Repeticao[], incertezaS: number): void {
   const completas = repeticoes.filter((r) => !r.sinalizadores.includes('incompleta'));
   if (completas.length < 4) return;
   const duracoes = completas.map((r) => r.duracao);
@@ -122,7 +142,7 @@ export function marcarDuracoesDiscrepantes(repeticoes: Repeticao[], quadroS: num
   const madValor = mad(duracoes);
   for (const r of completas) {
     const m = escoreZModificado(r.duracao, med, madValor);
-    if (m !== null && Math.abs(m) > 3.5 && Math.abs(r.duracao - med) > quadroS) r.sinalizadores.push('duracao_discrepante');
+    if (m !== null && Math.abs(m) > 3.5 && Math.abs(r.duracao - med) > incertezaS) r.sinalizadores.push('duracao_discrepante');
   }
 }
 
@@ -132,9 +152,8 @@ function repeticao(numero: number, lado: Lado | null, i0: number, i1: number, i2
 }
 
 /** Repetições do agachamento a partir da segmentação por picos. */
-export function repeticoesDoAgachamento(trilha: TrilhaPose, brutas: RepeticaoBruta[]): Repeticao[] {
-  return brutas.map((b, k) =>
-    repeticao(k + 1, null, b.inicioI, b.fundoI, b.fimI, [trilha.quadros[b.inicioI].t, trilha.quadros[b.fundoI].t, trilha.quadros[b.fimI].t], b.incompleta));
+export function repeticoesDoAgachamento(tempos: readonly number[], brutas: RepeticaoBruta[]): Repeticao[] {
+  return brutas.map((b, k) => repeticao(k + 1, null, b.inicioI, b.fundoI, b.fimI, [tempos[b.inicioI], tempos[b.fundoI], tempos[b.fimI]], b.incompleta));
 }
 
 export interface PassadasMarcha { repeticoes: Repeticao[]; ignoradas: number; semSaida: number }
@@ -144,7 +163,7 @@ export interface PassadasMarcha { repeticoes: Repeticao[]; ignoradas: number; se
  * 0,6 a 2,5 s não são passadas (provável contato perdido) e são ignorados; passada sem saída fica como incompleta.
  * A ordem é a do início (os dois pés intercalados).
  */
-export function repeticoesDaMarcha(trilha: TrilhaPose, eventos: EventoPasso[]): PassadasMarcha {
+export function repeticoesDaMarcha(eventos: EventoPasso[]): PassadasMarcha {
   type Item = { lado: Lado; a: EventoPasso; b: EventoPasso; s: EventoPasso | undefined };
   const itens: Item[] = [];
   let ignoradas = 0;
