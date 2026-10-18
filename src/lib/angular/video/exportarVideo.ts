@@ -116,6 +116,12 @@ export interface OpcoesExportarVideo {
  */
 export const FOLGA_ROSTO_VIDEO: AjusteRosto = { mulLargura: 1.3, mulAltura: 1.1 };
 
+/** O ajuste que o desenho aplica à caixa do rosto: a folga do vídeo vezes o ajuste do profissional. */
+export function ajusteTotalDoRosto(op: Pick<OpcoesExportarVideo, 'folgaRosto' | 'ajusteRosto'>): AjusteRosto {
+  const folga = op.folgaRosto ?? FOLGA_ROSTO_VIDEO;
+  return { mulLargura: folga.mulLargura * (op.ajusteRosto?.mulLargura ?? 1), mulAltura: folga.mulAltura * (op.ajusteRosto?.mulAltura ?? 1) };
+}
+
 export interface ResumoDoRosto { porOrigem: Record<OrigemCaixa, number>; semRosto: boolean }
 
 // ---------- suporte ----------
@@ -591,7 +597,14 @@ export interface Renderizador {
   desenhar: (indice: number) => void;
   /** Marca o canvas de saída como repintado, sem mudar a imagem: o Chrome só codifica um quadro novo quando o canvas é repintado. */
   repintar: () => void;
-  caixas: CaixaDoQuadro[];
+  /** Caixa do rosto de cada quadro (muda quando `definirCaixaFixa` troca a caixa fixa). */
+  readonly caixas: CaixaDoQuadro[];
+  /** Origem da caixa do rosto no quadro `indice`: só em 'fixa' a cobertura usa a caixa que o profissional pode mover. */
+  origemDoQuadro: (indice: number) => OrigemCaixa;
+  /** O quadro do vídeo dentro do canvas de saída, em pixels dele (a moldura e o painel do gráfico ficam de fora). */
+  areaVideo: Retangulo;
+  /** Troca a caixa usada nos quadros sem rosto localizado; vale para os próximos `desenhar`. Sem argumento, volta à caixa de partida. */
+  definirCaixaFixa: (caixa?: CaixaRosto) => void;
   resumoRosto: ResumoDoRosto;
   liberar: () => void;
 }
@@ -672,10 +685,11 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   desenharCartoes(ctxB, layout, itensMetricas);
 
   // ---- rosto ----
-  const caixas = caixasDoRosto(trilha, op.caixaFixa ? { caixaFixa: op.caixaFixa } : {});
+  const calcularCaixas = (caixaFixa?: CaixaRosto) => caixasDoRosto(trilha, caixaFixa ? { caixaFixa } : {});
+  let caixas = calcularCaixas(op.caixaFixa);
+  // A origem de cada quadro não depende de onde a caixa fixa está: o resumo (e o aviso de quadros sem rosto) vale para qualquer posição.
   const resumo = resumoDoRosto(caixas);
-  const folga = op.folgaRosto ?? FOLGA_ROSTO_VIDEO;
-  const ajuste = { mulLargura: folga.mulLargura * (op.ajusteRosto?.mulLargura ?? 1), mulAltura: folga.mulAltura * (op.ajusteRosto?.mulAltura ?? 1) };
+  const ajuste = ajusteTotalDoRosto(op);
   const rv = layout.video;
   const janela = janelaDaImagem(rv, vw, vh, 'inteira');
 
@@ -716,6 +730,10 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
     const c = caixaDoIndice(indice);
     return naSaida({ x: rv.x + (c.cx - c.w / 2) * rv.w, y: rv.y + (c.cy - c.h / 2) * rv.h, w: c.w * rv.w, h: c.h * rv.h });
   };
+
+  const origemDoQuadro = (indice: number): OrigemCaixa => caixas[Math.min(caixas.length - 1, Math.max(0, indice))]?.origem ?? 'fixa';
+  const definirCaixaFixa = (caixa?: CaixaRosto) => { caixas = calcularCaixas(caixa ?? op.caixaFixa); };
+  const areaVideo = naSaida(rv);
 
   function cobrirRosto(indice: number) {
     if (op.modoRosto === 'nenhum') return;
@@ -809,7 +827,9 @@ export async function prepararRenderizador(op: OpcoesExportarVideo, el: HTMLVide
   }
 
   return {
-    saida, largura: saida.width, altura: saida.height, layout, naSaida, rostoNaSaida, desenhar, repintar, caixas,
+    saida, largura: saida.width, altura: saida.height, layout, naSaida, rostoNaSaida, desenhar, repintar,
+    get caixas() { return caixas; },
+    origemDoQuadro, areaVideo, definirCaixaFixa,
     resumoRosto: { porOrigem: resumo, semRosto: resumo.fixa > 0 },
     liberar: () => { liberarCanvas(base); if (fundoMini) liberarCanvas(fundoMini); if (conteudo !== saida) liberarCanvas(conteudo); liberarCanvas(saida); },
   };
@@ -825,6 +845,12 @@ export interface Previa {
   nQuadros: number;
   /** Índice do quadro da trilha que corresponde ao instante `t` do vídeo. */
   mostrar: (indice: number) => Promise<void>;
+  /** O quadro do vídeo dentro do canvas da prévia, em pixels do canvas: é onde a caixa fixa do rosto pode ser movida. */
+  areaVideo: Retangulo;
+  /** 'fixa' quando a cobertura do quadro usa a caixa fixa (o rosto não foi localizado ali). */
+  origemDoQuadro: (indice: number) => OrigemCaixa;
+  /** Muda a caixa usada nos quadros sem rosto e redesenha o quadro mostrado, sem refazer a prévia. */
+  moverCaixaFixa: (caixa: CaixaRosto) => void;
   liberar: () => void;
 }
 
@@ -840,6 +866,7 @@ export async function criarPrevia(op: OpcoesExportarVideo): Promise<Previa> {
     throw e;
   }
   let liberada = false;
+  let mostrado = -1;
   const mostrar = async (indice: number) => {
     // Depois de liberada a prévia não mexe mais no vídeo: a gravação pode já estar usando a mesma cópia.
     if (liberada) return;
@@ -847,9 +874,17 @@ export async function criarPrevia(op: OpcoesExportarVideo): Promise<Previa> {
     await buscarQuadro(fonte.el, tempoDeExibicao(op.trilha.quadros[i].t, op.trilha.fps), undefined, op.sinal);
     if (liberada) return;
     r.desenhar(i);
+    mostrado = i;
+  };
+  // O vídeo já está no quadro mostrado: mudar a caixa só repinta, sem buscar o quadro de novo.
+  const moverCaixaFixa = (caixa: CaixaRosto) => {
+    if (liberada) return;
+    r.definirCaixaFixa(caixa);
+    if (mostrado >= 0) r.desenhar(mostrado);
   };
   return {
     canvas: r.saida, largura: r.largura, altura: r.altura, resumoRosto: r.resumoRosto, nQuadros: op.trilha.quadros.length, mostrar,
+    areaVideo: r.areaVideo, origemDoQuadro: r.origemDoQuadro, moverCaixaFixa,
     liberar: () => { liberada = true; r.liberar(); if (proprio) fonte.liberar(); },
   };
 }

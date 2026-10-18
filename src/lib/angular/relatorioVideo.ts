@@ -114,7 +114,7 @@ export async function gerarRelatorioVideo(d: DadosRelatorioVideo): Promise<{ blo
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(110);
   doc.text(rodape, M, 287 - rodape.length * 3.3);
 
-  avisoEmTodasPaginas(doc, t);
+  avisoEmTodasPaginas(doc);
   molduraEmTodasPaginas(doc);
   return { blob: doc.output('blob'), nome: `Analise_angular_video_${paciente.replace(/[^\w]+/g, '_')}_${d.data.split('/').reverse().join('-')}.pdf` };
 }
@@ -178,13 +178,14 @@ const corDaSituacao = (c: CartaoMetricaUi): [number, number, number] => {
 };
 
 /** O aviso do vídeo no pé de cada página, dentro da moldura: a estimativa por vídeo não é diagnóstico. */
-function avisoEmTodasPaginas(doc: jsPDF, texto: (txt: string, x: number, y: number, op?: Parameters<jsPDF['text']>[3]) => void) {
+function avisoEmTodasPaginas(doc: jsPDF) {
   const total = doc.getNumberOfPages();
   const inicial = doc.getCurrentPageInfo().pageNumber;
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.6); doc.setTextColor(95);
-    texto(AVISO_ESTIMATIVA_VIDEO, 105, 288.6, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(95);
+    // Sem o `seguro` dos outros textos: o ponto médio existe na Helvetica do PDF e a frase fica idêntica à do vídeo e do quadro.
+    doc.text(AVISO_ESTIMATIVA_VIDEO, 105, 288.6, { align: 'center' });
   }
   doc.setPage(inicial);
 }
@@ -396,7 +397,7 @@ export async function gerarRelatorioGesto(d: DadosRelatorioGesto): Promise<{ blo
   doc.setFillColor(...AZUL); doc.roundedRect(M, y, 1.4, altBox, 0.7, 0.7, 'F');
   doc.text(linhas, M + 6, y + 5);
 
-  avisoEmTodasPaginas(doc, t);
+  avisoEmTodasPaginas(doc);
   molduraEmTodasPaginas(doc);
   return { blob: doc.output('blob'), nome: `Analise_${d.modelo.nome.toLowerCase().replace(/[^\w]+/g, '_')}_${paciente.replace(/[^\w]+/g, '_')}_${d.data.split('/').reverse().join('-')}.pdf` };
 }

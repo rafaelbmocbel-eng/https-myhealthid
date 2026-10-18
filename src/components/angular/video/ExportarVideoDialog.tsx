@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { Download, Film, Image as IconeImagem, Loader2, Share2, ShieldAlert, Square, Trash2 } from 'lucide-react';
+import { Crosshair, Download, Film, Image as IconeImagem, Loader2, Share2, ShieldAlert, Square, Trash2, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,14 +13,19 @@ import {
   extensaoDoMime, nomeArquivoVideo, planejarSaida, rotuloTempo, rotuloVelocidade, trechoMaximoS, trechoPadrao, validarExportacao, type FormatoVideo,
 } from '@/lib/angular/video/exportarVideoPuro';
 import {
-  abrirFonteDeVideo, criarPrevia, exportarVideoAnalise, suporteDeGravacao, type FonteDeVideo, type OpcoesExportarVideo, type OpcoesSocial, type Previa, type ResumoDoRosto,
+  abrirFonteDeVideo, ajusteTotalDoRosto, criarPrevia, exportarVideoAnalise, suporteDeGravacao, type FonteDeVideo, type OpcoesExportarVideo, type OpcoesSocial, type Previa, type ResumoDoRosto,
 } from '@/lib/angular/video/exportarVideo';
+import {
+  caixaFixaNaPosicao, limitarPosicaoDaCaixa, posicaoPadraoDaCaixaFixa, proximoQuadroSemRosto, tamanhoCobertoDaCaixaFixa, type PosicaoCaixa,
+} from '@/lib/angular/video/caixaFixaRosto';
 import { indiceNoTempo } from '@/lib/angular/video/trilha';
 import { AVISO_CONSELHO, DICA_TITULO_SEM_PACIENTE, TEXTO_CONSENTIMENTO, TEXTO_ROSTO_CONFERIDO, podeExportar } from '@/lib/social/consentimento';
 import { carregarImagem, carregarMarcaDoApp, carregarSeloDaClinica, type SeloImagem } from '@/lib/social/desenhar';
 import { baixarBlob, canvasParaPng, compartilharArquivo, dataParaArquivo } from '@/lib/social/exportar';
 import { MAX_PERFIS, lerAvatar, lerPreferencias, normalizarPerfil, normalizarPerfis, salvarPreferencias, type SeloModo } from '@/lib/social/perfis';
-import { MULTIPLICADOR_MAX, MULTIPLICADOR_MIN, type ModoRosto, type ModoRostoProtegido } from '@/lib/social/rosto';
+import type { Retangulo } from '@/lib/social/formatos';
+import { MULTIPLICADOR_MAX, MULTIPLICADOR_MIN, type CaixaRosto, type ModoRosto, type ModoRostoProtegido } from '@/lib/social/rosto';
+import CaixaRostoArrastavel from './CaixaRostoArrastavel';
 import { Chips, Deslizante, Grupo, Interruptor } from './controlesExportar';
 import type { PropsExportarVideoDialog } from './exportarVideoLigacao';
 
@@ -31,6 +36,9 @@ import type { PropsExportarVideoDialog } from './exportarVideoLigacao';
  */
 
 interface Resultado { url: string; nome: string; tipo: string; tamanho: number; arquivo: File; duracaoS: number }
+
+/** Onde o vídeo está no canvas da prévia (em pixels do canvas): é sobre ele que a caixa do rosto se move. */
+interface GeometriaPrevia { largura: number; altura: number; areaVideo: Retangulo }
 
 const ROTULO_VELOCIDADE: Record<number, string> = { 1: 'normal', 0.5: 'lenta', 0.25: 'bem lenta', 0.1: 'quadro a quadro' };
 
@@ -63,7 +71,7 @@ const BarraDeGravacao = memo(function BarraDeGravacao({ valorInicial, assinar, a
 /** O que o app sabe do rosto: só afirma "em todos os quadros" quando é verdade; quadros por vizinhança ou área fixa são ditos como estimativa. */
 function textoDoRosto(r: ResumoDoRosto): string {
   if (r.semRosto) {
-    return `Em ${Math.round(r.porOrigem.fixa)}% dos quadros não localizei o rosto com segurança (o paciente saiu do quadro ou o corpo não foi detectado): a cobertura deles é uma estimativa, a última posição conhecida mais uma área fixa no alto. Passe pelos quadros na prévia e confira se ele está coberto.`;
+    return `Em ${Math.round(r.porOrigem.fixa)}% dos quadros não localizei o rosto com segurança (o paciente saiu do quadro ou o corpo não foi detectado): neles a cobertura é uma estimativa, a última posição conhecida mais uma caixa fixa que você pode mover. Arraste a caixa tracejada sobre o rosto na prévia (ou use as setas do teclado com ela selecionada) e passe pelos quadros para conferir se ele está coberto.`;
   }
   if (r.porOrigem.vizinho > 0) return `Rosto localizado pelos pontos do corpo; em ${Math.round(r.porOrigem.vizinho)}% dos quadros a posição vem dos quadros vizinhos. Confira na prévia.`;
   return 'Rosto localizado pelos pontos do corpo em todos os quadros. Confira na prévia.';
@@ -101,6 +109,8 @@ export default function ExportarVideoDialog({
   const [mulAltura, setMulAltura] = useState(1);
   const [autorizado, setAutorizado] = useState(false);
   const [rostoConferido, setRostoConferido] = useState(false);
+  // Onde o profissional pôs a caixa dos quadros sem rosto localizado (null = a caixa de partida, no alto).
+  const [posicaoFixa, setPosicaoFixa] = useState<PosicaoCaixa | null>(null);
 
   // ---- prévia e gravação ----
   const [fonteOk, setFonteOk] = useState(false);
@@ -108,6 +118,7 @@ export default function ExportarVideoDialog({
   const [montandoPrevia, setMontandoPrevia] = useState(false);
   const [erroPrevia, setErroPrevia] = useState<string | null>(null);
   const [resumoRosto, setResumoRosto] = useState<ResumoDoRosto | null>(null);
+  const [geometriaPrevia, setGeometriaPrevia] = useState<GeometriaPrevia | null>(null);
   const [indicePrevia, setIndicePrevia] = useState(0);
   const [previaGrande, setPreviaGrande] = useState(false);
   const [gravando, setGravando] = useState(false);
@@ -121,6 +132,9 @@ export default function ExportarVideoDialog({
   const grandeRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const conteudoRef = useRef<HTMLDivElement | null>(null);
+  const caixaFixaRef = useRef<CaixaRosto | undefined>(undefined);
+  // Redesenho da prévia enquanto a caixa é arrastada: no máximo um por quadro de tela, sempre com a posição mais recente.
+  const redesenhoRef = useRef<{ caixa: CaixaRosto | null; raf: number }>({ caixa: null, raf: 0 });
   const progressoRef = useRef(0);
   const assinanteRef = useRef<((p: number) => void) | null>(null);
   const assinarProgresso = useCallback((atualizar: ((p: number) => void) | null) => { assinanteRef.current = atualizar; }, []);
@@ -147,6 +161,22 @@ export default function ExportarVideoDialog({
   const liberado = suporte.ok && fonteOk && !gravando && !rostoPendente && podeExportar(!precisaAutorizacao || autorizado, gravando, false) && !problema;
   const aviso = avisoDoTipoDeArquivo(suporte.escolha, formato);
 
+  // Caixa dos quadros sem rosto localizado: a posição fica sempre com a caixa inteira dentro do quadro, também quando os controles de
+  // largura e altura a engordam depois de posicionada.
+  const tamanhoCaixaFixa = useMemo(
+    () => tamanhoCobertoDaCaixaFixa(caixaFixaNaPosicao(trilha.largura, trilha.altura, null), ajusteTotalDoRosto({ ajusteRosto: { mulLargura, mulAltura } })),
+    [trilha.largura, trilha.altura, mulLargura, mulAltura],
+  );
+  const posicaoCaixaFixa = useMemo(
+    () => limitarPosicaoDaCaixa(posicaoFixa ?? posicaoPadraoDaCaixaFixa(trilha.largura, trilha.altura), tamanhoCaixaFixa),
+    [posicaoFixa, trilha.largura, trilha.altura, tamanhoCaixaFixa],
+  );
+  const caixaFixa = useMemo(() => caixaFixaNaPosicao(trilha.largura, trilha.altura, posicaoCaixaFixa), [trilha.largura, trilha.altura, posicaoCaixaFixa]);
+  caixaFixaRef.current = caixaFixa;
+  const origemDoQuadroAtual = geometriaPrevia ? previaRef.current?.origemDoQuadro(indicePrevia) : undefined;
+  const caixaMovel = modoRosto !== 'nenhum' && !!resumoRosto?.semRosto && !!geometriaPrevia && !montandoPrevia && !gravando && origemDoQuadroAtual === 'fixa';
+  const caixaMovida = posicaoFixa !== null;
+
   // Abre sempre "limpo": a autorização do paciente vale para este vídeo, nunca para o próximo.
   useEffect(() => {
     if (!aberto) return;
@@ -162,6 +192,8 @@ export default function ExportarVideoDialog({
     setLegenda('');
     setMulLargura(1);
     setMulAltura(1);
+    setPosicaoFixa(null);
+    setGeometriaPrevia(null);
     const meio = Math.round((indiceNoTempo(trilha, intervalo.inicio) + indiceNoTempo(trilha, intervalo.fim)) / 2);
     indiceRef.current = meio;
     setIndicePrevia(meio);
@@ -276,9 +308,11 @@ export default function ExportarVideoDialog({
       try {
         previaRef.current?.liberar();
         previaRef.current = null;
-        const p = await criarPrevia({ ...opcoes, fonte: fonteRef.current ?? undefined });
+        // A caixa fixa fica fora de `opcoes`: movê-la redesenha a prévia que já existe, em vez de refazê-la a cada gesto.
+        const p = await criarPrevia({ ...opcoes, caixaFixa: caixaFixaRef.current, fonte: fonteRef.current ?? undefined });
         if (cancelado) { p.liberar(); return; }
         previaRef.current = p;
+        setGeometriaPrevia({ largura: p.largura, altura: p.altura, areaVideo: p.areaVideo });
         p.canvas.className = classeDaPrevia(grandeRef.current);
         p.canvas.setAttribute('role', 'img');
         p.canvas.setAttribute('aria-label', 'Prévia do vídeo analisado');
@@ -303,6 +337,43 @@ export default function ExportarVideoDialog({
       // A prévia foi trocada no meio do arrasto: o quadro seguinte já a refaz.
     });
   }, []);
+
+  // ---- caixa do rosto nos quadros sem rosto localizado ----
+  const aplicarRedesenho = useCallback(() => {
+    const r = redesenhoRef.current;
+    if (r.raf) window.cancelAnimationFrame(r.raf);
+    r.raf = 0;
+    const caixa = r.caixa;
+    r.caixa = null;
+    if (caixa) previaRef.current?.moverCaixaFixa(caixa);
+  }, []);
+
+  useEffect(() => () => {
+    const r = redesenhoRef.current;
+    if (r.raf) window.cancelAnimationFrame(r.raf);
+    r.raf = 0;
+    r.caixa = null;
+  }, []);
+
+  // `null` devolve a caixa ao alto. Mover a caixa muda o que o arquivo cobre, então a conferência do rosto precisa ser refeita.
+  const moverCaixa = useCallback((nova: PosicaoCaixa | null) => {
+    const caixa = caixaFixaNaPosicao(trilha.largura, trilha.altura, nova && limitarPosicaoDaCaixa(nova, tamanhoCaixaFixa));
+    caixaFixaRef.current = caixa;
+    setPosicaoFixa(nova);
+    setRostoConferido(false);
+    const r = redesenhoRef.current;
+    r.caixa = caixa;
+    if (!r.raf) r.raf = window.requestAnimationFrame(aplicarRedesenho);
+  }, [trilha.largura, trilha.altura, tamanhoCaixaFixa, aplicarRedesenho]);
+
+  const irParaQuadroSemRosto = () => {
+    const p = previaRef.current;
+    if (!p) return;
+    const origens = Array.from({ length: p.nQuadros }, (_, i) => p.origemDoQuadro(i));
+    const alvo = proximoQuadroSemRosto(origens, indicePrevia, primeiroIndice, ultimoIndice);
+    if (alvo === null) toast.info('Nenhum quadro do trecho escolhido tem o rosto sem localizar.');
+    else irParaQuadro(alvo);
+  };
 
   const alternarTamanhoDaPrevia = () => {
     const novo = !previaGrande;
@@ -347,7 +418,7 @@ export default function ExportarVideoDialog({
     abortRef.current = ctl;
     const inicio = performance.now();
     try {
-      const blob = await exportarVideoAnalise({ ...opcoes, fonte: fonteRef.current, onProgresso: aoProgresso, sinal: ctl.signal });
+      const blob = await exportarVideoAnalise({ ...opcoes, caixaFixa, fonte: fonteRef.current, onProgresso: aoProgresso, sinal: ctl.signal });
       const nome = nomeArquivoVideo(formato, titulo, extensaoDoMime(blob.type));
       const arquivo = new File([blob], nome, { type: blob.type });
       baixarBlob(blob, nome);
@@ -380,6 +451,8 @@ export default function ExportarVideoDialog({
   const baixarQuadro = async () => {
     const p = previaRef.current;
     if (!p || gravando || rostoPendente || (precisaAutorizacao && !autorizado)) return;
+    // Um redesenho agendado pelo arrasto ainda pode estar na fila: o quadro baixado tem de ter a caixa onde o profissional a deixou.
+    aplicarRedesenho();
     try {
       const png = await canvasParaPng(p.canvas);
       baixarBlob(png, `quadro-${formato}-${dataParaArquivo()}.png`);
@@ -417,6 +490,12 @@ export default function ExportarVideoDialog({
                 {suporte.ok && (
                   <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-[#0a0f1c]" data-testid="previa-video">
                     <div ref={hostRef} className={gravando ? 'hidden' : 'min-h-24'} />
+                    {caixaMovel && geometriaPrevia && (
+                      <CaixaRostoArrastavel
+                        larguraCanvas={geometriaPrevia.largura} alturaCanvas={geometriaPrevia.altura} areaVideo={geometriaPrevia.areaVideo}
+                        posicao={posicaoCaixaFixa} tamanho={tamanhoCaixaFixa} aoMudar={moverCaixa}
+                      />
+                    )}
                     {(montandoPrevia || (!fonteOk && !erroFonte)) && !gravando && (
                       <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/50 text-sm text-muted-foreground" role="status"><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Montando a prévia…</div>
                     )}
@@ -449,6 +528,29 @@ export default function ExportarVideoDialog({
                     <p className={resumoRosto.semRosto ? 'rounded-lg bg-amber-500/10 p-2 text-xs font-medium text-amber-800 dark:text-amber-300' : 'text-xs text-muted-foreground'} data-testid="dica-rosto-video" role={resumoRosto.semRosto ? 'status' : undefined}>
                       {textoDoRosto(resumoRosto)}
                     </p>
+                  )}
+                  {modoRosto !== 'nenhum' && resumoRosto?.semRosto && (
+                    <div className="space-y-2" data-testid="controle-caixa-rosto">
+                      <p className="text-xs text-muted-foreground" data-testid="situacao-caixa-rosto">
+                        {origemDoQuadroAtual === 'fixa'
+                          ? 'Neste quadro o rosto não foi localizado: a cobertura usa a caixa tracejada da prévia. Arraste-a até cobrir o rosto; a posição vale para todos os quadros sem rosto localizado.'
+                          : 'Neste quadro o rosto foi localizado e a cobertura o acompanha. A caixa só aparece nos quadros sem rosto localizado.'}
+                      </p>
+                      {(origemDoQuadroAtual !== 'fixa' || caixaMovida) && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {origemDoQuadroAtual !== 'fixa' && (
+                            <Button type="button" variant="outline" className="h-11 gap-2 px-2 text-xs" onClick={irParaQuadroSemRosto} data-testid="ir-quadro-sem-rosto">
+                              <Crosshair className="h-4 w-4 shrink-0" aria-hidden /> Ir a um quadro sem rosto
+                            </Button>
+                          )}
+                          {caixaMovida && (
+                            <Button type="button" variant="outline" className="h-11 gap-2 px-2 text-xs" onClick={() => moverCaixa(null)} data-testid="recolocar-caixa-rosto">
+                              <Undo2 className="h-4 w-4 shrink-0" aria-hidden /> Voltar a caixa ao alto
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                   <Button type="button" variant="outline" className="h-11 w-full gap-2" onClick={() => void baixarQuadro()} disabled={!previaRef.current || rostoPendente || (precisaAutorizacao && !autorizado)} data-testid="baixar-quadro-previa">
                     <IconeImagem className="h-4 w-4" aria-hidden /> Baixar este quadro (PNG)

@@ -203,6 +203,28 @@ describe('ExportarSocialDialog: baixar e compartilhar', () => {
   });
 });
 
+describe('ExportarSocialDialog: nota fixa da arte', () => {
+  it('a nota da análise (aviso do vídeo) chega inteira ao desenho do PNG; sem nota, a arte não leva nenhuma', async () => {
+    const nota = 'Estimativa por vídeo · não é diagnóstico';
+    const { unmount } = abrir({ arte: { ...arte(1), nota } });
+    await prontoParaBaixar();
+    fireEvent.click(caixaAutorizacao());
+    fireEvent.click(botaoBaixar());
+    await waitFor(() => expect(mocks.baixarBlob).toHaveBeenCalledTimes(1));
+    expect(mocks.renderizar.mock.calls[0][0].nota).toBe(nota);
+    unmount();
+    mocks.baixarBlob.mockClear();
+    mocks.renderizar.mockClear();
+
+    abrir({ arte: arte(1) });
+    await prontoParaBaixar();
+    fireEvent.click(caixaAutorizacao());
+    fireEvent.click(botaoBaixar());
+    await waitFor(() => expect(mocks.baixarBlob).toHaveBeenCalledTimes(1));
+    expect(mocks.renderizar.mock.calls[0][0].nota).toBeUndefined();
+  });
+});
+
 describe('ExportarSocialDialog: conteúdo e privacidade', () => {
   it('traz título, legenda e rótulos da arte e avisa para não usar o nome do paciente', async () => {
     abrir();

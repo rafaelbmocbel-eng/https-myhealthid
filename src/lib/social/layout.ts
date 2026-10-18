@@ -36,8 +36,8 @@ export const FONTE_NOTA = 26;
 const FONTE_NOTA_MIN = 20;
 export const ALTURA_NOTA = 36;
 const GAP_NOTA = 24;
-/** Folga entre a nota e o limite da zona segura (no story, o início da faixa que o Instagram cobre embaixo). */
-const FOLGA_NOTA = 14;
+/** Folga entre a nota e o limite da zona segura (no story, o início da faixa que o Instagram cobre embaixo, que é só aproximada: sobra margem). */
+const FOLGA_NOTA = 40;
 export const DIAMETRO_SELO = 100;
 export const PASSO_TITULO = 0.92;
 const FONTE_TITULO_MAX = 150;

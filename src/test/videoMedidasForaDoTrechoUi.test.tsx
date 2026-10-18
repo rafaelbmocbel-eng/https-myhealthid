@@ -147,7 +147,7 @@ describe('lista de medidas guardadas com a marca "fora do trecho atual"', () => 
     expect(screen.getAllByTestId('captura-fora-do-trecho')).toHaveLength(1);
     expect(screen.getByRole('heading', { name: 'Medidas guardadas (2)' })).toBeInTheDocument();
     expect(toast).toHaveBeenCalledWith('Medida removida.', expect.objectContaining({ action: expect.objectContaining({ label: 'Desfazer' }) }));
-    const opcoes = vi.mocked(toast).mock.calls[0][1] as { action: { onClick: () => void } };
+    const opcoes = vi.mocked(toast).mock.calls[0][1] as unknown as { action: { onClick: () => void } };
     act(() => { opcoes.action.onClick(); });
     expect(screen.getAllByTestId('captura-fora-do-trecho')).toHaveLength(2);
     expect(screen.getByRole('heading', { name: 'Medidas guardadas (3)' })).toBeInTheDocument();
@@ -240,6 +240,17 @@ describe('análise completa: re-rastrear com outro trecho mantém as medidas gua
     expect(fora).toHaveLength(1);
     expect(fora[0]).toHaveTextContent('7,00 s');
     expect(fora[0]).toHaveTextContent('fora do trecho atual');
+  });
+
+  it('a análise mostra a taxa efetiva: a mesma que foi pedida ao motor, com os quadros e a duração do trecho', async () => {
+    await abrirAnalise();
+    await rastrearDe(0, 3);
+    const pedida = mocks.rastrear.mock.calls[0][1].fps as number;
+    expect(pedida).toBe(30);
+    const taxa = screen.getByTestId('taxa-efetiva');
+    expect(taxa).toHaveTextContent(`a ${pedida} q/s`);
+    expect(taxa).toHaveTextContent('91 quadros');
+    expect(taxa).toHaveTextContent('3,0 s');
   });
 
   it('o arquivo salvo guarda todas as medidas, com os mesmos campos de antes (sem campo novo), e o resumo copiado só leva as de dentro', async () => {

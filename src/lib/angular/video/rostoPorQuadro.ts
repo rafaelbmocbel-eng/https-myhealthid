@@ -27,7 +27,8 @@ export interface OpcoesRosto {
 
 const MAX_LACUNA_S = 0.5;
 const FOLGA_TEMPORAL_S = 0.08;
-const MARGEM = 1.15;
+/** Margem aplicada à caixa do rosto depois da união (multiplica largura e altura). */
+export const MARGEM_ROSTO = 1.15;
 
 const limitar01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -42,7 +43,8 @@ export function unirCaixas(caixas: CaixaRosto[]): CaixaRosto | null {
   return { cx: (esq + dir) / 2, cy: (topo + base) / 2, w: dir - esq, h: base - topo };
 }
 
-function ampliar(c: CaixaRosto, k: number): CaixaRosto {
+/** Caixa com largura e altura multiplicadas por `k` (sem passar do quadro) e o centro dentro dele. */
+export function ampliarCaixa(c: CaixaRosto, k: number): CaixaRosto {
   const w = Math.min(1, c.w * k), h = Math.min(1, c.h * k);
   return { cx: limitar01(c.cx), cy: limitar01(c.cy), w, h };
 }
@@ -75,7 +77,7 @@ export function caixasDoRosto(trilha: TrilhaPose, opcoes: OpcoesRosto = {}): Cai
   const fixa = opcoes.caixaFixa ?? caixaRostoPadrao(trilha.largura, trilha.altura);
   const maxLacuna = Math.max(0, Math.round((opcoes.maxLacunaS ?? MAX_LACUNA_S) * trilha.fps));
   const folga = Math.max(0, Math.round((opcoes.folgaTemporalS ?? FOLGA_TEMPORAL_S) * trilha.fps));
-  const margem = Math.max(1, opcoes.margem ?? MARGEM);
+  const margem = Math.max(1, opcoes.margem ?? MARGEM_ROSTO);
 
   const proprias: (CaixaRosto | null)[] = trilha.quadros.map((_, i) => caixaDoRostoPorLandmarks(landmarksDoRosto(trilha, i), trilha.largura, trilha.altura));
 
@@ -92,7 +94,7 @@ export function caixasDoRosto(trilha: TrilhaPose, opcoes: OpcoesRosto = {}): Cai
   return base.map((b, i) => {
     const janela = base.slice(Math.max(0, i - folga), Math.min(n, i + folga + 1)).map((x) => x.caixa);
     const uniao = unirCaixas(janela) ?? b.caixa;
-    return { caixa: ampliar(uniao, margem), origem: b.origem };
+    return { caixa: ampliarCaixa(uniao, margem), origem: b.origem };
   });
 }
 

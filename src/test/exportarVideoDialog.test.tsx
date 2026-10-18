@@ -60,6 +60,7 @@ function props(extra: Partial<PropsExportarVideoDialog> = {}): PropsExportarVide
 const prepararPrevia = (resumo = { porOrigem: { pose: 100, vizinho: 0, fixa: 0 }, semRosto: false }) => {
   mocks.criarPrevia.mockImplementation(async () => ({
     canvas: document.createElement('canvas'), largura: 1080, altura: 1920, resumoRosto: resumo, nQuadros: 120, mostrar: mocks.mostrar, liberar: mocks.liberarPrevia,
+    areaVideo: { x: 0, y: 0, w: 1080, h: 608 }, origemDoQuadro: () => 'pose', moverCaixaFixa: vi.fn(),
   }));
 };
 
