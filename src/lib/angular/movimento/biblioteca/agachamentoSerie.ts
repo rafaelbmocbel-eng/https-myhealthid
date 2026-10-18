@@ -3,7 +3,9 @@ import { FONTES as F } from './fontes';
 
 /*
  * Hipóteses para a mudança de uma medida da primeira para a última repetição. A literatura sobre fadiga é em maior parte de saltos
- * e aterrissagens; para poucas repetições de agachamento não há dado nestas fontes, e a ressalva diz isso.
+ * e aterrissagens; para poucas repetições de agachamento não há dado nestas fontes, e a ressalva diz isso. Depois da avaliação metodológica
+ * (docs/avaliacao-metodologica-fontes.md) ficou só a revisão registrada e bem conduzida; a revisão de busca em uma única base e o estudo de 10 por
+ * grupo saíram.
  */
 
 export const TENDENCIA_NA_SERIE: EntradaBiblioteca = {
@@ -13,11 +15,11 @@ export const TENDENCIA_NA_SERIE: EntradaBiblioteca = {
     {
       id: 'fadiga_muscular',
       texto:
-        'Fadiga muscular ao longo das repetições pode contribuir para a mudança de uma medida da primeira para a última repetição, mas a evidência é inconsistente.',
+        'Fadiga muscular ao longo das repetições pode contribuir para a mudança de uma medida da primeira para a última repetição, mas a evidência disponível é indireta.',
       forca: 'revisao_sistematica',
-      fontes: [F.barberwestin2017, F.vermeulen2023, F.webster2014],
+      fontes: [F.vermeulen2023],
       ressalva:
-        'Evidência inconsistente: a revisão de 37 estudos (806 atletas saudáveis) não encontrou consistência quanto aos efeitos da fadiga nos ângulos do quadril, do joelho e do tornozelo; a de 21 estudos descreve predomínio de mais flexão do tronco na aterrissagem depois de fadiga dos membros inferiores. A maior parte dos estudos usa saltos e protocolos de fadiga intensos, bem diferentes de poucas repetições de agachamento; no agachamento, Webster (10 homens após reconstrução do ligamento cruzado anterior) viu a carga ficar mais simétrica com a fadiga. Não há dado nestas fontes para uma série curta.',
+        'Evidência indireta: a revisão (21 estudos, registrada, cinco bases, qualidade moderada a alta pela lista de Downs e Black) trata de aterrissagens de saltos em pessoas fisicamente ativas e descreve predomínio de mais flexão do tronco depois de fadiga dos membros inferiores; os autores relatam grande heterogeneidade de protocolos de fadiga e de tarefas e não fizeram metanálise. Os protocolos de fadiga são intensos e bem diferentes de poucas repetições de agachamento. Não há dado nesta fonte para uma série curta.',
     },
     {
       id: 'familiarizacao_e_ritmo',

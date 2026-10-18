@@ -291,7 +291,7 @@ describe('laudo: títulos, critérios e hipóteses', () => {
 
 describe('fontes: citações e autores', () => {
   it('quando o ano do PubMed é o da publicação eletrônica, a citação escreve Epub em vez de juntá-lo ao volume impresso', () => {
-    for (const [id, ano] of [['macrum2011', 2011], ['webster2014', 2014], ['gomes2020', 2020], ['generoso2025', 2025]] as const) {
+    for (const [id, ano] of [['macrum2011', 2011], ['lima2017', 2017], ['gomes2020', 2020], ['generoso2025', 2025]] as const) {
       const f = FONTES[id];
       expect(f.ano, id).toBe(ano);
       expect(f.citacao, id).toContain(`Epub ${ano}`);
@@ -300,8 +300,8 @@ describe('fontes: citações e autores', () => {
   });
 
   it('os autores seguem o registro do PubMed, sem a sigla do grau no sobrenome nem partículas perdidas', () => {
-    expect(FONTES.krajewski2025.citacao).toContain('Krajewski KT, Correa JS, Siu R');
-    expect(FONTES.krajewski2025.citacao).not.toContain('Correa Bs');
+    expect(FONTES.cashman2026.citacao).toContain('Cashman G, White C, Stephens R');
+    expect(FONTES.strong2023.citacao).toContain('Markström JL, Schelin L, Häger CK');
     expect(FONTES.vermeulen2023.citacao).toContain('Vermeulen S, De Bleecker C, De Blaiser C');
   });
 
@@ -312,7 +312,7 @@ describe('fontes: citações e autores', () => {
     expect(textos).not.toMatch(/sem confirmação nas revisões/);
     expect(textos).not.toMatch(/alongamento dos flexores mude a cinemática é mista/);
     expect(textos).not.toMatch(/Pessoas com osteoartrite de joelho caminharam com mais flexão do tronco, e/);
-    expect(textos).toMatch(/a coativação não foi avaliada nas revisões/);
+    expect(textos).not.toMatch(/coativação/);
     expect(textos).toMatch(/70 pessoas com dor patelofemoral e 70 assintomáticas/);
   });
 });

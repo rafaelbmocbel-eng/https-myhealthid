@@ -382,6 +382,10 @@ export interface FonteBiblio {
   populacao?: string;
   /** Data (AAAA-MM-DD) em que o trecho foi conferido no PubMed. */
   verificadoEm?: string;
+  /** Nível da avaliação metodológica (biblioteca/avaliacaoMetodologica.ts): o laudo o mostra junto da fonte. Ausente em fonte informada à mão (critério do profissional). */
+  qualidade?: 'alta' | 'moderada' | 'baixa';
+  /** Principal limitação metodológica da fonte, em uma frase, exibida no laudo ao lado do nível de qualidade. */
+  limitacaoPrincipal?: string;
 }
 
 export type ForcaEvidencia = 'revisao_sistematica' | 'meta_analise' | 'observacional' | 'experimental' | 'a_confirmar';

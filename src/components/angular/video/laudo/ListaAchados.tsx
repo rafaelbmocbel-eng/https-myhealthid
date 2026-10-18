@@ -1,6 +1,6 @@
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { identificadoresDaFonte, TEXTO_SEM_ACHADOS, TEXTO_SEM_BIBLIOTECA, TEXTO_SEM_REFERENCIA_VERIFICADA, textoDaFonte, textoPopulacao, TITULOS } from '@/lib/angular/movimento/frases';
+import { identificadoresDaFonte, TEXTO_SEM_ACHADOS, TEXTO_SEM_BIBLIOTECA, TEXTO_SEM_REFERENCIA_VERIFICADA, textoDaFonte, textoPopulacao, textoQualidade, TITULOS } from '@/lib/angular/movimento/frases';
 import type { AchadoLaudo, FonteBiblio, LaudoMovimento } from '@/lib/angular/movimento/tipos';
 import Disclosure from './Disclosure';
 
@@ -15,10 +15,12 @@ function numerosCitados(a: AchadoLaudo): number[] {
 
 function Fonte({ numero, fonte }: { numero: number; fonte: FonteBiblio }) {
   const populacao = textoPopulacao(fonte);
+  const qualidade = textoQualidade(fonte);
   return (
     <li className="space-y-0.5 text-[11px] leading-snug" data-testid="fonte-do-achado">
       <p><strong>[{numero}]</strong> {textoDaFonte(fonte)}</p>
       {populacao && <p className="text-muted-foreground">{populacao}</p>}
+      {qualidade && <p className="text-muted-foreground" data-testid="qualidade-da-fonte">{qualidade}</p>}
       <p className="text-muted-foreground">Trecho do resumo (em inglês): <q lang="en">{fonte.trecho.trim()}</q></p>
       <p className="flex flex-wrap gap-x-3">
         {identificadoresDaFonte(fonte).map((i) => (i.url

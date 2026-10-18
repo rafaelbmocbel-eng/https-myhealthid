@@ -55,6 +55,9 @@ export const TEXTO_SEM_CRITERIOS =
 export const TEXTO_MINIMO_REPETICOES =
   'O mínimo de repetições de cada regra é uma decisão de engenharia para a estatística não oscilar com poucos valores; não é limite clínico. Abaixo dele a regra não é avaliada.';
 
+export const TEXTO_METODO_FONTES =
+  'Fontes escolhidas por critérios metodológicos explícitos; avaliação feita pelo MyHealthID a partir do resumo e do texto completo indexado, a ser conferida pelo time científico.';
+
 export const TEXTO_NENHUMA_REPETICAO = 'Nenhuma repetição foi identificada neste vídeo: não há medidas por repetição.';
 
 /** Gatilhos na ordem em que o método os lista. */
@@ -198,6 +201,14 @@ export function textoDoTrecho(f: FonteBiblio): string {
 }
 
 export const textoPopulacao = (f: FonteBiblio): string | null => (f.populacao && f.populacao.trim() ? `População: ${comPonto(f.populacao)}` : null);
+
+/** Qualidade metodológica avaliada e a limitação principal, numa linha; null quando a fonte não foi avaliada (por exemplo, a informada à mão num critério). */
+export function textoQualidade(f: FonteBiblio): string | null {
+  if (!f.qualidade) return null;
+  const limitacao = f.limitacaoPrincipal?.trim();
+  if (!limitacao) return `Qualidade metodológica: ${f.qualidade}.`;
+  return `Qualidade metodológica: ${f.qualidade}. Limitação principal: ${comPonto(limitacao)}`;
+}
 
 // ---------- cabeçalho ----------
 

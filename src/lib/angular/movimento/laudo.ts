@@ -10,7 +10,7 @@ import {
   AVISOS_FIXOS, capitalizar, dataBr, ETIQUETA_BETA, fraseAchadosPorGatilho, fraseCriteriosNoResumo, fraseIndisponiveisNoResumo, fraseParaAvaliar,
   fraseRepeticoesCompletas, fraseRepeticoesIdentificadas, INTRO_INDISPONIVEIS, INTRO_MEDIDAS, legendaDaMedida, LEGENDA_RESUMO_MEDIDAS, limiteDoCriterio,
   linhaResumoDoAchado, maisOuMenos, motivoCriterioNaoAplicado, numeroComCasas, ORDEM_GATILHOS, rotuloDaRepeticao, ROTULO_AVISO, ROTULO_RESPONSAVEL, ROTULO_SINALIZADOR, segundosTexto,
-  notaDoGatilhoSemEstudo, TEXTO_MEDIDA_SEM_VALOR, TEXTO_MINIMO_REPETICOES, TEXTO_NENHUMA_REPETICAO, TEXTO_SEM_CRITERIOS, TEXTO_SEM_INDISPONIVEIS, textoIncertezaDoAchado, textoMedidaDoAchado,
+  notaDoGatilhoSemEstudo, TEXTO_MEDIDA_SEM_VALOR, TEXTO_METODO_FONTES, TEXTO_MINIMO_REPETICOES, TEXTO_NENHUMA_REPETICAO, TEXTO_SEM_CRITERIOS, TEXTO_SEM_INDISPONIVEIS, textoIncertezaDoAchado, textoMedidaDoAchado,
   taxaEfetivaTexto, textoRepeticoesDoAchado, TITULO_LAUDO, tituloDoAchado, TITULOS, valorComUnidade, comPontoFinal,
 } from './frases';
 import { achadoDoCatalogo, achadosAvaliaveis, GATILHOS, medidaDo, faseDo, protocoloDo } from './protocolos';
@@ -372,6 +372,7 @@ function secaoDeMetodo(analise: AnaliseMovimento, contexto: ContextoLaudo, proto
     `Incerteza estimada do vídeo: ${inc.formula}`,
     `O que a incerteza estimada é e o que não é: ${inc.descricao}`,
     angular,
+    TEXTO_METODO_FONTES,
   ];
   const itens: string[] = [];
   const tabelas: TabelaLaudo[] = [tabelaDeGatilhos(analise, protocolo, criterios.usados.length > 0)];

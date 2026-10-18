@@ -4,7 +4,7 @@ import { COR_LADO } from '../analiseVideo/tiposUi';
 import { molduraEmTodasPaginas } from '../../pdf/moldura';
 import {
   identificadoresDaFonte, ROTULO_AVISO, TEXTO_SEM_BIBLIOTECA, TEXTO_SEM_ACHADOS, TEXTO_SEM_REFERENCIA_VERIFICADA, textoDaFonte, textoDoTrecho,
-  textoPopulacao, TITULOS,
+  textoPopulacao, textoQualidade, TITULOS,
 } from './frases';
 import type { AchadoLaudo, LaudoMovimento, SecaoLaudo, TabelaLaudo } from './tipos';
 
@@ -407,6 +407,8 @@ export async function gerarPdfLaudo(laudo: LaudoMovimento, opcoes: OpcoesPdfLaud
       escrever(textoDoTrecho(r.fonte), { x: M + 4, tam: 8, cor: CINZA, folga: 0.4 });
       const populacao = textoPopulacao(r.fonte);
       if (populacao) escrever(populacao, { x: M + 4, tam: 8, cor: CINZA, folga: 0.4 });
+      const qualidade = textoQualidade(r.fonte);
+      if (qualidade) escrever(qualidade, { x: M + 4, tam: 8, cor: CINZA, folga: 0.4 });
       y += 1.6;
     }
   }

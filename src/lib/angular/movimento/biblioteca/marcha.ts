@@ -2,17 +2,19 @@ import type { EntradaBiblioteca, FatorContribuinte } from '../tipos';
 import { FONTES as F } from './fontes';
 
 /*
- * Hipóteses para os achados da marcha filmada de lado. Muitas fontes são de populações com doença (osteoartrite, AVC): cada
- * ressalva diz quem foi estudado para ninguém extrapolar para quem não tem a condição.
+ * Hipóteses para os achados da marcha filmada de lado. Muitas fontes são de populações com doença (osteoartrite): cada ressalva diz quem foi
+ * estudado para ninguém extrapolar para quem não tem a condição. Depois da avaliação metodológica (docs/avaliacao-metodologica-fontes.md) saíram as
+ * fontes de AVC (população e desfecho diferentes do achado, revisão narrativa, subgrupos exploratórios), as séries de casos e os estudos de antes e
+ * depois sem controle; os fatores que ficaram sem fonte retida foram eliminados.
  */
 
 const COMPRIMENTO_DOS_MEMBROS: FatorContribuinte = {
   id: 'comprimento_dos_membros',
   texto: 'Diferença de comprimento entre os membros inferiores foi associada a desvios e assimetrias da marcha e pode contribuir para a diferença entre os lados.',
   forca: 'revisao_sistematica',
-  fontes: [F.khamis2017, F.seeley2010],
+  fontes: [F.khamis2017],
   ressalva:
-    'A revisão (12 estudos) inclui diferença anatômica e diferença simulada com elevações em pessoas saudáveis, sem desfecho específico para este achado. Seeley (26 adultos sem doença) relacionou a diferença leve de comprimento à simetria de momentos e potências do joelho e do tornozelo, e não de ângulos ou tempos. Os autores lembram que outros fatores também contribuem para assimetrias em pessoas sem doença.',
+    'A revisão (12 estudos, avaliados pela escala MINORS) reúne 4 estudos com diferença anatômica e 8 com diferença simulada por elevações de 1 a 5 cm em pessoas saudáveis, que respondem perguntas diferentes; o resumo não detalha em quais desfechos (ângulos, tempos ou forças) aparecem os desvios, e não há desfecho específico para este achado. Os autores indicam que desvios podem ocorrer com diferenças acima de 1 cm, com compensações nos dois membros. O registro do protocolo e a seleção em duplicata não constam no resumo.',
 };
 
 export const ASSIMETRIA_TEMPO_APOIO: EntradaBiblioteca = {
@@ -22,21 +24,13 @@ export const ASSIMETRIA_TEMPO_APOIO: EntradaBiblioteca = {
     {
       id: 'dor_ou_doenca_articular_unilateral',
       texto:
-        'Dor ou doença articular unilateral, como a osteoartrite de quadril ou a dor no joelho, foi associada a assimetria temporal na marcha (na osteoartrite de quadril, com apoio mais curto no membro afetado); condição desse tipo pode contribuir para a diferença no tempo de apoio.',
+        'Osteoartrite de quadril foi associada a assimetria temporal na marcha, com apoio mais curto no membro afetado; uma condição articular unilateral desse tipo pode contribuir para a diferença no tempo de apoio.',
       forca: 'meta_analise',
-      fontes: [F.constantinou2014, F.lugade2010, F.murray1985, F.corrigan2023],
+      fontes: [F.constantinou2014, F.corrigan2023],
       ressalva:
-        'A metanálise (30 artigos) trata de osteoartrite de quadril; Lugade (23 pacientes antes de artroplastia) e Murray (35 homens com dor unilateral no joelho, estudo de 1985) são observacionais. Evidência mista: em pessoas com dor unilateral no joelho de uma coorte, a gravidade da dor não se associou à assimetria temporal (Corrigan). Não se aplica a quem não tem queixa articular.',
+        'A metanálise (30 artigos, 11 bases) trata de osteoartrite de quadril; o resumo não informa o registro do protocolo, o instrumento de qualidade nem a heterogeneidade. Evidência mista para a dor no joelho: em pessoas com dor unilateral leve a moderada no joelho de uma coorte (Corrigan: análise exploratória, com ajuste de confundidores e passarela de tempo, não vídeo), a gravidade da dor não se associou à assimetria temporal; só medidas específicas de apoio se relacionaram à dor depois de 2 anos. Não se aplica a quem não tem queixa articular.',
     },
     COMPRIMENTO_DOS_MEMBROS,
-    {
-      id: 'equilibrio_apos_avc',
-      texto: 'Em pessoas com AVC, a assimetria temporal da marcha foi interpretada como possível estratégia de compensação do controle de equilíbrio do lado mais afetado.',
-      forca: 'observacional',
-      fontes: [F.staines2026],
-      ressalva:
-        '31 pessoas com AVC subagudo; a assimetria foi medida no tempo de balanço e não no de apoio, e a interpretação é dos autores, que a descrevem como possível e apenas parcial. Não extrapole para pessoas sem doença neurológica.',
-    },
     {
       id: 'velocidade_e_eventos',
       texto:
@@ -62,20 +56,11 @@ export const ASSIMETRIA_FLEXAO_JOELHO_MARCHA: EntradaBiblioteca = {
     {
       id: 'flexores_plantares',
       texto:
-        'Menor força dos flexores plantares e menor velocidade da flexão plantar na saída do pé foram associadas a menor pico de flexão do joelho no balanço e podem contribuir para a diferença entre os lados.',
+        'A redução experimental da força dos flexores plantares (cerca de 33%) em adultos jovens saudáveis foi acompanhada de menor pico de flexão do joelho no balanço, e a menor velocidade da flexão plantar na saída do pé se correlacionou com essa redução; fraqueza desse grupo pode contribuir para a diferença entre os lados.',
       forca: 'experimental',
-      fontes: [F.apti2016, F.fujita2022],
+      fontes: [F.apti2016],
       ressalva:
-        'Apti: 20 adultos jovens saudáveis, com redução experimental da força dos flexores plantares por alongamento passivo e análise tridimensional (o título e o resumo usam linguagem causal; aqui é lido como associação). Fujita: 38 pessoas com AVC crônico, com associação entre a velocidade da flexão plantar na saída do pé e o ângulo de flexão do joelho no balanço. Nenhum compara os lados.',
-    },
-    {
-      id: 'alteracoes_neuromotoras_apos_avc',
-      texto:
-        'Após AVC, alterações neuromotoras (atividade dos extensores do joelho, tônus, incoordenação e propulsão reduzida) são discutidas como mecanismos da menor flexão do joelho no balanço.',
-      forca: 'observacional',
-      fontes: [F.fujita2022, F.krajewski2025],
-      ressalva:
-        'População específica (AVC). Krajewski é uma revisão narrativa que discute esses mecanismos e conclui que ainda falta uma definição comum e mais estudos; Fujita é um estudo transversal. Não extrapole para pessoas sem doença neurológica.',
+        'Apti: 20 adultos jovens saudáveis avaliados antes e depois de um alongamento passivo que reduziu a força em cerca de 33%, mais 7 controles para separar o efeito da marcha lenta, com análise tridimensional; não há randomização nem cegamento descritos, e o título e o resumo usam linguagem causal (aqui lida como associação). A fraqueza induzida de forma aguda não equivale a uma fraqueza crônica. O estudo não compara os lados.',
     },
     {
       id: 'dor_ou_osteoartrite_joelho_quadril',
@@ -84,7 +69,7 @@ export const ASSIMETRIA_FLEXAO_JOELHO_MARCHA: EntradaBiblioteca = {
       forca: 'meta_analise',
       fontes: [F.steingrebe2023, F.creaby2012],
       ressalva:
-        'A metanálise (35 estudos) é de osteoartrite de quadril e descreve amplitudes reduzidas nos ângulos do quadril e sagital do joelho, com grande heterogeneidade entre os estudos; Creaby (91 pessoas com osteoartrite de joelho) descreve menor flexão no joelho mais doloroso. Os resumos não especificam que o pico seja o do balanço: a direção é a mesma, mas não é necessariamente a mesma medida.',
+        'A metanálise (35 estudos, registrada, com risco de viés pela lista de Downs e Black e grande heterogeneidade entre os estudos) é de osteoartrite de quadril e descreve amplitudes reduzidas nos ângulos do quadril e sagital do joelho; Creaby (91 pessoas com osteoartrite medial de joelho e 31 controles, com ajuste pela velocidade) descreve menor flexão no joelho mais doloroso. Os resumos não especificam que o pico seja o do balanço: a direção é a mesma, mas não é necessariamente a mesma medida.',
     },
     COMPRIMENTO_DOS_MEMBROS,
   ],
@@ -107,16 +92,7 @@ export const ASSIMETRIA_AMPLITUDE_QUADRIL: EntradaBiblioteca = {
       forca: 'meta_analise',
       fontes: [F.steingrebe2023, F.baker2016],
       ressalva:
-        'População com osteoartrite de quadril (moderada e grave em Baker); entre pessoas assintomáticas não houve correlação entre a extensão passiva e a extensão na marcha (r = 0,139 no estudo). Os estudos usam análise tridimensional; neste vídeo o ângulo do quadril (ombro–quadril–joelho) inclui o movimento do tronco e da pelve, então a amplitude medida não é a articular pura.',
-    },
-    {
-      id: 'tensao_dos_flexores_do_quadril',
-      texto:
-        'A menor extensão do quadril na marcha de idosos foi interpretada pelos autores como possível restrição de mobilidade do quadril; no único estudo citado sobre alongamento dos flexores (20 pessoas, corrida submáxima) o alongamento não mudou a cinemática.',
-      forca: 'observacional',
-      fontes: [F.kerrigan2001, F.mettler2019],
-      ressalva:
-        'Kerrigan: 23 idosos saudáveis e 16 idosos com quedas, comparados com 30 adultos jovens (diferença entre grupos e não entre lados); a interpretação de restrição é dos autores. Mettler: em 20 pessoas com extensão passiva limitada, 3 semanas de alongamento dos flexores do quadril aumentaram a extensão passiva sem mudar a cinemática da corrida submáxima. É uma hipótese a confirmar no exame.',
+        'A metanálise (35 estudos, com grande heterogeneidade) e Baker (osteoartrite de quadril moderada e grave e grupo assintomático; o número de participantes não consta no resumo) tratam de pessoas com osteoartrite de quadril; entre pessoas assintomáticas não houve correlação entre a extensão passiva e a extensão na marcha (r = 0,139 no estudo). Os estudos usam análise tridimensional; neste vídeo o ângulo do quadril (ombro–quadril–joelho) inclui o movimento do tronco e da pelve, então a amplitude medida não é a articular pura.',
     },
     COMPRIMENTO_DOS_MEMBROS,
   ],
@@ -142,24 +118,16 @@ export const INCLINACAO_TRONCO_MARCHA: EntradaBiblioteca = {
       forca: 'experimental',
       fontes: [F.harato2008],
       ressalva:
-        '10 mulheres saudáveis (média de 62 anos) com órtese que simulou a contratura; a contratura menor não mudou o tronco e só a maior mudou. Contratura simulada não equivale a uma condição clínica real.',
+        '10 mulheres saudáveis (média de 62 anos) com órtese que simulou a contratura, avaliadas nas duas condições, sem justificativa de amostra no resumo; a contratura menor não mudou o tronco e só a maior (30°) mudou. Contratura simulada não equivale a uma condição clínica real, e a conclusão do resumo sobre desequilíbrio da coluna passa do que foi medido.',
     },
     {
       id: 'osteoartrite_de_joelho',
       texto:
-        'Um estudo encontrou mais flexão do tronco na marcha de pessoas com osteoartrite de joelho e outro, menos inclinação anterior do tronco depois da artroplastia total do joelho; a metanálise não viu aumento claro no plano sagital. Condição desse tipo pode contribuir para a inclinação medida.',
+        'Um estudo encontrou mais flexão do tronco na marcha de pessoas com osteoartrite de joelho, mas a metanálise não viu aumento claro no plano sagital (o aumento claro foi na inclinação lateral do tronco). Condição desse tipo pode contribuir para a inclinação medida.',
       forca: 'observacional',
-      fontes: [F.preece2019, F.tsutsumi2026, F.iijima2019],
+      fontes: [F.preece2019, F.iijima2019],
       ressalva:
-        'Evidência mista: a metanálise de 32 artigos (Iijima) viu aumento claro da inclinação lateral do tronco e aumento não significativo da flexão do tronco e da pelve; Preece relata aumento médio de 2,6° na flexão do tronco; Tsutsumi (24 pacientes) avaliou os mesmos pacientes antes e depois da cirurgia. A diferença média é pequena e pode ficar dentro da incerteza do vídeo.',
-    },
-    {
-      id: 'condicao_do_quadril',
-      texto:
-        'Após fratura de acetábulo, pacientes caminharam com maior inclinação anterior do tronco do que pessoas sem a lesão; condição do quadril pode contribuir para a inclinação medida.',
-      forca: 'observacional',
-      fontes: [F.borrelli2002],
-      ressalva: 'Série de 15 pacientes comparados com grupos sem lesão; foi a única diferença na posição dos segmentos. Amostra pequena e população específica.',
+        'Evidência mista: a metanálise de 32 artigos (Iijima) viu aumento claro da inclinação lateral do tronco e aumento não significativo da flexão do tronco e da pelve, e classificou todas as medidas como de certeza muito baixa pelo método GRADE; Preece relata aumento médio de 2,6° na flexão do tronco em captura 3D (o resumo não informa o número de participantes). A diferença média é pequena e pode ficar dentro da incerteza do vídeo.',
     },
     {
       id: 'piso_inclinado',
@@ -168,7 +136,7 @@ export const INCLINACAO_TRONCO_MARCHA: EntradaBiblioteca = {
       forca: 'experimental',
       fontes: [F.leroux2002],
       ressalva:
-        '8 adultos saudáveis em esteira com 0, 5 e 10% de inclinação; na descida houve inclinação para trás. Mostra o efeito do terreno e vale como lembrete de conferir o nivelamento do local de gravação.',
+        '8 adultos saudáveis em esteira com 0, 5 e 10% de inclinação, avaliados em todas as inclinações; na descida houve inclinação para trás. Mostra o efeito do terreno e vale como lembrete de conferir o nivelamento do local de gravação.',
     },
   ],
   conferir: [

@@ -4,6 +4,8 @@ import { FONTES as F } from './fontes';
 /*
  * Hipóteses para os achados do agachamento filmado de lado que não são diferença entre os lados. O avanço do joelho é só observação
  * medida: o limite é debatido na literatura e o sistema não define critério; as fontes abaixo mostram por que o debate existe.
+ * Depois da avaliação metodológica (docs/avaliacao-metodologica-fontes.md) saíram as fontes que associavam a dorsiflexão ao tronco sem isolá-la
+ * (da Costa, Honda) e o estudo de 7 participantes sobre a restrição do avanço do joelho (Fry): o fator da restrição ficou "a confirmar".
  */
 
 export const INCLINACAO_TRONCO: EntradaBiblioteca = {
@@ -13,26 +15,25 @@ export const INCLINACAO_TRONCO: EntradaBiblioteca = {
     {
       id: 'dorsiflexao_e_tronco',
       texto:
-        'Menor dorsiflexão do tornozelo foi associada a maior flexão do tronco no agachamento, e elevar o calcanhar de quem tem dorsiflexão restrita reduziu a inclinação do tronco para a frente; a limitação de dorsiflexão pode contribuir para a inclinação medida.',
+        'Elevar o calcanhar de quem tem dorsiflexão restrita reduziu a inclinação do tronco para a frente no agachamento com carga; a limitação de dorsiflexão pode contribuir para a inclinação medida.',
       forca: 'experimental',
-      fontes: [F.cai2026, F.dacosta2021, F.honda2022],
+      fontes: [F.cai2026],
       ressalva:
-        'Cai: 30 homens saudáveis com dorsiflexão restrita, agachamento com carga. Da Costa: 30 adultos, agachamento unipodal; a associação foi com a dorsiflexão dinâmica e não com a passiva. Honda: idosos agacharam com menor dorsiflexão e maior flexão do tronco do que adultos jovens, mas os grupos diferem também em idade. Não é possível separar a dorsiflexão de outros fatores em uma pessoa.',
+        '30 homens saudáveis com dorsiflexão restrita, agachamento com carga, seis alturas de calcanhar (0 a 5 cm) e análise tridimensional. O estudo não incluiu um grupo com dorsiflexão não restrita: não mostra quanto da inclinação existiria sem a restrição. Não é possível separar a dorsiflexão de outros fatores em uma pessoa.',
     },
     {
       id: 'restricao_do_avanco_do_joelho',
-      texto:
-        'Quando o avanço dos joelhos foi restringido durante o agachamento, houve mais inclinação do tronco e da perna para a frente; manter os joelhos atrás dos pés, por instrução ou por estratégia, pode contribuir para a inclinação medida.',
-      forca: 'experimental',
-      fontes: [F.fry2003],
+      texto: 'Manter os joelhos atrás da ponta dos pés, por instrução ou por estratégia, pode contribuir para a inclinação do tronco medida.',
+      forca: 'a_confirmar',
+      fontes: [],
       ressalva:
-        '7 homens treinados, agachamento com barra com carga igual ao peso corporal, filmado em vídeo: amostra pequena e população de pessoas treinadas.',
+        'Sem referência verificada com qualidade metodológica suficiente: o único estudo encontrado que mediu a inclinação do tronco com o avanço dos joelhos restrito teve 7 participantes e foi retirado na avaliação metodológica das fontes. Confirme no exame presencial.',
     },
   ],
   conferir: [
     {
-      texto: 'Medir a dorsiflexão passiva em carga nos dois lados e compará-la com a dorsiflexão alcançada no agachamento.',
-      fonte: F.dacosta2021,
+      texto: 'Medir a dorsiflexão em carga (teste de avanço em carga) nos dois lados.',
+      fonte: F.dill2014,
     },
     {
       texto: 'No exame presencial, observar se a inclinação do tronco muda quando se eleva o calcanhar; se mudar, a dorsiflexão passa a ser um candidato.',
@@ -57,16 +58,16 @@ export const AVANCO_JOELHO: EntradaBiblioteca = {
       forca: 'experimental',
       fontes: [F.cai2026],
       ressalva:
-        '30 homens saudáveis com dorsiflexão restrita, agachamento com carga e análise tridimensional. O estudo mediu a progressão da tíbia e não a posição do joelho em relação à ponta do pé, e não define limite nem critério.',
+        '30 homens saudáveis com dorsiflexão restrita, agachamento com carga e análise tridimensional, sem grupo com dorsiflexão não restrita. O estudo mediu a progressão da tíbia e não a posição do joelho em relação à ponta do pé, e não define limite nem critério.',
     },
     {
       id: 'instrucao_de_execucao',
       texto:
-        'A forma de executar o agachamento, em especial a instrução de manter os joelhos atrás da ponta dos pés, alterou o avanço e a distribuição do esforço entre joelho, quadril e tronco; a técnica usada pode contribuir para o avanço observado.',
+        'A forma de executar o agachamento, em especial a instrução de manter os joelhos atrás da ponta dos pés, alterou o ângulo do joelho, o movimento do tronco e o estresse patelofemoral estimado; a técnica usada pode contribuir para o avanço observado.',
       forca: 'experimental',
-      fontes: [F.fry2003, F.list2013, F.kernozek2018],
+      fontes: [F.list2013, F.kernozek2018],
       ressalva:
-        'O efeito do avanço do joelho é debatido e não há limite definido. Kernozek (25 mulheres saudáveis, estimativa por modelo) calculou maior estresse patelofemoral quando os joelhos passam dos pés; Fry (7 homens treinados) e List (30 pessoas) descreveram mais inclinação do tronco e mais movimento da coluna torácica quando o avanço é restringido. A restrição, portanto, redistribui o esforço. Por isso o avanço é só observação medida, sem critério ativado.',
+        'O efeito do avanço do joelho é debatido e não há limite definido. Kernozek (25 mulheres saudáveis, estimativa por modelo musculoesquelético e não medida) calculou maior estresse patelofemoral quando os joelhos passam dos pés; List (30 pessoas, agachamento com barra e carga de 0 a 50% do peso corporal, captura 3D) descreveu menor ângulo do joelho e maior movimento entre os segmentos lombar e torácico quando o avanço é restringido, e conclui de forma prescritiva além do que mediu. A restrição, portanto, muda o padrão do tronco e do joelho. Por isso o avanço é só observação medida, sem critério ativado.',
     },
   ],
   conferir: [
@@ -94,7 +95,7 @@ export const VARIACAO_PROFUNDIDADE: EntradaBiblioteca = {
       forca: 'observacional',
       fontes: [F.gomes2020, F.kim2015, F.walker2026],
       ressalva:
-        'As fontes relacionam a profundidade com a mobilidade (101 adultos em Kim; 20 em Gomes, com vídeo bidimensional; 72 em Walker, com correlação baixa); nenhuma estudou a variação da profundidade entre repetições, então a ligação com a variação é uma inferência. Walker não encontrou associação da força dos abdutores do quadril com a profundidade.',
+        'As fontes relacionam a profundidade com a mobilidade: Kim (101 adultos jovens, fotografia sagital, regressão por etapas), Gomes (20 adultos, vídeo 2D, agachamento com barra; só a dorsiflexão no teste de avanço se associou) e Walker (72 adultos, com cálculo amostral, agachamento unipodal por câmera única 3D, correlações baixas de 0,22 a 0,37 e associação maior só em análise post hoc de quem se exercita mais). Nenhuma estudou a variação da profundidade entre repetições, então a ligação com a variação é uma inferência. Walker não encontrou associação da força dos abdutores do quadril com a profundidade.',
     },
     {
       id: 'elevacao_do_calcanhar',
@@ -102,7 +103,7 @@ export const VARIACAO_PROFUNDIDADE: EntradaBiblioteca = {
         'Elevar o calcanhar aumentou a flexão do joelho e do quadril no agachamento de homens com dorsiflexão restrita; mudanças de calçado ou de apoio entre as repetições podem contribuir para a variação da profundidade.',
       forca: 'experimental',
       fontes: [F.cai2026],
-      ressalva: 'Um estudo com 30 homens saudáveis; o apoio era igual em cada condição, e a variação entre repetições não foi o desfecho.',
+      ressalva: 'Um estudo com 30 homens saudáveis com dorsiflexão restrita; o apoio era igual em cada condição, e a variação entre repetições não foi o desfecho.',
     },
     {
       id: 'referencia_de_profundidade_e_ritmo',

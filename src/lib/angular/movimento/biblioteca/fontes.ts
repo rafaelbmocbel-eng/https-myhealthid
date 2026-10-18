@@ -1,16 +1,20 @@
 import type { FonteBiblio } from '../tipos';
+import { avaliacaoDaFonte } from './avaliacaoMetodologica';
 
 /*
- * Fontes da biblioteca de hipóteses (agente R). Cada entrada foi conferida no PubMed em VERIFICADO_EM: o `trecho` é cópia LITERAL
+ * Fontes da biblioteca de hipóteses (agentes R e R2). Cada entrada foi conferida no PubMed em VERIFICADO_EM: o `trecho` é cópia LITERAL
  * (em inglês) do resumo indexado, e autores, ano, periódico, volume, páginas e DOI vieram da ferramenta do PubMed, não de memória.
  * Uma fonte por PMID: as entradas da biblioteca reaproveitam o mesmo objeto, então o laudo nunca mostra dois trechos para o mesmo artigo.
  * O ano é o da data de publicação registrada no PubMed (pode ser a da versão eletrônica); quando é a eletrônica e o volume impresso é de outro ano, a
  * citação escreve "Epub AAAA" em vez de juntar o ano eletrônico ao volume e ao fascículo. Nomes foram reduzidos a caracteres que o PDF imprime.
- * Para incluir uma fonte nova: abrir o resumo no PubMed, copiar o trecho exatamente e registrar PMID e DOI; não parafrasear dentro de `trecho`.
+ * Só entram fontes que passaram na avaliação metodológica (avaliacaoMetodologica.ts, critérios em docs/avaliacao-metodologica-fontes.md): fonte com
+ * decisão "remover" não fica aqui. A qualidade e a limitação principal da avaliação são acopladas a cada fonte logo abaixo, para o laudo exibi-las.
+ * Para incluir uma fonte nova: abrir o resumo no PubMed, copiar o trecho exatamente, registrar PMID e DOI (não parafrasear dentro de `trecho`) e
+ * acrescentar a avaliação metodológica do PMID.
  */
 const VERIFICADO_EM = '2026-10-18';
 
-export const FONTES = {
+const FONTES_AVALIADAS = {
   macrum2011: {
     pmid: '22100617',
     citacao: 'Macrum E, Bell DR, Boling M, Lewek M, Padua D. Effect of limiting ankle-dorsiflexion range of motion on lower extremity kinematics and muscle-activation patterns during a squat. J Sport Rehabil. 21(2):144-50. Epub 2011.',
@@ -19,16 +23,6 @@ export const FONTES = {
     doi: '10.1123/jsr.21.2.144',
     trecho: 'Compared with the NW condition, the wedge produced decreased peak knee flexion (P < .001, effect size [ES] = 0.81) and knee-flexion excursion (P < .001, ES = 0.82) while producing increased peak ankle dorsiflexion (P = .006, ES = 0.31), ankle-dorsiflexion excursion (P < .001, ES = 0.31), peak knee-valgus angle (P = .02, ES = 0.21), and MKD (P < .001, ES = 2.92).',
     populacao: '30 adultos saudáveis e fisicamente ativos, sem lesão prévia de membro inferior; agachamento com e sem cunha sob o antepé',
-    verificadoEm: VERIFICADO_EM,
-  },
-  mauntel2013: {
-    pmid: '23096063',
-    citacao: 'Mauntel TC, Begalle RL, Cram TR, Frank BS, Hirth CJ, Blackburn T, et al. The effects of lower extremity muscle activation and passive range of motion on single leg squat performance. J Strength Cond Res. 2013;27(7):1813-23.',
-    ano: 2013,
-    periodico: 'J Strength Cond Res',
-    doi: '10.1519/JSC.0b013e318276b886',
-    trecho: 'Results during the SLS indicated hip coactivation ratios revealed smaller gluteus medius to hip adductor (GMed:Hip Add) (p = 0.028) and gluteus maximus to hip adductor (GMax:Hip Add) coactivation ratios (p = 0.007) compared with the control group. Also, the MKD group displayed significantly less passive ankle dorsiflexion with the knee extended (p = 0.047) and flexed (p = 0.034), and greater talar glide motion (p = 0.012).',
-    populacao: '40 adultos fisicamente ativos (20 com deslocamento medial do joelho no agachamento unipodal e 20 controles)',
     verificadoEm: VERIFICADO_EM,
   },
   wyndow2016: {
@@ -71,16 +65,6 @@ export const FONTES = {
     populacao: '140 adultos (70 com síndrome da dor patelofemoral e 70 assintomáticos); teste de descida de degrau',
     verificadoEm: VERIFICADO_EM,
   },
-  cashman2012: {
-    pmid: '22894982',
-    citacao: 'Cashman GE. The effect of weak hip abductors or external rotators on knee valgus kinematics in healthy subjects: a systematic review. J Sport Rehabil. 2012;21(3):273-84.',
-    ano: 2012,
-    periodico: 'J Sport Rehabil',
-    doi: '10.1123/jsr.21.3.273',
-    trecho: 'There is a small amount of evidence that healthy subjects with weak hip abductors and perhaps weak external rotators demonstrate increased knee valgus. However, due to the variation in methodology and lack of agreement between studies, it is not possible to make any definitive conclusions or clinical recommendations based on the results of this review.',
-    populacao: 'Revisão sistemática de 11 estudos com indivíduos assintomáticos',
-    verificadoEm: VERIFICADO_EM,
-  },
   alzahrani2021: {
     pmid: '34300118',
     citacao: 'Alzahrani AM, Alzhrani M, Alshahrani SN, Alghamdi W, Alqahtani M, Alzahrani H. Is Hip Muscle Strength Associated with Dynamic Knee Valgus in a Healthy Adult Population? A Systematic Review. Int J Environ Res Public Health. 2021;18(14).',
@@ -111,16 +95,6 @@ export const FONTES = {
     populacao: 'Revisão sistemática com metanálise de 16 estudos sobre confiabilidade e validade da análise 2D do plano frontal em agachamento, aterrissagem e corte',
     verificadoEm: VERIFICADO_EM,
   },
-  dacosta2021: {
-    pmid: '33713896',
-    citacao: 'da Costa GV, de Castro MP, Sanchotene CG, Ribeiro DC, de Brito Fontana H, Ruschel C. Relationship between passive ankle dorsiflexion range, dynamic ankle dorsiflexion range and lower limb and trunk kinematics during the single-leg squat. Gait Posture. 2021;86:106-111.',
-    ano: 2021,
-    periodico: 'Gait Posture',
-    doi: '10.1016/j.gaitpost.2021.03.015',
-    trecho: 'Greater passive ankle dorsiflexion range was associated with smaller thigh internal rotation (r= -0.38). Greater dynamic ankle dorsiflexion range was associated with smaller trunk flexion (r = 0.59) and pelvis anteversion (r= -0.47).',
-    populacao: '30 adultos sem lesão; agachamento unipodal com cinemática 3D',
-    verificadoEm: VERIFICADO_EM,
-  },
   ishida2023: {
     pmid: '37441507',
     citacao: 'Ishida T, Samukawa M, Koshino Y, Ino T, Kasahara S, Tohyama H. Interlimb Asymmetry in Knee Extension Moment During Double-Leg Squatting Is Associated With Persistent Quadriceps Weakness After ACL Reconstruction. Orthop J Sports Med. 2023;11(6):23259671231182105.',
@@ -141,16 +115,6 @@ export const FONTES = {
     populacao: '62 adultos (20 com ruptura do ligamento cruzado anterior sem reconstrução, 21 com ligamento reconstruído e 21 controles); agachamento bipodal',
     verificadoEm: VERIFICADO_EM,
   },
-  webster2014: {
-    pmid: '24934927',
-    citacao: 'Webster KE, Austin DC, Feller JA, Clark RA, McClelland JA. Symmetry of squatting and the effect of fatigue following anterior cruciate ligament reconstruction. Knee Surg Sports Traumatol Arthrosc. 23(11):3208-13. Epub 2014.',
-    ano: 2014,
-    periodico: 'Knee Surg Sports Traumatol Arthrosc',
-    doi: '10.1007/s00167-014-3121-3',
-    trecho: 'The ACL group preferentially unloaded the reconstructed limb at baseline, but changed to a more symmetrical load distribution to perform the squat exercise in the fatigue condition. This same loading pattern was seen at both the knee and hip joints.',
-    populacao: '10 homens que voltaram ao esporte após reconstrução do ligamento cruzado anterior e 10 controles; agachamento bipodal antes e depois de fadiga',
-    verificadoEm: VERIFICADO_EM,
-  },
   song2021: {
     pmid: '34628200',
     citacao: 'Song Y, Li L, Albrandt EE, Jensen MA, Dai B. Medial-lateral hip positions predicted kinetic asymmetries during double-leg squats in collegiate athletes following anterior cruciate ligament reconstruction. J Biomech. 2021;128:110787.',
@@ -169,16 +133,6 @@ export const FONTES = {
     doi: '10.26603/001c.37861',
     trecho: 'with the preferred leg generating larger values than the non-preferred leg during the self-paced condition',
     populacao: '18 adultos saudáveis e fisicamente ativos; agachamento bipodal sobre duas plataformas de força',
-    verificadoEm: VERIFICADO_EM,
-  },
-  endo2020: {
-    pmid: '32581431',
-    citacao: 'Endo Y, Miura M, Sakamoto M. The relationship between the deep squat movement and the hip, knee and ankle range of motion and muscle strength. J Phys Ther Sci. 2020;32(6):391-394.',
-    ano: 2020,
-    periodico: 'J Phys Ther Sci',
-    doi: '10.1589/jpts.32.391',
-    trecho: 'The right ankle dorsiflexion range of motion was a significant predictor of the right hip flexion angle and vice versa. [Conclusion] This study reveals that movement on one side affects contralateral movement, which is important when evaluating the deep squat motion as a functional test.',
-    populacao: '9 homens saudáveis; agachamento profundo analisado em vídeo bidimensional',
     verificadoEm: VERIFICADO_EM,
   },
   kim2015: {
@@ -211,16 +165,6 @@ export const FONTES = {
     populacao: '72 adultos saudáveis (59,7% mulheres); agachamento unipodal',
     verificadoEm: VERIFICADO_EM,
   },
-  lamontagne2011: {
-    pmid: '21543687',
-    citacao: 'Lamontagne M, Brisson N, Kennedy MJ, Beaulé PE. Preoperative and postoperative lower-extremity joint and pelvic kinematics during maximal squatting of patients with cam femoro-acetabular impingement. J Bone Joint Surg Am. 2011;93 Suppl 2:40-5.',
-    ano: 2011,
-    periodico: 'J Bone Joint Surg Am',
-    doi: '10.2106/JBJS.J.01809',
-    trecho: 'Postoperative knee flexion and ankle dorsiflexion angles of the affected extremity at maximal depth were significantly greater than preoperative values. The postoperative sum of all joint angles of the affected limb at maximal squat depth was significantly larger than the preoperative sum. No significant differences were detected between the preoperative and postoperative measurements of the patients with cam impingement with respect to the kinematics of the affected hip at maximal squat depth, the pelvic angular displacements at maximal squat depth, or the overall pelvic range of motion during maximal deep squatting (p > 0.05).',
-    populacao: '10 pessoas com impacto femoroacetabular tipo came unilateral sintomático, avaliadas antes e depois da cirurgia',
-    verificadoEm: VERIFICADO_EM,
-  },
   generoso2025: {
     pmid: '40391865',
     citacao: 'Generoso TO, Pelegrinelli ARM, Gonzalez FF, Pallone LV, Locks R, Guadagnin EC, et al. Squatting Biomechanics After Femoroacetabular Impingement Surgery: A Systematic Review and Meta-analysis. Clin J Sport Med. 36(3):296-307. Epub 2025.',
@@ -251,16 +195,6 @@ export const FONTES = {
     populacao: '30 homens saudáveis com dorsiflexão do tornozelo restrita; agachamento com carga e elevação progressiva do calcanhar',
     verificadoEm: VERIFICADO_EM,
   },
-  fry2003: {
-    pmid: '14636100',
-    citacao: 'Fry AC, Smith JC, Schilling BK. Effect of knee position on hip and knee torques during the barbell squat. J Strength Cond Res. 2003;17(4):629-33.',
-    ano: 2003,
-    periodico: 'J Strength Cond Res',
-    doi: '10.1519/1533-4287(2003)017<0629:eokpoh>2.0.co;2',
-    trecho: 'Restricted squats also produced more anterior lean of the trunk and shank and a greater internal angle at the knees and ankles. The squat technique used can affect the distribution of forces between the knees and hips and on the kinematic properties of the exercise.',
-    populacao: '7 homens treinados com pesos; agachamento com barra (carga igual ao peso corporal) filmado em vídeo',
-    verificadoEm: VERIFICADO_EM,
-  },
   list2013: {
     pmid: '22990570',
     citacao: 'List R, Gülay T, Stoop M, Lorenzetti S. Kinematics of the trunk and the lower extremities during restricted and unrestricted squats. J Strength Cond Res. 2013;27(6):1529-38.',
@@ -279,26 +213,6 @@ export const FONTES = {
     doi: '10.1123/jsr.2016-0197',
     trecho: 'The magnitudes of PFJS, reaction force, and quadriceps force were higher (P < .001) during SPT compared with the SBT technique. Knee flexion, hip flexion, and ankle dorsiflexion angles were reduced when using the SBT technique.',
     populacao: '25 mulheres saudáveis; agachamento com os joelhos atrás ou além da ponta dos pés (estimativa por modelo musculoesquelético)',
-    verificadoEm: VERIFICADO_EM,
-  },
-  honda2022: {
-    pmid: '35193063',
-    citacao: 'Honda K, Sekiguchi Y, Shimazaki S, Suzuki R, Suzuki T, Kanetaka H, et al. Effects of aging on whole-body center of mass movement and lower limb joint kinematics and kinetics during deep-squat movement. J Biomech. 2022;134:110996.',
-    ano: 2022,
-    periodico: 'J Biomech',
-    doi: '10.1016/j.jbiomech.2022.110996',
-    trecho: 'Furthermore, older individuals exhibited smaller ankle dorsiflexion and knee flexion angles, larger trunk flexion angles, and greater forward displacement of the whole-body center of mass during deep-squat movement (P < 0.05).',
-    populacao: '12 idosos (mediana de 76,5 anos) e 19 adultos jovens (mediana de 30 anos); agachamento profundo',
-    verificadoEm: VERIFICADO_EM,
-  },
-  barberwestin2017: {
-    pmid: '28298066',
-    citacao: 'Barber-Westin SD, Noyes FR. Effect of Fatigue Protocols on Lower Limb Neuromuscular Function and Implications for Anterior Cruciate Ligament Injury Prevention Training: A Systematic Review. Am J Sports Med. 2017;45(14):3388-3396.',
-    ano: 2017,
-    periodico: 'Am J Sports Med',
-    doi: '10.1177/0363546517693846',
-    trecho: 'There was no consistency among investigations regarding the effects of fatigue on hip, knee, or ankle joint angles and moments or surface electromyography muscle activation patterns.',
-    populacao: 'Revisão sistemática de 37 estudos com 806 atletas saudáveis; tarefas de salto, aterrissagem e mudança de direção',
     verificadoEm: VERIFICADO_EM,
   },
   vermeulen2023: {
@@ -321,15 +235,6 @@ export const FONTES = {
     populacao: 'Revisão sistemática com metanálise de 30 artigos sobre osteoartrite de quadril',
     verificadoEm: VERIFICADO_EM,
   },
-  murray1985: {
-    pmid: '4042479',
-    citacao: 'Murray MP, Gore DR, Sepic SB, Mollinger LA. Antalgic maneuvers during walking in men with unilateral knee disability. Clin Orthop Relat Res. 1985;(199):192-200.',
-    ano: 1985,
-    periodico: 'Clin Orthop Relat Res',
-    trecho: 'The following antalgic maneuvers were found to be common to the gait of these patients: slow and uneven forward progression with lateral lurching toward the painful side, asymmetry in stride and temporal components, and abnormalities in the displacement patterns of most body segments.',
-    populacao: '35 homens com incapacidade unilateral do joelho por dor',
-    verificadoEm: VERIFICADO_EM,
-  },
   corrigan2023: {
     pmid: '36305013',
     citacao: 'Corrigan P, Felson DT, Lewis CL, Neogi T, LaValley MP, Gross KD, et al. Relation of Temporal Asymmetry During Walking to Two-Year Knee Pain Outcomes in Those With Mild-to-Moderate Unilateral Knee Pain: An Exploratory Analysis From the Multicenter Osteoarthritis Study. Arthritis Care Res (Hoboken). 2023;75(8):1735-1743.',
@@ -340,16 +245,6 @@ export const FONTES = {
     populacao: 'Participantes de uma coorte (Multicenter Osteoarthritis Study) com dor unilateral leve a moderada no joelho',
     verificadoEm: VERIFICADO_EM,
   },
-  staines2026: {
-    pmid: '42107174',
-    citacao: 'Staines R, Patterson K, Jagroop D, Inness EL, Mansfield A. The relationship between gait asymmetry and stability in people with sub-acute stroke. Gait Posture. 2026;128:110216.',
-    ano: 2026,
-    periodico: 'Gait Posture',
-    doi: '10.1016/j.gaitpost.2026.110216',
-    trecho: 'As swing symmetry increased, the extrapolated centre of mass tended to be closer to the lateral border of the less affected side and farther from the medial border of the more affected side. Gait asymmetry could, in part, result from a strategy to compensate for poor balance control on the more affected side.',
-    populacao: '31 pessoas com AVC subagudo (menos de 6 meses)',
-    verificadoEm: VERIFICADO_EM,
-  },
   khamis2017: {
     pmid: '28600975',
     citacao: 'Khamis S, Carmeli E. Relationship and significance of gait deviations associated with limb length discrepancy: A systematic review. Gait Posture. 2017;57:115-123.',
@@ -358,25 +253,6 @@ export const FONTES = {
     doi: '10.1016/j.gaitpost.2017.05.028',
     trecho: 'A significant relationship was found between anatomic LLD and gait deviation.',
     populacao: 'Revisão sistemática de 12 estudos: diferença anatômica de comprimento dos membros e diferença simulada com elevações em pessoas saudáveis',
-    verificadoEm: VERIFICADO_EM,
-  },
-  seeley2010: {
-    pmid: '24149783',
-    citacao: 'Seeley MK, Umberger BR, Clasey JL, Shapiro R. The relation between mild leg-length inequality and able-bodied gait asymmetry. J Sports Sci Med. 2010;9(4):572-9.',
-    ano: 2010,
-    periodico: 'J Sports Sci Med',
-    trecho: 'Statistically significant relationships were observed between LLI and the symmetry coefficient for knee joint moment (r = -0.48) and power (r = -0.51), and ankle joint moment (r = -0.41) and power (r = -0.42).',
-    populacao: '26 adultos sem doença; diferença leve de comprimento dos membros medida por radiografia',
-    verificadoEm: VERIFICADO_EM,
-  },
-  lugade2010: {
-    pmid: '20542608',
-    citacao: 'Lugade V, Wu A, Jewett B, Collis D, Chou LS. Gait asymmetry following an anterior and anterolateral approach to total hip arthroplasty. Clin Biomech (Bristol). 2010;25(7):675-80.',
-    ano: 2010,
-    periodico: 'Clin Biomech (Bristol)',
-    doi: '10.1016/j.clinbiomech.2010.05.003',
-    trecho: 'At presurgery, greater single limb support time and step length asymmetry was demonstrated by both patient groups when compared to controls.',
-    populacao: '23 pacientes com osteoartrite de quadril antes de artroplastia (abordagem anterior ou anterolateral) e 10 controles',
     verificadoEm: VERIFICADO_EM,
   },
   steingrebe2023: {
@@ -399,26 +275,6 @@ export const FONTES = {
     populacao: 'Pessoas com osteoartrite de quadril moderada e grave e grupo assintomático; marcha em esteira',
     verificadoEm: VERIFICADO_EM,
   },
-  kerrigan2001: {
-    pmid: '11239282',
-    citacao: 'Kerrigan DC, Lee LW, Collins JJ, Riley PO, Lipsitz LA. Reduced hip extension during walking: healthy elderly and fallers versus young adults. Arch Phys Med Rehabil. 2001;82(1):26-30.',
-    ano: 2001,
-    periodico: 'Arch Phys Med Rehabil',
-    doi: '10.1053/apmr.2001.18584',
-    trecho: 'An isolated and consistent reduction in hip extension during walking in the elderly, which is exaggerated in fallers, implies the presence of functionally significant hip tightness, which may limit walking performance.',
-    populacao: '23 idosos saudáveis, 16 idosos com quedas recorrentes e 30 adultos jovens',
-    verificadoEm: VERIFICADO_EM,
-  },
-  mettler2019: {
-    pmid: '29927892',
-    citacao: 'Mettler JH, Shapiro R, Pohl MB. Effects of a Hip Flexor Stretching Program on Running Kinematics in Individuals With Limited Passive Hip Extension. J Strength Cond Res. 2019;33(12):3338-3344.',
-    ano: 2019,
-    periodico: 'J Strength Cond Res',
-    doi: '10.1519/JSC.0000000000002586',
-    trecho: 'A 3-week static stretching program of the hip flexor muscle group resulted in an increase in passive hip extension, but the sagittal plane kinematics of the LPH complex during running remained unchanged.',
-    populacao: '20 pessoas saudáveis com extensão passiva do quadril limitada; corrida submáxima',
-    verificadoEm: VERIFICADO_EM,
-  },
   apti2016: {
     pmid: '27131202',
     citacao: 'Apti A, Akalan NE, Kuchimov S, Özdinçler AR, Temelli Y, Nene A. Plantar flexor muscle weakness may cause stiff-knee gait. Gait Posture. 2016;46:201-7.',
@@ -427,26 +283,6 @@ export const FONTES = {
     doi: '10.1016/j.gaitpost.2016.03.010',
     trecho: 'After PS, the reduction of plantar flexor muscle strength (33.14%) caused knee flexion velocity drop at toe-off (p=0.008) and developed SKG pattern by decreasing peak knee flexion (p=0.0001), range of knee flexion in early swing (p=0.006), and total knee flexion range (p=0.002).',
     populacao: '20 adultos jovens saudáveis (e 7 controles); fraqueza experimental dos flexores plantares',
-    verificadoEm: VERIFICADO_EM,
-  },
-  fujita2022: {
-    pmid: '36166956',
-    citacao: 'Fujita K, Tsushima Y, Hayashi K, Kawabata K, Sato M, Kobayashi Y. Differences in causes of stiff knee gait in knee extensor activity or ankle kinematics: A cross-sectional study. Gait Posture. 2022;98:187-194.',
-    ano: 2022,
-    periodico: 'Gait Posture',
-    doi: '10.1016/j.gaitpost.2022.09.078',
-    trecho: 'In the high PC2 group, the timing of peak knee flexion during the swing phase was early, and vastus lateralis activity during the preswing phase negatively correlated with the knee-flexion angle during the swing phase. In the low PC2 group, the angular velocity of ankle plantar flexion at the toe-off was slow, which positively correlated with the knee-flexion angle during the swing phase.',
-    populacao: '38 pessoas com AVC crônico e joelho rígido na marcha',
-    verificadoEm: VERIFICADO_EM,
-  },
-  krajewski2025: {
-    pmid: '39815400',
-    citacao: 'Krajewski KT, Correa JS, Siu R, Cunningham D, Sulzer JS. Mechanisms of Post-stroke Stiff-Knee Gait: A Narrative Review. Am J Phys Med Rehabil. 2025;104(7):e101-e108.',
-    ano: 2025,
-    periodico: 'Am J Phys Med Rehabil',
-    doi: '10.1097/PHM.0000000000002678',
-    trecho: 'We explore evidence for quadriceps hyperreflexia, abnormal tone, motor incoordination, and impaired propulsion.',
-    populacao: 'Revisão narrativa sobre a marcha com joelho rígido após AVC',
     verificadoEm: VERIFICADO_EM,
   },
   creaby2012: {
@@ -499,26 +335,55 @@ export const FONTES = {
     populacao: '8 adultos saudáveis; esteira com inclinação de 0, 5 e 10% (subida e descida)',
     verificadoEm: VERIFICADO_EM,
   },
-  tsutsumi2026: {
-    pmid: '42804966',
-    citacao: 'Tsutsumi R, Kikuchi N, Kadone H, Kanamori A, Mochizuki H, Terajima S, et al. Total knee arthroplasty alters trunk alignment and reduces lumbar erector spinae activity during gait. Clin Biomech (Bristol). 2026;140:106978.',
-    ano: 2026,
-    periodico: 'Clin Biomech (Bristol)',
-    doi: '10.1016/j.clinbiomech.2026.106978',
-    trecho: 'After total knee arthroplasty, the mean dynamic sagittal vertical axis and forward trunk inclination during gait decreased (p < 0.01), whereas the mean anterior pelvic tilt increased (p < 0.01).',
-    populacao: '24 pacientes avaliados antes e 1 ano depois de artroplastia total do joelho',
+  lima2017: {
+    pmid: '28974358',
+    citacao: 'Lima YL, Ferreira VMLM, de Paula Lima PO, Bezerra MA, de Oliveira RR, Almeida GPL. The association of ankle dorsiflexion and dynamic knee valgus: A systematic review and meta-analysis. Phys Ther Sport. 29:61-69. Epub 2017.',
+    ano: 2017,
+    periodico: 'Phys Ther Sport',
+    doi: '10.1016/j.ptsp.2017.07.003',
+    trecho: 'Meta-analysis showed that reduced ADF is associated with participants presenting with DKV compared to controls (SMD -0.65, 95% CI -0.88 to -0.41).',
+    populacao: 'Revisão sistemática com metanálise de 17 estudos que comparam a dorsiflexão do tornozelo de pessoas com e sem valgo dinâmico do joelho',
     verificadoEm: VERIFICADO_EM,
   },
-  borrelli2002: {
-    pmid: '11818800',
-    citacao: 'Borrelli J, Goldfarb C, Ricci W, Wagner JM, Engsberg JR. Functional outcome after isolated acetabular fractures. J Orthop Trauma. 2002;16(2):73-81.',
-    ano: 2002,
-    periodico: 'J Orthop Trauma',
-    doi: '10.1097/00005131-200202000-00001',
-    trecho: 'When the study patients were compared with able-bodied cohorts, the patients tended to walk with greater forward inclination of their trunks; this was true for all phases of gait.',
-    populacao: '15 pacientes com fratura isolada de acetábulo tratada cirurgicamente',
+  haberkamp2022: {
+    pmid: '36198251',
+    citacao: 'Haberkamp LD, Garcia MC, Bazett-Jones DM. Validity of an artificial intelligence, human pose estimation model for measuring single-leg squat kinematics. J Biomech. 2022;144:111333.',
+    ano: 2022,
+    periodico: 'J Biomech',
+    doi: '10.1016/j.jbiomech.2022.111333',
+    trecho: 'We observed moderate-to-strong relationships (r = 0.68-0.94) for sagittal plane joint angles between 2D pose estimation and 3D techniques. We observed fair correlations (r = 0.53-0.54) for frontal plane pelvic and hip joint angles between 2D pose estimation and 3D motion analysis. We observed poor relationships for the frontal plane knee angle between 3D motion analysis with 2D pose estimation (r = 0.20) and traditional 2D motion analysis (r = 0.05), respectively, but observed a strong relationship (r = 0.95) between the 2D techniques.',
+    populacao: 'Atletas adolescentes (número não informado no resumo); agachamento unipodal com estimativa de pose 2D, vídeo 2D tradicional e captura 3D',
+    verificadoEm: VERIFICADO_EM,
+  },
+  cheatham2018: {
+    pmid: '28290757',
+    citacao: 'Cheatham SW, Stull KR, Fantigrassi M, Montel I. Hip Musculoskeletal Conditions and Associated Factors That Influence Squat Performance: A Systematic Review. J Sport Rehabil. 2018;27(3):263-273.',
+    ano: 2018,
+    periodico: 'J Sport Rehabil',
+    doi: '10.1123/jsr.2016-0246',
+    trecho: 'Femoroacetabular impingement and hip arthroscopy were the only hip conditions found that affected the squat. Associated factors, such as muscle pain, fatigue, and tightness, also influenced squat performance. This review found that common hip conditions and associated factors and their effects on squat performance to be underinvestigated.',
+    populacao: 'Revisão sistemática de 15 estudos (542 participantes) sobre condições do quadril e desempenho no agachamento com barra, na descida de degrau e no agachamento bipodal ou unipodal',
+    verificadoEm: VERIFICADO_EM,
+  },
+  strong2023: {
+    pmid: '37853508',
+    citacao: 'Strong A, Markström JL, Schelin L, Häger CK. Asymmetric loading strategies during squats following anterior cruciate ligament reconstruction: A longitudinal investigation with curve analyses throughout and after rehabilitation. Scand J Med Sci Sports. 34(1):e14524. Epub 2023.',
+    ano: 2023,
+    periodico: 'Scand J Med Sci Sports',
+    doi: '10.1111/sms.14524',
+    trecho: 'At Early, 11/24 underloaded their ACLR knee and 1 overloaded compared with controls. At RTS, 4 underloaded and 6 overloaded. No differences in PROMs were found based on loading asymmetry. Beyond the early phase of rehabilitation from ACLR, individual-level analyses are required to reveal differing loading strategies during bilateral squats.',
+    populacao: '24 pessoas após reconstrução do ligamento cruzado anterior, avaliadas em três momentos, e 29 controles; agachamento bipodal',
     verificadoEm: VERIFICADO_EM,
   },
 } satisfies Record<string, FonteBiblio>;
 
-export type IdFonte = keyof typeof FONTES;
+export type IdFonte = keyof typeof FONTES_AVALIADAS;
+
+/** Acopla a qualidade e a limitação principal da avaliação metodológica; sem avaliação o campo fica ausente (o teste da biblioteca barra isso). */
+function comAvaliacao(f: FonteBiblio): FonteBiblio {
+  const a = avaliacaoDaFonte(f.pmid);
+  if (!a) return f;
+  return { ...f, qualidade: a.nivelQualidade, limitacaoPrincipal: a.limitacaoPrincipal };
+}
+
+export const FONTES = Object.fromEntries(Object.entries(FONTES_AVALIADAS).map(([id, f]) => [id, comAvaliacao(f)])) as { [K in IdFonte]: FonteBiblio };

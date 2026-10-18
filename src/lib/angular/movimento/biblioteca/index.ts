@@ -18,6 +18,8 @@ import {
  *    uma fonte; sem fonte verificada o fator entra como 'a_confirmar', e o item a conferir sem fonte declara `semReferenciaVerificada`.
  *  - Fonte só com PMID conferido no PubMed e `trecho` copiado LITERALMENTE do resumo indexado (em inglês). Nada de número, dose,
  *    referência ou trecho inventado ou "de memória".
+ *  - Fonte só com avaliação metodológica (avaliacaoMetodologica.ts; critérios em docs/avaliacao-metodologica-fontes.md) e decisão diferente de
+ *    "remover". Qualidade baixa nunca aparece sem ressalva; a qualidade e a limitação principal vão para o laudo junto da fonte.
  *  - Vocabulário: nada que julgue o corpo ou o desempenho (ver vocabulario.ts) e nada de verbo causal.
  */
 const ENTRADAS: EntradaBiblioteca[] = [
