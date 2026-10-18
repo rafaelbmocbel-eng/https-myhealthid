@@ -58,25 +58,53 @@ describe('caixa do rosto por quadro', () => {
     for (let j = 8; j <= 12; j++) expect(rostoCabe(trilha, j, com[10].caixa)).toBe(true);
   });
 
-  it('quadros sem rosto aproveitam o vizinho até 0,5 s e depois caem na caixa fixa coberta', () => {
+  it('quadro sem rosto só é dado como coberto pelos vizinhos quando há rosto detectado dos DOIS lados; com um lado só vira caixa fixa (a conferir)', () => {
     const trilha = trilhaSintetica(configurar('marcha'), 30, 4, { ausentes: (t) => t >= 1 && t < 2.2 });
     const caixas = caixasDoRosto(trilha);
-    // sem rosto de 1,0 s (quadro 30) a 2,17 s (quadro 65): 0,5 s = 15 quadros de cada lado aproveitam o vizinho
+    // sem rosto de 1,0 s (quadro 30) a 2,17 s (quadro 65): a lacuna de 36 quadros é maior que 2 × 15, então nenhum quadro tem os dois lados
     expect(caixas[29].origem).toBe('pose');
-    expect(caixas[30].origem).toBe('vizinho');
-    expect(caixas[44].origem).toBe('vizinho');
-    expect(caixas[45].origem).toBe('fixa');
-    expect(caixas[50].origem).toBe('fixa');
-    expect(caixas[51].origem).toBe('vizinho');
-    expect(caixas[65].origem).toBe('vizinho');
+    for (let i = 30; i <= 65; i++) expect(caixas[i].origem, `quadro ${i}`).toBe('fixa');
     expect(caixas[66].origem).toBe('pose');
     const padrao = caixaRostoPadrao(trilha.largura, trilha.altura);
     const meio = caixas[47];
     expect(meio.caixa.cx).toBeCloseTo(padrao.cx, 6);
     expect(meio.caixa.w).toBeGreaterThanOrEqual(padrao.w);
     expect(meio.caixa.h).toBeGreaterThanOrEqual(padrao.h);
-    // o vizinho mantém o rosto coberto onde ele estava
-    expect(rostoCabe(trilhaSintetica(configurar('marcha'), 30, 4), 31, caixas[31].caixa)).toBe(true);
+    // o quadro logo depois da perda ainda cobre onde o rosto estava, além da caixa fixa
+    const sem = trilhaSintetica(configurar('marcha'), 30, 4);
+    expect(rostoCabe(sem, 31, caixas[31].caixa)).toBe(true);
+    expect(rostoCabe(sem, 64, caixas[64].caixa)).toBe(true);
+  });
+
+  it('lacuna curta com rosto dos dois lados: a união das duas caixas cobre o trajeto e o quadro vale como coberto', () => {
+    const sintetica = trilhaSintetica(configurar('marcha'), 30, 4);
+    const trilha = trilhaSintetica(configurar('marcha'), 30, 4, { ausentes: (t) => t >= 1 && t < 1.4 });
+    const caixas = caixasDoRosto(trilha);
+    for (let i = 30; i <= 41; i++) {
+      expect(caixas[i].origem, `quadro ${i}`).toBe('vizinho');
+      expect(rostoCabe(sintetica, i, caixas[i].caixa), `quadro ${i}`).toBe(true);
+    }
+  });
+
+  it('paciente cruzando o quadro com câmera parada e o detector perdendo-o por 0,8 s: nenhum quadro com o rosto fora da caixa fica sem o aviso de conferir', () => {
+    for (const gesto of ['marcha', 'corrida'] as const) {
+      const inteira = trilhaSintetica(configurar(gesto), 30, 5);
+      const trilha = trilhaSintetica(configurar(gesto), 30, 5, { ausentes: (t) => t >= 2 && t < 2.8 });
+      const caixas = caixasDoRosto(trilha);
+      let comAviso = 0;
+      caixas.forEach((c, i) => {
+        if (c.origem === 'fixa') comAviso++;
+        else expect(rostoCabe(inteira, i, c.caixa), `${gesto} #${i} (${c.origem})`).toBe(true);
+      });
+      expect(comAviso, gesto).toBeGreaterThan(0);
+      expect(resumoDoRosto(caixas).fixa, gesto).toBeGreaterThan(0);
+    }
+  });
+
+  it('o começo do vídeo sem rosto detectado (só há vizinho depois) também é sinalizado', () => {
+    const trilha = trilhaSintetica(configurar('marcha'), 30, 3, { ausentes: (t) => t < 0.5 });
+    const caixas = caixasDoRosto(trilha);
+    for (let i = 0; i < 15; i++) expect(caixas[i].origem, `quadro ${i}`).toBe('fixa');
   });
 
   it('a caixa fixa pode ser a que o profissional arrastou até o rosto', () => {

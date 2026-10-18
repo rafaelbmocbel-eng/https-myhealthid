@@ -5,7 +5,10 @@ import { PONTOS_MEDIAPIPE, PONTOS_ROSTO, type QuadroPose, type TrilhaPose } from
 /**
  * Caixa do rosto por quadro, a partir dos pontos de pose (nariz, olhos, orelhas e boca), para esconder o rosto no vídeo e na arte.
  * Privacidade primeiro: a caixa sempre erra para maior. Ela é a união das caixas dos quadros vizinhos (o rosto se mexe entre uma
- * amostra e outra), cresce por uma margem e, onde nenhum quadro próximo achou o rosto, vira a caixa fixa coberta — nunca fica sem cobertura.
+ * amostra e outra) e cresce por uma margem. Um quadro sem rosto detectado só é dado como coberto ('vizinho') quando há rosto detectado
+ * dos DOIS lados dele: a união das duas caixas cobre o trajeto entre elas. Com um vizinho só, ou nenhum, o rosto pode ter ido para
+ * qualquer lugar (o paciente saindo ou entrando no quadro): o quadro vira 'fixa', cobre a última posição conhecida e a caixa fixa,
+ * e o app pede ao profissional que confira a cobertura na prévia.
  */
 export type OrigemCaixa = 'pose' | 'vizinho' | 'fixa';
 
@@ -14,7 +17,7 @@ export interface CaixaDoQuadro { caixa: CaixaRosto; origem: OrigemCaixa }
 export interface OpcoesRosto {
   /** Caixa usada onde não há rosto detectado por perto. Padrão: a caixa de partida da arte social (alto e ao centro). */
   caixaFixa?: CaixaRosto;
-  /** Até onde, em segundos, um quadro sem rosto aproveita a caixa de um vizinho. */
+  /** Até onde, em segundos, um quadro sem rosto procura o rosto detectado de cada lado (só vale quando acha os dois). */
   maxLacunaS?: number;
   /** Quantos segundos antes e depois entram na união de caixas (cobre o movimento entre amostras). */
   folgaTemporalS?: number;
@@ -78,12 +81,12 @@ export function caixasDoRosto(trilha: TrilhaPose, opcoes: OpcoesRosto = {}): Cai
 
   const base: CaixaDoQuadro[] = proprias.map((c, i) => {
     if (c) return { caixa: c, origem: 'pose' as const };
-    let ant = -1, prox = -1;
-    for (let j = i - 1; j >= Math.max(0, i - maxLacuna); j--) if (proprias[j]) { ant = j; break; }
-    for (let j = i + 1; j <= Math.min(n - 1, i + maxLacuna); j++) if (proprias[j]) { prox = j; break; }
-    const vizinhas = [ant, prox].filter((j) => j >= 0).map((j) => proprias[j] as CaixaRosto);
-    const uniao = unirCaixas(vizinhas);
-    return uniao ? { caixa: uniao, origem: 'vizinho' as const } : { caixa: fixa, origem: 'fixa' as const };
+    let antes: CaixaRosto | null = null, depois: CaixaRosto | null = null;
+    for (let j = i - 1; j >= Math.max(0, i - maxLacuna) && !antes; j--) antes = proprias[j];
+    for (let j = i + 1; j <= Math.min(n - 1, i + maxLacuna) && !depois; j++) depois = proprias[j];
+    if (antes && depois) return { caixa: unirCaixas([antes, depois]) ?? fixa, origem: 'vizinho' as const };
+    const unico = antes ?? depois;
+    return { caixa: unico ? unirCaixas([unico, fixa]) ?? fixa : fixa, origem: 'fixa' as const };
   });
 
   return base.map((b, i) => {
