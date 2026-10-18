@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { baixarBlob } from '@/lib/pdf/entrega';
 import { notaMedidasForaDoTrecho } from '@/lib/angular/analiseVideo/medidaManual';
 import { INTRO_INDISPONIVEIS, maisOuMenos, TEXTO_SEM_INDISPONIVEIS, TITULOS } from '@/lib/angular/movimento/frases';
-import type { ContextoLaudo, EventoPasso, IdProtocolo, LaudoMovimento, PlanoCamera, Protocolo } from '@/lib/angular/movimento/tipos';
+import type { ContextoLaudo, EventoPasso, LaudoMovimento, PlanoCamera, Protocolo } from '@/lib/angular/movimento/tipos';
 import type { TrilhaPose } from '@/lib/angular/video/tipos';
 import Disclosure from './Disclosure';
 import EditorCriterios from './EditorCriterios';
@@ -14,10 +14,9 @@ import SeletorProtocolo from './SeletorProtocolo';
 import TabelaRepeticoes from './TabelaRepeticoes';
 import TabelaTexto from './TabelaTexto';
 import { resumoDoLaudoEmTexto } from './resumoTexto';
+import { AVISO_BETA_LAUDO, hojeIso, nomeArquivoLaudo } from './textosLaudo';
 import { useAnaliseMovimento } from './useAnaliseMovimento';
 import type { EstadoLaudo } from './useEstadoLaudo';
-
-export const AVISO_BETA_LAUDO = 'Protótipo (beta) · apoio à avaliação do profissional · não é diagnóstico';
 
 export interface PropsAbaLaudo {
   estado: EstadoLaudo;
@@ -42,12 +41,6 @@ export interface PropsAbaLaudo {
   gerarPdf?: (laudo: LaudoMovimento) => Promise<Blob>;
   baixar?: (blob: Blob, nome: string) => void;
 }
-
-export function hojeIso(agora: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(agora);
-}
-
-export const nomeArquivoLaudo = (protocolo: IdProtocolo, data: string): string => `laudo-${protocolo.replace(/_/g, '-')}-${data}.pdf`;
 
 const gerarPdfSobDemanda = async (laudo: LaudoMovimento): Promise<Blob> => (await import('@/lib/angular/movimento/laudoPdf')).gerarPdfLaudo(laudo);
 
