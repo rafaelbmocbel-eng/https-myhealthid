@@ -183,9 +183,9 @@ export function diagnosticarPontosPerdidos(e: EntradaDoDiagnostico): PontosPerdi
 // ---------- itens a corrigir (o que a tela mostra) ----------
 
 /**
- * Um trecho de quadros sem ponto de um ponto do corpo, numa repetição: o que o profissional corrige de uma vez. Medidas da mesma
- * repetição que dependem do mesmo ponto e perderam quadros que se tocam são o mesmo buraco da trilha, então a tela mostra um item só,
- * com a lista das medidas que ele impede.
+ * O que o profissional corrige de uma vez: um ponto do corpo numa repetição. Todas as medidas da repetição que dependem do ponto e
+ * perderam quadros viram um item só, com a lista das medidas que ele impede e os quadros sem ponto (o buraco inteiro, com as faixas que
+ * sobram se ele for corrigido aos poucos). Assim o número de itens não muda enquanto o profissional corrige o mesmo ponto quadro a quadro.
  */
 export interface ItemACorrigir {
   chave: string;
@@ -198,67 +198,54 @@ export interface ItemACorrigir {
   quadrosSemPonto: number;
   primeiroQuadro: number;
   ultimoQuadro: number;
-  /** Quadro (0-based) para onde ir: o do extremo que as medidas leem, dentro do trecho sem ponto quando há. */
+  /** Quadro (0-based) para onde ir: o do extremo que as medidas leem, dentro dos quadros sem ponto quando há. */
   quadro: number;
   tempoS: number;
   medidas: { id: string; nome: string; lado: ChaveLado }[];
   entradas: EntradaPontoPerdido[];
 }
 
-interface Trecho {
-  de: number;
-  ate: number;
-  entradas: EntradaPontoPerdido[];
-  faixas: [number, number][];
-}
+/** Segundos entre dois quadros seguidos, pela janela da entrada (a trilha é amostrada a intervalos iguais). */
+const passoDaJanela = (e: EntradaPontoPerdido): number => (e.janela.fimI > e.janela.inicioI ? (e.janela.fimT - e.janela.inicioT) / (e.janela.fimI - e.janela.inicioI) : 0);
 
-/** Junta, por repetição e ponto, as faixas sem ponto que se sobrepõem ou se encostam, levando junto as entradas a que pertencem. */
-function trechosDoPonto(entradas: readonly EntradaPontoPerdido[], ponto: string): Trecho[] {
-  const itens = entradas.flatMap((e) => (e.pontos.find((p) => p.ponto === ponto)?.faixas ?? []).map((f) => ({ f, e })));
-  itens.sort((a, b) => a.f[0] - b.f[0] || a.f[1] - b.f[1]);
-  const trechos: Trecho[] = [];
-  for (const { f, e } of itens) {
-    const ultimo = trechos[trechos.length - 1];
-    if (ultimo && f[0] <= ultimo.ate + 1) {
-      ultimo.ate = Math.max(ultimo.ate, f[1]);
-      ultimo.faixas.push([f[0], f[1]]);
-      if (!ultimo.entradas.includes(e)) ultimo.entradas.push(e);
-    } else {
-      trechos.push({ de: f[0], ate: f[1], entradas: [e], faixas: [[f[0], f[1]]] });
-    }
-  }
-  return trechos;
-}
-
-/** Escolhe o quadro do extremo: entre os extremos das medidas do trecho, o do meio dos que caem dentro dele; senão o mais perto. */
-function quadroDoItem(t: Trecho): { quadro: number; tempoS: number } {
-  const candidatos = t.entradas.map((e) => ({ quadro: e.janela.extremoI, tempoS: e.janela.extremoT })).sort((a, b) => a.quadro - b.quadro);
-  const dentro = candidatos.filter((c) => c.quadro >= t.de && c.quadro <= t.ate);
-  if (dentro.length) return dentro[Math.floor((dentro.length - 1) / 2)];
-  const meio = (t.de + t.ate) / 2;
-  return candidatos.reduce((melhor, c) => (Math.abs(c.quadro - meio) < Math.abs(melhor.quadro - meio) ? c : melhor), candidatos[0]);
+/**
+ * Escolhe o quadro para onde ir: entre os extremos das medidas do item, o do meio dos que caem sobre quadros sem ponto. Se nenhum cai (o
+ * profissional já corrigiu o quadro do extremo), vai ao quadro sem ponto mais perto dele: é ali que ainda falta o ponto.
+ */
+function quadroDoItem(entradas: readonly EntradaPontoPerdido[], quadrosSemPonto: ReadonlySet<number>): { quadro: number; tempoS: number } {
+  const candidatos = entradas.map((e) => ({ quadro: e.janela.extremoI, tempoS: e.janela.extremoT, passo: passoDaJanela(e) })).sort((a, b) => a.quadro - b.quadro);
+  const sobre = candidatos.filter((c) => quadrosSemPonto.has(c.quadro));
+  if (sobre.length) return sobre[Math.floor((sobre.length - 1) / 2)];
+  const base = candidatos[Math.floor((candidatos.length - 1) / 2)];
+  let perto: number | null = null;
+  for (const q of quadrosSemPonto) if (perto === null || Math.abs(q - base.quadro) < Math.abs(perto - base.quadro)) perto = q;
+  const quadro = perto ?? base.quadro;
+  return { quadro, tempoS: base.tempoS + (quadro - base.quadro) * base.passo };
 }
 
 export function agruparItensACorrigir(p: PontosPerdidos): ItemACorrigir[] {
-  const repeticoes = [...new Set(p.entradas.map((e) => e.repeticao))].sort((a, b) => a - b);
-  const itens: ItemACorrigir[] = [];
-  for (const repeticao of repeticoes) {
-    const daRepeticao = p.entradas.filter((e) => e.repeticao === repeticao);
-    const nomes = [...new Set(daRepeticao.flatMap((e) => e.pontos.map((x) => x.ponto)))];
-    for (const ponto of nomes) {
-      for (const t of trechosDoPonto(daRepeticao, ponto)) {
-        const faixas = emFaixas(t.faixas.flatMap(([de, ate]) => quadrosDasFaixas([[de, ate]])));
-        const { quadro, tempoS } = quadroDoItem(t);
-        const medidas: ItemACorrigir['medidas'] = [];
-        for (const e of t.entradas) if (!medidas.some((m) => m.id === e.medida && m.lado === e.lado)) medidas.push({ id: e.medida, nome: e.nomeMedida, lado: e.lado });
-        itens.push({
-          chave: `${repeticao}:${ponto}:${t.de}`, repeticao, numero: t.entradas[0].numero, ponto,
-          rotulo: t.entradas[0].pontos.find((x) => x.ponto === ponto)?.rotulo ?? ponto,
-          faixas, quadrosSemPonto: quadrosDasFaixas(faixas).length, primeiroQuadro: t.de, ultimoQuadro: t.ate, quadro, tempoS, medidas, entradas: t.entradas,
-        });
-      }
+  const grupos = new Map<string, { repeticao: number; ponto: string; entradas: EntradaPontoPerdido[] }>();
+  for (const e of p.entradas) {
+    for (const x of e.pontos) {
+      const chave = `${e.repeticao}:${x.ponto}`;
+      const g = grupos.get(chave) ?? { repeticao: e.repeticao, ponto: x.ponto, entradas: [] };
+      g.entradas.push(e);
+      grupos.set(chave, g);
     }
   }
+  const itens = [...grupos.entries()].map(([chave, g]): ItemACorrigir => {
+    const quadros = new Set<number>();
+    for (const e of g.entradas) quadrosDasFaixas(e.pontos.find((x) => x.ponto === g.ponto)?.faixas ?? []).forEach((q) => quadros.add(q));
+    const faixas = emFaixas([...quadros]);
+    const primeiroQuadro = faixas[0][0], ultimoQuadro = faixas[faixas.length - 1][1];
+    const { quadro, tempoS } = quadroDoItem(g.entradas, quadros);
+    const medidas: ItemACorrigir['medidas'] = [];
+    for (const e of g.entradas) if (!medidas.some((m) => m.id === e.medida && m.lado === e.lado)) medidas.push({ id: e.medida, nome: e.nomeMedida, lado: e.lado });
+    return {
+      chave, repeticao: g.repeticao, numero: g.entradas[0].numero, ponto: g.ponto, rotulo: g.entradas[0].pontos.find((x) => x.ponto === g.ponto)?.rotulo ?? g.ponto,
+      faixas, quadrosSemPonto: quadros.size, primeiroQuadro, ultimoQuadro, quadro, tempoS, medidas, entradas: g.entradas,
+    };
+  });
   return itens.sort((a, b) => a.repeticao - b.repeticao || a.primeiroQuadro - b.primeiroQuadro || a.ponto.localeCompare(b.ponto));
 }
 

@@ -80,10 +80,12 @@ describe('seção "Pontos a conferir"', () => {
     const texto = screen.getByTestId('pontos-a-conferir').textContent ?? '';
     expect(texto).toMatch(/faltou ponto confiável do corpo/);
     expect(texto).toMatch(/nada foi preenchido no lugar/);
-    expect(texto).toMatch(/Toque em "Ir ao quadro", arraste o ponto destacado/);
-    expect(texto).toMatch(/corrija o primeiro e o último/);
-    expect(texto).toMatch(/até 1,5 s/);
-    expect(termoProibido(texto)).toBeNull();
+    expect(texto).toMatch(/Toque em "Ir ao quadro" e arraste o ponto destacado/);
+    fireEvent.click(screen.getByRole('button', { name: 'O ponto falta em vários quadros?' }));
+    const aberto = screen.getByTestId('pontos-a-conferir').textContent ?? '';
+    expect(aberto).toMatch(/corrija também o primeiro e o último sem ponto/);
+    expect(aberto).toMatch(/até 1,5 s/);
+    expect(termoProibido(aberto)).toBeNull();
   });
 
   it('"Ir ao quadro" entrega o quadro do extremo e o ponto; os atalhos levam ao primeiro e ao último quadro sem ponto', () => {

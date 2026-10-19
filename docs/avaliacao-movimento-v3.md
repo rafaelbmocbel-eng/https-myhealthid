@@ -180,7 +180,9 @@ Achado que exige o outro plano não é calculado: vira `indisponiveis`, com o mo
   de liberar a aba.
 - **Medida no extremo.** Máximo, mínimo, amplitude e valor no marco só valem se a série bruta (sem interpolação) tem pontos em pelo menos
   70% dos quadros de ±0,15 s em torno do instante do extremo; senão a repetição daquele lado fica sem valor, com o sinalizador "pontos
-  ausentes" e um aviso da análise (o membro mais distante perdendo pontos no fundo enviesava a flexão máxima para baixo).
+  ausentes" e um aviso da análise (o membro mais distante perdendo pontos no fundo enviesava a flexão máxima para baixo). As medidas que
+  percorrem uma fase (máximo, mínimo, amplitude e média) também pedem pelo menos 70% dos quadros da fase com valor. O que fica sem valor
+  não é só um aviso genérico: `AnaliseMovimento.pontosPerdidos` diz onde faltou ponto (ver "Pontos perdidos", no fim deste documento).
 - **Deslocamento lateral da pelve.** Lido em relação ao valor em pé do próprio vídeo (mediana dos quadros fora das repetições): a
   postura inicial e a inclinação fixa da câmera não viram deslocamento. A inclinação da câmera ainda soma cerca de 1,7% da base por grau
   (a pelve fica mais perto dos tornozelos no fundo), e na vista lateral ela soma à inclinação do tronco: o laudo pede a conferência do
@@ -206,7 +208,7 @@ Achado que exige o outro plano não é calculado: vira `indisponiveis`, com o mo
   gravar para obtê-los (a mesma lista de `indisponiveisDoProtocolo` que o laudo e o PDF usam).
 - **Cálculo.** `useAnaliseMovimento` chama `analisarMovimento` e `montarLaudo` no dispositivo, sem rede e sem modelo de linguagem, e
   recalcula quando a trilha, o protocolo ou os critérios mudam (o valor adiado mantém a tela fluida enquanto o profissional arrasta um ponto).
-- **Conteúdo, nesta ordem:** resumo; achados em texto neutro (cada um expansível, com hipóteses, força da evidência, fontes ou "sem
+- **Conteúdo, nesta ordem:** pontos a conferir (ou a frase de que não há; ver "Pontos perdidos"); resumo; achados em texto neutro (cada um expansível, com hipóteses, força da evidência, fontes ou "sem
   referência verificada" e itens a conferir); limitações (sempre abertas); medidas por repetição e por lado, com realce neutro (fundo
   cinza e negrito, sem cor de aprovação ou de alerta) nos valores citados em achado de repetição discrepante ou de primeira e última
   repetição; editor de critérios do profissional; achados indisponíveis; método (recolhido); botões "Baixar laudo (PDF)" e "Copiar resumo".
@@ -218,3 +220,49 @@ Achado que exige o outro plano não é calculado: vira `indisponiveis`, com o mo
 - **Celular (390 × 860).** Sem rolagem horizontal (as tabelas usam a classe `table` porque o CSS global põe `table { display: block }`
   no celular), alvos de toque de 44 px, foco visível, rótulos acessíveis, modo escuro pelos tokens do tema.
 - **Testes:** `src/test/analiseLaudo*.test.ts(x)` (aba, editor de critérios, estado, persistência e integração com `AnaliseVideo`).
+
+### Pontos perdidos: mostrar onde faltou ponto para o profissional corrigir à mão
+
+Decisão do Rafael (18/10/2026): o rigor com os pontos que se perdem continua, mas deve ser **mostrado ao terapeuta**, para as correções serem
+feitas manualmente. Antes, a repetição que ficava sem valor só deixava um aviso genérico. Agora a análise diz exatamente onde faltou ponto, e a
+tela leva o profissional até o quadro com o ponto destacado, usando a lupa e os quadros-chave que já existiam. Nada é preenchido sozinho.
+
+- **A regra não mudou.** Uma medida de máximo, mínimo, amplitude ou valor num marco só é calculada se a série bruta (sem interpolação) tem
+  ponto confiável em pelo menos 70% dos quadros de ±0,15 s em torno do instante do extremo; as medidas que percorrem uma fase também pedem
+  pelo menos 70% dos quadros da fase com valor. Ponto confiável é o que o motor já considera usável: corrigido à mão, ou detectado com a
+  confiança mínima. Não há interpolação em silêncio: o único preenchimento possível é o do profissional, nos quadros-chave. Registrar a
+  perda não altera nenhum número medido.
+- **O que o motor devolve.** `AnaliseMovimento.pontosPerdidos` = `{ entradas, porPonto }` (tipos em `tipos.ts`, cálculo em `pontosPerdidos.ts`,
+  frases em `frasesPontosPerdidos.ts`). Cada entrada é uma medida, uma repetição e um lado que ficaram sem valor por pontos perdidos:
+  repetição (posição e número), lado, medida, os pontos que faltaram (nomes dos landmarks, como `joelho_e`, e o rótulo "Joelho esquerdo"), a
+  janela de quadros olhada (início, fim e quadro do extremo, com os tempos em segundos), quantos quadros tinham valor e o mínimo exigido, a
+  regra que falhou (`extremo` ou `fase`) e o motivo em português neutro. `medidasPorRepeticao.ts` registra a falha (`FalhaDePontos`) no mesmo
+  lugar em que decide que a medida fica sem valor; `diagnosticarPontosPerdidos` a transforma na entrada.
+- **Janela e extremo.** Na regra `extremo`, a janela é a vizinhança do extremo e o quadro do extremo é o do máximo, do mínimo ou do marco. Na
+  regra `fase` não há um extremo definido; o quadro escolhido é o sem ponto mais perto do ponto mais baixo da repetição (na marcha, da saída
+  do pé). A lista de faixas de cada ponto traz o buraco **inteiro** na trilha, que continua além da janela enquanto o ponto segue sem detecção
+  confiável, porque é do primeiro ao último quadro dele que o profissional precisa para corrigir.
+- **Resumo por ponto.** `porPonto` diz, para cada ponto que apareceu, quantos quadros ficaram sem ponto confiável nas janelas analisadas
+  (quadros distintos, sem contar duas vezes os que várias medidas compartilham), quantos quadros foram analisados e quantas medidas dependem dele.
+- **Só entra o que se pode corrigir.** Se a série ficou sem valor por geometria (tornozelos alinhados, comprimento do pé desconhecido) e nenhum
+  ponto do corpo estava ausente nos quadros sem medida, não há entrada: não existe ponto para arrastar, e o aviso geral da análise continua.
+- **Tela: "Pontos a conferir" no topo da aba Laudo** (`PontosAConferir.tsx`). Cada item é um buraco de um ponto numa repetição: medidas da
+  mesma repetição que dependem do mesmo ponto e perderam quadros que se tocam viram um item só, com a lista das medidas sem valor (uma
+  correção resolve todas). Agrupado por repetição, mostra o ponto, os quadros sem ponto, o instante e o botão **"Ir ao quadro"**; atalhos para o
+  primeiro e o último quadro sem ponto, porque a interpolação só acontece entre dois quadros-chave. "Ir ao quadro" pausa o vídeo, leva o
+  player ao quadro do extremo, rola a página até ele (no celular o player fica acima das abas) e destaca o ponto: anel laranja na alça, ou na
+  alça tracejada quando o quadro não detectou o ponto, e o aviso do player diz qual ponto arrastar. A correção é a de sempre (arrastar com a
+  lupa, que vira quadro-chave); a trilha muda, a análise se refaz sozinha e o item some. Sem perda, a aba mostra só a frase discreta
+  "Nenhuma medida ficou sem valor por pontos perdidos."
+- **Contagem no rótulo da aba.** "Laudo (beta) · 3 pontos a conferir" (nome acessível; a aba mostra a bolinha com o número). Vem de
+  `useContagemPontosAConferir`, que carrega o motor sob demanda depois do rastreio, para o número aparecer antes de abrir a aba sem trazer o
+  motor para o pacote principal. O número é a quantidade de itens da lista e some quando os pontos são corrigidos.
+- **Laudo e PDF.** `LaudoMovimento.pontosPerdidos` é a seção **"Medidas não calculadas por pontos perdidos"**: o que ficou de fora, por
+  repetição, medida e lado, com os pontos, os quadros e a janela em segundos, e a regra dos 70%. O laudo nunca esconde isso: o resumo ganha
+  a frase "N medidas não foram calculadas por pontos perdidos" e o resumo copiado leva a seção. Depois da correção feita à mão a seção é
+  `null` e some do laudo e do PDF. O Método traz sempre o parágrafo da regra e do que o profissional pode fazer.
+- **Limites conhecidos.** Uma correção só no extremo não basta (a interpolação precisa de dois quadros-chave, a até 1,5 s um do outro; em
+  buracos mais longos é preciso corrigir também quadros no meio). Depois de corrigido, o valor da medida passa a depender da posição que o
+  profissional deu aos pontos, e os quadros corrigidos continuam contados no cabeçalho do laudo ("quadros-chave corrigidos manualmente").
+- **Testes:** `src/test/movimentoPontosPerdidos.test.ts` (motor, laudo, PDF e resumo copiado, com trilhas sintéticas que perdem pontos) e
+  `src/test/analiseLaudoPontosPerdidos.test.tsx` (lista, contagem, callback com o quadro certo e integração com a tela de vídeo).

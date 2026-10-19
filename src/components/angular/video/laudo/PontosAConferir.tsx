@@ -2,12 +2,13 @@ import { useMemo } from 'react';
 import { Crosshair } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  faixasEmTexto, segundosEmTexto, TEXTO_COMO_CORRIGIR, TEXTO_INTRO_PONTOS_A_CONFERIR, TEXTO_SEM_PONTOS_PERDIDOS, TITULO_PONTOS_A_CONFERIR,
+  faixasEmTexto, segundosEmTexto, TEXTO_COMO_CORRIGIR, TEXTO_INTRO_PONTOS_A_CONFERIR, TEXTO_SEM_PONTOS_PERDIDOS, TEXTO_VARIOS_QUADROS, TITULO_PONTOS_A_CONFERIR,
 } from '@/lib/angular/movimento/frasesPontosPerdidos';
 import { capitalizar } from '@/lib/angular/movimento/frases';
 import { agruparItensACorrigir, type ItemACorrigir } from '@/lib/angular/movimento/pontosPerdidos';
 import type { ChaveLado, PontosPerdidos, Protocolo } from '@/lib/angular/movimento/tipos';
 import { ROTULO_LADO } from '@/lib/angular/movimento/vocabulario';
+import Disclosure from './Disclosure';
 
 /** Para onde o profissional vai ao tocar em "Ir ao quadro": o quadro da trilha e o ponto que ele vai arrastar. */
 export interface AlvoDeCorrecao {
@@ -77,7 +78,14 @@ export default function PontosAConferir({ pontosPerdidos, protocolo, aoIrAoQuadr
     <section className="space-y-2" aria-labelledby="laudo-pontos-titulo" data-testid="pontos-a-conferir">
       <h3 id="laudo-pontos-titulo" className="text-sm font-semibold">{TITULO_PONTOS_A_CONFERIR} ({itens.length})</h3>
       <p className="text-xs leading-snug text-muted-foreground">{TEXTO_INTRO_PONTOS_A_CONFERIR}</p>
-      {aoIrAoQuadro && <p className="text-xs leading-snug text-muted-foreground">{TEXTO_COMO_CORRIGIR}</p>}
+      {aoIrAoQuadro && (
+        <>
+          <p className="text-xs leading-snug">{TEXTO_COMO_CORRIGIR}</p>
+          <Disclosure titulo="O ponto falta em vários quadros?" testid="varios-quadros">
+            <p className="text-xs leading-snug">{TEXTO_VARIOS_QUADROS}</p>
+          </Disclosure>
+        </>
+      )}
       {numeros.map((numero) => (
         <div key={numero} className="space-y-2" role="group" aria-label={`${capitalizar(protocolo.rotuloRepeticao.singular)} ${numero}`} data-testid={`pontos-repeticao-${numero}`}>
           <h4 className="text-xs font-semibold">{capitalizar(protocolo.rotuloRepeticao.singular)} {numero}</h4>

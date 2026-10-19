@@ -35,9 +35,12 @@ export const TEXTO_INTRO_PONTOS_PERDIDOS_NO_LAUDO =
 export const TEXTO_SEM_PONTOS_PERDIDOS = 'Nenhuma medida ficou sem valor por pontos perdidos.';
 
 export const TEXTO_COMO_CORRIGIR =
-  'Toque em "Ir ao quadro", arraste o ponto destacado até a posição da articulação no vídeo e a análise se refaz sozinha. ' +
-  'Se o ponto faltar em vários quadros seguidos, corrija o primeiro e o último: entre dois quadros-chave a posição é interpolada e fica marcada como corrigida à mão. ' +
-  `A interpolação vale para quadros-chave a até ${fmt(MAX_LACUNA_S, 1)} s um do outro; em trechos mais longos, corrija também quadros no meio.`;
+  'Toque em "Ir ao quadro" e arraste o ponto destacado até a articulação no vídeo: a análise se refaz sozinha.';
+
+/** Segunda frase do "o que fazer": vale quando o ponto falta em vários quadros seguidos. */
+export const TEXTO_VARIOS_QUADROS =
+  'Se o ponto faltar em vários quadros, corrija também o primeiro e o último sem ponto: entre dois quadros-chave a posição é interpolada e fica marcada como corrigida à mão. ' +
+  `A interpolação vale até ${fmt(MAX_LACUNA_S, 1)} s entre eles; em trechos mais longos, corrija também quadros no meio.`;
 
 export const TEXTO_INTRO_PONTOS_A_CONFERIR =
   'Nestes trechos faltou ponto confiável do corpo. A medida ficou sem valor e nada foi preenchido no lugar.';

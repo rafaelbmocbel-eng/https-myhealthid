@@ -142,6 +142,18 @@ describe('pontos perdidos no agachamento de lado', () => {
     const uma = analisarMovimento('agachamento_lateral', corrigirPonto(perdida, 165, 'joelho_e', { x: p.x, y: p.y }));
     expect(uma.pontosPerdidos.entradas.length).toBeGreaterThan(0);
     expect(medida(uma, 'avanco_joelho_fundo').valores.E?.[1]).toBeNull();
+    // Corrigir o mesmo ponto aos poucos não multiplica os itens: continua um item, agora com o buraco partido em duas faixas e um quadro a menos.
+    const itens = agruparItensACorrigir(uma.pontosPerdidos);
+    expect(itens).toHaveLength(1);
+    expect(itens[0].faixas).toEqual([[160, 164], [166, 172]]);
+    expect(itens[0].quadrosSemPonto).toBe(12);
+    expect(itens[0].primeiroQuadro).toBe(160);
+    expect(itens[0].ultimoQuadro).toBe(172);
+    // "Ir ao quadro" não leva de volta ao quadro que o profissional acabou de corrigir: vai ao quadro sem ponto mais perto do extremo.
+    expect(itens[0].quadro).not.toBe(165);
+    expect(itens[0].faixas.some(([de, ate]) => itens[0].quadro >= de && itens[0].quadro <= ate)).toBe(true);
+    expect(Math.abs(itens[0].quadro - 165)).toBeLessThanOrEqual(1);
+    expect(itens[0].tempoS).toBeCloseTo(perdida.quadros[itens[0].quadro].t, 6);
   });
 
   it('corrigir o buraco à mão faz as entradas sumirem e os valores aparecerem', () => {
