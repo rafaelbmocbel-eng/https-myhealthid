@@ -65,11 +65,11 @@ export const ASSIMETRIA_FLEXAO_JOELHO_MARCHA: EntradaBiblioteca = {
     {
       id: 'dor_ou_osteoartrite_joelho_quadril',
       texto:
-        'Osteoartrite de quadril e de joelho foi associada a menor amplitude de movimento do joelho e a menor flexão do joelho mais doloroso na marcha; condição desse tipo pode contribuir para a diferença entre os lados.',
-      forca: 'meta_analise',
+        'Osteoartrite de quadril e de joelho foi associada a menor amplitude de movimento do joelho e, no joelho mais doloroso, a menor flexão na marcha, em comparação com controles; condição desse tipo pode estar relacionada a alterações da marcha, mas as fontes não compararam um lado com o outro.',
+      forca: 'observacional',
       fontes: [F.steingrebe2023, F.creaby2012],
       ressalva:
-        'A metanálise (35 estudos, registrada, com risco de viés pela lista de Downs e Black e grande heterogeneidade entre os estudos) é de osteoartrite de quadril e descreve amplitudes reduzidas nos ângulos do quadril e sagital do joelho; Creaby (91 pessoas com osteoartrite medial de joelho e 31 controles, com ajuste pela velocidade) descreve menor flexão no joelho mais doloroso. Os resumos não especificam que o pico seja o do balanço: a direção é a mesma, mas não é necessariamente a mesma medida.',
+        'A metanálise (35 estudos, registrada, com risco de viés pela lista de Downs e Black e grande heterogeneidade entre os estudos) é de osteoartrite de quadril: compara pessoas com a doença e controles saudáveis (excluiu estudos que usavam o membro contralateral como controle ou que analisavam medidas de assimetria) e descreve amplitudes reduzidas nos ângulos do quadril e sagital do joelho, também no lado contralateral. Os autores avisam que a maioria dos intervalos de predição dos resultados significativos cruza o zero e que só 10 de 68 análises da marcha reúnem 5 ou mais estudos. Creaby (91 pessoas com osteoartrite medial de joelho e 31 controles, com ajuste pela velocidade) descreve menor flexão no joelho mais doloroso em relação aos controles; as assimetrias entre os joelhos que descreve são de ângulo varo e de momento flexor externo, e não de ângulo de flexão. Os resumos não especificam que o pico seja o do balanço: a direção é a mesma, mas não é necessariamente a mesma medida. Nenhuma fonte testou a diferença entre os lados no pico de flexão do joelho; por isso o tipo de estudo é "observacional".',
     },
     COMPRIMENTO_DOS_MEMBROS,
   ],
@@ -88,11 +88,11 @@ export const ASSIMETRIA_AMPLITUDE_QUADRIL: EntradaBiblioteca = {
     {
       id: 'restricao_de_mobilidade_do_quadril',
       texto:
-        'Osteoartrite e restrição de mobilidade do quadril foram associadas a menor amplitude de movimento do quadril na marcha, e a extensão passiva do quadril se relacionou com a extensão alcançada na marcha; condição desse tipo pode contribuir para a diferença entre os lados.',
-      forca: 'meta_analise',
+        'Osteoartrite e restrição de mobilidade do quadril foram associadas a menor amplitude de movimento do quadril na marcha, em comparação com controles, e a extensão passiva do quadril se relacionou com a extensão alcançada na marcha em pessoas com osteoartrite; condição desse tipo pode estar relacionada a menor amplitude do quadril, mas as fontes não compararam um lado com o outro.',
+      forca: 'observacional',
       fontes: [F.steingrebe2023, F.baker2016],
       ressalva:
-        'A metanálise (35 estudos, com grande heterogeneidade) e Baker (osteoartrite de quadril moderada e grave e grupo assintomático; o número de participantes não consta no resumo) tratam de pessoas com osteoartrite de quadril; entre pessoas assintomáticas não houve correlação entre a extensão passiva e a extensão na marcha (r = 0,139 no estudo). Os estudos usam análise tridimensional; neste vídeo o ângulo do quadril (ombro–quadril–joelho) inclui o movimento do tronco e da pelve, então a amplitude medida não é a articular pura.',
+        'A metanálise (35 estudos, com grande heterogeneidade) e Baker (osteoartrite de quadril moderada e grave e grupo assintomático; o número de participantes não consta no resumo) tratam de pessoas com osteoartrite de quadril; entre pessoas assintomáticas não houve correlação entre a extensão passiva e a extensão na marcha (r = 0,139 no estudo). A metanálise compara com controles saudáveis, excluiu estudos que usavam o membro contralateral como controle ou que analisavam medidas de assimetria, e descreve alterações também no lado contralateral (menor extensão do quadril contralateral); os autores avisam que a maioria dos intervalos de predição dos resultados significativos cruza o zero. Os estudos usam análise tridimensional; neste vídeo o ângulo do quadril (ombro–quadril–joelho) inclui o movimento do tronco e da pelve, então a amplitude medida não é a articular pura. Nenhuma fonte testou a diferença entre os lados; por isso o tipo de estudo é "observacional".',
     },
     COMPRIMENTO_DOS_MEMBROS,
   ],

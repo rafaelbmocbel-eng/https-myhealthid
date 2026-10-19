@@ -23,19 +23,19 @@ export const ASSIMETRIA_FLEXAO_JOELHO: EntradaBiblioteca = {
     {
       id: 'quadriceps_pos_lca',
       texto:
-        'Déficit de força do quadríceps e antecedente de lesão ou reconstrução do ligamento cruzado anterior foram associados a assimetria entre os membros no agachamento e podem contribuir para a diferença entre os lados.',
+        'Déficit de força do quadríceps e antecedente de lesão ou reconstrução do ligamento cruzado anterior foram associados a assimetria de momentos articulares entre os membros no agachamento, mas não a diferença no ângulo de flexão do joelho, que ficou simétrico em um dos estudos; as fontes não sustentam este fator para a diferença de ângulo medida aqui.',
       forca: 'observacional',
       fontes: [F.ishida2023, F.roos2014],
       ressalva:
-        'População específica: pessoas após lesão ou reconstrução do ligamento cruzado anterior. Ishida (26 pessoas, grupo de força baixa com 8) é transversal e mede momentos articulares; Roos (62 pessoas, com cálculo amostral e grupos comparáveis) também mede momentos e distribuição de carga em laboratório, e excluiu duas pessoas de uma análise de correlação depois do resultado. A assimetria descrita não é necessariamente de ângulo de flexão. Não se aplica sem esse antecedente.',
+        'População específica: pessoas após lesão ou reconstrução do ligamento cruzado anterior. Ishida (26 pessoas, grupo de força baixa com 8) é transversal, padronizou a profundidade (coxas paralelas ao solo) e mede momentos articulares e razões de momento. Roos (62 pessoas, com cálculo amostral e grupos comparáveis, agachamento até a profundidade máxima) descreve assimetria de momentos e de distribuição de carga, mas a simetria do pico de flexão do joelho entre os lados foi 100 ± 3 nos controles, 100 ± 3 no ligamento reconstruído e 99 ± 3 no rompido, sem diferença dos controles (p = 1,000 no reconstruído e p = 0,057 no rompido); Roos excluiu ainda duas pessoas de uma análise de correlação depois do resultado. Portanto a assimetria descrita é de momentos e de carga, não de ângulo de flexão: o fator fica como lembrete de que o ângulo pode parecer simétrico mesmo com assimetria de carga. Não se aplica sem esse antecedente.',
     },
     {
       id: 'dominancia_do_membro',
-      texto: 'Preferência de apoio ou dominância de um dos membros pode contribuir para diferenças entre os lados mesmo sem lesão.',
+      texto: 'Preferência do pé de chute ou dominância de um dos membros pode contribuir para diferenças entre os lados mesmo sem lesão.',
       forca: 'observacional',
       fontes: [F.hannan2022],
       ressalva:
-        'Estudo cruzado com 18 adultos saudáveis e ativos e duas plataformas de força; a diferença descrita é de força de reação do solo e de centro de pressão, e não de ângulo do joelho. É um único estudo: serve como lembrete de que alguma diferença entre os lados pode existir sem condição clínica.',
+        'Estudo cruzado com 18 adultos saudáveis e ativos e duas plataformas de força; o membro preferido foi definido por qual perna chutaria uma bola. A diferença descrita é de força de reação do solo e de centro de pressão, e não de ângulo do joelho, e depende do ritmo e da variável: a força de pico foi maior no lado preferido só no ritmo livre (550 contra 518 N; no metrônomo ficou 499 contra 508 N), o impulso foi maior no lado não preferido no ritmo livre (315 contra 300 Ns) e a variabilidade do centro de pressão foi maior no lado preferido. É um único estudo: serve como lembrete de que alguma diferença entre os lados pode existir sem condição clínica, e a direção dela muda conforme a variável.',
     },
   ],
   conferir: [
@@ -99,11 +99,11 @@ export const ASSIMETRIA_DORSIFLEXAO: EntradaBiblioteca = {
     {
       id: 'dor_ou_instabilidade_tornozelo',
       texto:
-        'Instabilidade crônica do tornozelo e dor patelofemoral foram associadas a menor dorsiflexão do tornozelo e a assimetria entre os membros; antecedente desse tipo pode contribuir para a diferença medida.',
+        'Instabilidade crônica do tornozelo e dor patelofemoral foram associadas a menor dorsiflexão do tornozelo nos dois lados, em comparação com controles; antecedente desse tipo pode estar relacionado à dorsiflexão menor medida, mas as fontes não mostram diferença relevante entre os lados na dor patelofemoral.',
       forca: 'observacional',
       fontes: [F.emamvirdi2023, F.hassan2022],
       ressalva:
-        'Emamvirdi: estudo transversal com 60 atletas de basquete mulheres (instabilidade crônica do tornozelo, dor patelofemoral e controles), cálculo amostral com efeito pequeno, dorsiflexão em carga e valgo em vídeo 2D; a dorsiflexão foi menor nos dois lados, não só no lado afetado. Hassan: caso-controle com 140 adultos, em que a dorsiflexão com o joelho flexionado foi menor no grupo com dor (30,20 contra 33,15). A associação não indica direção: a menor dorsiflexão pode acompanhar a condição em vez de antecedê-la.',
+        'Emamvirdi: estudo transversal com 60 atletas de basquete mulheres (instabilidade crônica do tornozelo, dor patelofemoral e controles), dorsiflexão em carga e valgo em vídeo 2D; a dorsiflexão foi menor nos dois lados, não só no lado afetado. O índice de assimetria foi calculado e testado dentro de cada grupo (o texto não descreve teste entre grupos): o resumo conclui que há assimetria de dorsiflexão, mas, nos resultados, nos grupos com dor patelofemoral e controle o índice ficou abaixo da variação individual (coeficiente de variação), e os autores dizem que não houve desequilíbrio relevante entre os lados na dorsiflexão; o texto não diz o mesmo do grupo com instabilidade. O cálculo amostral usou efeito de 0,30 e poder de 0,30, e os próprios autores citam isso como limitação. Hassan: caso-controle com 140 adultos, em que a dorsiflexão com o joelho flexionado foi menor no grupo com dor (30,20 contra 33,15), sem dado por lado. A associação não indica direção: a menor dorsiflexão pode acompanhar a condição em vez de antecedê-la.',
     },
     {
       id: 'tendao_calcaneo',

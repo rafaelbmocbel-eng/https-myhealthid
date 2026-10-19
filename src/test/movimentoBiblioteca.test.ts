@@ -382,3 +382,81 @@ describe('documento da avaliação metodológica', () => {
     }
   });
 });
+
+describe('correções da revisão dos achados de evidência (texto completo das fontes)', () => {
+  const fator = (chave: string, id: string) => {
+    const f = entradaDaBiblioteca(chave)?.fatores.find((x) => x.id === id);
+    expect(f, `${chave}:${id}`).toBeDefined();
+    return f as NonNullable<typeof f>;
+  };
+
+  it('o fator do ligamento cruzado anterior não sustenta diferença de ângulo e registra a simetria angular de Roos', () => {
+    const f = fator('assimetria_flexao_joelho', 'quadriceps_pos_lca');
+    expect(f.texto).not.toMatch(/podem contribuir para a diferença entre os lados/);
+    expect(f.texto).toMatch(/momentos articulares/);
+    expect(f.ressalva).toMatch(/100 ± 3/);
+    expect(f.ressalva).toMatch(/99 ± 3/);
+  });
+
+  it('o fator do quadríceps de um lado não promete apoio mais carregado no lado oposto e registra a força vertical simétrica', () => {
+    const f = fator('desvio_lateral_pelve', 'quadriceps_de_um_lado');
+    expect(f.texto).toMatch(/não um apoio mais carregado/);
+    expect(f.texto).toMatch(/maior contribuição do quadril do mesmo lado/);
+    expect(f.ressalva).toMatch(/p = 0,119/);
+  });
+
+  it('dorsiflexão e instabilidade ou dor patelofemoral: não se afirma assimetria, e o poder do cálculo amostral é dito', () => {
+    const f = fator('assimetria_dorsiflexao', 'dor_ou_instabilidade_tornozelo');
+    expect(f.texto).not.toMatch(/e a assimetria entre os membros/);
+    expect(f.texto).toMatch(/nos dois lados/);
+    expect(f.ressalva).toMatch(/efeito de 0,30 e poder de 0,30/);
+    expect(AVALIACAO['37524846'].itens.amostra[0]).toBe('nao_atende');
+  });
+
+  it('osteoartrite na marcha: comparação com controles, rótulo observacional e a cautela dos autores de Steingrebe na limitação principal', () => {
+    for (const [chave, id] of [['assimetria_flexao_joelho_marcha', 'dor_ou_osteoartrite_joelho_quadril'], ['assimetria_amplitude_quadril', 'restricao_de_mobilidade_do_quadril']] as const) {
+      const f = fator(chave, id);
+      expect(f.forca, `${chave}:${id}`).toBe('observacional');
+      expect(f.texto, `${chave}:${id}`).not.toMatch(/pode contribuir para a diferença entre os lados/);
+      expect(f.ressalva, `${chave}:${id}`).toMatch(/controles/);
+      expect(f.ressalva, `${chave}:${id}`).toMatch(/intervalos de predição/);
+    }
+    expect(FONTES.steingrebe2023.limitacaoPrincipal).toMatch(/intervalos de predição/);
+    expect(FONTES.steingrebe2023.limitacaoPrincipal).toMatch(/10 de 68/);
+  });
+
+  it('da Costa 2021 fica como evidência contrária no fator de dorsiflexão e tronco', () => {
+    const f = fator('inclinacao_tronco', 'dorsiflexao_e_tronco');
+    expect(f.fontes.map((s) => s.pmid)).toContain('33713896');
+    expect(f.ressalva).toMatch(/da Costa/);
+    expect(f.ressalva).toMatch(/passiva/);
+    expect(AVALIACAO['33713896'].decisao).toBe('manter_com_ressalva');
+  });
+
+  it('Walker 2026: testes unicaudais e variância explicada aparecem na ressalva, na ficha e na limitação principal', () => {
+    const f = fator('variacao_profundidade', 'mobilidade_dorsiflexao_e_quadril');
+    expect(f.ressalva).toMatch(/unicaudais/);
+    expect(f.ressalva).toMatch(/bicaudal/);
+    expect(FONTES.walker2026.limitacaoPrincipal).toMatch(/unicaudais/);
+    expect(AVALIACAO['42516619'].itens.comparacoes_multiplas[0]).toBe('nao_atende');
+  });
+
+  it('Haberkamp 2022: a tela não diz que o modelo validado é o do app (o app usa o MediaPipe)', () => {
+    const f = fator('valgo_dinamico', 'projecao_2d');
+    expect(f.ressalva).not.toMatch(/como a deste app/);
+    expect(f.ressalva).toMatch(/MediaPipe/);
+    const a = AVALIACAO['36198251'];
+    expect(`${a.aplicabilidade.nota} ${a.justificativa}`).not.toMatch(/mesma tecnologia/);
+    expect(FONTES.haberkamp2022.limitacaoPrincipal).toMatch(/não é o do app/);
+  });
+
+  it('dominância do membro (Hannan 2022): pé de chute e direção que muda com o ritmo, nos dois achados', () => {
+    for (const chave of ['assimetria_flexao_joelho', 'desvio_lateral_pelve']) {
+      const f = fator(chave, 'dominancia_do_membro');
+      expect(f.texto, chave).toMatch(/pé de chute/);
+      expect(f.texto, chave).not.toMatch(/Preferência de apoio/);
+      expect(f.ressalva, chave).toMatch(/só no ritmo livre/);
+      expect(f.ressalva, chave).toMatch(/não preferido/);
+    }
+  });
+});

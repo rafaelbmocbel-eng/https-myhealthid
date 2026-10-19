@@ -4,8 +4,9 @@ import { FONTES as F } from './fontes';
 /*
  * Hipóteses para os achados do agachamento filmado de lado que não são diferença entre os lados. O avanço do joelho é só observação
  * medida: o limite é debatido na literatura e o sistema não define critério; as fontes abaixo mostram por que o debate existe.
- * Depois da avaliação metodológica (docs/avaliacao-metodologica-fontes.md) saíram as fontes que associavam a dorsiflexão ao tronco sem isolá-la
- * (da Costa, Honda) e o estudo de 7 participantes sobre a restrição do avanço do joelho (Fry): o fator da restrição ficou "a confirmar".
+ * Depois da avaliação metodológica (docs/avaliacao-metodologica-fontes.md) saíram a fonte que associava a dorsiflexão ao tronco sem isolá-la
+ * (Honda) e o estudo de 7 participantes sobre a restrição do avanço do joelho (Fry): o fator da restrição ficou "a confirmar". da Costa fica só
+ * como evidência contrária (a dorsiflexão passiva não se associou ao tronco), porque fonte que contradiz o fator não é omitida.
  */
 
 export const INCLINACAO_TRONCO: EntradaBiblioteca = {
@@ -17,9 +18,9 @@ export const INCLINACAO_TRONCO: EntradaBiblioteca = {
       texto:
         'Elevar o calcanhar de quem tem dorsiflexão restrita reduziu a inclinação do tronco para a frente no agachamento com carga; a limitação de dorsiflexão pode contribuir para a inclinação medida.',
       forca: 'experimental',
-      fontes: [F.cai2026],
+      fontes: [F.cai2026, F.daCosta2021],
       ressalva:
-        '30 homens saudáveis com dorsiflexão restrita, agachamento com carga, seis alturas de calcanhar (0 a 5 cm) e análise tridimensional. O estudo não incluiu um grupo com dorsiflexão não restrita: não mostra quanto da inclinação existiria sem a restrição. Não é possível separar a dorsiflexão de outros fatores em uma pessoa.',
+        'Cai: 30 homens saudáveis com dorsiflexão restrita, agachamento com carga, seis alturas de calcanhar (0 a 5 cm) e análise tridimensional. O estudo não incluiu um grupo com dorsiflexão não restrita: não mostra quanto da inclinação existiria sem a restrição. Evidência contrária: da Costa (30 adultos sem lesão, amostra de conveniência, agachamento unipodal, análise 3D, estudo transversal) associou a dorsiflexão passiva à rotação interna da coxa (r = -0,38) e, no resumo, não a associou ao tronco; a flexão menor do tronco se associou à dorsiflexão dinâmica, medida durante o próprio agachamento (r = 0,59), que é parte do movimento e não uma mobilidade independente. Ou seja, o único estudo observacional encontrado não sustenta a ligação do tronco com a mobilidade passiva. Não é possível separar a dorsiflexão de outros fatores em uma pessoa.',
     },
     {
       id: 'restricao_do_avanco_do_joelho',
@@ -95,7 +96,7 @@ export const VARIACAO_PROFUNDIDADE: EntradaBiblioteca = {
       forca: 'observacional',
       fontes: [F.gomes2020, F.kim2015, F.walker2026],
       ressalva:
-        'As fontes relacionam a profundidade com a mobilidade: Kim (101 adultos jovens, fotografia sagital, regressão por etapas), Gomes (20 adultos, vídeo 2D, agachamento com barra; só a dorsiflexão no teste de avanço se associou) e Walker (72 adultos, com cálculo amostral, agachamento unipodal por câmera única 3D, correlações baixas de 0,22 a 0,37 e associação maior só em análise post hoc de quem se exercita mais). Nenhuma estudou a variação da profundidade entre repetições, então a ligação com a variação é uma inferência. Walker não encontrou associação da força dos abdutores do quadril com a profundidade.',
+        'As fontes relacionam a profundidade com a mobilidade: Kim (101 adultos jovens, fotografia sagital, regressão por etapas), Gomes (20 adultos, vídeo 2D, agachamento com barra; só a dorsiflexão no teste de avanço se associou) e Walker (72 adultos, com cálculo amostral, agachamento unipodal por câmera única 3D, correlações baixas de 0,22 a 0,37 que explicam 5% e 14% da variância, testes unicaudais e associação maior só em análise post hoc de quem se exercita mais). Em Walker, o resultado do lado direito (r = 0,223; p = 0,030) é unicaudal e deixa de ser significativo em teste bicaudal (p cerca de 0,06, calculado a partir de r e de n = 72; não consta no artigo), enquanto o do lado esquerdo seguiria significativo. Nenhuma estudou a variação da profundidade entre repetições, então a ligação com a variação é uma inferência. Walker não encontrou associação da força dos abdutores do quadril com a profundidade.',
     },
     {
       id: 'elevacao_do_calcanhar',

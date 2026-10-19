@@ -128,10 +128,10 @@ Foram avaliadas **55 fontes**: as 51 da curadoria anterior e 4 incluídas nesta 
 | Decisão | Fontes |
 | --- | --- |
 | manter | 2 |
-| manter com ressalva | 34 |
-| remover | 19 |
+| manter com ressalva | 35 |
+| remover | 18 |
 
-**Mantidas: 36** (2 sem ressalva específica e 34 com ressalva) · **removidas: 19**. Nível de qualidade das mantidas: alta 2, moderada 34, baixa 0. Das removidas: alta 0, moderada 6, baixa 13 (sair não significa só qualidade baixa: aplicabilidade indireta e redundância também removem).
+**Mantidas: 37** (2 sem ressalva específica e 35 com ressalva) · **removidas: 18**. Nível de qualidade das mantidas: alta 2, moderada 35, baixa 0. Das removidas: alta 0, moderada 5, baixa 13 (sair não significa só qualidade baixa: aplicabilidade indireta e redundância também removem).
 
 **Fatores:** antes 39 (36 com fonte e 3 a confirmar); depois **35** (31 com fonte e **4 a confirmar**). Quatro fatores foram eliminados (`equilibrio_apos_avc`, `alteracoes_neuromotoras_apos_avc`, `tensao_dos_flexores_do_quadril` e `condicao_do_quadril` da marcha) e um passou a "a confirmar" (`restricao_do_avanco_do_joelho`).
 
@@ -153,17 +153,17 @@ Contagem por item entre as fontes mantidas: é o mapa do que o time científico 
 | Conflito de interesse declarado | 0 | 0 | 0 | 11 |
 | Veículo (auxiliar) | 8 | 0 | 0 | 3 |
 
-**Estudos primários (25 mantidas)**
+**Estudos primários (26 mantidas)**
 
 | Item | atende | parcialmente | não atende | não avaliável |
 | --- | --- | --- | --- | --- |
-| Tamanho e justificativa da amostra | 4 | 8 | 0 | 13 |
-| População descrita e adequada | 13 | 12 | 0 | 0 |
-| Validade e confiabilidade da medida | 19 | 6 | 0 | 0 |
-| Controle de confundidores | 2 | 16 | 1 | 6 |
-| Desfecho definido | 17 | 8 | 0 | 0 |
-| Comparações múltiplas | 2 | 7 | 0 | 16 |
-| Veículo (auxiliar) | 21 | 0 | 0 | 4 |
+| Tamanho e justificativa da amostra | 4 | 7 | 1 | 14 |
+| População descrita e adequada | 14 | 12 | 0 | 0 |
+| Validade e confiabilidade da medida | 20 | 6 | 0 | 0 |
+| Controle de confundidores | 2 | 16 | 2 | 6 |
+| Desfecho definido | 17 | 9 | 0 | 0 |
+| Comparações múltiplas | 2 | 7 | 1 | 16 |
+| Veículo (auxiliar) | 22 | 0 | 0 | 4 |
 
 ### Quadro por fonte
 
@@ -182,6 +182,7 @@ Ordem: decisão (mantidas primeiro) e, dentro dela, ordem alfabética do primeir
 | **Constantinou 2014** (PMID 24450373) | Revisão sistemática com metanálise de 30 artigos sobre parâmetros espaço-temporais da marcha na osteoartrite de quadril | resumo | moderada | manter com ressalva | parcial | `assimetria_tempo_apoio` (fator dor_ou_doenca_articular_unilateral, a conferir) |
 | **Corrigan 2023** (PMID 36305013) | Coorte prospectiva (Multicenter Osteoarthritis Study), análise exploratória de pessoas com dor unilateral leve a moderada no joelho, passarela GAITRite | texto completo (métodos e limitações) | moderada | manter com ressalva | parcial | `assimetria_tempo_apoio` (fator dor_ou_doenca_articular_unilateral) |
 | **Creaby 2012** (PMID 22385873) | Coorte de laboratório com comparação entre grupos: osteoartrite medial do joelho unilateral ou bilateral e controles, marcha em 3D | resumo | moderada | manter com ressalva | parcial | `assimetria_flexao_joelho_marcha` (fator dor_ou_osteoartrite_joelho_quadril) |
+| **da Costa 2021** (PMID 33713896) | Estudo transversal de laboratório com amostra de conveniência: agachamento unipodal em 3D, dorsiflexão passiva em carga e dorsiflexão dinâmica | resumo | moderada | manter com ressalva | indireta | `inclinacao_tronco` (fator dorsiflexao_e_tronco) |
 | **Dill 2014** (PMID 25144599) | Estudo transversal de laboratório: dois grupos por dorsiflexão, em agachamento com braços elevados, agachamento unipodal e aterrissagem | resumo | moderada | manter com ressalva | parcial | `assimetria_flexao_joelho` (fator dorsiflexao_limitada, a conferir); `assimetria_dorsiflexao` (a conferir); `inclinacao_tronco` (a conferir); `avanco_joelho` (a conferir) |
 | **Emamvirdi 2023** (PMID 37524846) | Estudo observacional transversal entre grupos (instabilidade crônica do tornozelo, dor patelofemoral e controles); agachamento unipodal em vídeo 2D | texto completo (métodos e limitações) | moderada | manter com ressalva | parcial | `assimetria_dorsiflexao` (fator dor_ou_instabilidade_tornozelo, a conferir); `valgo_dinamico` (fator dor_ou_lesao_previa, a conferir) |
 | **Generoso 2025** (PMID 40391865) | Revisão sistemática com metanálise (6 estudos, 5 na metanálise) de agachamento em 3D antes e depois da cirurgia de impacto femoroacetabular | resumo | moderada | manter com ressalva | parcial | `assimetria_flexao_quadril` (fator condicao_do_quadril) |
@@ -210,7 +211,6 @@ Ordem: decisão (mantidas primeiro) e, dentro dela, ordem alfabética do primeir
 | **Barber-Westin 2017** (PMID 28298066) | Revisão sistemática (nível de evidência 4, segundo os autores) de 37 estudos de fadiga em saltos, aterrissagens e mudanças de direção | resumo | baixa | remover | indireta | removida |
 | **Borrelli 2002** (PMID 11818800) | Série de casos consecutivos de 15 pacientes com fratura isolada de acetábulo, comparados com coortes sem lesão | resumo | baixa | remover | indireta | removida |
 | **Cashman 2012** (PMID 22894982) | Revisão sistemática com síntese narrativa de 11 estudos de força do quadril e valgo em assintomáticos (busca em fevereiro de 2011) | resumo | moderada | remover | parcial | removida |
-| **da Costa 2021** (PMID 33713896) | Estudo transversal de laboratório com amostra de conveniência: agachamento unipodal em 3D, dorsiflexão passiva em carga e dorsiflexão dinâmica | resumo | moderada | remover | indireta | removida |
 | **Endo 2020** (PMID 32581431) | Estudo correlacional transversal: agachamento profundo com braços elevados em vídeo 2D de 30 quadros por segundo, regressão | texto completo (métodos e limitações) | baixa | remover | indireta | removida |
 | **Fry 2003** (PMID 14636100) | Experimento intrassujeito: agachamento com barra, joelhos livres e restritos por uma barreira de madeira, em vídeo | resumo | baixa | remover | parcial | removida |
 | **Fujita 2022** (PMID 36166956) | Estudo transversal exploratório: 38 pessoas com AVC crônico e joelho rígido, sensor inercial e eletromiografia, subgrupos por componente principal | resumo | baixa | remover | indireta | removida |
@@ -257,8 +257,9 @@ Resultado por item (Protocolo ou registro prévio, Busca abrangente, Risco de vi
 | Cai 2026 (PMID 42551866) | não avaliável | parcialmente | atende | parcialmente | parcialmente | parcialmente | atende |
 | Corrigan 2023 (PMID 36305013) | parcialmente | atende | atende | atende | atende | não avaliável | atende |
 | Creaby 2012 (PMID 22385873) | não avaliável | atende | atende | atende | parcialmente | não avaliável | atende |
+| da Costa 2021 (PMID 33713896) | não avaliável | atende | atende | não atende | parcialmente | não avaliável | atende |
 | Dill 2014 (PMID 25144599) | não avaliável | atende | atende | não avaliável | parcialmente | não avaliável | atende |
-| Emamvirdi 2023 (PMID 37524846) | parcialmente | parcialmente | atende | parcialmente | atende | parcialmente | atende |
+| Emamvirdi 2023 (PMID 37524846) | não atende | parcialmente | atende | parcialmente | atende | parcialmente | atende |
 | Gomes 2020 (PMID 32022631) | não avaliável | atende | atende | não avaliável | parcialmente | não avaliável | atende |
 | Haberkamp 2022 (PMID 36198251) | não avaliável | parcialmente | atende | não avaliável | atende | parcialmente | atende |
 | Hannan 2022 (PMID 36237648) | parcialmente | atende | atende | parcialmente | parcialmente | não avaliável | não avaliável |
@@ -275,10 +276,9 @@ Resultado por item (Protocolo ou registro prévio, Busca abrangente, Risco de vi
 | Roos 2014 (PMID 24581172) | atende | atende | atende | parcialmente | parcialmente | não avaliável | atende |
 | Song 2021 (PMID 34628200) | atende | parcialmente | atende | não atende | atende | atende | atende |
 | Strong 2023 (PMID 37853508) | não avaliável | parcialmente | atende | parcialmente | atende | parcialmente | atende |
-| Walker 2026 (PMID 42516619) | atende | atende | parcialmente | parcialmente | atende | não avaliável | não avaliável |
+| Walker 2026 (PMID 42516619) | atende | atende | parcialmente | parcialmente | atende | não atende | não avaliável |
 | Wyndow 2016 (PMID 26816531) | parcialmente | atende | parcialmente | parcialmente | atende | parcialmente | atende |
 | Borrelli 2002 (PMID 11818800) | parcialmente | parcialmente | atende | não atende | parcialmente | não atende | atende |
-| da Costa 2021 (PMID 33713896) | não avaliável | atende | atende | não atende | parcialmente | não avaliável | atende |
 | Endo 2020 (PMID 32581431) | não atende | parcialmente | parcialmente | não atende | parcialmente | não atende | não avaliável |
 | Fry 2003 (PMID 14636100) | não atende | parcialmente | parcialmente | parcialmente | atende | não avaliável | atende |
 | Fujita 2022 (PMID 36166956) | não avaliável | parcialmente | parcialmente | não avaliável | parcialmente | não avaliável | atende |
@@ -478,7 +478,7 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 #### Creaby 2012 — PMID 22385873 — manter com ressalva (qualidade moderada)
 
 - **Desenho:** Coorte de laboratório com comparação entre grupos: osteoartrite medial do joelho unilateral ou bilateral e controles, marcha em 3D.
-- **Aplicabilidade (parcial):** Diferença entre os joelhos na flexão e inclinação do tronco, mas em osteoartrite medial e por 3D.
+- **Aplicabilidade (parcial):** Menor flexão do joelho mais doloroso em relação aos controles e inclinação do tronco, mas em osteoartrite medial e por 3D; as assimetrias entre os joelhos descritas são de varo e de momento flexor, não de flexão.
 - **Itens com nota:**
   - Tamanho e justificativa da amostra (não avaliável): 91 com osteoartrite e 31 controles; sem cálculo amostral no resumo
   - População descrita e adequada (atende): osteoartrite medial do joelho uni ou bilateral e controles assintomáticos
@@ -489,8 +489,26 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 - **Limitações:**
   - Osteoartrite medial do joelho.
   - O pico de flexão do joelho é calculado no ciclo; o resumo não separa apoio de balanço.
-- **Justificativa:** Amostra grande, ajuste pela velocidade e comparação entre os joelhos; população com osteoartrite e fase do pico não especificada.
-- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 91 pessoas com osteoartrite medial do joelho e 31 controles; medida 3D; o resumo não separa o pico de flexão do apoio do de balanço.
+  - A menor flexão do joelho mais doloroso é em relação ao grupo controle; as assimetrias entre os joelhos que o resumo descreve são de ângulo varo e de momento flexor externo, não de ângulo de flexão.
+- **Justificativa:** Amostra grande e ajuste pela velocidade; população com osteoartrite, fase do pico não especificada e comparação com controles para a flexão (a assimetria entre os joelhos é de varo e momento).
+- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 91 pessoas com osteoartrite medial do joelho e 31 controles; medida 3D; menor flexão em relação aos controles, não entre os joelhos, e o resumo não separa o pico de apoio do de balanço.
+
+#### da Costa 2021 — PMID 33713896 — manter com ressalva (qualidade moderada)
+
+- **Desenho:** Estudo transversal de laboratório com amostra de conveniência: agachamento unipodal em 3D, dorsiflexão passiva em carga e dorsiflexão dinâmica.
+- **Aplicabilidade (indireta):** A hipótese fala em mobilidade limitada do tornozelo; a variável associada ao tronco é a dorsiflexão alcançada no agachamento, que é resultado do movimento.
+- **Itens com nota:**
+  - Tamanho e justificativa da amostra (não avaliável): 30 participantes de conveniência; sem cálculo amostral no resumo
+  - População descrita e adequada (atende): 30 adultos sem lesão, membro dominante
+  - Validade e confiabilidade da medida (atende): cinemática 3D; dorsiflexão passiva em carga e dinâmica
+  - Controle de confundidores (não atende): correlações simples, sem ajuste
+  - Desfecho definido (parcialmente): vários segmentos (perna, coxa, pelve e tronco), sem desfecho primário
+  - Comparações múltiplas (não avaliável): várias correlações; correção não descrita no resumo
+- **Limitações:**
+  - A dorsiflexão associada ao tronco é a dinâmica, medida durante o próprio agachamento; o resumo associa a mobilidade passiva à rotação interna da coxa (r = -0,38) e não ao tronco.
+  - Correlações simples em 30 pessoas de conveniência, com vários desfechos.
+- **Justificativa:** Não sustenta a hipótese de mobilidade: a associação com o tronco é com a dorsiflexão medida durante o agachamento, e a passiva não aparece associada ao tronco. Fica só para limitar a afirmação (critério e): fonte que contradiz o fator não é omitida. Cai 2026 testa a dorsiflexão por manipulação.
+- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 30 adultos de conveniência; a dorsiflexão associada ao tronco é a dinâmica (parte do próprio movimento), não a mobilidade passiva.
 
 #### Dill 2014 — PMID 25144599 — manter com ressalva (qualidade moderada)
 
@@ -516,7 +534,7 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 - **Desenho:** Estudo observacional transversal entre grupos (instabilidade crônica do tornozelo, dor patelofemoral e controles); agachamento unipodal em vídeo 2D.
 - **Aplicabilidade (parcial):** Medida 2D do valgo, como no app, e dorsiflexão em carga, mas em agachamento unipodal de atletas com instabilidade de tornozelo ou dor patelofemoral.
 - **Itens com nota:**
-  - Tamanho e justificativa da amostra (parcialmente): 60 atletas (20 por grupo) com G*Power; os autores apontam efeito pequeno e poder limitado
+  - Tamanho e justificativa da amostra (não atende): 60 atletas (20 por grupo) com G*Power, mas com efeito de 0,30 e poder de 0,30; os próprios autores citam isso como limitação
   - População descrita e adequada (parcialmente): atletas recreacionais de basquete do sexo feminino, critérios descritos; não generaliza
   - Validade e confiabilidade da medida (atende): ângulo de valgo por vídeo 2D com ICC de 0,92 do examinador; dorsiflexão em carga
   - Controle de confundidores (parcialmente): avaliador cego ao grupo; sem ajuste estatístico descrito
@@ -524,10 +542,11 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
   - Comparações múltiplas (parcialmente): pós-teste de Scheffé
 - **Limitações:**
   - Transversal: não mostra se a menor dorsiflexão antecede a dor ou a acompanha.
-  - Só mulheres atletas recreacionais; cálculo amostral com efeito pequeno.
+  - Só mulheres atletas recreacionais; cálculo amostral com efeito de 0,30 e poder de 0,30, que os autores citam como limitação.
   - Ângulo medido em vídeo 2D, com o pico de flexão escolhido visualmente.
-- **Justificativa:** Medida 2D igual à do app, avaliador cego e cálculo amostral; fica com ressalva pela população específica e pelo desenho transversal.
-- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 60 atletas de basquete (mulheres) com instabilidade de tornozelo, dor patelofemoral ou sem queixa; estudo transversal, sem direção do efeito.
+  - O índice de assimetria foi testado dentro de cada grupo, sem teste entre grupos. Na dorsiflexão, nos grupos com dor patelofemoral e controle o índice ficou abaixo do coeficiente de variação (sem desequilíbrio relevante entre os lados, segundo os autores), embora o resumo conclua que há assimetria.
+- **Justificativa:** Medida 2D igual à do app e avaliador cego, mas cálculo amostral com poder de 0,30; fica com ressalva pela população específica, pelo desenho transversal e porque a assimetria de dorsiflexão não foi relevante na dor patelofemoral.
+- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 60 atletas de basquete (mulheres); estudo transversal, sem direção do efeito, com cálculo amostral de poder 0,30; a assimetria de dorsiflexão não foi relevante na dor patelofemoral.
 
 #### Generoso 2025 — PMID 40391865 — manter com ressalva (qualidade moderada)
 
@@ -568,7 +587,7 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 #### Haberkamp 2022 — PMID 36198251 — manter com ressalva (qualidade moderada)
 
 - **Desenho:** Estudo de validação: estimativa de pose 2D (OpenPose) frente a 3D e a análise 2D tradicional, em agachamento unipodal de adolescentes atletas.
-- **Aplicabilidade (parcial):** Valida a mesma tecnologia do app (estimativa de pose 2D), mas em adolescentes e em agachamento unipodal.
+- **Aplicabilidade (parcial):** Valida uma estimativa de pose 2D (OpenPose, segundo o registro do PubMed), e não o MediaPipe usado pelo app, em adolescentes e em agachamento unipodal.
 - **Itens com nota:**
   - Tamanho e justificativa da amostra (não avaliável): o resumo não informa o número de atletas
   - População descrita e adequada (parcialmente): atletas adolescentes
@@ -579,8 +598,9 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 - **Limitações:**
   - Adolescentes atletas em agachamento unipodal; o resumo não informa o número de participantes.
   - Concordância fraca do ângulo frontal do joelho com o 3D (r = 0,20), igual à do 2D tradicional (r = 0,05).
-- **Justificativa:** Valida a mesma tecnologia do app frente ao 3D: concordância moderada a forte nos ângulos sagitais e fraca no ângulo frontal do joelho; usada para limitar a afirmação.
-- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: Validação de estimativa de pose 2D em adolescentes no agachamento unipodal; o número de participantes não consta no resumo.
+  - O modelo validado é outro (o registro do PubMed lista OpenPose como palavra-chave); o app usa o MediaPipe, sem validação própria: a concordância medida não se transfere sem validação do modelo do app.
+- **Justificativa:** Valida um modelo de estimativa de pose 2D (não o do app) frente ao 3D: concordância moderada a forte nos ângulos sagitais e fraca no ângulo frontal do joelho; usada para limitar a afirmação.
+- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: Validação de um modelo de estimativa de pose 2D que não é o do app, em adolescentes no agachamento unipodal; o número de participantes não consta no resumo.
 
 #### Hannan 2022 — PMID 36237648 — manter com ressalva (qualidade moderada)
 
@@ -590,15 +610,16 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
   - Tamanho e justificativa da amostra (parcialmente): 18 adultos; os autores informam poder de 0,84 para efeito de 0,15
   - População descrita e adequada (atende): adultos jovens fisicamente ativos (10 mulheres)
   - Validade e confiabilidade da medida (atende): duas plataformas de força
-  - Controle de confundidores (parcialmente): ordem dos ritmos randomizada; definição do membro preferido não consta no resumo
-  - Desfecho definido (parcialmente): quatro variáveis de força e de centro de pressão
+  - Controle de confundidores (parcialmente): ordem dos ritmos randomizada; membro preferido definido por qual perna chutaria uma bola (12 direitos e 6 esquerdos)
+  - Desfecho definido (parcialmente): quatro variáveis de força e de centro de pressão, com direção que muda conforme o ritmo e a variável
   - Comparações múltiplas (não avaliável)
   - Veículo (auxiliar) (não avaliável)
 - **Limitações:**
   - Mede força de reação do solo e centro de pressão, não ângulos.
   - Adultos jovens ativos; o efeito da modalidade esportiva não foi controlado.
+  - A direção da diferença depende do ritmo e da variável: força de pico maior no lado preferido só no ritmo livre (550 contra 518 N; no metrônomo, 499 contra 508 N); impulso maior no lado não preferido no ritmo livre (315 contra 300 Ns); variabilidade do centro de pressão maior no lado preferido.
 - **Justificativa:** Desenho cruzado com ordem randomizada e plataformas de força, em agachamento bipodal; serve só como lembrete de que há diferença entre os lados sem condição clínica.
-- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 18 adultos ativos; diferença entre as pernas em força de reação do solo e centro de pressão, e não em ângulo.
+- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 18 adultos ativos; diferença entre as pernas em força de reação do solo e centro de pressão, e não em ângulo, com direção que muda conforme o ritmo e a variável.
 
 #### Harato 2008 — PMID 18585042 — manter com ressalva (qualidade moderada)
 
@@ -657,20 +678,21 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 #### Ishida 2023 — PMID 37441507 — manter com ressalva (qualidade moderada)
 
 - **Desenho:** Estudo transversal de laboratório (dois grupos pela simetria de força do quadríceps) em agachamento bipodal, mais de 1 ano após reconstrução do LCA.
-- **Aplicabilidade (parcial):** Agachamento bipodal, como no app, mas em pessoas após reconstrução do LCA e com desfecho em momento articular.
+- **Aplicabilidade (parcial):** Agachamento bipodal, como no app, mas em pessoas após reconstrução do LCA e com desfecho em momento articular; não mede ângulo de flexão nem posição da pelve.
 - **Itens com nota:**
   - Tamanho e justificativa da amostra (parcialmente): 26 participantes, com cálculo prévio de 20; grupo de quadríceps fraco com 8
   - População descrita e adequada (atende): mais de 1 ano após reconstrução primária do LCA, critérios descritos
   - Validade e confiabilidade da medida (atende): análise 3D e dinamometria isocinética
   - Controle de confundidores (parcialmente): tempo desde a lesão ausente; efeito do tipo de enxerto não analisado por poucos casos
-  - Desfecho definido (atende): pico do momento extensor do joelho e razões do momento de apoio
+  - Desfecho definido (atende): pico do momento extensor do joelho, razões do momento de apoio e força de reação vertical (sem diferença entre os lados: interação grupo × lado, p = 0,119)
   - Comparações múltiplas (não avaliável)
 - **Limitações:**
   - Transversal: a causa não pode ser determinada.
   - Grupo de quadríceps fraco com 8 pessoas; atividade muscular não avaliada.
-  - Mede momentos articulares, não ângulos.
+  - Mede momentos articulares, não ângulos; a profundidade foi padronizada (coxas paralelas ao solo), com ritmo de 2 s por fase.
+  - Não houve diferença de força de reação vertical entre os lados (p = 0,119): a compensação descrita foi entre as articulações do mesmo membro (menor momento extensor do joelho, maior contribuição do quadril), e não pelo membro oposto.
 - **Justificativa:** Cálculo amostral prévio, 3D e agachamento bipodal; fica com ressalva pela população pós-LCA, pelo grupo pequeno e por medir momentos.
-- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 26 pessoas com mais de 1 ano após reconstrução do ligamento cruzado anterior; desfecho em momento articular e não em ângulo; grupo de força baixa com 8 pessoas.
+- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 26 pessoas com mais de 1 ano após reconstrução do ligamento cruzado anterior; desfecho em momento articular e não em ângulo, sem diferença de força vertical entre os lados; grupo de força baixa com 8 pessoas.
 
 #### Kernozek 2018 — PMID 28422563 — manter com ressalva (qualidade moderada)
 
@@ -819,20 +841,21 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 #### Roos 2014 — PMID 24581172 — manter com ressalva (qualidade moderada)
 
 - **Desenho:** Estudo observacional transversal: ruptura do LCA, reconstrução e controles em agachamento bipodal até a profundidade máxima.
-- **Aplicabilidade (parcial):** Agachamento bipodal com medida de assimetria entre os lados, mas em pessoas com lesão do LCA e com desfechos de momento articular.
+- **Aplicabilidade (parcial):** Agachamento bipodal com medida de assimetria entre os lados, mas em pessoas com lesão do LCA, com desfechos de momento articular e com o ângulo de flexão do joelho simétrico.
 - **Itens com nota:**
   - Tamanho e justificativa da amostra (atende): 62 participantes, com cálculo (efeito de 0,84, poder de 0,8) para 21 por grupo
   - População descrita e adequada (atende): três grupos sem diferença em altura, massa e idade; critérios de inclusão descritos
   - Validade e confiabilidade da medida (atende): 3D (Vicon) e duas plataformas de força
   - Controle de confundidores (parcialmente): grupos comparáveis nas características; duas pessoas excluídas de uma análise de correlação depois do resultado
-  - Desfecho definido (parcialmente): vários desfechos de cinemática e cinética
+  - Desfecho definido (parcialmente): vários desfechos de cinemática e cinética; a simetria do pico de flexão do joelho foi 100 ± 3, 100 ± 3 e 99 ± 3 (controles, reconstruído, rompido), sem diferença dos controles
   - Comparações múltiplas (não avaliável)
 - **Limitações:**
   - Duas pessoas que se recuperaram pior foram excluídas de uma análise de correlação, depois de conhecido o resultado.
   - Sem padronização de apoio dos pés nem de postura dos braços (para observar o comportamento habitual).
   - Resultado específico de pessoas com ruptura ou reconstrução do LCA.
+  - A simetria do pico de flexão do joelho entre os lados ficou em 100 ± 3 (controles), 100 ± 3 (ligamento reconstruído) e 99 ± 3 (rompido), sem diferença dos controles (p = 1,000 no reconstruído e p = 0,057 no rompido): a assimetria descrita é de momentos e de carga, e o estudo não mostra assimetria de ângulo.
 - **Justificativa:** Cálculo amostral, grupos comparáveis, 3D e plataformas, em agachamento bipodal; fica com ressalva pela população e pela exclusão posterior de dois participantes.
-- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 62 pessoas (ruptura, reconstrução e controles) com 3D e plataformas de força; resultado específico do ligamento cruzado anterior; duas exclusões numa análise.
+- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 62 pessoas (ruptura, reconstrução e controles) com 3D e plataformas de força; assimetria de momentos e de carga, não de ângulo (a simetria do pico de flexão do joelho foi 100 ± 3); duas exclusões numa análise.
 
 #### Song 2021 — PMID 34628200 — manter com ressalva (qualidade moderada)
 
@@ -855,7 +878,7 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
 #### Steingrebe 2023 — PMID 38046934 — manter com ressalva (qualidade alta)
 
 - **Desenho:** Revisão sistemática com metanálise de efeitos aleatórios: 35 estudos de cinemática de pessoas com osteoartrite de quadril em tarefas de locomoção.
-- **Aplicabilidade (parcial):** Amplitudes de quadril e de joelho na marcha, mas em osteoartrite de quadril e em 3D.
+- **Aplicabilidade (parcial):** Amplitudes de quadril e de joelho na marcha, mas em osteoartrite de quadril, em 3D e em comparação com controles, não entre os lados.
 - **Itens com nota:**
   - Protocolo ou registro prévio (atende): PROSPERO
   - Busca abrangente (atende): PubMed, Web of Science e Scopus (ago/2022), só em inglês; busca, triagem e elegibilidade por dois revisores
@@ -866,10 +889,12 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
   - Veículo (auxiliar) (não avaliável)
 - **Limitações:**
   - Grande heterogeneidade entre os estudos em todos os parâmetros, sobretudo nos planos sagital e frontal.
+  - A maioria dos intervalos de predição dos resultados significativos cruza o zero (em alguns contextos pode não haver diferença), e só 10 de 68 análises da marcha reúnem 5 ou mais estudos; os autores pedem cautela.
   - Poucos estudos informam cálculo amostral (6 de 47 relatos) e o recrutamento é pouco descrito.
+  - Compara pessoas com osteoartrite de quadril com controles saudáveis: excluiu estudos com o membro contralateral como controle ou com medidas de assimetria, e as alterações aparecem também no lado contralateral; não testa diferença entre os lados.
   - Ângulos 3D de pessoas com osteoartrite de quadril, não vídeo 2D.
-- **Justificativa:** Revisão registrada, com risco de viés, metanálise de efeitos aleatórios e heterogeneidade declarada; população com osteoartrite de quadril.
-- **Exibido no laudo:** Qualidade metodológica: alta. Limitação principal: 35 estudos de osteoartrite de quadril com grande heterogeneidade e medida 3D; poucos estudos com cálculo amostral.
+- **Justificativa:** Revisão registrada, com risco de viés, metanálise de efeitos aleatórios e heterogeneidade declarada; o nível alto descreve a condução da revisão, não a força da evidência: população com osteoartrite de quadril, comparação com controles e resultados pouco robustos pelos próprios autores.
+- **Exibido no laudo:** Qualidade metodológica: alta. Limitação principal: 35 estudos de osteoartrite de quadril comparados com controles, em 3D, com grande heterogeneidade; a maioria dos intervalos de predição dos resultados significativos cruza o zero e só 10 de 68 análises reúnem 5 ou mais estudos.
 
 #### Strong 2023 — PMID 37853508 — manter com ressalva (qualidade moderada)
 
@@ -917,14 +942,15 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
   - Validade e confiabilidade da medida (parcialmente): câmera única 3D por infravermelho, confiabilidade interavaliador de 0,85 citada de outro estudo; dinamômetro fixo com confiabilidade de 0,80 a 0,90 no estudo-piloto
   - Controle de confundidores (parcialmente): frequência de exercício só em análise post hoc
   - Desfecho definido (atende): profundidade como pico de flexão do joelho no agachamento unipodal
-  - Comparações múltiplas (não avaliável): várias correlações; correção não identificada no texto lido
+  - Comparações múltiplas (não atende): várias correlações sem correção descrita no texto lido, todas em teste unicaudal ("given the directional hypothesis")
   - Veículo (auxiliar) (não avaliável)
 - **Limitações:**
-  - Correlações baixas (r de 0,22 a 0,37) entre dorsiflexão e profundidade.
+  - Correlações baixas (r de 0,22 a 0,37) entre dorsiflexão e profundidade; o r² é 0,05 e 0,14 (5% e 14% da variância).
+  - Testes unicaudais ("given the directional hypothesis, one-tailed tests were conducted"): o p = 0,030 do lado direito (r = 0,223) é unicaudal e, em teste bicaudal, seria cerca de 0,06 (cálculo a partir de r e de n = 72, que não consta no artigo); o lado esquerdo (rho de Spearman = 0,373) seguiria significativo.
   - A associação mais forte aparece só em análise post hoc de quem se exercita mais de 3 vezes por semana.
   - Agachamento unipodal e câmera única 3D, não vídeo 2D de estimativa de pose.
 - **Justificativa:** Cálculo amostral declarado, desfecho bem definido e resultado coerente com Kim e Gomes; correlações baixas e análise post hoc pedem ressalva.
-- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 72 adultos jovens saudáveis; correlações baixas entre dorsiflexão e profundidade; associação maior só em análise post hoc de quem treina mais.
+- **Exibido no laudo:** Qualidade metodológica: moderada. Limitação principal: 72 adultos jovens saudáveis; correlações baixas entre dorsiflexão e profundidade (explicam 5% e 14% da variância), em testes unicaudais; associação maior só em análise post hoc de quem treina mais.
 
 #### Wyndow 2016 — PMID 26816531 — manter com ressalva (qualidade moderada)
 
@@ -991,22 +1017,6 @@ Limitações, aplicabilidade e justificativa por PMID. A ficha das removidas diz
   - Busca de 2011, anterior a duas revisões mais recentes e maiores sobre a mesma pergunta.
   - Um único autor; risco de viés não mencionado no resumo.
 - **Justificativa:** Revisão cautelosa, mas de 2011, com um autor e sem risco de viés no resumo; as revisões de 2021 e de 2026 cobrem a mesma pergunta com mais estudos.
-
-#### da Costa 2021 — PMID 33713896 — remover (qualidade moderada)
-
-- **Desenho:** Estudo transversal de laboratório com amostra de conveniência: agachamento unipodal em 3D, dorsiflexão passiva em carga e dorsiflexão dinâmica.
-- **Aplicabilidade (indireta):** A hipótese fala em mobilidade limitada do tornozelo; a variável associada ao tronco é a dorsiflexão alcançada no agachamento, que é resultado do movimento.
-- **Itens com nota:**
-  - Tamanho e justificativa da amostra (não avaliável): 30 participantes de conveniência; sem cálculo amostral no resumo
-  - População descrita e adequada (atende): 30 adultos sem lesão, membro dominante
-  - Validade e confiabilidade da medida (atende): cinemática 3D; dorsiflexão passiva em carga e dinâmica
-  - Controle de confundidores (não atende): correlações simples, sem ajuste
-  - Desfecho definido (parcialmente): vários segmentos (perna, coxa, pelve e tronco), sem desfecho primário
-  - Comparações múltiplas (não avaliável): várias correlações; correção não descrita no resumo
-- **Limitações:**
-  - A dorsiflexão associada ao tronco é a dinâmica, medida durante o próprio agachamento; a mobilidade passiva não se associou ao tronco.
-  - Correlações simples em 30 pessoas de conveniência, com vários desfechos.
-- **Justificativa:** Não sustenta a hipótese de mobilidade: a associação com o tronco é com a dorsiflexão medida durante o agachamento. Cai 2026 testa a dorsiflexão por manipulação.
 
 #### Endo 2020 — PMID 32581431 — remover (qualidade baixa)
 
@@ -1270,7 +1280,7 @@ Vinte e dois itens a conferir seguem sem fonte (sugestões de método ou de exam
 
 1. **Um único leitor.** Não houve dupla leitura nem pontuação formal de instrumento. Recomendo dupla leitura das fontes que sustentam fatores com tipo de estudo mais forte:
    Lima 2017, Lopes 2018, Alzahrani 2021, Cashman 2026, Constantinou 2014, Steingrebe 2023, Generoso 2025 e Vermeulen 2023.
-2. **Resumo na maior parte.** Só 15 das 55 fontes tiveram métodos e limitações lidos no texto completo (13 das 36 mantidas e 2 das 19 removidas). Os itens "não avaliável" (quadros acima) pedem o artigo completo:
+2. **Resumo na maior parte.** Só 15 das 55 fontes tiveram métodos e limitações lidos no texto completo (13 das 37 mantidas e 2 das 18 removidas). Os itens "não avaliável" (quadros acima) pedem o artigo completo:
    conflito de interesse e financiamento (nenhuma revisão tem esse item verificado), correção para comparações múltiplas, justificativa do tamanho da amostra e registro do protocolo.
 3. **Conflito de interesse e financiamento** não foram avaliados em nenhuma fonte além do que o texto lido mostrou por acaso.
 4. **Veículo e retratação.** Não consultei o catálogo da NLM. O item de veículo é auxiliar e não decidiu nenhuma fonte. Nos tipos de publicação dos registros recuperados, nenhuma das 55 fontes consta
@@ -1280,7 +1290,10 @@ Vinte e dois itens a conferir seguem sem fonte (sugestões de método ou de exam
 6. **Decisões sensíveis, para o time confirmar:**
    - Barber-Westin 2017 foi removida por busca em uma única base e ausência de risco de viés no resumo; se o artigo completo mostrar outra coisa, pode voltar.
    - Cashman 2026 (revisão mais recente sobre força do quadril e valgo) ficou como moderada por itens não avaliáveis; o resumo não cita registro nem risco de viés.
-   - Haberkamp 2022 valida uma estimativa de pose 2D (OpenPose) em adolescentes; o modelo de pose deste app é outro, então a concordância medida não se transfere sem validação própria.
+   - Haberkamp 2022 valida uma estimativa de pose 2D (o registro do PubMed lista OpenPose como palavra-chave) em adolescentes; o modelo de pose deste app é outro (MediaPipe), então a concordância medida não se transfere sem validação própria. A ressalva exibida ao profissional diz isso.
+   - da Costa 2021 saiu como "indireta" e voltou como "manter com ressalva" na revisão dos achados: o resumo associa a dorsiflexão passiva à rotação interna da coxa e não ao tronco, o que contradiz a hipótese de mobilidade; pelo critério (e), fonte que contradiz o fator não é omitida. Ela só limita a afirmação.
+   - Steingrebe 2023 tem nível "alta" pela condução da revisão (registro, três bases, risco de viés, efeitos aleatórios), mas isso não é força da evidência: os autores avisam que a maioria dos intervalos de predição dos resultados significativos cruza o zero e que só 10 de 68 análises da marcha reúnem 5 ou mais estudos, e a revisão compara com controles (exclui estudos de assimetria). Por isso os dois fatores da marcha que a usam têm o rótulo "observacional".
+   - Emamvirdi 2023 (cálculo amostral com efeito 0,30 e poder 0,30) e Walker 2026 (testes unicaudais; o lado direito não seria significativo em teste bicaudal, p cerca de 0,06 por cálculo a partir de r e n) tiveram o item de amostra ou de comparações múltiplas rebaixado depois da leitura do texto completo.
    - Baker 2016 e Preece 2019 não informam, no resumo, o número de participantes.
    - A elevação do calcanhar (Cai 2026) sustenta quatro fatores (dorsiflexão, tronco, avanço do joelho e profundidade) com uma só fonte: um experimento de 30 homens com dorsiflexão restrita, sem grupo de comparação.
 7. **Nenhum limite clínico.** A biblioteca continua sem propor valores de referência: as fontes comparam grupos, não dizem quantos graus de diferença entre os lados indicam condição.

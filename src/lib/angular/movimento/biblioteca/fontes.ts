@@ -195,6 +195,16 @@ const FONTES_AVALIADAS = {
     populacao: '30 homens saudáveis com dorsiflexão do tornozelo restrita; agachamento com carga e elevação progressiva do calcanhar',
     verificadoEm: VERIFICADO_EM,
   },
+  daCosta2021: {
+    pmid: '33713896',
+    citacao: 'da Costa GV, de Castro MP, Sanchotene CG, Ribeiro DC, de Brito Fontana H, Ruschel C. Relationship between passive ankle dorsiflexion range, dynamic ankle dorsiflexion range and lower limb and trunk kinematics during the single-leg squat. Gait Posture. 86:106-111. Epub 2021.',
+    ano: 2021,
+    periodico: 'Gait Posture',
+    doi: '10.1016/j.gaitpost.2021.03.015',
+    trecho: 'Greater passive ankle dorsiflexion range was associated with smaller thigh internal rotation (r= -0.38). Greater dynamic ankle dorsiflexion range was associated with smaller trunk flexion (r = 0.59) and pelvis anteversion (r= -0.47). Passive ankle dorsiflexion range and dynamic ankle dorsiflexion range were not associated.',
+    populacao: '30 adultos sem lesão (amostra de conveniência); agachamento unipodal com o membro dominante, análise cinemática 3D',
+    verificadoEm: VERIFICADO_EM,
+  },
   list2013: {
     pmid: '22990570',
     citacao: 'List R, Gülay T, Stoop M, Lorenzetti S. Kinematics of the trunk and the lower extremities during restricted and unrestricted squats. J Strength Cond Res. 2013;27(6):1529-38.',

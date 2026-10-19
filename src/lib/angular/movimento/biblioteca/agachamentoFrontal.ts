@@ -36,7 +36,7 @@ export const VALGO_DINAMICO: EntradaBiblioteca = {
       forca: 'observacional',
       fontes: [F.emamvirdi2023],
       ressalva:
-        '60 atletas de basquete mulheres; agachamento unipodal em vídeo 2D, medido nos dois lados, com cálculo amostral de efeito pequeno. Estudo transversal: não mostra se o valgo antecede a dor ou a acompanha. Não vale para quem não tem esse antecedente.',
+        '60 atletas de basquete mulheres; agachamento unipodal em vídeo 2D, medido nos dois lados, com cálculo amostral de efeito 0,30 e poder 0,30. Estudo transversal: não mostra se o valgo antecede a dor ou a acompanha. Não vale para quem não tem esse antecedente.',
     },
     {
       id: 'projecao_2d',
@@ -45,7 +45,7 @@ export const VALGO_DINAMICO: EntradaBiblioteca = {
       forca: 'meta_analise',
       fontes: [F.lopes2018, F.haberkamp2022],
       ressalva:
-        'Lopes (revisão com metanálise de 16 estudos): a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal (r = 0,127) e melhor na aterrissagem; os autores concluem que a evidência atual não sustenta o uso da análise 2D quando se exige medida exata (o resumo não informa registro de protocolo nem risco de viés). Haberkamp validou uma estimativa de pose 2D por inteligência artificial, como a deste app, em atletas adolescentes no agachamento unipodal: relações moderadas a fortes nos ângulos sagitais (r de 0,68 a 0,94), regulares no quadril e na pelve no plano frontal e fraca no ângulo frontal do joelho (r = 0,20); o número de participantes não consta no resumo. Os dois são do agachamento unipodal, não do bipodal medido neste app: use o valgo deste vídeo como observação e não como medida exata.',
+        'Lopes (revisão com metanálise de 16 estudos): a confiabilidade da análise 2D variou de moderada a excelente, mas a concordância com a medida 3D foi fraca no agachamento unipodal (r = 0,127) e melhor na aterrissagem; os autores concluem que a evidência atual não sustenta o uso da análise 2D quando se exige medida exata (o resumo não informa registro de protocolo nem risco de viés). Haberkamp validou uma estimativa de pose 2D por inteligência artificial (o registro do PubMed lista OpenPose como palavra-chave; este app usa outro modelo, o MediaPipe, sem validação própria), em atletas adolescentes no agachamento unipodal: relações moderadas a fortes nos ângulos sagitais (r de 0,68 a 0,94), regulares no quadril e na pelve no plano frontal e fraca no ângulo frontal do joelho (r = 0,20); o número de participantes não consta no resumo. Os dois são do agachamento unipodal, não do bipodal medido neste app: use o valgo deste vídeo como observação e não como medida exata.',
     },
   ],
   conferir: [
@@ -78,19 +78,19 @@ export const DESVIO_LATERAL_PELVE: EntradaBiblioteca = {
     {
       id: 'quadriceps_de_um_lado',
       texto:
-        'Déficit de força do quadríceps de um dos lados foi associado a menor momento extensor do joelho nesse lado no agachamento, o que pode contribuir para um apoio mais carregado no lado oposto.',
+        'Déficit de força do quadríceps de um dos lados foi associado, no agachamento, a menor momento extensor do joelho nesse lado e a maior contribuição do quadril do mesmo lado, sem diferença de força vertical entre os lados; a fonte descreve uma redistribuição dentro do membro e não um apoio mais carregado no lado oposto.',
       forca: 'observacional',
       fontes: [F.ishida2023],
       ressalva:
-        '26 pessoas com mais de 1 ano após reconstrução do ligamento cruzado anterior, com cálculo amostral prévio e grupo de força baixa de 8. O estudo mediu momentos articulares com análise tridimensional e não o deslocamento da pelve: a ligação com o deslocamento lateral é uma inferência.',
+        '26 pessoas com mais de 1 ano após reconstrução do ligamento cruzado anterior, com cálculo amostral prévio e grupo de força baixa de 8. O estudo mediu momentos articulares com análise tridimensional e não o deslocamento da pelve. Não houve diferença de força de reação vertical entre os lados no grupo de força baixa (interação grupo × lado, p = 0,119); a compensação descrita foi entre as articulações do mesmo membro, e os autores dizem que a compensação pelo membro oposto pode ser mais evidente na fase inicial da reabilitação, o que não apareceu neste grupo. A ligação com o deslocamento lateral da pelve é uma inferência que o estudo não sustenta.',
     },
     {
       id: 'dominancia_do_membro',
-      texto: 'Preferência de apoio ou dominância de um dos membros pode contribuir para um apoio desigual mesmo sem lesão.',
+      texto: 'Preferência do pé de chute ou dominância de um dos membros pode contribuir para um apoio desigual mesmo sem lesão.',
       forca: 'observacional',
       fontes: [F.hannan2022],
       ressalva:
-        'Estudo cruzado com 18 adultos saudáveis; a diferença descrita é de força de reação do solo e de centro de pressão. É um único estudo e não mediu o deslocamento da pelve.',
+        'Estudo cruzado com 18 adultos saudáveis; o membro preferido foi definido por qual perna chutaria uma bola. A diferença descrita é de força de reação do solo e de centro de pressão e depende do ritmo e da variável: a força de pico foi maior no lado preferido só no ritmo livre (550 contra 518 N; no metrônomo ficou 499 contra 508 N), e o impulso foi maior no lado não preferido no ritmo livre (315 contra 300 Ns). É um único estudo e não mediu o deslocamento da pelve.',
     },
   ],
   conferir: [
