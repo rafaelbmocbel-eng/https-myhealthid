@@ -4,6 +4,7 @@ import AbaLaudo from '../components/angular/video/laudo/AbaLaudo';
 import PontosAConferir from '../components/angular/video/laudo/PontosAConferir';
 import { fraseContagemPontos, useContagemPontosAConferir } from '../components/angular/video/laudo/useContagemPontosAConferir';
 import { useEstadoLaudo } from '../components/angular/video/laudo/useEstadoLaudo';
+import { sugestaoParaCorrecao, sugestoesDePontosAusentes } from '../lib/angular/analiseVideo/marcacoes';
 import { lerAnaliseSalva, serializarAnalise } from '../lib/angular/analiseVideo/persistencia';
 import type { VideoCarregado } from '../lib/angular/analiseVideo/carregarVideo';
 import { analisarMovimento } from '../lib/angular/movimento/analisarMovimento';
@@ -93,7 +94,7 @@ describe('seção "Pontos a conferir"', () => {
     const [item] = agruparItensACorrigir(analise.pontosPerdidos);
     const ir = vi.fn();
     render(<PontosAConferir pontosPerdidos={analise.pontosPerdidos} protocolo={protocolo} aoIrAoQuadro={ir} />);
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^Ir ao quadro ${item.quadro + 1}$`) }));
+    fireEvent.click(screen.getByRole('button', { name: `Ir ao quadro ${item.quadro + 1}: Joelho esquerdo, Repetição 2` }));
     expect(ir).toHaveBeenLastCalledWith({ quadro: item.quadro, ponto: 'joelho_e' });
     expect(item.quadro).toBeGreaterThanOrEqual(160);
     expect(item.quadro).toBeLessThanOrEqual(172);
@@ -109,6 +110,28 @@ describe('seção "Pontos a conferir"', () => {
     expect(screen.queryByTestId('pontos-a-conferir')).toBeNull();
     expect(screen.getByTestId('sem-pontos-perdidos')).toHaveTextContent('Nenhuma medida ficou sem valor por pontos perdidos.');
     expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('os botões dizem de qual ponto e repetição falam: dois joelhos no mesmo quadro não geram nomes iguais', () => {
+    const doisJoelhos = trilhaAgachamentoLateral({ ruidoPx: 0.6, perdidos: (_i, t) => (t > 5.3 && t < 5.75 ? ['joelho_e', 'joelho_d'] : false) });
+    const [direito, esquerdo] = agruparItensACorrigir(analiseDe(doisJoelhos).pontosPerdidos).sort((a, b) => a.ponto.localeCompare(b.ponto));
+    expect(direito.ponto).toBe('joelho_d');
+    expect(esquerdo.ponto).toBe('joelho_e');
+    render(<PontosAConferir pontosPerdidos={analiseDe(doisJoelhos).pontosPerdidos} protocolo={protocolo} aoIrAoQuadro={vi.fn()} />);
+    const nomes = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? '');
+    expect(nomes).toHaveLength(new Set(nomes).size);
+    const ir = screen.getAllByTestId('ir-ao-quadro');
+    expect(ir.map((b) => b.getAttribute('aria-label'))).toEqual([
+      `Ir ao quadro ${direito.quadro + 1}: Joelho direito, Repetição 2`,
+      `Ir ao quadro ${esquerdo.quadro + 1}: Joelho esquerdo, Repetição 2`,
+    ]);
+    const cartao = (ponto: string) => within(screen.getAllByTestId('ponto-a-conferir').find((c) => c.getAttribute('data-ponto') === ponto) as HTMLElement);
+    expect(cartao('joelho_e').getByTestId('ir-ao-ultimo-sem-ponto')).toHaveAccessibleName(`Último quadro sem ponto (${esquerdo.ultimoQuadro + 1}): Joelho esquerdo, Repetição 2`);
+    expect(cartao('joelho_d').getByTestId('ir-ao-ultimo-sem-ponto')).toHaveAccessibleName(`Último quadro sem ponto (${direito.ultimoQuadro + 1}): Joelho direito, Repetição 2`);
+    // O "Primeiro quadro sem ponto" só aparece quando difere do "Ir ao quadro"; aqui o extremo é o primeiro quadro, então só há o último.
+    expect(screen.queryAllByTestId('ir-ao-primeiro-sem-ponto')).toHaveLength(0);
+    // O texto visível do botão continua no começo do nome: quem fala o comando visível ("Ir ao quadro 176") é entendido.
+    for (const b of ir) expect((b.getAttribute('aria-label') ?? '').startsWith((b.textContent ?? '').trim())).toBe(true);
   });
 
   it('sem o callback a lista só informa: não há botões', () => {
@@ -270,5 +293,91 @@ describe('análise em vídeo: da contagem na aba ao quadro com o ponto destacado
     await screen.findByTestId('destaque-do-ponto');
     fireEvent.click(screen.getByRole('button', { name: 'Voltar 10 quadros' }));
     await waitFor(() => expect(screen.queryByTestId('destaque-do-ponto')).toBeNull());
+  });
+});
+
+// ---------- buraco longo: o quadro de destino precisa de alça ----------
+
+// O joelho esquerdo some de 4,7 a 7,3 s (77 quadros): o extremo da repetição 2 fica a mais de 15 quadros de qualquer quadro com o ponto.
+const buracoLongo = (): TrilhaPose => trilhaAgachamentoLateral({ ruidoPx: 0.6, perdidos: (_i, t) => (t > 4.7 && t < 7.3 ? ['joelho_e'] : false) });
+const nuncaDetectado = (): TrilhaPose => trilhaAgachamentoLateral({ ruidoPx: 0.6, perdidos: () => ['joelho_e'] });
+
+describe('alça do ponto no quadro de "Ir ao quadro", mesmo num buraco longo', () => {
+  it('a janela de 15 quadros não alcança o extremo, mas a sugestão para a correção usa o quadro mais perto com o ponto', () => {
+    const t = buracoLongo();
+    const [item] = agruparItensACorrigir(analiseDe(t).pontosPerdidos);
+    expect(item.quadrosSemPonto).toBeGreaterThan(60);
+    expect(sugestoesDePontosAusentes(t, item.quadro, ['joelho_e'])).toEqual({});
+    const s = sugestaoParaCorrecao(t, item.quadro, 'joelho_e');
+    expect(s).not.toBeNull();
+    const vizinho = t.quadros[item.primeiroQuadro - 1].pontos.joelho_e;
+    expect(vizinho).toBeDefined();
+    const dist = (q: number): number => Math.abs(q - item.quadro);
+    const maisPerto = dist(item.primeiroQuadro - 1) <= dist(item.ultimoQuadro + 1) ? item.primeiroQuadro - 1 : item.ultimoQuadro + 1;
+    expect(s?.x).toBeCloseTo(t.quadros[maisPerto].pontos.joelho_e.x, 6);
+    expect(s?.y).toBeCloseTo(t.quadros[maisPerto].pontos.joelho_e.y, 6);
+  });
+
+  it('depois de corrigir só o primeiro e o último quadro o item continua, e o quadro de destino continua com alça', () => {
+    const ref = inteira();
+    const [antes] = agruparItensACorrigir(analiseDe(buracoLongo()).pontosPerdidos);
+    let t = buracoLongo();
+    for (const i of [antes.primeiroQuadro, antes.ultimoQuadro]) {
+      const p = ref.quadros[i].pontos.joelho_e;
+      t = corrigirPonto(t, i, 'joelho_e', { x: p.x, y: p.y });
+    }
+    const itens = agruparItensACorrigir(analiseDe(t).pontosPerdidos);
+    expect(itens).toHaveLength(1);
+    expect(sugestoesDePontosAusentes(t, itens[0].quadro, ['joelho_e'])).toEqual({});
+    expect(sugestaoParaCorrecao(t, itens[0].quadro, 'joelho_e')).not.toBeNull();
+  });
+
+  it('ponto que nunca foi detectado começa na média dos pontos ligados a ele no quadro; nada é gravado na trilha', () => {
+    const t = nuncaDetectado();
+    const [item] = agruparItensACorrigir(analiseDe(t).pontosPerdidos);
+    expect(t.quadros.every((q) => q.pontos.joelho_e === undefined)).toBe(true);
+    const s = sugestaoParaCorrecao(t, item.quadro, 'joelho_e');
+    const { quadril_e: h, tornozelo_e: a } = t.quadros[item.quadro].pontos;
+    expect(s?.x).toBeCloseTo((h.x + a.x) / 2, 6);
+    expect(s?.y).toBeCloseTo((h.y + a.y) / 2, 6);
+    expect(t.quadros.every((q) => q.pontos.joelho_e === undefined)).toBe(true);
+  });
+
+  it('não sugere nada quando o ponto já é utilizável no quadro, quando o quadro não existe ou quando não há referência', () => {
+    const t = inteira();
+    expect(sugestaoParaCorrecao(t, 100, 'joelho_e')).toBeNull();
+    expect(sugestaoParaCorrecao(t, 9999, 'joelho_e')).toBeNull();
+    const vazio: TrilhaPose = { ...t, quadros: t.quadros.map((q) => ({ ...q, pontos: {} })) };
+    expect(sugestaoParaCorrecao(vazio, 100, 'joelho_e')).toBeNull();
+  });
+});
+
+describe('análise em vídeo: buraco longo', () => {
+  beforeEach(() => {
+    mocks.ler.mockReset();
+    mocks.ler.mockImplementation(async () => video());
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, writable: true, value: vi.fn() });
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, writable: true, value: vi.fn(() => 'blob:x') });
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  });
+
+  it('"Ir ao quadro" no meio do buraco mostra a alça tracejada e o anel, e o aviso fala em anel laranja só porque ele existe', async () => {
+    await retomar(buracoLongo());
+    fireEvent.click(screen.getByTestId('aba-laudo'));
+    const botao = await screen.findByTestId('ir-ao-quadro');
+    const [item] = agruparItensACorrigir(analiseDe(buracoLongo()).pontosPerdidos);
+    fireEvent.click(botao);
+    await waitFor(() => expect(screen.getByTestId('posicao-quadro')).toHaveTextContent(new RegExp(`^Quadro ${item.quadro + 1} de `)));
+    expect(await screen.findByTestId('alca-fantasma-joelho_e')).toBeInTheDocument();
+    expect(screen.getByTestId('destaque-do-ponto')).toBeInTheDocument();
+    expect(within(screen.getByTestId('player-quadros')).getByRole('status')).toHaveTextContent(/Corrija joelho esquerdo \(anel laranja\)/);
+  });
+
+  it('ponto nunca detectado: "Ir ao quadro" também leva uma alça para o profissional arrastar', async () => {
+    await retomar(nuncaDetectado());
+    fireEvent.click(screen.getByTestId('aba-laudo'));
+    fireEvent.click((await screen.findAllByTestId('ir-ao-quadro'))[0]);
+    expect(await screen.findByTestId('alca-fantasma-joelho_e')).toBeInTheDocument();
+    expect(screen.getByTestId('destaque-do-ponto')).toBeInTheDocument();
   });
 });

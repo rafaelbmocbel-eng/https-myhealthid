@@ -29,10 +29,12 @@ const botao = 'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-
 
 const ladoNaFrase = (l: ChaveLado, marcha: boolean): string => (l === 'unico' ? '' : ` (${marcha ? 'pé' : 'lado'} ${ROTULO_LADO[l]})`);
 
-function CartaoDoPonto({ item, marcha, aoIr }: { item: ItemACorrigir; marcha: boolean; aoIr?: (alvo: AlvoDeCorrecao) => void }) {
+function CartaoDoPonto({ item, marcha, rotuloRepeticao, aoIr }: { item: ItemACorrigir; marcha: boolean; rotuloRepeticao: string; aoIr?: (alvo: AlvoDeCorrecao) => void }) {
   const quadros = item.quadrosSemPonto === 1 ? 'quadro' : 'quadros';
   const medidas = item.medidas.map((m) => `${m.nome}${ladoNaFrase(m.lado, marcha)}`);
   const ir = (quadro: number) => () => aoIr?.({ quadro, ponto: item.ponto });
+  // Dois itens podem cair no mesmo quadro (os dois joelhos da mesma repetição): o nome do botão diz de qual ponto e repetição ele fala.
+  const nomeDoBotao = (texto: string): string => `${texto}: ${item.rotulo}, ${rotuloRepeticao} ${item.numero}`;
   return (
     <li className="space-y-2 rounded-2xl border border-amber-500/50 bg-amber-500/5 p-3" data-testid="ponto-a-conferir" data-ponto={item.ponto} data-quadro={item.quadro}>
       <p className="text-sm font-semibold leading-snug">{item.rotulo}</p>
@@ -44,16 +46,16 @@ function CartaoDoPonto({ item, marcha, aoIr }: { item: ItemACorrigir; marcha: bo
       </p>
       {aoIr && (
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={ir(item.quadro)} data-testid="ir-ao-quadro" className={cn(botao, 'border-primary bg-primary text-primary-foreground hover:bg-primary/92')}>
+          <button type="button" onClick={ir(item.quadro)} aria-label={nomeDoBotao(`Ir ao quadro ${item.quadro + 1}`)} data-testid="ir-ao-quadro" className={cn(botao, 'border-primary bg-primary text-primary-foreground hover:bg-primary/92')}>
             <Crosshair className="h-4 w-4" aria-hidden /> Ir ao quadro {item.quadro + 1}
           </button>
           {item.primeiroQuadro !== item.quadro && (
-            <button type="button" onClick={ir(item.primeiroQuadro)} data-testid="ir-ao-primeiro-sem-ponto" className={cn(botao, 'border-border/60 bg-card hover:bg-muted/50')}>
+            <button type="button" onClick={ir(item.primeiroQuadro)} aria-label={nomeDoBotao(`Primeiro quadro sem ponto (${item.primeiroQuadro + 1})`)} data-testid="ir-ao-primeiro-sem-ponto" className={cn(botao, 'border-border/60 bg-card hover:bg-muted/50')}>
               Primeiro quadro sem ponto ({item.primeiroQuadro + 1})
             </button>
           )}
           {item.ultimoQuadro !== item.quadro && item.ultimoQuadro !== item.primeiroQuadro && (
-            <button type="button" onClick={ir(item.ultimoQuadro)} data-testid="ir-ao-ultimo-sem-ponto" className={cn(botao, 'border-border/60 bg-card hover:bg-muted/50')}>
+            <button type="button" onClick={ir(item.ultimoQuadro)} aria-label={nomeDoBotao(`Último quadro sem ponto (${item.ultimoQuadro + 1})`)} data-testid="ir-ao-ultimo-sem-ponto" className={cn(botao, 'border-border/60 bg-card hover:bg-muted/50')}>
               Último quadro sem ponto ({item.ultimoQuadro + 1})
             </button>
           )}
@@ -90,7 +92,7 @@ export default function PontosAConferir({ pontosPerdidos, protocolo, aoIrAoQuadr
         <div key={numero} className="space-y-2" role="group" aria-label={`${capitalizar(protocolo.rotuloRepeticao.singular)} ${numero}`} data-testid={`pontos-repeticao-${numero}`}>
           <h4 className="text-xs font-semibold">{capitalizar(protocolo.rotuloRepeticao.singular)} {numero}</h4>
           <ul className="space-y-2">
-            {itens.filter((i) => i.numero === numero).map((i) => <CartaoDoPonto key={i.chave} item={i} marcha={marcha} aoIr={aoIrAoQuadro} />)}
+            {itens.filter((i) => i.numero === numero).map((i) => <CartaoDoPonto key={i.chave} item={i} marcha={marcha} rotuloRepeticao={capitalizar(protocolo.rotuloRepeticao.singular)} aoIr={aoIrAoQuadro} />)}
           </ul>
         </div>
       ))}

@@ -136,6 +136,33 @@ export function sugestoesDePontosAusentes(trilha: TrilhaPose, indice: number, no
   return saida;
 }
 
+/** Pontos ligados a `nome` no esqueleto desenhado. */
+function pontosLigadosA(nome: string): string[] {
+  const saida: string[] = [];
+  for (const l of LIGACOES_CORPO) {
+    if (l.a === nome) saida.push(l.b);
+    else if (l.b === nome) saida.push(l.a);
+  }
+  return saida;
+}
+
+/**
+ * Onde pôr a alça do ponto que o profissional veio corrigir ("Ir ao quadro" dos pontos a conferir), mesmo num buraco longo: a janela de
+ * `sugestoesDePontosAusentes` (15 quadros) não alcança o meio de um trecho de vários segundos sem o ponto, e sem alça não há como corrigir.
+ * Usa o valor bruto do quadro ou o quadro mais próximo, na trilha toda, em que o ponto é utilizável; se ele nunca foi detectado, a média dos
+ * pontos ligados a ele neste quadro. É só onde a alça começa: nada vale até o profissional arrastá-la. Null se o ponto já é utilizável no
+ * quadro (a alça é a de verdade) ou se não há nenhuma referência.
+ */
+export function sugestaoParaCorrecao(trilha: TrilhaPose, indice: number, nome: string): PontoPx | null {
+  const quadro = trilha.quadros[indice];
+  if (!quadro || pontoDoQuadro(quadro, nome)) return null;
+  const proxima = sugestoesDePontosAusentes(trilha, indice, [nome], trilha.quadros.length)[nome];
+  if (proxima) return { x: proxima.x, y: proxima.y };
+  const ligados = pontosLigadosA(nome).flatMap((n) => pontoDoQuadro(quadro, n) ?? []);
+  if (!ligados.length) return null;
+  return { x: ligados.reduce((s, p) => s + p.x, 0) / ligados.length, y: ligados.reduce((s, p) => s + p.y, 0) / ligados.length };
+}
+
 export const LIGACOES_CORPO: LigacaoUi[] = (() => {
   const ligs: LigacaoUi[] = [{ a: 'ombro_e', b: 'ombro_d', lado: null }, { a: 'quadril_e', b: 'quadril_d', lado: null }];
   for (const l of ['d', 'e'] as const) {

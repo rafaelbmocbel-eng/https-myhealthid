@@ -251,9 +251,15 @@ tela leva o profissional até o quadro com o ponto destacado, usando a lupa e os
   correção resolve todas). Agrupado por repetição, mostra o ponto, os quadros sem ponto, o instante e o botão **"Ir ao quadro"**; atalhos para o
   primeiro e o último quadro sem ponto, porque a interpolação só acontece entre dois quadros-chave. "Ir ao quadro" pausa o vídeo, leva o
   player ao quadro do extremo, rola a página até ele (no celular o player fica acima das abas) e destaca o ponto: anel laranja na alça, ou na
-  alça tracejada quando o quadro não detectou o ponto, e o aviso do player diz qual ponto arrastar. A correção é a de sempre (arrastar com a
-  lupa, que vira quadro-chave); a trilha muda, a análise se refaz sozinha e o item some. Sem perda, a aba mostra só a frase discreta
-  "Nenhuma medida ficou sem valor por pontos perdidos."
+  alça tracejada quando o quadro não detectou o ponto, e o aviso do player diz qual ponto arrastar. A alça tracejada de um quadro qualquer
+  nasce do valor bruto do quadro ou do vizinho com o ponto a até 15 quadros; o quadro de "Ir ao quadro" costuma cair no meio de um buraco
+  mais longo, fora dessa janela, e por isso o ponto que o profissional veio corrigir ganha a alça com a busca na trilha toda
+  (`sugestaoParaCorrecao`): a posição do quadro mais perto com o ponto detectado ou, se ele nunca foi detectado, a média dos pontos ligados a
+  ele naquele quadro. É só onde a alça começa: nada vale até o profissional arrastá-la. Sem nenhuma referência (nem ponto vizinho no quadro)
+  não há alça, e o aviso do player diz isso em vez de falar em anel laranja. Os botões levam o nome do ponto e da repetição
+  (`aria-label`, por exemplo "Ir ao quadro 176: Joelho direito, Repetição 3"), porque dois pontos da mesma repetição podem cair no mesmo
+  quadro. A correção é a de sempre (arrastar com a lupa, que vira quadro-chave); a trilha muda, a análise se refaz sozinha e o item some.
+  Sem perda, a aba mostra só a frase discreta "Nenhuma medida ficou sem valor por pontos perdidos."
 - **Contagem no rótulo da aba.** "Laudo (beta) · 3 pontos a conferir" (nome acessível; a aba mostra a bolinha com o número). Vem de
   `useContagemPontosAConferir`, que carrega o motor sob demanda depois do rastreio, para o número aparecer antes de abrir a aba sem trazer o
   motor para o pacote principal. O número é a quantidade de itens da lista e some quando os pontos são corrigidos.

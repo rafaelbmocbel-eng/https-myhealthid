@@ -25,7 +25,7 @@ import {
   avisosDoVideo, formatarSegundos, intervaloPadrao, marcasDoScrubber, opcoesDeTaxa, taxaInicial, trechoCabeNaTaxa, trechoMaximoS, type IntervaloVideo,
 } from '@/lib/angular/analiseVideo/tempo';
 import { lerTextoDoArquivo } from '@/lib/angular/analiseVideo/videoUtil';
-import { LIGACOES_CORPO, marcacoesDoQuadro, pontosDasDefinicoes, pontosParaTela, quadroComPontos, rotuloDoPonto, sugestoesDePontosAusentes } from '@/lib/angular/analiseVideo/marcacoes';
+import { LIGACOES_CORPO, marcacoesDoQuadro, pontosDasDefinicoes, pontosParaTela, quadroComPontos, rotuloDoPonto, sugestaoParaCorrecao, sugestoesDePontosAusentes } from '@/lib/angular/analiseVideo/marcacoes';
 import {
   bandasDoGrupo, cartoesDeMetricas, compararLados, eventoParaUi, grupoInicial, gruposDeArticulacoes, marcadoresDeEventos, marcadoresExtras, modeloParaUi, seriesDoGrupoDaAnalise,
 } from '@/lib/angular/analiseVideo/resultados';
@@ -195,10 +195,16 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   }, [defsVisiveis, modelo.eventos, pontoCorrigindo]);
   const pontosTela = useMemo<PontosDoQuadro | null>(() => pontosParaTela(quadroPose), [quadroPose]);
   const marcacoesDe = useCallback((p: PontosDoQuadro): MarcacaoAnguloUi[] => (quadroPose ? marcacoesDoQuadro(defsVisiveis, quadroComPontos(quadroPose, p), direcao) : []), [quadroPose, defsVisiveis, direcao]);
-  const fantasmas = useMemo<PontosDoQuadro>(
-    () => (etapa === 'analisar' && trilha && temRastreio ? sugestoesDePontosAusentes(trilha, quadro, alcas.map((a) => a.nome)) : {}),
-    [etapa, trilha, temRastreio, quadro, alcas],
-  );
+  const fantasmas = useMemo<PontosDoQuadro>(() => {
+    if (!(etapa === 'analisar' && trilha && temRastreio)) return {};
+    const sugestoes = sugestoesDePontosAusentes(trilha, quadro, alcas.map((a) => a.nome));
+    // O quadro de "Ir ao quadro" pode estar no meio de um buraco longo, fora da janela de vizinhos: sem alça ali o ponto não teria como ser corrigido.
+    if (pontoCorrigindo && pontoCorrigindo.quadro === quadro && !sugestoes[pontoCorrigindo.nome]) {
+      const inicial = sugestaoParaCorrecao(trilha, quadro, pontoCorrigindo.nome);
+      if (inicial) sugestoes[pontoCorrigindo.nome] = inicial;
+    }
+    return sugestoes;
+  }, [etapa, trilha, temRastreio, quadro, alcas, pontoCorrigindo]);
   const corrigidosNoQuadro = trilha ? pontosCorrigidosNoQuadro(trilha, quadro) : [];
 
   // ---------- carregar o vídeo ----------
@@ -602,8 +608,12 @@ export default function AnaliseVideo({ paciente, entrada, modeloInicial = 'march
   const temFantasma = Object.keys(fantasmas).length > 0;
   let avisoQuadro: string | null = null;
   if (etapa === 'analisar' && temRastreio && !pontosTela) avisoQuadro = temFantasma ? 'Corpo não detectado neste quadro. Arraste os pontos tracejados para posicioná-los.' : 'Corpo não detectado neste quadro';
-  else if (etapa === 'analisar' && podeCorrigir && pontoCorrigindo && pontoCorrigindo.quadro === quadro) avisoQuadro = `Corrija ${rotuloDoPonto(pontoCorrigindo.nome).toLowerCase()} (anel laranja): arraste até a posição da articulação.`;
-  else if (etapa === 'analisar' && podeCorrigir && temFantasma) avisoQuadro = 'Pontos tracejados: não detectados. Arraste até o lugar certo.';
+  else if (etapa === 'analisar' && podeCorrigir && pontoCorrigindo && pontoCorrigindo.quadro === quadro) {
+    const rotulo = rotuloDoPonto(pontoCorrigindo.nome).toLowerCase();
+    const temAlca = !!pontosTela?.[pontoCorrigindo.nome] || !!fantasmas[pontoCorrigindo.nome];
+    if (temAlca) avisoQuadro = `Corrija ${rotulo} (anel laranja): arraste até a posição da articulação.`;
+    else avisoQuadro = `Sem alça para ${rotulo} neste quadro: ele não foi detectado em nenhum quadro e os pontos ligados a ele também faltam aqui. Vá a outro quadro.`;
+  } else if (etapa === 'analisar' && podeCorrigir && temFantasma) avisoQuadro = 'Pontos tracejados: não detectados. Arraste até o lugar certo.';
   const avisosVideo = video ? avisosDoVideo({ duracao: video.duracao, largura: video.largura, altura: video.altura, tamanho: video.tamanho }).mensagens : [];
 
   if (etapa === 'enviar' || !video) {
