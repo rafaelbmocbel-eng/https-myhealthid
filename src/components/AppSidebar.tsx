@@ -29,7 +29,7 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   // com o item "Financeiro", que abre /pacientes?tab=financeiro).
   { label: 'Pacientes', href: '/pacientes', icon: Users, modulo: 'pacientes', queryExclude: 'tab=financeiro' },
   { label: 'Exercícios', href: '/exercicios', icon: Dumbbell },
-  { label: 'Aplicações', href: '/aplicacoes', icon: LayoutGrid },
+  { label: 'Aplicações', href: '/aplicacoes', icon: LayoutGrid, modulo: 'aplicacoes' },
   // Zap navega pra /crm/inbox (redireciona pra /crm?tab=inbox → pathname /crm).
   { label: 'Zap', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true, modulo: 'crm', match: '/crm' },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: DollarSign, modulo: 'financeiro_avancado', match: '/pacientes', queryFlag: 'tab=financeiro' },
@@ -59,7 +59,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
   const itensDoPlano = NAV_ITEMS.filter(item =>
     (!item.serviceKey || servicos[item.serviceKey]) &&
     // Esconde funcionalidades que o plano do usuário não libera (gating).
-    (!item.modulo || temAcessoModulo(plano, item.modulo))
+    (!item.modulo || isSuperAdmin || temAcessoModulo(plano, item.modulo))
   );
   // Fila de chancela: só a equipe científica MyHealthID vê; entra antes de "Configurações".
   const itemChancela: typeof NAV_ITEMS[number] = { label: 'Chancela', href: ROTA_CHANCELA, icon: ShieldCheck, chancelaBadge: true };

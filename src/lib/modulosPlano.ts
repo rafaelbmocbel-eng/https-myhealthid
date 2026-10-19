@@ -16,6 +16,7 @@ export const MODULOS_CATALOGO: Record<string, string> = {
   multi_profissional: 'Multi-profissional na mesma clínica',
   painel_dono: 'Painel do dono com visão consolidada',
   comissoes: 'Gestão de comissões por profissional',
+  aplicacoes: 'Aplicações clínicas (dinamometria, dosagem, análise angular e laudo do movimento)',
 };
 
 /** Lista de chaves na ordem do catálogo. */
