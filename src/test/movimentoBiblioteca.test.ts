@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BIBLIOTECA, CHAVES_ACHADO, entradaDaBiblioteca, termoProibido, type EntradaBiblioteca, type FonteBiblio } from '../lib/angular/movimento';
-import { AVALIACAO, ITENS_PRIMARIO, ITENS_REVISAO, ROTULO_DECISAO } from '../lib/angular/movimento/biblioteca/avaliacaoMetodologica';
+import { AVALIACAO, ITENS_PRIMARIO, ITENS_REVISAO, ROTULO_DECISAO, type AvaliacaoPrimario } from '../lib/angular/movimento/biblioteca/avaliacaoMetodologica';
 import { FONTES } from '../lib/angular/movimento/biblioteca/fontes';
 import { textoQualidade } from '../lib/angular/movimento/frases';
 
@@ -410,7 +410,7 @@ describe('correções da revisão dos achados de evidência (texto completo das 
     expect(f.texto).not.toMatch(/e a assimetria entre os membros/);
     expect(f.texto).toMatch(/nos dois lados/);
     expect(f.ressalva).toMatch(/efeito de 0,30 e poder de 0,30/);
-    expect(AVALIACAO['37524846'].itens.amostra[0]).toBe('nao_atende');
+    expect((AVALIACAO['37524846'] as AvaliacaoPrimario).itens.amostra[0]).toBe('nao_atende');
   });
 
   it('osteoartrite na marcha: comparação com controles, rótulo observacional e a cautela dos autores de Steingrebe na limitação principal', () => {
@@ -438,7 +438,7 @@ describe('correções da revisão dos achados de evidência (texto completo das 
     expect(f.ressalva).toMatch(/unicaudais/);
     expect(f.ressalva).toMatch(/bicaudal/);
     expect(FONTES.walker2026.limitacaoPrincipal).toMatch(/unicaudais/);
-    expect(AVALIACAO['42516619'].itens.comparacoes_multiplas[0]).toBe('nao_atende');
+    expect((AVALIACAO['42516619'] as AvaliacaoPrimario).itens.comparacoes_multiplas[0]).toBe('nao_atende');
   });
 
   it('Haberkamp 2022: a tela não diz que o modelo validado é o do app (o app usa o MediaPipe)', () => {
