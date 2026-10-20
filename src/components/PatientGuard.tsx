@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AppErrorBoundary from './AppErrorBoundary';
+import { registrarLimpezaDeCacheDoUsuario } from '@/lib/contaCliente';
 
 /**
  * Wraps professional-only routes. If the logged-in user is a patient, they are
@@ -14,6 +15,10 @@ import AppErrorBoundary from './AppErrorBoundary';
 type RoleResult = 'patient' | 'professional' | 'unknown';
 const roleCache = new Map<string, RoleResult>();
 const inflight = new Map<string, Promise<RoleResult>>();
+registrarLimpezaDeCacheDoUsuario(() => {
+  roleCache.clear();
+  inflight.clear();
+});
 
 async function resolveRole(userId: string, userEmail?: string, userName?: string, isPatient?: boolean): Promise<RoleResult> {
   const cached = roleCache.get(userId);

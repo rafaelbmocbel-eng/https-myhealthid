@@ -5,10 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import PortalErrorBoundary from './PortalErrorBoundary';
 import PortalErrorState from './PortalErrorState';
+import { registrarLimpezaDeCacheDoUsuario } from '@/lib/contaCliente';
 
 // Cada página do portal também se envolve neste guard; o cache evita refazer
 // as consultas de papel (e o spinner extra) a cada troca de tela.
 const pacienteOkCache = new Set<string>();
+registrarLimpezaDeCacheDoUsuario(() => pacienteOkCache.clear());
 
 interface Props {
   children: ReactNode;

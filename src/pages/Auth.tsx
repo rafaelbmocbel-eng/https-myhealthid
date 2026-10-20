@@ -10,6 +10,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import LogoIcon from '@/components/LogoIcon';
+import CartaoContaDeCliente from '@/components/paciente/CartaoContaDeCliente';
 
 export default function Auth() {
   const { user, signIn, signUp, loading } = useAuth();
@@ -25,7 +26,23 @@ export default function Auth() {
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
 
   if (!loading && user) {
-    if (user.user_metadata?.is_patient === true) return <Navigate to="/paciente/dashboard" replace />;
+    if (user.user_metadata?.is_patient === true) {
+      // Quem veio do CTA de cadastro profissional já com login de cliente precisa saber
+      // por que não está criando a conta profissional, em vez de cair no portal em silêncio.
+      if (searchParams.get('modo') === 'cadastro') {
+        const emailDoCliente = user.email ?? '';
+        return (
+          <CartaoContaDeCliente
+            email={emailDoCliente}
+            onExcluida={() => {
+              setTab('register');
+              if (emailDoCliente) setForm((f) => ({ ...f, email: emailDoCliente }));
+            }}
+          />
+        );
+      }
+      return <Navigate to="/paciente/dashboard" replace />;
+    }
     // Honra ?redirect= (ex.: aceitar convite de clínica) — só caminhos internos.
     const redirect = new URLSearchParams(window.location.search).get('redirect');
     if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
@@ -164,6 +181,16 @@ export default function Auth() {
                 <Link to="/paciente/login" className="font-bold text-primary hover:underline">Ir ao portal do cliente →</Link>
               </span>
             </div>
+          )}
+
+          {tab === 'register' && (
+            <p className="mb-4 text-xs text-muted-foreground">
+              Já usou este e-mail como cliente? Para usá-lo como profissional,{' '}
+              <Link to="/paciente/login" className="font-semibold text-primary hover:underline">
+                entre pelo portal do cliente
+              </Link>{' '}
+              e exclua a conta de cliente em Perfil &gt; Excluir minha conta.
+            </p>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">

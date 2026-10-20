@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { User, Mail, Phone, Calendar, Pencil } from 'lucide-react';
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 import PacienteSenhaCard from '@/components/paciente/PacienteSenhaCard';
+import ExcluirContaCliente from '@/components/paciente/ExcluirContaCliente';
 import { usePacientePortal } from '@/hooks/usePacientePortal';
 
 export default function PacientePerfil() {
@@ -100,6 +101,8 @@ export default function PacientePerfil() {
               terapeutaId={paciente.terapeuta_id}
             />
           )}
+
+          <ExcluirContaCliente />
         </div>
       </PacienteLayout>
     </ProtectedPatientRoute>

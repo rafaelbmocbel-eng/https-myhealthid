@@ -321,3 +321,38 @@ Atualização do pacote de segurança (decisões do Rafael, 08/10/2026, migratio
   (cada plano edita o que abre). O dono do produto (super-admin) acessa sempre.
 - Implementação: módulo em `src/lib/modulosPlano.ts`, guarda `ModuloGuard` nas seis rotas das aplicações e filtro do menu em
   `AppSidebar.tsx`; migração `20261018220000_modulo_aplicacoes_planos.sql`; testes em `src/test/aplicacoesPlanoPago.test.tsx`.
+
+## Exclusão da conta do cliente (19/10/2026)
+
+Pedido do Rafael, a partir de um caso real: um profissional criou por engano um perfil de **cliente** com o próprio e-mail e
+queria usar o **mesmo e-mail como profissional**. Como o e-mail já existia como usuário de cliente, o cadastro não criava outra
+conta e o login (senha ou Google, que liga ao mesmo usuário) devolvia a conta de cliente, que `Auth.tsx` mandava em silêncio ao portal.
+
+**Decisões de produto**
+
+- O **cliente pode excluir a própria conta**, sozinho, em Perfil > "Excluir minha conta". A exclusão é **definitiva**.
+- Apaga o **login** (`auth.users`), o **acesso ao portal** (`portal_pacientes`) e o que é só do cliente.
+- Os **registros clínicos feitos por profissionais que atendem o cliente** (`public.pacientes` e tabelas filhas) **permanecem com o
+  profissional** (guarda de prontuário) e só perdem o vínculo de login (`user_id` vira `NULL`). A interface diz isso com clareza:
+  o cliente perde o acesso a esses registros.
+- Depois de excluir, o mesmo e-mail pode ser usado para criar outra conta, **inclusive de profissional**.
+- **Conta de profissional nunca é excluída por este caminho** (a RPC recusa com `conta_de_profissional`; a tela manda falar com o suporte).
+- **A guarda de prontuário por profissionais deve ser confirmada pelo Rafael com o jurídico** (prazo, base legal e o que o cliente
+  pode pedir de volta).
+
+**Como a tela se comporta**
+
+- Confirmação digitando `EXCLUIR`; quem tem login por senha também informa a senha (conta só Google não pede senha e é avisada de que
+  pode ser preciso entrar de novo). Erros da RPC (`nao_autenticado`, `confirmacao_invalida`, `conta_de_profissional`,
+  `conta_nao_e_de_cliente`, `senha_obrigatoria`, `senha_incorreta`, `reautenticar`) viram mensagens em português; `reautenticar` e
+  `nao_autenticado` oferecem "Sair e entrar de novo".
+- Sucesso: encerra a sessão, limpa os caches (React Query e os caches de papel dos guardas), mostra o aviso "Conta excluída" e vai à
+  página inicial.
+- Em `/auth?modo=cadastro` (CTA "Começar como profissional") com **cliente logado**, não há mais redirecionamento silencioso: aparece o
+  cartão "Esta conta é de cliente" com três saídas ("Continuar como cliente", "Excluir minha conta de cliente e criar perfil
+  profissional" e "Sair"). Depois de excluir por ali, volta ao cadastro com o e-mail preenchido. Nos demais casos o comportamento é o de
+  antes (cliente em `/auth` vai ao portal; profissional vai a `/hoje`; `?redirect=` preservado).
+- A aba de cadastro ganhou uma dica estática (sem revelar se o e-mail existe) apontando o caminho pelo portal do cliente.
+- Implementação: `src/components/paciente/ExcluirContaCliente.tsx`, `CartaoContaDeCliente.tsx`, `src/lib/contaCliente.ts`; RPC
+  `excluir_minha_conta_cliente(p_confirmacao, p_senha)`; testes em `src/test/excluirContaCliente*.test.tsx` e
+  `src/test/authCadastroContaCliente.test.tsx`.
