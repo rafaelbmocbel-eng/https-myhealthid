@@ -1,24 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 import {
+  EMAIL_SUPORTE,
   PALAVRA_CONFIRMACAO,
-  MENSAGEM_ERRO_EXCLUSAO,
   apagarSessaoLocal,
   confirmacaoValida,
   contaTemSenha,
   excluirMinhaContaCliente,
   exigeNovoLogin,
+  guardarAvisoContaExcluida,
   limparCachesDoUsuario,
+  mensagemDoErroExclusao,
   navegador,
+  removerFotoDoCliente,
+  sugereSuporte,
   type CodigoErroExclusao,
 } from '@/lib/contaCliente';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -48,6 +54,10 @@ export interface ExcluirContaClienteProps {
   onExcluida?: () => void;
   /** Aviso mostrado após a exclusão. */
   avisoSucesso?: AvisoExclusao;
+  /** Rota onde a pessoa volta a cair depois de "Sair e entrar de novo" (padrão: o perfil do portal). */
+  retornoAposLogin?: string;
+  /** Botão que abriu o diálogo: recebe o foco de volta ao fechar (o diálogo é controlado, sem gatilho próprio). */
+  retornoFoco?: RefObject<HTMLElement | null>;
 }
 
 interface DialogProps extends ExcluirContaClienteProps {
@@ -61,8 +71,11 @@ export function ExcluirContaClienteDialog({
   destinoAposExcluir = '/',
   onExcluida,
   avisoSucesso = AVISO_PADRAO,
+  retornoAposLogin = '/paciente/perfil',
+  retornoFoco,
 }: DialogProps) {
   const { user } = useAuth();
+  const { isPremium } = useWellnessAccess();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [texto, setTexto] = useState('');
@@ -70,13 +83,22 @@ export function ExcluirContaClienteDialog({
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [codigo, setCodigo] = useState<CodigoErroExclusao | null>(null);
+  const [tentativasRestantes, setTentativasRestantes] = useState<number | undefined>(undefined);
   // A RPC pode exigir senha mesmo quando o metadado do usuário não indica login por senha.
   const [senhaExigidaPeloServidor, setSenhaExigidaPeloServidor] = useState(false);
+  // Idem para o plano: o servidor é quem decide se há Premium ativo, a leitura do plano na tela pode estar atrasada.
+  const [premiumExigidoPeloServidor, setPremiumExigidoPeloServidor] = useState(false);
+  const [aceitaPremium, setAceitaPremium] = useState(false);
+  // A última resposta se perdeu (rede, tempo esgotado): se a próxima disser "sem sessão", a conta provavelmente já foi.
+  const semRespostaAnterior = useRef(false);
   const confirmacaoRef = useRef<HTMLInputElement>(null);
   const senhaRef = useRef<HTMLInputElement>(null);
+  const alertaRef = useRef<HTMLDivElement>(null);
 
   const pedeSenha = senhaExigidaPeloServidor || contaTemSenha(user);
-  const podeExcluir = confirmacaoValida(texto) && (!pedeSenha || senha.length > 0) && !excluindo;
+  const premiumAtivo = isPremium || premiumExigidoPeloServidor;
+  const podeExcluir =
+    confirmacaoValida(texto) && (!pedeSenha || senha.length > 0) && (!premiumAtivo || aceitaPremium) && !excluindo;
 
   useEffect(() => {
     if (aberto) return;
@@ -85,12 +107,22 @@ export function ExcluirContaClienteDialog({
     setMostrarSenha(false);
     setExcluindo(false);
     setCodigo(null);
+    setTentativasRestantes(undefined);
     setSenhaExigidaPeloServidor(false);
+    setPremiumExigidoPeloServidor(false);
+    setAceitaPremium(false);
+    semRespostaAnterior.current = false;
   }, [aberto]);
 
+  // Foco no que resolve o erro: o campo da senha, ou o próprio aviso (que o leitor de tela anuncia).
   useEffect(() => {
+    if (!codigo) return;
     if (codigo === 'senha_incorreta' || codigo === 'senha_obrigatoria') senhaRef.current?.focus();
+    else alertaRef.current?.focus();
   }, [codigo, pedeSenha]);
+
+  // Depois de entrar de novo a pessoa volta para onde estava (não para o painel, de onde teria de achar a exclusão).
+  const loginComRetorno = `/paciente/login?proxima=${encodeURIComponent(retornoAposLogin)}`;
 
   const encerrarSessao = async (escopo: 'local' | 'global'): Promise<boolean> => {
     try {
@@ -109,20 +141,29 @@ export function ExcluirContaClienteDialog({
     const resultado = await excluirMinhaContaCliente({
       confirmacao: texto,
       senha: pedeSenha ? senha : null,
+      aceitaPerderPremium: premiumAtivo && aceitaPremium,
     });
     if (resultado.ok === false) {
       setExcluindo(false);
-      setCodigo(resultado.codigo);
-      if (resultado.codigo === 'senha_obrigatoria') setSenhaExigidaPeloServidor(true);
-      if (resultado.codigo === 'senha_incorreta') setSenha('');
+      let codigoFinal = resultado.codigo;
+      if (codigoFinal === 'nao_autenticado' && semRespostaAnterior.current) codigoFinal = 'conta_possivelmente_excluida';
+      semRespostaAnterior.current = codigoFinal === 'tempo_esgotado' || codigoFinal === 'desconhecido';
+      setTentativasRestantes(resultado.tentativasRestantes);
+      setCodigo(codigoFinal);
+      if (codigoFinal === 'senha_obrigatoria') setSenhaExigidaPeloServidor(true);
+      if (codigoFinal === 'premium_requer_aceite') setPremiumExigidoPeloServidor(true);
+      if (codigoFinal === 'senha_incorreta') setSenha('');
       return;
     }
+    // Antes de encerrar a sessão: a remoção da foto precisa dela (a conta já foi apagada no servidor).
+    if (user?.id) await removerFotoDoCliente(user.id);
     const sessaoEncerrada = await encerrarSessao('local');
     limparCachesDoUsuario(queryClient);
     if (!sessaoEncerrada) {
       // A conta já foi apagada, mas o logout não chegou ao servidor e o supabase-js manteria o token:
-      // sem recarregar, o app continuaria "logado". O aviso se perderia no recarregamento.
+      // sem recarregar, o app continuaria "logado". O recarregamento apaga o aviso, então ele é guardado.
       apagarSessaoLocal();
+      guardarAvisoContaExcluida(avisoSucesso, destinoAposExcluir.startsWith('/auth') ? user?.email : undefined);
       onExcluida?.();
       navegador.recarregar(destinoAposExcluir);
       return;
@@ -134,10 +175,16 @@ export function ExcluirContaClienteDialog({
   };
 
   const sairEEntrarDeNovo = async () => {
-    await encerrarSessao('global');
+    const saiu = await encerrarSessao('global');
     limparCachesDoUsuario(queryClient);
+    if (!saiu) {
+      // Sem o logout no servidor (ex.: a conta já foi apagada) o token ficaria salvo e o app seguiria "logado".
+      apagarSessaoLocal();
+      navegador.recarregar(loginComRetorno);
+      return;
+    }
     onAbertoChange(false);
-    navigate('/paciente/login', { replace: true });
+    navigate(loginComRetorno, { replace: true });
   };
 
   return (
@@ -153,6 +200,11 @@ export function ExcluirContaClienteDialog({
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           confirmacaoRef.current?.focus();
+        }}
+        onCloseAutoFocus={(e) => {
+          if (!retornoFoco?.current) return;
+          e.preventDefault();
+          retornoFoco.current.focus();
         }}
       >
         <form
@@ -181,8 +233,35 @@ export function ExcluirContaClienteDialog({
               <ul className="mt-1 list-disc space-y-1 pl-5">
                 <li>O seu login (e-mail e senha ou acesso pelo Google).</li>
                 <li>O seu acesso ao portal do cliente e o que é só seu aqui.</li>
+                <li>A sua foto de perfil, se você enviou uma.</li>
               </ul>
             </section>
+
+            {premiumAtivo && (
+              <section
+                aria-labelledby="excluir-premium"
+                className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3"
+              >
+                <h3 id="excluir-premium" className="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                  Seu plano Premium será encerrado
+                </h3>
+                <p>
+                  Seu plano Premium ativo será encerrado junto com a conta e os dias restantes não são reembolsados.
+                </p>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="excluir-premium-aceite"
+                    checked={aceitaPremium}
+                    onCheckedChange={(marcado) => setAceitaPremium(marcado === true)}
+                    disabled={excluindo}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="excluir-premium-aceite" className="cursor-pointer text-sm font-normal leading-snug">
+                    Entendo que perco o plano Premium e os dias já pagos.
+                  </Label>
+                </div>
+              </section>
+            )}
 
             <section
               aria-labelledby="excluir-permanece"
@@ -259,9 +338,19 @@ export function ExcluirContaClienteDialog({
           {codigo && (
             <div
               role="alert"
-              className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+              ref={alertaRef}
+              tabIndex={-1}
+              className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive outline-none"
             >
-              <p>{MENSAGEM_ERRO_EXCLUSAO[codigo]}</p>
+              <p>{mensagemDoErroExclusao(codigo, tentativasRestantes)}</p>
+              {sugereSuporte(codigo) && (
+                <a
+                  href={`mailto:${EMAIL_SUPORTE}?subject=${encodeURIComponent('Excluir minha conta')}`}
+                  className="inline-block min-h-6 font-medium underline underline-offset-2"
+                >
+                  Falar com o suporte: <span className="whitespace-nowrap">{EMAIL_SUPORTE}</span>
+                </a>
+              )}
               {exigeNovoLogin(codigo) && (
                 <Button type="button" variant="outline" className="h-11 w-full" onClick={() => void sairEEntrarDeNovo()}>
                   Sair e entrar de novo
@@ -293,6 +382,7 @@ export function ExcluirContaClienteDialog({
 
 export default function ExcluirContaCliente(props: ExcluirContaClienteProps) {
   const [aberto, setAberto] = useState(false);
+  const gatilhoRef = useRef<HTMLButtonElement>(null);
 
   return (
     <>
@@ -311,6 +401,7 @@ export default function ExcluirContaCliente(props: ExcluirContaClienteProps) {
             </div>
           </div>
           <Button
+            ref={gatilhoRef}
             type="button"
             variant="outline"
             onClick={() => setAberto(true)}
@@ -320,7 +411,7 @@ export default function ExcluirContaCliente(props: ExcluirContaClienteProps) {
           </Button>
         </CardContent>
       </Card>
-      <ExcluirContaClienteDialog aberto={aberto} onAbertoChange={setAberto} {...props} />
+      <ExcluirContaClienteDialog aberto={aberto} onAbertoChange={setAberto} retornoFoco={gatilhoRef} {...props} />
     </>
   );
 }

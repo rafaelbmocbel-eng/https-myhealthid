@@ -1,21 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const h = vi.hoisted(() => ({
   user: null as Record<string, unknown> | null,
+  premium: false,
   rpc: vi.fn(),
+  remove: vi.fn(),
   signOut: vi.fn(),
   navigate: vi.fn(),
   toastSuccess: vi.fn(),
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: h.user }) }));
+vi.mock('@/hooks/useWellnessAccess', () => ({ useWellnessAccess: () => ({ isPremium: h.premium }) }));
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     rpc: (...a: unknown[]) => h.rpc(...a),
     auth: { signOut: (...a: unknown[]) => h.signOut(...a) },
+    storage: { from: () => ({ remove: (...a: unknown[]) => h.remove(...a) }) },
   },
 }));
 vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: (...a: unknown[]) => h.toastSuccess(...a), error: vi.fn() }) }));
@@ -24,8 +28,16 @@ vi.mock('react-router-dom', async (importOriginal) => ({
   useNavigate: () => h.navigate,
 }));
 
+// O Checkbox do Radix mede o elemento com ResizeObserver, que o jsdom não tem.
+class ResizeObserverFalso {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal('ResizeObserver', ResizeObserverFalso);
+
 import ExcluirContaCliente from '@/components/paciente/ExcluirContaCliente';
-import { navegador, registrarLimpezaDeCacheDoUsuario } from '@/lib/contaCliente';
+import { navegador, registrarLimpezaDeCacheDoUsuario, TEMPO_LIMITE_EXCLUSAO_MS } from '@/lib/contaCliente';
 
 const usuarioComSenha = {
   id: 'cli-1',
@@ -66,14 +78,21 @@ function preencher(rotulo: HTMLElement, valor: string) {
 
 beforeEach(() => {
   h.user = usuarioComSenha;
+  h.premium = false;
   h.rpc.mockReset();
   h.rpc.mockResolvedValue({ data: { ok: true, pacientes_desvinculados: 0 }, error: null });
+  h.remove.mockReset();
+  h.remove.mockResolvedValue({ data: [], error: null });
+  window.sessionStorage.clear();
   h.signOut.mockReset();
   h.signOut.mockResolvedValue({ error: null });
   h.navigate.mockReset();
   h.toastSuccess.mockReset();
 });
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('Excluir minha conta (cliente): cartão e diálogo', () => {
   it('mostra um cartão discreto e só abre o diálogo ao tocar', async () => {
@@ -91,6 +110,8 @@ describe('Excluir minha conta (cliente): cartão e diálogo', () => {
     expect(dialogo).toHaveTextContent('O que será apagado');
     expect(dialogo).toHaveTextContent('O seu login');
     expect(dialogo).toHaveTextContent('O seu acesso ao portal do cliente');
+    expect(dialogo).toHaveTextContent('A sua foto de perfil, se você enviou uma');
+    expect(screen.queryByText('Seu plano Premium será encerrado')).not.toBeInTheDocument();
     expect(dialogo).toHaveTextContent('O que permanece');
     expect(dialogo).toHaveTextContent('Os registros feitos pelos profissionais que te atendem ficam com eles');
     expect(dialogo).toHaveTextContent('guarda de prontuário');
@@ -144,6 +165,7 @@ describe('Excluir minha conta (cliente): cartão e diálogo', () => {
     expect(h.rpc).toHaveBeenCalledWith('excluir_minha_conta_cliente', {
       p_confirmacao: 'EXCLUIR',
       p_senha: 'minha-senha',
+      p_aceita_perder_premium: false,
     });
   });
 
@@ -178,7 +200,11 @@ describe('Excluir minha conta (cliente): cartão e diálogo', () => {
     expect(botaoExcluir()).toBeEnabled();
     fireEvent.click(botaoExcluir());
     await waitFor(() => expect(h.rpc).toHaveBeenCalledTimes(1));
-    expect(h.rpc).toHaveBeenCalledWith('excluir_minha_conta_cliente', { p_confirmacao: 'EXCLUIR', p_senha: null });
+    expect(h.rpc).toHaveBeenCalledWith('excluir_minha_conta_cliente', {
+      p_confirmacao: 'EXCLUIR',
+      p_senha: null,
+      p_aceita_perder_premium: false,
+    });
   });
 
   it('mostra o estado de carregamento e impede fechar enquanto exclui', async () => {
@@ -217,7 +243,10 @@ describe('Excluir minha conta (cliente): erros da RPC em mensagens humanas', () 
     ['confirmacao_invalida', /A confirmação não confere\. Digite EXCLUIR/],
     ['conta_de_profissional', /conta de profissional e não pode ser excluída por aqui\. Fale com o suporte/],
     ['conta_nao_e_de_cliente', /não é de cliente.*fale com o suporte/i],
-    ['senha_incorreta', /Senha incorreta/],
+    ['tente_novamente', /exclusão em andamento/],
+    ['muitas_tentativas', /Muitas tentativas.*15 minutos/],
+    ['cadastro_precisa_correcao', /CPF.*corrigir/],
+    ['falha_ao_excluir', /problema no servidor e nada foi alterado/],
   ];
 
   it.each(casos)('%s', async (codigo, mensagem) => {
@@ -227,17 +256,42 @@ describe('Excluir minha conta (cliente): erros da RPC em mensagens humanas', () 
     expect(alerta).not.toHaveTextContent(codigo);
     expect(h.signOut).not.toHaveBeenCalled();
     expect(h.navigate).not.toHaveBeenCalled();
-    // Senha incorreta limpa o campo, então o botão só volta quando a pessoa digita de novo.
-    if (codigo === 'senha_incorreta') preencher(campoSenha(), 'outra-senha');
     expect(botaoExcluir()).toBeEnabled();
   });
 
-  it('senha incorreta limpa o campo e devolve o foco a ele', async () => {
-    h.rpc.mockResolvedValue({ data: null, error: { message: 'senha_incorreta' } });
-    await tentarExcluir();
+  it('o servidor responde senha errada como retorno {ok:false}: mensagem com tentativas restantes, campo limpo e com o foco', async () => {
+    h.rpc.mockResolvedValue({ data: { ok: false, erro: 'senha_incorreta', tentativas_restantes: 3 }, error: null });
+    const alerta = await tentarExcluir();
+    expect(alerta).toHaveTextContent('Senha incorreta. Restam 3 tentativas antes de um bloqueio de 15 minutos.');
     await waitFor(() => expect(campoSenha()).toHaveFocus());
     expect(campoSenha()).toHaveValue('');
     expect(campoSenha()).toHaveAttribute('aria-invalid', 'true');
+    expect(h.signOut).not.toHaveBeenCalled();
+    expect(h.remove).not.toHaveBeenCalled();
+    preencher(campoSenha(), 'outra-senha');
+    expect(botaoExcluir()).toBeEnabled();
+  });
+
+  it('mensagens que mandam falar com o suporte trazem o e-mail como link', async () => {
+    h.rpc.mockResolvedValue({ data: null, error: { message: 'falha_ao_excluir' } });
+    const alerta = await tentarExcluir();
+    const link = within(alerta).getByRole('link', { name: /contato@myhealthid\.com\.br/ });
+    expect(link).toHaveAttribute('href', expect.stringMatching(/^mailto:contato@myhealthid\.com\.br\?subject=/));
+  });
+
+  it('erros sem campo próprio levam o foco ao aviso (leitor de tela e teclado não ficam perdidos)', async () => {
+    h.rpc.mockResolvedValue({ data: null, error: { message: 'falha_ao_excluir' } });
+    const alerta = await tentarExcluir();
+    await waitFor(() => expect(alerta).toHaveFocus());
+  });
+
+  it('senha errada não conta como "sem resposta": a sessão perdida depois continua sendo só "sessão expirada"', async () => {
+    h.rpc.mockResolvedValueOnce({ data: { ok: false, erro: 'senha_incorreta', tentativas_restantes: 4 }, error: null });
+    await tentarExcluir();
+    preencher(campoSenha(), 'outra');
+    h.rpc.mockResolvedValueOnce({ data: null, error: { message: 'nao_autenticado' } });
+    fireEvent.click(botaoExcluir());
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Sua sessão expirou'));
   });
 
   it('senha_obrigatoria numa conta sem metadado de senha revela o campo de senha', async () => {
@@ -259,8 +313,45 @@ describe('Excluir minha conta (cliente): erros da RPC em mensagens humanas', () 
     const alerta = await tentarExcluir();
     expect(alerta).toHaveTextContent(/entre de novo/i);
     fireEvent.click(screen.getByRole('button', { name: 'Sair e entrar de novo' }));
-    await waitFor(() => expect(h.navigate).toHaveBeenCalledWith('/paciente/login', { replace: true }));
+    // Depois do login a pessoa volta ao Perfil (de onde se exclui), não ao painel.
+    await waitFor(() =>
+      expect(h.navigate).toHaveBeenCalledWith('/paciente/login?proxima=%2Fpaciente%2Fperfil', { replace: true }),
+    );
     expect(h.signOut).toHaveBeenCalledTimes(1);
+    expect(h.signOut).toHaveBeenCalledWith({ scope: 'global' });
+  });
+
+  it('o retorno depois do login pode ser outro (o cartão do /auth volta ao cadastro profissional)', async () => {
+    h.rpc.mockResolvedValue({ data: null, error: { message: 'reautenticar' } });
+    renderizar({ retornoAposLogin: '/auth?modo=cadastro' });
+    await abrirDialogo();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(botaoExcluir());
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Sair e entrar de novo' }));
+    await waitFor(() =>
+      expect(h.navigate).toHaveBeenCalledWith('/paciente/login?proxima=%2Fauth%3Fmodo%3Dcadastro', { replace: true }),
+    );
+  });
+
+  it('se o logout global falhar (ex.: a conta já foi apagada), apaga a sessão salva e recarrega no login em vez de seguir logado', async () => {
+    h.rpc.mockResolvedValue({ data: null, error: { message: 'reautenticar' } });
+    h.signOut.mockRejectedValue(new Error('sem rede'));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    window.localStorage.setItem('sb-abc123-auth-token', '{"access_token":"x"}');
+    const recarregar = vi.spyOn(navegador, 'recarregar').mockImplementation(() => {});
+    renderizar();
+    await abrirDialogo();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(botaoExcluir());
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Sair e entrar de novo' }));
+    await waitFor(() => expect(recarregar).toHaveBeenCalledWith('/paciente/login?proxima=%2Fpaciente%2Fperfil'));
+    expect(window.localStorage.getItem('sb-abc123-auth-token')).toBeNull();
+    expect(h.navigate).not.toHaveBeenCalled();
+    recarregar.mockRestore();
   });
 
   it('erro de rede (exceção) vira mensagem genérica e permite tentar de novo', async () => {
@@ -364,8 +455,225 @@ describe('Excluir minha conta (cliente): sucesso', () => {
     expect(qc.getQueryCache().getAll()).toHaveLength(0);
     expect(onExcluida).toHaveBeenCalledTimes(1);
     expect(h.navigate).not.toHaveBeenCalled();
+    // O recarregamento apaga o aviso de sucesso: ele fica guardado na sessão para a próxima carga (e o e-mail
+    // também, porque o destino é o cadastro).
+    expect(JSON.parse(window.sessionStorage.getItem('mh_conta_excluida') ?? 'null')).toEqual({
+      titulo: 'Conta excluída',
+      descricao: 'Seu login e o acesso ao portal foram apagados.',
+    });
+    expect(window.sessionStorage.getItem('mh_conta_excluida_email')).toBe('cliente@exemplo.com');
     recarregar.mockRestore();
     aviso.mockRestore();
     window.localStorage.removeItem('outra-chave');
+  });
+
+  it('no plano B com destino fora do cadastro, o e-mail da conta apagada não é guardado', async () => {
+    h.signOut.mockResolvedValue({ error: { message: 'Failed to fetch' } });
+    const recarregar = vi.spyOn(navegador, 'recarregar').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    renderizar();
+    await abrirDialogo();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(botaoExcluir());
+    await waitFor(() => expect(recarregar).toHaveBeenCalledWith('/'));
+    expect(window.sessionStorage.getItem('mh_conta_excluida')).not.toBeNull();
+    expect(window.sessionStorage.getItem('mh_conta_excluida_email')).toBeNull();
+    recarregar.mockRestore();
+  });
+});
+
+describe('Excluir minha conta (cliente): foto de perfil no Storage', () => {
+  async function excluirComSucesso() {
+    renderizar();
+    await abrirDialogo();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(botaoExcluir());
+  }
+
+  it('remove a foto do próprio cliente DEPOIS da RPC e ANTES de encerrar a sessão (a policy exige a sessão)', async () => {
+    const ordem: string[] = [];
+    h.rpc.mockImplementation(async () => {
+      ordem.push('rpc');
+      return { data: { ok: true, pacientes_desvinculados: 0 }, error: null };
+    });
+    h.remove.mockImplementation(async () => {
+      ordem.push('remove');
+      return { data: [], error: null };
+    });
+    h.signOut.mockImplementation(async () => {
+      ordem.push('signOut');
+      return { error: null };
+    });
+    h.navigate.mockImplementation(() => {
+      ordem.push('navigate');
+    });
+    await excluirComSucesso();
+    await waitFor(() => expect(ordem).toEqual(['rpc', 'remove', 'signOut', 'navigate']));
+    expect(h.remove).toHaveBeenCalledWith(['cli-1/avatar.jpg']);
+  });
+
+  it('se a RPC recusar, a foto NÃO é apagada (senha errada não pode custar a foto)', async () => {
+    h.rpc.mockResolvedValue({ data: { ok: false, erro: 'senha_incorreta', tentativas_restantes: 2 }, error: null });
+    await excluirComSucesso();
+    await screen.findByRole('alert');
+    expect(h.remove).not.toHaveBeenCalled();
+  });
+
+  it('falha ao remover a foto não trava a exclusão: a sessão encerra e a navegação acontece', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    h.remove.mockRejectedValue(new Error('storage fora do ar'));
+    await excluirComSucesso();
+    await waitFor(() => expect(h.navigate).toHaveBeenCalledWith('/', { replace: true }));
+    expect(h.signOut).toHaveBeenCalledTimes(1);
+    expect(h.toastSuccess).toHaveBeenCalled();
+  });
+});
+
+describe('Excluir minha conta (cliente): plano Premium ativo', () => {
+  it('avisa com destaque que o plano será encerrado e os dias restantes não são reembolsados, e exige a ciência', async () => {
+    h.premium = true;
+    renderizar();
+    const dialogo = await abrirDialogo();
+    expect(within(dialogo).getByRole('heading', { name: 'Seu plano Premium será encerrado' })).toBeInTheDocument();
+    expect(dialogo).toHaveTextContent('Seu plano Premium ativo será encerrado junto com a conta e os dias restantes não são reembolsados.');
+
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    const ciencia = screen.getByRole('checkbox', { name: /Entendo que perco o plano Premium/ });
+    expect(ciencia).not.toBeChecked();
+    expect(botaoExcluir()).toBeDisabled();
+    fireEvent.click(ciencia);
+    expect(ciencia).toBeChecked();
+    expect(botaoExcluir()).toBeEnabled();
+    fireEvent.click(ciencia);
+    expect(botaoExcluir()).toBeDisabled();
+    expect(h.rpc).not.toHaveBeenCalled();
+  });
+
+  it('com a ciência marcada, envia p_aceita_perder_premium = true', async () => {
+    h.premium = true;
+    renderizar();
+    await abrirDialogo();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(screen.getByRole('checkbox', { name: /Entendo que perco o plano Premium/ }));
+    fireEvent.click(botaoExcluir());
+    await waitFor(() => expect(h.rpc).toHaveBeenCalledTimes(1));
+    expect(h.rpc).toHaveBeenCalledWith('excluir_minha_conta_cliente', {
+      p_confirmacao: 'EXCLUIR',
+      p_senha: 'minha-senha',
+      p_aceita_perder_premium: true,
+    });
+  });
+
+  it('sem Premium não aparece aviso nem caixa, e o aceite vai como false', async () => {
+    renderizar();
+    const dialogo = await abrirDialogo();
+    expect(within(dialogo).queryByRole('checkbox')).not.toBeInTheDocument();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(botaoExcluir());
+    await waitFor(() => expect(h.rpc).toHaveBeenCalledWith('excluir_minha_conta_cliente', expect.objectContaining({ p_aceita_perder_premium: false })));
+  });
+
+  it('se a tela não sabia do Premium mas o servidor sabe (premium_requer_aceite), a caixa aparece e o reenvio leva o aceite', async () => {
+    h.rpc.mockResolvedValueOnce({ data: null, error: { message: 'premium_requer_aceite' } });
+    renderizar();
+    const dialogo = await abrirDialogo();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(botaoExcluir());
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveTextContent('Seu plano Premium ativo será encerrado junto com a conta');
+    expect(within(dialogo).getByRole('heading', { name: 'Seu plano Premium será encerrado' })).toBeInTheDocument();
+    expect(botaoExcluir()).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Entendo que perco o plano Premium/ }));
+    fireEvent.click(botaoExcluir());
+    await waitFor(() => expect(h.rpc).toHaveBeenCalledTimes(2));
+    expect(h.rpc).toHaveBeenLastCalledWith('excluir_minha_conta_cliente', expect.objectContaining({ p_aceita_perder_premium: true }));
+  });
+
+  it('a ciência é desmarcada ao fechar e reabrir o diálogo', async () => {
+    h.premium = true;
+    renderizar();
+    await abrirDialogo();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Entendo que perco o plano Premium/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    await abrirDialogo();
+    expect(screen.getByRole('checkbox', { name: /Entendo que perco o plano Premium/ })).not.toBeChecked();
+  });
+});
+
+describe('Excluir minha conta (cliente): foco e rede lenta', () => {
+  it('ao fechar (Cancelar ou Esc) o foco volta ao botão "Excluir minha conta"', async () => {
+    renderizar();
+    await abrirDialogo();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Excluir minha conta' })).toHaveFocus());
+
+    await abrirDialogo();
+    fireEvent.keyDown(campoConfirmacao(), { key: 'Escape', code: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Excluir minha conta' })).toHaveFocus());
+  });
+
+  it('sem resposta da RPC, depois do limite o diálogo é liberado e a mensagem diz que a conta pode já ter sido excluída', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    h.rpc.mockReturnValue(new Promise(() => {}));
+    renderizar();
+    await abrirDialogo();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(botaoExcluir());
+    expect(await screen.findByRole('button', { name: /Excluindo/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(TEMPO_LIMITE_EXCLUSAO_MS + 100);
+    });
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveTextContent('A resposta demorou demais. Sua conta pode já ter sido excluída.');
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeEnabled();
+    expect(botaoExcluir()).toBeEnabled();
+    expect(h.signOut).not.toHaveBeenCalled();
+    expect(h.remove).not.toHaveBeenCalled();
+  });
+
+  it('depois de uma tentativa sem resposta, "sessão expirada" vira "a conta pode já ter sido excluída" com saída para o login', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    h.rpc.mockReturnValueOnce(new Promise(() => {}));
+    renderizar();
+    await abrirDialogo();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(botaoExcluir());
+    await screen.findByRole('button', { name: /Excluindo/ });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(TEMPO_LIMITE_EXCLUSAO_MS + 100);
+    });
+    await screen.findByRole('alert');
+
+    h.rpc.mockResolvedValueOnce({ data: null, error: { message: 'nao_autenticado' } });
+    fireEvent.click(botaoExcluir());
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('sua conta pode já ter sido excluída'));
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Sua sessão expirou');
+    expect(screen.getByRole('button', { name: 'Sair e entrar de novo' })).toBeInTheDocument();
+  });
+
+  it('erro de rede (exceção) também conta como "sem resposta"', async () => {
+    h.rpc.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    renderizar();
+    await abrirDialogo();
+    preencher(campoConfirmacao(), 'EXCLUIR');
+    preencher(campoSenha(), 'minha-senha');
+    fireEvent.click(botaoExcluir());
+    await screen.findByRole('alert');
+    h.rpc.mockResolvedValueOnce({ data: null, error: { message: 'nao_autenticado' } });
+    fireEvent.click(botaoExcluir());
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('sua conta pode já ter sido excluída'));
   });
 });

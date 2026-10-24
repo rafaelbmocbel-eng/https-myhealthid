@@ -17,6 +17,8 @@ const h = vi.hoisted(() => {
   return {
     loja,
     rpc: vi.fn(),
+    oauth: vi.fn(),
+    remove: vi.fn(),
     supabaseSignOut: vi.fn(),
     contextoSignOut: vi.fn(),
     toastSuccess: vi.fn(),
@@ -41,7 +43,8 @@ vi.mock('@/contexts/AuthContext', async () => {
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     rpc: (...a: unknown[]) => h.rpc(...a),
-    auth: { signOut: (...a: unknown[]) => h.supabaseSignOut(...a), signInWithOAuth: vi.fn() },
+    auth: { signOut: (...a: unknown[]) => h.supabaseSignOut(...a), signInWithOAuth: (...a: unknown[]) => h.oauth(...a) },
+    storage: { from: () => ({ remove: (...a: unknown[]) => h.remove(...a) }) },
   },
 }));
 vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: (...a: unknown[]) => h.toastSuccess(...a), error: vi.fn() }) }));
@@ -92,6 +95,11 @@ beforeEach(() => {
   h.loja.definir(null);
   h.rpc.mockReset();
   h.rpc.mockResolvedValue({ data: { ok: true, pacientes_desvinculados: 1 }, error: null });
+  h.oauth.mockReset();
+  h.oauth.mockResolvedValue({ data: {}, error: null });
+  h.remove.mockReset();
+  h.remove.mockResolvedValue({ data: [], error: null });
+  window.sessionStorage.clear();
   h.supabaseSignOut.mockReset();
   h.supabaseSignOut.mockImplementation(async () => {
     h.loja.definir(null);
@@ -134,7 +142,7 @@ describe('Auth: cliente logado em /auth?modo=cadastro', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sair (usar outro e-mail)' }));
     expect(await screen.findByRole('heading', { name: 'Criar conta de profissional' })).toBeInTheDocument();
     expect(h.contextoSignOut).toHaveBeenCalledTimes(1);
-    expect(h.rpc).not.toHaveBeenCalled();
+    expect(h.rpc).not.toHaveBeenCalledWith('excluir_minha_conta_cliente', expect.anything());
   });
 
   it('excluir: abre o diálogo, chama a RPC e volta ao cadastro com o e-mail preenchido e o aviso', async () => {
@@ -149,7 +157,12 @@ describe('Auth: cliente logado em /auth?modo=cadastro', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Excluir definitivamente' }));
 
     expect(await screen.findByRole('heading', { name: 'Criar conta de profissional' })).toBeInTheDocument();
-    expect(h.rpc).toHaveBeenCalledWith('excluir_minha_conta_cliente', { p_confirmacao: 'EXCLUIR', p_senha: 'minha-senha' });
+    expect(h.rpc).toHaveBeenCalledWith('excluir_minha_conta_cliente', {
+      p_confirmacao: 'EXCLUIR',
+      p_senha: 'minha-senha',
+      p_aceita_perder_premium: false,
+    });
+    expect(h.remove).toHaveBeenCalledWith(['cli-1/avatar.jpg']);
     expect(h.supabaseSignOut).toHaveBeenCalledTimes(1);
     expect(h.toastSuccess).toHaveBeenCalledWith(
       'Conta de cliente excluída.',
@@ -172,6 +185,76 @@ describe('Auth: cliente logado em /auth?modo=cadastro', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('conta de profissional');
     expect(h.supabaseSignOut).not.toHaveBeenCalled();
     expect(h.toastSuccess).not.toHaveBeenCalled();
+  });
+});
+
+describe('Auth: cadastro profissional pelo Google não perde a intenção', () => {
+  it('na aba Cadastrar, o clique no Google deixa a marca na sessão e o redirectTo segue só com /auth e ?redirect=', async () => {
+    renderizar('/auth?modo=cadastro&redirect=/agenda');
+    window.history.pushState({}, '', '/auth?modo=cadastro&redirect=/agenda');
+    fireEvent.click(screen.getByRole('button', { name: 'Cadastrar com Google' }));
+    await waitFor(() => expect(h.oauth).toHaveBeenCalledTimes(1));
+    expect(window.sessionStorage.getItem('mh_auth_modo')).toBe('cadastro');
+    const opcoes = h.oauth.mock.calls[0][0] as { provider: string; options: { redirectTo: string } };
+    expect(opcoes.provider).toBe('google');
+    expect(opcoes.options.redirectTo).toBe(`${window.location.origin}/auth?redirect=%2Fagenda`);
+  });
+
+  it('na aba Entrar não deixa marca', async () => {
+    renderizar('/auth');
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar com Google' }));
+    await waitFor(() => expect(h.oauth).toHaveBeenCalledTimes(1));
+    expect(window.sessionStorage.getItem('mh_auth_modo')).toBeNull();
+  });
+
+  it('na volta do Google com conta de CLIENTE, a marca mostra o cartão (e não o portal em silêncio) e é consumida', async () => {
+    window.sessionStorage.setItem('mh_auth_modo', 'cadastro');
+    h.loja.definir(cliente);
+    renderizar('/auth?redirect=%2Fagenda');
+    expect(await screen.findByRole('heading', { name: 'Esta conta é de cliente' })).toBeInTheDocument();
+    expect(screen.queryByText('PORTAL DO CLIENTE')).not.toBeInTheDocument();
+    await waitFor(() => expect(window.sessionStorage.getItem('mh_auth_modo')).toBeNull());
+  });
+
+  it('a marca é de uso único: um login de cliente depois dela volta ao comportamento normal (portal)', async () => {
+    window.sessionStorage.setItem('mh_auth_modo', 'cadastro');
+    renderizar('/auth');
+    await waitFor(() => expect(window.sessionStorage.getItem('mh_auth_modo')).toBeNull());
+    cleanup();
+    h.loja.definir(cliente);
+    renderizar('/auth');
+    expect(await screen.findByText('PORTAL DO CLIENTE')).toBeInTheDocument();
+  });
+
+  it('com a marca, profissional logado continua indo a /hoje', async () => {
+    window.sessionStorage.setItem('mh_auth_modo', 'cadastro');
+    h.loja.definir(profissional);
+    renderizar('/auth');
+    expect(await screen.findByText('PAINEL /hoje')).toBeInTheDocument();
+  });
+
+  it('com o storage bloqueado o Google continua funcionando', async () => {
+    renderizar('/auth?modo=cadastro');
+    const bloqueio = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('bloqueado');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cadastrar com Google' }));
+    await waitFor(() => expect(h.oauth).toHaveBeenCalledTimes(1));
+    bloqueio.mockRestore();
+  });
+});
+
+describe('Auth: e-mail da conta excluída preenche o cadastro depois de um recarregamento', () => {
+  it('usa o e-mail guardado na sessão e o descarta', async () => {
+    window.sessionStorage.setItem('mh_conta_excluida_email', 'nicolasviegas57@gmail.com');
+    renderizar('/auth?modo=cadastro');
+    expect(screen.getByLabelText('E-mail')).toHaveValue('nicolasviegas57@gmail.com');
+    await waitFor(() => expect(window.sessionStorage.getItem('mh_conta_excluida_email')).toBeNull());
+  });
+
+  it('sem e-mail guardado o campo abre vazio', () => {
+    renderizar('/auth?modo=cadastro');
+    expect(screen.getByLabelText('E-mail')).toHaveValue('');
   });
 });
 

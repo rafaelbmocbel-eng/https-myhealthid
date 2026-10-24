@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, UserRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,7 @@ export default function CartaoContaDeCliente({ email, onExcluida }: Props) {
   const { signOut } = useAuth();
   const [excluirAberto, setExcluirAberto] = useState(false);
   const [saindo, setSaindo] = useState(false);
+  const excluirRef = useRef<HTMLButtonElement>(null);
 
   const sair = async () => {
     setSaindo(true);
@@ -67,6 +68,7 @@ export default function CartaoContaDeCliente({ email, onExcluida }: Props) {
                 Continuar como cliente
               </Button>
               <Button
+                ref={excluirRef}
                 type="button"
                 variant="outline"
                 onClick={() => setExcluirAberto(true)}
@@ -97,6 +99,8 @@ export default function CartaoContaDeCliente({ email, onExcluida }: Props) {
         aberto={excluirAberto}
         onAbertoChange={setExcluirAberto}
         destinoAposExcluir="/auth?modo=cadastro"
+        retornoAposLogin="/auth?modo=cadastro"
+        retornoFoco={excluirRef}
         avisoSucesso={{
           titulo: 'Conta de cliente excluída.',
           descricao: 'Agora você pode criar o perfil profissional com este e-mail.',

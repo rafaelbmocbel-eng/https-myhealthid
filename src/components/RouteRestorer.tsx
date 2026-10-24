@@ -91,9 +91,13 @@ export default function RouteRestorer() {
     if (alreadyRestoredThisSession) return;
     try { sessionStorage.setItem(SESSION_FLAG, '1'); } catch { /* ignore */ }
 
+    // Cliente em /auth (ex.: ?modo=cadastro) precisa ver o cartão "Esta conta é de cliente". Restaurar uma rota de
+    // profissional o mandaria, pelo guarda, direto ao portal antes de o cartão aparecer.
+    const clienteEmAuth = location.pathname === '/auth' && user.user_metadata?.is_patient === true;
+
     let saved: string | null = null;
     try {
-      if (PRO_LANDINGS.has(location.pathname)) {
+      if (PRO_LANDINGS.has(location.pathname) && !clienteEmAuth) {
         saved = localStorage.getItem(PRO_KEY);
         if (saved && TOOL_PAGES.has(saved.split('?')[0])) {
           // Stale tool-page saved — clear it so next restore doesn't repeat.

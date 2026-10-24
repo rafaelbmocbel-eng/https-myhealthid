@@ -511,6 +511,19 @@ BEGIN
 
     DELETE FROM public.portal_pacientes WHERE user_id = v_uid;
 
+    -- storage.objects.owner pode ter chave estrangeira para auth.users: a foto enviada pelo próprio cliente
+    -- travaria o DELETE abaixo. Soltar o dono não apaga o arquivo (a interface o remove logo depois, e a
+    -- policy de remoção olha a pasta, não o dono).
+    IF pg_catalog.to_regclass('storage.objects') IS NOT NULL THEN
+      BEGIN
+        EXECUTE 'UPDATE storage.objects SET owner = NULL WHERE owner = $1' USING v_uid;
+      EXCEPTION WHEN OTHERS THEN
+        -- Sem permissão ou sem a coluna (versões do Storage): segue; se a chave existir de fato, o DELETE
+        -- de auth.users abaixo acusa e a exclusão inteira é desfeita.
+        NULL;
+      END;
+    END IF;
+
     INSERT INTO public.exclusoes_conta_cliente (tipo, pacientes_desvinculados, observacao)
     VALUES ('cliente', v_desvinculados, nullif(array_to_string(v_obs, ','), ''));
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SignInSchema, SignUpSchema } from '@/lib/validations';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import LogoIcon from '@/components/LogoIcon';
 import CartaoContaDeCliente from '@/components/paciente/CartaoContaDeCliente';
+import { descartarEmailContaExcluida, lerEmailContaExcluida } from '@/lib/contaCliente';
+
+// O retorno do Google cai em /auth sem ?modo=cadastro: a intenção de criar o perfil profissional viaja na sessão.
+const CHAVE_MODO_CADASTRO = 'mh_auth_modo';
 
 export default function Auth() {
   const { user, signIn, signUp, loading } = useAuth();
@@ -23,13 +27,34 @@ export default function Auth() {
   );
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ nome: '', email: '', password: '' });
+  // E-mail da conta de cliente que acabou de ser excluída (o recarregamento por logout falho perde o estado da tela).
+  const [form, setForm] = useState(() => ({ nome: '', email: lerEmailContaExcluida(), password: '' }));
+  const [intencaoDeCadastro] = useState(() => {
+    if (searchParams.get('modo') === 'cadastro') return true;
+    try {
+      return window.sessionStorage.getItem(CHAVE_MODO_CADASTRO) === 'cadastro';
+    } catch {
+      // Storage bloqueado: sem a marca, quem volta do Google com conta de cliente cai direto no portal.
+      return false;
+    }
+  });
+
+  // Marcas de uso único: leem-se na primeira renderização (acima) e saem da sessão quando a sessão do usuário já foi resolvida.
+  useEffect(() => {
+    if (loading) return;
+    try {
+      window.sessionStorage.removeItem(CHAVE_MODO_CADASTRO);
+    } catch {
+      // Storage bloqueado: nada a limpar.
+    }
+    descartarEmailContaExcluida();
+  }, [loading]);
 
   if (!loading && user) {
     if (user.user_metadata?.is_patient === true) {
       // Quem veio do CTA de cadastro profissional já com login de cliente precisa saber
       // por que não está criando a conta profissional, em vez de cair no portal em silêncio.
-      if (searchParams.get('modo') === 'cadastro') {
+      if (intencaoDeCadastro) {
         const emailDoCliente = user.email ?? '';
         return (
           <CartaoContaDeCliente
@@ -88,6 +113,13 @@ export default function Auth() {
   const handleGoogle = async () => {
     setSubmitting(true);
     try {
+      if (tab === 'register' || searchParams.get('modo') === 'cadastro') {
+        try {
+          window.sessionStorage.setItem(CHAVE_MODO_CADASTRO, 'cadastro');
+        } catch {
+          // Storage bloqueado: o Google funciona do mesmo jeito, só perde o aviso de "conta de cliente" na volta.
+        }
+      }
       const redirect = new URL('/auth', window.location.origin);
       const r = new URLSearchParams(window.location.search).get('redirect');
       if (r && r.startsWith('/') && !r.startsWith('//')) redirect.searchParams.set('redirect', r);
@@ -97,8 +129,12 @@ export default function Auth() {
       });
       if (error) throw error;
       // Redireciona para o Google; a volta cai em /auth já autenticado.
-    } catch (err: any) {
-      toast({ title: 'Erro ao entrar com Google', description: err?.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({
+        title: 'Erro ao entrar com Google',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
       setSubmitting(false);
     }
   };
