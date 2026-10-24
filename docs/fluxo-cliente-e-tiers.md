@@ -354,5 +354,30 @@ conta e o login (senha ou Google, que liga ao mesmo usuário) devolvia a conta d
   antes (cliente em `/auth` vai ao portal; profissional vai a `/hoje`; `?redirect=` preservado).
 - A aba de cadastro ganhou uma dica estática (sem revelar se o e-mail existe) apontando o caminho pelo portal do cliente.
 - Implementação: `src/components/paciente/ExcluirContaCliente.tsx`, `CartaoContaDeCliente.tsx`, `src/lib/contaCliente.ts`; RPC
-  `excluir_minha_conta_cliente(p_confirmacao, p_senha)`; testes em `src/test/excluirContaCliente*.test.tsx` e
-  `src/test/authCadastroContaCliente.test.tsx`.
+  `excluir_minha_conta_cliente(p_confirmacao, p_senha, p_aceita_perder_premium)`; testes em
+  `src/test/excluirContaCliente*.test.tsx`, `src/test/authCadastroContaCliente.test.tsx` e `src/test/routeRestorerCliente.test.tsx`.
+
+**Correções depois da revisão (24/10/2026)**
+
+- **Ficha que perde o cliente não pode ser reivindicada por estranho.** Ao desvincular, o link antigo do portal morre
+  (`portal_token` vira `NULL`) e a ficha ganha `pacientes.vinculo_encerrado_em`. Enquanto estiver preenchida, nenhum caminho automático
+  (`link_patient_user_by_email`, `link_patient_user_by_token`, `criar_paciente_do_portal`, nem UPDATE direto de `user_id`) religa a ficha
+  a um login. O profissional libera gerando um **novo link do portal**. Pendência de produto: o cadastro do portal (`criar-conta-portal`)
+  cria conta já confirmada sem provar a posse do e-mail; isso já afetava fichas pré-cadastradas e é decisão do Rafael.
+- **Freio de senha sem prender conexão do banco.** A trava por usuário falha na hora (`tente_novamente`); a senha errada volta como
+  `{ok:false, erro:'senha_incorreta', tentativas_restantes}` e 5 erros bloqueiam por 15 minutos (`muitas_tentativas`).
+- **Cliente Premium ativo** (`tipo_conta = wellness_premium` ou `wellness_assinaturas` ativa) só exclui com aceite explícito: o diálogo
+  mostra "Seu plano Premium será encerrado" (dias restantes não reembolsados) com caixa de ciência; o servidor recusa sem o aceite
+  (`premium_requer_aceite`).
+- **Proteção de profissional ampliada:** além dos sinais conhecidos, qualquer tabela de `public` com chave estrangeira para `auth.users`
+  (fora as de cliente) que tenha linha do usuário bloqueia (`conta_de_profissional`); tabela nova entra na proteção sozinha.
+- **Foto do cliente** (`paciente-avatars/<id do usuário>/avatar.jpg`, bucket público) é removida pela interface logo depois da exclusão
+  confirmada e antes do logout; a referência na ficha retida também sai. Falha na remoção não desfaz a exclusão.
+- **Concorrência:** as fichas do cliente são travadas antes de classificar; uma vinculação simultânea por profissional espera e a ficha é
+  tratada como vinculada (o histórico não some). CPF legado inválido na ficha vira `cadastro_precisa_correcao`.
+- **Interface:** foco volta ao botão que abriu o diálogo; erro sem campo próprio leva o foco ao aviso; a chamada tem limite de 20 s
+  (depois diz que a conta pode já ter sido excluída); "Sair e entrar de novo" volta ao Perfil (ou ao cadastro profissional no cartão do
+  `/auth`); se o logout falhar, o aviso e o e-mail sobrevivem ao recarregamento; mensagens que mandam falar com o suporte trazem
+  `contato@myhealthid.com.br`.
+- **Cadastro profissional pelo Google** deixa uma marca na sessão (`mh_auth_modo`) para o cartão "Esta conta é de cliente" aparecer na
+  volta; `RouteRestorer` não restaura rota de profissional para cliente em `/auth`.
