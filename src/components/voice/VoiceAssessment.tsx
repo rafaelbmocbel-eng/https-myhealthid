@@ -24,6 +24,7 @@ import ProntuarioReviewDialog from './ProntuarioReviewDialog';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 import { REGIONS as BODY_REGIONS, STRUCTURES as BODY_STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { regioesAtivasNoAvatar } from '@/utils/voiceAssessment/reprocessarComplemento';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 const DEFAULT_PAIN_CATALOG = {
   regions: BODY_REGIONS.map((r: any) => ({
@@ -881,6 +882,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
               .from('avaliacoes_voz')
               .select('created_at, queixa_principal, classificacao_severidade, resultado')
               .eq('paciente_id', pacienteId)
+              .or(FILTRO_SO_PROFISSIONAL)
               .order('created_at', { ascending: false })
               .limit(3),
             supabase

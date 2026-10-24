@@ -53,7 +53,7 @@ function fakeAdmin(tabelas: Record<string, Resultado>) {
       const chain: Record<string, unknown> = {};
       const volta = () => chain;
       chain.select = volta;
-      for (const m of ['eq', 'neq', 'order', 'limit', 'not', 'overlaps']) chain[m] = volta;
+      for (const m of ['eq', 'neq', 'order', 'limit', 'not', 'overlaps', 'or', 'filter']) chain[m] = volta;
       chain.maybeSingle = () => Promise.resolve(res);
       chain.then = (ok: (r: Resultado) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve(res).then(ok, ko);
       return chain;

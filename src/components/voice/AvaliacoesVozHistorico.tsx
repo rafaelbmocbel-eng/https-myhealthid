@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import VoiceAssessment from './VoiceAssessment';
+import { ehRelatoDoPaciente, soDoProfissional } from '@/utils/voiceAssessment/origemAvaliacao';
 
 const SEVERITY_COLORS: Record<string, string> = {
   'Favorável': '#22c55e', 'Atenção': '#eab308', 'Moderado': '#f97316',
@@ -81,7 +82,7 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
   if (!avaliacoes.length) return null;
 
   // Monta dados para o gráfico de EVA — só avaliações com EVA registrada, em ordem crescente de data
-  const evaData = [...avaliacoes]
+  const evaData = soDoProfissional(avaliacoes)
     .reverse()
     .map((a, i) => {
       const eva = a.resultado?.dor?.intensidade_eva ?? a.resultado?.dor?.intensidade ?? null;
@@ -162,7 +163,9 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
           {avaliacoes.map((a) => {
             const origem = a.resultado?._meta?.origem || a.resultado?._meta?.mode;
             const isVoz = !origem || origem.includes('voice') || origem === 'voz';
-            const queixa = a.queixa_principal || a.resultado?.queixa_principal || 'Sem queixa registrada';
+            const doPaciente = ehRelatoDoPaciente(a);
+            const queixa = a.queixa_principal || a.resultado?.queixa_principal
+              || (doPaciente ? 'Contado pelo paciente no portal' : 'Sem queixa registrada');
             return (
               <div
                 key={a.id}
@@ -179,6 +182,11 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
                       <span className="text-xs text-muted-foreground">
                         {format(new Date(a.created_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
                       </span>
+                      {doPaciente && (
+                        <Badge variant="secondary" className="text-[10px] h-5">
+                          Relato do paciente
+                        </Badge>
+                      )}
                       {a.classificacao_severidade && (
                         <Badge variant="outline" className="text-[10px] h-5">
                           {a.classificacao_severidade}

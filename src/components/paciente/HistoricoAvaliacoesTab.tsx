@@ -12,6 +12,7 @@ import {
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { getMyIDSeverityColor } from '@/utils/myidCalculations';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 const MyIDResult = lazy(() => import('@/components/myid/MyIDResult').then(m => ({ default: m.MyIDResult })));
 
@@ -65,6 +66,7 @@ export default function HistoricoAvaliacoesTab({ pacienteId }: Props) {
         .select('id, created_at, classificacao_severidade, queixa_principal, transcricao, resultado')
         .eq('paciente_id', pacienteId)
         .eq('terapeuta_id', user!.id)
+        .or(FILTRO_SO_PROFISSIONAL)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as any[];

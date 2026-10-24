@@ -29,6 +29,7 @@ import {
 } from '@/utils/demandasAnalyzer';
 import ProtocoloEditor from '@/components/protocolo/ProtocoloEditor';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 interface Props {
   pacienteId: string;
@@ -158,6 +159,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
       .select('*')
       .eq('paciente_id', pacienteId)
       .eq('terapeuta_id', user!.id)
+      .or(FILTRO_SO_PROFISSIONAL)
       .order('created_at', { ascending: false })
       .limit(1);
 

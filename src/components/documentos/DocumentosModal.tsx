@@ -17,6 +17,7 @@ import {
   type PacienteInfo,
 } from '@/utils/pdfDocumentos';
 import { corpoPadraoDocumento, fmtDate } from '@/utils/documentosTexto';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 interface Props {
   open: boolean;
@@ -308,6 +309,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
             .from('avaliacoes_voz')
             .select('queixa_principal, transcricao, resultado, created_at')
             .eq('paciente_id', paciente.id)
+            .or(FILTRO_SO_PROFISSIONAL)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle(),

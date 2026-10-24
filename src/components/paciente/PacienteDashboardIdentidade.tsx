@@ -42,6 +42,7 @@ import CIFSuggestionPanel from '@/components/cif/CIFSuggestionPanel';
 import { generateCIFSuggestions } from '@/utils/cifMapping';
 import PacoteBadge from './PacoteBadge';
 import LinkActionsBar, { type LinkActionItem } from './LinkActionsBar';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 interface Paciente {
   id: string;
@@ -514,6 +515,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
         .select('*')
         .eq('terapeuta_id', user!.id)
         .eq('paciente_id', paciente.id)
+        .or(FILTRO_SO_PROFISSIONAL)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -620,7 +622,8 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
 
   // "Iniciar Avaliação Presencial" só aparece na Visão Geral na PRIMEIRA vez.
   // Depois da primeira avaliação, a ação "Nova Avaliação" vive na aba "Avaliação".
-  const jaAvaliou = myidAvaliacoes.length > 0 || voiceAvaliacoes.length > 0;
+  // Só a avaliação do profissional conta: o MyID e o relato que o paciente responde sozinho não a substituem.
+  const jaAvaliou = voiceAvaliacoes.length > 0;
 
   const BotaoAcao = subTabAtiva !== 'myid' && bp.visivel && !jaAvaliou ? (
     <div className={`flex gap-3 ${btnDirClass} ${btnAlignClass}`}>

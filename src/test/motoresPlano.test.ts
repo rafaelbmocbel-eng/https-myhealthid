@@ -12,25 +12,33 @@ import {
   textoPresencial,
 } from '../../supabase/functions/_shared/motores-plano';
 import { avaliarTriagem } from '../../supabase/functions/_shared/triagem-bloqueio';
+import { COLUNA_ORIGEM, FILTRO_SO_PROFISSIONAL, VALOR_SO_PACIENTE } from '../../supabase/functions/_shared/origem-avaliacao';
 
 type Resultado = { data?: unknown; error?: { message: string } | null };
+type Operacao = [string, ...unknown[]];
 
-// Cliente Supabase falso: registra o select de cada tabela e devolve o que o teste definir.
-function fakeAdmin(tabelas: Record<string, Resultado>) {
+// Cliente Supabase falso: registra o select de cada tabela e devolve o que o teste definir. Uma tabela pode
+// ser uma função das operações encadeadas naquela consulta (para devolver coisas diferentes a cada leitura).
+function fakeAdmin(tabelas: Record<string, Resultado | ((ops: Operacao[]) => Resultado)>) {
   const selects: Record<string, string[]> = {};
+  const consultas: Record<string, Operacao[][]> = {};
   const admin = {
     from(tabela: string) {
-      const res: Resultado = { data: null, error: null, ...(tabelas[tabela] ?? {}) };
+      const ops: Operacao[] = [];
+      (consultas[tabela] ||= []).push(ops);
+      const base = tabelas[tabela];
+      const resultado = (): Resultado => ({ data: null, error: null, ...((typeof base === 'function' ? base(ops) : base) ?? {}) });
       const chain: Record<string, unknown> = {};
-      const volta = () => chain;
       chain.select = (cols: string) => { (selects[tabela] ||= []).push(cols); return chain; };
-      for (const m of ['eq', 'neq', 'order', 'limit', 'not', 'overlaps']) chain[m] = volta;
-      chain.maybeSingle = () => Promise.resolve(res);
-      chain.then = (ok: (r: Resultado) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve(res).then(ok, ko);
+      for (const m of ['eq', 'neq', 'order', 'limit', 'not', 'overlaps', 'or', 'filter']) {
+        chain[m] = (...args: unknown[]) => { ops.push([m, ...args]); return chain; };
+      }
+      chain.maybeSingle = () => Promise.resolve(resultado());
+      chain.then = (ok: (r: Resultado) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve(resultado()).then(ok, ko);
       return chain;
     },
   };
-  return { admin, selects };
+  return { admin, selects, consultas };
 }
 
 describe('textoHistoriaAtual', () => {
@@ -177,6 +185,60 @@ describe('carregarMotoresClinicos', () => {
     });
     const m = await carregarMotoresClinicos(admin, 'p1');
     expect(m.myidRedFlags).toBe(true);
+  });
+
+  describe('avaliações por voz: avaliação do profissional x relato que o paciente fez no portal', () => {
+    const avaliacaoDoProfissional = { _secoes: { condutas_profissional: 'tratar iliopsoas' }, red_flags: [] as string[] };
+    const relatoDoPaciente = (extra: object = {}) => ({ _meta: { origem: 'portal_paciente_historia' }, ...extra });
+
+    // A leitura do profissional leva .or(FILTRO_SO_PROFISSIONAL); a do relato leva .filter(coluna, 'in', valor).
+    const voz = (relato: Resultado) => (ops: Operacao[]): Resultado => {
+      const eProfissional = ops.some(([m, ...a]) => m === 'or' && a[0] === FILTRO_SO_PROFISSIONAL);
+      const eRelato = ops.some(([m, ...a]) => m === 'filter' && a[0] === COLUNA_ORIGEM && a[1] === 'in' && a[2] === VALOR_SO_PACIENTE);
+      if (eProfissional) return { data: { resultado: avaliacaoDoProfissional } };
+      if (eRelato) return relato;
+      return { data: { resultado: relatoDoPaciente() } }; // leitura sem filtro: o bug (o relato apareceria como a avaliação)
+    };
+
+    it('o texto da avaliação vem da avaliação do profissional, nunca do relato mais recente do paciente', async () => {
+      const { admin, consultas } = fakeAdmin({ pacientes: { data: pacienteOk }, avaliacoes_voz: voz({ data: { resultado: relatoDoPaciente() } }) });
+      const m = await carregarMotoresClinicos(admin, 'p1');
+      expect(m.avaliacaoVoz).toEqual(avaliacaoDoProfissional);
+      expect(m.avaliacaoRedFlags).toBe(false);
+      expect(m.falhasLeitura).toEqual([]);
+      expect(consultas.avaliacoes_voz).toHaveLength(2);
+    });
+
+    it('um red flag do relato do paciente continua acendendo a triagem (falso negativo é risco de saúde)', async () => {
+      const { admin } = fakeAdmin({
+        pacientes: { data: pacienteOk },
+        avaliacoes_voz: voz({ data: { resultado: relatoDoPaciente({ red_flags: ['dor noturna'] }) } }),
+      });
+      const m = await carregarMotoresClinicos(admin, 'p1');
+      expect(m.avaliacaoRedFlags).toBe(true);
+      expect(m.avaliacaoVoz).toEqual(avaliacaoDoProfissional);
+    });
+
+    it('o red flag da avaliação do profissional vale mesmo quando existe um relato mais novo sem alerta', async () => {
+      const comAlerta = { ...avaliacaoDoProfissional, red_flags: ['perda de peso inexplicada'] };
+      const { admin } = fakeAdmin({
+        pacientes: { data: pacienteOk },
+        avaliacoes_voz: (ops: Operacao[]) => (ops.some(([m]) => m === 'or')
+          ? { data: { resultado: comAlerta } }
+          : { data: { resultado: relatoDoPaciente() } }),
+      });
+      const m = await carregarMotoresClinicos(admin, 'p1');
+      expect(m.avaliacaoRedFlags).toBe(true);
+    });
+
+    it('erro na leitura do relato do paciente vira falha de leitura (fail-closed)', async () => {
+      const { admin } = fakeAdmin({
+        pacientes: { data: pacienteOk },
+        avaliacoes_voz: voz({ data: null, error: { message: 'boom' } }),
+      });
+      const m = await carregarMotoresClinicos(admin, 'p1');
+      expect(m.falhasLeitura).toContain('avaliacoes_voz');
+    });
   });
 
   it('sem paciente_id devolve vazio sem consultar nada', async () => {

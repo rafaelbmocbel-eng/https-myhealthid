@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ehRelatoDoPaciente } from '@/utils/voiceAssessment/origemAvaliacao';
 
 export type TipoEvento =
   | 'historia_vida'
@@ -188,7 +189,9 @@ export function useTimelineCompleta(pacienteId: string | undefined) {
         const resultado = (v.resultado as { resumo_clinico?: string } | null) || {};
         ev.push({
           id: `voz-${v.id}`, tipo: 'avaliacao_voz', data: v.created_at,
-          titulo: `Avaliação de voz${v.classificacao_severidade ? ` · ${v.classificacao_severidade}` : ''}`,
+          titulo: ehRelatoDoPaciente(v)
+            ? 'Relato do paciente (portal)'
+            : `Avaliação de voz${v.classificacao_severidade ? ` · ${v.classificacao_severidade}` : ''}`,
           descricao: (resultado.resumo_clinico || v.queixa_principal || '').slice(0, 200),
           metadata: { severidade: v.classificacao_severidade },
         });

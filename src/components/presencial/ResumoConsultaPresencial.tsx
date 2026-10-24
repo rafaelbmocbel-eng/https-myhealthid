@@ -15,6 +15,7 @@ import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
 import type { SistemaCorporal } from '@/hooks/useEventosAnatomicos';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 interface Props {
   pacienteId: string;
@@ -56,6 +57,7 @@ export default function ResumoConsultaPresencial({
         .from('avaliacoes_voz')
         .select('id, resultado, created_at')
         .eq('paciente_id', pacienteId)
+        .or(FILTRO_SO_PROFISSIONAL)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

@@ -14,6 +14,7 @@ import VoiceAssessment from './VoiceAssessment';
 import AvaliacaoSecoesEditaveis from './AvaliacaoSecoesEditaveis';
 import { reprocessarComplemento, invalidarCachesAvaliacaoVoz } from '@/utils/voiceAssessment/reprocessarComplemento';
 import { atualizarPlanoComEdicoes, condutasProfissional } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 interface Props {
   pacienteId: string;
@@ -37,6 +38,7 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
         .select('id, created_at, resultado, transcricao, servico, classificacao_severidade, queixa_principal')
         .eq('paciente_id', pacienteId)
         .eq('terapeuta_id', user!.id)
+        .or(FILTRO_SO_PROFISSIONAL)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

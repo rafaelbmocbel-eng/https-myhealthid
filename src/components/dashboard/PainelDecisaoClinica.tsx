@@ -9,6 +9,7 @@ import { detectarEstagnacao, MCID_MYID } from '@/components/paciente/EvolucaoDas
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { FecharButton } from '@/components/ui/fechar-button';
+import { COLUNA_ORIGEM, FILTRO_SO_PROFISSIONAL, VALOR_SO_PACIENTE } from '@/utils/voiceAssessment/origemAvaliacao';
 
 interface PainelDecisaoClinicaProps {
   pacienteId: string;
@@ -111,6 +112,26 @@ export default function PainelDecisaoClinica({ pacienteId, temAgendaFutura = tru
         .from('avaliacoes_voz')
         .select('resultado, created_at')
         .eq('paciente_id', pacienteId)
+        .or(FILTRO_SO_PROFISSIONAL)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as { resultado: { red_flags?: string[] } | null; created_at: string } | null;
+    },
+  });
+
+  // O último relato que o paciente fez no portal não substitui a avaliação do profissional, mas um alerta dele
+  // continua valendo aqui (segurança: não perder red flag).
+  const { data: ultimoRelato } = useQuery({
+    queryKey: ['painel-decisao-relato', pacienteId],
+    enabled: !!pacienteId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_voz')
+        .select('resultado, created_at')
+        .eq('paciente_id', pacienteId)
+        .filter(COLUNA_ORIGEM, 'in', VALOR_SO_PACIENTE)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -127,11 +148,12 @@ export default function PainelDecisaoClinica({ pacienteId, temAgendaFutura = tru
   const redFlags = useMemo(() => {
     const doMyid: string[] = Array.isArray(myid[0]?.red_flags) ? (myid[0]!.red_flags as string[]) : [];
     const doVoz: string[]  = Array.isArray(ultimaVoz?.resultado?.red_flags) ? ultimaVoz!.resultado.red_flags! : [];
-    const all = Array.from(new Set([...doMyid, ...doVoz]));
+    const doRelato: string[] = Array.isArray(ultimoRelato?.resultado?.red_flags) ? ultimoRelato!.resultado.red_flags! : [];
+    const all = Array.from(new Set([...doMyid, ...doVoz, ...doRelato]));
     // Filter out "no red flags" messages that AI sometimes returns as flag entries
     const negPattern = /nenhum|sem red|não ident|escassez|insuficiente|dados insuficientes/i;
     return all.filter(f => f.length > 3 && !negPattern.test(f));
-  }, [myid, ultimaVoz]);
+  }, [myid, ultimaVoz, ultimoRelato]);
 
   const myidAtual    = myid[0];
   const myidAnterior = myid[1];

@@ -9,6 +9,7 @@ import { UserPlus, ClipboardCheck, Mic, CalendarCheck, Loader2 } from 'lucide-re
 import { format, isToday } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 type Item = {
   paciente_id: string;
@@ -63,6 +64,7 @@ export default function AtividadeHojeCard() {
           .from('avaliacoes_voz')
           .select('paciente_id, paciente_nome, created_at')
           .eq('terapeuta_id', user!.id)
+          .or(FILTRO_SO_PROFISSIONAL)
           .gte('created_at', inicioISO),
         supabase
           .from('controle_sessoes')

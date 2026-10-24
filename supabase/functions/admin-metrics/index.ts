@@ -6,6 +6,7 @@
 // Acesso: SOMENTE super-admin (por e-mail). Agrega com service role (as tabelas
 // têm RLS por usuário; um painel global precisa ler todo mundo com segurança).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { FILTRO_SO_PROFISSIONAL } from "../_shared/origem-avaliacao.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -198,7 +199,7 @@ Deno.serve(async (req) => {
     const ativCorte = new Date(Date.now() - 120 * 86400000).toISOString();
     const [agAtivRes, avAtivRes] = await Promise.all([
       admin.from("agendamentos").select("terapeuta_id, created_at").gte("created_at", ativCorte).order("created_at", { ascending: false }).limit(8000),
-      admin.from("avaliacoes_voz").select("terapeuta_id, created_at").gte("created_at", ativCorte).order("created_at", { ascending: false }).limit(3000),
+      admin.from("avaliacoes_voz").select("terapeuta_id, created_at").gte("created_at", ativCorte).or(FILTRO_SO_PROFISSIONAL).order("created_at", { ascending: false }).limit(3000),
     ]);
     const ultimaAtividade: Record<string, string> = {};
     [...(agAtivRes.data || []), ...(avAtivRes.data || [])].forEach((a: any) => {

@@ -29,6 +29,7 @@ const ResearchDashboard = lazy(() => import('@/components/dashboard/ResearchDash
 const ClinicalInsights = lazy(() => import('@/components/dashboard/ClinicalInsights'));
 const AtividadeHojeCard = lazy(() => import('@/components/dashboard/AtividadeHojeCard'));
 import { FlaskConical } from 'lucide-react';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 export default function Index() {
   const { user, profile, loading, authReady } = useAuth();
@@ -92,7 +93,7 @@ export default function Index() {
         { count: totalCancelados },
       ] = await Promise.all([
         supabase.from('avaliacoes_identidade').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
-        supabase.from('avaliacoes_voz').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
+        supabase.from('avaliacoes_voz').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id).or(FILTRO_SO_PROFISSIONAL),
         supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
         supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id).eq('status', 'ativo'),
         supabase.from('agendamentos').select('status').eq('terapeuta_id', user!.id)

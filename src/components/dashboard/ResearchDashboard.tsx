@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { differenceInYears, parseISO, format } from '@/lib/dateSafe';
 import DashboardFilters, { DEFAULT_FILTERS, DashboardFilterState, periodToDate, sexoMatch, ageInFaixa } from './DashboardFilters';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 const PALETTE = ['hsl(var(--primary))', 'hsl(var(--accent))', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
@@ -108,7 +109,7 @@ export default function ResearchDashboard() {
       const [pac, ava, voz, prot] = await Promise.all([
         supabase.from('pacientes').select('id, nome, sobrenome, data_nascimento, genero, created_at, ativo').eq('terapeuta_id', user!.id),
         supabase.from('avaliacoes_identidade').select('*').eq('terapeuta_id', user!.id),
-        supabase.from('avaliacoes_voz').select('*').eq('terapeuta_id', user!.id),
+        supabase.from('avaliacoes_voz').select('*').eq('terapeuta_id', user!.id).or(FILTRO_SO_PROFISSIONAL),
         (supabase as any).from('protocolos').select('id, paciente_id, titulo, status, data_inicio, data_fim_prevista, duracao_total, frequencia, objetivo_geral, scores_avaliacao, created_at').eq('terapeuta_id', user!.id),
       ]);
       return {

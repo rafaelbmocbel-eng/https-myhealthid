@@ -17,6 +17,7 @@ import {
   type FocoTriagem,
 } from "./triagem-bloqueio.ts";
 import { contaPodeGerarPlano, restringirAInsumosDoCliente } from "./plano-cliente.ts";
+import { COLUNA_ORIGEM, FILTRO_SO_PROFISSIONAL, VALOR_SO_PACIENTE } from "./origem-avaliacao.ts";
 
 // deno-lint-ignore no-explicit-any
 type SB = any;
@@ -148,7 +149,7 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
   if (!pacienteId) return vazio;
 
   const falhaLeitura = () => ({ data: null, error: { message: "falha ao consultar" } });
-  const [myRes, pacRes, evRes, questRes, identRes, exRes, avRes, anamRes] = await Promise.all([
+  const [myRes, pacRes, evRes, questRes, identRes, exRes, avRes, avPacRes, anamRes] = await Promise.all([
     admin.from("myid_avaliacoes").select("resultado_processado")
       .eq("paciente_id", pacienteId).eq("status", "concluido")
       .order("updated_at", { ascending: false }).limit(1).maybeSingle()
@@ -173,11 +174,19 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
     admin.from("exames_presenciais").select("tipo, data_exame, resumo, dados")
       .eq("paciente_id", pacienteId).order("data_exame", { ascending: false }).limit(20)
       .then((r: SB) => r).catch(() => ({ data: [] })),
-    // Avaliação de voz/presencial mais recente (inclui as seções editadas à mão
-    // pelo profissional em resultado._secoes.editadas). Tolerante: se a tabela/
-    // coluna não existir, volta vazio sem derrubar a geração.
+    // Avaliação de voz/presencial mais recente DO PROFISSIONAL (inclui as seções editadas à mão
+    // pelo profissional em resultado._secoes.editadas). Sem o filtro, o relato que o paciente conta
+    // no portal viraria "a mais recente" e o plano sairia sem a avaliação presencial.
+    // Tolerante: se a tabela/coluna não existir, volta vazio sem derrubar a geração.
     admin.from("avaliacoes_voz").select("resultado, created_at")
-      .eq("paciente_id", pacienteId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+      .eq("paciente_id", pacienteId).or(FILTRO_SO_PROFISSIONAL)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle()
+      .then((r: SB) => r).catch(falhaLeitura),
+    // Relato mais recente que o próprio paciente fez: não entra no texto da avaliação, mas um red flag
+    // dele continua valendo na triagem (falso negativo é risco de saúde).
+    admin.from("avaliacoes_voz").select("resultado, created_at")
+      .eq("paciente_id", pacienteId).filter(COLUNA_ORIGEM, "in", VALOR_SO_PACIENTE)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle()
       .then((r: SB) => r).catch(falhaLeitura),
     // Anamnese nutricional (+ a triagem autodeclarada, que mora em respostas.triagem).
     admin.from("nutricao_anamnese").select("respostas")
@@ -191,7 +200,7 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
   if (questRes?.error) falhasLeitura.push("questionarios_clinicos");
   if (anamRes?.error) falhasLeitura.push("nutricao_anamnese");
   if (identRes?.error) falhasLeitura.push("avaliacoes_identidade");
-  if (avRes?.error) falhasLeitura.push("avaliacoes_voz");
+  if (avRes?.error || avPacRes?.error) falhasLeitura.push("avaliacoes_voz");
 
   // MyID: o formato variou entre gerações (component_scores atual, componentScores,
   // scores). Se não estiver em myid_avaliacoes, cai para avaliacoes_identidade.
@@ -257,7 +266,7 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
     triagemAutodeclarada: objetoOuNulo(anamnese?.triagem),
     parq: parqUlt ? { classificacao: parqUlt.classificacao, respostas: parqUlt.respostas } : null,
     myidRedFlags,
-    avaliacaoRedFlags: avaliacaoTemRedFlags(avRes?.data?.resultado),
+    avaliacaoRedFlags: avaliacaoTemRedFlags(avRes?.data?.resultado) || avaliacaoTemRedFlags(avPacRes?.data?.resultado),
     falhasLeitura,
   };
 }
