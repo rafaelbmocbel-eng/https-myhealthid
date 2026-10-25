@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarCheck, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -45,11 +45,16 @@ export function ClientesDoMes({
   onSalvarLancamento: (id: string, guias: GuiaLancada[]) => Promise<boolean> | boolean;
   onPreencherComAgenda: () => void;
 }) {
-  const [abertoId, setAbertoId] = useState<string | null>(null);
+  const [abertoPedido, setAbertoId] = useState<string | null>(null);
   const [soFaltam, setSoFaltam] = useState(false);
   const valorDe = (c: string) => catalogo.find((x) => x.codigo === c)?.valor || 0;
   const faltam = clientes.filter((c) => c.guias.length === 0);
-  const visiveis = soFaltam ? faltam : clientes;
+  // O cliente que saiu da lista não fica com o lançamento "aberto" (nem reabre sozinho se voltar).
+  const abertoId = clientes.some((c) => c.id === abertoPedido) ? abertoPedido : null;
+  useEffect(() => { if (abertoPedido !== null && abertoId === null) setAbertoId(null); }, [abertoPedido, abertoId]);
+  // O filtro só vale enquanto há quem falte: sem ninguém faltando a lista volta inteira (e o botão de voltar não some).
+  const filtrando = soFaltam && faltam.length > 0;
+  const visiveis = filtrando ? faltam : clientes;
 
   const referenciaAgenda = (c: ClienteDoMes) => {
     if (sessoesEstado === 'carregando') return 'agenda: carregando…';
@@ -95,11 +100,13 @@ export function ClientesDoMes({
       {faltam.length > 0 && !carregando && (
         <div className="flex items-center gap-x-3 gap-y-1 flex-wrap rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/20 px-2.5 py-2 text-[12px]">
           <span className="text-amber-800 dark:text-amber-300">{faltam.length} {faltam.length === 1 ? 'cliente sem' : 'clientes sem'} códigos lançados.</span>
-          <button type="button" onClick={() => setSoFaltam((v) => !v)} aria-pressed={soFaltam} className="font-medium underline underline-offset-2 text-amber-900 dark:text-amber-200">
-            {soFaltam ? 'Mostrar todos' : 'Mostrar só quem falta'}
+          <button type="button" onClick={() => setSoFaltam((v) => !v)} aria-pressed={filtrando} className="font-medium underline underline-offset-2 text-amber-900 dark:text-amber-200">
+            {filtrando ? 'Mostrar todos' : 'Mostrar só quem falta'}
           </button>
           {quantosPreencheriaComAgenda > 0 && (
-            <button type="button" disabled={ocupado} onClick={onPreencherComAgenda} className="font-medium underline underline-offset-2 text-amber-900 dark:text-amber-200 disabled:opacity-50">
+            <button type="button" disabled={ocupado || abertoId !== null} onClick={onPreencherComAgenda}
+              title={abertoId !== null ? 'Feche o lançamento aberto antes de preencher com a agenda' : undefined}
+              className="font-medium underline underline-offset-2 text-amber-900 dark:text-amber-200 disabled:opacity-50">
               Preencher {quantosPreencheriaComAgenda} com a agenda (código 012)
             </button>
           )}
@@ -128,9 +135,10 @@ export function ClientesDoMes({
                     onClick={() => setAbertoId(aberto ? null : c.id)}
                     aria-expanded={aberto}
                     aria-label={`${aberto ? 'Fechar' : 'Lançar códigos e sessões de'} ${c.nome}`}
+                    aria-describedby={`resumo-lancamento-${c.id}`}
                     className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5 text-left rounded-md hover:bg-muted/40"
                   >
-                    <span className="flex-1 min-w-0">
+                    <span className="flex-1 min-w-0" id={`resumo-lancamento-${c.id}`}>
                       <span className="flex items-center gap-1.5">
                         <span className="block text-sm font-medium truncate">{c.nome}</span>
                         {c.encerrado && <span className="text-[9px] uppercase font-bold text-muted-foreground bg-muted rounded px-1 shrink-0">encerrado</span>}
@@ -154,13 +162,17 @@ export function ClientesDoMes({
                 </div>
                 {aberto && (
                   <LancamentoDoCliente
+                    key={`${mesLabel}-${c.id}`}
                     nome={c.nome}
                     catalogo={catalogo}
                     inicial={c.guias}
                     sessoesAgenda={sessoesEstado === 'ok' ? c.sessoesAgenda : 0}
                     salvando={salvandoId === c.id}
                     onCancelar={() => setAbertoId(null)}
-                    onSalvar={async (guias) => { if (await onSalvarLancamento(c.id, guias)) setAbertoId(null); }}
+                    onSalvar={async (guias) => {
+                      // Se a gravação demorou e outro cliente foi aberto nesse meio-tempo, o dele não fecha.
+                      if (await onSalvarLancamento(c.id, guias)) setAbertoId((atual) => (atual === c.id ? null : atual));
+                    }}
                   />
                 )}
               </li>

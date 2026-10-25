@@ -3,7 +3,7 @@ import { CalendarCheck, Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   MAXIMO_GUIAS_NO_MES, brutoDosLancamentos, formatarCodigoOficial, guiasPelaAgenda, limiteDoCodigo, maximoNaGuia,
-  normalizarLancamentos, sessoesDosLancamentos, type CodigoFaturavel, type GuiaLancada,
+  normalizarLancamentos, problemasDosLancamentos, sessoesDosLancamentos, type CodigoFaturavel, type GuiaLancada,
 } from '@/lib/cassiFaturamento';
 
 const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -27,12 +27,24 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
   onCancelar: () => void;
 }) {
   const [guias, setGuias] = useState<GuiaLancada[]>(() => (inicial.length > 0 ? inicial.map((g) => ({ ...g })) : [{}]));
+
+  // Código que já está lançado mas não está mais na lista de códigos (ex.: tirado de Configurações) continua à vista:
+  // vale R$ 0,00 e precisa dar para zerar, senão fica gravado sem ninguém ver.
+  const conhecidos = new Set(catalogo.map((c) => c.codigo));
+  const foraDaLista = [...new Set(guias.flatMap((g) => Object.keys(g)))].filter((c) => !conhecidos.has(c));
+  const linhas: CodigoFaturavel[] = [
+    ...catalogo,
+    ...foraDaLista.map((codigo) => ({ codigo, descricao: 'fora da lista de códigos (vale R$ 0,00)', valor: 0 })),
+  ];
   const valorDe = (c: string) => catalogo.find((x) => x.codigo === c)?.valor || 0;
 
-  const definir = (posicao: number, codigo: string, bruto: number) => {
+  const definir = (posicao: number, codigo: string, desejado: number) => {
     setGuias((atual) => {
+      const antes = atual[posicao]?.[codigo] || 0;
       const max = maximoNaGuia(atual, posicao, codigo);
-      const q = Math.min(max, Math.max(0, Math.floor(Number.isFinite(bruto) ? bruto : 0)));
+      const n = Math.max(0, Math.floor(Number.isFinite(desejado) ? desejado : 0));
+      // Só o AUMENTO é limitado: quem já está acima do limite (dado antigo) consegue descer um por vez.
+      const q = n > antes ? Math.min(n, Math.max(antes, max)) : n;
       return atual.map((g, i) => {
         if (i !== posicao) return g;
         const nova = { ...g };
@@ -45,6 +57,7 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
   const guiasValidas = normalizarLancamentos(guias);
   const total = brutoDosLancamentos(guiasValidas, valorDe);
   const sessoes = sessoesDosLancamentos(guiasValidas);
+  const acimaDoLimite = problemasDosLancamentos(guiasValidas).length > 0;
 
   return (
     <div className="px-3 pb-3 pt-2 space-y-3 bg-muted/20 border-t border-border/40" role="group" aria-label={`Códigos e sessões de ${nome}`}>
@@ -64,7 +77,7 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
             )}
           </div>
           <ul className="divide-y divide-border/40">
-            {catalogo.map((c) => {
+            {linhas.map((c) => {
               const q = g[c.codigo] || 0;
               const max = maximoNaGuia(guias, i, c.codigo);
               const limite = textoDoLimite(c.codigo);
@@ -80,7 +93,8 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
                       {c.valor > 0 ? brl(c.valor) : <span className="text-amber-700 dark:text-amber-400">sem valor (defina em Configurações)</span>}
                       {limite ? ` · ${limite}` : ''}
                     </p>
-                    {q > 0 && q >= max && max > 0 && <p className="text-[10px] text-amber-700 dark:text-amber-400">no limite</p>}
+                    {q > max && <p className="text-[10px] font-semibold text-rose-600 dark:text-rose-400">acima do limite da CASSI</p>}
+                    {q > 0 && q === max && <p className="text-[10px] text-amber-700 dark:text-amber-400">no limite</p>}
                     {max === 0 && q === 0 && <p className="text-[10px] text-amber-700 dark:text-amber-400">limite do mês já usado nas outras guias</p>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -116,12 +130,19 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
           <Plus className="h-3.5 w-3.5" aria-hidden /> Outra guia
         </Button>
         {sessoesAgenda > 0 && (
-          <Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]"
+          <Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" title="Troca o que está digitado por 012 × as sessões da agenda"
             onClick={() => setGuias(guiasPelaAgenda(sessoesAgenda).length > 0 ? guiasPelaAgenda(sessoesAgenda) : [{}])}>
-            <CalendarCheck className="h-3.5 w-3.5" aria-hidden /> Usar as {sessoesAgenda} sessões da agenda
+            <CalendarCheck className="h-3.5 w-3.5" aria-hidden />
+            {sessoesAgenda === 1 ? 'Usar a sessão da agenda' : `Usar as ${sessoesAgenda} sessões da agenda`}
           </Button>
         )}
       </div>
+
+      {acimaDoLimite && (
+        <p className="text-[12px] text-rose-600 dark:text-rose-400" role="alert">
+          Há quantidade acima do limite da CASSI. Diminua o que está em vermelho para poder salvar.
+        </p>
+      )}
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-[13px] tabular-nums" aria-live="polite">
@@ -131,7 +152,7 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
         </p>
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" variant="ghost" className="h-9" disabled={salvando} onClick={onCancelar}>Cancelar</Button>
-          <Button type="button" size="sm" className="h-9" disabled={salvando} onClick={() => onSalvar(guiasValidas)}>Salvar</Button>
+          <Button type="button" size="sm" className="h-9" disabled={salvando || acimaDoLimite} onClick={() => onSalvar(guiasValidas)}>Salvar</Button>
         </div>
       </div>
     </div>

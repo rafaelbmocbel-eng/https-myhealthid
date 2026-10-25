@@ -79,9 +79,14 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
       if (itens.length === 0) return;
       const resultados = await Promise.all(itens.map(({ id, guias }) =>
         (supabase as any).from(TABELA).update({ lancamentos: normalizarLancamentos(guias) })
-          .eq('terapeuta_id', user!.id).eq('mes', mes).eq('paciente_id', id)));
+          .eq('terapeuta_id', user!.id).eq('mes', mes).eq('paciente_id', id)
+          .select('paciente_id')));
       const falha = resultados.find((r: { error?: unknown }) => r?.error);
       if (falha) throw falha.error;
+      // O banco não reclama quando nenhuma linha casa (o cliente foi tirado da lista em outra tela): sem isto o
+      // lançamento "salvaria" sem gravar nada.
+      const semLinha = resultados.findIndex((r: { data?: unknown[] | null }) => !r?.data || r.data.length === 0);
+      if (semLinha >= 0) throw new Error('o cliente não está mais na lista deste mês');
     },
     onSuccess: invalidar,
     onError: aoFalhar('salvar os códigos e as sessões'),

@@ -1299,3 +1299,57 @@ describe('juntar cadastros leva o que foi lançado', () => {
     expect(linhaDe('p3', '2026-08')?.lancamentos).toEqual([{ '144': 1 }]); // quem fica não perde o que tinha
   });
 });
+
+describe('Faturamento: cuidados com o que já foi lançado', () => {
+  it('trocar de mês fecha o lançamento aberto: o rascunho de um mês nunca é gravado em outro', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10 }, { salvar: false }); // aberto, sem salvar
+    fireEvent.click(screen.getByTitle('Mês anterior'));
+    await screen.findByRole('heading', { name: 'Clientes de setembro de 2026' });
+    expect(screen.queryByRole('group')).toBeNull();
+    fireEvent.click(screen.getByTitle('Próximo mês'));
+    await screen.findByRole('heading', { name: 'Clientes de outubro de 2026' });
+    await screen.findByRole('button', { name: 'Lançar códigos e sessões de Ana Souza' });
+    expect(screen.queryByRole('group')).toBeNull(); // não reabre sozinho
+    expect(atualizacoesDoMes()).toHaveLength(0); // nada foi gravado
+  });
+
+  it('tirar da lista um cliente com lançamento pede confirmação e avisa que o lançamento também sai; sem lançamento não pergunta', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    await lancar('Ana Souza', { '012': 5 });
+    vi.mocked(window.confirm).mockClear();
+    vi.mocked(window.confirm).mockReturnValue(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar Ana Souza da lista' }));
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+    expect(String(vi.mocked(window.confirm).mock.calls[0][0])).toMatch(/códigos e as quantidades lançados nele neste mês também são apagados/);
+    expect(escritasEm('cassi_financeiro_clientes').some((o) => o.tipo === 'delete')).toBe(false);
+    vi.mocked(window.confirm).mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar Bruno Lima da lista' })); // sem lançamento: sem pergunta
+    expect(window.confirm).not.toHaveBeenCalled();
+    await waitFor(() => expect(escritasEm('cassi_financeiro_clientes').some((o) => o.tipo === 'delete')).toBe(true));
+  });
+
+  it('"Limpar lista" avisa que os lançamentos também são apagados', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar lista' }));
+    expect(String(vi.mocked(window.confirm).mock.calls.at(-1)![0])).toMatch(/Os códigos e as quantidades lançados neles neste mês também são apagados/);
+  });
+
+  it('se o cliente já não está na lista (tirado em outra tela), salvar avisa em vez de fingir que gravou', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    h.banco.tabelas.cassi_financeiro_clientes.length = 0; // sumiu do banco depois de a tela carregar
+    const grupo = await lancar('Ana Souza', { '012': 5 }, { salvar: false });
+    fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Não consegui salvar os códigos e as sessões: o cliente não está mais na lista deste mês'));
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Ana Souza' })).toBeTruthy(); // o que foi digitado continua lá
+  });
+});

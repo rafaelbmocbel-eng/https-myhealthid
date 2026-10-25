@@ -397,3 +397,124 @@ describe('ClientesDoMes', () => {
     expect((screen.getByRole('button', { name: 'Limpar lista' }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+describe('LancamentoDoCliente: dado acima do limite, código fora da lista, singular', () => {
+  const montar = (extra: Partial<React.ComponentProps<typeof LancamentoDoCliente>> = {}) => {
+    const onSalvar = vi.fn();
+    render(<LancamentoDoCliente nome="Ana Souza" catalogo={catalogo} inicial={[]} sessoesAgenda={0} onSalvar={onSalvar} onCancelar={vi.fn()} {...extra} />);
+    return { onSalvar };
+  };
+  const qtd = (codigo: string, guia = 1) => screen.getByLabelText(`Quantidade do código ${codigo} na guia ${guia}`) as HTMLInputElement;
+  const salvar = () => screen.getByRole('button', { name: 'Salvar' }) as HTMLButtonElement;
+
+  it('quantidade antiga acima do limite aparece em vermelho, impede salvar e dá para descer um por vez', () => {
+    // 131 vale 10 no mês e há 8 + 5 = 13 (por exemplo, depois de juntar dois cadastros)
+    const { onSalvar } = montar({ inicial: [{ '131': 8 }, { '131': 5 }] });
+    expect(screen.getAllByText('acima do limite da CASSI')).toHaveLength(2);
+    expect(screen.getByRole('alert').textContent).toMatch(/acima do limite da CASSI/);
+    expect(salvar().disabled).toBe(true);
+    fireEvent.click(salvar());
+    expect(onSalvar).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Diminuir o código 131 da guia 1' }));
+    expect(qtd('131', 1).value).toBe('7'); // um por vez, sem pular para o limite
+    fireEvent.click(screen.getByRole('button', { name: 'Diminuir o código 131 da guia 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Diminuir o código 131 da guia 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Diminuir o código 131 da guia 1' }));
+    expect(qtd('131', 1).value).toBe('4'); // 4 + 5 = 9
+    expect(screen.queryByText('acima do limite da CASSI')).toBeNull();
+    expect(salvar().disabled).toBe(false);
+  });
+
+  it('quem já está acima do limite não consegue aumentar mais', () => {
+    montar({ inicial: [{ '012': 12 }] });
+    expect((screen.getByRole('button', { name: 'Aumentar o código 012 da guia 1' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(qtd('012'), { target: { value: '15' } });
+    expect(qtd('012').value).toBe('12');
+  });
+
+  it('código lançado que não está mais na lista de códigos continua à vista, vale zero e dá para zerar', () => {
+    const { onSalvar } = montar({ inicial: [{ '012': 2, '777': 3 }] });
+    expect(screen.getByText(/fora da lista de códigos/)).toBeTruthy();
+    expect(qtd('777').value).toBe('3');
+    fireEvent.change(qtd('777'), { target: { value: '0' } });
+    expect(screen.queryByLabelText('Quantidade do código 777 na guia 1')).toBeNull();
+    fireEvent.click(salvar());
+    expect(onSalvar).toHaveBeenCalledWith([{ '012': 2 }]);
+  });
+
+  it('com uma sessão na agenda o botão fala no singular', () => {
+    montar({ sessoesAgenda: 1 });
+    expect(screen.getByRole('button', { name: 'Usar a sessão da agenda' })).toBeTruthy();
+  });
+});
+
+describe('ClientesDoMes: estado do editor e do filtro', () => {
+  const clientes = [
+    { id: 'a', nome: 'Ana Souza', sessoesAgenda: 8, guias: [{ '012': 10 }] },
+    { id: 'b', nome: 'Bruno Lima', sessoesAgenda: 1, guias: [] },
+    { id: 'c', nome: 'Carla Dias', sessoesAgenda: 4, guias: [] },
+  ];
+  const base = () => ({
+    mesLabel: 'outubro de 2026', clientes, candidatos: [], comSessaoFora: 0, catalogo, quantosPreencheriaComAgenda: 2,
+    onAdicionar: vi.fn(), onAdicionarComSessao: vi.fn(), onRemover: vi.fn(), onLimpar: vi.fn(),
+    onSalvarLancamento: vi.fn().mockResolvedValue(true), onPreencherComAgenda: vi.fn(),
+  });
+  const abrir = (nome: string) => fireEvent.click(screen.getByRole('button', { name: `Lançar códigos e sessões de ${nome}` }));
+
+  it('"Mostrar só quem falta" não deixa a lista vazia quando o último cliente recebe lançamento', () => {
+    const props = base();
+    const { rerender } = render(<ClientesDoMes {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar só quem falta' }));
+    expect(screen.queryByText('Ana Souza')).toBeNull();
+    const todosLancados = clientes.map((c) => ({ ...c, guias: [{ '012': 1 }] }));
+    rerender(<ClientesDoMes {...props} clientes={todosLancados} />);
+    expect(screen.getByText('Ana Souza')).toBeTruthy();
+    expect(screen.getByText('Bruno Lima')).toBeTruthy();
+    expect(screen.getByText('Carla Dias')).toBeTruthy();
+  });
+
+  it('a gravação lenta de um cliente não fecha o lançamento que o profissional abriu depois', async () => {
+    const props = base();
+    let concluir: (ok: boolean) => void = () => {};
+    props.onSalvarLancamento.mockImplementation(() => new Promise<boolean>((r) => { concluir = r; }));
+    render(<ClientesDoMes {...props} />);
+    abrir('Bruno Lima');
+    fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    abrir('Carla Dias'); // abre outro enquanto o primeiro ainda está gravando
+    fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '7' } });
+    concluir(true);
+    await waitFor(() => expect(props.onSalvarLancamento).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Carla Dias' })).toBeTruthy();
+    expect((screen.getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('7');
+  });
+
+  it('quem sai da lista não fica "aberto": se voltar, o lançamento não reabre sozinho', () => {
+    const props = base();
+    const { rerender } = render(<ClientesDoMes {...props} />);
+    abrir('Bruno Lima');
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Bruno Lima' })).toBeTruthy();
+    rerender(<ClientesDoMes {...props} clientes={clientes.filter((c) => c.id !== 'b')} />);
+    expect(screen.queryByRole('group')).toBeNull();
+    rerender(<ClientesDoMes {...props} />);
+    expect(screen.queryByRole('group')).toBeNull();
+  });
+
+  it('com um lançamento aberto, "preencher com a agenda" fica desligado (não troca por baixo do que está digitado)', () => {
+    const props = base();
+    render(<ClientesDoMes {...props} />);
+    const preencher = () => screen.getByRole('button', { name: 'Preencher 2 com a agenda (código 012)' }) as HTMLButtonElement;
+    expect(preencher().disabled).toBe(false);
+    abrir('Bruno Lima');
+    expect(preencher().disabled).toBe(true);
+    expect(preencher().title).toMatch(/Feche o lançamento aberto/);
+  });
+
+  it('a linha do cliente aponta para o resumo (leitor de tela ouve códigos, valor e aviso)', () => {
+    render(<ClientesDoMes {...base()} />);
+    const botao = screen.getByRole('button', { name: 'Lançar códigos e sessões de Ana Souza' });
+    const resumo = document.getElementById(botao.getAttribute('aria-describedby') || '');
+    expect(resumo?.textContent).toContain('012 × 10');
+  });
+});

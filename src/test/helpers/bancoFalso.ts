@@ -41,10 +41,12 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
     private unico = false;
     private colunas: string[] | null = null;
     private faixa: [number, number] | null = null;
+    private pedeRetorno = false;
     constructor(private tabela: string) {}
 
     // Como o PostgREST: só devolve as colunas pedidas ("*" e relações embutidas devolvem a linha inteira).
     select(colunas?: string) {
+      if (this.tipo === 'update') this.pedeRetorno = true;
       if (typeof colunas === 'string' && !colunas.includes('*') && !colunas.includes('(')) this.colunas = colunas.split(',').map((c) => c.trim()).filter(Boolean);
       return this;
     }
@@ -95,8 +97,10 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
         return { data: this.unico ? (achadas[0] ?? null) : achadas, error: null };
       }
       if (this.tipo === 'update') {
-        for (const l of linhas.filter(casa)) Object.assign(l, this.payload as Linha);
-        return { data: null, error: null };
+        const alvo = linhas.filter(casa);
+        for (const l of alvo) Object.assign(l, this.payload as Linha);
+        // Como o PostgREST: com .select() depois do update, devolve as linhas atualizadas.
+        return { data: this.pedeRetorno ? alvo.map((l) => ({ ...l })) : null, error: null };
       }
       if (this.tipo === 'delete') {
         tabelas[this.tabela] = linhas.filter((l) => !casa(l));

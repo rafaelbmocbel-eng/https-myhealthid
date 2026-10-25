@@ -2838,6 +2838,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
       )}
 
       <ClientesDoMes
+        key={mes}
         mesLabel={`${MESES_PT[m - 1]} de ${ano}`}
         clientes={clientesDaLista}
         candidatos={candidatosDoMes}
@@ -2853,10 +2854,15 @@ function FinanceiroCassi({ onAbrirGuia }: {
         onPreencherComAgenda={preencherComAgenda}
         onAdicionar={(id) => lista.adicionar.mutate({ mes, ids: [id] })}
         onAdicionarComSessao={() => lista.adicionar.mutate({ mes, ids: comSessaoFora })}
-        onRemover={(id) => lista.remover.mutate({ mes, id })}
+        onRemover={(id) => {
+          // Tirar da lista apaga o que foi lançado no cliente: se há lançamento, confirma.
+          const c = clientesDaLista.find((x) => x.id === id);
+          if (c && c.guias.length > 0 && !confirm(`Tirar ${c.nome} da lista de ${MESES_PT[m - 1]} de ${ano}?\n\nOs códigos e as quantidades lançados nele neste mês também são apagados.`)) return;
+          lista.remover.mutate({ mes, id });
+        }}
         onLimpar={() => {
           const n = clientesDaLista.length;
-          if (confirm(`Tirar ${n === 1 ? 'o cliente' : `os ${n} clientes`} da lista de ${MESES_PT[m - 1]} de ${ano}?\n\nAs guias e as sessões não são alteradas; só sai da conta do mês.`)) lista.limpar.mutate({ mes });
+          if (confirm(`Tirar ${n === 1 ? 'o cliente' : `os ${n} clientes`} da lista de ${MESES_PT[m - 1]} de ${ano}?\n\nOs códigos e as quantidades lançados neles neste mês também são apagados. As guias e a agenda não mudam.`)) lista.limpar.mutate({ mes });
         }}
       />
 
