@@ -169,6 +169,7 @@ export function invalidarCachesAvaliacaoVoz(qc: QueryClient, pacienteId: string)
   qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest-presencial'] });
   qc.invalidateQueries({ queryKey: ['avaliacoes-voz-presencial'] });
   qc.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
+  qc.invalidateQueries({ queryKey: ['alerta-relato-paciente', pacienteId] });
   qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
   qc.invalidateQueries({ queryKey: ['eventos-anatomicos-count', pacienteId] });
   qc.invalidateQueries({ queryKey: ['timeline_completa', pacienteId] });

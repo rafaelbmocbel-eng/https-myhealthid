@@ -9,12 +9,20 @@ interface Props {
   pacienteId: string;
 }
 
+// Quantos relatos recentes entram. Um relato mais novo sem alerta não apaga o alerta de um anterior.
+const RELATOS_CONSIDERADOS = 20;
+
+interface Relato {
+  resultado: unknown;
+  created_at: string;
+}
+
 /**
  * Sinais de alerta que o próprio paciente relatou no portal. O relato não substitui a avaliação do profissional e
  * por isso não aparece como "última avaliação"; mas um alerta dele não pode ficar escondido (segurança).
  */
 export default function AlertaRelatoDoPaciente({ pacienteId }: Props) {
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: ['alerta-relato-paciente', pacienteId],
     enabled: !!pacienteId,
     queryFn: async () => {
@@ -24,30 +32,46 @@ export default function AlertaRelatoDoPaciente({ pacienteId }: Props) {
         .eq('paciente_id', pacienteId)
         .filter(COLUNA_ORIGEM, 'in', VALOR_SO_PACIENTE)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(RELATOS_CONSIDERADOS);
       if (error) throw error;
-      return data as { resultado: unknown; created_at: string } | null;
+      return (data ?? []) as Relato[];
     },
   });
 
-  const alertas = redFlagsDoResultado(data?.resultado);
-  if (!data || alertas.length === 0) return null;
+  // Só vira aviso de erro quando não há nada para mostrar: se uma releitura falhar, os alertas já carregados continuam à vista.
+  if (isError && !data) {
+    return (
+      <p role="status" className="rounded-xl border border-border/40 bg-muted/30 px-3.5 py-2 text-[12px] text-muted-foreground">
+        Não foi possível verificar os alertas do relato do paciente. Recarregue a aba.
+      </p>
+    );
+  }
+
+  // Cada alerta aparece uma vez, com a data do relato mais recente que o trouxe.
+  const alertas = new Map<string, string>();
+  for (const relato of data ?? []) {
+    for (const alerta of redFlagsDoResultado(relato.resultado)) {
+      if (!alertas.has(alerta)) alertas.set(alerta, relato.created_at);
+    }
+  }
+  if (alertas.size === 0) return null;
 
   return (
     <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-3 text-[12.5px] leading-snug space-y-1">
       <p className="flex items-center gap-1.5 font-semibold text-destructive">
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         O paciente relatou sinais de alerta no portal
-        <span className="font-normal text-destructive/80">
-          {' '}({format(new Date(data.created_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })})
-        </span>
       </p>
       <ul className="list-disc pl-5 text-foreground/90">
-        {alertas.map((a) => <li key={a}>{a}</li>)}
+        {[...alertas].map(([alerta, quando]) => (
+          <li key={alerta}>
+            {alerta}
+            <span className="text-muted-foreground"> · {format(new Date(quando), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
+          </li>
+        ))}
       </ul>
       <p className="text-[11.5px] text-muted-foreground">
-        É o que ele contou, ainda sem confirmação clínica. O relato completo está no histórico de avaliações desta aba.
+        É o que ele contou, ainda sem confirmação clínica. O relato completo está em Prontuário &gt; Histórico de avaliações por voz.
       </p>
     </div>
   );

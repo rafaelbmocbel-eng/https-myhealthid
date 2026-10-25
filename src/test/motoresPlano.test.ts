@@ -190,31 +190,35 @@ describe('carregarMotoresClinicos', () => {
   describe('avaliações por voz: avaliação do profissional x relato que o paciente fez no portal', () => {
     const avaliacaoDoProfissional = { _secoes: { condutas_profissional: 'tratar iliopsoas' }, red_flags: [] as string[] };
     const relatoDoPaciente = (extra: object = {}) => ({ _meta: { origem: 'portal_paciente_historia' }, ...extra });
+    const linhas = (...resultados: object[]): Resultado => ({ data: resultados.map((resultado, i) => ({ resultado, created_at: `2026-10-0${7 - i}T10:00:00Z` })) });
 
-    // A leitura do profissional leva .or(FILTRO_SO_PROFISSIONAL); a do relato leva .filter(coluna, 'in', valor).
-    const voz = (relato: Resultado) => (ops: Operacao[]): Resultado => {
+    // A leitura do profissional leva .or(FILTRO_SO_PROFISSIONAL) e devolve uma linha; a do relato leva
+    // .filter(coluna, 'in', valor) e devolve uma lista de relatos.
+    const voz = (relatos: Resultado) => (ops: Operacao[]): Resultado => {
       const eProfissional = ops.some(([m, ...a]) => m === 'or' && a[0] === FILTRO_SO_PROFISSIONAL);
       const eRelato = ops.some(([m, ...a]) => m === 'filter' && a[0] === COLUNA_ORIGEM && a[1] === 'in' && a[2] === VALOR_SO_PACIENTE);
       if (eProfissional) return { data: { resultado: avaliacaoDoProfissional } };
-      if (eRelato) return relato;
+      if (eRelato) return relatos;
       return { data: { resultado: relatoDoPaciente() } }; // leitura sem filtro: o bug (o relato apareceria como a avaliação)
     };
 
     it('o texto da avaliação vem da avaliação do profissional, nunca do relato mais recente do paciente', async () => {
-      const { admin, consultas } = fakeAdmin({ pacientes: { data: pacienteOk }, avaliacoes_voz: voz({ data: { resultado: relatoDoPaciente() } }) });
+      const { admin, consultas } = fakeAdmin({ pacientes: { data: pacienteOk }, avaliacoes_voz: voz(linhas(relatoDoPaciente())) });
       const m = await carregarMotoresClinicos(admin, 'p1');
       expect(m.avaliacaoVoz).toEqual(avaliacaoDoProfissional);
       expect(m.avaliacaoRedFlags).toBe(false);
-      expect(m.relatoPaciente).toEqual(relatoDoPaciente());
+      expect(m.relatoPaciente).toEqual([relatoDoPaciente()]);
       expect(m.relatoRedFlags).toBe(false);
       expect(m.falhasLeitura).toEqual([]);
       expect(consultas.avaliacoes_voz).toHaveLength(2);
+      // o relato é lido com limite de 20
+      expect(consultas.avaliacoes_voz.some((ops) => ops.some(([m, n]) => m === 'limit' && n === 20))).toBe(true);
     });
 
     it('um red flag do relato do paciente acende a triagem, com a origem certa (relato, não avaliação presencial)', async () => {
       const { admin } = fakeAdmin({
         pacientes: { data: pacienteOk },
-        avaliacoes_voz: voz({ data: { resultado: relatoDoPaciente({ red_flags: ['dor torácica ao esforço'] }) } }),
+        avaliacoes_voz: voz(linhas(relatoDoPaciente({ red_flags: ['dor torácica ao esforço'] }))),
       });
       const m = await carregarMotoresClinicos(admin, 'p1');
       expect(m.avaliacaoRedFlags).toBe(false);
@@ -228,15 +232,46 @@ describe('carregarMotoresClinicos', () => {
       expect(motivo!.detalhe).toContain('relato que o paciente fez no portal');
     });
 
+    it('o relato do "Histórico clínico" guarda a resposta da IA aninhada em assessment: o alerta de lá também conta', async () => {
+      const { admin } = fakeAdmin({
+        pacientes: { data: pacienteOk },
+        avaliacoes_voz: voz(linhas({ assessment: { red_flags: ['Fraqueza grave progressiva'] }, _meta: { origem: 'portal_paciente_historia' } })),
+      });
+      const m = await carregarMotoresClinicos(admin, 'p1');
+      expect(m.relatoRedFlags).toBe(true);
+      const entrada = montarEntradaTriagem({ foco: 'treino', chamador: 'profissional', motores: m });
+      expect(entrada.textos.join(' ')).toContain('Fraqueza grave progressiva');
+      expect(entrada.relatoRedFlags).toBe(true);
+    });
+
+    it('um relato mais novo sem alerta não apaga o alerta de um relato anterior', async () => {
+      const { admin } = fakeAdmin({
+        pacientes: { data: pacienteOk },
+        avaliacoes_voz: voz(linhas(relatoDoPaciente({ red_flags: [] }), relatoDoPaciente({ red_flags: ['perda de peso inexplicada'] }))),
+      });
+      const m = await carregarMotoresClinicos(admin, 'p1');
+      expect(m.relatoRedFlags).toBe(true);
+    });
+
+    it('a frase "nenhum red flag identificado" do relato não acende a triagem, mas um alerta real que começa com "nenhuma" sim', async () => {
+      const so = async (...flags: string[]) => {
+        const { admin } = fakeAdmin({ pacientes: { data: pacienteOk }, avaliacoes_voz: voz(linhas(relatoDoPaciente({ red_flags: flags }))) });
+        return (await carregarMotoresClinicos(admin, 'p1')).relatoRedFlags;
+      };
+      expect(await so('Nenhum red flag identificado')).toBe(false);
+      expect(await so('Não há sinais de alerta')).toBe(false);
+      expect(await so('Nenhuma melhora noturna')).toBe(true);
+      expect(await so('AVC')).toBe(true);
+    });
+
     it('o texto do relato entra na varredura de segurança, mesmo não sendo a avaliação', async () => {
       const { admin } = fakeAdmin({
         pacientes: { data: pacienteOk },
-        avaliacoes_voz: voz({ data: { resultado: relatoDoPaciente({ red_flags: ['dor torácica ao esforço'] }) } }),
+        avaliacoes_voz: voz(linhas(relatoDoPaciente({ red_flags: ['dor torácica ao esforço'] }))),
       });
       const m = await carregarMotoresClinicos(admin, 'p1');
       const entrada = montarEntradaTriagem({ foco: 'treino', chamador: 'profissional', motores: m });
       expect(entrada.textos.join(' ')).toContain('dor torácica ao esforço');
-      expect(entrada.relatoRedFlags).toBe(true);
       expect(entrada.avaliacaoRedFlags).toBe(false);
       // e o texto do relato nunca vira "a avaliação" que alimenta o plano
       expect(textoPresencial(m, 'treino')).not.toContain('dor torácica');
@@ -248,7 +283,7 @@ describe('carregarMotoresClinicos', () => {
         pacientes: { data: pacienteOk },
         avaliacoes_voz: (ops: Operacao[]) => (ops.some(([m]) => m === 'or')
           ? { data: { resultado: comAlerta } }
-          : { data: { resultado: relatoDoPaciente() } }),
+          : linhas(relatoDoPaciente())),
       });
       const m = await carregarMotoresClinicos(admin, 'p1');
       expect(m.avaliacaoRedFlags).toBe(true);

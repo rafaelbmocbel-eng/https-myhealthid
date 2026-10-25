@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import VoiceAssessment from './VoiceAssessment';
-import { ehRelatoDoPaciente, soDoProfissional } from '@/utils/voiceAssessment/origemAvaliacao';
+import { ehRelatoDoPaciente, resultadoParaEdicao, soDoProfissional } from '@/utils/voiceAssessment/origemAvaliacao';
 
 const SEVERITY_COLORS: Record<string, string> = {
   'Favorável': '#22c55e', 'Atenção': '#eab308', 'Moderado': '#f97316',
@@ -68,6 +68,7 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
       if (error) throw error;
       toast({ title: 'Avaliação excluída' });
       qc.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
+      qc.invalidateQueries({ queryKey: ['alerta-relato-paciente'] });
     } catch (e: any) {
       toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
     } finally {
@@ -249,7 +250,12 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
               pacienteId={pacienteId}
               patientName={patientName}
               mode={(opened.resultado?._meta?.mode === 'written') ? 'written' : 'voice'}
-              initialRecord={{ id: opened.id, resultado: opened.resultado, transcricao: opened.transcricao }}
+              initialRecord={{
+                id: opened.id,
+                // O relato do "Histórico clínico" vem com a resposta da IA aninhada: o editor precisa dos campos no topo.
+                resultado: ehRelatoDoPaciente(opened) ? resultadoParaEdicao(opened.resultado) : opened.resultado,
+                transcricao: opened.transcricao,
+              }}
             />
           )}
         </DialogContent>

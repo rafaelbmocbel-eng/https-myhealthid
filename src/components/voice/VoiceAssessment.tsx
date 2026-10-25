@@ -750,12 +750,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       const resultadoComOrigem = {
         ...normalizeJson(assessmentToSave),
         _meta: {
+          // O restante do _meta do registro aberto (respostas e tipo do relato do portal, por exemplo) também fica.
+          ...metaDoRegistro,
           ...prevMeta,
           origem: origemEModo.origem,
           mode: origemEModo.mode,
           savedAt: new Date().toISOString(),
-          mapa_dor: effectivePainMap ?? prevMeta.mapa_dor ?? null,
-          myid_contexto: myidContext || prevMeta.myid_contexto || null,
+          mapa_dor: effectivePainMap ?? prevMeta.mapa_dor ?? metaDoRegistro.mapa_dor ?? null,
+          myid_contexto: myidContext || prevMeta.myid_contexto || metaDoRegistro.myid_contexto || null,
         },
         // O plano foi gerado já com as condutas — nasce sincronizado com elas.
         ...(condutas.trim() ? {
@@ -817,6 +819,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         queryClient.invalidateQueries({ queryKey: ['avaliacao-voz-latest', pacienteId] });
         queryClient.invalidateQueries({ queryKey: ['timeline_completa', pacienteId] });
         queryClient.invalidateQueries({ queryKey: ['paciente-insights-aval', pacienteId] });
+        queryClient.invalidateQueries({ queryKey: ['alerta-relato-paciente', pacienteId] });
       }
       onAssessmentComplete?.(assessmentToSave);
 

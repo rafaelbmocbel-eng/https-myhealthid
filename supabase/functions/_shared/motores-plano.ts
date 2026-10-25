@@ -17,7 +17,7 @@ import {
   type FocoTriagem,
 } from "./triagem-bloqueio.ts";
 import { contaPodeGerarPlano, restringirAInsumosDoCliente } from "./plano-cliente.ts";
-import { COLUNA_ORIGEM, FILTRO_SO_PROFISSIONAL, VALOR_SO_PACIENTE } from "./origem-avaliacao.ts";
+import { baseDoResultado, COLUNA_ORIGEM, FILTRO_SO_PROFISSIONAL, redFlagsDoResultado, VALOR_SO_PACIENTE } from "./origem-avaliacao.ts";
 
 // deno-lint-ignore no-explicit-any
 type SB = any;
@@ -88,9 +88,9 @@ export interface MotoresClinicos {
   myidRedFlags: boolean;
   /** Red flags da avaliação presencial/voz feita pelo profissional. */
   avaliacaoRedFlags?: boolean;
-  /** Último relato que o próprio paciente fez no portal. Não vira "a avaliação": só alimenta a triagem de segurança. */
-  relatoPaciente?: unknown | null;
-  /** Red flags nesse relato. Qualquer lista não vazia conta: falso negativo é risco de saúde. */
+  /** Últimos relatos (até 20) que o próprio paciente fez no portal. Não viram "a avaliação": só alimentam a triagem. */
+  relatoPaciente?: unknown[] | null;
+  /** Algum desses relatos traz red flag (a frase "nenhum red flag identificado" não conta). */
   relatoRedFlags?: boolean;
   /** Fontes que falharam ao carregar (erro do banco, não "sem registro"). */
   falhasLeitura: string[];
@@ -186,11 +186,12 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
       .eq("paciente_id", pacienteId).or(FILTRO_SO_PROFISSIONAL)
       .order("created_at", { ascending: false }).limit(1).maybeSingle()
       .then((r: SB) => r).catch(falhaLeitura),
-    // Relato mais recente que o próprio paciente fez: não entra no texto da avaliação, mas um red flag
-    // dele continua valendo na triagem (falso negativo é risco de saúde).
+    // Relatos mais recentes que o próprio paciente fez (as duas origens coexistem; um mais novo sem alerta não
+    // apaga o anterior): não entram no texto da avaliação, mas um red flag deles continua valendo na triagem
+    // (falso negativo é risco de saúde).
     admin.from("avaliacoes_voz").select("resultado, created_at")
       .eq("paciente_id", pacienteId).filter(COLUNA_ORIGEM, "in", VALOR_SO_PACIENTE)
-      .order("created_at", { ascending: false }).limit(1).maybeSingle()
+      .order("created_at", { ascending: false }).limit(20)
       .then((r: SB) => r).catch(falhaLeitura),
     // Anamnese nutricional (+ a triagem autodeclarada, que mora em respostas.triagem).
     admin.from("nutricao_anamnese").select("respostas")
@@ -205,6 +206,9 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
   if (anamRes?.error) falhasLeitura.push("nutricao_anamnese");
   if (identRes?.error) falhasLeitura.push("avaliacoes_identidade");
   if (avRes?.error || avPacRes?.error) falhasLeitura.push("avaliacoes_voz");
+  const relatosDoPaciente: SB[] = Array.isArray(avPacRes?.data)
+    ? (avPacRes.data as SB[]).map((l: SB) => l?.resultado).filter((r: unknown) => r && typeof r === "object")
+    : [];
 
   // MyID: o formato variou entre gerações (component_scores atual, componentScores,
   // scores). Se não estiver em myid_avaliacoes, cai para avaliacoes_identidade.
@@ -271,8 +275,9 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
     parq: parqUlt ? { classificacao: parqUlt.classificacao, respostas: parqUlt.respostas } : null,
     myidRedFlags,
     avaliacaoRedFlags: avaliacaoTemRedFlags(avRes?.data?.resultado),
-    relatoPaciente: (avPacRes?.data?.resultado as SB) ?? null,
-    relatoRedFlags: avaliacaoTemRedFlags(avPacRes?.data?.resultado),
+    relatoPaciente: relatosDoPaciente.length ? relatosDoPaciente : null,
+    // Só a frase "nenhum red flag identificado" é descartada; qualquer alerta real do relato conta.
+    relatoRedFlags: relatosDoPaciente.some((r) => redFlagsDoResultado(r).length > 0),
     falhasLeitura,
   };
 }
@@ -310,7 +315,7 @@ function formatAvaliacaoVoz(resultado: SB): string {
     }
   }
   const flags = [...(Array.isArray(resultado.red_flags) ? resultado.red_flags : []), ...(Array.isArray(resultado.red_flags_reforcadas) ? resultado.red_flags_reforcadas : [])]
-    .map((f: SB) => (typeof f === "string" ? f : typeof f?.titulo === "string" ? f.titulo : typeof f?.descricao === "string" ? f.descricao : ""))
+    .map((f: SB) => (typeof f === "string" ? f : typeof f?.titulo === "string" ? f.titulo : typeof f?.descricao === "string" ? f.descricao : typeof f?.flag === "string" ? f.flag : ""))
     .filter(Boolean);
   if (flags.length) partes.push(`RED FLAGS registrados na avaliação (seja conservador): ${flags.join("; ").slice(0, 800)}`);
   if (!editadas.resumo_clinico && typeof resultado.resumo_clinico === "string" && resultado.resumo_clinico.trim()) {
@@ -651,8 +656,9 @@ export function montarEntradaTriagem(a: ParametrosEntradaTriagem): EntradaTriage
       empurra(e.notas_clinicas);
     }
     empurra(formatAvaliacaoVoz(m.avaliacaoVoz as SB));
-    // O relato do paciente não é a avaliação, mas o que ele contou entra na varredura de segurança.
-    empurra(formatAvaliacaoVoz(m.relatoPaciente as SB));
+    // O relato do paciente não é a avaliação, mas o que ele contou entra na varredura de segurança. O do portal
+    // guarda a resposta da IA aninhada em `assessment`.
+    for (const relato of m.relatoPaciente ?? []) empurra(formatAvaliacaoVoz(baseDoResultado(relato) as SB));
   }
   (a.textosPedido ?? []).forEach(empurra);
 
