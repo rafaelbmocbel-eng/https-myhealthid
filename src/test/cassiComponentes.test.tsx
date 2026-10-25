@@ -128,17 +128,18 @@ describe('LancamentoDoCliente', () => {
   const qtd = (codigo: string, guia = 1) => screen.getByLabelText(`Quantidade do código ${codigo} na guia ${guia}`) as HTMLInputElement;
   const digitar = (codigo: string, v: string, guia = 1) => fireEvent.change(qtd(codigo, guia), { target: { value: v } });
 
-  it('mostra os cinco códigos da tabela com código oficial, valor e limite', () => {
+  it('mostra os seis códigos da tabela com código oficial, valor e limite', () => {
     montar();
     const guia = within(screen.getByRole('region', { name: 'Guia 1 de Ana Souza' }));
     const linhas = guia.getAllByRole('listitem');
-    expect(linhas.map((l) => brlTxt(l.textContent).split(' ')[0])).toEqual(['012', '020', '144', '301', '131']);
+    expect(linhas.map((l) => brlTxt(l.textContent).split(' ')[0])).toEqual(['012', '020', '144', '301', '131', '185']);
     const txt = (i: number) => brlTxt(linhas[i].textContent);
     expect(txt(0)).toContain('5.00.00.012 · R$ 57,70 · máx. 10 por guia');
     expect(txt(1)).toContain('5.00.00.020 · R$ 57,70 · máx. 10 por guia');
     expect(txt(2)).toContain('5.00.00.144 · R$ 65,62 · máx. 1 por guia');
     expect(txt(3)).toContain('2.01.03.301 · R$ 35,55 · máx. 10 por guia');
     expect(txt(4)).toContain('2.01.03.131 · R$ 67,79 · máx. 10 no mês');
+    expect(txt(5)).toContain('3.16.02.185 · R$ 108,44 · máx. 10 por guia');
   });
 
   it('começa vazio e o total acompanha o que é digitado (10 de 012 = R$ 577,00)', () => {

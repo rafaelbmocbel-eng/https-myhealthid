@@ -50,7 +50,7 @@ em cada cliente: "agenda: 8 sessões").
 
 - Tabela `public.cassi_financeiro_clientes` (`terapeuta_id`, `mes` AAAA-MM, `paciente_id`, `lancamentos`); única por profissional+mês+cliente; RLS só do dono; INSERT só para cliente
   seu. O profissional só pode atualizar a coluna `lancamentos` (privilégio por coluna). Migrações `20261025190000` (lista) e
-  `20261025230000` (lançamentos).
+  `20261025230000` (lançamentos); `20261025233000` atualiza os códigos salvos (abaixo).
 - `lancamentos` é uma lista de **guias**; cada guia é `{ "código": quantidade }`. Ex.: `[{"012":10,"144":1},{"012":4,"301":2}]`. O banco
   recusa o que não for esse formato (até 12 guias; quantidades inteiras de 0 a 999).
 - Adiciona-se o cliente por busca ou com **Adicionar quem teve sessão no mês**; isso só põe o cliente na lista, **não lança nada**. Para
@@ -66,11 +66,18 @@ em cada cliente: "agenda: 8 sessões").
 | 144 | 5.00.00.144 | Consulta ambulatorial em fisioterapia | R$ 65,62 | 1 por guia |
 | 301 | 2.01.03.301 | Infiltração de ponto gatilho (por músculo) ou agulhamento seco (por músculo) | R$ 35,55 | 10 por guia |
 | 131 | 2.01.03.131 | Biofeedback com EMG | R$ 67,79 | 10 **no mês** |
+| 185 | 3.16.02.185 | Estimulação elétrica transcutânea | R$ 108,44 | 10 por guia (limite não informado: vale o da guia) |
 
 Código que não está na tabela (criado em Configurações) segue a guia da CASSI: 10 por guia. Os limites valem no campo (não deixa passar),
 no que é salvo e na lista (cliente acima do limite aparece sinalizado). Os valores e descrições vêm de **Configurações**: quem já tinha o
-código lá mantém o valor que configurou; o que falta da tabela entra com os dados acima (código novo: 020, 301, 131). Ver
+código lá mantém o valor que configurou; o que falta da tabela entra com os dados acima (código novo: 020, 301, 131, 185). Ver
 `src/lib/cassiFaturamento.ts`.
+
+Lista de códigos e valores de 25/10/2026 (012, 020, 301, 131 e 185): a migração `20261025233000_cassi_config_codigos_tabela_cassi.sql`
+atualiza os códigos **já salvos** na configuração do Rafael (valor, descrição e código oficial passam a ser os da lista; os que não
+existiam entram no fim; 144, 160 e os que ele criou ficam como estão). Antes, guarda a configuração original em
+`bkp_cassi_config_codigos_20261025` (fechada para a API; pode ser apagada depois de conferida). Não cria configuração, não mexe em
+outro profissional e pode rodar de novo sem trocar o backup.
 
 ### O que entra na conta
 

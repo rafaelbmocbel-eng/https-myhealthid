@@ -14,7 +14,7 @@ export const CODIGOS_CASSI: CodigoCassi[] = [
   { codigo: '144', descricao: 'Avaliação', apenasPrimeiroDia: true },
   { codigo: '012', descricao: 'Sessão de psicomotricidade' },
   { codigo: '160', descricao: 'Sessão de psicomotricidade' },
-  { codigo: '185', descricao: 'Eletroterapia' },
+  { codigo: '185', descricao: 'Estimulação elétrica transcutânea' },
 ];
 
 export type GuiaStatus = 'aguardando' | 'ativa' | 'finalizada' | 'cancelada';

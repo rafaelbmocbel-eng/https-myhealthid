@@ -1,6 +1,6 @@
 // Faturamento do Controle CASSI: o profissional lança, em cada cliente do mês, os códigos usados e a quantidade
-// de cada um; o valor do mês sai disso (quantidade × valor do código). Os limites de quantidade por guia e por mês
-// vêm da tabela da CASSI que o Rafael passou (25/10/2026).
+// de cada um; o valor do mês sai disso (quantidade × valor do código). Os códigos, valores e limites vêm da tabela da
+// CASSI que o Rafael passou (25/10/2026); o 185 entrou na segunda lista, sem limite informado (vale o da guia: 10).
 
 export interface CodigoFaturavel {
   codigo: string; // curto, como já é usado no resto do controle (012, 144...)
@@ -22,6 +22,7 @@ export const CODIGOS_PADRAO_FATURAMENTO: PadraoDoCodigo[] = [
   { codigo: '144', descricao: 'Consulta ambulatorial em fisioterapia', valor: 65.62, codigo_oficial: '50000144', maxPorGuia: 1 },
   { codigo: '301', descricao: 'Infiltração de ponto gatilho (por músculo) ou agulhamento seco (por músculo)', valor: 35.55, codigo_oficial: '20103301', maxPorGuia: 10 },
   { codigo: '131', descricao: 'Biofeedback com EMG', valor: 67.79, codigo_oficial: '20103131', maxPorMes: 10 },
+  { codigo: '185', descricao: 'Estimulação elétrica transcutânea', valor: 108.44, codigo_oficial: '31602185', maxPorGuia: 10 },
 ];
 
 // O código que vem marcado primeiro ao lançar um cliente.

@@ -64,7 +64,7 @@ function cenario(): Record<string, Linha[]> {
     cassi_config: [{
       terapeuta_id: 'prof-1', imposto_por_guia: 0, imposto_percentual: 10, minha_parte_percentual: 50, responsaveis: [],
       nome_clinica: 'Clínica Teste', nome_profissional: 'Dr. Teste', cidade: 'Belém',
-      codigos: [{ codigo: '144', descricao: 'Consulta', valor: 65.62, codigo_oficial: '50000144' }, { codigo: '012', descricao: 'Sessão', valor: 57.7, codigo_oficial: '50000012' }, { codigo: '185', descricao: 'Eletro', valor: 30 }, { codigo: '160', descricao: 'Sessão 160', valor: 60 }],
+      codigos: [{ codigo: '144', descricao: 'Consulta', valor: 65.62, codigo_oficial: '50000144' }, { codigo: '012', descricao: 'Sessão', valor: 57.7, codigo_oficial: '50000012' }, { codigo: '185', descricao: 'Estimulação elétrica transcutânea', valor: 108.44, codigo_oficial: '31602185' }, { codigo: '160', descricao: 'Sessão 160', valor: 60 }],
     }],
     cassi_financeiro_clientes: [],
     relatorios_cassi: [],
@@ -1250,21 +1250,22 @@ describe('Faturamento: valores e códigos de Configurações', () => {
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Ana Souza', 'ana');
-    await lancar('Ana Souza', { '012': 10, '144': 1, '131': 2 });
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 778,20')); // 577,00 + 65,62 + 135,58
+    await lancar('Ana Souza', { '012': 10, '144': 1, '131': 2, '185': 1 });
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 886,64')); // 577,00 + 65,62 + 135,58 + 108,44
   });
 
-  it('o editor mostra os cinco códigos da tabela com o código oficial', async () => {
+  it('o editor mostra os seis códigos da tabela com o código oficial e o valor', async () => {
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Ana Souza', 'ana');
     const grupo = await abrirLancamento('Ana Souza');
     const texto = norm(grupo.textContent);
-    for (const oficial of ['5.00.00.012', '5.00.00.020', '5.00.00.144', '2.01.03.301', '2.01.03.131']) expect(texto).toContain(oficial);
+    for (const oficial of ['5.00.00.012', '5.00.00.020', '5.00.00.144', '2.01.03.301', '2.01.03.131', '3.16.02.185']) expect(texto).toContain(oficial);
     expect(texto).toContain('R$ 57,70');
     expect(texto).toContain('R$ 65,62');
     expect(texto).toContain('R$ 35,55');
     expect(texto).toContain('R$ 67,79');
+    expect(texto).toContain('Estimulação elétrica transcutânea');
   });
 });
 
