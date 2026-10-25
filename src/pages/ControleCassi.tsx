@@ -18,6 +18,16 @@ import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertT
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
+import { contarSessoesDoMes, fecharMes, ultimosMeses } from '@/lib/cassiFinanceiro';
+import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
+import { BuscaDeCliente } from '@/components/cassi/BuscaDeCliente';
+import { SugestoesDoPedido } from '@/components/cassi/SugestoesDoPedido';
+import { ClientesDoMes } from '@/components/cassi/ClientesDoMes';
+import { useClientesFinanceiroCassi } from '@/hooks/useClientesFinanceiroCassi';
+
+// A aba "Este mês" está desligada por enquanto (pedido do Rafael). Mudar para true traz de volta a aba, o
+// botão "Colocar em Este mês" e os avisos que falam dela; o código da aba continua aqui.
+const MOSTRAR_ESTE_MES = false;
 
 interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; cassi_pedir_guia?: boolean | null; }
 
@@ -79,23 +89,29 @@ function useCassiConfig() {
 }
 
 const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-// Valor bruto de uma guia num mês. Soma código a código:
-//  - 144 (avaliação) é um dia EXTRA separado → cobra 1x (se houve ≥1 sessão);
-//  - códigos de tratamento cobram por dia de tratamento, limitado à quantidade
-//    autorizada de CADA código (um código pode ter passado com menos, ou "não
-//    passado" = 0). Se o código não tem quantidade própria, usa os dias do mês.
-// `valorDe` resolve o valor de cada código pela config.
-function brutoGuia(codigos: Array<{ codigo: string; sessoes?: number }>, sessoes: number, valorDe: (c: string) => number): number {
-  let total = 0;
-  for (const c of (codigos || [])) {
-    if (c.codigo === '144') {
-      if ((c.sessoes ?? 1) >= 1 && sessoes >= 1) total += valorDe('144');
-    } else {
-      const cap = c.sessoes != null ? c.sessoes : sessoes;
-      total += valorDe(c.codigo) * Math.max(0, Math.min(sessoes, cap));
-    }
-  }
-  return total;
+
+// Clientes CASSI do profissional. Uma consulta só para a tela toda (Faturamento incluso): duas consultas
+// com a mesma chave e colunas diferentes se sobrescreviam no cache e faziam sumir campos como cassi_pedir_guia.
+function useCassiPacientes() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['cassi-pacientes', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('pacientes')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo, cassi_diagnostico, cassi_confirmado_mes, cassi_pedir_guia')
+        .eq('terapeuta_id', user!.id)
+        .eq('ativo', true)
+        // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
+        // (independe de maiúscula/minúscula/grafia). Antes era .eq('CASSI') exato,
+        // que escondia clientes gravados como "Cassi", via convênio, etc.
+        .ilike('plano_saude', '%cassi%')
+        .order('nome', { ascending: true });
+      if (error) throw error;
+      return (data || []) as Paciente[];
+    },
+    enabled: !!user,
+  });
 }
 
 // Soma da guia para o RELATÓRIO de produção: cada código pela sua quantidade
@@ -153,13 +169,12 @@ export default function ControleCassi() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
-  const [view, setView] = useState<'clientes' | 'ativas' | 'pedir' | 'faturamento' | 'planilha'>('ativas');
-  // Clientes específicos levados ao "Pedir guias" ao clicar "Pedir guia" num card.
-  // Acumula: cada clique ADICIONA o cliente ao destaque, sem tirar os anteriores.
-  // Conjunto vazio = montar o pedido de todos.
-  const [pedirFoco, setPedirFoco] = useState<Set<string>>(() => new Set());
-  const irPedir = (id: string | null) => {
-    if (id) setPedirFoco((prev) => new Set(prev).add(id));
+  const [view, setView] = useState<'clientes' | 'ativas' | 'pedir' | 'faturamento' | 'planilha'>(MOSTRAR_ESTE_MES ? 'ativas' : 'clientes');
+  // "Pedir guia" num card coloca o cliente na lista do pedido (ela é durável) e abre a aba. Quem já teve o
+  // pedido feito não volta para a lista: o pedido dele aparece em "Guias pedidas — aguardando CASSI".
+  const irPedir = async (id: string | null) => {
+    const jaPedido = !!id && pacientes.some((x) => x.id === id && pedidoAberto(x));
+    if (id && !jaPedido && !(await marcarPedirGuia(id, true))) return;
     setView('pedir');
   };
   // Sub-aba do painel: guias ativas (padrão, "em linha" com controle de sessões)
@@ -175,24 +190,7 @@ export default function ControleCassi() {
   const [focoMes, setFocoMes] = useState<'todos' | 'guia' | 'acabando' | 'confirmar'>('todos');
 
   // Pacientes CASSI do profissional.
-  const { data: pacientes = [], isLoading: loadingPac } = useQuery({
-    queryKey: ['cassi-pacientes', user?.id],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo, cassi_diagnostico, cassi_confirmado_mes, cassi_pedir_guia')
-        .eq('terapeuta_id', user!.id)
-        .eq('ativo', true)
-        // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
-        // (independe de maiúscula/minúscula/grafia). Antes era .eq('CASSI') exato,
-        // que escondia clientes gravados como "Cassi", via convênio, etc.
-        .ilike('plano_saude', '%cassi%')
-        .order('nome', { ascending: true });
-      if (error) throw error;
-      return (data || []) as Paciente[];
-    },
-    enabled: !!user,
-  });
+  const { data: pacientes = [], isLoading: loadingPac } = useCassiPacientes();
 
   // Todas as guias do profissional (agrupamos por paciente no cliente).
   const { data: guias = [], isLoading: loadingGuias } = useQuery({
@@ -314,36 +312,20 @@ export default function ControleCassi() {
       return { paciente: p, guia, status: statusPaciente(guia) };
     }), [pacientesAtivos, guiaPorPaciente, realizadasAgendaPorGuia]);
 
-  // "Pedido aberto" = já demos baixa (solicitamos) e a guia nova ainda não chegou
-  // (nenhuma guia com data_pedido >= a data da solicitação).
-  const pedidoAberto = (p: Paciente): boolean => {
-    const sol = p.guia_solicitada_em ? p.guia_solicitada_em.slice(0, 10) : null;
-    if (!sol) return false;
-    const ultimo = guiaPorPaciente.get(p.id)?.data_pedido || null;
-    return !ultimo || ultimo < sol;
-  };
-  // Precisa pedir guia (faltam ≤ 2 sessões / guia usada / sem guia) E ainda não
-  // foi pedida. Baseado nas sessões (tempo hábil), não em prazo fixo de calendário.
-  const pedidosDoMes = useMemo(() => linhas.filter((l) =>
-    (
-      // Marcado "vou pedir" ao entrar em Este mês — vai direto pra cá.
-      l.paciente.cassi_pedir_guia === true
-      // Regra por SESSÕES (agora automática via agenda): faltam ≤2 / usou todas / sem guia.
-      || precisaNovaGuia(l.guia)
-      // Regra por TEMPO para cliente de 2 guias/mês: no 10º dia útil após o pedido, entra sozinho.
-      || venceuPrazoProximaGuia(l.guia, l.paciente.guias_por_mes)
-    ) && !pedidoAberto(l.paciente)
-  ), [linhas, guiaPorPaciente]);
+  const pedidoAberto = (p: Paciente): boolean => pedidoEmAberto(p, guiaPorPaciente.get(p.id) || null);
+  // A lista do pedido é do profissional: entra quem ele procura e adiciona (marcador durável
+  // cassi_pedir_guia, que só sai ao dar baixa ou tirar da lista). O que o sistema acha que está na hora de
+  // pedir (faltam ≤ 2 sessões / guia usada / sem guia / 2 por mês com prazo vencido) vira sugestão à parte.
+  const listaPedir = useMemo(() => listaDoPedido(linhas), [linhas]);
+  const sugestoesPedir = useMemo(() => sugestoesDoPedido(linhas), [linhas]);
   // Guias já pedidas, aguardando a CASSI liberar.
   const guiasPedidas = useMemo(() => linhas.filter((l) => pedidoAberto(l.paciente)), [linhas, guiaPorPaciente]);
-  // Candidatos para ADICIONAR manualmente ao pedido: qualquer cliente CASSI ativo
-  // que ainda não tem pedido em aberto (inclui os que o sistema não flagou sozinho).
-  // Para o "+ Adicionar cliente ao pedido": TODOS os CASSI (inclusive os
-  // encerrados — dá pra puxar de volta), menos quem já tem pedido em aberto.
-  const candidatosPedidoTodos = useMemo(() => pacientes
-    .filter((p) => !pedidoAberto(p))
-    .map((p) => ({ paciente: p, guia: guiaPorPaciente.get(p.id) || null })),
-    [pacientes, guiaPorPaciente]);
+  // Para a busca "adicionar cliente ao pedido": TODOS os CASSI (inclusive os encerrados — dá pra puxar de
+  // volta), menos quem já tem pedido em aberto.
+  const candidatosPedido = useMemo(
+    () => candidatosDoPedido(pacientes, (id) => guiaPorPaciente.get(id) || null),
+    [pacientes, guiaPorPaciente],
+  );
 
   // Dar baixa: marca que a(s) guia(s) foram pedidas → saem de "Pedir guia".
   const darBaixaPedidos = async (ids: string[]) => {
@@ -363,14 +345,25 @@ export default function ControleCassi() {
   // Lista MANUAL durável de "Pedir guia": marca/desmarca cassi_pedir_guia no
   // cadastro. Assim a lista NÃO some ao sair da página — só sai quando dá baixa
   // (darBaixaPedidos limpa o marcador) ou quando você tira o cliente.
-  const marcarPedirGuia = async (id: string, valor: boolean) => {
+  // A lista na tela muda na hora (cache) e volta ao que era se o banco recusar.
+  const marcarPedirGuia = async (ids: string | string[], valor: boolean): Promise<boolean> => {
+    const lista = Array.isArray(ids) ? ids : [ids];
+    if (lista.length === 0) return true;
     // Adicionar ao pedido também REATIVA quem estava com CASSI encerrado — se
     // vamos pedir guia, o cliente volta a ser ativo.
-    const patch: any = { cassi_pedir_guia: valor };
+    const patch: Partial<Paciente> = { cassi_pedir_guia: valor };
     if (valor) patch.cassi_encerrado_em = null;
-    const { error } = await (supabase as any).from('pacientes').update(patch).eq('id', id);
-    if (error) { toast.error('Erro: ' + error.message); return; }
-    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+    const chave = ['cassi-pacientes', user?.id];
+    const anterior = qc.getQueryData<Paciente[]>(chave);
+    qc.setQueryData<Paciente[]>(chave, (old) => old?.map((p) => (lista.includes(p.id) ? { ...p, ...patch } : p)));
+    const { error } = await (supabase as any).from('pacientes').update(patch).in('id', lista);
+    if (error) {
+      qc.setQueryData<Paciente[]>(chave, anterior);
+      toast.error('Erro: ' + error.message);
+      return false;
+    }
+    qc.invalidateQueries({ queryKey: chave });
+    return true;
   };
   const guiasAtivasLista = useMemo(() => guiasEff.filter((g) => g.status === 'ativa'), [guiasEff]);
   // Aba "Este mês": mês vigente + mês passado (pra carregar os pacientes que
@@ -457,7 +450,7 @@ export default function ControleCassi() {
   }, [linhas, busca]);
 
   const abrirCalculadora = () => {
-    setView('ativas');
+    setView(MOSTRAR_ESTE_MES ? 'ativas' : 'clientes');
     setCalcPainelAberta(true);
     window.setTimeout(() => document.getElementById('calculadora-dias-uteis')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   };
@@ -485,12 +478,14 @@ export default function ControleCassi() {
           </div>
           <div className="md:ml-auto flex items-center gap-1.5 min-w-0">
             <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento'], ['planilha', 'Planilha']] as const).map(([v, label]) => (
-                <button key={v} onClick={() => { if (v === 'pedir') setPedirFoco(new Set()); setView(v); }}
+              {([['clientes', 'Clientes'], ['ativas', 'Este mês'], ['pedir', 'Pedir guias'], ['faturamento', 'Faturamento'], ['planilha', 'Planilha']] as const)
+                .filter(([v]) => MOSTRAR_ESTE_MES || v !== 'ativas')
+                .map(([v, label]) => (
+                <button key={v} onClick={() => setView(v)}
                   className={`text-[12px] px-2.5 py-1 rounded-md font-medium whitespace-nowrap shrink-0 ${view === v ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
                   {label}
-                  {v === 'pedir' && pedidosDoMes.length > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center min-w-[15px] h-[15px] px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold align-middle">{pedidosDoMes.length}</span>
+                  {v === 'pedir' && listaPedir.length > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[15px] h-[15px] px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold align-middle" aria-label={`${listaPedir.length} na lista`}>{listaPedir.length}</span>
                   )}
                 </button>
               ))}
@@ -508,29 +503,34 @@ export default function ControleCassi() {
       <div className="max-w-5xl mx-auto p-3 space-y-4">
         {!loading && (
           <p className="text-[12px] text-muted-foreground -mb-1 px-0.5">
-            {view === 'clientes' ? 'Todos os clientes CASSI — buscar, cadastrar e ativar no mês.'
+            {view === 'clientes' ? (MOSTRAR_ESTE_MES ? 'Todos os clientes CASSI — buscar, cadastrar e ativar no mês.' : 'Todos os clientes CASSI — buscar, cadastrar e ver as guias.')
               : view === 'ativas' ? `${MESES_PT[Number(mesVigente.slice(5, 7)) - 1]}/${mesVigente.slice(2, 4)} · quem está em tratamento neste mês.`
-              : view === 'pedir' ? 'Monte e envie os pedidos de novas guias.'
+              : view === 'pedir' ? 'Procure os clientes, monte a lista e envie o pedido de novas guias por mensagem.'
               : view === 'planilha' ? 'Todas as guias — buscar, filtrar por status e exportar CSV.'
-              : 'Cálculo do mês e relatórios de produção.'}
+              : 'Escolha os clientes do mês e veja o cálculo financeiro e os relatórios de produção.'}
           </p>
         )}
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : view === 'clientes' ? (
-          <ClientesCassi
-            pacientes={pacientes}
-            guias={guiasEff}
-            onCadastro={(p) => setCadastro(p)}
-            onNovo={() => setCadastro('novo')}
-            onGuia={(p, g) => setEditando({ paciente: p, guia: g })}
-            onDefinirGuiasMes={definirGuiasMes}
-            onExcluir={excluirCliente}
-            onAtivar={reativarCliente}
-            onConfirmarMes={confirmarGuiaMes}
-            onPedirGuia={(id) => irPedir(id)}
-            mesVigente={mesVigente}
-          />
+          <>
+            {/* A calculadora morava na aba "Este mês"; sem ela, fica aqui. */}
+            {!MOSTRAR_ESTE_MES && <CalculadoraCartao aberto={calcPainel} onAlternar={() => setCalcPainelAberta((v) => !v)} />}
+            <ClientesCassi
+              pacientes={pacientes}
+              guias={guiasEff}
+              onCadastro={(p) => setCadastro(p)}
+              onNovo={() => setCadastro('novo')}
+              onGuia={(p, g) => setEditando({ paciente: p, guia: g })}
+              onDefinirGuiasMes={definirGuiasMes}
+              onExcluir={excluirCliente}
+              onAtivar={reativarCliente}
+              onConfirmarMes={confirmarGuiaMes}
+              onPedirGuia={(id) => irPedir(id)}
+              mesVigente={mesVigente}
+              usaEsteMes={MOSTRAR_ESTE_MES}
+            />
+          </>
         ) : view === 'planilha' ? (
           <PlanilhaGuias guias={guiasEff} onAbrir={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} />
         ) : view === 'faturamento' ? (
@@ -538,9 +538,9 @@ export default function ControleCassi() {
         ) : view === 'pedir' ? (
           <>
             <PedirGuiasPanel
-              linhas={pedidosDoMes}
-              candidatos={candidatosPedidoTodos}
-              foco={pedirFoco}
+              linhas={listaPedir}
+              candidatos={candidatosPedido}
+              sugestoes={sugestoesPedir}
               onNovaGuia={(pac) => setEditando({ paciente: pac, guia: null })}
               onDarBaixa={darBaixaPedidos}
               onMarcarPedir={marcarPedirGuia}
@@ -1936,7 +1936,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
       }
     },
     onSuccess: () => {
-      toast.success(editando ? 'Cadastro atualizado' : (Number(f.sessoes) > 0 && codigos.length > 0) ? 'Cliente e guia cadastrados — em Este mês' : alvoId ? (alvoEncerrado ? 'Cliente reativado' : 'Cliente adicionado ao CASSI') : 'Cliente cadastrado');
+      toast.success(editando ? 'Cadastro atualizado' : (Number(f.sessoes) > 0 && codigos.length > 0) ? MOSTRAR_ESTE_MES ? 'Cliente e guia cadastrados — em Este mês' : 'Cliente e guia cadastrados' : alvoId ? (alvoEncerrado ? 'Cliente reativado' : 'Cliente adicionado ao CASSI') : 'Cliente cadastrado');
       onSaved();
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao salvar'),
@@ -2058,7 +2058,9 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
           {!editando && (
             <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 space-y-2">
               <p className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">Dados da 1ª guia (opcional)</p>
-              <p className="text-[10px] text-muted-foreground -mt-1">Preencha e o cliente já entra em <b>Este mês</b> com a guia criada (carteirinha, códigos, sessões, data e diagnóstico). Dá pra editar depois em “Ver guia”.</p>
+              <p className="text-[10px] text-muted-foreground -mt-1">
+                {MOSTRAR_ESTE_MES ? <>Preencha e o cliente já entra em <b>Este mês</b> com a guia criada</> : <>Preencha e o cliente já fica com a guia criada</>} (carteirinha, códigos, sessões, data e diagnóstico). Dá pra editar depois em “Ver guia”.
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Data resposta CASSI</label>
@@ -2346,28 +2348,25 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-// Pedidos do mês — lista dos clientes elegíveis (precisam de guia nova). O
-// profissional marca quem vai pro pedido, ajusta carteirinha/diagnóstico/códigos
-// (máx. 3) e gera um texto pronto para copiar (nome, carteirinha, diagnóstico, códigos).
-interface ItemPedido {
-  id: string; nome: string; sel: boolean;
-  carteirinha: string; diagnostico: string; codigos: string[];
-}
-function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa, onMarcarPedir }: {
-  linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>;
-  candidatos?: Array<{ paciente: Paciente; guia: GuiaCassi | null }>; // todos os CASSI que dá pra adicionar manualmente
-  foco?: Set<string>; // clientes vindos de "Pedir guia" — pré-seleciona esses (vazio = todos)
+// Pedir guias — a lista é do profissional: ele procura os clientes, adiciona, ajusta carteirinha/diagnóstico/
+// códigos (máx. 3) e copia ou manda a mensagem pronta (nome, carteirinha, códigos, diagnóstico). O que o
+// sistema acha que está na hora de pedir aparece à parte, como sugestão, e não entra sozinho no pedido.
+function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, onDarBaixa, onMarcarPedir }: {
+  linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>; // a lista do pedido
+  candidatos?: Array<{ paciente: Paciente; guia: GuiaCassi | null }>; // todos os CASSI que dá pra adicionar pela busca
+  sugestoes?: SugestaoPedido[];
   onNovaGuia: (p: Paciente) => void;
   onDarBaixa: (ids: string[]) => Promise<void> | void;
-  onMarcarPedir?: (id: string, valor: boolean) => Promise<void> | void; // lista manual DURÁVEL
+  onMarcarPedir: (ids: string | string[], valor: boolean) => Promise<boolean> | boolean; // lista DURÁVEL
 }) {
   const { data: cfg } = useCassiConfig();
   const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
   const [dandoBaixa, setDandoBaixa] = useState(false);
   const [verTexto, setVerTexto] = useState(false);
-  const [ocultos, setOcultos] = useState<Set<string>>(() => new Set()); // retirados da lista
-  const [manualIds, setManualIds] = useState<Set<string>>(() => new Set()); // adicionados à mão
-  const [buscaAdd, setBuscaAdd] = useState('');
+  const [adicionandoLote, setAdicionandoLote] = useState(false);
+  // O que foi mexido na tela (marcado, carteirinha, diagnóstico, códigos), por cliente. Vale por cima do
+  // cadastro enquanto a aba estiver aberta; só vai para o cadastro ao dar baixa.
+  const [edicoes, setEdicoes] = useState<Record<string, Partial<ItemPedido>>>({});
 
   // Motivo de cada cliente estar na lista (sem guia / faltam poucas / 2/mês).
   const motivos = useMemo(() => {
@@ -2379,84 +2378,54 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
     return m;
   }, [linhas]);
 
-  const novoItem = (l: { paciente: Paciente; guia: GuiaCassi | null }): ItemPedido => ({
-    id: l.paciente.id,
-    nome: `${l.paciente.nome} ${l.paciente.sobrenome || ''}`.trim(),
-    // Se clicou "Pedir guia" de clientes específicos, marca só esses; senão, todos.
-    sel: foco && foco.size ? foco.has(l.paciente.id) : true,
-    carteirinha: l.paciente.carteirinha || l.guia?.matricula || '',
-    diagnostico: l.paciente.cassi_diagnostico || l.guia?.diagnostico || '',
-    codigos: (l.paciente.codigos_cassi?.length ? l.paciente.codigos_cassi : (l.guia?.codigos?.map((c) => c.codigo) || [])).slice(0, 3),
-  });
-  const [itens, setItens] = useState<ItemPedido[]>(() => linhas.map(novoItem));
-  // Mantém os itens em sincronia com a lista (ex.: depois de dar baixa), preservando
-  // as edições dos que continuam.
-  const idsKey = linhas.map((l) => l.paciente.id).join(',');
-  useEffect(() => {
-    setItens((prev) => {
-      const byId = new Map(prev.map((i) => [i.id, i]));
-      const autoIds = new Set(linhas.map((l) => l.paciente.id));
-      const auto = linhas.map((l) => byId.get(l.paciente.id) || novoItem(l));
-      // Preserva os adicionados à mão que não estão na lista automática (não somem no refetch).
-      const manuais = prev.filter((i) => manualIds.has(i.id) && !autoIds.has(i.id));
-      return [...auto, ...manuais];
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey]);
-
-  // Adiciona um cliente qualquer ao pedido (mesmo que o sistema não tenha flagado).
-  const adicionar = (l: { paciente: Paciente; guia: GuiaCassi | null }) => {
-    setManualIds((s) => new Set(s).add(l.paciente.id));
-    setOcultos((s) => { const n = new Set(s); n.delete(l.paciente.id); return n; });
-    setItens((p) => p.some((i) => i.id === l.paciente.id) ? p : [...p, { ...novoItem(l), sel: true }]);
-    setBuscaAdd('');
-    // Persiste na lista (não some ao sair da página) até dar baixa.
-    onMarcarPedir?.(l.paciente.id, true);
-  };
-
-  const upd = (id: string, patch: Partial<ItemPedido>) =>
-    setItens((p) => p.map((it) => it.id === id ? { ...it, ...patch } : it));
-  const toggleCod = (id: string, cod: string) =>
-    setItens((p) => p.map((it) => {
-      if (it.id !== id) return it;
-      if (it.codigos.includes(cod)) return { ...it, codigos: it.codigos.filter((c) => c !== cod) };
-      if (it.codigos.length >= 3) { toast.error('Máximo de 3 códigos por pedido'); return it; }
-      return { ...it, codigos: [...it.codigos, cod] };
-    }));
-
-  const retirar = (id: string) => {
-    setOcultos((s) => new Set(s).add(id));
-    // Tira da lista durável também (se estava marcado manualmente).
-    onMarcarPedir?.(id, false);
-  };
-  const visiveis = itens.filter((it) => !ocultos.has(it.id));
-  const selecionados = visiveis.filter((i) => i.sel);
+  const itens = useMemo(
+    () => linhas.map((l) => ({ ...itemDoPedido(l), ...edicoes[l.paciente.id] })),
+    [linhas, edicoes],
+  );
+  const selecionados = itens.filter((i) => i.sel);
   const semCarteirinha = selecionados.filter((i) => !i.carteirinha.trim()).length;
 
-  // "Adicionar cliente": qualquer candidato que ainda não está na lista.
-  const idsNaLista = new Set(itens.filter((it) => !ocultos.has(it.id)).map((i) => i.id));
-  const buscaAddLower = normalizarBusca(buscaAdd);
-  const resultadosAdd = buscaAddLower
-    ? candidatos
-        .filter((l) => !idsNaLista.has(l.paciente.id))
-        .filter((l) => normalizarBusca(`${l.paciente.nome} ${l.paciente.sobrenome || ''} ${l.paciente.carteirinha || ''}`).includes(buscaAddLower))
-        .slice(0, 8)
-    : [];
-  const texto = [
-    `*Solicitação de novas guias CASSI* (${selecionados.length} cliente${selecionados.length === 1 ? '' : 's'})`,
-    '',
-    ...selecionados.map((i, idx) =>
-      `${idx + 1}. *${i.nome}*\nCarteirinha: ${i.carteirinha || '—'}\nCódigos: ${i.codigos.join(', ') || '—'}\nDiagnóstico: ${i.diagnostico || '—'}`
-    ),
-  ].join('\n');
+  const upd = (id: string, patch: Partial<ItemPedido>) =>
+    setEdicoes((e) => ({ ...e, [id]: { ...e[id], ...patch } }));
+  const toggleCod = (id: string, cod: string) => {
+    const it = itens.find((i) => i.id === id);
+    if (!it) return;
+    if (it.codigos.includes(cod)) { upd(id, { codigos: it.codigos.filter((c) => c !== cod) }); return; }
+    if (it.codigos.length >= MAXIMO_CODIGOS_PEDIDO) { toast.error(`Máximo de ${MAXIMO_CODIGOS_PEDIDO} códigos por pedido`); return; }
+    upd(id, { codigos: [...it.codigos, cod] });
+  };
+
+  // Persiste na lista (não some ao sair da página) até dar baixa.
+  const adicionar = async (id: string) => {
+    const nome = candidatos.find((c) => c.paciente.id === id)?.paciente.nome;
+    if (await onMarcarPedir(id, true)) toast.success(`${nome || 'Cliente'} entrou no pedido`);
+  };
+  const adicionarLote = async (ids: string[]) => {
+    setAdicionandoLote(true);
+    try {
+      if (await onMarcarPedir(ids, true)) toast.success(`${ids.length} cliente(s) entraram no pedido`);
+    } finally { setAdicionandoLote(false); }
+  };
+  const retirar = (id: string) => { void onMarcarPedir(id, false); };
+
+  // Busca: qualquer cliente CASSI que ainda não está na lista.
+  const idsNaLista = new Set(linhas.map((l) => l.paciente.id));
+  const candidatosBusca = candidatos
+    .filter((c) => !idsNaLista.has(c.paciente.id))
+    .map((c) => ({
+      id: c.paciente.id,
+      nome: `${c.paciente.nome} ${c.paciente.sobrenome || ''}`.trim(),
+      carteirinha: c.paciente.carteirinha,
+      encerrado: !!c.paciente.cassi_encerrado_em,
+    }));
+
+  const texto = montarTextoPedido(selecionados);
 
   const copiar = async () => {
     try { await navigator.clipboard.writeText(texto); toast.success('Texto copiado!'); }
     catch { toast.error('Não consegui copiar — selecione e copie manualmente.'); }
   };
   const enviarWhatsApp = () => window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
-
-  const label = (t: string) => <label className="text-[10px] uppercase text-muted-foreground tracking-wide">{t}</label>;
 
   return (
     <div className="space-y-3">
@@ -2465,56 +2434,37 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
         <span className="text-[12px] text-muted-foreground">{selecionados.length} selecionado(s)</span>
       </div>
 
-      {/* Adicionar qualquer cliente CASSI ao pedido (busca) */}
-      <div className="relative">
-        <Input
-          value={buscaAdd}
-          onChange={(e) => setBuscaAdd(e.target.value)}
-          placeholder="+ Adicionar cliente ao pedido (busque por nome ou carteirinha)"
-          className="h-9 text-sm"
-        />
-        {resultadosAdd.length > 0 && (
-          <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden max-h-64 overflow-y-auto">
-            {resultadosAdd.map((l) => (
-              <button
-                key={l.paciente.id}
-                type="button"
-                onClick={() => adicionar(l)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
-              >
-                <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span className="flex-1 min-w-0 truncate">{l.paciente.nome} {l.paciente.sobrenome || ''}</span>
-                {l.paciente.cassi_encerrado_em && <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 shrink-0">encerrada · reativar</span>}
-                {l.paciente.carteirinha && <span className="text-[11px] text-muted-foreground shrink-0">{l.paciente.carteirinha}</span>}
-              </button>
-            ))}
-          </div>
-        )}
-        {buscaAddLower && resultadosAdd.length === 0 && (
-          <p className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg px-3 py-2 text-xs text-muted-foreground">Nenhum cliente encontrado (ou já está na lista).</p>
-        )}
-      </div>
+      {/* Procurar qualquer cliente CASSI e colocar no pedido */}
+      <BuscaDeCliente
+        candidatos={candidatosBusca}
+        placeholder="+ Adicionar cliente (nome ou carteirinha)"
+        rotulo="Adicionar cliente ao pedido"
+        rotuloEncerrado="encerrada · reativar"
+        onEscolher={adicionar}
+      />
 
       {/* Cards dos clientes — compactos */}
       <div className="space-y-1.5">
-        {visiveis.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-6">Nenhum cliente na lista de pedidos. 🎉</p>
+        {itens.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground py-6">
+            Nenhum cliente no pedido. Procure um cliente acima para montar a mensagem{sugestoes.length > 0 ? ' ou veja os sugeridos abaixo' : ''}.
+          </p>
         )}
-        {visiveis.map((it) => {
+        {itens.map((it) => {
           const semCart = it.sel && !it.carteirinha.trim();
           return (
             <div key={it.id} className={`rounded-lg border transition-colors ${it.sel ? (semCart ? 'border-rose-300 dark:border-rose-800 bg-rose-50/30 dark:bg-rose-950/10' : 'border-primary/40 bg-primary/5') : 'border-border/50'}`}>
               <div className="flex items-center">
-                <button onClick={() => upd(it.id, { sel: !it.sel })} className="flex-1 min-w-0 flex items-center gap-2 px-2.5 py-2 text-left">
+                <button onClick={() => upd(it.id, { sel: !it.sel })} aria-pressed={it.sel} className="flex-1 min-w-0 flex items-center gap-2 px-2.5 py-2 text-left">
                   {it.sel ? <CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
                   <span className="text-sm font-semibold flex-1 min-w-0 truncate">{it.nome}</span>
                   {motivos.get(it.id) && (
-                    <span className={`text-[9px] uppercase font-bold rounded px-1 shrink-0 ${motivos.get(it.id) === '2ª guia do mês' ? 'text-violet-700 bg-violet-100 dark:bg-violet-900/30' : 'text-amber-700 bg-amber-100 dark:bg-amber-900/30'}`}>
+                    <span className="text-[9px] uppercase font-bold rounded px-1 shrink-0 text-amber-700 bg-amber-100 dark:bg-amber-900/30">
                       {motivos.get(it.id)}
                     </span>
                   )}
                 </button>
-                <button onClick={() => retirar(it.id)} title="Retirar da lista" className="px-2 py-2 text-muted-foreground hover:text-destructive shrink-0">
+                <button onClick={() => retirar(it.id)} title="Retirar da lista" aria-label={`Retirar ${it.nome} da lista`} className="px-2 py-2 text-muted-foreground hover:text-destructive shrink-0">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -2522,26 +2472,23 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
               {it.sel && (
                 <div className="px-2.5 pb-2.5 space-y-1.5">
                   <div className="grid grid-cols-2 gap-1.5">
-                    <Input inputMode="numeric" className={`h-8 text-xs ${semCart ? 'border-rose-400 dark:border-rose-700' : ''}`}
+                    <Input inputMode="numeric" aria-label={`Carteirinha de ${it.nome}`} className={`h-8 text-xs ${semCart ? 'border-rose-400 dark:border-rose-700' : ''}`}
                       value={it.carteirinha} onChange={(e) => upd(it.id, { carteirinha: e.target.value })} placeholder="Carteirinha (nº CASSI)" />
-                    <Input className="h-8 text-xs" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="Diagnóstico" />
+                    <Input aria-label={`Diagnóstico de ${it.nome}`} className="h-8 text-xs" value={it.diagnostico} onChange={(e) => upd(it.id, { diagnostico: e.target.value })} placeholder="Diagnóstico" />
                   </div>
                   {semCart && <p className="text-[10px] text-rose-600">Sem carteirinha — preencha pra poder pedir.</p>}
                   <div className="flex items-center gap-1 flex-wrap">
                     {codigosDisp.map((c) => {
                       const on = it.codigos.includes(c.codigo);
                       return (
-                        <button key={c.codigo} type="button" onClick={() => toggleCod(it.id, c.codigo)}
+                        <button key={c.codigo} type="button" aria-pressed={on} aria-label={`Código ${c.codigo} de ${it.nome}`} onClick={() => toggleCod(it.id, c.codigo)}
                           className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}>
                           {c.codigo}
                         </button>
                       );
                     })}
                     <button className="text-[10px] text-muted-foreground underline underline-offset-2 ml-auto" onClick={() => {
-                      // Busca nas duas fontes: os flagados pelo sistema (linhas) E os
-                      // adicionados à mão pela busca (candidatos). Sem o `!` — clientes
-                      // manuais não estão em `linhas` e quebravam a tela aqui.
-                      const l = linhas.find((x) => x.paciente.id === it.id) ?? candidatos.find((x) => x.paciente.id === it.id);
+                      const l = linhas.find((x) => x.paciente.id === it.id);
                       if (l) onNovaGuia(l.paciente);
                     }}>
                       registrar manual
@@ -2553,6 +2500,13 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
           );
         })}
       </div>
+
+      <SugestoesDoPedido
+        sugestoes={sugestoes}
+        ocupado={adicionandoLote}
+        onAdicionar={(id) => { void adicionar(id); }}
+        onAdicionarTodos={(ids) => { void adicionarLote(ids); }}
+      />
 
       {/* Ações */}
       <div className="rounded-xl border border-border/50 bg-muted/20 p-3 space-y-2 sticky bottom-2">
@@ -2596,7 +2550,7 @@ function PedirGuiasPanel({ linhas, candidatos = [], foco, onNovaGuia, onDarBaixa
         <button className="w-full text-[11px] text-muted-foreground" onClick={() => setVerTexto((v) => !v)}>
           {verTexto ? 'ocultar mensagem' : 'ver a mensagem que vai no WhatsApp'}
         </button>
-        {verTexto && <Textarea readOnly value={texto} rows={Math.min(10, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />}
+        {verTexto && <Textarea readOnly aria-label="Mensagem do pedido" value={texto} rows={Math.min(10, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />}
       </div>
     </div>
   );
@@ -2633,20 +2587,14 @@ function FinanceiroCassi({ onAbrirGuia }: {
     enabled: !!user,
   });
 
-  // Clientes CASSI (mesma query/cache do painel).
-  const { data: pacientes = [] } = useQuery({
-    queryKey: ['cassi-pacientes', user?.id],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi')
-        .eq('terapeuta_id', user!.id).eq('ativo', true).ilike('plano_saude', '%cassi%')
-        .order('nome', { ascending: true });
-      if (error) throw error;
-      return (data || []) as Paciente[];
-    },
-    enabled: !!user,
-  });
+  // Clientes CASSI (a mesma consulta e o mesmo cache do painel).
+  const { data: pacientes = [] } = useCassiPacientes();
+
+  // Clientes de cada mês: o cálculo considera só quem o profissional colocou na lista do mês. Lê os 6 meses
+  // da tendência de uma vez.
+  const mesesTendencia = useMemo(() => ultimosMeses(mes, 6), [mes]);
+  const lista = useClientesFinanceiroCassi(mesesTendencia[0], mes);
+  const listaDoMes = lista.doMes(mes);
 
   // Guias (mesma query/cache do painel).
   const { data: guias = [] } = useQuery({
@@ -2680,89 +2628,44 @@ function FinanceiroCassi({ onAbrirGuia }: {
     enabled: !!user,
   });
 
-  const calc = useMemo(() => {
+  // Quem entra na conta do mês: os clientes da lista que continuam no controle CASSI.
+  const idsCassi = useMemo(() => new Set(pacientes.map((p) => p.id)), [pacientes]);
+  const idsDoMes = useMemo(() => new Set([...listaDoMes].filter((id) => idsCassi.has(id))), [listaDoMes, idsCassi]);
+
+  // Sessões atendidas na agenda no mês: de todos os clientes CASSI (para sugerir quem adicionar) e só dos da lista (a conta).
+  const sessoesTodos = useMemo(() => {
     const [ano, m] = mes.split('-').map(Number);
-    const agora = Date.now();
-    const cassiIds = new Set(pacientes.map((p) => p.id));
-    const nomePac = new Map(pacientes.map((p) => [p.id, `${p.nome} ${p.sobrenome || ''}`.trim()]));
-    const codigosPac = new Map(pacientes.map((p) => [p.id, p.codigos_cassi || []]));
+    return contarSessoesDoMes(agendamentos, ano, m, idsCassi, Date.now());
+  }, [mes, agendamentos, idsCassi]);
+  const sessoesDaLista = useMemo(
+    () => new Map([...sessoesTodos].filter(([id]) => idsDoMes.has(id))),
+    [sessoesTodos, idsDoMes],
+  );
 
-    // Guia mais recente por paciente (para códigos/responsável).
-    const guiaPorPac = new Map<string, GuiaCassi>();
-    for (const g of guias) if (!guiaPorPac.has(g.paciente_id)) guiaPorPac.set(g.paciente_id, g);
+  const calc = useMemo(
+    () => fecharMes({ sessoesPorPac: sessoesDaLista, pacientes, guias, cfg }),
+    [sessoesDaLista, pacientes, guias, cfg],
+  );
 
-    // Conta sessões realizadas no mês local, por paciente CASSI.
-    const sessoesPorPac = new Map<string, number>();
-    for (const a of agendamentos) {
-      if (!a.paciente_id || !cassiIds.has(a.paciente_id)) continue;
-      if (a.tipo_atendimento === 'avaliacao') continue; // dia extra, não é dia de tratamento
-      if (a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
-      const d = new Date(a.data_inicio);
-      if (d.getFullYear() !== ano || d.getMonth() !== m - 1) continue; // mês local
-      if (d.getTime() > agora) continue; // ainda não aconteceu
-      sessoesPorPac.set(a.paciente_id, (sessoesPorPac.get(a.paciente_id) || 0) + 1);
-    }
-
-    const valorDe = (c: string) => cfg?.codigos.find((x) => x.codigo === c)?.valor || 0;
-    const impostoPct = cfg?.imposto_percentual || 0;
-    const impostoFixo = cfg?.imposto_por_guia || 0;
-
-    const linhas = [...sessoesPorPac.entries()]
-      .filter(([, n]) => n > 0)
-      .map(([pid, sessoes]) => {
-        const guia = guiaPorPac.get(pid) || null;
-        const codigos = guia?.codigos?.length
-          ? guia.codigos
-          : (codigosPac.get(pid)?.length ? codigosPac.get(pid)!.map((c) => ({ codigo: c })) : [{ codigo: '012' }]);
-        const bruto = brutoGuia(codigos, sessoes, valorDe);
-        // Imposto por guia: percentual do bruto (novo) ou o valor fixo antigo.
-        const imposto = impostoPct > 0 ? bruto * (impostoPct / 100) : impostoFixo;
-        const liquido = Math.max(0, bruto - imposto);
-        return {
-          pid,
-          nome: nomePac.get(pid) || 'Cliente',
-          responsavel: (guia?.responsavel_tecnico || '').trim(),
-          sessoes, bruto, imposto, liquido,
-        };
-      })
-      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-
-    const totBruto = linhas.reduce((s, l) => s + l.bruto, 0);
-    const totImposto = linhas.reduce((s, l) => s + l.imposto, 0);
-    const totLiquido = linhas.reduce((s, l) => s + l.liquido, 0);
-    const totSessoes = linhas.reduce((s, l) => s + l.sessoes, 0);
-
-    // Repasse por responsável (casa nome com a config, sem acento/caixa).
-    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-    const pctDe = (nome: string) => {
-      const r = (cfg?.responsaveis || []).find((x) => norm(x.nome) === norm(nome));
-      return r ? r.percentual : null;
-    };
-    const porResp = new Map<string, { nome: string; liquido: number; sessoes: number; pct: number | null }>();
-    for (const l of linhas) {
-      const key = l.responsavel || '—';
-      const cur = porResp.get(key) || { nome: l.responsavel || 'Sem responsável', liquido: 0, sessoes: 0, pct: pctDe(l.responsavel) };
-      cur.liquido += l.liquido;
-      cur.sessoes += l.sessoes;
-      porResp.set(key, cur);
-    }
-    const repasses = [...porResp.values()].map((r) => ({
-      ...r,
-      repasse: r.pct != null ? r.liquido * (r.pct / 100) : 0,
-    })).sort((a, b) => b.liquido - a.liquido);
-    const totRepasse = repasses.reduce((s, r) => s + r.repasse, 0);
-
-    // Divisão principal: sua parte (% do líquido) e o que fica com a clínica.
-    const minhaPct = cfg?.minha_parte_percentual || 0;
-    const suaParte = totLiquido * (minhaPct / 100);
-    const parteClinica = totLiquido - suaParte;
-
-    return {
-      linhas, totBruto, totImposto, totLiquido, totSessoes, impostoPct,
-      minhaPct, suaParte, parteClinica,
-      repasses, totRepasse, ficaComVoce: totLiquido - totRepasse,
-    };
-  }, [mes, pacientes, guias, agendamentos, cfg]);
+  // A lista do mês na tela: quem já está nela, quem dá para adicionar e quem teve sessão e ainda está de fora.
+  const nomeDe = (p: Paciente) => `${p.nome} ${p.sobrenome || ''}`.trim();
+  const clientesDaLista = useMemo(
+    () => pacientes
+      .filter((p) => idsDoMes.has(p.id))
+      .map((p) => ({ id: p.id, nome: nomeDe(p), sessoes: sessoesTodos.get(p.id) || 0, encerrado: !!p.cassi_encerrado_em }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    [pacientes, idsDoMes, sessoesTodos],
+  );
+  const candidatosDoMes = useMemo(
+    () => pacientes
+      .filter((p) => !idsDoMes.has(p.id))
+      .map((p) => ({ id: p.id, nome: nomeDe(p), carteirinha: p.carteirinha, encerrado: !!p.cassi_encerrado_em })),
+    [pacientes, idsDoMes],
+  );
+  const comSessaoFora = useMemo(
+    () => [...sessoesTodos.entries()].filter(([id, n]) => n > 0 && !idsDoMes.has(id)).map(([id]) => id),
+    [sessoesTodos, idsDoMes],
+  );
 
   // Agendamentos dos últimos 6 meses (janela mais larga) — só pro mini-gráfico.
   const { data: agsTrend = [] } = useQuery({
@@ -2782,50 +2685,17 @@ function FinanceiroCassi({ onAbrirGuia }: {
     enabled: !!user,
   });
 
-  // Tendência da "sua parte" nos últimos 6 meses (mesma lógica do cálculo do mês).
+  // Tendência da "sua parte" nos últimos 6 meses: a mesma conta do mês, com a lista de clientes de cada mês.
+  const doMesDaLista = lista.doMes;
   const tendencia = useMemo(() => {
-    const [ya, ma] = mes.split('-').map(Number);
     const agora = Date.now();
-    const cassiIds = new Set(pacientes.map((p) => p.id));
-    const codigosPac = new Map(pacientes.map((p) => [p.id, p.codigos_cassi || []]));
-    const guiaPorPac = new Map<string, GuiaCassi>();
-    for (const g of guias) if (!guiaPorPac.has(g.paciente_id)) guiaPorPac.set(g.paciente_id, g);
-    const valorDe = (c: string) => cfg?.codigos.find((x) => x.codigo === c)?.valor || 0;
-    const impostoPct = cfg?.imposto_percentual || 0;
-    const impostoFixo = cfg?.imposto_por_guia || 0;
-    const minhaPct = cfg?.minha_parte_percentual || 0;
-
-    const meses = [] as Array<{ y: number; m: number; label: string; sess: Map<string, number> }>;
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(ya, ma - 1 - i, 1);
-      meses.push({ y: d.getFullYear(), m: d.getMonth(), label: MESES_PT[d.getMonth()].slice(0, 3), sess: new Map() });
-    }
-    const idxDe = (y: number, mo: number) => meses.findIndex((x) => x.y === y && x.m === mo);
-    for (const a of agsTrend) {
-      if (!a.paciente_id || !cassiIds.has(a.paciente_id)) continue;
-      if (a.tipo_atendimento === 'avaliacao') continue;
-      if (a.status === 'cancelado' || a.status === 'faltou' || a.status === 'bloqueado' || a.status === 'pendente') continue;
-      const d = new Date(a.data_inicio);
-      if (d.getTime() > agora) continue;
-      const k = idxDe(d.getFullYear(), d.getMonth());
-      if (k < 0) continue;
-      meses[k].sess.set(a.paciente_id, (meses[k].sess.get(a.paciente_id) || 0) + 1);
-    }
-    return meses.map((mm) => {
-      let liquido = 0;
-      for (const [pid, sessoes] of mm.sess) {
-        if (sessoes <= 0) continue;
-        const guia = guiaPorPac.get(pid) || null;
-        const codigos = guia?.codigos?.length
-          ? guia.codigos
-          : (codigosPac.get(pid)?.length ? codigosPac.get(pid)!.map((c) => ({ codigo: c })) : [{ codigo: '012' }]);
-        const bruto = brutoGuia(codigos, sessoes, valorDe);
-        const imposto = impostoPct > 0 ? bruto * (impostoPct / 100) : impostoFixo;
-        liquido += Math.max(0, bruto - imposto);
-      }
-      return { label: mm.label, suaParte: liquido * (minhaPct / 100) };
+    return mesesTendencia.map((mm) => {
+      const [y, mo] = mm.split('-').map(Number);
+      const ids = new Set([...doMesDaLista(mm)].filter((id) => idsCassi.has(id)));
+      const sess = contarSessoesDoMes(agsTrend, y, mo, ids, agora);
+      return { label: MESES_PT[mo - 1].slice(0, 3), suaParte: fecharMes({ sessoesPorPac: sess, pacientes, guias, cfg }).suaParte };
     });
-  }, [agsTrend, pacientes, guias, cfg, mes]);
+  }, [agsTrend, mesesTendencia, doMesDaLista, idsCassi, pacientes, guias, cfg]);
 
   const irMes = (delta: number) => {
     const [ano, m] = mes.split('-').map(Number);
@@ -2888,6 +2758,30 @@ function FinanceiroCassi({ onAbrirGuia }: {
         </div>
       )}
 
+      <ClientesDoMes
+        mesLabel={`${MESES_PT[m - 1]} de ${ano}`}
+        clientes={clientesDaLista}
+        candidatos={candidatosDoMes}
+        comSessaoFora={comSessaoFora.length}
+        ocupado={lista.ocupado || lista.carregando || lista.erro}
+        carregando={lista.carregando}
+        erro={lista.erro}
+        onAdicionar={(id) => lista.adicionar.mutate({ mes, ids: [id] })}
+        onAdicionarComSessao={() => lista.adicionar.mutate({ mes, ids: comSessaoFora })}
+        onRemover={(id) => lista.remover.mutate({ mes, id })}
+        onLimpar={() => {
+          if (confirm(`Tirar todos os ${clientesDaLista.length} clientes da lista de ${MESES_PT[m - 1]} de ${ano}?\n\nAs guias e as sessões não são alteradas; só sai da conta do mês.`)) lista.limpar.mutate({ mes });
+        }}
+      />
+
+      {lista.erro ? (
+        <p className="text-center text-sm text-rose-600 py-6" role="alert">
+          Não consegui carregar a lista deste mês. Atualize a página e tente de novo.
+        </p>
+      ) : lista.carregando ? (
+        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : idsDoMes.size === 0 ? null : (
+        <>
       {/* Resumo */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
@@ -2905,7 +2799,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
 
       {/* Guias enviadas ao financeiro no mês — rastreio do handoff físico. */}
       {(() => {
-        const enviadas = guias.filter((g) => ((g as any).enviada_financeiro_em || '').slice(0, 7) === mes);
+        const enviadas = guias.filter((g) => ((g as any).enviada_financeiro_em || '').slice(0, 7) === mes && idsDoMes.has(g.paciente_id));
         return (
           <div className="rounded-xl border border-border/50 bg-background p-3 space-y-2">
             <div className="flex items-center justify-between">
@@ -2913,7 +2807,11 @@ function FinanceiroCassi({ onAbrirGuia }: {
               <span className="text-[11px] text-muted-foreground">{enviadas.length} em {MESES_PT[m - 1]}</span>
             </div>
             {enviadas.length === 0 ? (
-              <p className="text-[12px] text-muted-foreground">Nenhuma guia enviada neste mês. Marque no card de <b>Este mês</b> (assinar → recolher → enviar).</p>
+              <p className="text-[12px] text-muted-foreground">
+                {MOSTRAR_ESTE_MES
+                  ? <>Nenhuma guia enviada neste mês. Marque no card de <b>Este mês</b> (assinar → recolher → enviar).</>
+                  : <>Nenhuma guia enviada neste mês. Marque em <b>Ver guia</b>, em “Assinatura e financeiro” (assinar → recolher → enviar).</>}
+              </p>
             ) : (
               <div className="space-y-1">
                 {enviadas.map((g) => (
@@ -3058,6 +2956,9 @@ function FinanceiroCassi({ onAbrirGuia }: {
         </>
       )}
 
+        </>
+      )}
+
       {/* Relatórios salvos (snapshots congelados) */}
       {salvos.length > 0 && (
         <div className="rounded-xl border border-border/50 bg-background overflow-hidden">
@@ -3082,7 +2983,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
       )}
 
       {/* Guias que fecham neste mês (antiga aba "Fechamentos") — usa o mesmo mês. */}
-      <EnviosCassi mes={mes} onAbrir={onAbrirGuia} />
+      {idsDoMes.size > 0 && <EnviosCassi mes={mes} ids={idsDoMes} onAbrir={onAbrirGuia} />}
 
       {verSnap && <RelatorioSnapshotView dados={verSnap} onClose={() => setVerSnap(null)} />}
     </div>
@@ -3097,6 +2998,9 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   const { data: cfg } = useCassiConfig();
   const [mesRel, setMesRel] = useState(mes);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  // Clientes que o profissional colocou na lista do mês do relatório (aba Faturamento).
+  const lista = useClientesFinanceiroCassi(mesRel, mesRel);
+  const idsDoMes = lista.doMes(mesRel);
 
   // Gera um PDF de verdade do relatório (html2canvas + jsPDF) e baixa. Multipágina
   // se passar de uma folha A4. As libs são importadas sob demanda.
@@ -3190,12 +3094,12 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
     [guias, valorDe],
   );
 
-  // Seleção automática: guias cujo mês de produção = mês do relatório.
+  // Seleção automática: guias cujo mês de produção = mês do relatório, dos clientes da lista do mês.
   const autoSel = useMemo(() => {
     const s = new Set<string>();
-    for (const g of candidatas) if (mesProducao(g) === mesRel) s.add(g.id);
+    for (const g of candidatas) if (mesProducao(g) === mesRel && idsDoMes.has(g.paciente_id)) s.add(g.id);
     return s;
-  }, [candidatas, mesRel, mesFimPorGuia]);
+  }, [candidatas, mesRel, mesFimPorGuia, idsDoMes]);
 
   const [sel, setSel] = useState<Set<string>>(new Set());
   const autoSig = useMemo(() => [...autoSel].sort().join(','), [autoSel]);
@@ -3296,8 +3200,16 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
               <button className="text-[11px] text-primary" onClick={() => setSel(new Set(autoSel))}>Selecionar automático</button>
             </div>
             <p className="text-[11px] text-muted-foreground mb-1.5">
-              Selecionadas automaticamente as guias que <b>fecharam</b> em {MESES_PT[m - 1]} {ano}. Desmarque/marque se precisar.
+              Selecionadas automaticamente as guias que <b>fecharam</b> em {MESES_PT[m - 1]} {ano}, dos clientes da lista do mês. Desmarque/marque se precisar.
             </p>
+            {!lista.carregando && !lista.erro && idsDoMes.size === 0 && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 mb-1.5">
+                Não há clientes na lista de {MESES_PT[m - 1]} {ano}: adicione-os na aba <b>Faturamento</b> ou marque as guias abaixo.
+              </p>
+            )}
+            {lista.erro && (
+              <p className="text-[11px] text-rose-600 mb-1.5" role="alert">Não consegui carregar a lista do mês — marque as guias abaixo.</p>
+            )}
             <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-border/50 p-1.5">
               {candidatas.length === 0 ? (
                 <p className="text-[12px] text-muted-foreground text-center py-3">Nenhuma guia para listar.</p>
@@ -3392,8 +3304,9 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
 // ── Aba "Envios": guias que serão enviadas (debitadas) em cada mês ────────────
 // A guia entra no mês em que a 10ª sessão (dias úteis corridos) TERMINA. Se
 // passar do fim do mês, cai no próximo. Projeta o fim mesmo sem agenda gerada.
-function EnviosCassi({ mes, onAbrir }: {
+function EnviosCassi({ mes, ids, onAbrir }: {
   mes: string; // controlado pelo Faturamento (mesmo seletor de mês)
+  ids: ReadonlySet<string>; // clientes da lista do mês: só as guias deles entram
   onAbrir: (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }) => void;
 }) {
   const { user } = useAuth();
@@ -3442,11 +3355,11 @@ function EnviosCassi({ mes, onAbrir }: {
   const valorDe = (c: string) => cfg?.codigos.find((x) => x.codigo === c)?.valor || 0;
 
   const lista = useMemo(() =>
-    guias.filter((g) => g.status !== 'cancelada')
+    guias.filter((g) => g.status !== 'cancelada' && ids.has(g.paciente_id))
       .map((g) => ({ g, fim: fimGuia(g) }))
       .filter((x): x is { g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }; fim: string } => !!x.fim && x.fim.slice(0, 7) === mes)
       .sort((a, b) => (a.fim < b.fim ? -1 : a.fim > b.fim ? 1 : 0)),
-    [guias, fimRealPorGuia, mes]);
+    [guias, fimRealPorGuia, mes, ids]);
 
   const totalBruto = lista.reduce((s, x) => s + somaGuia(x.g.codigos, valorDe), 0);
   const [ano, m] = mes.split('-').map(Number);
@@ -3609,7 +3522,7 @@ function RelatorioSnapshotView({ dados, onClose }: { dados: any; onClose: () => 
 }
 
 // ── Aba "Clientes": diretório completo (alfabético, busca, por mês) ───────────
-function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinirGuiasMes, onExcluir, onAtivar, onConfirmarMes, onPedirGuia, mesVigente }: {
+function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinirGuiasMes, onExcluir, onAtivar, onConfirmarMes, onPedirGuia, mesVigente, usaEsteMes }: {
   pacientes: Paciente[];
   guias: Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
   onCadastro: (p: Paciente) => void;
@@ -3621,6 +3534,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
   onConfirmarMes: (id: string) => void;
   onPedirGuia: (id: string) => void;
   mesVigente: string;
+  usaEsteMes: boolean; // a aba "Este mês" está ligada? Se não, nada aqui fala dela
 }) {
   const { user } = useAuth();
   const [busca, setBusca] = useState('');
@@ -3743,6 +3657,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
           const precisaPedir = !vigente || (diasTratGuia(vigente) - (vigente.sessoes_realizadas || 0)) <= 2
             || venceuPrazoProximaGuia(vigente, p.guias_por_mes);
           const totalFeitas = gs.reduce((s, g) => s + (g.sessoes_realizadas || 0), 0);
+          const aguardando = pedidoEmAberto(p, ultima); // já pedimos e a guia nova ainda não chegou
           const ativo = !p.cassi_encerrado_em;
           const marcado = (p.guias_por_mes || 1) >= 2;
           const mesFeitas = sessoesMesPorPac.get(p.id) || 0;
@@ -3759,7 +3674,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                     <p className="text-[15px] font-bold truncate leading-tight">{nome}</p>
                     {!ativo && <span className="text-[9px] uppercase font-bold text-muted-foreground bg-muted rounded px-1 shrink-0">encerrado</span>}
                     {marcado && <span className="text-[9px] uppercase font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/30 rounded px-1 shrink-0">{rotuloCadencia(p.guias_por_mes)}</span>}
-                    {ativo && p.cassi_confirmado_mes === mesVigente && <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">no mês ✓</span>}
+                    {usaEsteMes && ativo && p.cassi_confirmado_mes === mesVigente && <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded px-1 shrink-0">no mês ✓</span>}
                   </div>
                   <div className="text-[12px] text-muted-foreground mt-1 tabular-nums">
                     {vigente
@@ -3816,8 +3731,12 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                   <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-emerald-700 border-emerald-300 dark:border-emerald-800" onClick={() => onAtivar(p.id)}>
                     <CheckCircle2 className="h-4 w-4" /> Ativar cliente
                   </Button>
-                ) : p.cassi_confirmado_mes === mesVigente ? (
-                  precisaPedir ? (
+                ) : (!usaEsteMes || p.cassi_confirmado_mes === mesVigente) ? (
+                  aguardando ? (
+                    <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-sky-700 border-sky-300 dark:border-sky-800" onClick={() => onPedirGuia(p.id)}>
+                      <CalendarClock className="h-4 w-4" /> Guia pedida — aguardando
+                    </Button>
+                  ) : precisaPedir ? (
                     <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-amber-700 border-amber-300 dark:border-amber-800" onClick={() => onPedirGuia(p.id)}>
                       <AlertTriangle className="h-4 w-4" /> Pedir guia
                     </Button>
@@ -3847,7 +3766,9 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
           <Dialog open onOpenChange={(o) => !o && setHistCliente(null)}>
             <DialogContent className="max-w-md w-[95vw] max-h-[92vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="text-base">Histórico de guias — {nomeH}</DialogTitle></DialogHeader>
-              <p className="text-[11px] text-muted-foreground -mt-1">A guia atual fica em <b>Este mês</b>. Aqui ficam todas as guias — a antiga vira histórico quando você cria uma nova. Clique em <b>Editar</b> para alterar uma delas.</p>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                {usaEsteMes ? <>A guia atual fica em <b>Este mês</b>. Aqui ficam todas as guias</> : <>Aqui ficam todas as guias</>} — a antiga vira histórico quando você cria uma nova. Clique em <b>Editar</b> para alterar uma delas.
+              </p>
               <div className="space-y-2 mt-1">
                 {gsHist.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">Nenhuma guia ainda.</p>
