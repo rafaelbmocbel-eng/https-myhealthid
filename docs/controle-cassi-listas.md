@@ -44,23 +44,47 @@ recolher → enviar ao financeiro) nos cards, o filtro "2 guias/mês" e a lista 
 
 ## Faturamento
 
-- Tabela nova `public.cassi_financeiro_clientes` (`terapeuta_id`, `mes` 'AAAA-MM', `paciente_id`; única por profissional+mês+
-  cliente; RLS só do dono; INSERT só para paciente do próprio profissional; sem UPDATE). Migração
-  `20261025190000_cassi_financeiro_clientes.sql`.
-- Cada mês tem a sua lista. Adiciona-se por busca ou com **Adicionar quem teve sessão no mês** (quem tem sessão atendida na
-  agenda no mês e ainda não está na lista).
-- Só os clientes da lista (e que continuam no controle CASSI) entram em: cálculo do mês (sessões, bruto, imposto, líquido, sua
-  parte, clínica, repasses), "sua parte" dos 6 meses (cada mês com a lista dele; mês sem lista aparece como —), CSV, Guias que
-  fecham no mês e a seleção automática do Relatório de produção (dentro do relatório ainda dá para marcar/desmarcar qualquer
-  guia).
+O Faturamento é a lista de clientes de cada mês, e **em cada cliente o profissional lança os códigos usados e a quantidade de
+cada um**. O valor do mês sai disso: quantidade × valor do código. A Agenda não entra mais na conta (aparece só como referência
+em cada cliente: "agenda: 8 sessões").
+
+- Tabela `public.cassi_financeiro_clientes` (`terapeuta_id`, `mes` AAAA-MM, `paciente_id`, `lancamentos`); única por profissional+mês+cliente; RLS só do dono; INSERT só para cliente
+  seu. O profissional só pode atualizar a coluna `lancamentos` (privilégio por coluna). Migrações `20261025190000` (lista) e
+  `20261025230000` (lançamentos).
+- `lancamentos` é uma lista de **guias**; cada guia é `{ "código": quantidade }`. Ex.: `[{"012":10,"144":1},{"012":4,"301":2}]`. O banco
+  recusa o que não for esse formato (até 12 guias; quantidades inteiras de 0 a 999).
+- Adiciona-se o cliente por busca ou com **Adicionar quem teve sessão no mês**; isso só põe o cliente na lista, **não lança nada**. Para
+  lançar, toque no cliente: cada código tem um campo de quantidade (− e +), e dá para abrir **Outra guia** (cliente com 2 guias no mês).
+  **Preencher com a agenda** lança 012 × as sessões da agenda (de 10 em 10 por guia) em quem ainda não tem lançamento.
+
+### Tabela de códigos
+
+| Código | Oficial | Descrição | Valor | Limite |
+| --- | --- | --- | --- | --- |
+| 012 (padrão) | 5.00.00.012 | Sessão de psicomotricidade individual | R$ 57,70 | 10 por guia |
+| 020 | 5.00.00.020 | Sessão de psicomotricidade em grupo | R$ 57,70 | 10 por guia |
+| 144 | 5.00.00.144 | Consulta ambulatorial em fisioterapia | R$ 65,62 | 1 por guia |
+| 301 | 2.01.03.301 | Infiltração de ponto gatilho (por músculo) ou agulhamento seco (por músculo) | R$ 35,55 | 10 por guia |
+| 131 | 2.01.03.131 | Biofeedback com EMG | R$ 67,79 | 10 **no mês** |
+
+Código que não está na tabela (criado em Configurações) segue a guia da CASSI: 10 por guia. Os limites valem no campo (não deixa passar),
+no que é salvo e na lista (cliente acima do limite aparece sinalizado). Os valores e descrições vêm de **Configurações**: quem já tinha o
+código lá mantém o valor que configurou; o que falta da tabela entra com os dados acima (código novo: 020, 301, 131). Ver
+`src/lib/cassiFaturamento.ts`.
+
+### O que entra na conta
+
+- Só os clientes da lista (e que continuam no controle CASSI) entram em: valor do mês (bruto, imposto, líquido, sua parte, clínica,
+  repasses), "sua parte" dos 6 meses (cada mês com o lançamento dele; mês sem lançamento aparece como —), CSV (com os códigos), Guias que
+  fecham no mês e a seleção automática do Relatório de produção (dentro do relatório ainda dá para marcar/desmarcar qualquer guia).
+- "Sessões" = soma das quantidades de todos os códigos, menos a consulta (144).
+- Imposto: percentual de Configurações sobre o bruto (se for o valor fixo antigo, vale por guia lançada). Repasse: pelo responsável
+  técnico da guia mais recente do cliente.
 - **Guias enviadas ao financeiro** é rastreio de entrega física, não conta: aparece sempre, com ou sem lista.
-- **Juntar cadastros duplicados** leva as linhas da lista do duplicado para o cliente que fica.
-- **As fórmulas não mudaram.** Elas saíram da tela para `src/lib/cassiFinanceiro.ts` e `src/test/cassiFinanceiro.test.ts`
-  compara a conta nova (com todos os clientes na lista) com a original (`src/test/cassiFinanceiroReferencia.ts`, cópia do
-  código de antes) em 40 cenários sorteados.
-- Cliente na lista sem sessão atendida na agenda aparece avisado ("sem sessão atendida") e não entra na conta; o número de
-  sessões continua vindo só da agenda (não há digitação manual).
-- Mês sem lista não calcula nada (o Relatório avisa e deixa marcar as guias à mão). Relatórios já salvos não dependem da lista.
+- **Juntar cadastros duplicados** leva as linhas da lista (e o que foi lançado) do duplicado para o cliente que fica.
+- O **Relatório de produção** e as **Guias que fecham** continuam saindo das guias (`guias_cassi`), não dos lançamentos: pode haver
+  diferença entre o valor do Faturamento e o do Relatório. É uma decisão em aberto se o Relatório deve passar a usar os lançamentos.
+- Mês sem lista não calcula nada; os relatórios já salvos não dependem da lista.
 
 ## Correção de passagem
 

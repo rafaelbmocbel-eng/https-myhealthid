@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { BuscaDeCliente } from '@/components/cassi/BuscaDeCliente';
 import { SugestoesDoPedido } from '@/components/cassi/SugestoesDoPedido';
 import { ClientesDoMes } from '@/components/cassi/ClientesDoMes';
+import { LancamentoDoCliente } from '@/components/cassi/LancamentoDoCliente';
+import { mesclarCodigosComPadrao, ordenarParaLancamento } from '@/lib/cassiFaturamento';
 
 const candidatos = [
   { id: 'a', nome: 'Álvaro Pinto', carteirinha: '1001' },
@@ -114,87 +116,282 @@ describe('SugestoesDoPedido', () => {
   });
 });
 
+const catalogo = ordenarParaLancamento(mesclarCodigosComPadrao([]));
+const brlTxt = (t: string | null | undefined) => (t || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+
+describe('LancamentoDoCliente', () => {
+  const montar = (extra: Partial<React.ComponentProps<typeof LancamentoDoCliente>> = {}) => {
+    const onSalvar = vi.fn(); const onCancelar = vi.fn();
+    render(<LancamentoDoCliente nome="Ana Souza" catalogo={catalogo} inicial={[]} sessoesAgenda={0} onSalvar={onSalvar} onCancelar={onCancelar} {...extra} />);
+    return { onSalvar, onCancelar };
+  };
+  const qtd = (codigo: string, guia = 1) => screen.getByLabelText(`Quantidade do código ${codigo} na guia ${guia}`) as HTMLInputElement;
+  const digitar = (codigo: string, v: string, guia = 1) => fireEvent.change(qtd(codigo, guia), { target: { value: v } });
+
+  it('mostra os cinco códigos da tabela com código oficial, valor e limite', () => {
+    montar();
+    const guia = within(screen.getByRole('region', { name: 'Guia 1 de Ana Souza' }));
+    const linhas = guia.getAllByRole('listitem');
+    expect(linhas.map((l) => brlTxt(l.textContent).split(' ')[0])).toEqual(['012', '020', '144', '301', '131']);
+    const txt = (i: number) => brlTxt(linhas[i].textContent);
+    expect(txt(0)).toContain('5.00.00.012 · R$ 57,70 · máx. 10 por guia');
+    expect(txt(1)).toContain('5.00.00.020 · R$ 57,70 · máx. 10 por guia');
+    expect(txt(2)).toContain('5.00.00.144 · R$ 65,62 · máx. 1 por guia');
+    expect(txt(3)).toContain('2.01.03.301 · R$ 35,55 · máx. 10 por guia');
+    expect(txt(4)).toContain('2.01.03.131 · R$ 67,79 · máx. 10 no mês');
+  });
+
+  it('começa vazio e o total acompanha o que é digitado (10 de 012 = R$ 577,00)', () => {
+    montar();
+    expect(brlTxt(screen.getByText(/Total de Ana/).parentElement?.textContent)).toContain('R$ 0,00 · 0 sessões');
+    digitar('012', '10');
+    expect(brlTxt(screen.getByText(/Total de Ana/).parentElement?.textContent)).toContain('R$ 577,00 · 10 sessões');
+    digitar('144', '1');
+    expect(brlTxt(screen.getByText(/Total de Ana/).parentElement?.textContent)).toContain('R$ 642,62 · 10 sessões'); // a consulta não é sessão
+  });
+
+  it('o campo não passa do limite: 012 até 10, 144 só 1', () => {
+    montar();
+    digitar('012', '12');
+    expect(qtd('012').value).toBe('10');
+    digitar('144', '5');
+    expect(qtd('144').value).toBe('1');
+    expect(screen.getAllByText('no limite').length).toBe(2);
+  });
+
+  it('só aceita números: letras e sinais não entram', () => {
+    montar();
+    digitar('301', 'a-3x');
+    expect(qtd('301').value).toBe('3');
+    digitar('301', '');
+    expect(qtd('301').value).toBe('');
+  });
+
+  it('os botões − e + respeitam 0 e o limite', () => {
+    montar();
+    const menos = screen.getByRole('button', { name: 'Diminuir o código 144 da guia 1' }) as HTMLButtonElement;
+    const mais = screen.getByRole('button', { name: 'Aumentar o código 144 da guia 1' }) as HTMLButtonElement;
+    expect(menos.disabled).toBe(true);
+    fireEvent.click(mais);
+    expect(qtd('144').value).toBe('1');
+    expect(mais.disabled).toBe(true); // 144: no máximo 1 por guia
+    fireEvent.click(menos);
+    expect(qtd('144').value).toBe('');
+  });
+
+  it('o limite de 131 é do MÊS: o que sobra depende do que as outras guias já usaram', () => {
+    montar({ inicial: [{ '131': 6 }] });
+    fireEvent.click(screen.getByRole('button', { name: /Outra guia/ }));
+    digitar('131', '9', 2);
+    expect(qtd('131', 2).value).toBe('4'); // 10 no mês − 6 já usados
+    digitar('131', '0', 2);
+    digitar('131', '10', 1); // a primeira guia pode subir até 10 porque a segunda está vazia
+    expect(qtd('131', 1).value).toBe('10');
+    expect(screen.getByText('limite do mês já usado nas outras guias')).toBeTruthy();
+  });
+
+  it('duas guias no mês: 012 pode chegar a 10 em cada uma; a segunda pode ser tirada', () => {
+    montar();
+    digitar('012', '10');
+    fireEvent.click(screen.getByRole('button', { name: /Outra guia/ }));
+    digitar('012', '10', 2);
+    expect(brlTxt(screen.getByText(/Total de Ana/).parentElement?.textContent)).toContain('R$ 1.154,00 · 20 sessões');
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar a guia 2' }));
+    expect(screen.queryByRole('region', { name: 'Guia 2 de Ana Souza' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Tirar a guia 1' })).toBeNull(); // com uma guia só, não há o que tirar
+  });
+
+  it('no máximo 6 guias no mês', () => {
+    montar();
+    for (let i = 0; i < 5; i++) fireEvent.click(screen.getByRole('button', { name: /Outra guia/ }));
+    expect(screen.getAllByRole('region', { name: /^Guia \d de Ana Souza$/ })).toHaveLength(6);
+    expect((screen.getByRole('button', { name: /Outra guia/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('"usar as sessões da agenda" monta as guias de 10 em 10 no código 012', () => {
+    montar({ sessoesAgenda: 14 });
+    fireEvent.click(screen.getByRole('button', { name: /Usar as 14 sessões da agenda/ }));
+    expect(qtd('012', 1).value).toBe('10');
+    expect(qtd('012', 2).value).toBe('4');
+  });
+
+  it('sem sessão na agenda não oferece "usar a agenda"', () => {
+    montar({ sessoesAgenda: 0 });
+    expect(screen.queryByRole('button', { name: /sessões da agenda/ })).toBeNull();
+  });
+
+  it('salvar entrega as guias sem as vazias e sem quantidade zero; cancelar não salva', () => {
+    const { onSalvar, onCancelar } = montar({ inicial: [{ '012': 4, '020': 2 }] });
+    digitar('020', '0');
+    fireEvent.click(screen.getByRole('button', { name: /Outra guia/ })); // fica vazia
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    expect(onSalvar).toHaveBeenCalledWith([{ '012': 4 }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(onCancelar).toHaveBeenCalledTimes(1);
+  });
+
+  it('o que já estava lançado volta preenchido', () => {
+    montar({ inicial: [{ '012': 7, '301': 2 }, { '012': 3 }] });
+    expect(qtd('012', 1).value).toBe('7');
+    expect(qtd('301', 1).value).toBe('2');
+    expect(qtd('012', 2).value).toBe('3');
+  });
+
+  it('código sem valor cadastrado avisa para definir em Configurações', () => {
+    montar({ catalogo: [{ codigo: '777', descricao: 'Novo', valor: 0 }] });
+    expect(screen.getByText('sem valor (defina em Configurações)')).toBeTruthy();
+  });
+
+  it('enquanto salva, os botões ficam desligados', () => {
+    montar({ salvando: true });
+    expect((screen.getByRole('button', { name: 'Salvar' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Cancelar' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
 describe('ClientesDoMes', () => {
-  const base = {
+  const clientes = [
+    { id: 'a', nome: 'Ana Souza', sessoesAgenda: 8, guias: [{ '012': 10, '144': 1 }] },
+    { id: 'b', nome: 'Bruno Lima', sessoesAgenda: 1, guias: [] },
+    { id: 'c', nome: 'Carla Dias', sessoesAgenda: 0, guias: [], encerrado: true },
+  ];
+  const base = () => ({
     mesLabel: 'outubro de 2026',
-    clientes: [
-      { id: 'a', nome: 'Ana Souza', sessoes: 8 },
-      { id: 'b', nome: 'Bruno Lima', sessoes: 1 },
-      { id: 'c', nome: 'Carla Dias', sessoes: 0, encerrado: true },
-    ],
+    clientes,
     candidatos: [{ id: 'd', nome: 'Davi Rocha', carteirinha: '4004' }],
     comSessaoFora: 3,
+    catalogo,
+    quantosPreencheriaComAgenda: 1,
     onAdicionar: vi.fn(), onAdicionarComSessao: vi.fn(), onRemover: vi.fn(), onLimpar: vi.fn(),
-  };
+    onSalvarLancamento: vi.fn().mockResolvedValue(true), onPreencherComAgenda: vi.fn(),
+  });
+  const lista = () => within(screen.getByRole('list', { name: 'Clientes na lista do mês' }));
 
-  it('mostra o mês, a contagem e as sessões de cada cliente (singular, plural e sem sessão)', () => {
-    render(<ClientesDoMes {...base} />);
+  it('mostra o mês, quantos estão na lista e quantos já têm códigos', () => {
+    render(<ClientesDoMes {...base()} />);
     expect(screen.getByRole('heading', { name: 'Clientes de outubro de 2026' })).toBeTruthy();
-    expect(screen.getByText('3 na lista')).toBeTruthy();
-    const lista = within(screen.getByRole('list', { name: 'Clientes na lista do mês' }));
-    expect(lista.getByText('8 sessões')).toBeTruthy();
-    expect(lista.getByText('1 sessão')).toBeTruthy();
-    expect(lista.getByText('sem sessão atendida')).toBeTruthy();
-    expect(lista.getByText('encerrado')).toBeTruthy();
+    expect(screen.getByText('3 na lista · 1 com códigos')).toBeTruthy();
   });
 
-  it('adicionar pela busca chama onAdicionar com o id', async () => {
-    const onAdicionar = vi.fn();
-    render(<ClientesDoMes {...base} onAdicionar={onAdicionar} />);
+  it('cada cliente mostra o que foi lançado e o valor; quem não tem avisa; a agenda aparece só como referência', () => {
+    render(<ClientesDoMes {...base()} />);
+    expect(brlTxt(lista().getByText(/012 × 10 · 144 × 1/).parentElement?.textContent)).toContain('012 × 10 · 144 × 1 · R$ 642,62');
+    expect(lista().getAllByText('Sem códigos lançados')).toHaveLength(2);
+    expect(lista().getByText('agenda: 8 sessões')).toBeTruthy();
+    expect(lista().getByText('agenda: 1 sessão')).toBeTruthy();
+    expect(lista().getByText('agenda: sem sessão atendida')).toBeTruthy();
+    expect(lista().getByText('encerrado')).toBeTruthy();
+  });
+
+  it('acima do limite da CASSI fica sinalizado', () => {
+    render(<ClientesDoMes {...base()} clientes={[{ id: 'a', nome: 'Ana Souza', sessoesAgenda: 0, guias: [{ '012': 11 }] }]} />);
+    expect(screen.getByText(/acima do limite da CASSI/)).toBeTruthy();
+  });
+
+  it('aviso de quem falta lançar: conta, filtra e oferece preencher com a agenda', () => {
+    const props = base();
+    render(<ClientesDoMes {...props} />);
+    expect(screen.getByText('2 clientes sem códigos lançados.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar só quem falta' }));
+    expect(lista().queryByText('Ana Souza')).toBeNull();
+    expect(lista().getByText('Bruno Lima')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar todos' }));
+    expect(lista().getByText('Ana Souza')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Preencher 1 com a agenda (código 012)' }));
+    expect(props.onPreencherComAgenda).toHaveBeenCalledTimes(1);
+  });
+
+  it('sem ninguém faltando, o aviso não aparece', () => {
+    render(<ClientesDoMes {...base()} clientes={[clientes[0]]} />);
+    expect(screen.queryByText(/sem códigos lançados\./)).toBeNull();
+  });
+
+  it('tocar no cliente abre o lançamento dele; só um aberto por vez; tocar de novo fecha', () => {
+    render(<ClientesDoMes {...base()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Lançar códigos e sessões de Bruno Lima' }));
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Bruno Lima' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Lançar códigos e sessões de Ana Souza' }));
+    expect(screen.queryByRole('group', { name: 'Códigos e sessões de Bruno Lima' })).toBeNull();
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Ana Souza' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar Ana Souza' }));
+    expect(screen.queryByRole('group')).toBeNull();
+  });
+
+  it('salvar entrega o cliente e as guias; ao dar certo o lançamento fecha', async () => {
+    const props = base();
+    render(<ClientesDoMes {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Lançar códigos e sessões de Bruno Lima' }));
+    fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(props.onSalvarLancamento).toHaveBeenCalledWith('b', [{ '012': 3 }]));
+    await waitFor(() => expect(screen.queryByRole('group')).toBeNull());
+  });
+
+  it('se salvar falhar, o lançamento continua aberto com o que foi digitado', async () => {
+    const props = base();
+    props.onSalvarLancamento.mockResolvedValue(false);
+    render(<ClientesDoMes {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Lançar códigos e sessões de Bruno Lima' }));
+    fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(props.onSalvarLancamento).toHaveBeenCalled());
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Bruno Lima' })).toBeTruthy();
+    expect((screen.getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('3');
+  });
+
+  it('adicionar pela busca chama onAdicionar com o id', () => {
+    const props = base();
+    render(<ClientesDoMes {...props} />);
     fireEvent.change(screen.getByLabelText('Adicionar cliente à lista do mês'), { target: { value: 'davi' } });
     fireEvent.click(screen.getByRole('button', { name: /Davi Rocha/ }));
-    expect(onAdicionar).toHaveBeenCalledWith('d');
+    expect(props.onAdicionar).toHaveBeenCalledWith('d');
   });
 
-  it('"adicionar quem teve sessão" mostra quantos faltam e dispara; fica desligado quando não falta ninguém', async () => {
-    const onAdicionarComSessao = vi.fn();
-    const { rerender } = render(<ClientesDoMes {...base} onAdicionarComSessao={onAdicionarComSessao} />);
+  it('"adicionar quem teve sessão" mostra quantos faltam e dispara; fica desligado quando não falta ninguém', () => {
+    const props = base();
+    const { rerender } = render(<ClientesDoMes {...props} />);
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar quem teve sessão no mês (3)' }));
-    expect(onAdicionarComSessao).toHaveBeenCalledTimes(1);
-    rerender(<ClientesDoMes {...base} comSessaoFora={0} onAdicionarComSessao={onAdicionarComSessao} />);
-    const botao = screen.getByRole('button', { name: 'Adicionar quem teve sessão no mês' }) as HTMLButtonElement;
-    expect(botao.disabled).toBe(true);
+    expect(props.onAdicionarComSessao).toHaveBeenCalledTimes(1);
+    rerender(<ClientesDoMes {...props} comSessaoFora={0} />);
+    expect((screen.getByRole('button', { name: 'Adicionar quem teve sessão no mês' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('tirar um cliente e limpar a lista chamam os callbacks certos', async () => {
-    const onRemover = vi.fn(); const onLimpar = vi.fn();
-    render(<ClientesDoMes {...base} onRemover={onRemover} onLimpar={onLimpar} />);
+  it('tirar um cliente e limpar a lista chamam os callbacks certos', () => {
+    const props = base();
+    render(<ClientesDoMes {...props} />);
     fireEvent.click(screen.getByRole('button', { name: 'Tirar Bruno Lima da lista' }));
-    expect(onRemover).toHaveBeenCalledWith('b');
+    expect(props.onRemover).toHaveBeenCalledWith('b');
     fireEvent.click(screen.getByRole('button', { name: 'Limpar lista' }));
-    expect(onLimpar).toHaveBeenCalledTimes(1);
+    expect(props.onLimpar).toHaveBeenCalledTimes(1);
   });
 
   it('lista vazia: explica o que fazer e não oferece "limpar"', () => {
-    render(<ClientesDoMes {...base} clientes={[]} />);
+    render(<ClientesDoMes {...base()} clientes={[]} />);
     expect(screen.getByText(/Nenhum cliente na lista de outubro de 2026/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Limpar lista' })).toBeNull();
     expect(screen.getByText('0 na lista')).toBeTruthy();
   });
 
-  it('enquanto a lista carrega não diz que está vazia', () => {
-    render(<ClientesDoMes {...base} clientes={[]} carregando />);
+  it('enquanto a lista carrega não diz que está vazia; com erro ao carregar também não', () => {
+    const { rerender } = render(<ClientesDoMes {...base()} clientes={[]} carregando />);
     expect(screen.getByRole('status').textContent).toBe('Carregando a lista…');
     expect(screen.queryByText(/Nenhum cliente na lista/)).toBeNull();
-  });
-
-  it('com erro ao carregar também não diz que está vazia (a tela mostra o aviso)', () => {
-    render(<ClientesDoMes {...base} clientes={[]} erro />);
+    rerender(<ClientesDoMes {...base()} clientes={[]} erro />);
     expect(screen.queryByText(/Nenhum cliente na lista/)).toBeNull();
   });
 
-  it('enquanto as sessões da agenda chegam ninguém "não teve sessão"; se a agenda falhar, avisa', () => {
-    const { rerender } = render(<ClientesDoMes {...base} sessoesEstado="carregando" />);
-    expect(screen.getAllByText('carregando sessões…')).toHaveLength(3);
-    expect(screen.queryByText('sem sessão atendida')).toBeNull();
-    expect(screen.queryByText('8 sessões')).toBeNull();
-    rerender(<ClientesDoMes {...base} sessoesEstado="erro" />);
-    expect(screen.getAllByText('sessões indisponíveis')).toHaveLength(3);
-    expect(screen.queryByText('sem sessão atendida')).toBeNull();
+  it('enquanto a agenda chega ninguém "não teve sessão"; se a agenda falhar, avisa; e não oferece usar a agenda', () => {
+    const { rerender } = render(<ClientesDoMes {...base()} sessoesEstado="carregando" />);
+    expect(lista().getAllByText('agenda: carregando…')).toHaveLength(3);
+    expect(lista().queryByText('agenda: sem sessão atendida')).toBeNull();
+    rerender(<ClientesDoMes {...base()} sessoesEstado="erro" />);
+    expect(lista().getAllByText('agenda indisponível')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Lançar códigos e sessões de Bruno Lima' }));
+    expect(screen.queryByRole('button', { name: /sessões da agenda/ })).toBeNull();
   });
 
   it('ocupado desliga a busca, os botões e o remover', () => {
-    render(<ClientesDoMes {...base} ocupado />);
+    render(<ClientesDoMes {...base()} ocupado />);
     expect((screen.getByLabelText('Adicionar cliente à lista do mês') as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Tirar Ana Souza da lista' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Limpar lista' }) as HTMLButtonElement).disabled).toBe(true);

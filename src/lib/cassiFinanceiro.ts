@@ -1,28 +1,7 @@
 // Cálculo financeiro do mês do Controle CASSI (aba Faturamento).
-// As regras daqui são as mesmas que já estavam dentro da tela: só saíram dela para a lista de
-// clientes do mês poder escolher QUEM entra na conta sem mexer em COMO a conta é feita.
-import type { GuiaCassi } from '@/lib/cassiGuias';
-
-export interface CodigoComSessoes { codigo: string; sessoes?: number }
-
-// Valor bruto de uma guia num mês. Soma código a código:
-//  - 144 (avaliação) é um dia EXTRA separado → cobra 1x (se houve ≥1 sessão);
-//  - códigos de tratamento cobram por dia de tratamento, limitado à quantidade
-//    autorizada de CADA código (um código pode ter passado com menos, ou "não
-//    passado" = 0). Se o código não tem quantidade própria, usa os dias do mês.
-// `valorDe` resolve o valor de cada código pela config.
-export function brutoGuia(codigos: CodigoComSessoes[], sessoes: number, valorDe: (c: string) => number): number {
-  let total = 0;
-  for (const c of (codigos || [])) {
-    if (c.codigo === '144') {
-      if ((c.sessoes ?? 1) >= 1 && sessoes >= 1) total += valorDe('144');
-    } else {
-      const cap = c.sessoes != null ? c.sessoes : sessoes;
-      total += valorDe(c.codigo) * Math.max(0, Math.min(sessoes, cap));
-    }
-  }
-  return total;
-}
+// O valor do mês sai do que o profissional lançou em cada cliente (códigos e quantidades — ver cassiFaturamento.ts);
+// a agenda só serve de referência (quantas sessões o cliente teve) e para sugerir quem adicionar à lista.
+import { brutoDosLancamentos, sessoesDosLancamentos, resumoDosLancamentos, type GuiaLancada } from '@/lib/cassiFaturamento';
 
 export interface AgendamentoFinanceiro {
   paciente_id: string | null;
@@ -53,13 +32,6 @@ export function contarSessoesDoMes(
   return sessoesPorPac;
 }
 
-export interface ClienteFinanceiro {
-  id: string;
-  nome: string;
-  sobrenome?: string | null;
-  codigos_cassi?: string[] | null;
-}
-export type GuiaFinanceira = Pick<GuiaCassi, 'paciente_id' | 'codigos' | 'responsavel_tecnico'>;
 export interface ConfigFinanceira {
   codigos: Array<{ codigo: string; valor: number }>;
   responsaveis: Array<{ nome: string; percentual: number }>;
@@ -76,48 +48,12 @@ export interface LinhaFechamento {
   bruto: number;
   imposto: number;
   liquido: number;
+  resumo?: string; // "012 × 10 · 301 × 2"
 }
 
-// Fechamento do mês: para cada cliente com sessão, multiplica pelos valores dos códigos da guia mais
-// recente, desconta o imposto por guia e agrupa por responsável técnico aplicando o % de repasse.
-// `guias` vem da mais recente para a mais antiga (a primeira de cada cliente é a que vale).
-export function fecharMes(entrada: {
-  sessoesPorPac: ReadonlyMap<string, number>;
-  pacientes: ClienteFinanceiro[];
-  guias: GuiaFinanceira[];
-  cfg: ConfigFinanceira | undefined;
-}) {
-  const { sessoesPorPac, pacientes, guias, cfg } = entrada;
-  const nomePac = new Map(pacientes.map((p) => [p.id, `${p.nome} ${p.sobrenome || ''}`.trim()]));
-  const codigosPac = new Map(pacientes.map((p) => [p.id, p.codigos_cassi || []]));
-
-  // Guia mais recente por paciente (para códigos/responsável).
-  const guiaPorPac = new Map<string, GuiaFinanceira>();
-  for (const g of guias) if (!guiaPorPac.has(g.paciente_id)) guiaPorPac.set(g.paciente_id, g);
-
-  const valorDe = (c: string) => cfg?.codigos.find((x) => x.codigo === c)?.valor || 0;
+// Totais do mês a partir de uma linha por cliente: imposto, líquido, sua parte × clínica e repasse por responsável.
+export function agregarFechamento(linhas: LinhaFechamento[], cfg: ConfigFinanceira | undefined) {
   const impostoPct = cfg?.imposto_percentual || 0;
-  const impostoFixo = cfg?.imposto_por_guia || 0;
-
-  const linhas: LinhaFechamento[] = [...sessoesPorPac.entries()]
-    .filter(([, n]) => n > 0)
-    .map(([pid, sessoes]) => {
-      const guia = guiaPorPac.get(pid) || null;
-      const codigos = guia?.codigos?.length
-        ? guia.codigos
-        : (codigosPac.get(pid)?.length ? codigosPac.get(pid)!.map((c) => ({ codigo: c })) : [{ codigo: '012' }]);
-      const bruto = brutoGuia(codigos, sessoes, valorDe);
-      // Imposto por guia: percentual do bruto (novo) ou o valor fixo antigo.
-      const imposto = impostoPct > 0 ? bruto * (impostoPct / 100) : impostoFixo;
-      const liquido = Math.max(0, bruto - imposto);
-      return {
-        pid,
-        nome: nomePac.get(pid) || 'Cliente',
-        responsavel: (guia?.responsavel_tecnico || '').trim(),
-        sessoes, bruto, imposto, liquido,
-      };
-    })
-    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
   const totBruto = linhas.reduce((s, l) => s + l.bruto, 0);
   const totImposto = linhas.reduce((s, l) => s + l.imposto, 0);
@@ -154,6 +90,38 @@ export function fecharMes(entrada: {
     minhaPct, suaParte, parteClinica,
     repasses, totRepasse, ficaComVoce: totLiquido - totRepasse,
   };
+}
+
+export interface ClienteParaFechar {
+  id: string;
+  nome: string;
+  responsavel: string; // responsável técnico da guia mais recente do cliente
+  guias: GuiaLancada[];
+}
+
+// Fechamento do mês: para cada cliente da lista com algo lançado, bruto = Σ quantidade × valor do código,
+// imposto sobre o bruto (percentual; o valor fixo antigo vale por guia lançada) e líquido. Cliente sem lançamento
+// fica de fora da tabela e dos totais.
+export function fecharMesPorLancamentos(entrada: { clientes: ClienteParaFechar[]; cfg: ConfigFinanceira | undefined }) {
+  const { clientes, cfg } = entrada;
+  const valorDe = (c: string) => cfg?.codigos.find((x) => x.codigo === c)?.valor || 0;
+  const impostoPct = cfg?.imposto_percentual || 0;
+  const impostoFixo = cfg?.imposto_por_guia || 0;
+
+  const linhas: LinhaFechamento[] = clientes
+    .map((c) => {
+      const bruto = brutoDosLancamentos(c.guias, valorDe);
+      const sessoes = sessoesDosLancamentos(c.guias);
+      // Imposto por guia: percentual do bruto (novo) ou o valor fixo antigo, por guia lançada.
+      const imposto = impostoPct > 0 ? bruto * (impostoPct / 100) : impostoFixo * c.guias.length;
+      const liquido = Math.max(0, bruto - imposto);
+      return { pid: c.id, nome: c.nome, responsavel: c.responsavel.trim(), sessoes, bruto, imposto, liquido, resumo: resumoDosLancamentos(c.guias), lancou: c.guias.length > 0 };
+    })
+    .filter((l) => l.lancou)
+    .map(({ lancou: _lancou, ...l }) => l)
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  return agregarFechamento(linhas, cfg);
 }
 
 // 'AAAA-MM' do mês `delta` meses depois (ou antes, se negativo) de `mes`.

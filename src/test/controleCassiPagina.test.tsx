@@ -64,7 +64,7 @@ function cenario(): Record<string, Linha[]> {
     cassi_config: [{
       terapeuta_id: 'prof-1', imposto_por_guia: 0, imposto_percentual: 10, minha_parte_percentual: 50, responsaveis: [],
       nome_clinica: 'Clínica Teste', nome_profissional: 'Dr. Teste', cidade: 'Belém',
-      codigos: [{ codigo: '144', descricao: 'Avaliação', valor: 100 }, { codigo: '012', descricao: 'Sessão', valor: 50 }, { codigo: '185', descricao: 'Eletro', valor: 30 }, { codigo: '160', descricao: 'Sessão 160', valor: 60 }],
+      codigos: [{ codigo: '144', descricao: 'Consulta', valor: 65.62, codigo_oficial: '50000144' }, { codigo: '012', descricao: 'Sessão', valor: 57.7, codigo_oficial: '50000012' }, { codigo: '185', descricao: 'Eletro', valor: 30 }, { codigo: '160', descricao: 'Sessão 160', valor: 60 }],
     }],
     cassi_financeiro_clientes: [],
     relatorios_cassi: [],
@@ -100,6 +100,27 @@ async function irParaFaturamento() {
   await screen.findByText(/Nenhum cliente na lista de outubro de 2026/);
   await screen.findByRole('button', { name: 'Adicionar quem teve sessão no mês (3)' });
 }
+async function abrirLancamento(nome: string) {
+  fireEvent.click(screen.getByRole('button', { name: `Lançar códigos e sessões de ${nome}` }));
+  return screen.findByRole('group', { name: `Códigos e sessões de ${nome}` });
+}
+// Abre o lançamento do cliente, digita as quantidades (código → quantidade, na guia indicada) e, se pedido, salva.
+async function lancar(nome: string, qtds: Record<string, number>, opcoes: { guia?: number; salvar?: boolean } = {}) {
+  const { guia = 1, salvar = true } = opcoes;
+  const grupo = await abrirLancamento(nome);
+  for (const [cod, q] of Object.entries(qtds)) {
+    fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia ${guia}`), { target: { value: String(q) } });
+  }
+  if (!salvar) return grupo;
+  fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+  await waitFor(() => expect(screen.queryByRole('group', { name: `Códigos e sessões de ${nome}` })).toBeNull());
+  return grupo;
+}
+async function adicionarAoMes(nome: string, busca: string) {
+  await buscarEEscolher('Adicionar cliente à lista do mês', busca, new RegExp(nome));
+  await screen.findByRole('button', { name: `Lançar códigos e sessões de ${nome}` });
+}
+const atualizacoesDoMes = () => escritasEm('cassi_financeiro_clientes').filter((o) => o.tipo === 'update');
 async function buscarEEscolher(rotulo: string, digitado: string, nome: RegExp) {
   fireEvent.change(screen.getByLabelText(rotulo), { target: { value: digitado } });
   const resultados = await screen.findByRole('list', { name: 'Resultados da busca' });
@@ -385,43 +406,93 @@ describe('Faturamento com a lista de clientes do mês', () => {
     expect(screen.queryByText('Guias a enviar')).toBeNull();
   });
 
-  it('adicionar Ana pela busca grava a linha do mês e a conta passa a ser só dela', async () => {
+
+
+
+
+
+  it('adicionar um cliente pela busca grava só a linha do mês; o valor fica zerado até lançar os códigos', async () => {
     montar();
     await irParaFaturamento();
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    await adicionarAoMes('Ana Souza', 'ana');
     const gravacao = escritasEm('cassi_financeiro_clientes')[0];
     expect(gravacao.tipo).toBe('upsert');
     expect(gravacao.payload).toEqual([{ terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p1' }]);
     expect(gravacao.opcoes).toEqual({ onConflict: 'terapeuta_id,mes,paciente_id', ignoreDuplicates: true });
-    expect(valorDoCartao('Sessões')).toBe('8'); // 8 atendidas; falta, avaliação e sessão futura ficam de fora
-    expect(valorDoCartao('Imposto (10%)')).toBe('− R$ 64,00');
-    expect(valorDoCartao('Líquido')).toBe('R$ 576,00');
-    expect(valorDoCartao('Sua parte · 50%')).toBe('R$ 288,00');
-    expect(screen.getByText('8 sessões')).toBeTruthy();
+    expect(screen.getByText('Sem códigos lançados')).toBeTruthy();
+    expect(screen.getByText(/Nenhum código lançado neste mês/)).toBeTruthy();
+    expect(valorDoCartao('Bruto')).toBe('R$ 0,00');
   });
 
-  it('"adicionar quem teve sessão" coloca os 3 com sessão e a conta soma os três', async () => {
+  it('lançar códigos e quantidades: o valor do mês sai de quantidade × valor do código', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10, '144': 1 });
+    const w = atualizacoesDoMes().at(-1)!;
+    expect(w.payload).toEqual({ lancamentos: [{ '012': 10, '144': 1 }] });
+    expect(w.filtros).toEqual([['eq', 'terapeuta_id', 'prof-1'], ['eq', 'mes', '2026-10'], ['eq', 'paciente_id', 'p1']]);
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 642,62')); // 10 × 57,70 + 1 × 65,62
+    expect(valorDoCartao('Sessões')).toBe('10'); // a consulta (144) não é sessão
+    expect(valorDoCartao('Imposto (10%)')).toBe('− R$ 64,26');
+    expect(valorDoCartao('Líquido')).toBe('R$ 578,36');
+    expect(valorDoCartao('Sua parte · 50%')).toBe('R$ 289,18');
+    expect(valorDoCartao('Clínica')).toBe('R$ 289,18');
+    const tabela = within(screen.getByText('Por cliente').closest('div.rounded-xl') as HTMLElement);
+    expect(tabela.getByText('012 × 10 · 144 × 1')).toBeTruthy();
+    expect(norm(screen.getByRole('list', { name: 'Clientes na lista do mês' }).textContent)).toContain('012 × 10 · 144 × 1 · R$ 642,62');
+  });
+
+  it('duas guias no mês, com outro código: cada guia respeita o seu limite e o valor soma tudo', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    const grupo = await abrirLancamento('Bruno Lima');
+    fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '6' } });
+    fireEvent.click(within(grupo).getByRole('button', { name: /Outra guia/ }));
+    fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 2'), { target: { value: '4' } });
+    fireEvent.change(within(grupo).getByLabelText('Quantidade do código 301 na guia 2'), { target: { value: '2' } });
+    fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 648,10')); // 10 × 57,70 + 2 × 35,55
+    expect(atualizacoesDoMes().at(-1)!.payload).toEqual({ lancamentos: [{ '012': 6 }, { '012': 4, '301': 2 }] });
+    expect(norm(screen.getByRole('list', { name: 'Clientes na lista do mês' }).textContent)).toContain('012 × 10 · 301 × 2 · 2 guias');
+  });
+
+  it('o limite da CASSI vale no campo e no que é salvo: 012 até 10, consulta só 1', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 15, '144': 3 });
+    expect(atualizacoesDoMes().at(-1)!.payload).toEqual({ lancamentos: [{ '012': 10, '144': 1 }] });
+  });
+
+  it('"adicionar quem teve sessão" coloca os 3 clientes CASSI com sessão; "preencher com a agenda" lança 012 × sessões em cada um', async () => {
     montar();
     await irParaFaturamento();
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar quem teve sessão no mês (3)' }));
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 940,00'));
+    await screen.findByText(/^3 na lista/);
     expect(escritasEm('cassi_financeiro_clientes')[0].payload).toEqual(
       ['p1', 'p2', 'p3'].map((id) => ({ terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: id })),
     );
+    expect(screen.getByText('3 clientes sem códigos lançados.')).toBeTruthy();
+    expect(valorDoCartao('Bruto')).toBe('R$ 0,00'); // adicionar não lança nada sozinho
+    fireEvent.click(screen.getByRole('button', { name: 'Preencher 3 com a agenda (código 012)' }));
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 807,80')); // (8 + 2 + 4) × 57,70
     expect(valorDoCartao('Sessões')).toBe('14');
-    expect(valorDoCartao('Líquido')).toBe('R$ 846,00');
-    expect(screen.getByText('3 na lista')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Adicionar quem teve sessão no mês' }).hasAttribute('disabled')).toBe(true);
+    const lanc = Object.fromEntries(atualizacoesDoMes().map((o) => [o.filtros[2][2], (o.payload as Linha).lancamentos]));
+    expect(lanc).toEqual({ p1: [{ '012': 8 }], p2: [{ '012': 2 }], p3: [{ '012': 4 }] });
+    expect(screen.queryByText(/clientes sem códigos lançados/)).toBeNull();
   });
 
-  it('tirar um cliente da lista tira da conta; limpar esvazia o mês', async () => {
+  it('tirar um cliente da lista tira o valor dele; limpar esvazia o mês', async () => {
     montar();
     await irParaFaturamento();
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar quem teve sessão no mês (3)' }));
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 940,00'));
+    await screen.findByText(/^3 na lista/);
+    fireEvent.click(screen.getByRole('button', { name: 'Preencher 3 com a agenda (código 012)' }));
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 807,80'));
     fireEvent.click(screen.getByRole('button', { name: 'Tirar Carla Dias da lista' }));
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 740,00'));
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 577,00')); // (8 + 2) × 57,70
     const retirada = escritasEm('cassi_financeiro_clientes').at(-1)!;
     expect(retirada.tipo).toBe('delete');
     expect(retirada.filtros).toEqual([['eq', 'terapeuta_id', 'prof-1'], ['eq', 'mes', '2026-10'], ['eq', 'paciente_id', 'p3']]);
@@ -431,27 +502,45 @@ describe('Faturamento com a lista de clientes do mês', () => {
     expect(escritasEm('cassi_financeiro_clientes').at(-1)!.filtros).toEqual([['eq', 'terapeuta_id', 'prof-1'], ['eq', 'mes', '2026-10']]);
   });
 
-  it('cada mês tem a sua lista: setembro começa vazio e outubro continua com a dele', async () => {
+  it('cada mês tem a sua lista e o seu lançamento: setembro começa vazio e outubro continua com o dele', async () => {
     montar();
     await irParaFaturamento();
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10 });
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 577,00'));
     fireEvent.click(screen.getByTitle('Mês anterior'));
     await screen.findByRole('heading', { name: 'Clientes de setembro de 2026' });
-    expect(screen.getByText('0 na lista')).toBeTruthy();
     expect(await screen.findByText(/Nenhum cliente na lista de setembro de 2026/)).toBeTruthy();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 3 });
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 173,10')); // 3 × 57,70
+    expect(atualizacoesDoMes().at(-1)!.filtros).toEqual([['eq', 'terapeuta_id', 'prof-1'], ['eq', 'mes', '2026-09'], ['eq', 'paciente_id', 'p1']]);
     fireEvent.click(screen.getByTitle('Próximo mês'));
     await screen.findByRole('heading', { name: 'Clientes de outubro de 2026' });
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 577,00'));
   });
 
-  it('cliente na lista sem sessão atendida aparece avisado e não entra na conta', async () => {
+  it('se salvar falhar, avisa e o lançamento continua aberto com o que foi digitado', async () => {
     montar();
     await irParaFaturamento();
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'elisa', /Elisa Pedida/);
-    await screen.findByText('sem sessão atendida');
-    expect(screen.getByText(/Nenhuma sessão concluída na agenda neste mês/)).toBeTruthy();
+    await adicionarAoMes('Ana Souza', 'ana');
+    h.banco.falharEscritaQuando((op) => op.tipo === 'update', 'sem permissão');
+    const grupo = await lancar('Ana Souza', { '012': 5 }, { salvar: false });
+    fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Não consegui salvar os códigos e as sessões: sem permissão'));
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Ana Souza' })).toBeTruthy();
+    expect((screen.getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('5');
     expect(valorDoCartao('Bruto')).toBe('R$ 0,00');
+  });
+
+  it('os códigos novos da tabela da CASSI estão disponíveis para lançar (020, 301 e 131)', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '020': 2, '301': 3, '131': 4 });
+    // 2 × 57,70 + 3 × 35,55 + 4 × 67,79
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 493,21'));
+    expect(atualizacoesDoMes().at(-1)!.payload).toEqual({ lancamentos: [{ '020': 2, '301': 3, '131': 4 }] });
   });
 
   it('as guias que fecham no mês são só dos clientes da lista; as enviadas ao financeiro são rastreio e aparecem sempre', async () => {
@@ -473,8 +562,7 @@ describe('Faturamento com a lista de clientes do mês', () => {
   it('o relatório de produção seleciona sozinho só as guias dos clientes da lista', async () => {
     montar();
     await irParaFaturamento();
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    await adicionarAoMes('Ana Souza', 'ana');
     fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
     const dialogo = await screen.findByRole('dialog');
     const ana = await within(dialogo).findByRole('checkbox', { name: /Ana Souza/ });
@@ -663,26 +751,29 @@ describe('revisão: aba Clientes', () => {
 });
 
 describe('revisão: Faturamento', () => {
-  it('cliente fora do CASSI com sessões e guia (Fábio) nunca entra: nem no botão, nem na conta, nem nas guias', async () => {
+  it('cliente fora do CASSI com sessões e guia (Fábio) nunca entra: nem no botão, nem na lista, nem na busca', async () => {
     montar();
     await irParaFaturamento(); // o botão já exige "(3)": Fábio tem 3 sessões e não conta
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar quem teve sessão no mês (3)' }));
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 940,00'));
-    const ids = (escritasEm('cassi_financeiro_clientes')[0].payload as Linha[]).map((r) => r.paciente_id);
-    expect(ids).toEqual(['p1', 'p2', 'p3']);
+    await screen.findByText(/^3 na lista/);
+    expect((escritasEm('cassi_financeiro_clientes')[0].payload as Linha[]).map((r) => r.paciente_id)).toEqual(['p1', 'p2', 'p3']);
+    fireEvent.click(screen.getByRole('button', { name: 'Preencher 3 com a agenda (código 012)' }));
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 807,80')); // as 3 sessões de Fábio não entram
     expect(norm(screen.getByText('Guias a enviar').previousElementSibling?.textContent)).toBe('2'); // Ana e Carla; Bruno não tem guia
+    fireEvent.change(screen.getByLabelText('Adicionar cliente à lista do mês'), { target: { value: 'fabio' } });
+    expect(await screen.findByText(/Nenhum cliente encontrado/)).toBeTruthy();
   });
 
   it('linha velha na lista (cliente que saiu do CASSI) não entra na conta, nas guias nem no relatório', async () => {
     h.banco.tabelas.cassi_financeiro_clientes.push(
-      { id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p1' },
-      { id: 'v2', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p6' }, // Fábio, FUSEX
+      { id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p1', lancamentos: [{ '012': 10, '144': 1 }] },
+      { id: 'v2', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p6', lancamentos: [{ '012': 5 }] }, // Fábio, FUSEX
     );
     montar();
     await screen.findByText('Ana Souza');
     abrirAba(/^Faturamento/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
-    expect(screen.getByText('1 na lista')).toBeTruthy();
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 642,62')); // só a Ana
+    expect(screen.getByText(/^1 na lista/)).toBeTruthy();
     expect(norm(screen.getByText('Guias a enviar').previousElementSibling?.textContent)).toBe('1');
     fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
     const dialogo = await screen.findByRole('dialog');
@@ -691,31 +782,31 @@ describe('revisão: Faturamento', () => {
     expect((within(dialogo).getByRole('checkbox', { name: /Fábio Particular/ }) as HTMLInputElement).checked).toBe(false);
   });
 
-  it('cada mês grava e calcula com a sua lista: a tendência mostra setembro só depois de Ana entrar na lista de setembro', async () => {
+  it('cada mês grava e calcula com a sua lista: a tendência mostra setembro só depois de lançar em setembro', async () => {
     montar();
     await irParaFaturamento();
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10 });
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 577,00'));
     const tendencia = () => norm(screen.getByText(/Sua parte · últimos 6 meses/).closest('div.rounded-xl')?.textContent);
-    await waitFor(() => expect(tendencia()).toContain('288')); // outubro: R$ 576,00 líquidos de Ana × 50%
-    expect(tendencia()).not.toContain('108'); // setembro ainda sem lista: aparece como —
+    await waitFor(() => expect(tendencia()).toContain('260')); // outubro: 577,00 − 10% = 519,30 × 50%
+    expect(tendencia()).not.toContain('78'); // setembro ainda sem lista: aparece como —
     fireEvent.click(screen.getByTitle('Mês anterior'));
     await screen.findByRole('heading', { name: 'Clientes de setembro de 2026' });
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    await waitFor(() => expect(escritasEm('cassi_financeiro_clientes').map((o) => (o.payload as Linha[])[0].mes)).toEqual(['2026-10', '2026-09']));
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 240,00')); // 3 sessões de setembro × (012 + 185)
-    await waitFor(() => expect(tendencia()).toContain('108')); // setembro: 3 sessões → R$ 216,00 líquidos × 50%
-    expect(tendencia()).not.toContain('288'); // a janela termina em setembro: outubro ainda não entra
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 3 });
+    await waitFor(() => expect(atualizacoesDoMes().map((o) => o.filtros[1][2])).toEqual(['2026-10', '2026-09']));
+    await waitFor(() => expect(tendencia()).toContain('78')); // setembro: 173,10 − 10% = 155,79 × 50%
+    expect(tendencia()).not.toContain('260'); // a janela termina em setembro: outubro ainda não entra
     fireEvent.click(screen.getByTitle('Próximo mês'));
     await screen.findByRole('heading', { name: 'Clientes de outubro de 2026' });
-    await waitFor(() => { expect(tendencia()).toContain('108'); expect(tendencia()).toContain('288'); }); // as duas listas, cada uma no seu mês
+    await waitFor(() => { expect(tendencia()).toContain('78'); expect(tendencia()).toContain('260'); }); // as duas listas, cada uma no seu mês
   });
 
   it('o relatório de outro mês usa a lista DESSE mês: em setembro (sem lista) nada vem marcado e avisa', async () => {
     montar();
     await irParaFaturamento();
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    await adicionarAoMes('Ana Souza', 'ana');
     fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
     const dialogo = await screen.findByRole('dialog');
     await waitFor(() => expect((within(dialogo).getByRole('checkbox', { name: /Ana Souza/ }) as HTMLInputElement).checked).toBe(true));
@@ -729,12 +820,12 @@ describe('revisão: Faturamento', () => {
     montar();
     await irParaFaturamento();
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar quem teve sessão no mês (3)' }));
-    await waitFor(() => expect(screen.getByText('3 na lista')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/^3 na lista/)).toBeTruthy());
     vi.mocked(window.confirm).mockReturnValue(false);
     fireEvent.click(screen.getByRole('button', { name: 'Limpar lista' }));
     expect(window.confirm).toHaveBeenCalled();
     expect(escritasEm('cassi_financeiro_clientes').some((o) => o.tipo === 'delete')).toBe(false);
-    expect(screen.getByText('3 na lista')).toBeTruthy();
+    expect(screen.getByText(/^3 na lista/)).toBeTruthy();
   });
 
   it('com a lista em erro há "Tentar de novo"; ao dar certo a lista aparece', async () => {
@@ -918,27 +1009,28 @@ describe('revisão (rodada 2): reforço dos testes', () => {
     expect(card('Carla Dias')).not.toContain('Falta:');
   });
 
-  it('tendência: mostra 6 meses (maio a outubro) e usa a lista de cada um; abril fica de fora', async () => {
-    const t = h.banco.tabelas;
-    t.agendamentos.push(...[10, 11].map((d) => sessao('p1', d, {}, 4)), ...[10, 11, 12, 13].map((d) => sessao('p1', d, {}, 3))); // maio (2) e abril (4)
-    t.cassi_financeiro_clientes.push({ id: 'vm', terapeuta_id: 'prof-1', mes: '2026-05', paciente_id: 'p1' }, { id: 'va', terapeuta_id: 'prof-1', mes: '2026-04', paciente_id: 'p1' });
+  it('tendência: mostra 6 meses (maio a outubro) e usa o lançamento de cada um; abril fica de fora', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(
+      { id: 'vm', terapeuta_id: 'prof-1', mes: '2026-05', paciente_id: 'p1', lancamentos: [{ '012': 2 }] }, // maio: 115,40 − 10% = 103,86 × 50% = 51,93
+      { id: 'va', terapeuta_id: 'prof-1', mes: '2026-04', paciente_id: 'p1', lancamentos: [{ '012': 4 }] }, // abril: fora da janela
+      { id: 'vo', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p1', lancamentos: [{ '012': 10 }] }, // outubro: 259,65
+    );
     montar();
-    await irParaFaturamento();
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    await screen.findByText('Ana Souza');
+    abrirAba(/^Faturamento/);
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 577,00'));
     const tendencia = () => norm(screen.getByText(/Sua parte · últimos 6 meses/).closest('div.rounded-xl')?.textContent);
-    await waitFor(() => expect(tendencia()).toContain('mai'));
-    expect(tendencia()).toContain('288'); // outubro
-    expect(tendencia()).toContain('72'); // maio: 2 sessões × 80 × 0,9 × 0,5
+    expect(tendencia()).toContain('mai');
+    expect(tendencia()).toContain('260'); // outubro
+    expect(tendencia()).toContain('52'); // maio
     expect(tendencia()).not.toContain('abr');
-    expect(tendencia()).not.toContain('144'); // abril (4 sessões) fora da janela
+    expect(tendencia()).not.toContain('104'); // abril (4 × 57,70 → 103,86 × ...) fora da janela
   });
 
   it('lista já carregada + releitura que falha: a lista continua na tela e não aparece alerta', async () => {
     montar();
     await irParaFaturamento();
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    await adicionarAoMes('Ana Souza', 'ana');
     const original = h.banco.from;
     h.banco.from = ((tabela: string) => {
       if (tabela !== 'cassi_financeiro_clientes') return original(tabela);
@@ -954,7 +1046,7 @@ describe('revisão (rodada 2): reforço dos testes', () => {
     expect(within(screen.getByRole('list', { name: 'Clientes na lista do mês' })).getByText('Ana Souza')).toBeTruthy();
   });
 
-  it('agenda do mês falha: a lista diz "sessões indisponíveis" (e não "sem sessão atendida")', async () => {
+  it('agenda do mês falha: a lista diz "agenda indisponível" (e não "sem sessão atendida")', async () => {
     montar();
     await screen.findByText('Ana Souza');
     const original = h.banco.from;
@@ -968,22 +1060,22 @@ describe('revisão (rodada 2): reforço dos testes', () => {
     abrirAba(/^Faturamento/);
     await screen.findByRole('heading', { name: 'Clientes de outubro de 2026' });
     await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    expect(await screen.findByText('sessões indisponíveis')).toBeTruthy();
-    expect(screen.queryByText('sem sessão atendida')).toBeNull();
+    expect(await screen.findByText('agenda indisponível')).toBeTruthy();
+    expect(screen.queryByText('agenda: sem sessão atendida')).toBeNull();
   });
 
   it('tendência: linha velha de cliente que saiu do CASSI não entra nas barras', async () => {
     h.banco.tabelas.cassi_financeiro_clientes.push(
-      { id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p1' },
-      { id: 'v2', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p6' },
+      { id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p1', lancamentos: [{ '012': 10 }] },
+      { id: 'v2', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p6', lancamentos: [{ '012': 5 }] }, // Fábio, FUSEX
     );
     montar();
     await screen.findByText('Ana Souza');
     abrirAba(/^Faturamento/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 577,00'));
     const tendencia = () => norm(screen.getByText(/Sua parte · últimos 6 meses/).closest('div.rounded-xl')?.textContent);
-    await waitFor(() => expect(tendencia()).toContain('288'));
-    expect(tendencia()).not.toContain('356');
+    await waitFor(() => expect(tendencia()).toContain('260'));
+    expect(tendencia()).not.toContain('389'); // com a linha de Fábio a barra seria 259,65 + 129,83
   });
 
   it('dar baixa que falha no segundo passo não limpa o que foi editado na tela', async () => {
@@ -1007,7 +1099,7 @@ describe('revisão (rodada 2): reforço dos testes', () => {
     await screen.findByText('Bruno Lima');
     abrirAba(/^Faturamento/);
     await screen.findByRole('heading', { name: 'Clientes de outubro de 2026' });
-    await screen.findByText('1 na lista');
+    await screen.findByText(/^1 na lista/);
     abrirAba(/^Clientes$/);
     await screen.findByText('Bruno Lima');
     await abrirMenuDe('Bruno Lima');
@@ -1017,7 +1109,7 @@ describe('revisão (rodada 2): reforço dos testes', () => {
     await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Cadastros juntados — duplicado removido'));
     abrirAba(/^Faturamento/);
     await screen.findByRole('heading', { name: 'Clientes de outubro de 2026' });
-    await waitFor(() => expect(screen.getByText('1 na lista')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/^1 na lista/)).toBeTruthy());
     expect(within(screen.getByRole('list', { name: 'Clientes na lista do mês' })).getByText('Carla Dias')).toBeTruthy();
   });
 });
@@ -1070,8 +1162,8 @@ describe('revisão (rodada 2): correções', () => {
     render(<QueryClientProvider client={qc}><MemoryRouter><ControleCassi /></MemoryRouter></QueryClientProvider>);
     await screen.findByText('Bruno Lima');
     abrirAba(/^Faturamento/);
-    await screen.findByText('1 na lista');
-    await within(screen.getByRole('list', { name: 'Clientes na lista do mês' })).findByText('2 sessões'); // Bruno: 2 sessões
+    await screen.findByText(/^1 na lista/);
+    await within(screen.getByRole('list', { name: 'Clientes na lista do mês' })).findByText('agenda: 2 sessões'); // Bruno: 2 sessões
     abrirAba(/^Clientes$/);
     await screen.findByText('Bruno Lima');
     await abrirMenuDe('Bruno Lima');
@@ -1081,7 +1173,7 @@ describe('revisão (rodada 2): correções', () => {
     await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Cadastros juntados — duplicado removido'));
     abrirAba(/^Faturamento/);
     const lista = await screen.findByRole('list', { name: 'Clientes na lista do mês' });
-    await waitFor(() => expect(within(lista).getByText('6 sessões')).toBeTruthy()); // Carla: as 4 dela + as 2 de Bruno
+    await waitFor(() => expect(within(lista).getByText('agenda: 6 sessões')).toBeTruthy()); // Carla: as 4 dela + as 2 de Bruno
   });
 
   it('quem só tem guia encerrada tem "Ver última guia" no menu (não "vigente")', async () => {
@@ -1093,11 +1185,9 @@ describe('revisão (rodada 2): correções', () => {
     expect(screen.queryByRole('menuitem', { name: /Ver guia \(vigente\)/ })).toBeNull();
   });
 
-  it('agenda do mês que falha avisa, em vez de mostrar "nenhuma sessão" e zeros', async () => {
+  it('agenda do mês que falha não esconde o valor lançado: o cálculo continua e a lista avisa que a agenda está indisponível', async () => {
     montar();
     await irParaFaturamento();
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
     const original = h.banco.from;
     h.banco.from = ((tabela: string) => {
       if (tabela !== 'agendamentos') return original(tabela);
@@ -1108,9 +1198,11 @@ describe('revisão (rodada 2): correções', () => {
     }) as typeof h.banco.from;
     fireEvent.click(screen.getByTitle('Mês anterior'));
     await screen.findByRole('heading', { name: 'Clientes de setembro de 2026' });
-    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
-    expect((await screen.findByText(/Não consegui carregar a agenda deste mês/)).getAttribute('role')).toBe('alert');
-    expect(screen.queryByText(/Nenhuma sessão concluída na agenda neste mês/)).toBeNull();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 3 });
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 173,10')); // o valor não depende da agenda
+    expect(screen.getByText('agenda indisponível')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 
@@ -1140,5 +1232,70 @@ describe('guardas', () => {
     expect(fonte).toMatch(/const MOSTRAR_ESTE_MES = false;/);
     expect(fonte).toContain("['ativas', 'Este mês']");
     expect(fonte).toMatch(/\.filter\(\(\[v\]\) => MOSTRAR_ESTE_MES \|\| v !== 'ativas'\)/);
+  });
+});
+
+describe('Faturamento: valores e códigos de Configurações', () => {
+  it('o valor que o profissional configurou vale mais que o da tabela', async () => {
+    h.banco.tabelas.cassi_config[0].codigos = [{ codigo: '012', descricao: 'Sessão', valor: 60, codigo_oficial: '50000012' }];
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10 });
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 600,00')); // 10 × 60,00 (configurado), não 57,70
+  });
+
+  it('sem nenhuma configuração salva, valem os valores da tabela da CASSI (012 = 57,70)', async () => {
+    h.banco.tabelas.cassi_config.length = 0;
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10, '144': 1, '131': 2 });
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 778,20')); // 577,00 + 65,62 + 135,58
+  });
+
+  it('o editor mostra os cinco códigos da tabela com o código oficial', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    const grupo = await abrirLancamento('Ana Souza');
+    const texto = norm(grupo.textContent);
+    for (const oficial of ['5.00.00.012', '5.00.00.020', '5.00.00.144', '2.01.03.301', '2.01.03.131']) expect(texto).toContain(oficial);
+    expect(texto).toContain('R$ 57,70');
+    expect(texto).toContain('R$ 65,62');
+    expect(texto).toContain('R$ 35,55');
+    expect(texto).toContain('R$ 67,79');
+  });
+});
+
+describe('juntar cadastros leva o que foi lançado', () => {
+  async function juntarBrunoComCarla() {
+    montar();
+    await screen.findByText('Bruno Lima');
+    await abrirMenuDe('Bruno Lima');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Editar cadastro/ }));
+    fireEvent.change(await screen.findByPlaceholderText('Buscar o cadastro certo pelo nome…'), { target: { value: 'carla' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Carla Dias.*Juntar aqui/ }));
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Cadastros juntados — duplicado removido'));
+  }
+  const linhaDe = (pid: string, mes: string) => h.banco.tabelas.cassi_financeiro_clientes.find((l) => l.paciente_id === pid && l.mes === mes);
+
+  it('mês que só o duplicado tinha: o lançamento é copiado para quem fica', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push({ id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p2', lancamentos: [{ '012': 5 }, { '301': 2 }] });
+    await juntarBrunoComCarla();
+    expect(linhaDe('p3', '2026-10')?.lancamentos).toEqual([{ '012': 5 }, { '301': 2 }]);
+    expect(h.banco.tabelas.cassi_financeiro_clientes.filter((l) => l.paciente_id === 'p2')).toEqual([]);
+  });
+
+  it('mês que os dois tinham: as guias do duplicado entram depois das de quem fica (nada some)', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(
+      { id: 'v1', terapeuta_id: 'prof-1', mes: '2026-09', paciente_id: 'p2', lancamentos: [{ '012': 2 }] },
+      { id: 'v2', terapeuta_id: 'prof-1', mes: '2026-09', paciente_id: 'p3', lancamentos: [{ '012': 3 }] },
+      { id: 'v3', terapeuta_id: 'prof-1', mes: '2026-08', paciente_id: 'p2', lancamentos: [] }, // duplicado sem nada lançado
+      { id: 'v4', terapeuta_id: 'prof-1', mes: '2026-08', paciente_id: 'p3', lancamentos: [{ '144': 1 }] },
+    );
+    await juntarBrunoComCarla();
+    expect(linhaDe('p3', '2026-09')?.lancamentos).toEqual([{ '012': 3 }, { '012': 2 }]);
+    expect(linhaDe('p3', '2026-08')?.lancamentos).toEqual([{ '144': 1 }]); // quem fica não perde o que tinha
   });
 });

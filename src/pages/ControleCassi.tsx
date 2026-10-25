@@ -18,7 +18,8 @@ import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertT
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
-import { contarSessoesDoMes, fecharMes, ultimosMeses } from '@/lib/cassiFinanceiro';
+import { contarSessoesDoMes, fecharMesPorLancamentos, ultimosMeses } from '@/lib/cassiFinanceiro';
+import { guiasPelaAgenda, mesclarCodigosComPadrao, normalizarLancamentos, ordenarParaLancamento, type GuiaLancada } from '@/lib/cassiFaturamento';
 import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
 import { BuscaDeCliente } from '@/components/cassi/BuscaDeCliente';
 import { SugestoesDoPedido } from '@/components/cassi/SugestoesDoPedido';
@@ -70,9 +71,8 @@ function useCassiConfig() {
     queryFn: async () => {
       const { data } = await (supabase as any).from('cassi_config')
         .select('codigos, imposto_por_guia, imposto_percentual, minha_parte_percentual, responsaveis, nome_clinica, nome_profissional, cidade').eq('terapeuta_id', user!.id).maybeSingle();
-      const codigos: CodigoCfg[] = Array.isArray(data?.codigos) && data.codigos.length
-        ? data.codigos
-        : CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
+      // Os códigos configurados + os da tabela da CASSI que ainda não estão lá (o valor já configurado nunca é trocado).
+      const codigos: CodigoCfg[] = mesclarCodigosComPadrao(Array.isArray(data?.codigos) ? (data.codigos as CodigoCfg[]) : []);
       const responsaveis: ResponsavelCfg[] = Array.isArray(data?.responsaveis) ? data.responsaveis : [];
       return {
         codigos, responsaveis,
@@ -1860,12 +1860,32 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
       if (p.error) throw p.error;
       // As listas do Faturamento (um mês por linha) vão para o cliente que fica; sem isto ele sairia da conta dos
       // meses em que o duplicado estava e as sessões que acabaram de mudar para ele deixariam de ser contadas.
-      const lf = await sb.from('cassi_financeiro_clientes').select('mes').eq('terapeuta_id', user.id).eq('paciente_id', paciente.id);
+      // O que foi lançado em cada mês vai junto: no mês em que o cliente que fica ainda não estava, a linha é copiada; no mês
+      // em que os dois estavam, as guias do duplicado entram depois das dele.
+      const lf = await sb.from('cassi_financeiro_clientes').select('mes, lancamentos').eq('terapeuta_id', user.id).eq('paciente_id', paciente.id);
       if (lf.error) throw lf.error;
-      if ((lf.data || []).length > 0) {
-        const novas = (lf.data as Array<{ mes: string }>).map((r) => ({ terapeuta_id: user.id, mes: r.mes, paciente_id: alvo.id }));
-        const up = await sb.from('cassi_financeiro_clientes').upsert(novas, { onConflict: 'terapeuta_id,mes,paciente_id', ignoreDuplicates: true });
-        if (up.error) throw up.error;
+      const doDuplicado = (lf.data || []) as Array<{ mes: string; lancamentos: unknown }>;
+      if (doDuplicado.length > 0) {
+        const la = await sb.from('cassi_financeiro_clientes').select('mes, lancamentos').eq('terapeuta_id', user.id).eq('paciente_id', alvo.id).in('mes', doDuplicado.map((r) => r.mes));
+        if (la.error) throw la.error;
+        const doAlvo = new Map(((la.data || []) as Array<{ mes: string; lancamentos: unknown }>).map((r) => [r.mes, normalizarLancamentos(r.lancamentos)]));
+        const novas: Array<{ terapeuta_id: string; mes: string; paciente_id: string; lancamentos: GuiaLancada[] }> = [];
+        const somar: Array<{ mes: string; lancamentos: GuiaLancada[] }> = [];
+        for (const r of doDuplicado) {
+          const guias = normalizarLancamentos(r.lancamentos);
+          const existente = doAlvo.get(r.mes);
+          if (existente === undefined) novas.push({ terapeuta_id: user.id, mes: r.mes, paciente_id: alvo.id, lancamentos: guias });
+          else if (guias.length > 0) somar.push({ mes: r.mes, lancamentos: normalizarLancamentos([...existente, ...guias]) });
+        }
+        if (novas.length > 0) {
+          const up = await sb.from('cassi_financeiro_clientes').upsert(novas, { onConflict: 'terapeuta_id,mes,paciente_id', ignoreDuplicates: true });
+          if (up.error) throw up.error;
+        }
+        for (const x of somar) {
+          const upd = await sb.from('cassi_financeiro_clientes').update({ lancamentos: x.lancamentos })
+            .eq('terapeuta_id', user.id).eq('mes', x.mes).eq('paciente_id', alvo.id);
+          if (upd.error) throw upd.error;
+        }
         const del = await sb.from('cassi_financeiro_clientes').delete().eq('terapeuta_id', user.id).eq('paciente_id', paciente.id);
         if (del.error) throw del.error;
       }
@@ -2663,7 +2683,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
   });
 
   // Agendamentos do mês (com folga de ±1 dia p/ fuso; classificamos pelo mês local).
-  const { data: agendamentos = [], isLoading, isError: erroAgenda } = useQuery({
+  const { data: agendamentos = [], isLoading: carregandoAgenda, isError: erroAgenda } = useQuery({
     queryKey: ['cassi-agendamentos-mes', user?.id, mes],
     queryFn: async () => {
       const [ano, m] = mes.split('-').map(Number);
@@ -2684,29 +2704,40 @@ function FinanceiroCassi({ onAbrirGuia }: {
   const idsCassi = useMemo(() => new Set(pacientes.map((p) => p.id)), [pacientes]);
   const idsDoMes = useMemo(() => new Set([...listaDoMes].filter((id) => idsCassi.has(id))), [listaDoMes, idsCassi]);
 
-  // Sessões atendidas na agenda no mês: de todos os clientes CASSI (para sugerir quem adicionar) e só dos da lista (a conta).
+  // Sessões atendidas na agenda no mês: só REFERÊNCIA (e base de "quem teve sessão"); o valor sai do que foi lançado.
   const sessoesTodos = useMemo(() => {
     const [ano, m] = mes.split('-').map(Number);
     return contarSessoesDoMes(agendamentos, ano, m, idsCassi, Date.now());
   }, [mes, agendamentos, idsCassi]);
-  const sessoesDaLista = useMemo(
-    () => new Map([...sessoesTodos].filter(([id]) => idsDoMes.has(id))),
-    [sessoesTodos, idsDoMes],
-  );
 
-  const calc = useMemo(
-    () => fecharMes({ sessoesPorPac: sessoesDaLista, pacientes, guias, cfg }),
-    [sessoesDaLista, pacientes, guias, cfg],
-  );
+  // Códigos que dá para lançar: os de Configurações (com os padrões que faltam), com o 012 na frente.
+  const catalogo = useMemo(() => ordenarParaLancamento(cfg?.codigos ?? []), [cfg]);
+  const lancamentosDoMes = lista.lancamentosDoMes(mes);
+  // Responsável técnico do cliente = o da guia mais recente (é com ele que o repasse é calculado).
+  const responsavelPorPaciente = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const g of guias) if (!m.has(g.paciente_id)) m.set(g.paciente_id, g.responsavel_tecnico || '');
+    return m;
+  }, [guias]);
 
-  // A lista do mês na tela: quem já está nela, quem dá para adicionar e quem teve sessão e ainda está de fora.
   const nomeDe = (p: Paciente) => `${p.nome} ${p.sobrenome || ''}`.trim();
+  const calc = useMemo(
+    () => fecharMesPorLancamentos({
+      clientes: pacientes.filter((p) => idsDoMes.has(p.id)).map((p) => ({
+        id: p.id, nome: nomeDe(p), responsavel: responsavelPorPaciente.get(p.id) || '', guias: lancamentosDoMes.get(p.id) || [],
+      })),
+      cfg,
+    }),
+    [pacientes, idsDoMes, lancamentosDoMes, responsavelPorPaciente, cfg],
+  );
+
+  // A lista do mês na tela: quem já está nela (com o que foi lançado), quem dá para adicionar e quem teve sessão e está de fora.
   const clientesDaLista = useMemo(
     () => pacientes
       .filter((p) => idsDoMes.has(p.id))
-      .map((p) => ({ id: p.id, nome: nomeDe(p), sessoes: sessoesTodos.get(p.id) || 0, encerrado: !!p.cassi_encerrado_em }))
+      .map((p) => ({ id: p.id, nome: nomeDe(p), sessoesAgenda: sessoesTodos.get(p.id) || 0, guias: lancamentosDoMes.get(p.id) || [], encerrado: !!p.cassi_encerrado_em }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
-    [pacientes, idsDoMes, sessoesTodos],
+    [pacientes, idsDoMes, sessoesTodos, lancamentosDoMes],
   );
   const candidatosDoMes = useMemo(
     () => pacientes
@@ -2718,36 +2749,32 @@ function FinanceiroCassi({ onAbrirGuia }: {
     () => [...sessoesTodos.entries()].filter(([id, n]) => n > 0 && !idsDoMes.has(id)).map(([id]) => id),
     [sessoesTodos, idsDoMes],
   );
+  const semLancamentoComAgenda = useMemo(
+    () => clientesDaLista.filter((c) => c.guias.length === 0 && c.sessoesAgenda > 0),
+    [clientesDaLista],
+  );
 
-  // Agendamentos dos últimos 6 meses (janela mais larga) — só pro mini-gráfico.
-  const { data: agsTrend = [] } = useQuery({
-    queryKey: ['cassi-ags-trend', user?.id, mes],
-    queryFn: async () => {
-      const [ano, m] = mes.split('-').map(Number);
-      const de = new Date(ano, m - 6, 1).toISOString();
-      const ate = new Date(ano, m, 2).toISOString();
-      const { data, error } = await (supabase as any)
-        .from('agendamentos')
-        .select('paciente_id, data_inicio, status, tipo_atendimento')
-        .eq('terapeuta_id', user!.id)
-        .gte('data_inicio', de).lt('data_inicio', ate);
-      if (error) throw error;
-      return (data || []) as Array<{ paciente_id: string | null; data_inicio: string; status: string; tipo_atendimento?: string }>;
-    },
-    enabled: !!user,
-  });
+  // Tendência da "sua parte" nos últimos 6 meses: a mesma conta do mês, com o que foi lançado em cada mês.
+  const lancamentosDe = lista.lancamentosDoMes;
+  const tendencia = useMemo(() => mesesTendencia.map((mm) => {
+    const doMesX = lancamentosDe(mm);
+    const clientes = pacientes.filter((p) => doMesX.has(p.id)).map((p) => ({ id: p.id, nome: nomeDe(p), responsavel: '', guias: doMesX.get(p.id) || [] }));
+    return { label: MESES_PT[Number(mm.slice(5, 7)) - 1].slice(0, 3), suaParte: fecharMesPorLancamentos({ clientes, cfg }).suaParte };
+  }), [mesesTendencia, lancamentosDe, pacientes, cfg]);
 
-  // Tendência da "sua parte" nos últimos 6 meses: a mesma conta do mês, com a lista de clientes de cada mês.
-  const doMesDaLista = lista.doMes;
-  const tendencia = useMemo(() => {
-    const agora = Date.now();
-    return mesesTendencia.map((mm) => {
-      const [y, mo] = mm.split('-').map(Number);
-      const ids = new Set([...doMesDaLista(mm)].filter((id) => idsCassi.has(id)));
-      const sess = contarSessoesDoMes(agsTrend, y, mo, ids, agora);
-      return { label: MESES_PT[mo - 1].slice(0, 3), suaParte: fecharMes({ sessoesPorPac: sess, pacientes, guias, cfg }).suaParte };
-    });
-  }, [agsTrend, mesesTendencia, doMesDaLista, idsCassi, pacientes, guias, cfg]);
+  // Gravar o lançamento de um cliente. O aviso de falha já sai do próprio hook.
+  const salvarLancamento = async (id: string, guiasNovas: GuiaLancada[]): Promise<boolean> => {
+    try {
+      await lista.lancar.mutateAsync({ mes, itens: [{ id, guias: guiasNovas }] });
+      return true;
+    } catch {
+      return false; // falhou: o hook já avisou; o editor continua aberto com o que foi digitado
+    }
+  };
+  const preencherComAgenda = () => {
+    lista.lancar.mutate({ mes, itens: semLancamentoComAgenda.map((c) => ({ id: c.id, guias: guiasPelaAgenda(c.sessoesAgenda) })) });
+  };
+  const salvandoId = lista.lancar.isPending && lista.lancar.variables?.itens.length === 1 ? lista.lancar.variables.itens[0].id : null;
 
   const irMes = (delta: number) => {
     const [ano, m] = mes.split('-').map(Number);
@@ -2758,10 +2785,10 @@ function FinanceiroCassi({ onAbrirGuia }: {
   const baixarCSV = () => {
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
     const linhas = [
-      ['Cliente', 'Responsável', 'Sessões', 'Bruto', 'Imposto', 'Líquido'],
-      ...calc.linhas.map((l) => [l.nome, l.responsavel || '—', l.sessoes, l.bruto.toFixed(2), l.imposto.toFixed(2), l.liquido.toFixed(2)]),
+      ['Cliente', 'Responsável', 'Códigos', 'Sessões', 'Bruto', 'Imposto', 'Líquido'],
+      ...calc.linhas.map((l) => [l.nome, l.responsavel || '—', l.resumo || '', l.sessoes, l.bruto.toFixed(2), l.imposto.toFixed(2), l.liquido.toFixed(2)]),
       [],
-      ['TOTAL', '', calc.totSessoes, calc.totBruto.toFixed(2), calc.totImposto.toFixed(2), calc.totLiquido.toFixed(2)],
+      ['TOTAL', '', '', calc.totSessoes, calc.totBruto.toFixed(2), calc.totImposto.toFixed(2), calc.totLiquido.toFixed(2)],
     ];
     const csv = linhas.map((r) => r.map(esc).join(';')).join('\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -2818,7 +2845,12 @@ function FinanceiroCassi({ onAbrirGuia }: {
         ocupado={lista.ocupado || lista.carregando || lista.erro}
         carregando={lista.carregando}
         erro={lista.erro}
-        sessoesEstado={isLoading ? 'carregando' : erroAgenda ? 'erro' : 'ok'}
+        sessoesEstado={carregandoAgenda ? 'carregando' : erroAgenda ? 'erro' : 'ok'}
+        catalogo={catalogo}
+        quantosPreencheriaComAgenda={semLancamentoComAgenda.length}
+        salvandoId={salvandoId}
+        onSalvarLancamento={salvarLancamento}
+        onPreencherComAgenda={preencherComAgenda}
         onAdicionar={(id) => lista.adicionar.mutate({ mes, ids: [id] })}
         onAdicionarComSessao={() => lista.adicionar.mutate({ mes, ids: comSessaoFora })}
         onRemover={(id) => lista.remover.mutate({ mes, id })}
@@ -2902,16 +2934,10 @@ function FinanceiroCassi({ onAbrirGuia }: {
         );
       })()}
 
-      {isLoading ? (
-        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-      ) : erroAgenda ? (
-        <p className="text-center text-sm text-rose-600 dark:text-rose-400 py-10" role="alert">
-          Não consegui carregar a agenda deste mês, então o cálculo não está completo. Atualize a página e tente de novo.
-        </p>
-      ) : calc.linhas.length === 0 ? (
+      {calc.linhas.length === 0 ? (
         <p className="text-center text-sm text-muted-foreground py-10">
-          Nenhuma sessão concluída na agenda neste mês.<br />
-          <span className="text-[12px]">Marque as sessões como <b>atendido</b> na Agenda para elas entrarem no cálculo.</span>
+          Nenhum código lançado neste mês.<br />
+          <span className="text-[12px]">Abra um cliente da lista acima e informe os <b>códigos</b> usados e a <b>quantidade</b> de cada um.</span>
         </p>
       ) : (
         <>
@@ -2936,6 +2962,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
                     <tr key={l.pid} className="border-t border-border/40">
                       <td className="px-3 py-2">
                         <p className="font-medium truncate">{l.nome}</p>
+                        {l.resumo && <p className="text-[10px] text-muted-foreground tabular-nums">{l.resumo}</p>}
                         {l.responsavel && <p className="text-[10px] text-muted-foreground">{l.responsavel}</p>}
                       </td>
                       <td className="text-center tabular-nums px-2 py-2">{l.sessoes}</td>
@@ -2977,7 +3004,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
           )}
 
           <p className="text-[11px] text-muted-foreground text-center px-4">
-            Contamos como sessão realizada os agendamentos <b>atendidos/confirmados</b> na Agenda até hoje. Cancelados, faltas e horários bloqueados não entram.
+            O valor vem dos <b>códigos e quantidades que você lançou</b> em cada cliente (quantidade × valor do código). A Agenda aparece só como referência. "Sessões" não conta a consulta (144).
           </p>
         </>
       )}
