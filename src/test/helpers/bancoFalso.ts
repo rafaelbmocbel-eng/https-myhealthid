@@ -18,6 +18,8 @@ export interface BancoFalso {
   escritas: () => Operacao[];
   // Faz toda escrita que casar com o filtro devolver este erro (para testar o caminho de falha).
   falharEscritaQuando: (quando: ((op: Operacao) => boolean) | null, mensagem?: string) => void;
+  // Segura cada escrita até a função devolver (para testar duas gravações em andamento ao mesmo tempo).
+  antesDeEscrever: (gancho: ((op: Operacao) => Promise<void> | void) | null) => void;
 }
 
 const comparar = (a: unknown, b: unknown) => (String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0);
@@ -27,6 +29,7 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
   for (const [nome, linhas] of Object.entries(inicial)) tabelas[nome] = linhas.map((l) => ({ ...l }));
   const operacoes: Operacao[] = [];
   let falhar: ((op: Operacao) => boolean) | null = null;
+  let ganchoEscrita: ((op: Operacao) => Promise<void> | void) | null = null;
   let mensagemFalha = 'falha simulada';
 
   class Consulta implements PromiseLike<{ data: unknown; error: { message: string } | null }> {
@@ -36,9 +39,14 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
     private filtros: Array<[string, ...unknown[]]> = [];
     private testes: Array<(r: Linha) => boolean> = [];
     private unico = false;
+    private colunas: string[] | null = null;
     constructor(private tabela: string) {}
 
-    select() { return this; }
+    // Como o PostgREST: só devolve as colunas pedidas ("*" e relações embutidas devolvem a linha inteira).
+    select(colunas?: string) {
+      if (typeof colunas === 'string' && !colunas.includes('*') && !colunas.includes('(')) this.colunas = colunas.split(',').map((c) => c.trim()).filter(Boolean);
+      return this;
+    }
     private filtro(nome: string, args: unknown[], teste: (r: Linha) => boolean) {
       this.filtros.push([nome, ...args]);
       this.testes.push(teste);
@@ -68,14 +76,18 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
     maybeSingle() { this.unico = true; return this; }
     single() { this.unico = true; return this; }
 
-    private executar() {
-      const op: Operacao = { tabela: this.tabela, tipo: this.tipo, payload: this.payload, opcoes: this.opcoes, filtros: this.filtros };
+    private operacao(): Operacao {
+      return { tabela: this.tabela, tipo: this.tipo, payload: this.payload, opcoes: this.opcoes, filtros: this.filtros };
+    }
+
+    private executar(op: Operacao) {
       operacoes.push(op);
       const linhas = (tabelas[this.tabela] ??= []);
       if (this.tipo !== 'select' && falhar && falhar(op)) return { data: null, error: { message: mensagemFalha } };
       const casa = (r: Linha) => this.testes.every((t) => t(r));
       if (this.tipo === 'select') {
-        const achadas = linhas.filter(casa).map((l) => ({ ...l }));
+        const cols = this.colunas;
+        const achadas = linhas.filter(casa).map((l) => (cols ? Object.fromEntries(cols.map((c) => [c, l[c]])) : { ...l }));
         return { data: this.unico ? (achadas[0] ?? null) : achadas, error: null };
       }
       if (this.tipo === 'update') {
@@ -100,7 +112,11 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
       resolver?: ((v: { data: unknown; error: { message: string } | null }) => R1 | PromiseLike<R1>) | null,
       rejeitar?: ((e: unknown) => R2 | PromiseLike<R2>) | null,
     ): PromiseLike<R1 | R2> {
-      return Promise.resolve().then(() => this.executar()).then(resolver, rejeitar);
+      const op = this.operacao();
+      return Promise.resolve()
+        .then(async () => { if (op.tipo !== 'select' && ganchoEscrita) await ganchoEscrita(op); })
+        .then(() => this.executar(op))
+        .then(resolver, rejeitar);
     }
   }
 
@@ -110,5 +126,6 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
     operacoes,
     escritas: () => operacoes.filter((o) => o.tipo !== 'select'),
     falharEscritaQuando: (quando, mensagem = 'falha simulada') => { falhar = quando; mensagemFalha = mensagem; },
+    antesDeEscrever: (gancho) => { ganchoEscrita = gancho; },
   };
 }

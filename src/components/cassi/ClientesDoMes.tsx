@@ -11,13 +11,14 @@ export interface ClienteDoMes {
 }
 
 // Lista dos clientes que entram no cálculo financeiro do mês (aba Faturamento do Controle CASSI).
-export function ClientesDoMes({ mesLabel, clientes, candidatos, comSessaoFora, ocupado = false, carregando = false, erro = false, onAdicionar, onAdicionarComSessao, onRemover, onLimpar }: {
+export function ClientesDoMes({ mesLabel, clientes, candidatos, comSessaoFora, ocupado = false, carregando = false, erro = false, sessoesEstado = 'ok', onAdicionar, onAdicionarComSessao, onRemover, onLimpar }: {
   mesLabel: string; // ex.: "outubro de 2026"
   clientes: ClienteDoMes[];
   candidatos: CandidatoBusca[]; // quem ainda não está na lista
   comSessaoFora: number; // clientes com sessão atendida no mês que ainda não estão na lista
   ocupado?: boolean;
   carregando?: boolean; // a lista do mês ainda está chegando: não dá para dizer que está vazia
+  sessoesEstado?: 'ok' | 'carregando' | 'erro'; // as sessões vêm da agenda: enquanto não chegam, ninguém "não teve sessão"
   erro?: boolean; // não foi possível carregar a lista: quem mostra o aviso é a tela
   onAdicionar: (id: string) => void;
   onAdicionarComSessao: () => void;
@@ -77,13 +78,21 @@ export function ClientesDoMes({ mesLabel, clientes, candidatos, comSessaoFora, o
         <ul className="max-h-72 overflow-y-auto divide-y divide-border/40 rounded-lg border border-border/50" aria-label="Clientes na lista do mês">
           {clientes.map((c) => (
             <li key={c.id} className="flex items-center gap-2 pl-3 pr-1 py-1.5">
-              <span className="text-sm font-medium flex-1 min-w-0 truncate">{c.nome}</span>
-              {c.encerrado && <span className="text-[9px] uppercase font-bold text-muted-foreground bg-muted rounded px-1 shrink-0">encerrado</span>}
-              {c.sessoes > 0 ? (
-                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{c.sessoes} {c.sessoes === 1 ? 'sessão' : 'sessões'}</span>
-              ) : (
-                <span className="text-[11px] text-amber-700 dark:text-amber-400 shrink-0">sem sessão atendida</span>
-              )}
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-medium truncate">{c.nome}</span>
+                <span className="flex items-center gap-1.5 text-[11px] tabular-nums">
+                  {c.encerrado && <span className="text-[9px] uppercase font-bold text-muted-foreground bg-muted rounded px-1">encerrado</span>}
+                  {sessoesEstado === 'carregando' ? (
+                    <span className="text-muted-foreground">carregando sessões…</span>
+                  ) : sessoesEstado === 'erro' ? (
+                    <span className="text-amber-700 dark:text-amber-400">sessões indisponíveis</span>
+                  ) : c.sessoes > 0 ? (
+                    <span className="text-muted-foreground">{c.sessoes} {c.sessoes === 1 ? 'sessão' : 'sessões'}</span>
+                  ) : (
+                    <span className="text-amber-700 dark:text-amber-400">sem sessão atendida</span>
+                  )}
+                </span>
+              </span>
               <button
                 type="button"
                 disabled={ocupado}

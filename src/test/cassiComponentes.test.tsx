@@ -49,6 +49,12 @@ describe('BuscaDeCliente', () => {
     expect(screen.getByRole('status').textContent).toMatch(/Nenhum cliente encontrado/);
   });
 
+  it('o aviso de "nenhum cliente" explica quem não aparece, no texto que a tela pediu', async () => {
+    montar(vi.fn(), { semResultado: 'Quem já teve o pedido feito não aparece aqui.' });
+    fireEvent.change(screen.getByLabelText('Procurar cliente'), { target: { value: 'zzz' } });
+    expect(screen.getByRole('status').textContent).toBe('Nenhum cliente encontrado. Quem já teve o pedido feito não aparece aqui.');
+  });
+
   it('marca quem está encerrado com o rótulo pedido', async () => {
     const { campo } = montar(vi.fn(), { rotuloEncerrado: 'encerrada · reativar' });
     fireEvent.change(campo, { target: { value: 'carla' } });
@@ -175,6 +181,16 @@ describe('ClientesDoMes', () => {
   it('com erro ao carregar também não diz que está vazia (a tela mostra o aviso)', () => {
     render(<ClientesDoMes {...base} clientes={[]} erro />);
     expect(screen.queryByText(/Nenhum cliente na lista/)).toBeNull();
+  });
+
+  it('enquanto as sessões da agenda chegam ninguém "não teve sessão"; se a agenda falhar, avisa', () => {
+    const { rerender } = render(<ClientesDoMes {...base} sessoesEstado="carregando" />);
+    expect(screen.getAllByText('carregando sessões…')).toHaveLength(3);
+    expect(screen.queryByText('sem sessão atendida')).toBeNull();
+    expect(screen.queryByText('8 sessões')).toBeNull();
+    rerender(<ClientesDoMes {...base} sessoesEstado="erro" />);
+    expect(screen.getAllByText('sessões indisponíveis')).toHaveLength(3);
+    expect(screen.queryByText('sem sessão atendida')).toBeNull();
   });
 
   it('ocupado desliga a busca, os botões e o remover', () => {

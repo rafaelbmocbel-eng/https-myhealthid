@@ -17,14 +17,14 @@ CREATE TABLE IF NOT EXISTS public.cassi_financeiro_clientes (
 COMMENT ON TABLE public.cassi_financeiro_clientes IS
   'Controle CASSI > Faturamento: clientes que o profissional colocou na lista de um mês (mes = AAAA-MM). O cálculo financeiro do mês considera só eles.';
 
-CREATE INDEX IF NOT EXISTS idx_cassi_financeiro_clientes_ter_mes
-  ON public.cassi_financeiro_clientes (terapeuta_id, mes);
 CREATE INDEX IF NOT EXISTS idx_cassi_financeiro_clientes_paciente
   ON public.cassi_financeiro_clientes (paciente_id);
 
 ALTER TABLE public.cassi_financeiro_clientes ENABLE ROW LEVEL SECURITY;
 
-REVOKE ALL ON public.cassi_financeiro_clientes FROM PUBLIC, anon;
+-- No Supabase o papel authenticated já recebe todos os privilégios nas tabelas novas (inclusive TRUNCATE, que a
+-- segurança por linha não alcança): tira tudo e concede só o que a tela usa.
+REVOKE ALL ON public.cassi_financeiro_clientes FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON public.cassi_financeiro_clientes TO authenticated;
 GRANT ALL ON public.cassi_financeiro_clientes TO service_role;
 

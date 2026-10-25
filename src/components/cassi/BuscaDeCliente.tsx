@@ -11,11 +11,12 @@ export interface CandidatoBusca {
 }
 
 // Campo "procure o cliente e adicione": lista só quem casa com o que foi digitado (nome ou carteirinha).
-export function BuscaDeCliente({ candidatos, placeholder, rotulo, rotuloEncerrado = 'encerrado', onEscolher, desabilitado = false }: {
+export function BuscaDeCliente({ candidatos, placeholder, rotulo, rotuloEncerrado = 'encerrado', semResultado = 'Quem já está na lista não aparece aqui.', onEscolher, desabilitado = false }: {
   candidatos: CandidatoBusca[];
   placeholder: string;
   rotulo: string;
   rotuloEncerrado?: string; // o que avisar de quem está encerrado no CASSI
+  semResultado?: string; // complemento de "Nenhum cliente encontrado." (quem não aparece e por quê)
   onEscolher: (id: string) => void;
   desabilitado?: boolean;
 }) {
@@ -56,7 +57,7 @@ export function BuscaDeCliente({ candidatos, placeholder, rotulo, rotuloEncerrad
       )}
       {q && resultados.length === 0 && (
         <p className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg px-3 py-2 text-xs text-muted-foreground" role="status">
-          Nenhum cliente encontrado (ou já está na lista).
+          Nenhum cliente encontrado. {semResultado}
         </p>
       )}
     </div>

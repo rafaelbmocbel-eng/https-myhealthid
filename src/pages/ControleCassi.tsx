@@ -173,8 +173,11 @@ export default function ControleCassi() {
   // "Pedir guia" num card coloca o cliente na lista do pedido (ela é durável) e abre a aba. Quem já teve o
   // pedido feito não volta para a lista: o pedido dele aparece em "Guias pedidas — aguardando CASSI".
   const irPedir = async (id: string | null) => {
-    const jaPedido = !!id && pacientes.some((x) => x.id === id && pedidoAberto(x));
-    if (id && !jaPedido && !(await marcarPedirGuia(id, true))) return;
+    const p = id ? pacientes.find((x) => x.id === id) : undefined;
+    if (id && !(p && pedidoAberto(p))) {
+      if (p?.cassi_encerrado_em && !confirm(`${p.nome} ${p.sobrenome || ''} está encerrado no CASSI.\n\nReativar e colocar no pedido?`)) return;
+      if (!(await marcarPedirGuia(id, true))) return;
+    }
     setView('pedir');
   };
   // Sub-aba do painel: guias ativas (padrão, "em linha" com controle de sessões)
@@ -301,6 +304,13 @@ export default function ControleCassi() {
     return m;
   }, [agsGuia]);
 
+  // A aba Clientes mostra as guias com a mesma contagem das sugestões do pedido: a maior entre a salva e a da
+  // agenda. Sem isto o card dizia "2/10" e "Ver guia" enquanto a sugestão dizia que a guia estava acabando.
+  const guiasParaClientes = useMemo(
+    () => guiasEff.map((g) => ({ ...g, sessoes_realizadas: Math.max(g.sessoes_realizadas || 0, realizadasAgendaPorGuia.get(g.id) || 0) })),
+    [guiasEff, realizadasAgendaPorGuia],
+  );
+
   const linhas = useMemo(() =>
     pacientesAtivos.map((p) => {
       const raw = guiaPorPaciente.get(p.id) || null;
@@ -328,17 +338,19 @@ export default function ControleCassi() {
   );
 
   // Dar baixa: marca que a(s) guia(s) foram pedidas → saem de "Pedir guia".
-  const darBaixaPedidos = async (ids: string[]) => {
-    if (!ids.length) return;
+  const darBaixaPedidos = async (ids: string[]): Promise<boolean> => {
+    if (!ids.length) return false;
     const { error } = await (supabase as any).from('pacientes')
       .update({ guia_solicitada_em: new Date().toISOString(), cassi_pedir_guia: false }).in('id', ids);
-    if (error) { toast.error('Erro ao dar baixa: ' + error.message); return; }
+    if (error) { toast.error('Erro ao dar baixa: ' + error.message); return false; }
     toast.success(`${ids.length} pedido(s) registrado(s)`);
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+    return true;
   };
+  // Desfazer é o inverso exato da baixa: o cliente volta para a lista do pedido.
   const desfazerPedido = async (id: string) => {
     const { error } = await (supabase as any).from('pacientes')
-      .update({ guia_solicitada_em: null }).eq('id', id);
+      .update({ guia_solicitada_em: null, cassi_pedir_guia: true }).eq('id', id);
     if (error) { toast.error('Erro: ' + error.message); return; }
     qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
   };
@@ -352,13 +364,23 @@ export default function ControleCassi() {
     // Adicionar ao pedido também REATIVA quem estava com CASSI encerrado — se
     // vamos pedir guia, o cliente volta a ser ativo.
     const patch: Partial<Paciente> = { cassi_pedir_guia: valor };
-    if (valor) patch.cassi_encerrado_em = null;
+    if (valor) { patch.cassi_encerrado_em = null; patch.cassi_encerrado_motivo = null; }
     const chave = ['cassi-pacientes', user?.id];
-    const anterior = qc.getQueryData<Paciente[]>(chave);
+    // Uma busca em andamento não pode passar por cima da mudança que acabamos de mostrar.
+    await qc.cancelQueries({ queryKey: chave });
+    const antes = new Map((qc.getQueryData<Paciente[]>(chave) || []).filter((p) => lista.includes(p.id)).map((p) => [p.id, p]));
     qc.setQueryData<Paciente[]>(chave, (old) => old?.map((p) => (lista.includes(p.id) ? { ...p, ...patch } : p)));
     const { error } = await (supabase as any).from('pacientes').update(patch).in('id', lista);
     if (error) {
-      qc.setQueryData<Paciente[]>(chave, anterior);
+      // Desfaz só estes clientes e só estes campos: outra gravação em andamento não é apagada da tela.
+      const campos = Object.keys(patch);
+      qc.setQueryData<Paciente[]>(chave, (old) => old?.map((p) => {
+        const anterior = antes.get(p.id);
+        if (!anterior) return p;
+        const refeito: Record<string, unknown> = { ...p };
+        for (const c of campos) refeito[c] = (anterior as unknown as Record<string, unknown>)[c];
+        return refeito as unknown as Paciente;
+      }));
       toast.error('Erro: ' + error.message);
       return false;
     }
@@ -518,7 +540,7 @@ export default function ControleCassi() {
             {!MOSTRAR_ESTE_MES && <CalculadoraCartao aberto={calcPainel} onAlternar={() => setCalcPainelAberta((v) => !v)} />}
             <ClientesCassi
               pacientes={pacientes}
-              guias={guiasEff}
+              guias={guiasParaClientes}
               onCadastro={(p) => setCadastro(p)}
               onNovo={() => setCadastro('novo')}
               onGuia={(p, g) => setEditando({ paciente: p, guia: g })}
@@ -986,6 +1008,7 @@ export default function ControleCassi() {
           onClose={() => setEditando(null)}
           onSaved={() => {
             qc.invalidateQueries({ queryKey: ['guias-cassi', user?.id] });
+            qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
             setEditando(null);
           }}
         />
@@ -998,6 +1021,7 @@ export default function ControleCassi() {
           onSaved={() => {
             qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
             qc.invalidateQueries({ queryKey: ['guias-cassi', user?.id] });
+            qc.invalidateQueries({ queryKey: ['cassi-financeiro-clientes', user?.id] });
             setCadastro(null);
           }}
           onEncerrar={async (id, motivo) => { await encerrarCliente(id, motivo); setCadastro(null); }}
@@ -1210,8 +1234,9 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
         });
         if (error) throw error;
         // A nova guia é a vigente → já coloca o cliente em "Este mês" (a antiga
-        // acabou de virar histórico acima). Fica editável por lá normalmente.
-        await sb.from('pacientes').update({ cassi_confirmado_mes: mesAtualISO() }).eq('id', paciente.id);
+        // acabou de virar histórico acima). Fica editável por lá normalmente. A guia chegou: o pedido
+        // dele foi atendido, então ele também sai da lista de "Pedir guias".
+        await sb.from('pacientes').update({ cassi_confirmado_mes: mesAtualISO(), cassi_pedir_guia: false }).eq('id', paciente.id);
       }
       // Modificador de guias/mês do cliente (só grava se mudou).
       if (duasPorMes !== ((paciente.guias_por_mes || 1) >= 2)) {
@@ -1825,6 +1850,17 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         cassi_encerrado_em: null, cassi_encerrado_motivo: null,
       }).eq('id', alvo.id);
       if (p.error) throw p.error;
+      // As listas do Faturamento (um mês por linha) vão para o cliente que fica; sem isto ele sairia da conta dos
+      // meses em que o duplicado estava e as sessões que acabaram de mudar para ele deixariam de ser contadas.
+      const lf = await sb.from('cassi_financeiro_clientes').select('mes').eq('terapeuta_id', user.id).eq('paciente_id', paciente.id);
+      if (lf.error) throw lf.error;
+      if ((lf.data || []).length > 0) {
+        const novas = (lf.data as Array<{ mes: string }>).map((r) => ({ terapeuta_id: user.id, mes: r.mes, paciente_id: alvo.id }));
+        const up = await sb.from('cassi_financeiro_clientes').upsert(novas, { onConflict: 'terapeuta_id,mes,paciente_id', ignoreDuplicates: true });
+        if (up.error) throw up.error;
+        const del = await sb.from('cassi_financeiro_clientes').delete().eq('terapeuta_id', user.id).eq('paciente_id', paciente.id);
+        if (del.error) throw del.error;
+      }
       // Só remove o duplicado depois que tudo acima deu certo.
       const d = await sb.from('pacientes').update({ ativo: false }).eq('id', paciente.id);
       if (d.error) throw d.error;
@@ -2356,7 +2392,7 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
   candidatos?: Array<{ paciente: Paciente; guia: GuiaCassi | null }>; // todos os CASSI que dá pra adicionar pela busca
   sugestoes?: SugestaoPedido[];
   onNovaGuia: (p: Paciente) => void;
-  onDarBaixa: (ids: string[]) => Promise<void> | void;
+  onDarBaixa: (ids: string[]) => Promise<boolean> | boolean; // true quando a baixa foi gravada
   onMarcarPedir: (ids: string | string[], valor: boolean) => Promise<boolean> | boolean; // lista DURÁVEL
 }) {
   const { data: cfg } = useCassiConfig();
@@ -2387,6 +2423,9 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
 
   const upd = (id: string, patch: Partial<ItemPedido>) =>
     setEdicoes((e) => ({ ...e, [id]: { ...e[id], ...patch } }));
+  // Quem sai do pedido (retirado ou com baixa) leva as edições junto: se voltar, volta com os dados do cadastro.
+  const limparEdicoes = (ids: string[]) =>
+    setEdicoes((e) => Object.fromEntries(Object.entries(e).filter(([id]) => !ids.includes(id))));
   const toggleCod = (id: string, cod: string) => {
     const it = itens.find((i) => i.id === id);
     if (!it) return;
@@ -2397,8 +2436,9 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
 
   // Persiste na lista (não some ao sair da página) até dar baixa.
   const adicionar = async (id: string) => {
-    const nome = candidatos.find((c) => c.paciente.id === id)?.paciente.nome;
-    if (await onMarcarPedir(id, true)) toast.success(`${nome || 'Cliente'} entrou no pedido`);
+    const c = candidatos.find((x) => x.paciente.id === id)?.paciente;
+    const nome = c ? `${c.nome} ${c.sobrenome || ''}`.trim() : 'Cliente';
+    if (await onMarcarPedir(id, true)) toast.success(`${nome} entrou no pedido`);
   };
   const adicionarLote = async (ids: string[]) => {
     setAdicionandoLote(true);
@@ -2406,7 +2446,9 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
       if (await onMarcarPedir(ids, true)) toast.success(`${ids.length} cliente(s) entraram no pedido`);
     } finally { setAdicionandoLote(false); }
   };
-  const retirar = (id: string) => { void onMarcarPedir(id, false); };
+  const retirar = async (id: string) => {
+    if (await onMarcarPedir(id, false)) limparEdicoes([id]);
+  };
 
   // Busca: qualquer cliente CASSI que ainda não está na lista.
   const idsNaLista = new Set(linhas.map((l) => l.paciente.id));
@@ -2440,6 +2482,7 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
         placeholder="+ Adicionar cliente (nome ou carteirinha)"
         rotulo="Adicionar cliente ao pedido"
         rotuloEncerrado="encerrada · reativar"
+        semResultado="Quem já está na lista, ou já teve o pedido feito, não aparece aqui."
         onEscolher={adicionar}
       />
 
@@ -2540,7 +2583,8 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
               const falha = results.find((r: any) => r?.error);
               if (falha) { toast.error('Não consegui salvar os dados: ' + (falha.error.message || 'erro')); return; }
               // onDarBaixa já emite o toast de sucesso (evita toast duplicado).
-              await onDarBaixa(selecionados.map((i) => i.id));
+              const ids = selecionados.map((i) => i.id);
+              if (await onDarBaixa(ids)) limparEdicoes(ids);
             } finally { setDandoBaixa(false); }
           }}
         >
@@ -2611,7 +2655,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
   });
 
   // Agendamentos do mês (com folga de ±1 dia p/ fuso; classificamos pelo mês local).
-  const { data: agendamentos = [], isLoading } = useQuery({
+  const { data: agendamentos = [], isLoading, isError: erroAgenda } = useQuery({
     queryKey: ['cassi-agendamentos-mes', user?.id, mes],
     queryFn: async () => {
       const [ano, m] = mes.split('-').map(Number);
@@ -2766,18 +2810,21 @@ function FinanceiroCassi({ onAbrirGuia }: {
         ocupado={lista.ocupado || lista.carregando || lista.erro}
         carregando={lista.carregando}
         erro={lista.erro}
+        sessoesEstado={isLoading ? 'carregando' : erroAgenda ? 'erro' : 'ok'}
         onAdicionar={(id) => lista.adicionar.mutate({ mes, ids: [id] })}
         onAdicionarComSessao={() => lista.adicionar.mutate({ mes, ids: comSessaoFora })}
         onRemover={(id) => lista.remover.mutate({ mes, id })}
         onLimpar={() => {
-          if (confirm(`Tirar todos os ${clientesDaLista.length} clientes da lista de ${MESES_PT[m - 1]} de ${ano}?\n\nAs guias e as sessões não são alteradas; só sai da conta do mês.`)) lista.limpar.mutate({ mes });
+          const n = clientesDaLista.length;
+          if (confirm(`Tirar ${n === 1 ? 'o cliente' : `os ${n} clientes`} da lista de ${MESES_PT[m - 1]} de ${ano}?\n\nAs guias e as sessões não são alteradas; só sai da conta do mês.`)) lista.limpar.mutate({ mes });
         }}
       />
 
       {lista.erro ? (
-        <p className="text-center text-sm text-rose-600 py-6" role="alert">
-          Não consegui carregar a lista deste mês. Atualize a página e tente de novo.
-        </p>
+        <div className="text-center py-6 space-y-2" role="alert">
+          <p className="text-sm text-rose-600 dark:text-rose-400">Não consegui carregar a lista deste mês.</p>
+          <Button size="sm" variant="outline" onClick={() => lista.recarregar()}>Tentar de novo</Button>
+        </div>
       ) : lista.carregando ? (
         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : idsDoMes.size === 0 ? null : (
@@ -2796,39 +2843,6 @@ function FinanceiroCassi({ onAbrirGuia }: {
           </div>
         ))}
       </div>
-
-      {/* Guias enviadas ao financeiro no mês — rastreio do handoff físico. */}
-      {(() => {
-        const enviadas = guias.filter((g) => ((g as any).enviada_financeiro_em || '').slice(0, 7) === mes && idsDoMes.has(g.paciente_id));
-        return (
-          <div className="rounded-xl border border-border/50 bg-background p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-bold flex items-center gap-1.5"><Archive className="h-4 w-4 text-sky-600" /> Guias enviadas ao financeiro</p>
-              <span className="text-[11px] text-muted-foreground">{enviadas.length} em {MESES_PT[m - 1]}</span>
-            </div>
-            {enviadas.length === 0 ? (
-              <p className="text-[12px] text-muted-foreground">
-                {MOSTRAR_ESTE_MES
-                  ? <>Nenhuma guia enviada neste mês. Marque no card de <b>Este mês</b> (assinar → recolher → enviar).</>
-                  : <>Nenhuma guia enviada neste mês. Marque em <b>Ver guia</b>, em “Assinatura e financeiro” (assinar → recolher → enviar).</>}
-              </p>
-            ) : (
-              <div className="space-y-1">
-                {enviadas.map((g) => (
-                  <button key={g.id} onClick={() => onAbrirGuia(g)}
-                    className="w-full flex items-center justify-between gap-2 rounded-lg border border-border/50 px-2.5 py-1.5 text-left hover:bg-muted/40">
-                    <span className="text-[13px] font-medium truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</span>
-                    <span className="flex items-center gap-2 shrink-0">
-                      {(g as any).assinatura === 'metade' && <span className="text-[9px] uppercase font-bold text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded px-1">metade</span>}
-                      <span className="text-[11px] text-muted-foreground tabular-nums">{fmtData((g as any).enviada_financeiro_em)}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
 
       {/* Divisão: sua parte × clínica */}
       {calc.totLiquido > 0 && (
@@ -2875,7 +2889,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">Valores em R$ (k = mil). Barra verde = mês selecionado.</p>
+            <p className="text-[11px] text-muted-foreground mt-2">Valores em R$ (k = mil). Barra verde = mês selecionado. Mês sem lista de clientes aparece como —, não como zero.</p>
           </div>
         );
       })()}
@@ -2959,6 +2973,39 @@ function FinanceiroCassi({ onAbrirGuia }: {
         </>
       )}
 
+      {/* Guias enviadas ao financeiro no mês — rastreio do handoff físico. Não depende da lista do mês: é o que já foi entregue. */}
+      {(() => {
+        const enviadas = guias.filter((g) => ((g as any).enviada_financeiro_em || '').slice(0, 7) === mes);
+        return (
+          <div className="rounded-xl border border-border/50 bg-background p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold flex items-center gap-1.5"><Archive className="h-4 w-4 text-sky-600" /> Guias enviadas ao financeiro</p>
+              <span className="text-[11px] text-muted-foreground">{enviadas.length} em {MESES_PT[m - 1]}</span>
+            </div>
+            {enviadas.length === 0 ? (
+              <p className="text-[12px] text-muted-foreground">
+                {MOSTRAR_ESTE_MES
+                  ? <>Nenhuma guia enviada neste mês. Marque no card de <b>Este mês</b> (assinar → recolher → enviar).</>
+                  : <>Nenhuma guia enviada neste mês. Marque em <b>Ver guia</b>, em “Assinatura e financeiro” (assinar → recolher → enviar).</>}
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {enviadas.map((g) => (
+                  <button key={g.id} onClick={() => onAbrirGuia(g)}
+                    className="w-full flex items-center justify-between gap-2 rounded-lg border border-border/50 px-2.5 py-1.5 text-left hover:bg-muted/40">
+                    <span className="text-[13px] font-medium truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      {(g as any).assinatura === 'metade' && <span className="text-[9px] uppercase font-bold text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded px-1">metade</span>}
+                      <span className="text-[11px] text-muted-foreground tabular-nums">{fmtData((g as any).enviada_financeiro_em)}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Relatórios salvos (snapshots congelados) */}
       {salvos.length > 0 && (
         <div className="rounded-xl border border-border/50 bg-background overflow-hidden">
@@ -2998,9 +3045,14 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   const { data: cfg } = useCassiConfig();
   const [mesRel, setMesRel] = useState(mes);
   const [gerandoPdf, setGerandoPdf] = useState(false);
-  // Clientes que o profissional colocou na lista do mês do relatório (aba Faturamento).
+  // Clientes que o profissional colocou na lista do mês do relatório (aba Faturamento) e que continuam no controle CASSI.
   const lista = useClientesFinanceiroCassi(mesRel, mesRel);
-  const idsDoMes = lista.doMes(mesRel);
+  const { data: pacientesCassi = [] } = useCassiPacientes();
+  const doMesDaLista = lista.doMes;
+  const idsDoMes = useMemo(() => {
+    const ativos = new Set(pacientesCassi.map((p) => p.id));
+    return new Set([...doMesDaLista(mesRel)].filter((id) => ativos.has(id)));
+  }, [doMesDaLista, mesRel, pacientesCassi]);
 
   // Gera um PDF de verdade do relatório (html2canvas + jsPDF) e baixa. Multipágina
   // se passar de uma folha A4. As libs são importadas sob demanda.
@@ -3658,6 +3710,9 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
             || venceuPrazoProximaGuia(vigente, p.guias_por_mes);
           const totalFeitas = gs.reduce((s, g) => s + (g.sessoes_realizadas || 0), 0);
           const aguardando = pedidoEmAberto(p, ultima); // já pedimos e a guia nova ainda não chegou
+          // Onde a guia vigente está no ciclo físico; só avisa o que ainda falta fazer.
+          const passo = vigente ? passoFisicoGuia(vigente) : null;
+          const passoPendente = passo && (passo.key === 'assinar' || passo.key === 'recolher' || passo.key === 'enviar') ? passo : null;
           const ativo = !p.cassi_encerrado_em;
           const marcado = (p.guias_por_mes || 1) >= 2;
           const mesFeitas = sessoesMesPorPac.get(p.id) || 0;
@@ -3684,6 +3739,12 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                       ? <span> · {mesLabel}: <b className="text-foreground">{mesFeitas}</b> sessões · <b className="text-foreground">{noMesSel}</b> guia(s)</span>
                       : <span> · total <b className="text-foreground">{totalFeitas}</b> · máx <b className="text-foreground">{maxNoMes}</b>/mês</span>}
                   </div>
+                  {passoPendente && vigente && (
+                    <button type="button" onClick={() => onGuia(p, vigente)}
+                      className="mt-1 text-[11px] font-medium text-sky-700 dark:text-sky-300 underline underline-offset-2 text-left">
+                      Falta: {passoPendente.label.toLowerCase()}
+                    </button>
+                  )}
                 </div>
                 {/* Menu com as ações secundárias */}
                 <DropdownMenu>
@@ -3698,11 +3759,12 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                     <DropdownMenuItem onClick={() => onCadastro(p)}>
                       <Pencil className="h-3.5 w-3.5 mr-2" /> Editar cadastro
                     </DropdownMenuItem>
-                    {precisaPedir ? (
+                    {precisaPedir && (
                       <DropdownMenuItem onClick={() => onPedirGuia(p.id)}>
                         <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Pedir guia
                       </DropdownMenuItem>
-                    ) : (
+                    )}
+                    {(vigente || ultima) && (
                       <DropdownMenuItem onClick={() => onGuia(p, vigente || ultima)}>
                         <FileText className="h-3.5 w-3.5 mr-2" /> Ver guia (vigente)
                       </DropdownMenuItem>
@@ -3733,7 +3795,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                   </Button>
                 ) : (!usaEsteMes || p.cassi_confirmado_mes === mesVigente) ? (
                   aguardando ? (
-                    <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-sky-700 border-sky-300 dark:border-sky-800" onClick={() => onPedirGuia(p.id)}>
+                    <Button size="sm" variant="outline" className="w-full h-9 gap-1.5 text-[13px] text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-800" onClick={() => onPedirGuia(p.id)}>
                       <CalendarClock className="h-4 w-4" /> Guia pedida — aguardando
                     </Button>
                   ) : precisaPedir ? (

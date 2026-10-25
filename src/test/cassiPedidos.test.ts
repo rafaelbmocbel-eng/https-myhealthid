@@ -72,6 +72,13 @@ describe('sugestões do sistema (nada entra sozinho)', () => {
     expect(sugestoesDoPedido([naLista, encerrado, pedido])).toEqual([]);
   });
 
+  it('cliente 2/mês com o prazo da próxima guia vencido é sugerido mesmo com sessões de sobra; o de 1/mês não', () => {
+    const antiga = guia({ data_resposta: '2026-01-05', data_pedido: '2026-01-02', sessoes_realizadas: 2 });
+    const doisPorMes = linha(paciente('1', 'Ana', { guias_por_mes: 2 }), antiga);
+    const umPorMes = linha(paciente('2', 'Bruno', { guias_por_mes: 1 }), antiga);
+    expect(sugestoesDoPedido([doisPorMes, umPorMes]).map((s) => [s.id, s.motivo])).toEqual([['1', 'cliente 2/mês']]);
+  });
+
   it('diz o motivo: situação da guia, ou "cliente 2/mês"', () => {
     const s = sugestoesDoPedido([
       linha(paciente('1', 'Ana'), null),

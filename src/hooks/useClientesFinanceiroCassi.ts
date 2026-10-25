@@ -78,7 +78,9 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
   return {
     doMes,
     carregando: consulta.isLoading,
-    erro: consulta.isError,
+    // Só é erro se não há lista nenhuma para mostrar: uma busca em segundo plano que falha mantém a lista que já veio.
+    erro: consulta.isError && !consulta.data,
+    recarregar: () => consulta.refetch(),
     adicionar, remover, limpar,
     ocupado: adicionar.isPending || remover.isPending || limpar.isPending,
   };

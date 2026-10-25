@@ -15,9 +15,13 @@ clientes do mês e a tela cria o cálculo financeiro). Mexer nas característica
 | Planilha | sem mudança |
 
 Só existiam na aba "Este mês" (enquanto ela estiver desligada): os botões rápidos do passo físico da guia (assinar →
-recolher → enviar ao financeiro) nos cards — o mesmo controle continua em **Ver guia › Assinatura e financeiro** —, o filtro
-"2 guias/mês" e a lista de encerrados com **Reativar** (em Clientes o cliente encerrado aparece com **Ativar cliente**). A
-cadência 1 / 2 / 3 em 2 meses continua em **Editar cadastro**.
+recolher → enviar ao financeiro) nos cards, o filtro "2 guias/mês" e a lista de encerrados com **Reativar**.
+
+- O passo físico continua em **Ver guia › Assinatura e financeiro**, e o card em Clientes mostra o que falta ("Falta: assinar e
+  recolher", "Falta: enviar ao financeiro") — clicar abre a guia. **Ver guia** fica sempre no menu ⋮ do card, mesmo quando o
+  botão principal é "Pedir guia".
+- Os cards de Clientes usam a mesma contagem de sessões das sugestões do pedido (a maior entre a salva na guia e a da agenda).
+- Cliente encerrado aparece com **Ativar cliente**. A cadência 1 / 2 / 3 em 2 meses continua em **Editar cadastro**.
 
 ## Pedir guias
 
@@ -32,6 +36,11 @@ cadência 1 / 2 / 3 em 2 meses continua em **Editar cadastro**.
 - A mensagem (Copiar / WhatsApp), os campos (carteirinha, diagnóstico, até 3 códigos) e o Dar baixa **não mudaram**; só foram
   para `src/lib/cassiPedidos.ts` (`montarTextoPedido`, `itemDoPedido`), com teste do texto exato.
 - Quem estava marcado "Vou pedir a guia" pelo fluxo antigo de "Este mês" (`cassi_pedir_guia` já verdadeiro) aparece na lista.
+- **Desfazer** um pedido (em "Guias pedidas — aguardando CASSI") é o inverso da baixa: o cliente volta para a lista.
+- Registrar a **guia nova** do cliente (Nova guia / registrar manual) tira o cliente da lista: a guia chegou.
+- "Pedir guia" de cliente **encerrado** pede confirmação (reativa o cliente, limpando o motivo do encerramento).
+- O que foi editado na tela (carteirinha, diagnóstico, códigos, marcação) some junto com o cliente ao retirar ou dar baixa.
+- As gravações da lista mudam a tela na hora; se o banco recusar, só aquele cliente volta ao que era.
 
 ## Faturamento
 
@@ -40,9 +49,12 @@ cadência 1 / 2 / 3 em 2 meses continua em **Editar cadastro**.
   `20261025190000_cassi_financeiro_clientes.sql`.
 - Cada mês tem a sua lista. Adiciona-se por busca ou com **Adicionar quem teve sessão no mês** (quem tem sessão atendida na
   agenda no mês e ainda não está na lista).
-- Só os clientes da lista entram em: cálculo do mês (sessões, bruto, imposto, líquido, sua parte, clínica, repasses), "sua
-  parte" dos 6 meses, CSV, Guias enviadas ao financeiro, Guias que fecham no mês e a seleção automática do Relatório de produção
-  (dentro do relatório ainda dá para marcar/desmarcar qualquer guia).
+- Só os clientes da lista (e que continuam no controle CASSI) entram em: cálculo do mês (sessões, bruto, imposto, líquido, sua
+  parte, clínica, repasses), "sua parte" dos 6 meses (cada mês com a lista dele; mês sem lista aparece como —), CSV, Guias que
+  fecham no mês e a seleção automática do Relatório de produção (dentro do relatório ainda dá para marcar/desmarcar qualquer
+  guia).
+- **Guias enviadas ao financeiro** é rastreio de entrega física, não conta: aparece sempre, com ou sem lista.
+- **Juntar cadastros duplicados** leva as linhas da lista do duplicado para o cliente que fica.
 - **As fórmulas não mudaram.** Elas saíram da tela para `src/lib/cassiFinanceiro.ts` e `src/test/cassiFinanceiro.test.ts`
   compara a conta nova (com todos os clientes na lista) com a original (`src/test/cassiFinanceiroReferencia.ts`, cópia do
   código de antes) em 40 cenários sorteados.
@@ -59,4 +71,8 @@ estreita, ao montar sobrescrevia o cache e fazia sumir `cassi_pedir_guia`, `guia
 ## Publicação
 
 Duas etapas: 1) migração na `main` (o GitHub Action "Deploy Supabase" roda `db push`) e conferir a tabela em produção;
-2) só então o front.
+2) só então o front. Se o front chegasse antes, o Faturamento mostraria "Não consegui carregar a lista deste mês" com o botão
+**Tentar de novo**, e juntar cadastros duplicados falharia sem apagar nada; por isso a ordem.
+
+A migração tira todos os privilégios do papel `authenticated` na tabela antes de conceder só SELECT, INSERT e DELETE (no Supabase
+ele nasce com todos, inclusive TRUNCATE, que a segurança por linha não alcança).

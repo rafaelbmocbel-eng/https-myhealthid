@@ -7,9 +7,11 @@ const arquivo = '20261025190000_cassi_financeiro_clientes.sql';
 const sql = readFileSync(join(pasta, arquivo), 'utf8');
 
 describe('migração da lista de clientes do financeiro CASSI', () => {
-  it('é a mais nova das migrações (nada fica antes dela por engano)', () => {
+  it('vem depois da última migração que existia quando foi escrita (nada fica antes dela por engano)', () => {
     const todas = readdirSync(pasta).filter((f) => f.endsWith('.sql')).sort();
-    expect(todas[todas.length - 1]).toBe(arquivo);
+    expect(todas).toContain(arquivo);
+    expect(arquivo > '20261025130000_myid_foco_ciclo.sql').toBe(true);
+    expect(todas.filter((f) => f > arquivo && f.startsWith('2026102519'))).toEqual([]); // sem timestamp repetido
   });
 
   it('uma linha por profissional, mês e cliente; mês só no formato AAAA-MM com 01 a 12', () => {
@@ -28,7 +30,9 @@ describe('migração da lista de clientes do financeiro CASSI', () => {
 
   it('segurança por linha ligada; anon e público sem acesso; só o dono lê, adiciona e tira; sem UPDATE', () => {
     expect(sql).toContain('ALTER TABLE public.cassi_financeiro_clientes ENABLE ROW LEVEL SECURITY');
-    expect(sql).toMatch(/REVOKE ALL ON public\.cassi_financeiro_clientes FROM PUBLIC, anon/);
+    expect(sql).toMatch(/REVOKE ALL ON public\.cassi_financeiro_clientes FROM PUBLIC, anon, authenticated;/);
+    // o REVOKE vem antes do GRANT (o contrário apagaria o que foi concedido)
+    expect(sql.indexOf('REVOKE ALL ON public.cassi_financeiro_clientes')).toBeLessThan(sql.indexOf('GRANT SELECT, INSERT, DELETE'));
     expect(sql).not.toMatch(/GRANT[^;]*cassi_financeiro_clientes[^;]*TO[^;]*\banon\b/);
     expect(sql).not.toMatch(/GRANT[^;]*cassi_financeiro_clientes[^;]*TO[^;]*\bPUBLIC\b/);
     expect(sql).toMatch(/GRANT SELECT, INSERT, DELETE ON public\.cassi_financeiro_clientes TO authenticated/);
