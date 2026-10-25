@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
   COLUNA_ORIGEM, FILTRO_SO_PROFISSIONAL, ORIGENS_PACIENTE, VALOR_SO_PACIENTE,
-  ehRelatoDoPaciente, origemDaAvaliacao, origemEModoDaAvaliacao, redFlagsDoResultado, soDoProfissional,
+  baseDoResultado, ehRelatoDoPaciente, origemDaAvaliacao, origemEModoDaAvaliacao, redFlagsDoResultado, soDoProfissional,
 } from '@/utils/voiceAssessment/origemAvaliacao';
 import * as servidor from '../../supabase/functions/_shared/origem-avaliacao';
 
@@ -44,20 +44,52 @@ describe('origem das avaliações por voz (relato do paciente x avaliação do p
     expect(lista).toHaveLength(6);
   });
 
-  it('redFlagsDoResultado devolve os alertas reais e descarta só a frase de ausência de alerta', () => {
-    expect(redFlagsDoResultado({ red_flags: ['Nenhum red flag identificado'] })).toEqual([]);
-    expect(redFlagsDoResultado({ red_flags: ['Sem red flags', 'Dados insuficientes para avaliar'] })).toEqual([]);
-    expect(redFlagsDoResultado({ red_flags: ['Não foram identificados sinais de alerta'] })).toEqual([]);
+  it('redFlagsDoResultado devolve os alertas reais e descarta só a frase que NEGA o alerta', () => {
+    const ausentes = [
+      'Nenhum red flag identificado', 'Nenhuma red flag identificada', 'Sem red flags', 'Sem sinais de alerta', 'Dados insuficientes para avaliar',
+      'Não foram identificados sinais de alerta', 'Não há red flags', 'Não há sinais de alerta', 'Não houve sinais de alarme',
+      'Não apresenta red flags', 'Não relata sinais de alerta', 'Ausência de red flags', 'Nenhum sinal de alerta identificado',
+    ];
+    for (const frase of ausentes) expect(redFlagsDoResultado({ red_flags: [frase] }), frase).toEqual([]);
+    // alertas reais que COMEÇAM com nenhum/sem/não, ou são siglas curtas: continuam (a revisão provou que o padrão antigo os derrubava)
+    const reais = [
+      'Nenhuma melhora noturna', 'Nenhum alívio com repouso ou analgésicos', 'Nenhuma resposta ao tratamento conservador',
+      'Nenhuma sensibilidade no pé', 'Sem sinais de melhora após 6 semanas de tratamento', 'Sem sinais vitais estáveis',
+      'Não houve melhora após 6 semanas', 'Sem melhora com repouso', 'Sem controle de esfíncter', 'Escassez de movimento no tornozelo',
+      'AVC', 'TEP', 'IAM', 'TVP', 'Dor noturna insuficientemente aliviada pelo repouso', 'Perda de peso sem causa aparente',
+    ];
+    for (const frase of reais) expect(redFlagsDoResultado({ red_flags: [frase] }), frase).toEqual([frase]);
     expect(redFlagsDoResultado({ red_flags: ['dor torácica ao esforço', 'Nenhum red flag identificado'] })).toEqual(['dor torácica ao esforço']);
-    // uma palavra da lista no MEIO de um alerta real não o descarta
-    expect(redFlagsDoResultado({ red_flags: ['Dor noturna insuficientemente aliviada pelo repouso'] })).toEqual(['Dor noturna insuficientemente aliviada pelo repouso']);
-    expect(redFlagsDoResultado({ red_flags: ['Perda de peso sem causa aparente'] })).toEqual(['Perda de peso sem causa aparente']);
-    // objetos {titulo|descricao}, red_flags_reforcadas, repetidos e itens curtos
-    expect(redFlagsDoResultado({ red_flags: [{ titulo: 'Febre persistente' }, { descricao: 'Fraqueza progressiva' }], red_flags_reforcadas: ['Febre persistente', 'ok'] }))
+    expect(redFlagsDoResultado({ red_flags: [{ titulo: 'Febre persistente' }, { descricao: 'Fraqueza progressiva' }], red_flags_reforcadas: ['Febre persistente', 'x'] }))
       .toEqual(['Febre persistente', 'Fraqueza progressiva']);
     expect(redFlagsDoResultado(null)).toEqual([]);
     expect(redFlagsDoResultado({ red_flags: 'texto solto' })).toEqual([]);
     expect(redFlagsDoResultado({})).toEqual([]);
+  });
+
+  it('o relato do portal guarda a resposta da IA aninhada em `assessment`: o alerta de lá também é lido', () => {
+    const relatoDoPortal = { assessment: { red_flags: ['Febre persistente'], resumo_clinico: 'x' }, transcricao: 't', _meta: { origem: 'portal_paciente_historia' } };
+    expect(redFlagsDoResultado(relatoDoPortal)).toEqual(['Febre persistente']);
+    // topo e aninhado juntos, sem repetir
+    expect(redFlagsDoResultado({ red_flags: ['Febre persistente', 'Dor noturna'], assessment: { red_flags: ['Febre persistente', 'AVC'] } }))
+      .toEqual(['Febre persistente', 'Dor noturna', 'AVC']);
+    expect(baseDoResultado(relatoDoPortal)).toBe(relatoDoPortal.assessment);
+    expect(baseDoResultado({ queixa_principal: 'x' })).toEqual({ queixa_principal: 'x' });
+    expect(baseDoResultado({ assessment: 'texto' })).toEqual({ assessment: 'texto' });
+    expect(baseDoResultado(null)).toBeNull();
+    expect(baseDoResultado([1])).toBeNull();
+  });
+
+  it('a regra do servidor (Deno) e a da tela dão a mesma resposta nas mesmas entradas', () => {
+    const entradas: unknown[] = [
+      { red_flags: ['Nenhum red flag identificado'] }, { red_flags: ['Não há sinais de alerta'] }, { red_flags: ['Nenhuma melhora noturna'] },
+      { red_flags: ['AVC', 'Sem red flags'] }, { assessment: { red_flags: ['Febre persistente'] } }, { red_flags: [{ titulo: 'Dor noturna' }] },
+      { red_flags: ['a'], red_flags_reforcadas: ['Perda de peso'] }, null, 'texto', {}, { assessment: { red_flags: 'x' } },
+    ];
+    for (const e of entradas) {
+      expect(servidor.redFlagsDoResultado(e), JSON.stringify(e)).toEqual(redFlagsDoResultado(e));
+      expect(servidor.baseDoResultado(e), JSON.stringify(e)).toEqual(baseDoResultado(e));
+    }
   });
 
   it('reprocessar um relato do paciente não o transforma em avaliação do profissional', () => {
@@ -140,15 +172,18 @@ function cadeias(texto: string): string[] {
   return saida;
 }
 // Quem lista TUDO de propósito (e rotula o relato do paciente) diz isso num comentário `@origem-avaliacao` logo
-// antes da consulta, e o motivo fica à vista de quem ler o código.
+// antes da consulta, e o motivo fica à vista de quem ler o código. O marcador só vale para a consulta que vem
+// depois dele (um marcador de uma consulta vizinha não conta).
 const MARCADOR = '@origem-avaliacao';
+const semComentarios = (texto: string) => texto.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 function cadeiasComMarcador(texto: string): Array<{ cadeia: string; marcada: boolean }> {
   const saida: Array<{ cadeia: string; marcada: boolean }> = [];
   const cs = cadeias(texto);
   let i = 0;
   for (const m of texto.matchAll(/from\(\s*['"`]avaliacoes_voz['"`]/g)) {
-    const antes = texto.slice(Math.max(0, (m.index ?? 0) - 240), m.index ?? 0);
-    saida.push({ cadeia: cs[i++], marcada: antes.includes(MARCADOR) });
+    const antes = texto.slice(Math.max(0, (m.index ?? 0) - 300), m.index ?? 0);
+    const pos = antes.lastIndexOf(MARCADOR);
+    saida.push({ cadeia: semComentarios(cs[i++]), marcada: pos >= 0 && !/\.from\(/.test(antes.slice(pos)) });
   }
   return saida;
 }
@@ -188,6 +223,12 @@ describe('leituras de avaliacoes_voz decidem o que fazer com o relato do pacient
     // um comentário-marcador logo antes da consulta é uma decisão registrada
     const marcado = `// @origem-avaliacao: lista tudo e rotula\nsupabase.from('avaliacoes_voz').select('id').eq('paciente_id', p);`;
     expect(cadeiasComMarcador(marcado).filter(({ cadeia, marcada }) => !marcada && !consultaDecideAOrigem(cadeia))).toHaveLength(0);
+    // o marcador de uma consulta NÃO vale para a seguinte
+    const vizinhas = `// @origem-avaliacao: lista tudo\nsupabase.from('avaliacoes_voz').select('id');\nsupabase.from('avaliacoes_voz').select('id').limit(3);`;
+    expect(cadeiasComMarcador(vizinhas).map((x) => x.marcada)).toEqual([true, false]);
+    // o nome do filtro dentro de um comentário não conta como decisão
+    const comentado = `supabase.from('avaliacoes_voz').select('id') // TODO FILTRO_SO_PROFISSIONAL\n  .limit(3);`;
+    expect(cadeiasComMarcador(comentado).filter(({ cadeia, marcada }) => !marcada && !consultaDecideAOrigem(cadeia))).toHaveLength(1);
     // uma menção ao nome da tabela que não é consulta não conta
     expect(cadeias(`falhas.push('avaliacoes_voz');`)).toHaveLength(0);
   });

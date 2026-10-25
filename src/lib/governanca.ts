@@ -692,6 +692,8 @@ const ROTULOS_ORIGEM: Record<string, string> = {
   triagem_autodeclarada: 'Triagem respondida pelo cliente',
   parq: 'PAR-Q+',
   myid: 'MyID',
+  avaliacao_presencial: 'Avaliação presencial do profissional',
+  relato_paciente: 'Relato do paciente no portal (sem confirmação)',
   texto_livre: 'Registros do paciente',
   dados_ausentes: 'Dado ausente',
 };

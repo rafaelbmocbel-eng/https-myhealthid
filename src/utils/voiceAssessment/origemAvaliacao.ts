@@ -30,26 +30,44 @@ export function soDoProfissional<T extends { resultado?: unknown }>(avaliacoes: 
   return avaliacoes.filter(a => !ehRelatoDoPaciente(a));
 }
 
-// A IA às vezes devolve a ausência de alerta como se fosse um alerta ("Nenhum red flag identificado"). O padrão é
-// ancorado no começo da frase para não descartar um alerta real que só contenha uma dessas palavras no meio.
-const AUSENCIA_DE_ALERTA = /^\s*(nenhum|nenhuma|sem\s+(red\s*flags?|sinais)|n[ãa]o\s+(foram\s+|foi\s+)?(identific|h[áa]\b|houve)|dados\s+insuficientes|escassez)/i;
-
-/** Os red flags de um resultado de avaliação por voz, sem os itens que só dizem que não há alerta. */
-export function redFlagsDoResultado(resultado: unknown): string[] {
-  if (!resultado || typeof resultado !== 'object') return [];
+// O relato do portal ("Histórico clínico") guarda a resposta crua da IA, que vem aninhada em `assessment`; a avaliação
+// do profissional e o autorrelato guardam os campos no topo. Quem lê os campos clínicos precisa olhar os dois.
+export function baseDoResultado(resultado: unknown): Record<string, unknown> | null {
+  if (!resultado || typeof resultado !== 'object' || Array.isArray(resultado)) return null;
   const r = resultado as Record<string, unknown>;
-  const itens = [r.red_flags, r.red_flags_reforcadas].flatMap((v) => (Array.isArray(v) ? v : []));
-  const textos = itens
-    .map((f) => {
-      if (typeof f === 'string') return f;
-      if (f && typeof f === 'object') {
-        const o = f as Record<string, unknown>;
-        return typeof o.titulo === 'string' ? o.titulo : typeof o.descricao === 'string' ? o.descricao : '';
-      }
-      return '';
-    })
-    .map((t) => t.trim())
-    .filter((t) => t.length > 3 && !AUSENCIA_DE_ALERTA.test(t));
+  const aninhado = r.assessment;
+  return aninhado && typeof aninhado === 'object' && !Array.isArray(aninhado) ? (aninhado as Record<string, unknown>) : r;
+}
+
+// A IA às vezes devolve a ausência de alerta como se fosse um alerta ("Nenhum red flag identificado", "Não há sinais
+// de alerta"). Só vale quando a frase COMEÇA negando exatamente o red flag / sinal de alerta: "Nenhuma melhora noturna",
+// "Sem sinais de melhora" e "Não houve melhora" são alertas reais e continuam.
+const AUSENCIA_DE_ALERTA = new RegExp(
+  '^\\s*(?:'
+  + '(?:nenhum|nenhuma|sem|aus[êe]ncia\\s+de|n[ãa]o\\s+(?:foram\\s+|foi\\s+)?(?:identificad[oa]s?|h[áa]|houve|apresenta|relata|refere))'
+  + '\\s+(?:de\\s+)?(?:red\\s*flags?|sina(?:is|l)\\s+de\\s+(?:alerta|alarme)|alertas?|bandeiras?\\s+vermelhas?)'
+  + '|dados\\s+insuficientes'
+  + ')',
+  'i',
+);
+
+const textoDoAlerta = (f: unknown): string => {
+  if (typeof f === 'string') return f;
+  if (f && typeof f === 'object') {
+    const o = f as Record<string, unknown>;
+    return typeof o.titulo === 'string' ? o.titulo : typeof o.descricao === 'string' ? o.descricao : '';
+  }
+  return '';
+};
+
+/** Os red flags de um resultado de avaliação por voz (no topo ou aninhados em `assessment`), sem as frases de ausência. */
+export function redFlagsDoResultado(resultado: unknown): string[] {
+  const niveis = [resultado, baseDoResultado(resultado)].filter((n, i, todos) => n && typeof n === 'object' && todos.indexOf(n) === i);
+  const itens = niveis.flatMap((n) => {
+    const r = n as Record<string, unknown>;
+    return [r.red_flags, r.red_flags_reforcadas].flatMap((v) => (Array.isArray(v) ? v : []));
+  });
+  const textos = itens.map((f) => textoDoAlerta(f).trim()).filter((t) => t.length >= 2 && !AUSENCIA_DE_ALERTA.test(t));
   return Array.from(new Set(textos));
 }
 

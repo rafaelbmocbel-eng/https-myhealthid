@@ -68,6 +68,7 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
       if (error) throw error;
       toast({ title: 'Avaliação excluída' });
       qc.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
+      qc.invalidateQueries({ queryKey: ['alerta-relato-paciente'] });
     } catch (e: any) {
       toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
     } finally {
