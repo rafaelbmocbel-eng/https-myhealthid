@@ -47,7 +47,7 @@ describe('MyIDFocoCiclo', () => {
     );
     const { secao } = montar({ comparacao, retesteDisponivel: true });
     const t = secao.textContent ?? '';
-    expect(t).toContain('gravidade 9,0 → 7,5 (0 a 10)17,8 → 15,2 pts perdidos · melhorou 2,6 pts');
+    expect(t).toContain('Dor17,8 → 15,2 pts perdidos · melhorou 2,6 ptsgravidade 9,0 → 7,5 (0 a 10)');
     expect(t).toContain('15,0 → 15,4 pts perdidos · piorou 0,4 pts');
     expect(t).toContain('MyID: 9,7 → 12,1');
     expect(t).toContain('Fora do foco, perdeu mais pontos: Sono e energia (+2,8 pts).');

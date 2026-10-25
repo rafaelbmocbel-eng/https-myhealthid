@@ -92,28 +92,28 @@ export function MyIDFocoCiclo({ dimensoes, comparacao, rotulos, inicio, baseAuse
             <>
               <ul className="space-y-1.5">
                 {comparacao.linhas.map((l) => (
-                  <li key={l.chave} className="flex items-baseline justify-between gap-3 text-[12.5px]">
-                    <span className="font-medium text-foreground">
-                      {nome(l.chave)}
-                      {l.gravidadeAntes !== null && l.gravidadeAgora !== null && (
-                        <span className="block text-[10.5px] font-normal text-muted-foreground tabular-nums">
-                          gravidade {fmt(l.gravidadeAntes)} → {fmt(l.gravidadeAgora)} (0 a 10)
+                  <li key={l.chave} className="text-[12.5px]">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="font-medium text-foreground">{nome(l.chave)}</span>
+                      <span className="tabular-nums text-right">
+                        <span className="text-muted-foreground">{fmt(l.antes)} → {fmt(l.agora)} pts perdidos · </span>
+                        <span
+                          className={cn(
+                            'font-semibold whitespace-nowrap',
+                            l.sentido === 'melhorou' && 'text-emerald-700 dark:text-emerald-400',
+                            l.sentido === 'piorou' && 'text-destructive',
+                            l.sentido === 'igual' && 'text-muted-foreground',
+                          )}
+                        >
+                          {l.sentido === 'igual' ? 'igual' : `${l.sentido === 'melhorou' ? 'melhorou' : 'piorou'} ${fmt(Math.abs(l.variacao))} pts`}
                         </span>
-                      )}
-                    </span>
-                    <span className="tabular-nums whitespace-nowrap text-right">
-                      <span className="text-muted-foreground">{fmt(l.antes)} → {fmt(l.agora)} pts perdidos · </span>
-                      <span
-                        className={cn(
-                          'font-semibold',
-                          l.sentido === 'melhorou' && 'text-emerald-700 dark:text-emerald-400',
-                          l.sentido === 'piorou' && 'text-destructive',
-                          l.sentido === 'igual' && 'text-muted-foreground',
-                        )}
-                      >
-                        {l.sentido === 'igual' ? 'igual' : `${l.sentido === 'melhorou' ? 'melhorou' : 'piorou'} ${fmt(Math.abs(l.variacao))} pts`}
                       </span>
-                    </span>
+                    </div>
+                    {l.gravidadeAntes !== null && l.gravidadeAgora !== null && (
+                      <p className="text-[10.5px] text-muted-foreground tabular-nums">
+                        gravidade {fmt(l.gravidadeAntes)} → {fmt(l.gravidadeAgora)} (0 a 10)
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>
