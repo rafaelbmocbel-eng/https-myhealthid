@@ -35,6 +35,15 @@ describe('migração do foco do ciclo do MyID', () => {
     expect(sql).toMatch(/FOR UPDATE TO authenticated[\s\S]*?WITH CHECK[\s\S]*?a\.paciente_id = myid_foco_ciclo\.paciente_id/);
   });
 
+  it('a lista de dimensões precisa ser unidimensional (array multidimensional é recusado)', () => {
+    expect(sql).toMatch(/array_ndims\(p_dimensoes\) = 1/);
+  });
+
+  it('o UPDATE também exige que o paciente seja do profissional (não dá para reapontar o ciclo para paciente de outro)', () => {
+    const update = sql.slice(sql.indexOf('FOR UPDATE TO authenticated'), sql.indexOf('DROP POLICY IF EXISTS "Profissional apaga'));
+    expect(update).toMatch(/WITH CHECK[\s\S]*?p\.terapeuta_id = auth\.uid\(\)/);
+  });
+
   it('um ciclo aberto por paciente e profissional; apagar o paciente apaga os ciclos; apagar o MyID base preserva o ciclo', () => {
     expect(sql).toMatch(/CREATE UNIQUE INDEX IF NOT EXISTS uniq_myid_foco_ciclo_aberto[\s\S]*?\(paciente_id, terapeuta_id\)[\s\S]*?WHERE encerrado_em IS NULL/);
     expect(sql).toMatch(/paciente_id uuid NOT NULL REFERENCES public\.pacientes\(id\) ON DELETE CASCADE/);

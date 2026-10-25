@@ -22,12 +22,15 @@ interface Props {
   /** Já existe um MyID mais novo que o de início do ciclo. */
   retesteDisponivel: boolean;
   ocupado?: boolean;
+  /** Ainda lendo o ciclo do banco, ou a leitura falhou: não mostra "sem foco" como se soubéssemos. */
+  carregando?: boolean;
+  erroAoCarregar?: boolean;
   onEncerrar: () => void;
   onReiniciar: () => void;
 }
 
 /** Foco do ciclo: 1 a 3 dimensões que o profissional trabalha e quanto cada uma variou no reteste. */
-export function MyIDFocoCiclo({ dimensoes, comparacao, rotulos, inicio, baseAusente, retesteDisponivel, ocupado, onEncerrar, onReiniciar }: Props) {
+export function MyIDFocoCiclo({ dimensoes, comparacao, rotulos, inicio, baseAusente, retesteDisponivel, ocupado, carregando, erroAoCarregar, onEncerrar, onReiniciar }: Props) {
   const nome = (chave: string) => rotulos[chave] ?? chave;
 
   const acoes = (reiniciar: boolean) => (
@@ -50,7 +53,11 @@ export function MyIDFocoCiclo({ dimensoes, comparacao, rotulos, inicio, baseAuse
         Foco do ciclo
       </p>
 
-      {!dimensoes || dimensoes.length === 0 ? (
+      {erroAoCarregar ? (
+        <p role="status" className="text-[12px] text-muted-foreground">Não foi possível carregar o foco do ciclo. Recarregue a aba.</p>
+      ) : carregando ? (
+        <p role="status" className="text-[12px] text-muted-foreground">Carregando o foco do ciclo…</p>
+      ) : !dimensoes || dimensoes.length === 0 ? (
         <p className="text-[12.5px] leading-snug text-muted-foreground">
           Escolha de 1 a 3 dimensões para trabalhar neste ciclo, com o botão <Target className="inline h-3 w-3 align-[-1px]" aria-hidden="true" /> ao lado
           de cada item da lista abaixo. No próximo MyID, o app mostra aqui quanto cada uma variou em pontos.
@@ -86,7 +93,14 @@ export function MyIDFocoCiclo({ dimensoes, comparacao, rotulos, inicio, baseAuse
               <ul className="space-y-1.5">
                 {comparacao.linhas.map((l) => (
                   <li key={l.chave} className="flex items-baseline justify-between gap-3 text-[12.5px]">
-                    <span className="font-medium text-foreground">{nome(l.chave)}</span>
+                    <span className="font-medium text-foreground">
+                      {nome(l.chave)}
+                      {l.gravidadeAntes !== null && l.gravidadeAgora !== null && (
+                        <span className="block text-[10.5px] font-normal text-muted-foreground tabular-nums">
+                          gravidade {fmt(l.gravidadeAntes)} → {fmt(l.gravidadeAgora)} (0 a 10)
+                        </span>
+                      )}
+                    </span>
                     <span className="tabular-nums whitespace-nowrap text-right">
                       <span className="text-muted-foreground">{fmt(l.antes)} → {fmt(l.agora)} pts perdidos · </span>
                       <span
@@ -103,6 +117,16 @@ export function MyIDFocoCiclo({ dimensoes, comparacao, rotulos, inicio, baseAuse
                   </li>
                 ))}
               </ul>
+              {comparacao.linhas.some((l) => l.chave === 'D') && (
+                <p className="text-[11px] text-muted-foreground">
+                  Na Dor, a perda inclui um ajuste pelo tempo de dor que o paciente informou; a gravidade (0 a 10) não tem esse ajuste.
+                </p>
+              )}
+              {comparacao.regraDeRCDiferente && comparacao.semDado.some((c) => c === 'R' || c === 'C') && (
+                <p className="text-[11px] text-muted-foreground">
+                  Sono e energia e Vida pessoal não entram na comparação: um dos dois MyID foi calculado com a regra anterior a 06/10/2026.
+                </p>
+              )}
               {comparacao.semDado.length > 0 && (
                 <p className="text-[11px] text-muted-foreground">
                   Sem dado para comparar: {juntaNomes(comparacao.semDado.map(nome))}.

@@ -29,6 +29,9 @@ export interface LinhaFoco {
   /** agora − antes: negativo = perdeu menos pontos = melhorou. */
   variacao: number;
   sentido: 'melhorou' | 'piorou' | 'igual';
+  /** Gravidade bruta (0 a 10, maior = pior) em cada MyID, sem o peso da dimensão nem o ajuste da dor por tempo. */
+  gravidadeAntes: number | null;
+  gravidadeAgora: number | null;
 }
 
 export interface ComparacaoFoco {
@@ -39,6 +42,25 @@ export interface ComparacaoFoco {
   scoreAgora: number | null;
   /** Dimensões FORA do foco que perderam pelo menos LIMIAR_AVISO_FORA_DO_FOCO pontos a mais. */
   pioraramForaDoFoco: Array<{ chave: string; variacao: number }>;
+  /** Os dois MyID não foram calculados com a mesma regra de R e C: essas duas dimensões não são comparadas. */
+  regraDeRCDiferente: boolean;
+}
+
+// Em 06/10/2026 (commit c575011a) R e C passaram a usar "pior item (60%) + média (40%)", sem trocar o campo `versao`. Os
+// MyID anteriores foram recalculados e levam esse motivo em `_recalculo`; os novos nascem com a regra. Um MyID sem o
+// marcador e feito antes dessa data usa a regra antiga: comparar R e C entre as duas regras misturaria réguas.
+export const MOTIVO_REGRA_RC = 'R e C pelo pior item (60% pior + 40% média)';
+const INICIO_REGRA_RC = Date.parse('2026-10-06T02:29:00Z');
+const DIMENSOES_DA_REGRA_RC = ['R', 'C'];
+
+/** true = regra nova; false = regra antiga; null = não dá para saber (sem marcador e sem data). */
+export function usaRegraNovaDeRC(resultado: unknown): boolean | null {
+  if (!resultado || typeof resultado !== 'object') return null;
+  const r = resultado as Record<string, any>;
+  if (r._recalculo?.motivo === MOTIVO_REGRA_RC) return true;
+  const quando = typeof r.timestamp === 'string' ? Date.parse(r.timestamp) : NaN;
+  if (Number.isFinite(quando)) return quando >= INICIO_REGRA_RC;
+  return null;
 }
 
 const arredonda = (n: number) => Math.round(n * 100) / 100;
@@ -56,6 +78,11 @@ function perdasDe(resultado: unknown): Record<string, number> | null {
   return Object.keys(saida).length > 0 ? saida : null;
 }
 
+function gravidadeDe(resultado: unknown, chave: string): number | null {
+  if (!resultado || typeof resultado !== 'object') return null;
+  return numero((resultado as Record<string, any>).perdas_calculadas?.[chave]?.score_bruto);
+}
+
 function scoreDe(resultado: unknown): number | null {
   if (!resultado || typeof resultado !== 'object') return null;
   const r = resultado as Record<string, any>;
@@ -71,10 +98,13 @@ export function compararFoco(base: unknown, atual: unknown, foco: readonly strin
   const agora = perdasDe(atual);
   if (!antes || !agora || foco.length === 0) return null;
 
+  const regraDeRCDiferente = !(usaRegraNovaDeRC(base) === true && usaRegraNovaDeRC(atual) === true);
+  const comparavel = (chave: string) => chave in antes && chave in agora && !(regraDeRCDiferente && DIMENSOES_DA_REGRA_RC.includes(chave));
+
   const linhas: LinhaFoco[] = [];
   const semDado: string[] = [];
   for (const chave of foco) {
-    if (!(chave in antes) || !(chave in agora)) { semDado.push(chave); continue; }
+    if (!comparavel(chave)) { semDado.push(chave); continue; }
     const variacao = arredonda(agora[chave] - antes[chave]);
     linhas.push({
       chave,
@@ -82,14 +112,16 @@ export function compararFoco(base: unknown, atual: unknown, foco: readonly strin
       agora: arredonda(agora[chave]),
       variacao,
       sentido: Math.abs(variacao) < LIMIAR_IGUAL ? 'igual' : variacao < 0 ? 'melhorou' : 'piorou',
+      gravidadeAntes: gravidadeDe(base, chave),
+      gravidadeAgora: gravidadeDe(atual, chave),
     });
   }
 
   const pioraramForaDoFoco = Object.keys(agora)
-    .filter((chave) => chave !== 'MED' && !foco.includes(chave) && chave in antes)
+    .filter((chave) => chave !== 'MED' && !foco.includes(chave) && comparavel(chave))
     .map((chave) => ({ chave, variacao: arredonda(agora[chave] - antes[chave]) }))
     .filter((d) => d.variacao >= LIMIAR_AVISO_FORA_DO_FOCO)
     .sort((a, b) => b.variacao - a.variacao);
 
-  return { linhas, semDado, scoreAntes: scoreDe(base), scoreAgora: scoreDe(atual), pioraramForaDoFoco };
+  return { linhas, semDado, scoreAntes: scoreDe(base), scoreAgora: scoreDe(atual), pioraramForaDoFoco, regraDeRCDiferente };
 }

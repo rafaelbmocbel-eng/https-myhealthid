@@ -4,9 +4,11 @@ import { BotaoFocoDoCiclo, MyIDFocoCiclo } from '@/components/myid/MyIDFocoCiclo
 import { compararFoco } from '@/utils/myid/focoCiclo';
 
 const ROTULOS = { D: 'Dor', P: 'Cabeça e emoções', R: 'Sono e energia', AF: 'Movimento' };
-const res = (perdas: Record<string, number>, score: number) => ({
+const res = (perdas: Record<string, number>, score: number, extra: Record<string, unknown> = {}) => ({
   MyID_score: score,
-  perdas_calculadas: Object.fromEntries(Object.entries(perdas).map(([k, v]) => [k, { perda_pontos: v }])),
+  timestamp: '2026-10-10T12:00:00Z',
+  perdas_calculadas: Object.fromEntries(Object.entries(perdas).map(([k, v]) => [k, { perda_pontos: v, score_bruto: Math.round(v) / 2 }])),
+  ...extra,
 });
 
 function montar(props: Partial<Parameters<typeof MyIDFocoCiclo>[0]> = {}) {
@@ -45,8 +47,8 @@ describe('MyIDFocoCiclo', () => {
     );
     const { secao } = montar({ comparacao, retesteDisponivel: true });
     const t = secao.textContent ?? '';
-    expect(t).toContain('Dor17,8 → 15,2 pts perdidos · melhorou 2,6 pts');
-    expect(t).toContain('Cabeça e emoções15,0 → 15,4 pts perdidos · piorou 0,4 pts');
+    expect(t).toContain('gravidade 9,0 → 7,5 (0 a 10)17,8 → 15,2 pts perdidos · melhorou 2,6 pts');
+    expect(t).toContain('15,0 → 15,4 pts perdidos · piorou 0,4 pts');
     expect(t).toContain('MyID: 9,7 → 12,1');
     expect(t).toContain('Fora do foco, perdeu mais pontos: Sono e energia (+2,8 pts).');
     expect(screen.getByRole('button', { name: 'Reiniciar a partir deste MyID' })).toBeInTheDocument();
@@ -68,6 +70,41 @@ describe('MyIDFocoCiclo', () => {
   it('reteste sem perdas por dimensão: diz que não dá para comparar', () => {
     const { secao } = montar({ retesteDisponivel: true, comparacao: null });
     expect(secao.textContent).toContain('Não foi possível comparar');
+  });
+
+  it('mostra a gravidade bruta (0 a 10) ao lado da perda e explica o ajuste da Dor', () => {
+    const comparacao = compararFoco(res({ D: 17.8, P: 15 }, 9.7), res({ D: 15.2, P: 15 }, 12), ['D', 'P']);
+    const { secao } = montar({ comparacao, retesteDisponivel: true });
+    expect(secao.textContent).toContain('gravidade 9,0 → 7,5 (0 a 10)');
+    expect(secao.textContent).toContain('a perda inclui um ajuste pelo tempo de dor');
+    // sem a Dor no foco, a nota não aparece
+  });
+
+  it('sem a Dor no foco não há nota sobre o tempo de dor', () => {
+    const comparacao = compararFoco(res({ D: 17.8, P: 15 }, 9.7), res({ D: 15.2, P: 14 }, 12), ['P']);
+    const { secao } = montar({ dimensoes: ['P'], comparacao, retesteDisponivel: true });
+    expect(secao.textContent).not.toContain('tempo de dor');
+  });
+
+  it('R e C de regras diferentes ficam de fora e o motivo aparece', () => {
+    const antigo = res({ D: 10, R: 12 }, 30, { timestamp: '2026-09-20T12:00:00Z' });
+    const comparacao = compararFoco(antigo, res({ D: 8, R: 9 }, 40), ['D', 'R']);
+    const { secao } = montar({ dimensoes: ['D', 'R'], comparacao, retesteDisponivel: true });
+    expect(secao.textContent).toContain('Sem dado para comparar: Sono e energia');
+    expect(secao.textContent).toContain('regra anterior a 06/10/2026');
+  });
+
+  it('enquanto carrega ou quando a leitura falha, não diz que não há foco e não oferece ações', () => {
+    const a = montar({ dimensoes: null, carregando: true });
+    expect(a.secao.textContent).toContain('Carregando o foco do ciclo');
+    expect(a.secao.textContent).not.toContain('Escolha de 1 a 3');
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('erro ao carregar: avisa e não afirma que não há foco', () => {
+    const { secao } = montar({ dimensoes: null, erroAoCarregar: true });
+    expect(secao.textContent).toContain('Não foi possível carregar o foco do ciclo');
+    expect(secao.textContent).not.toContain('Escolha de 1 a 3');
   });
 
   it('os botões chamam as ações e ficam desabilitados enquanto salva', () => {

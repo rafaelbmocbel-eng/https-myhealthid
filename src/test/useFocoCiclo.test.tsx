@@ -120,6 +120,18 @@ describe('useFocoCiclo', () => {
     expect(Object.keys(escritas()[1].args[0] as object)).toEqual(['encerrado_em']);
   });
 
+  it('nunca envia encerrado_em anterior ao início do ciclo, mesmo com o relógio do aparelho atrasado', async () => {
+    const futuro = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // criado_em do servidor "à frente" do aparelho
+    banco.ciclo = { ...cicloAberto(['D']), criado_em: futuro };
+    const { result } = montar();
+    await waitFor(() => expect(result.current.foco).not.toBeNull());
+    await act(async () => { await result.current.encerrar.mutateAsync(); });
+    const enviado = (escritas()[0].args[0] as { encerrado_em: string }).encerrado_em;
+    expect(Date.parse(enviado)).toBeGreaterThanOrEqual(Date.parse(futuro));
+    await act(async () => { await result.current.alternar.mutateAsync({ dimensao: 'D', avaliacaoAtualId: 'ava-9' }); });
+    expect(Date.parse((escritas()[1].args[0] as { encerrado_em: string }).encerrado_em)).toBeGreaterThanOrEqual(Date.parse(futuro));
+  });
+
   it('erro do banco vira aviso, sem derrubar a tela', async () => {
     banco.erroNaEscrita = { message: 'boom' };
     const { result } = montar();

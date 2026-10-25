@@ -148,13 +148,28 @@ export default function PatientIntegratedDashboard({
     },
   });
 
+  // Qual linha de avaliacoes_identidade nasceu de qual MyID concluído por link (os tipos gerados ainda não têm essa coluna).
+  const { data: vinculosMyID = [] } = useQuery({
+    queryKey: ['integrated-myid-vinculos', pacienteId],
+    enabled: isProfessional,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('avaliacoes_identidade')
+        .select('id, myid_avaliacao_id')
+        .eq('paciente_id', pacienteId)
+        .not('myid_avaliacao_id', 'is', null);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; myid_avaliacao_id: string }>;
+    },
+  });
+
   const ultimaMyID = myidAvaliacoes[0];
   const previousMyID = myidAvaliacoes[1]; // para comparativo
   const myidLinkResult = myidFromLink[0]?.resultado_processado as any;
   const previousScore = previousMyID ? Number(previousMyID.myid_score) || 0 : null;
 
   // Foco do ciclo (só o profissional): 1 a 3 dimensões que ele trabalha; a variação é medida contra o MyID de início.
-  const { foco: focoCiclo, alternar: alternarFoco, encerrar: encerrarFoco, reiniciar: reiniciarFoco, ocupado: focoOcupado } =
+  const { foco: focoCiclo, carregando: focoCarregando, erro: focoErro, alternar: alternarFoco, encerrar: encerrarFoco, reiniciar: reiniciarFoco, ocupado: focoOcupado } =
     useFocoCiclo(pacienteId, isProfessional);
 
   // Use whichever is more recent
@@ -415,10 +430,14 @@ export default function PatientIntegratedDashboard({
   // Fechamento da conta e concentração das perdas: só o profissional vê; registros antigos sem perdas gravadas voltam null.
   const analisePerdas = isProfessional ? analisarPerdas(resultadoArmazenado) : null;
   const rotulosDosAneis = Object.fromEntries(rings.map(r => [r.scoreKey, r.label]));
+  // O MyID "atual" do foco é o mesmo que a tela mostra: a linha de avaliacoes_identidade ligada ao último MyID concluído por
+  // link; sem ela, o mais recente de avaliacoes_identidade.
+  const idIdentidadeDoExibido = vinculosMyID.find((v) => v.myid_avaliacao_id === myidFromLink[0]?.id)?.id;
+  const atualDoFoco = (idIdentidadeDoExibido && myidAvaliacoes.find((a: any) => a.id === idIdentidadeDoExibido)) || ultimaMyID;
   const baseDoFoco = focoCiclo?.avaliacao_base_id ? myidAvaliacoes.find((a: any) => a.id === focoCiclo.avaliacao_base_id) : undefined;
-  const retesteDisponivel = !!(focoCiclo && ultimaMyID && baseDoFoco && baseDoFoco.id !== ultimaMyID.id);
+  const retesteDisponivel = !!(focoCiclo && atualDoFoco && baseDoFoco && baseDoFoco.id !== atualDoFoco.id);
   const comparacaoFoco = retesteDisponivel
-    ? compararFoco(baseDoFoco!.myid_analysis, ultimaMyID!.myid_analysis, focoCiclo!.dimensoes)
+    ? compararFoco(baseDoFoco!.myid_analysis, atualDoFoco!.myid_analysis, focoCiclo!.dimensoes)
     : null;
 
   // ── Chart data
@@ -731,7 +750,7 @@ export default function PatientIntegratedDashboard({
                                 <MyIDOndeEstaoAsPerdas analise={analisePerdas} rotulos={rotulosDosAneis} scoreExibido={myidScore} />
                               </div>
                             )}
-                            {ultimaMyID && (
+                            {atualDoFoco && (
                               <div className="mb-3">
                                 <MyIDFocoCiclo
                                   dimensoes={focoCiclo?.dimensoes ?? null}
@@ -741,8 +760,10 @@ export default function PatientIntegratedDashboard({
                                   baseAusente={!!focoCiclo && !baseDoFoco}
                                   retesteDisponivel={retesteDisponivel}
                                   ocupado={focoOcupado}
+                                  carregando={focoCarregando}
+                                  erroAoCarregar={focoErro}
                                   onEncerrar={() => encerrarFoco.mutate()}
-                                  onReiniciar={() => reiniciarFoco.mutate(ultimaMyID.id)}
+                                  onReiniciar={() => reiniciarFoco.mutate(atualDoFoco.id)}
                                 />
                               </div>
                             )}
@@ -775,12 +796,12 @@ export default function PatientIntegratedDashboard({
                                         <span className="text-muted-foreground"> → {a.acao}</span>
                                       </span>
                                     </span>
-                                    {ultimaMyID && (
+                                    {atualDoFoco && (
                                       <BotaoFocoDoCiclo
                                         rotulo={ring.label}
                                         ativo={!!focoCiclo?.dimensoes.includes(ring.scoreKey)}
-                                        desabilitado={focoOcupado}
-                                        onAlternar={() => alternarFoco.mutate({ dimensao: ring.scoreKey, avaliacaoAtualId: ultimaMyID.id })}
+                                        desabilitado={focoOcupado || focoCarregando || focoErro}
+                                        onAlternar={() => alternarFoco.mutate({ dimensao: ring.scoreKey, avaliacaoAtualId: atualDoFoco.id })}
                                       />
                                     )}
                                   </li>

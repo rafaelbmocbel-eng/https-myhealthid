@@ -2,7 +2,7 @@
 -- a tela mostra quanto cada uma variou em pontos perdidos em relação ao MyID em que o ciclo começou.
 -- Só o profissional dono do paciente lê e grava; o paciente não vê esta tabela.
 
--- Dimensões válidas: as 11 do MyID, de 1 a 3, sem repetição. Fica no banco para a regra valer para qualquer cliente
+-- Dimensões válidas: as 11 do MyID, de 1 a 3, sem repetição e numa lista de uma dimensão só (array_ndims = 1). Fica no banco para a regra valer para qualquer cliente
 -- (tela, importação, SQL). Devolve false (e não NULL) para entrada nula ou com elemento nulo, porque um CHECK
 -- trata NULL como aprovado.
 CREATE OR REPLACE FUNCTION public.myid_dimensoes_validas(p_dimensoes text[])
@@ -14,6 +14,7 @@ SET search_path = public, pg_temp
 AS $$
   SELECT coalesce(
     p_dimensoes IS NOT NULL
+    AND array_ndims(p_dimensoes) = 1
     AND cardinality(p_dimensoes) BETWEEN 1 AND 3
     AND NOT EXISTS (SELECT 1 FROM unnest(p_dimensoes) d WHERE d IS NULL)
     AND p_dimensoes <@ ARRAY['D', 'EFI', 'P', 'I', 'R', 'C', 'N', 'AF', 'HID', 'NUT', 'ERG']::text[]
@@ -76,6 +77,7 @@ CREATE POLICY "Profissional edita o foco do ciclo"
   USING (auth.uid() = terapeuta_id)
   WITH CHECK (
     auth.uid() = terapeuta_id
+    AND EXISTS (SELECT 1 FROM public.pacientes p WHERE p.id = paciente_id AND p.terapeuta_id = auth.uid())
     AND (
       avaliacao_base_id IS NULL
       OR EXISTS (SELECT 1 FROM public.avaliacoes_identidade a WHERE a.id = avaliacao_base_id AND a.paciente_id = myid_foco_ciclo.paciente_id)

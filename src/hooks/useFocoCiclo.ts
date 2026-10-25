@@ -19,6 +19,10 @@ export const chaveFocoCiclo = (pacienteId: string | undefined) => ['myid-foco-ci
 // A tabela myid_foco_ciclo ainda não está nos tipos gerados do Supabase.
 const tabela = () => (supabase as any).from('myid_foco_ciclo');
 
+// O CHECK do banco exige encerrado_em >= criado_em, e criado_em nasce com o relógio do servidor: com o relógio do aparelho
+// atrasado, encerrar logo depois de criar falharia. Nunca envia um instante anterior ao início do ciclo.
+const agoraNaoAntesDe = (inicio: string | undefined) => new Date(Math.max(Date.now(), inicio ? Date.parse(inicio) || 0 : 0)).toISOString();
+
 /** Foco do ciclo do MyID de um paciente: o ciclo aberto do profissional logado e as ações sobre ele. */
 export function useFocoCiclo(pacienteId: string | undefined, habilitado: boolean) {
   const { user } = useAuth();
@@ -54,7 +58,7 @@ export function useFocoCiclo(pacienteId: string | undefined, habilitado: boolean
         if (error) throw error;
       } else if (proximo.dimensoes.length === 0) {
         // Tirar a última dimensão encerra o ciclo (o ciclo encerrado guarda o histórico).
-        const { error } = await tabela().update({ encerrado_em: new Date().toISOString() }).eq('id', atual.id);
+        const { error } = await tabela().update({ encerrado_em: agoraNaoAntesDe(atual.criado_em) }).eq('id', atual.id);
         if (error) throw error;
       } else {
         const { error } = await tabela().update({ dimensoes: proximo.dimensoes }).eq('id', atual.id);
@@ -75,7 +79,7 @@ export function useFocoCiclo(pacienteId: string | undefined, habilitado: boolean
     mutationFn: async () => {
       const atual = consulta.data;
       if (!atual) return;
-      const { error } = await tabela().update({ encerrado_em: new Date().toISOString() }).eq('id', atual.id);
+      const { error } = await tabela().update({ encerrado_em: agoraNaoAntesDe(atual.criado_em) }).eq('id', atual.id);
       if (error) throw error;
     },
     onError: aoFalhar,
@@ -99,6 +103,7 @@ export function useFocoCiclo(pacienteId: string | undefined, habilitado: boolean
   return {
     foco: consulta.data ?? null,
     carregando: consulta.isLoading,
+    erro: consulta.isError,
     alternar,
     encerrar,
     reiniciar,
