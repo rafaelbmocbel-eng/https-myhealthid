@@ -23,6 +23,8 @@ import { scoresDoResultado } from '@/utils/myid/scores';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDDimensionDrillDown from '@/components/myid/MyIDDimensionDrillDown';
+import { MyIDOndeEstaoAsPerdas, MyIDFechamentoDaConta } from '@/components/myid/MyIDPrioridadePerdas';
+import { analisarPerdas } from '@/utils/myid/prioridadePerdas';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
 import { generateRehabInsights } from '@/utils/tissueHealingTimelines';
 import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
@@ -403,6 +405,9 @@ export default function PatientIntegratedDashboard({
     ? getMyIDFingerprintData(scores, myidLinkResult?.perdas_calculadas ?? (ultimaMyID?.myid_analysis as any)?.perdas_calculadas)
     : [];
   const severityClass = getMyIDSeverityColor(classificacao);
+  // Fechamento da conta e concentração das perdas: só o profissional vê; registros antigos sem perdas gravadas voltam null.
+  const analisePerdas = isProfessional ? analisarPerdas(resultadoArmazenado) : null;
+  const rotulosDosAneis = Object.fromEntries(rings.map(r => [r.scoreKey, r.label]));
 
   // ── Chart data
   const getMyIDDate = (av: any) => av.data_avaliacao || format(parseISO(av.created_at), 'dd/MM/yyyy');
@@ -709,6 +714,11 @@ export default function PatientIntegratedDashboard({
                         const totalPerdido = ranked.reduce((s, x) => s + x.perda, 0);
                         return (
                           <div>
+                            {analisePerdas && (
+                              <div className="mb-3">
+                                <MyIDOndeEstaoAsPerdas analise={analisePerdas} rotulos={rotulosDosAneis} scoreExibido={myidScore} />
+                              </div>
+                            )}
                             <ol className="space-y-2">
                               {ranked.map(({ ring, perda, critico }, idx) => {
                                 const a = ACTION_MAP[ring.scoreKey];
@@ -742,6 +752,9 @@ export default function PatientIntegratedDashboard({
                                 );
                               })}
                             </ol>
+                            {analisePerdas ? (
+                              <MyIDFechamentoDaConta analise={analisePerdas} corDaNota={interpretation.color} />
+                            ) : (
                             <div className="mt-3 rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-[12.5px] space-y-0.5">
                               <p className="flex items-center justify-between">
                                 <span className="text-muted-foreground">Total perdido</span>
@@ -759,6 +772,7 @@ export default function PatientIntegratedDashboard({
                                 </p>
                               )}
                             </div>
+                            )}
                           </div>
                         );
                       })()}
