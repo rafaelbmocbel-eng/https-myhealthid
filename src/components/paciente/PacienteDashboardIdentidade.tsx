@@ -507,7 +507,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
   const patientName = `${paciente.nome} ${paciente.sobrenome}`;
 
   // Buscar avaliações por voz do paciente
-  const { data: voiceAvaliacoes = [], refetch: refetchVoice } = useQuery({
+  const { data: voiceAvaliacoes = [], refetch: refetchVoice, isLoading: carregandoVoz } = useQuery({
     queryKey: ['avaliacoes-voz-presencial', user?.id, paciente.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -625,7 +625,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
   // Só a avaliação do profissional conta: o MyID e o relato que o paciente responde sozinho não a substituem.
   const jaAvaliou = voiceAvaliacoes.length > 0;
 
-  const BotaoAcao = subTabAtiva !== 'myid' && bp.visivel && !jaAvaliou ? (
+  const BotaoAcao = subTabAtiva !== 'myid' && bp.visivel && !jaAvaliou && !carregandoVoz ? (
     <div className={`flex gap-3 ${btnDirClass} ${btnAlignClass}`}>
       <Button
         size={btnSizeMap[bp.tamanho]}

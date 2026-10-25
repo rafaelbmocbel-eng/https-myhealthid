@@ -15,6 +15,7 @@ import AvaliacaoSecoesEditaveis from './AvaliacaoSecoesEditaveis';
 import { reprocessarComplemento, invalidarCachesAvaliacaoVoz } from '@/utils/voiceAssessment/reprocessarComplemento';
 import { atualizarPlanoComEdicoes, condutasProfissional } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
 import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
+import AlertaRelatoDoPaciente from './AlertaRelatoDoPaciente';
 
 interface Props {
   pacienteId: string;
@@ -136,13 +137,14 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     );
   }
 
-  if (!latest) return null;
+  if (!latest) return <AlertaRelatoDoPaciente pacienteId={pacienteId} />;
 
   const mode = (latest as any).resultado?._meta?.mode === 'written' ? 'written' : 'voice';
   const hasResult = !!(latest as any).resultado;
 
   return (
     <section className="space-y-4">
+      <AlertaRelatoDoPaciente pacienteId={pacienteId} />
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 text-caption text-muted-foreground">
           <FileText className="icon-xs" />

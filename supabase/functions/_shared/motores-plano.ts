@@ -88,6 +88,10 @@ export interface MotoresClinicos {
   myidRedFlags: boolean;
   /** Red flags da avaliação presencial/voz feita pelo profissional. */
   avaliacaoRedFlags?: boolean;
+  /** Último relato que o próprio paciente fez no portal. Não vira "a avaliação": só alimenta a triagem de segurança. */
+  relatoPaciente?: unknown | null;
+  /** Red flags nesse relato. Qualquer lista não vazia conta: falso negativo é risco de saúde. */
+  relatoRedFlags?: boolean;
   /** Fontes que falharam ao carregar (erro do banco, não "sem registro"). */
   falhasLeitura: string[];
 }
@@ -144,7 +148,7 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
     scores: null, queixa: null, historia: null, condicoes: null, presencial: [], exames: [], questionarios: [], avaliacaoVoz: null,
     paciente: { dataNascimento: null, idade: null, genero: null, sexo: null },
     medicamentos: null, alergias: null, historicoClinico: null, anamnese: null, triagemAutodeclarada: null,
-    parq: null, myidRedFlags: false, avaliacaoRedFlags: false, falhasLeitura: [],
+    parq: null, myidRedFlags: false, avaliacaoRedFlags: false, relatoPaciente: null, relatoRedFlags: false, falhasLeitura: [],
   };
   if (!pacienteId) return vazio;
 
@@ -266,7 +270,9 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
     triagemAutodeclarada: objetoOuNulo(anamnese?.triagem),
     parq: parqUlt ? { classificacao: parqUlt.classificacao, respostas: parqUlt.respostas } : null,
     myidRedFlags,
-    avaliacaoRedFlags: avaliacaoTemRedFlags(avRes?.data?.resultado) || avaliacaoTemRedFlags(avPacRes?.data?.resultado),
+    avaliacaoRedFlags: avaliacaoTemRedFlags(avRes?.data?.resultado),
+    relatoPaciente: (avPacRes?.data?.resultado as SB) ?? null,
+    relatoRedFlags: avaliacaoTemRedFlags(avPacRes?.data?.resultado),
     falhasLeitura,
   };
 }
@@ -645,6 +651,8 @@ export function montarEntradaTriagem(a: ParametrosEntradaTriagem): EntradaTriage
       empurra(e.notas_clinicas);
     }
     empurra(formatAvaliacaoVoz(m.avaliacaoVoz as SB));
+    // O relato do paciente não é a avaliação, mas o que ele contou entra na varredura de segurança.
+    empurra(formatAvaliacaoVoz(m.relatoPaciente as SB));
   }
   (a.textosPedido ?? []).forEach(empurra);
 
@@ -668,6 +676,7 @@ export function montarEntradaTriagem(a: ParametrosEntradaTriagem): EntradaTriage
     parq: m?.parq ?? null,
     myidRedFlags: !!m?.myidRedFlags,
     avaliacaoRedFlags: !!m?.avaliacaoRedFlags,
+    relatoRedFlags: !!m?.relatoRedFlags,
     chamador: a.chamador,
     falhasLeitura: m?.falhasLeitura ?? [],
     agora: a.agora,

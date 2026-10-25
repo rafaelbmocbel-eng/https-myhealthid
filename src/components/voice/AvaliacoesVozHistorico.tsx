@@ -44,6 +44,7 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
   const { data: avaliacoes = [], isLoading } = useQuery({
     queryKey: ['avaliacoes-voz', pacienteId, user?.id],
     queryFn: async () => {
+      // @origem-avaliacao: lista tudo de propósito; o relato do paciente aparece rotulado ('Relato do paciente').
       const { data, error } = await supabase
         .from('avaliacoes_voz')
         .select('id, created_at, servico, classificacao_severidade, queixa_principal, transcricao, resultado')
@@ -56,8 +57,11 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
     enabled: !!user && !!pacienteId,
   });
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Excluir esta avaliação? Esta ação não pode ser desfeita.')) return;
+  const handleDelete = async (id: string, doPaciente = false) => {
+    const aviso = doPaciente
+      ? 'Este é o relato que o próprio paciente enviou pelo portal. Excluir apaga o dado do paciente e ele poderá contar o caso de novo. Continuar? Esta ação não pode ser desfeita.'
+      : 'Excluir esta avaliação? Esta ação não pode ser desfeita.';
+    if (!confirm(aviso)) return;
     setDeletingId(id);
     try {
       const { error } = await supabase.from('avaliacoes_voz').delete().eq('id', id);
@@ -157,7 +161,10 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
       <section className="space-y-2">
         <h3 className="text-caption font-medium text-muted-foreground flex items-center gap-1.5">
           <FileText className="icon-xs" />
-          Avaliações salvas ({avaliacoes.length})
+          Avaliações salvas ({soDoProfissional(avaliacoes).length})
+          {avaliacoes.length > soDoProfissional(avaliacoes).length && (
+            <span className="font-normal"> · {avaliacoes.length - soDoProfissional(avaliacoes).length} relato(s) do paciente</span>
+          )}
         </h3>
         <div className="space-y-2">
           {avaliacoes.map((a) => {
@@ -211,7 +218,7 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
                       size="sm"
                       variant="ghost"
                       className="h-7 px-2 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(a.id)}
+                      onClick={() => handleDelete(a.id, doPaciente)}
                       disabled={deletingId === a.id}
                       title="Excluir"
                     >

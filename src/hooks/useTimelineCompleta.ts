@@ -182,6 +182,7 @@ export function useTimelineCompleta(pacienteId: string | undefined) {
       });
 
       // 8. Avaliações de voz
+      // @origem-avaliacao: lista tudo de propósito; o relato do paciente aparece rotulado ('Relato do paciente (portal)').
       const { data: vozes } = await supabase.from('avaliacoes_voz')
         .select('id, created_at, classificacao_severidade, queixa_principal, resultado')
         .eq('paciente_id', pid).order('created_at', { ascending: false }).limit(20);

@@ -205,18 +205,41 @@ describe('carregarMotoresClinicos', () => {
       const m = await carregarMotoresClinicos(admin, 'p1');
       expect(m.avaliacaoVoz).toEqual(avaliacaoDoProfissional);
       expect(m.avaliacaoRedFlags).toBe(false);
+      expect(m.relatoPaciente).toEqual(relatoDoPaciente());
+      expect(m.relatoRedFlags).toBe(false);
       expect(m.falhasLeitura).toEqual([]);
       expect(consultas.avaliacoes_voz).toHaveLength(2);
     });
 
-    it('um red flag do relato do paciente continua acendendo a triagem (falso negativo é risco de saúde)', async () => {
+    it('um red flag do relato do paciente acende a triagem, com a origem certa (relato, não avaliação presencial)', async () => {
       const { admin } = fakeAdmin({
         pacientes: { data: pacienteOk },
-        avaliacoes_voz: voz({ data: { resultado: relatoDoPaciente({ red_flags: ['dor noturna'] }) } }),
+        avaliacoes_voz: voz({ data: { resultado: relatoDoPaciente({ red_flags: ['dor torácica ao esforço'] }) } }),
       });
       const m = await carregarMotoresClinicos(admin, 'p1');
-      expect(m.avaliacaoRedFlags).toBe(true);
+      expect(m.avaliacaoRedFlags).toBe(false);
+      expect(m.relatoRedFlags).toBe(true);
       expect(m.avaliacaoVoz).toEqual(avaliacaoDoProfissional);
+      const t = avaliarTriagem(montarEntradaTriagem({ foco: 'treino', chamador: 'profissional', motores: m }));
+      const motivo = t.motivos.find((x) => x.codigo === 'avaliacao_red_flags');
+      expect(motivo).toBeDefined();
+      expect(motivo!.origem).toContain('relato_paciente');
+      expect(motivo!.origem).not.toContain('avaliacao_presencial');
+      expect(motivo!.detalhe).toContain('relato que o paciente fez no portal');
+    });
+
+    it('o texto do relato entra na varredura de segurança, mesmo não sendo a avaliação', async () => {
+      const { admin } = fakeAdmin({
+        pacientes: { data: pacienteOk },
+        avaliacoes_voz: voz({ data: { resultado: relatoDoPaciente({ red_flags: ['dor torácica ao esforço'] }) } }),
+      });
+      const m = await carregarMotoresClinicos(admin, 'p1');
+      const entrada = montarEntradaTriagem({ foco: 'treino', chamador: 'profissional', motores: m });
+      expect(entrada.textos.join(' ')).toContain('dor torácica ao esforço');
+      expect(entrada.relatoRedFlags).toBe(true);
+      expect(entrada.avaliacaoRedFlags).toBe(false);
+      // e o texto do relato nunca vira "a avaliação" que alimenta o plano
+      expect(textoPresencial(m, 'treino')).not.toContain('dor torácica');
     });
 
     it('o red flag da avaliação do profissional vale mesmo quando existe um relato mais novo sem alerta', async () => {
@@ -229,6 +252,9 @@ describe('carregarMotoresClinicos', () => {
       });
       const m = await carregarMotoresClinicos(admin, 'p1');
       expect(m.avaliacaoRedFlags).toBe(true);
+      expect(m.relatoRedFlags).toBe(false);
+      const t = avaliarTriagem(montarEntradaTriagem({ foco: 'treino', chamador: 'profissional', motores: m }));
+      expect(t.motivos.find((x) => x.codigo === 'avaliacao_red_flags')!.origem).toContain('avaliacao_presencial');
     });
 
     it('erro na leitura do relato do paciente vira falha de leitura (fail-closed)', async () => {

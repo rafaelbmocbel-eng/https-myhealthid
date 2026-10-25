@@ -24,7 +24,7 @@ import ProntuarioReviewDialog from './ProntuarioReviewDialog';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 import { REGIONS as BODY_REGIONS, STRUCTURES as BODY_STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { regioesAtivasNoAvatar } from '@/utils/voiceAssessment/reprocessarComplemento';
-import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
+import { FILTRO_SO_PROFISSIONAL, origemEModoDaAvaliacao } from '@/utils/voiceAssessment/origemAvaliacao';
 
 const DEFAULT_PAIN_CATALOG = {
   regions: BODY_REGIONS.map((r: any) => ({
@@ -743,12 +743,16 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       // Ao editar uma avaliação existente, não há painMap/myidContext na tela:
       // sem o merge, abrir "Editar" apagava o mapa de dor salvo.
       const prevMeta = ((assessmentToSave as any)?._meta || {}) as Record<string, any>;
+      // Reprocessar com IA devolve um resultado sem _meta: a origem do registro aberto não pode se perder, senão
+      // um relato que o paciente fez no portal viraria uma avaliação do profissional.
+      const metaDoRegistro = ((initialRecord?.resultado as any)?._meta || {}) as Record<string, any>;
+      const origemEModo = origemEModoDaAvaliacao(prevMeta, metaDoRegistro, origem, mode);
       const resultadoComOrigem = {
         ...normalizeJson(assessmentToSave),
         _meta: {
           ...prevMeta,
-          origem: prevMeta.origem ?? origem,
-          mode: prevMeta.mode ?? mode,
+          origem: origemEModo.origem,
+          mode: origemEModo.mode,
           savedAt: new Date().toISOString(),
           mapa_dor: effectivePainMap ?? prevMeta.mapa_dor ?? null,
           myid_contexto: myidContext || prevMeta.myid_contexto || null,
