@@ -11,7 +11,8 @@ describe('migração da lista de clientes do financeiro CASSI', () => {
     const todas = readdirSync(pasta).filter((f) => f.endsWith('.sql')).sort();
     expect(todas).toContain(arquivo);
     expect(arquivo > '20261025130000_myid_foco_ciclo.sql').toBe(true);
-    expect(todas.filter((f) => f > arquivo && f.startsWith('2026102519'))).toEqual([]); // sem timestamp repetido
+    // sem timestamp repetido: nenhuma outra migração com a mesma versão (os 14 primeiros dígitos)
+    expect(todas.filter((f) => f !== arquivo && f.slice(0, 14) === arquivo.slice(0, 14))).toEqual([]);
   });
 
   it('uma linha por profissional, mês e cliente; mês só no formato AAAA-MM com 01 a 12', () => {
@@ -42,6 +43,16 @@ describe('migração da lista de clientes do financeiro CASSI', () => {
     }
     expect(sql).toMatch(/FOR SELECT TO authenticated\s+USING \(auth\.uid\(\) = terapeuta_id\)/);
     expect(sql).toMatch(/FOR DELETE TO authenticated\s+USING \(auth\.uid\(\) = terapeuta_id\)/);
+  });
+
+  it('authenticated recebe EXATAMENTE SELECT, INSERT e DELETE: nenhum outro privilégio (TRUNCATE passa por cima da segurança por linha)', () => {
+    const concessoes = [...sql.matchAll(/GRANT\s+([^;]+?)\s+ON\s+(?:TABLE\s+)?public\.cassi_financeiro_clientes\s+TO\s+([^;]+);/g)]
+      .map((m) => ({ privilegios: m[1].replace(/\s+/g, ' ').toUpperCase(), para: m[2].split(',').map((x) => x.trim().toLowerCase()) }));
+    const paraAuthenticated = concessoes.filter((c) => c.para.includes('authenticated'));
+    expect(paraAuthenticated.map((c) => c.privilegios)).toEqual(['SELECT, INSERT, DELETE']);
+    // Quem mais recebe algo: só o service_role (acesso do servidor).
+    const outros = concessoes.filter((c) => !c.para.includes('authenticated')).flatMap((c) => c.para);
+    expect(new Set(outros)).toEqual(new Set(['service_role']));
   });
 
   it('quem adiciona só pode apontar para cliente seu', () => {

@@ -40,6 +40,7 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
     private testes: Array<(r: Linha) => boolean> = [];
     private unico = false;
     private colunas: string[] | null = null;
+    private faixa: [number, number] | null = null;
     constructor(private tabela: string) {}
 
     // Como o PostgREST: só devolve as colunas pedidas ("*" e relações embutidas devolvem a linha inteira).
@@ -69,6 +70,7 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
     lt(c: string, v: unknown) { return this.filtro('lt', [c, v], (r) => comparar(r[c], v) < 0); }
     order() { return this; }
     limit() { return this; }
+    range(de: number, ate: number) { this.faixa = [de, ate]; return this; }
     update(p: unknown) { this.tipo = 'update'; this.payload = p; return this; }
     insert(p: unknown) { this.tipo = 'insert'; this.payload = p; return this; }
     upsert(p: unknown, o?: unknown) { this.tipo = 'upsert'; this.payload = p; this.opcoes = o; return this; }
@@ -87,7 +89,9 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
       const casa = (r: Linha) => this.testes.every((t) => t(r));
       if (this.tipo === 'select') {
         const cols = this.colunas;
-        const achadas = linhas.filter(casa).map((l) => (cols ? Object.fromEntries(cols.map((c) => [c, l[c]])) : { ...l }));
+        const faixa = this.faixa;
+        const filtradas = linhas.filter(casa);
+        const achadas = (faixa ? filtradas.slice(faixa[0], faixa[1] + 1) : filtradas).map((l) => (cols ? Object.fromEntries(cols.map((c) => [c, l[c]])) : { ...l }));
         return { data: this.unico ? (achadas[0] ?? null) : achadas, error: null };
       }
       if (this.tipo === 'update') {

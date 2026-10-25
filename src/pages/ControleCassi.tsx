@@ -340,11 +340,14 @@ export default function ControleCassi() {
   // Dar baixa: marca que a(s) guia(s) foram pedidas → saem de "Pedir guia".
   const darBaixaPedidos = async (ids: string[]): Promise<boolean> => {
     if (!ids.length) return false;
+    const quandoBaixa = new Date().toISOString();
     const { error } = await (supabase as any).from('pacientes')
-      .update({ guia_solicitada_em: new Date().toISOString(), cassi_pedir_guia: false }).in('id', ids);
+      .update({ guia_solicitada_em: quandoBaixa, cassi_pedir_guia: false }).in('id', ids);
     if (error) { toast.error('Erro ao dar baixa: ' + error.message); return false; }
     toast.success(`${ids.length} pedido(s) registrado(s)`);
-    qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
+    const chave = ['cassi-pacientes', user?.id];
+    qc.setQueryData<Paciente[]>(chave, (old) => old?.map((x) => (ids.includes(x.id) ? { ...x, guia_solicitada_em: quandoBaixa, cassi_pedir_guia: false } : x)));
+    qc.invalidateQueries({ queryKey: chave });
     return true;
   };
   // Desfazer é o inverso exato da baixa: o cliente volta para a lista do pedido.
@@ -1022,6 +1025,8 @@ export default function ControleCassi() {
             qc.invalidateQueries({ queryKey: ['cassi-pacientes', user?.id] });
             qc.invalidateQueries({ queryKey: ['guias-cassi', user?.id] });
             qc.invalidateQueries({ queryKey: ['cassi-financeiro-clientes', user?.id] });
+            // As sessões do duplicado mudaram de cliente: tudo o que vem da agenda precisa ser relido.
+            for (const k of ['cassi-agendamentos-mes', 'cassi-ags-trend', 'cassi-ags-guia', 'cassi-ags-guia-controle']) qc.invalidateQueries({ queryKey: [k] });
             setCadastro(null);
           }}
           onEncerrar={async (id, motivo) => { await encerrarCliente(id, motivo); setCadastro(null); }}
@@ -1811,7 +1816,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     queryFn: async () => {
       const t = normalizarBusca(mergeBusca);
       const { data } = await (supabase as any).from('pacientes')
-        .select('id, nome, sobrenome, carteirinha, codigos_cassi, cassi_diagnostico, guias_por_mes, cassi_confirmado_mes, plano_saude')
+        .select('id, nome, sobrenome, carteirinha, codigos_cassi, cassi_diagnostico, guias_por_mes, cassi_confirmado_mes, plano_saude, cassi_pedir_guia, guia_solicitada_em')
         .eq('terapeuta_id', user!.id).eq('ativo', true).neq('id', paciente!.id)
         .order('nome', { ascending: true }).limit(1000);
       // Filtro por nome no cliente (insensível a acento/caixa).
@@ -1847,6 +1852,9 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         // do mês se qualquer um dos dois estiver confirmado.
         guias_por_mes: Math.max(paciente.guias_por_mes || 1, alvo.guias_por_mes || 1),
         cassi_confirmado_mes: paciente.cassi_confirmado_mes || alvo.cassi_confirmado_mes || null,
+        // Se um dos dois estava na lista de "Pedir guias" ou já tinha o pedido feito, quem fica herda isso.
+        cassi_pedir_guia: !!(paciente.cassi_pedir_guia || alvo.cassi_pedir_guia),
+        guia_solicitada_em: [paciente.guia_solicitada_em, alvo.guia_solicitada_em].filter(Boolean).sort().pop() || null,
         cassi_encerrado_em: null, cassi_encerrado_motivo: null,
       }).eq('id', alvo.id);
       if (p.error) throw p.error;
@@ -2896,6 +2904,10 @@ function FinanceiroCassi({ onAbrirGuia }: {
 
       {isLoading ? (
         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : erroAgenda ? (
+        <p className="text-center text-sm text-rose-600 dark:text-rose-400 py-10" role="alert">
+          Não consegui carregar a agenda deste mês, então o cálculo não está completo. Atualize a página e tente de novo.
+        </p>
       ) : calc.linhas.length === 0 ? (
         <p className="text-center text-sm text-muted-foreground py-10">
           Nenhuma sessão concluída na agenda neste mês.<br />
@@ -3766,7 +3778,7 @@ function ClientesCassi({ pacientes, guias, onCadastro, onNovo, onGuia, onDefinir
                     )}
                     {(vigente || ultima) && (
                       <DropdownMenuItem onClick={() => onGuia(p, vigente || ultima)}>
-                        <FileText className="h-3.5 w-3.5 mr-2" /> Ver guia (vigente)
+                        <FileText className="h-3.5 w-3.5 mr-2" /> {vigente ? 'Ver guia (vigente)' : 'Ver última guia'}
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={() => onGuia(p, null)}>

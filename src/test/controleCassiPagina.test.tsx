@@ -80,7 +80,7 @@ function montar() {
   );
 }
 
-const norm = (t: string | null | undefined) => (t || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const norm = (t: string | null | undefined) => (t || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 const aba = (nome: RegExp) => screen.getByRole('button', { name: nome });
 const abrirAba = (nome: RegExp) => fireEvent.click(aba(nome));
 const escritasEm = (tabela: string) => h.banco.escritas().filter((o) => o.tabela === tabela);
@@ -776,6 +776,341 @@ describe('revisão: Faturamento', () => {
     expect(lista.filter((l) => l.paciente_id === 'p2')).toEqual([]); // nada ficou apontando para o duplicado
     expect(lista.filter((l) => l.paciente_id === 'p3').map((l) => l.mes).sort()).toEqual(['2026-09', '2026-10']);
     expect(h.banco.tabelas.pacientes.find((x) => x.id === 'p2')?.ativo).toBe(false);
+  });
+});
+
+
+const pausa = (ms = 60) => new Promise((r) => setTimeout(r, ms));
+
+async function juntarBrunoComCarla() {
+  montar();
+  await screen.findByText('Bruno Lima');
+  await abrirMenuDe('Bruno Lima');
+  fireEvent.click(screen.getByRole('menuitem', { name: /Editar cadastro/ }));
+  fireEvent.change(await screen.findByPlaceholderText('Buscar o cadastro certo pelo nome…'), { target: { value: 'carla' } });
+}
+
+describe('revisão (rodada 2): reforço dos testes', () => {
+  it('juntar: se gravar a lista do mês falhar, nada é apagado e o duplicado continua ativo', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push({ id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p2' });
+    await juntarBrunoComCarla();
+    h.banco.falharEscritaQuando((op) => op.tabela === 'cassi_financeiro_clientes' && op.tipo === 'upsert', 'sem permissão');
+    fireEvent.click(await screen.findByRole('button', { name: /Carla Dias.*Juntar aqui/ }));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith(expect.stringContaining('Erro ao juntar')));
+    expect(h.banco.tabelas.pacientes.find((x) => x.id === 'p2')?.ativo).toBe(true);
+    expect(h.banco.tabelas.cassi_financeiro_clientes.filter((l) => l.paciente_id === 'p2')).toHaveLength(1);
+  });
+
+  it('juntar: se apagar as linhas do duplicado falhar, aborta antes de desativar o duplicado', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push({ id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p2' });
+    await juntarBrunoComCarla();
+    h.banco.falharEscritaQuando((op) => op.tabela === 'cassi_financeiro_clientes' && op.tipo === 'delete', 'sem permissão');
+    fireEvent.click(await screen.findByRole('button', { name: /Carla Dias.*Juntar aqui/ }));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith(expect.stringContaining('Erro ao juntar')));
+    expect(h.banco.tabelas.pacientes.find((x) => x.id === 'p2')?.ativo).toBe(true);
+  });
+
+  it('juntar: leva todos os meses do duplicado, inclusive o que o cliente que fica não tinha em lugar nenhum', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(
+      { id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p2' },
+      { id: 'v2', terapeuta_id: 'prof-1', mes: '2026-09', paciente_id: 'p2' },
+      { id: 'v4', terapeuta_id: 'prof-1', mes: '2026-08', paciente_id: 'p2' },
+      { id: 'v3', terapeuta_id: 'prof-1', mes: '2026-09', paciente_id: 'p3' },
+    );
+    await juntarBrunoComCarla();
+    fireEvent.click(await screen.findByRole('button', { name: /Carla Dias.*Juntar aqui/ }));
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Cadastros juntados — duplicado removido'));
+    const lista = h.banco.tabelas.cassi_financeiro_clientes;
+    expect(lista.filter((l) => l.paciente_id === 'p3').map((l) => l.mes).sort()).toEqual(['2026-08', '2026-09', '2026-10']);
+    expect(lista.filter((l) => l.paciente_id === 'p2')).toEqual([]);
+  });
+
+  it('relatório de OUTRO mês COM lista: as guias dos clientes dessa lista vêm marcadas', async () => {
+    h.banco.tabelas.guias_cassi.push(guia('gB', 'p2', 'Bruno', 'Lima', { data_pedido: '2026-08-18', data_resposta: '2026-08-20', sessoes_autorizadas: 10, sessoes_realizadas: 10, status: 'finalizada' }));
+    h.banco.tabelas.cassi_financeiro_clientes.push({ id: 'v9', terapeuta_id: 'prof-1', mes: '2026-09', paciente_id: 'p2' });
+    montar();
+    await irParaFaturamento();
+    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
+    const dialogo = await screen.findByRole('dialog');
+    await within(dialogo).findByText(/Não há clientes na lista de outubro 2026/);
+    fireEvent.change(within(dialogo).getByDisplayValue('2026-10'), { target: { value: '2026-09' } });
+    await waitFor(() => expect((within(dialogo).getByRole('checkbox', { name: /Bruno Lima/ }) as HTMLInputElement).checked).toBe(true));
+  });
+
+  it('enviadas ao financeiro: conta só as do mês (uma de setembro não entra em outubro)', async () => {
+    h.banco.tabelas.guias_cassi.find((g) => g.id === 'g5')!.enviada_financeiro_em = '2026-09-15';
+    montar();
+    await irParaFaturamento();
+    expect(screen.getByText('1 em outubro')).toBeTruthy();
+  });
+
+  it('cancelQueries: uma leitura atrasada de pacientes não apaga da tela quem acabou de entrar no pedido', async () => {
+    montar();
+    await irParaPedir();
+    let liberarLeitura: () => void = () => {};
+    const leitura = new Promise<void>((ok) => { liberarLeitura = ok; });
+    let atrasando = true;
+    const original = h.banco.from;
+    h.banco.from = ((tabela: string) => {
+      const q = original(tabela) as any;
+      if (tabela !== 'pacientes') return q;
+      const sel = q.select.bind(q);
+      let ehSelect = false;
+      q.select = (...a: unknown[]) => { ehSelect = true; return sel(...a); };
+      const entregar = q.then.bind(q);
+      q.then = (res: any, rej: any) => entregar((v: unknown) => (ehSelect && atrasando ? leitura.then(() => v) : v)).then(res, rej);
+      return q;
+    }) as typeof h.banco.from;
+    await buscarEEscolher('Adicionar cliente ao pedido', 'carla', /Carla Dias/);
+    await waitFor(() => expect(noPedido('Carla Dias')).toBeTruthy());
+    // a releitura disparada pela gravação de Carla está no ar (atrasada); agora entra Bruno e a gravação dele fica retida
+    let liberarBruno: () => void = () => {};
+    const retida = new Promise<void>((ok) => { liberarBruno = ok; });
+    h.banco.antesDeEscrever(async (op) => { if ((op.filtros[0]?.[2] as string[] | undefined)?.[0] === 'p2') await retida; });
+    await buscarEEscolher('Adicionar cliente ao pedido', 'bruno', /Bruno Lima/);
+    await waitFor(() => expect(noPedido('Bruno Lima')).toBeTruthy());
+    liberarLeitura(); atrasando = false;
+    await pausa(80);
+    expect(noPedido('Bruno Lima')).toBeTruthy(); // a leitura velha chegou e não pode apagar o otimista
+    liberarBruno();
+    await waitFor(() => expect(h.banco.tabelas.pacientes.find((x) => x.id === 'p2')?.cassi_pedir_guia).toBe(true));
+    expect(noPedido('Bruno Lima')).toBeTruthy();
+  });
+
+  it('dar baixa limpa as edições: diagnóstico apagado na tela volta ao do cadastro quando o pedido é desfeito', async () => {
+    h.banco.tabelas.pacientes.find((p) => p.id === 'p1')!.cassi_diagnostico = 'Lombalgia';
+    montar();
+    await irParaPedir();
+    await buscarEEscolher('Adicionar cliente ao pedido', 'ana', /Ana Souza/);
+    await waitFor(() => expect(noPedido('Ana Souza')).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: /Dar baixa \(1\)/ }));
+    await waitFor(() => expect(screen.getByText('Guias pedidas — aguardando CASSI (2)')).toBeTruthy());
+    const desfazer = screen.getAllByRole('button', { name: 'desfazer' });
+    expect(desfazer).toHaveLength(2);
+    // Ana vem antes de Elisa (ordem alfabética)
+    fireEvent.click(desfazer[0]);
+    await waitFor(() => expect(noPedido('Ana Souza')).toBeTruthy());
+    expect((screen.getByLabelText('Diagnóstico de Ana Souza') as HTMLInputElement).value).toBe('Lombalgia');
+  });
+
+  it('reativar cliente encerrado com o banco recusando: ele continua encerrado na tela', async () => {
+    montar();
+    await screen.findByText('Davi Encerrado');
+    h.banco.falharEscritaQuando((op) => op.tabela === 'pacientes', 'sem permissão');
+    await abrirMenuDe('Davi Encerrado');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Pedir guia/ }));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Erro: sem permissão'));
+    expect(screen.getAllByRole('button', { name: 'Ativar cliente' })).toHaveLength(1);
+  });
+
+  it('"Falta:" aparece para assinar/recolher/enviar e não aparece para guia já enviada', async () => {
+    const t = h.banco.tabelas;
+    t.guias_cassi.find((g) => g.id === 'g1')!.assinatura = 'inteira'; // Ana: recolher
+    t.guias_cassi.push(guia('gD', 'p4', 'Davi', 'Encerrado', { assinatura: 'inteira', recolhida_em: '2026-10-18' })); // Davi: enviar
+    t.guias_cassi.find((g) => g.id === 'g3')!.assinatura = 'inteira'; // Carla: enviada (g3 já tem enviada_financeiro_em)
+    montar();
+    await screen.findByText('Ana Souza');
+    const card = (nome: string) => norm((screen.getByText(nome).closest('div.rounded-xl') as HTMLElement).textContent);
+    expect(card('Ana Souza')).toContain('Falta: recolher guia assinada');
+    expect(card('Davi Encerrado')).toContain('Falta: enviar ao financeiro');
+    expect(card('Elisa Pedida')).toContain('Falta: assinar e recolher');
+    expect(card('Carla Dias')).not.toContain('Falta:');
+  });
+
+  it('tendência: mostra 6 meses (maio a outubro) e usa a lista de cada um; abril fica de fora', async () => {
+    const t = h.banco.tabelas;
+    t.agendamentos.push(...[10, 11].map((d) => sessao('p1', d, {}, 4)), ...[10, 11, 12, 13].map((d) => sessao('p1', d, {}, 3))); // maio (2) e abril (4)
+    t.cassi_financeiro_clientes.push({ id: 'vm', terapeuta_id: 'prof-1', mes: '2026-05', paciente_id: 'p1' }, { id: 'va', terapeuta_id: 'prof-1', mes: '2026-04', paciente_id: 'p1' });
+    montar();
+    await irParaFaturamento();
+    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    const tendencia = () => norm(screen.getByText(/Sua parte · últimos 6 meses/).closest('div.rounded-xl')?.textContent);
+    await waitFor(() => expect(tendencia()).toContain('mai'));
+    expect(tendencia()).toContain('288'); // outubro
+    expect(tendencia()).toContain('72'); // maio: 2 sessões × 80 × 0,9 × 0,5
+    expect(tendencia()).not.toContain('abr');
+    expect(tendencia()).not.toContain('144'); // abril (4 sessões) fora da janela
+  });
+
+  it('lista já carregada + releitura que falha: a lista continua na tela e não aparece alerta', async () => {
+    montar();
+    await irParaFaturamento();
+    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    const original = h.banco.from;
+    h.banco.from = ((tabela: string) => {
+      if (tabela !== 'cassi_financeiro_clientes') return original(tabela);
+      const real = original(tabela) as any;
+      const erroQ: Record<string, unknown> = {};
+      for (const m of ['eq', 'gte', 'lte']) erroQ[m] = () => erroQ;
+      erroQ.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: null, error: { message: 'sem rede' } }).then(res);
+      return { select: () => erroQ, upsert: (...a: unknown[]) => real.upsert(...a), delete: () => real.delete() };
+    }) as typeof h.banco.from;
+    await buscarEEscolher('Adicionar cliente à lista do mês', 'carla', /Carla Dias/);
+    await pausa(120);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(within(screen.getByRole('list', { name: 'Clientes na lista do mês' })).getByText('Ana Souza')).toBeTruthy();
+  });
+
+  it('agenda do mês falha: a lista diz "sessões indisponíveis" (e não "sem sessão atendida")', async () => {
+    montar();
+    await screen.findByText('Ana Souza');
+    const original = h.banco.from;
+    h.banco.from = ((tabela: string) => {
+      if (tabela !== 'agendamentos') return original(tabela);
+      const q: Record<string, unknown> = {};
+      for (const m of ['select', 'eq', 'gte', 'lt', 'lte', 'not']) q[m] = () => q;
+      q.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: null, error: { message: 'sem rede' } }).then(res);
+      return q;
+    }) as typeof h.banco.from;
+    abrirAba(/^Faturamento/);
+    await screen.findByRole('heading', { name: 'Clientes de outubro de 2026' });
+    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
+    expect(await screen.findByText('sessões indisponíveis')).toBeTruthy();
+    expect(screen.queryByText('sem sessão atendida')).toBeNull();
+  });
+
+  it('tendência: linha velha de cliente que saiu do CASSI não entra nas barras', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(
+      { id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p1' },
+      { id: 'v2', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p6' },
+    );
+    montar();
+    await screen.findByText('Ana Souza');
+    abrirAba(/^Faturamento/);
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    const tendencia = () => norm(screen.getByText(/Sua parte · últimos 6 meses/).closest('div.rounded-xl')?.textContent);
+    await waitFor(() => expect(tendencia()).toContain('288'));
+    expect(tendencia()).not.toContain('356');
+  });
+
+  it('dar baixa que falha no segundo passo não limpa o que foi editado na tela', async () => {
+    h.banco.tabelas.pacientes.find((p) => p.id === 'p1')!.cassi_diagnostico = 'Lombalgia';
+    montar();
+    await irParaPedir();
+    await buscarEEscolher('Adicionar cliente ao pedido', 'ana', /Ana Souza/);
+    await waitFor(() => expect(noPedido('Ana Souza')).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: '' } });
+    h.banco.falharEscritaQuando((op) => !!(op.payload as Linha)?.guia_solicitada_em, 'sem rede');
+    fireEvent.click(screen.getByRole('button', { name: /Dar baixa \(1\)/ }));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Erro ao dar baixa: sem rede'));
+    await pausa(40);
+    expect((screen.getByLabelText('Diagnóstico de Ana Souza') as HTMLInputElement).value).toBe('');
+  });
+
+  it('com o cache do app (staleTime 30s): juntar cadastros e voltar ao Faturamento mostra a lista já migrada', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push({ id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p2' });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000, gcTime: 5 * 60_000 }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={qc}><MemoryRouter><ControleCassi /></MemoryRouter></QueryClientProvider>);
+    await screen.findByText('Bruno Lima');
+    abrirAba(/^Faturamento/);
+    await screen.findByRole('heading', { name: 'Clientes de outubro de 2026' });
+    await screen.findByText('1 na lista');
+    abrirAba(/^Clientes$/);
+    await screen.findByText('Bruno Lima');
+    await abrirMenuDe('Bruno Lima');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Editar cadastro/ }));
+    fireEvent.change(await screen.findByPlaceholderText('Buscar o cadastro certo pelo nome…'), { target: { value: 'carla' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Carla Dias.*Juntar aqui/ }));
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Cadastros juntados — duplicado removido'));
+    abrirAba(/^Faturamento/);
+    await screen.findByRole('heading', { name: 'Clientes de outubro de 2026' });
+    await waitFor(() => expect(screen.getByText('1 na lista')).toBeTruthy());
+    expect(within(screen.getByRole('list', { name: 'Clientes na lista do mês' })).getByText('Carla Dias')).toBeTruthy();
+  });
+});
+
+describe('revisão (rodada 2): correções', () => {
+  it('dar baixa tira o cliente da lista na hora, sem esperar a releitura (senão um segundo toque regrava os dados antigos)', async () => {
+    montar();
+    await irParaPedir();
+    await buscarEEscolher('Adicionar cliente ao pedido', 'ana', /Ana Souza/);
+    await waitFor(() => expect(noPedido('Ana Souza')).toBeTruthy());
+    // A partir daqui toda releitura de pacientes fica retida: só o que a tela já sabe pode tirar a Ana da lista.
+    let soltar: () => void = () => {};
+    const retida = new Promise<void>((ok) => { soltar = ok; });
+    const original = h.banco.from;
+    h.banco.from = ((tabela: string) => {
+      const q = original(tabela) as any;
+      if (tabela !== 'pacientes') return q;
+      let ehSelect = false;
+      const sel = q.select.bind(q);
+      q.select = (...a: unknown[]) => { ehSelect = true; return sel(...a); };
+      const entregar = q.then.bind(q);
+      q.then = (res: any, rej: any) => entregar((v: unknown) => (ehSelect ? retida.then(() => v) : v)).then(res, rej);
+      return q;
+    }) as typeof h.banco.from;
+    fireEvent.click(screen.getByRole('button', { name: /Dar baixa \(1\)/ }));
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('1 pedido(s) registrado(s)'));
+    await waitFor(() => expect(noPedido('Ana Souza')).toBeNull());
+    expect(screen.getByText('Guias pedidas — aguardando CASSI (2)')).toBeTruthy();
+    soltar();
+  });
+
+  it('juntar cadastros leva também o pedido: marcador de "Pedir guias" e data do pedido feito', async () => {
+    h.banco.tabelas.pacientes.find((x) => x.id === 'p2')!.cassi_pedir_guia = true; // o duplicado (Bruno) está na lista do pedido
+    h.banco.tabelas.pacientes.find((x) => x.id === 'p3')!.guia_solicitada_em = '2026-10-12T12:00:00Z'; // Carla já tinha pedido feito
+    montar();
+    await screen.findByText('Bruno Lima');
+    await abrirMenuDe('Bruno Lima');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Editar cadastro/ }));
+    fireEvent.change(await screen.findByPlaceholderText('Buscar o cadastro certo pelo nome…'), { target: { value: 'carla' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Carla Dias.*Juntar aqui/ }));
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Cadastros juntados — duplicado removido'));
+    const carla = h.banco.tabelas.pacientes.find((x) => x.id === 'p3')!;
+    expect(carla.cassi_pedir_guia).toBe(true);
+    expect(carla.guia_solicitada_em).toBe('2026-10-12T12:00:00Z');
+  });
+
+  it('com o cache do app: depois de juntar cadastros, o Faturamento já mostra as sessões do duplicado no cliente que ficou', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push({ id: 'v1', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p2' });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000, gcTime: 5 * 60_000 }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={qc}><MemoryRouter><ControleCassi /></MemoryRouter></QueryClientProvider>);
+    await screen.findByText('Bruno Lima');
+    abrirAba(/^Faturamento/);
+    await screen.findByText('1 na lista');
+    await within(screen.getByRole('list', { name: 'Clientes na lista do mês' })).findByText('2 sessões'); // Bruno: 2 sessões
+    abrirAba(/^Clientes$/);
+    await screen.findByText('Bruno Lima');
+    await abrirMenuDe('Bruno Lima');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Editar cadastro/ }));
+    fireEvent.change(await screen.findByPlaceholderText('Buscar o cadastro certo pelo nome…'), { target: { value: 'carla' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Carla Dias.*Juntar aqui/ }));
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Cadastros juntados — duplicado removido'));
+    abrirAba(/^Faturamento/);
+    const lista = await screen.findByRole('list', { name: 'Clientes na lista do mês' });
+    await waitFor(() => expect(within(lista).getByText('6 sessões')).toBeTruthy()); // Carla: as 4 dela + as 2 de Bruno
+  });
+
+  it('quem só tem guia encerrada tem "Ver última guia" no menu (não "vigente")', async () => {
+    h.banco.tabelas.guias_cassi.push(guia('gB', 'p2', 'Bruno', 'Lima', { status: 'finalizada', data_pedido: '2026-08-01', data_resposta: '2026-08-03' }));
+    montar();
+    await screen.findByText('Bruno Lima');
+    await abrirMenuDe('Bruno Lima');
+    expect(screen.getByRole('menuitem', { name: 'Ver última guia' })).toBeTruthy();
+    expect(screen.queryByRole('menuitem', { name: /Ver guia \(vigente\)/ })).toBeNull();
+  });
+
+  it('agenda do mês que falha avisa, em vez de mostrar "nenhuma sessão" e zeros', async () => {
+    montar();
+    await irParaFaturamento();
+    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 640,00'));
+    const original = h.banco.from;
+    h.banco.from = ((tabela: string) => {
+      if (tabela !== 'agendamentos') return original(tabela);
+      const q: Record<string, unknown> = {};
+      for (const m of ['select', 'eq', 'gte', 'lt', 'lte', 'not']) q[m] = () => q;
+      q.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: null, error: { message: 'sem rede' } }).then(res);
+      return q;
+    }) as typeof h.banco.from;
+    fireEvent.click(screen.getByTitle('Mês anterior'));
+    await screen.findByRole('heading', { name: 'Clientes de setembro de 2026' });
+    await buscarEEscolher('Adicionar cliente à lista do mês', 'ana', /Ana Souza/);
+    expect((await screen.findByText(/Não consegui carregar a agenda deste mês/)).getAttribute('role')).toBe('alert');
+    expect(screen.queryByText(/Nenhuma sessão concluída na agenda neste mês/)).toBeNull();
   });
 });
 
