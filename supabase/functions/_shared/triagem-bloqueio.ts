@@ -38,6 +38,8 @@ export interface EntradaTriagem {
   myidRedFlags: boolean;
   /** Red flags registrados pelo profissional na avaliação presencial/voz. */
   avaliacaoRedFlags?: boolean;
+  /** Red flags no último relato que o próprio paciente fez no portal (ainda sem confirmação clínica). */
+  relatoRedFlags?: boolean;
   chamador: ChamadorTriagem;
   /** Idade digitada pelo usuário (sem data de nascimento). Só pode BLOQUEAR, nunca
    *  libera: um menor poderia digitar 30 e passar. */
@@ -131,7 +133,7 @@ function rotuloCondicao(codigo: CodigoCondicao): string {
     case "cirurgia_bariatrica": return "Cirurgia bariátrica";
     case "parq_atencao": return "PAR-Q+ com sinal de atenção";
     case "myid_red_flags": return "Sinais de alerta no MyID";
-    case "avaliacao_red_flags": return "Sinais de alerta na avaliação presencial";
+    case "avaliacao_red_flags": return "Sinais de alerta na avaliação ou no relato do paciente";
   }
 }
 
@@ -423,6 +425,7 @@ export function avaliarTriagem(e: EntradaTriagem): ResultadoTriagem {
   if (parq.dorNoPeito) add("cardio_pressao", "duvida", "parq", "PAR-Q+: informou dor no peito.");
   if (e.myidRedFlags) add("myid_red_flags", "certa", "myid", "O MyID registrou sinais de alerta (red flags).");
   if (e.avaliacaoRedFlags) add("avaliacao_red_flags", "certa", "avaliacao_presencial", "A avaliação presencial registrou sinais de alerta (red flags).");
+  if (e.relatoRedFlags) add("avaliacao_red_flags", "certa", "relato_paciente", "O relato que o paciente fez no portal registrou sinais de alerta (red flags), ainda sem confirmação clínica.");
 
   // 5) Varredura por palavra-chave nos textos livres e nos textos do histórico
   const fontes: { texto: string; origem: string }[] = [

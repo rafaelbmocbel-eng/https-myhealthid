@@ -19,6 +19,7 @@ import ProtocoloDiretrizEditor from './ProtocoloDiretrizEditor';
 import { createDiretrizSnapshotFromVoz, getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
 import type { DiretrizSnapshot, DiretrizSnapshotPhase } from '@/lib/protocoloSnapshot';
 import { cn } from '@/lib/utils';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 
 /* ─── Compact phase-card view (same style as assessment DiretrizCompact) ─── */
 const FASE_COLORS = [
@@ -309,6 +310,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
         .select('id, resultado, created_at')
         .eq('paciente_id', protocolo.paciente_id)
         .eq('terapeuta_id', protocolo.terapeuta_id)
+        .or(FILTRO_SO_PROFISSIONAL)
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;

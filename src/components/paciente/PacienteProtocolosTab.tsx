@@ -109,6 +109,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
         .select('id, resultado, created_at, queixa_principal, classificacao_severidade')
         .eq('paciente_id', pacienteId)
         .eq('terapeuta_id', user!.id)
+        .or(FILTRO_SO_PROFISSIONAL)
         .order('created_at', { ascending: false })
         .limit(12);
       if (error) throw error;

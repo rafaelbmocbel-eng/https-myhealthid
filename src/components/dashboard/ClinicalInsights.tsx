@@ -11,6 +11,7 @@ import {
 import { differenceInDays, parseISO, format, addDays, isWithinInterval } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 import DashboardFilters, { DEFAULT_FILTERS, DashboardFilterState, periodToDate, inPeriod } from './DashboardFilters';
 
 type Pac = {
@@ -33,7 +34,7 @@ export default function ClinicalInsights() {
       const [pac, ava, voz, ag, ses, evo, leads, pag] = await Promise.all([
         supabase.from('pacientes').select('id, nome, sobrenome, data_nascimento, ativo, created_at').eq('terapeuta_id', user!.id).eq('ativo', true),
         supabase.from('avaliacoes_identidade').select('paciente_id, myid_score, red_flags, classificacao, created_at').eq('terapeuta_id', user!.id),
-        supabase.from('avaliacoes_voz').select('paciente_id, classificacao_severidade, created_at').eq('terapeuta_id', user!.id),
+        supabase.from('avaliacoes_voz').select('paciente_id, classificacao_severidade, created_at').eq('terapeuta_id', user!.id).or(FILTRO_SO_PROFISSIONAL),
         supabase.from('agendamentos').select('paciente_id, data_inicio, status').eq('terapeuta_id', user!.id).gte('data_inicio', sinceISO),
         supabase.from('controle_sessoes').select('paciente_id, status, valor_cobrado, data_sessao, numero_sessao').eq('terapeuta_id', user!.id).gte('data_sessao', sinceISO),
         supabase.from('evolucao_paciente').select('paciente_id, myid_score, delta_id_final, data_registro').eq('terapeuta_id', user!.id),
