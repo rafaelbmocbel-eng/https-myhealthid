@@ -211,8 +211,8 @@ describe('carregarMotoresClinicos', () => {
       expect(m.relatoRedFlags).toBe(false);
       expect(m.falhasLeitura).toEqual([]);
       expect(consultas.avaliacoes_voz).toHaveLength(2);
-      // o relato é lido com limite de 5
-      expect(consultas.avaliacoes_voz.some((ops) => ops.some(([m, n]) => m === 'limit' && n === 5))).toBe(true);
+      // o relato é lido com limite de 20
+      expect(consultas.avaliacoes_voz.some((ops) => ops.some(([m, n]) => m === 'limit' && n === 20))).toBe(true);
     });
 
     it('um red flag do relato do paciente acende a triagem, com a origem certa (relato, não avaliação presencial)', async () => {

@@ -819,6 +819,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         queryClient.invalidateQueries({ queryKey: ['avaliacao-voz-latest', pacienteId] });
         queryClient.invalidateQueries({ queryKey: ['timeline_completa', pacienteId] });
         queryClient.invalidateQueries({ queryKey: ['paciente-insights-aval', pacienteId] });
+        queryClient.invalidateQueries({ queryKey: ['alerta-relato-paciente', pacienteId] });
       }
       onAssessmentComplete?.(assessmentToSave);
 

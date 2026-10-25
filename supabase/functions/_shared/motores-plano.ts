@@ -88,7 +88,7 @@ export interface MotoresClinicos {
   myidRedFlags: boolean;
   /** Red flags da avaliação presencial/voz feita pelo profissional. */
   avaliacaoRedFlags?: boolean;
-  /** Últimos relatos (até 5) que o próprio paciente fez no portal. Não viram "a avaliação": só alimentam a triagem. */
+  /** Últimos relatos (até 20) que o próprio paciente fez no portal. Não viram "a avaliação": só alimentam a triagem. */
   relatoPaciente?: unknown[] | null;
   /** Algum desses relatos traz red flag (a frase "nenhum red flag identificado" não conta). */
   relatoRedFlags?: boolean;
@@ -191,7 +191,7 @@ async function lerMotoresClinicos(admin: SB, pacienteId: string): Promise<Motore
     // (falso negativo é risco de saúde).
     admin.from("avaliacoes_voz").select("resultado, created_at")
       .eq("paciente_id", pacienteId).filter(COLUNA_ORIGEM, "in", VALOR_SO_PACIENTE)
-      .order("created_at", { ascending: false }).limit(5)
+      .order("created_at", { ascending: false }).limit(20)
       .then((r: SB) => r).catch(falhaLeitura),
     // Anamnese nutricional (+ a triagem autodeclarada, que mora em respostas.triagem).
     admin.from("nutricao_anamnese").select("respostas")
@@ -315,7 +315,7 @@ function formatAvaliacaoVoz(resultado: SB): string {
     }
   }
   const flags = [...(Array.isArray(resultado.red_flags) ? resultado.red_flags : []), ...(Array.isArray(resultado.red_flags_reforcadas) ? resultado.red_flags_reforcadas : [])]
-    .map((f: SB) => (typeof f === "string" ? f : typeof f?.titulo === "string" ? f.titulo : typeof f?.descricao === "string" ? f.descricao : ""))
+    .map((f: SB) => (typeof f === "string" ? f : typeof f?.titulo === "string" ? f.titulo : typeof f?.descricao === "string" ? f.descricao : typeof f?.flag === "string" ? f.flag : ""))
     .filter(Boolean);
   if (flags.length) partes.push(`RED FLAGS registrados na avaliação (seja conservador): ${flags.join("; ").slice(0, 800)}`);
   if (!editadas.resumo_clinico && typeof resultado.resumo_clinico === "string" && resultado.resumo_clinico.trim()) {

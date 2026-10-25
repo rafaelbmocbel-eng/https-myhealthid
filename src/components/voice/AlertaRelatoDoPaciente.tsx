@@ -10,7 +10,7 @@ interface Props {
 }
 
 // Quantos relatos recentes entram. Um relato mais novo sem alerta não apaga o alerta de um anterior.
-const RELATOS_CONSIDERADOS = 5;
+const RELATOS_CONSIDERADOS = 20;
 
 interface Relato {
   resultado: unknown;
@@ -38,7 +38,8 @@ export default function AlertaRelatoDoPaciente({ pacienteId }: Props) {
     },
   });
 
-  if (isError) {
+  // Só vira aviso de erro quando não há nada para mostrar: se uma releitura falhar, os alertas já carregados continuam à vista.
+  if (isError && !data) {
     return (
       <p role="status" className="rounded-xl border border-border/40 bg-muted/30 px-3.5 py-2 text-[12px] text-muted-foreground">
         Não foi possível verificar os alertas do relato do paciente. Recarregue a aba.
@@ -70,8 +71,7 @@ export default function AlertaRelatoDoPaciente({ pacienteId }: Props) {
         ))}
       </ul>
       <p className="text-[11.5px] text-muted-foreground">
-        É o que ele contou, ainda sem confirmação clínica. O relato completo está em Evolução e Prontuário &gt; Histórico de
-        avaliações por voz.
+        É o que ele contou, ainda sem confirmação clínica. O relato completo está em Prontuário &gt; Histórico de avaliações por voz.
       </p>
     </div>
   );

@@ -43,17 +43,17 @@ describe('AlertaRelatoDoPaciente', () => {
     expect(alerta.textContent).toContain('Fraqueza progressiva nas pernas');
     expect(alerta.textContent).toContain('sem confirmação clínica');
     expect(alerta.textContent).toMatch(/07\/10\/26/);
-    expect(alerta.textContent).toContain('Evolução e Prontuário');
+    expect(alerta.textContent).toContain('Prontuário > Histórico de avaliações por voz');
   });
 
-  it('lê só relatos do paciente, do paciente certo, os 5 mais recentes', async () => {
+  it('lê só relatos do paciente, do paciente certo, os 20 mais recentes', async () => {
     banco.linhas = [{ created_at: '2026-10-07T23:59:18Z', resultado: { red_flags: ['Febre persistente'] } }];
     montar();
     await screen.findByRole('alert');
     expect(banco.filtros).toContainEqual(['eq', 'paciente_id', 'pac-1']);
     expect(banco.filtros).toContainEqual(['filter', 'resultado->_meta->>origem', 'in', '(portal_paciente_historia,autocadastro_paciente)']);
     expect(banco.filtros).toContainEqual(['order', 'created_at', { ascending: false }]);
-    expect(banco.filtros).toContainEqual(['limit', 5]);
+    expect(banco.filtros).toContainEqual(['limit', 20]);
   });
 
   it('um relato mais novo SEM alerta não apaga o alerta de um relato anterior', async () => {
