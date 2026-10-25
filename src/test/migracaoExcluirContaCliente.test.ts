@@ -73,9 +73,9 @@ describe('migration da exclusão de conta de cliente: arquivo e dependências', 
     expect(FIM_DO_TRABALHO).toBeGreaterThan(PRIMEIRA_ALTERACAO);
   });
 
-  it('é a migration mais nova e vem depois das que criam eh_super_admin e as colunas de verificação', () => {
+  it('vem depois da última migration que existia quando foi criada e das que criam eh_super_admin e as colunas de verificação', () => {
     const todas = readdirSync(PASTA).filter((n) => n.endsWith('.sql')).sort();
-    expect(todas[todas.length - 1]).toBe(ARQUIVO);
+    expect(todas.indexOf(ARQUIVO)).toBeGreaterThan(todas.indexOf('20261018220000_modulo_aplicacoes_planos.sql'));
     expect(todas.indexOf(ARQUIVO)).toBeGreaterThan(todas.indexOf('20261008000000_plano_cliente_chancela.sql'));
     expect(todas.indexOf(ARQUIVO)).toBeGreaterThan(todas.indexOf('20261008100000_pacote_seguranca_chancela.sql'));
     const chancela = readFileSync(resolve(PASTA, '20261008000000_plano_cliente_chancela.sql'), 'utf8');

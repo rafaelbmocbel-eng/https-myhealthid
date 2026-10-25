@@ -25,6 +25,9 @@ import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDDimensionDrillDown from '@/components/myid/MyIDDimensionDrillDown';
 import { MyIDOndeEstaoAsPerdas, MyIDFechamentoDaConta } from '@/components/myid/MyIDPrioridadePerdas';
 import { analisarPerdas } from '@/utils/myid/prioridadePerdas';
+import { MyIDFocoCiclo, BotaoFocoDoCiclo } from '@/components/myid/MyIDFocoCiclo';
+import { compararFoco } from '@/utils/myid/focoCiclo';
+import { useFocoCiclo } from '@/hooks/useFocoCiclo';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
 import { generateRehabInsights } from '@/utils/tissueHealingTimelines';
 import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
@@ -149,6 +152,10 @@ export default function PatientIntegratedDashboard({
   const previousMyID = myidAvaliacoes[1]; // para comparativo
   const myidLinkResult = myidFromLink[0]?.resultado_processado as any;
   const previousScore = previousMyID ? Number(previousMyID.myid_score) || 0 : null;
+
+  // Foco do ciclo (só o profissional): 1 a 3 dimensões que ele trabalha; a variação é medida contra o MyID de início.
+  const { foco: focoCiclo, alternar: alternarFoco, encerrar: encerrarFoco, reiniciar: reiniciarFoco, ocupado: focoOcupado } =
+    useFocoCiclo(pacienteId, isProfessional);
 
   // Use whichever is more recent
   const hasMyID = !!ultimaMyID || !!myidLinkResult;
@@ -408,6 +415,11 @@ export default function PatientIntegratedDashboard({
   // Fechamento da conta e concentração das perdas: só o profissional vê; registros antigos sem perdas gravadas voltam null.
   const analisePerdas = isProfessional ? analisarPerdas(resultadoArmazenado) : null;
   const rotulosDosAneis = Object.fromEntries(rings.map(r => [r.scoreKey, r.label]));
+  const baseDoFoco = focoCiclo?.avaliacao_base_id ? myidAvaliacoes.find((a: any) => a.id === focoCiclo.avaliacao_base_id) : undefined;
+  const retesteDisponivel = !!(focoCiclo && ultimaMyID && baseDoFoco && baseDoFoco.id !== ultimaMyID.id);
+  const comparacaoFoco = retesteDisponivel
+    ? compararFoco(baseDoFoco!.myid_analysis, ultimaMyID!.myid_analysis, focoCiclo!.dimensoes)
+    : null;
 
   // ── Chart data
   const getMyIDDate = (av: any) => av.data_avaliacao || format(parseISO(av.created_at), 'dd/MM/yyyy');
@@ -719,6 +731,21 @@ export default function PatientIntegratedDashboard({
                                 <MyIDOndeEstaoAsPerdas analise={analisePerdas} rotulos={rotulosDosAneis} scoreExibido={myidScore} />
                               </div>
                             )}
+                            {ultimaMyID && (
+                              <div className="mb-3">
+                                <MyIDFocoCiclo
+                                  dimensoes={focoCiclo?.dimensoes ?? null}
+                                  comparacao={comparacaoFoco}
+                                  rotulos={rotulosDosAneis}
+                                  inicio={focoCiclo ? format(parseISO(focoCiclo.criado_em), 'dd/MM/yyyy') : null}
+                                  baseAusente={!!focoCiclo && !baseDoFoco}
+                                  retesteDisponivel={retesteDisponivel}
+                                  ocupado={focoOcupado}
+                                  onEncerrar={() => encerrarFoco.mutate()}
+                                  onReiniciar={() => reiniciarFoco.mutate(ultimaMyID.id)}
+                                />
+                              </div>
+                            )}
                             <ol className="space-y-2">
                               {ranked.map(({ ring, perda, critico }, idx) => {
                                 const a = ACTION_MAP[ring.scoreKey];
@@ -748,6 +775,14 @@ export default function PatientIntegratedDashboard({
                                         <span className="text-muted-foreground"> → {a.acao}</span>
                                       </span>
                                     </span>
+                                    {ultimaMyID && (
+                                      <BotaoFocoDoCiclo
+                                        rotulo={ring.label}
+                                        ativo={!!focoCiclo?.dimensoes.includes(ring.scoreKey)}
+                                        desabilitado={focoOcupado}
+                                        onAlternar={() => alternarFoco.mutate({ dimensao: ring.scoreKey, avaliacaoAtualId: ultimaMyID.id })}
+                                      />
+                                    )}
                                   </li>
                                 );
                               })}
