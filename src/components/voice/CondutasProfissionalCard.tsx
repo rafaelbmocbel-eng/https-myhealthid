@@ -22,7 +22,7 @@ export default function CondutasProfissionalCard({ avaliacaoId, pacienteId, resu
   const salvo = condutasProfissional(resultado);
   const [texto, setTexto] = useState(salvo);
   const [etapa, setEtapa] = useState<null | 'salvando' | 'plano'>(null);
-  const { isListening, startListening, stopListening, isSupported } = useSpeechToText();
+  const { isListening, isTranscribing, startListening, stopListening, isSupported } = useSpeechToText();
 
   // Atualiza o campo quando a avaliação é recarregada, sem apagar o que está sendo digitado.
   useEffect(() => {
@@ -33,13 +33,11 @@ export default function CondutasProfissionalCard({ avaliacaoId, pacienteId, resu
 
   const ditar = () => {
     if (isListening) { stopListening(); return; }
-    const base = texto.trim();
-    startListening((falado) => setTexto(base ? `${base}\n${falado}` : falado));
+    startListening((falado) => setTexto((atual) => (atual.trim() ? `${atual.trim()}\n${falado}` : falado)));
   };
 
   const salvar = async () => {
     if (!user) return;
-    if (isListening) stopListening();
     setEtapa('salvando');
     try {
       const { data: row, error } = await (supabase as any)
@@ -92,16 +90,18 @@ export default function CondutasProfissionalCard({ avaliacaoId, pacienteId, resu
       />
       <div className="flex flex-wrap gap-2 justify-end">
         {isSupported && (
-          <Button type="button" size="sm" variant="outline" onClick={ditar} disabled={!!etapa} className="gap-1.5">
-            {isListening ? <MicOff className="h-3.5 w-3.5 text-red-600" /> : <Mic className="h-3.5 w-3.5" />}
-            {isListening ? 'Parar ditado' : 'Ditar'}
+          <Button type="button" size="sm" variant="outline" onClick={ditar} disabled={!!etapa || isTranscribing} className="gap-1.5">
+            {isTranscribing
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : isListening ? <MicOff className="h-3.5 w-3.5 text-red-600" /> : <Mic className="h-3.5 w-3.5" />}
+            {isTranscribing ? 'Transcrevendo...' : isListening ? 'Parar ditado' : 'Ditar'}
           </Button>
         )}
         <Button
           type="button"
           size="sm"
           onClick={salvar}
-          disabled={!!etapa || !alterado}
+          disabled={!!etapa || !alterado || isListening || isTranscribing}
           className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
         >
           {etapa ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { MyIDBloco1Data } from '@/types/myid';
 import { MUDANCAS_RECENTES_OPTIONS } from '@/types/myid';
 import { calcularScoreI } from '@/utils/myidCalculations';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ChevronRight, Mic, MicOff } from 'lucide-react';
+import { ChevronRight, Loader2, Mic, MicOff } from 'lucide-react';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
 import { cn } from '@/lib/utils';
 
@@ -20,11 +20,15 @@ interface Props {
 
 export default function MyIDBloco1({ data, onChange, onNext }: Props) {
   const [localData, setLocalData] = useState<MyIDBloco1Data>(data);
-  const { isListening, startListening, stopListening, isSupported } = useSpeechToText();
+  // O ditado chega depois de parar a gravação; o ref evita sobrescrever o que foi
+  // marcado nesse meio-tempo com uma cópia antiga dos dados.
+  const dataRef = useRef(localData);
+  const { isListening, isTranscribing, startListening, stopListening, isSupported } = useSpeechToText();
 
   const update = (field: keyof MyIDBloco1Data, value: any) => {
-    const updated = { ...localData, [field]: value };
+    const updated = { ...dataRef.current, [field]: value };
     updated.scoreI = calcularScoreI(updated);
+    dataRef.current = updated;
     setLocalData(updated);
     onChange(updated);
   };
@@ -43,12 +47,13 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
 
   const handleVoice = () => {
     if (!isSupported) {
-      alert('A ditadura por voz não é suportada neste navegador. Use o Chrome no Android ou o Safari mais recente no iOS, e digite sua resposta enquanto isso.');
+      alert('A gravação de voz não é suportada neste navegador. Digite sua resposta ou tente pelo app ou pelo Chrome.');
       return;
     }
     if (isListening) { stopListening(); return; }
     startListening((text) => {
-      update('queixaPrincipal', localData.queixaPrincipal + (localData.queixaPrincipal ? ' ' : '') + text);
+      const atual = dataRef.current.queixaPrincipal;
+      update('queixaPrincipal', (atual + (atual ? ' ' : '') + text).slice(0, 500));
     });
   };
 
@@ -82,9 +87,12 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
               size="sm"
               className="h-8 gap-1.5 text-xs shrink-0"
               onClick={handleVoice}
+              disabled={isTranscribing}
             >
-              {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-              {isListening ? 'Parar gravação' : 'Ditar por voz'}
+              {isTranscribing
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              {isTranscribing ? 'Transcrevendo...' : isListening ? 'Parar gravação' : 'Ditar por voz'}
             </Button>
           </div>
           <Textarea

@@ -67,7 +67,7 @@ export default function PacienteHistoria() {
   const [activeVoice, setActiveVoice] = useState<keyof Omit<HistoriaAtual, 'atualizado_em'> | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { isListening, startListening, stopListening, isSupported } = useSpeechToText();
+  const { isListening, isTranscribing, startListening, stopListening, isSupported } = useSpeechToText();
 
   const carregar = async () => {
     if (!user) return;
@@ -149,15 +149,15 @@ export default function PacienteHistoria() {
   };
 
   const handleVoice = (campo: keyof Omit<HistoriaAtual, 'atualizado_em'>) => {
-    if (isListening && activeVoice === campo) {
+    // Parar a gravação de um campo já envia para transcrição; outro campo só
+    // começa no próximo toque.
+    if (isListening) {
       stopListening();
-      setActiveVoice(null);
       return;
     }
-    if (isListening) stopListening();
     setActiveVoice(campo);
     startListening((text) => {
-      updateCampo(campo, ((historia[campo] || '') + ' ' + text).trim());
+      setHistoria(h => ({ ...h, [campo]: ((h[campo] || '') + ' ' + text).trim() }));
     });
   };
 
@@ -264,6 +264,7 @@ export default function PacienteHistoria() {
           {CAMPOS.map((campo, i) => {
             const valor = historia[campo.id];
             const isVoiceActive = isListening && activeVoice === campo.id;
+            const transcrevendoAqui = isTranscribing && activeVoice === campo.id;
             const preenchido = valor.trim().length >= 3;
 
             return (
@@ -300,13 +301,16 @@ export default function PacienteHistoria() {
                         variant={isVoiceActive ? 'destructive' : 'ghost'}
                         size="sm"
                         onClick={() => handleVoice(campo.id)}
+                        disabled={isTranscribing}
                         className="absolute bottom-2 right-2 h-8 w-8 p-0 rounded-full"
-                        title={isVoiceActive ? 'Parar gravação' : 'Usar voz'}
-                        aria-label={isVoiceActive ? 'Parar gravação' : 'Ditar por voz'}
+                        title={transcrevendoAqui ? 'Transcrevendo...' : isVoiceActive ? 'Parar gravação' : 'Usar voz'}
+                        aria-label={transcrevendoAqui ? 'Transcrevendo' : isVoiceActive ? 'Parar gravação' : 'Ditar por voz'}
                       >
-                        {isVoiceActive
-                          ? <MicOff className="h-3.5 w-3.5" />
-                          : <Mic className="h-3.5 w-3.5" />}
+                        {transcrevendoAqui
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : isVoiceActive
+                            ? <MicOff className="h-3.5 w-3.5" />
+                            : <Mic className="h-3.5 w-3.5" />}
                       </Button>
                     )}
                   </div>
