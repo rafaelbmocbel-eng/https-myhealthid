@@ -45,8 +45,12 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
   const [recordingTime, setRecordingTime] = useState(0);
   // Transcrição ao vivo: o texto aparece enquanto a pessoa fala e, ao parar, vai para a caixa de texto para ela conferir.
   const [aoVivoTexto, setAoVivoTexto] = useState('');
+  const [aoVivoIndisponivel, setAoVivoIndisponivel] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const aoVivoRef = useRef<TranscritorAoVivo | null>(null);
+  const iniciandoRef = useRef(false); // pedido de permissão do microfone em andamento
+  const montadoRef = useRef(true);
+  const inicioRef = useRef(0);
   const [resultado, setResultado] = useState<{ queixa: string | null; regioes: string[] } | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -72,30 +76,41 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
 
   // Depois de parar: o texto do ao vivo (ou, se algum trecho falhou, o do áudio inteiro) entra na caixa de texto.
   // Se nada disso funcionar, o áudio segue para ser transcrito no envio, como sempre foi.
-  const finalizarTranscricao = useCallback(async (blob: Blob, aoVivo: TranscritorAoVivo | null) => {
+  const finalizarTranscricao = useCallback(async (blob: Blob, aoVivo: TranscritorAoVivo | null, duracaoMs: number) => {
     setFinalizando(true);
     try {
       let texto = '';
+      let parcial = '';
       let ouviuTudo = false;
       if (aoVivo) {
-        const r = await aoVivo.encerrar();
+        const r = await aoVivo.encerrar(duracaoMs);
+        parcial = r.texto;
         if (r.completo) { texto = r.texto; ouviuTudo = true; }
       }
       if (!ouviuTudo && blob.size >= 1000) {
-        try { texto = await transcreverAudio(blob); } catch { /* sem texto aqui: o áudio é transcrito no envio */ }
+        try { texto = await transcreverAudio(blob); } catch { texto = parcial; /* o que já apareceu fica; o áudio inteiro é transcrito no envio */ }
       }
       if (texto.trim()) setTranscript((atual) => (atual.trim() ? `${atual.trim()}\n${texto.trim()}` : texto.trim()));
     } finally {
       setFinalizando(false);
       setAoVivoTexto('');
+      setAoVivoIndisponivel(false);
     }
   }, []);
 
   const startRecording = useCallback(async () => {
+    if (iniciandoRef.current || mediaRecorderRef.current) return;
+    iniciandoRef.current = true;
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
       });
+      if (!montadoRef.current) { // saiu da tela enquanto a permissão estava aberta: não liga nada
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      const microfone = stream;
       let mimeType = 'audio/webm;codecs=opus';
       if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
       if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
@@ -107,22 +122,24 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
       const aoVivo = new TranscritorAoVivo({
         transcrever: transcreverAudio,
         perfil: PERFIL_DITADO,
-        aoAtualizar: (estado) => setAoVivoTexto(estado.texto),
+        aoAtualizar: (estado) => { setAoVivoTexto(estado.texto); setAoVivoIndisponivel(estado.indisponivel); },
       });
       aoVivoRef.current = aoVivo;
-      aoVivo.anexar(stream).catch((err) => {
+      setAoVivoIndisponivel(false);
+      aoVivo.anexar(microfone).catch((err) => {
         console.warn('Transcrição ao vivo indisponível (segue com a gravação):', err);
         aoVivo.cancelar();
         if (aoVivoRef.current === aoVivo) aoVivoRef.current = null;
+        if (montadoRef.current) setAoVivoIndisponivel(true);
       });
       setAoVivoTexto('');
 
       recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
+        microfone.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
         const usado = aoVivoRef.current;
         aoVivoRef.current = null;
-        void finalizarTranscricao(blob, usado);
+        void finalizarTranscricao(blob, usado, Date.now() - inicioRef.current);
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1];
@@ -134,12 +151,21 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
 
       mediaRecorderRef.current = recorder;
       recorder.start(1000);
+      inicioRef.current = Date.now();
       setRecordingTime(0);
       setStep('recording');
       timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
     } catch (err) {
       console.error('Falha ao acessar microfone:', err);
-      toast({ title: 'Erro ao acessar microfone', description: 'Permita o acesso ao microfone nas configurações do navegador.', variant: 'destructive' });
+      stream?.getTracks().forEach((t) => t.stop());
+      aoVivoRef.current?.cancelar();
+      aoVivoRef.current = null;
+      mediaRecorderRef.current = null;
+      if (montadoRef.current) {
+        toast({ title: 'Erro ao acessar microfone', description: 'Permita o acesso ao microfone nas configurações do navegador.', variant: 'destructive' });
+      }
+    } finally {
+      iniciandoRef.current = false;
     }
   }, [toast, finalizarTranscricao]);
 
@@ -150,16 +176,20 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
     setStep('idle');
   }, []);
 
-  useEffect(() => () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    aoVivoRef.current?.cancelar();
-    aoVivoRef.current = null;
-    const rec = mediaRecorderRef.current;
-    if (rec && rec.state !== 'inactive') {
-      rec.onstop = null; // saiu da tela: não transcreve nada, só solta o microfone
-      rec.stop();
-      rec.stream.getTracks().forEach((t) => t.stop());
-    }
+  useEffect(() => {
+    montadoRef.current = true;
+    return () => {
+      montadoRef.current = false;
+      if (timerRef.current) clearInterval(timerRef.current);
+      aoVivoRef.current?.cancelar();
+      aoVivoRef.current = null;
+      const rec = mediaRecorderRef.current;
+      if (rec && rec.state !== 'inactive') {
+        rec.onstop = null; // saiu da tela: não transcreve nada, só solta o microfone
+        rec.stop();
+        rec.stream.getTracks().forEach((t) => t.stop());
+      }
+    };
   }, []);
 
   const enviarRelato = async () => {
@@ -287,7 +317,7 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
             </Button>
           )}
 
-          <TextoAoVivo ouvindo={step === 'recording'} transcrevendo={finalizando} texto={aoVivoTexto} />
+          <TextoAoVivo ouvindo={step === 'recording'} transcrevendo={finalizando} texto={aoVivoTexto} indisponivel={aoVivoIndisponivel} />
 
           {audioBase64 && step === 'idle' && (
             <p className="text-[11px] text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Áudio gravado — pronto para enviar.</p>

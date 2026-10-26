@@ -1,20 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
-
-export function blobParaBase64(blob: Blob): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result).split(',')[1] || '');
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
+import { blobParaBase64 } from '@/lib/audioParaWav';
+import { textoInventado } from '@/lib/transcricaoAoVivo';
 
 /** Manda um áudio curto para a edge function `transcrever-audio` (Whisper) e devolve o texto. Lança erro se falhar. */
-export async function transcreverAudio(blob: Blob): Promise<string> {
+export async function transcreverAudio(blob: Blob, sinal?: AbortSignal): Promise<string> {
   const audioBase64 = await blobParaBase64(blob);
   const { data, error } = await supabase.functions.invoke('transcrever-audio', {
     body: { audioBase64, audioMimeType: blob.type },
+    signal: sinal,
   });
   if (error || typeof data?.texto !== 'string') throw error || new Error(data?.error || 'Sem texto');
-  return data.texto.trim();
+  const texto = data.texto.trim();
+  return textoInventado(texto) ? '' : texto; // o Whisper devolve legendas inventadas para áudio sem fala
 }

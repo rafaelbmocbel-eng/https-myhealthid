@@ -68,7 +68,7 @@ export default function PacienteHistoria() {
   const [activeVoice, setActiveVoice] = useState<keyof Omit<HistoriaAtual, 'atualizado_em'> | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { isListening, isTranscribing, startListening, stopListening, isSupported, liveText } = useSpeechToText();
+  const { isListening, isTranscribing, startListening, stopListening, isSupported, liveText, liveIndisponivel } = useSpeechToText();
 
   const carregar = async () => {
     if (!user) return;
@@ -316,7 +316,7 @@ export default function PacienteHistoria() {
                     )}
                   </div>
 
-                  {activeVoice === campo.id && <TextoAoVivo ouvindo={isListening} transcrevendo={isTranscribing} texto={liveText} />}
+                  {activeVoice === campo.id && <TextoAoVivo ouvindo={isListening} transcrevendo={isTranscribing} texto={liveText} indisponivel={liveIndisponivel} />}
 
                   <div className="flex items-center justify-between">
                     {isVoiceActive && (

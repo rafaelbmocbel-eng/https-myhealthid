@@ -594,16 +594,18 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         // Prévia ao vivo na mesma fonte de áudio. Se falhar, a gravação segue igual: ela não depende disto.
         setAoVivoTexto('');
         setAoVivoIndisponivel(false);
+        const aoVivo = new TranscritorAoVivo({
+          transcrever: transcreverAudio,
+          perfil: PERFIL_CONSULTA,
+          aoAtualizar: (estado) => { setAoVivoTexto(estado.texto); setAoVivoIndisponivel(estado.indisponivel); },
+        });
         try {
-          const aoVivo = new TranscritorAoVivo({
-            transcrever: transcreverAudio,
-            perfil: PERFIL_CONSULTA,
-            aoAtualizar: (estado) => { setAoVivoTexto(estado.texto); setAoVivoIndisponivel(estado.indisponivel); },
-          });
           aoVivo.anexarContexto(audioCtx, source);
           aoVivoRef.current = aoVivo;
         } catch (e) {
+          aoVivo.cancelar();
           aoVivoRef.current = null;
+          setAoVivoIndisponivel(true);
           console.warn('[VoiceAssessment] prévia ao vivo indisponível:', e);
         }
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -649,9 +651,6 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
-    // A prévia ao vivo acaba com a gravação (a transcrição de verdade é a do áudio inteiro, feita ao processar).
-    aoVivoRef.current?.cancelar();
-    aoVivoRef.current = null;
     // Encerra a captura PCM e guarda o WAV ANTES de fechar o contexto.
     if (pcmCaptureRef.current) {
       try {
@@ -663,6 +662,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       }
       pcmCaptureRef.current = null;
     }
+    // A prévia acaba com a gravação (a transcrição de verdade é a do áudio inteiro, feita ao processar). Depois do PCM e
+    // isolada: nada dela pode impedir o WAV de ser guardado nem a gravação de parar.
+    try {
+      aoVivoRef.current?.cancelar();
+    } catch (e) {
+      console.warn('[VoiceAssessment] falha ao encerrar a prévia ao vivo:', e);
+    }
+    aoVivoRef.current = null;
     if (audioCtxRef.current) {
       audioCtxRef.current.close().catch(() => { /* noop */ });
       audioCtxRef.current = null;
@@ -2435,7 +2442,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             )}
           </div>
 
-          {/* Prévia da transcrição enquanto grava */}
           <TextoAoVivo ouvindo={isRecording} transcrevendo={false} texto={aoVivoTexto} indisponivel={aoVivoIndisponivel} className="mb-3" />
 
           {/* Medidor de nível de áudio — visível apenas durante gravação */}

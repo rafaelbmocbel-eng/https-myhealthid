@@ -24,7 +24,7 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
   // O ditado chega depois de parar a gravação; o ref evita sobrescrever o que foi
   // marcado nesse meio-tempo com uma cópia antiga dos dados.
   const dataRef = useRef(localData);
-  const { isListening, isTranscribing, startListening, stopListening, isSupported, liveText } = useSpeechToText();
+  const { isListening, isTranscribing, startListening, stopListening, isSupported, liveText, liveIndisponivel } = useSpeechToText();
 
   const update = (field: keyof MyIDBloco1Data, value: any) => {
     const updated = { ...dataRef.current, [field]: value };
@@ -96,7 +96,7 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
               {isTranscribing ? 'Transcrevendo...' : isListening ? 'Parar gravação' : 'Ditar por voz'}
             </Button>
           </div>
-          <TextoAoVivo ouvindo={isListening} transcrevendo={isTranscribing} texto={liveText} className="mb-2" />
+          <TextoAoVivo ouvindo={isListening} transcrevendo={isTranscribing} texto={liveText} indisponivel={liveIndisponivel} className="mb-2" />
           <Textarea
             placeholder="Ex: Dor nas costas ao acordar, dor no joelho ao correr, formigamento no braço..."
             value={localData.queixaPrincipal}

@@ -11,6 +11,8 @@ interface UseSpeechToTextReturn {
   isSupported: boolean;
   /** O que já foi transcrito enquanto ainda grava (aparece trecho a trecho, a cada pausa da fala). */
   liveText: string;
+  /** O ao vivo não está rodando (navegador sem Web Audio ou servidor sem responder): o texto completo sai ao parar. */
+  liveIndisponivel: boolean;
 }
 
 // Grava o ditado e transcreve no servidor (Whisper, edge function `transcrever-audio`). O reconhecimento de voz do
@@ -22,20 +24,26 @@ export function useSpeechToText(): UseSpeechToTextReturn {
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [liveText, setLiveText] = useState('');
+  const [liveIndisponivel, setLiveIndisponivel] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const aoVivoRef = useRef<TranscritorAoVivo | null>(null);
+  const iniciandoRef = useRef(false); // pedido de permissão do microfone em andamento
+  const montadoRef = useRef(true);
+  const inicioRef = useRef(0);
 
   const isSupported = typeof window !== 'undefined' &&
     typeof MediaRecorder !== 'undefined' &&
     !!navigator.mediaDevices?.getUserMedia;
 
-  const finalizar = useCallback(async (blob: Blob, aoVivo: TranscritorAoVivo | null, onResult: (text: string) => void) => {
+  const finalizar = useCallback(async (blob: Blob, aoVivo: TranscritorAoVivo | null, duracaoMs: number, onResult: (text: string) => void) => {
     setIsTranscribing(true);
+    let parcial = '';
     try {
       let texto = '';
       let ouviuTudo = false;
       if (aoVivo) {
-        const resultado = await aoVivo.encerrar();
+        const resultado = await aoVivo.encerrar(duracaoMs);
+        parcial = resultado.texto.trim();
         if (resultado.completo) { texto = resultado.texto; ouviuTudo = true; }
       }
       if (!ouviuTudo) {
@@ -47,56 +55,81 @@ export function useSpeechToText(): UseSpeechToTextReturn {
       else toast({ title: 'Não ouvi nenhuma fala', description: 'Fale mais perto do microfone e tente de novo.' });
     } catch (err) {
       console.error('Falha ao transcrever ditado:', err);
-      toast({ title: 'Não consegui transcrever', description: 'Tente gravar de novo ou digite sua resposta.', variant: 'destructive' });
+      if (parcial) {
+        // O que a pessoa viu aparecer enquanto falava não pode sumir só porque o áudio inteiro também falhou.
+        onResult(parcial);
+        toast({ title: 'Parte do áudio não foi transcrita', description: 'Confira o texto e complete o que faltar.' });
+      } else {
+        toast({ title: 'Não consegui transcrever', description: 'Tente gravar de novo ou digite sua resposta.', variant: 'destructive' });
+      }
     } finally {
       setIsTranscribing(false);
       setLiveText('');
+      setLiveIndisponivel(false);
     }
   }, []);
 
   const startListening = useCallback(async (onResult: (text: string) => void) => {
-    if (!isSupported || recorderRef.current) return;
+    if (!isSupported || recorderRef.current || iniciandoRef.current) return;
+    iniciandoRef.current = true;
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
       });
+      if (!montadoRef.current) { // saiu da tela enquanto a permissão estava aberta: não liga nada
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       let mimeType = 'audio/webm;codecs=opus';
       if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
       if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
 
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       const chunks: Blob[] = [];
+      const microfone = stream;
 
       // O ao vivo é um complemento: se o navegador não tiver Web Audio, segue só com a gravação inteira.
       const aoVivo = new TranscritorAoVivo({
         transcrever: transcreverAudio,
         perfil: PERFIL_DITADO,
-        aoAtualizar: (estado) => setLiveText(estado.texto),
+        aoAtualizar: (estado) => { setLiveText(estado.texto); setLiveIndisponivel(estado.indisponivel); },
       });
       aoVivoRef.current = aoVivo;
-      aoVivo.anexar(stream).catch((err) => {
+      setLiveIndisponivel(false);
+      aoVivo.anexar(microfone).catch((err) => {
         console.warn('Transcrição ao vivo indisponível (segue com a gravação inteira):', err);
         aoVivo.cancelar();
         if (aoVivoRef.current === aoVivo) aoVivoRef.current = null;
+        if (montadoRef.current) setLiveIndisponivel(true);
       });
 
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
+        microfone.getTracks().forEach((t) => t.stop());
         recorderRef.current = null;
         setIsListening(false);
         const usado = aoVivoRef.current;
         aoVivoRef.current = null;
-        void finalizar(new Blob(chunks, { type: recorder.mimeType.split(';')[0] }), usado, onResult);
+        void finalizar(new Blob(chunks, { type: recorder.mimeType.split(';')[0] }), usado, Date.now() - inicioRef.current, onResult);
       };
 
       recorderRef.current = recorder;
       setLiveText('');
       recorder.start(1000);
+      inicioRef.current = Date.now();
       setIsListening(true);
     } catch (err) {
       console.error('Falha ao acessar microfone:', err);
-      toast({ title: 'Erro ao acessar microfone', description: 'Permita o acesso ao microfone nas configurações do aparelho.', variant: 'destructive' });
+      stream?.getTracks().forEach((t) => t.stop());
+      aoVivoRef.current?.cancelar();
+      aoVivoRef.current = null;
+      recorderRef.current = null;
+      if (montadoRef.current) {
+        toast({ title: 'Erro ao acessar microfone', description: 'Permita o acesso ao microfone nas configurações do aparelho.', variant: 'destructive' });
+      }
+    } finally {
+      iniciandoRef.current = false;
     }
   }, [isSupported, finalizar]);
 
@@ -105,16 +138,20 @@ export function useSpeechToText(): UseSpeechToTextReturn {
   }, []);
 
   // Ao sair da tela, solta o microfone sem transcrever.
-  useEffect(() => () => {
-    aoVivoRef.current?.cancelar();
-    aoVivoRef.current = null;
-    const recorder = recorderRef.current;
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.onstop = null;
-      recorder.stop();
-      recorder.stream.getTracks().forEach((t) => t.stop());
-    }
+  useEffect(() => {
+    montadoRef.current = true;
+    return () => {
+      montadoRef.current = false;
+      aoVivoRef.current?.cancelar();
+      aoVivoRef.current = null;
+      const recorder = recorderRef.current;
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.onstop = null;
+        recorder.stop();
+        recorder.stream.getTracks().forEach((t) => t.stop());
+      }
+    };
   }, []);
 
-  return { isListening, isTranscribing, startListening, stopListening, isSupported, liveText };
+  return { isListening, isTranscribing, startListening, stopListening, isSupported, liveText, liveIndisponivel };
 }
