@@ -1034,7 +1034,7 @@ export default function ControleCassi() {
             qc.invalidateQueries({ queryKey: ['guias-cassi', user?.id] });
             qc.invalidateQueries({ queryKey: ['cassi-financeiro-clientes', user?.id] });
             // As sessões do duplicado mudaram de cliente: tudo o que vem da agenda precisa ser relido.
-            for (const k of ['cassi-agendamentos-mes', 'cassi-ags-trend', 'cassi-ags-guia', 'cassi-ags-guia-controle']) qc.invalidateQueries({ queryKey: [k] });
+            for (const k of ['cassi-agendamentos-mes', 'cassi-ags-guia', 'cassi-ags-guia-controle']) qc.invalidateQueries({ queryKey: [k] });
             setCadastro(null);
           }}
           onEncerrar={async (id, motivo) => { await encerrarCliente(id, motivo); setCadastro(null); }}
@@ -1205,7 +1205,13 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
       const sb: any = supabase;
-      const codigos = codigosDisp.filter((c) => d.codigos.includes(c.codigo))
+      // Código que a guia já tem mas não está na lista de Configurações (ex.: a configuração ainda não chegou) continua na guia:
+      // salvar não pode apagar um código só porque a lista não o mostra.
+      const daGuiaForaDaLista = (guia?.codigos ?? []).filter((c) => d.codigos.includes(c.codigo) && !codigosDisp.some((x) => x.codigo === c.codigo));
+      const codigos = [
+        ...codigosDisp.filter((c) => d.codigos.includes(c.codigo)),
+        ...daGuiaForaDaLista.map((c) => ({ codigo: c.codigo, descricao: c.descricao ?? '' })),
+      ]
         // Fallback: se o input por código nunca foi tocado, usa "Dias de tratamento"
         // (nunca 0 silencioso, que zerava a guia no faturamento).
         .map((c) => ({ codigo: c.codigo, descricao: c.descricao, sessoes: c.codigo === '144' ? 1 : (sesCod[c.codigo] ?? (Number(d.sessoes_autorizadas) || 0)) }));
@@ -1744,6 +1750,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   onReativar?: (id: string) => Promise<void> | void;
 }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const { data: cfg } = useCassiConfig();
   const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
   const editando = !!paciente;
@@ -1841,9 +1848,10 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     if (!paciente || !user) return;
     const nomeDup = `${paciente.nome} ${paciente.sobrenome || ''}`.trim();
     const nomeAlvo = `${alvo.nome} ${alvo.sobrenome || ''}`.trim();
-    if (!confirm(`Juntar "${nomeDup}" com "${nomeAlvo}"?\n\nA guia e os dados CASSI vão para "${nomeAlvo}" (que mantém avaliação, agenda e histórico). Este cadastro duplicado é removido. Não dá pra desfazer.`)) return;
+    if (!confirm(`Juntar "${nomeDup}" com "${nomeAlvo}"?\n\nA guia e os dados CASSI vão para "${nomeAlvo}" (que mantém avaliação, agenda e histórico). Este cadastro duplicado é removido. Não dá pra desfazer.\n\nNo Faturamento, se os dois tiverem lançamento no mesmo mês, as guias são somadas: confira depois.`)) return;
     setMergendo(true);
     const sb: any = supabase;
+    let listasPassadas = false;
     try {
       // As escritas do Supabase não lançam — checamos .error e ABORTAMOS antes de
       // apagar o duplicado, pra nunca perder a guia por uma falha no meio.
@@ -1852,6 +1860,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
       // nunca soma duas vezes. Sem isto ele sairia da conta dos meses em que o duplicado estava.
       const lf = await sb.rpc('cassi_juntar_financeiro_clientes', { p_origem: paciente.id, p_destino: alvo.id });
       if (lf.error) throw lf.error;
+      listasPassadas = true;
       const g = await sb.from('guias_cassi').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
       if (g.error) throw g.error;
       const a = await sb.from('agendamentos').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
@@ -1877,7 +1886,11 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
       toast.success('Cadastros juntados — duplicado removido');
       onSaved();
     } catch (e: any) {
-      toast.error('Erro ao juntar (nada foi apagado): ' + (e.message || e));
+      // Se a falha veio depois de passar as listas do Faturamento, elas já estão no cadastro que fica: a tela relê e o aviso diz isso.
+      if (listasPassadas) qc.invalidateQueries({ queryKey: ['cassi-financeiro-clientes', user.id] });
+      toast.error(listasPassadas
+        ? 'Erro ao juntar: as listas do Faturamento já foram passadas para o cadastro que fica, e nenhum cadastro foi removido. Tente de novo para concluir: ' + (e.message || e)
+        : 'Erro ao juntar (nada foi alterado): ' + (e.message || e));
     } finally {
       setMergendo(false);
     }
@@ -2224,7 +2237,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
 function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { data: cfg, isLoading } = useCassiConfig();
+  const { data: cfg, isLoading, isFetching, isError: erroCfg, refetch: recarregarCfg } = useCassiConfig();
   // Campos numéricos ficam como TEXTO enquanto edita (aceita vírgula e vazio);
   // só viram número ao salvar. Assim dá pra digitar "57,07" sem a fração sumir.
   type CodigoEdit = { codigo: string; descricao: string; codigo_oficial?: string; valor: string };
@@ -2241,7 +2254,8 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const [pronto, setPronto] = useState(false);
 
   useEffect(() => {
-    if (cfg && !pronto) {
+    // Só preenche com o que acabou de chegar do banco: o cache pode ser de antes de uma atualização e salvar dele desfaria a mudança.
+    if (cfg && !isFetching && !pronto) {
       setCodigos(cfg.codigos.map((c) => ({ codigo: c.codigo, descricao: c.descricao, codigo_oficial: c.codigo_oficial, valor: numStr(c.valor) })));
       setImpostoPct(numStr(cfg.imposto_percentual));
       setMinhaParte(numStr(cfg.minha_parte_percentual));
@@ -2252,7 +2266,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
       setPronto(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cfg, pronto]);
+  }, [cfg, isFetching, pronto]);
 
   const setCod = (i: number, campo: keyof CodigoEdit, v: string) =>
     setCodigos((p) => p.map((c, idx) => idx === i ? { ...c, [campo]: v } : c));
@@ -2293,7 +2307,12 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg w-[95vw] max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle className="text-base">Configurações CASSI</DialogTitle></DialogHeader>
-        {isLoading || !pronto ? (
+        {!cfg && erroCfg ? (
+          <div className="text-center py-6 space-y-2" role="alert">
+            <p className="text-sm text-rose-600 dark:text-rose-400">Não consegui carregar suas configurações. Sem elas não dá para editar sem risco de gravar por cima.</p>
+            <Button size="sm" variant="outline" disabled={isFetching} onClick={() => recarregarCfg()}>{isFetching ? 'Tentando…' : 'Tentar de novo'}</Button>
+          </div>
+        ) : isLoading || !pronto ? (
           <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : (
           <div className="space-y-4">
@@ -2754,16 +2773,32 @@ function FinanceiroCassi({ onAbrirGuia }: {
     }
   };
   const preencherComAgenda = () => {
-    lista.lancar.mutate({ mes, itens: semLancamentoComAgenda.map((c) => ({ id: c.id, guias: guiasPelaAgenda(c.sessoesAgenda) })) });
     // Cabem 6 guias de 10 por cliente no mês: quem teve mais sessões que isso fica com o que coube, e o aviso diz quem.
     const passaram = semLancamentoComAgenda.filter((c) => c.sessoesAgenda > MAXIMO_GUIAS_NO_MES * 10);
-    if (passaram.length > 0) {
-      toast.warning(`${passaram.map((c) => c.nome).join(', ')}: a agenda tem mais de ${MAXIMO_GUIAS_NO_MES * 10} sessões no mês, mais do que cabe em ${MAXIMO_GUIAS_NO_MES} guias. Lancei ${MAXIMO_GUIAS_NO_MES * 10}; confira o restante.`);
-    }
+    lista.lancar.mutate(
+      { mes, itens: semLancamentoComAgenda.map((c) => ({ id: c.id, guias: guiasPelaAgenda(c.sessoesAgenda) })), somenteSeVazio: true },
+      {
+        // Os avisos saem depois da gravação, para falar só do que de fato foi gravado.
+        onSuccess: ({ pulados }) => {
+          const nomes = (ids: string[]) => clientesDaLista.filter((c) => ids.includes(c.id)).map((c) => c.nome).join(', ');
+          const gravados = passaram.filter((c) => !pulados.includes(c.id));
+          if (gravados.length > 0) {
+            toast.warning(`${nomes(gravados.map((c) => c.id))}: a agenda tem mais de ${MAXIMO_GUIAS_NO_MES * 10} sessões no mês, mais do que cabe em ${MAXIMO_GUIAS_NO_MES} guias. Lancei ${MAXIMO_GUIAS_NO_MES * 10}; confira o restante.`, { duration: 12000 });
+          }
+          if (pulados.length > 0) {
+            toast.warning(`${nomes(pulados)}: já ${pulados.length === 1 ? 'tinha' : 'tinham'} lançamento (feito em outro aparelho?) e não ${pulados.length === 1 ? 'foi alterado' : 'foram alterados'}.`, { duration: 12000 });
+          }
+        },
+      },
+    );
   };
   const salvandoId = lista.lancar.isPending && lista.lancar.variables?.itens.length === 1 ? lista.lancar.variables.itens[0].id : null;
 
+  // Trocar de mês fecha o lançamento aberto: se há algo digitado e não salvo, pergunta antes.
+  const rascunhoAlterado = useRef(false);
+  const podeTrocarDeMes = () => !rascunhoAlterado.current || confirm('Descartar o que você digitou no lançamento aberto?');
   const irMes = (delta: number) => {
+    if (!podeTrocarDeMes()) return;
     const [ano, m] = mes.split('-').map(Number);
     const d = new Date(ano, m - 1 + delta, 1);
     setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
@@ -2805,11 +2840,11 @@ function FinanceiroCassi({ onAbrirGuia }: {
           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(1)} title="Próximo mês">›</Button>
         </div>
         <div className="flex items-center gap-1.5">
-          <Input type="month" value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
-          <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={calc.linhas.length === 0} onClick={baixarCSV}>
+          <Input type="month" value={mes} onChange={(e) => e.target.value && podeTrocarDeMes() && setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
+          <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={!cfg || calc.linhas.length === 0} onClick={baixarCSV}>
             <Download className="h-3.5 w-3.5" /> CSV
           </Button>
-          <Button size="sm" className="h-8 gap-1.5" onClick={() => setRelatorioOpen(true)}>
+          <Button size="sm" className="h-8 gap-1.5" disabled={!cfg} onClick={() => setRelatorioOpen(true)}>
             <FileText className="h-3.5 w-3.5" /> Relatório
           </Button>
         </div>
@@ -2844,6 +2879,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
         catalogo={catalogo}
         quantosPreencheriaComAgenda={semLancamentoComAgenda.length}
         salvandoId={salvandoId}
+        rascunhoAlterado={rascunhoAlterado}
         onSalvarLancamento={salvarLancamento}
         onPreencherComAgenda={preencherComAgenda}
         onAdicionar={(id) => lista.adicionar.mutate({ mes, ids: [id] })}
@@ -2933,7 +2969,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">Valores em R$ (k = mil). Barra verde = mês selecionado. Mês sem lista de clientes aparece como —, não como zero.</p>
+            <p className="text-[11px] text-muted-foreground mt-2">Valores em R$ (k = mil). Barra verde = mês selecionado. Mês sem lançamento aparece como —, não como zero.</p>
           </div>
         );
       })()}
@@ -3073,7 +3109,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
       )}
 
       {/* Guias que fecham neste mês (antiga aba "Fechamentos") — usa o mesmo mês. */}
-      {idsDoMes.size > 0 && <EnviosCassi mes={mes} ids={idsDoMes} onAbrir={onAbrirGuia} />}
+      {cfg && idsDoMes.size > 0 && <EnviosCassi mes={mes} ids={idsDoMes} onAbrir={onAbrirGuia} />}
 
       {verSnap && <RelatorioSnapshotView dados={verSnap} onClose={() => setVerSnap(null)} />}
     </div>
@@ -3149,9 +3185,6 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   const valorDe = (c: string) => cods.find((x) => x.codigo === c)?.valor || 0;
   const colAval = cods.find((c) => c.codigo === '144');
   const colsTrat = cods.filter((c) => c.codigo !== '144');
-  // Só viram coluna os códigos que alguma guia usou: os da tabela da CASSI que nunca apareceram numa guia não saem como coluna zerada no relatório da clínica.
-  const usados = new Set(guias.filter((g) => g.status !== 'cancelada').flatMap((g) => (g.codigos || []).map((c) => c.codigo)));
-  const columns = [...(colAval ? [colAval] : []), ...colsTrat].filter((c) => usados.has(c.codigo));
 
   // Agendamentos ligados a guias — para saber em que mês cada guia foi concluída.
   const { data: ags = [] } = useQuery({
@@ -3210,6 +3243,10 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
 
   const qtd = (g: GuiaCassi, cod: string) => Number((g.codigos || []).find((c) => c.codigo === cod)?.sessoes) || 0;
   const rows = candidatas.filter((g) => sel.has(g.id));
+  // Só viram coluna os códigos usados nas guias do relatório (com nada marcado, nas guias do mês): os da tabela da CASSI
+  // que não aparecem em nenhuma não saem como coluna zerada no relatório da clínica.
+  const usados = new Set((rows.length > 0 ? rows : candidatas).flatMap((g) => (g.codigos || []).map((c) => c.codigo)));
+  const columns = [...(colAval ? [colAval] : []), ...colsTrat].filter((c) => usados.has(c.codigo));
   const bruto = rows.reduce((s, g) => s + somaGuia(g.codigos, valorDe), 0);
   const imp = cfg?.imposto_percentual || 0;
   const aposImp = bruto * (1 - imp / 100);

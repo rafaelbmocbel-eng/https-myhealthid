@@ -28,14 +28,25 @@ DECLARE
     {"codigo":"185","descricao":"Estimulação elétrica transcutânea","valor":108.44,"codigo_oficial":"31602185"}
   ]'::jsonb;
 BEGIN
+  -- Os RAISE NOTICE contam, no log do db push, qual caminho a migração tomou (ela nunca falha por não achar a conta).
   SELECT id INTO v_ter FROM auth.users WHERE lower(email) = 'rafaelbmocbel@gmail.com' ORDER BY created_at ASC NULLS LAST LIMIT 1;
-  IF v_ter IS NULL AND (SELECT count(*) FROM public.cassi_config) = 1 THEN
+  IF v_ter IS NOT NULL THEN
+    RAISE NOTICE 'cassi_config_codigos: conta achada pelo e-mail';
+  ELSIF (SELECT count(*) FROM public.cassi_config) = 1 THEN
+    -- E-mail não achado e uma única configuração na base: é a dele (o Controle CASSI é só dele).
     SELECT terapeuta_id INTO v_ter FROM public.cassi_config;
+    RAISE NOTICE 'cassi_config_codigos: e-mail não achado; usando a única configuração existente';
   END IF;
-  IF v_ter IS NULL THEN RETURN; END IF;
+  IF v_ter IS NULL THEN
+    RAISE NOTICE 'cassi_config_codigos: nenhuma conta identificada; nada foi alterado';
+    RETURN;
+  END IF;
 
   SELECT codigos INTO v_atual FROM public.cassi_config WHERE terapeuta_id = v_ter;
-  IF v_atual IS NULL OR jsonb_typeof(v_atual) <> 'array' THEN RETURN; END IF; -- sem configuração salva: valem os padrões do app
+  IF v_atual IS NULL OR jsonb_typeof(v_atual) <> 'array' THEN -- sem configuração salva: valem os padrões do app
+    RAISE NOTICE 'cassi_config_codigos: a conta não tem lista de códigos salva; nada foi alterado';
+    RETURN;
+  END IF;
 
   INSERT INTO public.bkp_cassi_config_codigos_20261025 (terapeuta_id, codigos) VALUES (v_ter, v_atual)
   ON CONFLICT (terapeuta_id) DO NOTHING;
@@ -61,6 +72,9 @@ BEGIN
   ), '[]'::jsonb);
 
   UPDATE public.cassi_config SET codigos = v_novo, updated_at = now() WHERE terapeuta_id = v_ter;
+  RAISE NOTICE 'cassi_config_codigos: atualizado (% itens antes, % depois; 144 fica como estava: %)',
+    jsonb_array_length(v_atual), jsonb_array_length(v_novo),
+    coalesce((SELECT c.item ->> 'valor' FROM jsonb_array_elements(v_novo) AS c(item) WHERE jsonb_typeof(c.item) = 'object' AND c.item ->> 'codigo' = '144' LIMIT 1), 'sem 144');
 END $$;
 
 NOTIFY pgrst, 'reload schema';

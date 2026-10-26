@@ -63,11 +63,13 @@ export function mesclarCodigosComPadrao(configurados: CodigoFaturavel[] | null |
   return base;
 }
 
-// Ordem de exibição ao lançar: o padrão primeiro, depois os da tabela, depois o que o profissional criou.
+// Ordem de exibição ao lançar: o padrão primeiro, depois os da tabela, depois o que o profissional criou. Código repetido
+// em Configurações aparece uma vez só (vale o primeiro, como no cálculo).
 export function ordenarParaLancamento(codigos: CodigoFaturavel[]): CodigoFaturavel[] {
   const ordem = [CODIGO_PADRAO, ...CODIGOS_PADRAO_FATURAMENTO.map((p) => p.codigo)];
   const pos = (c: string) => { const i = ordem.indexOf(c); return i < 0 ? ordem.length : i; };
-  return codigos.map((c, i) => ({ c, i })).sort((a, b) => pos(a.c.codigo) - pos(b.c.codigo) || a.i - b.i).map((x) => x.c);
+  const unicos = codigos.filter((c, i) => codigos.findIndex((x) => x.codigo === c.codigo) === i);
+  return unicos.map((c, i) => ({ c, i })).sort((a, b) => pos(a.c.codigo) - pos(b.c.codigo) || a.i - b.i).map((x) => x.c);
 }
 
 // 50000012 → 5.00.00.012 (como o profissional lê); sem os 8 dígitos, mostra o que houver.
@@ -104,6 +106,12 @@ export function normalizarLancamentos(valor: unknown): GuiaLancada[] {
     if (!guiaVazia(limpa)) guias.push(limpa);
   }
   return guias.slice(0, MAXIMO_GUIAS_NO_MES);
+}
+
+// Mesmo lançamento? Compara guia a guia, por código e quantidade, sem depender da ordem em que as chaves foram digitadas.
+export function lancamentosIguais(a: GuiaLancada[], b: GuiaLancada[]): boolean {
+  const canonico = (guias: GuiaLancada[]) => JSON.stringify(guias.map((g) => Object.entries(g).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0))));
+  return canonico(a) === canonico(b);
 }
 
 export function totalPorCodigo(guias: GuiaLancada[]): Record<string, number> {

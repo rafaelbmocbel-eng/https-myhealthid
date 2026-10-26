@@ -86,26 +86,33 @@ outro profissional e pode rodar de novo sem trocar o backup.
   repasses), "sua parte" dos 6 meses (cada mês com o lançamento dele; mês sem lançamento aparece como —), CSV (com os códigos), Guias que
   fecham no mês e a seleção automática do Relatório de produção (dentro do relatório ainda dá para marcar/desmarcar qualquer guia).
 - "Sessões" = soma das quantidades de todos os códigos, menos a consulta (144).
-- Imposto e líquido são arredondados a centavos **em cada cliente**, e os totais são a soma das linhas que aparecem (nunca 1 centavo de diferença).
+- Imposto e líquido são arredondados a centavos **em cada cliente**, e os totais são a soma das linhas que aparecem (nunca 1 centavo de diferença);
+  "Sua parte", "Clínica" e cada repasse também fecham em centavos (sua parte + clínica = líquido; fica com você = líquido − repasses).
 - Sem nenhum lançamento no mês os cartões de resumo não aparecem (em R$ 0,00 pareceriam um mês sem receita): fica a mensagem "Nenhum código
   lançado neste mês".
-- **Configurações**: se a leitura falhar, a aba mostra "Não consegui carregar suas configurações" com **Tentar de novo**, em vez de calcular com
-  valores inventados e imposto 0%. Quem nunca salvou Configurações vê o aviso de que valem os valores da tabela da CASSI (sem imposto, sua parte
+- **Configurações**: se a leitura falhar, a aba (e o próprio diálogo de Configurações) mostra "Não consegui carregar suas configurações" com
+  **Tentar de novo**, em vez de calcular com valores inventados e imposto 0% (e CSV, Relatório e "Guias que fecham" ficam fora). O diálogo só
+  monta o formulário com o que acabou de vir do banco: salvar a partir de um cache antigo desfaria uma atualização. Quem nunca salvou Configurações vê o aviso de que valem os valores da tabela da CASSI (sem imposto, sua parte
   em 0%) e continua com os códigos 160 e 185 do Pedir guias. Os códigos da tabela voltam à lista sempre que faltarem (não dá para escondê-los
   em Configurações).
 - **Editor de lançamento**: o que foi digitado e não salvo pede confirmação antes de ser descartado (Cancelar, trocar de cliente, fechar,
-  "Usar 012 × N da agenda"); durante a gravação o botão mostra "Salvando…" e os campos ficam travados; trocar de mês fecha o editor.
+  "Usar 012 × N da agenda", trocar de mês); durante a gravação o botão mostra "Salvando…", os campos ficam travados e não dá para abrir outro
+  cliente; trocar de mês fecha o editor. Cliente cujo código lançado tem valor R$ 0,00 mostra "códigos sem valor" na própria linha.
   **Tirar da lista** e **Limpar lista** avisam que o lançamento também é apagado (e quantos clientes). **Preencher com a agenda** não roda com
-  um editor aberto e, quando a agenda tem mais sessões do que cabem em 6 guias de 10, lança 60 e avisa quem passou.
-- **Relatório de produção**: as colunas são só dos códigos que alguma guia (não cancelada) usou; os da tabela que nunca apareceram numa guia
-  não viram coluna zerada no relatório da clínica.
+  um editor aberto, só grava em quem continua **sem lançamento no banco** (o que outro aparelho lançou nesse meio-tempo não é apagado; o aviso
+  diz quem foi pulado) e, quando a agenda tem mais sessões do que cabem em 6 guias de 10, lança 60 e avisa quem passou.
+- **Relatório de produção**: as colunas são só dos códigos usados nas guias marcadas (sem nenhuma marcada, nas guias do mês; guia cancelada
+  não conta); os da tabela que não aparecem em nenhuma não viram coluna zerada no relatório da clínica.
 - Imposto: percentual de Configurações sobre o bruto (se for o valor fixo antigo, vale por guia lançada). Repasse: pelo responsável
   técnico da guia mais recente do cliente.
 - **Guias enviadas ao financeiro** é rastreio de entrega física, não conta: aparece sempre, com ou sem lista.
 - **Juntar cadastros duplicados** leva as linhas da lista (e o que foi lançado) do duplicado para o cliente que fica, por uma função do banco
   (`cassi_juntar_financeiro_clientes`) numa transação só: no mês em que o cliente que fica não estava a linha é copiada; no mês em que os dois
   estavam, as guias do duplicado entram depois das dele. Se a soma passar de 6 guias num mês, a junção inteira é recusada com a mensagem do
-  banco (nada muda: ajuste os lançamentos e tente de novo). Uma falha no meio desfaz tudo, então tentar de novo nunca soma duas vezes.
+  banco (nada muda: ajuste os lançamentos e tente de novo). Uma falha no meio desfaz tudo, então tentar de novo nunca soma duas vezes, e uma
+  junção por vez por profissional (lock da transação) evita travar duas junções em sentidos opostos. A função roda **antes** das outras
+  escritas da junção; se algo falhar depois dela, a mensagem diz que as listas do Faturamento já foram passadas (e nenhum cadastro foi
+  removido), e tentar de novo conclui.
 - O **Relatório de produção** e as **Guias que fecham** continuam saindo das guias (`guias_cassi`), não dos lançamentos: pode haver
   diferença entre o valor do Faturamento e o do Relatório. É uma decisão em aberto se o Relatório deve passar a usar os lançamentos.
 - Mês sem lista não calcula nada; os relatórios já salvos não dependem da lista.
@@ -118,13 +125,22 @@ estreita, ao montar sobrescrevia o cache e fazia sumir `cassi_pedir_guia`, `guia
 
 ## Publicação
 
-Duas etapas: 1) migrações na `main` (o GitHub Action "Deploy Supabase" roda `db push`: `20261025190000` lista, `20261025230000`
-lançamentos + função de juntar, `20261025233000` códigos salvos) e conferir em produção (`list_migrations`); 2) só então o front. Se o front
-chegasse antes, a lista do mês não carregaria ("Não consegui carregar a lista deste mês" com **Tentar de novo**), salvar um lançamento falharia
-e juntar cadastros duplicados falharia sem mudar nada; por isso a ordem.
+Três passos, nesta ordem (o GitHub Action "Deploy Supabase" roda `db push` a cada push na `main`; a `20261025190000`, da lista, já está em
+produção):
+1. migração `20261025230000` (coluna dos lançamentos, CHECK, política e função de juntar) sozinha na `main`; conferir em produção
+   (`list_migrations`). O front antigo continua funcionando com ela;
+2. o front. Se ele chegasse antes, salvar um lançamento e juntar cadastros falhariam (coluna e função ainda não existiriam);
+3. só depois, a migração de dados `20261025233000` (códigos e valores salvos de Rafael). Ela vai por último porque o front antigo monta o
+   Relatório de produção com **todos** os códigos da configuração: com a migração antes do front, o relatório sairia com colunas zeradas
+   (020, 301, 131). O front novo não depende dela (acrescenta os códigos que faltam sem trocar valor salvo). Os `RAISE NOTICE` dela contam no
+   log do `db push` qual caminho tomou (conta achada pelo e-mail, única configuração, nada identificado, sem lista, atualizado).
+
+Reverter a de dados: `UPDATE public.cassi_config c SET codigos = b.codigos, updated_at = now() FROM public.bkp_cassi_config_codigos_20261025 b WHERE b.terapeuta_id = c.terapeuta_id;`
+(apaga edições de códigos feitas depois em Configurações).
 
 As migrações foram ensaiadas num PostgreSQL 16 descartável (esquema do Supabase simulado, papéis anon/authenticated, RLS, privilégios por
-coluna, função de juntar com falha no meio, estouro de 6 guias e outro profissional): o banco falso das telas não emula CHECK, GRANT nem RLS.
+coluna, função de juntar com falha no meio, estouro de 6 guias, outro profissional, concorrência com pgbench): o banco falso das telas não
+emula CHECK, GRANT nem RLS. Os roteiros estão em `supabase/ensaios/` (`lancamentos.sh`, `codigos.sh`) e rodam com um PostgreSQL 16 local.
 
 A migração tira todos os privilégios do papel `authenticated` na tabela antes de conceder só SELECT, INSERT e DELETE (no Supabase
 ele nasce com todos, inclusive TRUNCATE, que a segurança por linha não alcança).

@@ -29,8 +29,8 @@ describe('fechamento do mês pelos lançamentos', () => {
     expect(r.totBruto).toBeCloseTo(1290.72, 8);
     expect(r.totImposto).toBe(129.07);
     expect(r.totLiquido).toBe(1161.65);
-    expect(r.suaParte).toBeCloseTo(580.825, 8);
-    expect(r.parteClinica).toBeCloseTo(580.825, 8);
+    expect(r.suaParte).toBe(580.83); // metade de 1161,65 = 580,825: arredonda para cima
+    expect(r.parteClinica).toBe(580.82); // o que sobra: sua parte + clínica = líquido, sem 1 centavo a mais
     expect(r.totSessoes).toBe(22);
   });
 
@@ -43,9 +43,10 @@ describe('fechamento do mês pelos lançamentos', () => {
     const r = fecharMesPorLancamentos({ clientes, cfg });
     const iris = r.repasses.find((x) => x.nome === 'dra. iris paiva')!;
     expect(iris.pct).toBe(30);
-    expect(iris.repasse).toBeCloseTo(578.36 * 0.3, 8);
+    expect(iris.repasse).toBe(173.51); // 30% de 578,36 = 173,508
     expect(r.repasses.find((x) => x.nome === 'Sem responsável')!.pct).toBeNull();
     expect(r.ficaComVoce).toBeCloseTo(r.totLiquido - r.totRepasse, 10);
+    expect(r.totRepasse).toBe(173.51);
   });
 
   it('a soma das linhas que aparecem é o total: imposto arredondado em cada cliente, sem 1 centavo de diferença', () => {
@@ -56,6 +57,24 @@ describe('fechamento do mês pelos lançamentos', () => {
     expect(r.totLiquido).toBe(164.43);
     expect(r.totBruto).toBe(173.1);
     expect(r.totBruto - r.totImposto).toBeCloseTo(r.totLiquido, 10);
+  });
+
+  it('sua parte, clínica e repasses fecham em centavos: a soma do que aparece é o líquido', () => {
+    const tres = ['a', 'b', 'c'].map((id) => ({ id, nome: id, responsavel: id === 'c' ? '' : 'Dra. Íris Paiva', guias: [{ '012': 1 }] }));
+    const r = fecharMesPorLancamentos({ clientes: tres, cfg: { ...cfg, imposto_percentual: 0, minha_parte_percentual: 33, responsaveis: [{ nome: 'Dra. Íris Paiva', percentual: 33 }] } });
+    expect(r.totLiquido).toBe(173.1);
+    expect(r.suaParte).toBe(57.12); // 33% de 173,10 = 57,123
+    expect(Math.round((r.suaParte + r.parteClinica) * 100)).toBe(Math.round(r.totLiquido * 100));
+    expect(r.repasses.find((x) => x.nome === 'Dra. Íris Paiva')!.repasse).toBe(38.08); // 33% de 115,40 = 38,082
+    expect(Math.round((r.totRepasse + r.ficaComVoce) * 100)).toBe(Math.round(r.totLiquido * 100));
+  });
+
+  it('com percentual e valor fixo antigo ao mesmo tempo, vale o percentual', () => {
+    const r = fecharMesPorLancamentos({
+      clientes: [{ id: 'a', nome: 'Ana', responsavel: '', guias: [{ '012': 10 }, { '012': 2 }] }],
+      cfg: { ...cfg, imposto_percentual: 10, imposto_por_guia: 20 },
+    });
+    expect(r.linhas[0].imposto).toBe(69.24); // 10% de 692,40, e não 2 × 20
   });
 
   it('imposto fixo antigo (sem percentual) vale por guia lançada', () => {

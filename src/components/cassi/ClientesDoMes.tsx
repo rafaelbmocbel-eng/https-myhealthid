@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { CalendarCheck, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,7 @@ export interface ClienteDoMes {
 // usados e a quantidade de cada um; o valor do mês sai disso.
 export function ClientesDoMes({
   mesLabel, clientes, candidatos, comSessaoFora, catalogo, quantosPreencheriaComAgenda, ocupado = false, carregando = false,
-  erro = false, sessoesEstado = 'ok', salvandoId = null,
+  erro = false, sessoesEstado = 'ok', salvandoId = null, rascunhoAlterado,
   onAdicionar, onAdicionarComSessao, onRemover, onLimpar, onSalvarLancamento, onPreencherComAgenda,
 }: {
   mesLabel: string; // ex.: "outubro de 2026"
@@ -38,6 +38,7 @@ export function ClientesDoMes({
   erro?: boolean; // não foi possível carregar a lista: quem mostra o aviso é a tela
   sessoesEstado?: 'ok' | 'carregando' | 'erro'; // a agenda é só referência, mas ainda assim não pode afirmar "sem sessão"
   salvandoId?: string | null;
+  rascunhoAlterado?: MutableRefObject<boolean>; // quem está em volta (a tela do mês) também precisa saber se há algo digitado e não salvo
   onAdicionar: (id: string) => void;
   onAdicionarComSessao: () => void;
   onRemover: (id: string) => void;
@@ -46,7 +47,8 @@ export function ClientesDoMes({
   onPreencherComAgenda: () => void;
 }) {
   const [abertoPedido, setAbertoId] = useState<string | null>(null);
-  const abertoAlterado = useRef(false); // o lançamento aberto tem algo digitado que ainda não foi salvo
+  const interno = useRef(false);
+  const abertoAlterado = rascunhoAlterado ?? interno; // o lançamento aberto tem algo digitado que ainda não foi salvo
   const [soFaltam, setSoFaltam] = useState(false);
   const valorDe = (c: string) => catalogo.find((x) => x.codigo === c)?.valor || 0;
   const faltam = clientes.filter((c) => c.guias.length === 0);
@@ -55,7 +57,8 @@ export function ClientesDoMes({
   useEffect(() => { if (abertoPedido !== null && abertoId === null) setAbertoId(null); }, [abertoPedido, abertoId]);
   // O filtro só vale enquanto há quem falte: sem ninguém faltando a lista volta inteira (e o botão de voltar não some).
   const filtrando = soFaltam && faltam.length > 0;
-  const visiveis = filtrando ? faltam : clientes;
+  // O cliente com o lançamento aberto não some com o filtro: o que está digitado nele não se perde sem aviso.
+  const visiveis = filtrando ? clientes.filter((c) => c.guias.length === 0 || c.id === abertoId) : clientes;
 
   const referenciaAgenda = (c: ClienteDoMes) => {
     if (sessoesEstado === 'carregando') return 'agenda: carregando…';
@@ -133,8 +136,10 @@ export function ClientesDoMes({
                 <div className="flex items-center gap-1 pl-1 pr-1 py-1">
                   <button
                     type="button"
+                    disabled={salvandoId != null}
                     onClick={() => {
                       // Trocar de cliente (ou fechar) joga fora o que foi digitado: pergunta antes.
+                      // Enquanto grava não troca: se a gravação falhasse, o que foi digitado já teria ido embora.
                       if (abertoId !== null && abertoAlterado.current && !window.confirm('Descartar o que você digitou no lançamento aberto?')) return;
                       abertoAlterado.current = false;
                       setAbertoId(aberto ? null : c.id);
@@ -142,7 +147,7 @@ export function ClientesDoMes({
                     aria-expanded={aberto}
                     aria-label={`${aberto ? 'Fechar' : 'Lançar códigos e sessões de'} ${c.nome}`}
                     aria-describedby={`resumo-lancamento-${c.id}`}
-                    className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5 text-left rounded-md hover:bg-muted/40"
+                    className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5 text-left rounded-md hover:bg-muted/40 disabled:opacity-60"
                   >
                     <span className="flex-1 min-w-0" id={`resumo-lancamento-${c.id}`}>
                       <span className="flex items-center gap-1.5">
@@ -153,6 +158,7 @@ export function ClientesDoMes({
                         <span className="block text-[11px] tabular-nums text-muted-foreground">
                           {resumoDosLancamentos(c.guias)} · <b className="text-foreground">{brl(bruto)}</b>
                           {acimaDoLimite && <span className="text-rose-600 dark:text-rose-400"> · acima do limite da CASSI</span>}
+                          {bruto === 0 && <span className="text-amber-700 dark:text-amber-400"> · códigos sem valor (defina em Configurações)</span>}
                         </span>
                       ) : (
                         <span className="block text-[11px] text-amber-700 dark:text-amber-400">Sem códigos lançados</span>

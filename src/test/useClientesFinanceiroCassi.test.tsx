@@ -64,6 +64,61 @@ describe('useClientesFinanceiroCassi', () => {
   });
 });
 
+describe('useClientesFinanceiroCassi: leitura em ordem fixa e escrita condicional', () => {
+  beforeEach(() => { h.banco = criarBancoFalso({ cassi_financeiro_clientes: [] }); });
+  const comLanc = (mes: string, paciente_id: string, lancamentos: unknown): Linha => ({ id: `${mes}-${paciente_id}`, terapeuta_id: 'prof-1', mes, paciente_id, lancamentos });
+
+  it('a leitura paginada pede ordem fixa (mês e cliente): sem isso cada página poderia repetir ou pular linhas', async () => {
+    const ordens: unknown[][] = [];
+    const original = h.banco.from;
+    h.banco.from = ((t: string) => {
+      const q = original(t) as any;
+      const order = q.order.bind(q);
+      q.order = (coluna: string, opcoes: unknown) => { ordens.push([coluna, opcoes]); return order(coluna, opcoes); };
+      return q;
+    }) as typeof h.banco.from;
+    const { result } = montar('2026-05', '2026-10');
+    await waitFor(() => expect(result.current.carregando).toBe(false));
+    expect(ordens).toEqual([['mes', { ascending: true }], ['paciente_id', { ascending: true }]]);
+  });
+
+  it.each([
+    ['adicionar', (r: ReturnType<typeof montar>['result']) => r.current.adicionar.mutate({ mes: '2026-10', ids: ['a'] })],
+    ['lancar', (r: ReturnType<typeof montar>['result']) => r.current.lancar.mutate({ mes: '2026-10', itens: [{ id: 'a', guias: [{ '012': 1 }] }] })],
+    ['remover', (r: ReturnType<typeof montar>['result']) => r.current.remover.mutate({ mes: '2026-10', id: 'a' })],
+    ['limpar', (r: ReturnType<typeof montar>['result']) => r.current.limpar.mutate({ mes: '2026-10' })],
+  ])('ocupado fica verdadeiro enquanto %s grava e volta ao fim', async (_nome, disparar) => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(comLanc('2026-10', 'a', []));
+    const { result } = montar('2026-05', '2026-10');
+    await waitFor(() => expect(result.current.carregando).toBe(false));
+    expect(result.current.ocupado).toBe(false);
+    let soltar = () => {};
+    const retida = new Promise<void>((ok) => { soltar = ok; });
+    h.banco.antesDeEscrever(async () => { await retida; });
+    act(() => { disparar(result); });
+    await waitFor(() => expect(result.current.ocupado).toBe(true));
+    soltar();
+    await waitFor(() => expect(result.current.ocupado).toBe(false));
+  });
+
+  it('somenteSeVazio: grava em quem continua sem lançamento e devolve quem já tinha (sem tocar nele); sem a opção, cliente fora da lista é erro', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(comLanc('2026-10', 'vazio', []), comLanc('2026-10', 'cheio', [{ '301': 2 }]));
+    const { result } = montar('2026-05', '2026-10');
+    await waitFor(() => expect(result.current.carregando).toBe(false));
+    let resposta: { pulados: string[] } | undefined;
+    await act(async () => {
+      resposta = await result.current.lancar.mutateAsync({ mes: '2026-10', somenteSeVazio: true, itens: [{ id: 'vazio', guias: [{ '012': 5 }] }, { id: 'cheio', guias: [{ '012': 5 }] }, { id: 'fora', guias: [{ '012': 5 }] }] });
+    });
+    expect(resposta).toEqual({ pulados: ['cheio', 'fora'] });
+    const linha = (id: string) => h.banco.tabelas.cassi_financeiro_clientes.find((l) => l.paciente_id === id)?.lancamentos;
+    expect(linha('vazio')).toEqual([{ '012': 5 }]);
+    expect(linha('cheio')).toEqual([{ '301': 2 }]); // intacto
+    await act(async () => {
+      await expect(result.current.lancar.mutateAsync({ mes: '2026-10', itens: [{ id: 'fora', guias: [{ '012': 5 }] }] })).rejects.toThrow('o cliente não está mais na lista deste mês');
+    });
+  });
+});
+
 describe('useClientesFinanceiroCassi: lançamentos', () => {
   beforeEach(() => { h.banco = criarBancoFalso({ cassi_financeiro_clientes: [] }); });
   const comLanc = (mes: string, paciente_id: string, lancamentos: unknown): Linha => ({ id: `${mes}-${paciente_id}`, terapeuta_id: 'prof-1', mes, paciente_id, lancamentos });

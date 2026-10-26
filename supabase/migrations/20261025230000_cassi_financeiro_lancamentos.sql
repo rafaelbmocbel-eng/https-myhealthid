@@ -79,6 +79,10 @@ BEGIN
     RAISE EXCEPTION 'Escolha dois cadastros diferentes para juntar';
   END IF;
 
+  -- Uma junção por vez por profissional: duas em sentidos opostos (A→B e B→A) ou duas origens para o mesmo destino
+  -- se travariam (deadlock) ou bateriam na chave única. O lock cai sozinho no fim da transação.
+  PERFORM pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+
   FOR r IN
     SELECT mes, lancamentos
     FROM public.cassi_financeiro_clientes

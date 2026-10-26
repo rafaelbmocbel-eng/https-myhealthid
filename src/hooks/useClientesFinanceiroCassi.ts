@@ -74,20 +74,27 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
   });
 
   // Grava o lançamento (guias com códigos e quantidades) de um ou mais clientes do mês. Cada cliente é uma linha;
-  // as gravações seguem juntas e, se alguma falhar, avisa e não esconde o erro.
+  // as gravações seguem juntas e, se alguma falhar, avisa e não esconde o erro. Com `somenteSeVazio` só grava em quem
+  // continua sem lançamento no banco (preencher com a agenda não pode apagar o que outro aparelho lançou nesse meio-tempo):
+  // quem já tinha fica intocado e volta em `pulados`.
   const lancar = useMutation({
-    mutationFn: async ({ mes, itens }: { mes: string; itens: Array<{ id: string; guias: GuiaLancada[] }> }) => {
-      if (itens.length === 0) return;
-      const resultados = await Promise.all(itens.map(({ id, guias }) =>
-        (supabase as any).from(TABELA).update({ lancamentos: normalizarLancamentos(guias) })
-          .eq('terapeuta_id', user!.id).eq('mes', mes).eq('paciente_id', id)
-          .select('paciente_id')));
+    mutationFn: async ({ mes, itens, somenteSeVazio = false }: { mes: string; itens: Array<{ id: string; guias: GuiaLancada[] }>; somenteSeVazio?: boolean }) => {
+      if (itens.length === 0) return { pulados: [] as string[] };
+      const resultados = await Promise.all(itens.map(({ id, guias }) => {
+        let q = (supabase as any).from(TABELA).update({ lancamentos: normalizarLancamentos(guias) })
+          .eq('terapeuta_id', user!.id).eq('mes', mes).eq('paciente_id', id);
+        // O valor vai como TEXTO: o PostgREST compara o jsonb da coluna com '[]' (um array viraria outro filtro).
+        if (somenteSeVazio) q = q.eq('lancamentos', '[]');
+        return q.select('paciente_id');
+      }));
       const falha = resultados.find((r: { error?: unknown }) => r?.error);
       if (falha) throw falha.error;
       // O banco não reclama quando nenhuma linha casa (o cliente foi tirado da lista em outra tela): sem isto o
       // lançamento "salvaria" sem gravar nada.
-      const semLinha = resultados.findIndex((r: { data?: unknown[] | null }) => !r?.data || r.data.length === 0);
-      if (semLinha >= 0) throw new Error('o cliente não está mais na lista deste mês');
+      const semLinha = itens.map((item, i) => ({ id: item.id, vazio: !resultados[i]?.data || resultados[i].data.length === 0 })).filter((x) => x.vazio).map((x) => x.id);
+      if (somenteSeVazio) return { pulados: semLinha };
+      if (semLinha.length > 0) throw new Error('o cliente não está mais na lista deste mês');
+      return { pulados: [] as string[] };
     },
     onSettled: invalidar,
     onError: aoFalhar('salvar os códigos e as sessões'),

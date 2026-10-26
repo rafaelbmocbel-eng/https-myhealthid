@@ -36,9 +36,12 @@ const compararOrdem = (a: unknown, b: unknown, crescente: boolean) => {
   return crescente ? c : -c;
 };
 
+// Valores que o banco de verdade preenche sozinho (DEFAULT) quando a linha não os traz.
+const padroesDaTabela: Record<string, () => Linha> = { cassi_financeiro_clientes: () => ({ lancamentos: [] }) };
+
 export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
   const tabelas: Record<string, Linha[]> = {};
-  for (const [nome, linhas] of Object.entries(inicial)) tabelas[nome] = linhas.map((l) => ({ ...l }));
+  for (const [nome, linhas] of Object.entries(inicial)) tabelas[nome] = linhas.map((l) => ({ ...(padroesDaTabela[nome]?.() ?? {}), ...l }));
   const operacoes: Operacao[] = [];
   let falhar: ((op: Operacao) => boolean) | null = null;
   let ganchoEscrita: ((op: Operacao) => Promise<void> | void) | null = null;
@@ -68,7 +71,15 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
       this.testes.push(teste);
       return this;
     }
-    eq(c: string, v: unknown) { return this.filtro('eq', [c, v], (r) => r[c] === v); }
+    // jsonb como no PostgREST: o valor do filtro vem como texto JSON e é comparado com o jsonb da coluna.
+    eq(c: string, v: unknown) {
+      return this.filtro('eq', [c, v], (r) => {
+        if (typeof v === 'string' && r[c] !== null && typeof r[c] === 'object') {
+          try { return JSON.stringify(r[c]) === JSON.stringify(JSON.parse(v)); } catch { return false; } // texto que não é JSON: não casa
+        }
+        return r[c] === v;
+      });
+    }
     neq(c: string, v: unknown) { return this.filtro('neq', [c, v], (r) => r[c] !== v); }
     in(c: string, vs: unknown[]) { return this.filtro('in', [c, vs], (r) => vs.includes(r[c])); }
     is(c: string, v: unknown) { return this.filtro('is', [c, v], (r) => (r[c] ?? null) === v); }
@@ -131,7 +142,7 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
       for (const n of novas) {
         const repetida = conflito.length > 0 && linhas.some((l) => conflito.every((c) => l[c] === n[c]));
         if (repetida && this.tipo === 'upsert') continue;
-        linhas.push({ id: `${this.tabela}-${linhas.length + 1}`, ...n });
+        linhas.push({ id: `${this.tabela}-${linhas.length + 1}`, ...(padroesDaTabela[this.tabela]?.() ?? {}), ...n });
       }
       return { data: null, error: null };
     }

@@ -76,4 +76,10 @@ describe('migração dos lançamentos do Faturamento CASSI', () => {
     expect(sql).toMatch(/WHERE terapeuta_id = v_uid AND paciente_id = p_origem\s+ORDER BY mes\s+FOR UPDATE/);
     expect(sql.indexOf('DELETE FROM public.cassi_financeiro_clientes')).toBeGreaterThan(sql.indexOf('END LOOP'));
   });
+
+  it('uma junção por vez por profissional (lock da transação, antes de ler qualquer linha): sem deadlock em sentidos opostos', () => {
+    const lock = sql.indexOf('PERFORM pg_advisory_xact_lock(hashtextextended(v_uid::text, 0))');
+    expect(lock).toBeGreaterThan(sql.indexOf('Escolha dois cadastros diferentes'));
+    expect(lock).toBeLessThan(sql.indexOf('FOR r IN'));
+  });
 });

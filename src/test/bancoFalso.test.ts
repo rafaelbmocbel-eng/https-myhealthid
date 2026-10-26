@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { criarBancoFalso } from './helpers/bancoFalso';
 
 // O banco falso é a base dos testes de tela do Controle CASSI: se ele não ordena como o PostgREST, uma regra que
@@ -29,6 +31,18 @@ describe('banco falso: order()', () => {
   });
 });
 
+describe('banco falso: jsonb e valores padrão', () => {
+  it('eq com texto JSON compara com o jsonb da coluna (como o PostgREST); cassi_financeiro_clientes nasce com lancamentos = []', async () => {
+    const banco = criarBancoFalso({ cassi_financeiro_clientes: [{ id: '1', paciente_id: 'a' }, { id: '2', paciente_id: 'b', lancamentos: [{ '012': 1 }] }] });
+    const q = (banco.from('cassi_financeiro_clientes') as any).select('paciente_id').eq('lancamentos', '[]');
+    expect((await q).data).toEqual([{ paciente_id: 'a' }]);
+    await (banco.from('cassi_financeiro_clientes') as any).upsert([{ paciente_id: 'c' }], { onConflict: 'paciente_id' });
+    expect(banco.tabelas.cassi_financeiro_clientes.find((l) => l.paciente_id === 'c')?.lancamentos).toEqual([]);
+    const lixo = (banco.from('cassi_financeiro_clientes') as any).select('paciente_id').eq('lancamentos', 'isto não é json');
+    expect((await lixo).data).toEqual([]);
+  });
+});
+
 describe('banco falso: rpc()', () => {
   it('registra a chamada como escrita, aceita falha simulada e recusa função que não existe', async () => {
     const banco = criarBancoFalso({ cassi_financeiro_clientes: [] });
@@ -38,6 +52,18 @@ describe('banco falso: rpc()', () => {
     const falha = await banco.rpc('cassi_juntar_financeiro_clientes', { p_origem: 'a', p_destino: 'b' });
     expect(falha.error?.message).toBe('sem permissão');
     expect(banco.escritas().map((o) => [o.tipo, o.tabela])).toEqual([['rpc', 'nao_existe'], ['rpc', 'cassi_juntar_financeiro_clientes']]);
+  });
+
+  it('a mensagem e o teto do espelho são os da função SQL de verdade', async () => {
+    const sql = readFileSync(join(__dirname, '..', '..', 'supabase', 'migrations', '20261025230000_cassi_financeiro_lancamentos.sql'), 'utf8');
+    const teto = Number(sql.match(/c_max_guias CONSTANT integer := (\d+)/)?.[1]);
+    const modelo = sql.match(/RAISE EXCEPTION '(O cliente ficaria com[^']*)'/)?.[1] ?? '';
+    const esperada = [7, '2026-07', teto].reduce<string>((texto, valor) => texto.replace('%', String(valor)), modelo);
+    const linha = (id: string, pid: string, n: number) => ({ id, terapeuta_id: 'u', mes: '2026-07', paciente_id: pid, lancamentos: Array.from({ length: n }, () => ({ '012': 1 })) });
+    const banco = criarBancoFalso({ cassi_financeiro_clientes: [linha('1', 'dup', 4), linha('2', 'fica', 3)] });
+    expect((await banco.rpc('cassi_juntar_financeiro_clientes', { p_origem: 'dup', p_destino: 'fica' })).error?.message).toBe(esperada);
+    const exato = criarBancoFalso({ cassi_financeiro_clientes: [linha('1', 'dup', teto - 2), linha('2', 'fica', 2)] });
+    expect((await exato.rpc('cassi_juntar_financeiro_clientes', { p_origem: 'dup', p_destino: 'fica' })).error).toBeNull(); // exatamente o teto passa
   });
 
   it('a função de juntar espelha o SQL: tudo ou nada, até 6 guias, guia vazia descartada, origem some', async () => {

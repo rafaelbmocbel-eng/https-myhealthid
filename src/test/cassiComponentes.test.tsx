@@ -477,6 +477,20 @@ describe('LancamentoDoCliente: dado acima do limite, código fora da lista, sing
     confirmar.mockRestore();
   });
 
+  it('digitar de novo o mesmo que já estava (ou só mudar a ordem em que as chaves foram preenchidas) não conta como alteração', () => {
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const onCancelar = vi.fn();
+    montar({ inicial: [{ '012': 4, '020': 2 }], onCancelar });
+    fireEvent.change(qtd('012'), { target: { value: '0' } });
+    fireEvent.change(qtd('020'), { target: { value: '0' } });
+    fireEvent.change(qtd('020'), { target: { value: '2' } }); // 020 voltou antes do 012: as chaves agora estão em outra ordem
+    fireEvent.change(qtd('012'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(confirmar).not.toHaveBeenCalled();
+    expect(onCancelar).toHaveBeenCalledTimes(1);
+    confirmar.mockRestore();
+  });
+
   it('Cancelar com algo digitado pergunta antes de descartar; sem alteração cancela direto', () => {
     const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const onCancelar = vi.fn();
@@ -537,6 +551,34 @@ describe('ClientesDoMes: estado do editor e do filtro', () => {
     abrir('Ana Souza'); // Carla não foi alterada: troca sem perguntar
     expect(confirmar).not.toHaveBeenCalled();
     confirmar.mockRestore();
+  });
+
+  it('durante a gravação de um cliente os botões de abrir/fechar ficam desligados (trocar de cliente perderia o digitado se a gravação falhasse)', () => {
+    render(<ClientesDoMes {...base()} salvandoId="b" />);
+    for (const nome of ['Ana Souza', 'Bruno Lima', 'Carla Dias']) {
+      expect((screen.getByRole('button', { name: new RegExp(`${nome}$`) }) as HTMLButtonElement).disabled).toBe(true);
+    }
+  });
+
+  it('com "Mostrar só quem falta" ligado, o cliente com o lançamento aberto continua na tela: o digitado não some sem aviso', () => {
+    render(<ClientesDoMes {...base()} />);
+    abrir('Ana Souza'); // Ana já tem lançamento
+    fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar só quem falta' }));
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Ana Souza' })).toBeTruthy();
+    expect((screen.getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('3');
+    expect(screen.getByText('Bruno Lima')).toBeTruthy(); // e quem falta também aparece
+  });
+
+  it('um ref de fora recebe o aviso de "há algo digitado e não salvo" (a tela do mês usa para perguntar antes de trocar de mês)', () => {
+    const ref = { current: false };
+    render(<ClientesDoMes {...base()} rascunhoAlterado={ref} />);
+    abrir('Bruno Lima');
+    expect(ref.current).toBe(false);
+    fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '2' } });
+    expect(ref.current).toBe(true);
+    fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '0' } });
+    expect(ref.current).toBe(false); // voltou ao que estava
   });
 
   it('"Mostrar só quem falta" não deixa a lista vazia quando o último cliente recebe lançamento', () => {

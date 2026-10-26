@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { CalendarCheck, Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  MAXIMO_GUIAS_NO_MES, brutoDosLancamentos, formatarCodigoOficial, guiasPelaAgenda, limiteDoCodigo, maximoNaGuia,
+  MAXIMO_GUIAS_NO_MES, brutoDosLancamentos, formatarCodigoOficial, guiasPelaAgenda, lancamentosIguais, limiteDoCodigo, maximoNaGuia,
   normalizarLancamentos, problemasDosLancamentos, sessoesDosLancamentos, type CodigoFaturavel, type GuiaLancada,
 } from '@/lib/cassiFaturamento';
 
@@ -56,7 +56,7 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
   };
 
   const guiasValidas = normalizarLancamentos(guias);
-  const alterado = JSON.stringify(guiasValidas) !== JSON.stringify(normalizarLancamentos(inicial));
+  const alterado = !lancamentosIguais(guiasValidas, normalizarLancamentos(inicial));
   // Enquanto grava, o que está digitado já está a caminho: não conta como "não salvo".
   const naoSalvo = alterado && !salvando;
   useEffect(() => {

@@ -68,29 +68,34 @@ export function agregarFechamento(linhas: LinhaFechamento[], cfg: ConfigFinancei
     const r = (cfg?.responsaveis || []).find((x) => norm(x.nome) === norm(nome));
     return r ? r.percentual : null;
   };
-  const porResp = new Map<string, { nome: string; liquido: number; sessoes: number; pct: number | null }>();
+  // Tudo daqui para baixo também em centavos: a parte, a clínica e cada repasse saem arredondados, e o que aparece
+  // na tela soma exatamente (sua parte + clínica = líquido; fica com você = líquido − repasses).
+  const porResp = new Map<string, { nome: string; centavos: number; sessoes: number; pct: number | null }>();
   for (const l of linhas) {
     const key = l.responsavel || '—';
-    const cur = porResp.get(key) || { nome: l.responsavel || 'Sem responsável', liquido: 0, sessoes: 0, pct: pctDe(l.responsavel) };
-    cur.liquido += l.liquido;
+    const cur = porResp.get(key) || { nome: l.responsavel || 'Sem responsável', centavos: 0, sessoes: 0, pct: pctDe(l.responsavel) };
+    cur.centavos += Math.round(l.liquido * 100);
     cur.sessoes += l.sessoes;
     porResp.set(key, cur);
   }
-  const repasses = [...porResp.values()].map((r) => ({
-    ...r,
-    repasse: r.pct != null ? r.liquido * (r.pct / 100) : 0,
-  })).sort((a, b) => b.liquido - a.liquido);
-  const totRepasse = repasses.reduce((s, r) => s + r.repasse, 0);
+  const repassesCentavos = [...porResp.values()].map((r) => ({ ...r, repasseCentavos: r.pct != null ? Math.round(r.centavos * (r.pct / 100)) : 0 }));
+  const repasses = repassesCentavos
+    .map(({ centavos, repasseCentavos, ...r }) => ({ ...r, liquido: centavos / 100, repasse: repasseCentavos / 100 }))
+    .sort((a, b) => b.liquido - a.liquido);
+  const totRepasseCentavos = repassesCentavos.reduce((s, r) => s + r.repasseCentavos, 0);
+  const totRepasse = totRepasseCentavos / 100;
 
   // Divisão principal: sua parte (% do líquido) e o que fica com a clínica.
   const minhaPct = cfg?.minha_parte_percentual || 0;
-  const suaParte = totLiquido * (minhaPct / 100);
-  const parteClinica = totLiquido - suaParte;
+  const totLiquidoCentavos = Math.round(totLiquido * 100);
+  const suaParteCentavos = Math.round(totLiquidoCentavos * (minhaPct / 100));
+  const suaParte = suaParteCentavos / 100;
+  const parteClinica = (totLiquidoCentavos - suaParteCentavos) / 100;
 
   return {
     linhas, totBruto, totImposto, totLiquido, totSessoes, impostoPct,
     minhaPct, suaParte, parteClinica,
-    repasses, totRepasse, ficaComVoce: totLiquido - totRepasse,
+    repasses, totRepasse, ficaComVoce: (totLiquidoCentavos - totRepasseCentavos) / 100,
   };
 }
 

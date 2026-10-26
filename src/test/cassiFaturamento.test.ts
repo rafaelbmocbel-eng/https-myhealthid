@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  CODIGOS_PADRAO_FATURAMENTO, brutoDosLancamentos, formatarCodigoOficial, guiasPelaAgenda, limiteDoCodigo, maximoNaGuia,
+  CODIGOS_PADRAO_FATURAMENTO, MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_CODIGOS_NA_GUIA, brutoDosLancamentos, formatarCodigoOficial, guiasPelaAgenda, lancamentosIguais, limiteDoCodigo, maximoNaGuia,
   mesclarCodigosComPadrao, normalizarLancamentos, ordenarParaLancamento, problemasDosLancamentos, resumoDosLancamentos,
   sessoesDosLancamentos, totalPorCodigo, type CodigoFaturavel, type GuiaLancada,
 } from '@/lib/cassiFaturamento';
@@ -73,6 +73,11 @@ describe('mesclarCodigosComPadrao', () => {
     expect(cfg).toEqual([{ codigo: '012', descricao: '', valor: 57.7 }]);
   });
 
+  it('código repetido em Configurações aparece uma vez só ao lançar (vale o primeiro)', () => {
+    const r = ordenarParaLancamento([{ codigo: '012', descricao: 'a', valor: 1 }, { codigo: '160', descricao: 'b', valor: 2 }, { codigo: '012', descricao: 'repetido', valor: 9 }]);
+    expect(r.map((c) => [c.codigo, c.valor])).toEqual([['012', 1], ['160', 2]]);
+  });
+
   it('para lançar: 012 primeiro, depois a ordem da tabela, depois os que o profissional criou', () => {
     const r = ordenarParaLancamento(mesclarCodigosComPadrao([{ codigo: '160', descricao: 'Meu código', valor: 60 }, { codigo: '144', descricao: 'x', valor: 1 }]));
     expect(r.map((c) => c.codigo)).toEqual(['012', '020', '144', '301', '131', '185', '160']);
@@ -92,9 +97,29 @@ describe('normalizarLancamentos (defesa contra dado estranho)', () => {
       .toEqual([{ '012': 4, '131': 7, '185': 999, '160': 2 }]);
   });
 
+  it('os tetos do banco valem no valor exato: código de 12 caracteres passa, de 13 não; 30 códigos por guia passam, o 31º não', () => {
+    expect([MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_CODIGOS_NA_GUIA]).toEqual([12, 30]); // os mesmos números do CHECK do banco
+    const doze = 'x'.repeat(12);
+    expect(normalizarLancamentos([{ [doze]: 2 }])).toEqual([{ [doze]: 2 }]);
+    expect(normalizarLancamentos([{ [doze + 'x']: 2, '012': 1 }])).toEqual([{ '012': 1 }]);
+    const guia = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`k${i}`, 1]));
+    expect(Object.keys(normalizarLancamentos([guia(MAXIMO_CODIGOS_NA_GUIA)])[0])).toHaveLength(MAXIMO_CODIGOS_NA_GUIA);
+    expect(Object.keys(normalizarLancamentos([guia(MAXIMO_CODIGOS_NA_GUIA + 1)])[0])).toHaveLength(MAXIMO_CODIGOS_NA_GUIA);
+  });
+
   it('guia sem nada some; no máximo 6 guias por cliente no mês', () => {
     expect(normalizarLancamentos([{ '012': 0 }, {}, { '012': 2 }])).toEqual([{ '012': 2 }]);
     expect(normalizarLancamentos(Array.from({ length: 9 }, () => ({ '012': 1 })))).toHaveLength(6);
+  });
+});
+
+describe('lancamentosIguais', () => {
+  it('compara guia a guia por código e quantidade, sem depender da ordem em que as chaves foram digitadas', () => {
+    expect(lancamentosIguais([{ '012': 4, '020': 2 }], [{ '020': 2, '012': 4 }])).toBe(true);
+    expect(lancamentosIguais([{ '012': 4 }], [{ '012': 5 }])).toBe(false);
+    expect(lancamentosIguais([{ '012': 4 }, { '144': 1 }], [{ '144': 1 }, { '012': 4 }])).toBe(false); // a ordem das GUIAS importa
+    expect(lancamentosIguais([], [])).toBe(true);
+    expect(lancamentosIguais([{ '012': 1 }], [])).toBe(false);
   });
 });
 
