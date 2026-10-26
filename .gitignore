@@ -33,6 +33,7 @@ dist-paciente
 # Supabase temp files
 supabase/.temp/
 
-# Claude Code internal (worktrees, session state) — mas versiona os agentes do repo
+# Claude Code internal (worktrees, session state) — mas versiona os agentes e o settings.json (plugins) do repo
 .claude/*
 !.claude/agents/
+!.claude/settings.json
