@@ -581,6 +581,32 @@ describe('ClientesDoMes: estado do editor e do filtro', () => {
     expect(ref.current).toBe(false); // voltou ao que estava
   });
 
+  it('tirar da lista o cliente aberto com algo digitado, ou limpar a lista com um lançamento sujo aberto, pergunta antes; tirar outro cliente não', () => {
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const props = base();
+    render(<ClientesDoMes {...props} />);
+    abrir('Bruno Lima');
+    fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar Carla Dias da lista' })); // outro cliente: o digitado não se perde
+    expect(confirmar).not.toHaveBeenCalled();
+    expect(props.onRemover).toHaveBeenCalledWith('c');
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar Bruno Lima da lista' })); // o cliente aberto e sujo
+    expect(confirmar).toHaveBeenCalledTimes(1);
+    expect(props.onRemover).toHaveBeenCalledTimes(1); // recusou
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar lista' }));
+    expect(confirmar).toHaveBeenCalledTimes(2);
+    expect(props.onLimpar).not.toHaveBeenCalled();
+    confirmar.mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar lista' }));
+    expect(props.onLimpar).toHaveBeenCalledTimes(1);
+    confirmar.mockRestore();
+  });
+
+  it('com qualquer gravação da lista em andamento (ocupado) os botões de abrir/fechar também ficam desligados', () => {
+    render(<ClientesDoMes {...base()} ocupado />);
+    expect((screen.getByRole('button', { name: /Ana Souza$/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('"Mostrar só quem falta" não deixa a lista vazia quando o último cliente recebe lançamento', () => {
     const props = base();
     const { rerender } = render(<ClientesDoMes {...props} />);

@@ -1662,7 +1662,7 @@ describe('Faturamento: segunda rodada de revisão independente', () => {
     await adicionarAoMes('Ana Souza', 'ana');
     await lancar('Ana Souza', { '012': 3 });
     const linha = await screen.findByRole('button', { name: /Lançar códigos e sessões de Ana Souza/ });
-    await waitFor(() => expect(norm(linha.textContent)).toContain('códigos sem valor (defina em Configurações)'));
+    await waitFor(() => expect(norm(linha.textContent)).toContain('código sem valor (defina em Configurações)'));
   });
 
   it('Preencher com a agenda só grava em quem continua sem lançamento: o que outro aparelho lançou nesse meio-tempo não é apagado', async () => {
@@ -1675,7 +1675,7 @@ describe('Faturamento: segunda rodada de revisão independente', () => {
     await waitFor(() => expect(linhaDe('p2', '2026-10')?.lancamentos).toEqual([{ '012': 2 }]));
     expect(linhaDe('p1', '2026-10')?.lancamentos).toEqual([{ '012': 7 }, { '301': 2 }]); // intacto
     expect(linhaDe('p3', '2026-10')?.lancamentos).toEqual([{ '012': 4 }]);
-    await waitFor(() => expect(h.aviso).toHaveBeenCalledWith(expect.stringMatching(/^Ana Souza: já tinha lançamento \(feito em outro aparelho\?\) e não foi alterado\./), expect.anything()));
+    await waitFor(() => expect(h.aviso).toHaveBeenCalledWith(expect.stringMatching(/^Ana Souza: já tinha lançamento ou saiu da lista \(feito em outro aparelho\?\) e não foi alterado\./), expect.anything()));
     await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 821,20')); // a tela relê: Ana 7 × 57,70 + 2 × 35,55 = 475,00; Bruno 2 × 57,70 = 115,40; Carla 4 × 57,70 = 230,80
   });
 
@@ -1837,5 +1837,162 @@ describe('Faturamento: segunda rodada de revisão independente', () => {
     await screen.findByRole('heading', { name: /Clientes de setembro de 2026/ });
     await screen.findByRole('button', { name: 'Tirar Ana Souza da lista' });
     expect(screen.queryByRole('group', { name: /Códigos e sessões de Ana Souza/ })).toBeNull();
+  });
+});
+
+describe('Faturamento: terceira rodada de revisão independente', () => {
+  const lanc = (id: string, mes: string, pid: string, lancamentos: Array<Record<string, number>>): Linha => ({ id, terapeuta_id: 'prof-1', mes, paciente_id: pid, lancamentos });
+  const linhaDe = (pid: string, mes: string) => h.banco.tabelas.cassi_financeiro_clientes.find((l) => l.paciente_id === pid && l.mes === mes);
+  const falharLeituraDaConfiguracao = () => {
+    const falhando = { valor: true };
+    const original = h.banco.from;
+    h.banco.from = ((tabela: string) => {
+      if (tabela === 'cassi_config' && falhando.valor) {
+        const q: Record<string, unknown> = {};
+        for (const m of ['select', 'eq', 'maybeSingle']) q[m] = () => q;
+        q.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: null, error: { message: 'sem rede' } }).then(res);
+        return q;
+      }
+      return original(tabela);
+    }) as typeof h.banco.from;
+    return falhando;
+  };
+
+  it('trocar o mês pelo CAMPO de mês também pergunta antes de descartar o digitado', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 4 }, { salvar: false });
+    vi.mocked(window.confirm).mockClear();
+    vi.mocked(window.confirm).mockReturnValue(false);
+    const campo = screen.getByDisplayValue('2026-10');
+    fireEvent.change(campo, { target: { value: '2026-09' } });
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { name: /Clientes de outubro de 2026/ })).toBeTruthy();
+    expect((screen.getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('4');
+    vi.mocked(window.confirm).mockReturnValue(true);
+    fireEvent.change(campo, { target: { value: '2026-09' } });
+    expect(await screen.findByRole('heading', { name: /Clientes de setembro de 2026/ })).toBeTruthy();
+  });
+
+  it('enquanto uma gravação está em andamento, as setas e o campo de mês ficam desligados (trocar de mês perderia o digitado se a gravação falhasse)', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    let soltar = () => {};
+    const retida = new Promise<void>((ok) => { soltar = ok; });
+    h.banco.antesDeEscrever(async (op) => { if (op.tipo === 'update') await retida; });
+    const grupo = await lancar('Ana Souza', { '012': 3 }, { salvar: false });
+    fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect((screen.getByTitle('Mês anterior') as HTMLButtonElement).disabled).toBe(true));
+    expect((screen.getByTitle('Próximo mês') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByDisplayValue('2026-10') as HTMLInputElement).disabled).toBe(true);
+    soltar();
+    await waitFor(() => expect((screen.getByTitle('Mês anterior') as HTMLButtonElement).disabled).toBe(false));
+  });
+
+  it('a dica de valor aparece quando ALGUM código lançado está sem valor, e não aparece quando todos têm', async () => {
+    h.banco.tabelas.cassi_config[0].codigos = h.banco.tabelas.cassi_config[0].codigos.map((c: Linha) => (c.codigo === '160' ? { ...c, valor: 0 } : c));
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 3 });
+    const linha = () => screen.getByRole('button', { name: /Lançar códigos e sessões de Ana Souza/ });
+    await waitFor(() => expect(norm(linha().textContent)).toContain('173,10'));
+    expect(norm(linha().textContent)).not.toContain('sem valor'); // só o 012, que tem valor
+    await abrirLancamento('Ana Souza');
+    fireEvent.change(screen.getByLabelText('Quantidade do código 160 na guia 1'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(norm(linha().textContent)).toContain('código sem valor (defina em Configurações)')); // 012 vale, 160 não: o valor do mês sairia menor sem aviso
+  });
+
+  it('aviso de mais de 60 sessões não cita quem foi pulado por já ter lançamento, e o aviso dos pulados diz quem', async () => {
+    for (let i = 0; i < 63; i++) h.banco.tabelas.agendamentos.push(sessao('p2', 1 + (i % 24)), sessao('p3', 1 + (i % 24)));
+    montar();
+    await irParaFaturamento();
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar quem teve sessão no mês/ }));
+    await screen.findByText(/^3 na lista/);
+    linhaDe('p3', '2026-10')!.lancamentos = [{ '012': 1 }]; // outro aparelho lançou na Carla
+    fireEvent.click(screen.getByRole('button', { name: /^Preencher 3 com a agenda/ }));
+    await waitFor(() => expect(h.aviso).toHaveBeenCalledTimes(2));
+    const textos = h.aviso.mock.calls.map((c) => String(c[0]));
+    const de60 = textos.find((t) => /Lancei 60/.test(t))!;
+    expect(de60).toContain('Bruno Lima');
+    expect(de60).not.toContain('Carla Dias');
+    expect(textos.find((t) => /já tinha lançamento/.test(t))).toContain('Carla Dias');
+    expect(linhaDe('p3', '2026-10')!.lancamentos).toEqual([{ '012': 1 }]);
+  });
+
+  it('aviso dos pulados no plural, e os dois avisos duram 12 s (dá tempo de ler)', async () => {
+    for (let i = 0; i < 63; i++) h.banco.tabelas.agendamentos.push(sessao('p2', 1 + (i % 24)));
+    montar();
+    await irParaFaturamento();
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar quem teve sessão no mês/ }));
+    await screen.findByText(/^3 na lista/);
+    linhaDe('p1', '2026-10')!.lancamentos = [{ '012': 7 }];
+    linhaDe('p3', '2026-10')!.lancamentos = [{ '012': 1 }];
+    fireEvent.click(screen.getByRole('button', { name: /^Preencher 3 com a agenda/ }));
+    await waitFor(() => expect(h.aviso).toHaveBeenCalledTimes(2));
+    const plural = h.aviso.mock.calls.map((c) => String(c[0])).find((t) => /tinham/.test(t));
+    expect(plural).toBe('Ana Souza, Carla Dias: já tinham lançamento ou saíram da lista (feito em outro aparelho?) e não foram alterados.');
+    for (const chamada of h.aviso.mock.calls) expect(chamada[1]).toEqual({ duration: 12000 });
+  });
+
+  it('relatório de produção: sem nenhuma guia marcada, as colunas vêm das guias do mês (não some tudo)', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
+    const dialogo = await screen.findByRole('dialog');
+    const ana = await within(dialogo).findByRole('checkbox', { name: /Ana Souza/ });
+    await waitFor(() => expect((ana as HTMLInputElement).checked).toBe(true));
+    const colunas = () => within(dialogo).getAllByRole('columnheader').map((th) => norm(th.textContent));
+    fireEvent.click(ana);
+    await waitFor(() => expect((ana as HTMLInputElement).checked).toBe(false));
+    expect(colunas()).toEqual(['Nome do Paciente', 'Código(50000012)', 'Código(31602185)', 'Soma']); // 012 e 185 das guias do mês
+  });
+
+  it('juntar: depois de falhar APÓS passar as listas, a lista do Faturamento que está em cache é invalidada', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(lanc('v1', '2026-09', 'p2', [{ '012': 2 }]));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000, gcTime: 5 * 60_000 }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={qc}><MemoryRouter><ControleCassi /></MemoryRouter></QueryClientProvider>);
+    await screen.findByText('Bruno Lima');
+    abrirAba(/^Faturamento/);
+    await screen.findByText(/Nenhum cliente na lista de outubro de 2026/);
+    abrirAba(/^Clientes$/);
+    await screen.findByText('Bruno Lima');
+    const consultas = () => qc.getQueryCache().findAll({ queryKey: ['cassi-financeiro-clientes', 'prof-1'] });
+    expect(consultas().length).toBeGreaterThan(0);
+    expect(consultas().every((c) => !c.state.isInvalidated)).toBe(true);
+    await abrirMenuDe('Bruno Lima');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Editar cadastro/ }));
+    fireEvent.change(await screen.findByPlaceholderText('Buscar o cadastro certo pelo nome…'), { target: { value: 'carla' } });
+    h.banco.falharEscritaQuando((op) => op.tabela === 'guias_cassi' && op.tipo === 'update', 'rede caiu');
+    fireEvent.click(await screen.findByRole('button', { name: /Carla Dias.*Juntar aqui/ }));
+    await waitFor(() => expect(h.erro).toHaveBeenCalled());
+    expect(String(h.erro.mock.calls.at(-1)![0])).toContain('nenhum cadastro foi removido');
+    expect(consultas().every((c) => c.state.isInvalidated)).toBe(true); // o cache da lista foi invalidado: ao voltar ao Faturamento ela é relida, já com as listas passadas
+  });
+
+  it('Configurações: com o cache velho e a releitura falhando, o diálogo NÃO monta o formulário com o cache: avisa e oferece "Tentar de novo"', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0, gcTime: 5 * 60_000 }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={qc}><MemoryRouter><ControleCassi /></MemoryRouter></QueryClientProvider>);
+    await screen.findByText('Ana Souza');
+    abrirAba(/^Faturamento/);
+    await screen.findByText(/Nenhum cliente na lista de outubro de 2026/); // a configuração entrou no cache (012 = 57,70)
+    abrirAba(/^Clientes$/);
+    await screen.findByText('Ana Souza');
+    h.banco.tabelas.cassi_config[0].codigos = h.banco.tabelas.cassi_config[0].codigos.map((c: Linha) => (c.codigo === '012' ? { ...c, valor: 61.2 } : c)); // o banco mudou
+    const falhando = falharLeituraDaConfiguracao();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Configurações CASSI' })[0]);
+    const dialogo = await screen.findByRole('dialog');
+    const alerta = await within(dialogo).findByRole('alert');
+    expect(norm(alerta.textContent)).toContain('Não consegui carregar suas configurações');
+    expect(within(dialogo).queryAllByPlaceholderText('000')).toHaveLength(0); // nada de formulário com 57,70 para salvar por cima de 61,20
+    falhando.valor = false;
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Tentar de novo' }));
+    const codigos = await within(dialogo).findAllByPlaceholderText('000');
+    const valores = within(dialogo).getAllByPlaceholderText('0,00') as HTMLInputElement[];
+    expect(valores[codigos.findIndex((c) => (c as HTMLInputElement).value === '012')].value).toBe('61,2');
   });
 });

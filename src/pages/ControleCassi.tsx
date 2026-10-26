@@ -2237,7 +2237,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
 function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { data: cfg, isLoading, isFetching, isError: erroCfg, refetch: recarregarCfg } = useCassiConfig();
+  const { data: cfg, isLoading, isFetching, fetchStatus, isError: erroCfg, refetch: recarregarCfg } = useCassiConfig();
   // Campos numéricos ficam como TEXTO enquanto edita (aceita vírgula e vazio);
   // só viram número ao salvar. Assim dá pra digitar "57,07" sem a fração sumir.
   type CodigoEdit = { codigo: string; descricao: string; codigo_oficial?: string; valor: string };
@@ -2255,7 +2255,8 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     // Só preenche com o que acabou de chegar do banco: o cache pode ser de antes de uma atualização e salvar dele desfaria a mudança.
-    if (cfg && !isFetching && !pronto) {
+    // Releitura em andamento, pausada (sem rede) ou que falhou não conta: o cache velho não vira formulário.
+    if (cfg && fetchStatus === 'idle' && !erroCfg && !pronto) {
       setCodigos(cfg.codigos.map((c) => ({ codigo: c.codigo, descricao: c.descricao, codigo_oficial: c.codigo_oficial, valor: numStr(c.valor) })));
       setImpostoPct(numStr(cfg.imposto_percentual));
       setMinhaParte(numStr(cfg.minha_parte_percentual));
@@ -2266,7 +2267,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
       setPronto(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cfg, isFetching, pronto]);
+  }, [cfg, fetchStatus, erroCfg, pronto]);
 
   const setCod = (i: number, campo: keyof CodigoEdit, v: string) =>
     setCodigos((p) => p.map((c, idx) => idx === i ? { ...c, [campo]: v } : c));
@@ -2307,7 +2308,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg w-[95vw] max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle className="text-base">Configurações CASSI</DialogTitle></DialogHeader>
-        {!cfg && erroCfg ? (
+        {erroCfg && !pronto ? (
           <div className="text-center py-6 space-y-2" role="alert">
             <p className="text-sm text-rose-600 dark:text-rose-400">Não consegui carregar suas configurações. Sem elas não dá para editar sem risco de gravar por cima.</p>
             <Button size="sm" variant="outline" disabled={isFetching} onClick={() => recarregarCfg()}>{isFetching ? 'Tentando…' : 'Tentar de novo'}</Button>
@@ -2772,25 +2773,27 @@ function FinanceiroCassi({ onAbrirGuia }: {
       return false; // falhou: o hook já avisou; o editor continua aberto com o que foi digitado
     }
   };
-  const preencherComAgenda = () => {
+  const preencherComAgenda = async () => {
     // Cabem 6 guias de 10 por cliente no mês: quem teve mais sessões que isso fica com o que coube, e o aviso diz quem.
     const passaram = semLancamentoComAgenda.filter((c) => c.sessoesAgenda > MAXIMO_GUIAS_NO_MES * 10);
-    lista.lancar.mutate(
-      { mes, itens: semLancamentoComAgenda.map((c) => ({ id: c.id, guias: guiasPelaAgenda(c.sessoesAgenda) })), somenteSeVazio: true },
-      {
-        // Os avisos saem depois da gravação, para falar só do que de fato foi gravado.
-        onSuccess: ({ pulados }) => {
-          const nomes = (ids: string[]) => clientesDaLista.filter((c) => ids.includes(c.id)).map((c) => c.nome).join(', ');
-          const gravados = passaram.filter((c) => !pulados.includes(c.id));
-          if (gravados.length > 0) {
-            toast.warning(`${nomes(gravados.map((c) => c.id))}: a agenda tem mais de ${MAXIMO_GUIAS_NO_MES * 10} sessões no mês, mais do que cabe em ${MAXIMO_GUIAS_NO_MES} guias. Lancei ${MAXIMO_GUIAS_NO_MES * 10}; confira o restante.`, { duration: 12000 });
-          }
-          if (pulados.length > 0) {
-            toast.warning(`${nomes(pulados)}: já ${pulados.length === 1 ? 'tinha' : 'tinham'} lançamento (feito em outro aparelho?) e não ${pulados.length === 1 ? 'foi alterado' : 'foram alterados'}.`, { duration: 12000 });
-          }
-        },
-      },
-    );
+    const nomes = (ids: string[]) => clientesDaLista.filter((c) => ids.includes(c.id)).map((c) => c.nome).join(', ');
+    let pulados: string[];
+    try {
+      ({ pulados } = await lista.lancar.mutateAsync({
+        mes, itens: semLancamentoComAgenda.map((c) => ({ id: c.id, guias: guiasPelaAgenda(c.sessoesAgenda) })), somenteSeVazio: true,
+      }));
+    } catch {
+      return; // falhou: o hook já avisou
+    }
+    // Os avisos saem depois da gravação (e não dependem de a tela continuar a mesma), para falar só do que de fato foi gravado.
+    const gravados = passaram.filter((c) => !pulados.includes(c.id));
+    if (gravados.length > 0) {
+      toast.warning(`${nomes(gravados.map((c) => c.id))}: a agenda tem mais de ${MAXIMO_GUIAS_NO_MES * 10} sessões no mês, mais do que cabe em ${MAXIMO_GUIAS_NO_MES} guias. Lancei ${MAXIMO_GUIAS_NO_MES * 10}; confira o restante.`, { duration: 12000 });
+    }
+    if (pulados.length > 0) {
+      const um = pulados.length === 1;
+      toast.warning(`${nomes(pulados)}: ${um ? 'já tinha lançamento ou saiu da lista' : 'já tinham lançamento ou saíram da lista'} (feito em outro aparelho?) e não ${um ? 'foi alterado' : 'foram alterados'}.`, { duration: 12000 });
+    }
   };
   const salvandoId = lista.lancar.isPending && lista.lancar.variables?.itens.length === 1 ? lista.lancar.variables.itens[0].id : null;
 
@@ -2832,15 +2835,15 @@ function FinanceiroCassi({ onAbrirGuia }: {
       {/* Seletor de mês */}
       <div className="rounded-xl border border-border/50 bg-background p-3 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5">
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(-1)} title="Mês anterior">‹</Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8" disabled={lista.ocupado} onClick={() => irMes(-1)} title="Mês anterior">‹</Button>
           <div className="text-center min-w-[9rem]">
             <p className="text-sm font-bold capitalize leading-none">{MESES_PT[m - 1]} {ano}</p>
             <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Cálculo do mês</p>
           </div>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(1)} title="Próximo mês">›</Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8" disabled={lista.ocupado} onClick={() => irMes(1)} title="Próximo mês">›</Button>
         </div>
         <div className="flex items-center gap-1.5">
-          <Input type="month" value={mes} onChange={(e) => e.target.value && podeTrocarDeMes() && setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
+          <Input type="month" value={mes} disabled={lista.ocupado} onChange={(e) => e.target.value && podeTrocarDeMes() && setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
           <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={!cfg || calc.linhas.length === 0} onClick={baixarCSV}>
             <Download className="h-3.5 w-3.5" /> CSV
           </Button>

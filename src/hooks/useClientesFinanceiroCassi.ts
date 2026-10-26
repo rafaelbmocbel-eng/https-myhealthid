@@ -56,7 +56,13 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
     [porMes],
   );
 
-  // onSettled (e não onSuccess): uma gravação que falha no meio de várias deixa parte feita; a lista precisa ser relida de qualquer jeito.
+  // A lista é relida em qualquer desfecho (uma gravação que falha no meio de várias deixa parte feita). No sucesso a mutação espera a
+  // leitura (o editor só fecha com a lista já nova); na falha não espera: o aviso e o botão voltam na hora, sem "Salvando…" até a releitura.
+  // networkMode 'always': sem rede a gravação falha na hora em vez de ficar pausada com o botão em "Salvando…" para sempre.
+  const relerSeFalhou = (_dados: unknown, erro: unknown) => {
+    if (erro) { void invalidar(); return undefined; }
+    return invalidar();
+  };
   const aoFalhar = (acao: string) => (e: unknown) => {
     toast.error(`Não consegui ${acao}: ${(e as { message?: string })?.message || 'erro'}`);
   };
@@ -69,7 +75,8 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
         .upsert(linhas, { onConflict: 'terapeuta_id,mes,paciente_id', ignoreDuplicates: true });
       if (error) throw error;
     },
-    onSettled: invalidar,
+    onSettled: relerSeFalhou,
+    networkMode: 'always',
     onError: aoFalhar('adicionar à lista'),
   });
 
@@ -77,9 +84,9 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
   // as gravações seguem juntas e, se alguma falhar, avisa e não esconde o erro. Com `somenteSeVazio` só grava em quem
   // continua sem lançamento no banco (preencher com a agenda não pode apagar o que outro aparelho lançou nesse meio-tempo):
   // quem já tinha fica intocado e volta em `pulados`.
-  const lancar = useMutation({
-    mutationFn: async ({ mes, itens, somenteSeVazio = false }: { mes: string; itens: Array<{ id: string; guias: GuiaLancada[] }>; somenteSeVazio?: boolean }) => {
-      if (itens.length === 0) return { pulados: [] as string[] };
+  const lancar = useMutation<{ pulados: string[] }, unknown, { mes: string; itens: Array<{ id: string; guias: GuiaLancada[] }>; somenteSeVazio?: boolean }>({
+    mutationFn: async ({ mes, itens, somenteSeVazio = false }) => {
+      if (itens.length === 0) return { pulados: [] };
       const resultados = await Promise.all(itens.map(({ id, guias }) => {
         let q = (supabase as any).from(TABELA).update({ lancamentos: normalizarLancamentos(guias) })
           .eq('terapeuta_id', user!.id).eq('mes', mes).eq('paciente_id', id);
@@ -94,9 +101,10 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
       const semLinha = itens.map((item, i) => ({ id: item.id, vazio: !resultados[i]?.data || resultados[i].data.length === 0 })).filter((x) => x.vazio).map((x) => x.id);
       if (somenteSeVazio) return { pulados: semLinha };
       if (semLinha.length > 0) throw new Error('o cliente não está mais na lista deste mês');
-      return { pulados: [] as string[] };
+      return { pulados: [] };
     },
-    onSettled: invalidar,
+    onSettled: relerSeFalhou,
+    networkMode: 'always',
     onError: aoFalhar('salvar os códigos e as sessões'),
   });
 
@@ -106,7 +114,8 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
         .eq('terapeuta_id', user!.id).eq('mes', mes).eq('paciente_id', id);
       if (error) throw error;
     },
-    onSettled: invalidar,
+    onSettled: relerSeFalhou,
+    networkMode: 'always',
     onError: aoFalhar('tirar da lista'),
   });
 
@@ -116,7 +125,8 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
         .eq('terapeuta_id', user!.id).eq('mes', mes);
       if (error) throw error;
     },
-    onSettled: invalidar,
+    onSettled: relerSeFalhou,
+    networkMode: 'always',
     onError: aoFalhar('limpar a lista'),
   });
 

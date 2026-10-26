@@ -43,7 +43,7 @@ BEGIN
   END IF;
 
   SELECT codigos INTO v_atual FROM public.cassi_config WHERE terapeuta_id = v_ter;
-  IF v_atual IS NULL OR jsonb_typeof(v_atual) <> 'array' THEN -- sem configuração salva: valem os padrões do app
+  IF v_atual IS NULL OR jsonb_typeof(v_atual) <> 'array' OR jsonb_array_length(v_atual) = 0 THEN -- sem lista salva: valem os padrões do app
     RAISE NOTICE 'cassi_config_codigos: a conta não tem lista de códigos salva; nada foi alterado';
     RETURN;
   END IF;

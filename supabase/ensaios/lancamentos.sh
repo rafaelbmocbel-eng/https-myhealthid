@@ -5,11 +5,12 @@
 # DESCARTÁVEL numa pasta temporária (porta própria, sem rede) e o apaga no fim; nunca toca em banco de verdade.
 # Não roda no CI: é o ensaio manual que se faz antes de publicar uma migração (o vitest só confere o texto do SQL).
 # Como rodar:  bash supabase/ensaios/lancamentos.sh     (como root usa o usuário postgres; fora de root, o seu usuário)
+# A pasta do servidor é nova a cada execução (mktemp); se você definir PASTA, ela é APAGADA no começo e no fim.
 set -u
 AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 M1="${M1:-$AQUI/../migrations/20261025190000_cassi_financeiro_clientes.sql}"
 M2="${M2:-$AQUI/../migrations/20261025230000_cassi_financeiro_lancamentos.sql}"
-PGBIN="${PGBIN:-$(pg_config --bindir 2>/dev/null || echo /usr/lib/postgresql/16/bin)}"; PASTA="${PASTA:-/var/tmp/cassi-lanc-pg}"; PORTA="${PORTA:-55442}"; DB=ensaio
+PGBIN="${PGBIN:-$(pg_config --bindir 2>/dev/null || echo /usr/lib/postgresql/16/bin)}"; PASTA="${PASTA:-$(mktemp -d /var/tmp/cassi-lanc.XXXXXX)}"; PORTA="${PORTA:-55442}"; DB=ensaio
 como_pg() { if [ "$(id -u)" = 0 ]; then runuser -u postgres -- "$@"; else "$@"; fi; }
 PSQL=("$PGBIN/psql" -X -q -h "$PASTA" -p "$PORTA" -U postgres)
 parar() { como_pg "$PGBIN/pg_ctl" -D "$PASTA/pgdata" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$PASTA"; }
@@ -116,26 +117,57 @@ r="$(juntar '' $PA3 $PA4)"; echo "$r" | grep -qi "Sem sessão" && ok "sem sessã
 r="$(sql -v VERBOSITY=terse 2>&1 -c "set role anon; select public.cassi_juntar_financeiro_clientes('$PA3','$PA4')")"; echo "$r" | grep -qi "permission denied" && ok "anon não executa a função" || bad "anon executa" "$r"
 
 
+# ---- UPDATE condicional (o que "Preencher com a agenda" manda: só grava em quem continua com lancamentos = [])
+PC1=aaaaaaaa-0000-0000-0000-0000000000c1; PC2=aaaaaaaa-0000-0000-0000-0000000000c2; PC3=aaaaaaaa-0000-0000-0000-0000000000c3
+sql -c "insert into public.pacientes(id, terapeuta_id, nome) values ('$PC1','$A','Vazio'),('$PC2','$A','Cheio'),('$PC3','$A','Casca')"
+sql -c "set role authenticated; select set_config('request.jwt.claim.sub','$A',false); insert into public.cassi_financeiro_clientes(mes, paciente_id, lancamentos) values ('2027-01','$PC1','[]'),('2027-01','$PC2','[{\"301\":2}]'),('2027-01','$PC3','[{}]')" >/dev/null
+r="$(sql -c "set role authenticated; select set_config('request.jwt.claim.sub','$A',false); update public.cassi_financeiro_clientes set lancamentos = '[{\"012\":5}]'::jsonb where mes='2027-01' and lancamentos = '[]'::jsonb returning paciente_id" | grep -v '^$' | grep -v '^set_config\|^[a-f0-9-]\{36\}$' )"
+igual "UPDATE com lancamentos = '[]' só atinge quem está vazio" "$(sql -c "select string_agg(paciente_id::text, ',' order by paciente_id) from public.cassi_financeiro_clientes where mes='2027-01' and lancamentos = '[{\"012\":5}]'::jsonb")" "$PC1"
+igual "quem já tinha lançamento fica intacto" "$(sql -c "select lancamentos::text from public.cassi_financeiro_clientes where mes='2027-01' and paciente_id='$PC2'")" '[{"301": 2}]'
+igual "guia vazia [{}] não é '[]': também fica intacta" "$(sql -c "select lancamentos::text from public.cassi_financeiro_clientes where mes='2027-01' and paciente_id='$PC3'")" '[{}]'
+
 # ---- concorrência: junções em sentidos opostos ao mesmo tempo não podem travar uma na outra (deadlock) nem bater na chave única
-PX=aaaaaaaa-0000-0000-0000-0000000000a1; PY=aaaaaaaa-0000-0000-0000-0000000000a2
-sql -c "insert into public.pacientes(id, terapeuta_id, nome) values ('$PX','$A','X'),('$PY','$A','Y')"
+PX=aaaaaaaa-0000-0000-0000-0000000000a1; PY=aaaaaaaa-0000-0000-0000-0000000000a2; PZ=aaaaaaaa-0000-0000-0000-0000000000a3
+sql -c "insert into public.pacientes(id, terapeuta_id, nome) values ('$PX','$A','X'),('$PY','$A','Y'),('$PZ','$A','Z')"
+# Três cadastros e pares sorteados (X→Y, Y→Z, Z→X, e os inversos). Cada rodada semeia as linhas com lancamentos vazios (a soma nunca passa
+# de 6 guias) sob o mesmo lock da função, para que a semeadura não seja a causa de erro.
 cat > "$PASTA/conc.sql" <<SQLB
-\set dir random(0, 1)
+\set a random(1, 3)
+\set b random(1, 3)
+\if :a = :b
+\set b (:a % 3) + 1
+\endif
 set role authenticated;
 select set_config('request.jwt.claim.sub','$A',false);
 begin;
 select pg_advisory_xact_lock(hashtextextended('$A', 0));
-insert into public.cassi_financeiro_clientes(mes, paciente_id, lancamentos) values ('2026-01','$PX','[{"012":1}]'),('2026-02','$PX','[{"012":1}]') on conflict do nothing;
-insert into public.cassi_financeiro_clientes(mes, paciente_id, lancamentos) values ('2026-01','$PY','[{"144":1}]'),('2026-02','$PY','[{"144":1}]') on conflict do nothing;
+insert into public.cassi_financeiro_clientes(mes, paciente_id, lancamentos)
+  select m, p, '[]'::jsonb from (values ('2026-01'), ('2026-02')) as meses(m), (values ('$PX'::uuid), ('$PY'::uuid), ('$PZ'::uuid)) as pacs(p)
+  on conflict do nothing;
 commit;
-\if :dir = 0
-select public.cassi_juntar_financeiro_clientes('$PX','$PY');
-\else
-select public.cassi_juntar_financeiro_clientes('$PY','$PX');
-\endif
+select public.cassi_juntar_financeiro_clientes((array['$PX','$PY','$PZ'])[:a]::uuid, (array['$PX','$PY','$PZ'])[:b]::uuid);
 reset role;
 SQLB
 saida="$("$PGBIN/pgbench" -n -h "$PASTA" -p "$PORTA" -U postgres -d "$DB" -c 6 -j 6 -t 40 -f "$PASTA/conc.sql" 2>&1)"
-echo "$saida" | grep -qiE "deadlock|duplicate key|unique" && bad "junções concorrentes em sentidos opostos" "$(echo "$saida" | grep -iE 'deadlock|duplicate|unique' | head -2)" || ok "junções concorrentes em sentidos opostos não dão deadlock nem violam a chave única"
+processadas="$(echo "$saida" | sed -n 's/.*number of transactions actually processed: \([0-9]*\)\/\([0-9]*\).*/\1\/\2/p')"
+falhas="$(echo "$saida" | sed -n 's/.*number of failed transactions: \([0-9]*\).*/\1/p')"
+if [ "$processadas" = "240/240" ] && [ "${falhas:-0}" = "0" ] && ! echo "$saida" | grep -qiE "deadlock|duplicate key|unique|aborted"; then
+  ok "junções concorrentes (3 cadastros, pares sorteados): 240/240 sem deadlock nem violação da chave única"
+else
+  bad "junções concorrentes" "processadas=[$processadas] falhas=[${falhas:-?}] $(echo "$saida" | grep -iE 'deadlock|duplicate|unique|aborted' | head -2)"
+fi
+
+# ---- uma aba coloca o destino na lista do mês entre a leitura e a gravação da junção: erro com mensagem clara, tudo desfeito
+PU=aaaaaaaa-0000-0000-0000-0000000000b1; PV=aaaaaaaa-0000-0000-0000-0000000000b2
+sql -c "insert into public.pacientes(id, terapeuta_id, nome) values ('$PU','$A','U'),('$PV','$A','V')"
+ins $A 2027-02 $PU '[{"012":3}]'
+( sql -c "set role authenticated; select set_config('request.jwt.claim.sub','$A',false); begin; insert into public.cassi_financeiro_clientes(mes, paciente_id) values ('2027-02','$PV'); select pg_sleep(2); commit;" >/dev/null 2>&1 ) &
+sleep 0.7
+r="$(juntar $A $PU $PV)"
+wait
+echo "$r" | grep -q "A lista de 2027-02 mudou enquanto os cadastros eram juntados" && ok "destino criado por outra aba no meio da junção: mensagem clara em português" || bad "unique_violation amigável" "$r"
+igual "e a origem continua com o lançamento (tudo desfeito)" "$(lan 2027-02 $PU)" '[{"012": 3}]'
+r="$(juntar $A $PU $PV)"
+igual "tentar de novo depois funciona: o destino recebe o lançamento" "$(lan 2027-02 $PV)" '[{"012": 3}]'
 
 echo; echo "RESULTADO: $PASSOU ok, $FALHOU falhas"; [ "$FALHOU" = "0" ]

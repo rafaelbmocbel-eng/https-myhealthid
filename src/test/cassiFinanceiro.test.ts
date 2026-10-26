@@ -69,6 +69,18 @@ describe('fechamento do mês pelos lançamentos', () => {
     expect(Math.round((r.totRepasse + r.ficaComVoce) * 100)).toBe(Math.round(r.totLiquido * 100));
   });
 
+  it('meio centavo exato (145,67 × 50%) arredonda para cima, sem ruído de ponto flutuante, em sua parte e no repasse', () => {
+    const linha = (pid: string, l: number) => ({ pid, nome: pid, responsavel: 'Dra. X', sessoes: 1, bruto: l, imposto: 0, liquido: l });
+    const c = { codigos: [], responsaveis: [{ nome: 'Dra. X', percentual: 50 }], imposto_por_guia: 0, imposto_percentual: 0, minha_parte_percentual: 50 };
+    const r = agregarFechamento([linha('a', 145.67)], c);
+    expect([r.suaParte, r.parteClinica]).toEqual([72.84, 72.83]);
+    expect([r.repasses[0].repasse, r.totRepasse, r.ficaComVoce]).toEqual([72.84, 72.84, 72.83]);
+    const varios = agregarFechamento([linha('a', 145.67), linha('b', 33.33), linha('c', 0.07)], { ...c, minha_parte_percentual: 33, responsaveis: [{ nome: 'Dra. X', percentual: 33 }] });
+    expect(varios.totLiquido).toBe(179.07);
+    expect(Math.round((varios.suaParte + varios.parteClinica) * 100)).toBe(17907);
+    expect(Math.round((varios.totRepasse + varios.ficaComVoce) * 100)).toBe(17907);
+  });
+
   it('com percentual e valor fixo antigo ao mesmo tempo, vale o percentual', () => {
     const r = fecharMesPorLancamentos({
       clientes: [{ id: 'a', nome: 'Ana', responsavel: '', guias: [{ '012': 10 }, { '012': 2 }] }],

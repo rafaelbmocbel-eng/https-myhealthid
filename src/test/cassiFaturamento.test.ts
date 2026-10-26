@@ -118,6 +118,7 @@ describe('lancamentosIguais', () => {
     expect(lancamentosIguais([{ '012': 4, '020': 2 }], [{ '020': 2, '012': 4 }])).toBe(true);
     expect(lancamentosIguais([{ '012': 4 }], [{ '012': 5 }])).toBe(false);
     expect(lancamentosIguais([{ '012': 4 }, { '144': 1 }], [{ '144': 1 }, { '012': 4 }])).toBe(false); // a ordem das GUIAS importa
+    expect(lancamentosIguais([{ '012': 4 }], [{ '020': 4 }])).toBe(false); // mesma quantidade em outro código
     expect(lancamentosIguais([], [])).toBe(true);
     expect(lancamentosIguais([{ '012': 1 }], [])).toBe(false);
   });

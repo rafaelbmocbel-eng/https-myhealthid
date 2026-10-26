@@ -107,8 +107,13 @@ BEGIN
     END IF;
 
     IF v_alvo IS NULL THEN
-      INSERT INTO public.cassi_financeiro_clientes (terapeuta_id, mes, paciente_id, lancamentos)
-      VALUES (v_uid, r.mes, p_destino, v_novo);
+      BEGIN
+        INSERT INTO public.cassi_financeiro_clientes (terapeuta_id, mes, paciente_id, lancamentos)
+        VALUES (v_uid, r.mes, p_destino, v_novo);
+      EXCEPTION WHEN unique_violation THEN
+        -- Outra aba acabou de colocar este cliente na lista do mês, entre a leitura e a gravação: tudo é desfeito, e a mensagem diz o que fazer.
+        RAISE EXCEPTION 'A lista de % mudou enquanto os cadastros eram juntados. Tente de novo.', r.mes;
+      END;
     ELSE
       UPDATE public.cassi_financeiro_clientes SET lancamentos = v_novo
       WHERE terapeuta_id = v_uid AND paciente_id = p_destino AND mes = r.mes;

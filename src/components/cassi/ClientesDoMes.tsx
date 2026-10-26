@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { BuscaDeCliente, type CandidatoBusca } from '@/components/cassi/BuscaDeCliente';
 import { LancamentoDoCliente } from '@/components/cassi/LancamentoDoCliente';
 import {
-  brutoDosLancamentos, problemasDosLancamentos, resumoDosLancamentos, type CodigoFaturavel, type GuiaLancada,
+  brutoDosLancamentos, problemasDosLancamentos, resumoDosLancamentos, totalPorCodigo, type CodigoFaturavel, type GuiaLancada,
 } from '@/lib/cassiFaturamento';
 
 const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -94,7 +94,10 @@ export function ClientesDoMes({
           Adicionar quem teve sessão no mês{comSessaoFora > 0 ? ` (${comSessaoFora})` : ''}
         </Button>
         {clientes.length > 0 && (
-          <button type="button" disabled={ocupado} onClick={onLimpar}
+          <button type="button" disabled={ocupado} onClick={() => {
+            if (abertoId !== null && abertoAlterado.current && !window.confirm('Limpar a lista descarta o que você digitou no lançamento aberto. Continuar?')) return;
+            onLimpar();
+          }}
             className="ml-auto text-[11px] font-medium text-rose-600 dark:text-rose-400 hover:underline disabled:opacity-50">
             Limpar lista
           </button>
@@ -136,10 +139,10 @@ export function ClientesDoMes({
                 <div className="flex items-center gap-1 pl-1 pr-1 py-1">
                   <button
                     type="button"
-                    disabled={salvandoId != null}
+                    disabled={salvandoId != null || ocupado}
                     onClick={() => {
                       // Trocar de cliente (ou fechar) joga fora o que foi digitado: pergunta antes.
-                      // Enquanto grava não troca: se a gravação falhasse, o que foi digitado já teria ido embora.
+                      // Enquanto grava (qualquer gravação da lista) não troca: se falhasse, o que foi digitado já teria ido embora.
                       if (abertoId !== null && abertoAlterado.current && !window.confirm('Descartar o que você digitou no lançamento aberto?')) return;
                       abertoAlterado.current = false;
                       setAbertoId(aberto ? null : c.id);
@@ -158,7 +161,7 @@ export function ClientesDoMes({
                         <span className="block text-[11px] tabular-nums text-muted-foreground">
                           {resumoDosLancamentos(c.guias)} · <b className="text-foreground">{brl(bruto)}</b>
                           {acimaDoLimite && <span className="text-rose-600 dark:text-rose-400"> · acima do limite da CASSI</span>}
-                          {bruto === 0 && <span className="text-amber-700 dark:text-amber-400"> · códigos sem valor (defina em Configurações)</span>}
+                          {Object.keys(totalPorCodigo(c.guias)).some((cod) => valorDe(cod) === 0) && <span className="text-amber-700 dark:text-amber-400"> · código sem valor (defina em Configurações)</span>}
                         </span>
                       ) : (
                         <span className="block text-[11px] text-amber-700 dark:text-amber-400">Sem códigos lançados</span>
@@ -167,7 +170,10 @@ export function ClientesDoMes({
                     </span>
                     <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', aberto && 'rotate-180')} aria-hidden />
                   </button>
-                  <button type="button" disabled={ocupado} onClick={() => onRemover(c.id)} aria-label={`Tirar ${c.nome} da lista`} title="Tirar da lista"
+                  <button type="button" disabled={ocupado} onClick={() => {
+                    if (aberto && abertoAlterado.current && !window.confirm('Tirar da lista descarta o que você digitou neste lançamento. Continuar?')) return;
+                    onRemover(c.id);
+                  }} aria-label={`Tirar ${c.nome} da lista`} title="Tirar da lista"
                     className="p-2 text-muted-foreground hover:text-destructive shrink-0 disabled:opacity-50">
                     <X className="h-4 w-4" aria-hidden />
                   </button>

@@ -77,8 +77,13 @@ describe('migração dos lançamentos do Faturamento CASSI', () => {
     expect(sql.indexOf('DELETE FROM public.cassi_financeiro_clientes')).toBeGreaterThan(sql.indexOf('END LOOP'));
   });
 
+  it('se outra aba colocar o destino na lista no meio da junção, a mensagem é clara e tudo é desfeito (unique_violation tratada)', () => {
+    expect(sql).toMatch(/EXCEPTION WHEN unique_violation THEN\s*(--[^\n]*\n\s*)?RAISE EXCEPTION 'A lista de % mudou enquanto os cadastros eram juntados\. Tente de novo\.', r\.mes;/);
+  });
+
   it('uma junção por vez por profissional (lock da transação, antes de ler qualquer linha): sem deadlock em sentidos opostos', () => {
     const lock = sql.indexOf('PERFORM pg_advisory_xact_lock(hashtextextended(v_uid::text, 0))');
+    expect(sql).toMatch(/^\s*PERFORM pg_advisory_xact_lock\(hashtextextended\(v_uid::text, 0\)\);/m); // um comando de verdade: nem comentado, nem dentro de IF
     expect(lock).toBeGreaterThan(sql.indexOf('Escolha dois cadastros diferentes'));
     expect(lock).toBeLessThan(sql.indexOf('FOR r IN'));
   });

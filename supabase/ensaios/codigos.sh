@@ -5,10 +5,11 @@
 # DESCARTÁVEL numa pasta temporária (porta própria, sem rede) e o apaga no fim; nunca toca em banco de verdade.
 # Não roda no CI: é o ensaio manual que se faz antes de publicar uma migração (o vitest só confere o texto do SQL).
 # Como rodar:  bash supabase/ensaios/codigos.sh     (como root usa o usuário postgres; fora de root, o seu usuário)
+# A pasta do servidor é nova a cada execução (mktemp); se você definir PASTA, ela é APAGADA no começo e no fim.
 set -u
 AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 M="${M:-$AQUI/../migrations/20261025233000_cassi_config_codigos_tabela_cassi.sql}"
-PGBIN="${PGBIN:-$(pg_config --bindir 2>/dev/null || echo /usr/lib/postgresql/16/bin)}"; PASTA="${PASTA:-/var/tmp/cassi-cod-pg}"; PORTA="${PORTA:-55443}"; DB=ensaio
+PGBIN="${PGBIN:-$(pg_config --bindir 2>/dev/null || echo /usr/lib/postgresql/16/bin)}"; PASTA="${PASTA:-$(mktemp -d /var/tmp/cassi-cod.XXXXXX)}"; PORTA="${PORTA:-55443}"; DB=ensaio
 como_pg() { if [ "$(id -u)" = 0 ]; then runuser -u postgres -- "$@"; else "$@"; fi; }
 PSQL=("$PGBIN/psql" -X -q -h "$PASTA" -p "$PORTA" -U postgres)
 parar() { como_pg "$PGBIN/pg_ctl" -D "$PASTA/pgdata" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$PASTA"; }
@@ -72,4 +73,17 @@ igual "185 atualizado no fallback" "$(v $O valor 185)" "108.44"
 sql -c "delete from public.cassi_config; delete from public.bkp_cassi_config_codigos_20261025; insert into public.cassi_config(terapeuta_id, codigos) values ('$O', '$ANTIGO'::jsonb), ('33333333-3333-3333-3333-333333333333', '$ANTIGO'::jsonb)"
 sql -f "$M" >/dev/null 2>&1 && ok "e-mail não achado e VÁRIAS configurações: não adivinha, não mexe" || bad "ambíguo" "falhou"
 igual "ninguém foi alterado" "$(sql -c "select count(*) from public.cassi_config where codigos = '$ANTIGO'::jsonb")" "2"
+# lista vazia salva ([]): tratada como "sem lista salva" (o app usa os padrões e o 160 antigo); a migração não mexe
+sql -c "delete from public.cassi_config; delete from public.bkp_cassi_config_codigos_20261025; insert into public.cassi_config(terapeuta_id, codigos) values ('$R', '[]'::jsonb)" 
+sql -f "$M" >/dev/null 2>&1 && ok "lista vazia salva: a migração passa sem fazer nada" || bad "lista vazia" "falhou"
+igual "lista vazia continua vazia" "$(sql -c "select codigos::text from public.cassi_config where terapeuta_id='$R'")" '[]'
+igual "e nenhum backup é criado" "$(sql -c "select count(*) from public.bkp_cassi_config_codigos_20261025")" "0"
+# os RAISE NOTICE contam o caminho no log do db push
+sql -c "insert into auth.users(id,email) values ('$R','RafaelBMocbel@gmail.com') on conflict do nothing; delete from public.cassi_config; delete from public.bkp_cassi_config_codigos_20261025; insert into public.cassi_config(terapeuta_id, codigos) values ('$R', '$ANTIGO'::jsonb)"
+avisos="$(sql -f "$M" 2>&1 >/dev/null)"
+echo "$avisos" | grep -q "conta achada pelo e-mail" && echo "$avisos" | grep -q "atualizado (4 itens antes, 7 depois; 144 fica como estava: 65.62)" && ok "NOTICE: conta achada e resumo do que mudou (inclui o 144 que ficou)" || bad "NOTICE de sucesso" "$avisos"
+sql -c "delete from public.cassi_config; delete from auth.users"
+avisos="$(sql -f "$M" 2>&1 >/dev/null)"
+echo "$avisos" | grep -q "nenhuma conta identificada; nada foi alterado" && ok "NOTICE: nenhuma conta identificada" || bad "NOTICE sem conta" "$avisos"
+
 echo; echo "RESULTADO: $PASSOU ok, $FALHOU falhas"; [ "$FALHOU" = "0" ]

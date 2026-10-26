@@ -92,15 +92,17 @@ outro profissional e pode rodar de novo sem trocar o backup.
   lançado neste mês".
 - **Configurações**: se a leitura falhar, a aba (e o próprio diálogo de Configurações) mostra "Não consegui carregar suas configurações" com
   **Tentar de novo**, em vez de calcular com valores inventados e imposto 0% (e CSV, Relatório e "Guias que fecham" ficam fora). O diálogo só
-  monta o formulário com o que acabou de vir do banco: salvar a partir de um cache antigo desfaria uma atualização. Quem nunca salvou Configurações vê o aviso de que valem os valores da tabela da CASSI (sem imposto, sua parte
+  monta o formulário com o que acabou de vir do banco: com releitura em andamento, pausada (sem rede) ou que falhou, o cache antigo não vira formulário
+  (salvar a partir dele desfaria uma atualização). Quem nunca salvou Configurações vê o aviso de que valem os valores da tabela da CASSI (sem imposto, sua parte
   em 0%) e continua com os códigos 160 e 185 do Pedir guias. Os códigos da tabela voltam à lista sempre que faltarem (não dá para escondê-los
   em Configurações).
 - **Editor de lançamento**: o que foi digitado e não salvo pede confirmação antes de ser descartado (Cancelar, trocar de cliente, fechar,
-  "Usar 012 × N da agenda", trocar de mês); durante a gravação o botão mostra "Salvando…", os campos ficam travados e não dá para abrir outro
-  cliente; trocar de mês fecha o editor. Cliente cujo código lançado tem valor R$ 0,00 mostra "códigos sem valor" na própria linha.
+  "Usar 012 × N da agenda", trocar de mês, tirar da lista o cliente aberto, limpar a lista); durante a gravação o botão mostra "Salvando…", os
+  campos, os botões de abrir outro cliente e as setas e o campo de mês ficam travados; sem rede a gravação falha na hora (não fica pausada);
+  trocar de mês fecha o editor. Cliente cujo código lançado tem valor R$ 0,00 mostra "códigos sem valor" na própria linha.
   **Tirar da lista** e **Limpar lista** avisam que o lançamento também é apagado (e quantos clientes). **Preencher com a agenda** não roda com
   um editor aberto, só grava em quem continua **sem lançamento no banco** (o que outro aparelho lançou nesse meio-tempo não é apagado; o aviso
-  diz quem foi pulado) e, quando a agenda tem mais sessões do que cabem em 6 guias de 10, lança 60 e avisa quem passou.
+  diz quem foi pulado ou saiu da lista) e, quando a agenda tem mais sessões do que cabem em 6 guias de 10, lança 60 e avisa quem passou.
 - **Relatório de produção**: as colunas são só dos códigos usados nas guias marcadas (sem nenhuma marcada, nas guias do mês; guia cancelada
   não conta); os da tabela que não aparecem em nenhuma não viram coluna zerada no relatório da clínica.
 - Imposto: percentual de Configurações sobre o bruto (se for o valor fixo antigo, vale por guia lançada). Repasse: pelo responsável
@@ -125,22 +127,32 @@ estreita, ao montar sobrescrevia o cache e fazia sumir `cassi_pedir_guia`, `guia
 
 ## Publicação
 
-Três passos, nesta ordem (o GitHub Action "Deploy Supabase" roda `db push` a cada push na `main`; a `20261025190000`, da lista, já está em
-produção):
-1. migração `20261025230000` (coluna dos lançamentos, CHECK, política e função de juntar) sozinha na `main`; conferir em produção
-   (`list_migrations`). O front antigo continua funcionando com ela;
-2. o front. Se ele chegasse antes, salvar um lançamento e juntar cadastros falhariam (coluna e função ainda não existiriam);
-3. só depois, a migração de dados `20261025233000` (códigos e valores salvos de Rafael). Ela vai por último porque o front antigo monta o
-   Relatório de produção com **todos** os códigos da configuração: com a migração antes do front, o relatório sairia com colunas zeradas
-   (020, 301, 131). O front novo não depende dela (acrescenta os códigos que faltam sem trocar valor salvo). Os `RAISE NOTICE` dela contam no
-   log do `db push` qual caminho tomou (conta achada pelo e-mail, única configuração, nada identificado, sem lista, atualizado).
+Dois passos, nesta ordem (o GitHub Action "Deploy Supabase" roda `db push` a cada push na `main` que toque `supabase/`; a `20261025190000`,
+da lista, já está em produção):
+1. as **duas** migrações juntas, sozinhas num push: `20261025230000` (coluna dos lançamentos, CHECK, política e função de juntar) e
+   `20261025233000` (atualização dos códigos e valores salvos de Rafael). Conferir em produção (`list_migrations`: as duas versões) e no log do
+   passo "Push database migrations" (os `RAISE NOTICE` da segunda contam qual caminho tomou: conta achada pelo e-mail, única configuração,
+   nada identificado, sem lista ou atualizado). O front antigo continua funcionando com elas;
+2. logo em seguida, o front (sem arquivo de migração: não dispara o Action). Se ele chegasse antes, a lista do mês nem carregaria ("Não
+   consegui carregar a lista deste mês") e salvar lançamento e juntar cadastros falhariam; por isso a ordem.
 
-Reverter a de dados: `UPDATE public.cassi_config c SET codigos = b.codigos, updated_at = now() FROM public.bkp_cassi_config_codigos_20261025 b WHERE b.terapeuta_id = c.terapeuta_id;`
-(apaga edições de códigos feitas depois em Configurações).
+Por que as duas migrações vão no mesmo push: cada push que toca `supabase/` roda também o passo "Import data (psql)" do Action (ver abaixo), então
+menos pushes é melhor. O custo é uma janela de minutos entre o passo 1 e o 2 em que o front antigo monta o Relatório de produção com **todos** os
+códigos da configuração (020, 301 e 131 aparecem como colunas zeradas): não gerar o Relatório nesse intervalo.
+
+**Reverter**: a de dados — `UPDATE public.cassi_config c SET codigos = b.codigos, updated_at = now() FROM public.bkp_cassi_config_codigos_20261025 b WHERE b.terapeuta_id = c.terapeuta_id;`
+(apaga edições de códigos feitas depois em Configurações). A `20261025230000` não se reverte apagando o arquivo (o próximo `db push` quebraria) nem
+depois que o front novo está no ar (ele usa a coluna e a função): se for preciso desfazer, uma migração nova com `DROP FUNCTION
+public.cassi_juntar_financeiro_clientes(uuid, uuid)` e `ALTER TABLE public.cassi_financeiro_clientes DROP CONSTRAINT cassi_financeiro_clientes_lancamentos_validos,
+DROP COLUMN lancamentos` (perde o que foi lançado).
+
+**Atenção — passo "Import data (psql)" do Action** (decisão do Rafael; ver `docs/ci-ajustes-deploy-supabase.md`, item 4): a cada push em `supabase/` ele
+reaplica `supabase/data/import_*.sql`, que desligam a segurança por linha (`DISABLE ROW LEVEL SECURITY`) de `pacientes`, `profiles` e `agendamentos` por
+alguns segundos e reinserem (`ON CONFLICT DO NOTHING`) os ~200 registros importados em março a maio: o que foi **apagado** depois da importação volta.
+Recomendação: remover o passo.
 
 As migrações foram ensaiadas num PostgreSQL 16 descartável (esquema do Supabase simulado, papéis anon/authenticated, RLS, privilégios por
-coluna, função de juntar com falha no meio, estouro de 6 guias, outro profissional, concorrência com pgbench): o banco falso das telas não
-emula CHECK, GRANT nem RLS. Os roteiros estão em `supabase/ensaios/` (`lancamentos.sh`, `codigos.sh`) e rodam com um PostgreSQL 16 local.
-
-A migração tira todos os privilégios do papel `authenticated` na tabela antes de conceder só SELECT, INSERT e DELETE (no Supabase
-ele nasce com todos, inclusive TRUNCATE, que a segurança por linha não alcança).
+coluna, função de juntar com falha no meio, estouro de 6 guias, outro profissional, concorrência com pgbench com 3 cadastros e pares sorteados,
+UPDATE condicional do Preencher com a agenda, destino criado por outra aba no meio da junção): o banco falso das telas não emula CHECK, GRANT nem
+RLS. Os roteiros estão em `supabase/ensaios/` (`lancamentos.sh`, `codigos.sh`) e rodam com um PostgreSQL 16 local; saem com código diferente de
+zero se algo falhar.

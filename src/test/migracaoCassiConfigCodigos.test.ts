@@ -51,8 +51,31 @@ describe('migração que atualiza os códigos e valores salvos em cassi_config (
   });
 
   it('não cria configuração nem mexe em configuração que não é uma lista', () => {
-    expect(sql).toMatch(/jsonb_typeof\(v_atual\) <> 'array' THEN[\s\S]*?RAISE NOTICE '[^']*';\s*RETURN;/);
+    expect(sql).toMatch(/jsonb_typeof\(v_atual\) <> 'array' OR jsonb_array_length\(v_atual\) = 0 THEN[\s\S]*?RAISE NOTICE '[^']*';\s*RETURN;/);
     expect(sql).not.toMatch(/INSERT INTO public\.cassi_config/);
+  });
+
+  it('lista de códigos vazia ([]) é tratada como "sem lista salva": nada é alterado e o app segue com os padrões e o 160 antigo', () => {
+    expect(sql).toMatch(/jsonb_typeof\(v_atual\) <> 'array' OR jsonb_array_length\(v_atual\) = 0 THEN/);
+  });
+
+  it('cada RAISE NOTICE tem tantos argumentos quanto % no texto (senão o db push quebra) e os de saída antecipada vêm antes do RETURN', () => {
+    const achados = [...sql.matchAll(/RAISE NOTICE\s+'((?:[^']|'')*)'\s*([\s\S]*?);\s*(?:\n|$)/g)];
+    expect(achados.length).toBeGreaterThanOrEqual(5);
+    for (const [, texto, resto] of achados) {
+      const marcas = (texto.match(/%/g) ?? []).length;
+      let profundidade = 0; let virgulas = 0; let aspas = false;
+      for (const ch of resto.replace(/^\s*,/, ',')) {
+        if (ch === "'") aspas = !aspas;
+        if (aspas) continue;
+        if (ch === '(') profundidade++;
+        if (ch === ')') profundidade--;
+        if (ch === ',' && profundidade === 0) virgulas++;
+      }
+      expect(virgulas, texto).toBe(marcas);
+    }
+    expect(sql).toMatch(/RAISE NOTICE '[^']*nenhuma conta identificada[^']*';\s*RETURN;/);
+    expect(sql).toMatch(/RAISE NOTICE '[^']*não tem lista de códigos salva[^']*';\s*RETURN;/);
   });
 
   it('conta no log do db push o caminho que tomou (conta achada, só uma configuração, nada identificado, sem lista, atualizado)', () => {

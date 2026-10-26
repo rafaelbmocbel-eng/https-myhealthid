@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { criarBancoFalso, type BancoFalso, type Linha } from './helpers/bancoFalso';
 
@@ -99,6 +99,46 @@ describe('useClientesFinanceiroCassi: leitura em ordem fixa e escrita condiciona
     await waitFor(() => expect(result.current.ocupado).toBe(true));
     soltar();
     await waitFor(() => expect(result.current.ocupado).toBe(false));
+  });
+
+  it('sem rede a gravação não fica pausada em "Salvando…": tenta na hora e termina (falha ou sucesso)', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(comLanc('2026-10', 'a', []));
+    const { result } = montar('2026-05', '2026-10');
+    await waitFor(() => expect(result.current.carregando).toBe(false));
+    onlineManager.setOnline(false);
+    try {
+      await act(async () => {
+        await result.current.lancar.mutateAsync({ mes: '2026-10', itens: [{ id: 'a', guias: [{ '012': 2 }] }] });
+      });
+      expect(h.banco.tabelas.cassi_financeiro_clientes[0].lancamentos).toEqual([{ '012': 2 }]);
+      expect(result.current.lancar.isPaused).toBe(false);
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
+  it('quando a gravação falha, a mutação termina na hora (o aviso e o botão voltam) e a lista é relida em segundo plano', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(comLanc('2026-10', 'a', []));
+    const { result } = montar('2026-05', '2026-10');
+    await waitFor(() => expect(result.current.carregando).toBe(false));
+    let soltar = () => {};
+    const retida = new Promise<void>((ok) => { soltar = ok; });
+    const original = h.banco.from;
+    h.banco.from = ((t: string) => {
+      const q = original(t) as unknown as { then: (...a: unknown[]) => unknown; update?: unknown };
+      const entrega = q.then.bind(q);
+      let leitura = true;
+      const atualizar = (q as unknown as { update: (p: unknown) => unknown }).update.bind(q);
+      (q as unknown as { update: (p: unknown) => unknown }).update = (p: unknown) => { leitura = false; return atualizar(p); };
+      q.then = (res: unknown, rej: unknown) => (leitura ? retida.then(() => entrega(res, rej)) : entrega(res, rej)); // as LEITURAS esperam; a escrita não
+      return q;
+    }) as typeof h.banco.from;
+    h.banco.falharEscritaQuando((op) => op.tipo === 'update', 'sem permissão');
+    await act(async () => {
+      await expect(result.current.lancar.mutateAsync({ mes: '2026-10', itens: [{ id: 'a', guias: [{ '012': 2 }] }] })).rejects.toThrow('sem permissão');
+    });
+    expect(result.current.lancar.isPending).toBe(false); // terminou mesmo com a releitura ainda presa
+    soltar();
   });
 
   it('somenteSeVazio: grava em quem continua sem lançamento e devolve quem já tinha (sem tocar nele); sem a opção, cliente fora da lista é erro', async () => {
