@@ -666,6 +666,12 @@ Deno.serve(async (req) => {
           break;
         }
       }
+
+      // Grava a transcrição no job já agora: se a análise (Pass 2) estourar o
+      // tempo ou o worker cair, o app ainda recupera o texto sem re-transcrever.
+      if (audioTranscrito) {
+        await updateVoiceAssessmentJob(SUPABASE_URL_J, SERVICE_KEY_J, jobId, { transcricao: faithfulTranscript });
+      }
     }
 
     // ───────────────────────────────────────────────────────────────
@@ -816,6 +822,9 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             model: "gemini-2.5-flash",
             temperature: 0,
+            // O "pensamento" padrão do 2.5 Flash, somado à saída estruturada longa,
+            // passava dos 120 s em consultas de ~10 mil caracteres (out/2026).
+            reasoning_effort: "low",
             messages: [
               { role: "system", content: activeSystemPrompt },
               { role: "user", content: userContent },

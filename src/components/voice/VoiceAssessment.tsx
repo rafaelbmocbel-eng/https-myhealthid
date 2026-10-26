@@ -182,7 +182,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [resumableJob, setResumableJob] = useState<{ id: string; resultado: any; transcricao: string } | null>(null);
   // Gravações que ficaram no servidor sem virar avaliação (ex.: falha antiga por
   // áudio longo). Permite reprocessar com 1 toque, sem regravar a consulta.
-  const [recuperaveis, setRecuperaveis] = useState<Array<{ id: string; audio_path: string; audio_mime_type: string | null; created_at: string }>>([]);
+  const [recuperaveis, setRecuperaveis] = useState<Array<{ id: string; audio_path: string; audio_mime_type: string | null; created_at: string; transcricao?: string | null }>>([]);
   const [recuperandoId, setRecuperandoId] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -416,7 +416,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 dias
     supabase
       .from('voice_assessment_jobs' as any)
-      .select('id, audio_path, audio_mime_type, status, created_at, input_params')
+      .select('id, audio_path, audio_mime_type, status, created_at, input_params, transcricao')
       .eq('terapeuta_id', user.id)
       .eq('paciente_id', pacienteId)
       .gte('created_at', cutoff)
@@ -440,24 +440,31 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
   // Reprocessa uma gravação salva no servidor: gera link assinado do áudio e
   // manda para a mesma função de avaliação (que agora aguenta áudio longo).
-  const recuperarGravacao = async (job: { id: string; audio_path: string; audio_mime_type: string | null; input_params?: { condutasProfissional?: string } | null }) => {
+  const recuperarGravacao = async (job: { id: string; audio_path: string; audio_mime_type: string | null; input_params?: { condutasProfissional?: string } | null; transcricao?: string | null }) => {
     if (recuperandoId) return;
     setRecuperandoId(job.id);
+    // Gravação já transcrita numa tentativa anterior: manda só o texto.
+    const transcricaoSalva = (job.transcricao || '').trim();
     try {
-      const { data: signed, error: signErr } = await supabase.storage
-        .from('audio-temp')
-        .createSignedUrl(job.audio_path, 3600);
-      if (signErr || !signed?.signedUrl) {
-        throw new Error('Não consegui acessar o áudio salvo. Ele pode ter expirado.');
+      let origem: Record<string, string>;
+      if (transcricaoSalva.length >= 20) {
+        origem = { transcript: transcricaoSalva };
+      } else {
+        const { data: signed, error: signErr } = await supabase.storage
+          .from('audio-temp')
+          .createSignedUrl(job.audio_path, 3600);
+        if (signErr || !signed?.signedUrl) {
+          throw new Error('Não consegui acessar o áudio salvo. Ele pode ter expirado.');
+        }
+        origem = { signedUrl: signed.signedUrl, audioMimeType: job.audio_mime_type || 'audio/webm' };
       }
       toast({
         title: 'Recuperando gravação…',
-        description: 'A IA está transcrevendo e analisando o áudio salvo. Isso pode levar alguns minutos.',
+        description: 'A IA está analisando a gravação salva. Isso pode levar alguns minutos.',
       });
       const body: any = {
         serviceType, patientName, patientAge, patientSex, perfilProfissional,
-        signedUrl: signed.signedUrl,
-        audioMimeType: job.audio_mime_type || 'audio/webm',
+        ...origem,
         ...(job.input_params?.condutasProfissional ? { condutasProfissional: job.input_params.condutasProfissional } : {}),
       };
       const { data, error } = await supabase.functions.invoke('voice-assessment', { body });
@@ -476,7 +483,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         .update({ status: 'completed' }).eq('id', job.id).then(() => {});
       toast({ title: '✅ Gravação recuperada', description: 'Avaliação gerada e salva no histórico.' });
     } catch (e: any) {
-      toast({ title: 'Não foi possível recuperar', description: e.message, variant: 'destructive' });
+      if (transcricaoSalva.length >= 20) {
+        // A análise falhou, mas a transcrição existe: mostra para revisar e gerar de novo.
+        setEditedTranscript(transcricaoSalva);
+        setStep('review');
+        toast({ title: 'Transcrição recuperada', description: `${e.message} A transcrição está abaixo; toque em "Gerar Avaliação" para tentar de novo.` });
+      } else {
+        toast({ title: 'Não foi possível recuperar', description: e.message, variant: 'destructive' });
+      }
     } finally {
       setRecuperandoId(null);
     }
@@ -1048,6 +1062,17 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
             if (typeof errBody?.transcricao === 'string') transcricaoRecuperada = errBody.transcricao.trim();
           }
         } catch { /* ignore */ }
+        // Se a resposta foi cortada no caminho (ex.: 504 do gateway), o servidor
+        // já gravou a transcrição no job assim que o Whisper terminou.
+        if (!transcricaoRecuperada && body.jobId) {
+          const { data: jobRow } = await supabase
+            .from('voice_assessment_jobs' as any)
+            .select('transcricao')
+            .eq('id', body.jobId)
+            .maybeSingle();
+          const salva = (jobRow as { transcricao?: string | null } | null)?.transcricao;
+          if (typeof salva === 'string') transcricaoRecuperada = salva.trim();
+        }
         const e = new Error(serverMessage) as Error & { transcricaoRecuperada?: string };
         if (transcricaoRecuperada.length > 0) e.transcricaoRecuperada = transcricaoRecuperada;
         throw e;
