@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarCheck, Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +17,7 @@ const textoDoLimite = (codigo: string) => {
 
 // Lançamento de um cliente no mês: em cada guia, a quantidade usada de cada código. Respeita os limites da CASSI
 // (10 por guia, 1 consulta por guia, 10 de biofeedback no mês): o campo não passa do que cabe.
-export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, salvando = false, onSalvar, onCancelar }: {
+export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, salvando = false, onSalvar, onCancelar, onAlterado }: {
   nome: string;
   catalogo: CodigoFaturavel[]; // já na ordem de exibição
   inicial: GuiaLancada[];
@@ -25,6 +25,7 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
   salvando?: boolean;
   onSalvar: (guias: GuiaLancada[]) => void;
   onCancelar: () => void;
+  onAlterado?: (alterado: boolean) => void; // avisa quem abriu este lançamento que há algo digitado ainda não salvo
 }) {
   const [guias, setGuias] = useState<GuiaLancada[]>(() => (inicial.length > 0 ? inicial.map((g) => ({ ...g })) : [{}]));
 
@@ -55,12 +56,21 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
   };
 
   const guiasValidas = normalizarLancamentos(guias);
+  const alterado = JSON.stringify(guiasValidas) !== JSON.stringify(normalizarLancamentos(inicial));
+  // Enquanto grava, o que está digitado já está a caminho: não conta como "não salvo".
+  const naoSalvo = alterado && !salvando;
+  useEffect(() => {
+    onAlterado?.(naoSalvo);
+    return () => onAlterado?.(false);
+  }, [naoSalvo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const daAgenda = guiasPelaAgenda(sessoesAgenda);
+  const qtdDaAgenda = daAgenda.reduce((soma, g) => soma + Object.values(g).reduce((a, b) => a + b, 0), 0);
   const total = brutoDosLancamentos(guiasValidas, valorDe);
   const sessoes = sessoesDosLancamentos(guiasValidas);
   const acimaDoLimite = problemasDosLancamentos(guiasValidas).length > 0;
 
   return (
-    <div className="px-3 pb-3 pt-2 space-y-3 bg-muted/20 border-t border-border/40" role="group" aria-label={`Códigos e sessões de ${nome}`}>
+    <div className="px-3 pb-3 pt-2 space-y-3 bg-muted/20 border-t border-border/40" role="group" aria-label={`Códigos e sessões de ${nome}`} aria-busy={salvando}>
       {guias.map((g, i) => (
         <section key={i} className="rounded-lg border border-border/60 bg-background" aria-label={`Guia ${i + 1} de ${nome}`}>
           <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/40">
@@ -70,7 +80,8 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
                 type="button"
                 onClick={() => setGuias((atual) => atual.filter((_, k) => k !== i))}
                 aria-label={`Tirar a guia ${i + 1}`}
-                className="p-1 text-muted-foreground hover:text-destructive"
+                disabled={salvando}
+                className="p-2 -m-1 text-muted-foreground hover:text-destructive disabled:opacity-50"
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden />
               </button>
@@ -98,7 +109,7 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
                     {max === 0 && q === 0 && <p className="text-[10px] text-amber-700 dark:text-amber-400">limite do mês já usado nas outras guias</p>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button type="button" size="icon" variant="outline" className="h-8 w-8" disabled={q <= 0}
+                    <Button type="button" size="icon" variant="outline" className="h-8 w-8" disabled={salvando || q <= 0}
                       aria-label={`Diminuir o código ${c.codigo} da guia ${i + 1}`} onClick={() => definir(i, c.codigo, q - 1)}>
                       <Minus className="h-3.5 w-3.5" aria-hidden />
                     </Button>
@@ -108,11 +119,12 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
                       value={q > 0 ? String(q) : ''}
                       placeholder="0"
                       aria-label={`Quantidade do código ${c.codigo} na guia ${i + 1}`}
+                      disabled={salvando}
                       onChange={(e) => definir(i, c.codigo, parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)}
                       onFocus={(e) => e.currentTarget.select()}
-                      className="h-8 w-11 rounded-md border border-input bg-background text-center text-[16px] sm:text-sm tabular-nums"
+                      className="h-8 w-11 rounded-md border border-input bg-background text-center text-[16px] sm:text-sm tabular-nums disabled:opacity-50"
                     />
-                    <Button type="button" size="icon" variant="outline" className="h-8 w-8" disabled={q >= max}
+                    <Button type="button" size="icon" variant="outline" className="h-8 w-8" disabled={salvando || q >= max}
                       aria-label={`Aumentar o código ${c.codigo} da guia ${i + 1}`} onClick={() => definir(i, c.codigo, q + 1)}>
                       <Plus className="h-3.5 w-3.5" aria-hidden />
                     </Button>
@@ -126,14 +138,17 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
 
       <div className="flex items-center gap-2 flex-wrap">
         <Button type="button" size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]"
-          disabled={guias.length >= MAXIMO_GUIAS_NO_MES} onClick={() => setGuias((atual) => [...atual, {}])}>
+          disabled={salvando || guias.length >= MAXIMO_GUIAS_NO_MES} onClick={() => setGuias((atual) => [...atual, {}])}>
           <Plus className="h-3.5 w-3.5" aria-hidden /> Outra guia
         </Button>
-        {sessoesAgenda > 0 && (
-          <Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" title="Troca o que está digitado por 012 × as sessões da agenda"
-            onClick={() => setGuias(guiasPelaAgenda(sessoesAgenda).length > 0 ? guiasPelaAgenda(sessoesAgenda) : [{}])}>
+        {qtdDaAgenda > 0 && (
+          <Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" disabled={salvando} title="Troca o que está digitado por 012 × as sessões da agenda"
+            onClick={() => {
+              if (guiasValidas.length > 0 && !window.confirm(`Trocar o que está digitado por 012 × ${qtdDaAgenda} (as sessões da agenda)?`)) return;
+              setGuias(daAgenda);
+            }}>
             <CalendarCheck className="h-3.5 w-3.5" aria-hidden />
-            {sessoesAgenda === 1 ? 'Usar a sessão da agenda' : `Usar as ${sessoesAgenda} sessões da agenda`}
+            Usar 012 × {qtdDaAgenda} da agenda
           </Button>
         )}
       </div>
@@ -151,8 +166,9 @@ export function LancamentoDoCliente({ nome, catalogo, inicial, sessoesAgenda, sa
           <span className="text-muted-foreground"> · {sessoes} {sessoes === 1 ? 'sessão' : 'sessões'}</span>
         </p>
         <div className="flex items-center gap-2">
-          <Button type="button" size="sm" variant="ghost" className="h-9" disabled={salvando} onClick={onCancelar}>Cancelar</Button>
-          <Button type="button" size="sm" className="h-9" disabled={salvando || acimaDoLimite} onClick={() => onSalvar(guiasValidas)}>Salvar</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-9" disabled={salvando}
+            onClick={() => { if (alterado && !window.confirm('Descartar o que você digitou?')) return; onCancelar(); }}>Cancelar</Button>
+          <Button type="button" size="sm" className="h-9" disabled={salvando || acimaDoLimite} onClick={() => onSalvar(guiasValidas)}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
         </div>
       </div>
     </div>

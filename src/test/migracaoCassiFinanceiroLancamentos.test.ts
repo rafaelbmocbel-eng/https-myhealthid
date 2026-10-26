@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { MAXIMO_GUIAS_NO_MES } from '@/lib/cassiFaturamento';
+import { MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_CODIGOS_NA_GUIA, MAXIMO_GUIAS_NO_MES, normalizarLancamentos } from '@/lib/cassiFaturamento';
 
 const pasta = join(__dirname, '..', '..', 'supabase', 'migrations');
 const arquivo = '20261025230000_cassi_financeiro_lancamentos.sql';
@@ -33,15 +33,28 @@ describe('migração dos lançamentos do Faturamento CASSI', () => {
     expect(sql).toMatch(/CHECK \(public\.cassi_lancamentos_validos\(lancamentos\)\)/);
   });
 
-  it('a tela nunca lança mais guias do que o banco aceita', () => {
-    expect(MAXIMO_GUIAS_NO_MES).toBeLessThanOrEqual(12);
+  it('a tela nunca lança mais guias, códigos por guia nem caracteres por código do que o banco aceita', () => {
+    const doSql = (re: RegExp) => Number(sql.match(re)?.[1]);
+    expect(MAXIMO_GUIAS_NO_MES).toBeLessThanOrEqual(doSql(/jsonb_array_length\(p\) > (\d+)/));
+    expect(MAXIMO_CODIGOS_NA_GUIA).toBe(doSql(/jsonb_each\(g\.v\)\) > (\d+)/));
+    expect(MAXIMO_CARACTERES_DO_CODIGO).toBe(doSql(/length\(kv\.chave\) NOT BETWEEN 1 AND (\d+)/));
+  });
+
+  it('o que a tela grava passa nas regras do banco: código comprido e guia com códigos demais são descartados antes', () => {
+    const longo = 'x'.repeat(MAXIMO_CARACTERES_DO_CODIGO + 1);
+    const muitos = Object.fromEntries(Array.from({ length: MAXIMO_CODIGOS_NA_GUIA + 5 }, (_, i) => [`k${i}`, 1]));
+    const [guia] = normalizarLancamentos([{ '012': 3, [longo]: 2, ...muitos }]);
+    expect(Object.keys(guia)).not.toContain(longo);
+    expect(Object.keys(guia).length).toBeLessThanOrEqual(MAXIMO_CODIGOS_NA_GUIA);
+    expect(guia['012']).toBe(3);
   });
 
   it('só a coluna lancamentos pode ser atualizada: mês, cliente e profissional da linha não mudam', () => {
     expect(sql).toMatch(/GRANT UPDATE \(lancamentos\) ON public\.cassi_financeiro_clientes TO authenticated/);
     expect(sql).not.toMatch(/GRANT\s+(UPDATE|ALL)\s+ON\s+(TABLE\s+)?public\.cassi_financeiro_clientes/);
     expect(sql).not.toMatch(/GRANT[^;]*\b(TRUNCATE|REFERENCES|TRIGGER)\b/);
-    expect(sql).not.toMatch(/\banon\b/);
+    // anon só aparece para ser tirado da função de juntar cadastros; a tabela nunca é concedida a ele
+    expect(sql.replace(/REVOKE ALL ON FUNCTION[^;]*;/, '')).not.toMatch(/\banon\b/);
   });
 
   it('a política de UPDATE é só do dono, na ida e na volta (USING e WITH CHECK)', () => {
@@ -50,5 +63,17 @@ describe('migração dos lançamentos do Faturamento CASSI', () => {
     expect(politica).toMatch(/USING \(auth\.uid\(\) = terapeuta_id\)/);
     expect(politica).toMatch(/WITH CHECK \(auth\.uid\(\) = terapeuta_id\)/);
     expect(sql).toMatch(/NOTIFY pgrst, 'reload schema'/);
+  });
+
+  it('juntar cadastros é uma função só (uma transação): recusa passar de 6 guias, roda com os direitos de quem chama e não é pública', () => {
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.cassi_juntar_financeiro_clientes\(p_origem uuid, p_destino uuid\)/);
+    expect(sql).toMatch(/SECURITY INVOKER/);
+    expect(sql).not.toMatch(/SECURITY DEFINER/);
+    expect(Number(sql.match(/c_max_guias CONSTANT integer := (\d+)/)?.[1])).toBe(MAXIMO_GUIAS_NO_MES);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.cassi_juntar_financeiro_clientes\(uuid, uuid\) FROM PUBLIC, anon/);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.cassi_juntar_financeiro_clientes\(uuid, uuid\) TO authenticated/);
+    // só mexe nas linhas do próprio profissional, e o duplicado só é apagado depois de tudo gravado
+    expect(sql).toMatch(/WHERE terapeuta_id = v_uid AND paciente_id = p_origem\s+ORDER BY mes\s+FOR UPDATE/);
+    expect(sql.indexOf('DELETE FROM public.cassi_financeiro_clientes')).toBeGreaterThan(sql.indexOf('END LOOP'));
   });
 });

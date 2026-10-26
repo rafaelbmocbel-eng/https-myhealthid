@@ -209,16 +209,16 @@ describe('LancamentoDoCliente', () => {
     expect((screen.getByRole('button', { name: /Outra guia/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('"usar as sessões da agenda" monta as guias de 10 em 10 no código 012', () => {
+  it('"usar 012 × N da agenda" monta as guias de 10 em 10 no código 012', () => {
     montar({ sessoesAgenda: 14 });
-    fireEvent.click(screen.getByRole('button', { name: /Usar as 14 sessões da agenda/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Usar 012 × 14 da agenda' }));
     expect(qtd('012', 1).value).toBe('10');
     expect(qtd('012', 2).value).toBe('4');
   });
 
   it('sem sessão na agenda não oferece "usar a agenda"', () => {
     montar({ sessoesAgenda: 0 });
-    expect(screen.queryByRole('button', { name: /sessões da agenda/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /da agenda/ })).toBeNull();
   });
 
   it('salvar entrega as guias sem as vazias e sem quantidade zero; cancelar não salva', () => {
@@ -227,8 +227,20 @@ describe('LancamentoDoCliente', () => {
     fireEvent.click(screen.getByRole('button', { name: /Outra guia/ })); // fica vazia
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     expect(onSalvar).toHaveBeenCalledWith([{ '012': 4 }]);
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true); // há algo digitado: Cancelar pergunta antes de descartar
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(confirmar).toHaveBeenCalledTimes(1);
     expect(onCancelar).toHaveBeenCalledTimes(1);
+    confirmar.mockRestore();
+  });
+
+  it('o limite por guia vale também no campo da segunda guia (012 até 10, 144 só 1)', () => {
+    montar({ inicial: [{ '012': 5 }] });
+    fireEvent.click(screen.getByRole('button', { name: /Outra guia/ }));
+    fireEvent.change(qtd('012', 2), { target: { value: '12' } });
+    expect(qtd('012', 2).value).toBe('10');
+    fireEvent.change(qtd('144', 2), { target: { value: '3' } });
+    expect(qtd('144', 2).value).toBe('1');
   });
 
   it('o que já estava lançado volta preenchido', () => {
@@ -245,7 +257,7 @@ describe('LancamentoDoCliente', () => {
 
   it('enquanto salva, os botões ficam desligados', () => {
     montar({ salvando: true });
-    expect((screen.getByRole('button', { name: 'Salvar' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Salvando…' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Cancelar' }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
@@ -388,7 +400,7 @@ describe('ClientesDoMes', () => {
     rerender(<ClientesDoMes {...base()} sessoesEstado="erro" />);
     expect(lista().getAllByText('agenda indisponível')).toHaveLength(3);
     fireEvent.click(screen.getByRole('button', { name: 'Lançar códigos e sessões de Bruno Lima' }));
-    expect(screen.queryByRole('button', { name: /sessões da agenda/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /da agenda/ })).toBeNull();
   });
 
   it('ocupado desliga a busca, os botões e o remover', () => {
@@ -443,9 +455,53 @@ describe('LancamentoDoCliente: dado acima do limite, código fora da lista, sing
     expect(onSalvar).toHaveBeenCalledWith([{ '012': 2 }]);
   });
 
-  it('com uma sessão na agenda o botão fala no singular', () => {
+  it('o botão da agenda diz o que vai lançar (012 × N); com 1 sessão é 012 × 1; passando de 60 mostra os 60 que cabem', () => {
     montar({ sessoesAgenda: 1 });
-    expect(screen.getByRole('button', { name: 'Usar a sessão da agenda' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Usar 012 × 1 da agenda' })).toBeTruthy();
+    document.body.innerHTML = '';
+    montar({ sessoesAgenda: 70 });
+    expect(screen.getByRole('button', { name: 'Usar 012 × 60 da agenda' })).toBeTruthy();
+  });
+
+  it('"usar da agenda" com algo já digitado pergunta antes de trocar; sem nada digitado troca direto', () => {
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    montar({ sessoesAgenda: 14, inicial: [{ '301': 2 }] });
+    fireEvent.click(screen.getByRole('button', { name: 'Usar 012 × 14 da agenda' }));
+    expect(confirmar).toHaveBeenCalledTimes(1);
+    expect(qtd('301').value).toBe('2'); // recusou: o digitado fica
+    confirmar.mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Usar 012 × 14 da agenda' }));
+    expect(qtd('012', 1).value).toBe('10');
+    expect(screen.queryByLabelText('Quantidade do código 301 na guia 1')).not.toBeNull();
+    expect(qtd('301', 1).value).toBe('');
+    confirmar.mockRestore();
+  });
+
+  it('Cancelar com algo digitado pergunta antes de descartar; sem alteração cancela direto', () => {
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const onCancelar = vi.fn();
+    montar({ onCancelar });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(confirmar).not.toHaveBeenCalled(); // nada digitado
+    expect(onCancelar).toHaveBeenCalledTimes(1);
+    fireEvent.change(qtd('012'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(confirmar).toHaveBeenCalledTimes(1);
+    expect(onCancelar).toHaveBeenCalledTimes(1); // recusou
+    confirmar.mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(onCancelar).toHaveBeenCalledTimes(2);
+    confirmar.mockRestore();
+  });
+
+  it('enquanto grava mostra "Salvando…" e trava os campos e botões', () => {
+    montar({ inicial: [{ '012': 2 }], salvando: true });
+    expect(screen.getByRole('button', { name: 'Salvando…' })).toBeTruthy();
+    expect(qtd('012').disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Aumentar o código 012 da guia 1' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: /Outra guia/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Cancelar' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Ana Souza' }).getAttribute('aria-busy')).toBe('true');
   });
 });
 
@@ -462,6 +518,27 @@ describe('ClientesDoMes: estado do editor e do filtro', () => {
   });
   const abrir = (nome: string) => fireEvent.click(screen.getByRole('button', { name: `Lançar códigos e sessões de ${nome}` }));
 
+  it('trocar de cliente (ou fechar) com algo digitado e não salvo pergunta antes de descartar', () => {
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<ClientesDoMes {...base()} />);
+    abrir('Bruno Lima');
+    fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '4' } });
+    abrir('Carla Dias'); // outro cliente: pergunta
+    expect(confirmar).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Bruno Lima' })).toBeTruthy(); // recusou: continua no mesmo
+    expect((screen.getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('4');
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar Bruno Lima' })); // fechar também pergunta
+    expect(confirmar).toHaveBeenCalledTimes(2);
+    confirmar.mockReturnValue(true);
+    abrir('Carla Dias');
+    expect(screen.queryByRole('group', { name: 'Códigos e sessões de Bruno Lima' })).toBeNull();
+    expect(screen.getByRole('group', { name: 'Códigos e sessões de Carla Dias' })).toBeTruthy();
+    confirmar.mockClear();
+    abrir('Ana Souza'); // Carla não foi alterada: troca sem perguntar
+    expect(confirmar).not.toHaveBeenCalled();
+    confirmar.mockRestore();
+  });
+
   it('"Mostrar só quem falta" não deixa a lista vazia quando o último cliente recebe lançamento', () => {
     const props = base();
     const { rerender } = render(<ClientesDoMes {...props} />);
@@ -475,6 +552,7 @@ describe('ClientesDoMes: estado do editor e do filtro', () => {
   });
 
   it('a gravação lenta de um cliente não fecha o lançamento que o profissional abriu depois', async () => {
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true); // neste teste o rascunho de Bruno ainda conta como não salvo (a tela real passa `salvando`)
     const props = base();
     let concluir: (ok: boolean) => void = () => {};
     props.onSalvarLancamento.mockImplementation(() => new Promise<boolean>((r) => { concluir = r; }));
@@ -489,6 +567,7 @@ describe('ClientesDoMes: estado do editor e do filtro', () => {
     await Promise.resolve();
     expect(screen.getByRole('group', { name: 'Códigos e sessões de Carla Dias' })).toBeTruthy();
     expect((screen.getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('7');
+    confirmar.mockRestore();
   });
 
   it('quem sai da lista não fica "aberto": se voltar, o lançamento não reabre sozinho', () => {

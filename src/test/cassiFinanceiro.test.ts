@@ -18,18 +18,19 @@ describe('fechamento do mês pelos lançamentos', () => {
     const r = fecharMesPorLancamentos({ clientes, cfg });
     const ana = r.linhas.find((l) => l.pid === 'a')!;
     expect(ana.bruto).toBeCloseTo(642.62, 8); // 577,00 + 65,62
-    expect(ana.imposto).toBeCloseTo(64.262, 8);
-    expect(ana.liquido).toBeCloseTo(578.358, 8);
+    expect(ana.imposto).toBe(64.26); // 10% de 642,62 = 64,262, arredondado a centavos em cada cliente
+    expect(ana.liquido).toBe(578.36);
     expect(ana.sessoes).toBe(10); // a consulta não é sessão
     const bruno = r.linhas.find((l) => l.pid === 'b')!;
     expect(bruno.bruto).toBeCloseTo(648.1, 8); // 577,00 + 71,10
+    expect([bruno.imposto, bruno.liquido]).toEqual([64.81, 583.29]);
     expect(bruno.sessoes).toBe(12);
     expect(bruno.resumo).toBe('012 × 10 · 301 × 2 · 2 guias');
     expect(r.totBruto).toBeCloseTo(1290.72, 8);
-    expect(r.totImposto).toBeCloseTo(129.072, 8);
-    expect(r.totLiquido).toBeCloseTo(1161.648, 8);
-    expect(r.suaParte).toBeCloseTo(580.824, 8);
-    expect(r.parteClinica).toBeCloseTo(580.824, 8);
+    expect(r.totImposto).toBe(129.07);
+    expect(r.totLiquido).toBe(1161.65);
+    expect(r.suaParte).toBeCloseTo(580.825, 8);
+    expect(r.parteClinica).toBeCloseTo(580.825, 8);
     expect(r.totSessoes).toBe(22);
   });
 
@@ -42,9 +43,19 @@ describe('fechamento do mês pelos lançamentos', () => {
     const r = fecharMesPorLancamentos({ clientes, cfg });
     const iris = r.repasses.find((x) => x.nome === 'dra. iris paiva')!;
     expect(iris.pct).toBe(30);
-    expect(iris.repasse).toBeCloseTo(578.358 * 0.3, 8);
+    expect(iris.repasse).toBeCloseTo(578.36 * 0.3, 8);
     expect(r.repasses.find((x) => x.nome === 'Sem responsável')!.pct).toBeNull();
     expect(r.ficaComVoce).toBeCloseTo(r.totLiquido - r.totRepasse, 10);
+  });
+
+  it('a soma das linhas que aparecem é o total: imposto arredondado em cada cliente, sem 1 centavo de diferença', () => {
+    const tres = ['a', 'b', 'c'].map((id) => ({ id, nome: id, responsavel: '', guias: [{ '012': 1 }] }));
+    const r = fecharMesPorLancamentos({ clientes: tres, cfg: { ...cfg, imposto_percentual: 5 } });
+    expect(r.linhas.map((l) => l.imposto)).toEqual([2.89, 2.89, 2.89]); // 5% de 57,70 = 2,885
+    expect(r.totImposto).toBe(8.67);
+    expect(r.totLiquido).toBe(164.43);
+    expect(r.totBruto).toBe(173.1);
+    expect(r.totBruto - r.totImposto).toBeCloseTo(r.totLiquido, 10);
   });
 
   it('imposto fixo antigo (sem percentual) vale por guia lançada', () => {

@@ -19,7 +19,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
 import { contarSessoesDoMes, fecharMesPorLancamentos, ultimosMeses } from '@/lib/cassiFinanceiro';
-import { guiasPelaAgenda, mesclarCodigosComPadrao, normalizarLancamentos, ordenarParaLancamento, type GuiaLancada } from '@/lib/cassiFaturamento';
+import { MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_GUIAS_NO_MES, guiasPelaAgenda, mesclarCodigosComPadrao, ordenarParaLancamento, type GuiaLancada } from '@/lib/cassiFaturamento';
 import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
 import { BuscaDeCliente } from '@/components/cassi/BuscaDeCliente';
 import { SugestoesDoPedido } from '@/components/cassi/SugestoesDoPedido';
@@ -69,13 +69,21 @@ function useCassiConfig() {
   return useQuery({
     queryKey: ['cassi-config', user?.id],
     queryFn: async () => {
-      const { data } = await (supabase as any).from('cassi_config')
+      const { data, error } = await (supabase as any).from('cassi_config')
         .select('codigos, imposto_por_guia, imposto_percentual, minha_parte_percentual, responsaveis, nome_clinica, nome_profissional, cidade').eq('terapeuta_id', user!.id).maybeSingle();
+      // Falhar a leitura não pode virar "configuração vazia": os valores plausíveis da tabela da CASSI com imposto 0% sairiam como se fossem os dele.
+      if (error) throw error;
+      const salvos: CodigoCfg[] = Array.isArray(data?.codigos) ? (data.codigos as CodigoCfg[]) : [];
       // Os códigos configurados + os da tabela da CASSI que ainda não estão lá (o valor já configurado nunca é trocado).
-      const codigos: CodigoCfg[] = mesclarCodigosComPadrao(Array.isArray(data?.codigos) ? (data.codigos as CodigoCfg[]) : []);
+      let codigos: CodigoCfg[] = mesclarCodigosComPadrao(salvos);
+      // Quem nunca salvou Configurações continua com os códigos de antes (160...), sem valor, além dos da tabela.
+      if (salvos.length === 0) {
+        codigos = [...codigos, ...CODIGOS_CASSI.filter((c) => !codigos.some((x) => x.codigo === c.codigo)).map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }))];
+      }
       const responsaveis: ResponsavelCfg[] = Array.isArray(data?.responsaveis) ? data.responsaveis : [];
       return {
         codigos, responsaveis,
+        salva: !!data, // já existe configuração salva (senão valem os valores da tabela da CASSI, sem imposto)
         imposto_por_guia: Number(data?.imposto_por_guia || 0),
         imposto_percentual: Number(data?.imposto_percentual || 0),
         minha_parte_percentual: Number(data?.minha_parte_percentual || 0),
@@ -1839,6 +1847,11 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     try {
       // As escritas do Supabase não lançam — checamos .error e ABORTAMOS antes de
       // apagar o duplicado, pra nunca perder a guia por uma falha no meio.
+      // Primeiro as listas do Faturamento (um mês por linha) vão, com o que foi lançado, para o cliente que fica. É uma
+      // função do banco numa transação só: se passar de 6 guias num mês ou falhar no meio, nada muda e tentar de novo
+      // nunca soma duas vezes. Sem isto ele sairia da conta dos meses em que o duplicado estava.
+      const lf = await sb.rpc('cassi_juntar_financeiro_clientes', { p_origem: paciente.id, p_destino: alvo.id });
+      if (lf.error) throw lf.error;
       const g = await sb.from('guias_cassi').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
       if (g.error) throw g.error;
       const a = await sb.from('agendamentos').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
@@ -1858,37 +1871,6 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         cassi_encerrado_em: null, cassi_encerrado_motivo: null,
       }).eq('id', alvo.id);
       if (p.error) throw p.error;
-      // As listas do Faturamento (um mês por linha) vão para o cliente que fica; sem isto ele sairia da conta dos
-      // meses em que o duplicado estava e as sessões que acabaram de mudar para ele deixariam de ser contadas.
-      // O que foi lançado em cada mês vai junto: no mês em que o cliente que fica ainda não estava, a linha é copiada; no mês
-      // em que os dois estavam, as guias do duplicado entram depois das dele.
-      const lf = await sb.from('cassi_financeiro_clientes').select('mes, lancamentos').eq('terapeuta_id', user.id).eq('paciente_id', paciente.id);
-      if (lf.error) throw lf.error;
-      const doDuplicado = (lf.data || []) as Array<{ mes: string; lancamentos: unknown }>;
-      if (doDuplicado.length > 0) {
-        const la = await sb.from('cassi_financeiro_clientes').select('mes, lancamentos').eq('terapeuta_id', user.id).eq('paciente_id', alvo.id).in('mes', doDuplicado.map((r) => r.mes));
-        if (la.error) throw la.error;
-        const doAlvo = new Map(((la.data || []) as Array<{ mes: string; lancamentos: unknown }>).map((r) => [r.mes, normalizarLancamentos(r.lancamentos)]));
-        const novas: Array<{ terapeuta_id: string; mes: string; paciente_id: string; lancamentos: GuiaLancada[] }> = [];
-        const somar: Array<{ mes: string; lancamentos: GuiaLancada[] }> = [];
-        for (const r of doDuplicado) {
-          const guias = normalizarLancamentos(r.lancamentos);
-          const existente = doAlvo.get(r.mes);
-          if (existente === undefined) novas.push({ terapeuta_id: user.id, mes: r.mes, paciente_id: alvo.id, lancamentos: guias });
-          else if (guias.length > 0) somar.push({ mes: r.mes, lancamentos: normalizarLancamentos([...existente, ...guias]) });
-        }
-        if (novas.length > 0) {
-          const up = await sb.from('cassi_financeiro_clientes').upsert(novas, { onConflict: 'terapeuta_id,mes,paciente_id', ignoreDuplicates: true });
-          if (up.error) throw up.error;
-        }
-        for (const x of somar) {
-          const upd = await sb.from('cassi_financeiro_clientes').update({ lancamentos: x.lancamentos })
-            .eq('terapeuta_id', user.id).eq('mes', x.mes).eq('paciente_id', alvo.id);
-          if (upd.error) throw upd.error;
-        }
-        const del = await sb.from('cassi_financeiro_clientes').delete().eq('terapeuta_id', user.id).eq('paciente_id', paciente.id);
-        if (del.error) throw del.error;
-      }
       // Só remove o duplicado depois que tudo acima deu certo.
       const d = await sb.from('pacientes').update({ ativo: false }).eq('id', paciente.id);
       if (d.error) throw d.error;
@@ -2322,7 +2304,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
                 {codigos.map((c, i) => (
                   <div key={i} className="rounded-lg border border-border/50 p-2 space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      <Input className="h-8 w-16 text-sm" value={c.codigo} onChange={(e) => setCod(i, 'codigo', e.target.value)} placeholder="000" />
+                      <Input className="h-8 w-16 text-sm" value={c.codigo} maxLength={MAXIMO_CARACTERES_DO_CODIGO} onChange={(e) => setCod(i, 'codigo', e.target.value)} placeholder="000" />
                       <Input className="h-8 flex-1 text-sm" value={c.descricao} onChange={(e) => setCod(i, 'descricao', e.target.value)} placeholder="descrição" />
                       <Button size="icon" variant="ghost" className="h-8 w-7 shrink-0" title="Remover" onClick={() => rmCod(i)}>
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -2641,7 +2623,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
   onAbrirGuia: (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }) => void;
 }) {
   const { user } = useAuth();
-  const { data: cfg } = useCassiConfig();
+  const { data: cfg, isError: erroCfg, refetch: recarregarCfg } = useCassiConfig();
   const [mes, setMes] = useState<string>(() => mesAtualISO());
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [verSnap, setVerSnap] = useState<any | null>(null);
@@ -2773,6 +2755,11 @@ function FinanceiroCassi({ onAbrirGuia }: {
   };
   const preencherComAgenda = () => {
     lista.lancar.mutate({ mes, itens: semLancamentoComAgenda.map((c) => ({ id: c.id, guias: guiasPelaAgenda(c.sessoesAgenda) })) });
+    // Cabem 6 guias de 10 por cliente no mês: quem teve mais sessões que isso fica com o que coube, e o aviso diz quem.
+    const passaram = semLancamentoComAgenda.filter((c) => c.sessoesAgenda > MAXIMO_GUIAS_NO_MES * 10);
+    if (passaram.length > 0) {
+      toast.warning(`${passaram.map((c) => c.nome).join(', ')}: a agenda tem mais de ${MAXIMO_GUIAS_NO_MES * 10} sessões no mês, mais do que cabe em ${MAXIMO_GUIAS_NO_MES} guias. Lancei ${MAXIMO_GUIAS_NO_MES * 10}; confira o restante.`);
+    }
   };
   const salvandoId = lista.lancar.isPending && lista.lancar.variables?.itens.length === 1 ? lista.lancar.variables.itens[0].id : null;
 
@@ -2801,7 +2788,6 @@ function FinanceiroCassi({ onAbrirGuia }: {
   };
 
   const [ano, m] = mes.split('-').map(Number);
-  const semValores = !cfg?.codigos.some((c) => c.valor > 0);
   // A CASSI paga a clínica ~3 meses depois das guias entregues no mês.
   const dRec = new Date(ano, m - 1 + 3, 1);
   const mesRecebimento = `${MESES_PT[dRec.getMonth()]} ${dRec.getFullYear()}`;
@@ -2831,13 +2817,21 @@ function FinanceiroCassi({ onAbrirGuia }: {
 
       {relatorioOpen && <RelatorioProducao mes={mes} onClose={() => setRelatorioOpen(false)} />}
 
-      {semValores && (
+      {!cfg && erroCfg && (
+        <div className="text-center py-6 space-y-2" role="alert">
+          <p className="text-sm text-rose-600 dark:text-rose-400">Não consegui carregar suas configurações (valores dos códigos e imposto). Sem elas o cálculo sairia errado.</p>
+          <Button size="sm" variant="outline" onClick={() => recarregarCfg()}>Tentar de novo</Button>
+        </div>
+      )}
+      {!cfg && !erroCfg && <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
+
+      {cfg && !cfg.salva && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 text-[12px] text-amber-800 dark:text-amber-300">
-          Defina os valores dos códigos em <b>Configurações</b> (ícone de engrenagem) para o cálculo somar corretamente.
+          Você ainda não salvou suas configurações: o cálculo usa os valores da tabela da CASSI, sem imposto e com sua parte em 0%. Ajuste em <b>Configurações</b> (ícone de engrenagem).
         </div>
       )}
 
-      <ClientesDoMes
+      {cfg && <ClientesDoMes
         key={mes}
         mesLabel={`${MESES_PT[m - 1]} de ${ano}`}
         clientes={clientesDaLista}
@@ -2862,11 +2856,15 @@ function FinanceiroCassi({ onAbrirGuia }: {
         }}
         onLimpar={() => {
           const n = clientesDaLista.length;
-          if (confirm(`Tirar ${n === 1 ? 'o cliente' : `os ${n} clientes`} da lista de ${MESES_PT[m - 1]} de ${ano}?\n\nOs códigos e as quantidades lançados neles neste mês também são apagados. As guias e a agenda não mudam.`)) lista.limpar.mutate({ mes });
+          const comLancamento = clientesDaLista.filter((c) => c.guias.length > 0).length;
+          const aviso = comLancamento > 0
+            ? `Isso APAGA também os códigos e as quantidades lançados em ${comLancamento === 1 ? '1 cliente' : `${comLancamento} clientes`} neste mês e não dá para desfazer. As guias e a agenda não mudam.`
+            : 'As guias e a agenda não mudam.';
+          if (confirm(`Tirar ${n === 1 ? 'o cliente' : `os ${n} clientes`} da lista de ${MESES_PT[m - 1]} de ${ano}?\n\n${aviso}`)) lista.limpar.mutate({ mes });
         }}
-      />
+      />}
 
-      {lista.erro ? (
+      {!cfg ? null : lista.erro ? (
         <div className="text-center py-6 space-y-2" role="alert">
           <p className="text-sm text-rose-600 dark:text-rose-400">Não consegui carregar a lista deste mês.</p>
           <Button size="sm" variant="outline" onClick={() => lista.recarregar()}>Tentar de novo</Button>
@@ -2875,8 +2873,8 @@ function FinanceiroCassi({ onAbrirGuia }: {
         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : idsDoMes.size === 0 ? null : (
         <>
-      {/* Resumo */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {/* Resumo: com a lista ainda sem lançamento os cartões em zero pareceriam um mês sem receita */}
+      {calc.linhas.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
           { label: 'Sessões', valor: String(calc.totSessoes), cls: '' },
           { label: 'Bruto', valor: fmtBRL(calc.totBruto), cls: '' },
@@ -2888,7 +2886,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
             <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">{c.label}</p>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Divisão: sua parte × clínica */}
       {calc.totLiquido > 0 && (
@@ -3151,7 +3149,9 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   const valorDe = (c: string) => cods.find((x) => x.codigo === c)?.valor || 0;
   const colAval = cods.find((c) => c.codigo === '144');
   const colsTrat = cods.filter((c) => c.codigo !== '144');
-  const columns = [...(colAval ? [colAval] : []), ...colsTrat];
+  // Só viram coluna os códigos que alguma guia usou: os da tabela da CASSI que nunca apareceram numa guia não saem como coluna zerada no relatório da clínica.
+  const usados = new Set(guias.filter((g) => g.status !== 'cancelada').flatMap((g) => (g.codigos || []).map((c) => c.codigo)));
+  const columns = [...(colAval ? [colAval] : []), ...colsTrat].filter((c) => usados.has(c.codigo));
 
   // Agendamentos ligados a guias — para saber em que mês cada guia foi concluída.
   const { data: ags = [] } = useQuery({

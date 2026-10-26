@@ -29,8 +29,11 @@ export const CODIGOS_PADRAO_FATURAMENTO: PadraoDoCodigo[] = [
 export const CODIGO_PADRAO = '012';
 // Código que não está na tabela acima (ex.: um que o profissional criou em Configurações): a guia da CASSI tem 10.
 export const MAXIMO_POR_GUIA_SEM_REGRA = 10;
-// Teto de guias lançadas para um mesmo cliente no mês (também vale no banco).
+// Teto de guias lançadas para um mesmo cliente no mês (o banco aceita até 12, para sobrar folga).
 export const MAXIMO_GUIAS_NO_MES = 6;
+// Tamanho do código e quantos códigos cabem numa guia: o banco recusa o lançamento inteiro se passar disso.
+export const MAXIMO_CARACTERES_DO_CODIGO = 12;
+export const MAXIMO_CODIGOS_NA_GUIA = 30;
 // A consulta (144) não é sessão: fica fora da contagem de sessões.
 export const CODIGO_CONSULTA = '144';
 
@@ -85,7 +88,8 @@ const inteiro = (v: unknown): number => {
 
 const guiaVazia = (g: GuiaLancada) => !Object.values(g).some((q) => q > 0);
 
-// Lê o que veio do banco (ou de um rascunho) com defesa: só objetos {código: inteiro 1..999}; guia vazia some.
+// Lê o que veio do banco (ou de um rascunho) com defesa: só objetos {código: inteiro 1..999} com código de até 12
+// caracteres (e até 30 por guia, como o banco exige); guia vazia some.
 export function normalizarLancamentos(valor: unknown): GuiaLancada[] {
   if (!Array.isArray(valor)) return [];
   const guias: GuiaLancada[] = [];
@@ -94,7 +98,8 @@ export function normalizarLancamentos(valor: unknown): GuiaLancada[] {
     const limpa: GuiaLancada = {};
     for (const [codigo, q] of Object.entries(g as Record<string, unknown>)) {
       const n = inteiro(q);
-      if (codigo.trim() && n > 0) limpa[codigo.trim()] = n;
+      const chave = codigo.trim();
+      if (chave && chave.length <= MAXIMO_CARACTERES_DO_CODIGO && n > 0 && Object.keys(limpa).length < MAXIMO_CODIGOS_NA_GUIA) limpa[chave] = n;
     }
     if (!guiaVazia(limpa)) guias.push(limpa);
   }

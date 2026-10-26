@@ -55,9 +55,11 @@ export interface LinhaFechamento {
 export function agregarFechamento(linhas: LinhaFechamento[], cfg: ConfigFinanceira | undefined) {
   const impostoPct = cfg?.imposto_percentual || 0;
 
-  const totBruto = linhas.reduce((s, l) => s + l.bruto, 0);
-  const totImposto = linhas.reduce((s, l) => s + l.imposto, 0);
-  const totLiquido = linhas.reduce((s, l) => s + l.liquido, 0);
+  // Soma em centavos: o total é a soma das linhas que aparecem na tela, sem ruído de ponto flutuante.
+  const somaEmCentavos = (f: (l: LinhaFechamento) => number) => linhas.reduce((s, l) => s + Math.round(f(l) * 100), 0) / 100;
+  const totBruto = somaEmCentavos((l) => l.bruto);
+  const totImposto = somaEmCentavos((l) => l.imposto);
+  const totLiquido = somaEmCentavos((l) => l.liquido);
   const totSessoes = linhas.reduce((s, l) => s + l.sessoes, 0);
 
   // Repasse por responsável (casa nome com a config, sem acento/caixa).
@@ -112,9 +114,12 @@ export function fecharMesPorLancamentos(entrada: { clientes: ClienteParaFechar[]
     .map((c) => {
       const bruto = brutoDosLancamentos(c.guias, valorDe);
       const sessoes = sessoesDosLancamentos(c.guias);
-      // Imposto por guia: percentual do bruto (novo) ou o valor fixo antigo, por guia lançada.
-      const imposto = impostoPct > 0 ? bruto * (impostoPct / 100) : impostoFixo * c.guias.length;
-      const liquido = Math.max(0, bruto - imposto);
+      // Imposto: percentual do bruto (novo) ou o valor fixo antigo, por guia lançada. Arredondado a centavos em cada
+      // cliente, para a soma das linhas bater com o total.
+      const brutoCentavos = Math.round(bruto * 100);
+      const impostoCentavos = impostoPct > 0 ? Math.round(brutoCentavos * (impostoPct / 100)) : Math.round(impostoFixo * c.guias.length * 100);
+      const imposto = impostoCentavos / 100;
+      const liquido = Math.max(0, brutoCentavos - impostoCentavos) / 100;
       return { pid: c.id, nome: c.nome, responsavel: c.responsavel.trim(), sessoes, bruto, imposto, liquido, resumo: resumoDosLancamentos(c.guias), lancou: c.guias.length > 0 };
     })
     .filter((l) => l.lancou)

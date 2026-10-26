@@ -110,6 +110,12 @@ describe('limites por guia e por mês', () => {
     ].sort());
   });
 
+  it('o limite POR GUIA vale em todas as guias, não só na primeira', () => {
+    expect(problemasDosLancamentos([{ '012': 5 }, { '012': 11 }]).map((p) => [p.tipo, p.guia, p.codigo])).toEqual([['guia', 1, '012']]);
+    expect(maximoNaGuia([{ '012': 3 }, {}], 1, '012')).toBe(10);
+    expect(maximoNaGuia([{ '144': 1 }, {}], 1, '144')).toBe(1);
+  });
+
   it('131 vale no mês, somando as guias: 6 + 5 passa de 10; 6 + 4 não', () => {
     expect(problemasDosLancamentos([{ '131': 6 }, { '131': 5 }])).toEqual([{ tipo: 'mes', codigo: '131', informado: 11, limite: 10 }]);
     expect(problemasDosLancamentos([{ '131': 6 }, { '131': 4 }])).toEqual([]);
@@ -142,6 +148,11 @@ describe('valores do lançamento', () => {
     expect(brutoDosLancamentos([{ '012': 10, '144': 1 }, { '012': 4, '301': 2 }], valorDe)).toBe(944.52);
   });
 
+  it('a soma é em centavos: 3 × 67,79 = 203,37 e 3 × 35,55 = 106,65, sem ruído de ponto flutuante', () => {
+    expect(brutoDosLancamentos([{ '131': 3 }], () => 67.79)).toBe(203.37);
+    expect(brutoDosLancamentos([{ '301': 3 }], () => 35.55)).toBe(106.65);
+  });
+
   it('185 vale R$ 108,44 por sessão: 3 sessões = R$ 325,32', () => {
     expect(brutoDosLancamentos([{ '185': 3 }], valorDe)).toBe(325.32);
   });
@@ -172,6 +183,14 @@ describe('guiasPelaAgenda', () => {
     expect(guiasPelaAgenda(10)).toEqual([{ '012': 10 }]);
     expect(guiasPelaAgenda(14)).toEqual([{ '012': 10 }, { '012': 4 }]);
     expect(guiasPelaAgenda(20)).toEqual([{ '012': 10 }, { '012': 10 }]);
+  });
+
+  it('cabem 6 guias de 10 por mês: acima de 60 sessões o excedente fica de fora (a tela avisa)', () => {
+    const soma = (gs: GuiaLancada[]) => gs.reduce((t, g) => t + (g['012'] || 0), 0);
+    expect(guiasPelaAgenda(60)).toHaveLength(6);
+    expect(soma(guiasPelaAgenda(60))).toBe(60);
+    expect(guiasPelaAgenda(70)).toHaveLength(6);
+    expect(soma(guiasPelaAgenda(70))).toBe(60);
   });
 
   it('o resultado sempre respeita os limites', () => {

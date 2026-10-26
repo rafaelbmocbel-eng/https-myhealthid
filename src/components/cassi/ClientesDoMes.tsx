@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CalendarCheck, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,7 @@ export function ClientesDoMes({
   onPreencherComAgenda: () => void;
 }) {
   const [abertoPedido, setAbertoId] = useState<string | null>(null);
+  const abertoAlterado = useRef(false); // o lançamento aberto tem algo digitado que ainda não foi salvo
   const [soFaltam, setSoFaltam] = useState(false);
   const valorDe = (c: string) => catalogo.find((x) => x.codigo === c)?.valor || 0;
   const faltam = clientes.filter((c) => c.guias.length === 0);
@@ -132,7 +133,12 @@ export function ClientesDoMes({
                 <div className="flex items-center gap-1 pl-1 pr-1 py-1">
                   <button
                     type="button"
-                    onClick={() => setAbertoId(aberto ? null : c.id)}
+                    onClick={() => {
+                      // Trocar de cliente (ou fechar) joga fora o que foi digitado: pergunta antes.
+                      if (abertoId !== null && abertoAlterado.current && !window.confirm('Descartar o que você digitou no lançamento aberto?')) return;
+                      abertoAlterado.current = false;
+                      setAbertoId(aberto ? null : c.id);
+                    }}
                     aria-expanded={aberto}
                     aria-label={`${aberto ? 'Fechar' : 'Lançar códigos e sessões de'} ${c.nome}`}
                     aria-describedby={`resumo-lancamento-${c.id}`}
@@ -151,7 +157,7 @@ export function ClientesDoMes({
                       ) : (
                         <span className="block text-[11px] text-amber-700 dark:text-amber-400">Sem códigos lançados</span>
                       )}
-                      <span className="block text-[10px] text-muted-foreground/80">{referenciaAgenda(c)}</span>
+                      <span className="block text-[11px] text-muted-foreground">{referenciaAgenda(c)}</span>
                     </span>
                     <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', aberto && 'rotate-180')} aria-hidden />
                   </button>
@@ -169,6 +175,7 @@ export function ClientesDoMes({
                     sessoesAgenda={sessoesEstado === 'ok' ? c.sessoesAgenda : 0}
                     salvando={salvandoId === c.id}
                     onCancelar={() => setAbertoId(null)}
+                    onAlterado={(alterado) => { abertoAlterado.current = alterado; }}
                     onSalvar={async (guias) => {
                       // Se a gravação demorou e outro cliente foi aberto nesse meio-tempo, o dele não fecha.
                       if (await onSalvarLancamento(c.id, guias)) setAbertoId((atual) => (atual === c.id ? null : atual));

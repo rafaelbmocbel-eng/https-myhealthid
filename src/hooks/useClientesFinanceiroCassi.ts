@@ -56,6 +56,7 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
     [porMes],
   );
 
+  // onSettled (e não onSuccess): uma gravação que falha no meio de várias deixa parte feita; a lista precisa ser relida de qualquer jeito.
   const aoFalhar = (acao: string) => (e: unknown) => {
     toast.error(`Não consegui ${acao}: ${(e as { message?: string })?.message || 'erro'}`);
   };
@@ -68,7 +69,7 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
         .upsert(linhas, { onConflict: 'terapeuta_id,mes,paciente_id', ignoreDuplicates: true });
       if (error) throw error;
     },
-    onSuccess: invalidar,
+    onSettled: invalidar,
     onError: aoFalhar('adicionar à lista'),
   });
 
@@ -88,7 +89,7 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
       const semLinha = resultados.findIndex((r: { data?: unknown[] | null }) => !r?.data || r.data.length === 0);
       if (semLinha >= 0) throw new Error('o cliente não está mais na lista deste mês');
     },
-    onSuccess: invalidar,
+    onSettled: invalidar,
     onError: aoFalhar('salvar os códigos e as sessões'),
   });
 
@@ -98,7 +99,7 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
         .eq('terapeuta_id', user!.id).eq('mes', mes).eq('paciente_id', id);
       if (error) throw error;
     },
-    onSuccess: invalidar,
+    onSettled: invalidar,
     onError: aoFalhar('tirar da lista'),
   });
 
@@ -108,7 +109,7 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
         .eq('terapeuta_id', user!.id).eq('mes', mes);
       if (error) throw error;
     },
-    onSuccess: invalidar,
+    onSettled: invalidar,
     onError: aoFalhar('limpar a lista'),
   });
 
@@ -120,6 +121,6 @@ export function useClientesFinanceiroCassi(de: string, ate: string) {
     erro: consulta.isError && !consulta.data,
     recarregar: () => consulta.refetch(),
     adicionar, lancar, remover, limpar,
-    ocupado: adicionar.isPending || remover.isPending || limpar.isPending,
+    ocupado: adicionar.isPending || remover.isPending || limpar.isPending || lancar.isPending,
   };
 }

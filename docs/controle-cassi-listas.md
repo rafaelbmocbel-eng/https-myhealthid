@@ -50,9 +50,10 @@ em cada cliente: "agenda: 8 sessões").
 
 - Tabela `public.cassi_financeiro_clientes` (`terapeuta_id`, `mes` AAAA-MM, `paciente_id`, `lancamentos`); única por profissional+mês+cliente; RLS só do dono; INSERT só para cliente
   seu. O profissional só pode atualizar a coluna `lancamentos` (privilégio por coluna). Migrações `20261025190000` (lista) e
-  `20261025230000` (lançamentos); `20261025233000` atualiza os códigos salvos (abaixo).
+  `20261025230000` (lançamentos e a função de juntar cadastros); `20261025233000` atualiza os códigos salvos (abaixo).
 - `lancamentos` é uma lista de **guias**; cada guia é `{ "código": quantidade }`. Ex.: `[{"012":10,"144":1},{"012":4,"301":2}]`. O banco
-  recusa o que não for esse formato (até 12 guias; quantidades inteiras de 0 a 999).
+  recusa o que não for esse formato (até 12 guias; até 30 códigos por guia; código de 1 a 12 caracteres; quantidades inteiras de 0 a 999).
+  A tela lança no máximo 6 guias por cliente no mês.
 - Adiciona-se o cliente por busca ou com **Adicionar quem teve sessão no mês**; isso só põe o cliente na lista, **não lança nada**. Para
   lançar, toque no cliente: cada código tem um campo de quantidade (− e +), e dá para abrir **Outra guia** (cliente com 2 guias no mês).
   **Preencher com a agenda** lança 012 × as sessões da agenda (de 10 em 10 por guia) em quem ainda não tem lançamento.
@@ -85,10 +86,26 @@ outro profissional e pode rodar de novo sem trocar o backup.
   repasses), "sua parte" dos 6 meses (cada mês com o lançamento dele; mês sem lançamento aparece como —), CSV (com os códigos), Guias que
   fecham no mês e a seleção automática do Relatório de produção (dentro do relatório ainda dá para marcar/desmarcar qualquer guia).
 - "Sessões" = soma das quantidades de todos os códigos, menos a consulta (144).
+- Imposto e líquido são arredondados a centavos **em cada cliente**, e os totais são a soma das linhas que aparecem (nunca 1 centavo de diferença).
+- Sem nenhum lançamento no mês os cartões de resumo não aparecem (em R$ 0,00 pareceriam um mês sem receita): fica a mensagem "Nenhum código
+  lançado neste mês".
+- **Configurações**: se a leitura falhar, a aba mostra "Não consegui carregar suas configurações" com **Tentar de novo**, em vez de calcular com
+  valores inventados e imposto 0%. Quem nunca salvou Configurações vê o aviso de que valem os valores da tabela da CASSI (sem imposto, sua parte
+  em 0%) e continua com os códigos 160 e 185 do Pedir guias. Os códigos da tabela voltam à lista sempre que faltarem (não dá para escondê-los
+  em Configurações).
+- **Editor de lançamento**: o que foi digitado e não salvo pede confirmação antes de ser descartado (Cancelar, trocar de cliente, fechar,
+  "Usar 012 × N da agenda"); durante a gravação o botão mostra "Salvando…" e os campos ficam travados; trocar de mês fecha o editor.
+  **Tirar da lista** e **Limpar lista** avisam que o lançamento também é apagado (e quantos clientes). **Preencher com a agenda** não roda com
+  um editor aberto e, quando a agenda tem mais sessões do que cabem em 6 guias de 10, lança 60 e avisa quem passou.
+- **Relatório de produção**: as colunas são só dos códigos que alguma guia (não cancelada) usou; os da tabela que nunca apareceram numa guia
+  não viram coluna zerada no relatório da clínica.
 - Imposto: percentual de Configurações sobre o bruto (se for o valor fixo antigo, vale por guia lançada). Repasse: pelo responsável
   técnico da guia mais recente do cliente.
 - **Guias enviadas ao financeiro** é rastreio de entrega física, não conta: aparece sempre, com ou sem lista.
-- **Juntar cadastros duplicados** leva as linhas da lista (e o que foi lançado) do duplicado para o cliente que fica.
+- **Juntar cadastros duplicados** leva as linhas da lista (e o que foi lançado) do duplicado para o cliente que fica, por uma função do banco
+  (`cassi_juntar_financeiro_clientes`) numa transação só: no mês em que o cliente que fica não estava a linha é copiada; no mês em que os dois
+  estavam, as guias do duplicado entram depois das dele. Se a soma passar de 6 guias num mês, a junção inteira é recusada com a mensagem do
+  banco (nada muda: ajuste os lançamentos e tente de novo). Uma falha no meio desfaz tudo, então tentar de novo nunca soma duas vezes.
 - O **Relatório de produção** e as **Guias que fecham** continuam saindo das guias (`guias_cassi`), não dos lançamentos: pode haver
   diferença entre o valor do Faturamento e o do Relatório. É uma decisão em aberto se o Relatório deve passar a usar os lançamentos.
 - Mês sem lista não calcula nada; os relatórios já salvos não dependem da lista.
@@ -101,9 +118,13 @@ estreita, ao montar sobrescrevia o cache e fazia sumir `cassi_pedir_guia`, `guia
 
 ## Publicação
 
-Duas etapas: 1) migração na `main` (o GitHub Action "Deploy Supabase" roda `db push`) e conferir a tabela em produção;
-2) só então o front. Se o front chegasse antes, o Faturamento mostraria "Não consegui carregar a lista deste mês" com o botão
-**Tentar de novo**, e juntar cadastros duplicados falharia sem apagar nada; por isso a ordem.
+Duas etapas: 1) migrações na `main` (o GitHub Action "Deploy Supabase" roda `db push`: `20261025190000` lista, `20261025230000`
+lançamentos + função de juntar, `20261025233000` códigos salvos) e conferir em produção (`list_migrations`); 2) só então o front. Se o front
+chegasse antes, a lista do mês não carregaria ("Não consegui carregar a lista deste mês" com **Tentar de novo**), salvar um lançamento falharia
+e juntar cadastros duplicados falharia sem mudar nada; por isso a ordem.
+
+As migrações foram ensaiadas num PostgreSQL 16 descartável (esquema do Supabase simulado, papéis anon/authenticated, RLS, privilégios por
+coluna, função de juntar com falha no meio, estouro de 6 guias e outro profissional): o banco falso das telas não emula CHECK, GRANT nem RLS.
 
 A migração tira todos os privilégios do papel `authenticated` na tabela antes de conceder só SELECT, INSERT e DELETE (no Supabase
 ele nasce com todos, inclusive TRUNCATE, que a segurança por linha não alcança).
