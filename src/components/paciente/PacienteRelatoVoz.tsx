@@ -7,6 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { TextoAoVivo } from '@/components/voice/TextoAoVivo';
+import { PERFIL_DITADO, TranscritorAoVivo } from '@/lib/transcricaoAoVivo';
+import { transcreverAudio } from '@/lib/transcreverAudio';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 
 const PAIN_CATALOG = {
@@ -40,6 +43,10 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [audioMimeType, setAudioMimeType] = useState('audio/webm');
   const [recordingTime, setRecordingTime] = useState(0);
+  // Transcrição ao vivo: o texto aparece enquanto a pessoa fala e, ao parar, vai para a caixa de texto para ela conferir.
+  const [aoVivoTexto, setAoVivoTexto] = useState('');
+  const [finalizando, setFinalizando] = useState(false);
+  const aoVivoRef = useRef<TranscritorAoVivo | null>(null);
   const [resultado, setResultado] = useState<{ queixa: string | null; regioes: string[] } | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -63,6 +70,27 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
+  // Depois de parar: o texto do ao vivo (ou, se algum trecho falhou, o do áudio inteiro) entra na caixa de texto.
+  // Se nada disso funcionar, o áudio segue para ser transcrito no envio, como sempre foi.
+  const finalizarTranscricao = useCallback(async (blob: Blob, aoVivo: TranscritorAoVivo | null) => {
+    setFinalizando(true);
+    try {
+      let texto = '';
+      let ouviuTudo = false;
+      if (aoVivo) {
+        const r = await aoVivo.encerrar();
+        if (r.completo) { texto = r.texto; ouviuTudo = true; }
+      }
+      if (!ouviuTudo && blob.size >= 1000) {
+        try { texto = await transcreverAudio(blob); } catch { /* sem texto aqui: o áudio é transcrito no envio */ }
+      }
+      if (texto.trim()) setTranscript((atual) => (atual.trim() ? `${atual.trim()}\n${texto.trim()}` : texto.trim()));
+    } finally {
+      setFinalizando(false);
+      setAoVivoTexto('');
+    }
+  }, []);
+
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -75,9 +103,26 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      // O ao vivo é um complemento: sem Web Audio, grava e envia como antes.
+      const aoVivo = new TranscritorAoVivo({
+        transcrever: transcreverAudio,
+        perfil: PERFIL_DITADO,
+        aoAtualizar: (estado) => setAoVivoTexto(estado.texto),
+      });
+      aoVivoRef.current = aoVivo;
+      aoVivo.anexar(stream).catch((err) => {
+        console.warn('Transcrição ao vivo indisponível (segue com a gravação):', err);
+        aoVivo.cancelar();
+        if (aoVivoRef.current === aoVivo) aoVivoRef.current = null;
+      });
+      setAoVivoTexto('');
+
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+        const usado = aoVivoRef.current;
+        aoVivoRef.current = null;
+        void finalizarTranscricao(blob, usado);
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1];
@@ -96,7 +141,7 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
       console.error('Falha ao acessar microfone:', err);
       toast({ title: 'Erro ao acessar microfone', description: 'Permita o acesso ao microfone nas configurações do navegador.', variant: 'destructive' });
     }
-  }, [toast]);
+  }, [toast, finalizarTranscricao]);
 
   const stopRecording = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -107,7 +152,14 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
 
   useEffect(() => () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') mediaRecorderRef.current.stop();
+    aoVivoRef.current?.cancelar();
+    aoVivoRef.current = null;
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== 'inactive') {
+      rec.onstop = null; // saiu da tela: não transcreve nada, só solta o microfone
+      rec.stop();
+      rec.stream.getTracks().forEach((t) => t.stop());
+    }
   }, []);
 
   const enviarRelato = async () => {
@@ -175,6 +227,7 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
 
   const resetar = () => {
     setTranscript('');
+    setAoVivoTexto('');
     setAudioBase64(null);
     setRecordingTime(0);
     setResultado(null);
@@ -229,10 +282,12 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
               </Button>
             </div>
           ) : (
-            <Button variant="outline" className="w-full gap-2" onClick={startRecording} disabled={step === 'processing'}>
+            <Button variant="outline" className="w-full gap-2" onClick={startRecording} disabled={step === 'processing' || finalizando}>
               <Mic className="h-4 w-4" /> Gravar áudio
             </Button>
           )}
+
+          <TextoAoVivo ouvindo={step === 'recording'} transcrevendo={finalizando} texto={aoVivoTexto} />
 
           {audioBase64 && step === 'idle' && (
             <p className="text-[11px] text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Áudio gravado — pronto para enviar.</p>
@@ -246,7 +301,7 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
             disabled={step === 'processing'}
           />
 
-          <Button className="w-full gap-2" onClick={enviarRelato} disabled={step === 'processing' || step === 'recording'}>
+          <Button className="w-full gap-2" onClick={enviarRelato} disabled={step === 'processing' || step === 'recording' || finalizando}>
             {step === 'processing' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {step === 'processing' ? 'Enviando relato...' : 'Enviar relato'}
           </Button>

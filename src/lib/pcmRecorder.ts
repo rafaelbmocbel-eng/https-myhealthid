@@ -89,7 +89,7 @@ export function iniciarCapturaPCM(
   };
 }
 
-function encodeWav16k(chunks: Int16Array[], total: number): Blob {
+export function encodeWav16k(chunks: Int16Array[], total: number): Blob {
   const dataLen = total * 2;
   const buffer = new ArrayBuffer(44 + dataLen);
   const view = new DataView(buffer);

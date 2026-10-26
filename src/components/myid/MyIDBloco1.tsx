@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ChevronRight, Loader2, Mic, MicOff } from 'lucide-react';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
+import { TextoAoVivo } from '@/components/voice/TextoAoVivo';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -23,7 +24,7 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
   // O ditado chega depois de parar a gravação; o ref evita sobrescrever o que foi
   // marcado nesse meio-tempo com uma cópia antiga dos dados.
   const dataRef = useRef(localData);
-  const { isListening, isTranscribing, startListening, stopListening, isSupported } = useSpeechToText();
+  const { isListening, isTranscribing, startListening, stopListening, isSupported, liveText } = useSpeechToText();
 
   const update = (field: keyof MyIDBloco1Data, value: any) => {
     const updated = { ...dataRef.current, [field]: value };
@@ -95,6 +96,7 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
               {isTranscribing ? 'Transcrevendo...' : isListening ? 'Parar gravação' : 'Ditar por voz'}
             </Button>
           </div>
+          <TextoAoVivo ouvindo={isListening} transcrevendo={isTranscribing} texto={liveText} className="mb-2" />
           <Textarea
             placeholder="Ex: Dor nas costas ao acordar, dor no joelho ao correr, formigamento no braço..."
             value={localData.queixaPrincipal}

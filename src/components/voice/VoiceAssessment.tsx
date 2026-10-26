@@ -10,6 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { audioParaWav, blobParaBase64 } from '@/lib/audioParaWav';
 import { iniciarCapturaPCM, type PcmCapture } from '@/lib/pcmRecorder';
+import { PERFIL_CONSULTA, TranscritorAoVivo } from '@/lib/transcricaoAoVivo';
+import { transcreverAudio } from '@/lib/transcreverAudio';
+import { TextoAoVivo } from '@/components/voice/TextoAoVivo';
 import { useAuth } from '@/contexts/AuthContext';
 import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock, Sparkles, Tag, Layers, Users, Wand2, Target, Trash2, Volume2 } from 'lucide-react';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
@@ -203,6 +206,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   // aceita), evitando o decode de webm/opus que falha em áudios longos.
   const pcmCaptureRef = useRef<PcmCapture | null>(null);
   const pcmWavRef = useRef<Blob | null>(null);
+  // Prévia da transcrição enquanto grava (só leitura: a transcrição que vale é a do áudio inteiro, feita ao processar).
+  const aoVivoRef = useRef<TranscritorAoVivo | null>(null);
+  const [aoVivoTexto, setAoVivoTexto] = useState('');
+  const [aoVivoIndisponivel, setAoVivoIndisponivel] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
 
   // Editar uma avaliação salva usa rascunho próprio: antes dividia a chave com a
@@ -584,6 +591,21 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           pcmCaptureRef.current = null;
           console.warn('[VoiceAssessment] captura PCM indisponível, usará conversão pós-gravação:', e);
         }
+        // Prévia ao vivo na mesma fonte de áudio. Se falhar, a gravação segue igual: ela não depende disto.
+        setAoVivoTexto('');
+        setAoVivoIndisponivel(false);
+        try {
+          const aoVivo = new TranscritorAoVivo({
+            transcrever: transcreverAudio,
+            perfil: PERFIL_CONSULTA,
+            aoAtualizar: (estado) => { setAoVivoTexto(estado.texto); setAoVivoIndisponivel(estado.indisponivel); },
+          });
+          aoVivo.anexarContexto(audioCtx, source);
+          aoVivoRef.current = aoVivo;
+        } catch (e) {
+          aoVivoRef.current = null;
+          console.warn('[VoiceAssessment] prévia ao vivo indisponível:', e);
+        }
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         const updateLevel = () => {
           analyser.getByteFrequencyData(dataArray);
@@ -627,6 +649,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
+    // A prévia ao vivo acaba com a gravação (a transcrição de verdade é a do áudio inteiro, feita ao processar).
+    aoVivoRef.current?.cancelar();
+    aoVivoRef.current = null;
     // Encerra a captura PCM e guarda o WAV ANTES de fechar o contexto.
     if (pcmCaptureRef.current) {
       try {
@@ -2409,6 +2434,9 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               </>
             )}
           </div>
+
+          {/* Prévia da transcrição enquanto grava */}
+          <TextoAoVivo ouvindo={isRecording} transcrevendo={false} texto={aoVivoTexto} indisponivel={aoVivoIndisponivel} className="mb-3" />
 
           {/* Medidor de nível de áudio — visível apenas durante gravação */}
           {isRecording && (

@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Mic, MicOff, Send, Loader2, Sparkles } from 'lucide-react';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
+import { TextoAoVivo } from '@/components/voice/TextoAoVivo';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,7 +68,7 @@ export default function PacienteHistoria() {
   const [activeVoice, setActiveVoice] = useState<keyof Omit<HistoriaAtual, 'atualizado_em'> | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { isListening, isTranscribing, startListening, stopListening, isSupported } = useSpeechToText();
+  const { isListening, isTranscribing, startListening, stopListening, isSupported, liveText } = useSpeechToText();
 
   const carregar = async () => {
     if (!user) return;
@@ -314,6 +315,8 @@ export default function PacienteHistoria() {
                       </Button>
                     )}
                   </div>
+
+                  {activeVoice === campo.id && <TextoAoVivo ouvindo={isListening} transcrevendo={isTranscribing} texto={liveText} />}
 
                   <div className="flex items-center justify-between">
                     {isVoiceActive && (

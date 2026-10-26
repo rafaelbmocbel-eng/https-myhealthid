@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
+import { TextoAoVivo } from '@/components/voice/TextoAoVivo';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { atualizarPlanoComEdicoes, condutasProfissional } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
@@ -22,7 +23,7 @@ export default function CondutasProfissionalCard({ avaliacaoId, pacienteId, resu
   const salvo = condutasProfissional(resultado);
   const [texto, setTexto] = useState(salvo);
   const [etapa, setEtapa] = useState<null | 'salvando' | 'plano'>(null);
-  const { isListening, isTranscribing, startListening, stopListening, isSupported } = useSpeechToText();
+  const { isListening, isTranscribing, startListening, stopListening, isSupported, liveText } = useSpeechToText();
 
   // Atualiza o campo quando a avaliação é recarregada, sem apagar o que está sendo digitado.
   useEffect(() => {
@@ -88,6 +89,7 @@ export default function CondutasProfissionalCard({ avaliacaoId, pacienteId, resu
         placeholder={'Ex.:\n• Avaliar escoliose\n• Tratar iliopsoas e diafragma\n• Mobilização neural do nervo femoral\n• Mobilização articular L1, L2 e L5'}
         className="text-sm bg-background"
       />
+      <TextoAoVivo ouvindo={isListening} transcrevendo={isTranscribing} texto={liveText} />
       <div className="flex flex-wrap gap-2 justify-end">
         {isSupported && (
           <Button type="button" size="sm" variant="outline" onClick={ditar} disabled={!!etapa || isTranscribing} className="gap-1.5">
