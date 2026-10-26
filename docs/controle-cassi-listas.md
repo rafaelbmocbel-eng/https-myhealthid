@@ -131,8 +131,8 @@ Dois passos, nesta ordem (o GitHub Action "Deploy Supabase" roda `db push` a cad
 da lista, já está em produção):
 1. as **duas** migrações juntas, sozinhas num push: `20261025230000` (coluna dos lançamentos, CHECK, política e função de juntar) e
    `20261025233000` (atualização dos códigos e valores salvos de Rafael). Conferir em produção (`list_migrations`: as duas versões) e no log do
-   passo "Push database migrations" (os `RAISE NOTICE` da segunda contam qual caminho tomou: conta achada pelo e-mail, única configuração,
-   nada identificado, sem lista ou atualizado). O front antigo continua funcionando com elas;
+   passo "Push database migrations". Os `RAISE NOTICE` da segunda **não aparecem** no log do `db push`: a conferência de que os valores foram
+   atualizados é olhar **Configurações** no app (012 e 020 = 57,70; 301 = 35,55; 131 = 67,79; 185 = 108,44). O front antigo continua funcionando com elas;
 2. logo em seguida, o front (sem arquivo de migração: não dispara o Action). Se ele chegasse antes, a lista do mês nem carregaria ("Não
    consegui carregar a lista deste mês") e salvar lançamento e juntar cadastros falhariam; por isso a ordem.
 
@@ -148,7 +148,10 @@ DROP COLUMN lancamentos` (perde o que foi lançado).
 
 **Atenção — passo "Import data (psql)" do Action** (decisão do Rafael; ver `docs/ci-ajustes-deploy-supabase.md`, item 4): a cada push em `supabase/` ele
 reaplica `supabase/data/import_*.sql`, que desligam a segurança por linha (`DISABLE ROW LEVEL SECURITY`) de `pacientes`, `profiles` e `agendamentos` por
-alguns segundos e reinserem (`ON CONFLICT DO NOTHING`) os ~200 registros importados em março a maio: o que foi **apagado** depois da importação volta.
+cerca de 15 segundos por arquivo e reinserem (`ON CONFLICT DO NOTHING`) os registros importados em março a maio: o que foi **apagado** depois da
+importação pode voltar. Medido no deploy de 26/10/2026 (run #269): a segurança ficou desligada ~15 s em `agendamentos` e ~15 s em
+`pacientes`/`profiles`, e todos os `INSERT` devolveram 0 linhas (nada foi recriado), com alguns erros de chave estrangeira (agendamentos de
+clientes que já não existem). O `db push` não mostra os `RAISE NOTICE` no log do Action: confirme a atualização dos códigos em Configurações.
 Recomendação: remover o passo.
 
 As migrações foram ensaiadas num PostgreSQL 16 descartável (esquema do Supabase simulado, papéis anon/authenticated, RLS, privilégios por
