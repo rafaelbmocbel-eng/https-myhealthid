@@ -72,7 +72,7 @@ describe('useClientesFinanceiroCassi: leitura em ordem fixa e escrita condiciona
     const ordens: unknown[][] = [];
     const original = h.banco.from;
     h.banco.from = ((t: string) => {
-      const q = original(t) as any;
+      const q = original(t) as unknown as { order: (coluna: string, opcoes: unknown) => unknown };
       const order = q.order.bind(q);
       q.order = (coluna: string, opcoes: unknown) => { ordens.push([coluna, opcoes]); return order(coluna, opcoes); };
       return q;

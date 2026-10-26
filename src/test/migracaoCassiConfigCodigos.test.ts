@@ -56,7 +56,7 @@ describe('migração que atualiza os códigos e valores salvos em cassi_config (
   });
 
   it('conta no log do db push o caminho que tomou (conta achada, só uma configuração, nada identificado, sem lista, atualizado)', () => {
-    const avisos = sql.match(/RAISE NOTICE '([^']*)'/g) ?? [];
+    const avisos: string[] = sql.match(/RAISE NOTICE '([^']*)'/g) ?? [];
     for (const trecho of ['conta achada pelo e-mail', 'usando a única configuração existente', 'nenhuma conta identificada', 'não tem lista de códigos salva', 'atualizado (']) {
       expect(avisos.some((a) => a.includes(trecho)), trecho).toBe(true);
     }

@@ -31,15 +31,19 @@ describe('banco falso: order()', () => {
   });
 });
 
+type Tabela = {
+  select: (colunas: string) => { eq: (coluna: string, valor: unknown) => PromiseLike<{ data: unknown }> };
+  upsert: (linhas: unknown[], opcoes: unknown) => PromiseLike<unknown>;
+};
+
 describe('banco falso: jsonb e valores padrão', () => {
   it('eq com texto JSON compara com o jsonb da coluna (como o PostgREST); cassi_financeiro_clientes nasce com lancamentos = []', async () => {
     const banco = criarBancoFalso({ cassi_financeiro_clientes: [{ id: '1', paciente_id: 'a' }, { id: '2', paciente_id: 'b', lancamentos: [{ '012': 1 }] }] });
-    const q = (banco.from('cassi_financeiro_clientes') as any).select('paciente_id').eq('lancamentos', '[]');
-    expect((await q).data).toEqual([{ paciente_id: 'a' }]);
-    await (banco.from('cassi_financeiro_clientes') as any).upsert([{ paciente_id: 'c' }], { onConflict: 'paciente_id' });
+    const tabela = () => banco.from('cassi_financeiro_clientes') as unknown as Tabela;
+    expect((await tabela().select('paciente_id').eq('lancamentos', '[]')).data).toEqual([{ paciente_id: 'a' }]);
+    await tabela().upsert([{ paciente_id: 'c' }], { onConflict: 'paciente_id' });
     expect(banco.tabelas.cassi_financeiro_clientes.find((l) => l.paciente_id === 'c')?.lancamentos).toEqual([]);
-    const lixo = (banco.from('cassi_financeiro_clientes') as any).select('paciente_id').eq('lancamentos', 'isto não é json');
-    expect((await lixo).data).toEqual([]);
+    expect((await tabela().select('paciente_id').eq('lancamentos', 'isto não é json')).data).toEqual([]);
   });
 });
 
