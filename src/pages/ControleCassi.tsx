@@ -18,7 +18,8 @@ import { ArrowLeft, Plus, Loader2, FileText, Save, Trash2, ClipboardList, AlertT
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
-import { contarSessoesDoMes, fecharMes, ultimosMeses } from '@/lib/cassiFinanceiro';
+import { contarSessoesDoMes, fecharMesPorLancamentos, ultimosMeses } from '@/lib/cassiFinanceiro';
+import { MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_GUIAS_NO_MES, guiasPelaAgenda, mesclarCodigosComPadrao, ordenarParaLancamento, type GuiaLancada } from '@/lib/cassiFaturamento';
 import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
 import { BuscaDeCliente } from '@/components/cassi/BuscaDeCliente';
 import { SugestoesDoPedido } from '@/components/cassi/SugestoesDoPedido';
@@ -68,14 +69,21 @@ function useCassiConfig() {
   return useQuery({
     queryKey: ['cassi-config', user?.id],
     queryFn: async () => {
-      const { data } = await (supabase as any).from('cassi_config')
+      const { data, error } = await (supabase as any).from('cassi_config')
         .select('codigos, imposto_por_guia, imposto_percentual, minha_parte_percentual, responsaveis, nome_clinica, nome_profissional, cidade').eq('terapeuta_id', user!.id).maybeSingle();
-      const codigos: CodigoCfg[] = Array.isArray(data?.codigos) && data.codigos.length
-        ? data.codigos
-        : CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
+      // Falhar a leitura não pode virar "configuração vazia": os valores plausíveis da tabela da CASSI com imposto 0% sairiam como se fossem os dele.
+      if (error) throw error;
+      const salvos: CodigoCfg[] = Array.isArray(data?.codigos) ? (data.codigos as CodigoCfg[]) : [];
+      // Os códigos configurados + os da tabela da CASSI que ainda não estão lá (o valor já configurado nunca é trocado).
+      let codigos: CodigoCfg[] = mesclarCodigosComPadrao(salvos);
+      // Quem nunca salvou Configurações continua com os códigos de antes (160...), sem valor, além dos da tabela.
+      if (salvos.length === 0) {
+        codigos = [...codigos, ...CODIGOS_CASSI.filter((c) => !codigos.some((x) => x.codigo === c.codigo)).map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }))];
+      }
       const responsaveis: ResponsavelCfg[] = Array.isArray(data?.responsaveis) ? data.responsaveis : [];
       return {
         codigos, responsaveis,
+        salva: !!data, // já existe configuração salva (senão valem os valores da tabela da CASSI, sem imposto)
         imposto_por_guia: Number(data?.imposto_por_guia || 0),
         imposto_percentual: Number(data?.imposto_percentual || 0),
         minha_parte_percentual: Number(data?.minha_parte_percentual || 0),
@@ -1026,7 +1034,7 @@ export default function ControleCassi() {
             qc.invalidateQueries({ queryKey: ['guias-cassi', user?.id] });
             qc.invalidateQueries({ queryKey: ['cassi-financeiro-clientes', user?.id] });
             // As sessões do duplicado mudaram de cliente: tudo o que vem da agenda precisa ser relido.
-            for (const k of ['cassi-agendamentos-mes', 'cassi-ags-trend', 'cassi-ags-guia', 'cassi-ags-guia-controle']) qc.invalidateQueries({ queryKey: [k] });
+            for (const k of ['cassi-agendamentos-mes', 'cassi-ags-guia', 'cassi-ags-guia-controle']) qc.invalidateQueries({ queryKey: [k] });
             setCadastro(null);
           }}
           onEncerrar={async (id, motivo) => { await encerrarCliente(id, motivo); setCadastro(null); }}
@@ -1197,7 +1205,13 @@ function GuiaEditor({ paciente, guia, ultimaGuia, onClose, onSaved }: {
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
       const sb: any = supabase;
-      const codigos = codigosDisp.filter((c) => d.codigos.includes(c.codigo))
+      // Código que a guia já tem mas não está na lista de Configurações (ex.: a configuração ainda não chegou) continua na guia:
+      // salvar não pode apagar um código só porque a lista não o mostra.
+      const daGuiaForaDaLista = (guia?.codigos ?? []).filter((c) => d.codigos.includes(c.codigo) && !codigosDisp.some((x) => x.codigo === c.codigo));
+      const codigos = [
+        ...codigosDisp.filter((c) => d.codigos.includes(c.codigo)),
+        ...daGuiaForaDaLista.map((c) => ({ codigo: c.codigo, descricao: c.descricao ?? '' })),
+      ]
         // Fallback: se o input por código nunca foi tocado, usa "Dias de tratamento"
         // (nunca 0 silencioso, que zerava a guia no faturamento).
         .map((c) => ({ codigo: c.codigo, descricao: c.descricao, sessoes: c.codigo === '144' ? 1 : (sesCod[c.codigo] ?? (Number(d.sessoes_autorizadas) || 0)) }));
@@ -1736,6 +1750,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
   onReativar?: (id: string) => Promise<void> | void;
 }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const { data: cfg } = useCassiConfig();
   const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
   const editando = !!paciente;
@@ -1833,12 +1848,19 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
     if (!paciente || !user) return;
     const nomeDup = `${paciente.nome} ${paciente.sobrenome || ''}`.trim();
     const nomeAlvo = `${alvo.nome} ${alvo.sobrenome || ''}`.trim();
-    if (!confirm(`Juntar "${nomeDup}" com "${nomeAlvo}"?\n\nA guia e os dados CASSI vão para "${nomeAlvo}" (que mantém avaliação, agenda e histórico). Este cadastro duplicado é removido. Não dá pra desfazer.`)) return;
+    if (!confirm(`Juntar "${nomeDup}" com "${nomeAlvo}"?\n\nA guia e os dados CASSI vão para "${nomeAlvo}" (que mantém avaliação, agenda e histórico). Este cadastro duplicado é removido. Não dá pra desfazer.\n\nNo Faturamento, se os dois tiverem lançamento no mesmo mês, as guias são somadas: confira depois.`)) return;
     setMergendo(true);
     const sb: any = supabase;
+    let listasPassadas = false;
     try {
       // As escritas do Supabase não lançam — checamos .error e ABORTAMOS antes de
       // apagar o duplicado, pra nunca perder a guia por uma falha no meio.
+      // Primeiro as listas do Faturamento (um mês por linha) vão, com o que foi lançado, para o cliente que fica. É uma
+      // função do banco numa transação só: se passar de 6 guias num mês ou falhar no meio, nada muda e tentar de novo
+      // nunca soma duas vezes. Sem isto ele sairia da conta dos meses em que o duplicado estava.
+      const lf = await sb.rpc('cassi_juntar_financeiro_clientes', { p_origem: paciente.id, p_destino: alvo.id });
+      if (lf.error) throw lf.error;
+      listasPassadas = true;
       const g = await sb.from('guias_cassi').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
       if (g.error) throw g.error;
       const a = await sb.from('agendamentos').update({ paciente_id: alvo.id }).eq('paciente_id', paciente.id);
@@ -1858,24 +1880,17 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
         cassi_encerrado_em: null, cassi_encerrado_motivo: null,
       }).eq('id', alvo.id);
       if (p.error) throw p.error;
-      // As listas do Faturamento (um mês por linha) vão para o cliente que fica; sem isto ele sairia da conta dos
-      // meses em que o duplicado estava e as sessões que acabaram de mudar para ele deixariam de ser contadas.
-      const lf = await sb.from('cassi_financeiro_clientes').select('mes').eq('terapeuta_id', user.id).eq('paciente_id', paciente.id);
-      if (lf.error) throw lf.error;
-      if ((lf.data || []).length > 0) {
-        const novas = (lf.data as Array<{ mes: string }>).map((r) => ({ terapeuta_id: user.id, mes: r.mes, paciente_id: alvo.id }));
-        const up = await sb.from('cassi_financeiro_clientes').upsert(novas, { onConflict: 'terapeuta_id,mes,paciente_id', ignoreDuplicates: true });
-        if (up.error) throw up.error;
-        const del = await sb.from('cassi_financeiro_clientes').delete().eq('terapeuta_id', user.id).eq('paciente_id', paciente.id);
-        if (del.error) throw del.error;
-      }
       // Só remove o duplicado depois que tudo acima deu certo.
       const d = await sb.from('pacientes').update({ ativo: false }).eq('id', paciente.id);
       if (d.error) throw d.error;
       toast.success('Cadastros juntados — duplicado removido');
       onSaved();
     } catch (e: any) {
-      toast.error('Erro ao juntar (nada foi apagado): ' + (e.message || e));
+      // Se a falha veio depois de passar as listas do Faturamento, elas já estão no cadastro que fica: a tela relê e o aviso diz isso.
+      if (listasPassadas) qc.invalidateQueries({ queryKey: ['cassi-financeiro-clientes', user.id] });
+      toast.error(listasPassadas
+        ? 'Erro ao juntar: as listas do Faturamento já foram passadas para o cadastro que fica, e nenhum cadastro foi removido. Tente de novo para concluir: ' + (e.message || e)
+        : 'Erro ao juntar (nada foi alterado): ' + (e.message || e));
     } finally {
       setMergendo(false);
     }
@@ -2222,7 +2237,7 @@ function PacienteCassiEditor({ paciente, onClose, onSaved, onEncerrar, onReativa
 function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { data: cfg, isLoading } = useCassiConfig();
+  const { data: cfg, isLoading, isFetching, fetchStatus, isError: erroCfg, refetch: recarregarCfg } = useCassiConfig();
   // Campos numéricos ficam como TEXTO enquanto edita (aceita vírgula e vazio);
   // só viram número ao salvar. Assim dá pra digitar "57,07" sem a fração sumir.
   type CodigoEdit = { codigo: string; descricao: string; codigo_oficial?: string; valor: string };
@@ -2239,7 +2254,9 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const [pronto, setPronto] = useState(false);
 
   useEffect(() => {
-    if (cfg && !pronto) {
+    // Só preenche com o que acabou de chegar do banco: o cache pode ser de antes de uma atualização e salvar dele desfaria a mudança.
+    // Releitura em andamento, pausada (sem rede) ou que falhou não conta: o cache velho não vira formulário.
+    if (cfg && fetchStatus === 'idle' && !erroCfg && !pronto) {
       setCodigos(cfg.codigos.map((c) => ({ codigo: c.codigo, descricao: c.descricao, codigo_oficial: c.codigo_oficial, valor: numStr(c.valor) })));
       setImpostoPct(numStr(cfg.imposto_percentual));
       setMinhaParte(numStr(cfg.minha_parte_percentual));
@@ -2250,7 +2267,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
       setPronto(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cfg, pronto]);
+  }, [cfg, fetchStatus, erroCfg, pronto]);
 
   const setCod = (i: number, campo: keyof CodigoEdit, v: string) =>
     setCodigos((p) => p.map((c, idx) => idx === i ? { ...c, [campo]: v } : c));
@@ -2291,7 +2308,12 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg w-[95vw] max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle className="text-base">Configurações CASSI</DialogTitle></DialogHeader>
-        {isLoading || !pronto ? (
+        {erroCfg && !pronto ? (
+          <div className="text-center py-6 space-y-2" role="alert">
+            <p className="text-sm text-rose-600 dark:text-rose-400">Não consegui carregar suas configurações. Sem elas não dá para editar sem risco de gravar por cima.</p>
+            <Button size="sm" variant="outline" disabled={isFetching} onClick={() => recarregarCfg()}>{isFetching ? 'Tentando…' : 'Tentar de novo'}</Button>
+          </div>
+        ) : isLoading || !pronto ? (
           <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : (
           <div className="space-y-4">
@@ -2302,7 +2324,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
                 {codigos.map((c, i) => (
                   <div key={i} className="rounded-lg border border-border/50 p-2 space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      <Input className="h-8 w-16 text-sm" value={c.codigo} onChange={(e) => setCod(i, 'codigo', e.target.value)} placeholder="000" />
+                      <Input className="h-8 w-16 text-sm" value={c.codigo} maxLength={MAXIMO_CARACTERES_DO_CODIGO} onChange={(e) => setCod(i, 'codigo', e.target.value)} placeholder="000" />
                       <Input className="h-8 flex-1 text-sm" value={c.descricao} onChange={(e) => setCod(i, 'descricao', e.target.value)} placeholder="descrição" />
                       <Button size="icon" variant="ghost" className="h-8 w-7 shrink-0" title="Remover" onClick={() => rmCod(i)}>
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -2621,7 +2643,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
   onAbrirGuia: (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }) => void;
 }) {
   const { user } = useAuth();
-  const { data: cfg } = useCassiConfig();
+  const { data: cfg, isError: erroCfg, refetch: recarregarCfg } = useCassiConfig();
   const [mes, setMes] = useState<string>(() => mesAtualISO());
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [verSnap, setVerSnap] = useState<any | null>(null);
@@ -2663,7 +2685,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
   });
 
   // Agendamentos do mês (com folga de ±1 dia p/ fuso; classificamos pelo mês local).
-  const { data: agendamentos = [], isLoading, isError: erroAgenda } = useQuery({
+  const { data: agendamentos = [], isLoading: carregandoAgenda, isError: erroAgenda } = useQuery({
     queryKey: ['cassi-agendamentos-mes', user?.id, mes],
     queryFn: async () => {
       const [ano, m] = mes.split('-').map(Number);
@@ -2684,29 +2706,40 @@ function FinanceiroCassi({ onAbrirGuia }: {
   const idsCassi = useMemo(() => new Set(pacientes.map((p) => p.id)), [pacientes]);
   const idsDoMes = useMemo(() => new Set([...listaDoMes].filter((id) => idsCassi.has(id))), [listaDoMes, idsCassi]);
 
-  // Sessões atendidas na agenda no mês: de todos os clientes CASSI (para sugerir quem adicionar) e só dos da lista (a conta).
+  // Sessões atendidas na agenda no mês: só REFERÊNCIA (e base de "quem teve sessão"); o valor sai do que foi lançado.
   const sessoesTodos = useMemo(() => {
     const [ano, m] = mes.split('-').map(Number);
     return contarSessoesDoMes(agendamentos, ano, m, idsCassi, Date.now());
   }, [mes, agendamentos, idsCassi]);
-  const sessoesDaLista = useMemo(
-    () => new Map([...sessoesTodos].filter(([id]) => idsDoMes.has(id))),
-    [sessoesTodos, idsDoMes],
-  );
 
-  const calc = useMemo(
-    () => fecharMes({ sessoesPorPac: sessoesDaLista, pacientes, guias, cfg }),
-    [sessoesDaLista, pacientes, guias, cfg],
-  );
+  // Códigos que dá para lançar: os de Configurações (com os padrões que faltam), com o 012 na frente.
+  const catalogo = useMemo(() => ordenarParaLancamento(cfg?.codigos ?? []), [cfg]);
+  const lancamentosDoMes = lista.lancamentosDoMes(mes);
+  // Responsável técnico do cliente = o da guia mais recente (é com ele que o repasse é calculado).
+  const responsavelPorPaciente = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const g of guias) if (!m.has(g.paciente_id)) m.set(g.paciente_id, g.responsavel_tecnico || '');
+    return m;
+  }, [guias]);
 
-  // A lista do mês na tela: quem já está nela, quem dá para adicionar e quem teve sessão e ainda está de fora.
   const nomeDe = (p: Paciente) => `${p.nome} ${p.sobrenome || ''}`.trim();
+  const calc = useMemo(
+    () => fecharMesPorLancamentos({
+      clientes: pacientes.filter((p) => idsDoMes.has(p.id)).map((p) => ({
+        id: p.id, nome: nomeDe(p), responsavel: responsavelPorPaciente.get(p.id) || '', guias: lancamentosDoMes.get(p.id) || [],
+      })),
+      cfg,
+    }),
+    [pacientes, idsDoMes, lancamentosDoMes, responsavelPorPaciente, cfg],
+  );
+
+  // A lista do mês na tela: quem já está nela (com o que foi lançado), quem dá para adicionar e quem teve sessão e está de fora.
   const clientesDaLista = useMemo(
     () => pacientes
       .filter((p) => idsDoMes.has(p.id))
-      .map((p) => ({ id: p.id, nome: nomeDe(p), sessoes: sessoesTodos.get(p.id) || 0, encerrado: !!p.cassi_encerrado_em }))
+      .map((p) => ({ id: p.id, nome: nomeDe(p), sessoesAgenda: sessoesTodos.get(p.id) || 0, guias: lancamentosDoMes.get(p.id) || [], encerrado: !!p.cassi_encerrado_em }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
-    [pacientes, idsDoMes, sessoesTodos],
+    [pacientes, idsDoMes, sessoesTodos, lancamentosDoMes],
   );
   const candidatosDoMes = useMemo(
     () => pacientes
@@ -2718,38 +2751,57 @@ function FinanceiroCassi({ onAbrirGuia }: {
     () => [...sessoesTodos.entries()].filter(([id, n]) => n > 0 && !idsDoMes.has(id)).map(([id]) => id),
     [sessoesTodos, idsDoMes],
   );
+  const semLancamentoComAgenda = useMemo(
+    () => clientesDaLista.filter((c) => c.guias.length === 0 && c.sessoesAgenda > 0),
+    [clientesDaLista],
+  );
 
-  // Agendamentos dos últimos 6 meses (janela mais larga) — só pro mini-gráfico.
-  const { data: agsTrend = [] } = useQuery({
-    queryKey: ['cassi-ags-trend', user?.id, mes],
-    queryFn: async () => {
-      const [ano, m] = mes.split('-').map(Number);
-      const de = new Date(ano, m - 6, 1).toISOString();
-      const ate = new Date(ano, m, 2).toISOString();
-      const { data, error } = await (supabase as any)
-        .from('agendamentos')
-        .select('paciente_id, data_inicio, status, tipo_atendimento')
-        .eq('terapeuta_id', user!.id)
-        .gte('data_inicio', de).lt('data_inicio', ate);
-      if (error) throw error;
-      return (data || []) as Array<{ paciente_id: string | null; data_inicio: string; status: string; tipo_atendimento?: string }>;
-    },
-    enabled: !!user,
-  });
+  // Tendência da "sua parte" nos últimos 6 meses: a mesma conta do mês, com o que foi lançado em cada mês.
+  const lancamentosDe = lista.lancamentosDoMes;
+  const tendencia = useMemo(() => mesesTendencia.map((mm) => {
+    const doMesX = lancamentosDe(mm);
+    const clientes = pacientes.filter((p) => doMesX.has(p.id)).map((p) => ({ id: p.id, nome: nomeDe(p), responsavel: '', guias: doMesX.get(p.id) || [] }));
+    return { label: MESES_PT[Number(mm.slice(5, 7)) - 1].slice(0, 3), suaParte: fecharMesPorLancamentos({ clientes, cfg }).suaParte };
+  }), [mesesTendencia, lancamentosDe, pacientes, cfg]);
 
-  // Tendência da "sua parte" nos últimos 6 meses: a mesma conta do mês, com a lista de clientes de cada mês.
-  const doMesDaLista = lista.doMes;
-  const tendencia = useMemo(() => {
-    const agora = Date.now();
-    return mesesTendencia.map((mm) => {
-      const [y, mo] = mm.split('-').map(Number);
-      const ids = new Set([...doMesDaLista(mm)].filter((id) => idsCassi.has(id)));
-      const sess = contarSessoesDoMes(agsTrend, y, mo, ids, agora);
-      return { label: MESES_PT[mo - 1].slice(0, 3), suaParte: fecharMes({ sessoesPorPac: sess, pacientes, guias, cfg }).suaParte };
-    });
-  }, [agsTrend, mesesTendencia, doMesDaLista, idsCassi, pacientes, guias, cfg]);
+  // Gravar o lançamento de um cliente. O aviso de falha já sai do próprio hook.
+  const salvarLancamento = async (id: string, guiasNovas: GuiaLancada[]): Promise<boolean> => {
+    try {
+      await lista.lancar.mutateAsync({ mes, itens: [{ id, guias: guiasNovas }] });
+      return true;
+    } catch {
+      return false; // falhou: o hook já avisou; o editor continua aberto com o que foi digitado
+    }
+  };
+  const preencherComAgenda = async () => {
+    // Cabem 6 guias de 10 por cliente no mês: quem teve mais sessões que isso fica com o que coube, e o aviso diz quem.
+    const passaram = semLancamentoComAgenda.filter((c) => c.sessoesAgenda > MAXIMO_GUIAS_NO_MES * 10);
+    const nomes = (ids: string[]) => clientesDaLista.filter((c) => ids.includes(c.id)).map((c) => c.nome).join(', ');
+    let pulados: string[];
+    try {
+      ({ pulados } = await lista.lancar.mutateAsync({
+        mes, itens: semLancamentoComAgenda.map((c) => ({ id: c.id, guias: guiasPelaAgenda(c.sessoesAgenda) })), somenteSeVazio: true,
+      }));
+    } catch {
+      return; // falhou: o hook já avisou
+    }
+    // Os avisos saem depois da gravação (e não dependem de a tela continuar a mesma), para falar só do que de fato foi gravado.
+    const gravados = passaram.filter((c) => !pulados.includes(c.id));
+    if (gravados.length > 0) {
+      toast.warning(`${nomes(gravados.map((c) => c.id))}: a agenda tem mais de ${MAXIMO_GUIAS_NO_MES * 10} sessões no mês, mais do que cabe em ${MAXIMO_GUIAS_NO_MES} guias. Lancei ${MAXIMO_GUIAS_NO_MES * 10}; confira o restante.`, { duration: 12000 });
+    }
+    if (pulados.length > 0) {
+      const um = pulados.length === 1;
+      toast.warning(`${nomes(pulados)}: ${um ? 'já tinha lançamento ou saiu da lista' : 'já tinham lançamento ou saíram da lista'} (feito em outro aparelho?) e não ${um ? 'foi alterado' : 'foram alterados'}.`, { duration: 12000 });
+    }
+  };
+  const salvandoId = lista.lancar.isPending && lista.lancar.variables?.itens.length === 1 ? lista.lancar.variables.itens[0].id : null;
 
+  // Trocar de mês fecha o lançamento aberto: se há algo digitado e não salvo, pergunta antes.
+  const rascunhoAlterado = useRef(false);
+  const podeTrocarDeMes = () => !rascunhoAlterado.current || confirm('Descartar o que você digitou no lançamento aberto?');
   const irMes = (delta: number) => {
+    if (!podeTrocarDeMes()) return;
     const [ano, m] = mes.split('-').map(Number);
     const d = new Date(ano, m - 1 + delta, 1);
     setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
@@ -2758,10 +2810,10 @@ function FinanceiroCassi({ onAbrirGuia }: {
   const baixarCSV = () => {
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
     const linhas = [
-      ['Cliente', 'Responsável', 'Sessões', 'Bruto', 'Imposto', 'Líquido'],
-      ...calc.linhas.map((l) => [l.nome, l.responsavel || '—', l.sessoes, l.bruto.toFixed(2), l.imposto.toFixed(2), l.liquido.toFixed(2)]),
+      ['Cliente', 'Responsável', 'Códigos', 'Sessões', 'Bruto', 'Imposto', 'Líquido'],
+      ...calc.linhas.map((l) => [l.nome, l.responsavel || '—', l.resumo || '', l.sessoes, l.bruto.toFixed(2), l.imposto.toFixed(2), l.liquido.toFixed(2)]),
       [],
-      ['TOTAL', '', calc.totSessoes, calc.totBruto.toFixed(2), calc.totImposto.toFixed(2), calc.totLiquido.toFixed(2)],
+      ['TOTAL', '', '', calc.totSessoes, calc.totBruto.toFixed(2), calc.totImposto.toFixed(2), calc.totLiquido.toFixed(2)],
     ];
     const csv = linhas.map((r) => r.map(esc).join(';')).join('\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -2774,7 +2826,6 @@ function FinanceiroCassi({ onAbrirGuia }: {
   };
 
   const [ano, m] = mes.split('-').map(Number);
-  const semValores = !cfg?.codigos.some((c) => c.valor > 0);
   // A CASSI paga a clínica ~3 meses depois das guias entregues no mês.
   const dRec = new Date(ano, m - 1 + 3, 1);
   const mesRecebimento = `${MESES_PT[dRec.getMonth()]} ${dRec.getFullYear()}`;
@@ -2784,19 +2835,19 @@ function FinanceiroCassi({ onAbrirGuia }: {
       {/* Seletor de mês */}
       <div className="rounded-xl border border-border/50 bg-background p-3 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5">
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(-1)} title="Mês anterior">‹</Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8" disabled={lista.ocupado} onClick={() => irMes(-1)} title="Mês anterior">‹</Button>
           <div className="text-center min-w-[9rem]">
             <p className="text-sm font-bold capitalize leading-none">{MESES_PT[m - 1]} {ano}</p>
             <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-0.5">Cálculo do mês</p>
           </div>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => irMes(1)} title="Próximo mês">›</Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8" disabled={lista.ocupado} onClick={() => irMes(1)} title="Próximo mês">›</Button>
         </div>
         <div className="flex items-center gap-1.5">
-          <Input type="month" value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
-          <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={calc.linhas.length === 0} onClick={baixarCSV}>
+          <Input type="month" value={mes} disabled={lista.ocupado} onChange={(e) => e.target.value && podeTrocarDeMes() && setMes(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
+          <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={!cfg || calc.linhas.length === 0} onClick={baixarCSV}>
             <Download className="h-3.5 w-3.5" /> CSV
           </Button>
-          <Button size="sm" className="h-8 gap-1.5" onClick={() => setRelatorioOpen(true)}>
+          <Button size="sm" className="h-8 gap-1.5" disabled={!cfg} onClick={() => setRelatorioOpen(true)}>
             <FileText className="h-3.5 w-3.5" /> Relatório
           </Button>
         </div>
@@ -2804,13 +2855,22 @@ function FinanceiroCassi({ onAbrirGuia }: {
 
       {relatorioOpen && <RelatorioProducao mes={mes} onClose={() => setRelatorioOpen(false)} />}
 
-      {semValores && (
+      {!cfg && erroCfg && (
+        <div className="text-center py-6 space-y-2" role="alert">
+          <p className="text-sm text-rose-600 dark:text-rose-400">Não consegui carregar suas configurações (valores dos códigos e imposto). Sem elas o cálculo sairia errado.</p>
+          <Button size="sm" variant="outline" onClick={() => recarregarCfg()}>Tentar de novo</Button>
+        </div>
+      )}
+      {!cfg && !erroCfg && <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
+
+      {cfg && !cfg.salva && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 text-[12px] text-amber-800 dark:text-amber-300">
-          Defina os valores dos códigos em <b>Configurações</b> (ícone de engrenagem) para o cálculo somar corretamente.
+          Você ainda não salvou suas configurações: o cálculo usa os valores da tabela da CASSI, sem imposto e com sua parte em 0%. Ajuste em <b>Configurações</b> (ícone de engrenagem).
         </div>
       )}
 
-      <ClientesDoMes
+      {cfg && <ClientesDoMes
+        key={mes}
         mesLabel={`${MESES_PT[m - 1]} de ${ano}`}
         clientes={clientesDaLista}
         candidatos={candidatosDoMes}
@@ -2818,17 +2878,32 @@ function FinanceiroCassi({ onAbrirGuia }: {
         ocupado={lista.ocupado || lista.carregando || lista.erro}
         carregando={lista.carregando}
         erro={lista.erro}
-        sessoesEstado={isLoading ? 'carregando' : erroAgenda ? 'erro' : 'ok'}
+        sessoesEstado={carregandoAgenda ? 'carregando' : erroAgenda ? 'erro' : 'ok'}
+        catalogo={catalogo}
+        quantosPreencheriaComAgenda={semLancamentoComAgenda.length}
+        salvandoId={salvandoId}
+        rascunhoAlterado={rascunhoAlterado}
+        onSalvarLancamento={salvarLancamento}
+        onPreencherComAgenda={preencherComAgenda}
         onAdicionar={(id) => lista.adicionar.mutate({ mes, ids: [id] })}
         onAdicionarComSessao={() => lista.adicionar.mutate({ mes, ids: comSessaoFora })}
-        onRemover={(id) => lista.remover.mutate({ mes, id })}
+        onRemover={(id) => {
+          // Tirar da lista apaga o que foi lançado no cliente: se há lançamento, confirma.
+          const c = clientesDaLista.find((x) => x.id === id);
+          if (c && c.guias.length > 0 && !confirm(`Tirar ${c.nome} da lista de ${MESES_PT[m - 1]} de ${ano}?\n\nOs códigos e as quantidades lançados nele neste mês também são apagados.`)) return;
+          lista.remover.mutate({ mes, id });
+        }}
         onLimpar={() => {
           const n = clientesDaLista.length;
-          if (confirm(`Tirar ${n === 1 ? 'o cliente' : `os ${n} clientes`} da lista de ${MESES_PT[m - 1]} de ${ano}?\n\nAs guias e as sessões não são alteradas; só sai da conta do mês.`)) lista.limpar.mutate({ mes });
+          const comLancamento = clientesDaLista.filter((c) => c.guias.length > 0).length;
+          const aviso = comLancamento > 0
+            ? `Isso APAGA também os códigos e as quantidades lançados em ${comLancamento === 1 ? '1 cliente' : `${comLancamento} clientes`} neste mês e não dá para desfazer. As guias e a agenda não mudam.`
+            : 'As guias e a agenda não mudam.';
+          if (confirm(`Tirar ${n === 1 ? 'o cliente' : `os ${n} clientes`} da lista de ${MESES_PT[m - 1]} de ${ano}?\n\n${aviso}`)) lista.limpar.mutate({ mes });
         }}
-      />
+      />}
 
-      {lista.erro ? (
+      {!cfg ? null : lista.erro ? (
         <div className="text-center py-6 space-y-2" role="alert">
           <p className="text-sm text-rose-600 dark:text-rose-400">Não consegui carregar a lista deste mês.</p>
           <Button size="sm" variant="outline" onClick={() => lista.recarregar()}>Tentar de novo</Button>
@@ -2837,8 +2912,8 @@ function FinanceiroCassi({ onAbrirGuia }: {
         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : idsDoMes.size === 0 ? null : (
         <>
-      {/* Resumo */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {/* Resumo: com a lista ainda sem lançamento os cartões em zero pareceriam um mês sem receita */}
+      {calc.linhas.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
           { label: 'Sessões', valor: String(calc.totSessoes), cls: '' },
           { label: 'Bruto', valor: fmtBRL(calc.totBruto), cls: '' },
@@ -2850,7 +2925,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
             <p className="text-[10px] uppercase text-muted-foreground tracking-wide mt-1">{c.label}</p>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Divisão: sua parte × clínica */}
       {calc.totLiquido > 0 && (
@@ -2897,21 +2972,15 @@ function FinanceiroCassi({ onAbrirGuia }: {
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">Valores em R$ (k = mil). Barra verde = mês selecionado. Mês sem lista de clientes aparece como —, não como zero.</p>
+            <p className="text-[11px] text-muted-foreground mt-2">Valores em R$ (k = mil). Barra verde = mês selecionado. Mês sem lançamento aparece como —, não como zero.</p>
           </div>
         );
       })()}
 
-      {isLoading ? (
-        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-      ) : erroAgenda ? (
-        <p className="text-center text-sm text-rose-600 dark:text-rose-400 py-10" role="alert">
-          Não consegui carregar a agenda deste mês, então o cálculo não está completo. Atualize a página e tente de novo.
-        </p>
-      ) : calc.linhas.length === 0 ? (
+      {calc.linhas.length === 0 ? (
         <p className="text-center text-sm text-muted-foreground py-10">
-          Nenhuma sessão concluída na agenda neste mês.<br />
-          <span className="text-[12px]">Marque as sessões como <b>atendido</b> na Agenda para elas entrarem no cálculo.</span>
+          Nenhum código lançado neste mês.<br />
+          <span className="text-[12px]">Abra um cliente da lista acima e informe os <b>códigos</b> usados e a <b>quantidade</b> de cada um.</span>
         </p>
       ) : (
         <>
@@ -2936,6 +3005,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
                     <tr key={l.pid} className="border-t border-border/40">
                       <td className="px-3 py-2">
                         <p className="font-medium truncate">{l.nome}</p>
+                        {l.resumo && <p className="text-[10px] text-muted-foreground tabular-nums">{l.resumo}</p>}
                         {l.responsavel && <p className="text-[10px] text-muted-foreground">{l.responsavel}</p>}
                       </td>
                       <td className="text-center tabular-nums px-2 py-2">{l.sessoes}</td>
@@ -2977,7 +3047,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
           )}
 
           <p className="text-[11px] text-muted-foreground text-center px-4">
-            Contamos como sessão realizada os agendamentos <b>atendidos/confirmados</b> na Agenda até hoje. Cancelados, faltas e horários bloqueados não entram.
+            O valor vem dos <b>códigos e quantidades que você lançou</b> em cada cliente (quantidade × valor do código). A Agenda aparece só como referência. "Sessões" não conta a consulta (144).
           </p>
         </>
       )}
@@ -3042,7 +3112,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
       )}
 
       {/* Guias que fecham neste mês (antiga aba "Fechamentos") — usa o mesmo mês. */}
-      {idsDoMes.size > 0 && <EnviosCassi mes={mes} ids={idsDoMes} onAbrir={onAbrirGuia} />}
+      {cfg && idsDoMes.size > 0 && <EnviosCassi mes={mes} ids={idsDoMes} onAbrir={onAbrirGuia} />}
 
       {verSnap && <RelatorioSnapshotView dados={verSnap} onClose={() => setVerSnap(null)} />}
     </div>
@@ -3118,7 +3188,6 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   const valorDe = (c: string) => cods.find((x) => x.codigo === c)?.valor || 0;
   const colAval = cods.find((c) => c.codigo === '144');
   const colsTrat = cods.filter((c) => c.codigo !== '144');
-  const columns = [...(colAval ? [colAval] : []), ...colsTrat];
 
   // Agendamentos ligados a guias — para saber em que mês cada guia foi concluída.
   const { data: ags = [] } = useQuery({
@@ -3177,6 +3246,10 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
 
   const qtd = (g: GuiaCassi, cod: string) => Number((g.codigos || []).find((c) => c.codigo === cod)?.sessoes) || 0;
   const rows = candidatas.filter((g) => sel.has(g.id));
+  // Só viram coluna os códigos usados nas guias do relatório (com nada marcado, nas guias do mês): os da tabela da CASSI
+  // que não aparecem em nenhuma não saem como coluna zerada no relatório da clínica.
+  const usados = new Set((rows.length > 0 ? rows : candidatas).flatMap((g) => (g.codigos || []).map((c) => c.codigo)));
+  const columns = [...(colAval ? [colAval] : []), ...colsTrat].filter((c) => usados.has(c.codigo));
   const bruto = rows.reduce((s, g) => s + somaGuia(g.codigos, valorDe), 0);
   const imp = cfg?.imposto_percentual || 0;
   const aposImp = bruto * (1 - imp / 100);

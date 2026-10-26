@@ -48,7 +48,29 @@ Troque o passo "Deploy edge functions" por:
 Efeito: uma função com erro não impede as outras de serem publicadas, e o log diz qual falhou (o job ainda termina em falha se alguma
 falhou, para você notar).
 
-## 4. Observação (decisão sua)
+## 4. Importar dados a cada deploy (recomendo remover — decisão sua)
 
-O passo "Import data (psql)" reaplica todo `supabase/data/*.sql` a cada deploy. Hoje não altera nada (os `INSERT` retornam 0 linhas),
-mas continua executando e usa o segredo `SUPABASE_DB_URL`. Se a migração do projeto antigo já foi encerrada, vale remover o passo.
+O passo "Import data (psql)" reaplica todo `supabase/data/*.sql` **a cada push** que toque `supabase/migrations`, `supabase/functions` ou
+`supabase/data`. Os dois arquivos (`import_pacientes.sql`, `import_agendamentos.sql`, ~200 registros de março a maio) começam com
+`ALTER TABLE ... DISABLE ROW LEVEL SECURITY` (em `pacientes`, `profiles` e `agendamentos`) e só reabilitam no fim, em autocommit. Dois efeitos:
+
+- por alguns segundos a segurança por linha dessas tabelas fica **desligada** para todos os usuários conectados (o usuário do `SUPABASE_DB_URL`
+  já ignora a RLS, então o `DISABLE` nem é necessário para o import funcionar). Medido no deploy de 26/10/2026 (run #269): ~15 s em
+  `agendamentos` e ~15 s em `pacientes` e `profiles`;
+- os `INSERT ... ON CONFLICT (id) DO NOTHING` **recriam** qualquer registro importado que tenha sido apagado depois (cliente excluído, consulta
+  removida): o que foi editado fica, o que foi apagado volta. (No run #269 todos os `INSERT` devolveram 0 linhas: nada foi recriado; houve erros de
+  chave estrangeira em agendamentos de clientes que já não existem.)
+
+Como a migração do projeto antigo já terminou, o jeito seguro é **apagar o passo inteiro**: no editor do GitHub, em
+`.github/workflows/supabase-deploy.yml`, remova o bloco
+
+```yaml
+      - name: Import data (psql)
+        run: |
+          ...
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+```
+
+(e, se quiser, os arquivos de `supabase/data/`). Se preferir manter por enquanto, no mínimo troque o comando por
+`psql -1 -v ON_ERROR_STOP=1 "$SUPABASE_DB_URL" -f "$f"` (tudo numa transação: a RLS nunca fica desligada para os outros).

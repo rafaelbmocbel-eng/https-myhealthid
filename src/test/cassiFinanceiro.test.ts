@@ -1,138 +1,129 @@
 import { describe, it, expect } from 'vitest';
-import type { GuiaCassi } from '@/lib/cassiGuias';
-import { brutoGuia, contarSessoesDoMes, fecharMes, somarMeses, ultimosMeses, type AgendamentoFinanceiro, type ConfigFinanceira } from '@/lib/cassiFinanceiro';
-import { calcOriginal, tendenciaOriginal } from './cassiFinanceiroReferencia';
+import { agregarFechamento, contarSessoesDoMes, fecharMesPorLancamentos, somarMeses, ultimosMeses, type AgendamentoFinanceiro, type ConfigFinanceira } from '@/lib/cassiFinanceiro';
 
-// Gerador determinístico: o mesmo cenário em toda execução.
-function sorteio(semente: number) {
-  let s = semente >>> 0;
-  const prox = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 2 ** 32; };
-  return {
-    prox,
-    inteiro: (a: number, b: number) => a + Math.floor(prox() * (b - a + 1)),
-    escolhe: <T,>(xs: T[]) => xs[Math.floor(prox() * xs.length)],
-  };
-}
+const cfg: ConfigFinanceira = {
+  codigos: [{ codigo: '012', valor: 57.7 }, { codigo: '144', valor: 65.62 }, { codigo: '301', valor: 35.55 }],
+  responsaveis: [{ nome: 'Dra. Íris Paiva', percentual: 30 }],
+  imposto_por_guia: 0, imposto_percentual: 10, minha_parte_percentual: 50,
+};
 
-const STATUS = ['confirmado', 'atendido', 'atendido', 'confirmado', 'cancelado', 'faltou', 'bloqueado', 'pendente'];
-const RESPONSAVEIS = ['', 'Dra. Íris Paiva', 'dra. iris paiva', 'Dr. João', 'Sem Cadastro'];
-
-function cenario(semente: number) {
-  const r = sorteio(semente);
-  const pacientes = Array.from({ length: 12 }, (_, i) => ({
-    id: `p${i}`,
-    nome: r.escolhe(['Ana', 'Álvaro', 'Beatriz', 'Carlos', 'Érica', 'Zélia']) + i,
-    sobrenome: r.prox() < 0.3 ? null : r.escolhe(['Souza', 'Lima', 'Dias']),
-    codigos_cassi: r.prox() < 0.4 ? [] : r.escolhe([['012'], ['012', '185'], ['144', '012', '185'], ['160']]),
-  }));
-  // Do mais recente para o mais antigo, como a consulta da tela entrega.
-  const guias = [] as GuiaCassi[];
-  for (const p of pacientes) {
-    if (r.prox() < 0.25) continue;
-    for (let k = 0; k < r.inteiro(1, 2); k++) {
-      const codigos = r.escolhe([
-        [{ codigo: '144', sessoes: 1 }, { codigo: '012', sessoes: 10 }, { codigo: '185', sessoes: 10 }],
-        [{ codigo: '144', sessoes: 0 }, { codigo: '012', sessoes: 8 }],
-        [{ codigo: '012' }, { codigo: '185', sessoes: 6 }],
-        [],
-      ]);
-      guias.push({
-        id: `g${p.id}-${k}`, paciente_id: p.id, matricula: null, numero_guia: null, data_pedido: '2026-01-01', data_resposta: null,
-        sessoes_autorizadas: 10, sessoes_realizadas: 0, diagnostico: null, responsavel_tecnico: r.escolhe(RESPONSAVEIS) || null,
-        codigos, status: 'ativa', observacoes: null, created_at: '', updated_at: '',
-      });
-    }
-  }
-  const agendamentos: AgendamentoFinanceiro[] = Array.from({ length: 260 }, () => ({
-    paciente_id: r.prox() < 0.05 ? null : r.prox() < 0.08 ? 'fora-do-cassi' : `p${r.inteiro(0, 11)}`,
-    data_inicio: new Date(2026, r.inteiro(4, 10), r.inteiro(1, 28), r.escolhe([0, 8, 10, 14, 23]), r.escolhe([0, 30])).toISOString(),
-    status: r.escolhe(STATUS),
-    tipo_atendimento: r.prox() < 0.1 ? 'avaliacao' : undefined,
-  }));
-  const cfg: ConfigFinanceira | undefined = r.escolhe<ConfigFinanceira | undefined>([
-    undefined,
-    { codigos: [{ codigo: '144', valor: 100 }, { codigo: '012', valor: 55.5 }, { codigo: '185', valor: 33.33 }, { codigo: '160', valor: 70 }], responsaveis: [{ nome: 'Dra. Íris Paiva', percentual: 30 }, { nome: 'Dr. João', percentual: 20 }], imposto_por_guia: 0, imposto_percentual: 15, minha_parte_percentual: 45 },
-    { codigos: [{ codigo: '144', valor: 90 }, { codigo: '012', valor: 40 }], responsaveis: [], imposto_por_guia: 12.5, imposto_percentual: 0, minha_parte_percentual: 60 },
-    { codigos: [], responsaveis: [], imposto_por_guia: 0, imposto_percentual: 0, minha_parte_percentual: 0 },
-  ]);
-  return { pacientes, guias, agendamentos, cfg };
-}
-
-const AGORA = new Date(2026, 9, 20, 12, 0).getTime();
-
-describe('conta financeira do mês: a conta nova com todos os clientes na lista dá o mesmo resultado da antiga', () => {
-  for (let semente = 1; semente <= 40; semente++) {
-    it(`cenário ${semente}: cálculo do mês`, () => {
-      const { pacientes, guias, agendamentos, cfg } = cenario(semente);
-      const mes = '2026-09';
-      const [ano, m] = mes.split('-').map(Number);
-      const todos = new Set(pacientes.map((p) => p.id));
-      const novo = fecharMes({ sessoesPorPac: contarSessoesDoMes(agendamentos, ano, m, todos, AGORA), pacientes, guias, cfg });
-      const antigo = calcOriginal({ mes, pacientes, guias, agendamentos, cfg, agora: AGORA });
-      expect(novo).toEqual(antigo);
-    });
-
-    it(`cenário ${semente}: "sua parte" dos 6 meses da tendência`, () => {
-      const { pacientes, guias, agendamentos, cfg } = cenario(semente);
-      const mes = '2026-10';
-      const todos = new Set(pacientes.map((p) => p.id));
-      const antigo = tendenciaOriginal({ mes, pacientes, guias, agsTrend: agendamentos, cfg, agora: AGORA });
-      const novo = ultimosMeses(mes, 6).map((mm) => {
-        const [y, mo] = mm.split('-').map(Number);
-        return fecharMes({ sessoesPorPac: contarSessoesDoMes(agendamentos, y, mo, todos, AGORA), pacientes, guias, cfg }).suaParte;
-      });
-      expect(novo).toHaveLength(antigo.length);
-      novo.forEach((v, i) => expect(v).toBeCloseTo(antigo[i].suaParte, 8));
-    });
-  }
-
-  it('os cenários não são triviais (têm sessões e valores de verdade)', () => {
-    let comValor = 0;
-    for (let semente = 1; semente <= 40; semente++) {
-      const { pacientes, guias, agendamentos, cfg } = cenario(semente);
-      const todos = new Set(pacientes.map((p) => p.id));
-      const r = fecharMes({ sessoesPorPac: contarSessoesDoMes(agendamentos, 2026, 9, todos, AGORA), pacientes, guias, cfg });
-      if (r.totBruto > 0 && r.linhas.length >= 3) comValor++;
-    }
-    expect(comValor).toBeGreaterThan(10);
-  });
-});
-
-describe('a lista do mês escolhe QUEM entra, não COMO se calcula', () => {
-  const pacientes = [
-    { id: 'a', nome: 'Ana', sobrenome: 'Souza', codigos_cassi: ['012'] },
-    { id: 'b', nome: 'Bruno', sobrenome: null, codigos_cassi: ['012'] },
-    { id: 'c', nome: 'Carla', sobrenome: 'Dias', codigos_cassi: ['012'] },
+describe('fechamento do mês pelos lançamentos', () => {
+  const clientes = [
+    { id: 'a', nome: 'Ana Souza', responsavel: 'dra. iris paiva', guias: [{ '012': 10, '144': 1 }] },
+    { id: 'b', nome: 'Bruno Lima', responsavel: '', guias: [{ '012': 6 }, { '012': 4, '301': 2 }] },
+    { id: 'c', nome: 'Carla Dias', responsavel: '', guias: [] },
   ];
-  const cfg: ConfigFinanceira = { codigos: [{ codigo: '012', valor: 50 }], responsaveis: [], imposto_por_guia: 0, imposto_percentual: 10, minha_parte_percentual: 50 };
-  const sessao = (id: string, dia: number): AgendamentoFinanceiro => ({ paciente_id: id, data_inicio: new Date(2026, 8, dia, 10).toISOString(), status: 'atendido' });
-  const ags = [...[1, 2, 3, 4].map((d) => sessao('a', d)), ...[1, 2].map((d) => sessao('b', d)), sessao('c', 5)];
 
-  it('só conta as sessões de quem está na lista', () => {
-    const sess = contarSessoesDoMes(ags, 2026, 9, new Set(['a', 'c']), AGORA);
-    expect([...sess.entries()]).toEqual([['a', 4], ['c', 1]]);
+  it('bruto = quantidade × valor do código; imposto em % do bruto; líquido, sua parte e clínica', () => {
+    const r = fecharMesPorLancamentos({ clientes, cfg });
+    const ana = r.linhas.find((l) => l.pid === 'a')!;
+    expect(ana.bruto).toBeCloseTo(642.62, 8); // 577,00 + 65,62
+    expect(ana.imposto).toBe(64.26); // 10% de 642,62 = 64,262, arredondado a centavos em cada cliente
+    expect(ana.liquido).toBe(578.36);
+    expect(ana.sessoes).toBe(10); // a consulta não é sessão
+    const bruno = r.linhas.find((l) => l.pid === 'b')!;
+    expect(bruno.bruto).toBeCloseTo(648.1, 8); // 577,00 + 71,10
+    expect([bruno.imposto, bruno.liquido]).toEqual([64.81, 583.29]);
+    expect(bruno.sessoes).toBe(12);
+    expect(bruno.resumo).toBe('012 × 10 · 301 × 2 · 2 guias');
+    expect(r.totBruto).toBeCloseTo(1290.72, 8);
+    expect(r.totImposto).toBe(129.07);
+    expect(r.totLiquido).toBe(1161.65);
+    expect(r.suaParte).toBe(580.83); // metade de 1161,65 = 580,825: arredonda para cima
+    expect(r.parteClinica).toBe(580.82); // o que sobra: sua parte + clínica = líquido, sem 1 centavo a mais
+    expect(r.totSessoes).toBe(22);
   });
 
-  it('o total da lista é a soma dos clientes dela, com a mesma conta de cada um', () => {
-    const so = (ids: string[]) => fecharMes({ sessoesPorPac: contarSessoesDoMes(ags, 2026, 9, new Set(ids), AGORA), pacientes, guias: [], cfg });
-    const a = so(['a']); const c = so(['c']); const ac = so(['a', 'c']);
-    expect(a.totBruto).toBe(200);
-    expect(a.totLiquido).toBe(180);
-    expect(a.suaParte).toBe(90);
-    expect(ac.totBruto).toBe(a.totBruto + c.totBruto);
-    expect(ac.totLiquido).toBeCloseTo(a.totLiquido + c.totLiquido, 10);
-    expect(ac.linhas.map((l) => l.nome)).toEqual(['Ana Souza', 'Carla Dias']);
+  it('cliente sem nada lançado fica fora da tabela e dos totais; a tabela sai em ordem alfabética', () => {
+    const r = fecharMesPorLancamentos({ clientes: [...clientes].reverse(), cfg });
+    expect(r.linhas.map((l) => l.nome)).toEqual(['Ana Souza', 'Bruno Lima']);
   });
 
-  it('lista vazia não calcula nada', () => {
-    const r = fecharMes({ sessoesPorPac: contarSessoesDoMes(ags, 2026, 9, new Set(), AGORA), pacientes, guias: [], cfg });
-    expect(r.linhas).toEqual([]);
+  it('repasse por responsável casa o nome sem acento nem caixa; quem não tem responsável cai em "Sem responsável"', () => {
+    const r = fecharMesPorLancamentos({ clientes, cfg });
+    const iris = r.repasses.find((x) => x.nome === 'dra. iris paiva')!;
+    expect(iris.pct).toBe(30);
+    expect(iris.repasse).toBe(173.51); // 30% de 578,36 = 173,508
+    expect(r.repasses.find((x) => x.nome === 'Sem responsável')!.pct).toBeNull();
+    expect(r.ficaComVoce).toBeCloseTo(r.totLiquido - r.totRepasse, 10);
+    expect(r.totRepasse).toBe(173.51);
+  });
+
+  it('a soma das linhas que aparecem é o total: imposto arredondado em cada cliente, sem 1 centavo de diferença', () => {
+    const tres = ['a', 'b', 'c'].map((id) => ({ id, nome: id, responsavel: '', guias: [{ '012': 1 }] }));
+    const r = fecharMesPorLancamentos({ clientes: tres, cfg: { ...cfg, imposto_percentual: 5 } });
+    expect(r.linhas.map((l) => l.imposto)).toEqual([2.89, 2.89, 2.89]); // 5% de 57,70 = 2,885
+    expect(r.totImposto).toBe(8.67);
+    expect(r.totLiquido).toBe(164.43);
+    expect(r.totBruto).toBe(173.1);
+    expect(r.totBruto - r.totImposto).toBeCloseTo(r.totLiquido, 10);
+  });
+
+  it('sua parte, clínica e repasses fecham em centavos: a soma do que aparece é o líquido', () => {
+    const tres = ['a', 'b', 'c'].map((id) => ({ id, nome: id, responsavel: id === 'c' ? '' : 'Dra. Íris Paiva', guias: [{ '012': 1 }] }));
+    const r = fecharMesPorLancamentos({ clientes: tres, cfg: { ...cfg, imposto_percentual: 0, minha_parte_percentual: 33, responsaveis: [{ nome: 'Dra. Íris Paiva', percentual: 33 }] } });
+    expect(r.totLiquido).toBe(173.1);
+    expect(r.suaParte).toBe(57.12); // 33% de 173,10 = 57,123
+    expect(Math.round((r.suaParte + r.parteClinica) * 100)).toBe(Math.round(r.totLiquido * 100));
+    expect(r.repasses.find((x) => x.nome === 'Dra. Íris Paiva')!.repasse).toBe(38.08); // 33% de 115,40 = 38,082
+    expect(Math.round((r.totRepasse + r.ficaComVoce) * 100)).toBe(Math.round(r.totLiquido * 100));
+  });
+
+  it('meio centavo exato (145,67 × 50%) arredonda para cima, sem ruído de ponto flutuante, em sua parte e no repasse', () => {
+    const linha = (pid: string, l: number) => ({ pid, nome: pid, responsavel: 'Dra. X', sessoes: 1, bruto: l, imposto: 0, liquido: l });
+    const c = { codigos: [], responsaveis: [{ nome: 'Dra. X', percentual: 50 }], imposto_por_guia: 0, imposto_percentual: 0, minha_parte_percentual: 50 };
+    const r = agregarFechamento([linha('a', 145.67)], c);
+    expect([r.suaParte, r.parteClinica]).toEqual([72.84, 72.83]);
+    expect([r.repasses[0].repasse, r.totRepasse, r.ficaComVoce]).toEqual([72.84, 72.84, 72.83]);
+    const varios = agregarFechamento([linha('a', 145.67), linha('b', 33.33), linha('c', 0.07)], { ...c, minha_parte_percentual: 33, responsaveis: [{ nome: 'Dra. X', percentual: 33 }] });
+    expect(varios.totLiquido).toBe(179.07);
+    expect(Math.round((varios.suaParte + varios.parteClinica) * 100)).toBe(17907);
+    expect(Math.round((varios.totRepasse + varios.ficaComVoce) * 100)).toBe(17907);
+  });
+
+  it('com percentual e valor fixo antigo ao mesmo tempo, vale o percentual', () => {
+    const r = fecharMesPorLancamentos({
+      clientes: [{ id: 'a', nome: 'Ana', responsavel: '', guias: [{ '012': 10 }, { '012': 2 }] }],
+      cfg: { ...cfg, imposto_percentual: 10, imposto_por_guia: 20 },
+    });
+    expect(r.linhas[0].imposto).toBe(69.24); // 10% de 692,40, e não 2 × 20
+  });
+
+  it('imposto fixo antigo (sem percentual) vale por guia lançada', () => {
+    const r = fecharMesPorLancamentos({ clientes, cfg: { ...cfg, imposto_percentual: 0, imposto_por_guia: 12.5 } });
+    expect(r.linhas.find((l) => l.pid === 'a')!.imposto).toBe(12.5);
+    expect(r.linhas.find((l) => l.pid === 'b')!.imposto).toBe(25);
+  });
+
+  it('o imposto nunca deixa o líquido negativo', () => {
+    const r = fecharMesPorLancamentos({ clientes: [{ id: 'a', nome: 'Ana', responsavel: '', guias: [{ '144': 1 }] }], cfg: { ...cfg, imposto_percentual: 0, imposto_por_guia: 500 } });
+    expect(r.linhas[0].liquido).toBe(0);
+  });
+
+  it('sem configuração (ainda carregando) nada quebra: valores zerados', () => {
+    const r = fecharMesPorLancamentos({ clientes, cfg: undefined });
     expect(r.totBruto).toBe(0);
     expect(r.suaParte).toBe(0);
   });
+
+  it('lista vazia não calcula nada', () => {
+    const r = fecharMesPorLancamentos({ clientes: [], cfg });
+    expect(r.linhas).toEqual([]);
+    expect(r.totBruto).toBe(0);
+  });
+
+  it('agregarFechamento soma linhas prontas', () => {
+    const r = agregarFechamento([
+      { pid: '1', nome: 'A', responsavel: '', sessoes: 2, bruto: 100, imposto: 10, liquido: 90 },
+      { pid: '2', nome: 'B', responsavel: '', sessoes: 3, bruto: 50, imposto: 5, liquido: 45 },
+    ], cfg);
+    expect([r.totBruto, r.totImposto, r.totLiquido, r.totSessoes]).toEqual([150, 15, 135, 5]);
+    expect(r.suaParte).toBe(67.5);
+  });
 });
 
-describe('contarSessoesDoMes', () => {
+describe('contarSessoesDoMes (a agenda é só referência)', () => {
+  const AGORA = new Date(2026, 9, 20, 12, 0).getTime();
   const ids = new Set(['a']);
   const ag = (extra: Partial<AgendamentoFinanceiro>): AgendamentoFinanceiro => ({ paciente_id: 'a', data_inicio: new Date(2026, 8, 10, 10).toISOString(), status: 'atendido', ...extra });
 
@@ -156,19 +147,6 @@ describe('contarSessoesDoMes', () => {
     const noite = ag({ data_inicio: new Date(2026, 8, 30, 23, 30).toISOString() });
     expect(contarSessoesDoMes([noite], 2026, 9, ids, AGORA).get('a')).toBe(1);
     expect(contarSessoesDoMes([noite], 2026, 10, ids, AGORA).size).toBe(0);
-  });
-});
-
-describe('brutoGuia', () => {
-  const valorDe = (c: string) => ({ '144': 100, '012': 50, '185': 30 } as Record<string, number>)[c] ?? 0;
-  it('avaliação (144) cobra uma vez; os de tratamento, por sessão até o limite autorizado do código', () => {
-    expect(brutoGuia([{ codigo: '144', sessoes: 1 }, { codigo: '012', sessoes: 10 }, { codigo: '185', sessoes: 6 }], 8, valorDe)).toBe(100 + 8 * 50 + 6 * 30);
-  });
-  it('sem sessão no mês não cobra a avaliação', () => {
-    expect(brutoGuia([{ codigo: '144', sessoes: 1 }], 0, valorDe)).toBe(0);
-  });
-  it('código sem quantidade própria usa as sessões do mês', () => {
-    expect(brutoGuia([{ codigo: '012' }], 7, valorDe)).toBe(350);
   });
 });
 
