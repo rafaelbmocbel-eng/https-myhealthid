@@ -17,7 +17,8 @@ const h = vi.hoisted(() => ({
 
 vi.mock('@/hooks/use-toast', () => ({ toast: h.toast }));
 vi.mock('@/lib/transcreverAudio', () => ({ transcreverAudio: h.transcreverAudio }));
-vi.mock('@/lib/transcricaoAoVivo', () => ({
+vi.mock('@/lib/transcricaoAoVivo', async (importarOriginal) => ({
+  ...(await importarOriginal<typeof import('@/lib/transcricaoAoVivo')>()),
   PERFIL_DITADO: { minSeg: 4, maxSeg: 14, pausaMs: 450 },
   TranscritorAoVivo: class {
     anexar = vi.fn(async () => { if (h.anexarFalha) throw new Error('Web Audio indisponível'); });
@@ -239,5 +240,35 @@ describe('useSpeechToText: ao vivo', () => {
     h.anexarFalha = true;
     const outro = await gravar();
     await waitFor(() => expect(outro.result.current.liveIndisponivel).toBe(true));
+  });
+
+  it('o áudio inteiro só devolve texto inventado pelo Whisper: vale o texto parcial que apareceu ao vivo', async () => {
+    h.resultado = { texto: 'dor no ombro direito', completo: false };
+    h.transcreverAudio.mockResolvedValue('Legendas pela comunidade Amara.org');
+    const hook = await gravar();
+    await parar(hook);
+    expect(hook.onResult).toHaveBeenCalledWith('dor no ombro direito');
+    expect(h.toast).not.toHaveBeenCalled();
+  });
+
+  it('o áudio inteiro devolve só texto inventado e não há parcial: avisa que não ouviu fala, não escreve a invenção', async () => {
+    h.resultado = { texto: '', completo: false };
+    h.transcreverAudio.mockResolvedValue('[Música]');
+    const hook = await gravar();
+    await parar(hook);
+    expect(hook.onResult).not.toHaveBeenCalled();
+    expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Não ouvi nenhuma fala' }));
+  });
+
+  it('saiu da tela depois do Parar, enquanto finaliza: cancela o motor e não entrega texto nem aviso', async () => {
+    let terminar: (r: { texto: string; completo: boolean }) => void = () => {};
+    const hook = await gravar();
+    h.motores[0].encerrar.mockImplementation(() => new Promise((r) => { terminar = r; }));
+    await act(async () => { hook.result.current.stopListening(); });
+    hook.unmount();
+    expect(h.motores[0].cancelar).toHaveBeenCalled();
+    await act(async () => { terminar({ texto: 'texto atrasado', completo: true }); });
+    expect(hook.onResult).not.toHaveBeenCalled();
+    expect(h.toast).not.toHaveBeenCalled();
   });
 });

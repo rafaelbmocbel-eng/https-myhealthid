@@ -19,12 +19,8 @@ export function TextoAoVivo({ ouvindo, transcrevendo, texto, indisponivel = fals
   }, [texto]);
   if (!ouvindo && !transcrevendo) return null;
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={cn('rounded-lg border border-red-200 dark:border-red-900 bg-red-50/60 dark:bg-red-950/20 p-2.5 text-sm', className)}
-    >
-      <div className="flex items-center gap-1.5 text-[11px] font-medium text-red-700 dark:text-red-400">
+    <div className={cn('rounded-lg border border-red-200 dark:border-red-900 bg-red-50/60 dark:bg-red-950/20 p-2.5 text-sm', className)}>
+      <div role="status" className="flex items-center gap-1.5 text-[11px] font-medium text-red-700 dark:text-red-400">
         <span className={cn('h-2 w-2 rounded-full bg-red-500', ouvindo && 'animate-pulse')} aria-hidden />
         {ouvindo ? (indisponivel ? 'Ouvindo… o texto aparece ao parar' : 'Ouvindo… o texto aparece conforme você fala') : 'Finalizando a transcrição…'}
       </div>
@@ -35,7 +31,7 @@ export function TextoAoVivo({ ouvindo, transcrevendo, texto, indisponivel = fals
       )}
       {indisponivel && (
         <p className="mt-1.5 text-[11px] text-muted-foreground">
-          A prévia ao vivo não está disponível agora. A transcrição completa é feita ao final da gravação.
+          A prévia ao vivo não está disponível agora. A gravação continua normalmente.
         </p>
       )}
     </div>

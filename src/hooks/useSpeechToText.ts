@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { transcreverAudio } from '@/lib/transcreverAudio';
-import { PERFIL_DITADO, TranscritorAoVivo } from '@/lib/transcricaoAoVivo';
+import { PERFIL_DITADO, TranscritorAoVivo, textoInventado } from '@/lib/transcricaoAoVivo';
 
 interface UseSpeechToTextReturn {
   isListening: boolean;
@@ -27,6 +27,7 @@ export function useSpeechToText(): UseSpeechToTextReturn {
   const [liveIndisponivel, setLiveIndisponivel] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const aoVivoRef = useRef<TranscritorAoVivo | null>(null);
+  const finalizandoRef = useRef<TranscritorAoVivo | null>(null); // motor esperando o último trecho depois do Parar
   const iniciandoRef = useRef(false); // pedido de permissão do microfone em andamento
   const montadoRef = useRef(true);
   const inicioRef = useRef(0);
@@ -37,6 +38,7 @@ export function useSpeechToText(): UseSpeechToTextReturn {
 
   const finalizar = useCallback(async (blob: Blob, aoVivo: TranscritorAoVivo | null, duracaoMs: number, onResult: (text: string) => void) => {
     setIsTranscribing(true);
+    finalizandoRef.current = aoVivo;
     let parcial = '';
     try {
       let texto = '';
@@ -49,12 +51,16 @@ export function useSpeechToText(): UseSpeechToTextReturn {
       if (!ouviuTudo) {
         // Sem ao vivo, ou algum trecho falhou: transcreve o áudio inteiro.
         if (blob.size < 1000) return;
-        texto = await transcreverAudio(blob);
+        const inteiro = await transcreverAudio(blob);
+        texto = textoInventado(inteiro) ? '' : inteiro;
+        if (!texto.trim()) texto = parcial; // o áudio inteiro só trouxe invenção do Whisper: vale o que apareceu ao vivo
       }
+      if (!montadoRef.current) return; // saiu da tela: ninguém espera este texto
       if (texto.trim()) onResult(texto.trim());
       else toast({ title: 'Não ouvi nenhuma fala', description: 'Fale mais perto do microfone e tente de novo.' });
     } catch (err) {
       console.error('Falha ao transcrever ditado:', err);
+      if (!montadoRef.current) return;
       if (parcial) {
         // O que a pessoa viu aparecer enquanto falava não pode sumir só porque o áudio inteiro também falhou.
         onResult(parcial);
@@ -63,6 +69,7 @@ export function useSpeechToText(): UseSpeechToTextReturn {
         toast({ title: 'Não consegui transcrever', description: 'Tente gravar de novo ou digite sua resposta.', variant: 'destructive' });
       }
     } finally {
+      if (finalizandoRef.current === aoVivo) finalizandoRef.current = null;
       setIsTranscribing(false);
       setLiveText('');
       setLiveIndisponivel(false);
@@ -144,6 +151,8 @@ export function useSpeechToText(): UseSpeechToTextReturn {
       montadoRef.current = false;
       aoVivoRef.current?.cancelar();
       aoVivoRef.current = null;
+      finalizandoRef.current?.cancelar();
+      finalizandoRef.current = null;
       const recorder = recorderRef.current;
       if (recorder && recorder.state !== 'inactive') {
         recorder.onstop = null;

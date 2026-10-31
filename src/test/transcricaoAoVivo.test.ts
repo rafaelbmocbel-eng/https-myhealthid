@@ -1,11 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
-import { PERFIL_CONSULTA, PERFIL_DITADO, Segmentador, TAXA_PCM, TranscritorAoVivo, pareceAlucinacao, type EstadoAoVivo } from '@/lib/transcricaoAoVivo';
+import { PERFIL_CONSULTA, PERFIL_DITADO, Segmentador, TAXA_PCM, TranscritorAoVivo, pareceAlucinacao, textoInventado, type EstadoAoVivo } from '@/lib/transcricaoAoVivo';
 
 // Áudio sintético: um tom de 200 Hz com a amplitude pedida faz o papel da voz; zeros (ou ruído fraco) fazem o de silêncio.
 const tom = (seg: number, amplitude = 3000): Int16Array => {
   const n = Math.round(seg * TAXA_PCM);
   const saida = new Int16Array(n);
   for (let i = 0; i < n; i++) saida[i] = Math.round(Math.sin((2 * Math.PI * 200 * i) / TAXA_PCM) * amplitude);
+  return saida;
+};
+// Fala de verdade oscila em sílabas (~4 Hz): o tom constante serve para os testes de corte, este para os de "som que parece fala".
+const fala = (seg: number, amplitude = 3000): Int16Array => {
+  const n = Math.round(seg * TAXA_PCM);
+  const saida = new Int16Array(n);
+  for (let i = 0; i < n; i++) {
+    const envelope = 0.55 + 0.45 * Math.sin((2 * Math.PI * 4 * i) / TAXA_PCM);
+    saida[i] = Math.round(Math.sin((2 * Math.PI * 200 * i) / TAXA_PCM) * amplitude * envelope);
+  }
   return saida;
 };
 const silencio = (seg: number, ruido = 0): Int16Array => {
@@ -145,6 +155,14 @@ describe('pareceAlucinacao', () => {
     expect(pareceAlucinacao('(silêncio)', 8000)).toBe(true);
     expect(pareceAlucinacao('Paciente refere dor [lombar] há dois meses.', 8000)).toBe(false);
   });
+
+  it('um ditado longo que só começa com "Inscreva-se" ou "Legendas por" é fala de verdade, não invenção', () => {
+    const longo = `Inscreva-se na lista de espera da fisioterapia, ${'a paciente refere dor lombar há dois meses, '.repeat(6)}`;
+    expect(textoInventado(longo)).toBe(false);
+    expect(pareceAlucinacao('Tchau, tchau.', 500)).toBe(true);
+    expect(pareceAlucinacao('Até logo.', 500)).toBe(true);
+    expect(pareceAlucinacao('Tchau, tchau.', 6000)).toBe(false);
+  });
 });
 
 // O transcritor recebe PCM e chama `transcrever` por trecho. Aqui o servidor é uma função de mentira.
@@ -250,10 +268,18 @@ describe('TranscritorAoVivo', () => {
     expect((await longo.encerrar()).texto).toBe('Obrigado.');
   });
 
-  it('silêncio puro não chama o servidor nenhuma vez', async () => {
+  it('silêncio puro não chama o servidor; numa gravação longa o resultado vazio pede o áudio inteiro (pode ser fala baixa demais)', async () => {
     const transcrever = vi.fn(async () => 'não deveria');
     const t = new TranscritorAoVivo({ transcrever, ...rapido });
     alimentar(t, silencio(15, 60));
+    expect(await t.encerrar()).toEqual({ texto: '', completo: false });
+    expect(transcrever).not.toHaveBeenCalled();
+  });
+
+  it('toque curto no botão (menos de 1,5 s, sem som): vazio e completo, para avisar "não ouvi nada" sem chamar o servidor', async () => {
+    const transcrever = vi.fn(async () => 'não deveria');
+    const t = new TranscritorAoVivo({ transcrever, ...rapido });
+    alimentar(t, silencio(1, 60));
     expect(await t.encerrar()).toEqual({ texto: '', completo: true });
     expect(transcrever).not.toHaveBeenCalled();
   });
@@ -380,7 +406,21 @@ describe('TranscritorAoVivo: nenhuma fala se perde (captura que falha NÃO vale 
     expect((await t.encerrar(30_000)).completo).toBe(false);
     const ok = new TranscritorAoVivo({ transcrever: async () => 'texto', ...rapido });
     alimentar(ok, tom(3));
-    expect((await ok.encerrar(3_400)).completo).toBe(true);
+    expect((await ok.encerrar(3_500)).completo).toBe(true); // 500 ms de atraso na abertura da captura é normal
+    const tarde = new TranscritorAoVivo({ transcrever: async () => 'texto', ...rapido });
+    alimentar(tarde, tom(3));
+    expect((await tarde.encerrar(3_800)).completo).toBe(false); // 800 ms sem áudio pode ter sido a primeira palavra
+  });
+
+  it('ruído estacionário de sala (ventilador, RMS ≈ 350) não derruba o resultado para o áudio inteiro à toa', async () => {
+    const t = new TranscritorAoVivo({ transcrever: async () => 'frase', ...rapido });
+    const ruido = silencio(30, 600);
+    const audio = juntar(...[5, 5, 5].flatMap((s) => [fala(s, 3000), silencio(0.7)]), silencio(8, 600));
+    const comRuido = Int16Array.from(audio, (v, i) => Math.max(-32768, Math.min(32767, v + (ruido[i] ?? 0))));
+    alimentar(t, comRuido);
+    const r = await t.encerrar();
+    expect(r.texto).not.toBe('');
+    expect(r.completo).toBe(true);
   });
 
   it('estalo forte antes da fala não faz a fala sumir (o limiar não sobe junto com o pico do estalo)', async () => {
@@ -394,11 +434,29 @@ describe('TranscritorAoVivo: nenhuma fala se perde (captura que falha NÃO vale 
 
   it('tosse forte e longa seguida de fala bem baixa: a fala vai para o servidor ou o resultado admite que não está completo (nunca descarta calado)', async () => {
     let enviados = 0;
-    const baixa = juntar(...[5, 5, 4].flatMap((s) => [tom(s, 450), silencio(0.7)])); // RMS ≈ 320: acima do ruído de sala, abaixo do teto do limiar
+    const baixa = juntar(...[5, 5, 4].flatMap((s) => [fala(s, 600), silencio(0.7)])); // RMS ≈ 210 em média, picos de 420: acima do ruído de sala, abaixo do teto do limiar
     const t = new TranscritorAoVivo({ transcrever: async (wav) => { enviados += (wav.size - 44) / 2; return 'algum texto'; }, ...rapido });
     alimentar(t, juntar(tom(0.4, 20000), silencio(1), baixa));
     const r = await t.encerrar();
     expect(r.completo === false || enviados >= 12 * TAXA_PCM).toBe(true);
+  });
+
+  it('tosse alta e fala baixa no MESMO bloco: o trecho enviado cobre a fala (as pontas se aparam pelo ruído de sala, não pelo limiar inflado pela tosse)', async () => {
+    let enviados = 0;
+    const t = new TranscritorAoVivo({ transcrever: async (wav) => { enviados += (wav.size - 44) / 2; return 'texto'; }, ...rapido });
+    alimentar(t, juntar(tom(0.4, 20000), silencio(1), fala(2.5, 600)));
+    const r = await t.encerrar();
+    expect(r.completo === false || enviados >= 3.5 * TAXA_PCM).toBe(true);
+  });
+
+  it('ruído estacionário de sala entre duas falas altas não é tratado como "fala escondida" (não derruba o resultado)', async () => {
+    const t = new TranscritorAoVivo({ transcrever: async () => 'frase', ...rapido });
+    const audio = juntar(fala(5, 8000), silencio(5.5), fala(5, 8000), silencio(0.7));
+    const ruido = silencio(audio.length / TAXA_PCM, 500); // RMS ≈ 290: acima do piso de 250 e abaixo do limiar que sobra da fala alta, então o bloco só de ruído é descartado
+    alimentar(t, Int16Array.from(audio, (v, i) => Math.max(-32768, Math.min(32767, v + ruido[i]))));
+    const r = await t.encerrar();
+    expect(r.texto).not.toBe('');
+    expect(r.completo).toBe(true);
   });
 
   it('palavra curta (100 ms) sozinha não vira trecho, mas avisa que não está completo (pode ter sido um "sim")', async () => {
@@ -469,6 +527,27 @@ describe('TranscritorAoVivo: ciclo de vida da captura', () => {
     expect(() => t.anexarContexto(falso.ctx, falso.fonte)).toThrow();
     for (const no of falso.processadores) expect(no.onaudioprocess).toBeNull();
     expect(falso.bruto.close).not.toHaveBeenCalled();
+  });
+
+  it('cancelar aborta a chamada que está em voo (não fica esperando o servidor)', async () => {
+    let sinal: AbortSignal | undefined;
+    const t = new TranscritorAoVivo({ transcrever: (_wav, s) => { sinal = s; return new Promise<string>(() => {}); }, ...rapido });
+    alimentar(t, juntar(tom(5), silencio(0.7), tom(1)));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(sinal?.aborted).toBe(false);
+    t.cancelar();
+    expect(sinal?.aborted).toBe(true);
+  });
+
+  it('criar a fonte de áudio falha: fecha o AudioContext que o motor abriu', async () => {
+    const falso = criarContextoFalso();
+    falso.bruto.createMediaStreamSource.mockImplementation(() => { throw new Error('stream inválido'); });
+    vi.stubGlobal('window', { AudioContext: function () { return falso.ctx; } });
+    try {
+      const t = new TranscritorAoVivo({ transcrever: async () => 'x', ...rapido });
+      await expect(t.anexar({} as MediaStream)).rejects.toThrow('stream inválido');
+      expect(falso.bruto.close).toHaveBeenCalledTimes(1);
+    } finally { vi.unstubAllGlobals(); }
   });
 
   it('cancelar no meio do encerrar não devolve "completo" com trechos faltando', async () => {

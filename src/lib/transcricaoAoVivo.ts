@@ -21,8 +21,10 @@ const LIMIAR_MAXIMO = 600;
 const QUADROS_DE_VOZ_MINIMOS = 6;
 // De 80 a 100 ms já pode ser uma palavra ("sim", "é"): o descarte é registrado e o resultado deixa de valer como completo.
 const QUADROS_QUASE_VOZ = 4;
-// Bloco descartado com 2 s ou mais de som acima do ruído de sala: o limiar pode ter escondido fala baixa.
-const QUADROS_AUDIVEIS_IGNORADOS = 100;
+// Bloco descartado com 1 s ou mais de som acima do ruído de sala E variando como a fala (sílabas): o limiar pode ter
+// escondido fala baixa. Ruído estacionário (ventilador, ar-condicionado) quase não varia e não conta.
+const QUADROS_AUDIVEIS_IGNORADOS = 50;
+const VARIACAO_MINIMA_DA_FALA = 0.35;
 // O pico usa a mediana dos últimos 7 quadros (140 ms): estalos de até 3 quadros não o inflam.
 const JANELA_DO_PICO = 7;
 const FOLGA_QUADROS = 10; // 200 ms de silêncio mantidos antes e depois da voz
@@ -85,7 +87,7 @@ export class Segmentador {
   private atualizarPico(energia: number) {
     this.recentes.push(energia);
     if (this.recentes.length > JANELA_DO_PICO) this.recentes.shift();
-    this.pico *= 0.9995; // o pico "esquece" devagar: a voz pode ficar mais baixa
+    this.pico *= 0.998; // o pico "esquece" em ~10 s: a voz pode ficar mais baixa, e depois de uma tosse o limiar precisa voltar
     if (this.recentes.length < JANELA_DO_PICO) return;
     const mediana = [...this.recentes].sort((a, b) => a - b)[JANELA_DO_PICO >> 1];
     this.pico = Math.max(mediana, this.pico);
@@ -97,19 +99,25 @@ export class Segmentador {
     this.silencioSeguido = 0;
   }
 
+  private somQueParecefala(energias: number[]): boolean {
+    if (energias.filter((e) => e >= LIMIAR_MINIMO).length < QUADROS_AUDIVEIS_IGNORADOS) return false;
+    const media = energias.reduce((soma, e) => soma + e, 0) / energias.length;
+    const desvio = Math.sqrt(energias.reduce((soma, e) => soma + (e - media) ** 2, 0) / energias.length);
+    return desvio / media >= VARIACAO_MINIMA_DA_FALA;
+  }
+
   /** Vira trecho só se tiver voz de verdade; apara o silêncio das pontas (deixa 200 ms de folga para não comer consoante). */
   private emitir(quadros: Int16Array[], energias: number[], saida: Trecho[]) {
     const limiar = this.limiar();
-    let primeiro = -1;
-    let ultimo = -1;
+    let primeiro = -1; // primeiro e último som acima do ruído de sala: o corte das pontas usa o piso, não o limiar,
+    let ultimo = -1; // senão uma tosse alta no bloco faria a fala baixa ao redor ser aparada junto com o silêncio
     let comVoz = 0;
-    let audiveis = 0;
     for (let i = 0; i < energias.length; i++) {
-      if (energias[i] >= LIMIAR_MINIMO) audiveis++;
-      if (energias[i] >= limiar) { if (primeiro < 0) primeiro = i; ultimo = i; comVoz++; }
+      if (energias[i] >= LIMIAR_MINIMO) { if (primeiro < 0) primeiro = i; ultimo = i; }
+      if (energias[i] >= limiar) comVoz++;
     }
     if (comVoz < QUADROS_DE_VOZ_MINIMOS) {
-      if (comVoz >= QUADROS_QUASE_VOZ || audiveis >= QUADROS_AUDIVEIS_IGNORADOS) this.descartados++;
+      if (comVoz >= QUADROS_QUASE_VOZ || this.somQueParecefala(energias)) this.descartados++;
       return;
     }
     const de = Math.max(0, primeiro - FOLGA_QUADROS);
@@ -173,13 +181,14 @@ export class Segmentador {
 }
 
 // Frases que o Whisper devolve para áudio quase mudo. Estas só são descartadas em trechos com pouca voz.
-const ALUCINACOES_FRACAS = /^(obrigad[oa]s?|tchau|até (a )?próxima|\.+)[\s.!]*$/i;
+const ALUCINACOES_FRACAS = /^(obrigad[oa]s?|tchau([,\s]+tchau)*|até (a )?próxima|até logo|\.+)[\s.!,]*$/i;
 // Estas não são fala de ninguém: o Whisper as inventa também em ruído constante, que passa por "voz".
 const ALUCINACOES_FORTES = /^(legendas? (pela|por|realizad[ao]s? por) .*|.*amara\.org.*|inscreva-se.*|[[(][^\])]*[\])][\s.]*)$/i;
 
 /** Texto que é só invenção do Whisper (legendas, "[Música]"), seja qual for a duração. */
 export function textoInventado(texto: string): boolean {
-  return ALUCINACOES_FORTES.test(texto.trim());
+  const limpo = texto.trim();
+  return limpo.length <= 160 && ALUCINACOES_FORTES.test(limpo); // um ditado longo que só começa assim é fala de verdade
 }
 
 export function pareceAlucinacao(texto: string, vozMs: number): boolean {
@@ -213,7 +222,7 @@ export interface OpcoesTranscritor {
   esperaEntreTentativasMs?: number;
   /** Falhas seguidas para desistir do ao vivo (padrão 3). */
   desistirApos?: number;
-  /** Tempo máximo esperando os trechos pendentes ao encerrar (padrão 60 s). */
+  /** Tempo máximo esperando os trechos pendentes ao encerrar (padrão 30 s). */
   esperaFinalMs?: number;
   /** Tempo máximo de cada tentativa; estourou, conta como falha e a fila segue (padrão 35 s). */
   timeoutTentativaMs?: number;
@@ -230,7 +239,6 @@ export class TranscritorAoVivo {
   private textos: string[] = [];
   private falhou: boolean[] = [];
   private feito: boolean[] = [];
-  private filtrados = 0;
   private fila: Array<{ indice: number; trecho: Trecho }> = [];
   private proximoIndice = 0;
   private processando: Promise<void> | null = null;
@@ -242,6 +250,7 @@ export class TranscritorAoVivo {
   private amostrasRecebidas = 0;
   private capturaPedida = false;
   private ligouEm: number | null = null;
+  private chamadaEmVoo: AbortController | null = null;
   private ctx: AudioContext | null = null;
   private donoDoContexto = false; // só fecha o AudioContext que ele mesmo criou
   private fonte: MediaStreamAudioSourceNode | null = null;
@@ -293,6 +302,7 @@ export class TranscritorAoVivo {
 
   private async tentar(trecho: Trecho): Promise<string> {
     const controle = new AbortController();
+    this.chamadaEmVoo = controle;
     let relogio: ReturnType<typeof setTimeout> | undefined;
     const estouro = new Promise<never>((_, rejeitar) => {
       relogio = setTimeout(() => { controle.abort(); rejeitar(new Error('tempo esgotado')); }, this.opcoes.timeoutTentativaMs ?? 35_000);
@@ -302,6 +312,7 @@ export class TranscritorAoVivo {
       return texto.trim();
     } finally {
       clearTimeout(relogio);
+      if (this.chamadaEmVoo === controle) this.chamadaEmVoo = null;
     }
   }
 
@@ -314,9 +325,7 @@ export class TranscritorAoVivo {
       for (let t = 0; t < tentativas && !this.cancelado; t++) {
         try {
           const texto = await this.tentar(trecho);
-          const inventado = pareceAlucinacao(texto, trecho.vozMs);
-          if (inventado && texto) this.filtrados++;
-          this.textos[indice] = inventado ? '' : texto;
+          this.textos[indice] = pareceAlucinacao(texto, trecho.vozMs) ? '' : texto;
           ok = true;
           break;
         } catch {
@@ -355,7 +364,12 @@ export class TranscritorAoVivo {
       if (ctx.state !== 'closed') void ctx.close().catch(() => { /* já fechado */ });
       return;
     }
-    this.ligar(ctx, ctx.createMediaStreamSource(stream));
+    try {
+      this.ligar(ctx, ctx.createMediaStreamSource(stream));
+    } catch (erro) {
+      this.soltarCaptura(); // fecha o contexto que este motor abriu
+      throw erro;
+    }
   }
 
   /** Para quem já tem AudioContext e fonte (a avaliação por voz): pendura o motor na mesma fonte, sem abrir outro contexto. */
@@ -423,7 +437,7 @@ export class TranscritorAoVivo {
     const esperadoMs = Math.max(duracaoMs ?? 0, this.ligouEm === null ? 0 : agora - this.ligouEm);
     if (esperadoMs <= 0) return true;
     const recebidoMs = (this.amostrasRecebidas * 1000) / TAXA_PCM;
-    return esperadoMs - recebidoMs <= Math.max(1000, esperadoMs * 0.02); // folga: abertura da captura e o último bloco
+    return esperadoMs - recebidoMs <= Math.max(600, esperadoMs * 0.01); // folga: abertura da captura e o último bloco
   }
 
   /** Termina: corta o que sobrou, espera a fila e devolve o texto. `duracaoMs` é a duração real da gravação, para conferir que o áudio chegou todo. */
@@ -436,18 +450,21 @@ export class TranscritorAoVivo {
     this.soltarCaptura();
     const resto = this.segmentador.finalizar();
     if (resto) this.enfileirar(resto);
-    const limite = Date.now() + (this.opcoes.esperaFinalMs ?? 60_000);
+    const limite = Date.now() + (this.opcoes.esperaFinalMs ?? 30_000);
     while (this.processando && Date.now() < limite) {
       await Promise.race([this.processando, espera(250)]);
     }
     const estado = this.estado;
     const todosTranscritos = this.feito.every(Boolean) && !this.indisponivel;
-    const sobrouSemExplicacao = estado.texto === '' && this.filtrados > 0; // só texto descartado como invenção: pode ter sido fala
+    // Nada transcrito de uma gravação com mais de 1,5 s: pode ser fala baixa demais para o segmentador ou só texto
+    // descartado como invenção ("Obrigado."). Silêncio de verdade e fala perdida não se distinguem: o áudio inteiro decide.
+    const textoVazioComAudio = estado.texto === '' && this.amostrasRecebidas >= 1.5 * TAXA_PCM;
     const completo = todosTranscritos
       && this.segmentador.descartesSuspeitos === 0
-      && !sobrouSemExplicacao
+      && !textoVazioComAudio
       && this.capturaCobreAGravacao(agora, duracaoMs);
     this.cancelado = true; // depois de encerrar nada mais chega à tela (nem trecho atrasado)
+    this.chamadaEmVoo?.abort();
     this.fila = [];
     return { texto: estado.texto, completo };
   }
@@ -457,6 +474,7 @@ export class TranscritorAoVivo {
     this.cancelado = true;
     this.encerrando = true;
     this.encerrado = true;
+    this.chamadaEmVoo?.abort();
     this.fila = [];
     this.soltarCaptura();
   }

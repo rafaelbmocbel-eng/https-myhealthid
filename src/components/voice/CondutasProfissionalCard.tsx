@@ -89,7 +89,6 @@ export default function CondutasProfissionalCard({ avaliacaoId, pacienteId, resu
         placeholder={'Ex.:\n• Avaliar escoliose\n• Tratar iliopsoas e diafragma\n• Mobilização neural do nervo femoral\n• Mobilização articular L1, L2 e L5'}
         className="text-sm bg-background"
       />
-      <TextoAoVivo ouvindo={isListening} transcrevendo={isTranscribing} texto={liveText} indisponivel={liveIndisponivel} />
       <div className="flex flex-wrap gap-2 justify-end">
         {isSupported && (
           <Button type="button" size="sm" variant="outline" onClick={ditar} disabled={!!etapa || isTranscribing} className="gap-1.5">
@@ -110,6 +109,7 @@ export default function CondutasProfissionalCard({ avaliacaoId, pacienteId, resu
           {etapa === 'salvando' ? 'Salvando...' : etapa === 'plano' ? 'Refazendo o plano...' : 'Salvar e atualizar plano'}
         </Button>
       </div>
+      <TextoAoVivo ouvindo={isListening} transcrevendo={isTranscribing} texto={liveText} indisponivel={liveIndisponivel} />
     </div>
   );
 }
