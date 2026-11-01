@@ -147,10 +147,12 @@ describe('Segmentador: onde cortar a fala', () => {
     for (const tamanho of [1000, 333, 8192, 100000]) expect(cortar(tamanho)).toEqual(referencia);
   });
 
-  it('perfil de consulta: trechos mínimos de 12 s (menos chamadas ao servidor)', () => {
+  it('perfil de consulta: o primeiro trecho sai cedo e, depois dele, os trechos têm no mínimo 12 s (menos chamadas ao servidor)', () => {
     const seg = new Segmentador(PERFIL_CONSULTA);
+    expect(alimentarSegmentador(seg, juntar(tom(6), silencio(0.8)))).toHaveLength(1);
     expect(alimentarSegmentador(seg, juntar(tom(10), silencio(0.8), tom(1)))).toHaveLength(0);
     const seg2 = new Segmentador(PERFIL_CONSULTA);
+    alimentarSegmentador(seg2, juntar(tom(6), silencio(0.8)));
     expect(alimentarSegmentador(seg2, juntar(tom(13), silencio(0.8), tom(1)))).toHaveLength(1);
   });
 });
@@ -825,5 +827,57 @@ describe('TranscritorAoVivo: o que a suíte antiga não pegava (mutação)', () 
       expect((await rodar(119)).completo).toBe(true);
       expect((await rodar(117)).completo).toBe(false);
     });
+  });
+});
+
+describe('Perfil de consulta: o primeiro trecho sai cedo (a pessoa vê que está funcionando), os seguintes seguem em blocos maiores', () => {
+  // Cada bloco de 4096 amostras chega com o instante (em segundos de áudio) em que terminou.
+  const emitidosPorInstante = (perfil: typeof PERFIL_CONSULTA, audio: Int16Array) => {
+    const seg = new Segmentador(perfil);
+    const saida: Array<{ quando: number; seg: number }> = [];
+    for (let i = 0; i < audio.length; i += 4096) {
+      const quando = Math.min(audio.length, i + 4096) / TAXA_PCM;
+      for (const t of seg.adicionar(audio.slice(i, i + 4096))) saida.push({ quando: Math.round(quando * 10) / 10, seg: Math.round((t.amostras.length / TAXA_PCM) * 10) / 10 });
+    }
+    return saida;
+  };
+
+  it('4 s de fala e silêncio: o primeiro trecho sai aos ~5 s (com o perfil antigo só aos 12 s)', () => {
+    const audio = juntar(tom(4), silencio(10));
+    const novo = emitidosPorInstante(PERFIL_CONSULTA, audio);
+    expect(novo).toHaveLength(1);
+    expect(novo[0].quando).toBeLessThanOrEqual(5.3);
+    expect(novo[0].seg).toBeGreaterThan(4);
+    const antigo = emitidosPorInstante({ minSeg: 12, maxSeg: 28, pausaMs: 600 }, audio);
+    expect(antigo[0].quando).toBe(12);
+  });
+
+  it('depois do primeiro, os trechos voltam ao mínimo de 12 s: o segundo bloco de 4 s de fala não sai aos 5 s', () => {
+    const audio = juntar(tom(4), silencio(1), tom(4), silencio(1), tom(4), silencio(1), tom(1), silencio(14));
+    const saida = emitidosPorInstante(PERFIL_CONSULTA, audio);
+    expect(saida[0].quando).toBeLessThanOrEqual(5.3);
+    expect(saida[1].quando).toBeGreaterThanOrEqual(5 + 12); // o bloco seguinte só fecha depois de acumular 12 s
+  });
+
+  it('silêncio antes de falar não "gasta" o primeiro trecho: a primeira fala ainda sai cedo', () => {
+    const saida = emitidosPorInstante(PERFIL_CONSULTA, juntar(silencio(7), tom(4), silencio(3)));
+    expect(saida).toHaveLength(1);
+    expect(saida[0].quando).toBeLessThan(13); // com o mínimo de 12 s para o primeiro, só sairia depois dos 17 s
+  });
+
+  it('o ditado (sem primeiroMinSeg) segue com o mínimo de 4 s, como antes', () => {
+    expect(PERFIL_DITADO.primeiroMinSeg).toBeUndefined();
+    const saida = emitidosPorInstante(PERFIL_DITADO, juntar(tom(4), silencio(3)));
+    expect(saida[0].quando).toBeLessThanOrEqual(4.8);
+  });
+
+  it('no motor: na consulta, 4 s de fala já viram texto na tela antes dos 12 s', async () => {
+    const transcrever = vi.fn(async () => 'dor no joelho direito');
+    const estados: EstadoAoVivo[] = [];
+    const t = new TranscritorAoVivo({ transcrever, perfil: PERFIL_CONSULTA, aoAtualizar: (e) => estados.push(e), ...rapido });
+    alimentar(t, juntar(tom(4), silencio(2))); // só 6 s de gravação
+    await vi.waitFor(() => expect(estados.some((e) => e.texto === 'dor no joelho direito')).toBe(true));
+    expect(transcrever).toHaveBeenCalledTimes(1);
+    t.cancelar();
   });
 });

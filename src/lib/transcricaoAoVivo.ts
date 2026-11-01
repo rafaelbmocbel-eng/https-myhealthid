@@ -43,12 +43,14 @@ export interface PerfilDeCorte {
   maxSeg: number;
   /** Pausa (ms) que conta como fim de frase. */
   pausaMs: number;
+  /** Só para o primeiro trecho: sai mais cedo, para a pessoa ver o texto aparecendo logo e saber que está funcionando. */
+  primeiroMinSeg?: number;
 }
 
 /** Ditado curto (botão "Ditar"): texto aparece a cada frase. */
 export const PERFIL_DITADO: PerfilDeCorte = { minSeg: 4, maxSeg: 14, pausaMs: 450 };
 /** Consulta longa (avaliação por voz): trechos maiores, menos chamadas ao servidor. */
-export const PERFIL_CONSULTA: PerfilDeCorte = { minSeg: 12, maxSeg: 28, pausaMs: 600 };
+export const PERFIL_CONSULTA: PerfilDeCorte = { minSeg: 12, maxSeg: 28, pausaMs: 600, primeiroMinSeg: 5 };
 
 export interface Trecho {
   amostras: Int16Array;
@@ -79,6 +81,7 @@ export class Segmentador {
   private recentes: number[] = [];
   private silencioSeguido = 0;
   private descartados = 0;
+  private trechosEmitidos = 0;
   private quadrosTotais = 0;
   private quadrosAudiveis = 0;
 
@@ -146,6 +149,7 @@ export class Segmentador {
     }
     const de = Math.max(0, primeiro - FOLGA_QUADROS);
     const ate = Math.min(quadros.length, ultimo + 1 + FOLGA_QUADROS);
+    this.trechosEmitidos++;
     saida.push({ amostras: juntar(quadros.slice(de, ate)), vozMs: comVoz * 20 });
   }
 
@@ -183,7 +187,8 @@ export class Segmentador {
       this.empurrar(quadro, energia);
       const duracaoSeg = this.quadros.length / QUADROS_POR_SEGUNDO;
       const pausaOk = this.silencioSeguido * 20 >= this.perfil.pausaMs;
-      if (duracaoSeg >= this.perfil.minSeg && pausaOk) {
+      const minSeg = this.trechosEmitidos === 0 ? (this.perfil.primeiroMinSeg ?? this.perfil.minSeg) : this.perfil.minSeg;
+      if (duracaoSeg >= minSeg && pausaOk) {
         this.emitir(this.quadros, this.energias, saida);
         this.zerar();
       } else if (duracaoSeg >= this.perfil.maxSeg) {

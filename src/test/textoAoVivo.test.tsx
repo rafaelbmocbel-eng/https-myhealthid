@@ -59,4 +59,16 @@ describe('TextoAoVivo', () => {
     rerender(<TextoAoVivo ouvindo={false} transcrevendo texto="mais um trecho" />);
     expect(rolar).toHaveBeenCalledTimes(1);
   });
+
+  it('enquanto não há texto, avisa que ele começa a aparecer depois de alguns segundos; some quando o texto chega, na prévia indisponível e na finalização', () => {
+    const aviso = /começa a aparecer depois de alguns segundos/;
+    const { rerender } = render(<TextoAoVivo ouvindo transcrevendo={false} texto="" />);
+    expect(screen.getByText(aviso)).toBeTruthy();
+    rerender(<TextoAoVivo ouvindo transcrevendo={false} texto="dor no joelho" />);
+    expect(screen.queryByText(aviso)).toBeNull();
+    rerender(<TextoAoVivo ouvindo transcrevendo={false} texto="" indisponivel />);
+    expect(screen.queryByText(aviso)).toBeNull();
+    rerender(<TextoAoVivo ouvindo={false} transcrevendo texto="" />);
+    expect(screen.queryByText(aviso)).toBeNull();
+  });
 });

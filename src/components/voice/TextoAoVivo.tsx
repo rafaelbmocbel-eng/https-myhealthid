@@ -45,6 +45,9 @@ export function TextoAoVivo({ ouvindo, transcrevendo, texto, indisponivel = fals
             <span className={cn('h-2 w-2 rounded-full bg-red-500', ouvindo && 'animate-pulse')} aria-hidden />
             {ouvindo ? (indisponivel ? 'Ouvindo… o texto aparece ao parar' : 'Ouvindo… o texto aparece conforme você fala') : 'Finalizando a transcrição…'}
           </div>
+          {!texto && ouvindo && !indisponivel && (
+            <p className="mt-1 text-[11px] text-muted-foreground">O texto começa a aparecer depois de alguns segundos de fala.</p>
+          )}
           {texto && (
             <div ref={caixaRef} className="mt-1.5 max-h-48 overflow-y-auto">
               <p className="whitespace-pre-wrap text-foreground">{texto}</p>
