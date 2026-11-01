@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +14,7 @@ import { audioParaWav, blobParaBase64 } from '@/lib/audioParaWav';
 import { iniciarCapturaPCM, type PcmCapture } from '@/lib/pcmRecorder';
 import { PERFIL_CONSULTA, TranscritorAoVivo } from '@/lib/transcricaoAoVivo';
 import { criarLimitador } from '@/lib/limitador';
+import { lerFiltroRuido, restricoesDeAudio, salvarFiltroRuido } from '@/lib/microfone';
 import { transcreverAudio } from '@/lib/transcreverAudio';
 import { TextoAoVivo } from '@/components/voice/TextoAoVivo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -211,6 +214,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const aoVivoRef = useRef<TranscritorAoVivo | null>(null);
   const [aoVivoTexto, setAoVivoTexto] = useState('');
   const [aoVivoIndisponivel, setAoVivoIndisponivel] = useState(false);
+  const [filtroRuido, setFiltroRuido] = useState(lerFiltroRuido);
   const [audioLevel, setAudioLevel] = useState(0);
 
   // Editar uma avaliação salva usa rascunho próprio: antes dividia a chave com a
@@ -506,15 +510,8 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
   const startRecording = useCallback(async () => {
     try {
-      // Audio constraints: echo cancellation + noise suppression + mono (menor arquivo, melhor para fala)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-        },
-      });
+      // Mono (menor arquivo, melhor para fala); o filtro de eco e ruído do celular é escolha da pessoa (ver microfone.ts)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: restricoesDeAudio(filtroRuido) });
 
       // Pick best supported format
       let mimeType = 'audio/webm;codecs=opus';
@@ -641,7 +638,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       console.error('Failed to start recording:', err);
       toast({ title: 'Erro ao acessar microfone', description: 'Permita o acesso ao microfone nas configurações do navegador.', variant: 'destructive' });
     }
-  }, [toast]);
+  }, [toast, filtroRuido]);
 
   const stopRecording = useCallback(() => {
     if (timerRef.current) {
@@ -2418,6 +2415,25 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               </p>
             </div>
           </div>
+
+          {!isRecording && (
+            <div className="flex items-start gap-3 mb-3 p-3 rounded-lg border">
+              <Switch
+                id="filtro-ruido-celular"
+                checked={filtroRuido}
+                onCheckedChange={(ligado) => { setFiltroRuido(ligado); salvarFiltroRuido(ligado); }}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="filtro-ruido-celular" className="text-sm font-medium">Filtro de ruído e eco do celular</Label>
+                <p className="text-xs text-muted-foreground">
+                  {filtroRuido
+                    ? 'Ligado: isola quem está perto do aparelho. Se o celular fica na mesa entre duas pessoas, desligar costuma transcrever melhor.'
+                    : 'Desligado: o microfone capta a sala de forma mais natural, o que costuma ajudar quando há duas pessoas falando.'}
+                </p>
+              </div>
+            </div>
+          )}
 
           {editedTranscript.trim().length > 0 && !isRecording && (
             <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-muted text-muted-foreground text-sm">
