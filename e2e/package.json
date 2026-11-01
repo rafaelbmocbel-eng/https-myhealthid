@@ -1,0 +1,13 @@
+{
+  "name": "myhealthid-e2e",
+  "private": true,
+  "description": "Testes ponta a ponta (Playwright) do site. Pasta isolada: não mexe no package.json da raiz nem no deploy.",
+  "scripts": {
+    "test": "playwright test",
+    "construir": "cd .. && VITE_SUPABASE_URL=https://e2e-supabase.invalid VITE_SUPABASE_PUBLISHABLE_KEY=e2e-chave-falsa vite build --outDir e2e/.build --emptyOutDir",
+    "servir": "npm run construir && cd .. && vite preview --outDir e2e/.build --host 127.0.0.1 --port 4173 --strictPort"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

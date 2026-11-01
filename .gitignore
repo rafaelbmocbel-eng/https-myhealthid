@@ -37,3 +37,8 @@ supabase/.temp/
 .claude/*
 !.claude/agents/
 !.claude/settings.json
+
+# Testes ponta a ponta (Playwright)
+e2e/.build
+e2e/resultados
+e2e/playwright-report
