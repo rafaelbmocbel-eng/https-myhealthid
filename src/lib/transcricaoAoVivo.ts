@@ -7,6 +7,7 @@
 // O motor não depende de rede nem de navegador para a parte de decisão: `Segmentador` e `TranscritorAoVivo.alimentar`
 // recebem amostras PCM 16 kHz mono e podem ser testados sem microfone. A captura (AudioContext) fica em `anexar`.
 import { encodeWav16k } from '@/lib/pcmRecorder';
+import { Reamostrador } from '@/lib/reamostrador';
 
 export const TAXA_PCM = 16000;
 const QUADRO = 320; // 20 ms a 16 kHz
@@ -23,6 +24,7 @@ const QUADROS_DE_VOZ_MINIMOS = 6;
 // Só vale se os quadros estiverem juntos (4 em 0,5 s): pico de ruído isolado é esparso e não é palavra.
 const QUADROS_QUASE_VOZ = 4;
 const JANELA_QUASE_VOZ = 25;
+const VOZ_MINIMA_DO_PRIMEIRO_MS = 1000;
 // Som audível, mesmo abaixo do piso do segmentador (-52 dBFS): sala quieta e silêncio ficam abaixo disto, fala baixa fica acima.
 // Sem pelo menos meio segundo (e 2% da gravação) disso, uma gravação sem texto é silêncio e não vale gastar o áudio inteiro.
 const LIMIAR_AUDIVEL = 80;
@@ -49,8 +51,8 @@ export interface PerfilDeCorte {
 
 /** Ditado curto (botão "Ditar"): texto aparece a cada frase. */
 export const PERFIL_DITADO: PerfilDeCorte = { minSeg: 4, maxSeg: 14, pausaMs: 450 };
-/** Consulta longa (avaliação por voz): trechos maiores, menos chamadas ao servidor. */
-export const PERFIL_CONSULTA: PerfilDeCorte = { minSeg: 12, maxSeg: 28, pausaMs: 600, primeiroMinSeg: 5 };
+/** Consulta (avaliação por voz): trechos um pouco maiores que o ditado, para o texto acompanhar a conversa sem uma chamada a cada frase. */
+export const PERFIL_CONSULTA: PerfilDeCorte = { minSeg: 6, maxSeg: 18, pausaMs: 500, primeiroMinSeg: 4 };
 
 export interface Trecho {
   amostras: Int16Array;
@@ -149,7 +151,7 @@ export class Segmentador {
     }
     const de = Math.max(0, primeiro - FOLGA_QUADROS);
     const ate = Math.min(quadros.length, ultimo + 1 + FOLGA_QUADROS);
-    this.trechosEmitidos++;
+    if (comVoz * 20 >= VOZ_MINIMA_DO_PRIMEIRO_MS) this.trechosEmitidos++; // uma palavra solta não gasta o "primeiro trecho" rápido
     saida.push({ amostras: juntar(quadros.slice(de, ate)), vozMs: comVoz * 20 });
   }
 
@@ -298,7 +300,6 @@ export class TranscritorAoVivo {
   private fonte: MediaStreamAudioSourceNode | null = null;
   private no: ScriptProcessorNode | null = null;
   private mudo: GainNode | null = null;
-  private carry = 0;
 
   constructor(private opcoes: OpcoesTranscritor) {
     this.segmentador = new Segmentador(opcoes.perfil ?? PERFIL_DITADO);
@@ -424,7 +425,7 @@ export class TranscritorAoVivo {
   }
 
   private ligar(ctx: AudioContext, fonte: MediaStreamAudioSourceNode) {
-    const razao = (ctx.sampleRate || 48000) / TAXA_PCM;
+    const reamostrador = new Reamostrador(ctx.sampleRate || 48000, TAXA_PCM);
     const no = ctx.createScriptProcessor(4096, 1, 1);
     this.no = no;
     this.fonte = fonte;
@@ -433,21 +434,8 @@ export class TranscritorAoVivo {
       this.mudo = mudo;
       mudo.gain.value = 0; // ScriptProcessor só roda ligado ao destino em alguns navegadores; o ganho zero impede som nos alto-falantes
       no.onaudioprocess = (ev) => {
-        const entrada = ev.inputBuffer.getChannelData(0);
-        const saida: number[] = [];
-        let pos = this.carry;
-        while (pos < entrada.length) {
-          const i = Math.floor(pos);
-          const frac = pos - i;
-          const s0 = entrada[i];
-          const s1 = i + 1 < entrada.length ? entrada[i + 1] : s0;
-          const s = s0 + (s1 - s0) * frac; // interpolação linear, como no pcmRecorder
-          const c = s < -1 ? -1 : s > 1 ? 1 : s;
-          saida.push(c < 0 ? c * 0x8000 : c * 0x7fff);
-          pos += razao;
-        }
-        this.carry = pos - entrada.length;
-        if (saida.length) this.alimentar(Int16Array.from(saida));
+        const saida = reamostrador.processar(ev.inputBuffer.getChannelData(0));
+        if (saida.length) this.alimentar(saida);
       };
       fonte.connect(no);
       no.connect(mudo);

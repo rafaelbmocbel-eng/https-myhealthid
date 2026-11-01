@@ -147,13 +147,23 @@ describe('Segmentador: onde cortar a fala', () => {
     for (const tamanho of [1000, 333, 8192, 100000]) expect(cortar(tamanho)).toEqual(referencia);
   });
 
-  it('perfil de consulta: o primeiro trecho sai cedo e, depois dele, os trechos têm no mínimo 12 s (menos chamadas ao servidor)', () => {
+  it('perfil de consulta: o primeiro trecho sai cedo e, depois dele, os trechos têm no mínimo 6 s (menos chamadas ao servidor)', () => {
     const seg = new Segmentador(PERFIL_CONSULTA);
-    expect(alimentarSegmentador(seg, juntar(tom(6), silencio(0.8)))).toHaveLength(1);
-    expect(alimentarSegmentador(seg, juntar(tom(10), silencio(0.8), tom(1)))).toHaveLength(0);
+    expect(alimentarSegmentador(seg, juntar(tom(5), silencio(0.8)))).toHaveLength(1);
+    expect(alimentarSegmentador(seg, juntar(tom(4), silencio(0.8), tom(1)))).toHaveLength(0);
     const seg2 = new Segmentador(PERFIL_CONSULTA);
-    alimentarSegmentador(seg2, juntar(tom(6), silencio(0.8)));
-    expect(alimentarSegmentador(seg2, juntar(tom(13), silencio(0.8), tom(1)))).toHaveLength(1);
+    alimentarSegmentador(seg2, juntar(tom(5), silencio(0.8)));
+    expect(alimentarSegmentador(seg2, juntar(tom(7), silencio(0.8), tom(1)))).toHaveLength(1);
+  });
+
+  it('o mínimo do perfil de consulta é exatamente 6 s: um bloco de ~7 s fecha na pausa, um de ~5,6 s ainda espera', () => {
+    const fechaCom = (fala: number) => {
+      const seg = new Segmentador(PERFIL_CONSULTA);
+      alimentarSegmentador(seg, juntar(tom(5), silencio(0.8))); // gasta o trecho rápido; sobram 0,3 s de silêncio no bloco seguinte
+      return alimentarSegmentador(seg, juntar(tom(fala), silencio(0.6))).length;
+    };
+    expect(fechaCom(6.2)).toBe(1); // 0,3 + 6,2 + 0,5 = 7,0 s
+    expect(fechaCom(4.8)).toBe(0); // 0,3 + 4,8 + 0,5 = 5,6 s
   });
 });
 
@@ -817,6 +827,28 @@ describe('TranscritorAoVivo: o que a suíte antiga não pegava (mutação)', () 
       expect(Math.abs(amostras - 3 * TAXA_PCM)).toBeLessThanOrEqual(2);
     });
 
+    it('a 48 kHz o áudio enviado ao servidor leva o filtro: o chiado de 12 kHz não vira um tom falso de 4 kHz na fala', async () => {
+      const falso = criarContextoFalso();
+      falso.bruto.sampleRate = 48000;
+      let wavEnviado: Blob | null = null;
+      const t = new TranscritorAoVivo({ transcrever: async (wav) => { wavEnviado = wav; return 'ok'; }, ...rapido });
+      t.anexarContexto(falso.ctx, falso.fonte);
+      const n = 3 * 48000;
+      const audio = new Int16Array(n);
+      for (let i = 0; i < n; i++) audio[i] = Math.round(2500 * Math.sin((2 * Math.PI * 300 * i) / 48000) + 2500 * Math.sin((2 * Math.PI * 12000 * i) / 48000));
+      emBlocos(audio).forEach((b) => falso.entregar(b));
+      await t.encerrar(3000);
+      const bytes = await new Promise<ArrayBuffer>((resolve) => { const l = new FileReader(); l.onload = () => resolve(l.result as ArrayBuffer); l.readAsArrayBuffer(wavEnviado!); });
+      const amostras = new Int16Array(bytes.slice(44));
+      const energiaEm = (freq: number) => {
+        const w = (2 * Math.PI * freq) / TAXA_PCM; const c = 2 * Math.cos(w); let s1 = 0; let s2 = 0;
+        for (let i = 400; i < amostras.length - 400; i++) { const s0 = amostras[i] / 32767 + c * s1 - s2; s2 = s1; s1 = s0; }
+        return (2 * Math.sqrt(Math.max(0, s1 * s1 + s2 * s2 - c * s1 * s2))) / (amostras.length - 800);
+      };
+      expect(energiaEm(300)).toBeGreaterThan(0.07); // a fala (amplitude 2500/32767 ≈ 0,076) segue
+      expect(energiaEm(4000)).toBeLessThan(0.002); // sem o filtro, o chiado cairia aqui com a mesma amplitude da fala
+    });
+
     it('gravação de 2 min em que a captura perdeu 1 s (<1%): continua completa; perdendo 3 s (>1%): não', async () => {
       const rodar = async (recebidoSeg: number) => {
         const t = new TranscritorAoVivo({ transcrever: async () => 'texto', ...rapido });
@@ -830,7 +862,7 @@ describe('TranscritorAoVivo: o que a suíte antiga não pegava (mutação)', () 
   });
 });
 
-describe('Perfil de consulta: o primeiro trecho sai cedo (a pessoa vê que está funcionando), os seguintes seguem em blocos maiores', () => {
+describe('Perfil de consulta: o primeiro trecho sai cedo (a pessoa vê que está funcionando), os seguintes seguem em blocos um pouco maiores', () => {
   // Cada bloco de 4096 amostras chega com o instante (em segundos de áudio) em que terminou.
   const emitidosPorInstante = (perfil: typeof PERFIL_CONSULTA, audio: Int16Array) => {
     const seg = new Segmentador(perfil);
@@ -842,27 +874,57 @@ describe('Perfil de consulta: o primeiro trecho sai cedo (a pessoa vê que está
     return saida;
   };
 
-  it('4 s de fala e silêncio: o primeiro trecho sai aos ~5 s (com o perfil antigo só aos 12 s)', () => {
+  it('4 s de fala e silêncio: o primeiro trecho sai logo depois da pausa (~4,5 s); com o perfil antigo (12 s) só sairia aos 12 s', () => {
     const audio = juntar(tom(4), silencio(10));
     const novo = emitidosPorInstante(PERFIL_CONSULTA, audio);
     expect(novo).toHaveLength(1);
-    expect(novo[0].quando).toBeLessThanOrEqual(5.3);
+    expect(novo[0].quando).toBeLessThanOrEqual(4.8);
     expect(novo[0].seg).toBeGreaterThan(4);
     const antigo = emitidosPorInstante({ minSeg: 12, maxSeg: 28, pausaMs: 600 }, audio);
     expect(antigo[0].quando).toBe(12);
   });
 
-  it('depois do primeiro, os trechos voltam ao mínimo de 12 s: o segundo bloco de 4 s de fala não sai aos 5 s', () => {
+  it('depois do primeiro, os trechos voltam ao mínimo de 6 s: a fala seguinte de 4 s não sai logo depois da pausa', () => {
     const audio = juntar(tom(4), silencio(1), tom(4), silencio(1), tom(4), silencio(1), tom(1), silencio(14));
     const saida = emitidosPorInstante(PERFIL_CONSULTA, audio);
-    expect(saida[0].quando).toBeLessThanOrEqual(5.3);
-    expect(saida[1].quando).toBeGreaterThanOrEqual(5 + 12); // o bloco seguinte só fecha depois de acumular 12 s
+    expect(saida[0].quando).toBeLessThanOrEqual(4.8);
+    expect(saida[1].quando - saida[0].quando).toBeGreaterThanOrEqual(6); // o bloco seguinte só fecha depois de acumular 6 s
   });
 
-  it('silêncio antes de falar não "gasta" o primeiro trecho: a primeira fala ainda sai cedo', () => {
-    const saida = emitidosPorInstante(PERFIL_CONSULTA, juntar(silencio(7), tom(4), silencio(3)));
+  it('silêncio antes de falar não "gasta" o primeiro trecho: a primeira fala sai assim que o bloco chega a 4 s (não espera os 6 s)', () => {
+    const saida = emitidosPorInstante(PERFIL_CONSULTA, juntar(silencio(5), tom(3), silencio(3)));
     expect(saida).toHaveLength(1);
-    expect(saida[0].quando).toBeLessThan(13); // com o mínimo de 12 s para o primeiro, só sairia depois dos 17 s
+    expect(saida[0].quando).toBeLessThanOrEqual(9); // se o silêncio contasse como "primeiro", o mínimo seria 6 s e só sairia aos 10 s
+  });
+
+  it('fala contínua sem pausa: cada corte forçado vem em até 18 s (não passa do máximo do perfil)', () => {
+    const saida = emitidosPorInstante(PERFIL_CONSULTA, tom(40));
+    expect(saida.length).toBeGreaterThanOrEqual(2);
+    // os instantes só avançam de 256 ms em 256 ms (blocos de 4096 amostras): daí a folga de 0,3 s
+    expect(saida[0].quando).toBeLessThanOrEqual(18.3);
+    expect(saida[1].quando - saida[0].quando).toBeLessThanOrEqual(18.3);
+    for (const t of saida) expect(t.seg).toBeLessThanOrEqual(18.3);
+  });
+
+  it('o corte forçado conta como trecho já emitido: o seguinte exige 6 s de bloco, não os 4 s do primeiro', () => {
+    const saida = emitidosPorInstante(PERFIL_CONSULTA, juntar(tom(22), silencio(1)));
+    expect(saida).toHaveLength(1); // só o corte forçado aos 18 s; o bloco seguinte tem 4,5 s (< 6 s) e não fecha na pausa
+  });
+
+  it('a pausa de 500 ms: 400 ms não corta e 520 ms corta', () => {
+    expect(emitidosPorInstante(PERFIL_CONSULTA, juntar(tom(5), silencio(0.4), tom(5)))).toHaveLength(0);
+    expect(emitidosPorInstante(PERFIL_CONSULTA, juntar(tom(5), silencio(0.52), tom(1)))).toHaveLength(1);
+  });
+
+  it('antes dos 4 s de bloco nada sai, mesmo com pausa: 2,8 s de fala e 0,6 s de silêncio ainda esperam', () => {
+    expect(emitidosPorInstante(PERFIL_CONSULTA, juntar(tom(2.8), silencio(0.6)))).toHaveLength(0);
+  });
+
+  it('uma palavra solta (menos de 1 s de voz) que sai primeiro não gasta o trecho rápido: a fala seguinte ainda fecha com 4 s de bloco', () => {
+    const saida = emitidosPorInstante(PERFIL_CONSULTA, juntar(silencio(3.9), tom(0.3), silencio(0.6), tom(4), silencio(1)));
+    expect(saida).toHaveLength(2);
+    expect(saida[0].seg).toBeLessThan(1.2);
+    expect(saida[1].quando).toBeLessThanOrEqual(9.6); // contando a palavra como "primeiro", o bloco da fala precisaria de 6 s e só fecharia depois
   });
 
   it('o ditado (sem primeiroMinSeg) segue com o mínimo de 4 s, como antes', () => {
@@ -871,7 +933,7 @@ describe('Perfil de consulta: o primeiro trecho sai cedo (a pessoa vê que está
     expect(saida[0].quando).toBeLessThanOrEqual(4.8);
   });
 
-  it('no motor: na consulta, 4 s de fala já viram texto na tela antes dos 12 s', async () => {
+  it('no motor: na consulta, 4 s de fala já viram texto na tela logo depois da pausa', async () => {
     const transcrever = vi.fn(async () => 'dor no joelho direito');
     const estados: EstadoAoVivo[] = [];
     const t = new TranscritorAoVivo({ transcrever, perfil: PERFIL_CONSULTA, aoAtualizar: (e) => estados.push(e), ...rapido });

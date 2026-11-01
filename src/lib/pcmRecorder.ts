@@ -7,9 +7,11 @@
 // pelo decode que quebra.
 //
 // Usa ScriptProcessorNode (depreciado, mas suportado em todo lugar e sem exigir
-// carregar um módulo externo, o que seria frágil no PWA). Reamostra em stream
-// para 16 kHz mono e acumula Int16 (≈32 KB/s → ~1,9 MB/min), o que mantém o uso
-// de memória baixo mesmo em consultas longas.
+// carregar um módulo externo, o que seria frágil no PWA). Reamostra em stream para
+// 16 kHz mono, com filtro passa-baixas (ver reamostrador.ts), e acumula Int16
+// (≈32 KB/s → ~1,9 MB/min), o que mantém o uso de memória baixo mesmo em consultas longas.
+
+import { Reamostrador } from '@/lib/reamostrador';
 
 const TARGET_RATE = 16000;
 
@@ -30,11 +32,9 @@ export function iniciarCapturaPCM(
   ctx: AudioContext,
   source: MediaStreamAudioSourceNode,
 ): PcmCapture {
-  const inRate = ctx.sampleRate || 48000;
-  const ratio = inRate / TARGET_RATE; // >1 (downsample) na esmagadora maioria
+  const reamostrador = new Reamostrador(ctx.sampleRate || 48000, TARGET_RATE);
   const chunks: Int16Array[] = [];
   let total = 0;
-  let carry = 0; // posição fracionária carregada entre buffers (mantém a fase)
   let stopped = false;
 
   const BUF = 4096;
@@ -42,22 +42,9 @@ export function iniciarCapturaPCM(
 
   node.onaudioprocess = (ev) => {
     if (stopped) return;
-    const input = ev.inputBuffer.getChannelData(0);
-    const out: number[] = [];
-    let pos = carry;
-    while (pos < input.length) {
-      const i = Math.floor(pos);
-      const frac = pos - i;
-      const s0 = input[i];
-      const s1 = i + 1 < input.length ? input[i + 1] : s0;
-      const s = s0 + (s1 - s0) * frac; // interpolação linear
-      const c = s < -1 ? -1 : s > 1 ? 1 : s;
-      out.push(c < 0 ? c * 0x8000 : c * 0x7fff);
-      pos += ratio;
-    }
-    carry = pos - input.length; // sobra fracionária para o próximo buffer
+    const out = reamostrador.processar(ev.inputBuffer.getChannelData(0));
     if (out.length) {
-      chunks.push(Int16Array.from(out));
+      chunks.push(out);
       total += out.length;
     }
   };

@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { audioParaWav, blobParaBase64 } from '@/lib/audioParaWav';
 import { iniciarCapturaPCM, type PcmCapture } from '@/lib/pcmRecorder';
 import { PERFIL_CONSULTA, TranscritorAoVivo } from '@/lib/transcricaoAoVivo';
+import { criarLimitador } from '@/lib/limitador';
 import { transcreverAudio } from '@/lib/transcreverAudio';
 import { TextoAoVivo } from '@/components/voice/TextoAoVivo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -579,6 +580,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         audioCtxRef.current = audioCtx;
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.5; // o suavizado padrão (0,8) é aplicado a cada leitura: com 10 leituras por segundo a barra ficaria meio segundo atrasada
         analyserRef.current = analyser;
         const source = audioCtx.createMediaStreamSource(stream);
         source.connect(analyser);
@@ -609,10 +611,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           console.warn('[VoiceAssessment] prévia ao vivo indisponível:', e);
         }
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        const updateLevel = () => {
-          analyser.getByteFrequencyData(dataArray);
-          const avg = dataArray.reduce((s, v) => s + v, 0) / dataArray.length;
-          setAudioLevel(Math.round((avg / 255) * 100));
+        // Redesenhar esta tela inteira 60 vezes por segundo trava o celular e atrasa a captura do áudio: 10 vezes basta para o medidor.
+        const devePintar = criarLimitador(100);
+        const updateLevel = (agora: number) => {
+          if (devePintar(agora)) {
+            analyser.getByteFrequencyData(dataArray);
+            const avg = dataArray.reduce((s, v) => s + v, 0) / dataArray.length;
+            setAudioLevel(Math.round((avg / 255) * 100));
+          }
           animFrameRef.current = requestAnimationFrame(updateLevel);
         };
         animFrameRef.current = requestAnimationFrame(updateLevel);
