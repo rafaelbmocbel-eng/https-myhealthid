@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Mic, Square, Loader2, Send, Sparkles, RotateCcw, CheckCircle2, Clock, ShieldCheck } from 'lucide-react';
+import { Mic, Square, Loader2, Send, Sparkles, RotateCcw, CheckCircle2, Clock, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { TextoAoVivo } from '@/components/voice/TextoAoVivo';
-import { PERFIL_DITADO, TranscritorAoVivo, textoInventado } from '@/lib/transcricaoAoVivo';
+import { PERFIL_DITADO, TranscritorAoVivo, semInvencao } from '@/lib/transcricaoAoVivo';
 import { transcreverAudio } from '@/lib/transcreverAudio';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 
@@ -42,6 +42,9 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
   const [transcript, setTranscript] = useState('');
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [audioMimeType, setAudioMimeType] = useState('audio/webm');
+  // A última gravação não virou texto na caixa (transcrição falhou): o áudio dela precisa ser transcrito no envio,
+  // mesmo que a caixa já tenha texto, senão o servidor usa só o texto e a fala some sem aviso.
+  const [audioSemTexto, setAudioSemTexto] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   // Transcrição ao vivo: o texto aparece enquanto a pessoa fala e, ao parar, vai para a caixa de texto para ela conferir.
   const [aoVivoTexto, setAoVivoTexto] = useState('');
@@ -52,6 +55,7 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
   const iniciandoRef = useRef(false); // pedido de permissão do microfone em andamento
   const montadoRef = useRef(true);
   const inicioRef = useRef(0);
+  const inteirosRef = useRef(new Set<AbortController>()); // transcrições do áudio inteiro em andamento
   const [resultado, setResultado] = useState<{ queixa: string | null; regioes: string[] } | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -79,24 +83,36 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
   const finalizarTranscricao = useCallback(async (blob: Blob, aoVivo: TranscritorAoVivo | null, duracaoMs: number) => {
     setFinalizando(true);
     finalizandoRef.current = aoVivo;
+    const controle = new AbortController();
+    inteirosRef.current.add(controle);
     try {
       let texto = '';
       let parcial = '';
       let ouviuTudo = false;
+      let vozMs: number | undefined;
       if (aoVivo) {
         const r = await aoVivo.encerrar(duracaoMs);
+        if (!montadoRef.current) return; // saiu da tela: ninguém espera este texto, e o áudio inteiro nem é enviado
         parcial = r.texto;
+        vozMs = r.vozMs;
         if (r.completo) { texto = r.texto; ouviuTudo = true; }
       }
       if (!ouviuTudo && blob.size >= 1000) {
         try {
-          const inteiro = await transcreverAudio(blob);
-          texto = textoInventado(inteiro) ? parcial : inteiro; // só invenção do Whisper: vale o que apareceu ao vivo
+          const inteiro = await transcreverAudio(blob, controle.signal);
+          texto = semInvencao(inteiro, vozMs) || parcial; // só invenção do Whisper: vale o que apareceu ao vivo
         } catch { /* sem texto aqui: o texto parcial NÃO entra (valeria no lugar do áudio); o áudio inteiro é transcrito no envio */ }
       }
       if (!montadoRef.current) return;
-      if (texto.trim()) setTranscript((atual) => (atual.trim() ? `${atual.trim()}\n${texto.trim()}` : texto.trim()));
+      if (texto.trim()) {
+        setTranscript((atual) => (atual.trim() ? `${atual.trim()}\n${texto.trim()}` : texto.trim()));
+        setAudioSemTexto(false);
+      } else {
+        // Gravação que não foi dada como silêncio e não virou texto: o áudio dela segue para o envio, que o transcreve.
+        setAudioSemTexto(!ouviuTudo && blob.size >= 1000);
+      }
     } finally {
+      inteirosRef.current.delete(controle);
       if (finalizandoRef.current === aoVivo) finalizandoRef.current = null;
       setFinalizando(false);
       setAoVivoTexto('');
@@ -179,13 +195,14 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
 
   const stopRecording = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    // O gravador só é liberado no onstop: um novo toque em "Gravar" antes disso não abre uma segunda gravação por cima.
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') mediaRecorderRef.current.stop();
-    mediaRecorderRef.current = null;
     setStep('idle');
   }, []);
 
   useEffect(() => {
     montadoRef.current = true;
+    const inteiros = inteirosRef.current;
     return () => {
       montadoRef.current = false;
       if (timerRef.current) clearInterval(timerRef.current);
@@ -193,6 +210,7 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
       aoVivoRef.current = null;
       finalizandoRef.current?.cancelar();
       finalizandoRef.current = null;
+      inteiros.forEach((c) => c.abort());
       const rec = mediaRecorderRef.current;
       if (rec && rec.state !== 'inactive') {
         rec.onstop = null; // saiu da tela: não transcreve nada, só solta o microfone
@@ -210,17 +228,20 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
 
     setStep('processing');
     try {
+      // Com texto na caixa o servidor ignora o áudio; se a última gravação não virou texto, ele é somado ao texto.
+      const somarAudio = audioSemTexto && !!audioBase64 && transcript.trim().length >= 20;
       const { data: assessData, error: assessError } = await supabase.functions.invoke('voice-assessment', {
         body: {
           serviceType: 'identidade',
           ...(audioBase64 ? { audioBase64, audioMimeType } : {}),
           ...(transcript.trim().length >= 20 ? { transcript: transcript.trim() } : {}),
+          ...(somarAudio ? { appendAudio: true } : {}),
         },
       });
       if (assessError) throw new Error(assessError.message);
       if (assessData?.error) throw new Error(assessData.error);
 
-      const generatedTranscript: string = assessData?.transcricao && transcript.trim().length < 20
+      const generatedTranscript: string = assessData?.transcricao && (transcript.trim().length < 20 || somarAudio)
         ? assessData.transcricao
         : transcript.trim();
       const assessment = assessData?.assessment || {};
@@ -269,6 +290,7 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
     setTranscript('');
     setAoVivoTexto('');
     setAudioBase64(null);
+    setAudioSemTexto(false);
     setRecordingTime(0);
     setResultado(null);
     setStep('idle');
@@ -329,8 +351,14 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
 
           <TextoAoVivo ouvindo={step === 'recording'} transcrevendo={finalizando} texto={aoVivoTexto} indisponivel={aoVivoIndisponivel} />
 
-          {audioBase64 && step === 'idle' && (
+          {audioBase64 && step === 'idle' && !audioSemTexto && (
             <p className="text-[11px] text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Áudio gravado — pronto para enviar.</p>
+          )}
+          {audioBase64 && step === 'idle' && audioSemTexto && !finalizando && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 flex items-start gap-1">
+              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+              Não consegui transcrever o áudio agora. Ele será transcrito quando você enviar. Se gravar de novo, este áudio será substituído.
+            </p>
           )}
 
           <Textarea

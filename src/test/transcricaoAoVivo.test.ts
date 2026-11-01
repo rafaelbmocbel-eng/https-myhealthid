@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { PERFIL_CONSULTA, PERFIL_DITADO, Segmentador, TAXA_PCM, TranscritorAoVivo, pareceAlucinacao, textoInventado, type EstadoAoVivo } from '@/lib/transcricaoAoVivo';
+import { PERFIL_CONSULTA, PERFIL_DITADO, Segmentador, TAXA_PCM, TranscritorAoVivo, pareceAlucinacao, semInvencao, textoInventado, type EstadoAoVivo } from '@/lib/transcricaoAoVivo';
 
 // Áudio sintético: um tom de 200 Hz com a amplitude pedida faz o papel da voz; zeros (ou ruído fraco) fazem o de silêncio.
 const tom = (seg: number, amplitude = 3000): Int16Array => {
@@ -92,6 +92,21 @@ describe('Segmentador: onde cortar a fala', () => {
     expect(palavra.finalizar()).not.toBeNull();
   });
 
+  it('picos de ruído isolados acima do piso (1 quadro cada, espaçados 0,7 s, 5 no mesmo bloco) não contam como "palavra descartada"; quadros juntos contam', () => {
+    const picos = new Segmentador(PERFIL_DITADO);
+    alimentarSegmentador(picos, juntar(silencio(0.5), ...Array.from({ length: 5 }, () => juntar(tom(0.02, 600), silencio(0.68))), silencio(1)));
+    picos.finalizar();
+    expect(picos.descartesSuspeitos).toBe(0);
+    const palavra = new Segmentador(PERFIL_DITADO);
+    alimentarSegmentador(palavra, juntar(silencio(2), tom(0.1, 600), silencio(2)));
+    palavra.finalizar();
+    expect(palavra.descartesSuspeitos).toBe(1);
+    const quatro = new Segmentador(PERFIL_DITADO);
+    alimentarSegmentador(quatro, juntar(silencio(2), ...Array.from({ length: 4 }, () => juntar(tom(0.02, 600), silencio(0.1))), silencio(2)));
+    quatro.finalizar();
+    expect(quatro.descartesSuspeitos).toBe(1); // 4 quadros em menos de 0,5 s ainda podem ser uma palavra curta
+  });
+
   it('silêncio inicial longo antes de falar é descartado e a fala seguinte vira seu próprio trecho', () => {
     const seg = new Segmentador(PERFIL_DITADO);
     const prontos = alimentarSegmentador(seg, juntar(silencio(6), tom(5), silencio(0.7)));
@@ -156,6 +171,25 @@ describe('pareceAlucinacao', () => {
     expect(pareceAlucinacao('Paciente refere dor [lombar] há dois meses.', 8000)).toBe(false);
   });
 
+  it('as frases de despedida do Whisper também são invenção em trecho quase mudo ("Muito obrigado.", "Valeu."), e "por assistir" / "se inscreva" em qualquer duração', () => {
+    for (const frase of ['Muito obrigado.', 'Obrigada!', 'Valeu.', 'Tchau, tchau.', 'Até a próxima.']) {
+      expect(pareceAlucinacao(frase, 500)).toBe(true);
+      expect(pareceAlucinacao(frase, 6000)).toBe(false);
+    }
+    for (const frase of ['Obrigado por assistir!', 'Obrigada por assistir.', 'Se inscreva no canal.']) {
+      expect(pareceAlucinacao(frase, 8000)).toBe(true);
+    }
+    expect(pareceAlucinacao('Obrigado, doutor, a dor melhorou.', 500)).toBe(false);
+  });
+
+  it('semInvencao: sem voz vista pelo motor "Obrigado." some; com voz suficiente (ou sem motor) fica; legendas somem sempre', () => {
+    expect(semInvencao('Obrigado.', 0)).toBe('');
+    expect(semInvencao('Obrigado.', 5000)).toBe('Obrigado.');
+    expect(semInvencao('Obrigado.')).toBe('Obrigado.');
+    expect(semInvencao('Legendas pela comunidade Amara.org')).toBe('');
+    expect(semInvencao('dor lombar', 0)).toBe('dor lombar');
+  });
+
   it('um ditado longo que só começa com "Inscreva-se" ou "Legendas por" é fala de verdade, não invenção', () => {
     const longo = `Inscreva-se na lista de espera da fisioterapia, ${'a paciente refere dor lombar há dois meses, '.repeat(6)}`;
     expect(textoInventado(longo)).toBe(false);
@@ -179,7 +213,7 @@ describe('TranscritorAoVivo', () => {
     const t = new TranscritorAoVivo({ transcrever, aoAtualizar: (e) => estados.push(e), ...rapido });
     alimentar(t, falaComPausas(5, 5, 3));
     const r = await t.encerrar();
-    expect(r).toEqual({ texto: 'primeira frase segunda frase terceira frase', completo: true });
+    expect(r).toMatchObject({ texto: 'primeira frase segunda frase terceira frase', completo: true });
     expect(transcrever).toHaveBeenCalledTimes(3);
     const textos = estados.map((e) => e.texto);
     expect(textos).toContain('primeira frase');
@@ -211,7 +245,7 @@ describe('TranscritorAoVivo', () => {
     const t = new TranscritorAoVivo({ transcrever, ...rapido });
     alimentar(t, tom(3));
     expect(transcrever).not.toHaveBeenCalled();
-    expect(await t.encerrar()).toEqual({ texto: 'dor no joelho', completo: true });
+    expect(await t.encerrar()).toMatchObject({ texto: 'dor no joelho', completo: true });
     expect(transcrever).toHaveBeenCalledTimes(1);
   });
 
@@ -230,7 +264,7 @@ describe('TranscritorAoVivo', () => {
     const transcrever = vi.fn(async () => { chamadas++; if (chamadas === 1) throw new Error('rede'); return 'texto'; });
     const t = new TranscritorAoVivo({ transcrever, ...rapido });
     alimentar(t, tom(3));
-    expect(await t.encerrar()).toEqual({ texto: 'texto', completo: true });
+    expect(await t.encerrar()).toMatchObject({ texto: 'texto', completo: true });
     expect(transcrever).toHaveBeenCalledTimes(2);
   });
 
@@ -244,7 +278,7 @@ describe('TranscritorAoVivo', () => {
     const t = new TranscritorAoVivo({ transcrever, ...rapido });
     alimentar(t, falaComPausas(5, 4));
     const r = await t.encerrar();
-    expect(r).toEqual({ texto: 'segundo trecho', completo: false });
+    expect(r).toMatchObject({ texto: 'segundo trecho', completo: false });
   });
 
   it('três trechos seguidos falhando: o ao vivo desiste, para de chamar o servidor e avisa que está indisponível', async () => {
@@ -262,26 +296,52 @@ describe('TranscritorAoVivo', () => {
     const curto = new TranscritorAoVivo({ transcrever: async () => 'Obrigado.', ...rapido });
     alimentar(curto, juntar(silencio(1), tom(0.5), silencio(1)));
     // sem texto nenhum e com algo descartado, "obrigado" pode ter sido fala de verdade: pede o áudio inteiro
-    expect(await curto.encerrar()).toEqual({ texto: '', completo: false });
+    expect(await curto.encerrar()).toMatchObject({ texto: '', completo: false });
     const longo = new TranscritorAoVivo({ transcrever: async () => 'Obrigado.', ...rapido });
     alimentar(longo, tom(5));
     expect((await longo.encerrar()).texto).toBe('Obrigado.');
   });
 
-  it('silêncio puro não chama o servidor; numa gravação longa o resultado vazio pede o áudio inteiro (pode ser fala baixa demais)', async () => {
+  it('silêncio ou ruído de sala fraco (qualquer duração) não chama o servidor e vale como completo: "não ouvi nenhuma fala", sem gastar o áudio inteiro', async () => {
+    for (const [seg, ruido] of [[1, 60], [2, 0], [15, 60], [60, 40], [60, 104]] as const) { // 104 de amplitude ≈ RMS 60
+      const transcrever = vi.fn(async () => 'não deveria');
+      const t = new TranscritorAoVivo({ transcrever, ...rapido });
+      alimentar(t, silencio(seg, ruido));
+      expect(await t.encerrar(seg * 1000)).toMatchObject({ texto: '', completo: true, vozMs: 0 });
+      expect(transcrever).not.toHaveBeenCalled();
+    }
+  });
+
+  it('um sopro baixo de 0,2 s (10 quadros audíveis) numa gravação quieta não é fala: vale como silêncio, sem gastar o áudio inteiro', async () => {
+    const t = new TranscritorAoVivo({ transcrever: async () => 'não deveria', ...rapido });
+    alimentar(t, juntar(silencio(2, 40), tom(0.2, 150), silencio(2, 40)));
+    expect(await t.encerrar()).toMatchObject({ texto: '', completo: true });
+  });
+
+  it('gravação de 60 s: 30 estalos baixos espalhados (menos de 2% dos quadros) são ruído, não fala; 90 viram "som audível"', async () => {
+    const montar = (estalos: number) => {
+      const t = new TranscritorAoVivo({ transcrever: async () => 'não deveria', ...rapido });
+      const passo = 60 / estalos;
+      alimentar(t, juntar(...Array.from({ length: estalos }, () => juntar(silencio(passo - 0.02, 40), tom(0.02, 200)))));
+      return t.encerrar();
+    };
+    expect(await montar(30)).toMatchObject({ texto: '', completo: true });
+    expect(await montar(90)).toMatchObject({ texto: '', completo: false });
+  });
+
+  it('som audível mas baixo demais para o segmentador (RMS ≈ 106, abaixo do piso de 250) e nada transcrito: pede o áudio inteiro, pode ser fala baixa', async () => {
     const transcrever = vi.fn(async () => 'não deveria');
     const t = new TranscritorAoVivo({ transcrever, ...rapido });
-    alimentar(t, silencio(15, 60));
-    expect(await t.encerrar()).toEqual({ texto: '', completo: false });
+    alimentar(t, tom(8, 150));
+    expect(await t.encerrar()).toMatchObject({ texto: '', completo: false });
     expect(transcrever).not.toHaveBeenCalled();
   });
 
-  it('toque curto no botão (menos de 1,5 s, sem som): vazio e completo, para avisar "não ouvi nada" sem chamar o servidor', async () => {
-    const transcrever = vi.fn(async () => 'não deveria');
-    const t = new TranscritorAoVivo({ transcrever, ...rapido });
-    alimentar(t, silencio(1, 60));
-    expect(await t.encerrar()).toEqual({ texto: '', completo: true });
-    expect(transcrever).not.toHaveBeenCalled();
+  it('estalos esparsos numa sala quieta (poucos quadros audíveis em 60 s) não contam como fala', async () => {
+    const t = new TranscritorAoVivo({ transcrever: async () => 'não deveria', ...rapido });
+    const estalo = (v: number) => juntar(silencio(9.9, 40), tom(0.02, v));
+    alimentar(t, juntar(...Array.from({ length: 6 }, () => estalo(200))));
+    expect(await t.encerrar()).toMatchObject({ texto: '', completo: true });
   });
 
   it('servidor que nunca responde: encerrar não trava, passa do tempo e pede a transcrição do áudio inteiro', async () => {
@@ -355,7 +415,7 @@ describe('TranscritorAoVivo: nenhuma fala se perde (captura que falha NÃO vale 
       const t = new TranscritorAoVivo({ transcrever: async () => 'x', ...rapido });
       void t.anexar({} as MediaStream).catch(() => {});
       const r = await t.encerrar();
-      expect(r).toEqual({ texto: '', completo: false });
+      expect(r).toMatchObject({ texto: '', completo: false });
       expect(falso.bruto.close).toHaveBeenCalledTimes(1);
     } finally { vi.unstubAllGlobals(); }
   });
@@ -368,7 +428,7 @@ describe('TranscritorAoVivo: nenhuma fala se perde (captura que falha NÃO vale 
       const t = new TranscritorAoVivo({ transcrever: async () => 'x', ...rapido });
       t.anexarContexto(falso.ctx, falso.fonte);
       agora += 20_000;
-      expect(await t.encerrar()).toEqual({ texto: '', completo: false });
+      expect(await t.encerrar()).toMatchObject({ texto: '', completo: false });
     } finally { relogio.mockRestore(); }
   });
 
@@ -396,7 +456,7 @@ describe('TranscritorAoVivo: nenhuma fala se perde (captura que falha NÃO vale 
       t.anexarContexto(falso.ctx, falso.fonte);
       emBlocos(tom(8)).forEach((b) => falso.entregar(b));
       agora += 8_300; // 300 ms de folga: latência de abertura e último bloco
-      expect(await t.encerrar()).toEqual({ texto: 'texto', completo: true });
+      expect(await t.encerrar()).toMatchObject({ texto: 'texto', completo: true });
     } finally { relogio.mockRestore(); }
   });
 
@@ -465,13 +525,13 @@ describe('TranscritorAoVivo: nenhuma fala se perde (captura que falha NÃO vale 
     alimentar(t, juntar(silencio(2), tom(0.1), silencio(2)));
     const r = await t.encerrar();
     expect(transcrever).not.toHaveBeenCalled();
-    expect(r).toEqual({ texto: '', completo: false });
+    expect(r).toMatchObject({ texto: '', completo: false });
   });
 
   it('só descartou texto inventado e nada mais: pede o áudio inteiro em vez de entregar vazio', async () => {
     const t = new TranscritorAoVivo({ transcrever: async () => 'Legendas pela comunidade Amara.org', ...rapido });
     alimentar(t, tom(8, 700));
-    expect(await t.encerrar()).toEqual({ texto: '', completo: false });
+    expect(await t.encerrar()).toMatchObject({ texto: '', completo: false });
   });
 });
 
@@ -486,7 +546,7 @@ describe('TranscritorAoVivo: servidor lento ou pendurado', () => {
     const t = new TranscritorAoVivo({ transcrever, tentativas: 1, timeoutTentativaMs: 30, ...rapido });
     alimentar(t, falaComPausas(5, 4));
     const r = await t.encerrar();
-    expect(r).toEqual({ texto: 'segundo', completo: false });
+    expect(r).toMatchObject({ texto: 'segundo', completo: false });
     expect(transcrever.mock.calls[0][1]).toBeInstanceOf(AbortSignal);
   });
 
@@ -572,5 +632,198 @@ describe('TranscritorAoVivo: ciclo de vida da captura', () => {
     falso.entregar(tom(0.2));
     await fim;
     expect(recebidos[0].size).toBe(44 + (3 * TAXA_PCM + Math.round(0.2 * TAXA_PCM)) * 2);
+  });
+});
+
+describe('TranscritorAoVivo: tolerância da conferência de duração em gravação longa', () => {
+  const rodar = async (duracaoSeg: number, recebidoSeg: number) => {
+    const t = new TranscritorAoVivo({ transcrever: async () => 'texto', ...rapido });
+    t.alimentar(tom(3));
+    for (let falta = recebidoSeg - 3; falta > 0; falta -= 10) t.alimentar(silencio(Math.min(10, falta), 60));
+    return t.encerrar(duracaoSeg * 1000);
+  };
+
+  it('10 min de gravação: perder 2 s (abaixo do teto de 3 s) segue completo; perder 4 s não (1% seriam 6 s, mas a folga tem teto)', async () => {
+    expect((await rodar(600, 598)).completo).toBe(true);
+    expect((await rodar(600, 596)).completo).toBe(false);
+  });
+
+  it('o resultado informa quanta voz o motor viu (base para decidir se "Obrigado." sozinho é invenção)', async () => {
+    const t = new TranscritorAoVivo({ transcrever: async () => 'texto', ...rapido });
+    alimentar(t, tom(3));
+    const r = await t.encerrar();
+    expect(r.vozMs).toBeGreaterThan(2900);
+    expect(r.vozMs).toBeLessThanOrEqual(3100);
+  });
+});
+
+// ---- Lacunas achadas por mutação (cada teste abaixo mata pelo menos uma mutação que a suíte antiga deixava passar) ----
+
+describe('TranscritorAoVivo: o que a suíte antiga não pegava (mutação)', () => {
+  const contar = () => {
+    const visto = { amostras: 0, chamadas: 0 };
+    const transcrever = vi.fn(async (wav: Blob) => { visto.chamadas++; visto.amostras += (wav.size - 44) / 2; return 'texto'; });
+    return { visto, transcrever };
+  };
+
+  it('um trecho que chega DEPOIS de a fila esvaziar é transcrito na hora (não fica esperando até o Parar)', async () => {
+    const transcrever = vi.fn(async () => 'frase');
+    const t = new TranscritorAoVivo({ transcrever, ...rapido });
+    alimentar(t, falaComPausas(5));
+    await vi.waitFor(() => expect(transcrever).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(t.estado.pendentes).toBe(0));
+    alimentar(t, falaComPausas(5));
+    await vi.waitFor(() => expect(transcrever).toHaveBeenCalledTimes(2));
+    t.cancelar();
+  });
+
+  it('um trecho que não terminou quando a espera final acabou impede o "completo", mesmo havendo texto dos anteriores', async () => {
+    let n = 0;
+    const transcrever = vi.fn(() => (++n === 1 ? Promise.resolve('primeiro') : new Promise<string>(() => {})));
+    const t = new TranscritorAoVivo({ transcrever, ...rapido, timeoutTentativaMs: 60_000, esperaFinalMs: 60 });
+    alimentar(t, falaComPausas(5, 4));
+    expect(await t.encerrar()).toMatchObject({ texto: 'primeiro', completo: false });
+  });
+
+  it('esperou o tempo final e o servidor não respondeu: a chamada em voo é abortada e a fila fica vazia', async () => {
+    let sinal: AbortSignal | undefined;
+    const t = new TranscritorAoVivo({ transcrever: (_w, s) => { sinal = s; return new Promise<string>(() => {}); }, ...rapido, timeoutTentativaMs: 60_000, esperaFinalMs: 40 });
+    alimentar(t, tom(3));
+    await t.encerrar();
+    expect(sinal?.aborted).toBe(true);
+    expect(t.estado.pendentes).toBe(0);
+  });
+
+  it('cancelar enquanto o encerrar espera o último bloco do microfone: devolve vazio e NÃO completo', async () => {
+    const falso = criarContextoFalso();
+    const t = new TranscritorAoVivo({ transcrever: async () => 'x', ...rapido, caudaMs: 50 });
+    t.anexarContexto(falso.ctx, falso.fonte);
+    const fim = t.encerrar();
+    t.cancelar();
+    expect(await fim).toMatchObject({ texto: '', completo: false });
+  });
+
+  it('cancelar na primeira tentativa: não faz a segunda tentativa', async () => {
+    const transcrever = vi.fn((_w: Blob, sinal?: AbortSignal) => new Promise<string>((_r, rej) => sinal?.addEventListener('abort', () => rej(new Error('abortada')))));
+    const t = new TranscritorAoVivo({ transcrever, tentativas: 2, ...rapido });
+    alimentar(t, tom(3));
+    void t.encerrar();
+    await vi.waitFor(() => expect(transcrever).toHaveBeenCalledTimes(1));
+    t.cancelar();
+    await new Promise((r) => setTimeout(r, 40));
+    expect(transcrever).toHaveBeenCalledTimes(1);
+  });
+
+  it('desiste exatamente na 3a falha seguida (padrão): a 4a chamada nem acontece', async () => {
+    const transcrever = vi.fn(async () => { throw new Error('limite de uso'); });
+    const t = new TranscritorAoVivo({ transcrever, tentativas: 1, maxPendentes: 10, ...rapido });
+    alimentar(t, falaComPausas(5, 5, 5, 5, 5));
+    await t.encerrar();
+    expect(transcrever).toHaveBeenCalledTimes(3);
+  });
+
+  it('falhas que NÃO são seguidas (falha, ok, falha, ok...) não fazem o ao vivo desistir', async () => {
+    let n = 0;
+    const transcrever = vi.fn(async () => { if (++n % 2 === 1) throw new Error('instável'); return `t${n}`; });
+    const estados: EstadoAoVivo[] = [];
+    const t = new TranscritorAoVivo({ transcrever, aoAtualizar: (e) => estados.push(e), tentativas: 1, maxPendentes: 10, ...rapido });
+    alimentar(t, falaComPausas(5, 5, 5, 5, 5, 5));
+    const r = await t.encerrar();
+    expect(transcrever).toHaveBeenCalledTimes(6);
+    expect(estados.some((e) => e.indisponivel)).toBe(false);
+    expect(r.completo).toBe(false);
+    expect(r.texto).toBe('t2 t4 t6');
+  });
+
+  describe('limiar de voz', () => {
+    it('depois de uma tosse forte (que ficou em outro bloco), fala em volume normal ainda vai para o servidor e o resultado é completo (teto do limiar)', async () => {
+      const { visto, transcrever } = contar();
+      const t = new TranscritorAoVivo({ transcrever, ...rapido });
+      alimentar(t, juntar(tom(0.4, 20000), silencio(5, 60), tom(5, 1000), silencio(0.7)));
+      const r = await t.encerrar();
+      expect(r.completo).toBe(true);
+      expect(visto.amostras).toBeGreaterThanOrEqual(5 * TAXA_PCM);
+    });
+
+    it('um estalo de 3 quadros não faz a voz baixa (RMS ≈ 424, acima do ruído de sala) sumir: o pico usa a mediana', async () => {
+      const { visto, transcrever } = contar();
+      const t = new TranscritorAoVivo({ transcrever, ...rapido });
+      alimentar(t, juntar(silencio(1, 60), tom(0.06, 30000), silencio(1), tom(5, 600), silencio(0.7)));
+      const r = await t.encerrar();
+      expect(r.completo).toBe(true);
+      expect(visto.amostras).toBeGreaterThanOrEqual(5 * TAXA_PCM);
+    });
+
+    it('20 s depois de uma tosse, a voz baixa volta a ser ouvida: o pico "esquece" (decaimento)', async () => {
+      const { visto, transcrever } = contar();
+      const t = new TranscritorAoVivo({ transcrever, ...rapido });
+      alimentar(t, juntar(tom(0.4, 20000), silencio(20, 60), tom(5, 600), silencio(0.7)));
+      const r = await t.encerrar();
+      expect(r.completo).toBe(true);
+      expect(visto.amostras).toBeGreaterThanOrEqual(5 * TAXA_PCM);
+    });
+
+    it('"sim" (100 ms) depois de uma frase: não vira trecho, mas o resultado NÃO é completo (o texto da frase não esconde a palavra perdida)', async () => {
+      const transcrever = vi.fn(async () => 'frase');
+      const t = new TranscritorAoVivo({ transcrever, ...rapido });
+      alimentar(t, juntar(tom(5), silencio(0.7), tom(0.1), silencio(2)));
+      const r = await t.encerrar();
+      expect(transcrever).toHaveBeenCalledTimes(1);
+      expect(r).toMatchObject({ texto: 'frase', completo: false });
+    });
+  });
+
+  describe('captura do microfone', () => {
+    it('a ligação falha DEPOIS de o nó receber o tratador de áudio: o tratador é removido (não fica nó chamando o servidor)', () => {
+      const falso = criarContextoFalso();
+      falso.fonteBruta.connect.mockImplementation(() => { throw new Error('conexão inválida'); });
+      const t = new TranscritorAoVivo({ transcrever: async () => 'x', ...rapido });
+      expect(() => t.anexarContexto(falso.ctx, falso.fonte)).toThrow('conexão inválida');
+      expect(falso.processadores).toHaveLength(1);
+      expect(falso.processadores[0].onaudioprocess).toBeNull();
+    });
+
+    it('o nó mudo fica com ganho 0 (senão o microfone toca nos alto-falantes) e a cadeia fonte → nó → mudo → destino está ligada', () => {
+      const falso = criarContextoFalso();
+      const ganhos: Array<{ gain: { value: number }; connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }> = [];
+      falso.bruto.createGain.mockImplementation(() => {
+        const g = { gain: { value: 1 }, connect: vi.fn(), disconnect: vi.fn() };
+        ganhos.push(g);
+        return g;
+      });
+      const t = new TranscritorAoVivo({ transcrever: async () => 'x', ...rapido });
+      t.anexarContexto(falso.ctx, falso.fonte);
+      expect(ganhos).toHaveLength(1);
+      expect(ganhos[0].gain.value).toBe(0);
+      expect(falso.fonteBruta.connect).toHaveBeenCalledWith(falso.processadores[0]);
+      expect(falso.processadores[0].connect).toHaveBeenCalledWith(ganhos[0]);
+      expect(ganhos[0].connect).toHaveBeenCalledWith(falso.bruto.destination);
+      t.cancelar();
+    });
+
+    it.each([44100, 48000])('contexto a %i Hz: o motor reamostra para 16 kHz sem esticar nem encolher a fala', async (taxa) => {
+      const falso = criarContextoFalso();
+      falso.bruto.sampleRate = taxa;
+      let amostras = 0;
+      const t = new TranscritorAoVivo({ transcrever: async (wav) => { amostras += (wav.size - 44) / 2; return 'ok'; }, ...rapido });
+      t.anexarContexto(falso.ctx, falso.fonte);
+      const n = 3 * taxa;
+      const audio = new Int16Array(n);
+      for (let i = 0; i < n; i++) audio[i] = Math.round(Math.sin((2 * Math.PI * 200 * i) / taxa) * 3000);
+      emBlocos(audio).forEach((b) => falso.entregar(b));
+      await t.encerrar(3000);
+      expect(Math.abs(amostras - 3 * TAXA_PCM)).toBeLessThanOrEqual(2);
+    });
+
+    it('gravação de 2 min em que a captura perdeu 1 s (<1%): continua completa; perdendo 3 s (>1%): não', async () => {
+      const rodar = async (recebidoSeg: number) => {
+        const t = new TranscritorAoVivo({ transcrever: async () => 'texto', ...rapido });
+        alimentar(t, tom(3));
+        alimentar(t, silencio(recebidoSeg - 3, 60)); // o silêncio só soma a duração recebida, sem gerar trecho
+        return t.encerrar(120_000);
+      };
+      expect((await rodar(119)).completo).toBe(true);
+      expect((await rodar(117)).completo).toBe(false);
+    });
   });
 });

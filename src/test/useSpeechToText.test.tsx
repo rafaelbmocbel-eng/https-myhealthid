@@ -12,7 +12,7 @@ const h = vi.hoisted(() => ({
   }>,
   anexarFalha: false,
   iniciarFalha: false,
-  resultado: { texto: '', completo: true } as { texto: string; completo: boolean },
+  resultado: { texto: '', completo: true, vozMs: 0 } as { texto: string; completo: boolean; vozMs: number },
 }));
 
 vi.mock('@/hooks/use-toast', () => ({ toast: h.toast }));
@@ -56,7 +56,7 @@ beforeEach(() => {
   h.motores.length = 0;
   h.anexarFalha = false;
   h.iniciarFalha = false;
-  h.resultado = { texto: '', completo: true };
+  h.resultado = { texto: '', completo: true, vozMs: 0 };
   gravadores = [];
   trilhas[0].stop.mockReset();
   (globalThis as unknown as { MediaRecorder: unknown }).MediaRecorder = MediaRecorderFalso;
@@ -87,7 +87,7 @@ describe('useSpeechToText: ao vivo', () => {
     expect(h.motores[0].anexar).toHaveBeenCalledTimes(1);
     act(() => h.motores[0].opcoes.aoAtualizar!({ texto: 'dor no joelho direito', pendentes: 1, falhas: 0, indisponivel: false }));
     expect(hook.result.current.liveText).toBe('dor no joelho direito');
-    h.resultado = { texto: 'dor no joelho direito ao subir escada', completo: true };
+    h.resultado = { texto: 'dor no joelho direito ao subir escada', completo: true, vozMs: 3000 };
     await parar(hook);
     expect(hook.onResult).toHaveBeenCalledTimes(1);
     expect(hook.onResult).toHaveBeenCalledWith('dor no joelho direito ao subir escada');
@@ -97,7 +97,7 @@ describe('useSpeechToText: ao vivo', () => {
   });
 
   it('algum trecho falhou no ao vivo: transcreve o áudio inteiro, como antes (nada se perde)', async () => {
-    h.resultado = { texto: 'só um pedaço', completo: false };
+    h.resultado = { texto: 'só um pedaço', completo: false, vozMs: 3000 };
     h.transcreverAudio.mockResolvedValue('texto completo do áudio inteiro');
     const hook = await gravar();
     await parar(hook);
@@ -117,7 +117,7 @@ describe('useSpeechToText: ao vivo', () => {
   });
 
   it('gravou só silêncio (ao vivo completo e vazio): avisa que não ouviu nada, não chama ninguém e não escreve nada', async () => {
-    h.resultado = { texto: '', completo: true };
+    h.resultado = { texto: '', completo: true, vozMs: 0 };
     const hook = await gravar();
     await parar(hook);
     expect(hook.onResult).not.toHaveBeenCalled();
@@ -126,16 +126,17 @@ describe('useSpeechToText: ao vivo', () => {
   });
 
   it('falha também no áudio inteiro: avisa e não escreve nada', async () => {
-    h.resultado = { texto: '', completo: false };
+    h.resultado = { texto: '', completo: false, vozMs: 0 };
     h.transcreverAudio.mockRejectedValue(new Error('servidor fora do ar'));
     const hook = await gravar();
     await parar(hook);
     expect(hook.onResult).not.toHaveBeenCalled();
-    expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Não consegui transcrever', variant: 'destructive' }));
+    expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Não consegui transcrever' }));
+    expect(h.toast).not.toHaveBeenCalledWith(expect.objectContaining({ variant: 'destructive' })); // pode ter sido só silêncio: não culpa o servidor
   });
 
   it('enquanto finaliza, isTranscribing fica verdadeiro e a caixa de ao vivo segue com o texto', async () => {
-    let terminar: (r: { texto: string; completo: boolean }) => void = () => {};
+    let terminar: (r: { texto: string; completo: boolean; vozMs: number }) => void = () => {};
     const hook = await gravar();
     h.motores[0].encerrar.mockImplementation(() => new Promise((r) => { terminar = r; }));
     act(() => h.motores[0].opcoes.aoAtualizar!({ texto: 'primeiro trecho', pendentes: 0, falhas: 0, indisponivel: false }));
@@ -143,7 +144,7 @@ describe('useSpeechToText: ao vivo', () => {
     expect(hook.result.current.isListening).toBe(false);
     expect(hook.result.current.isTranscribing).toBe(true);
     expect(hook.result.current.liveText).toBe('primeiro trecho');
-    await act(async () => { terminar({ texto: 'primeiro trecho e o resto', completo: true }); });
+    await act(async () => { terminar({ texto: 'primeiro trecho e o resto', completo: true, vozMs: 3000 }); });
     await waitFor(() => expect(hook.result.current.isTranscribing).toBe(false));
     expect(hook.onResult).toHaveBeenCalledWith('primeiro trecho e o resto');
   });
@@ -175,16 +176,17 @@ describe('useSpeechToText: ao vivo', () => {
     expect(h.motores).toHaveLength(0);
   });
 
-  it('informa ao motor a duração real da gravação, para ele conferir que o áudio chegou todo', async () => {
+  it('informa ao motor a duração real da gravação (tempo entre começar e parar), para ele conferir que o áudio chegou todo', async () => {
+    let agora = 1_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => agora);
     const hook = await gravar();
+    agora += 2_500;
     await parar(hook);
-    const duracao = h.motores[0].encerrar.mock.calls[0][0];
-    expect(typeof duracao).toBe('number');
-    expect(duracao).toBeGreaterThanOrEqual(0);
+    expect(h.motores[0].encerrar).toHaveBeenCalledWith(2_500);
   });
 
   it('o áudio inteiro também falha, mas o texto parcial já tinha aparecido: entrega o parcial e avisa, em vez de jogar fora', async () => {
-    h.resultado = { texto: 'dor lombar há dois meses', completo: false };
+    h.resultado = { texto: 'dor lombar há dois meses', completo: false, vozMs: 3000 };
     h.transcreverAudio.mockRejectedValue(new Error('sem rede'));
     const hook = await gravar();
     await parar(hook);
@@ -243,7 +245,7 @@ describe('useSpeechToText: ao vivo', () => {
   });
 
   it('o áudio inteiro só devolve texto inventado pelo Whisper: vale o texto parcial que apareceu ao vivo', async () => {
-    h.resultado = { texto: 'dor no ombro direito', completo: false };
+    h.resultado = { texto: 'dor no ombro direito', completo: false, vozMs: 3000 };
     h.transcreverAudio.mockResolvedValue('Legendas pela comunidade Amara.org');
     const hook = await gravar();
     await parar(hook);
@@ -252,7 +254,7 @@ describe('useSpeechToText: ao vivo', () => {
   });
 
   it('o áudio inteiro devolve só texto inventado e não há parcial: avisa que não ouviu fala, não escreve a invenção', async () => {
-    h.resultado = { texto: '', completo: false };
+    h.resultado = { texto: '', completo: false, vozMs: 0 };
     h.transcreverAudio.mockResolvedValue('[Música]');
     const hook = await gravar();
     await parar(hook);
@@ -261,14 +263,115 @@ describe('useSpeechToText: ao vivo', () => {
   });
 
   it('saiu da tela depois do Parar, enquanto finaliza: cancela o motor e não entrega texto nem aviso', async () => {
-    let terminar: (r: { texto: string; completo: boolean }) => void = () => {};
+    let terminar: (r: { texto: string; completo: boolean; vozMs: number }) => void = () => {};
     const hook = await gravar();
     h.motores[0].encerrar.mockImplementation(() => new Promise((r) => { terminar = r; }));
     await act(async () => { hook.result.current.stopListening(); });
     hook.unmount();
     expect(h.motores[0].cancelar).toHaveBeenCalled();
-    await act(async () => { terminar({ texto: 'texto atrasado', completo: true }); });
+    await act(async () => { terminar({ texto: 'texto atrasado', completo: true, vozMs: 3000 }); });
     expect(hook.onResult).not.toHaveBeenCalled();
     expect(h.toast).not.toHaveBeenCalled();
+  });
+
+  it('gravação mínima (menos de 1 KB) sem texto do ao vivo: não manda o áudio inteiro ao servidor nem avisa', async () => {
+    vi.spyOn(MediaRecorderFalso.prototype, 'start').mockImplementation(function (this: MediaRecorderFalso) {
+      this.state = 'recording';
+      this.ondataavailable?.({ data: new Blob([new Uint8Array(10)]) });
+    });
+    h.resultado = { texto: '', completo: false, vozMs: 0 };
+    const hook = await gravar();
+    await parar(hook);
+    expect(h.transcreverAudio).not.toHaveBeenCalled();
+    expect(hook.onResult).not.toHaveBeenCalled();
+    expect(h.toast).not.toHaveBeenCalled();
+  });
+
+  it('gravação mínima (menos de 1 KB) mas com texto que apareceu ao vivo: o texto não some, e a pessoa é avisada', async () => {
+    vi.spyOn(MediaRecorderFalso.prototype, 'start').mockImplementation(function (this: MediaRecorderFalso) {
+      this.state = 'recording';
+      this.ondataavailable?.({ data: new Blob([new Uint8Array(10)]) });
+    });
+    h.resultado = { texto: 'dor no joelho', completo: false, vozMs: 3000 };
+    const hook = await gravar();
+    await parar(hook);
+    expect(h.transcreverAudio).not.toHaveBeenCalled();
+    expect(hook.onResult).toHaveBeenCalledWith('dor no joelho');
+    expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Parte do áudio não foi transcrita' }));
+  });
+
+  it('saiu da tela depois do Parar e o áudio inteiro só falha depois: não entrega o parcial nem mostra aviso', async () => {
+    h.resultado = { texto: 'dor lombar', completo: false, vozMs: 3000 };
+    let falhar: (e: Error) => void = () => {};
+    h.transcreverAudio.mockImplementation(() => new Promise((_r, rej) => { falhar = rej; }));
+    const hook = await gravar();
+    await act(async () => { hook.result.current.stopListening(); });
+    await waitFor(() => expect(h.transcreverAudio).toHaveBeenCalledTimes(1));
+    hook.unmount();
+    await act(async () => { falhar(new Error('sem rede')); });
+    expect(hook.onResult).not.toHaveBeenCalled();
+    expect(h.toast).not.toHaveBeenCalled();
+  });
+
+  it('saiu da tela com o motor ainda esperando o último trecho: o áudio inteiro nem é enviado (o cancelar do motor devolve "incompleto")', async () => {
+    let terminar: (r: { texto: string; completo: boolean; vozMs: number }) => void = () => {};
+    const hook = await gravar();
+    h.motores[0].encerrar.mockImplementation(() => new Promise((r) => { terminar = r; }));
+    await act(async () => { hook.result.current.stopListening(); });
+    hook.unmount();
+    await act(async () => { terminar({ texto: '', completo: false, vozMs: 0 }); });
+    expect(h.transcreverAudio).not.toHaveBeenCalled();
+    expect(hook.onResult).not.toHaveBeenCalled();
+  });
+
+  it('saiu da tela com o áudio inteiro em andamento: o envio é abortado (o sinal passado ao servidor é cancelado)', async () => {
+    h.resultado = { texto: '', completo: false, vozMs: 3000 };
+    let sinal: AbortSignal | undefined;
+    h.transcreverAudio.mockImplementation((_blob: Blob, s?: AbortSignal) => { sinal = s; return new Promise(() => {}); });
+    const hook = await gravar();
+    await act(async () => { hook.result.current.stopListening(); });
+    await waitFor(() => expect(h.transcreverAudio).toHaveBeenCalledTimes(1));
+    expect(sinal?.aborted).toBe(false);
+    hook.unmount();
+    expect(sinal?.aborted).toBe(true);
+  });
+
+  it('o ao vivo não ouviu voz e o áudio inteiro devolve só "Obrigado.": é invenção do Whisper, não escreve no campo', async () => {
+    h.resultado = { texto: '', completo: false, vozMs: 0 };
+    h.transcreverAudio.mockResolvedValue('Obrigado.');
+    const hook = await gravar();
+    await parar(hook);
+    expect(hook.onResult).not.toHaveBeenCalled();
+    expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Não ouvi nenhuma fala' }));
+  });
+
+  it('o ao vivo ouviu uma fala longa e o áudio inteiro devolve "Obrigado.": é fala de verdade, vai para o campo', async () => {
+    h.resultado = { texto: '', completo: false, vozMs: 5000 };
+    h.transcreverAudio.mockResolvedValue('Obrigado.');
+    const hook = await gravar();
+    await parar(hook);
+    expect(hook.onResult).toHaveBeenCalledWith('Obrigado.');
+  });
+
+  it('sem ao vivo (navegador sem Web Audio) o áudio inteiro com "Obrigado." não é barrado: só as invenções fortes (legendas) são', async () => {
+    h.anexarFalha = true;
+    h.transcreverAudio.mockResolvedValue('Obrigado.');
+    const hook = await gravar();
+    await waitFor(() => expect(h.motores[0].cancelar).toHaveBeenCalled());
+    await parar(hook);
+    expect(hook.onResult).toHaveBeenCalledWith('Obrigado.');
+  });
+
+  it('o ao vivo desistiu numa tentativa que nem chegou a gravar: a tentativa seguinte não herda o aviso de "indisponível"', async () => {
+    h.anexarFalha = true;
+    h.iniciarFalha = true;
+    const hook = renderHook(() => useSpeechToText());
+    await act(async () => { hook.result.current.startListening(vi.fn()); });
+    await waitFor(() => expect(hook.result.current.liveIndisponivel).toBe(true));
+    h.anexarFalha = false;
+    h.iniciarFalha = false;
+    await act(async () => { hook.result.current.startListening(vi.fn()); });
+    await waitFor(() => expect(hook.result.current.isListening).toBe(true));
+    expect(hook.result.current.liveIndisponivel).toBe(false);
   });
 });

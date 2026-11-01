@@ -20,7 +20,14 @@ const LIMIAR_MAXIMO = 600;
 // Voz de menos de 120 ms (um estalo) não vira trecho: o Whisper responderia com texto inventado.
 const QUADROS_DE_VOZ_MINIMOS = 6;
 // De 80 a 100 ms já pode ser uma palavra ("sim", "é"): o descarte é registrado e o resultado deixa de valer como completo.
+// Só vale se os quadros estiverem juntos (4 em 0,5 s): pico de ruído isolado é esparso e não é palavra.
 const QUADROS_QUASE_VOZ = 4;
+const JANELA_QUASE_VOZ = 25;
+// Som audível, mesmo abaixo do piso do segmentador (-52 dBFS): sala quieta e silêncio ficam abaixo disto, fala baixa fica acima.
+// Sem pelo menos meio segundo (e 2% da gravação) disso, uma gravação sem texto é silêncio e não vale gastar o áudio inteiro.
+const LIMIAR_AUDIVEL = 80;
+const QUADROS_AUDIVEIS_MINIMOS = 25;
+const FRACAO_AUDIVEL_MINIMA = 0.02;
 // Bloco descartado com 1 s ou mais de som acima do ruído de sala E variando como a fala (sílabas): o limiar pode ter
 // escondido fala baixa. Ruído estacionário (ventilador, ar-condicionado) quase não varia e não conta.
 const QUADROS_AUDIVEIS_IGNORADOS = 50;
@@ -72,12 +79,19 @@ export class Segmentador {
   private recentes: number[] = [];
   private silencioSeguido = 0;
   private descartados = 0;
+  private quadrosTotais = 0;
+  private quadrosAudiveis = 0;
 
   constructor(private perfil: PerfilDeCorte) {}
 
   /** Quantos blocos foram descartados mesmo tendo som que pode ter sido fala (palavra curta, fala baixa escondida). */
   get descartesSuspeitos(): number {
     return this.descartados;
+  }
+
+  /** A gravação teve som audível suficiente para ser fala, mesmo que baixa demais para virar trecho? */
+  get temSomAudivel(): boolean {
+    return this.quadrosAudiveis >= Math.max(QUADROS_AUDIVEIS_MINIMOS, this.quadrosTotais * FRACAO_AUDIVEL_MINIMA);
   }
 
   private limiar(): number {
@@ -99,6 +113,16 @@ export class Segmentador {
     this.silencioSeguido = 0;
   }
 
+  private temQuadrosJuntos(energias: number[], limiar: number): boolean {
+    let dentro = 0; // quadros acima do limiar dentro da janela que termina no quadro i
+    for (let i = 0; i < energias.length; i++) {
+      if (energias[i] >= limiar) dentro++;
+      if (i >= JANELA_QUASE_VOZ && energias[i - JANELA_QUASE_VOZ] >= limiar) dentro--;
+      if (dentro >= QUADROS_QUASE_VOZ) return true;
+    }
+    return false;
+  }
+
   private somQueParecefala(energias: number[]): boolean {
     if (energias.filter((e) => e >= LIMIAR_MINIMO).length < QUADROS_AUDIVEIS_IGNORADOS) return false;
     const media = energias.reduce((soma, e) => soma + e, 0) / energias.length;
@@ -117,7 +141,7 @@ export class Segmentador {
       if (energias[i] >= limiar) comVoz++;
     }
     if (comVoz < QUADROS_DE_VOZ_MINIMOS) {
-      if (comVoz >= QUADROS_QUASE_VOZ || this.somQueParecefala(energias)) this.descartados++;
+      if (this.temQuadrosJuntos(energias, limiar) || this.somQueParecefala(energias)) this.descartados++;
       return;
     }
     const de = Math.max(0, primeiro - FOLGA_QUADROS);
@@ -153,6 +177,8 @@ export class Segmentador {
     for (let q = 0; q < inteiros; q++) {
       const quadro = entrada.slice(q * QUADRO, (q + 1) * QUADRO);
       const energia = rms(quadro);
+      this.quadrosTotais++;
+      if (energia >= LIMIAR_AUDIVEL) this.quadrosAudiveis++;
       this.atualizarPico(energia);
       this.empurrar(quadro, energia);
       const duracaoSeg = this.quadros.length / QUADROS_POR_SEGUNDO;
@@ -180,10 +206,10 @@ export class Segmentador {
   }
 }
 
-// Frases que o Whisper devolve para áudio quase mudo. Estas só são descartadas em trechos com pouca voz.
-const ALUCINACOES_FRACAS = /^(obrigad[oa]s?|tchau([,\s]+tchau)*|até (a )?próxima|até logo|\.+)[\s.!,]*$/i;
+// Frases que o Whisper devolve para áudio quase mudo. Estas só são descartadas quando há pouca voz.
+const ALUCINACOES_FRACAS = /^((muito )?obrigad[oa]s?|tchau([,\s]+tchau)*|valeu|até (a )?próxima|até logo|\.+)[\s.!,]*$/i;
 // Estas não são fala de ninguém: o Whisper as inventa também em ruído constante, que passa por "voz".
-const ALUCINACOES_FORTES = /^(legendas? (pela|por|realizad[ao]s? por) .*|.*amara\.org.*|inscreva-se.*|[[(][^\])]*[\])][\s.]*)$/i;
+const ALUCINACOES_FORTES = /^(legendas? (pela|por|realizad[ao]s? por) .*|.*amara\.org.*|inscreva-se.*|se inscreva.*|obrigad[oa]s? por assistir.*|[[(][^\])]*[\])][\s.]*)$/i;
 
 /** Texto que é só invenção do Whisper (legendas, "[Música]"), seja qual for a duração. */
 export function textoInventado(texto: string): boolean {
@@ -193,6 +219,14 @@ export function textoInventado(texto: string): boolean {
 
 export function pareceAlucinacao(texto: string, vozMs: number): boolean {
   return textoInventado(texto) || (vozMs < 1200 && ALUCINACOES_FRACAS.test(texto.trim()));
+}
+
+/**
+ * Texto do áudio inteiro sem as invenções do Whisper. `vozMs` é a voz que o motor viu na gravação: com pouca voz,
+ * "Obrigado." sozinho é invenção; sem motor (vozMs omitido) só as invenções fortes são barradas.
+ */
+export function semInvencao(texto: string, vozMs = Number.POSITIVE_INFINITY): string {
+  return pareceAlucinacao(texto, vozMs) ? '' : texto;
 }
 
 export interface EstadoAoVivo {
@@ -210,6 +244,8 @@ export interface ResultadoAoVivo {
   texto: string;
   /** Verdadeiro se todo trecho com voz foi transcrito; falso pede a transcrição do áudio inteiro. */
   completo: boolean;
+  /** Quanto de voz o motor viu na gravação (ms): com pouca voz, frases como "Obrigado." são invenção do Whisper. */
+  vozMs: number;
 }
 
 export interface OpcoesTranscritor {
@@ -248,6 +284,7 @@ export class TranscritorAoVivo {
   private encerrando = false; // parar já foi pedido: uma captura que ainda estava abrindo não deve ligar
   private encerrado = false;
   private amostrasRecebidas = 0;
+  private vozTotalMs = 0;
   private capturaPedida = false;
   private ligouEm: number | null = null;
   private chamadaEmVoo: AbortController | null = null;
@@ -285,6 +322,7 @@ export class TranscritorAoVivo {
   private enfileirar(trecho: Trecho) {
     if (this.cancelado) return;
     const indice = this.proximoIndice++;
+    this.vozTotalMs += trecho.vozMs;
     this.textos[indice] = '';
     this.falhou[indice] = false;
     this.feito[indice] = false;
@@ -437,7 +475,8 @@ export class TranscritorAoVivo {
     const esperadoMs = Math.max(duracaoMs ?? 0, this.ligouEm === null ? 0 : agora - this.ligouEm);
     if (esperadoMs <= 0) return true;
     const recebidoMs = (this.amostrasRecebidas * 1000) / TAXA_PCM;
-    return esperadoMs - recebidoMs <= Math.max(600, esperadoMs * 0.01); // folga: abertura da captura e o último bloco
+    // Folga: abertura da captura e o último bloco. Cresce com a gravação, mas até 3 s: numa consulta longa 1% seria meio minuto de fala perdida.
+    return esperadoMs - recebidoMs <= Math.max(600, Math.min(esperadoMs * 0.01, 3000));
   }
 
   /** Termina: corta o que sobrou, espera a fila e devolve o texto. `duracaoMs` é a duração real da gravação, para conferir que o áudio chegou todo. */
@@ -445,7 +484,7 @@ export class TranscritorAoVivo {
     this.encerrando = true;
     const agora = Date.now();
     if (this.no) await espera(this.opcoes.caudaMs ?? 120); // o último bloco do ScriptProcessor (até 85 ms) ainda não foi entregue
-    if (this.cancelado) return { texto: '', completo: false };
+    if (this.cancelado) return { texto: '', completo: false, vozMs: 0 };
     this.encerrado = true;
     this.soltarCaptura();
     const resto = this.segmentador.finalizar();
@@ -456,17 +495,17 @@ export class TranscritorAoVivo {
     }
     const estado = this.estado;
     const todosTranscritos = this.feito.every(Boolean) && !this.indisponivel;
-    // Nada transcrito de uma gravação com mais de 1,5 s: pode ser fala baixa demais para o segmentador ou só texto
-    // descartado como invenção ("Obrigado."). Silêncio de verdade e fala perdida não se distinguem: o áudio inteiro decide.
-    const textoVazioComAudio = estado.texto === '' && this.amostrasRecebidas >= 1.5 * TAXA_PCM;
+    // Nada transcrito, mas com som audível: pode ser fala baixa demais para o segmentador, ou só texto descartado como
+    // invenção. Isso não se distingue do que o segmentador viu: o áudio inteiro decide. Sem som audível é silêncio.
+    const textoVazioComSom = estado.texto === '' && this.segmentador.temSomAudivel;
     const completo = todosTranscritos
       && this.segmentador.descartesSuspeitos === 0
-      && !textoVazioComAudio
+      && !textoVazioComSom
       && this.capturaCobreAGravacao(agora, duracaoMs);
     this.cancelado = true; // depois de encerrar nada mais chega à tela (nem trecho atrasado)
     this.chamadaEmVoo?.abort();
     this.fila = [];
-    return { texto: estado.texto, completo };
+    return { texto: estado.texto, completo, vozMs: this.vozTotalMs };
   }
 
   /** Para tudo sem devolver nada (saiu da tela). */
