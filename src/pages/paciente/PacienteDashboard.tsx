@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import {
   CalendarDays, ChevronRight,
   Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles, Clock,
-  CheckCircle2, Circle,
+  CheckCircle2, Circle, ClipboardCheck,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
@@ -28,6 +28,7 @@ import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
+import { CAMINHO_CHECKIN, useCheckinSerie } from '@/hooks/useCheckinSemanal';
 import { NIVEL_LIMITES } from '@/hooks/useRecompensas';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { scoresDoResultado } from '@/utils/myid/scores';
@@ -114,6 +115,9 @@ export default function PacienteDashboard() {
       return count || 0;
     },
   });
+
+  // Check-in semanal: o Início só o oferece quando a consulta deu certo (sem a tabela, some).
+  const checkin = useCheckinSerie(paciente?.id);
 
   useEffect(() => {
     if (!user) return;
@@ -317,9 +321,12 @@ export default function PacienteDashboard() {
   ];
   // Extras — aparecem no checklist, mas não travam o "completo" (questionários são
   // Premium; exames são feitos com o profissional).
+  const mostrarCheckin = checkin.disponivel;
+  const checkinFeito = checkin.respondeuEstaSemana;
   const passosExtras = [
     { done: questionariosOk, label: 'Questionários', sub: questFree ? 'PAR-Q+, nutricional, físico — no Premium' : (proxInstrumento ? `Próximo: ${proxInstrumento.sigla} — ${proxInstrumento.nome}` : 'PAR-Q+, nutricional e físico'), path: questFree ? '/paciente/plano' : '/paciente/questionarios?foco=plano' },
     { done: nExames > 0, label: 'Exames presenciais', sub: 'Bioimpedância, pisada, dinamometria — com seu profissional', path: '/paciente/exames' },
+    ...(mostrarCheckin ? [{ done: checkinFeito, label: 'Check-in da semana', sub: '30 segundos: acompanhe sua evolução', path: CAMINHO_CHECKIN }] : []),
   ];
   const onboardingSteps = [...passosNucleo, ...passosExtras];
   const onboardingCompleto = passosNucleo.every(s => s.done);
@@ -339,6 +346,7 @@ export default function PacienteDashboard() {
     }
     if (!notifications.diarioHoje) return { titulo: 'Como você está hoje?', sub: 'Registre seu dia em menos de 1 minuto', cta: 'Registrar', path: '/paciente/diario' };
     if (showMyIdPrompt && myIdPromptType === 'monthly') return { titulo: 'Hora de atualizar seu MyID', sub: 'Já faz um mês — veja como você evoluiu', cta: 'Atualizar', path: '/paciente/questionarios' };
+    if (mostrarCheckin && !checkinFeito) return { titulo: 'Faça seu check-in da semana', sub: '30 segundos: acompanhe sua evolução', cta: 'Fazer check-in', path: CAMINHO_CHECKIN };
     return null; // tudo em dia → celebração
   })();
 
@@ -447,7 +455,7 @@ export default function PacienteDashboard() {
               </div>
               <span className="text-xs font-bold shrink-0 whitespace-nowrap">{proximaAcao.cta} →</span>
             </button>
-          ) : (
+          ) : checkin.isLoading ? null : (
             <div className="w-full rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20 p-4 flex items-center gap-3">
               <span className="text-2xl shrink-0">🔥</span>
               <div className="min-w-0">
@@ -533,6 +541,26 @@ export default function PacienteDashboard() {
                   </div>
                 </CardContent>
               </Card>
+            </V>
+          )}
+
+          {/* Check-in antes do MyID é permitido, mas só como atalho secundário: o MyID
+              continua sendo o primeiro passo (a próxima ação acima não muda). */}
+          {aba === 'passos' && mostrarCheckin && !myidConcluido && !checkinFeito && (
+            <V i={2}>
+              <button
+                onClick={() => navigate(CAMINHO_CHECKIN)}
+                className="w-full rounded-xl border border-border/60 bg-card p-3 flex items-center gap-3 text-left hover:bg-muted/40 transition-colors active:scale-[0.99]"
+              >
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <ClipboardCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">Check-in da semana (30 s)</p>
+                  <p className="text-[11px] text-muted-foreground">Você já pode fazer agora; o MyID continua sendo o seu primeiro passo</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
             </V>
           )}
 

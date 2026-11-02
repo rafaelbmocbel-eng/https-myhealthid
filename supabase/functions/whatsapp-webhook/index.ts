@@ -1,7 +1,22 @@
 // Webhook receptor da Z-API — recebe mensagens entrantes/saintes e grava na inbox.
 // Configure no painel Z-API: https://<project>.supabase.co/functions/v1/whatsapp-webhook
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { entregarPendentes } from "../_shared/enviar-whatsapp.ts";
+import { enviarWhatsapp, entregarPendentes } from "../_shared/enviar-whatsapp.ts";
+import { registrarMensagemSaida } from "../_shared/registrar-saida.ts";
+import {
+  montarAjudaCheckin,
+  montarConfirmacaoCheckin,
+  montarConfirmacaoParar,
+  montarConfirmacaoVoltar,
+} from "../_shared/checkin-semanal.ts";
+import {
+  decidirAcaoDaMensagem,
+  limiteDoPedidoRecente,
+  linkMyIDSeFaltar,
+  montarFalhaGravacao,
+  podeSerDoCheckin,
+  type AcaoCheckin,
+} from "../_shared/checkin-whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +25,119 @@ const corsHeaders = {
 
 function cleanPhone(p: string) {
   return String(p || "").replace(/\D/g, "");
+}
+
+// Check-in semanal de bem-estar: o cliente responde ao pedido de domingo com os números (ou PARAR/VOLTAR).
+// Devolve true quando a mensagem era do check-in e já foi tratada (o bot de IA não deve interpretá-la).
+// Qualquer falha ao CONSULTAR devolve false (a conversa segue normal); falha ao GRAVAR uma resposta
+// válida avisa o cliente e conta como tratada, para o bot não interpretar "4 3 5 4 4 2" como conversa.
+async function tratarCheckinWhatsapp(
+  admin: ReturnType<typeof createClient>,
+  m: { terapeuta_id: string; paciente_id: string | null; phone: string; tipo: string; fromMe: boolean; conteudo: string | null },
+): Promise<boolean> {
+  if (m.fromMe || !m.paciente_id || m.tipo !== "texto" || !podeSerDoCheckin(m.conteudo)) return false;
+  const paciente_id = m.paciente_id;
+
+  const responder = async (texto: string) => {
+    try {
+      const enviou = await enviarWhatsapp(admin, m.terapeuta_id, m.phone, texto);
+      if (enviou) {
+        await registrarMensagemSaida(admin, {
+          terapeuta_id: m.terapeuta_id, paciente_id, telefone: m.phone,
+          conteudo: texto, origem: "checkin_semanal",
+        });
+      }
+    } catch (e) { console.warn("[whatsapp-webhook] resposta do check-in não enviada:", e); }
+  };
+
+  let acao: AcaoCheckin;
+  try {
+    const agora = new Date();
+    // Pedido que ainda vale, mesmo já respondido: a confirmação promete corrigir se o cliente mandar os números de novo.
+    const [pedido, recente, pref] = await Promise.all([
+      admin.from("checkin_pedidos").select("semana")
+        .eq("paciente_id", paciente_id).gt("expira_em", agora.toISOString())
+        .order("enviado_em", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("checkin_pedidos").select("id", { count: "exact", head: true })
+        .eq("paciente_id", paciente_id).gte("enviado_em", limiteDoPedidoRecente(agora)),
+      admin.from("checkin_preferencias").select("whatsapp_ativo")
+        .eq("paciente_id", paciente_id).maybeSingle(),
+    ]);
+    if (pedido.error || recente.error) {
+      console.warn("[whatsapp-webhook] check-in: consulta indisponível, seguindo como conversa normal:",
+        pedido.error?.message || recente.error?.message);
+      return false;
+    }
+    // A preferência só decide o VOLTAR; sem ela, uma resposta ao pedido ainda é gravada.
+    if (pref.error) console.warn("[whatsapp-webhook] check-in: preferência indisponível:", pref.error.message);
+    acao = decidirAcaoDaMensagem({
+      texto: m.conteudo,
+      tipo: m.tipo,
+      fromMe: m.fromMe,
+      temPaciente: true,
+      pedidoAberto: pedido.data?.semana ? { semana: String(pedido.data.semana) } : null,
+      recebeuPedidoRecente: (recente.count || 0) > 0,
+      whatsappDesligado: pref.data?.whatsapp_ativo === false,
+    });
+  } catch (e) {
+    console.warn("[whatsapp-webhook] check-in: consulta falhou, seguindo como conversa normal:", e);
+    return false;
+  }
+  if (acao.acao === "ignorar") return false;
+
+  try {
+    if (acao.acao === "ajuda") {
+      await responder(montarAjudaCheckin(acao.motivo, acao.detalhe));
+      return true;
+    }
+
+    if (acao.acao === "parar" || acao.acao === "voltar") {
+      const ligar = acao.acao === "voltar";
+      const { error } = await admin.from("checkin_preferencias").upsert(
+        { paciente_id, whatsapp_ativo: ligar, atualizado_em: new Date().toISOString() },
+        { onConflict: "paciente_id" },
+      );
+      if (error) {
+        console.warn("[whatsapp-webhook] check-in: preferência não gravada:", error.message);
+        await responder(montarFalhaGravacao());
+      } else {
+        await responder(ligar ? montarConfirmacaoVoltar() : montarConfirmacaoParar());
+      }
+      return true;
+    }
+
+    const v = acao.valores;
+    const { error: erroGravar } = await admin.rpc("checkin_gravar", {
+      p_paciente: paciente_id,
+      p_semana: acao.semana,
+      p_origem: "whatsapp",
+      p_fadiga: v.fadiga,
+      p_sono: v.sono,
+      p_dor_muscular: v.dor_muscular,
+      p_estresse: v.estresse,
+      p_humor: v.humor,
+      p_urina: v.urina,
+      p_psr: v.psr,
+    });
+    if (erroGravar) {
+      console.warn("[whatsapp-webhook] check-in: gravação falhou:", erroGravar.message);
+      await responder(montarFalhaGravacao());
+      return true;
+    }
+
+    // O MyID continua sendo o primeiro passo: quem ainda não concluiu recebe o link junto da confirmação.
+    // Se a consulta falhar, o link vai mesmo assim (o pedido do MyID nunca some).
+    const [{ count: concluidos }, { data: portal }] = await Promise.all([
+      admin.from("myid_avaliacoes").select("id", { count: "exact", head: true })
+        .eq("paciente_id", paciente_id).eq("status", "concluido"),
+      admin.from("pacientes").select("portal_token").eq("id", paciente_id).maybeSingle(),
+    ]);
+    await responder(montarConfirmacaoCheckin(v, linkMyIDSeFaltar((concluidos || 0) > 0, portal?.portal_token)));
+  } catch (e) {
+    console.warn("[whatsapp-webhook] check-in: falha inesperada ao tratar a resposta:", e);
+    await responder(montarFalhaGravacao());
+  }
+  return true;
 }
 
 // Detecta a origem do lead pela 1ª mensagem, marcada pelos links de captação
@@ -296,6 +424,11 @@ Deno.serve(async (req) => {
       }
     } catch (e) { console.warn("lookup nova msg falhou:", e); }
 
+    // Check-in semanal: resposta numérica ao pedido de domingo, PARAR e VOLTAR. Roda antes do NPS e do bot.
+    const tratouCheckin = await tratarCheckinWhatsapp(admin, {
+      terapeuta_id, paciente_id, phone, tipo, fromMe, conteudo,
+    });
+
     // Captura de NPS: se o cliente respondeu só um número 0–10 e recebeu a
     // pergunta de NPS nos últimos 7 dias, guarda a nota (1 por pergunta).
     try {
@@ -342,7 +475,7 @@ Deno.serve(async (req) => {
     }
 
     // Bot de resposta + detecção de intenção (apenas msgs de entrada)
-    if (!fromMe && novaMsgId) {
+    if (!fromMe && novaMsgId && !tratouCheckin) {
       fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-bot-reply`, {
         method: "POST",
         headers: internalHeaders,
@@ -350,7 +483,7 @@ Deno.serve(async (req) => {
       }).catch((e) => console.warn("bot-reply trigger failed:", e));
     }
 
-    return new Response(JSON.stringify({ ok: true, conversa_id: conversaId }), {
+    return new Response(JSON.stringify(tratouCheckin ? { ok: true, conversa_id: conversaId, checkin: true } : { ok: true, conversa_id: conversaId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {

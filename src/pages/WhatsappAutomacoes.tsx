@@ -83,6 +83,7 @@ const GATILHOS: { k: string; label: string; desc: string }[] = [
   { k: "aniversario", label: "Aniversário", desc: "Parabeniza no dia do paciente" },
   { k: "pagamento_pendente", label: "Pagamento pendente", desc: "Lembrete gentil sobre pendência financeira" },
   { k: "progresso_semanal", label: "Progresso semanal 🏆", desc: "Domingo à noite: resumo da semana com XP, nível e incentivo (só para quem teve atividade)" },
+  { k: "checkin_semanal", label: "Check-in semanal 🌿", desc: "Domingo à noite: pede 6 números (fadiga, sono, dor muscular, estresse, humor e urina) e mostra a evolução no perfil do cliente." },
   { k: "nps_pos_sessao", label: "NPS (nota 0–10) ⭐", desc: "No dia seguinte à sessão pergunta a nota de 0 a 10; a resposta é guardada sozinha. Máximo 1 pergunta por cliente a cada 30 dias." },
 ];
 
@@ -357,7 +358,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
     setCfg({ ...cfg, dias_semana: dias });
   };
   // Opt-in: só disparam com true explícito no backend — o interruptor nasce desligado.
-  const GATILHOS_OPT_IN = new Set(['nps_pos_sessao', 'progresso_semanal', 'pagamento_pendente']);
+  const GATILHOS_OPT_IN = new Set(['nps_pos_sessao', 'progresso_semanal', 'pagamento_pendente', 'checkin_semanal']);
   const gatilhoLigado = (k: string) => {
     const v = (cfg.gatilhos_ativos || {})[k];
     return GATILHOS_OPT_IN.has(k) ? v === true : v !== false;

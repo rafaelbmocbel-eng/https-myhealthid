@@ -20,6 +20,7 @@ import {
   Activity,
   Lightbulb,
   ArrowLeft,
+  ClipboardCheck,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
@@ -50,14 +51,15 @@ const navItems = [
   { path: '/paciente/avatar',        label: 'Avatar clínico',       shortLabel: 'Avatar',   icon: Activity,        badgeKey: null, premium: false },
   { path: '/paciente/exames',        label: 'Exames',               shortLabel: 'Exames',   icon: ClipboardList,   badgeKey: null, premium: false },
   { path: '/paciente/dicas',         label: 'Dicas do MyID',        shortLabel: 'Dicas',    icon: Lightbulb,       badgeKey: null, premium: false },
+  { path: '/paciente/checkin',       label: 'Check-in da semana',   shortLabel: 'Check-in', icon: ClipboardCheck,  badgeKey: null, premium: false },
 ];
 
 // Bottom nav: Início, Agenda, Plano, Diário, +Mais
 const MOBILE_PRIMARY = [0, 5, 4, 2]; // indices in navItems (4 = Plano de tratamento)
-// Items in "Mais" sheet (all others). exames=12, dicas=13.
-const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12, 13];
+// Items in "Mais" sheet (all others). exames=12, dicas=13, checkin=14.
+const MOBILE_SECONDARY = [1, 3, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 // Agrupamento do sheet "Mais": saúde em cima, conta embaixo — menos carga visual
-const GRUPO_SAUDE = new Set(['/paciente/saude', '/paciente/evolucao', '/paciente/questionarios', '/paciente/avatar', '/paciente/exames', '/paciente/dicas']);
+const GRUPO_SAUDE = new Set(['/paciente/saude', '/paciente/evolucao', '/paciente/questionarios', '/paciente/avatar', '/paciente/exames', '/paciente/dicas', '/paciente/checkin']);
 
 interface Props {
   children: ReactNode;

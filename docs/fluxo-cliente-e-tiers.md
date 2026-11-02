@@ -5,7 +5,9 @@
 
 ## O fluxo de entrada do cliente (ordem obrigatória)
 
-1. **Responder o MyID** — sempre o primeiro passo.
+1. **Responder o MyID** — sempre o primeiro passo. (Exceção decidida pelo Rafael em 02/11/2026: o
+   **check-in semanal** pode ser respondido antes, mas o app continua pedindo o MyID em primeiro lugar;
+   ver "Atualização — Check-in semanal" no fim deste arquivo.)
 2. **Histórico clínico** — as respostas geram *achados clínicos sugeridos*
    (via triagem por IA) que entram na **fila de revisão do profissional** e,
    aprovados, alimentam o **Avatar Clínico** do cliente (visível na área do
@@ -381,3 +383,22 @@ conta e o login (senha ou Google, que liga ao mesmo usuário) devolvia a conta d
   `contato@myhealthid.com.br`.
 - **Cadastro profissional pelo Google** deixa uma marca na sessão (`mh_auth_modo`) para o cartão "Esta conta é de cliente" aparecer na
   volta; `RouteRestorer` não restaura rota de profissional para cliente em `/auth`.
+
+## Atualização (decisão do Rafael, 02/11/2026) — Check-in semanal de bem-estar
+
+Questionário curto de autorrelato (fadiga, sono, dor muscular, estresse e humor de 1 a 5, cor da urina de 1 a 8 e,
+para quem treina, recuperação de 0 a 10), respondido **toda semana** pelo cliente. Manual completo em
+`docs/checkin-semanal.md`. Regras de produto:
+
+- **Pode ser respondido antes do MyID, mas o app SEMPRE pede para o cliente começar (ou continuar) o MyID.** O check-in nunca
+  é bloqueado por isso e o pedido do MyID nunca some: o MyID continua sendo "Seu próximo passo" no portal; o check-in é um
+  passo secundário ("Check-in da semana") até o MyID estar concluído, e só depois passa a ser o próximo passo da semana.
+- **Não altera a nota oficial do MyID.** A nota só muda no reteste; o check-in mostra a tendência entre um MyID e o seguinte
+  (dimensões R, D e HID).
+- **Todos os clientes** (gratuitos e premium) respondem pelo portal. O envio semanal automático pelo WhatsApp só acontece
+  para o profissional que ligar o gatilho "Check-in semanal" em WhatsApp > Automações (desligado por padrão), para cliente
+  cadastrado e ativo, e cada mensagem fica registrada na conversa do Zap.
+- O cliente vê a **própria evolução** no portal (sem alertas); o profissional vê a evolução no perfil do cliente
+  (aba Avaliação e aba Evolução e Prontuários), com comparação e alerta de queda.
+- No **prontuário**: uma nota viva por cliente, "Check-in semanal (autorrelato do cliente)", atualizada a cada resposta, e uma
+  nota de atenção quando há queda. São registros automáticos de autorrelato, não evolução escrita pelo profissional.

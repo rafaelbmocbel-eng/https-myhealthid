@@ -22,6 +22,9 @@ verify_jwt = false
 [functions.zap-progresso-semanal]
 verify_jwt = false
 
+[functions.zap-checkin-semanal]
+verify_jwt = false
+
 [functions.notificacoes-inteligentes]
 verify_jwt = false
 

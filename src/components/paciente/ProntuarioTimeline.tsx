@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   FileText, Activity, Stethoscope, Heart, ClipboardCheck,
   Dumbbell, Calendar, AlertTriangle, Brain, RefreshCw, Loader2,
-  Edit3, Save, X, Mic, Trash2, TrendingUp, Zap, Ruler,
+  Edit3, Save, X, Mic, Trash2, TrendingUp, Zap, Ruler, HeartPulse,
 } from 'lucide-react';
 import type { NotaProntuario } from '@/hooks/useNotasProntuario';
 
@@ -99,6 +99,18 @@ const TIPO_CONFIG: Record<string, { icon: React.ReactNode; gradient: string; lab
     label: 'Evolução',
     order: 3.5,
   },
+  checkin_semanal: {
+    icon: <HeartPulse className="h-4 w-4" />,
+    gradient: 'from-teal-500/15 to-teal-500/5 text-teal-700 border-teal-200',
+    label: 'Check-in semanal',
+    order: 6.5,
+  },
+  checkin_alerta: {
+    icon: <AlertTriangle className="h-4 w-4" />,
+    gradient: 'from-amber-500/15 to-amber-500/5 text-amber-700 border-amber-200',
+    label: 'Atenção no check-in',
+    order: 6.4,
+  },
   geral: {
     icon: <FileText className="h-4 w-4" />,
     gradient: 'from-muted to-muted/50 text-muted-foreground border-border',
@@ -106,6 +118,9 @@ const TIPO_CONFIG: Record<string, { icon: React.ReactNode; gradient: string; lab
     order: 10,
   },
 };
+
+// Autorrelato do cliente: o profissional não edita (a próxima resposta do cliente reescreve a nota viva).
+const AUTORRELATO_TIPOS = ['checkin_semanal', 'checkin_alerta'];
 
 interface Props {
   notas: NotaProntuario[];
@@ -288,6 +303,9 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
                             <span className="text-[10px] text-muted-foreground font-medium">
                               {format(parseISO(nota.created_at), 'HH:mm')}
                             </span>
+                            {AUTORRELATO_TIPOS.includes(nota.tipo) && (
+                              <Badge variant="outline" className="text-[10px] rounded-lg">Autorrelato do cliente</Badge>
+                            )}
                             {hasRedFlags && (
                               <Badge className="bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40 text-[10px] gap-1 rounded-lg">
                                 <AlertTriangle className="h-2.5 w-2.5" /> Red Flags
@@ -297,15 +315,17 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
                           <div className="flex items-center gap-1">
                             {editingId !== nota.id && (
                               <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 w-7 p-0 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
-                                  onClick={() => handleEditNote(nota)}
-                                  title="Editar resumo"
-                                >
-                                  <Edit3 className="icon-sm" />
-                                </Button>
+                                {!AUTORRELATO_TIPOS.includes(nota.tipo) && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
+                                    onClick={() => handleEditNote(nota)}
+                                    title="Editar resumo"
+                                  >
+                                    <Edit3 className="icon-sm" />
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="ghost"

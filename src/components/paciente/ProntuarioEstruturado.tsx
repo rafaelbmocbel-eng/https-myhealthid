@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   Stethoscope, Mic, Activity, Brain, ClipboardCheck, Calendar, ChevronDown,
   ChevronUp, FileText, History, Edit3, Trash2, Save, X, Loader2, TrendingUp,
+  HeartPulse, AlertTriangle,
 } from 'lucide-react';
 import type { NotaProntuario } from '@/hooks/useNotasProntuario';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,8 @@ import { cn } from '@/lib/utils';
 const AVALIACAO_TIPOS = ['myid_resposta', 'avaliacao_profissional', 'avaliacao_voz'];
 const DIRETRIZ_TIPOS = ['conduta_diretriz'];
 const SESSAO_TIPOS = ['evolucao', 'sessao_confirmada', 'fechamento_sessao', 'sessao_falta'];
+// Autorrelato do cliente (check-in semanal): fica à parte da evolução e não é editado pelo profissional.
+const AUTORRELATO_TIPOS = ['checkin_semanal', 'checkin_alerta'];
 
 const TIPO_META: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
   myid_resposta:         { label: 'MyID', icon: <Activity className="h-3.5 w-3.5" />, cls: 'text-primary' },
@@ -32,6 +35,8 @@ const TIPO_META: Record<string, { label: string; icon: React.ReactNode; cls: str
   sessao_confirmada:     { label: 'Sessão', icon: <ClipboardCheck className="h-3.5 w-3.5" />, cls: 'text-emerald-600' },
   fechamento_sessao:     { label: 'Fechamento', icon: <ClipboardCheck className="h-3.5 w-3.5" />, cls: 'text-lime-600' },
   sessao_falta:          { label: 'Falta', icon: <X className="h-3.5 w-3.5" />, cls: 'text-red-600' },
+  checkin_semanal:       { label: 'Check-in semanal', icon: <HeartPulse className="h-3.5 w-3.5" />, cls: 'text-teal-600' },
+  checkin_alerta:        { label: 'Atenção no check-in', icon: <AlertTriangle className="h-3.5 w-3.5" />, cls: 'text-amber-600' },
 };
 
 interface Props {
@@ -50,18 +55,20 @@ export default function ProntuarioEstruturado({ notas, isLoading }: Props) {
   const [avaliacaoAtualAberta, setAvaliacaoAtualAberta] = useState(true);
   const [historicoAberto, setHistoricoAberto] = useState(false);
 
-  const { avaliacaoAtual, historicoAvaliacoes, diretrizVigente, sessoes } = useMemo(() => {
+  const { avaliacaoAtual, historicoAvaliacoes, diretrizVigente, sessoes, autorrelato } = useMemo(() => {
     const porData = [...notas].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
     const avals = porData.filter(n => AVALIACAO_TIPOS.includes(n.tipo));
     const diretrizes = porData.filter(n => DIRETRIZ_TIPOS.includes(n.tipo));
     const sess = porData.filter(n => SESSAO_TIPOS.includes(n.tipo));
+    const auto = porData.filter(n => AUTORRELATO_TIPOS.includes(n.tipo));
     return {
       avaliacaoAtual: avals[0] || null,
       historicoAvaliacoes: avals.slice(1),
       diretrizVigente: diretrizes[0] || null,
       sessoes: sess,
+      autorrelato: auto,
     };
   }, [notas]);
 
@@ -98,10 +105,12 @@ export default function ProntuarioEstruturado({ notas, isLoading }: Props) {
 
   const acoesNota = (nota: NotaProntuario) => (
     <div className="flex items-center gap-0.5 shrink-0">
-      <Button size="icon" variant="ghost" className="h-6 w-6 opacity-50 hover:opacity-100"
-        onClick={() => { setEditingId(nota.id); setEditText(nota.descricao); }} title="Editar">
-        <Edit3 className="h-3 w-3" />
-      </Button>
+      {!AUTORRELATO_TIPOS.includes(nota.tipo) && (
+        <Button size="icon" variant="ghost" className="h-6 w-6 opacity-50 hover:opacity-100"
+          onClick={() => { setEditingId(nota.id); setEditText(nota.descricao); }} title="Editar">
+          <Edit3 className="h-3 w-3" />
+        </Button>
+      )}
       <Button size="icon" variant="ghost" className="h-6 w-6 opacity-40 hover:opacity-100 hover:text-destructive"
         onClick={() => setDeleteTarget(nota.id)} title="Excluir">
         <Trash2 className="h-3 w-3" />
@@ -248,7 +257,45 @@ export default function ProntuarioEstruturado({ notas, isLoading }: Props) {
         </section>
       )}
 
-      {/* ═══ 4. SESSÕES (alinhadas com a diretriz) ═══ */}
+      {/* ═══ 4. AUTORRELATO DO CLIENTE (check-in semanal; não é evolução do profissional) ═══ */}
+      {autorrelato.length > 0 && (
+        <section aria-labelledby="prontuario-autorrelato">
+          <div className="flex items-center gap-2 mb-1">
+            <HeartPulse className="h-4 w-4 text-teal-600" />
+            <h3 id="prontuario-autorrelato" className="text-sm font-black">Autorrelato do cliente</h3>
+          </div>
+          <p className="text-[10px] text-muted-foreground mb-2">
+            Registro automático do check-in semanal, escrito a partir das respostas do cliente. Não é evolução do profissional e não é editável.
+          </p>
+          <div className="space-y-2">
+            {autorrelato.map(nota => {
+              const meta = TIPO_META[nota.tipo];
+              const alerta = nota.tipo === 'checkin_alerta';
+              return (
+                <div key={nota.id}
+                  className={cn('rounded-xl border p-3',
+                    alerta ? 'border-amber-300/70 bg-amber-500/[0.05]' : 'border-teal-200/70 bg-teal-500/[0.04]')}>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <span className={cn('flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide', meta.cls)}>
+                        {meta.icon} {meta.label}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(parseISO(nota.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </span>
+                    </div>
+                    {acoesNota(nota)}
+                  </div>
+                  <p className="text-[12px] font-semibold leading-tight mb-1">{nota.titulo}</p>
+                  {corpoNota(nota)}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ═══ 5. SESSÕES (alinhadas com a diretriz) ═══ */}
       {sessoes.length > 0 && (
         <section>
           <div className="flex items-center gap-2 mb-2">

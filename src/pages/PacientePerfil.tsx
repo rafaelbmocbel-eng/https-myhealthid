@@ -50,6 +50,7 @@ const DiretrizesPlanosHub = lazy(() => import('@/components/diretrizes/Diretrize
 const ResumoConsultaPresencial = lazy(() => import('@/components/presencial/ResumoConsultaPresencial'));
 const AvaliacaoVozAtual = lazy(() => import('@/components/voice/AvaliacaoVozAtual'));
 const QuestionariosClinicosCard = lazy(() => import('@/components/paciente/QuestionariosClinicosCard'));
+const CheckinSemanalCard = lazy(() => import('@/components/paciente/CheckinSemanalCard'));
 const ExamesPresenciaisCard = lazy(() => import('@/components/presencial/ExamesPresenciaisCard'));
 const PortalControleTab = lazy(() => import('@/components/paciente/PortalControleTab'));
 const ProntuarioTimeline = lazy(() => import('@/components/paciente/ProntuarioTimeline'));
@@ -1150,6 +1151,7 @@ export default function PacientePerfil() {
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"
             />
+            {id && <CheckinSemanalCard pacienteId={id} variante="avaliacao" />}
             <ResumoConsultaPresencial
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
@@ -1181,6 +1183,9 @@ export default function PacientePerfil() {
 
               {/* Evolução física: peso, gordura, músculo, PA, testes e adesão em gráficos */}
               {id && <EvolucaoFisicaCard pacienteId={id} />}
+
+              {/* Check-in semanal: autorrelato do cliente entre um MyID e o seguinte */}
+              {id && <CheckinSemanalCard pacienteId={id} variante="evolucao" />}
 
               {/* Prontuário estruturado: avaliação atual → histórico → diretriz vigente → sessões */}
               <ProntuarioEstruturado notas={notasProntuario} isLoading={loadingNotas} />

@@ -37,6 +37,7 @@ export function getProfessionalBreadcrumbs(pathname: string): BreadcrumbEntry[] 
 const PATIENT_ROUTES: { path: string; label: string }[] = [
   { path: '/paciente/saude', label: 'Saúde' },
   { path: '/paciente/diario', label: 'Diário' },
+  { path: '/paciente/checkin', label: 'Check-in da semana' },
   { path: '/paciente/evolucao', label: 'Evolução e Prontuários' },
   { path: '/paciente/exercicios', label: 'Treinos' },
   { path: '/paciente/agenda', label: 'Agenda' },
