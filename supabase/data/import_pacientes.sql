@@ -1,6 +1,4 @@
--- Desabilitar RLS para import (session via psql como postgres)
-ALTER TABLE public.pacientes DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
+-- O usuário do SUPABASE_DB_URL (postgres) ignora a RLS: não desligar a segurança por linha durante o import.
 
 -- Garantir perfil do terapeuta
 INSERT INTO public.profiles (user_id, email, nome) VALUES ('44266838-326c-452d-bebf-e617ac0f3470', 'rafaelbmocbel@gmail.com', 'Rafael') ON CONFLICT (user_id) DO NOTHING;
@@ -107,8 +105,5 @@ INSERT INTO public.pacientes (id, terapeuta_id, nome, sobrenome, email, telefone
 INSERT INTO public.pacientes (id, terapeuta_id, nome, sobrenome, email, telefone, data_nascimento, sexo, observacoes, ativo, created_at, updated_at, cpf, endereco, genero, origem, portal_token, tipo_pagamento, plano_saude, tipo_conta, cep, endereco_numero, endereco_complemento, bairro, cidade, uf, lgpd_aceite_em, lgpd_versao, contato_emergencia_nome, contato_emergencia_telefone, contato_emergencia_parentesco, alergias, medicamentos_uso, condicoes_preexistentes, queixa_principal, cadastro_status, nivel_atual, xp_total, avatar_url) VALUES ('6dc96e9b-c703-4d2f-8065-1973c234cebb', '44266838-326c-452d-bebf-e617ac0f3470', 'João', 'Paulo', NULL, NULL, NULL, NULL, NULL, true, '2026-05-25 16:54:33.484717+00', '2026-05-25 16:54:33.484717+00', NULL, NULL, NULL, 'cadastro_manual', '0a981a2fc8bf12e671c55e4dc9c85a0a', 'plano', NULL, 'clinico', NULL, NULL, NULL, NULL, NULL, NULL, '2026-05-25 16:54:33.213+00', 1.0, NULL, NULL, NULL, NULL, NULL, NULL, 'PO RLCA', 'completo', 'bronze', 0, NULL) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.pacientes (id, terapeuta_id, nome, sobrenome, email, telefone, data_nascimento, sexo, observacoes, ativo, created_at, updated_at, cpf, endereco, genero, origem, portal_token, tipo_pagamento, plano_saude, tipo_conta, cep, endereco_numero, endereco_complemento, bairro, cidade, uf, lgpd_aceite_em, lgpd_versao, contato_emergencia_nome, contato_emergencia_telefone, contato_emergencia_parentesco, alergias, medicamentos_uso, condicoes_preexistentes, queixa_principal, cadastro_status, nivel_atual, xp_total, avatar_url) VALUES ('3731f645-2deb-472e-a99e-9169ba305dba', '44266838-326c-452d-bebf-e617ac0f3470', 'Maria Amélia', 'Correa de amaral', 'ameliaamaral294@gmail.com', '(91) 98490-2966', NULL, NULL, NULL, true, '2026-05-19 17:11:12.731159+00', '2026-05-24 23:06:28.629067+00', NULL, NULL, NULL, 'manual', '9ef8194a39277b12f5a10341ff269aa6', 'plano', 'FUSEX', 'clinico', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'completo', 'bronze', 0, NULL) ON CONFLICT (id) DO NOTHING;
 
--- Reabilitar RLS
-ALTER TABLE public.pacientes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 SELECT COUNT(*) AS pacientes_importados FROM public.pacientes WHERE terapeuta_id = '44266838-326c-452d-bebf-e617ac0f3470';

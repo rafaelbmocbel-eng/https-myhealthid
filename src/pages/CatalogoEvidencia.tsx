@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
+import { useEquipeCientifica } from '@/hooks/useEquipeCientifica';
 import { Loader2, Sparkles, Trash2, ChevronDown, ChevronUp, BookOpen, ShieldAlert, Check } from 'lucide-react';
 
 interface Ex {
@@ -30,6 +31,7 @@ export default function CatalogoEvidencia() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'rascunho' | 'aprovado' | 'todos'>('rascunho');
   const [aberto, setAberto] = useState<string | null>(null);
+  const { ehEquipe, loading: carregandoEquipe } = useEquipeCientifica();
 
   const carregar = async () => {
     const { data } = await supabase
@@ -51,16 +53,21 @@ export default function CatalogoEvidencia() {
     aprovado: lista.filter(e => e.aprovado).length,
   }), [lista]);
 
+  // O banco só deixa a equipe científica editar o catálogo; sem permissão a gravação "passa" sem alterar nenhuma linha.
+  const SEM_PERMISSAO = 'Só a equipe científica pode alterar o catálogo.';
+
   const setAprovado = async (id: string, aprovado: boolean) => {
-    const { error } = await supabase.from('exercicios_biblioteca').update({ aprovado }).eq('id', id);
+    const { data, error } = await supabase.from('exercicios_biblioteca').update({ aprovado }).eq('id', id).select('id');
     if (error) return toast.error('Erro: ' + error.message);
+    if (!data || data.length === 0) return toast.error(SEM_PERMISSAO);
     setLista(l => l.map(e => e.id === id ? { ...e, aprovado } : e));
     toast.success(aprovado ? 'Liberado para os pacientes' : 'Ocultado');
   };
 
   const remover = async (id: string) => {
-    const { error } = await supabase.from('exercicios_biblioteca').delete().eq('id', id);
+    const { data, error } = await supabase.from('exercicios_biblioteca').delete().eq('id', id).select('id');
     if (error) return toast.error('Erro: ' + error.message);
+    if (!data || data.length === 0) return toast.error(SEM_PERMISSAO);
     setLista(l => l.filter(e => e.id !== id));
     toast.success('Removido');
   };
@@ -75,6 +82,12 @@ export default function CatalogoEvidencia() {
     <AppLayout>
       <div className="container max-w-3xl py-6 space-y-4">
         <PageHeader back title="Catálogo de Evidência (IA)" subtitle="Revise e libere os exercícios/dicas gerados a partir das meta-análises. Só os liberados aparecem para os pacientes." />
+
+        {!carregandoEquipe && !ehEquipe && (
+          <p className="text-xs text-muted-foreground rounded-md border border-border/60 bg-muted/30 px-3 py-2">
+            Você pode consultar os exercícios e a evidência. Liberar, ocultar e remover é só da equipe científica.
+          </p>
+        )}
 
         <div className="flex gap-1.5">
           {TABS.map(([k, label, n]) => (
@@ -159,16 +172,18 @@ export default function CatalogoEvidencia() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2 px-3 py-2 border-t border-border/40 bg-muted/20">
-                      {e.aprovado ? (
-                        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setAprovado(e.id, false)}>Ocultar</Button>
-                      ) : (
-                        <Button size="sm" className="h-8 text-xs gap-1" onClick={() => setAprovado(e.id, true)}><Check className="h-3.5 w-3.5" /> Liberar</Button>
-                      )}
-                      <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive hover:text-destructive ml-auto" onClick={() => remover(e.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    {ehEquipe && (
+                      <div className="flex items-center gap-2 px-3 py-2 border-t border-border/40 bg-muted/20">
+                        {e.aprovado ? (
+                          <Button size="sm" variant="outline" aria-label={`Ocultar ${e.nome}`} className="h-8 text-xs" onClick={() => setAprovado(e.id, false)}>Ocultar</Button>
+                        ) : (
+                          <Button size="sm" aria-label={`Liberar ${e.nome}`} className="h-8 text-xs gap-1" onClick={() => setAprovado(e.id, true)}><Check className="h-3.5 w-3.5" /> Liberar</Button>
+                        )}
+                        <Button size="sm" variant="ghost" aria-label={`Remover ${e.nome}`} className="h-8 text-xs text-destructive hover:text-destructive ml-auto" onClick={() => remover(e.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );

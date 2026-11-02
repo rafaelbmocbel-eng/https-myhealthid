@@ -1,5 +1,4 @@
 -- Importação de agendamentos do projeto antigo
-ALTER TABLE public.agendamentos DISABLE ROW LEVEL SECURITY;
 
 INSERT INTO public.agendamentos (id, terapeuta_id, paciente_id, titulo, data_inicio, data_fim, status, tipo_atendimento, observacoes, cor, created_at, updated_at, recorrencia_grupo_id, membro_equipe_id, clinica_id, confirmacao_enviada_em, lembrete_2h_enviado_em, pos_sessao_enviado_em, confirmado_pelo_paciente_em, no_show_processado_em, checked_in_em)
 VALUES ('120c310a-518d-4117-8245-840f4bbda6d6', '44266838-326c-452d-bebf-e617ac0f3470', 'e2304d20-b3ae-45ec-a77e-87595d5151c1', 'Auto-agendamento', '2026-02-18 11:30:00+00', '2026-02-18 12:15:00+00', 'concluido', 'retorno', NULL, '#6366f1', '2026-02-21 01:14:29.913256+00', '2026-03-20 22:28:52.635112+00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
@@ -302,6 +301,5 @@ INSERT INTO public.agendamentos (id, terapeuta_id, paciente_id, titulo, data_ini
 VALUES ('c2544810-21fd-4cff-b524-e50225ce342d', '44266838-326c-452d-bebf-e617ac0f3470', 'f29f1d8e-2bff-4920-9d6b-d8777693e01a', 'Murillo Guerreiro ', '2026-03-24 15:30:00+00', '2026-03-24 16:30:00+00', 'concluido', 'retorno', NULL, '#6366f1', '2026-03-20 16:51:15.807291+00', '2026-03-25 01:30:50.582857+00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
-ALTER TABLE public.agendamentos ENABLE ROW LEVEL SECURITY;
 
 SELECT COUNT(*) AS agendamentos_importados FROM public.agendamentos WHERE terapeuta_id = '44266838-326c-452d-bebf-e617ac0f3470';
