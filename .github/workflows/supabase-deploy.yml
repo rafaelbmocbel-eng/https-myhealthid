@@ -29,7 +29,8 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Push database migrations
-        run: supabase db push --db-url "$SUPABASE_DB_URL"
+        # O CLI atual pede confirmação e aborta sem terminal ("Nothing was changed"): --yes confirma as migrações pendentes.
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --yes
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
