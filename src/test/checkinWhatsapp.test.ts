@@ -7,14 +7,19 @@ import { CANONICAL_URL } from '@/utils/linkUrls';
 import {
   DIAS_PEDIDO_RECENTE,
   FALHAS_SEGUIDAS_PARA_PARAR,
+  JANELA_ENVIO_BR,
   LIMITE_LOTE_POR_PROFISSIONAL,
   MAX_ERROS_POR_SEMANA,
   URL_BASE_APP,
   VALIDADE_PEDIDO_HORAS,
+  chaveDoTelefone,
+  chavesDeTelefoneCompartilhado,
+  contarPuladosPorTelefoneCompartilhado,
   cortarLote,
   decidirAcaoDaMensagem,
   dentroDaJanelaDeEnvio,
   deveInterromperLote,
+  ehConflitoDeReserva,
   elegivelParaPedido,
   emBlocos,
   expiraEmDoPedido,
@@ -34,7 +39,7 @@ import {
   type CandidatoCheckin,
   type EntradaDecisao,
 } from '../../supabase/functions/_shared/checkin-whatsapp';
-import { inicioDaSemanaBR } from '../../supabase/functions/_shared/checkin-semanal';
+import { inicioDaSemanaBR, montarAjudaCheckin } from '../../supabase/functions/_shared/checkin-semanal';
 import WhatsappAutomacoes from '@/pages/WhatsappAutomacoes';
 
 // Os arquivos das Edge Functions (Deno) são carregados de verdade, com o Deno, o Supabase e o envio trocados por
@@ -170,7 +175,7 @@ describe('decidirAcaoDaMensagem: o que nunca é do check-in', () => {
     'Oi, tudo bem?',
     'Quero remarcar minha sessão para quinta às 15h',
     'Dormi 4 horas e acordei 3 vezes',
-    '4 3 5 4 4 2 mais ou menos',
+    'Marcado para o dia 12 às 14h e 30 min',
     'sim',
   ])('conversa comum com pedido em aberto segue para o bot: %s', (texto) => {
     expect(decidir({ texto })).toEqual(IGNORAR);
@@ -190,6 +195,30 @@ describe('decidirAcaoDaMensagem: PARAR e VOLTAR', () => {
   it.each(['PARAR', 'parar', 'Parar.', ' parar! ', 'PARAR\n'])('%j com pedido recente desliga o lembrete', (texto) => {
     expect(decidir({ texto })).toEqual({ acao: 'parar' });
   });
+
+  it.each([
+    'pare', 'Pare!', 'sair', 'SAIR', 'stop', 'Stop.', 'descadastrar', 'Descadastrar!',
+    'não quero mais receber', 'Nao quero mais receber', 'não quero mais receber mensagens',
+    'parar por favor', 'Por favor, parar', 'pare pfv', 'parar 🙏', '🛑 PARAR', 'sair, obrigado',
+  ])('variação de saída %j com pedido recente também desliga o lembrete', (texto) => {
+    expect(decidir({ texto })).toEqual({ acao: 'parar' });
+    expect(podeSerDoCheckin(texto)).toBe(true);
+  });
+
+  it.each(['pare', 'sair', 'stop', 'descadastrar', 'não quero mais receber', 'parar por favor', 'PARAR'])(
+    'variação de saída %j SEM pedido nos últimos 30 dias é conversa normal (vai ao bot)',
+    (texto) => {
+      expect(decidir({ texto, recebeuPedidoRecente: false })).toEqual(IGNORAR);
+      expect(decidir({ texto, recebeuPedidoRecente: false, pedidoAberto: null })).toEqual(IGNORAR);
+    },
+  );
+
+  it.each(['quero sair mais cedo hoje', 'não quero mais receber essa cobrança', 'vou parar de fumar', 'pare de me ligar'])(
+    'frase maior que contém a palavra de saída (%j) continua sendo conversa',
+    (texto) => {
+      expect(decidir({ texto })).toEqual(IGNORAR);
+    },
+  );
 
   it('PARAR sem pedido nos últimos 30 dias é conversa normal', () => {
     expect(decidir({ texto: 'PARAR', recebeuPedidoRecente: false })).toEqual(IGNORAR);
@@ -243,6 +272,42 @@ describe('decidirAcaoDaMensagem: resposta ao pedido', () => {
     expect((decidir({ texto }) as AcaoCheckin).acao).toBe('gravar');
   });
 
+  it.each(['👍 4 3 5 4 4 2', '4 3 5 4 4 2 😊', '4 😴 3 😬 5 4 4 2 🙏', '🌿4 3 5 4 4 2🌿'])('emoji junto dos números não atrapalha: %s', (texto) => {
+    expect(decidir({ texto })).toEqual({
+      acao: 'gravar',
+      semana: SEMANA_PEDIDO,
+      valores: { fadiga: 4, sono: 3, dor_muscular: 5, estresse: 4, humor: 4, urina: 2, psr: null },
+    });
+  });
+
+  it.each(['4,5 3 5 4 4 2', '4 3,5 5 4 4 2', '4 3 5 4 4 2.5', '3.5 4 4 4 4 2'])(
+    'decimal ambíguo (%s) com pedido em aberto pede ajuda e NUNCA grava',
+    (texto) => {
+      const r = decidir({ texto }) as Extract<AcaoCheckin, { acao: 'ajuda' }>;
+      expect(r.acao).toBe('ajuda');
+      expect(r.motivo).toBe('ambiguo');
+      expect(podeSerDoCheckin(texto)).toBe(true);
+    },
+  );
+
+  it.each(['Oi! 4 3 5 4 4 2', '4 3 5 4 4 2 mais ou menos', 'Bom dia, 1) 4 2) 3 3) 5 4) 4 5) 4 6) 2', 'minha semana: 4 3 5 4 4 2 obrigada'])(
+    'texto misturado que começa com 5 números de 1 a 5 (%j) pede ajuda com pedido em aberto',
+    (texto) => {
+      const r = decidir({ texto }) as Extract<AcaoCheckin, { acao: 'ajuda' }>;
+      expect(r.acao).toBe('ajuda');
+      expect(r.motivo).toBe('nao_numerico');
+      expect(podeSerDoCheckin(texto)).toBe(true);
+    },
+  );
+
+  it.each(['4,5 3 5 4 4 2', 'Oi! 4 3 5 4 4 2', '4 3 5 4 4 2 mais ou menos', '3.5 4 4 4 4 2'])(
+    'SEM pedido em aberto, ambíguo e texto misturado (%j) não são tratados: vão para o bot',
+    (texto) => {
+      expect(decidir({ texto, pedidoAberto: null })).toEqual(IGNORAR);
+      expect(decidir({ texto, pedidoAberto: null, recebeuPedidoRecente: false })).toEqual(IGNORAR);
+    },
+  );
+
   it('resposta válida SEM pedido em aberto é ignorada (vira conversa para o bot)', () => {
     expect(decidir({ pedidoAberto: null })).toEqual(IGNORAR);
   });
@@ -282,7 +347,11 @@ describe('decidirAcaoDaMensagem: resposta ao pedido', () => {
 });
 
 describe('podeSerDoCheckin (filtro barato antes de consultar o banco)', () => {
-  it.each(['PARAR', 'voltar', '4 3 5 4 4 2', '435442', '4 3 5 4', 'Parar.'])('%s pode ser do check-in', (t) => {
+  it.each([
+    'PARAR', 'voltar', '4 3 5 4 4 2', '435442', '4 3 5 4', 'Parar.',
+    'pare', 'sair', 'stop', 'descadastrar', 'não quero mais receber', 'parar por favor',
+    '👍 4 3 5 4 4 2', '4,5 3 5 4 4 2', 'Oi! 4 3 5 4 4 2',
+  ])('%s pode ser do check-in', (t) => {
     expect(podeSerDoCheckin(t)).toBe(true);
   });
 
@@ -331,6 +400,10 @@ describe('elegivelParaPedido', () => {
     ['telefone vazio', { telefone: '' }],
     ['telefone curto', { telefone: '12345' }],
     ['telefone só com máscara', { telefone: '() -' }],
+    ['telefone fixo', { telefone: '(91) 3333-4444' }],
+    ['celular de 9 dígitos que não começa com 9', { telefone: '(91) 88765-4321' }],
+    ['conta excluída pelo cliente (vinculo_encerrado_em)', { vinculoEncerradoEm: '2026-10-30T12:00:00.000Z' }],
+    ['telefone compartilhado com outra ficha ativa', { telefoneCompartilhado: true }],
     ['opt-out (PARAR)', { whatsappAtivo: false }],
     ['já tem pedido nesta semana', { pedidoNaSemana: true }],
     ['já respondeu nesta semana', { respondeuNaSemana: true }],
@@ -344,6 +417,13 @@ describe('elegivelParaPedido', () => {
     expect(elegivelParaPedido(cand({ errosNaSemana: MAX_ERROS_POR_SEMANA - 1 }))).toBe(true);
   });
 
+  it('vínculo ainda ativo (null ou ausente) e telefone não compartilhado continuam elegíveis', () => {
+    expect(elegivelParaPedido(cand({ vinculoEncerradoEm: null }))).toBe(true);
+    expect(elegivelParaPedido(cand({ vinculoEncerradoEm: undefined }))).toBe(true);
+    expect(elegivelParaPedido(cand({ telefoneCompartilhado: false }))).toBe(true);
+    expect(elegivelParaPedido(cand({ telefoneCompartilhado: undefined }))).toBe(true);
+  });
+
   it('errosNaSemana ausente conta como zero', () => {
     expect(elegivelParaPedido(cand({ errosNaSemana: undefined }))).toBe(true);
   });
@@ -354,7 +434,20 @@ describe('telefones', () => {
     ['(91) 98765-4321', true],
     ['91987654321', true],
     ['5591987654321', true],
-    ['(91) 3333-4444', true],
+    ['+55 91 98765-4321', true],
+    ['(55) 99123-4567', true],
+    ['(91) 8765-4321', true],
+    ['(91) 3333-4444', false],
+    ['(91) 2333-4444', false],
+    ['(91) 4333-4444', false],
+    ['(91) 5333-4444', false],
+    ['9133334444', false],
+    ['559133334444', false],
+    ['+55 (91) 3333-4444', false],
+    ['(55) 3123-4567', false],
+    ['(91) 88765-4321', false],
+    ['(91) 38765-4321', false],
+    ['5591887654321', false],
     ['9198765', false],
     ['', false],
     [null, false],
@@ -368,6 +461,65 @@ describe('telefones', () => {
     expect(telefoneParaEnvio('(91) 3333-4444')).toBe('559133334444');
     expect(telefoneParaEnvio('+55 91 98765-4321')).toBe('5591987654321');
     expect(telefoneParaEnvio('5591987654321')).toBe('5591987654321');
+  });
+});
+
+describe('telefone compartilhado', () => {
+  it('a chave são os últimos 10 dígitos, com ou sem máscara e código do país', () => {
+    for (const t of ['(91) 98765-4321', '91987654321', '5591987654321', '+55 91 98765-4321', '  91 9 8765 4321 ']) {
+      expect(chaveDoTelefone(t)).toBe('1987654321');
+    }
+    expect(chaveDoTelefone(null)).toBe('');
+    expect(chaveDoTelefone(undefined)).toBe('');
+    expect(chaveDoTelefone('() -')).toBe('');
+  });
+
+  it('só marca o número que aparece em 2 ou mais fichas, em qualquer formato', () => {
+    const marcados = chavesDeTelefoneCompartilhado([
+      { telefone: '(91) 98765-4321' },
+      { telefone: '5591987654321' },
+      { telefone: '(91) 98888-0000' },
+      { telefone: '(91) 97777-1111' },
+      { telefone: '91977771111' },
+      { telefone: '+55 91 97777-1111' },
+    ]);
+    expect([...marcados].sort()).toEqual(['1977771111', '1987654321']);
+  });
+
+  it('ficha sem telefone nunca forma grupo', () => {
+    expect(chavesDeTelefoneCompartilhado([{ telefone: null }, { telefone: '' }, { telefone: '() -' }, { telefone: undefined }]).size).toBe(0);
+    expect(chavesDeTelefoneCompartilhado([]).size).toBe(0);
+  });
+
+  it('conta só quem ficou de fora POR causa do telefone compartilhado', () => {
+    const lista = [
+      cand({ id: 'a', telefoneCompartilhado: true }),
+      cand({ id: 'b', telefoneCompartilhado: true }),
+      cand({ id: 'c', telefoneCompartilhado: true, whatsappAtivo: false }),
+      cand({ id: 'd', telefoneCompartilhado: true, respondeuNaSemana: true }),
+      cand({ id: 'e', telefoneCompartilhado: true, vinculoEncerradoEm: '2026-10-30T12:00:00.000Z' }),
+      cand({ id: 'f', telefoneCompartilhado: true, ativo: false }),
+      cand({ id: 'g' }),
+      cand({ id: 'h', pedidoNaSemana: true }),
+    ];
+    expect(contarPuladosPorTelefoneCompartilhado(lista)).toBe(2);
+    expect(contarPuladosPorTelefoneCompartilhado([])).toBe(0);
+    expect(filtrarElegiveis(lista).map((c) => c.id)).toEqual(['g']);
+  });
+});
+
+describe('reserva do pedido', () => {
+  it.each([
+    [{ code: '23505', message: 'qualquer texto' }, true],
+    [{ message: 'duplicate key value violates unique constraint "checkin_pedidos_paciente_id_semana_key"' }, true],
+    [{ message: 'duplicate key' }, true],
+    [{ code: '42501', message: 'permission denied for table checkin_pedidos' }, false],
+    [{ code: '42P01', message: 'relation "checkin_pedidos" does not exist' }, false],
+    [{ message: '' }, false],
+    [null, false],
+    [undefined, false],
+  ])('ehConflitoDeReserva(%j) = %s', (erro, esperado) => {
+    expect(ehConflitoDeReserva(erro)).toBe(esperado);
   });
 });
 
@@ -430,18 +582,24 @@ describe('lote por profissional', () => {
   });
 });
 
-// ───────────── Janela de envio (domingo, 18h às 21h de Brasília) ─────────────
+// ───────────── Janela de envio (domingo, 18h30 às 21h de Brasília) ─────────────
 
 describe('dentroDaJanelaDeEnvio', () => {
-  // 08/11/2026 é domingo. Brasília = UTC−3, então 18h BRT = 21h UTC.
+  // 08/11/2026 é domingo. Brasília = UTC−3, então 18h30 BRT = 21h30 UTC.
   const em = (iso: string, opcoes?: { forcar?: boolean }) => dentroDaJanelaDeEnvio(new Date(iso), opcoes);
 
-  it('domingo 17h59 está fora', () => {
-    expect(em('2026-11-08T20:59:00Z')).toBe(false);
+  it('a janela é de domingo, das 18h30 (inclusive) às 21h00 (exclusive) de Brasília', () => {
+    expect(JANELA_ENVIO_BR).toEqual({ diaSemana: 0, inicioMinutos: 18 * 60 + 30, fimMinutos: 21 * 60 });
   });
 
-  it('domingo 18h00 está dentro', () => {
-    expect(em('2026-11-08T21:00:00Z')).toBe(true);
+  it('domingo 18h00, o horário do progresso semanal, está fora', () => {
+    expect(em('2026-11-08T21:00:00Z')).toBe(false);
+    expect(em('2026-11-08T21:15:00Z')).toBe(false);
+  });
+
+  it('domingo 18h29 está fora e 18h30 está dentro', () => {
+    expect(em('2026-11-08T21:29:59Z')).toBe(false);
+    expect(em('2026-11-08T21:30:00Z')).toBe(true);
   });
 
   it('domingo 20h59 está dentro', () => {
@@ -484,7 +642,7 @@ describe('dentroDaJanelaDeEnvio', () => {
   });
 
   it('o pedido enviado no domingo à noite pertence à semana que começou na segunda anterior', () => {
-    expect(inicioDaSemanaBR(new Date('2026-11-08T21:00:00Z'))).toBe('2026-11-02');
+    expect(inicioDaSemanaBR(new Date('2026-11-08T21:30:00Z'))).toBe('2026-11-02');
     expect(inicioDaSemanaBR(new Date('2026-11-08T23:50:00Z'))).toBe('2026-11-02');
   });
 });
@@ -555,16 +713,40 @@ describe('migração do cron', () => {
     resolve(__dirname, '../../supabase/migrations/20261102150100_cron_checkin_semanal.sql'),
     'utf8',
   );
+  const progresso = readFileSync(
+    resolve(__dirname, '../../supabase/migrations/20260713050000_cron_progresso_semanal.sql'),
+    'utf8',
+  );
 
-  it('só age quando o schema cron existe e desagenda o job de mesmo nome antes de agendar', () => {
+  // Expande um campo simples do cron (lista "30,40,50", intervalo "22-23", passo "*/10") nos valores que ele dispara.
+  const expandir = (campo: string, limite: number): number[] => {
+    if (campo.startsWith('*/')) {
+      const passo = Number(campo.slice(2));
+      return Array.from({ length: Math.ceil(limite / passo) }, (_, i) => i * passo);
+    }
+    return campo.split(',').flatMap((parte) => {
+      const [de, ate] = parte.split('-').map(Number);
+      return ate === undefined ? [de] : Array.from({ length: ate - de + 1 }, (_, i) => de + i);
+    });
+  };
+
+  const agendas = [...sql.matchAll(/cron\.schedule\(\s*'([^']+)',\s*'([^']+)'/g)].map((m) => ({ job: m[1], expressao: m[2] }));
+
+  // Todos os instantes de UTC em que a expressão dispara no domingo 08/11/2026.
+  const disparosNoDomingo = (expressao: string): Date[] => {
+    const [minutos, horas, diaMes, mes, diaSemana] = expressao.split(' ');
+    expect([diaMes, mes, diaSemana]).toEqual(['*', '*', '0']);
+    return expandir(horas, 24).flatMap((hora) => expandir(minutos, 60).map((min) => new Date(Date.UTC(2026, 10, 8, hora, min))));
+  };
+
+  it('só age quando o schema cron existe e desagenda os jobs de mesmo nome antes de agendar', () => {
     expect(sql).toMatch(/to_regnamespace\('cron'\) IS NOT NULL/i);
-    const iUnschedule = sql.indexOf("cron.unschedule(jobname)");
-    const iSchedule = sql.indexOf("cron.schedule(");
+    const iUnschedule = sql.indexOf('cron.unschedule(jobname)');
+    const iSchedule = sql.indexOf('cron.schedule(');
     expect(iUnschedule).toBeGreaterThan(-1);
     expect(iSchedule).toBeGreaterThan(iUnschedule);
-    expect(sql).toMatch(/WHERE jobname = 'zap-checkin-semanal'/);
-    expect(sql).toMatch(/cron\.schedule\(\s*'zap-checkin-semanal'/);
-    expect(sql.indexOf("to_regnamespace")).toBeLessThan(iUnschedule);
+    expect(sql).toMatch(/WHERE jobname IN \('zap-checkin-semanal', 'zap-checkin-semanal-noite'\)/);
+    expect(sql.indexOf('to_regnamespace')).toBeLessThan(iUnschedule);
   });
 
   it('chama a função certa com o segredo do cron', () => {
@@ -572,21 +754,38 @@ describe('migração do cron', () => {
     expect(sql).toContain("name = 'cron_secret'");
   });
 
-  it('roda aos domingos, a cada 10 minutos, e cada disparo cai dentro da janela de envio', () => {
-    const m = sql.match(/'(\*\/10 21-23 \* \* 0)'/);
-    expect(m).not.toBeNull();
-    const [minutos, horas, , , diaSemana] = m![1].split(' ');
-    expect(minutos).toBe('*/10');
-    expect(diaSemana).toBe('0');
-    const [h0, h1] = horas.split('-').map(Number);
-    for (let hora = h0; hora <= h1; hora++) {
-      for (let min = 0; min < 60; min += 10) {
-        const instante = new Date(Date.UTC(2026, 10, 8, hora, min));
-        expect(dentroDaJanelaDeEnvio(instante)).toBe(true);
-      }
+  it('o net.http_post espera até 120 s (o padrão de 5 s estoura em rodadas com várias mensagens)', () => {
+    expect(sql).toMatch(/net\.http_post\([\s\S]*timeout_milliseconds := 120000\s*\)/);
+    expect(sql).not.toMatch(/timeout_milliseconds := (?!120000)\d+/);
+  });
+
+  it('são dois jobs de domingo: 21:30, 21:40 e 21:50 UTC, e a cada 10 minutos de 22:00 a 23:50 UTC', () => {
+    expect(agendas).toEqual([
+      { job: 'zap-checkin-semanal', expressao: '30,40,50 21 * * 0' },
+      { job: 'zap-checkin-semanal-noite', expressao: '*/10 22-23 * * 0' },
+    ]);
+    expect(sql.match(/cron\.schedule\(/g)).toHaveLength(2);
+  });
+
+  it('todo disparo cai dentro da janela de envio, são 15 rodadas e a última é às 20h50 de Brasília', () => {
+    const disparos = agendas.flatMap((a) => disparosNoDomingo(a.expressao)).sort((x, y) => x.getTime() - y.getTime());
+    expect(disparos).toHaveLength(15);
+    expect(disparos.length * LIMITE_LOTE_POR_PROFISSIONAL).toBe(75);
+    for (const d of disparos) expect(dentroDaJanelaDeEnvio(d)).toBe(true);
+    expect(disparos[0].toISOString()).toBe('2026-11-08T21:30:00.000Z');
+    expect(disparos[disparos.length - 1].toISOString()).toBe('2026-11-08T23:50:00.000Z');
+    const emDezMinutos = disparos.slice(1).map((d, i) => d.getTime() - disparos[i].getTime());
+    expect(new Set(emDezMinutos)).toEqual(new Set([10 * 60000]));
+    expect(dentroDaJanelaDeEnvio(new Date(disparos[0].getTime() - 10 * 60000))).toBe(false);
+    expect(dentroDaJanelaDeEnvio(new Date(disparos[disparos.length - 1].getTime() + 10 * 60000))).toBe(false);
+  });
+
+  it('nenhum disparo cai no mesmo minuto do progresso semanal (domingo 21:00 UTC)', () => {
+    expect(progresso).toContain("'0 21 * * 0'");
+    const minutoDoProgresso = Date.UTC(2026, 10, 8, 21, 0);
+    for (const a of agendas) {
+      for (const d of disparosNoDomingo(a.expressao)) expect(d.getTime()).toBeGreaterThanOrEqual(minutoDoProgresso + 30 * 60000);
     }
-    expect(dentroDaJanelaDeEnvio(new Date(Date.UTC(2026, 10, 8, h0 - 1, 50)))).toBe(false);
-    expect(dentroDaJanelaDeEnvio(new Date(Date.UTC(2026, 10, 9, 0, 0)))).toBe(false);
   });
 
   it('é posterior à migração do banco do check-in', () => {
@@ -733,7 +932,7 @@ describe('whatsapp-webhook: interceptação do check-in', () => {
     expect(textosEnviados()[0]).toContain('Anotei sua semana');
     expect(h.registrar).toHaveBeenCalledTimes(1);
     expect(h.registrar.mock.calls[0][1]).toMatchObject({
-      terapeuta_id: 'T1', paciente_id: 'P1', telefone: '5591987654321', origem: 'checkin_semanal',
+      terapeuta_id: 'T1', paciente_id: 'P1', telefone: '5591987654321', origem: 'checkin_semanal', bot: true,
     });
   });
 
@@ -779,7 +978,7 @@ describe('whatsapp-webhook: interceptação do check-in', () => {
     expect(botChamado()).toBe(0);
     expect(h.estado.rpcs.some((x) => x.nome === 'checkin_gravar')).toBe(false);
     expect(textosEnviados()[0]).toContain('Não consegui ler sua resposta do check-in');
-    expect(h.registrar.mock.calls[0][1]).toMatchObject({ origem: 'checkin_semanal' });
+    expect(h.registrar.mock.calls[0][1]).toMatchObject({ origem: 'checkin_semanal', bot: true });
   });
 
   it('falha ao gravar: avisa o cliente e considera tratada (o bot não interpreta os números)', async () => {
@@ -840,7 +1039,7 @@ describe('whatsapp-webhook: interceptação do check-in', () => {
     expect(up).toHaveLength(1);
     expect(up[0].payload).toMatchObject({ paciente_id: 'P1', whatsapp_ativo: false });
     expect(textosEnviados()[0]).toContain('não vai mais receber o check-in');
-    expect(h.registrar.mock.calls[0][1]).toMatchObject({ origem: 'checkin_semanal' });
+    expect(h.registrar.mock.calls[0][1]).toMatchObject({ origem: 'checkin_semanal', bot: true });
   });
 
   it('PARAR sem pedido nos últimos 30 dias é conversa normal: vai para o bot e não grava preferência', async () => {
@@ -901,6 +1100,102 @@ describe('whatsapp-webhook: interceptação do check-in', () => {
     expect(textosEnviados()).toEqual([montarFalhaGravacao()]);
   });
 
+  it.each([
+    ['confirmação da resposta', '4 3 5 4 4 2', () => undefined],
+    ['ajuda por quantidade', '4 3 5 4', () => undefined],
+    ['ajuda por faixa', '4 3 5 4 9 2', () => undefined],
+    ['ajuda por decimal ambíguo', '4,5 3 5 4 4 2', () => undefined],
+    ['ajuda por texto misturado', 'Oi! 4 3 5 4 4 2', () => undefined],
+    ['confirmação do PARAR', 'PARAR', () => undefined],
+    ['confirmação do VOLTAR', 'VOLTAR', () => { c.pref = { whatsapp_ativo: false }; }],
+    ['falha ao gravar a resposta', '4 3 5 4 4 2', () => { c.rpcErro = 'checkin_valor_invalido'; }],
+    ['falha ao gravar o PARAR', 'PARAR', () => { c.erroUpsert = true; }],
+    ['exceção ao gravar a resposta', '4 3 5 4 4 2', () => { c.rpcLanca = true; }],
+  ])('toda saída do check-in leva bot: true, para o bot de IA não ficar mudo por 30 min (%s)', async (_nome, texto, preparar) => {
+    preparar();
+    const r = await receber(texto);
+    expect(r.corpo.checkin).toBe(true);
+    expect(h.enviar).toHaveBeenCalledTimes(1);
+    expect(h.registrar).toHaveBeenCalledTimes(1);
+    expect(h.registrar.mock.calls[0][1]).toMatchObject({ origem: 'checkin_semanal', bot: true, paciente_id: 'P1', conteudo: textosEnviados()[0] });
+  });
+
+  it.each(['👍 4 3 5 4 4 2', '4 3 5 4 4 2 😊', '4 😴 3 😬 5 4 4 2 🙏'])('emoji junto dos números (%s): grava e confirma sem chamar o bot', async (texto) => {
+    const r = await receber(texto);
+    expect(r.corpo).toEqual({ ok: true, conversa_id: 'C1', checkin: true });
+    expect(botChamado()).toBe(0);
+    expect(h.estado.rpcs.filter((x) => x.nome === 'checkin_gravar')).toHaveLength(1);
+    expect(textosEnviados()[0]).toContain('Anotei sua semana');
+  });
+
+  it.each(['4,5 3 5 4 4 2', '3.5 4 4 4 4 2'])('decimal ambíguo (%s) com pedido vigente: manda a ajuda, não grava e NÃO chama o bot', async (texto) => {
+    const r = await receber(texto);
+    expect(r.corpo).toEqual({ ok: true, conversa_id: 'C1', checkin: true });
+    expect(botChamado()).toBe(0);
+    expect(h.estado.rpcs.some((x) => x.nome === 'checkin_gravar')).toBe(false);
+    expect(textosEnviados()).toEqual([montarAjudaCheckin('ambiguo', 'vírgula ou ponto junto dos números pode ser meio ponto')]);
+    expect(textosEnviados()[0]).toContain('meio ponto');
+  });
+
+  it.each(['Oi! 4 3 5 4 4 2', '4 3 5 4 4 2 mais ou menos'])('texto misturado (%s) com pedido vigente: manda a ajuda, não grava e NÃO chama o bot', async (texto) => {
+    const r = await receber(texto);
+    expect(r.corpo).toEqual({ ok: true, conversa_id: 'C1', checkin: true });
+    expect(botChamado()).toBe(0);
+    expect(h.estado.rpcs.some((x) => x.nome === 'checkin_gravar')).toBe(false);
+    expect(textosEnviados()).toEqual([montarAjudaCheckin('nao_numerico', 'a resposta tem letras ou símbolos')]);
+  });
+
+  it.each(['4,5 3 5 4 4 2', 'Oi! 4 3 5 4 4 2', '4 3 5 4 4 2 mais ou menos', '4 3 5 4 4 2'])(
+    'SEM pedido vigente, %j não é tratado pelo check-in: vai para o bot, sem ajuda nem gravação',
+    async (texto) => {
+      c.pedido = null;
+      const r = await receber(texto);
+      expect(r.corpo).toEqual({ ok: true, conversa_id: 'C1' });
+      expect(botChamado()).toBe(1);
+      expect(h.enviar).not.toHaveBeenCalled();
+      expect(h.registrar).not.toHaveBeenCalled();
+      expect(h.estado.rpcs.some((x) => x.nome === 'checkin_gravar')).toBe(false);
+    },
+  );
+
+  it.each(['pare', 'Sair', 'STOP', 'descadastrar', 'não quero mais receber', 'Parar por favor', 'parar 🙏'])(
+    'saída por %j com pedido recente: desliga o lembrete do check-in, confirma e NÃO chama o bot',
+    async (texto) => {
+      const r = await receber(texto);
+      expect(r.corpo).toEqual({ ok: true, conversa_id: 'C1', checkin: true });
+      expect(botChamado()).toBe(0);
+      const up = consultasDe('checkin_preferencias', 'upsert');
+      expect(up).toHaveLength(1);
+      expect(up[0].payload).toMatchObject({ paciente_id: 'P1', whatsapp_ativo: false });
+      expect(textosEnviados()[0]).toContain('não vai mais receber o check-in semanal');
+    },
+  );
+
+  it.each(['pare', 'Sair', 'STOP', 'descadastrar', 'não quero mais receber', 'Parar por favor'])(
+    'saída por %j SEM pedido nos últimos 30 dias é conversa normal: vai para o bot e não grava preferência',
+    async (texto) => {
+      c.recentes = 0;
+      c.pedido = null;
+      const r = await receber(texto);
+      expect(r.corpo).toEqual({ ok: true, conversa_id: 'C1' });
+      expect(botChamado()).toBe(1);
+      expect(consultasDe('checkin_preferencias', 'upsert')).toHaveLength(0);
+      expect(h.enviar).not.toHaveBeenCalled();
+    },
+  );
+
+  it('a confirmação do PARAR diz com clareza que desligou o lembrete DO CHECK-IN e como voltar', async () => {
+    await receber('PARAR');
+    expect(textosEnviados()[0]).toContain('não vai mais receber o check-in semanal');
+    expect(textosEnviados()[0]).toContain('VOLTAR');
+  });
+
+  it('o bot de IA só fica mudo para saída SEM metadata.bot: a regra continua no whatsapp-bot-reply', () => {
+    const bot = readFileSync(resolve(__dirname, '../../supabase/functions/whatsapp-bot-reply/index.ts'), 'utf8');
+    expect(bot).toContain('!ultSaida.metadata?.bot');
+    expect(bot).toContain('30 * 60 * 1000');
+  });
+
   it('cliente não cadastrado nunca passa pelo check-in', async () => {
     c.paciente = null;
     const r = await receber('4 3 5 4 4 2');
@@ -958,7 +1253,12 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
     treinos: Linha[];
     concluidos: Linha[];
     erroTabela: string | null;
+    /** Erro do insert da reserva que NÃO é conflito (permissão, tabela ausente). */
     erroInsertPedido: boolean;
+    erroDeletePedido: boolean;
+    erroInsertDisparo: boolean;
+    /** Clientes que outra execução reservou entre a leitura e a reserva. */
+    conflitos: Set<string>;
     envio: (telefone: string) => boolean;
   }
 
@@ -982,7 +1282,7 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
       automacoes: [ligado('T1')],
       pacientes: Array.from({ length: 7 }, (_, i) => cliente(i + 1)),
       pedidos: [], respostas: [], prefs: [], disparos: [], treinos: [], concluidos: [],
-      erroTabela: null, erroInsertPedido: false, envio: () => true,
+      erroTabela: null, erroInsertPedido: false, erroDeletePedido: false, erroInsertDisparo: false, conflitos: new Set(), envio: () => true,
     };
     h.estado.responder = (q) => {
       if (z.erroTabela === q.tabela) return { data: null, error: { message: 'falhou' } };
@@ -1004,8 +1304,20 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
         }
         case 'checkin_pedidos':
           if (q.op === 'insert') {
-            if (z.erroInsertPedido) return { error: { message: 'duplicate key' } };
-            z.pedidos.push({ ...(q.payload as Linha) });
+            const linha = q.payload as Linha;
+            if (z.erroInsertPedido) return { error: { code: '42501', message: 'permission denied for table checkin_pedidos' } };
+            const repetida = z.conflitos.has(String(linha.paciente_id))
+              || z.pedidos.some((p) => p.paciente_id === linha.paciente_id && p.semana === linha.semana);
+            if (repetida) {
+              return { error: { code: '23505', message: 'duplicate key value violates unique constraint "checkin_pedidos_paciente_id_semana_key"' } };
+            }
+            z.pedidos.push({ ...linha });
+            return { error: null };
+          }
+          if (q.op === 'delete') {
+            if (z.erroDeletePedido) return { error: { message: 'falhou ao apagar' } };
+            const alvo = (coluna: string) => q.chamadas.find(([m, a]) => m === 'eq' && a[0] === coluna)?.[1][1];
+            z.pedidos = z.pedidos.filter((p) => !(p.paciente_id === alvo('paciente_id') && p.semana === alvo('semana')));
             return { error: null };
           }
           return { data: aplicar(z.pedidos) };
@@ -1015,6 +1327,7 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
           return { data: aplicar(z.prefs) };
         case 'agente_disparos':
           if (q.op === 'insert') {
+            if (z.erroInsertDisparo) return { error: { message: 'falhou ao gravar' } };
             z.disparos.push({ ...(q.payload as Linha) });
             return { error: null };
           }
@@ -1053,7 +1366,9 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
   }
 
   const pedidosInseridos = () => consultasDe('checkin_pedidos', 'insert').map((q) => q.payload as Linha);
+  const reservasRemovidas = () => consultasDe('checkin_pedidos', 'delete');
   const disparosInseridos = () => consultasDe('agente_disparos', 'insert').map((q) => q.payload as Linha);
+  const idDoTelefone = (telefone: unknown) => `c${Number(String(telefone).slice(-2))}`;
 
   it('exige chamada interna (cron ou service role)', async () => {
     const r = await rodar({}, {});
@@ -1069,13 +1384,23 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
     expect(h.enviar).not.toHaveBeenCalled();
   });
 
-  it('domingo às 17h59 ainda está fora; às 18h00 já envia', async () => {
-    vi.setSystemTime(new Date('2026-11-08T20:59:00Z'));
-    expect((await rodar()).corpo.fora_da_janela).toBe(true);
+  it('domingo às 18h00 (hora do progresso semanal) e às 18h29 estão fora; às 18h30 já envia', async () => {
     vi.setSystemTime(new Date('2026-11-08T21:00:00Z'));
+    expect((await rodar()).corpo.fora_da_janela).toBe(true);
+    vi.setSystemTime(new Date('2026-11-08T21:29:59Z'));
+    expect((await rodar()).corpo.fora_da_janela).toBe(true);
+    expect(h.enviar).not.toHaveBeenCalled();
+    vi.setSystemTime(new Date('2026-11-08T21:30:00Z'));
     const r = await rodar();
     expect(r.corpo.fora_da_janela).toBeUndefined();
     expect(r.corpo.enviados).toBe(5);
+  });
+
+  it('domingo às 20h59 ainda envia e às 21h00 já está fora', async () => {
+    vi.setSystemTime(new Date('2026-11-09T00:00:00Z'));
+    expect((await rodar()).corpo.fora_da_janela).toBe(true);
+    vi.setSystemTime(new Date('2026-11-08T23:59:00Z'));
+    expect((await rodar()).corpo.enviados).toBe(5);
   });
 
   it('{ forcar: true } envia fora da janela; corpo inválido não derruba', async () => {
@@ -1089,7 +1414,10 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
   it('envia no máximo 5 por profissional e registra pedido, conversa e disparo de cada envio', async () => {
     const r = await rodar();
     expect(r.status).toBe(200);
-    expect(r.corpo).toMatchObject({ ok: true, semana: SEMANA, profissionais: 1, candidatos: 7, elegiveis: 7, enviados: 5, falhas: 0, adiados: 2 });
+    expect(r.corpo).toMatchObject({
+      ok: true, semana: SEMANA, profissionais: 1, candidatos: 7, elegiveis: 7, enviados: 5, falhas: 0, adiados: 2,
+      pulados_telefone_compartilhado: 0, ja_reservados: 0, erros_de_reserva: 0,
+    });
     expect(h.enviar).toHaveBeenCalledTimes(5);
     expect(h.enviar.mock.calls.map((cl) => cl[2])).toEqual([
       '5591987654301', '5591987654302', '5591987654303', '5591987654304', '5591987654305',
@@ -1105,7 +1433,7 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
 
     expect(h.registrar).toHaveBeenCalledTimes(5);
     for (const cl of h.registrar.mock.calls) {
-      expect(cl[1]).toMatchObject({ terapeuta_id: 'T1', origem: 'checkin_semanal' });
+      expect(cl[1]).toMatchObject({ terapeuta_id: 'T1', origem: 'checkin_semanal', bot: true });
     }
 
     const disparos = disparosInseridos();
@@ -1150,6 +1478,131 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
     const r = await rodar();
     expect(r.corpo).toMatchObject({ candidatos: 4, elegiveis: 1, enviados: 1 });
     expect(pedidosInseridos().map((p) => p.paciente_id)).toEqual(['c6']);
+  });
+
+  it('quem excluiu a própria conta (vinculo_encerrado_em) continua ativo na ficha, mas NÃO recebe', async () => {
+    z.pacientes = [
+      cliente(1, { vinculo_encerrado_em: '2026-10-30T12:00:00.000Z', user_id: null, portal_token: null }),
+      cliente(2, { vinculo_encerrado_em: null }),
+      cliente(3),
+    ];
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ candidatos: 3, elegiveis: 2, enviados: 2 });
+    expect(h.enviar.mock.calls.map((cl) => idDoTelefone(cl[2]))).toEqual(['c2', 'c3']);
+    expect(pedidosInseridos().map((p) => p.paciente_id)).toEqual(['c2', 'c3']);
+    expect(disparosInseridos().map((d) => d.paciente_id)).toEqual(['c2', 'c3']);
+  });
+
+  it('a consulta das fichas pede a coluna vinculo_encerrado_em e não depende do filtro do banco para excluí-las', async () => {
+    await rodar();
+    const consulta = consultasDe('pacientes')[0];
+    const colunas = String(consulta.chamadas.find(([m]) => m === 'select')![1][0]);
+    expect(colunas).toContain('vinculo_encerrado_em');
+    expect(colunas).toContain('portal_token');
+    expect(consulta.chamadas.some(([m, a]) => m === 'is' && a[0] === 'vinculo_encerrado_em')).toBe(false);
+  });
+
+  it('conta excluída não ocupa vaga no lote de 5', async () => {
+    z.pacientes = [
+      ...Array.from({ length: 3 }, (_, i) => cliente(i + 1, { vinculo_encerrado_em: '2026-10-30T12:00:00.000Z' })),
+      ...Array.from({ length: 5 }, (_, i) => cliente(i + 4)),
+    ];
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ elegiveis: 5, enviados: 5, adiados: 0 });
+    expect(h.enviar.mock.calls.map((cl) => idDoTelefone(cl[2]))).toEqual(['c4', 'c5', 'c6', 'c7', 'c8']);
+  });
+
+  it('telefone compartilhado (mãe e filho): nenhuma das fichas ativas com o mesmo número recebe, e o retorno conta quantos foram pulados', async () => {
+    z.pacientes = [
+      cliente(1, { telefone: '(91) 98765-4321' }),
+      cliente(2, { telefone: '91987654321' }),
+      cliente(3, { telefone: '+55 91 98765-4321' }),
+      cliente(4, { telefone: '(91) 98888-0004' }),
+      cliente(5, { telefone: '(91) 97777-0005' }),
+      cliente(6, { telefone: '(91) 97777-0005' }),
+    ];
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ candidatos: 6, elegiveis: 1, enviados: 1, pulados_telefone_compartilhado: 5 });
+    expect(h.enviar.mock.calls.map((cl) => cl[2])).toEqual(['5591988880004']);
+    expect(pedidosInseridos().map((p) => p.paciente_id)).toEqual(['c4']);
+    expect(z.pedidos.map((p) => p.paciente_id)).toEqual(['c4']);
+  });
+
+  it('o telefone compartilhado é comparado pelos últimos 10 dígitos, em qualquer formato do cadastro', async () => {
+    z.pacientes = [
+      cliente(1, { telefone: '(91) 98765-4321' }),
+      cliente(2, { telefone: '5591987654321' }),
+      cliente(3),
+    ];
+    z.pacientes[2].telefone = '(91) 98111-2222';
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ enviados: 1, pulados_telefone_compartilhado: 2 });
+    expect(h.enviar.mock.calls.map((cl) => cl[2])).toEqual(['5591981112222']);
+  });
+
+  it('o compartilhamento é a cada rodada: nenhum dos dois é tentado nem na rodada seguinte', async () => {
+    z.pacientes = [cliente(1, { telefone: '(91) 98765-4321' }), cliente(2, { telefone: '(91) 98765-4321' })];
+    await rodar();
+    vi.setSystemTime(new Date('2026-11-08T21:40:00Z'));
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ enviados: 0, pulados_telefone_compartilhado: 2 });
+    expect(h.enviar).not.toHaveBeenCalled();
+    expect(pedidosInseridos()).toHaveLength(0);
+  });
+
+  it('só conta o compartilhamento entre fichas ATIVAS: a ficha inativa com o mesmo número não bloqueia', async () => {
+    z.pacientes = [
+      cliente(1, { telefone: '(91) 98765-4321', ativo: false }),
+      cliente(2, { telefone: '(91) 98765-4321' }),
+    ];
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ candidatos: 1, enviados: 1, pulados_telefone_compartilhado: 0 });
+    expect(pedidosInseridos().map((p) => p.paciente_id)).toEqual(['c2']);
+  });
+
+  it('a ficha de conta excluída com o mesmo número também conta como compartilhada (a resposta poderia cair nela)', async () => {
+    z.pacientes = [
+      cliente(1, { telefone: '(91) 98765-4321', vinculo_encerrado_em: '2026-10-30T12:00:00.000Z' }),
+      cliente(2, { telefone: '(91) 98765-4321' }),
+      cliente(3),
+    ];
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ enviados: 1, pulados_telefone_compartilhado: 1 });
+    expect(h.enviar.mock.calls.map((cl) => idDoTelefone(cl[2]))).toEqual(['c3']);
+  });
+
+  it('dois profissionais podem ter o mesmo número em fichas diferentes: o compartilhamento é por profissional', async () => {
+    z.automacoes = [ligado('T1'), ligado('T2')];
+    z.pacientes = [
+      cliente(1, { telefone: '(91) 98765-4321' }),
+      cliente(2, { telefone: '(91) 98765-4321', terapeuta_id: 'T2' }),
+    ];
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ profissionais: 2, enviados: 2, pulados_telefone_compartilhado: 0 });
+  });
+
+  it('número compartilhado fica de fora e não ocupa vaga: os 5 do lote são de números só de uma ficha', async () => {
+    z.pacientes = [
+      cliente(1, { telefone: '(91) 98765-4321' }),
+      cliente(2, { telefone: '(91) 98765-4321' }),
+      cliente(3, { telefone: '(91) 98765-4333' }),
+      cliente(4, { telefone: '(91) 98765-4333' }),
+      ...Array.from({ length: 6 }, (_, i) => cliente(i + 5)),
+    ];
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ elegiveis: 6, enviados: 5, adiados: 1, pulados_telefone_compartilhado: 4 });
+    expect(h.enviar.mock.calls.map((cl) => idDoTelefone(cl[2]))).toEqual(['c5', 'c6', 'c7', 'c8', 'c9']);
+  });
+
+  it('telefone fixo e celular de 9 dígitos que não começa com 9 não recebem (nem gastam vaga)', async () => {
+    z.pacientes = [
+      cliente(1, { telefone: '(91) 3333-4444' }),
+      cliente(2, { telefone: '(91) 88765-4321' }),
+      cliente(3),
+    ];
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ candidatos: 3, elegiveis: 1, enviados: 1 });
+    expect(h.enviar.mock.calls.map((cl) => idDoTelefone(cl[2]))).toEqual(['c3']);
   });
 
   it('envio registrado sem pedido (a gravação do pedido falhou) não é repetido', async () => {
@@ -1234,14 +1687,28 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
     expect(textosEnviados()[0]).toContain('portaldocliente/tok-c1');
   });
 
-  it('falha de envio: registra erro, NÃO cria pedido nem mensagem na conversa', async () => {
+  it('falha de envio: a reserva é removida, registra erro e NÃO cria mensagem na conversa', async () => {
     z.envio = () => false;
     z.pacientes = [cliente(1), cliente(2)];
     const r = await rodar();
     expect(r.corpo).toMatchObject({ enviados: 0, falhas: 2 });
-    expect(pedidosInseridos()).toHaveLength(0);
+    expect(pedidosInseridos().map((p) => p.paciente_id)).toEqual(['c1', 'c2']);
+    expect(z.pedidos).toEqual([]);
+    expect(reservasRemovidas()).toHaveLength(2);
     expect(h.registrar).not.toHaveBeenCalled();
     expect(disparosInseridos().map((d) => d.status)).toEqual(['erro', 'erro']);
+  });
+
+  it('a reserva removida é só a do cliente que falhou, daquela semana e ainda sem resposta', async () => {
+    z.envio = (tel) => !tel.endsWith('02');
+    z.pacientes = [cliente(1), cliente(2), cliente(3)];
+    await rodar();
+    const [remocao] = reservasRemovidas();
+    expect(reservasRemovidas()).toHaveLength(1);
+    expect(chamada(remocao, 'eq', 'paciente_id')).toBe('c2');
+    expect(chamada(remocao, 'eq', 'semana')).toBe(SEMANA);
+    expect(remocao.chamadas.some(([m, a]) => m === 'is' && a[0] === 'respondido_em' && a[1] === null)).toBe(true);
+    expect(z.pedidos.map((p) => p.paciente_id)).toEqual(['c1', 'c3']);
   });
 
   it('falha em um só não impede os outros', async () => {
@@ -1249,8 +1716,21 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
     z.pacientes = [cliente(1), cliente(2), cliente(3)];
     const r = await rodar();
     expect(r.corpo).toMatchObject({ enviados: 2, falhas: 1 });
-    expect(pedidosInseridos().map((p) => p.paciente_id)).toEqual(['c1', 'c3']);
+    expect(z.pedidos.map((p) => p.paciente_id)).toEqual(['c1', 'c3']);
     expect(disparosInseridos().map((d) => d.status)).toEqual(['enviado', 'erro', 'enviado']);
+  });
+
+  it('quem falhou volta a ser tentado na rodada seguinte (e a reserva é refeita)', async () => {
+    z.envio = () => false;
+    z.pacientes = [cliente(1)];
+    await rodar();
+    expect(z.pedidos).toEqual([]);
+    vi.setSystemTime(new Date('2026-11-08T21:40:00Z'));
+    z.envio = () => true;
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ enviados: 1, falhas: 0 });
+    expect(z.pedidos.map((p) => p.paciente_id)).toEqual(['c1']);
+    expect(disparosInseridos().map((d) => d.status)).toEqual(['erro', 'enviado']);
   });
 
   it('três falhas seguidas (WhatsApp desconectado) interrompem o lote e o resto fica para a próxima rodada', async () => {
@@ -1262,7 +1742,7 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
     z.envio = () => true;
     const segunda = await rodar();
     expect(segunda.corpo).toMatchObject({ enviados: 5 });
-    expect(pedidosInseridos().map((p) => p.paciente_id)).toEqual(['c4', 'c5', 'c6', 'c7', 'c1']);
+    expect(z.pedidos.map((p) => p.paciente_id)).toEqual(['c4', 'c5', 'c6', 'c7', 'c1']);
   });
 
   it('exceção no envio conta como falha e não derruba a rodada', async () => {
@@ -1273,15 +1753,102 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
     expect(r.corpo).toMatchObject({ enviados: 1, falhas: 1 });
   });
 
-  it('pedido que não grava não impede a mensagem na conversa nem o disparo (e o envio não se repete)', async () => {
+  it('reserva o cliente ANTES de enviar: na hora do envio a reserva já existe', async () => {
+    const reservadoNoEnvio: boolean[] = [];
+    h.enviar.mockImplementation(async (_admin: unknown, _t: unknown, telefone: unknown) => {
+      const id = idDoTelefone(telefone);
+      reservadoNoEnvio.push(z.pedidos.some((p) => p.paciente_id === id && p.semana === SEMANA));
+      return true;
+    });
+    await rodar();
+    expect(reservadoNoEnvio).toEqual([true, true, true, true, true]);
+  });
+
+  it('reserva que não grava (erro que não é conflito): NÃO envia, conta o erro e o cliente fica para a próxima rodada', async () => {
     z.erroInsertPedido = true;
-    z.pacientes = [cliente(1)];
+    z.pacientes = [cliente(1), cliente(2)];
     const r = await rodar();
-    expect(r.corpo.enviados).toBe(1);
-    expect(h.registrar).toHaveBeenCalledTimes(1);
-    expect(disparosInseridos()[0].status).toBe('enviado');
+    expect(r.corpo).toMatchObject({ enviados: 0, falhas: 0, erros_de_reserva: 2, ja_reservados: 0 });
+    expect(h.enviar).not.toHaveBeenCalled();
+    expect(h.registrar).not.toHaveBeenCalled();
+    expect(disparosInseridos()).toHaveLength(0);
+    expect(h.pausas).toHaveLength(0);
+    z.erroInsertPedido = false;
     vi.setSystemTime(new Date('2026-11-08T21:40:00Z'));
-    expect((await rodar()).corpo.enviados).toBe(0);
+    expect((await rodar()).corpo).toMatchObject({ enviados: 2, erros_de_reserva: 0 });
+  });
+
+  it('exceção ao reservar também não envia e não derruba a rodada', async () => {
+    const consultaOriginal = h.estado.responder;
+    h.estado.responder = (q) => {
+      if (q.tabela === 'checkin_pedidos' && q.op === 'insert') throw new Error('rede caiu');
+      return consultaOriginal(q);
+    };
+    z.pacientes = [cliente(1), cliente(2)];
+    const r = await rodar();
+    expect(r.status).toBe(200);
+    expect(r.corpo).toMatchObject({ enviados: 0, erros_de_reserva: 2 });
+    expect(h.enviar).not.toHaveBeenCalled();
+  });
+
+  it('conflito na reserva (outra execução já reservou): pula o cliente, sem enviar, sem mensagem e sem disparo', async () => {
+    z.conflitos = new Set(['c2']);
+    z.pacientes = [cliente(1), cliente(2), cliente(3)];
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ enviados: 2, falhas: 0, ja_reservados: 1, erros_de_reserva: 0 });
+    expect(h.enviar.mock.calls.map((cl) => idDoTelefone(cl[2]))).toEqual(['c1', 'c3']);
+    expect(h.registrar.mock.calls.map((cl) => cl[1].paciente_id)).toEqual(['c1', 'c3']);
+    expect(disparosInseridos().map((d) => d.paciente_id)).toEqual(['c1', 'c3']);
+    expect(reservasRemovidas()).toHaveLength(0);
+  });
+
+  it('conflito não conta como falha de envio: três conflitos seguidos não interrompem o lote', async () => {
+    z.conflitos = new Set(['c1', 'c2', 'c3']);
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ enviados: 2, falhas: 0, ja_reservados: 3 });
+    expect(h.enviar.mock.calls.map((cl) => idDoTelefone(cl[2]))).toEqual(['c4', 'c5']);
+  });
+
+  it('não há pausa antes do primeiro envio de verdade, mesmo que os primeiros clientes tenham conflito', async () => {
+    z.conflitos = new Set(['c1', 'c2']);
+    z.pacientes = [cliente(1), cliente(2), cliente(3)];
+    await rodar();
+    expect(h.enviar).toHaveBeenCalledTimes(1);
+    expect(h.pausas).toHaveLength(0);
+  });
+
+  it('duas execuções em paralelo (cron sobreposto): cada cliente recebe UM pedido só', async () => {
+    const [a, b] = await Promise.all([rodar(), rodar()]);
+    const telefones = h.enviar.mock.calls.map((cl) => String(cl[2]));
+    expect(telefones).toHaveLength(5);
+    expect(new Set(telefones).size).toBe(5);
+    expect(z.pedidos.map((p) => p.paciente_id).sort()).toEqual(['c1', 'c2', 'c3', 'c4', 'c5']);
+    expect(Number(a.corpo.enviados) + Number(b.corpo.enviados)).toBe(5);
+    expect(Number(a.corpo.ja_reservados) + Number(b.corpo.ja_reservados)).toBe(5);
+    expect(z.disparos.filter((d) => d.status === 'enviado')).toHaveLength(5);
+  });
+
+  it('envio feito mas disparo não registrado (a execução caiu depois de enviar): a reserva impede o reenvio', async () => {
+    z.erroInsertDisparo = true;
+    z.pacientes = [cliente(1), cliente(2)];
+    await rodar();
+    expect(h.enviar).toHaveBeenCalledTimes(2);
+    h.enviar.mockClear();
+    vi.setSystemTime(new Date('2026-11-08T21:40:00Z'));
+    z.erroInsertDisparo = false;
+    const r = await rodar();
+    expect(r.corpo).toMatchObject({ elegiveis: 0, enviados: 0 });
+    expect(h.enviar).not.toHaveBeenCalled();
+  });
+
+  it('se a reserva de um envio que falhou não puder ser removida, o disparo de erro ainda é registrado e a rodada segue', async () => {
+    z.erroDeletePedido = true;
+    z.envio = (tel) => !tel.endsWith('01');
+    z.pacientes = [cliente(1), cliente(2)];
+    const r = await rodar();
+    expect(r.status).toBe(200);
+    expect(r.corpo).toMatchObject({ enviados: 1, falhas: 1 });
+    expect(disparosInseridos().map((d) => d.status)).toEqual(['erro', 'enviado']);
   });
 
   it('consulta de controle indisponível (migração não aplicada): ninguém recebe, para não repetir a cada rodada', async () => {
@@ -1308,6 +1875,38 @@ describe('zap-checkin-semanal: envio de domingo à noite', () => {
     expect(r.status).toBe(500);
     expect(r.corpo.ok).toBe(false);
     expect(h.enviar).not.toHaveBeenCalled();
+  });
+});
+
+// ───────────── Marca de bot na mensagem de saída ─────────────
+
+describe('registrarMensagemSaida: bot só quando pedido', () => {
+  type RegistrarSaida = (admin: unknown, opts: Record<string, unknown>) => Promise<void>;
+
+  async function gravar(extra: Record<string, unknown>) {
+    const { registrarMensagemSaida } = await vi.importActual<{ registrarMensagemSaida: RegistrarSaida }>(
+      '../../supabase/functions/_shared/registrar-saida.ts',
+    );
+    const estado = h.novoEstado();
+    estado.responder = (q) => (q.tabela === 'whatsapp_conversas' && q.op === 'select' ? { data: { id: 'C1', paciente_id: 'P1' } } : undefined);
+    const admin = { from: (t: string) => h.criarCliente(estado).from(t) };
+    await registrarMensagemSaida(admin, { terapeuta_id: 'T1', paciente_id: 'P1', telefone: '5591987654321', conteudo: 'oi', origem: 'checkin_semanal', ...extra });
+    const insercao = estado.consultas.find((q) => q.tabela === 'whatsapp_mensagens_inbox' && q.op === 'insert')!;
+    return insercao.payload as Record<string, unknown>;
+  }
+
+  it('com bot: true grava metadata { origem, bot: true } (o bot de IA não fica mudo por 30 min)', async () => {
+    const linha = await gravar({ bot: true });
+    expect(linha.metadata).toEqual({ origem: 'checkin_semanal', bot: true });
+    expect(linha).toMatchObject({ direcao: 'saida', tipo: 'texto', status: 'enviada', conversa_id: 'C1', terapeuta_id: 'T1', conteudo: 'oi' });
+  });
+
+  it('sem o parâmetro (as outras automações) o comportamento é o de sempre: metadata { origem }', async () => {
+    expect((await gravar({})).metadata).toEqual({ origem: 'checkin_semanal' });
+  });
+
+  it.each([false, undefined, null, 'true', 1])('só o booleano true marca o bot (%j)', async (bot) => {
+    expect((await gravar({ bot })).metadata).toEqual({ origem: 'checkin_semanal' });
   });
 });
 

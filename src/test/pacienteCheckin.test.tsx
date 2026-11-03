@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -17,6 +17,8 @@ const h = vi.hoisted(() => ({
   myidMigrados: 0,
   myidErro: false,
   consultas: [] as { tabela: string; colunas?: string; filtros: [string, unknown][]; ordem?: unknown[]; limite?: number }[],
+  servidor: { semana: '2026-11-02', devolveSemana: true },
+  segurarSerie: null as Promise<void> | null,
   rpc: vi.fn(),
   navigate: vi.fn(),
 }));
@@ -70,13 +72,17 @@ vi.mock('@/integrations/supabase/client', () => ({
         return { data: null, error: null };
       };
       b.maybeSingle = () => Promise.resolve(resolver());
-      b.then = (ok: (v: unknown) => unknown, ko: (e: unknown) => unknown) => Promise.resolve(resolver()).then(ok, ko);
+      b.then = (ok: (v: unknown) => unknown, ko: (e: unknown) => unknown) => {
+        const espera = tabela === 'checkins_semanais' ? h.segurarSerie : null;
+        return Promise.resolve(espera).then(resolver).then(ok, ko);
+      };
       return b;
     },
   },
 }));
 
 import PacienteCheckin from '@/pages/paciente/PacienteCheckin';
+import { respostaContaNestaSemana, useCheckinSemanal } from '@/hooks/useCheckinSemanal';
 import CheckinSemanalForm from '@/components/paciente/CheckinSemanalForm';
 import CheckinEvolucaoCliente from '@/components/paciente/CheckinEvolucaoCliente';
 import {
@@ -94,7 +100,7 @@ const AGORA = '2026-11-04T15:00:00Z';
 const SEMANA = '2026-11-02';
 const SEMANA_ANTERIOR = '2026-10-26';
 
-const linha = (semana: string, v: Partial<LinhaCheckin> = {}): LinhaCheckin & Registro => ({
+const linha = (semana: string, v: Partial<LinhaCheckin> & Registro = {}): LinhaCheckin & Registro => ({
   semana, fadiga: 4, sono: 4, dor_muscular: 4, estresse: 4, humor: 4, urina: null, psr: null, ...v,
 });
 
@@ -132,16 +138,20 @@ beforeEach(() => {
   h.myidMigrados = 0;
   h.myidErro = false;
   h.consultas = [];
+  h.servidor = { semana: SEMANA, devolveSemana: true };
+  h.segurarSerie = null;
   h.navigate.mockReset();
   h.rpc.mockReset();
   h.rpc.mockImplementation(async (nome: string, args: Record<string, unknown>) => {
     if (nome === 'registrar_checkin_semanal') {
-      h.serie = h.serie.filter((r) => r.semana !== SEMANA);
+      const semana = h.servidor.semana;
+      h.serie = h.serie.filter((r) => r.semana !== semana);
       h.serie.push({
-        semana: SEMANA, fadiga: args.p_fadiga, sono: args.p_sono, dor_muscular: args.p_dor_muscular,
+        semana, updated_at: new Date().toISOString(), fadiga: args.p_fadiga, sono: args.p_sono, dor_muscular: args.p_dor_muscular,
         estresse: args.p_estresse, humor: args.p_humor, urina: args.p_urina, psr: args.p_psr,
       });
-      return { data: { semana: SEMANA, indice: 18, respostas: 1, alertas: ['fadiga', 'sono'] }, error: null };
+      const devolvida = h.servidor.devolveSemana ? { semana } : {};
+      return { data: { ...devolvida, indice: 18, respostas: 1, alertas: ['fadiga', 'sono'] }, error: null };
     }
     return { data: true, error: null };
   });
@@ -655,5 +665,216 @@ describe('PacienteCheckin: consulta e vínculo', () => {
     renderizar();
     expect(await screen.findByText('Conecte-se a um profissional')).toBeInTheDocument();
     expect(screen.queryByRole('form', { name: 'Check-in da semana' })).toBeNull();
+  });
+});
+
+// Segunda-feira, 09/11/2026 (12h em Brasília): a semana atual começa hoje. O pedido de domingo (08/11, à noite) é da
+// semana de 02/11, e o servidor grava a resposta de segunda nela.
+const SEGUNDA = '2026-11-09T15:00:00Z';
+const SEMANA_NOVA = '2026-11-09';
+const SEGUNDA_MEIA_NOITE_BR = '2026-11-09T03:00:00Z';
+const DOMINGO_ANTES_DA_MEIA_NOITE_BR = '2026-11-09T02:59:59Z';
+
+describe('respostaContaNestaSemana', () => {
+  const agora = new Date(SEGUNDA);
+
+  it('a linha da semana atual conta, com ou sem horário de gravação', () => {
+    expect(respostaContaNestaSemana({ semana: SEMANA_NOVA }, agora)).toBe(true);
+    expect(respostaContaNestaSemana({ semana: SEMANA_NOVA, updated_at: null }, agora)).toBe(true);
+    expect(respostaContaNestaSemana({ semana: SEMANA_NOVA, updated_at: '2026-11-01T10:00:00Z' }, agora)).toBe(true);
+  });
+
+  it('a linha da semana anterior só conta se foi gravada a partir da meia-noite de segunda (Brasília), inclusive', () => {
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: SEGUNDA_MEIA_NOITE_BR }, agora)).toBe(true);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '2026-11-09T03:00:01Z' }, agora)).toBe(true);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: DOMINGO_ANTES_DA_MEIA_NOITE_BR }, agora)).toBe(false);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '2026-11-08T23:00:00Z' }, agora)).toBe(false);
+  });
+
+  it('entende o formato do Postgres (microssegundos e deslocamento) e o fuso de Brasília', () => {
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '2026-11-09T13:10:00.123456+00:00' }, agora)).toBe(true);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '2026-11-09T00:00:00-03:00' }, agora)).toBe(true);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '2026-11-08T23:59:59-03:00' }, agora)).toBe(false);
+  });
+
+  it('sem horário de gravação, ou com horário inválido, a semana anterior não conta', () => {
+    expect(respostaContaNestaSemana({ semana: SEMANA }, agora)).toBe(false);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: null }, agora)).toBe(false);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '' }, agora)).toBe(false);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: 'ontem' }, agora)).toBe(false);
+  });
+
+  it('usa a data de hoje quando não recebe uma', () => {
+    vi.setSystemTime(new Date(SEGUNDA));
+    expect(respostaContaNestaSemana({ semana: SEMANA_NOVA })).toBe(true);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '2026-11-09T13:10:00Z' })).toBe(true);
+    expect(respostaContaNestaSemana({ semana: SEMANA })).toBe(false);
+  });
+
+  it('virada de semana: quarta ainda é a semana de 02/11; segunda 00h30 em Brasília já é a de 09/11', () => {
+    const quarta = new Date('2026-11-04T15:00:00Z');
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '2026-11-04T12:00:00Z' }, quarta)).toBe(true);
+    const segundaMadrugada = new Date('2026-11-09T03:30:00Z');
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '2026-11-04T12:00:00Z' }, segundaMadrugada)).toBe(false);
+    expect(respostaContaNestaSemana({ semana: SEMANA, updated_at: '2026-11-09T03:10:00Z' }, segundaMadrugada)).toBe(true);
+  });
+});
+
+describe('PacienteCheckin: pedido de domingo respondido na segunda (o servidor grava na semana anterior)', () => {
+  beforeEach(() => {
+    vi.setSystemTime(new Date(SEGUNDA));
+    h.servidor.semana = SEMANA;
+  });
+
+  it('ao recarregar, a resposta de segunda gravada na semana anterior conta: mostra "já respondeu" e não pede de novo', async () => {
+    h.serie = [linha(SEMANA, { fadiga: 2, updated_at: '2026-11-09T13:10:00+00:00' })];
+    renderizar();
+    expect(await screen.findByText('Você já respondeu esta semana')).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Check-in da semana' })).toBeNull();
+    expect(screen.getByText(/semana de 09\/11 a 15\/11/)).toBeInTheDocument();
+    expect(screen.getByText(`2 · ${ROTULOS_ITEM.fadiga.niveis[2]}`)).toBeInTheDocument();
+  });
+
+  it('fluxo completo: responde pelo portal na segunda, o servidor grava na semana anterior, e depois de recarregar não pergunta de novo', async () => {
+    const primeira = await abrirFormulario();
+    responderTudo();
+    fireEvent.click(botaoEnviar());
+    await screen.findByText('Check-in registrado');
+    expect(h.serie).toHaveLength(1);
+    expect(h.serie[0].semana).toBe(SEMANA);
+    primeira.unmount();
+
+    renderizar();
+    expect(await screen.findByText('Você já respondeu esta semana')).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Check-in da semana' })).toBeNull();
+  });
+
+  it('"Corrigir minhas respostas" corrige a linha que conta (a da semana anterior): abre preenchido com ela e reenvia', async () => {
+    h.serie = [linha(SEMANA, { fadiga: 2, sono: 3, dor_muscular: 5, estresse: 1, humor: 4, urina: 3, updated_at: '2026-11-09T13:10:00Z' })];
+    renderizar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Corrigir minhas respostas' }));
+    expect(await screen.findByRole('radio', { name: `2 ${ROTULOS_ITEM.fadiga.niveis[2]}` })).toBeChecked();
+    expect(screen.getByRole('radio', { name: `1 ${ROTULOS_ITEM.estresse.niveis[1]}` })).toBeChecked();
+    expect(screen.getByRole('radio', { name: '3 Amarelo claro' })).toBeChecked();
+
+    responder('humor', 5);
+    fireEvent.click(botaoEnviar());
+    await screen.findByText('Check-in registrado');
+    expect(h.rpc).toHaveBeenCalledWith('registrar_checkin_semanal', {
+      p_fadiga: 2, p_sono: 3, p_dor_muscular: 5, p_estresse: 1, p_humor: 5, p_urina: 3, p_psr: null,
+    });
+    expect(h.serie).toHaveLength(1);
+    expect(h.serie[0]).toMatchObject({ semana: SEMANA, humor: 5 });
+  });
+
+  it('resposta da semana anterior feita um segundo ANTES de segunda 00h (Brasília) não conta: o formulário aparece', async () => {
+    h.serie = [linha(SEMANA, { updated_at: DOMINGO_ANTES_DA_MEIA_NOITE_BR })];
+    await abrirFormulario();
+    expect(screen.queryByText('Você já respondeu esta semana')).toBeNull();
+  });
+
+  it('feita exatamente à meia-noite de segunda (Brasília) já conta', async () => {
+    h.serie = [linha(SEMANA, { updated_at: SEGUNDA_MEIA_NOITE_BR })];
+    renderizar();
+    expect(await screen.findByText('Você já respondeu esta semana')).toBeInTheDocument();
+  });
+
+  it('sem horário de gravação, a semana anterior não conta', async () => {
+    h.serie = [linha(SEMANA)];
+    await abrirFormulario();
+    expect(screen.queryByText('Você já respondeu esta semana')).toBeNull();
+  });
+
+  it('com a linha da semana atual e a da anterior gravada hoje, vale a da semana atual', async () => {
+    h.serie = [
+      linha(SEMANA, { fadiga: 1, updated_at: '2026-11-09T13:10:00Z' }),
+      linha(SEMANA_NOVA, { fadiga: 5, updated_at: '2026-11-09T14:00:00Z' }),
+    ];
+    renderizar();
+    expect(await screen.findByText('Você já respondeu esta semana')).toBeInTheDocument();
+    expect(screen.getByText(`5 · ${ROTULOS_ITEM.fadiga.niveis[5]}`)).toBeInTheDocument();
+    expect(screen.queryByText(`1 · ${ROTULOS_ITEM.fadiga.niveis[1]}`)).toBeNull();
+  });
+
+  it('virada de semana: a resposta de quarta (semana de 02/11) deixa de contar na segunda 00h30 (Brasília)', async () => {
+    vi.setSystemTime(new Date('2026-11-09T03:30:00Z'));
+    h.serie = [linha(SEMANA, { updated_at: '2026-11-04T15:00:00Z' })];
+    await abrirFormulario();
+    expect(screen.queryByText('Você já respondeu esta semana')).toBeNull();
+  });
+
+  it('virada de semana: gravada em segunda 00h10 (Brasília) na semana anterior, conta às 00h30', async () => {
+    vi.setSystemTime(new Date('2026-11-09T03:30:00Z'));
+    h.serie = [linha(SEMANA, { updated_at: '2026-11-09T03:10:00Z' })];
+    renderizar();
+    expect(await screen.findByText('Você já respondeu esta semana')).toBeInTheDocument();
+  });
+});
+
+describe('useCheckinSemanal: semana devolvida pela função ao registrar', () => {
+  const valores: ValoresCheckin = { fadiga: 4, sono: 3, dor_muscular: 5, estresse: 2, humor: 4, urina: null, psr: null };
+
+  function montarHook() {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } } });
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+    const hook = renderHook(() => useCheckinSemanal(), { wrapper });
+    return { qc, ...hook };
+  }
+
+  beforeEach(() => {
+    vi.setSystemTime(new Date(SEGUNDA));
+    h.servidor.semana = SEMANA;
+  });
+
+  it('a resposta já conta no cache assim que a função responde, antes de a lista ser recarregada (semana anterior incluída)', async () => {
+    const { qc, result } = montarHook();
+    await waitFor(() => expect(result.current.serie.disponivel).toBe(true));
+    expect(result.current.serie.respondeuEstaSemana).toBe(false);
+
+    h.segurarSerie = new Promise<void>(() => {});
+    act(() => { result.current.registrar.mutate(valores); });
+    await waitFor(() => expect(h.rpc).toHaveBeenCalledWith('registrar_checkin_semanal', expect.anything()));
+    await waitFor(() => expect(result.current.serie.respondeuEstaSemana).toBe(true));
+
+    expect(result.current.serie.linhaDaSemana).toMatchObject({ semana: SEMANA, fadiga: 4, sono: 3, dor_muscular: 5, estresse: 2, humor: 4 });
+    const cache = qc.getQueryData<{ linhas: { semana: string; updated_at: string }[] }>(['checkin-semanal', 'serie', 'pac-1']);
+    expect(cache!.linhas).toHaveLength(1);
+    expect(Date.parse(cache!.linhas[0].updated_at)).toBe(Date.parse(SEGUNDA));
+  });
+
+  it('a linha da mesma semana é trocada, não duplicada, e a lista continua em ordem crescente', async () => {
+    h.serie = [linha('2026-10-26'), linha(SEMANA, { fadiga: 1, updated_at: '2026-11-04T12:00:00Z' })];
+    const { qc, result } = montarHook();
+    await waitFor(() => expect(result.current.serie.linhas).toHaveLength(2));
+
+    h.segurarSerie = new Promise<void>(() => {});
+    act(() => { result.current.registrar.mutate(valores); });
+    await waitFor(() => expect(result.current.serie.linhaDaSemana?.fadiga).toBe(4));
+
+    const semanas = qc.getQueryData<{ linhas: { semana: string }[] }>(['checkin-semanal', 'serie', 'pac-1'])!.linhas.map((l) => l.semana);
+    expect(semanas).toEqual(['2026-10-26', SEMANA]);
+  });
+
+  it('se a função não devolver a semana, o cache não é alterado: só recarrega a lista', async () => {
+    h.servidor.devolveSemana = false;
+    const { result } = montarHook();
+    await waitFor(() => expect(result.current.serie.disponivel).toBe(true));
+
+    h.segurarSerie = new Promise<void>(() => {});
+    act(() => { result.current.registrar.mutate(valores); });
+    await waitFor(() => expect(h.rpc).toHaveBeenCalledWith('registrar_checkin_semanal', expect.anything()));
+    await act(async () => { await new Promise((r) => setTimeout(r, 40)); });
+    expect(result.current.serie.respondeuEstaSemana).toBe(false);
+    expect(result.current.serie.linhas).toHaveLength(0);
+  });
+
+  it('semana devolvida em formato de data com hora também é lida (só AAAA-MM-DD)', async () => {
+    h.rpc.mockResolvedValueOnce({ data: { semana: `${SEMANA}T00:00:00+00:00` }, error: null });
+    const { result } = montarHook();
+    await waitFor(() => expect(result.current.serie.disponivel).toBe(true));
+
+    h.segurarSerie = new Promise<void>(() => {});
+    act(() => { result.current.registrar.mutate(valores); });
+    await waitFor(() => expect(result.current.serie.linhaDaSemana?.semana).toBe(SEMANA));
   });
 });

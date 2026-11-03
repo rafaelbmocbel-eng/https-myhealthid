@@ -1,16 +1,22 @@
-// Pedido semanal do check-in de bem-estar pelo Zap (cron: domingo, 18h às 20h50 de Brasília, a cada 10 min).
+// Pedido semanal do check-in de bem-estar pelo Zap (cron: domingo, 18h30 às 20h50 de Brasília, a cada 10 min).
 // Para cada profissional com o gatilho "checkin_semanal" LIGADO (desligado por padrão), pede 6 números
 // (7 para quem treinou nas últimas 3 semanas) a até 5 clientes por rodada, com pausa entre os envios.
 // A resposta é lida no whatsapp-webhook; o pedido fica em checkin_pedidos (vale por 48 h).
+// Cada cliente é RESERVADO (insert em checkin_pedidos, único por paciente+semana) antes do envio: se a execução
+// cair no meio, ou duas rodadas se sobrepuserem, ninguém recebe duas vezes. Envio que falha devolve a reserva.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
 import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
 import { registrarMensagemSaida } from "../_shared/registrar-saida.ts";
 import { inicioDaSemanaBR, montarPedidoCheckin } from "../_shared/checkin-semanal.ts";
 import {
+  chaveDoTelefone,
+  chavesDeTelefoneCompartilhado,
   cortarLote,
+  contarPuladosPorTelefoneCompartilhado,
   dentroDaJanelaDeEnvio,
   deveInterromperLote,
+  ehConflitoDeReserva,
   emBlocos,
   expiraEmDoPedido,
   filtrarElegiveis,
@@ -52,10 +58,14 @@ interface Contagens {
   adiados: number;
   pausados: number;
   com_erro_de_consulta: number;
+  pulados_telefone_compartilhado: number;
+  ja_reservados: number;
+  erros_de_reserva: number;
 }
 
 const zerar = (): Contagens => ({
   candidatos: 0, elegiveis: 0, enviados: 0, falhas: 0, adiados: 0, pausados: 0, com_erro_de_consulta: 0,
+  pulados_telefone_compartilhado: 0, ja_reservados: 0, erros_de_reserva: 0,
 });
 
 const dormir = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -75,12 +85,16 @@ async function lerCorpo(req: Request): Promise<{ forcar?: boolean }> {
   }
 }
 
+// Traz TODAS as fichas ativas com telefone, inclusive as de conta excluída (vinculo_encerrado_em): a elegibilidade
+// as tira do envio, mas elas contam para saber se o número é compartilhado.
 async function listarClientesAtivos(admin: Admin, terapeuta_id: string) {
-  const todos: { id: string; nome: string | null; telefone: string | null; portal_token: string | null }[] = [];
+  const todos: {
+    id: string; nome: string | null; telefone: string | null; portal_token: string | null; vinculo_encerrado_em: string | null;
+  }[] = [];
   for (let de = 0; ; de += TAMANHO_PAGINA) {
     const { data, error } = await admin
       .from("pacientes")
-      .select("id, nome, telefone, portal_token")
+      .select("id, nome, telefone, portal_token, vinculo_encerrado_em")
       .eq("terapeuta_id", terapeuta_id)
       .eq("ativo", true)
       .not("telefone", "is", null)
@@ -138,12 +152,16 @@ async function carregarClientes(admin: Admin, terapeuta_id: string, semana: stri
     erros.set(id, (erros.get(id) || 0) + 1);
   }
 
+  const compartilhados = chavesDeTelefoneCompartilhado(pacs);
+
   return pacs.map((p) => ({
     id: p.id,
     nome: p.nome,
     portal_token: p.portal_token,
     telefone: p.telefone,
     ativo: true,
+    vinculoEncerradoEm: p.vinculo_encerrado_em,
+    telefoneCompartilhado: compartilhados.has(chaveDoTelefone(p.telefone)),
     whatsappAtivo: preferencia.has(p.id) ? preferencia.get(p.id)! : null,
     pedidoNaSemana: comPedido.has(p.id) || jaEnviado.has(p.id),
     respondeuNaSemana: comResposta.has(p.id),
@@ -164,6 +182,33 @@ async function idsDe(
   } catch (e) {
     console.warn(`[zap-checkin-semanal] ${rotulo} indisponível, seguindo com o texto padrão:`, e);
     return new Set();
+  }
+}
+
+// Reserva ANTES de enviar: checkin_pedidos é único por paciente+semana, então só uma execução fica com o cliente.
+// "conflito" = outra execução já reservou; "erro" = não deu para reservar (o cliente fica para a próxima rodada).
+async function reservarCliente(admin: Admin, paciente_id: string, semana: string): Promise<"reservado" | "conflito" | "erro"> {
+  try {
+    const { error } = await admin.from("checkin_pedidos").insert({
+      paciente_id, semana, expira_em: expiraEmDoPedido(new Date()),
+    });
+    if (!error) return "reservado";
+    if (ehConflitoDeReserva(error)) return "conflito";
+    console.warn(`[zap-checkin-semanal] reserva não gravada (paciente ${paciente_id}):`, error.message);
+  } catch (e) {
+    console.warn(`[zap-checkin-semanal] reserva falhou (paciente ${paciente_id}):`, e);
+  }
+  return "erro";
+}
+
+// Envio que falhou: a reserva sai para o cliente ser tentado de novo na rodada seguinte (limitado por MAX_ERROS_POR_SEMANA).
+async function liberarReserva(admin: Admin, paciente_id: string, semana: string) {
+  try {
+    const { error } = await admin.from("checkin_pedidos").delete()
+      .eq("paciente_id", paciente_id).eq("semana", semana).is("respondido_em", null);
+    if (error) console.warn(`[zap-checkin-semanal] reserva não removida, o cliente não será tentado de novo nesta semana (paciente ${paciente_id}):`, error.message);
+  } catch (e) {
+    console.warn(`[zap-checkin-semanal] reserva não removida, o cliente não será tentado de novo nesta semana (paciente ${paciente_id}):`, e);
   }
 }
 
@@ -190,6 +235,7 @@ async function processarProfissional(
   c.candidatos = clientes.length;
   c.elegiveis = elegiveis.length;
   c.adiados = elegiveis.length - lote.length;
+  c.pulados_telefone_compartilhado = contarPuladosPorTelefoneCompartilhado(clientes);
   if (lote.length === 0) return c;
 
   const idsLote = lote.map((p) => p.id);
@@ -202,13 +248,24 @@ async function processarProfissional(
   ]);
 
   let falhasSeguidas = 0;
+  let tentouEnviar = false;
   for (let i = 0; i < lote.length; i++) {
     if (deveInterromperLote(falhasSeguidas)) {
       c.adiados += lote.length - i;
       break;
     }
     const pac = lote[i];
-    if (i > 0) await dormir(pausaEntreEnvios());
+
+    // A pausa vem antes da reserva para a janela entre reservar e enviar ser a menor possível.
+    if (tentouEnviar) await dormir(pausaEntreEnvios());
+
+    const reserva = await reservarCliente(admin, pac.id, semana);
+    if (reserva !== "reservado") {
+      if (reserva === "conflito") c.ja_reservados++;
+      else c.erros_de_reserva++;
+      continue;
+    }
+    tentouEnviar = true;
 
     const msg = montarPedidoCheckin({
       nome: pac.nome,
@@ -226,14 +283,10 @@ async function processarProfissional(
     if (ok) {
       falhasSeguidas = 0;
       c.enviados++;
-      const { error: erroPedido } = await admin.from("checkin_pedidos").insert({
-        paciente_id: pac.id, semana, expira_em: expiraEmDoPedido(new Date()),
-      });
-      if (erroPedido) console.warn(`[zap-checkin-semanal] pedido não gravado (paciente ${pac.id}):`, erroPedido.message);
       try {
         await registrarMensagemSaida(admin, {
           terapeuta_id, paciente_id: pac.id, telefone: pac.telefone || "",
-          conteudo: msg, origem: "checkin_semanal",
+          conteudo: msg, origem: "checkin_semanal", bot: true,
         });
       } catch (e) {
         console.warn(`[zap-checkin-semanal] mensagem não registrada na conversa (paciente ${pac.id}):`, e);
@@ -241,6 +294,7 @@ async function processarProfissional(
     } else {
       falhasSeguidas++;
       c.falhas++;
+      await liberarReserva(admin, pac.id, semana);
     }
 
     const { error: erroDisparo } = await admin.from("agente_disparos").insert({
@@ -290,6 +344,9 @@ Deno.serve(async (req) => {
       adiados: s.adiados + p.adiados,
       pausados: s.pausados + p.pausados,
       com_erro_de_consulta: s.com_erro_de_consulta + p.com_erro_de_consulta,
+      pulados_telefone_compartilhado: s.pulados_telefone_compartilhado + p.pulados_telefone_compartilhado,
+      ja_reservados: s.ja_reservados + p.ja_reservados,
+      erros_de_reserva: s.erros_de_reserva + p.erros_de_reserva,
     }), zerar());
 
     return json({ ok: true, semana, profissionais: ligados.length, ...total });

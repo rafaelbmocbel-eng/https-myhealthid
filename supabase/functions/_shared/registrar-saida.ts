@@ -14,6 +14,8 @@ export async function registrarMensagemSaida(
     telefone: string;
     conteudo: string;
     origem: string;
+    /** Mensagem automática do bot: sem isso o bot de IA fica mudo por 30 min, achando que um humano respondeu. */
+    bot?: boolean;
   },
 ): Promise<void> {
   const digits = (opts.telefone || "").replace(/\D/g, "");
@@ -82,6 +84,6 @@ export async function registrarMensagemSaida(
     tipo: "texto",
     conteudo: opts.conteudo,
     status: "enviada",
-    metadata: { origem: opts.origem },
+    metadata: opts.bot === true ? { origem: opts.origem, bot: true } : { origem: opts.origem },
   });
 }

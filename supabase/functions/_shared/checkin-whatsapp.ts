@@ -28,7 +28,8 @@ export const PAUSA_ENTRE_ENVIOS_MS = { min: 4000, max: 9000 } as const;
 export const MAX_ERROS_POR_SEMANA = 3;
 /** Três falhas seguidas no mesmo lote indicam WhatsApp desconectado: para e tenta na próxima rodada. */
 export const FALHAS_SEGUIDAS_PARA_PARAR = 3;
-export const JANELA_ENVIO_BR = { diaSemana: 0, horaInicio: 18, horaFim: 21 } as const;
+/** Domingo das 18h30 (inclusive) às 21h00 (exclusive) de Brasília. Começa depois do progresso semanal, que roda às 18h00 pelo mesmo número. */
+export const JANELA_ENVIO_BR = { diaSemana: 0, inicioMinutos: 18 * 60 + 30, fimMinutos: 21 * 60 } as const;
 
 export const URL_BASE_APP = 'https://www.myhealthid.com.br';
 
@@ -93,6 +94,10 @@ export function montarFalhaGravacao(): string {
 export interface CandidatoCheckin {
   ativo: boolean | null | undefined;
   telefone: string | null | undefined;
+  /** pacientes.vinculo_encerrado_em: o cliente excluiu a própria conta (a ficha segue ativa, com telefone). */
+  vinculoEncerradoEm?: string | null;
+  /** O número aparece em 2 ou mais fichas ativas do profissional (ver chavesDeTelefoneCompartilhado). */
+  telefoneCompartilhado?: boolean;
   /** checkin_preferencias.whatsapp_ativo; sem linha (null) conta como ligado. */
   whatsappAtivo?: boolean | null;
   /** Já tem pedido (ou envio registrado) nesta semana. */
@@ -105,10 +110,25 @@ export function apenasDigitos(valor: string | null | undefined): string {
   return String(valor || '').replace(/\D/g, '');
 }
 
-/** DDD + número, com ou sem o 55. */
+/** DDD + número quando o formato é brasileiro (com ou sem o 55); null para qualquer outro formato. */
+function numeroNacional(digitos: string): string | null {
+  if (digitos.length === 10 || digitos.length === 11) return digitos;
+  if ((digitos.length === 12 || digitos.length === 13) && digitos.startsWith('55')) return digitos.slice(2);
+  return null;
+}
+
+/**
+ * DDD + número, com ou sem o 55. Recusa telefone fixo (8 dígitos começando por 2 a 5 depois do DDD) e celular de
+ * 9 dígitos que não começa com 9: o WhatsApp não entrega nesses números.
+ */
 export function telefoneValidoParaEnvio(telefone: string | null | undefined): boolean {
-  const n = apenasDigitos(telefone).length;
-  return n >= 10 && n <= 14;
+  const digitos = apenasDigitos(telefone);
+  if (digitos.length < 10 || digitos.length > 14) return false;
+  const nacional = numeroNacional(digitos);
+  if (nacional === null) return true;
+  const numero = nacional.slice(2);
+  if (numero.length === 8) return !/^[2-5]/.test(numero);
+  return numero.startsWith('9');
 }
 
 /** O cadastro guarda "(91) 98765-4321"; a Z-API quer o código do país. */
@@ -118,13 +138,48 @@ export function telefoneParaEnvio(telefone: string | null | undefined): string {
   return d;
 }
 
+/** Últimos 10 dígitos do número, com ou sem 55: é assim que o webhook e a conversa casam o telefone com a ficha. */
+export function chaveDoTelefone(telefone: string | null | undefined): string {
+  return apenasDigitos(telefone).slice(-10);
+}
+
+/**
+ * Números que aparecem em 2 ou mais fichas ATIVAS do profissional (mãe e filho, casal com o mesmo celular).
+ * A resposta pelo WhatsApp é gravada em uma ficha só, então esses clientes não recebem o pedido: usam o portal.
+ * Receba TODAS as fichas ativas com telefone, inclusive as de conta excluída e as de telefone inválido.
+ */
+export function chavesDeTelefoneCompartilhado(fichas: readonly { telefone: string | null | undefined }[]): Set<string> {
+  const vistas = new Set<string>();
+  const repetidas = new Set<string>();
+  for (const f of fichas) {
+    const chave = chaveDoTelefone(f.telefone);
+    if (!chave) continue;
+    if (vistas.has(chave)) repetidas.add(chave);
+    vistas.add(chave);
+  }
+  return repetidas;
+}
+
 export function elegivelParaPedido(c: CandidatoCheckin): boolean {
   if (c.ativo !== true) return false;
+  if (c.vinculoEncerradoEm) return false;
   if (!telefoneValidoParaEnvio(c.telefone)) return false;
+  if (c.telefoneCompartilhado === true) return false;
   if (c.whatsappAtivo === false) return false;
   if (c.pedidoNaSemana || c.respondeuNaSemana) return false;
   if ((c.errosNaSemana ?? 0) >= MAX_ERROS_POR_SEMANA) return false;
   return true;
+}
+
+/** Quantos só ficaram de fora por dividirem o telefone com outra ficha ativa (os demais motivos já os tiravam). */
+export function contarPuladosPorTelefoneCompartilhado(candidatos: readonly CandidatoCheckin[]): number {
+  return candidatos.filter((c) => c.telefoneCompartilhado === true && elegivelParaPedido({ ...c, telefoneCompartilhado: false })).length;
+}
+
+/** Erro do insert de checkin_pedidos que significa "outra execução já reservou este cliente nesta semana" (unique paciente+semana). */
+export function ehConflitoDeReserva(erro: { code?: string | null; message?: string | null } | null | undefined): boolean {
+  if (!erro) return false;
+  return erro.code === '23505' || /duplicate key|unique constraint/i.test(String(erro.message || ''));
 }
 
 export function filtrarElegiveis<T extends CandidatoCheckin>(candidatos: readonly T[]): T[] {
@@ -140,12 +195,12 @@ export function selecionarLote<T extends CandidatoCheckin>(candidatos: readonly 
   return cortarLote(filtrarElegiveis(candidatos), max);
 }
 
-/** Domingo, das 18h às 20h59 em Brasília (UTC−3 fixo). `forcar` serve para teste manual. */
+/** Domingo, das 18h30 às 20h59 em Brasília (UTC−3 fixo). `forcar` serve para teste manual. */
 export function dentroDaJanelaDeEnvio(agora: Date = new Date(), opcoes: { forcar?: boolean } = {}): boolean {
   if (opcoes.forcar === true) return true;
   const br = new Date(agora.getTime() - OFFSET_BR_MS);
-  const hora = br.getUTCHours();
-  return br.getUTCDay() === JANELA_ENVIO_BR.diaSemana && hora >= JANELA_ENVIO_BR.horaInicio && hora < JANELA_ENVIO_BR.horaFim;
+  const minutos = br.getUTCHours() * 60 + br.getUTCMinutes();
+  return br.getUTCDay() === JANELA_ENVIO_BR.diaSemana && minutos >= JANELA_ENVIO_BR.inicioMinutos && minutos < JANELA_ENVIO_BR.fimMinutos;
 }
 
 export function deveInterromperLote(falhasSeguidas: number): boolean {

@@ -31,6 +31,9 @@ import {
   type MyIDCorrelation,
 } from '@/utils/wellnessIndex';
 
+// Nota de alerta do check-in é texto clínico para o profissional: o cliente não a vê.
+const TIPO_NOTA_ALERTA_CHECKIN = 'checkin_alerta';
+
 interface MyIDScore {
   date: string;
   myid_score: number;
@@ -69,6 +72,7 @@ export default function PacienteEvolucao() {
           supabase.from('evolucao_paciente').select('*').eq('paciente_id', pac.id)
             .order('data_registro', { ascending: true }).limit(500),
           supabase.from('notas_prontuario').select('*').eq('paciente_id', pac.id)
+            .neq('tipo', TIPO_NOTA_ALERTA_CHECKIN)
             .order('created_at', { ascending: false }).limit(50),
         ]);
 
@@ -85,7 +89,7 @@ export default function PacienteEvolucao() {
             id_final: e.id_final,
           }))
         );
-        setNotas(notasRes.data || []);
+        setNotas((notasRes.data || []).filter((n) => n.tipo !== TIPO_NOTA_ALERTA_CHECKIN));
       } catch (e) {
         console.error('[PacienteEvolucao] fetchData error:', e);
       } finally {

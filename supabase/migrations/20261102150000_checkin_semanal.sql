@@ -79,6 +79,22 @@ revoke all on public.checkin_preferencias from anon, authenticated;
 grant select on public.checkins_semanais to authenticated;
 grant select on public.checkin_preferencias to authenticated;
 
+-- ───────────── Prontuário: as notas do check-in só nascem pelas funções do servidor ─────────────
+-- Políticas RESTRITIVAS (somam-se às que já existem, qualquer que seja o nome delas): nenhum usuário logado cria nem edita nota
+-- com tipo 'checkin_%' (a política de INSERT existente só exige auth.uid() = terapeuta_id, então qualquer pessoa conseguiria
+-- plantar uma nota de alerta falsa), e só o profissional dono lê a nota de alerta: o cliente vê a própria evolução, não o alerta.
+drop policy if exists "checkin_notas_so_servidor_insere" on public.notas_prontuario;
+create policy "checkin_notas_so_servidor_insere" on public.notas_prontuario
+  as restrictive for insert to authenticated with check (tipo not like 'checkin\_%');
+
+drop policy if exists "checkin_notas_so_servidor_edita" on public.notas_prontuario;
+create policy "checkin_notas_so_servidor_edita" on public.notas_prontuario
+  as restrictive for update to authenticated using (tipo not like 'checkin\_%') with check (tipo not like 'checkin\_%');
+
+drop policy if exists "checkin_alerta_so_o_profissional_le" on public.notas_prontuario;
+create policy "checkin_alerta_so_o_profissional_le" on public.notas_prontuario
+  as restrictive for select to authenticated using (tipo <> 'checkin_alerta' or terapeuta_id = auth.uid());
+
 -- ───────────── Funções ─────────────
 
 create or replace function public.checkin_semana_atual()
@@ -153,6 +169,8 @@ declare
   v_texto_variacao text;
   v_desc text;
   v_serie jsonb;
+  v_nota_ok boolean := false;
+  v_alerta_ok boolean := false;
 begin
   select terapeuta_id, nome into v_terapeuta, v_nome from public.pacientes where id = p_paciente;
   if not found then raise exception 'paciente_nao_encontrado'; end if;
@@ -180,11 +198,25 @@ begin
   v_alertas := public.checkin_alertas(p_paciente);
   v_indice := v_ult.fadiga + v_ult.sono + v_ult.dor_muscular + v_ult.estresse + v_ult.humor;
 
+  -- Alerta que a correção da própria semana desfez: some a nota e a notificação ainda não lida (senão o dedupe de 21 dias
+  -- esconderia um alerta verdadeiro depois).
+  delete from public.notas_prontuario n
+  where n.paciente_id = p_paciente and n.tipo = 'checkin_alerta' and n.terapeuta_id is not distinct from v_terapeuta
+    and n.dados_extras ->> 'semana' = v_ult.semana::text
+    and jsonb_typeof(n.dados_extras -> 'itens') = 'array'
+    and not (n.dados_extras -> 'itens' ?| v_alertas);
+  delete from public.notificacoes nt
+  where nt.tipo = 'checkin_alerta' and not nt.lida and nt.terapeuta_id is not distinct from v_terapeuta
+    and nt.metadata ->> 'paciente_id' = p_paciente::text and nt.metadata ->> 'semana' = v_ult.semana::text
+    and jsonb_typeof(nt.metadata -> 'itens') = 'array'
+    and not (nt.metadata -> 'itens' ?| v_alertas);
+
   if v_terapeuta is not null then
+    -- A nota viva e o alerta ficam em blocos separados: falha de um não leva o outro nem a resposta do cliente.
     begin
       v_texto_valores := format('Fadiga %s · Sono %s · Dor muscular %s · Estresse %s · Humor %s', v_ult.fadiga, v_ult.sono, v_ult.dor_muscular, v_ult.estresse, v_ult.humor)
-        || coalesce(format(' · Urina %s', v_ult.urina), '')
-        || coalesce(format(' · Recuperação %s', v_ult.psr), '')
+        || case when v_ult.urina is not null then format(' · Urina %s', v_ult.urina) else '' end
+        || case when v_ult.psr is not null then format(' · Recuperação %s', v_ult.psr) else '' end
         || format(' · Índice de bem-estar %s/25', v_indice);
       if v_ant.id is not null then
         v_texto_variacao := format(
@@ -200,11 +232,7 @@ begin
         || format(E'\nÚltima resposta: semana de %s, pelo %s.', to_char(v_ult.semana, 'DD/MM'), case v_ult.origem when 'whatsapp' then 'WhatsApp' else 'portal' end)
         || E'\n' || v_texto_valores
         || v_texto_variacao
-        || format(E'\nRespostas registradas: %s.', v_total)
-        || case when cardinality(v_alertas) > 0
-             then E'\nAtenção: queda de 1 ponto ou mais, por 2 semanas seguidas, sobre a média das 4 primeiras respostas em: '
-                  || replace(array_to_string(v_alertas, ', '), '_', ' ') || '.'
-             else '' end;
+        || format(E'\nRespostas registradas: %s.', v_total);
 
       select coalesce(jsonb_agg(to_jsonb(s) order by s.semana), '[]'::jsonb) into v_serie
       from (
@@ -214,15 +242,23 @@ begin
 
       insert into public.notas_prontuario (paciente_id, terapeuta_id, tipo, titulo, descricao, dados_extras)
       values (p_paciente, v_terapeuta, 'checkin_semanal', 'Check-in semanal (autorrelato do cliente)', v_desc,
-        jsonb_build_object('origem', 'checkin_semanal', 'respostas', v_total, 'alertas', to_jsonb(v_alertas), 'serie', v_serie,
-                           'ultima_semana', v_ult.semana))
+        jsonb_build_object('origem', 'checkin_semanal', 'respostas', v_total, 'serie', v_serie, 'ultima_semana', v_ult.semana))
       on conflict (paciente_id) where tipo = 'checkin_semanal' do update set
         terapeuta_id = excluded.terapeuta_id, titulo = excluded.titulo, descricao = excluded.descricao,
         dados_extras = excluded.dados_extras, created_at = now();
+      v_nota_ok := true;
+    exception when others then
+      raise warning 'checkin_gravar: nota viva não gravada (%): %', sqlstate, sqlerrm;
+    end;
 
+    begin
+      -- Só conta o que a própria função gravou para o profissional DESTE cliente (outros usuários conseguem inserir notas
+      -- com o mesmo tipo e formato livre; o dedupe não pode depender delas).
       select coalesce(array_agg(distinct i), '{}'::text[]) into v_ja
-      from public.notas_prontuario n, jsonb_array_elements_text(coalesce(n.dados_extras -> 'itens', '[]'::jsonb)) i
-      where n.paciente_id = p_paciente and n.tipo = 'checkin_alerta' and n.created_at > now() - interval '21 days';
+      from public.notas_prontuario n,
+           jsonb_array_elements_text(case when jsonb_typeof(n.dados_extras -> 'itens') = 'array' then n.dados_extras -> 'itens' else '[]'::jsonb end) i
+      where n.paciente_id = p_paciente and n.tipo = 'checkin_alerta' and n.terapeuta_id = v_terapeuta
+        and n.created_at > now() - interval '21 days';
       v_novos := array(select a from unnest(v_alertas) a where a <> all (v_ja));
 
       if cardinality(v_novos) > 0 then
@@ -235,20 +271,22 @@ begin
         values (v_terapeuta, 'checkin_alerta', format('Check-in: atenção com %s', coalesce(v_nome, 'cliente')),
           format('Queda em %s por 2 semanas seguidas, em relação à própria média do cliente.', replace(array_to_string(v_novos, ', '), '_', ' ')),
           '/pacientes/' || p_paciente::text,
-          jsonb_build_object('paciente_id', p_paciente, 'itens', to_jsonb(v_novos)));
+          jsonb_build_object('paciente_id', p_paciente, 'itens', to_jsonb(v_novos), 'semana', v_ult.semana));
       end if;
+      v_alerta_ok := true;
     exception when others then
-      raise warning 'checkin_gravar: nota/notificação não gravada (%): %', sqlstate, sqlerrm;
+      raise warning 'checkin_gravar: alerta/notificação não gravados (%): %', sqlstate, sqlerrm;
     end;
   end if;
 
-  return jsonb_build_object('semana', p_semana, 'indice', v_indice, 'respostas', v_total, 'alertas', to_jsonb(v_alertas));
+  return jsonb_build_object('semana', p_semana, 'indice', v_indice, 'respostas', v_total, 'alertas', to_jsonb(v_alertas),
+                            'nota_ok', v_nota_ok, 'alerta_ok', v_alerta_ok);
 end;
 $$;
 
 -- Portal: o cliente responde por aqui. Sem parâmetro de paciente nem de profissional: tudo vem de auth.uid().
 -- Se há um pedido do WhatsApp em aberto de uma semana anterior (domingo à noite, resposta na segunda), a resposta
--- conta para a semana do pedido.
+-- conta para a semana do pedido; e quem já respondeu a semana anterior desde a virada corrige essa resposta.
 create or replace function public.registrar_checkin_semanal(
   p_fadiga int,
   p_sono int,
@@ -274,9 +312,19 @@ begin
 
   v_semana := public.checkin_semana_atual();
   select semana into v_pedido from public.checkin_pedidos
-  where paciente_id = v_paciente and respondido_em is null and expira_em > now()
+  where paciente_id = v_paciente and respondido_em is null and expira_em > now() and semana < v_semana
   order by semana desc limit 1;
-  if v_pedido is not null and v_pedido < v_semana then v_semana := v_pedido; end if;
+  if v_pedido is not null then
+    v_semana := v_pedido;
+  else
+    -- Quem já respondeu a semana anterior depois da virada (segunda de manhã, pelo pedido de domingo) corrige essa resposta: uma
+    -- resposta por semana de calendário, em vez de criar uma segunda linha poucas horas depois.
+    select semana into v_pedido from public.checkins_semanais
+    where paciente_id = v_paciente and semana < v_semana
+      and updated_at >= (v_semana::timestamp at time zone 'America/Sao_Paulo')
+    order by semana desc limit 1;
+    if v_pedido is not null then v_semana := v_pedido; end if;
+  end if;
 
   return public.checkin_gravar(v_paciente, v_semana, 'portal', p_fadiga, p_sono, p_dor_muscular, p_estresse, p_humor, p_urina, p_psr);
 end;

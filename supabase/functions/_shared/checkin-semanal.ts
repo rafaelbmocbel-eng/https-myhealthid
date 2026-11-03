@@ -156,7 +156,7 @@ export function dataCurta(semana: string): string {
 
 // ───────────── Leitura da resposta do WhatsApp ─────────────
 
-export type MotivoRecusa = 'nao_numerico' | 'quantidade' | 'fora_da_faixa';
+export type MotivoRecusa = 'nao_numerico' | 'quantidade' | 'fora_da_faixa' | 'ambiguo';
 
 export type ResultadoLeitura =
   | { ok: true; valores: ValoresCheckin }
@@ -165,30 +165,54 @@ export type ResultadoLeitura =
 const SO_NUMEROS_E_SEPARADORES = /^[\d\s,;.\-/]+$/;
 
 function limpar(texto: string): string {
-  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+e\s+/g, ' ').trim();
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\p{Extended_Pictographic}|\uFE0F|\u200D/gu, ' ')
+    .toLowerCase()
+    .replace(/\s+e\s+/g, ' ')
+    .trim();
 }
 
-function separarEmNumeros(texto: string): string[] | null {
+type Separacao = { tipo: 'numeros'; partes: string[] } | { tipo: 'ambiguo' } | { tipo: 'texto' };
+
+/** Vírgula ou ponto colados nos dígitos numa lista separada por espaços ("4,5 3 5 4 4 2") podem ser meio ponto: não dá para saber. */
+function separarEmNumeros(texto: string): Separacao {
   const t = limpar(texto);
-  if (!SO_NUMEROS_E_SEPARADORES.test(t)) return null;
-  if (/^\d+$/.test(t) && t.length >= 5 && t.length <= 7) return t.split('');
-  return t.split(/[^\d]+/).filter(Boolean);
+  if (!SO_NUMEROS_E_SEPARADORES.test(t)) return { tipo: 'texto' };
+  if (/\s/.test(t) && /\d[.,]\d/.test(t)) return { tipo: 'ambiguo' };
+  if (/^\d+$/.test(t) && t.length >= 5 && t.length <= 7) return { tipo: 'numeros', partes: t.split('') };
+  return { tipo: 'numeros', partes: t.split(/[^\d]+/).filter(Boolean) };
+}
+
+/** Texto com letras no meio, mas que começa com cinco números de 1 a 5 ("Oi! 4 3 5 4 4 2", "1) 4 2) 3 ..."): parece resposta ao check-in. */
+function pareceRespostaMista(texto: string): boolean {
+  const numeros = limpar(texto).match(/(?<!\d)\d{1,2}(?!\d)/g);
+  if (!numeros || numeros.length < 5) return false;
+  return numeros.slice(0, 5).every((n) => {
+    const v = parseInt(n, 10);
+    return v >= FAIXA_ITEM.min && v <= FAIXA_ITEM.max;
+  });
 }
 
 /**
- * Texto só com números e separadores que se parece com uma resposta ao check-in: de 4 a 8 números de até 2 dígitos ou 5 a 7 dígitos colados.
- * Fica de fora o que costuma aparecer numa conversa normal: ano, hora, data, telefone e CPF.
+ * Texto que se parece com uma resposta ao check-in: de 4 a 8 números de até 2 dígitos ou 5 a 7 dígitos colados, ou texto misturado
+ * que começa com cinco números de 1 a 5. Fica de fora o que costuma aparecer numa conversa normal: ano, hora, data, telefone e CPF.
  */
 export function pareceTentativaDeCheckin(texto: string): boolean {
-  const partes = separarEmNumeros(texto);
-  if (!partes) return false;
+  const sep = separarEmNumeros(texto);
+  if (sep.tipo === 'ambiguo') return true;
+  if (sep.tipo === 'texto') return pareceRespostaMista(texto);
+  const partes = sep.partes;
   if (partes.length === 1) return partes[0].length >= 5 && partes[0].length <= 7;
   return partes.length >= 4 && partes.length <= 8 && partes.every((p) => p.length <= 2);
 }
 
 export function interpretarRespostaCheckin(texto: string): ResultadoLeitura {
-  const partes = separarEmNumeros(texto);
-  if (!partes) return { ok: false, motivo: 'nao_numerico', detalhe: 'a resposta tem letras ou símbolos' };
+  const sep = separarEmNumeros(texto);
+  if (sep.tipo === 'texto') return { ok: false, motivo: 'nao_numerico', detalhe: 'a resposta tem letras ou símbolos' };
+  if (sep.tipo === 'ambiguo') return { ok: false, motivo: 'ambiguo', detalhe: 'vírgula ou ponto junto dos números pode ser meio ponto' };
+  const partes = sep.partes;
   if (partes.length < 5 || partes.length > 7) {
     return { ok: false, motivo: 'quantidade', detalhe: `${partes.length} números em vez de 5 a 7` };
   }
@@ -212,13 +236,21 @@ export function interpretarRespostaCheckin(texto: string): ResultadoLeitura {
   };
 }
 
-/** Só a palavra PARAR (qualquer caixa, com ou sem acento e pontuação). */
+function semCortesias(texto: string): string {
+  return limpar(texto)
+    .replace(/\b(por favor|pf|pfv|obrigad[oa]|vlw|valeu)\b/g, ' ')
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Pedido de saída: a palavra sozinha (parar, pare, sair, stop, descadastrar) ou "não quero mais receber", com cortesia e emoji à vontade. */
 export function reconheceParar(texto: string): boolean {
-  return /^parar[\s.!]*$/.test(limpar(texto));
+  return /^(parar|pare|sair|stop|descadastrar|nao quero mais receber( mensagens| isso| o check in| o checkin)?)$/.test(semCortesias(texto));
 }
 
 export function reconheceVoltar(texto: string): boolean {
-  return /^voltar[\s.!]*$/.test(limpar(texto));
+  return /^(voltar|volto|quero voltar)$/.test(semCortesias(texto));
 }
 
 // ───────────── Textos do WhatsApp ─────────────
@@ -281,6 +313,9 @@ export function montarAjudaCheckin(motivo: MotivoRecusa, detalhe: string): strin
   }
   if (motivo === 'fora_da_faixa') {
     return `${base}: ${detalhe}. Confira os números e envie de novo. Exemplo: 4 3 5 4 4 2`;
+  }
+  if (motivo === 'ambiguo') {
+    return `${base}: vírgula ou ponto junto dos números pode ser meio ponto, e eu só aceito números inteiros. Envie de novo só com espaços entre eles. Exemplo: 4 3 5 4 4 2`;
   }
   return `${base}. Envie só números separados por espaço. Exemplo: 4 3 5 4 4 2`;
 }

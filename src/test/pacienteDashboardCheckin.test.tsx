@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
   serie: [] as Registro[],
   serieErro: null as ErroBanco | null,
   serieTravada: false,
+  colunasSerie: '',
   notificacoes: { diarioHoje: true, streak: 0, pendingQuestionarios: 0, pendingPagamentos: 0, proximaConsulta: false },
   consultas: [] as string[],
   navigate: vi.fn(),
@@ -44,7 +45,11 @@ vi.mock('@/integrations/supabase/client', () => ({
       h.consultas.push(tabela);
       let head = false;
       const b: Record<string, unknown> = {};
-      b.select = (_c: string, opcoes?: { head?: boolean }) => { head = !!opcoes?.head; return b; };
+      b.select = (colunas: string, opcoes?: { head?: boolean }) => {
+        head = !!opcoes?.head;
+        if (tabela === 'checkins_semanais') h.colunasSerie = colunas;
+        return b;
+      };
       for (const m of ['eq', 'neq', 'gte', 'in', 'order', 'limit']) b[m] = () => b;
       const resolver = (): unknown => {
         if (tabela === 'pacientes') return { data: h.paciente, error: null };
@@ -76,8 +81,9 @@ const AGORA = '2026-11-04T15:00:00Z';
 const SEMANA = '2026-11-02';
 const SEMANA_ANTERIOR = '2026-10-26';
 
-const resposta = (semana: string): Registro => ({
+const resposta = (semana: string, atualizadoEm?: string): Registro => ({
   semana, origem: 'portal', fadiga: 4, sono: 4, dor_muscular: 4, estresse: 4, humor: 4, urina: null, psr: null,
+  ...(atualizadoEm ? { updated_at: atualizadoEm } : {}),
 });
 
 interface Cenario {
@@ -105,6 +111,7 @@ beforeEach(() => {
   h.agendamentos = [];
   h.serieErro = null;
   h.serieTravada = false;
+  h.colunasSerie = '';
   h.consultas = [];
   h.notificacoes = { diarioHoje: true, streak: 0, pendingQuestionarios: 0, pendingPagamentos: 0, proximaConsulta: false };
   h.navigate.mockReset();
@@ -249,6 +256,68 @@ describe('Início: MyID concluído', () => {
     await assentar();
     expect(screen.queryByText('Você está em dia!')).toBeNull();
     expect(screen.queryByText('Seu próximo passo')).toBeNull();
+  });
+});
+
+// Segunda-feira, 09/11/2026 (12h em Brasília): o pedido do WhatsApp saiu no domingo à noite (semana de 02/11) e o servidor grava
+// a resposta de segunda nessa semana, a anterior.
+const SEGUNDA = '2026-11-09T15:00:00Z';
+const SEGUNDA_MEIA_NOITE_BR = '2026-11-09T03:00:00Z';
+const DOMINGO_ANTES_DA_MEIA_NOITE_BR = '2026-11-09T02:59:59Z';
+
+describe('Início: pedido de domingo respondido na segunda (resposta gravada na semana anterior)', () => {
+  beforeEach(() => vi.setSystemTime(new Date(SEGUNDA)));
+
+  it('MyID pendente: o passo do check-in fica feito, o cartão secundário some e a próxima ação segue sendo o MyID', async () => {
+    h.serie = [resposta(SEMANA, '2026-11-09T13:10:00+00:00')];
+    renderizar();
+    const rotulo = await screen.findByText('Check-in da semana');
+    expect(rotulo.className).toContain('line-through');
+    expect(rotulo.closest('button')).toBeDisabled();
+    expect(screen.queryByText('Check-in da semana (30 s)')).toBeNull();
+    expect(await proximaAcao()).toHaveTextContent('Fazer meu MyID');
+  });
+
+  it('MyID concluído: o cliente está em dia e o check-in não volta como próxima ação', async () => {
+    montarCenario({ myid: true, historico: true, historia: true });
+    h.serie = [resposta(SEMANA, '2026-11-09T13:10:00Z')];
+    renderizar();
+    expect(await screen.findByText('Você está em dia!')).toBeInTheDocument();
+    expect(screen.queryByText('Faça seu check-in da semana')).toBeNull();
+  });
+
+  it('resposta da semana anterior feita antes de segunda 00h (Brasília) não conta: o check-in volta a ser pedido', async () => {
+    montarCenario({ myid: true, historico: true, historia: true });
+    h.serie = [resposta(SEMANA, DOMINGO_ANTES_DA_MEIA_NOITE_BR)];
+    renderizar();
+    expect(await proximaAcao()).toHaveTextContent('Faça seu check-in da semana');
+  });
+
+  it('feita exatamente à meia-noite de segunda (Brasília), conta', async () => {
+    montarCenario({ myid: true, historico: true, historia: true });
+    h.serie = [resposta(SEMANA, SEGUNDA_MEIA_NOITE_BR)];
+    renderizar();
+    expect(await screen.findByText('Você está em dia!')).toBeInTheDocument();
+  });
+
+  it('com o MyID pendente e a resposta de domingo, o cartão secundário continua lá', async () => {
+    h.serie = [resposta(SEMANA, DOMINGO_ANTES_DA_MEIA_NOITE_BR)];
+    renderizar();
+    expect(await screen.findByText('Check-in da semana (30 s)')).toBeInTheDocument();
+  });
+
+  it('virada de semana: a resposta de quarta (semana de 02/11) deixa de contar na segunda 00h30 (Brasília)', async () => {
+    vi.setSystemTime(new Date('2026-11-09T03:30:00Z'));
+    montarCenario({ myid: true, historico: true, historia: true });
+    h.serie = [resposta(SEMANA, '2026-11-04T15:00:00Z')];
+    renderizar();
+    expect(await proximaAcao()).toHaveTextContent('Faça seu check-in da semana');
+  });
+
+  it('pede o horário de gravação junto com a série (coluna updated_at)', async () => {
+    renderizar();
+    await waitFor(() => expect(h.colunasSerie).not.toBe(''));
+    expect(h.colunasSerie.split(',').map((c) => c.trim())).toContain('updated_at');
   });
 });
 

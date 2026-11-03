@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import {
-  DIMENSAO_MYID_DO_ITEM, ESCALA_URINA, ITENS_CHECKIN, QUEDA_ALERTA, ROTULOS_ITEM,
+  DIMENSAO_MYID_DO_ITEM, ESCALA_URINA, ITENS_CHECKIN, QUEDA_ALERTA, ROTULOS_ITEM, TAMANHO_BASELINE,
   calcularAlertas, calcularBaseline, classeUrina, dataCurta, indiceBemEstar, rotuloPsr,
   sentidoDaVariacao, variacaoDoItem,
   type Baseline, type ChaveComparavel, type ClasseUrina, type ItemCheckin, type LinhaCheckin,
@@ -22,12 +22,12 @@ import {
 
 type Origem = 'portal' | 'whatsapp';
 interface LinhaSerie extends LinhaCheckin { origem: Origem }
-interface Resultado { indisponivel: boolean; serie: LinhaSerie[] }
+interface Resultado { indisponivel: boolean; serie: LinhaSerie[]; total: number }
 interface ErroBanco { code?: string; message?: string }
 
 // Os tipos gerados do Supabase ainda não conhecem checkins_semanais.
-interface ConsultaCheckins extends PromiseLike<{ data: unknown; error: ErroBanco | null }> {
-  select(colunas: string): ConsultaCheckins;
+interface ConsultaCheckins extends PromiseLike<{ data: unknown; error: ErroBanco | null; count?: number | null }> {
+  select(colunas: string, opcoes?: { count: 'exact' }): ConsultaCheckins;
   eq(coluna: string, valor: string): ConsultaCheckins;
   order(coluna: string, opcoes: { ascending: boolean }): ConsultaCheckins;
   limit(quantas: number): ConsultaCheckins;
@@ -36,6 +36,8 @@ const bancoSemTipos = supabase as unknown as { from: (tabela: string) => Consult
 
 const COLUNAS = 'semana, origem, fadiga, sono, dor_muscular, estresse, humor, urina, psr';
 const LIMITE_RESPOSTAS = 52;
+// O banco calcula a linha de base e o alerta com as primeiras respostas de TODA a história, não só as mais recentes.
+const PRIMEIRAS_RESPOSTAS = TAMANHO_BASELINE;
 const SEMANAS_NO_GRAFICO = 12;
 const ORIGEM_ROTULO: Record<Origem, string> = { whatsapp: 'WhatsApp', portal: 'portal' };
 const MSG_VAZIO = 'Nenhum check-in ainda. O cliente responde pelo portal e, se você ligar em WhatsApp > Automações, também pelo WhatsApp.';
@@ -81,6 +83,21 @@ function normalizar(linhas: unknown): LinhaSerie[] {
     });
   }
   return saida.sort((a, b) => a.semana.localeCompare(b.semana));
+}
+
+function semanaDe(linha: unknown): string {
+  const semana = (linha as { semana?: unknown } | null)?.semana;
+  return typeof semana === 'string' ? semana.slice(0, 10) : '';
+}
+
+/** Junta as listas sem repetir a semana (a mesma resposta pode estar nas primeiras e nas mais recentes). */
+function unirPorSemana(...listas: unknown[]): unknown[] {
+  const porSemana = new Map<string, unknown>();
+  for (const lista of listas) {
+    if (!Array.isArray(lista)) continue;
+    for (const linha of lista) porSemana.set(semanaDe(linha), linha);
+  }
+  return [...porSemana.values()];
 }
 
 function listaEmPortugues(nomes: string[]): string {
@@ -229,22 +246,26 @@ export default function CheckinSemanalCard({ pacienteId, variante }: { pacienteI
     queryKey: ['checkin-semanal-profissional', pacienteId],
     enabled: !!pacienteId,
     queryFn: async () => {
-      // Mais recentes primeiro para o limite cortar as semanas antigas, não as novas; a série volta em ordem crescente.
-      const { data: linhas, error } = await bancoSemTipos
-        .from('checkins_semanais')
-        .select(COLUNAS)
-        .eq('paciente_id', pacienteId)
-        .order('semana', { ascending: false })
-        .limit(LIMITE_RESPOSTAS);
-      if (error) {
-        if (tabelaAusente(error)) return { indisponivel: true, serie: [] };
+      const doCliente = () => bancoSemTipos.from('checkins_semanais');
+      // As mais recentes primeiro para o limite cortar as semanas antigas, não as novas; as primeiras vêm à parte, para a linha de base.
+      const [recentes, primeiras] = await Promise.all([
+        doCliente().select(COLUNAS, { count: 'exact' }).eq('paciente_id', pacienteId).order('semana', { ascending: false }).limit(LIMITE_RESPOSTAS),
+        doCliente().select(COLUNAS).eq('paciente_id', pacienteId).order('semana', { ascending: true }).limit(PRIMEIRAS_RESPOSTAS),
+      ]);
+      for (const { error } of [recentes, primeiras]) {
+        if (!error) continue;
+        if (tabelaAusente(error)) return { indisponivel: true, serie: [], total: 0 };
         throw error;
       }
-      return { indisponivel: false, serie: normalizar(linhas) };
+      const buscadas = unirPorSemana(primeiras.data, recentes.data);
+      const serie = normalizar(buscadas);
+      const foraDaBusca = Math.max(0, (recentes.count ?? 0) - buscadas.length);
+      return { indisponivel: false, serie, total: serie.length + foraDaBusca };
     },
   });
 
   const serie = useMemo(() => data?.serie ?? [], [data]);
+  const total = data?.total ?? serie.length;
   const alertas = useMemo(() => calcularAlertas(serie), [serie]);
   const baseline = useMemo(() => calcularBaseline(serie), [serie]);
   const dimensoes = useMemo(() => {
@@ -396,7 +417,7 @@ export default function CheckinSemanalCard({ pacienteId, variante }: { pacienteI
             {anterior ? ` Setas: comparação com a resposta da semana de ${dataCurta(anterior.semana)}.` : ''}
           </p>
           <p>
-            {serie.length} {serie.length === 1 ? 'resposta registrada' : 'respostas registradas'}.
+            {total} {total === 1 ? 'resposta registrada' : 'respostas registradas'}.
             O check-in não altera a nota do MyID e não substitui a avaliação do profissional.
           </p>
         </div>

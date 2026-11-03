@@ -83,9 +83,27 @@ describe('interpretarRespostaCheckin', () => {
   });
 
   it('recusa texto com letras ou símbolos', () => {
-    for (const texto of ['oi tudo bem', '4 3 5 4 4 2 ok', 'quatro tres cinco', '4 3 5 4 4 2 😀', '']) {
+    for (const texto of ['oi tudo bem', '4 3 5 4 4 2 ok', 'quatro tres cinco', 'Oi! 4 3 5 4 4 2', '1) 4 2) 3 3) 5 4) 4 5) 4 6) 2', '']) {
       const r = interpretarRespostaCheckin(texto);
       expect(r.ok).toBe(false);
+    }
+  });
+
+  it('emoji nas pontas não atrapalha: "4 3 5 4 4 2 😊" é lido como 4 3 5 4 4 2', () => {
+    for (const texto of ['4 3 5 4 4 2 😊', '👍 4 3 5 4 4 2', '4 3 5 4 4 2 ❤️', '4 3 5 4 4 2\u{1F600}']) {
+      expect(interpretarRespostaCheckin(texto)).toMatchObject({ ok: true, valores: { fadiga: 4, sono: 3, dor_muscular: 5, estresse: 4, humor: 4, urina: 2 } });
+    }
+  });
+
+  it('vírgula ou ponto colados nos números numa lista com espaços são ambíguos (meio ponto?) e NÃO viram check-in', () => {
+    for (const texto of ['4,5 3 5 4 4 2', '4.5 3 5 4 4 2', '4,5 3 5 4', '3 3 3 3 3,5 2']) {
+      expect(recusar(texto).motivo).toBe('ambiguo');
+    }
+  });
+
+  it('com o MESMO separador em toda a lista, vírgula e ponto continuam valendo', () => {
+    for (const texto of ['4,3,5,4,4,2', '4.3.5.4.4.2', '4, 3, 5, 4, 4, 2', '4 , 3 , 5 , 4 , 4 , 2']) {
+      expect(interpretarRespostaCheckin(texto)).toMatchObject({ ok: true, valores: { fadiga: 4, sono: 3 } });
     }
   });
 });
@@ -95,10 +113,15 @@ describe('pareceTentativaDeCheckin: só números e separadores, em quantidade qu
     for (const t of ['4 3 5 4 4 2', '4 3 5 4', '435442', '43544', '4354427', '4,3,5,4,4,2,7,1', '4 3 5 4 4 2 7 1']) expect(pareceTentativaDeCheckin(t)).toBe(true);
   });
 
+  it('texto misturado que começa com cinco números de 1 a 5 também parece tentativa (para dar a ajuda em vez de ir ao bot)', () => {
+    for (const t of ['Oi! 4 3 5 4 4 2', '1) 4 2) 3 3) 5 4) 4 5) 4 6) 2', 'fadiga 4 sono 3 dor 5 estresse 4 humor 4 urina 2', '4,5 3 5 4 4 2']) expect(pareceTentativaDeCheckin(t)).toBe(true);
+  });
+
   it('não pega conversa normal: nota de NPS, número solto, ano, data, hora, telefone, CPF, endereço', () => {
     for (const t of [
       '8', '10', '4 3', '4 3 5', '999', '2026', '120', '12/11/2026', '14h30', '14:30', '91 98765 4321', '91987654321',
       '123.456.789-09', '12345678901', 'quero remarcar para as 14h', 'sim', 'ok 5', 'rua 25 de março, 120', '4 3 5 4 4 2 7 1 9', '',
+      'quero marcar dia 10 às 14 e 30, ou dia 15, 16 ou 17', 'tenho consulta dia 12 as 15h e dia 3 as 9h', 'meu cpf é 123 456 789 09 e meu rg 12 345 678',
     ]) {
       expect(pareceTentativaDeCheckin(t)).toBe(false);
     }
@@ -111,8 +134,17 @@ describe('PARAR e VOLTAR', () => {
     for (const t of ['não quero parar de treinar', 'parar de receber', 'para', 'pará', '', 'parar tudo']) expect(reconheceParar(t)).toBe(false);
   });
 
+  it('o pedido de saída também vale em variações curtas, com cortesia e emoji', () => {
+    for (const t of ['Parar por favor', 'parar 🙏', 'PARE', 'pare!', 'sair', 'Sair.', 'stop', 'STOP', 'descadastrar', 'não quero mais receber', 'nao quero mais receber mensagens', 'parar pf', 'parar, obrigado']) {
+      expect(reconheceParar(t)).toBe(true);
+    }
+    for (const t of ['vou sair às 14h', 'preciso parar o treino', 'sair de casa', 'stop and go', 'cancelar', 'não quero receber dor']) {
+      expect(reconheceParar(t)).toBe(false);
+    }
+  });
+
   it('VOLTAR vale só sozinho', () => {
-    for (const t of ['VOLTAR', 'voltar', 'Voltar!']) expect(reconheceVoltar(t)).toBe(true);
+    for (const t of ['VOLTAR', 'voltar', 'Voltar!', 'quero voltar', 'voltar por favor 🙂']) expect(reconheceVoltar(t)).toBe(true);
     for (const t of ['quero voltar a treinar', 'voltar amanhã']) expect(reconheceVoltar(t)).toBe(false);
   });
 });
@@ -161,6 +193,7 @@ describe('textos do WhatsApp', () => {
     expect(montarAjudaCheckin('quantidade', '4 números em vez de 5 a 7')).toContain('4 números');
     expect(montarAjudaCheckin('fora_da_faixa', 'Sono precisa ser de 1 a 5 (veio 6)')).toContain('Sono precisa');
     expect(montarAjudaCheckin('nao_numerico', 'x')).toContain('só números');
+    expect(montarAjudaCheckin('ambiguo', 'x')).toContain('só com espaços');
   });
 });
 

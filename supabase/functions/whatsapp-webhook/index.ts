@@ -38,13 +38,14 @@ async function tratarCheckinWhatsapp(
   if (m.fromMe || !m.paciente_id || m.tipo !== "texto" || !podeSerDoCheckin(m.conteudo)) return false;
   const paciente_id = m.paciente_id;
 
+  // Toda saída do check-in leva bot: true; sem isso o bot de IA fica mudo por 30 min achando que um humano respondeu.
   const responder = async (texto: string) => {
     try {
       const enviou = await enviarWhatsapp(admin, m.terapeuta_id, m.phone, texto);
       if (enviou) {
         await registrarMensagemSaida(admin, {
           terapeuta_id: m.terapeuta_id, paciente_id, telefone: m.phone,
-          conteudo: texto, origem: "checkin_semanal",
+          conteudo: texto, origem: "checkin_semanal", bot: true,
         });
       }
     } catch (e) { console.warn("[whatsapp-webhook] resposta do check-in não enviada:", e); }

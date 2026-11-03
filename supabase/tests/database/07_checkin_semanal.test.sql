@@ -2,20 +2,24 @@
 -- só o que é seu; nota viva e alertas vão para o prontuário e para as notificações; o alerta segue os mesmos casos do teste
 -- do app (src/test/checkinSemanal.test.ts).
 begin;
-select plan(48);
+select plan(69);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'terapeuta.a@teste.invalid'),
   ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'terapeuta.b@teste.invalid'),
   ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'paciente.p@teste.invalid'),
   ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'paciente.q@teste.invalid'),
-  ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'paciente.w@teste.invalid');
+  ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'paciente.w@teste.invalid'),
+  ('ffffffff-ffff-4fff-8fff-ffffffffffff', 'paciente.f@teste.invalid');
 insert into public.pacientes (id, terapeuta_id, nome, user_id) values
   ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Paciente P', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
   ('22222222-2222-4222-8222-222222222222', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Paciente Q', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'),
   ('33333333-3333-4333-8333-333333333333', null, 'Cliente sem profissional', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
   ('44444444-4444-4444-8444-444444444444', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Paciente dos alertas', null),
-  ('55555555-5555-4555-8555-555555555555', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Paciente do alerta repetido', null);
+  ('55555555-5555-4555-8555-555555555555', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Paciente do alerta repetido', null),
+  ('66666666-6666-4666-8666-666666666666', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Paciente do alerta corrigido', null),
+  ('77777777-7777-4777-8777-777777777777', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Paciente com nota forjada', null),
+  ('88888888-8888-4888-8888-888888888888', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Paciente que responde depois da virada', 'ffffffff-ffff-4fff-8fff-ffffffffffff');
 
 create function public._pgtap_afetadas(comando text) returns int language plpgsql as $$
 declare n int;
@@ -166,6 +170,91 @@ select is((select count(*)::int from public.notas_prontuario where paciente_id =
   'a semana seguinte, ainda em queda, não repete a nota de alerta');
 select is((select count(*)::int from public.notificacoes where tipo = 'checkin_alerta' and terapeuta_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 1,
   'nem a notificação');
+
+-- ── Prontuário: as notas do check-in só nascem pelas funções; o alerta só o profissional dono lê ──
+select set_config('request.jwt.claims', '{"sub":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","role":"authenticated"}', true);
+set local role authenticated;
+select throws_ok($$ insert into public.notas_prontuario (paciente_id, terapeuta_id, tipo, titulo, descricao)
+  values ('11111111-1111-4111-8111-111111111111', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'checkin_alerta', 'forjada', 'forjada') $$,
+  '42501', null, 'o cliente não planta uma nota de alerta no prontuário');
+select throws_ok($$ insert into public.notas_prontuario (paciente_id, terapeuta_id, tipo, titulo, descricao)
+  values ('11111111-1111-4111-8111-111111111111', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'checkin_semanal', 'forjada', 'forjada') $$,
+  '42501', null, 'nem a nota viva do check-in');
+reset role;
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}', true);
+set local role authenticated;
+select throws_ok($$ insert into public.notas_prontuario (paciente_id, terapeuta_id, tipo, titulo, descricao)
+  values ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'checkin_alerta', 'forjada', 'forjada') $$,
+  '42501', null, 'nem a terapeuta cria nota do check-in à mão (só as funções do servidor)');
+reset role;
+insert into public.notas_prontuario (paciente_id, terapeuta_id, tipo, titulo, descricao, dados_extras)
+  values ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'checkin_alerta', 'Check-in semanal: atenção', 'texto clínico para o profissional',
+          '{"itens":["humor"],"semana":"2026-09-07"}');
+select set_config('request.jwt.claims', '{"sub":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","role":"authenticated"}', true);
+set local role authenticated;
+select is((select count(*)::int from public.notas_prontuario where tipo = 'checkin_alerta'), 0, 'o cliente não lê a nota de alerta (é para o profissional)');
+select is((select count(*)::int from public.notas_prontuario where tipo = 'checkin_semanal'), 1, 'o cliente lê a nota viva: é o autorrelato dele');
+reset role;
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}', true);
+set local role authenticated;
+select is((select count(*)::int from public.notas_prontuario where tipo = 'checkin_alerta' and paciente_id = '11111111-1111-4111-8111-111111111111'), 1, 'a terapeuta dona lê a nota de alerta');
+reset role;
+
+-- ── Texto da nota viva: sem lacunas nos opcionais e sem o aviso de queda (o aviso fica na nota de alerta) ──
+select ok((select descricao from public.notas_prontuario where tipo = 'checkin_semanal' and paciente_id = '55555555-5555-4555-8555-555555555555') not like '%Atenção:%',
+  'a nota viva não carrega o aviso de queda (só a nota de alerta, que o cliente não lê)');
+select ok((select descricao from public.notas_prontuario where tipo = 'checkin_semanal' and paciente_id = '22222222-2222-4222-8222-222222222222') not like '%Urina%'
+  and (select descricao from public.notas_prontuario where tipo = 'checkin_semanal' and paciente_id = '22222222-2222-4222-8222-222222222222') not like '%Recuperação%',
+  'sem urina nem recuperação respondidas, a nota não mostra rótulos vazios');
+select ok((select descricao from public.notas_prontuario where tipo = 'checkin_semanal' and paciente_id = '11111111-1111-4111-8111-111111111111') like '%Urina 2%',
+  'com urina respondida, a nota mostra o valor');
+
+-- ── Correção da mesma semana desfaz o alerta (nota e notificação ainda não lida) ──
+select public._serie('66666666-6666-4666-8666-666666666666', array[4, 4, 4, 4, 3]);
+select public.checkin_gravar('66666666-6666-4666-8666-666666666666', public._semana_n(6), 'whatsapp', 3, 4, 4, 4, 4);
+select is((select count(*)::int from public.notas_prontuario where paciente_id = '66666666-6666-4666-8666-666666666666' and tipo = 'checkin_alerta'), 1,
+  'a queda gera a nota de alerta');
+select public.checkin_gravar('66666666-6666-4666-8666-666666666666', public._semana_n(6), 'whatsapp', 4, 4, 4, 4, 4);
+select is((select count(*)::int from public.notas_prontuario where paciente_id = '66666666-6666-4666-8666-666666666666' and tipo = 'checkin_alerta'), 0,
+  'o cliente corrige o número errado e a nota de alerta some');
+select is((select count(*)::int from public.notificacoes where tipo = 'checkin_alerta' and metadata ->> 'paciente_id' = '66666666-6666-4666-8666-666666666666'), 0,
+  'a notificação ainda não lida some junto');
+select public.checkin_gravar('66666666-6666-4666-8666-666666666666', public._semana_n(6), 'whatsapp', 3, 4, 4, 4, 4);
+select is((select count(*)::int from public.notas_prontuario where paciente_id = '66666666-6666-4666-8666-666666666666' and tipo = 'checkin_alerta'), 1,
+  'uma queda verdadeira depois da correção volta a alertar (o dedupe não ficou preso)');
+
+-- ── Nota forjada por outra pessoa (formato livre, outro profissional) não derruba a nota viva nem o alerta ──
+insert into public.notas_prontuario (paciente_id, terapeuta_id, tipo, titulo, descricao, dados_extras)
+  values ('77777777-7777-4777-8777-777777777777', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'checkin_alerta', 'forjada', 'forjada', '{"itens":5}'),
+         ('77777777-7777-4777-8777-777777777777', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'checkin_alerta', 'forjada 2', 'forjada', '{"itens":["fadiga","sono","humor"],"semana":"2026-09-07"}'),
+         ('77777777-7777-4777-8777-777777777777', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'checkin_alerta', 'malformada do próprio profissional', 'formato inesperado', '{"itens":5}');
+select public._serie('77777777-7777-4777-8777-777777777777', array[4, 4, 4, 4, 3]);
+select ok((public.checkin_gravar('77777777-7777-4777-8777-777777777777', public._semana_n(6), 'whatsapp', 3, 4, 4, 4, 4) ->> 'nota_ok')::boolean,
+  'com uma nota forjada no caminho, a nota viva ainda é gravada (e o retorno diz que deu certo)');
+select is((select count(*)::int from public.notas_prontuario where paciente_id = '77777777-7777-4777-8777-777777777777' and tipo = 'checkin_semanal'), 1,
+  'a nota viva existe');
+select is((select count(*)::int from public.notas_prontuario where paciente_id = '77777777-7777-4777-8777-777777777777' and tipo = 'checkin_alerta' and terapeuta_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' and titulo = 'Check-in semanal: atenção'), 1,
+  'o alerta verdadeiro sai para o profissional do cliente, sem ser silenciado pela nota forjada de outro usuário nem derrubado por nota de formato inesperado');
+
+-- ── Portal depois da virada da semana: corrige a resposta da semana anterior em vez de criar outra ──
+insert into public.checkins_semanais (paciente_id, semana, fadiga, sono, dor_muscular, estresse, humor, updated_at)
+  values ('88888888-8888-4888-8888-888888888888', public.checkin_semana_atual() - 7, 4, 4, 4, 4, 4, now());
+select set_config('request.jwt.claims', '{"sub":"ffffffff-ffff-4fff-8fff-ffffffffffff","role":"authenticated"}', true);
+set local role authenticated;
+select lives_ok($$ select public.registrar_checkin_semanal(3, 3, 3, 3, 3) $$, 'o cliente responde de novo depois de já ter respondido a semana anterior desde a virada');
+reset role;
+select is((select count(*)::int from public.checkins_semanais where paciente_id = '88888888-8888-4888-8888-888888888888'), 1,
+  'continua uma resposta só (a da semana anterior foi corrigida)');
+select is((select fadiga::int from public.checkins_semanais where paciente_id = '88888888-8888-4888-8888-888888888888' and semana = public.checkin_semana_atual() - 7), 3,
+  'o valor corrigido está na semana anterior');
+update public.checkins_semanais set updated_at = (public.checkin_semana_atual()::timestamp at time zone 'America/Sao_Paulo') - interval '1 minute'
+  where paciente_id = '88888888-8888-4888-8888-888888888888';
+select set_config('request.jwt.claims', '{"sub":"ffffffff-ffff-4fff-8fff-ffffffffffff","role":"authenticated"}', true);
+set local role authenticated;
+select lives_ok($$ select public.registrar_checkin_semanal(5, 5, 5, 5, 5) $$, 'resposta da semana anterior feita ANTES da virada não conta como desta semana');
+reset role;
+select is((select count(*)::int from public.checkins_semanais where paciente_id = '88888888-8888-4888-8888-888888888888'), 2,
+  'então a nova resposta vira a linha da semana atual');
 
 -- ── A semana precisa ser uma segunda-feira e a origem, conhecida ──
 select throws_ok($$ select public.checkin_gravar('11111111-1111-4111-8111-111111111111', date '2026-11-03', 'portal', 3, 3, 3, 3, 3) $$, 'P0001', 'semana_invalida',

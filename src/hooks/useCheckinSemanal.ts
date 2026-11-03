@@ -23,7 +23,9 @@ const bancoSemTipos = supabase as unknown as {
 };
 
 const ULTIMAS_SEMANAS = 26;
-const CAMPOS_SERIE = 'semana, origem, fadiga, sono, dor_muscular, estresse, humor, urina, psr';
+const CAMPOS_SERIE = 'semana, updated_at, origem, fadiga, sono, dor_muscular, estresse, humor, urina, psr';
+// Brasília é UTC−3 o ano todo: a segunda-feira começa às 03:00 UTC.
+const INICIO_DO_DIA_BR_UTC = 'T03:00:00Z';
 
 const CODIGOS_INDISPONIVEL = ['42P01', 'PGRST205', 'PGRST202'];
 
@@ -44,9 +46,39 @@ export function mensagemErroCheckin(erro: unknown): string {
   return 'Não consegui registrar agora. Verifique sua internet e tente de novo.';
 }
 
+export interface LinhaSerieCheckin extends LinhaCheckin {
+  /** Quando a linha foi gravada pela última vez. */
+  updated_at?: string | null;
+}
+
 export interface SerieCheckin {
-  linhas: LinhaCheckin[];
+  linhas: LinhaSerieCheckin[];
   indisponivel: boolean;
+}
+
+/**
+ * Uma resposta conta como "desta semana" se a linha é da semana atual OU foi gravada desde a meia-noite de segunda
+ * (Brasília). O pedido do WhatsApp sai no domingo à noite e vale por 48 horas: quem responde na segunda, mesmo pelo
+ * portal, é gravado na semana anterior, a do pedido.
+ */
+export function respostaContaNestaSemana(linha: Pick<LinhaSerieCheckin, 'semana' | 'updated_at'>, agora: Date = new Date()): boolean {
+  const semanaAtual = inicioDaSemanaBR(agora);
+  if (linha.semana === semanaAtual) return true;
+  if (!linha.updated_at) return false;
+  const gravadaEm = Date.parse(linha.updated_at);
+  return Number.isFinite(gravadaEm) && gravadaEm >= Date.parse(`${semanaAtual}${INICIO_DO_DIA_BR_UTC}`);
+}
+
+/** Segunda-feira da semana em que o servidor gravou a resposta (pode ser a anterior), se a função a devolveu. */
+function semanaDevolvida(resposta: unknown): string | null {
+  const semana = (resposta as { semana?: unknown } | null)?.semana;
+  return typeof semana === 'string' && /^\d{4}-\d{2}-\d{2}/.test(semana) ? semana.slice(0, 10) : null;
+}
+
+function comLinha(linhas: LinhaSerieCheckin[], nova: LinhaSerieCheckin): LinhaSerieCheckin[] {
+  return [...linhas.filter((l) => l.semana !== nova.semana), nova]
+    .sort((a, b) => a.semana.localeCompare(b.semana))
+    .slice(-ULTIMAS_SEMANAS);
 }
 
 /** Série do próprio cliente, da semana mais antiga para a mais recente. */
@@ -66,14 +98,16 @@ export function useCheckinSerie(pacienteId: string | null | undefined) {
         if (erroIndisponivel(error)) return { linhas: [], indisponivel: true };
         throw error;
       }
-      const linhas = ((data || []) as LinhaCheckin[]).slice().reverse();
+      const linhas = ((data || []) as LinhaSerieCheckin[]).slice().reverse();
       return { linhas, indisponivel: false };
     },
   });
 
   const linhas = query.data?.linhas ?? [];
-  const semanaAtual = inicioDaSemanaBR(new Date());
-  const linhaDaSemana = linhas.find((l) => l.semana === semanaAtual) ?? null;
+  const agora = new Date();
+  const semanaAtual = inicioDaSemanaBR(agora);
+  // Se mais de uma linha conta, vale a da semana mais nova (a lista vem da mais antiga para a mais recente).
+  const linhaDaSemana = linhas.filter((l) => respostaContaNestaSemana(l, agora)).pop() ?? null;
 
   return {
     linhas,
@@ -187,7 +221,17 @@ export function useCheckinSemanal() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['checkin-semanal', 'serie', pacienteId] }),
+    onSuccess: (resposta, v) => {
+      const chave = ['checkin-semanal', 'serie', pacienteId];
+      const semana = semanaDevolvida(resposta);
+      if (semana) {
+        qc.setQueryData<SerieCheckin>(chave, (atual) => {
+          if (!atual || atual.indisponivel) return atual;
+          return { ...atual, linhas: comLinha(atual.linhas, { ...v, semana, updated_at: new Date().toISOString() }) };
+        });
+      }
+      return qc.invalidateQueries({ queryKey: chave });
+    },
   });
 
   return {

@@ -9,11 +9,13 @@ type Chamada = {
   filtros: [string, unknown][];
   ordem?: [string, { ascending: boolean }];
   limite?: number;
+  contar?: boolean;
 };
 
 const h = vi.hoisted(() => ({
   rows: [] as Record<string, unknown>[],
   erro: null as Erro | null,
+  erroNasPrimeiras: null as Erro | null,
   chamadas: [] as Chamada[],
   segurar: null as Promise<void> | null,
 }));
@@ -25,16 +27,21 @@ vi.mock('@/integrations/supabase/client', () => ({
       h.chamadas.push(c);
       const resultado = () => {
         if (h.erro) return { data: null, error: h.erro };
+        if (h.erroNasPrimeiras && c.ordem?.[1].ascending) return { data: null, error: h.erroNasPrimeiras };
         let linhas = [...h.rows];
         if (c.ordem) {
           const [col, { ascending }] = c.ordem;
           linhas.sort((a, b) => String(a[col]).localeCompare(String(b[col])) * (ascending ? 1 : -1));
         }
         if (c.limite !== undefined) linhas = linhas.slice(0, c.limite);
-        return { data: linhas, error: null };
+        return { data: linhas, error: null, count: c.contar ? h.rows.length : null };
       };
       const b: Record<string, unknown> = {};
-      b.select = (colunas: string) => { c.colunas = colunas; return b; };
+      b.select = (colunas: string, opcoes?: { count?: string }) => {
+        c.colunas = colunas;
+        c.contar = opcoes?.count === 'exact';
+        return b;
+      };
       b.eq = (col: string, v: unknown) => { c.filtros.push([col, v]); return b; };
       b.order = (col: string, o: { ascending: boolean }) => { c.ordem = [col, o]; return b; };
       b.limit = (n: number) => { c.limite = n; return b; };
@@ -74,6 +81,7 @@ vi.mock('recharts', async () => {
 });
 
 import CheckinSemanalCard from '@/components/paciente/CheckinSemanalCard';
+import { calcularAlertas, calcularBaseline, type LinhaCheckin } from '@/lib/checkinSemanal';
 
 const SEG_BASE = Date.UTC(2026, 7, 3); // segunda-feira 03/08/2026
 
@@ -115,6 +123,7 @@ describe('CheckinSemanalCard', () => {
   beforeEach(() => {
     h.rows = [];
     h.erro = null;
+    h.erroNasPrimeiras = null;
     h.chamadas = [];
     h.segurar = null;
   });
@@ -124,18 +133,76 @@ describe('CheckinSemanalCard', () => {
   });
 
   describe('consulta', () => {
-    it('lê só a tabela do cliente, as 52 semanas mais recentes, e mostra a série do mais antigo ao mais novo', async () => {
+    const recentes = () => h.chamadas.find((c) => c.ordem?.[1].ascending === false)!;
+    const primeiras = () => h.chamadas.find((c) => c.ordem?.[1].ascending === true)!;
+
+    it('lê só a tabela do cliente: as 52 semanas mais recentes e, à parte, as 4 primeiras de toda a história', async () => {
       const muitas = Array.from({ length: 60 }, (_, n) => linha(n, { fadiga: n === 59 ? 2 : 4 }));
       await abrirComDados(muitas);
-      expect(h.chamadas).toHaveLength(1);
-      const c = h.chamadas[0];
-      expect(c.tabela).toBe('checkins_semanais');
-      expect(c.filtros).toEqual([['paciente_id', 'pac-1']]);
-      expect(c.limite).toBe(52);
-      expect(c.ordem).toEqual(['semana', { ascending: false }]);
+      expect(h.chamadas).toHaveLength(2);
+      for (const c of h.chamadas) {
+        expect(c.tabela).toBe('checkins_semanais');
+        expect(c.filtros).toEqual([['paciente_id', 'pac-1']]);
+        expect(c.colunas).toBe('semana, origem, fadiga, sono, dor_muscular, estresse, humor, urina, psr');
+      }
+      expect(recentes().limite).toBe(52);
+      expect(recentes().ordem).toEqual(['semana', { ascending: false }]);
+      expect(primeiras().limite).toBe(4);
+      expect(primeiras().ordem).toEqual(['semana', { ascending: true }]);
       expect(screen.getByTestId('ultima-resposta')).toHaveTextContent(`semana de ${semanaN(59).slice(8, 10)}/${semanaN(59).slice(5, 7)}`);
       expect(within(linhaDoItem('fadiga')).getByText('2')).toBeInTheDocument();
-      expect(screen.getByText(/52 respostas registradas/)).toBeInTheDocument();
+    });
+
+    it('mostra o total de respostas do cliente (conta no banco), mesmo com mais respostas do que as buscadas', async () => {
+      await abrirComDados(Array.from({ length: 60 }, (_, n) => linha(n)));
+      expect(recentes().contar).toBe(true);
+      expect(primeiras().contar).toBe(false);
+      expect(screen.getByText(/60 respostas registradas\./)).toBeInTheDocument();
+    });
+
+    it('com até 52 respostas as duas buscas se sobrepõem e a semana não é contada duas vezes', async () => {
+      await abrirComDados(Array.from({ length: 30 }, (_, n) => linha(n)));
+      expect(screen.getByText(/30 respostas registradas\./)).toBeInTheDocument();
+      cleanup();
+      h.chamadas = [];
+      await abrirComDados(Array.from({ length: 53 }, (_, n) => linha(n)));
+      expect(screen.getByText(/53 respostas registradas\./)).toBeInTheDocument();
+      cleanup();
+      h.chamadas = [];
+      await abrirComDados(Array.from({ length: 55 }, (_, n) => linha(n)));
+      expect(screen.getByText(/55 respostas registradas\./)).toBeInTheDocument();
+    });
+
+    it('60 respostas: a média inicial são as 4 primeiras REAIS e o alerta é o mesmo que o banco daria sobre toda a história', async () => {
+      const todas = Array.from({ length: 60 }, (_, n) => linha(n, { fadiga: n < 4 ? 5 : 4, sono: n < 4 ? 3 : 4 }));
+      // sobre as 52 mais recentes (semanas 8 a 59) a média de fadiga seria 4,0 e não haveria alerta
+      const serie = todas as unknown as LinhaCheckin[];
+      expect(calcularBaseline(serie)).toMatchObject({ fadiga: 5, sono: 3 });
+      expect(calcularAlertas(serie)).toEqual(['fadiga']);
+      expect(calcularAlertas(serie.slice(-52))).toEqual([]);
+
+      await abrirComDados(todas);
+      expect(within(linhaDoItem('fadiga')).getByText('(média inicial 5,0)')).toBeInTheDocument();
+      expect(within(linhaDoItem('sono')).getByText('(média inicial 3,0)')).toBeInTheDocument();
+      expect(within(linhaDoItem('humor')).getByText('(média inicial 4,0)')).toBeInTheDocument();
+      expect(screen.getByTestId('faixa-atencao')).toHaveTextContent('Atenção: fadiga ficou 1 ponto ou mais abaixo');
+      expect(screen.getByTestId('faixa-atencao')).not.toHaveTextContent(/sono/);
+    });
+
+    it('60 respostas, mas as 4 primeiras não destoam: sem alerta, como no banco', async () => {
+      const todas = Array.from({ length: 60 }, (_, n) => linha(n, { fadiga: n < 4 ? 3 : 4 }));
+      expect(calcularAlertas(todas as unknown as LinhaCheckin[])).toEqual([]);
+      await abrirComDados(todas);
+      expect(within(linhaDoItem('fadiga')).getByText('(média inicial 3,0)')).toBeInTheDocument();
+      expect(screen.queryByTestId('faixa-atencao')).toBeNull();
+    });
+
+    it('a última e a penúltima resposta continuam sendo as mais recentes de verdade', async () => {
+      const todas = Array.from({ length: 60 }, (_, n) => linha(n, { humor: n === 58 ? 2 : n === 59 ? 1 : 4 }));
+      await abrirComDados(todas);
+      expect(within(linhaDoItem('humor')).getByText('1')).toBeInTheDocument();
+      expect(screen.getByTestId('grafico')).toHaveAttribute('data-pontos', '12');
+      expect(screen.getByTestId('variacao-humor')).toHaveTextContent('caiu 1');
     });
   });
 
@@ -174,7 +241,7 @@ describe('CheckinSemanalCard', () => {
       const consoleAviso = vi.spyOn(console, 'warn').mockImplementation(() => {});
       h.erro = erro;
       const { container } = abrir();
-      await waitFor(() => expect(h.chamadas).toHaveLength(1));
+      await waitFor(() => expect(h.chamadas).toHaveLength(2));
       await waitFor(() => expect(screen.queryByTestId('checkin-carregando')).toBeNull());
       expect(container).toBeEmptyDOMElement();
       expect(consoleErro).not.toHaveBeenCalled();
@@ -185,6 +252,23 @@ describe('CheckinSemanalCard', () => {
       h.erro = { code: '42501', message: 'permission denied' };
       abrir();
       expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar o check-in semanal');
+    });
+
+    it('erro só na busca das primeiras respostas também avisa, em vez de mostrar uma linha de base errada', async () => {
+      h.erroNasPrimeiras = { code: '42501', message: 'permission denied' };
+      h.rows = Array.from({ length: 10 }, (_, n) => linha(n));
+      abrir();
+      expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar o check-in semanal');
+      expect(screen.queryByTestId('checkin-semanal-card')).toBeNull();
+    });
+
+    it('tabela ausente só na busca das primeiras respostas: não renderiza nada', async () => {
+      h.erroNasPrimeiras = { code: '42P01', message: 'relation does not exist' };
+      h.rows = [linha(0)];
+      const { container } = abrir();
+      await waitFor(() => expect(h.chamadas).toHaveLength(2));
+      await waitFor(() => expect(screen.queryByTestId('checkin-carregando')).toBeNull());
+      expect(container).toBeEmptyDOMElement();
     });
   });
 
