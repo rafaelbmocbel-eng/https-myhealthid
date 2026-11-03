@@ -2,7 +2,7 @@
 -- cadastro; visitante sem login não vê nada. Também prova as travas por coluna: o paciente edita seus dados pessoais e de
 -- saúde, mas não os campos internos (conta premium, XP, vínculo com o terapeuta, convênio, ativo...).
 begin;
-select plan(31);
+select plan(33);
 
 -- Dados de teste (rodam como dono do banco; o rollback no fim desfaz tudo)
 insert into auth.users (id, email) values
@@ -72,7 +72,7 @@ update public.pacientes set ativo = false, carteirinha = '123', codigos_cassi = 
   where user_id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 update public.pacientes set origem_utm = '{"x":1}'::jsonb, plano_saude = 'Plano X', tipo_pagamento = 'plano', portal_link_enviado_em = now(),
   vinculo_encerrado_em = now(), guia_solicitada_em = now(), cassi_encerrado_em = now(), cassi_encerrado_motivo = 'x', cassi_diagnostico = 'x',
-  cassi_confirmado_mes = '2026-11', cassi_pedir_guia = true, created_at = '2099-01-01'
+  cassi_confirmado_mes = '2026-11', cassi_pedir_guia = true, cassi_musculos = 'x', cassi_achados = 'x', created_at = '2099-01-01'
   where user_id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 update public.pacientes set user_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' where user_id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 reset role;
@@ -92,7 +92,7 @@ select is((select count(*)::int from public.pacientes where id = '11111111-1111-
   and origem_utm is null and plano_saude is null and tipo_pagamento = 'particular'
   and portal_link_enviado_em is null and vinculo_encerrado_em is null and guia_solicitada_em is null and cassi_encerrado_em is null
   and cassi_encerrado_motivo is null and cassi_diagnostico is null and cassi_confirmado_mes is null and cassi_pedir_guia = false
-  and created_at < '2099-01-01'), 1,
+  and cassi_musculos is null and cassi_achados is null and created_at < '2099-01-01'), 1,
   'o paciente não consegue mexer em plano de saúde, datas de vínculo, campos de CASSI nem na data de criação');
 select is((select user_id from public.pacientes where id = '11111111-1111-4111-8111-111111111111'), 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'::uuid,
   'o paciente não consegue ligar o próprio cadastro a outra conta (user_id)');
@@ -189,10 +189,21 @@ select is((select coalesce(string_agg(column_name, ', ' order by column_name), '
     'id','terapeuta_id','clinica_id','convenio_id','responsavel_id','user_id','ativo','origem','origem_utm','observacoes','portal_token',
     'portal_link_enviado_em','vinculo_encerrado_em','tipo_pagamento','plano_saude','tipo_conta','cadastro_status','nivel_atual','xp_total',
     'carteirinha','codigos_cassi','guias_por_mes','guia_solicitada_em','cassi_encerrado_em','cassi_encerrado_motivo','cassi_diagnostico',
-    'cassi_confirmado_mes','cassi_pedir_guia','created_at'])), '',
+    'cassi_confirmado_mes','cassi_pedir_guia','cassi_musculos','cassi_achados','created_at'])), '',
   'toda coluna de pacientes está classificada como editável pelo paciente ou interna (alarme para coluna nova)');
 select is((select count(*)::int from pg_trigger where tgrelid = 'public.pacientes'::regclass and tgname = 'trg_pacientes_protege_campos_internos' and not tgisinternal), 1,
   'o gatilho que protege os campos internos está instalado');
+
+-- ── Músculos e achados da justificativa CASSI: do profissional dono, com tamanho limitado ──
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}', true);
+set local role authenticated;
+update public.pacientes set cassi_musculos = 'trapézio superior, romboides', cassi_achados = 'bandas tensas palpáveis'
+  where id = '11111111-1111-4111-8111-111111111111';
+reset role;
+select is((select cassi_musculos || ' | ' || cassi_achados from public.pacientes where id = '11111111-1111-4111-8111-111111111111'),
+  'trapézio superior, romboides | bandas tensas palpáveis', 'o profissional dono grava os músculos e os achados da justificativa CASSI');
+select throws_ok($$ update public.pacientes set cassi_musculos = repeat('x', 401) where id = '11111111-1111-4111-8111-111111111111' $$,
+  '23514', null, 'músculos acima de 400 caracteres são recusados pelo banco');
 
 select * from finish();
 rollback;
