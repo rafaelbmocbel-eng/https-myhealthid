@@ -130,7 +130,8 @@ export default function PacienteCheckin() {
     );
   }
 
-  if (erroPaciente || serie.isError) {
+  // Falha ao reler a série depois de já haver dados (ou de enviar) não derruba a tela: só a carga que não trouxe nada é erro.
+  if (erroPaciente || (serie.isError && serie.linhas.length === 0)) {
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>

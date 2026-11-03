@@ -353,13 +353,13 @@ $$;
 -- ───────────── Privilégios das funções ─────────────
 
 revoke all on function public.checkin_semana_atual() from public, anon;
-revoke all on function public.checkin_alertas(uuid) from public, anon;
+revoke all on function public.checkin_alertas(uuid) from public, anon, authenticated;
 revoke all on function public.checkin_gravar(uuid, date, text, int, int, int, int, int, int, int) from public, anon, authenticated;
 revoke all on function public.registrar_checkin_semanal(int, int, int, int, int, int, int) from public, anon;
 revoke all on function public.definir_checkin_whatsapp(boolean) from public, anon;
 
 grant execute on function public.checkin_semana_atual() to authenticated, service_role;
-grant execute on function public.checkin_alertas(uuid) to authenticated, service_role;
+grant execute on function public.checkin_alertas(uuid) to service_role;
 grant execute on function public.checkin_gravar(uuid, date, text, int, int, int, int, int, int, int) to service_role;
 grant execute on function public.registrar_checkin_semanal(int, int, int, int, int, int, int) to authenticated, service_role;
 grant execute on function public.definir_checkin_whatsapp(boolean) to authenticated, service_role;

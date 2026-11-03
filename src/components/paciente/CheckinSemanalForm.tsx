@@ -175,7 +175,7 @@ export default function CheckinSemanalForm({ inicial, enviando = false, erro, on
 
       {treinou && (
         <Pergunta titulo="Recuperação do treino (opcional)" dica="0 = nada recuperado(a) · 10 = totalmente recuperado(a). Se preferir, pule.">
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
             {NIVEIS_PSR.map((n) => (
               <Opcao
                 key={n}

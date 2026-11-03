@@ -32,7 +32,7 @@ const ESTILO: Record<ItemCheckin, { cor: string; traco?: string }> = {
 function textoDaVariacao(v: Variacao): string {
   if (v.sentido === 'igual') return 'igual';
   const pontos = Math.abs(v.delta);
-  const verbo = v.sentido === 'melhorou' ? 'subiu' : 'caiu';
+  const verbo = v.sentido === 'melhorou' ? 'melhorou' : 'piorou';
   return `${verbo} ${pontos} ${pontos === 1 ? 'ponto' : 'pontos'}`;
 }
 

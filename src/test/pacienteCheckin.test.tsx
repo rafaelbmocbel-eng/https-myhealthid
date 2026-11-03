@@ -248,6 +248,17 @@ describe('CheckinSemanalForm', () => {
     expect(onEnviar).toHaveBeenLastCalledWith(expect.objectContaining({ urina: null }));
   });
 
+  it('a recuperação de 0 a 10 usa 4 colunas no celular (6 só a partir de sm) para as 11 opções caberem em 360 px', () => {
+    montar();
+    fireEvent.click(screen.getByRole('radio', { name: 'Sim' }));
+    const grupo = screen.getByRole('radiogroup', { name: 'Recuperação do treino (opcional)' });
+    const grade = grupo.querySelector('.grid');
+    expect(grade).not.toBeNull();
+    expect(grade!.className).toContain('grid-cols-4');
+    expect(grade!.className).toContain('sm:grid-cols-6');
+    expect(grade!.className).not.toMatch(/(^|\s)grid-cols-6/);
+  });
+
   it('"Treinou esta semana?" abre a recuperação de 0 a 10; só vale se treinou', () => {
     const { onEnviar } = montar();
     expect(screen.getByRole('radio', { name: 'Não' })).toBeChecked();
@@ -322,7 +333,7 @@ describe('CheckinEvolucaoCliente', () => {
     expect(screen.queryByTestId('grafico')).toBeNull();
   });
 
-  it('compara a última resposta com a anterior em linguagem simples: subiu, igual, caiu', () => {
+  it('compara a última resposta com a anterior em linguagem simples: melhorou, igual, piorou', () => {
     render(
       <CheckinEvolucaoCliente
         linhas={[
@@ -332,11 +343,11 @@ describe('CheckinEvolucaoCliente', () => {
       />,
     );
     const linhaDe = (rotulo: string) => within(screen.getByText(`${rotulo}:`).closest('li')!);
-    expect(linhaDe('Fadiga').getByText('subiu 1 ponto')).toBeInTheDocument();
+    expect(linhaDe('Fadiga').getByText('melhorou 1 ponto')).toBeInTheDocument();
     expect(linhaDe('Sono').getByText('igual')).toBeInTheDocument();
-    expect(linhaDe('Dor muscular').getByText('caiu 1 ponto')).toBeInTheDocument();
+    expect(linhaDe('Dor muscular').getByText('piorou 1 ponto')).toBeInTheDocument();
     expect(linhaDe('Estresse').getByText('igual')).toBeInTheDocument();
-    expect(linhaDe('Humor').getByText('caiu 2 pontos')).toBeInTheDocument();
+    expect(linhaDe('Humor').getByText('piorou 2 pontos')).toBeInTheDocument();
     expect(screen.getByText('Desde a sua resposta de 26/10')).toBeInTheDocument();
   });
 
@@ -346,8 +357,8 @@ describe('CheckinEvolucaoCliente', () => {
     render(<CheckinEvolucaoCliente linhas={[...linhas].reverse()} />);
     expect(screen.getByTestId('grafico')).toHaveAttribute('data-pontos', '12');
     expect(screen.getAllByTestId('linha').map((l) => l.getAttribute('data-chave'))).toEqual([...ITENS_CHECKIN]);
-    // a última (SEMANA) tem sono 5 e a anterior sono 4: subiu 1 ponto
-    expect(screen.getByText('Sono:').closest('li')!.textContent).toContain('subiu 1 ponto');
+    // a última (SEMANA) tem sono 5 e a anterior sono 4: melhorou 1 ponto
+    expect(screen.getByText('Sono:').closest('li')!.textContent).toContain('melhorou 1 ponto');
     expect(screen.getByText(`Desde a sua resposta de ${semanas[13].slice(8)}/${semanas[13].slice(5, 7)}`)).toBeInTheDocument();
   });
 
@@ -436,6 +447,17 @@ describe('PacienteCheckin: envio', () => {
     expect(Object.keys(args).sort()).toEqual(['p_dor_muscular', 'p_estresse', 'p_fadiga', 'p_humor', 'p_psr', 'p_sono', 'p_urina']);
   });
 
+  it('se a releitura da série falhar DEPOIS de enviar, a confirmação e o pedido do MyID continuam na tela (nada de tela de erro)', async () => {
+    await abrirFormulario();
+    responderTudo();
+    h.serieErro = { message: 'Failed to fetch' };
+    fireEvent.click(botaoEnviar());
+
+    expect(await screen.findByText('Check-in registrado')).toBeInTheDocument();
+    await waitFor(() => expect(h.consultas.filter((q) => q.tabela === 'checkins_semanais').length).toBeGreaterThan(1));
+    expect(screen.queryByText(/Não consegui carregar o seu check-in/)).toBeNull();
+    expect(screen.getByText('Falta o seu MyID, que é o primeiro passo.')).toBeInTheDocument();
+  });
   it('depois de enviar, o foco vai para o título da confirmação (o formulário some e o foco não se perde)', async () => {
     await abrirFormulario();
     responderTudo();
@@ -462,7 +484,7 @@ describe('PacienteCheckin: envio', () => {
     fireEvent.click(botaoEnviar());
     await screen.findByText('Check-in registrado');
     await screen.findByText('Desde a sua resposta de 26/10');
-    expect(screen.getByText('Fadiga:').closest('li')!.textContent).toContain('subiu 2 pontos');
+    expect(screen.getByText('Fadiga:').closest('li')!.textContent).toContain('melhorou 2 pontos');
     expect(screen.getByText('Sono:').closest('li')!.textContent).toContain('igual');
   });
 
@@ -565,7 +587,7 @@ describe('PacienteCheckin: nada alarmista para o cliente', () => {
     await screen.findByText('Desde a sua resposta de 26/10');
     expect(h.rpc.mock.results[0].type).toBe('return');
     expect(container.textContent).not.toMatch(/alert/i);
-    expect(container.textContent).toMatch(/caiu/);
+    expect(container.textContent).toMatch(/piorou/);
   });
 
   it('traz o aviso discreto de que o check-in não é para urgências', async () => {

@@ -230,7 +230,8 @@ export function useCheckinSemanal() {
           return { ...atual, linhas: comLinha(atual.linhas, { ...v, semana, updated_at: new Date().toISOString() }) };
         });
       }
-      return qc.invalidateQueries({ queryKey: chave });
+      // Sem devolver a promessa: a confirmação aparece na hora; a releitura roda por trás.
+      void qc.invalidateQueries({ queryKey: chave });
     },
   });
 

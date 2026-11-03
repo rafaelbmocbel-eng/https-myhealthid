@@ -323,6 +323,14 @@ describe('linha de base e alertas (mesmos casos do teste do banco 07_checkin_sem
     expect(calcularAlertas(s)).toEqual(['fadiga', 'sono', 'humor']);
   });
 
+  it('a série pode chegar fora de ordem: alerta e linha de base ordenam por semana antes de calcular', () => {
+    const w = semanas(6);
+    const s = w.map((semana, i) => linha(semana, { fadiga: i < 4 ? 4 : 3 }));
+    const embaralhada = [s[5], s[0], s[3], s[1], s[4], s[2]];
+    expect(calcularAlertas(embaralhada)).toEqual(['fadiga']);
+    expect(calcularBaseline(embaralhada)?.fadiga).toBe(4);
+  });
+
   it('A8: a 4ª resposta entra na linha de base (média 3,25): sem alerta', () => {
     const w = semanas(6);
     const s = w.map((semana, i) => linha(semana, { fadiga: [4, 4, 4, 2, 3, 3][i] }));

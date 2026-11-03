@@ -47,9 +47,12 @@ export default function NotificationCenter() {
     diretriz_rascunho: '/pacientes',
   };
 
+  // Rotas do portal do cliente (/paciente/...) não servem ao profissional; /pacientes/... (perfil do cliente) serve.
+  const rotaDoPortal = (rota: string) => /^\/paciente(\/|\?|$)/.test(rota);
+
   const handleClick = (id: string, rota: string | null, tipo?: string) => {
     marcarLida.mutate(id);
-    const destino = rota && !rota.startsWith('/paciente') ? rota : rotaMap[tipo || ''] || null;
+    const destino = rota && !rotaDoPortal(rota) ? rota : rotaMap[tipo || ''] || null;
     if (destino) {
       setOpen(false);
       navigate(destino);
@@ -92,7 +95,7 @@ export default function NotificationCenter() {
             ) : (
               notificacoes.map(n => {
                 const Icon = iconMap[n.tipo] || Bell;
-                const destinoSeguro = n.rota && !n.rota.startsWith('/paciente')
+                const destinoSeguro = n.rota && !rotaDoPortal(n.rota)
                   ? n.rota
                   : rotaMap[n.tipo] || null;
 

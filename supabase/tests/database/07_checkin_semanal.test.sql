@@ -2,7 +2,7 @@
 -- só o que é seu; nota viva e alertas vão para o prontuário e para as notificações; o alerta segue os mesmos casos do teste
 -- do app (src/test/checkinSemanal.test.ts).
 begin;
-select plan(69);
+select plan(70);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'terapeuta.a@teste.invalid'),
@@ -33,6 +33,10 @@ select ok(not has_function_privilege('anon', 'public.checkin_gravar(uuid, date, 
   and not has_function_privilege('authenticated', 'public.checkin_gravar(uuid, date, text, int, int, int, int, int, int, int)', 'execute')
   and has_function_privilege('service_role', 'public.checkin_gravar(uuid, date, text, int, int, int, int, int, int, int)', 'execute'),
   'a gravação interna só roda pela service role');
+select ok(not has_function_privilege('anon', 'public.checkin_alertas(uuid)', 'execute')
+  and not has_function_privilege('authenticated', 'public.checkin_alertas(uuid)', 'execute')
+  and has_function_privilege('service_role', 'public.checkin_alertas(uuid)', 'execute'),
+  'o cálculo do alerta é do servidor: o cliente não o chama pela API (a nota de atenção é só do profissional)');
 select ok(not has_function_privilege('anon', 'public.registrar_checkin_semanal(int, int, int, int, int, int, int)', 'execute')
   and has_function_privilege('authenticated', 'public.registrar_checkin_semanal(int, int, int, int, int, int, int)', 'execute'),
   'o visitante sem login não executa a gravação do portal; o usuário logado executa');

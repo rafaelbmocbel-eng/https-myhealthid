@@ -43,7 +43,8 @@ das regras: `supabase/functions/_shared/checkin-semanal.ts`.
   os números, a variação e o total de respostas, sem aviso de queda) e nota "Atenção no check-in" quando há queda. As duas são
   registros automáticos e não podem ser editadas.
 - **O cliente não vê o alerta.** A nota de atenção só é lida pelo profissional dono: o banco bloqueia a leitura para o cliente (política
-  restritiva em `notas_prontuario`) e a tela do portal também filtra. O cliente vê a nota viva, que é o autorrelato dele.
+  restritiva em `notas_prontuario`), a função `checkin_alertas` só roda no servidor (o cliente não a chama pela API) e a tela do portal
+  também filtra. O cliente vê a nota viva, que é o autorrelato dele.
 - **Só o servidor cria notas do check-in**: políticas restritivas em `notas_prontuario` impedem qualquer usuário logado de criar ou
   editar notas com tipo `checkin_%` (a política antiga de INSERT só exigia `auth.uid() = terapeuta_id`).
 - Notificação no sino do profissional quando uma queda nova aparece.
@@ -117,3 +118,12 @@ Migrações: `20261102150000_checkin_semanal.sql` e `20261102150100_cron_checkin
 ## Testes
 `supabase/tests/database/07_checkin_semanal.test.sql` (privilégios, RLS, gravação, nota viva, alertas, dedupe),
 `src/test/checkinSemanal.test.ts` (leitura das respostas, textos, comparação, alertas) e os testes de tela e de WhatsApp.
+
+## Limitações conhecidas
+- **Troca de profissional do cliente**: as notas do check-in já gravadas (nota viva e notas de atenção) ficam com o profissional que
+  estava no momento; as próximas respostas geram notas para o novo profissional. As respostas em si (`checkins_semanais`) acompanham
+  o cliente: o novo profissional vê o histórico no card.
+- **Relógio do aparelho**: o portal decide "já respondeu esta semana" com a data do aparelho; um relógio errado pode mostrar o pedido na
+  semana errada. O servidor sempre grava na semana certa (data do servidor, horário de Brasília).
+- A nota viva sobe para o topo do prontuário a cada resposta (ela é o "último estado"); o dia em que foi escrita pela primeira vez fica
+  no histórico da série, dentro da nota.
