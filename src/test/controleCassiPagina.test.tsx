@@ -110,8 +110,11 @@ async function abrirLancamento(nome: string) {
 async function lancar(nome: string, qtds: Record<string, number>, opcoes: { guia?: number; salvar?: boolean } = {}) {
   const { guia = 1, salvar = true } = opcoes;
   const grupo = await abrirLancamento(nome);
+  const campo = (cod: string) => within(grupo).getByLabelText(`Quantidade do código ${cod} na guia ${guia}`) as HTMLInputElement;
+  // A guia abre com o modelo (144, 012 e 185 já marcados): aqui se parte de uma guia vazia e se lança só o que foi pedido.
+  for (const cod of ['144', '012', '185']) if (!(cod in qtds)) fireEvent.change(campo(cod), { target: { value: '0' } });
   for (const [cod, q] of Object.entries(qtds)) {
-    fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia ${guia}`), { target: { value: String(q) } });
+    if (campo(cod).value !== String(q)) fireEvent.change(campo(cod), { target: { value: String(q) } }); // já marcada com esse número: nada a fazer
   }
   if (!salvar) return grupo;
   fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
@@ -584,8 +587,8 @@ describe('Faturamento com a lista de clientes do mês', () => {
     expect(valorDoCartao('Sua parte · 50%')).toBe('R$ 289,18');
     expect(valorDoCartao('Clínica')).toBe('R$ 289,18');
     const tabela = within(screen.getByText('Por cliente').closest('div.rounded-xl') as HTMLElement);
-    expect(tabela.getByText('012 × 10 · 144 × 1')).toBeTruthy();
-    expect(norm(screen.getByRole('list', { name: 'Clientes na lista do mês' }).textContent)).toContain('012 × 10 · 144 × 1 · R$ 642,62');
+    expect(tabela.getByText('144 × 1 · 012 × 10')).toBeTruthy();
+    expect(norm(screen.getByRole('list', { name: 'Clientes na lista do mês' }).textContent)).toContain('144 × 1 · 012 × 10 · R$ 642,62');
   });
 
   it('duas guias no mês, com outro código: cada guia respeita o seu limite e o valor soma tudo', async () => {
@@ -593,14 +596,55 @@ describe('Faturamento com a lista de clientes do mês', () => {
     await irParaFaturamento();
     await adicionarAoMes('Bruno Lima', 'bruno');
     const grupo = await abrirLancamento('Bruno Lima');
+    const zerarModelo = (guia: number) => {
+      for (const cod of ['144', '185']) fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia ${guia}`), { target: { value: '0' } });
+    };
+    zerarModelo(1); // cada guia abre com o modelo (144, 012 e 185 marcados); este teste parte de guias só com 012 e 301
     fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '6' } });
     fireEvent.click(within(grupo).getByRole('button', { name: /Outra guia/ }));
+    zerarModelo(2);
     fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 2'), { target: { value: '4' } });
     fireEvent.change(within(grupo).getByLabelText('Quantidade do código 301 na guia 2'), { target: { value: '2' } });
     fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
     await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 648,10')); // 10 × 57,70 + 2 × 35,55
     expect(atualizacoesDoMes().at(-1)!.payload).toEqual({ lancamentos: [{ '012': 6 }, { '012': 4, '301': 2 }] });
     expect(norm(screen.getByRole('list', { name: 'Clientes na lista do mês' }).textContent)).toContain('012 × 10 · 301 × 2 · 2 guias');
+  });
+
+  it('cliente novo, sem passar pelo auxiliar: o modelo da guia vem marcado e salvar sem mexer grava 144 × 1, 012 × 10 e 185 × 10', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    const grupo = await abrirLancamento('Bruno Lima');
+    expect(within(grupo).getByRole('note').textContent).toContain('144 × 1 · 012 × 10 · 185 × 10');
+    fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 1.727,02'));
+    expect(atualizacoesDoMes().at(-1)!.payload).toEqual({ lancamentos: [{ '144': 1, '012': 10, '185': 10 }] });
+    expect(valorDoCartao('Sessões')).toBe('20');
+  });
+
+  it('cliente novo: marcar 301 e desmarcar 185 antes de salvar entrega 144, 012 e 301 (cada quantidade pronta vale só ao marcar)', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    const grupo = await abrirLancamento('Bruno Lima');
+    fireEvent.click(within(grupo).getByRole('checkbox', { name: 'Marcar o código 301 na guia 1' }));
+    fireEvent.click(within(grupo).getByRole('checkbox', { name: 'Marcar o código 185 na guia 1' }));
+    fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 998,12')); // 65,62 + 10 × 57,70 + 10 × 35,55
+    expect(atualizacoesDoMes().at(-1)!.payload).toEqual({ lancamentos: [{ '144': 1, '012': 10, '301': 10 }] });
+  });
+
+  it('lançamento já salvo reabre exatamente como estava, sem o modelo por cima', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 4 });
+    const grupo = await abrirLancamento('Ana Souza');
+    expect(within(grupo).queryByRole('note')).toBeNull();
+    expect((within(grupo).getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('4');
+    expect(within(grupo).getByRole('checkbox', { name: 'Marcar o código 144 na guia 1' }).getAttribute('data-state')).toBe('unchecked');
+    expect(within(grupo).getByRole('checkbox', { name: 'Marcar o código 185 na guia 1' }).getAttribute('data-state')).toBe('unchecked');
   });
 
   it('o limite da CASSI vale no campo e no que é salvo: 012 até 10, consulta só 1', async () => {
@@ -1588,7 +1632,7 @@ describe('Faturamento: configuração e relatório (revisão independente)', () 
     await adicionarAoMes('Ana Souza', 'ana');
     const grupo = await abrirLancamento('Ana Souza');
     const codigos = within(grupo).getAllByLabelText(/^Quantidade do código .* na guia 1$/).map((el) => el.getAttribute('aria-label')!.replace('Quantidade do código ', '').replace(' na guia 1', ''));
-    expect(codigos).toEqual(['012', '020', '144', '301', '131', '185', '160']);
+    expect(codigos).toEqual(['144', '012', '185', '131', '301', '020', '160']); // a ordem do modelo, e o código do profissional por último
   });
 
   it('com configuração salva não aparece o aviso de "ainda não salvou"', async () => {
@@ -1726,7 +1770,7 @@ describe('Faturamento: contas e relatórios que os revisores pediram para cobrir
     const texto = await new Promise<string>((ok) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.readAsText(capturado as unknown as Blob); });
     const linhas = texto.replace('\ufeff', '').split('\n');
     expect(linhas[0]).toBe('"Cliente";"Responsável";"Códigos";"Sessões";"Bruto";"Imposto";"Líquido"');
-    expect(linhas[1]).toBe('"Ana Souza";"—";"012 × 10 · 144 × 1";"10";"642.62";"64.26";"578.36"');
+    expect(linhas[1]).toBe('"Ana Souza";"—";"144 × 1 · 012 × 10";"10";"642.62";"64.26";"578.36"');
     expect(linhas[linhas.length - 1]).toBe('"TOTAL";"";"";"10";"642.62";"64.26";"578.36"');
   });
 });

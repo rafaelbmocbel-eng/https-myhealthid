@@ -25,7 +25,7 @@ export const CODIGOS_PADRAO_FATURAMENTO: PadraoDoCodigo[] = [
   { codigo: '185', descricao: 'Estimulação elétrica transcutânea', valor: 108.44, codigo_oficial: '31602185', maxPorGuia: 10 },
 ];
 
-// O código que vem marcado primeiro ao lançar um cliente.
+// Código das sessões que vêm da agenda (a guia nova, com o que já vem marcado, está em MODELO_DA_GUIA).
 export const CODIGO_PADRAO = '012';
 // Código que não está na tabela acima (ex.: um que o profissional criou em Configurações): a guia da CASSI tem 10.
 export const MAXIMO_POR_GUIA_SEM_REGRA = 10;
@@ -63,10 +63,32 @@ export function mesclarCodigosComPadrao(configurados: CodigoFaturavel[] | null |
   return base;
 }
 
-// Ordem de exibição ao lançar: o padrão primeiro, depois os da tabela, depois o que o profissional criou. Código repetido
-// em Configurações aparece uma vez só (vale o primeiro, como no cálculo).
+// Modelo de cada guia no lançamento (pedido do Rafael, 03/11/2026): a ORDEM das linhas, a quantidade que vem em cada uma e se
+// já vem marcada. As marcadas já entram na guia; as outras mostram a quantidade e só passam a valer quando o profissional marca.
+// Tudo pode ser mudado na hora. Vale para guia nova: o que já foi lançado e salvo volta exatamente como estava.
+export interface LinhaDoModelo {
+  codigo: string;
+  quantidade: number;
+  marcado: boolean;
+}
+export const MODELO_DA_GUIA: readonly LinhaDoModelo[] = [
+  { codigo: '144', quantidade: 1, marcado: true },
+  { codigo: '012', quantidade: 10, marcado: true },
+  { codigo: '185', quantidade: 10, marcado: true },
+  { codigo: '131', quantidade: 10, marcado: false },
+  { codigo: '301', quantidade: 10, marcado: false },
+  { codigo: '020', quantidade: 10, marcado: false },
+];
+
+/** Quantidade que o modelo propõe para o código (0 quando o código não está no modelo). */
+export function quantidadeDoModelo(codigo: string): number {
+  return MODELO_DA_GUIA.find((m) => m.codigo === codigo)?.quantidade ?? 0;
+}
+
+// Ordem de exibição ao lançar: a do modelo da guia, depois o que mais houver na tabela, depois o que o profissional criou.
+// Código repetido em Configurações aparece uma vez só (vale o primeiro, como no cálculo).
 export function ordenarParaLancamento(codigos: CodigoFaturavel[]): CodigoFaturavel[] {
-  const ordem = [CODIGO_PADRAO, ...CODIGOS_PADRAO_FATURAMENTO.map((p) => p.codigo)];
+  const ordem = [...MODELO_DA_GUIA.map((m) => m.codigo), ...CODIGOS_PADRAO_FATURAMENTO.map((p) => p.codigo)];
   const pos = (c: string) => { const i = ordem.indexOf(c); return i < 0 ? ordem.length : i; };
   const unicos = codigos.filter((c, i) => codigos.findIndex((x) => x.codigo === c.codigo) === i);
   return unicos.map((c, i) => ({ c, i })).sort((a, b) => pos(a.c.codigo) - pos(b.c.codigo) || a.i - b.i).map((x) => x.c);
@@ -81,6 +103,13 @@ export function formatarCodigoOficial(oficial: string | undefined, curto: string
 
 // Uma guia lançada: quantidade usada de cada código.
 export type GuiaLancada = Record<string, number>;
+
+/** Guia nova já com o que o modelo marca (144 × 1, 012 × 10 e 185 × 10). Sempre um objeto novo. */
+export function guiaDoModelo(): GuiaLancada {
+  const g: GuiaLancada = {};
+  for (const m of MODELO_DA_GUIA) if (m.marcado) g[m.codigo] = m.quantidade;
+  return g;
+}
 
 const inteiro = (v: unknown): number => {
   const n = typeof v === 'number' ? v : Number(v);

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  CODIGOS_PADRAO_FATURAMENTO, MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_CODIGOS_NA_GUIA, brutoDosLancamentos, formatarCodigoOficial, guiasPelaAgenda, lancamentosIguais, limiteDoCodigo, maximoNaGuia,
-  mesclarCodigosComPadrao, normalizarLancamentos, ordenarParaLancamento, problemasDosLancamentos, resumoDosLancamentos,
-  sessoesDosLancamentos, totalPorCodigo, type CodigoFaturavel, type GuiaLancada,
+  CODIGOS_PADRAO_FATURAMENTO, MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_CODIGOS_NA_GUIA, MODELO_DA_GUIA, brutoDosLancamentos, formatarCodigoOficial, guiaDoModelo, guiasPelaAgenda,
+  lancamentosIguais, limiteDoCodigo, maximoNaGuia, mesclarCodigosComPadrao, normalizarLancamentos, ordenarParaLancamento, problemasDosLancamentos, quantidadeDoModelo,
+  resumoDosLancamentos, sessoesDosLancamentos, totalPorCodigo, type CodigoFaturavel, type GuiaLancada,
 } from '@/lib/cassiFaturamento';
 
 describe('tabela de códigos que o Rafael passou (25/10/2026)', () => {
@@ -78,9 +78,63 @@ describe('mesclarCodigosComPadrao', () => {
     expect(r.map((c) => [c.codigo, c.valor])).toEqual([['012', 1], ['160', 2]]);
   });
 
-  it('para lançar: 012 primeiro, depois a ordem da tabela, depois os que o profissional criou', () => {
+  it('para lançar: a ordem do modelo (144, 012, 185, 131, 301, 020), depois os que o profissional criou', () => {
     const r = ordenarParaLancamento(mesclarCodigosComPadrao([{ codigo: '160', descricao: 'Meu código', valor: 60 }, { codigo: '144', descricao: 'x', valor: 1 }]));
-    expect(r.map((c) => c.codigo)).toEqual(['012', '020', '144', '301', '131', '185', '160']);
+    expect(r.map((c) => c.codigo)).toEqual(['144', '012', '185', '131', '301', '020', '160']);
+  });
+
+  it('a ordem do modelo vale mesmo com a configuração salva em outra ordem', () => {
+    const embaralhado = [{ codigo: '020', descricao: 'a', valor: 1 }, { codigo: '301', descricao: 'b', valor: 1 }, { codigo: '012', descricao: 'c', valor: 1 }];
+    expect(ordenarParaLancamento(mesclarCodigosComPadrao(embaralhado)).map((c) => c.codigo)).toEqual(['144', '012', '185', '131', '301', '020']);
+  });
+});
+
+describe('modelo da guia (pedido do Rafael, 03/11/2026)', () => {
+  it('ordem, quantidade pronta e o que já vem marcado, exatamente como pedido', () => {
+    expect(MODELO_DA_GUIA).toEqual([
+      { codigo: '144', quantidade: 1, marcado: true },
+      { codigo: '012', quantidade: 10, marcado: true },
+      { codigo: '185', quantidade: 10, marcado: true },
+      { codigo: '131', quantidade: 10, marcado: false },
+      { codigo: '301', quantidade: 10, marcado: false },
+      { codigo: '020', quantidade: 10, marcado: false },
+    ]);
+  });
+
+  it('cobre os mesmos seis códigos da tabela da CASSI, sem repetir nenhum', () => {
+    expect(MODELO_DA_GUIA.map((m) => m.codigo).sort()).toEqual(CODIGOS_PADRAO_FATURAMENTO.map((c) => c.codigo).sort());
+  });
+
+  it('nenhuma quantidade pronta passa do limite do código por guia ou no mês', () => {
+    for (const m of MODELO_DA_GUIA) {
+      const { porGuia, porMes } = limiteDoCodigo(m.codigo);
+      expect(m.quantidade, m.codigo).toBeLessThanOrEqual(Math.min(porGuia ?? 999, porMes ?? 999));
+    }
+  });
+
+  it('a guia do modelo traz só os marcados: 144 × 1, 012 × 10 e 185 × 10; e é um objeto novo a cada chamada', () => {
+    expect(guiaDoModelo()).toEqual({ '144': 1, '012': 10, '185': 10 });
+    const a = guiaDoModelo();
+    a['012'] = 3;
+    expect(guiaDoModelo()['012']).toBe(10);
+    expect(guiaDoModelo()).not.toBe(guiaDoModelo());
+  });
+
+  it('a guia do modelo é um lançamento válido (sem problema de limite) e vale R$ 1.727,02', () => {
+    expect(problemasDosLancamentos([guiaDoModelo()])).toEqual([]);
+    expect(normalizarLancamentos([guiaDoModelo()])).toEqual([guiaDoModelo()]);
+    const valores: Record<string, number> = { '144': 65.62, '012': 57.7, '185': 108.44 };
+    expect(brutoDosLancamentos([guiaDoModelo()], (c) => valores[c] ?? 0)).toBe(1727.02);
+  });
+
+  it('quantidadeDoModelo devolve a quantidade pronta e 0 para código fora do modelo', () => {
+    expect(quantidadeDoModelo('144')).toBe(1);
+    expect(quantidadeDoModelo('131')).toBe(10);
+    expect(quantidadeDoModelo('160')).toBe(0);
+  });
+
+  it('o resumo do lançamento segue a mesma ordem: 144 × 1 · 012 × 10 · 185 × 10', () => {
+    expect(resumoDosLancamentos([guiaDoModelo()])).toBe('144 × 1 · 012 × 10 · 185 × 10');
   });
 });
 
