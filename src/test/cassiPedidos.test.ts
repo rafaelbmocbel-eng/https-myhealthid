@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { GuiaCassi } from '@/lib/cassiGuias';
 import {
-  candidatosDoPedido, itemDoPedido, listaDoPedido, montarTextoPedido, pedidoEmAberto, sugestoesDoPedido,
+  camposDaJustificativaParaGravar, candidatosDoPedido, itemDoPedido, listaDoPedido, montarTextoPedido, pedidoEmAberto, sugestoesDoPedido,
   type LinhaPedido, type PacientePedido,
 } from '@/lib/cassiPedidos';
 
@@ -104,7 +104,7 @@ describe('candidatos da busca', () => {
 describe('item do pedido', () => {
   it('pré-preenche do cadastro; sem carteirinha no cadastro usa a matrícula da guia', () => {
     const doCadastro = itemDoPedido(linha(paciente('1', 'Ana', { sobrenome: 'Souza', carteirinha: '111', cassi_diagnostico: 'Lombalgia', codigos_cassi: ['012', '185'] }), guia({ matricula: '999', diagnostico: 'outro', codigos: [{ codigo: '160' }] })));
-    expect(doCadastro).toEqual({ id: '1', nome: 'Ana Souza', sel: true, carteirinha: '111', diagnostico: 'Lombalgia', codigos: ['012', '185'] });
+    expect(doCadastro).toEqual({ id: '1', nome: 'Ana Souza', sel: true, carteirinha: '111', diagnostico: 'Lombalgia', musculos: '', achados: '', codigos: ['012', '185'] });
     const daGuia = itemDoPedido(linha(paciente('2', 'Bruno'), guia({ matricula: '999', diagnostico: 'Cervicalgia', codigos: [{ codigo: '012' }, { codigo: '185' }] })));
     expect(daGuia).toMatchObject({ carteirinha: '999', diagnostico: 'Cervicalgia', codigos: ['012', '185'] });
   });
@@ -115,7 +115,20 @@ describe('item do pedido', () => {
   });
 
   it('cliente sem nada fica com campos vazios (a mensagem mostra "—")', () => {
-    expect(itemDoPedido(linha(paciente('1', 'Ana')))).toMatchObject({ carteirinha: '', diagnostico: '', codigos: [] });
+    expect(itemDoPedido(linha(paciente('1', 'Ana')))).toMatchObject({ carteirinha: '', diagnostico: '', musculos: '', achados: '', codigos: [] });
+  });
+
+  it('músculos e achados da justificativa vêm do cadastro', () => {
+    const item = itemDoPedido(linha(paciente('1', 'Ana', { cassi_musculos: 'trapézio superior, romboides', cassi_achados: 'bandas tensas palpáveis' })));
+    expect(item).toMatchObject({ musculos: 'trapézio superior, romboides', achados: 'bandas tensas palpáveis' });
+  });
+
+  it('a justificativa não entra na mensagem do pedido (fica só para copiar)', () => {
+    const item = itemDoPedido(linha(paciente('1', 'Ana', { carteirinha: '111', cassi_musculos: 'trapézio superior', cassi_achados: 'bandas tensas', cassi_diagnostico: 'Dorsalgia', codigos_cassi: ['301'] })));
+    const texto = montarTextoPedido([item]);
+    expect(texto).not.toContain('trapézio');
+    expect(texto).not.toContain('bandas tensas');
+    expect(texto).toContain('Dorsalgia');
   });
 });
 
@@ -137,5 +150,31 @@ describe('mensagem do pedido (formato que já ia para a CASSI não mudou)', () =
 
   it('lista vazia gera só o cabeçalho', () => {
     expect(montarTextoPedido([])).toBe('*Solicitação de novas guias CASSI* (0 clientes)\n');
+  });
+});
+
+describe('camposDaJustificativaParaGravar', () => {
+  const item = (musculos: string, achados: string) => ({ musculos, achados });
+
+  it('sem edição na tela, não grava nada (não apaga o que está no cadastro)', () => {
+    expect(camposDaJustificativaParaGravar(item('', ''), undefined)).toEqual({});
+    expect(camposDaJustificativaParaGravar(item('trapézio', 'bandas'), {})).toEqual({});
+  });
+
+  it('o que foi digitado vai aparado', () => {
+    expect(camposDaJustificativaParaGravar(item('  trapézio superior ', 'bandas tensas'), { musculos: '  trapézio superior ', achados: 'bandas tensas' }))
+      .toEqual({ cassi_musculos: 'trapézio superior', cassi_achados: 'bandas tensas' });
+  });
+
+  it('o que foi apagado de propósito (ou só espaços) vai como null', () => {
+    expect(camposDaJustificativaParaGravar(item('', 'bandas'), { musculos: '', achados: 'bandas' })).toEqual({ cassi_musculos: null, cassi_achados: 'bandas' });
+    expect(camposDaJustificativaParaGravar(item('   ', ''), { musculos: '   ' })).toEqual({ cassi_musculos: null });
+    expect(camposDaJustificativaParaGravar(item('trapézio', ''), { achados: '' })).toEqual({ cassi_achados: null });
+    expect(camposDaJustificativaParaGravar(item('trapézio', '  '), { achados: '  ' })).toEqual({ cassi_achados: null });
+  });
+
+  it('só mexe no campo que foi tocado', () => {
+    expect(camposDaJustificativaParaGravar(item('trapézio', 'bandas'), { achados: 'bandas' })).toEqual({ cassi_achados: 'bandas' });
+    expect(camposDaJustificativaParaGravar(item('trapézio', 'bandas'), { musculos: 'trapézio' })).toEqual({ cassi_musculos: 'trapézio' });
   });
 });

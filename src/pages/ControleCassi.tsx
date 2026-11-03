@@ -1,5 +1,5 @@
 import '@/lib/pdf/patchJsPdf';
-import { useState, useMemo, useEffect, useRef, type CSSProperties, type FocusEvent } from 'react';
+import { useState, useMemo, useEffect, useRef, type CSSProperties, type Dispatch, type FocusEvent, type SetStateAction } from 'react';
 import { normalizarBusca } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,9 +20,10 @@ import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
 import { contarSessoesDoMes, fecharMesPorLancamentos, ultimosMeses } from '@/lib/cassiFinanceiro';
 import { MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_GUIAS_NO_MES, guiasPelaAgenda, mesclarCodigosComPadrao, ordenarParaLancamento, type GuiaLancada } from '@/lib/cassiFaturamento';
-import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
+import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, camposDaJustificativaParaGravar, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
 import { BuscaDeCliente } from '@/components/cassi/BuscaDeCliente';
 import { SugestoesDoPedido } from '@/components/cassi/SugestoesDoPedido';
+import { JustificativasCassi, type TextosGerados } from '@/components/cassi/JustificativasCassi';
 import { ClientesDoMes } from '@/components/cassi/ClientesDoMes';
 import { useClientesFinanceiroCassi } from '@/hooks/useClientesFinanceiroCassi';
 
@@ -30,7 +31,7 @@ import { useClientesFinanceiroCassi } from '@/hooks/useClientesFinanceiroCassi';
 // botão "Colocar em Este mês" e os avisos que falam dela; o código da aba continua aqui.
 const MOSTRAR_ESTE_MES = false;
 
-interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_confirmado_mes?: string | null; cassi_pedir_guia?: boolean | null; }
+interface Paciente { id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null; carteirinha: string | null; codigos_cassi: string[]; guias_por_mes?: number | null; guia_solicitada_em?: string | null; cassi_encerrado_em?: string | null; cassi_encerrado_motivo?: string | null; cassi_diagnostico?: string | null; cassi_musculos?: string | null; cassi_achados?: string | null; cassi_confirmado_mes?: string | null; cassi_pedir_guia?: boolean | null; }
 
 // Rascunho do formulário de guia.
 interface DraftGuia {
@@ -107,7 +108,7 @@ function useCassiPacientes() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo, cassi_diagnostico, cassi_confirmado_mes, cassi_pedir_guia')
+        .select('id, nome, sobrenome, email, telefone, carteirinha, codigos_cassi, guias_por_mes, guia_solicitada_em, cassi_encerrado_em, cassi_encerrado_motivo, cassi_diagnostico, cassi_musculos, cassi_achados, cassi_confirmado_mes, cassi_pedir_guia')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         // Mesmo critério da aba Pacientes: qualquer plano_saude que contenha "cassi"
@@ -178,6 +179,8 @@ export default function ControleCassi() {
   const qc = useQueryClient();
   const [editando, setEditando] = useState<{ paciente: Paciente; guia: GuiaCassi | null } | null>(null);
   const [view, setView] = useState<'clientes' | 'ativas' | 'pedir' | 'faturamento' | 'planilha'>(MOSTRAR_ESTE_MES ? 'ativas' : 'clientes');
+  // Justificativas geradas, por cliente. Moram na página (e não no painel de pedir guias) porque o painel desmonta ao trocar de aba.
+  const [justificativas, setJustificativas] = useState<Record<string, TextosGerados>>({});
   // "Pedir guia" num card coloca o cliente na lista do pedido (ela é durável) e abre a aba. Quem já teve o
   // pedido feito não volta para a lista: o pedido dele aparece em "Guias pedidas — aguardando CASSI".
   const irPedir = async (id: string | null) => {
@@ -577,6 +580,8 @@ export default function ControleCassi() {
               onNovaGuia={(pac) => setEditando({ paciente: pac, guia: null })}
               onDarBaixa={darBaixaPedidos}
               onMarcarPedir={marcarPedirGuia}
+              justificativas={justificativas}
+              setJustificativas={setJustificativas}
             />
 
             {guiasPedidas.length > 0 && (
@@ -2417,15 +2422,19 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
 // Pedir guias — a lista é do profissional: ele procura os clientes, adiciona, ajusta carteirinha/diagnóstico/
 // códigos (máx. 3) e copia ou manda a mensagem pronta (nome, carteirinha, códigos, diagnóstico). O que o
 // sistema acha que está na hora de pedir aparece à parte, como sugestão, e não entra sozinho no pedido.
-function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, onDarBaixa, onMarcarPedir }: {
+function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, onDarBaixa, onMarcarPedir, justificativas, setJustificativas }: {
   linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>; // a lista do pedido
   candidatos?: Array<{ paciente: Paciente; guia: GuiaCassi | null }>; // todos os CASSI que dá pra adicionar pela busca
   sugestoes?: SugestaoPedido[];
   onNovaGuia: (p: Paciente) => void;
   onDarBaixa: (ids: string[]) => Promise<boolean> | boolean; // true quando a baixa foi gravada
   onMarcarPedir: (ids: string | string[], valor: boolean) => Promise<boolean> | boolean; // lista DURÁVEL
+  justificativas: Record<string, TextosGerados>; // textos gerados por cliente (estado da página: sobrevive à troca de aba)
+  setJustificativas: Dispatch<SetStateAction<Record<string, TextosGerados>>>;
 }) {
   const { data: cfg } = useCassiConfig();
+  const { user } = useAuth();
+  const qc = useQueryClient();
   const codigosDisp: CodigoCfg[] = cfg?.codigos ?? CODIGOS_CASSI.map((c) => ({ codigo: c.codigo, descricao: c.descricao, valor: 0 }));
   const [dandoBaixa, setDandoBaixa] = useState(false);
   const [verTexto, setVerTexto] = useState(false);
@@ -2453,9 +2462,27 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
 
   const upd = (id: string, patch: Partial<ItemPedido>) =>
     setEdicoes((e) => ({ ...e, [id]: { ...e[id], ...patch } }));
+
+  // Ao gerar a justificativa, diagnóstico, músculos, achados e os códigos escolhidos vão para o cadastro (reaproveitam no próximo
+  // pedido e não se perdem ao trocar de aba; os códigos são os mesmos que o "Dar baixa" grava). O diagnóstico só entra se
+  // preenchido, como no "Dar baixa".
+  const salvarBaseDaJustificativa = async (it: ItemPedido): Promise<boolean> => {
+    const payload: Record<string, string | string[] | null> = { ...camposDaJustificativaParaGravar(it, edicoes[it.id]), codigos_cassi: it.codigos };
+    if (it.diagnostico.trim()) payload.cassi_diagnostico = it.diagnostico.trim();
+    // As colunas novas ainda não estão nos tipos gerados do Supabase.
+    const banco = supabase as unknown as {
+      from(tabela: string): { update(dados: Record<string, string | string[] | null>): { eq(coluna: string, valor: string): PromiseLike<{ error: { message?: string } | null }> } };
+    };
+    const { error } = await banco.from('pacientes').update(payload).eq('id', it.id);
+    if (error) { toast.error('Não consegui guardar os dados no cadastro: ' + (error.message || 'erro')); return false; }
+    qc.setQueryData<Paciente[]>(['cassi-pacientes', user?.id], (old) => old?.map((x) => (x.id === it.id ? { ...x, ...payload } : x)));
+    return true;
+  };
   // Quem sai do pedido (retirado ou com baixa) leva as edições junto: se voltar, volta com os dados do cadastro.
-  const limparEdicoes = (ids: string[]) =>
+  const limparEdicoes = (ids: string[]) => {
     setEdicoes((e) => Object.fromEntries(Object.entries(e).filter(([id]) => !ids.includes(id))));
+    setJustificativas((j) => Object.fromEntries(Object.entries(j).filter(([id]) => !ids.includes(id))));
+  };
   const toggleCod = (id: string, cod: string) => {
     const it = itens.find((i) => i.id === id);
     if (!it) return;
@@ -2567,6 +2594,18 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
                       registrar manual
                     </button>
                   </div>
+                  <JustificativasCassi
+                    nome={it.nome}
+                    diagnostico={it.diagnostico}
+                    musculos={it.musculos}
+                    achados={it.achados}
+                    codigos={it.codigos}
+                    onMusculos={(v) => upd(it.id, { musculos: v })}
+                    onAchados={(v) => upd(it.id, { achados: v })}
+                    textos={justificativas[it.id] ?? {}}
+                    onTextos={(t) => setJustificativas((j) => ({ ...j, [it.id]: t }))}
+                    onSalvarBase={() => salvarBaseDaJustificativa(it)}
+                  />
                 </div>
               )}
             </div>
@@ -2608,6 +2647,7 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
                 const payload: any = { codigos_cassi: i.codigos };
                 if (i.carteirinha.trim()) payload.carteirinha = i.carteirinha.trim();
                 if (i.diagnostico.trim()) payload.cassi_diagnostico = i.diagnostico.trim();
+                Object.assign(payload, camposDaJustificativaParaGravar(i, edicoes[i.id]));
                 return (supabase as any).from('pacientes').update(payload).eq('id', i.id);
               }));
               const falha = results.find((r: any) => r?.error);

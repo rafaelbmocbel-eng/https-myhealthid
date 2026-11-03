@@ -13,6 +13,8 @@ export interface PacientePedido {
   guia_solicitada_em?: string | null;
   cassi_encerrado_em?: string | null;
   cassi_diagnostico?: string | null;
+  cassi_musculos?: string | null;
+  cassi_achados?: string | null;
   cassi_pedir_guia?: boolean | null;
 }
 
@@ -81,6 +83,8 @@ export interface ItemPedido {
   sel: boolean;
   carteirinha: string;
   diagnostico: string;
+  musculos: string;
+  achados: string;
   codigos: string[];
 }
 
@@ -92,8 +96,22 @@ export function itemDoPedido(l: LinhaPedido): ItemPedido {
     sel: true,
     carteirinha: l.paciente.carteirinha || l.guia?.matricula || '',
     diagnostico: l.paciente.cassi_diagnostico || l.guia?.diagnostico || '',
+    musculos: l.paciente.cassi_musculos || '',
+    achados: l.paciente.cassi_achados || '',
     codigos: (l.paciente.codigos_cassi?.length ? l.paciente.codigos_cassi : (l.guia?.codigos?.map((c) => c.codigo) || [])).slice(0, MAXIMO_CODIGOS_PEDIDO),
   };
+}
+
+// Músculos e achados da justificativa. Diferente do diagnóstico, o profissional pode APAGAR de propósito (achado do exame
+// vale por consulta): o que ele esvaziou vai como null; o que ele não tocou não é mexido no cadastro.
+export function camposDaJustificativaParaGravar(
+  item: Pick<ItemPedido, 'musculos' | 'achados'>,
+  tocados: Partial<Pick<ItemPedido, 'musculos' | 'achados'>> | undefined,
+): { cassi_musculos?: string | null; cassi_achados?: string | null } {
+  const saida: { cassi_musculos?: string | null; cassi_achados?: string | null } = {};
+  if (tocados && 'musculos' in tocados) saida.cassi_musculos = item.musculos.trim() || null;
+  if (tocados && 'achados' in tocados) saida.cassi_achados = item.achados.trim() || null;
+  return saida;
 }
 
 // A mensagem do pedido (copiar / WhatsApp).
