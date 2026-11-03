@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { gerarPortalToken } from '@/lib/portalToken';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -352,7 +353,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const gerarTokenPortal = async () => {
     setGerandoToken(true);
     try {
-      const novo = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+      const novo = gerarPortalToken();
       const { error } = await supabase.from('pacientes').update({ portal_token: novo }).eq('id', pacienteId);
       if (error) throw error;
       setTokenGerado(novo);

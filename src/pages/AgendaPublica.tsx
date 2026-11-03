@@ -1,3 +1,4 @@
+import { normalizarContatoPaciente } from '@/lib/contatoPaciente';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -206,7 +207,7 @@ export default function AgendaPublica() {
           .from('pacientes')
           .select('id')
           .eq('terapeuta_id', linkInfo.terapeuta_id)
-          .eq('telefone', newPacData.telefone)
+          .eq('telefone', newPacData.telefone.trim())
           .maybeSingle();
 
         if (existingPac) {
@@ -219,8 +220,7 @@ export default function AgendaPublica() {
               terapeuta_id: linkInfo.terapeuta_id,
               nome: newPacData.nome,
               sobrenome: newPacData.sobrenome,
-              email: newPacData.email,
-              telefone: newPacData.telefone,
+              ...normalizarContatoPaciente(newPacData),
               ativo: true,
             })
             .select()

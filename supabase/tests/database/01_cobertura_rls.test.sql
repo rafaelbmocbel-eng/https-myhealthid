@@ -83,7 +83,7 @@ select is(
     'has_clinica_role', 'has_module_access', 'incrementar_clique_link', 'is_clinica_dono',
     'link_agenda_ativo_para', 'link_agenda_valido_por_token', 'link_avaliacao_valido', 'link_patient_user_by_email',
     'link_patient_user_by_token', 'meu_plano_atual', 'minha_clinica_equipe', 'minhas_solicitacoes_conexao',
-    'pode_chancelar', 'remover_membro_clinica', 'salvar_cadastro_paciente_autenticado',
+    'pode_chancelar', 'remover_membro_clinica',
     'salvar_cadastro_paciente_publico', 'salvar_fase_myid', 'track_agenda_link_access'
   ]::text[],
   'as funções privilegiadas executáveis sem login são exatamente as conhecidas');

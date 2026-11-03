@@ -13,6 +13,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { gerarPortalToken } from '@/lib/portalToken';
+import { traduzirErroCadastroPaciente } from '@/lib/erroCadastroPaciente';
 
 interface Aplicacao {
   id: string;
@@ -81,7 +83,7 @@ export default function Aplicacoes() {
     if (!novo.lgpd) { toast.error('Confirme o aceite LGPD do cliente.'); return; }
     setSalvando(true);
     try {
-      const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+      const token = gerarPortalToken();
       const { data, error } = await (supabase as any).from('pacientes').insert({
         nome: partes[0],
         sobrenome: partes.slice(1).join(' '),
@@ -108,8 +110,10 @@ export default function Aplicacoes() {
       } catch { /* o termo é complementar; o aceite já fica registrado no paciente */ }
       toast.success('Cliente cadastrado');
       navigate(escolhida.rota(data.id));
-    } catch (e: any) {
-      toast.error(e?.message || 'Erro ao cadastrar o cliente.');
+    } catch (e: unknown) {
+      console.error('[aplicacoes] falha ao cadastrar o cliente', e);
+      const erro = traduzirErroCadastroPaciente(e);
+      toast.error(`${erro.titulo}. ${erro.descricao}`);
     } finally {
       setSalvando(false);
     }

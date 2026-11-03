@@ -29,6 +29,8 @@ import { format, parseISO, differenceInDays, formatDistanceToNow } from '@/lib/d
 import { ptBR } from 'date-fns/locale';
 import { cn, normalizarBusca } from '@/lib/utils';
 import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
+import { traduzirErroCadastroPaciente, nomeDoClienteComMesmoContato, comNomeDoDuplicado } from '@/lib/erroCadastroPaciente';
+import { gerarPortalToken } from '@/lib/portalToken';
 import { CODIGOS_CASSI } from '@/lib/cassiGuias';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { exportToCsv } from '@/utils/exportCsv';
@@ -547,7 +549,7 @@ export default function Pacientes() {
     if (!quickForm.lgpd_aceite) return toast({ title: 'Confirme o aceite LGPD do paciente', variant: 'destructive' });
     setSubmitting(true);
     try {
-      const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+      const token = gerarPortalToken();
       const payload: any = {
         nome: quickForm.nome.trim(),
         sobrenome: quickForm.sobrenome.trim(),
@@ -577,11 +579,13 @@ export default function Pacientes() {
       void clearDraft(rapidoDraftKey);
       setQuickModal(false);
       setShareModal({ open: true, nome: data.nome, telefone: data.telefone || undefined, url });
-    } catch (e: any) {
-      const msg = e?.message || '';
-      let friendly = 'Erro ao criar cadastro.';
-      if (msg.includes('uniq_pacientes_terapeuta_email')) friendly = 'Já existe um paciente ativo com este e-mail.';
-      toast({ title: 'Erro', description: friendly, variant: 'destructive' });
+    } catch (e: unknown) {
+      console.error('[pacientes] falha no cadastro rápido', e);
+      let erro = traduzirErroCadastroPaciente(e);
+      if (erro.causa === 'email_duplicado' && user) {
+        erro = comNomeDoDuplicado(erro, await nomeDoClienteComMesmoContato(supabase, user.id, 'email', quickForm.email));
+      }
+      toast({ title: erro.titulo, description: erro.descricao, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -676,7 +680,7 @@ export default function Pacientes() {
         payload.origem = form.origem_lead || 'cadastro_manual';
         // Todo cliente novo já nasce com link de acesso ao portal — assim nunca
         // fica sem link (o cadastro rápido já fazia; o cadastro completo faltava).
-        payload.portal_token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+        payload.portal_token = gerarPortalToken();
       } else if (form.origem_lead) {
         payload.origem = form.origem_lead;
       }
@@ -710,13 +714,14 @@ export default function Pacientes() {
       if (!modal.paciente) void clearDraft(novoDraftKey);
       toast({ title: modal.paciente ? 'Paciente atualizado!' : 'Paciente cadastrado!' });
       setModal({ open: false });
-    } catch (e: any) {
-      const msg = e?.message || '';
-      let friendly = msg;
-      if (msg.includes('uniq_pacientes_terapeuta_cpf')) friendly = 'Já existe um paciente ativo com este CPF.';
-      else if (msg.includes('uniq_pacientes_terapeuta_email')) friendly = 'Já existe um paciente ativo com este e-mail.';
-      else if (msg.toLowerCase().includes('cpf inválido')) friendly = 'CPF inválido. Verifique os dígitos.';
-      toast({ title: 'Erro ao salvar', description: friendly, variant: 'destructive' });
+    } catch (e: unknown) {
+      console.error('[pacientes] falha ao salvar o cadastro', e);
+      let erro = traduzirErroCadastroPaciente(e);
+      if (user && (erro.causa === 'email_duplicado' || erro.causa === 'cpf_duplicado')) {
+        const campo = erro.causa === 'email_duplicado' ? 'email' : 'cpf';
+        erro = comNomeDoDuplicado(erro, await nomeDoClienteComMesmoContato(supabase, user.id, campo, form[campo]));
+      }
+      toast({ title: erro.titulo, description: erro.descricao, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }

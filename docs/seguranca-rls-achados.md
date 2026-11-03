@@ -128,9 +128,12 @@ por ~15 s a cada deploy (e a deixariam desligada se a conexão caísse no meio).
 dois arquivos (o usuário do `SUPABASE_DB_URL` ignora a RLS). Ainda está pendente a decisão de **remover o passo** (ver
 `docs/ci-ajustes-deploy-supabase.md`, item 4), porque ele também recria cadastros importados que foram apagados depois.
 
-**Fora do escopo:** `salvar_cadastro_paciente_autenticado` (migração `20260525014333_*`) insere em `termos_consentimento` a coluna
-`aceito_em`, que a tabela não tem (tem `data_aceite`). Num banco reconstruído só com as migrações do repositório a função falha;
-pode ser divergência entre repositório e produção ou erro real no "completar cadastro" do portal: **conferir em produção**.
+**Corrigido em 03/11/2026** (migração `20261103120000_corrige_cadastro_paciente_autenticado.sql`, teste `08_cadastro_paciente_autenticado`):
+`salvar_cadastro_paciente_autenticado` (migração `20260525014333_*`) gravava colunas que não existem em produção
+(`termos_consentimento.aceito_em`, `notificacoes.mensagem` e `.paciente_id`) e por isso falhava sempre, desfazendo também o
+salvamento do cadastro do cliente logado no portal. No mesmo conserto: o gatilho que espelha o cliente em `whatsapp_conversas`
+falhava para todo cliente sem profissional (conta wellness) que informasse telefone, porque `whatsapp_conversas.terapeuta_id` é
+obrigatório e `pacientes.terapeuta_id` aceita nulo; e a função deixou de ser executável por visitante sem login.
 
 ## Conferência depois do deploy (somente leitura)
 

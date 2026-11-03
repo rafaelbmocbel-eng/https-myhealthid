@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { isAuthLockTimeoutError, withAuthLockRetry } from '@/lib/authLock';
+import { traduzirErroCadastroPaciente, nomeDoClienteComMesmoContato, comNomeDoDuplicado } from '@/lib/erroCadastroPaciente';
+import { normalizarContatoPaciente } from '@/lib/contatoPaciente';
 import { DEFAULT_SERVICOS } from '@/hooks/useServicosAtivos';
 
 // O PostgREST (Supabase) corta a resposta em 1000 linhas por requisição. Sem
@@ -364,21 +366,24 @@ export function useAgenda() {
   const createPaciente = async (data: Omit<Paciente, 'id' | 'ativo'>) => {
     if (!user) return null;
 
+    const dados = { ...data, ...normalizarContatoPaciente(data) };
+
     try {
       const { data: novo, error } = await withAuthLockRetry(async () => {
-        return await supabase.from('pacientes').insert({ ...data, terapeuta_id: user.id }).select().single();
+        return await supabase.from('pacientes').insert({ ...dados, terapeuta_id: user.id }).select().single();
       });
 
       if (error) throw error;
 
       await fetchAll();
       return novo as Paciente;
-    } catch (error) {
-      toast({
-        title: 'Erro ao cadastrar paciente',
-        description: error instanceof Error ? error.message : 'Falha ao cadastrar paciente.',
-        variant: 'destructive',
-      });
+    } catch (error: unknown) {
+      console.error('[agenda] falha ao cadastrar paciente', error);
+      let erro = traduzirErroCadastroPaciente(error);
+      if (erro.causa === 'email_duplicado' && dados.email) {
+        erro = comNomeDoDuplicado(erro, await nomeDoClienteComMesmoContato(supabase, user.id, 'email', dados.email));
+      }
+      toast({ title: erro.titulo, description: erro.descricao, variant: 'destructive' });
       return null;
     }
   };
