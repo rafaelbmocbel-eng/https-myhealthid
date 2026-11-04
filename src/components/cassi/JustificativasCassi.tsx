@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { ChevronDown, Copy, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -8,18 +8,37 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import {
   codigosParaJustificar, contarCaracteres, contarMusculos, INFO_CODIGO, LIMITE_CARACTERES, limparTextoJustificativa,
-  MAX_ACHADOS, MAX_MUSCULOS, motivoSemGerar, type CodigoJustificavel, type JustificativaPronta,
+  MAX_ACHADOS, MAX_MUSCULOS, motivoSemGerar, musculosForaDoTexto, type CodigoJustificavel, type JustificativaPronta,
 } from '@/lib/cassiJustificativa';
 
-/** Um texto gerado. `assinatura` guarda os dados com que ele nasceu; `editado` vira true quando o profissional mexe no texto. */
-export interface TextoGerado { texto: string; ajustado: boolean; assinatura: string; editado: boolean }
+/**
+ * Um texto gerado. `assinatura` guarda os dados com que ele nasceu; `editado` vira true quando o profissional mexe no texto.
+ * `musculosIA` (só no 301) é a lista que a IA propôs quando o profissional não informou músculos: a tela a mostra como sugestão
+ * enquanto o campo ainda for igual a ela.
+ */
+export interface TextoGerado { texto: string; ajustado: boolean; assinatura: string; editado: boolean; musculosIA?: string }
 export type TextosGerados = Partial<Record<CodigoJustificavel, TextoGerado>>;
 
 const assinaturaDe = (d: { diagnostico: string; musculos: string; achados: string }) =>
   JSON.stringify([d.diagnostico.trim(), d.musculos.trim(), d.achados.trim()]);
 
-// Justificativa clínica dos códigos 301 e 131 no pedido de guia. Rascunho gerado por IA a partir do diagnóstico, dos músculos
-// e (opcional) dos achados do exame: o profissional confere, edita e copia para o portal da CASSI, que limita a 500 caracteres.
+// A função responde erro com status 4xx/5xx e corpo { error }; o client do Supabase esconde o corpo em `context`.
+async function mensagemDoErro(e: unknown): Promise<string> {
+  const contexto = (e as { context?: unknown } | null)?.context;
+  if (contexto instanceof Response) {
+    try {
+      const corpo = await contexto.clone().json() as { error?: unknown };
+      if (typeof corpo?.error === 'string' && corpo.error.trim()) return corpo.error.trim();
+    } catch {
+      // corpo que não é JSON: cai na mensagem padrão abaixo
+    }
+  }
+  return e instanceof Error && e.message ? e.message : 'Não consegui gerar a justificativa agora. Tente de novo.';
+}
+
+// Justificativa clínica dos códigos 301 e 131 no pedido de guia. Rascunho gerado por IA a partir do diagnóstico (basta ele),
+// dos músculos e dos achados do exame (ambos opcionais): sem músculos, a IA sugere os do diagnóstico e preenche o campo. O
+// profissional confere, edita e copia para o portal da CASSI, que limita a 500 caracteres.
 // Os textos moram no painel (props), para não se perderem ao trocar de aba, desmarcar ou reabrir o card.
 export function JustificativasCassi({ nome, diagnostico, musculos, achados, codigos, textos, onTextos, onMusculos, onAchados, onSalvarBase }: {
   nome: string;
@@ -39,14 +58,18 @@ export function JustificativasCassi({ nome, diagnostico, musculos, achados, codi
   const [gerando, setGerando] = useState(false);
   const [anuncio, setAnuncio] = useState('');
   const paraGerar = codigosParaJustificar(codigos);
-  const motivo = motivoSemGerar({ diagnostico, musculos, codigos });
+  const motivo = motivoSemGerar({ diagnostico, codigos });
   const marcaOs301 = paraGerar.includes('301');
+  const musculosAgora = useRef(musculos);
+  musculosAgora.current = musculos;
+  const musculosDaIA = textos['301']?.musculosIA ?? '';
+  const sugestaoNoCampo = marcaOs301 && musculosDaIA !== '' && musculos.trim() === musculosDaIA;
   const assinaturaAtual = assinaturaDe({ diagnostico, musculos, achados });
   const temTexto = paraGerar.some((c) => textos[c]);
 
   const gerar = async () => {
     if (motivo || gerando) return;
-    const assinatura = assinaturaAtual;
+    const musculosEnviados = musculos.trim();
     setGerando(true);
     setAnuncio('');
     try {
@@ -57,19 +80,38 @@ export function JustificativasCassi({ nome, diagnostico, musculos, achados, codi
         body: { diagnostico, musculos, achados, codigos: paraGerar },
       });
       if (error) throw error;
-      const resposta = data as { error?: string; justificativas?: Partial<Record<CodigoJustificavel, JustificativaPronta>> } | null;
+      const resposta = data as {
+        error?: string;
+        justificativas?: Partial<Record<CodigoJustificavel, JustificativaPronta>>;
+        musculos_sugeridos?: string;
+      } | null;
       if (resposta?.error) throw new Error(resposta.error);
+      // Sem músculos informados, o 301 foi escrito com os que a IA sugeriu: eles entram no campo (editável), a menos que o
+      // profissional tenha digitado algo enquanto a IA trabalhava. Preenchido o campo, o texto nasce em dia com ele.
+      const sugeridos = paraGerar.includes('301') && musculosEnviados === '' && typeof resposta?.musculos_sugeridos === 'string'
+        ? limparTextoJustificativa(resposta.musculos_sugeridos)
+        : '';
+      const preencheu = sugeridos !== '' && musculosAgora.current.trim() === '';
+      if (preencheu) onMusculos(sugeridos);
+      const assinatura = assinaturaDe({ diagnostico, musculos: preencheu ? sugeridos : musculosEnviados, achados });
       const novos: TextosGerados = {};
       for (const c of paraGerar) {
         const j = resposta?.justificativas?.[c];
-        if (j?.texto) novos[c] = { texto: limparTextoJustificativa(j.texto), ajustado: !!j.ajustado, assinatura, editado: false };
+        if (j?.texto) {
+          novos[c] = { texto: limparTextoJustificativa(j.texto), ajustado: !!j.ajustado, assinatura, editado: false };
+          if (c === '301' && sugeridos !== '') novos[c]!.musculosIA = sugeridos;
+          if (c === '301' && sugeridos === '' && musculosDaIA !== '' && musculosEnviados === musculosDaIA) novos[c]!.musculosIA = musculosDaIA;
+        }
       }
       if (Object.keys(novos).length === 0) throw new Error('A IA não devolveu texto. Tente de novo.');
       onTextos(novos);
-      setAnuncio('Justificativas geradas.');
+      if (paraGerar.includes('301') && musculosEnviados === '' && sugeridos === '') {
+        toast.info('A IA não conseguiu sugerir músculos só pelo diagnóstico. Informe os músculos tratados e gere de novo.');
+      }
+      setAnuncio(preencheu ? 'Justificativas geradas. A IA sugeriu os músculos; confira o campo de músculos.' : 'Justificativas geradas.');
     } catch (e: unknown) {
       console.error('[cassi] falha ao gerar justificativa', e);
-      toast.error(e instanceof Error && e.message ? e.message : 'Não consegui gerar a justificativa agora. Tente de novo.');
+      toast.error(await mensagemDoErro(e));
     } finally {
       setGerando(false);
     }
@@ -112,10 +154,16 @@ export function JustificativasCassi({ nome, diagnostico, musculos, achados, codi
               maxLength={MAX_MUSCULOS}
               value={musculos}
               onChange={(e) => onMusculos(e.target.value)}
-              placeholder="Músculos tratados (ex.: trapézio superior, romboides)"
+              placeholder="Músculos (opcional: sem eles, a IA sugere)"
             />
-            {marcaOs301 && musculos.trim() !== '' && (
+            {marcaOs301 && musculos.trim() === '' && (
               <p className="text-[10px] text-muted-foreground">
+                Sem músculos informados, a IA sugere os do diagnóstico para o 301 e preenche este campo. Confira antes de copiar.
+              </p>
+            )}
+            {marcaOs301 && musculos.trim() !== '' && (
+              <p className={cn('text-[10px]', sugestaoNoCampo ? 'font-medium text-amber-700' : 'text-muted-foreground')}>
+                {sugestaoNoCampo && 'Músculos sugeridos pela IA a partir do diagnóstico: confira e ajuste. '}
                 {contarMusculos(musculos)} músculo(s) citado(s). O 301 é cobrado por músculo: a quantidade deve bater com o pedido.
               </p>
             )}
@@ -153,6 +201,7 @@ export function JustificativasCassi({ nome, diagnostico, musculos, achados, codi
             const total = contarCaracteres(atual.texto);
             const passou = total > LIMITE_CARACTERES;
             const desatualizado = !atual.editado && atual.assinatura !== assinaturaAtual;
+            const foraDoTexto = codigo === '301' ? musculosForaDoTexto(atual.texto, musculos) : [];
             return (
               <div key={codigo} className="space-y-0.5">
                 <div className="flex items-center gap-1.5">
@@ -182,6 +231,11 @@ export function JustificativasCassi({ nome, diagnostico, musculos, achados, codi
                 {desatualizado && (
                   <p className="text-[10px] font-medium text-amber-700">
                     O diagnóstico, os músculos ou os achados mudaram depois que este texto foi gerado. Gere de novo (ou edite o texto) antes de copiar.
+                  </p>
+                )}
+                {foraDoTexto.length > 0 && (
+                  <p className="text-[10px] font-medium text-amber-700">
+                    O texto do 301 não cita: {foraDoTexto.join(', ')}. O 301 é cobrado por músculo: ajuste o texto ou a lista de músculos antes de copiar.
                   </p>
                 )}
                 {atual.ajustado && <p className="text-[10px] text-amber-700">Texto encurtado para caber em {LIMITE_CARACTERES} caracteres. Confira se ficou completo.</p>}

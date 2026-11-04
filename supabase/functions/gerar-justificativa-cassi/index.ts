@@ -65,8 +65,8 @@ Deno.serve(async (req) => {
     const entrada = validarEntrada(corpo);
     if (!entrada.ok) return resposta({ error: entrada.erro }, 400);
 
-    const justificativas = await orquestrarJustificativas(entrada.dados, (sistema, usuario) => perguntarIA(chave, sistema, usuario));
-    return resposta({ justificativas, limite: LIMITE_CARACTERES });
+    const { justificativas, musculosSugeridos } = await orquestrarJustificativas(entrada.dados, (sistema, usuario) => perguntarIA(chave, sistema, usuario));
+    return resposta({ justificativas, musculos_sugeridos: musculosSugeridos, limite: LIMITE_CARACTERES });
   } catch (e) {
     if (e instanceof LimiteDeUso) return resposta({ error: "Limite de uso atingido. Tente em instantes." }, 429);
     if (e instanceof RespostaIncompleta) return resposta({ error: "A IA não devolveu todas as justificativas. Tente de novo." }, 502);

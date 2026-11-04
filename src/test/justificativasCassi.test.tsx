@@ -6,10 +6,11 @@ const h = vi.hoisted(() => ({
   invoke: vi.fn(),
   sucesso: vi.fn(),
   erro: vi.fn(),
+  info: vi.fn(),
   copiar: vi.fn(),
 }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: h.invoke } } }));
-vi.mock('sonner', () => ({ toast: { success: h.sucesso, error: h.erro } }));
+vi.mock('sonner', () => ({ toast: { success: h.sucesso, error: h.erro, info: h.info } }));
 
 import { JustificativasCassi, type TextosGerados } from '@/components/cassi/JustificativasCassi';
 
@@ -77,16 +78,25 @@ describe('JustificativasCassi — quando dá para gerar', () => {
     expect(botaoGerar().getAttribute('aria-describedby')).toBe(motivo.id);
   });
 
-  it('o 301 sem músculos não gera; o 131 sozinho gera sem músculos', () => {
+  it('o diagnóstico basta: 301 e 131, com ou sem músculos, geram; a tela explica que a IA sugere os músculos', () => {
     const { unmount } = render(<Montar codigos={['301']} musculos0="" />);
     abrir();
-    expect(botaoGerar().disabled).toBe(true);
-    expect(screen.getByText(/Informe os músculos tratados/)).toBeTruthy();
+    expect(botaoGerar().disabled).toBe(false);
+    expect(botaoGerar().getAttribute('aria-describedby')).toBeNull();
+    expect(screen.queryByText(/Informe os músculos tratados/)).toBeNull();
+    expect(screen.getByText(/Sem músculos informados, a IA sugere os do diagnóstico para o 301/)).toBeTruthy();
     unmount();
     render(<Montar codigos={['131']} musculos0="" />);
     abrir();
     expect(botaoGerar().disabled).toBe(false);
-    expect(botaoGerar().getAttribute('aria-describedby')).toBeNull();
+    expect(screen.queryByText(/a IA sugere os do diagnóstico/)).toBeNull(); // o 131 não depende de músculos
+  });
+
+  it('com músculos digitados some a dica de sugestão e aparece a contagem', () => {
+    render(<Montar codigos={['301']} musculos0="trapézio superior" />);
+    abrir();
+    expect(screen.queryByText(/a IA sugere os do diagnóstico/)).toBeNull();
+    expect(screen.getByText(/1 músculo\(s\) citado\(s\)/)).toBeTruthy();
   });
 
   it('sem diagnóstico não gera', () => {
@@ -265,6 +275,210 @@ describe('JustificativasCassi — gerar', () => {
     abrir();
     expect(campoDo('301').value).toBe('Texto do 301 editado à mão.');
     expect(campoDo('131').value).toBe('Texto do 131.');
+  });
+});
+
+describe('JustificativasCassi — músculos sugeridos pela IA (só o diagnóstico)', () => {
+  const LISTA = 'trapézio superior, romboides, levantador da escápula';
+  const respostaComLista = (extra: Record<string, unknown> = {}) => ({
+    data: { justificativas: { '301': pronta('Texto do 301.'), '131': pronta('Texto do 131.') }, musculos_sugeridos: LISTA, ...extra },
+    error: null,
+  });
+  const gerarSemMusculos = async (props: Parameters<typeof Montar>[0] = {}) => {
+    h.invoke.mockResolvedValue(respostaComLista());
+    const r = render(<Montar musculos0="" {...props} />);
+    abrir();
+    fireEvent.click(botaoGerar());
+    await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+    return r;
+  };
+
+  it('envia músculos vazios; a lista sugerida entra no campo (editável) e o texto nasce em dia com ela', async () => {
+    await gerarSemMusculos();
+    expect(h.invoke.mock.calls[0][1].body).toMatchObject({ diagnostico: 'Dorsalgia com hipercifose', musculos: '', codigos: ['301', '131'] });
+    expect(musculosInput().value).toBe(LISTA);
+    expect(copiarDo('301').disabled).toBe(false);
+    expect(copiarDo('131').disabled).toBe(false);
+    expect(screen.queryByText(/mudaram depois que este texto foi gerado/)).toBeNull();
+    expect(screen.getByText(/Músculos sugeridos pela IA a partir do diagnóstico: confira e ajuste/)).toBeTruthy();
+    expect(screen.getByText(/3 músculo\(s\) citado\(s\)/)).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toMatch(/A IA sugeriu os músculos; confira o campo de músculos/);
+    expect(h.info).not.toHaveBeenCalled();
+  });
+
+  it('editar a lista sugerida tira o aviso de sugestão e deixa os textos desatualizados (gerar de novo usa a lista do profissional)', async () => {
+    await gerarSemMusculos();
+    fireEvent.change(musculosInput(), { target: { value: 'trapézio superior, peitoral menor' } });
+    expect(screen.queryByText(/Músculos sugeridos pela IA/)).toBeNull();
+    expect(screen.getAllByText(/mudaram depois que este texto foi gerado/)).toHaveLength(2);
+    expect(copiarDo('301').disabled).toBe(true);
+    h.invoke.mockResolvedValue({ data: { justificativas: { '301': pronta('Novo 301.'), '131': pronta('Novo 131.') } }, error: null });
+    fireEvent.click(botaoGerar());
+    await waitFor(() => expect(h.invoke).toHaveBeenCalledTimes(2));
+    expect(h.invoke.mock.calls[1][1].body.musculos).toBe('trapézio superior, peitoral menor');
+    await waitFor(() => expect(copiarDo('301').disabled).toBe(false));
+    expect(musculosInput().value).toBe('trapézio superior, peitoral menor'); // não volta para a sugestão
+  });
+
+  it('gerar de novo com a lista sugerida no campo manda a lista como informada (a IA não sugere de novo)', async () => {
+    await gerarSemMusculos();
+    h.invoke.mockResolvedValue(respostaComLista({ musculos_sugeridos: '' }));
+    fireEvent.click(botaoGerar());
+    await waitFor(() => expect(h.invoke).toHaveBeenCalledTimes(2));
+    expect(h.invoke.mock.calls[1][1].body.musculos).toBe(LISTA);
+    await waitFor(() => expect(botaoGerar().disabled).toBe(false));
+    expect(musculosInput().value).toBe(LISTA);
+  });
+
+  it('com músculos já digitados, uma lista sugerida que venha na resposta NÃO sobrescreve o campo', async () => {
+    h.invoke.mockResolvedValue(respostaComLista());
+    render(<Montar musculos0="peitoral menor" />);
+    abrir();
+    fireEvent.click(botaoGerar());
+    await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+    expect(musculosInput().value).toBe('peitoral menor');
+    expect(screen.queryByText(/Músculos sugeridos pela IA/)).toBeNull();
+    expect(copiarDo('301').disabled).toBe(false);
+  });
+
+  it('se o profissional digitar músculos enquanto a IA trabalha, o que ele digitou fica e o texto chega marcado como desatualizado', async () => {
+    let resolver: (v: unknown) => void = () => {};
+    h.invoke.mockReturnValue(new Promise((r) => { resolver = r; }));
+    render(<Montar musculos0="" />);
+    abrir();
+    fireEvent.click(botaoGerar());
+    fireEvent.change(musculosInput(), { target: { value: 'peitoral menor' } });
+    resolver(respostaComLista());
+    await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+    expect(musculosInput().value).toBe('peitoral menor');
+    expect(copiarDo('301').disabled).toBe(true);
+    expect(screen.queryByText(/Músculos sugeridos pela IA/)).toBeNull();
+  });
+
+  it('a IA não conseguiu sugerir (diagnóstico genérico): o texto aparece, o campo fica vazio e um aviso pede os músculos', async () => {
+    h.invoke.mockResolvedValue(respostaComLista({ musculos_sugeridos: '' }));
+    render(<Montar musculos0="" diagnostico="Dor" />);
+    abrir();
+    fireEvent.click(botaoGerar());
+    await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+    expect(musculosInput().value).toBe('');
+    expect(h.info).toHaveBeenCalledWith(expect.stringMatching(/não conseguiu sugerir músculos só pelo diagnóstico/));
+    expect(copiarDo('301').disabled).toBe(false);
+  });
+
+  it('resposta antiga, sem o campo musculos_sugeridos, funciona igual a "não sugeriu"', async () => {
+    h.invoke.mockResolvedValue({ data: { justificativas: { '301': pronta('Texto do 301.'), '131': pronta('Outro.') } }, error: null });
+    render(<Montar musculos0="" />);
+    abrir();
+    fireEvent.click(botaoGerar());
+    await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+    expect(musculosInput().value).toBe('');
+    expect(h.info).toHaveBeenCalledTimes(1);
+  });
+
+  it('só o 131, sem músculos: não preenche o campo nem avisa de sugestão', async () => {
+    h.invoke.mockResolvedValue({ data: { justificativas: { '131': pronta('Texto do 131.') }, musculos_sugeridos: LISTA }, error: null });
+    render(<Montar codigos={['131']} musculos0="" />);
+    abrir();
+    fireEvent.click(botaoGerar());
+    await screen.findByLabelText('Justificativa do código 131 de Ana Souza');
+    expect(h.invoke.mock.calls[0][1].body.codigos).toEqual(['131']);
+    expect(musculosInput().value).toBe(''); // a sugestão só vale quando o 301 foi pedido
+    expect(screen.queryByText(/Músculos sugeridos pela IA/)).toBeNull();
+    expect(h.info).not.toHaveBeenCalled();
+  });
+
+  it('gerar de novo com a lista sugerida intacta mantém a marca de sugestão; depois de editar a lista, ela some', async () => {
+    await gerarSemMusculos();
+    h.invoke.mockResolvedValue(respostaComLista({ musculos_sugeridos: '' }));
+    fireEvent.click(botaoGerar());
+    await waitFor(() => expect(h.invoke).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(botaoGerar().disabled).toBe(false));
+    expect(screen.getByText(/Músculos sugeridos pela IA a partir do diagnóstico/)).toBeTruthy();
+    fireEvent.change(musculosInput(), { target: { value: 'romboides' } });
+    expect(screen.queryByText(/Músculos sugeridos pela IA/)).toBeNull();
+  });
+
+  it('a sugestão e o aviso sobrevivem a fechar e reabrir o card (moram nos textos do painel)', async () => {
+    await gerarSemMusculos();
+    fireEvent.click(screen.getByRole('button', { name: 'alternar card' }));
+    fireEvent.click(screen.getByRole('button', { name: 'alternar card' }));
+    abrir();
+    expect(musculosInput().value).toBe(LISTA);
+    expect(screen.getByText(/Músculos sugeridos pela IA a partir do diagnóstico/)).toBeTruthy();
+  });
+
+  it('a lista sugerida é limpa (invisíveis) antes de entrar no campo', async () => {
+    h.invoke.mockResolvedValue(respostaComLista({ musculos_sugeridos: `${ZWSP}trapézio superior,  romboides ` }));
+    render(<Montar musculos0="" />);
+    abrir();
+    fireEvent.click(botaoGerar());
+    await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+    expect(musculosInput().value).toBe('trapézio superior, romboides');
+  });
+});
+
+describe('JustificativasCassi — o texto do 301 precisa citar os músculos do campo', () => {
+  const gerarCom = async (texto301: string, musculos0 = 'trapézio superior, romboides') => {
+    h.invoke.mockResolvedValue({ data: { justificativas: { '301': pronta(texto301), '131': pronta('Texto do 131 sem músculos.') } }, error: null });
+    render(<Montar musculos0={musculos0} />);
+    abrir();
+    fireEvent.click(botaoGerar());
+    await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+  };
+
+  it('texto que cita todos (sem diferenciar acento ou maiúscula) não leva aviso', async () => {
+    await gerarCom('Indicado no Trapezio Superior e nos romboides.');
+    expect(screen.queryByText(/O texto do 301 não cita/)).toBeNull();
+  });
+
+  it('texto que deixa músculo de fora avisa quais, só no quadro do 301, sem travar o Copiar', async () => {
+    await gerarCom('Indicado no trapézio superior.');
+    expect(screen.getAllByText(/O texto do 301 não cita: romboides\./)).toHaveLength(1);
+    expect(screen.getByText(/ajuste o texto ou a lista de músculos antes de copiar/)).toBeTruthy();
+    expect(copiarDo('301').disabled).toBe(false);
+  });
+
+  it('o aviso acompanha a edição: citar o músculo que faltava o faz sumir; trocar a lista o faz voltar', async () => {
+    await gerarCom('Indicado no trapézio superior.');
+    fireEvent.change(campoDo('301'), { target: { value: 'Indicado no trapézio superior e nos romboides.' } });
+    expect(screen.queryByText(/O texto do 301 não cita/)).toBeNull();
+    fireEvent.change(musculosInput(), { target: { value: 'trapézio superior, romboides, peitoral menor' } });
+    expect(screen.getByText(/O texto do 301 não cita: peitoral menor\./)).toBeTruthy();
+  });
+
+  it('sem músculos no campo não há o que conferir', async () => {
+    await gerarCom('Texto qualquer do 301.', '');
+    expect(screen.queryByText(/O texto do 301 não cita/)).toBeNull();
+  });
+});
+
+describe('JustificativasCassi — erro da função com a mensagem do servidor', () => {
+  const abrirEGerar = async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Montar />);
+    abrir();
+    fireEvent.click(botaoGerar());
+  };
+  const erroHttp = (corpo: BodyInit, status: number) =>
+    Object.assign(new Error('Edge Function returned a non-2xx status code'), { context: new Response(corpo, { status }) });
+
+  it('429 da função: o aviso mostra o texto do servidor, não a mensagem genérica do client', async () => {
+    h.invoke.mockResolvedValue({ data: null, error: erroHttp(JSON.stringify({ error: 'Limite de uso atingido. Tente em instantes.' }), 429) });
+    await abrirEGerar();
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Limite de uso atingido. Tente em instantes.'));
+  });
+
+  it('corpo que não é JSON ou sem campo error: cai na mensagem do erro', async () => {
+    h.invoke.mockResolvedValue({ data: null, error: erroHttp('<html>bad gateway</html>', 502) });
+    await abrirEGerar();
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Edge Function returned a non-2xx status code'));
+  });
+
+  it('erro sem contexto e sem mensagem: aviso padrão', async () => {
+    h.invoke.mockResolvedValue({ data: null, error: {} });
+    await abrirEGerar();
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Não consegui gerar a justificativa agora. Tente de novo.'));
   });
 });
 

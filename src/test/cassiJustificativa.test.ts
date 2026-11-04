@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   ALVO_CARACTERES, ALVO_REDUCAO, codigosParaJustificar, contarCaracteres, contarMusculos, cortarNoLimite, finalizarTexto,
-  interpretarRespostaIA, LIMITE_CARACTERES, limparTextoJustificativa, MAX_ACHADOS, MAX_DIAGNOSTICO, MAX_MUSCULOS, montarPromptReducao,
+  interpretarMusculosIA, interpretarRespostaIA, LIMITE_CARACTERES, limparListaDeMusculos, listarMusculos, musculosForaDoTexto, limparTextoJustificativa, MAX_ACHADOS, MAX_DIAGNOSTICO, MAX_MUSCULOS, montarPromptReducao,
   montarPromptSistema, montarPromptUsuario, motivoSemGerar, orquestrarJustificativas, RespostaIncompleta, validarEntrada,
   type EntradaJustificativa,
 } from '@/lib/cassiJustificativa';
@@ -236,10 +236,11 @@ describe('validarEntrada', () => {
     expect(validarEntrada({ ...ok, diagnostico: 'abc' })).toMatchObject({ ok: true });
   });
 
-  it('o 301 exige músculos; o 131 sozinho não', () => {
-    expect(validarEntrada({ ...ok, musculos: '' })).toMatchObject({ ok: false });
-    expect(validarEntrada({ ...ok, musculos: '   ' })).toMatchObject({ ok: false });
+  it('só o diagnóstico é obrigatório: o 301 sem músculos é aceito (a IA sugere os do diagnóstico)', () => {
+    expect(validarEntrada({ ...ok, musculos: '', codigos: ['301'] })).toMatchObject({ ok: true, dados: { musculos: '', codigos: ['301'] } });
+    expect(validarEntrada({ ...ok, musculos: '   ' })).toMatchObject({ ok: true, dados: { musculos: '', codigos: ['301', '131'] } });
     expect(validarEntrada({ ...ok, musculos: '', codigos: ['131'] })).toMatchObject({ ok: true });
+    expect(validarEntrada({ ...ok, diagnostico: '', musculos: 'trapézio' })).toMatchObject({ ok: false });
   });
 
   it('corpo que não é objeto não quebra', () => {
@@ -411,8 +412,8 @@ describe('orquestrarJustificativas (IA simulada)', () => {
     const perguntar = vi.fn().mockResolvedValue(json({ '301': 'Texto do 301.', '131': 'Texto do 131.' }));
     const r = await orquestrarJustificativas(dados, perguntar);
     expect(perguntar).toHaveBeenCalledTimes(1);
-    expect(r['301']).toEqual({ texto: 'Texto do 301.', caracteres: 13, ajustado: false });
-    expect(r['131']?.texto).toBe('Texto do 131.');
+    expect(r.justificativas['301']).toEqual({ texto: 'Texto do 301.', caracteres: 13, ajustado: false });
+    expect(r.justificativas['131']?.texto).toBe('Texto do 131.');
     expect(perguntar.mock.calls[0][0]).toContain('Agulhamento Seco');
     expect(perguntar.mock.calls[0][1]).toContain('CÓDIGOS PEDIDOS: 301, 131');
   });
@@ -426,8 +427,8 @@ describe('orquestrarJustificativas (IA simulada)', () => {
     expect(perguntar.mock.calls[1][0]).toContain('EMG Biofeedback');
     expect(perguntar.mock.calls[1][0]).not.toContain('Agulhamento Seco (2.01.03.301)');
     expect(perguntar.mock.calls[1][1]).toContain('CÓDIGOS PEDIDOS: 131');
-    expect(r['301']?.texto).toBe('Texto do 301.');
-    expect(r['131']?.texto).toBe('Texto do 131.');
+    expect(r.justificativas['301']?.texto).toBe('Texto do 301.');
+    expect(r.justificativas['131']?.texto).toBe('Texto do 131.');
   });
 
   it('continua faltando depois da segunda tentativa: erro com a lista do que faltou', async () => {
@@ -447,8 +448,8 @@ describe('orquestrarJustificativas (IA simulada)', () => {
     expect(usuario).toContain('<texto codigo="301">');
     expect(usuario).toContain('MÚSCULOS: trapézio superior, romboides');
     expect(usuario).not.toContain('codigo="131"');
-    expect(r['301']).toMatchObject({ texto: 'Texto encurtado do 301.', ajustado: true });
-    expect(r['131']?.ajustado).toBe(false);
+    expect(r.justificativas['301']).toMatchObject({ texto: 'Texto encurtado do 301.', ajustado: true });
+    expect(r.justificativas['131']?.ajustado).toBe(false);
   });
 
   it('a nova tentativa falha (inclusive limite de uso): não perde o texto, corta no limite', async () => {
@@ -457,10 +458,10 @@ describe('orquestrarJustificativas (IA simulada)', () => {
       .mockRejectedValueOnce(new Error('429'));
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const r = await orquestrarJustificativas(dados, perguntar);
-    expect(r['301']!.caracteres).toBeLessThanOrEqual(500);
-    expect(r['301']).toMatchObject({ ajustado: true });
-    expect(r['301']!.texto.endsWith('.')).toBe(true);
-    expect(r['131']?.texto).toBe('Texto do 131.');
+    expect(r.justificativas['301']!.caracteres).toBeLessThanOrEqual(500);
+    expect(r.justificativas['301']).toMatchObject({ ajustado: true });
+    expect(r.justificativas['301']!.texto.endsWith('.')).toBe(true);
+    expect(r.justificativas['131']?.texto).toBe('Texto do 131.');
   });
 
   it('a nova tentativa ainda passa de 500: corta no limite', async () => {
@@ -469,8 +470,8 @@ describe('orquestrarJustificativas (IA simulada)', () => {
       .mockResolvedValueOnce(json({ '301': longo('Dois') }));
     const r = await orquestrarJustificativas(dados, perguntar);
     expect(perguntar).toHaveBeenCalledTimes(2);
-    expect(r['301']!.caracteres).toBeLessThanOrEqual(500);
-    expect(r['301']!.ajustado).toBe(true);
+    expect(r.justificativas['301']!.caracteres).toBeLessThanOrEqual(500);
+    expect(r.justificativas['301']!.ajustado).toBe(true);
   });
 
   it('falha na primeira rodada (rede, limite de uso) sobe para quem chamou', async () => {
@@ -483,13 +484,296 @@ describe('orquestrarJustificativas (IA simulada)', () => {
     const r = await orquestrarJustificativas({ ...dados, codigos: ['131'], musculos: '' }, perguntar);
     expect(perguntar.mock.calls[0][0]).not.toContain('Agulhamento Seco');
     expect(perguntar.mock.calls[0][1]).toContain('MÚSCULOS: (nenhum informado)');
-    expect(Object.keys(r)).toEqual(['131']);
+    expect(Object.keys(r.justificativas)).toEqual(['131']);
   });
 
   it('o texto vem limpo: sem caractere invisível, aspas nem rótulo do código', async () => {
     const perguntar = vi.fn().mockResolvedValue(json({ '301': `${ZWSP}"Código 2.01.03.301: Texto limpo."`, '131': 'Outro.' }));
     const r = await orquestrarJustificativas(dados, perguntar);
-    expect(r['301']?.texto).toBe('Texto limpo.');
+    expect(r.justificativas['301']?.texto).toBe('Texto limpo.');
+  });
+});
+
+describe('sem músculos informados: a IA sugere os do diagnóstico (o diagnóstico basta)', () => {
+  const dados: EntradaJustificativa = { diagnostico: 'Dorsalgia com hipercifose', musculos: '', achados: '', codigos: ['301', '131'] };
+  const json = (o: Record<string, string | string[]>) => JSON.stringify(o);
+  const longo = (marca: string) => `${`${marca} frase de teste com tamanho médio para encher o limite. `.repeat(20)}`.trim();
+  const LISTA = 'trapézio superior, romboides, levantador da escápula';
+
+  describe('prompt', () => {
+    const s = montarPromptSistema(['301', '131'], ALVO_CARACTERES, { sugerirMusculos: true });
+
+    it('manda escolher 3 a 5 músculos só da região do diagnóstico, citar todos no 301 e devolver a lista na chave "musculos"', () => {
+      for (const trecho of [
+        'escolha de 3 a 5 músculos',
+        'SOMENTE da região que o próprio diagnóstico nomeia (nenhum músculo de outra região)',
+        'Cite TODOS no texto do 301, com os mesmos nomes e na mesma ordem em que os listar na chave "musculos"',
+        'ALVO do procedimento, nunca um achado do exame',
+        'sem afirmar que estão tensos, encurtados ou com ponto-gatilho',
+        'Nos demais códigos, NÃO nomeie músculo',
+        'nunca a lista de músculos',
+        '{"301": "texto", "131": "texto", "musculos": "músculo 1, músculo 2"}',
+        'os músculos que você mesmo propõe, conforme a regra MÚSCULOS, são a única exceção',
+        'nos músculos que você listar na chave "musculos"',
+      ]) expect(s, trecho).toContain(trecho);
+    });
+
+    it('diagnóstico sem região: devolve "musculos" vazio e não nomeia músculo', () => {
+      expect(s).toContain('devolva "musculos": "" e não nomeie músculo algum');
+    });
+
+    it('a regra de sempre (músculos informados) não muda, e o modo de sugestão não vaza para ela', () => {
+      const normal = montarPromptSistema(['301', '131']);
+      expect(normal).toContain('cite TODOS os músculos informados, com os nomes exatamente como foram informados');
+      expect(normal).toContain('FINALIDADE do procedimento nos MÚSCULOS INFORMADOS');
+      expect(normal).toContain('{"301": "texto", "131": "texto"}');
+      expect(normal).not.toContain('"musculos"');
+      expect(normal).not.toContain('escolha de 3 a 5 músculos');
+      expect(s).not.toContain('FINALIDADE do procedimento nos MÚSCULOS INFORMADOS');
+    });
+
+    it('sem o 301 no pedido a sugestão não liga (o 131 não nomeia músculo sem eles)', () => {
+      const so131 = montarPromptSistema(['131'], ALVO_CARACTERES, { sugerirMusculos: true });
+      expect(so131).not.toContain('"musculos"');
+      expect(so131).toContain('NÃO nomeie músculo algum: refira-se apenas à região do diagnóstico');
+    });
+
+    it('o texto de sugestão também nunca manda escrever "(nenhum informado)"', () => {
+      expect(s).toContain('Nunca escreva "(nenhum informado)" nem "não informado" no texto');
+    });
+  });
+
+  describe('limparListaDeMusculos', () => {
+    it('limpa invisíveis, espaços e o ponto final', () => {
+      expect(limparListaDeMusculos(`${ZWSP}trapézio superior,  romboides. `)).toBe('trapézio superior, romboides');
+    });
+    it('aceita lista em array', () => {
+      expect(limparListaDeMusculos(['trapézio superior', 'romboides', 7, null])).toBe('trapézio superior, romboides');
+    });
+    it('"(nenhum informado)", "não informado" e traço viram vazio', () => {
+      for (const v of ['(nenhum informado)', 'nenhum informado', 'Não informado', '-', '—'.replace('—', '--'), '']) {
+        expect(limparListaDeMusculos(v), v).toBe('');
+      }
+    });
+    it('o que não é texto vira vazio', () => {
+      for (const v of [undefined, null, 42, {}]) expect(limparListaDeMusculos(v)).toBe('');
+    });
+    it('passou do máximo: corta no último nome inteiro, nunca no meio de um músculo', () => {
+      const muitos = Array.from({ length: 60 }, (_, i) => `músculo número ${i}`).join(', ');
+      const r = limparListaDeMusculos(muitos);
+      expect(r.length).toBeLessThanOrEqual(MAX_MUSCULOS);
+      expect(muitos.startsWith(r)).toBe(true);
+      expect(muitos[r.length]).toBe(',');
+      expect(r.endsWith(',')).toBe(false);
+    });
+    it('um nome só maior que o máximo é cortado no limite sem deixar metade de emoji', () => {
+      const r = limparListaDeMusculos('😀'.repeat(MAX_MUSCULOS));
+      expect(r.length).toBeLessThanOrEqual(MAX_MUSCULOS);
+      expect(semMetadeDeEmoji(r)).toBe(true);
+    });
+  });
+
+  describe('limparListaDeMusculos — separadores de linha', () => {
+    it('nomes separados por quebra de linha, ponto e vírgula ou marcador viram uma lista com vírgulas', () => {
+      expect(limparListaDeMusculos('trapézio superior\nromboides\r\nlevantador da escápula')).toBe('trapézio superior, romboides, levantador da escápula');
+      expect(limparListaDeMusculos('trapézio superior; romboides')).toBe('trapézio superior, romboides');
+      expect(limparListaDeMusculos('• trapézio superior\n• romboides')).toBe('trapézio superior, romboides');
+    });
+    it('vírgulas repetidas e vírgula no começo ou no fim somem', () => {
+      expect(limparListaDeMusculos(',, trapézio superior,, , romboides ,')).toBe('trapézio superior, romboides');
+    });
+  });
+
+  describe('listarMusculos e musculosForaDoTexto (o 301 é cobrado por músculo)', () => {
+    it('listarMusculos separa por vírgula, ponto e vírgula, quebra de linha e " e "', () => {
+      expect(listarMusculos('trapézio superior, romboides e levantador da escápula')).toEqual(['trapézio superior', 'romboides', 'levantador da escápula']);
+      expect(listarMusculos('')).toEqual([]);
+    });
+    it('vazio quando o texto cita todos, sem diferenciar acento nem maiúscula', () => {
+      expect(musculosForaDoTexto('Indicado nos músculos Trapézio Superior e ROMBOIDES.', 'trapezio superior, romboides')).toEqual([]);
+    });
+    it('devolve os que o texto não cita, na ordem da lista', () => {
+      expect(musculosForaDoTexto('Indicado no trapézio superior.', 'trapézio superior, romboides, levantador da escápula')).toEqual(['romboides', 'levantador da escápula']);
+    });
+    it('sem lista não há o que conferir', () => {
+      expect(musculosForaDoTexto('Qualquer texto.', '')).toEqual([]);
+    });
+  });
+
+  describe('interpretarMusculosIA', () => {
+    it('lê a chave "musculos" (texto ou lista), com ou sem acento e texto em volta', () => {
+      expect(interpretarMusculosIA(json({ '301': 'A.', musculos: LISTA }))).toBe(LISTA);
+      expect(interpretarMusculosIA('{"Músculos": ["trapézio superior", "romboides"]}')).toBe('trapézio superior, romboides');
+      expect(interpretarMusculosIA('Segue:\n```json\n{"musculos": "romboides"}\n```')).toBe('romboides');
+    });
+    it('chave presente e vazia = a IA disse que não dá para sugerir (diferente de chave ausente)', () => {
+      expect(interpretarMusculosIA('{"301": "A.", "musculos": ""}')).toBe('');
+      expect(interpretarMusculosIA('{"301": "A."}')).toBeNull();
+    });
+    it('chave com valor null = a IA não tem o que sugerir (igual a vazio), sem forçar nova rodada', () => {
+      expect(interpretarMusculosIA('{"301": "A.", "musculos": null}')).toBe('');
+    });
+    it('chave com número ou objeto, JSON quebrado e lixo = ausente, sem lançar erro', () => {
+      for (const v of ['{"musculos": 5}', '{"musculos": {"a": 1}}', '{"musculos": true}', '{quebrado', 'sem json', '[1]']) {
+        expect(interpretarMusculosIA(v), v).toBeNull();
+      }
+      expect(interpretarMusculosIA(undefined)).toBeNull();
+    });
+    it('chave parecida não vale', () => {
+      expect(interpretarMusculosIA('{"musculos_extra": "x", "muscul": "y"}')).toBeNull();
+    });
+  });
+
+  describe('orquestrarJustificativas', () => {
+    it('uma chamada: pede a sugestão, devolve textos e a lista; o prompt do usuário diz "(nenhum informado)"', async () => {
+      const perguntar = vi.fn().mockResolvedValue(json({ '301': 'Texto do 301.', '131': 'Texto do 131.', musculos: LISTA }));
+      const r = await orquestrarJustificativas(dados, perguntar);
+      expect(perguntar).toHaveBeenCalledTimes(1);
+      expect(perguntar.mock.calls[0][0]).toContain('escolha de 3 a 5 músculos');
+      expect(perguntar.mock.calls[0][1]).toContain('MÚSCULOS: (nenhum informado)');
+      expect(r.musculosSugeridos).toBe(LISTA);
+      expect(r.justificativas['301']?.texto).toBe('Texto do 301.');
+      expect(r.justificativas['131']?.texto).toBe('Texto do 131.');
+    });
+
+    it('a lista devolvida é limpa (ponto final, invisíveis)', async () => {
+      const perguntar = vi.fn().mockResolvedValue(json({ '301': 'T.', '131': 'U.', musculos: `${ZWSP}${LISTA}.` }));
+      expect((await orquestrarJustificativas(dados, perguntar)).musculosSugeridos).toBe(LISTA);
+    });
+
+    it('com músculos informados NÃO pede sugestão e ignora a lista que a IA mandar sem ser pedida', async () => {
+      const perguntar = vi.fn().mockResolvedValue(json({ '301': 'T.', '131': 'U.', musculos: 'bíceps' }));
+      const r = await orquestrarJustificativas({ ...dados, musculos: 'trapézio superior' }, perguntar);
+      expect(perguntar.mock.calls[0][0]).not.toContain('"musculos"');
+      expect(perguntar.mock.calls[0][1]).toContain('MÚSCULOS: trapézio superior');
+      expect(r.musculosSugeridos).toBe('');
+    });
+
+    it('só o 131 sem músculos: não pede sugestão e não devolve lista', async () => {
+      const perguntar = vi.fn().mockResolvedValue(json({ '131': 'U.', musculos: 'bíceps' }));
+      const r = await orquestrarJustificativas({ ...dados, codigos: ['131'] }, perguntar);
+      expect(perguntar.mock.calls[0][0]).not.toContain('"musculos"');
+      expect(r.musculosSugeridos).toBe('');
+    });
+
+    it('301 sem a chave "musculos" não vale: pergunta de novo (de novo pedindo a lista) e o 131 que veio fica', async () => {
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '301': 'Texto sem lista.', '131': 'Texto do 131.' }))
+        .mockResolvedValueOnce(json({ '301': 'Texto do 301.', musculos: LISTA }));
+      const r = await orquestrarJustificativas(dados, perguntar);
+      expect(perguntar).toHaveBeenCalledTimes(2);
+      expect(perguntar.mock.calls[1][0]).toContain('escolha de 3 a 5 músculos');
+      expect(perguntar.mock.calls[1][1]).toContain('CÓDIGOS PEDIDOS: 301');
+      expect(r.justificativas['301']?.texto).toBe('Texto do 301.');
+      expect(r.justificativas['131']?.texto).toBe('Texto do 131.');
+      expect(r.musculosSugeridos).toBe(LISTA);
+    });
+
+    it('301 sem a lista nas duas rodadas: erro (o texto citaria músculos que o campo não mostra)', async () => {
+      const perguntar = vi.fn().mockResolvedValue(json({ '301': 'Texto sem lista.', '131': 'Texto do 131.' }));
+      await expect(orquestrarJustificativas(dados, perguntar)).rejects.toMatchObject({ faltando: ['301'] });
+      await expect(orquestrarJustificativas(dados, perguntar)).rejects.toBeInstanceOf(RespostaIncompleta);
+    });
+
+    it('a IA diz que o diagnóstico não permite sugerir ("musculos" vazio): aceita, sem nova rodada, lista vazia', async () => {
+      const perguntar = vi.fn().mockResolvedValue(json({ '301': 'Texto do 301.', '131': 'Texto do 131.', musculos: '' }));
+      const r = await orquestrarJustificativas({ ...dados, diagnostico: 'Dor' }, perguntar);
+      expect(perguntar).toHaveBeenCalledTimes(1);
+      expect(r.musculosSugeridos).toBe('');
+      expect(r.justificativas['301']?.texto).toBe('Texto do 301.');
+    });
+
+    it('o 131 que faltou na primeira rodada NÃO recebe os músculos sugeridos: a regra do 131 é a mesma em todas as rodadas', async () => {
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '301': 'Texto do 301.', musculos: LISTA }))
+        .mockResolvedValueOnce(json({ '131': 'Texto do 131.' }));
+      const r = await orquestrarJustificativas(dados, perguntar);
+      expect(perguntar).toHaveBeenCalledTimes(2);
+      expect(perguntar.mock.calls[1][0]).not.toContain('"musculos"');
+      expect(perguntar.mock.calls[1][1]).toContain('CÓDIGOS PEDIDOS: 131');
+      expect(perguntar.mock.calls[1][1]).toContain('MÚSCULOS: (nenhum informado)');
+      expect(perguntar.mock.calls[1][1]).not.toContain('trapézio');
+      expect(r.musculosSugeridos).toBe(LISTA);
+    });
+
+    it('o 301 que faltou na segunda rodada recebe os músculos sugeridos como informados', async () => {
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '131': 'Texto do 131.' }))
+        .mockResolvedValueOnce(json({ '301': 'Texto do 301.', musculos: LISTA }));
+      const r = await orquestrarJustificativas(dados, perguntar);
+      expect(perguntar.mock.calls[1][1]).toContain('MÚSCULOS: (nenhum informado)'); // ainda não havia lista
+      expect(r.musculosSugeridos).toBe(LISTA);
+    });
+
+    it('com músculos digitados, o 131 da segunda rodada leva os digitados (e só eles)', async () => {
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '301': 'Texto do 301.' }))
+        .mockResolvedValueOnce(json({ '131': 'Texto do 131.' }));
+      await orquestrarJustificativas({ ...dados, musculos: 'peitoral menor' }, perguntar);
+      expect(perguntar.mock.calls[1][1]).toContain('MÚSCULOS: peitoral menor');
+    });
+
+    it('lista vazia na primeira rodada: a segunda rodada segue sem músculos (não inventa um)', async () => {
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '301': 'Texto do 301.', musculos: '' }))
+        .mockResolvedValueOnce(json({ '131': 'Texto do 131.' }));
+      const r = await orquestrarJustificativas(dados, perguntar);
+      expect(perguntar.mock.calls[1][1]).toContain('MÚSCULOS: (nenhum informado)');
+      expect(r.musculosSugeridos).toBe('');
+    });
+
+    it('texto longo: o pedido de encurtar leva os músculos sugeridos, para não perdê-los', async () => {
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '301': longo('Um'), '131': 'Texto do 131.', musculos: LISTA }))
+        .mockResolvedValueOnce(json({ '301': 'Texto encurtado do 301.' }));
+      const r = await orquestrarJustificativas(dados, perguntar);
+      expect(perguntar).toHaveBeenCalledTimes(2);
+      expect(perguntar.mock.calls[1][1]).toContain(`MÚSCULOS: ${LISTA}`);
+      expect(r.justificativas['301']).toMatchObject({ texto: 'Texto encurtado do 301.', ajustado: true });
+      expect(r.musculosSugeridos).toBe(LISTA);
+    });
+
+    it('a versão curta que PERDE músculo da lista não substitui o corte do texto original que os mantém', async () => {
+      const original = `${LISTA}. ${longo('Um')}`;
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '301': original, '131': 'Texto do 131.', musculos: LISTA }))
+        .mockResolvedValueOnce(json({ '301': 'Versão curta sem nenhum músculo.' }));
+      const r = await orquestrarJustificativas(dados, perguntar);
+      const texto = r.justificativas['301']!.texto;
+      expect(texto.startsWith(LISTA)).toBe(true);
+      expect(musculosForaDoTexto(texto, LISTA)).toEqual([]);
+      expect(r.justificativas['301']!.caracteres).toBeLessThanOrEqual(500);
+      expect(r.justificativas['301']!.ajustado).toBe(true);
+    });
+
+    it('a versão curta que mantém todos os músculos é usada', async () => {
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '301': `${LISTA}. ${longo('Um')}`, '131': 'Texto do 131.', musculos: LISTA }))
+        .mockResolvedValueOnce(json({ '301': `Alvo: ${LISTA}. Curto.` }));
+      const r = await orquestrarJustificativas(dados, perguntar);
+      expect(r.justificativas['301']).toMatchObject({ texto: `Alvo: ${LISTA}. Curto.`, ajustado: true });
+    });
+
+    it('se o texto original já perdia os mesmos músculos, a versão curta é usada (não piora)', async () => {
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '301': longo('Um'), '131': 'Texto do 131.', musculos: LISTA }))
+        .mockResolvedValueOnce(json({ '301': 'Versão curta.' }));
+      const r = await orquestrarJustificativas(dados, perguntar);
+      expect(r.justificativas['301']!.texto).toBe('Versão curta.');
+    });
+
+    it('vale também para músculos digitados pelo profissional', async () => {
+      const digitados = { ...dados, musculos: 'peitoral menor, serrátil anterior' };
+      const perguntar = vi.fn()
+        .mockResolvedValueOnce(json({ '301': `Nos músculos peitoral menor e serrátil anterior. ${longo('Um')}`, '131': 'Texto do 131.' }))
+        .mockResolvedValueOnce(json({ '301': 'Curto sem músculos.' }));
+      const r = await orquestrarJustificativas(digitados, perguntar);
+      expect(r.justificativas['301']!.texto.startsWith('Nos músculos peitoral menor e serrátil anterior.')).toBe(true);
+    });
+
+    it('falha de rede na primeira rodada sobe para quem chamou (nada de lista pela metade)', async () => {
+      await expect(orquestrarJustificativas(dados, vi.fn().mockRejectedValue(new Error('rede')))).rejects.toThrow('rede');
+    });
   });
 });
 
@@ -508,12 +792,12 @@ describe('auxiliares da tela', () => {
     expect(contarMusculos('   ')).toBe(0);
   });
 
-  it('motivoSemGerar diz o que falta, na ordem em que o profissional resolve', () => {
-    expect(motivoSemGerar({ diagnostico: 'Dorsalgia', musculos: 'x', codigos: ['012'] })).toMatch(/301 ou o 131/);
-    expect(motivoSemGerar({ diagnostico: '', musculos: 'trapézio', codigos: ['301'] })).toMatch(/diagnóstico/);
-    expect(motivoSemGerar({ diagnostico: 'ab', musculos: 'trapézio', codigos: ['301'] })).toMatch(/diagnóstico/);
-    expect(motivoSemGerar({ diagnostico: 'Dorsalgia', musculos: '', codigos: ['301'] })).toMatch(/músculos/);
-    expect(motivoSemGerar({ diagnostico: 'Dorsalgia', musculos: '', codigos: ['131'] })).toBeNull();
-    expect(motivoSemGerar({ diagnostico: 'Dorsalgia', musculos: 'trapézio', codigos: ['301', '131'] })).toBeNull();
+  it('motivoSemGerar: o diagnóstico basta, com ou sem músculos', () => {
+    expect(motivoSemGerar({ diagnostico: 'Dorsalgia', codigos: ['012'] })).toMatch(/301 ou o 131/);
+    expect(motivoSemGerar({ diagnostico: '', codigos: ['301'] })).toMatch(/diagnóstico/);
+    expect(motivoSemGerar({ diagnostico: 'ab', codigos: ['301'] })).toMatch(/diagnóstico/);
+    expect(motivoSemGerar({ diagnostico: 'Dorsalgia', codigos: ['301'] })).toBeNull();
+    expect(motivoSemGerar({ diagnostico: 'Dorsalgia', codigos: ['131'] })).toBeNull();
+    expect(motivoSemGerar({ diagnostico: 'Dorsalgia', codigos: ['301', '131'] })).toBeNull();
   });
 });

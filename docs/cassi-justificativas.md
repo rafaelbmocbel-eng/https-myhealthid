@@ -6,8 +6,20 @@ de justificativa clínica que a CASSI pede no portal (limite de **500 caracteres
 ## Como usar
 1. Marque o **301** (agulhamento seco, 2.01.03.301) e/ou o **131** (EMG biofeedback, 2.01.03.131) nos códigos do cliente. Só os
    códigos marcados recebem justificativa.
-2. Preencha o **diagnóstico** (o mesmo campo do pedido) e os **músculos tratados**. Os músculos são obrigatórios para o 301; o 131 pode
-   sair sem eles. O app lembra quantos músculos foram citados, porque o 301 é cobrado por músculo.
+2. Preencha o **diagnóstico** (o mesmo campo do pedido): **ele basta**. Os **músculos são opcionais**:
+   - **Sem músculos**, a IA propõe de 3 a 5 músculos da região que o próprio diagnóstico nomeia, escreve o 301 citando todos eles e
+     **preenche o campo "Músculos"** com a lista, que continua editável. A tela avisa "Músculos sugeridos pela IA a partir do
+     diagnóstico: confira e ajuste" enquanto o campo for igual à sugestão. Se o diagnóstico for genérico demais para saber a região
+     (por exemplo, "dor"), a IA não inventa músculo: o texto fala só da região e a tela pede para informar os músculos.
+   - **Com músculos digitados**, a IA usa exatamente os seus, na sua ordem, e nunca sugere outros.
+   - O app lembra quantos músculos foram citados, porque o 301 é cobrado por músculo: **a lista sugerida é uma sugestão de alvo do
+     tratamento, não um achado do exame. Confira se bate com o que você realmente tratou** antes de copiar e de lançar a quantidade.
+   - Se o texto do 301 deixar de citar algum músculo do campo (a IA abreviou, ou você editou o texto), o quadro mostra "O texto do 301
+     não cita: …". É um aviso, não trava o Copiar: ajuste o texto ou a lista. Ao encurtar um texto acima de 500, a função não troca o
+     texto por uma versão curta que perca músculos da lista se o corte do original os mantém.
+   - O 131 só cita músculos que **você digitou**; os sugeridos pela IA valem apenas para o 301.
+   - Se você editar a lista depois de gerar, os textos ficam "desatualizados" e o Copiar trava até gerar de novo, que passa a usar a
+     sua lista.
 3. Se quiser, preencha **Achados do exame**. Sem achados, o texto fala em **indicação e finalidade** ("indicado para...", "visa...") e não
    afirma que o cliente apresenta pontos-gatilho, hipertonia ou déficit. Com achados, afirma só o que está neles.
 4. **Gerar justificativas.** Cada código vira um quadro editável com contador `n/500`. **Copiar** limpa o texto (sem caractere invisível)
@@ -21,11 +33,15 @@ A justificativa **não entra** na mensagem de WhatsApp/copiar do pedido: fica s�
 Ao gerar (e ao dar baixa), o app guarda no cadastro do cliente o diagnóstico, os **músculos** (`pacientes.cassi_musculos`, até 400
 caracteres), os **achados** (`pacientes.cassi_achados`, até 600) e os códigos escolhidos, para reaproveitar no próximo pedido. Apagar o
 campo na tela e dar baixa (ou gerar) limpa o valor no cadastro. O **texto gerado** não é guardado no banco: vive na página até recarregar.
+Os **músculos sugeridos pela IA não vão para o cadastro enquanto o campo for igual à sugestão**: só depois que você edita a lista (ou
+digita a sua) ela é gravada, para uma sugestão da IA não voltar no pedido seguinte como se fosse sua. Sem gravar, a IA sugere de novo
+pelo diagnóstico.
 O paciente **não consegue alterar** esses dois campos pelo portal (a trava dos campos internos os inclui); ele consegue *ler* o próprio
 cadastro, como já acontece com o diagnóstico CASSI.
 
 ## IA e privacidade
-A função `gerar-justificativa-cassi` recebe **só** diagnóstico, músculos, achados e os códigos. Nome, CPF e carteirinha nunca saem do app.
+A função `gerar-justificativa-cassi` recebe **só** diagnóstico, músculos (se houver), achados e os códigos. Devolve os textos e, quando
+o 301 foi pedido sem músculos, a lista sugerida em `musculos_sugeridos`. Nome, CPF e carteirinha nunca saem do app.
 Só chama quem tem perfil de profissional. Usa o mesmo provedor (Gemini) das outras funções e registra o custo em `ai_usage_log`.
 
 ## Garantia dos 500 caracteres
@@ -42,6 +58,16 @@ critério da CASSI. A limpeza tira espaço de largura zero e outros caracteres i
 - **Prompt.** O texto das instruções está em `supabase/functions/_shared/cassi-justificativa.ts` e é coberto por testes de contrato: ajustes
   de redação clínica são feitos ali.
 
+## Limite de códigos por pedido
+O pedido aceita até **5 códigos por cliente** (`MAXIMO_CODIGOS_PEDIDO` em `src/lib/cassiPedidos.ts`; decisão do Rafael, antes era 3). Não
+há trava no banco: `pacientes.codigos_cassi` é uma lista livre. Vale também para a mensagem de WhatsApp/copiar, que lista todos os
+códigos escolhidos.
+
 ## Publicação
 Em duas etapas, porque a tela passa a pedir colunas novas: 1) migração `20261103140000_cassi_justificativas_dados.sql` e a função
 `gerar-justificativa-cassi`; 2) depois de conferir em produção, a tela.
+
+A mudança dos 5 códigos e da sugestão de músculos não cria coluna nem migração: função e tela vão no mesmo push. Se a tela chegar antes
+da função, a função antiga recusa o 301 sem músculos por alguns minutos; a tela mostra a mensagem que a função devolveu (a tela lê o
+corpo do erro HTTP, não só a mensagem genérica do client). Se a função chegar antes da tela, a tela antiga continua exigindo músculos
+para habilitar o botão, sem erro.

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { GuiaCassi } from '@/lib/cassiGuias';
 import {
-  camposDaJustificativaParaGravar, candidatosDoPedido, itemDoPedido, listaDoPedido, montarTextoPedido, pedidoEmAberto, sugestoesDoPedido,
+  camposDaJustificativaParaGravar, candidatosDoPedido, itemDoPedido, listaDoPedido, MAXIMO_CODIGOS_PEDIDO, montarTextoPedido, pedidoEmAberto, sugestoesDoPedido,
   type LinhaPedido, type PacientePedido,
 } from '@/lib/cassiPedidos';
 
@@ -109,13 +109,37 @@ describe('item do pedido', () => {
     expect(daGuia).toMatchObject({ carteirinha: '999', diagnostico: 'Cervicalgia', codigos: ['012', '185'] });
   });
 
-  it('no máximo 3 códigos por pedido', () => {
-    const item = itemDoPedido(linha(paciente('1', 'Ana', { codigos_cassi: ['144', '012', '160', '185'] })));
-    expect(item.codigos).toEqual(['144', '012', '160']);
+  it('no máximo 5 códigos por pedido (os primeiros, na ordem do cadastro)', () => {
+    expect(MAXIMO_CODIGOS_PEDIDO).toBe(5);
+    const item = itemDoPedido(linha(paciente('1', 'Ana', { codigos_cassi: ['144', '012', '160', '185', '301', '131'] })));
+    expect(item.codigos).toEqual(['144', '012', '160', '185', '301']);
+  });
+
+  it('até 5 códigos ficam todos; 4 não são cortados', () => {
+    expect(itemDoPedido(linha(paciente('1', 'Ana', { codigos_cassi: ['144', '012', '160', '185', '301'] }))).codigos).toHaveLength(5);
+    expect(itemDoPedido(linha(paciente('1', 'Ana', { codigos_cassi: ['144', '012', '160', '185'] }))).codigos).toEqual(['144', '012', '160', '185']);
   });
 
   it('cliente sem nada fica com campos vazios (a mensagem mostra "—")', () => {
     expect(itemDoPedido(linha(paciente('1', 'Ana')))).toMatchObject({ carteirinha: '', diagnostico: '', musculos: '', achados: '', codigos: [] });
+  });
+
+  describe('camposDaJustificativaParaGravar — sugestão da IA não confirmada', () => {
+    const item = (musculos: string) => ({ musculos, achados: '' });
+    it('o campo ainda igual à sugestão da IA não vai ao cadastro', () => {
+      expect(camposDaJustificativaParaGravar(item('trapézio, romboides'), { musculos: 'trapézio, romboides' }, 'trapézio, romboides')).toEqual({});
+    });
+    it('editado, vai; apagado, vai como null', () => {
+      expect(camposDaJustificativaParaGravar(item('trapézio'), { musculos: 'trapézio' }, 'trapézio, romboides')).toEqual({ cassi_musculos: 'trapézio' });
+      expect(camposDaJustificativaParaGravar(item(''), { musculos: '' }, 'trapézio, romboides')).toEqual({ cassi_musculos: null });
+    });
+    it('sem sugestão, ou com sugestão vazia, o comportamento é o de sempre', () => {
+      expect(camposDaJustificativaParaGravar(item('trapézio'), { musculos: 'trapézio' })).toEqual({ cassi_musculos: 'trapézio' });
+      expect(camposDaJustificativaParaGravar(item(''), { musculos: '' }, '')).toEqual({ cassi_musculos: null });
+    });
+    it('a sugestão intacta não impede gravar os achados', () => {
+      expect(camposDaJustificativaParaGravar({ musculos: 'a, b', achados: 'dor' }, { musculos: 'a, b', achados: 'dor' }, 'a, b')).toEqual({ cassi_achados: 'dor' });
+    });
   });
 
   it('músculos e achados da justificativa vêm do cadastro', () => {

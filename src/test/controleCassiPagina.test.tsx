@@ -317,7 +317,7 @@ describe('Pedir guias', () => {
 
     it('gerar guarda diagnóstico e músculos no cadastro, pede só os códigos marcados e mostra o texto', async () => {
       await anaNaLista();
-      fireEvent.click(screen.getByRole('button', { name: 'Código 301 de Ana Souza' })); // Ana vem com 012 e 185; o 301 completa os 3
+      fireEvent.click(screen.getByRole('button', { name: 'Código 301 de Ana Souza' })); // Ana vem com 012 e 185
       fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: 'Dorsalgia com hipercifose' } });
       abrirJustificativa();
       fireEvent.change(screen.getByLabelText('Músculos de Ana Souza'), { target: { value: 'trapézio superior, romboides' } });
@@ -331,6 +331,88 @@ describe('Pedir guias', () => {
       const gravacao = escritasEm('pacientes').at(-1)!;
       expect(gravacao.payload).toEqual({ codigos_cassi: ['012', '185', '301'], cassi_diagnostico: 'Dorsalgia com hipercifose', cassi_musculos: 'trapézio superior, romboides', cassi_achados: 'bandas tensas palpáveis' });
       expect(h.banco.tabelas.pacientes.find((p) => p.id === 'p1')?.cassi_musculos).toBe('trapézio superior, romboides');
+    });
+
+    it('só com o diagnóstico: a IA sugere os músculos, o campo é preenchido (editável) e a sugestão NÃO vai ao cadastro enquanto não for confirmada', async () => {
+      h.invocar.mockResolvedValue({ data: { justificativas: { '301': jus('Justificativa do 301.') }, musculos_sugeridos: 'trapézio superior, romboides' }, error: null });
+      await anaNaLista();
+      fireEvent.click(screen.getByRole('button', { name: 'Código 301 de Ana Souza' }));
+      fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: 'Dorsalgia com hipercifose' } });
+      abrirJustificativa();
+      expect((screen.getByLabelText('Músculos de Ana Souza') as HTMLInputElement).value).toBe('');
+      gerar();
+      await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+      expect(h.invocar).toHaveBeenCalledWith('gerar-justificativa-cassi', {
+        body: { diagnostico: 'Dorsalgia com hipercifose', musculos: '', achados: '', codigos: ['301'] },
+      });
+      expect((screen.getByLabelText('Músculos de Ana Souza') as HTMLInputElement).value).toBe('trapézio superior, romboides');
+      expect(screen.getByText(/Músculos sugeridos pela IA a partir do diagnóstico/)).toBeTruthy();
+      // Antes de gerar os músculos estavam vazios e intocados: o cadastro não recebe coluna de músculos.
+      expect(escritasEm('pacientes').at(-1)!.payload).toEqual({ codigos_cassi: ['012', '185', '301'], cassi_diagnostico: 'Dorsalgia com hipercifose' });
+
+      fireEvent.click(screen.getByRole('button', { name: /Dar baixa \(1\)/ }));
+      await waitFor(() => expect(screen.getByText('Guias pedidas — aguardando CASSI (2)')).toBeTruthy());
+      expect(escritasEm('pacientes').some((o) => 'cassi_musculos' in (o.payload as Linha))).toBe(false);
+      expect(h.banco.tabelas.pacientes.find((p) => p.id === 'p1')?.cassi_musculos ?? null).toBeNull();
+    });
+
+    it('a lista sugerida que o profissional edita (confirma) passa a ir ao cadastro; gerar de novo com a sugestão intacta continua sem gravar', async () => {
+      h.invocar.mockResolvedValue({ data: { justificativas: { '301': jus('Justificativa do 301.') }, musculos_sugeridos: 'trapézio superior, romboides' }, error: null });
+      await anaNaLista();
+      fireEvent.click(screen.getByRole('button', { name: 'Código 301 de Ana Souza' }));
+      fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: 'Dorsalgia' } });
+      abrirJustificativa();
+      gerar();
+      await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+      // Gerar de novo com a sugestão intacta: o cadastro segue sem coluna de músculos e a marca de sugestão continua.
+      fireEvent.click(screen.getByRole('button', { name: /^Gerar de novo/ }));
+      await waitFor(() => expect(h.invocar).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect((screen.getByRole('button', { name: /^Gerar de novo/ }) as HTMLButtonElement).disabled).toBe(false));
+      expect(escritasEm('pacientes').some((o) => 'cassi_musculos' in (o.payload as Linha))).toBe(false);
+      expect(screen.getByText(/Músculos sugeridos pela IA a partir do diagnóstico/)).toBeTruthy();
+      // O profissional ajusta a lista: agora ela é dele e vai ao cadastro.
+      fireEvent.change(screen.getByLabelText('Músculos de Ana Souza'), { target: { value: 'trapézio superior' } });
+      fireEvent.click(screen.getByRole('button', { name: /Dar baixa \(1\)/ }));
+      await waitFor(() => expect(screen.getByText('Guias pedidas — aguardando CASSI (2)')).toBeTruthy());
+      const dados = escritasEm('pacientes').find((o) => (o.payload as Linha).cassi_musculos);
+      expect(dados?.payload).toMatchObject({ codigos_cassi: ['012', '185', '301'], cassi_musculos: 'trapézio superior' });
+    });
+
+    it('a IA responde depois de o cliente sair do pedido: nada reaparece quando ele volta', async () => {
+      let resolver: (v: unknown) => void = () => {};
+      h.invocar.mockReturnValue(new Promise((r) => { resolver = r; }));
+      await anaNaLista();
+      fireEvent.click(screen.getByRole('button', { name: 'Código 301 de Ana Souza' }));
+      fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: 'Dorsalgia' } });
+      abrirJustificativa();
+      gerar();
+      await waitFor(() => expect(h.invocar).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByRole('button', { name: 'Retirar Ana Souza da lista' }));
+      await waitFor(() => expect(noPedido('Ana Souza')).toBeNull());
+      resolver({ data: { justificativas: { '301': jus('Justificativa tardia.') }, musculos_sugeridos: 'trapézio superior' }, error: null });
+      await new Promise((r) => setTimeout(r, 30));
+      await buscarEEscolher('Adicionar cliente ao pedido', 'ana', /Ana Souza/);
+      await waitFor(() => expect(noPedido('Ana Souza')).toBeTruthy());
+      abrirJustificativa();
+      expect(screen.queryByLabelText('Justificativa do código 301 de Ana Souza')).toBeNull();
+      expect((screen.getByLabelText('Músculos de Ana Souza') as HTMLInputElement).value).toBe('');
+    });
+
+    it('o profissional edita a lista sugerida e gera de novo: a IA recebe a lista dele', async () => {
+      h.invocar.mockResolvedValue({ data: { justificativas: { '301': jus('Justificativa do 301.') }, musculos_sugeridos: 'trapézio superior, romboides' }, error: null });
+      await anaNaLista();
+      fireEvent.click(screen.getByRole('button', { name: 'Código 301 de Ana Souza' }));
+      fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: 'Dorsalgia' } });
+      abrirJustificativa();
+      gerar();
+      await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+      fireEvent.change(screen.getByLabelText('Músculos de Ana Souza'), { target: { value: 'romboides' } });
+      h.invocar.mockResolvedValue({ data: { justificativas: { '301': jus('Justificativa nova.') }, musculos_sugeridos: '' }, error: null });
+      fireEvent.click(screen.getByRole('button', { name: /^Gerar de novo/ }));
+      await waitFor(() => expect(h.invocar).toHaveBeenCalledTimes(2));
+      expect(h.invocar.mock.calls[1][1]).toEqual({ body: { diagnostico: 'Dorsalgia', musculos: 'romboides', achados: '', codigos: ['301'] } });
+      await waitFor(() => expect((screen.getByLabelText('Justificativa do código 301 de Ana Souza') as HTMLTextAreaElement).value).toBe('Justificativa nova.'));
+      expect((screen.getByLabelText('Músculos de Ana Souza') as HTMLInputElement).value).toBe('romboides');
     });
 
     it('a justificativa não entra na mensagem do pedido (WhatsApp/copiar)', async () => {
@@ -489,22 +571,27 @@ describe('Pedir guias', () => {
       expect(window.open).toHaveBeenCalledWith(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
     });
 
-    it('no máximo 3 códigos por cliente: o quarto é recusado com aviso', async () => {
+    it('no máximo 5 códigos por cliente: o sexto é recusado com aviso', async () => {
+      const cfg = h.banco.tabelas.cassi_config[0] as Linha;
+      cfg.codigos = [...(cfg.codigos as Linha[]), { codigo: '301', descricao: 'Agulhamento seco', valor: 35.55 }, { codigo: '131', descricao: 'Biofeedback com EMG', valor: 67.79 }];
       montar();
       await irParaPedir();
       await buscarEEscolher('Adicionar cliente ao pedido', 'ana', /Ana Souza/);
       await waitFor(() => expect(noPedido('Ana Souza')).toBeTruthy());
       const cod = (c: string) => screen.getByRole('button', { name: `Código ${c} de Ana Souza` });
-      // Ana já tem 012 e 185; o terceiro entra, o quarto não.
-      fireEvent.click(cod('144'));
-      expect(cod('144').getAttribute('aria-pressed')).toBe('true');
-      fireEvent.click(cod('160'));
-      expect(cod('160').getAttribute('aria-pressed')).toBe('false');
-      expect(h.erro).toHaveBeenCalledWith('Máximo de 3 códigos por pedido');
+      // Ana já tem 012 e 185; entram mais três (144, 160, 301), o sexto (131) não.
+      for (const c of ['144', '160', '301']) {
+        fireEvent.click(cod(c));
+        expect(cod(c).getAttribute('aria-pressed'), c).toBe('true');
+      }
+      expect(h.erro).not.toHaveBeenCalled();
+      fireEvent.click(cod('131'));
+      expect(cod('131').getAttribute('aria-pressed')).toBe('false');
+      expect(h.erro).toHaveBeenCalledWith('Máximo de 5 códigos por pedido');
       // Tirar um abre espaço para outro.
       fireEvent.click(cod('185'));
-      fireEvent.click(cod('160'));
-      expect(cod('160').getAttribute('aria-pressed')).toBe('true');
+      fireEvent.click(cod('131'));
+      expect(cod('131').getAttribute('aria-pressed')).toBe('true');
     });
   });
 

@@ -18,11 +18,9 @@ export function contarMusculos(texto: string): number {
     .filter((p) => p.length > 1).length;
 }
 
-/** Por que ainda não dá para gerar (null = pode gerar). */
-export function motivoSemGerar(d: { diagnostico: string; musculos: string; codigos: string[] }): string | null {
-  const gerar = codigosParaJustificar(d.codigos);
-  if (gerar.length === 0) return 'Marque o código 301 ou o 131 para gerar a justificativa.';
+/** Por que ainda não dá para gerar (null = pode gerar). O diagnóstico basta: sem músculos, a IA sugere os do diagnóstico. */
+export function motivoSemGerar(d: { diagnostico: string; codigos: string[] }): string | null {
+  if (codigosParaJustificar(d.codigos).length === 0) return 'Marque o código 301 ou o 131 para gerar a justificativa.';
   if (d.diagnostico.trim().length < 3) return 'Preencha o diagnóstico do cliente.';
-  if (gerar.includes('301') && d.musculos.trim() === '') return 'Informe os músculos tratados para a justificativa do 301.';
   return null;
 }

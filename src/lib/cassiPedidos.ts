@@ -23,8 +23,8 @@ export interface LinhaPedido<P extends PacientePedido = PacientePedido> {
   guia: GuiaCassi | null;
 }
 
-// Máximo de códigos por pedido que a CASSI aceita.
-export const MAXIMO_CODIGOS_PEDIDO = 3;
+// Máximo de códigos por pedido de guia (decisão do Rafael: 5).
+export const MAXIMO_CODIGOS_PEDIDO = 5;
 
 // "Pedido aberto" = já demos baixa (solicitamos) e a guia nova ainda não chegou
 // (nenhuma guia com data_pedido >= a data da solicitação).
@@ -104,12 +104,16 @@ export function itemDoPedido(l: LinhaPedido): ItemPedido {
 
 // Músculos e achados da justificativa. Diferente do diagnóstico, o profissional pode APAGAR de propósito (achado do exame
 // vale por consulta): o que ele esvaziou vai como null; o que ele não tocou não é mexido no cadastro.
+// `musculosSugeridos` é a lista que a IA propôs e preencheu no campo: enquanto o campo for igual a ela, o profissional ainda não a
+// confirmou nem editou, então não vai para o cadastro como se fosse dele (no próximo pedido a IA sugere de novo).
 export function camposDaJustificativaParaGravar(
   item: Pick<ItemPedido, 'musculos' | 'achados'>,
   tocados: Partial<Pick<ItemPedido, 'musculos' | 'achados'>> | undefined,
+  musculosSugeridos = '',
 ): { cassi_musculos?: string | null; cassi_achados?: string | null } {
   const saida: { cassi_musculos?: string | null; cassi_achados?: string | null } = {};
-  if (tocados && 'musculos' in tocados) saida.cassi_musculos = item.musculos.trim() || null;
+  const sugestaoIntacta = musculosSugeridos !== '' && item.musculos.trim() === musculosSugeridos;
+  if (tocados && 'musculos' in tocados && !sugestaoIntacta) saida.cassi_musculos = item.musculos.trim() || null;
   if (tocados && 'achados' in tocados) saida.cassi_achados = item.achados.trim() || null;
   return saida;
 }

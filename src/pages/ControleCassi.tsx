@@ -2463,11 +2463,17 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
   const upd = (id: string, patch: Partial<ItemPedido>) =>
     setEdicoes((e) => ({ ...e, [id]: { ...e[id], ...patch } }));
 
+  // A resposta da IA pode chegar depois de o cliente sair do pedido: o que chega fora dele é descartado, para não reaparecer
+  // (músculos e textos velhos) se o cliente voltar à lista.
+  const idsNoPedido = useRef<Set<string>>(new Set());
+  idsNoPedido.current = new Set(itens.map((i) => i.id));
+  const musculosSugeridosDe = (id: string) => justificativas[id]?.['301']?.musculosIA ?? '';
+
   // Ao gerar a justificativa, diagnóstico, músculos, achados e os códigos escolhidos vão para o cadastro (reaproveitam no próximo
   // pedido e não se perdem ao trocar de aba; os códigos são os mesmos que o "Dar baixa" grava). O diagnóstico só entra se
   // preenchido, como no "Dar baixa".
   const salvarBaseDaJustificativa = async (it: ItemPedido): Promise<boolean> => {
-    const payload: Record<string, string | string[] | null> = { ...camposDaJustificativaParaGravar(it, edicoes[it.id]), codigos_cassi: it.codigos };
+    const payload: Record<string, string | string[] | null> = { ...camposDaJustificativaParaGravar(it, edicoes[it.id], musculosSugeridosDe(it.id)), codigos_cassi: it.codigos };
     if (it.diagnostico.trim()) payload.cassi_diagnostico = it.diagnostico.trim();
     // As colunas novas ainda não estão nos tipos gerados do Supabase.
     const banco = supabase as unknown as {
@@ -2600,10 +2606,10 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
                     musculos={it.musculos}
                     achados={it.achados}
                     codigos={it.codigos}
-                    onMusculos={(v) => upd(it.id, { musculos: v })}
+                    onMusculos={(v) => { if (idsNoPedido.current.has(it.id)) upd(it.id, { musculos: v }); }}
                     onAchados={(v) => upd(it.id, { achados: v })}
                     textos={justificativas[it.id] ?? {}}
-                    onTextos={(t) => setJustificativas((j) => ({ ...j, [it.id]: t }))}
+                    onTextos={(t) => { if (idsNoPedido.current.has(it.id)) setJustificativas((j) => ({ ...j, [it.id]: t })); }}
                     onSalvarBase={() => salvarBaseDaJustificativa(it)}
                   />
                 </div>
@@ -2647,7 +2653,7 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
                 const payload: any = { codigos_cassi: i.codigos };
                 if (i.carteirinha.trim()) payload.carteirinha = i.carteirinha.trim();
                 if (i.diagnostico.trim()) payload.cassi_diagnostico = i.diagnostico.trim();
-                Object.assign(payload, camposDaJustificativaParaGravar(i, edicoes[i.id]));
+                Object.assign(payload, camposDaJustificativaParaGravar(i, edicoes[i.id], musculosSugeridosDe(i.id)));
                 return (supabase as any).from('pacientes').update(payload).eq('id', i.id);
               }));
               const falha = results.find((r: any) => r?.error);
