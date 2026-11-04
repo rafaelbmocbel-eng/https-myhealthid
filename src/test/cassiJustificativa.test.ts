@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   ALVO_CARACTERES, ALVO_REDUCAO, codigosParaJustificar, contarCaracteres, contarMusculos, cortarNoLimite, finalizarTexto,
-  interpretarMusculosIA, interpretarRespostaIA, LIMITE_CARACTERES, limparListaDeMusculos, listarMusculos, musculosForaDoTexto, limparTextoJustificativa, MAX_ACHADOS, MAX_DIAGNOSTICO, MAX_MUSCULOS, montarPromptReducao,
+  interpretarMusculosIA, interpretarRespostaIA, justificativasParaMensagem, assinaturaDe, textoDesatualizado, type TextosGerados, LIMITE_CARACTERES, limparListaDeMusculos, listarMusculos, musculosForaDoTexto, limparTextoJustificativa, MAX_ACHADOS, MAX_DIAGNOSTICO, MAX_MUSCULOS, montarPromptReducao,
   montarPromptSistema, montarPromptUsuario, motivoSemGerar, orquestrarJustificativas, RespostaIncompleta, validarEntrada,
   type EntradaJustificativa,
 } from '@/lib/cassiJustificativa';
@@ -774,6 +774,68 @@ describe('sem músculos informados: a IA sugere os do diagnóstico (o diagnósti
     it('falha de rede na primeira rodada sobe para quem chamou (nada de lista pela metade)', async () => {
       await expect(orquestrarJustificativas(dados, vi.fn().mockRejectedValue(new Error('rede')))).rejects.toThrow('rede');
     });
+  });
+});
+
+describe('justificativasParaMensagem (o que acompanha o pedido no Copiar/WhatsApp)', () => {
+  const dados = { diagnostico: 'Dorsalgia', musculos: 'trapézio superior', achados: '' };
+  const gerado = (texto: string, extra: Partial<{ editado: boolean; dados: typeof dados }> = {}) => ({
+    texto, ajustado: false, editado: !!extra.editado, assinatura: assinaturaDe(extra.dados ?? dados),
+  });
+  const item = (codigos: string[], d = dados) => ({ ...d, codigos });
+
+  it('textos em dia e dentro de 500 entram, limpos, só dos códigos marcados', () => {
+    const textos: TextosGerados = { '301': gerado(`${ZWSP}Texto do 301. `), '131': gerado('Texto do 131.') };
+    expect(justificativasParaMensagem(textos, item(['144', '301', '131']))).toEqual({ incluidas: { '301': 'Texto do 301.', '131': 'Texto do 131.' }, deixadas: [] });
+    expect(justificativasParaMensagem(textos, item(['301']))).toEqual({ incluidas: { '301': 'Texto do 301.' }, deixadas: [] });
+    expect(justificativasParaMensagem(textos, item(['012']))).toEqual({ incluidas: {}, deixadas: [] });
+  });
+
+  it('código marcado sem texto gerado não entra e não é aviso', () => {
+    expect(justificativasParaMensagem({}, item(['301', '131']))).toEqual({ incluidas: {}, deixadas: [] });
+    expect(justificativasParaMensagem(undefined, item(['301']))).toEqual({ incluidas: {}, deixadas: [] });
+    expect(justificativasParaMensagem({ '301': gerado('  ') }, item(['301']))).toEqual({ incluidas: {}, deixadas: [] });
+  });
+
+  it('desatualizado (diagnóstico, músculos ou achados mudaram) fica de fora, com motivo', () => {
+    const textos: TextosGerados = { '301': gerado('Texto.') };
+    for (const mudou of [{ diagnostico: 'Cervicalgia' }, { musculos: 'romboides' }, { achados: 'dor à palpação' }]) {
+      expect(justificativasParaMensagem(textos, item(['301'], { ...dados, ...mudou })), JSON.stringify(mudou))
+        .toEqual({ incluidas: {}, deixadas: [{ codigo: '301', motivo: 'desatualizada' }] });
+    }
+  });
+
+  it('espaço a mais nos campos não conta como mudança', () => {
+    expect(justificativasParaMensagem({ '301': gerado('Texto.') }, item(['301'], { diagnostico: ' Dorsalgia ', musculos: 'trapézio superior ', achados: ' ' })).incluidas).toEqual({ '301': 'Texto.' });
+  });
+
+  it('texto editado à mão vale mesmo com os dados mudados (o profissional assumiu o conteúdo)', () => {
+    const textos: TextosGerados = { '301': gerado('Meu texto.', { editado: true }) };
+    expect(justificativasParaMensagem(textos, item(['301'], { ...dados, diagnostico: 'Cervicalgia' })).incluidas).toEqual({ '301': 'Meu texto.' });
+  });
+
+  it('500 caracteres exatos entram; 501 ficam de fora com motivo "acima do limite"', () => {
+    expect(justificativasParaMensagem({ '301': gerado('y'.repeat(500)) }, item(['301'])).incluidas['301']).toHaveLength(500);
+    expect(justificativasParaMensagem({ '301': gerado('x'.repeat(501)) }, item(['301'])))
+      .toEqual({ incluidas: {}, deixadas: [{ codigo: '301', motivo: 'acima do limite' }] });
+  });
+
+  it('o limite conta o texto já limpo (invisíveis e espaços do fim não pesam)', () => {
+    expect(justificativasParaMensagem({ '301': gerado(`${ZWSP}${'y'.repeat(500)}  `) }, item(['301'])).incluidas['301']).toHaveLength(500);
+  });
+
+  it('um código fora e o outro dentro não se misturam', () => {
+    const textos: TextosGerados = { '301': gerado('x'.repeat(501)), '131': gerado('Texto do 131.') };
+    expect(justificativasParaMensagem(textos, item(['131', '301']))).toEqual({
+      incluidas: { '131': 'Texto do 131.' },
+      deixadas: [{ codigo: '301', motivo: 'acima do limite' }],
+    });
+  });
+
+  it('textoDesatualizado: igual ao critério do botão Copiar de cada quadro', () => {
+    expect(textoDesatualizado(gerado('T.'), dados)).toBe(false);
+    expect(textoDesatualizado(gerado('T.'), { ...dados, achados: 'x' })).toBe(true);
+    expect(textoDesatualizado(gerado('T.', { editado: true }), { ...dados, achados: 'x' })).toBe(false);
   });
 });
 

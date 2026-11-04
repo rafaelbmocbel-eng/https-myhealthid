@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { GuiaCassi } from '@/lib/cassiGuias';
 import {
-  camposDaJustificativaParaGravar, candidatosDoPedido, itemDoPedido, listaDoPedido, MAXIMO_CODIGOS_PEDIDO, montarTextoPedido, pedidoEmAberto, sugestoesDoPedido,
+  camposDaJustificativaParaGravar, candidatosDoPedido, itemDoPedido, linkWhatsApp, linkWhatsAppLongo, LIMITE_LINK_WHATSAPP, listaDoPedido, MAXIMO_CODIGOS_PEDIDO, montarTextoPedido, pedidoEmAberto, sugestoesDoPedido,
   type LinhaPedido, type PacientePedido,
 } from '@/lib/cassiPedidos';
 
@@ -98,6 +98,64 @@ describe('candidatos da busca', () => {
       paciente('3', 'Carla', { guia_solicitada_em: '2026-10-10T00:00:00Z' }),
     ], guiaDe);
     expect(candidatos.map((c) => c.paciente.id)).toEqual(['1', '2']);
+  });
+});
+
+describe('link do WhatsApp', () => {
+  it('é o wa.me com o texto codificado', () => {
+    expect(linkWhatsApp('olá, ação!')).toBe(`https://wa.me/?text=${encodeURIComponent('olá, ação!')}`);
+  });
+
+  it('o limite é de 8000 caracteres do link: 8000 ainda não é longo, 8001 é', () => {
+    expect(LIMITE_LINK_WHATSAPP).toBe(8000);
+    const prefixo = 'https://wa.me/?text='.length;
+    expect(linkWhatsAppLongo('a'.repeat(LIMITE_LINK_WHATSAPP - prefixo))).toBe(false);
+    expect(linkWhatsAppLongo('a'.repeat(LIMITE_LINK_WHATSAPP - prefixo + 1))).toBe(true);
+  });
+
+  it('a conta é do link codificado, não do texto: letra acentuada pesa 6', () => {
+    expect(linkWhatsAppLongo('ã'.repeat(1400))).toBe(true); // 1400 letras, link de 8400
+    expect(linkWhatsAppLongo('a'.repeat(1400))).toBe(false);
+  });
+});
+
+describe('montarTextoPedido com justificativas', () => {
+  const base = { nome: 'Ana Souza', carteirinha: '111', codigos: ['012', '301', '131'], diagnostico: 'Dorsalgia' };
+
+  it('sem justificativas o texto é exatamente o de sempre', () => {
+    expect(montarTextoPedido([base])).toBe(
+      '*Solicitação de novas guias CASSI* (1 cliente)\n\n1. *Ana Souza*\nCarteirinha: 111\nCódigos: 012, 301, 131\nDiagnóstico: Dorsalgia',
+    );
+    expect(montarTextoPedido([{ ...base, justificativas: {} }])).toBe(montarTextoPedido([base]));
+  });
+
+  it('as justificativas entram depois do diagnóstico, sempre na ordem 301, 131', () => {
+    expect(montarTextoPedido([{ ...base, justificativas: { '131': 'Texto do 131.', '301': 'Texto do 301.' } }])).toBe([
+      '*Solicitação de novas guias CASSI* (1 cliente)',
+      '',
+      '1. *Ana Souza*',
+      'Carteirinha: 111',
+      'Códigos: 012, 301, 131',
+      'Diagnóstico: Dorsalgia',
+      'Justificativa 301 (Agulhamento seco): Texto do 301.',
+      'Justificativa 131 (EMG Biofeedback): Texto do 131.',
+    ].join('\n'));
+  });
+
+  it('só o 131, só o 301 e texto vazio', () => {
+    expect(montarTextoPedido([{ ...base, justificativas: { '131': 'Só o 131.' } }])).toContain('\nJustificativa 131 (EMG Biofeedback): Só o 131.');
+    expect(montarTextoPedido([{ ...base, justificativas: { '131': 'Só o 131.' } }])).not.toContain('Justificativa 301');
+    expect(montarTextoPedido([{ ...base, justificativas: { '301': '' } }])).not.toContain('Justificativa');
+  });
+
+  it('cada cliente leva as suas; quem não tem fica como antes', () => {
+    const texto = montarTextoPedido([
+      { ...base, justificativas: { '301': 'Texto da Ana.' } },
+      { ...base, nome: 'Bruno Lima', carteirinha: '222' },
+    ]);
+    expect(texto).toContain('1. *Ana Souza*');
+    expect(texto).toContain('Justificativa 301 (Agulhamento seco): Texto da Ana.\n2. *Bruno Lima*\nCarteirinha: 222');
+    expect(texto.match(/Justificativa 301/g)).toHaveLength(1);
   });
 });
 

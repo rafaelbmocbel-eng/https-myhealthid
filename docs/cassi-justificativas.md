@@ -27,7 +27,27 @@ de justificativa clínica que a CASSI pede no portal (limite de **500 caracteres
 5. Se mudar diagnóstico, músculos ou achados depois de gerar, o texto fica marcado como **desatualizado** e o Copiar trava até gerar de
    novo (ou até o profissional editar o texto à mão, assumindo o conteúdo).
 
-A justificativa **não entra** na mensagem de WhatsApp/copiar do pedido: fica só para colar no portal da CASSI.
+## A mensagem do pedido (Copiar e WhatsApp)
+Depois de gerar, as justificativas **já vão na mensagem** do pedido, logo depois do diagnóstico de cada cliente, sem precisar copiar uma
+por uma:
+
+```
+1. *Ana Souza*
+Carteirinha: 111
+Códigos: 012, 185, 301, 131
+Diagnóstico: Dorsalgia
+Justificativa 301 (Agulhamento seco): …
+Justificativa 131 (EMG Biofeedback): …
+```
+
+- Entram só os códigos **301/131 que continuam marcados** e que têm texto gerado (ou escrito por você). Código marcado sem texto
+  gerado fica como antes, sem aviso: você pode não querer justificar.
+- O critério é o mesmo do botão Copiar de cada quadro: o texto precisa estar **em dia** (diagnóstico, músculos e achados iguais aos de
+  quando foi gerado, a menos que você tenha editado o texto à mão) e ter **até 500 caracteres**. O que ficar de fora aparece abaixo
+  dos botões: "Justificativa fora da mensagem: Ana Souza (301, desatualizada)". Gerar de novo ou ajustar o texto o traz de volta.
+- A tela mostra "A mensagem leva N justificativa(s)" e o texto completo em "ver a mensagem que vai no WhatsApp".
+- A mensagem passa a ter bem mais texto: com muitos clientes e dois códigos cada, o link do WhatsApp fica longo. Se o WhatsApp não abrir
+  a mensagem inteira, use Copiar.
 
 ## O que é guardado
 Ao gerar (e ao dar baixa), o app guarda no cadastro do cliente o diagnóstico, os **músculos** (`pacientes.cassi_musculos`, até 400

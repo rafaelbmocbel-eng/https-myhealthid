@@ -2,6 +2,7 @@
 // adiciona (marcador durável cassi_pedir_guia no cadastro). O que o sistema acha que está na hora de
 // pedir aparece à parte, como sugestão, e não entra sozinho no pedido.
 import { precisaNovaGuia, statusPaciente, venceuPrazoProximaGuia, type GuiaCassi } from '@/lib/cassiGuias';
+import { CODIGOS_JUSTIFICAVEIS, INFO_CODIGO, type CodigoJustificavel } from '@/lib/cassiJustificativa';
 
 export interface PacientePedido {
   id: string;
@@ -119,12 +120,34 @@ export function camposDaJustificativaParaGravar(
 }
 
 // A mensagem do pedido (copiar / WhatsApp).
-export function montarTextoPedido(itens: Array<Pick<ItemPedido, 'nome' | 'carteirinha' | 'codigos' | 'diagnostico'>>): string {
+// Acima deste tamanho o link wa.me pode abrir o WhatsApp com a mensagem cortada ou em branco (cada letra acentuada vira 6 caracteres
+// no link); o Copiar não tem esse limite. Prática, não documentada pelo WhatsApp: a tela só avisa, o botão continua funcionando.
+export const LIMITE_LINK_WHATSAPP = 8000;
+
+export const linkWhatsApp = (texto: string): string => `https://wa.me/?text=${encodeURIComponent(texto)}`;
+
+export const linkWhatsAppLongo = (texto: string): boolean => linkWhatsApp(texto).length > LIMITE_LINK_WHATSAPP;
+
+// `justificativas` (opcional) são os textos já gerados dos códigos 301/131 deste cliente (ver justificativasParaMensagem): entram
+// em linhas "Justificativa 301 (...)" logo depois do diagnóstico, sempre na ordem 301, 131.
+export function montarTextoPedido(
+  itens: Array<Pick<ItemPedido, 'nome' | 'carteirinha' | 'codigos' | 'diagnostico'> & { justificativas?: Partial<Record<CodigoJustificavel, string>> }>,
+): string {
   return [
     `*Solicitação de novas guias CASSI* (${itens.length} cliente${itens.length === 1 ? '' : 's'})`,
     '',
-    ...itens.map((i, idx) =>
-      `${idx + 1}. *${i.nome}*\nCarteirinha: ${i.carteirinha || '—'}\nCódigos: ${i.codigos.join(', ') || '—'}\nDiagnóstico: ${i.diagnostico || '—'}`
-    ),
+    ...itens.map((i, idx) => {
+      const linhas = [
+        `${idx + 1}. *${i.nome}*`,
+        `Carteirinha: ${i.carteirinha || '—'}`,
+        `Códigos: ${i.codigos.join(', ') || '—'}`,
+        `Diagnóstico: ${i.diagnostico || '—'}`,
+      ];
+      for (const codigo of CODIGOS_JUSTIFICAVEIS) {
+        const texto = i.justificativas?.[codigo];
+        if (texto) linhas.push(`Justificativa ${codigo} (${INFO_CODIGO[codigo].nome}): ${texto}`);
+      }
+      return linhas.join('\n');
+    }),
   ].join('\n');
 }

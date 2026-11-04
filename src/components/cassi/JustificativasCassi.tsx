@@ -7,20 +7,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import {
-  codigosParaJustificar, contarCaracteres, contarMusculos, INFO_CODIGO, LIMITE_CARACTERES, limparTextoJustificativa,
-  MAX_ACHADOS, MAX_MUSCULOS, motivoSemGerar, musculosForaDoTexto, type CodigoJustificavel, type JustificativaPronta,
+  assinaturaDe, codigosParaJustificar, contarCaracteres, contarMusculos, INFO_CODIGO, LIMITE_CARACTERES, limparTextoJustificativa,
+  MAX_ACHADOS, MAX_MUSCULOS, motivoSemGerar, musculosForaDoTexto, textoDesatualizado, type CodigoJustificavel, type JustificativaPronta,
+  type TextoGerado, type TextosGerados,
 } from '@/lib/cassiJustificativa';
 
-/**
- * Um texto gerado. `assinatura` guarda os dados com que ele nasceu; `editado` vira true quando o profissional mexe no texto.
- * `musculosIA` (só no 301) é a lista que a IA propôs quando o profissional não informou músculos: a tela a mostra como sugestão
- * enquanto o campo ainda for igual a ela.
- */
-export interface TextoGerado { texto: string; ajustado: boolean; assinatura: string; editado: boolean; musculosIA?: string }
-export type TextosGerados = Partial<Record<CodigoJustificavel, TextoGerado>>;
-
-const assinaturaDe = (d: { diagnostico: string; musculos: string; achados: string }) =>
-  JSON.stringify([d.diagnostico.trim(), d.musculos.trim(), d.achados.trim()]);
+export type { TextoGerado, TextosGerados };
 
 // A função responde erro com status 4xx/5xx e corpo { error }; o client do Supabase esconde o corpo em `context`.
 async function mensagemDoErro(e: unknown): Promise<string> {
@@ -64,7 +56,6 @@ export function JustificativasCassi({ nome, diagnostico, musculos, achados, codi
   musculosAgora.current = musculos;
   const musculosDaIA = textos['301']?.musculosIA ?? '';
   const sugestaoNoCampo = marcaOs301 && musculosDaIA !== '' && musculos.trim() === musculosDaIA;
-  const assinaturaAtual = assinaturaDe({ diagnostico, musculos, achados });
   const temTexto = paraGerar.some((c) => textos[c]);
 
   const gerar = async () => {
@@ -200,7 +191,7 @@ export function JustificativasCassi({ nome, diagnostico, musculos, achados, codi
             if (!atual) return null;
             const total = contarCaracteres(atual.texto);
             const passou = total > LIMITE_CARACTERES;
-            const desatualizado = !atual.editado && atual.assinatura !== assinaturaAtual;
+            const desatualizado = textoDesatualizado(atual, { diagnostico, musculos, achados });
             const foraDoTexto = codigo === '301' ? musculosForaDoTexto(atual.texto, musculos) : [];
             return (
               <div key={codigo} className="space-y-0.5">

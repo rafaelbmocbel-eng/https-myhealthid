@@ -415,20 +415,109 @@ describe('Pedir guias', () => {
       expect((screen.getByLabelText('Músculos de Ana Souza') as HTMLInputElement).value).toBe('romboides');
     });
 
-    it('a justificativa não entra na mensagem do pedido (WhatsApp/copiar)', async () => {
-      await anaNaLista();
-      fireEvent.click(screen.getByRole('button', { name: 'Código 301 de Ana Souza' }));
-      fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: 'Dorsalgia' } });
-      abrirJustificativa();
-      fireEvent.change(screen.getByLabelText('Músculos de Ana Souza'), { target: { value: 'trapézio superior' } });
-      gerar();
-      await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
-      fireEvent.click(screen.getByText('ver a mensagem que vai no WhatsApp'));
-      const mensagem = (screen.getByLabelText('Mensagem do pedido') as HTMLTextAreaElement).value;
-      expect(mensagem).toContain('Códigos: 012, 185, 301');
-      expect(mensagem).toContain('Diagnóstico: Dorsalgia');
-      expect(mensagem).not.toContain('trapézio');
-      expect(mensagem).not.toContain('Justificativa do 301');
+    describe('a justificativa gerada acompanha o pedido na mensagem (Copiar e WhatsApp)', () => {
+      const geradoPara = async (codigos301e131 = true) => {
+        h.invocar.mockResolvedValue({ data: { justificativas: { '301': jus('Justificativa do 301.'), '131': jus('Justificativa do 131.') } }, error: null });
+        await anaNaLista();
+        fireEvent.click(screen.getByRole('button', { name: 'Código 301 de Ana Souza' }));
+        if (codigos301e131) fireEvent.click(screen.getByRole('button', { name: 'Código 131 de Ana Souza' }));
+        fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: 'Dorsalgia' } });
+        abrirJustificativa();
+        fireEvent.change(screen.getByLabelText('Músculos de Ana Souza'), { target: { value: 'trapézio superior' } });
+        gerar();
+        await screen.findByLabelText('Justificativa do código 301 de Ana Souza');
+      };
+      const mensagem = () => {
+        if (!screen.queryByLabelText('Mensagem do pedido')) fireEvent.click(screen.getByText('ver a mensagem que vai no WhatsApp'));
+        return (screen.getByLabelText('Mensagem do pedido') as HTMLTextAreaElement).value;
+      };
+
+      it('os dois textos entram logo depois do diagnóstico, na ordem 301, 131, e a tela diz quantos', async () => {
+        await geradoPara();
+        expect(mensagem()).toBe([
+          '*Solicitação de novas guias CASSI* (1 cliente)',
+          '',
+          '1. *Ana Souza*',
+          'Carteirinha: 111',
+          'Códigos: 012, 185, 301, 131',
+          'Diagnóstico: Dorsalgia',
+          'Justificativa 301 (Agulhamento seco): Justificativa do 301.',
+          'Justificativa 131 (EMG Biofeedback): Justificativa do 131.',
+        ].join('\n'));
+        expect(screen.getByText('A mensagem leva 2 justificativas (301/131).')).toBeTruthy();
+        expect(screen.queryByText(/Justificativa fora da mensagem/)).toBeNull();
+      });
+
+      it('Copiar e WhatsApp levam exatamente esse texto', async () => {
+        await geradoPara();
+        const esperado = mensagem();
+        fireEvent.click(screen.getByRole('button', { name: 'Copiar' }));
+        await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(esperado));
+        fireEvent.click(screen.getByRole('button', { name: 'WhatsApp' }));
+        expect(window.open).toHaveBeenCalledWith(`https://wa.me/?text=${encodeURIComponent(esperado)}`, '_blank');
+        expect(esperado).toContain('Justificativa 301 (Agulhamento seco): Justificativa do 301.');
+      });
+
+      it('o texto editado à mão vai como está; o músculos digitados não vazam para a mensagem', async () => {
+        await geradoPara();
+        fireEvent.change(screen.getByLabelText('Justificativa do código 301 de Ana Souza'), { target: { value: 'Meu texto do 301.' } });
+        const m = mensagem();
+        expect(m).toContain('Justificativa 301 (Agulhamento seco): Meu texto do 301.');
+        expect(m).not.toContain('Justificativa do 301.');
+        expect(m).not.toContain('trapézio');
+      });
+
+      it('texto desatualizado (o diagnóstico mudou depois de gerar) fica de fora e a tela avisa; gerar de novo o traz de volta', async () => {
+        await geradoPara();
+        fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: 'Cervicalgia' } });
+        const m = mensagem();
+        expect(m).not.toContain('Justificativa 301');
+        expect(m).not.toContain('Justificativa 131');
+        expect(screen.getByText(/Justificativa fora da mensagem: Ana Souza \(301, desatualizada; 131, desatualizada\)/)).toBeTruthy();
+        expect(screen.queryByText(/A mensagem leva/)).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: /^Gerar de novo/ }));
+        await waitFor(() => expect(h.invocar).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(screen.queryByText(/Justificativa fora da mensagem/)).toBeNull());
+        expect(mensagem()).toContain('Justificativa 301 (Agulhamento seco): Justificativa do 301.');
+      });
+
+      it('texto acima de 500 caracteres fica de fora e a tela avisa', async () => {
+        await geradoPara();
+        fireEvent.change(screen.getByLabelText('Justificativa do código 301 de Ana Souza'), { target: { value: 'x'.repeat(501) } });
+        expect(mensagem()).not.toContain('Justificativa 301');
+        expect(mensagem()).toContain('Justificativa 131 (EMG Biofeedback)');
+        expect(screen.getByText(/Justificativa fora da mensagem: Ana Souza \(301, acima do limite\)/)).toBeTruthy();
+        expect(screen.getByText('A mensagem leva 1 justificativa (301/131).')).toBeTruthy();
+      });
+
+      it('código desmarcado depois de gerar não leva justificativa e não gera aviso', async () => {
+        await geradoPara();
+        fireEvent.click(screen.getByRole('button', { name: 'Código 131 de Ana Souza' }));
+        const m = mensagem();
+        expect(m).toContain('Justificativa 301 (Agulhamento seco)');
+        expect(m).not.toContain('Justificativa 131');
+        expect(m).toContain('Códigos: 012, 185, 301');
+        expect(screen.queryByText(/Justificativa fora da mensagem/)).toBeNull();
+      });
+
+      it('mensagem tão longa que o link do WhatsApp pode falhar: a tela avisa para usar Copiar, e os botões seguem funcionando', async () => {
+        await geradoPara();
+        expect(screen.queryByText(/Mensagem longa/)).toBeNull();
+        fireEvent.change(screen.getByLabelText('Diagnóstico de Ana Souza'), { target: { value: 'ã'.repeat(1500) } });
+        expect(screen.getByText(/Mensagem longa: o WhatsApp pode abrir só parte do texto\. Use Copiar e cole na conversa\./)).toBeTruthy();
+        fireEvent.click(screen.getByRole('button', { name: 'WhatsApp' }));
+        expect(window.open).toHaveBeenCalledTimes(1);
+        fireEvent.click(screen.getByRole('button', { name: 'Copiar' }));
+        await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
+      });
+
+      it('sem justificativa gerada a mensagem é a de sempre, sem aviso', async () => {
+        await anaNaLista();
+        fireEvent.click(screen.getByRole('button', { name: 'Código 301 de Ana Souza' }));
+        const m = mensagem();
+        expect(m).not.toContain('Justificativa');
+        expect(screen.queryByText(/A mensagem leva|Justificativa fora da mensagem/)).toBeNull();
+      });
     });
 
     it('o texto gerado (e editado) e os músculos voltam ao reabrir a aba', async () => {

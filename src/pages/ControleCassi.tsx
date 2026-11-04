@@ -20,7 +20,8 @@ import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
 import { contarSessoesDoMes, fecharMesPorLancamentos, ultimosMeses } from '@/lib/cassiFinanceiro';
 import { MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_GUIAS_NO_MES, guiasPelaAgenda, mesclarCodigosComPadrao, ordenarParaLancamento, type GuiaLancada } from '@/lib/cassiFaturamento';
-import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, camposDaJustificativaParaGravar, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
+import { justificativasParaMensagem } from '@/lib/cassiJustificativa';
+import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, camposDaJustificativaParaGravar, linkWhatsApp, linkWhatsAppLongo, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
 import { BuscaDeCliente } from '@/components/cassi/BuscaDeCliente';
 import { SugestoesDoPedido } from '@/components/cassi/SugestoesDoPedido';
 import { JustificativasCassi, type TextosGerados } from '@/components/cassi/JustificativasCassi';
@@ -2420,7 +2421,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
 }
 
 // Pedir guias — a lista é do profissional: ele procura os clientes, adiciona, ajusta carteirinha/diagnóstico/
-// códigos (máx. 3) e copia ou manda a mensagem pronta (nome, carteirinha, códigos, diagnóstico). O que o
+// códigos (máx. 5) e copia ou manda a mensagem pronta (nome, carteirinha, códigos, diagnóstico e as justificativas já geradas). O que o
 // sistema acha que está na hora de pedir aparece à parte, como sugestão, e não entra sozinho no pedido.
 function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, onDarBaixa, onMarcarPedir, justificativas, setJustificativas }: {
   linhas: Array<{ paciente: Paciente; guia: GuiaCassi | null }>; // a lista do pedido
@@ -2524,13 +2525,18 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
       encerrado: !!c.paciente.cassi_encerrado_em,
     }));
 
-  const texto = montarTextoPedido(selecionados);
+  // As justificativas já geradas (em dia e até 500 caracteres) acompanham o pedido na mensagem; o que ficou de fora é avisado.
+  const justificativasDoPedido = selecionados.map((i) => ({ item: i, ...justificativasParaMensagem(justificativas[i.id], i) }));
+  const texto = montarTextoPedido(justificativasDoPedido.map((j) => ({ ...j.item, justificativas: j.incluidas })));
+  const totalJustificativas = justificativasDoPedido.reduce((n, j) => n + Object.keys(j.incluidas).length, 0);
+  const justificativasDeFora = justificativasDoPedido.filter((j) => j.deixadas.length > 0);
+  const mensagemLonga = linkWhatsAppLongo(texto);
 
   const copiar = async () => {
     try { await navigator.clipboard.writeText(texto); toast.success('Texto copiado!'); }
     catch { toast.error('Não consegui copiar — selecione e copie manualmente.'); }
   };
-  const enviarWhatsApp = () => window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+  const enviarWhatsApp = () => window.open(linkWhatsApp(texto), '_blank');
 
   return (
     <div className="space-y-3">
@@ -2636,6 +2642,22 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
             <MessageCircle className="h-4 w-4" /> WhatsApp
           </Button>
         </div>
+        {totalJustificativas > 0 && (
+          <p className="text-[11px] text-muted-foreground text-center">
+            A mensagem leva {totalJustificativas} justificativa{totalJustificativas === 1 ? '' : 's'} (301/131).
+          </p>
+        )}
+        {mensagemLonga && (
+          <p role="status" className="text-[11px] font-medium text-amber-700 text-center">
+            Mensagem longa: o WhatsApp pode abrir só parte do texto. Use Copiar e cole na conversa.
+          </p>
+        )}
+        {justificativasDeFora.length > 0 && (
+          <p role="status" className="text-[11px] font-medium text-amber-700 text-center">
+            Justificativa fora da mensagem: {justificativasDeFora.map((j) => `${j.item.nome} (${j.deixadas.map((d) => `${d.codigo}, ${d.motivo}`).join('; ')})`).join(' · ')}.
+            Gere de novo ou ajuste o texto para ela entrar.
+          </p>
+        )}
         {semCarteirinha > 0 && (
           <p className="text-[11px] text-rose-600 text-center">
             {semCarteirinha} sem carteirinha — preencha antes de dar baixa.
@@ -2670,7 +2692,7 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
         <button className="w-full text-[11px] text-muted-foreground" onClick={() => setVerTexto((v) => !v)}>
           {verTexto ? 'ocultar mensagem' : 'ver a mensagem que vai no WhatsApp'}
         </button>
-        {verTexto && <Textarea readOnly aria-label="Mensagem do pedido" value={texto} rows={Math.min(10, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />}
+        {verTexto && <Textarea readOnly aria-label="Mensagem do pedido" value={texto} rows={totalJustificativas > 0 ? 14 : Math.min(10, Math.max(4, selecionados.length * 4))} className="text-xs font-mono bg-background" />}
       </div>
     </div>
   );

@@ -35,6 +35,8 @@ recolher → enviar ao financeiro) nos cards, o filtro "2 guias/mês" e a lista 
   CASSI**.
 - A mensagem (Copiar / WhatsApp), os campos (carteirinha, diagnóstico, **até 5 códigos**, `MAXIMO_CODIGOS_PEDIDO`; o limite era 3 até
   nov/2026) e o Dar baixa estão em `src/lib/cassiPedidos.ts` (`montarTextoPedido`, `itemDoPedido`), com teste do texto exato.
+  Se o cliente tem justificativa gerada dos códigos 301/131 (ver `docs/cassi-justificativas.md`), ela vai na mensagem logo depois do
+  diagnóstico (`justificativasParaMensagem`).
 - Quem estava marcado "Vou pedir a guia" pelo fluxo antigo de "Este mês" (`cassi_pedir_guia` já verdadeiro) aparece na lista.
 - **Desfazer** um pedido (em "Guias pedidas — aguardando CASSI") é o inverso da baixa: o cliente volta para a lista.
 - Registrar a **guia nova** do cliente (Nova guia / registrar manual) tira o cliente da lista: a guia chegou.
