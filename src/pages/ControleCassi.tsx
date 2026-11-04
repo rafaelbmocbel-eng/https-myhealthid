@@ -19,6 +19,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
 import { contarSessoesDoMes, fecharMesPorLancamentos, ultimosMeses } from '@/lib/cassiFinanceiro';
+import { relatorioDosLancamentos } from '@/lib/cassiRelatorio';
 import { MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_GUIAS_NO_MES, guiasPelaAgenda, mesclarCodigosComPadrao, ordenarParaLancamento, type GuiaLancada } from '@/lib/cassiFaturamento';
 import { justificativasParaMensagem } from '@/lib/cassiJustificativa';
 import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, camposDaJustificativaParaGravar, linkWhatsApp, linkWhatsAppLongo, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
@@ -3239,90 +3240,25 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
     }
   };
 
-  const { data: guias = [] } = useQuery({
-    queryKey: ['guias-cassi', user?.id],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('guias_cassi').select('*, pacientes(nome, sobrenome)')
-        .eq('terapeuta_id', user!.id)
-        .order('data_pedido', { ascending: false }).order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data || []) as Array<GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }>;
-    },
-    enabled: !!user,
-  });
-
   const cods = cfg?.codigos || [];
-  const valorDe = (c: string) => cods.find((x) => x.codigo === c)?.valor || 0;
-  const colAval = cods.find((c) => c.codigo === '144');
-  const colsTrat = cods.filter((c) => c.codigo !== '144');
 
-  // Agendamentos ligados a guias — para saber em que mês cada guia foi concluída.
-  const { data: ags = [] } = useQuery({
-    queryKey: ['cassi-ags-guia', user?.id],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from('agendamentos')
-        .select('guia_cassi_id, data_inicio, status, tipo_atendimento')
-        .eq('terapeuta_id', user!.id).not('guia_cassi_id', 'is', null);
-      if (error) throw error;
-      return (data || []) as Array<{ guia_cassi_id: string; data_inicio: string; status: string; tipo_atendimento?: string }>;
-    },
-    enabled: !!user,
-  });
-
-  // Mês de produção de cada guia = mês da ÚLTIMA sessão de tratamento realizada
-  // (a guia "fechou" nesse mês). Sem agenda, cai na data de resposta/pedido.
-  const mesFimPorGuia = useMemo(() => {
-    const ultima = new Map<string, string>(); // guiaId -> maior data local YYYY-MM-DD (agendada ou realizada)
-    for (const a of ags) {
-      if (!a.guia_cassi_id || a.tipo_atendimento === 'avaliacao') continue;
-      if (a.status === 'cancelado') continue;
-      const dt = new Date(a.data_inicio);
-      const ymd = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-      const cur = ultima.get(a.guia_cassi_id);
-      if (!cur || ymd > cur) ultima.set(a.guia_cassi_id, ymd);
-    }
-    return ultima;
-  }, [ags]);
-  const mesProducao = (g: GuiaCassi) => {
-    const fim = mesFimPorGuia.get(g.id) || projetarFimGuia(g);
-    return fim ? fim.slice(0, 7) : '';
-  };
-
-  const candidatas = useMemo(
-    () => guias.filter((g) => g.status !== 'cancelada' && somaGuia(g.codigos, valorDe) > 0)
-      .sort((a, b) => `${a.pacientes?.nome || ''}`.localeCompare(`${b.pacientes?.nome || ''}`, 'pt-BR')),
-    [guias, valorDe],
+  // O relatório sai exatamente do que foi lançado na aba Faturamento para o mês: os clientes da lista, com as guias, os códigos
+  // e as quantidades. Não há guia para escolher aqui; para mudar algo, é só ajustar o lançamento na aba Faturamento.
+  const lancamentosDoMes = lista.lancamentosDoMes(mesRel);
+  const clientesDoMes = useMemo(
+    () => pacientesCassi.filter((p) => idsDoMes.has(p.id)).map((p) => ({
+      id: p.id, nome: `${p.nome} ${p.sobrenome || ''}`.trim(), responsavel: '', guias: lancamentosDoMes.get(p.id) || [],
+    })),
+    [pacientesCassi, idsDoMes, lancamentosDoMes],
   );
-
-  // Seleção automática: guias cujo mês de produção = mês do relatório, dos clientes da lista do mês.
-  const autoSel = useMemo(() => {
-    const s = new Set<string>();
-    for (const g of candidatas) if (mesProducao(g) === mesRel && idsDoMes.has(g.paciente_id)) s.add(g.id);
-    return s;
-  }, [candidatas, mesRel, mesFimPorGuia, idsDoMes]);
-
-  const [sel, setSel] = useState<Set<string>>(new Set());
-  const autoSig = useMemo(() => [...autoSel].sort().join(','), [autoSel]);
-  const lastSig = useRef<string | null>(null);
-  useEffect(() => {
-    // Reaplica a seleção automática quando muda o mês ou quando os dados chegam
-    // (o conteúdo do auto muda). Ajustes manuais valem até isso acontecer.
-    if (lastSig.current !== autoSig) { lastSig.current = autoSig; setSel(new Set(autoSel)); }
-  }, [autoSig, autoSel]);
-  const toggle = (id: string) => setSel((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-
-  const qtd = (g: GuiaCassi, cod: string) => Number((g.codigos || []).find((c) => c.codigo === cod)?.sessoes) || 0;
-  const rows = candidatas.filter((g) => sel.has(g.id));
-  // Só viram coluna os códigos usados nas guias do relatório (com nada marcado, nas guias do mês): os da tabela da CASSI
-  // que não aparecem em nenhuma não saem como coluna zerada no relatório da clínica.
-  const usados = new Set((rows.length > 0 ? rows : candidatas).flatMap((g) => (g.codigos || []).map((c) => c.codigo)));
-  const columns = [...(colAval ? [colAval] : []), ...colsTrat].filter((c) => usados.has(c.codigo));
-  const bruto = rows.reduce((s, g) => s + somaGuia(g.codigos, valorDe), 0);
-  const imp = cfg?.imposto_percentual || 0;
-  const aposImp = bruto * (1 - imp / 100);
-  const minha = cfg?.minha_parte_percentual || 0;
-  const suaParte = aposImp * (minha / 100);
+  const rel = useMemo(() => relatorioDosLancamentos({ clientes: clientesDoMes, cfg }), [clientesDoMes, cfg]);
+  const { colunas, linhas } = rel;
+  const imp = rel.impostoPct;
+  const minha = rel.minhaPct;
+  const semLancamento = clientesDoMes.filter((c) => c.guias.length === 0).map((c) => c.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  // Com a lista ainda chegando (ou sem conseguir ler) o relatório estaria incompleto: não dá para imprimir, salvar nem baixar.
+  const pronto = !lista.carregando && !lista.erro && linhas.length > 0;
+  const rotuloImposto = imp > 0 || rel.totImposto === 0 ? `${imp}%` : fmtBRL(rel.totImposto);
 
   const [ano, m] = mesRel.split('-').map(Number);
   const mesNome = (MESES_PT[m - 1] || '').toUpperCase();
@@ -3333,7 +3269,7 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
   const [salvando, setSalvando] = useState(false);
   // Salva o relatório atual como snapshot congelado (substitui o do mesmo mês).
   const salvarSnapshot = async () => {
-    if (!user || rows.length === 0) return;
+    if (!user || linhas.length === 0) return;
     setSalvando(true);
     try {
       const dados = {
@@ -3342,9 +3278,9 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
         cidade: cfg?.cidade || '',
         mes_label: mesNome,
         data_assinatura: `${String(hoje.getDate()).padStart(2, '0')} de ${MESES_PT[hoje.getMonth()]} de ${hoje.getFullYear()}`,
-        columns: columns.map((c) => ({ codigo: c.codigo, oficial: c.codigo_oficial || c.codigo, label: c.codigo === '144' ? 'Avaliação' : 'Código' })),
-        rows: rows.map((g) => ({ nome: `${g.pacientes?.nome || ''} ${g.pacientes?.sobrenome || ''}`.trim(), q: columns.map((c) => qtd(g, c.codigo)), soma: somaGuia(g.codigos, valorDe) })),
-        total_bruto: bruto, imposto_pct: imp, apos_imposto: aposImp, minha_pct: minha, sua_parte: suaParte,
+        columns: colunas.map((c) => ({ codigo: c.codigo, oficial: c.oficial, label: c.label })),
+        rows: linhas,
+        total_bruto: rel.totBruto, imposto_pct: imp, apos_imposto: rel.totLiquido, minha_pct: minha, sua_parte: rel.suaParte,
       };
       const titulo = `${(MESES_PT[m - 1] || '').replace(/^./, (ch) => ch.toUpperCase())}/${ano}`;
       await (supabase as any).from('relatorios_cassi').delete().eq('terapeuta_id', user.id).eq('mes', mesRel);
@@ -3378,16 +3314,16 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
           <div className="flex items-center gap-2 flex-wrap">
             <div>
               <label className="text-[10px] uppercase text-muted-foreground tracking-wide">Mês do relatório</label>
-              <Input type="month" value={mesRel} onChange={(e) => e.target.value && setMesRel(e.target.value)} className="h-8 w-[9.5rem] text-sm" />
+              <Input type="month" value={mesRel} onChange={(e) => e.target.value && setMesRel(e.target.value)} className="h-8 w-[12rem] text-sm" />
             </div>
             <div className="ml-auto mt-4 flex items-center gap-1.5">
-              <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={salvando || rows.length === 0} onClick={salvarSnapshot}>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={salvando || !pronto} onClick={salvarSnapshot}>
                 {salvando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Salvar
               </Button>
-              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => window.print()}>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={!pronto} onClick={() => window.print()}>
                 <FileText className="h-3.5 w-3.5" /> Imprimir
               </Button>
-              <Button size="sm" className="h-8 gap-1.5" disabled={gerandoPdf} onClick={baixarPdf}>
+              <Button size="sm" className="h-8 gap-1.5" disabled={gerandoPdf || !pronto} onClick={baixarPdf}>
                 {gerandoPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Baixar PDF
               </Button>
             </div>
@@ -3399,42 +3335,30 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
             </div>
           )}
 
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Guias no relatório ({rows.length})</p>
-              <button className="text-[11px] text-primary" onClick={() => setSel(new Set(autoSel))}>Selecionar automático</button>
-            </div>
-            <p className="text-[11px] text-muted-foreground mb-1.5">
-              Selecionadas automaticamente as guias que <b>fecharam</b> em {MESES_PT[m - 1]} {ano}, dos clientes da lista do mês. Desmarque/marque se precisar.
-            </p>
-            {!lista.carregando && !lista.erro && idsDoMes.size === 0 && (
-              <p className="text-[11px] text-amber-700 dark:text-amber-300 mb-1.5">
-                Não há clientes na lista de {MESES_PT[m - 1]} {ano}: adicione-os na aba <b>Faturamento</b> ou marque as guias abaixo.
+          <div className="rounded-lg border border-border/50 p-2.5 space-y-1" aria-label="O que entra no relatório">
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Lançado em {MESES_PT[m - 1]} {ano}</p>
+            {lista.carregando && <p className="text-[12px] text-muted-foreground">Carregando a lista do mês…</p>}
+            {lista.erro && (
+              <p className="text-[12px] text-rose-600" role="alert">Não consegui carregar a lista do mês. Feche e abra o relatório de novo.</p>
+            )}
+            {!lista.carregando && !lista.erro && (
+              <p className="text-[12px] tabular-nums">
+                {rel.clientes} {rel.clientes === 1 ? 'cliente' : 'clientes'} · {rel.guias} {rel.guias === 1 ? 'guia' : 'guias'}
               </p>
             )}
-            {lista.erro && (
-              <p className="text-[11px] text-rose-600 mb-1.5" role="alert">Não consegui carregar a lista do mês — marque as guias abaixo.</p>
+            <p className="text-[11px] text-muted-foreground">
+              O relatório sai exatamente do que você lançou na aba <b>Faturamento</b>: os clientes da lista, os códigos e as quantidades. Para mudar algo, ajuste lá.
+            </p>
+            {!lista.carregando && !lista.erro && linhas.length === 0 && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                Nenhum código lançado em {MESES_PT[m - 1]} {ano}: adicione os clientes e lance os códigos na aba <b>Faturamento</b>.
+              </p>
             )}
-            <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-border/50 p-1.5">
-              {candidatas.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground text-center py-3">Nenhuma guia para listar.</p>
-              ) : candidatas.map((g) => {
-                const mp = mesProducao(g);
-                const doMes = mp === mesRel;
-                return (
-                  <label key={g.id} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-muted/50 cursor-pointer">
-                    <input type="checkbox" checked={sel.has(g.id)} onChange={() => toggle(g.id)} className="h-4 w-4 accent-primary" />
-                    <span className="text-[12px] flex-1 truncate">{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</span>
-                    {!doMes && mp && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {(() => { const [ya, ma] = mp.split('-').map(Number); return `${MESES_PT[ma - 1]?.slice(0, 3)}/${String(ya).slice(2)}`; })()}
-                      </span>
-                    )}
-                    <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{fmtBRL(somaGuia(g.codigos, valorDe))}</span>
-                  </label>
-                );
-              })}
-            </div>
+            {!lista.carregando && !lista.erro && semLancamento.length > 0 && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                Na lista, mas sem código lançado (ficam fora do relatório): {semLancamento.join(', ')}.
+              </p>
+            )}
           </div>
         </div>
 
@@ -3451,24 +3375,24 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
             <thead>
               <tr>
                 <th style={{ ...th, textAlign: 'left' }}>Nome do Paciente</th>
-                {columns.map((c) => (
+                {colunas.map((c) => (
                   <th key={c.codigo} style={th}>
-                    {c.codigo === '144' ? 'Avaliação' : 'Código'}<br />({c.codigo_oficial || c.codigo})
+                    {c.label}<br />({c.oficial})
                   </th>
                 ))}
                 <th style={th}>Soma</th>
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
-                <tr><td style={{ ...td, textAlign: 'center' }} colSpan={columns.length + 2}>Selecione as guias acima.</td></tr>
-              ) : rows.map((g) => (
-                <tr key={g.id}>
-                  <td style={td}>{g.pacientes?.nome} {g.pacientes?.sobrenome || ''}</td>
-                  {columns.map((c) => (
-                    <td key={c.codigo} style={{ ...td, textAlign: 'center' }}>{qtd(g, c.codigo)}</td>
+              {linhas.length === 0 ? (
+                <tr><td style={{ ...td, textAlign: 'center' }} colSpan={colunas.length + 2}>Nenhum código lançado neste mês.</td></tr>
+              ) : linhas.map((l, i) => (
+                <tr key={`${l.nome}-${i}`}>
+                  <td style={td}>{l.nome}</td>
+                  {l.q.map((q, k) => (
+                    <td key={colunas[k].codigo} style={{ ...td, textAlign: 'center' }}>{q}</td>
                   ))}
-                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtBRL(somaGuia(g.codigos, valorDe))}</td>
+                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtBRL(l.soma)}</td>
                 </tr>
               ))}
             </tbody>
@@ -3477,11 +3401,11 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
           <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 240, border: '2px solid #7a6a1e', padding: 10 }}>
               <p style={{ fontSize: 13, fontWeight: 800 }}>VALOR TOTAL:</p>
-              <p style={{ fontSize: 13 }}>{fmtBRL(bruto)} − {imp}%: {fmtBRL(aposImp)}</p>
+              <p style={{ fontSize: 13 }}>{fmtBRL(rel.totBruto)} − {rotuloImposto}: {fmtBRL(rel.totLiquido)}</p>
             </div>
             <div style={{ flex: 1, minWidth: 240, border: '2px solid #7a6a1e', padding: 10 }}>
               <p style={{ fontSize: 13, fontWeight: 800 }}>VALOR COM A PORCENTAGEM ({minha}%):</p>
-              <p style={{ fontSize: 13 }}>{fmtBRL(suaParte)}</p>
+              <p style={{ fontSize: 13 }}>{fmtBRL(rel.suaParte)}</p>
             </div>
           </div>
 
@@ -3494,10 +3418,10 @@ function RelatorioProducao({ mes, onClose }: { mes: string; onClose: () => void 
 
         <div className="no-print flex gap-2">
           <Button variant="outline" className="flex-1" onClick={onClose}>Fechar</Button>
-          <Button variant="outline" className="flex-1 gap-1.5" onClick={() => window.print()}>
+          <Button variant="outline" className="flex-1 gap-1.5" disabled={!pronto} onClick={() => window.print()}>
             <FileText className="h-4 w-4" /> Imprimir
           </Button>
-          <Button className="flex-1 gap-1.5" disabled={gerandoPdf} onClick={baixarPdf}>
+          <Button className="flex-1 gap-1.5" disabled={gerandoPdf || !pronto} onClick={baixarPdf}>
             {gerandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Baixar PDF
           </Button>
         </div>

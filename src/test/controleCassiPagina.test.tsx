@@ -719,6 +719,14 @@ describe('Pedir guias', () => {
   });
 });
 
+// Relatório de produção (diálogo): linhas da tabela (sem o cabeçalho), cada uma como "nome | qtd | qtd | soma", e o cabeçalho.
+const linhasDoRelatorio = (dialogo: HTMLElement) => within(dialogo).getAllByRole('row').slice(1).map((tr) => within(tr).getAllByRole('cell').map((td) => norm(td.textContent)).join(' | '));
+const cabecalhoDoRelatorio = (dialogo: HTMLElement) => within(dialogo).getAllByRole('columnheader').map((th) => norm(th.textContent));
+async function abrirRelatorio() {
+  fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
+  return screen.findByRole('dialog');
+}
+
 // ── Faturamento: lista de clientes do mês ─────────────────────────────────────
 describe('Faturamento com a lista de clientes do mês', () => {
   it('sem ninguém na lista não há cálculo: a lista explica o que fazer e oferece quem teve sessão', async () => {
@@ -924,23 +932,29 @@ describe('Faturamento com a lista de clientes do mês', () => {
     expect(screen.getByText('1 em outubro')).toBeTruthy();
   });
 
-  it('o relatório de produção seleciona sozinho só as guias dos clientes da lista', async () => {
+  it('o relatório de produção traz só os clientes da lista, com o que foi lançado (sem guias para marcar)', async () => {
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Ana Souza', 'ana');
-    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
-    const dialogo = await screen.findByRole('dialog');
-    const ana = await within(dialogo).findByRole('checkbox', { name: /Ana Souza/ });
-    await waitFor(() => expect((ana as HTMLInputElement).checked).toBe(true));
-    expect((within(dialogo).getByRole('checkbox', { name: /Carla Dias/ }) as HTMLInputElement).checked).toBe(false);
+    await lancar('Ana Souza', { '012': 10, '144': 1 });
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toEqual(['Ana Souza | 1 | 10 | R$ 642,62']));
+    expect(within(dialogo).queryAllByRole('checkbox')).toHaveLength(0);
+    expect(within(dialogo).queryByText('Selecionar automático')).toBeNull();
+    expect(within(dialogo).queryByText(/Guias no relatório/)).toBeNull();
+    expect(within(dialogo).queryByText(/Carla Dias/)).toBeNull(); // tem guia cadastrada, mas não está na lista do mês
+    expect(within(dialogo).getByText('1 cliente · 1 guia')).toBeTruthy();
   });
 
-  it('o relatório avisa quando o mês não tem lista', async () => {
+  it('o relatório avisa quando o mês não tem nada lançado e não deixa imprimir, salvar nem baixar um PDF vazio', async () => {
     montar();
     await irParaFaturamento();
-    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
-    const dialogo = await screen.findByRole('dialog');
-    expect(await within(dialogo).findByText(/Não há clientes na lista de outubro 2026/)).toBeTruthy();
+    const dialogo = await abrirRelatorio();
+    expect(await within(dialogo).findByText(/Nenhum código lançado em outubro 2026/)).toBeTruthy();
+    expect(within(dialogo).getByText('Nenhum código lançado neste mês.')).toBeTruthy();
+    for (const nome of ['Salvar', 'Imprimir', 'Baixar PDF']) {
+      for (const b of within(dialogo).getAllByRole('button', { name: nome })) expect((b as HTMLButtonElement).disabled, nome).toBe(true);
+    }
   });
 
   it('erro ao carregar a lista não vira "lista vazia": avisa', async () => {
@@ -1140,11 +1154,9 @@ describe('revisão: Faturamento', () => {
     await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 642,62')); // só a Ana
     expect(screen.getByText(/^1 na lista/)).toBeTruthy();
     expect(norm(screen.getByText('Guias a enviar').previousElementSibling?.textContent)).toBe('1');
-    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
-    const dialogo = await screen.findByRole('dialog');
-    const ana = await within(dialogo).findByRole('checkbox', { name: /Ana Souza/ });
-    await waitFor(() => expect((ana as HTMLInputElement).checked).toBe(true));
-    expect((within(dialogo).getByRole('checkbox', { name: /Fábio Particular/ }) as HTMLInputElement).checked).toBe(false);
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toEqual(['Ana Souza | 1 | 10 | R$ 642,62']));
+    expect(within(dialogo).queryByText(/Fábio Particular/)).toBeNull();
   });
 
   it('cada mês grava e calcula com a sua lista: a tendência mostra setembro só depois de lançar em setembro', async () => {
@@ -1168,17 +1180,18 @@ describe('revisão: Faturamento', () => {
     await waitFor(() => { expect(tendencia()).toContain('78'); expect(tendencia()).toContain('260'); }); // as duas listas, cada uma no seu mês
   });
 
-  it('o relatório de outro mês usa a lista DESSE mês: em setembro (sem lista) nada vem marcado e avisa', async () => {
+  it('o relatório de outro mês usa o que foi lançado NESSE mês: em setembro (sem nada lançado) fica vazio e avisa', async () => {
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Ana Souza', 'ana');
-    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
-    const dialogo = await screen.findByRole('dialog');
-    await waitFor(() => expect((within(dialogo).getByRole('checkbox', { name: /Ana Souza/ }) as HTMLInputElement).checked).toBe(true));
+    await lancar('Ana Souza', { '012': 10, '144': 1 });
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toEqual(['Ana Souza | 1 | 10 | R$ 642,62']));
     fireEvent.change(within(dialogo).getByDisplayValue('2026-10'), { target: { value: '2026-09' } });
-    expect(await within(dialogo).findByText(/Não há clientes na lista de setembro 2026/)).toBeTruthy();
-    await waitFor(() => expect((within(dialogo).getByRole('checkbox', { name: /Elisa Pedida/ }) as HTMLInputElement).checked).toBe(false));
-    expect((within(dialogo).getByRole('checkbox', { name: /Ana Souza/ }) as HTMLInputElement).checked).toBe(false);
+    expect(await within(dialogo).findByText(/Nenhum código lançado em setembro 2026/)).toBeTruthy();
+    await waitFor(() => expect(within(dialogo).getByText('Nenhum código lançado neste mês.')).toBeTruthy());
+    expect(within(dialogo).queryByText(/Ana Souza/)).toBeNull();
+    expect(within(dialogo).queryByText(/Elisa Pedida/)).toBeNull();
   });
 
   it('"Limpar lista": cancelar na confirmação não apaga nada', async () => {
@@ -1284,16 +1297,15 @@ describe('revisão (rodada 2): reforço dos testes', () => {
     expect(lista.filter((l) => l.paciente_id === 'p2')).toEqual([]);
   });
 
-  it('relatório de OUTRO mês COM lista: as guias dos clientes dessa lista vêm marcadas', async () => {
-    h.banco.tabelas.guias_cassi.push(guia('gB', 'p2', 'Bruno', 'Lima', { data_pedido: '2026-08-18', data_resposta: '2026-08-20', sessoes_autorizadas: 10, sessoes_realizadas: 10, status: 'finalizada' }));
-    h.banco.tabelas.cassi_financeiro_clientes.push({ id: 'v9', terapeuta_id: 'prof-1', mes: '2026-09', paciente_id: 'p2' });
+  it('relatório de OUTRO mês COM lançamento: os clientes e códigos lançados nesse mês aparecem na tabela', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push({ id: 'v9', terapeuta_id: 'prof-1', mes: '2026-09', paciente_id: 'p2', lancamentos: [{ '012': 10 }] });
     montar();
     await irParaFaturamento();
-    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
-    const dialogo = await screen.findByRole('dialog');
-    await within(dialogo).findByText(/Não há clientes na lista de outubro 2026/);
+    const dialogo = await abrirRelatorio();
+    await within(dialogo).findByText(/Nenhum código lançado em outubro 2026/);
     fireEvent.change(within(dialogo).getByDisplayValue('2026-10'), { target: { value: '2026-09' } });
-    await waitFor(() => expect((within(dialogo).getByRole('checkbox', { name: /Bruno Lima/ }) as HTMLInputElement).checked).toBe(true));
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toEqual(['Bruno Lima | 10 | R$ 577,00']));
+    expect(cabecalhoDoRelatorio(dialogo)).toEqual(['Nome do Paciente', 'Código(50000012)', 'Soma']);
   });
 
   it('enviadas ao financeiro: conta só as do mês (uma de setembro não entra em outubro)', async () => {
@@ -1817,15 +1829,14 @@ describe('Faturamento: configuração e relatório (revisão independente)', () 
     expect(screen.queryByText(/Você ainda não salvou suas configurações/)).toBeNull();
   });
 
-  it('o relatório de produção só tem coluna dos códigos que alguma guia usou: nada de 020, 301 e 131 zerados', async () => {
+  it('o relatório de produção só tem coluna dos códigos lançados: nada de 020, 301 e 131 zerados', async () => {
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Ana Souza', 'ana');
-    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
-    const dialogo = await screen.findByRole('dialog');
-    await within(dialogo).findByRole('checkbox', { name: /Ana Souza/ });
-    const cabecalhos = within(dialogo).getAllByRole('columnheader').map((th) => norm(th.textContent));
-    expect(cabecalhos).toEqual(['Nome do Paciente', 'Código(50000012)', 'Código(31602185)', 'Soma']);
+    await lancar('Ana Souza', { '012': 10, '185': 10 });
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toHaveLength(1));
+    expect(cabecalhoDoRelatorio(dialogo)).toEqual(['Nome do Paciente', 'Código(50000012)', 'Código(31602185)', 'Soma']);
   });
 
   it('"Preencher com a agenda" de quem teve mais sessões do que cabe em 6 guias lança 60 e AVISA quem foi', async () => {
@@ -2158,20 +2169,23 @@ describe('Faturamento: segunda rodada de revisão independente', () => {
     expect(String(vi.mocked(window.confirm).mock.calls[0][0])).toMatch(/se os dois tiverem lançamento no mesmo mês, as guias são somadas/);
   });
 
-  it('relatório de produção: as colunas vêm das guias marcadas (marcar outra guia muda as colunas); guia cancelada não cria coluna', async () => {
+  it('relatório de produção: as colunas vêm do que foi lançado (lançar outro código muda as colunas); guia cancelada não cria coluna', async () => {
     h.banco.tabelas.guias_cassi.push(guia('gX', 'p1', 'Ana', 'Souza', { status: 'cancelada', data_pedido: '2026-08-01', codigos: [{ codigo: '301', sessoes: 5 }] }));
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Ana Souza', 'ana');
-    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
-    const dialogo = await screen.findByRole('dialog');
-    const ana = await within(dialogo).findByRole('checkbox', { name: /Ana Souza/ });
-    await waitFor(() => expect((ana as HTMLInputElement).checked).toBe(true));
-    const colunas = () => within(dialogo).getAllByRole('columnheader').map((th) => norm(th.textContent));
-    expect(colunas()).toEqual(['Nome do Paciente', 'Código(50000012)', 'Código(31602185)', 'Soma']); // 012 e 185 da guia de Ana; o 301 só existe na cancelada
-    fireEvent.click(ana); // desmarca Ana
-    fireEvent.click(within(dialogo).getByRole('checkbox', { name: /Carla Dias/ })); // marca Carla (só 012)
-    await waitFor(() => expect(colunas()).toEqual(['Nome do Paciente', 'Código(50000012)', 'Soma']));
+    await lancar('Ana Souza', { '012': 10, '185': 10 });
+    let dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toHaveLength(1));
+    expect(cabecalhoDoRelatorio(dialogo)).toEqual(['Nome do Paciente', 'Código(50000012)', 'Código(31602185)', 'Soma']); // o 301 só existe numa guia cancelada
+    fireEvent.click(within(dialogo).getAllByRole('button', { name: 'Fechar' })[0]);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await adicionarAoMes('Carla Dias', 'carla');
+    await lancar('Carla Dias', { '301': 2 });
+    dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toHaveLength(2));
+    expect(cabecalhoDoRelatorio(dialogo)).toEqual(['Nome do Paciente', 'Código(50000012)', 'Código(31602185)', 'Código(20103301)', 'Soma']);
+    expect(linhasDoRelatorio(dialogo)).toEqual(['Ana Souza | 10 | 10 | 0 | R$ 1.661,40', 'Carla Dias | 0 | 0 | 2 | R$ 71,10']);
   });
 
   it('tendência: cliente com duas guias no mês anterior entra com o valor das duas', async () => {
@@ -2302,18 +2316,22 @@ describe('Faturamento: terceira rodada de revisão independente', () => {
     for (const chamada of h.aviso.mock.calls) expect(chamada[1]).toEqual({ duration: 12000 });
   });
 
-  it('relatório de produção: sem nenhuma guia marcada, as colunas vêm das guias do mês (não some tudo)', async () => {
+  it('relatório de produção: cliente com duas guias no mês ocupa duas linhas, e o relatório não depende de marcar nada', async () => {
     montar();
     await irParaFaturamento();
-    await adicionarAoMes('Ana Souza', 'ana');
-    fireEvent.click(screen.getByRole('button', { name: /Relatório/ }));
-    const dialogo = await screen.findByRole('dialog');
-    const ana = await within(dialogo).findByRole('checkbox', { name: /Ana Souza/ });
-    await waitFor(() => expect((ana as HTMLInputElement).checked).toBe(true));
-    const colunas = () => within(dialogo).getAllByRole('columnheader').map((th) => norm(th.textContent));
-    fireEvent.click(ana);
-    await waitFor(() => expect((ana as HTMLInputElement).checked).toBe(false));
-    expect(colunas()).toEqual(['Nome do Paciente', 'Código(50000012)', 'Código(31602185)', 'Soma']); // 012 e 185 das guias do mês
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    const grupo = await abrirLancamento('Bruno Lima');
+    for (const cod of ['144', '185']) fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia 1`), { target: { value: '0' } });
+    fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '6' } });
+    fireEvent.click(within(grupo).getByRole('button', { name: /Outra guia/ }));
+    for (const cod of ['144', '185']) fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia 2`), { target: { value: '0' } });
+    fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 2'), { target: { value: '4' } });
+    fireEvent.change(within(grupo).getByLabelText('Quantidade do código 301 na guia 2'), { target: { value: '2' } });
+    fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(screen.queryByRole('group', { name: 'Códigos e sessões de Bruno Lima' })).toBeNull());
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toEqual(['Bruno Lima | 6 | 0 | R$ 346,20', 'Bruno Lima | 4 | 2 | R$ 301,90']));
+    expect(within(dialogo).getByText('1 cliente · 2 guias')).toBeTruthy();
   });
 
   it('juntar: depois de falhar APÓS passar as listas, a lista do Faturamento que está em cache é invalidada', async () => {
@@ -2358,5 +2376,143 @@ describe('Faturamento: terceira rodada de revisão independente', () => {
     const codigos = await within(dialogo).findAllByPlaceholderText('000');
     const valores = within(dialogo).getAllByPlaceholderText('0,00') as HTMLInputElement[];
     expect(valores[codigos.findIndex((c) => (c as HTMLInputElement).value === '012')].value).toBe('61,2');
+  });
+});
+
+describe('Relatório de produção: sai exatamente do que foi lançado no Faturamento', () => {
+  async function doisClientesLancados() {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10, '144': 1 }); // 642,62
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    await lancar('Bruno Lima', { '012': 6, '301': 2 }); // 346,20 + 71,10 = 417,30
+  }
+
+  it('a tabela traz cada cliente e guia lançados, em ordem alfabética, com a soma de cada um', async () => {
+    await doisClientesLancados();
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toHaveLength(2));
+    expect(cabecalhoDoRelatorio(dialogo)).toEqual(['Nome do Paciente', 'Avaliação(50000144)', 'Código(50000012)', 'Código(20103301)', 'Soma']);
+    expect(linhasDoRelatorio(dialogo)).toEqual(['Ana Souza | 1 | 10 | 0 | R$ 642,62', 'Bruno Lima | 0 | 6 | 2 | R$ 417,30']);
+    expect(within(dialogo).getByText('2 clientes · 2 guias')).toBeTruthy();
+  });
+
+  it('os totais do PDF são os mesmos dos cartões da tela (bruto, imposto, sua parte)', async () => {
+    await doisClientesLancados();
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 1.059,92'));
+    const naTela = { bruto: valorDoCartao('Bruto'), liquido: valorDoCartao('Líquido'), suaParte: valorDoCartao('Sua parte · 50%') };
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toHaveLength(2));
+    const caixas = within(dialogo).getByText('VALOR TOTAL:').parentElement as HTMLElement;
+    expect(norm(caixas.textContent)).toBe(`VALOR TOTAL:${naTela.bruto} − 10%: ${naTela.liquido}`);
+    expect(norm((within(dialogo).getByText(/VALOR COM A PORCENTAGEM/).parentElement as HTMLElement).textContent)).toBe(`VALOR COM A PORCENTAGEM (50%):${naTela.suaParte}`);
+    expect(naTela).toEqual({ bruto: 'R$ 1.059,92', liquido: 'R$ 953,93', suaParte: 'R$ 476,97' });
+  });
+
+  it('cliente que está na lista mas ficou sem código lançado fica fora, e o relatório diz quem é', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10 });
+    await adicionarAoMes('Bruno Lima', 'bruno'); // na lista, sem lançar
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toEqual(['Ana Souza | 10 | R$ 577,00']));
+    expect(within(dialogo).getByText(/Na lista, mas sem código lançado \(ficam fora do relatório\): Bruno Lima\./)).toBeTruthy();
+  });
+
+  it('com o que foi lançado os botões liberam; o aviso de "nada lançado" não aparece', async () => {
+    await doisClientesLancados();
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toHaveLength(2));
+    for (const nome of ['Salvar', 'Imprimir', 'Baixar PDF']) {
+      for (const b of within(dialogo).getAllByRole('button', { name: nome })) expect((b as HTMLButtonElement).disabled, nome).toBe(false);
+    }
+    expect(within(dialogo).queryByText(/Nenhum código lançado em/)).toBeNull();
+    expect(within(dialogo).queryByText(/Na lista, mas sem código lançado/)).toBeNull();
+  });
+
+  it('Salvar guarda o relatório com exatamente as linhas, colunas e totais do que foi lançado', async () => {
+    await doisClientesLancados();
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toHaveLength(2));
+    fireEvent.click(within(dialogo).getAllByRole('button', { name: 'Salvar' })[0]);
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Relatório salvo!'));
+    const gravado = escritasEm('relatorios_cassi').find((o) => o.tipo === 'insert')!;
+    const payload = gravado.payload as Linha;
+    expect(payload).toMatchObject({ terapeuta_id: 'prof-1', mes: '2026-10' });
+    const dados = payload.dados as Linha;
+    expect(dados.columns).toEqual([
+      { codigo: '144', oficial: '50000144', label: 'Avaliação' },
+      { codigo: '012', oficial: '50000012', label: 'Código' },
+      { codigo: '301', oficial: '20103301', label: 'Código' },
+    ]);
+    expect(dados.rows).toEqual([
+      { nome: 'Ana Souza', q: [1, 10, 0], soma: 642.62 },
+      { nome: 'Bruno Lima', q: [0, 6, 2], soma: 417.3 },
+    ]);
+    expect(dados).toMatchObject({ total_bruto: 1059.92, imposto_pct: 10, apos_imposto: 953.93, minha_pct: 50, sua_parte: 476.97 });
+  });
+
+  // O diálogo lê a lista do mês por conta própria; aqui só a leitura dele (não a da aba) é trocada, depois de a aba já ter carregado.
+  const trocarLeituraDaLista = (resposta: () => Promise<unknown>) => {
+    const original = h.banco.from;
+    h.banco.from = ((tabela: string) => {
+      if (tabela !== 'cassi_financeiro_clientes') return original(tabela);
+      const q: Record<string, unknown> = {};
+      for (const m of ['select', 'eq', 'gte', 'lte', 'order', 'range']) q[m] = () => q;
+      q.then = (res: (v: unknown) => unknown) => resposta().then(res);
+      return q;
+    }) as typeof h.banco.from;
+  };
+  const botoesDoRelatorio = (dialogo: HTMLElement) => ['Salvar', 'Imprimir', 'Baixar PDF']
+    .flatMap((nome) => within(dialogo).getAllByRole('button', { name: nome }).map((b) => ({ nome, desligado: (b as HTMLButtonElement).disabled })));
+
+  it('lista do mês com erro de leitura: o diálogo avisa, não afirma "nada lançado" e trava Salvar, Imprimir e Baixar PDF', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10 });
+    trocarLeituraDaLista(() => Promise.resolve({ data: null, error: { message: 'sem rede' } }));
+    const dialogo = await abrirRelatorio();
+    expect(await within(dialogo).findByRole('alert')).toBeTruthy();
+    expect(within(dialogo).getByText(/Não consegui carregar a lista do mês\. Feche e abra o relatório de novo\./)).toBeTruthy();
+    expect(within(dialogo).queryByText(/Nenhum código lançado em/)).toBeNull();
+    expect(within(dialogo).queryByText(/cliente.* · .*guia/)).toBeNull();
+    for (const b of botoesDoRelatorio(dialogo)) expect(b.desligado, b.nome).toBe(true);
+  });
+
+  it('lista do mês ainda chegando: o diálogo diz que está carregando e trava os botões (nada de relatório incompleto)', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10 });
+    trocarLeituraDaLista(() => new Promise(() => {}));
+    const dialogo = await abrirRelatorio();
+    expect(await within(dialogo).findByText('Carregando a lista do mês…')).toBeTruthy();
+    expect(within(dialogo).queryByText(/Nenhum código lançado em/)).toBeNull();
+    expect(within(dialogo).queryByRole('alert')).toBeNull();
+    for (const b of botoesDoRelatorio(dialogo)) expect(b.desligado, b.nome).toBe(true);
+  });
+
+  it('imposto fixo antigo (valor por guia): o PDF mostra o valor descontado em R$, não "0%", e o líquido bate com a tela', async () => {
+    const cfg = h.banco.tabelas.cassi_config[0] as Linha;
+    cfg.imposto_percentual = 0;
+    cfg.imposto_por_guia = 12.5;
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '012': 10, '144': 1 }); // 642,62 − 12,50 por guia lançada
+    await waitFor(() => expect(valorDoCartao('Líquido')).toBe('R$ 630,12'));
+    const dialogo = await abrirRelatorio();
+    await waitFor(() => expect(linhasDoRelatorio(dialogo)).toHaveLength(1));
+    expect(norm((within(dialogo).getByText('VALOR TOTAL:').parentElement as HTMLElement).textContent)).toBe('VALOR TOTAL:R$ 642,62 − R$ 12,50: R$ 630,12');
+  });
+
+  it('o mês do relatório tem largura para o nome inteiro ("novembro de 2026" não fica cortado)', async () => {
+    montar();
+    await irParaFaturamento();
+    const dialogo = await abrirRelatorio();
+    expect((within(dialogo).getByDisplayValue('2026-10') as HTMLInputElement).className).toContain('w-[12rem]');
   });
 });

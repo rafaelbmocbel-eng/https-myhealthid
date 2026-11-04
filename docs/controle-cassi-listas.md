@@ -86,7 +86,7 @@ outro profissional e pode rodar de novo sem trocar o backup.
 
 - Só os clientes da lista (e que continuam no controle CASSI) entram em: valor do mês (bruto, imposto, líquido, sua parte, clínica,
   repasses), "sua parte" dos 6 meses (cada mês com o lançamento dele; mês sem lançamento aparece como —), CSV (com os códigos), Guias que
-  fecham no mês e a seleção automática do Relatório de produção (dentro do relatório ainda dá para marcar/desmarcar qualquer guia).
+  fecham no mês e o Relatório de produção.
 - "Sessões" = soma das quantidades de todos os códigos, menos a consulta (144).
 - Imposto e líquido são arredondados a centavos **em cada cliente**, e os totais são a soma das linhas que aparecem (nunca 1 centavo de diferença);
   "Sua parte", "Clínica" e cada repasse também fecham em centavos (sua parte + clínica = líquido; fica com você = líquido − repasses).
@@ -105,8 +105,18 @@ outro profissional e pode rodar de novo sem trocar o backup.
   **Tirar da lista** e **Limpar lista** avisam que o lançamento também é apagado (e quantos clientes). **Preencher com a agenda** não roda com
   um editor aberto, só grava em quem continua **sem lançamento no banco** (o que outro aparelho lançou nesse meio-tempo não é apagado; o aviso
   diz quem foi pulado ou saiu da lista) e, quando a agenda tem mais sessões do que cabem em 6 guias de 10, lança 60 e avisa quem passou.
-- **Relatório de produção**: as colunas são só dos códigos usados nas guias marcadas (sem nenhuma marcada, nas guias do mês; guia cancelada
-  não conta); os da tabela que não aparecem em nenhuma não viram coluna zerada no relatório da clínica.
+- **Relatório de produção** (o PDF entregue à clínica): sai **exatamente do que foi lançado** na lista do mês, sem guias para marcar
+  (decisão do Rafael, nov/2026; antes partia das guias cadastradas e pedia para marcá-las). Lógica em `src/lib/cassiRelatorio.ts`.
+  - **Uma linha por guia lançada**, com a quantidade de cada código e a soma; os clientes em ordem alfabética, e cliente com 2 guias no
+    mês ocupa 2 linhas. Só entram clientes que estão na lista do mês, continuam no controle CASSI e têm código lançado.
+  - **Colunas**: só os códigos lançados, na ordem do lançamento (144 "Avaliação" primeiro; 012, 185, 131, 301, 020...). Código da
+    tabela que ninguém usou não vira coluna zerada; código lançado que saiu de Configurações entra no fim, com valor zero.
+  - **Totais**: bruto, imposto e sua parte pela mesma conta do fechamento do mês (arredondados por cliente), então o PDF bate com os
+    cartões da aba Faturamento.
+  - **Mês do relatório**: o campo do topo troca de mês; cada mês usa o que foi lançado nele.
+  - O diálogo mostra "N clientes · M guias", quem está na lista **sem código lançado** (fica fora) e, sem nada lançado, "Nenhum código
+    lançado em <mês>". Salvar, Imprimir e Baixar PDF ficam travados sem nada lançado e enquanto a lista carrega ou falha em carregar.
+  - **Salvar** guarda o relatório do mês em `relatorios_cassi` com o mesmo formato de sempre (colunas, linhas, totais).
 - Imposto: percentual de Configurações sobre o bruto (se for o valor fixo antigo, vale por guia lançada). Repasse: pelo responsável
   técnico da guia mais recente do cliente.
 - **Guias enviadas ao financeiro** é rastreio de entrega física, não conta: aparece sempre, com ou sem lista.
@@ -117,8 +127,8 @@ outro profissional e pode rodar de novo sem trocar o backup.
   junção por vez por profissional (lock da transação) evita travar duas junções em sentidos opostos. A função roda **antes** das outras
   escritas da junção; se algo falhar depois dela, a mensagem diz que as listas do Faturamento já foram passadas (e nenhum cadastro foi
   removido), e tentar de novo conclui.
-- O **Relatório de produção** e as **Guias que fecham** continuam saindo das guias (`guias_cassi`), não dos lançamentos: pode haver
-  diferença entre o valor do Faturamento e o do Relatório. É uma decisão em aberto se o Relatório deve passar a usar os lançamentos.
+- As **Guias que fecham** continuam saindo das guias (`guias_cassi`), não dos lançamentos. O **Relatório de produção** não: passou a sair
+  dos lançamentos (acima), então o valor do Faturamento e o do Relatório são o mesmo.
 - Mês sem lista não calcula nada; os relatórios já salvos não dependem da lista.
 
 ## Correção de passagem
