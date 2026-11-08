@@ -422,24 +422,46 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
 
     // Simetria e equilíbrio: cartões com valor, cor e o que significa.
     {
-      const cards: { titulo: string; valor: string; st: Status; sub: string }[] = [];
+      const cards: { grupo: 'bilateral' | 'razao'; titulo: string; valor: string; st: Status; sub: string }[] = [];
       for (const [nome, L] of [[R.ag, A.lsiAg], [R.an, A.lsiAn]] as const) {
         if (!L) continue;
         const st = stLSI(L.v, c);
-        cards.push({ titulo: `Simetria · ${nome}`, valor: `${fmt(L.v, 0)}%`, st, sub: `${st?.[1] ?? ''} · lado ${L.fraco === 'D' ? 'direito' : 'esquerdo'} em % do ${L.forte === 'D' ? 'direito' : 'esquerdo'}` });
+        cards.push({ grupo: 'bilateral', titulo: `Simetria · ${nome}`, valor: `${fmt(L.v, 0)}%`, st, sub: `${st?.[1] ?? ''} · lado ${L.fraco === 'D' ? 'direito' : 'esquerdo'} em % do ${L.forte === 'D' ? 'direito' : 'esquerdo'}` });
       }
       for (const l of ['D', 'E'] as Lado[]) {
         const rz = A.razoes[l];
         if (!rz) continue;
         const st: Status = rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, c);
-        cards.push({ titulo: `Razão An/Ag · ${l === 'D' ? 'direito' : 'esquerdo'}`, valor: `${fmt(rz.r * 100, 0)}%`, st, sub: `${st?.[1] ?? ''} · ${direcaoRazao(rz, c, R.modo === 'min')} (ref. ${rz.refTxt || '-'})` });
+        cards.push({ grupo: 'razao', titulo: `Razão An/Ag · ${l === 'D' ? 'direito' : 'esquerdo'}`, valor: `${fmt(rz.r * 100, 0)}%`, st, sub: `${st?.[1] ?? ''} · ${direcaoRazao(rz, c, R.modo === 'min')} (ref. ${rz.refTxt || '-'})` });
       }
       if (cards.length) {
-        garantir(8 + Math.ceil(cards.length / 4) * 22);
-        y = secao(doc, 'Simetria e equilíbrio', null, M, y + 1);
-        // Uma linha só com os cartões lado a lado (ocupa menos altura).
+        // Cada par de cartões leva o seu título com a referência, numa linha por cima que abrange o grupo (até 2 linhas de texto).
         const nCol = Math.min(4, cards.length), gapC = 3;
         const wc = (larg - gapC * (nCol - 1)) / nCol, hc = 19;
+        const refRazao = (A.razoes.D || A.razoes.E)?.refTxt;
+        const titulos: Record<'bilateral' | 'razao', string> = {
+          bilateral: `Simetria bilateral · referência: diferença até ${100 - c.lsiAdequado}%`,
+          razao: `Simetria antagonista/agonista (${R.an}/${R.ag})${refRazao ? ` · referência ${refRazao}` : ''}`,
+        };
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.2);
+        const grupos = (['bilateral', 'razao'] as const).flatMap((g) => {
+          const idx = cards.flatMap((cd, k) => (cd.grupo === g && k < nCol ? [k] : []));
+          if (!idx.length) return [];
+          const x0 = M + idx[0] * (wc + gapC), x1 = M + idx[idx.length - 1] * (wc + gapC) + wc;
+          return [{ x0, x1, linhas: doc.splitTextToSize(seguro(titulos[g]), x1 - x0).slice(0, 2) as string[] }];
+        });
+        const nLinhasTitulo = Math.max(1, ...grupos.map((g) => g.linhas.length));
+        const yLinha = 2.4 + (nLinhasTitulo - 1) * 3 + 1.7;
+        const hTitulo = yLinha + 3.2;
+        garantir(8 + hTitulo + Math.ceil(cards.length / 4) * 22);
+        y = secao(doc, 'Simetria e equilíbrio', null, M, y + 1);
+        for (const g of grupos) {
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(7.2); doc.setTextColor(...hexRgb(AZUL));
+          doc.text(g.linhas, g.x0, y + 2.4);
+          doc.setDrawColor(...hexRgb(AZUL)); doc.setLineWidth(0.35); doc.line(g.x0, y + yLinha, g.x1, y + yLinha); doc.setLineWidth(0.2);
+        }
+        doc.setDrawColor(...hexRgb('#D6DEE8'));
+        y += hTitulo;
         cards.forEach((cd, k) => {
           const cx = M + (k % nCol) * (wc + gapC), cy = y + Math.floor(k / nCol) * (hc + 2.5);
           const tm = tomDe(cd.st);

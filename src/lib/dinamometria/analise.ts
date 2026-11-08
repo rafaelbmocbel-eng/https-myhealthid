@@ -323,11 +323,14 @@ export function norma(chave: string | null, s: Sujeito) {
   return { media, desvio, nm: !!m.nm };
 }
 export interface LSI { v: number; fraco: Lado; forte: Lado }
+// Simetria entre os lados: o lado mais fraco em % do mais forte, então nunca passa de 100% e vale a mesma referência do laudo
+// ("diferença até 10%"), seja o lado acometido o mais fraco ou não. (Antes dividia o acometido pelo sadio: com o acometido mais
+// forte dava mais de 100% e o cartão dizia "Adequado" mesmo com o outro lado 22% mais fraco.) O lado acometido só desempata
+// quando os dois lados são iguais.
 export function lsi(s: Sujeito, d: number | null | undefined, e: number | null | undefined): LSI | null {
   if (d == null || e == null || d <= 0 || e <= 0) return null;
-  if (s.acometido === 'D') return { v: (d / e) * 100, fraco: 'D', forte: 'E' };
-  if (s.acometido === 'E') return { v: (e / d) * 100, fraco: 'E', forte: 'D' };
-  return d < e ? { v: (d / e) * 100, fraco: 'D', forte: 'E' } : { v: (e / d) * 100, fraco: 'E', forte: 'D' };
+  if (d < e || (d === e && s.acometido === 'D')) return { v: (d / e) * 100, fraco: 'D', forte: 'E' };
+  return { v: (e / d) * 100, fraco: 'E', forte: 'D' };
 }
 export const stLSI = (v?: number | null, c: Criterios = CRITERIOS_PADRAO): Status => (v == null ? null : v >= c.lsiAdequado ? ['ok', 'Adequado'] : v >= c.lsiImportante ? ['warn', 'Déficit moderado'] : ['bad', 'Déficit importante']);
 // Tabelas com os músculos homólogos em linhas vizinhas (D e E do mesmo músculo, um abaixo do outro):
