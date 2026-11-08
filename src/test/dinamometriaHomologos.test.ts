@@ -10,6 +10,8 @@ vi.mock('../lib/dinamometria/anatomia', async (importarOriginal) => ({
 const textos: string[] = [];
 // Onde cada texto foi escrito (x, y em mm): o desenho da tabela é conferido pela posição, não só pela ordem dos textos.
 const posicoes: { txt: string; x: number; y: number }[] = [];
+// Imagens colocadas no PDF (x, y, largura e altura em mm), na ordem em que entram.
+const imagens: { x: number; y: number; w: number; h: number }[] = [];
 interface DocPdf { text: (txt: string | string[], ...resto: unknown[]) => unknown; addImage: (...args: unknown[]) => unknown }
 
 // Embrulha o jsPDF para anotar a ordem dos textos escritos: o conteúdo do PDF gerado não é texto legível no teste.
@@ -19,7 +21,7 @@ vi.mock('jspdf', async (importarOriginal) => {
   function Embrulhado(this: unknown, ...args: unknown[]) {
     const doc = new Real(...args);
     // Sem canvas no jsdom o gráfico de barras vira imagem vazia, que o jsPDF não aceita.
-    doc.addImage = () => doc;
+    doc.addImage = (...a: unknown[]) => { imagens.push({ x: Number(a[2]), y: Number(a[3]), w: Number(a[4]), h: Number(a[5]) }); return doc; };
     const text = doc.text.bind(doc);
     doc.text = (txt: string | string[], ...resto: unknown[]) => {
       const escrito = Array.isArray(txt) ? txt.join(' ') : String(txt);
@@ -39,7 +41,7 @@ import {
   type Avaliacao, type Lado, type Slot, type Sujeito,
 } from '../lib/dinamometria/analise';
 import { achadosDor } from '../lib/dinamometria/dor';
-import { gerarRelatorioDinamometria } from '../lib/dinamometria/relatorio';
+import { gerarRelatorioCliente, gerarRelatorioDinamometria } from '../lib/dinamometria/relatorio';
 
 const PICOS: Record<Slot, number> = { agD: 51.2, agE: 65.7, anD: 51.3, anE: 39.9 };
 
@@ -276,6 +278,45 @@ describe('dinamometria: o laudo com o lado acometido mais forte (caso real do Ra
       expect(A.lsiAg?.fraco).toBe('D');
       expect(A.lsiAn?.fraco).toBe('E');
     }
+  });
+});
+
+describe('dinamometria: PDF — vão entre as barras de força e o título da relação antagonista/agonista', () => {
+  // O gráfico de barras é a imagem logo acima do título "RELAÇÃO ..." (a mesma coluna); o vão é o espaço em branco entre os dois.
+  const vao = () => {
+    const titulo = posicoes.find((p) => /^RELA..O POSTERIORES\/QUADR.CEPS/.test(p.txt))!;
+    expect(titulo).toBeTruthy();
+    const barras = imagens.filter((i) => Math.abs(i.x - titulo.x) < 0.01 && i.y < titulo.y).sort((a, b) => b.y - a.y)[0];
+    expect(barras).toBeTruthy();
+    return titulo.y - (barras.y + barras.h);
+  };
+  const dados = (av: Avaliacao) => ({ paciente: 'Teste', data: '2026-10-18', c: CRITERIOS_PADRAO, itens: [{ av, A: analisar(av, CRITERIOS_PADRAO), anterior: null, historico: [] }] });
+
+  it('laudo técnico: o título fica a ~3 mm do fim da imagem das barras (eram 6 mm, que deixavam ~7,5 mm em branco com a régua)', async () => {
+    textos.length = 0; posicoes.length = 0; imagens.length = 0;
+    await gerarRelatorioDinamometria(dados(comAcometido('E')), true);
+    expect(vao()).toBeCloseTo(3, 1);
+    expect(vao()).toBeLessThan(4);
+  });
+
+  it('laudo do cliente (mesmo bloco): o mesmo vão', async () => {
+    textos.length = 0; posicoes.length = 0; imagens.length = 0;
+    await gerarRelatorioCliente(dados(comAcometido('E')), true);
+    expect(vao()).toBeCloseTo(3, 1);
+  });
+
+  it('o título não encosta nas barras: sobra folga positiva para a régua (nunca sobrepõe)', async () => {
+    textos.length = 0; posicoes.length = 0; imagens.length = 0;
+    await gerarRelatorioDinamometria(dados(comAcometido('E')), true);
+    expect(vao()).toBeGreaterThan(2);
+  });
+
+  it('o primeiro medidor ("direito") continua abaixo do título, com o espaço de antes', async () => {
+    textos.length = 0; posicoes.length = 0; imagens.length = 0;
+    await gerarRelatorioDinamometria(dados(comAcometido('E')), true);
+    const titulo = posicoes.find((p) => /^RELA..O POSTERIORES\/QUADR.CEPS/.test(p.txt))!;
+    const direito = posicoes.find((p) => /^Joelho direito$/.test(p.txt))!;
+    expect(direito.y - titulo.y).toBeCloseTo(5, 1);
   });
 });
 

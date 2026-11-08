@@ -156,7 +156,8 @@ async function blocoVisual(doc: jsPDF, av: Avaliacao, A: Analise, c: Criterios, 
     await new Promise(ok => { pr.onload = ok; pr.onerror = ok; });
     const altBar = pr.width ? (larDir * pr.height) / pr.width : larDir * 0.35;
     doc.addImage(img, 'PNG', xDir, yd + 6, larDir, altBar, undefined, 'FAST');
-    yd += altBar + 10;
+    // O título da relação abaixo fica logo depois da régua das barras: com 10 sobravam ~7,5 mm em branco entre os dois blocos.
+    yd += altBar + 7;
   }
   if (A.razoes.D || A.razoes.E) {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4); doc.setTextColor(...hexRgb(AZUL));
