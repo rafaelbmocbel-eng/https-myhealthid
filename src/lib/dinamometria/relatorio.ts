@@ -5,7 +5,7 @@ import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import {
   type Analise, type Avaliacao, type Criterios, type Lado, type Slot, type Sujeito, type Unidade,
-  SLOTS, SLOTS_HOMOLOGOS, simetriaSlot, falhaPlato, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stOsc, stZ, interpretar, type Status,
+  SLOTS, SLOTS_HOMOLOGOS, espacosDaRazao, simetriaSlot, falhaPlato, UF, fmt, nomeSlot, dataBR, stLSI, stDesvio, stFadiga, stOsc, stZ, interpretar, type Status,
 } from './analise';
 import { MUSCULOS, COR_STATUS, mapaMuscularSVG, svgParaPNG, proporcaoSVG, itensAvatar, focoArticulacaoSVG, aneisRazao } from './anatomia';
 import { achadosDor, AVISO_DOR } from './dor';
@@ -374,14 +374,25 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
       doc.setFont('helvetica', 'bold'); doc.setFontSize(6.9); doc.setTextColor(...hexRgb(AZUL));
       cab.forEach((h, k) => doc.text(seguro(h), xC[k] + 1.5, y + 4.6));
       doc.setDrawColor(...hexRgb('#D6DEE8')); doc.line(xC[3], y + 8, xC[3], y + hTab - 1); doc.line(xC[4], y + 8, xC[4], y + hTab - 1);
+      // Razão de cada lado (antagonista ÷ agonista): um espaço para cada lado na coluna, o D em cima e o E embaixo.
+      const espacos = espacosDaRazao(linhas.length, (['D', 'E'] as Lado[]).filter(l => A.razoes[l]));
       let yy = y + 7;
-      for (const k of linhas) {
+      for (let i = 0; i < linhas.length; i++) {
+        const k = linhas[i];
         const lado: Lado = k.endsWith('D') ? 'D' : 'E';
         const m = A.slots[k]!;
         const yb = yy + 5.9;
         if (yy > y + 7) {
-          if (k === primeiroAntagonista) { doc.setDrawColor(...hexRgb('#B9C6D6')); doc.setLineWidth(0.45); doc.line(M + 1, yy, M + larg - 1, yy); doc.setLineWidth(0.3); }
-          else { doc.setDrawColor(...hexRgb('#E8EDF3')); doc.line(M + 1, yy, M + larg - 1, yy); }
+          // Dentro do espaço de um lado a linha de baixo não cruza a coluna da razão: o espaço é um só. Vale também para a linha
+          // grossa quando só um lado tem razão (o espaço é a coluna inteira e a pílula fica no meio dela, em cima da linha grossa
+          // se houver 4 linhas); com os dois lados a linha grossa é a fronteira entre os espaços e sai inteira.
+          const dentroDeEspaco = espacos.some(e => i > e.de && i < e.ate);
+          const grossa = k === primeiroAntagonista;
+          doc.setDrawColor(...hexRgb(grossa ? '#B9C6D6' : '#E8EDF3'));
+          if (grossa) doc.setLineWidth(0.45);
+          if (dentroDeEspaco) { doc.line(M + 1, yy, xC[3], yy); doc.line(xC[4], yy, M + larg - 1, yy); }
+          else doc.line(M + 1, yy, M + larg - 1, yy);
+          if (grossa) doc.setLineWidth(0.3);
         }
         doc.setFillColor(...hexRgb(COR[lado])); doc.circle(xC[0] + 2.4, yb - 1.1, 1, 'F');
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(30); doc.text(seguro(nomeSlot(av.regiao, k)), xC[0] + 4.4, yb);
@@ -391,16 +402,8 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
         if (!sim) doc.text('-', xC[2] + 1.5, yb);
         else if (sim.v >= 99.5) pilula(doc, '100% forte', ['info', ''], xC[2] + 1.2, yb, 7);
         else pilula(doc, `${fmt(sim.v, 0)}%`, sim.st, xC[2] + 1.2, yb, 7.4);
-        // Razão do lado (antagonista ÷ agonista): na linha do antagonista, com o lado escrito na pílula.
-        if (k.startsWith('an')) {
-          const rz = A.razoes[lado];
-          const ym = yy + hL / 2;
-          if (rz) {
-            const st: Status = rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, c);
-            pilula(doc, `${lado} ${fmt(rz.r * 100, 0)}%`, st, xC[3] + 1.5, ym - 1, 7.8, 4.4);
-            doc.setFontSize(6.4); doc.setTextColor(...hexRgb(tomDe(st).fg)); doc.text(seguro(direcaoRazao(rz, c, R.modo === 'min')), xC[3] + 1.5, ym + 3.2);
-          } else { doc.setFontSize(8); doc.setTextColor(40); doc.text('-', xC[3] + 1.5, yb); }
-        }
+        // Sem razão em nenhum lado, a linha do antagonista mostra "-" na coluna.
+        if (!espacos.length && k.startsWith('an')) { doc.setFontSize(8); doc.setTextColor(40); doc.text('-', xC[3] + 1.5, yb); }
         doc.setFontSize(8); doc.setTextColor(40);
         doc.text(m.nkg == null ? '-' : fmt(m.nkg, 1), xC[4] + 1.5, yb);
         if (m.z == null) doc.text('-', xC[5] + 1.5, yb); else pilula(doc, fmt(m.z, 1), stZ(m.z), xC[5] + 1.2, yb, 7.2);
@@ -413,10 +416,19 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
         doc.setTextColor(20);
         yy += hL;
       }
+      // Cada espaço leva a pílula com o lado (D 100%) e o que a razão significa, no meio das linhas que ele ocupa.
+      for (const e of espacos) {
+        const rz = A.razoes[e.lado]!;
+        const ym = y + 7 + ((e.de + e.ate) / 2) * hL;
+        const st: Status = rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, c);
+        pilula(doc, `${e.lado} ${fmt(rz.r * 100, 0)}%`, st, xC[3] + 1.5, ym - 1, 7.8, 4.4);
+        doc.setFontSize(6.4); doc.setTextColor(...hexRgb(tomDe(st).fg)); doc.text(seguro(direcaoRazao(rz, c, R.modo === 'min')), xC[3] + 1.5, ym + 3.2);
+      }
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(20);
       doc.setLineWidth(0.2);
       y += hTab + 3.2;
       doc.setFontSize(6.8); doc.setTextColor(120);
-      y = par2(doc, `RFD em ${u}/s. Simetria: lado mais forte de cada músculo = 100%. ${R.an}/${R.ag}: razão do mesmo lado, na linha de ${R.an} (referência ${A.razoes.D?.refTxt || A.razoes.E?.refTxt || '-'}). Cores: verde adequado, amarelo atenção, vermelho alterado.`, M, y, larg, 3);
+      y = par2(doc, `RFD em ${u}/s. Simetria: lado mais forte de cada músculo = 100%. ${R.an}/${R.ag}: razão de cada lado, o D em cima e o E embaixo (referência ${A.razoes.D?.refTxt || A.razoes.E?.refTxt || '-'}). Cores: verde adequado, amarelo atenção, vermelho alterado.`, M, y, larg, 3);
       doc.setTextColor(20); y += 2;
     }
 

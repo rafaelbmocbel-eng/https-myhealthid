@@ -28,7 +28,7 @@ import { celula, type StatusCelula } from '@/lib/dinamometria/celulaBle';
 import {
   type Avaliacao, type Analise, type Criterios, type Inspecao, type Mapa, type Movimento, type ResultadoCurva, type Sessao, type Slot, type Status, type Unidade, type Lado, type Sujeito,
   SLOTS, UF, REGIOES, CRITERIOS_PADRAO, num, fmt, nomeSlot, dataBR, inspecionar, extrair, analisarCurva, analisar, interpretar,
-  resumoCurtoAnalise, stLSI, stDesvio, simetriaSlot, SLOTS_HOMOLOGOS, falhaPlato, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
+  resumoCurtoAnalise, stLSI, stDesvio, simetriaSlot, SLOTS_HOMOLOGOS, espacosDaRazao, falhaPlato, stFadiga, stOsc, stZ, curvaSimulada, clamp, movimentosDaAnalise, metricasDePico,
 } from '@/lib/dinamometria/analise';
 import { gerarRelatorioDinamometria, gerarRelatorioCliente, gruposBarras, type GrupoBarras, type ItemRelatorio } from '@/lib/dinamometria/relatorio';
 import { mapaMuscularSVG, itensAvatar, COR_STATUS, aneisRazao } from '@/lib/dinamometria/anatomia';
@@ -1186,13 +1186,16 @@ export default function Dinamometria() {
                         </tr>
                       </thead>
                       <tbody>
-                        {SLOTS_HOMOLOGOS.filter(k => A.slots[k]).map(k => {
+                        {(() => {
+                          const linhasHom = SLOTS_HOMOLOGOS.filter(k => A.slots[k]);
+                          // Razão de cada lado (antagonista ÷ agonista): um espaço para cada lado, o direito em cima e o esquerdo embaixo.
+                          const espacosRz = espacosDaRazao(linhasHom.length, (['D', 'E'] as Lado[]).filter(l => A.razoes[l]));
+                          return linhasHom.map((k, i) => {
                           const s = A.slots[k]!;
                           const lado: Lado = k.endsWith('D') ? 'D' : 'E';
                           const primeiroAntagonista = SLOTS_HOMOLOGOS.find(x => x.startsWith('an') && A.slots[x]) === k;
                           const sim = simetriaSlot(A, k, crit);
-                          // Razão do lado (antagonista ÷ agonista): fica na linha do antagonista.
-                          const rz = k.startsWith('an') ? A.razoes[lado] : undefined;
+                          const espaco = espacosRz.find(e => e.de === i);
                           return (
                             <tr key={k} className={cn('border-t border-border/40', primeiroAntagonista && 'border-t-2 border-t-border')}>
                               <td className="px-2.5 py-2 whitespace-nowrap"><Bolinha lado={lado} />{nomeSlot(atual.regiao, k)}</td>
@@ -1200,15 +1203,20 @@ export default function Dinamometria() {
                               <td className="px-2.5 py-2 border-l border-border/40">
                                 {sim ? <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono font-semibold">{fmt(sim.v, 0)}%</span>{sim.v < 99.5 ? <Pilula st={sim.st} /> : <span className="text-[11px] text-muted-foreground">mais forte</span>}</span> : '—'}
                               </td>
-                              <td className="px-2.5 py-2 align-middle border-l border-border/40">
-                                {k.startsWith('an') ? (rz ? (
-                                  <span className="flex flex-col gap-0.5" title={`${A.R.razaoL} · ${lado === 'D' ? 'direito' : 'esquerdo'} · referência ${rz.refTxt || '—'}`}>
-                                    <span className="text-[11px] text-muted-foreground">{lado === 'D' ? 'Direito' : 'Esquerdo'}</span>
-                                    <span className="font-mono font-semibold">{fmt(rz.r * 100, 0)}%</span>
-                                    <Pilula st={rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, crit)} />
-                                  </span>
-                                ) : '—') : null}
-                              </td>
+                              {espaco ? (() => {
+                                const rz = A.razoes[espaco.lado]!;
+                                return (
+                                  <td rowSpan={espaco.ate - espaco.de} className="px-2.5 py-2 align-middle border-l border-border/40">
+                                    <span className="flex flex-col gap-0.5" title={`${A.R.razaoL} · ${espaco.lado === 'D' ? 'direito' : 'esquerdo'} · referência ${rz.refTxt || '—'}`}>
+                                      <span className="text-[11px] text-muted-foreground">{espaco.lado === 'D' ? 'Direito' : 'Esquerdo'}</span>
+                                      <span className="font-mono font-semibold">{fmt(rz.r * 100, 0)}%</span>
+                                      <Pilula st={rz.desvio == null ? ['info', 'Sem referência'] : stDesvio(rz.desvio, crit)} />
+                                    </span>
+                                  </td>
+                                );
+                              })() : espacosRz.some(e => i > e.de && i < e.ate) ? null : (
+                                <td className="px-2.5 py-2 align-middle border-l border-border/40">{k.startsWith('an') ? '—' : null}</td>
+                              )}
                               <td className="px-2.5 py-2 font-mono">{s.nkg == null ? '—' : fmt(s.nkg, 1)}</td>
                               <td className="px-2.5 py-2">{s.precisaBraco ? <span className="text-xs text-muted-foreground">informe o braço de alavanca</span> : s.z == null ? '—' : <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="font-mono">{fmt(s.pctNorma, 0)}% · z {fmt(s.z, 1)}</span><Pilula st={stZ(s.z)} /></span>}</td>
                               <td className="px-2.5 py-2 font-mono">{fmt(s.ttp, 2)}</td>
@@ -1221,7 +1229,8 @@ export default function Dinamometria() {
                               <td className="px-2.5 py-2 font-mono">{s.reps.length}</td>
                             </tr>
                           );
-                        })}
+                          });
+                        })()}
                       </tbody>
                     </table>
                   </div>

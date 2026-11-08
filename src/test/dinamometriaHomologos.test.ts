@@ -8,6 +8,8 @@ vi.mock('../lib/dinamometria/anatomia', async (importarOriginal) => ({
 }));
 
 const textos: string[] = [];
+// Onde cada texto foi escrito (x, y em mm): o desenho da tabela é conferido pela posição, não só pela ordem dos textos.
+const posicoes: { txt: string; x: number; y: number }[] = [];
 interface DocPdf { text: (txt: string | string[], ...resto: unknown[]) => unknown; addImage: (...args: unknown[]) => unknown }
 
 // Embrulha o jsPDF para anotar a ordem dos textos escritos: o conteúdo do PDF gerado não é texto legível no teste.
@@ -20,7 +22,9 @@ vi.mock('jspdf', async (importarOriginal) => {
     doc.addImage = () => doc;
     const text = doc.text.bind(doc);
     doc.text = (txt: string | string[], ...resto: unknown[]) => {
-      textos.push(Array.isArray(txt) ? txt.join(' ') : String(txt));
+      const escrito = Array.isArray(txt) ? txt.join(' ') : String(txt);
+      textos.push(escrito);
+      posicoes.push({ txt: escrito, x: Number(resto[0]), y: Number(resto[1]) });
       return text(txt, ...resto);
     };
     return doc;
@@ -31,7 +35,7 @@ vi.mock('jspdf', async (importarOriginal) => {
 });
 
 import {
-  analisar, analisarCurva, curvaSimulada, CRITERIOS_PADRAO, interpretar, lsi, SLOTS, SLOTS_HOMOLOGOS, nomeSlot, stLSI,
+  analisar, analisarCurva, curvaSimulada, CRITERIOS_PADRAO, espacosDaRazao, interpretar, lsi, SLOTS, SLOTS_HOMOLOGOS, nomeSlot, stLSI,
   type Avaliacao, type Lado, type Slot, type Sujeito,
 } from '../lib/dinamometria/analise';
 import { achadosDor } from '../lib/dinamometria/dor';
@@ -62,8 +66,8 @@ describe('dinamometria: homólogos em linhas vizinhas', () => {
     expect(SLOTS_HOMOLOGOS.map((k) => nomeSlot('joelho', k))).toEqual(['Quadríceps D', 'Quadríceps E', 'Posteriores D', 'Posteriores E']);
   });
 
-  it('no PDF, a tabela de resultados escreve os músculos nessa ordem e põe a razão de cada lado na linha do antagonista', async () => {
-    textos.length = 0;
+  it('no PDF, a tabela de resultados escreve os músculos nessa ordem e dá a cada lado da razão o seu espaço: D em cima, E embaixo', async () => {
+    textos.length = 0; posicoes.length = 0;
     const av = avaliacao();
     const A = analisar(av, CRITERIOS_PADRAO);
     await gerarRelatorioDinamometria({ paciente: 'Teste', data: '2026-10-18', c: CRITERIOS_PADRAO, itens: [{ av, A, anterior: null, historico: [] }] }, true);
@@ -76,11 +80,59 @@ describe('dinamometria: homólogos em linhas vizinhas', () => {
     expect(ordem.every((p) => p >= 0)).toBe(true);
     expect([...ordem].sort((a, b) => a - b)).toEqual(ordem);
 
-    const razaoD = tabela.findIndex((t) => /^D \d+%$/.test(t));
-    const razaoE = tabela.findIndex((t) => /^E \d+%$/.test(t));
-    expect(razaoD).toBeGreaterThan(ordem[2]);
-    expect(razaoD).toBeLessThan(ordem[3]);
-    expect(razaoE).toBeGreaterThan(ordem[3]);
+    // O espaço do D ocupa as duas primeiras linhas e o do E, as duas últimas: a pílula de cada lado fica no meio do seu espaço.
+    const ponto = (re: RegExp) => posicoes.find((p) => re.test(p.txt))!;
+    const yLinha = ['Quadríceps D', 'Quadríceps E', 'Posteriores D', 'Posteriores E'].map((n) => ponto(new RegExp(`^${n}$`)).y);
+    const razaoD = ponto(/^D \d+%$/), razaoE = ponto(/^E \d+%$/);
+    expect(razaoD.y).toBeGreaterThan(yLinha[0]);
+    expect(razaoD.y).toBeLessThan(yLinha[1]);
+    expect(razaoE.y).toBeGreaterThan(yLinha[2]);
+    expect(razaoE.y).toBeLessThan(yLinha[3]);
+    expect(razaoD.y).toBeLessThan(razaoE.y);
+    expect(razaoD.x).toBe(razaoE.x); // a mesma coluna
+    // Cada lado leva o que a razão significa logo abaixo da sua pílula (o texto começa um pouco antes do texto da pílula).
+    const sentidos = posicoes.filter((p) => /^((muito )?(acima|abaixo) do padr.o|dentro do padr.o)$/.test(p.txt) && Math.abs(p.x - razaoD.x) < 3);
+    expect(sentidos).toHaveLength(2);
+    expect(sentidos[0].y).toBeGreaterThan(razaoD.y);
+    expect(sentidos[0].y).toBeLessThan(yLinha[1]);
+    expect(sentidos[1].y).toBeGreaterThan(razaoE.y);
+    expect(sentidos[1].y).toBeLessThan(yLinha[3]);
+  });
+
+  it('a nota abaixo da tabela diz que a razão é de cada lado, D em cima e E embaixo (não mais "na linha de Posteriores")', async () => {
+    textos.length = 0;
+    const av = avaliacao();
+    await gerarRelatorioDinamometria({ paciente: 'Teste', data: '2026-10-18', c: CRITERIOS_PADRAO, itens: [{ av, A: analisar(av, CRITERIOS_PADRAO), anterior: null, historico: [] }] }, true);
+    const junto = textos.join(' ').replace(/\s+/g, ' ');
+    expect(junto).toContain('razão de cada lado, o D em cima e o E embaixo');
+    expect(junto).not.toContain('na linha de Posteriores');
+  });
+
+  it('com razão só de um lado (antagonista esquerdo não medido), o D ocupa a coluna inteira e o E não aparece', async () => {
+    textos.length = 0; posicoes.length = 0;
+    const av = avaliacao();
+    delete av.slots.anE;
+    const A = analisar(av, CRITERIOS_PADRAO);
+    await gerarRelatorioDinamometria({ paciente: 'Teste', data: '2026-10-18', c: CRITERIOS_PADRAO, itens: [{ av, A, anterior: null, historico: [] }] }, true);
+    const tabela = textos.slice(textos.findIndex((t) => t.startsWith('Resultados do paciente')));
+    expect(tabela.filter((t) => /^D \d+%$/.test(t))).toHaveLength(1);
+    expect(tabela.some((t) => /^E \d+%$/.test(t))).toBe(false);
+  });
+
+  it('sem razão em nenhum lado (agonistas não medidos), a linha do antagonista mostra "-" na coluna', async () => {
+    textos.length = 0; posicoes.length = 0;
+    const av = avaliacao();
+    delete av.slots.agD; delete av.slots.agE;
+    const A = analisar(av, CRITERIOS_PADRAO);
+    expect(Object.keys(A.razoes)).toHaveLength(0);
+    await gerarRelatorioDinamometria({ paciente: 'Teste', data: '2026-10-18', c: CRITERIOS_PADRAO, itens: [{ av, A, anterior: null, historico: [] }] }, true);
+    const tabela = textos.slice(textos.findIndex((t) => t.startsWith('Resultados do paciente')));
+    expect(tabela.some((t) => /^[DE] \d+%$/.test(t))).toBe(false);
+    expect(tabela).toContain('Posteriores D');
+    // Um "-" por linha de antagonista, na própria coluna da razão (a do cabeçalho "Posteriores/Quadríceps").
+    const xColuna = posicoes.find((p) => p.txt === 'Posteriores/Quadríceps')!.x;
+    const tracos = posicoes.filter((p) => p.txt === '-' && Math.abs(p.x - xColuna) < 0.01);
+    expect(tracos).toHaveLength(2);
   });
 
   it('sem o antagonista medido, a tabela segue com os agonistas e não quebra', async () => {
@@ -98,6 +150,38 @@ describe('dinamometria: homólogos em linhas vizinhas', () => {
 // ── Simetria entre os lados: sempre o lado mais fraco em % do mais forte ──────────────────────────────────────────
 const suj = (acometido: Sujeito['acometido']): Sujeito => ({ idade: 24, sexo: 'M', peso: 87, dominante: 'E', acometido });
 const comAcometido = (lado: Sujeito['acometido']): Avaliacao => ({ ...avaliacao(), sujeito: suj(lado) });
+
+describe('dinamometria: espaços da razão antagonista/agonista na tabela', () => {
+  it('os dois lados: o D com a metade de cima das linhas e o E com a de baixo', () => {
+    expect(espacosDaRazao(4, ['D', 'E'])).toEqual([{ lado: 'D', de: 0, ate: 2 }, { lado: 'E', de: 2, ate: 4 }]);
+  });
+  it('a ordem de entrada não importa: o D sempre vem em cima', () => {
+    expect(espacosDaRazao(4, ['E', 'D'])).toEqual(espacosDaRazao(4, ['D', 'E']));
+  });
+  it('só um lado com razão: ele ocupa a coluna inteira', () => {
+    expect(espacosDaRazao(4, ['D'])).toEqual([{ lado: 'D', de: 0, ate: 4 }]);
+    expect(espacosDaRazao(3, ['E'])).toEqual([{ lado: 'E', de: 0, ate: 3 }]);
+  });
+  it('sem razão ou sem linhas, não há espaço', () => {
+    expect(espacosDaRazao(4, [])).toEqual([]);
+    expect(espacosDaRazao(0, ['D', 'E'])).toEqual([]);
+    expect(espacosDaRazao(-1, ['D'])).toEqual([]);
+  });
+  it('número ímpar de linhas: o D fica com a linha a mais; os dois espaços cobrem tudo, sem sobrepor', () => {
+    expect(espacosDaRazao(3, ['D', 'E'])).toEqual([{ lado: 'D', de: 0, ate: 2 }, { lado: 'E', de: 2, ate: 3 }]);
+  });
+  it('uma linha só e dois lados: só sobra o espaço do D (nunca um espaço vazio)', () => {
+    expect(espacosDaRazao(1, ['D', 'E'])).toEqual([{ lado: 'D', de: 0, ate: 1 }]);
+  });
+  it('para qualquer número de linhas, os espaços começam em 0, terminam no total e não deixam vão', () => {
+    for (let n = 1; n <= 8; n++) {
+      const e = espacosDaRazao(n, ['D', 'E']);
+      expect(e[0].de).toBe(0);
+      expect(e[e.length - 1].ate).toBe(n);
+      for (let i = 1; i < e.length; i++) expect(e[i].de).toBe(e[i - 1].ate);
+    }
+  });
+});
 
 describe('dinamometria: simetria entre os lados (lsi)', () => {
   it('lado acometido mais fraco: o mesmo resultado de sempre (fraco ÷ forte)', () => {

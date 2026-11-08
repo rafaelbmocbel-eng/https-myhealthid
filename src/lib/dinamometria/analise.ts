@@ -336,6 +336,18 @@ export const stLSI = (v?: number | null, c: Criterios = CRITERIOS_PADRAO): Statu
 // Tabelas com os músculos homólogos em linhas vizinhas (D e E do mesmo músculo, um abaixo do outro):
 // primeiro os agonistas D e E, depois os antagonistas D e E. A razão de cada lado fica na linha do antagonista.
 export const SLOTS_HOMOLOGOS: Slot[] = ['agD', 'agE', 'anD', 'anE'];
+// Coluna da razão antagonista/agonista na tabela de resultados: cada lado tem o seu espaço, o direito em cima e o esquerdo
+// embaixo, cada um com metade das linhas. Com razão em só um dos lados, ele ocupa a coluna inteira. `de`/`ate`: linhas
+// (a partir de 0, `ate` exclusivo) que o espaço ocupa. Sem razão em nenhum lado não há espaço.
+export function espacosDaRazao(nLinhas: number, lados: Lado[]): { lado: Lado; de: number; ate: number }[] {
+  const ordem = (['D', 'E'] as Lado[]).filter(l => lados.includes(l));
+  if (nLinhas < 1 || !ordem.length) return [];
+  if (ordem.length === 1) return [{ lado: ordem[0], de: 0, ate: nLinhas }];
+  const meio = Math.ceil(nLinhas / 2);
+  const espacos: { lado: Lado; de: number; ate: number }[] = [{ lado: 'D', de: 0, ate: meio }, { lado: 'E', de: meio, ate: nLinhas }];
+  return espacos.filter(e => e.ate > e.de);
+}
+
 // Simetria por músculo: o lado mais forte vale 100% e o outro, a % dele.
 export function simetriaSlot(A: { slots: Partial<Record<Slot, { pico: number }>> }, k: Slot, c: Criterios = CRITERIOS_PADRAO): { v: number; st: Status } | null {
   const g = k.slice(0, 2);
