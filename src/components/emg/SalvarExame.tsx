@@ -12,6 +12,8 @@ interface Props {
   pacienteNome: string | null;
   /** A lista de pacientes ainda está carregando: não dá para confirmar quem recebe o exame. */
   carregandoPacientes?: boolean;
+  /** A lista de pacientes não carregou: o problema é a leitura, não a falta de escolha. */
+  erroPacientes?: boolean;
   /** Há pelo menos uma etapa gravada (e, portanto, algo para salvar). */
   temResultado: boolean;
   /** As etapas vieram da demonstração (sinal simulado): não vão para o prontuário. */
@@ -22,6 +24,8 @@ interface Props {
   onVisivelAoCliente: (valor: boolean) => void;
   salvando: boolean;
   salvo: boolean;
+  /** Esta medida já está no prontuário e só observações ou visibilidade mudaram: salvar atualiza o mesmo exame em vez de criar outro. */
+  atualizando?: boolean;
   onSalvar: () => void;
   onBaixarCsv: () => void;
 }
@@ -34,6 +38,7 @@ export default function SalvarExame(p: Props) {
   if (semPaciente || demo) {
     const motivos: string[] = [];
     if (carregando) motivos.push('Carregando pacientes…');
+    else if (p.erroPacientes) motivos.push('Não consegui carregar seus pacientes. Toque em "Tentar de novo" no alto da página para salvar no prontuário.');
     else if (semPaciente) motivos.push('Escolha um paciente no alto da página para salvar no prontuário.');
     if (demo) motivos.push('Este resultado veio da demonstração (sinal simulado) e não pode ser salvo no prontuário: conecte o módulo e grave as etapas.');
     motivos.push('Você ainda pode baixar o CSV do sinal.');
@@ -42,9 +47,14 @@ export default function SalvarExame(p: Props) {
     ajuda = 'Grave pelo menos uma etapa para poder salvar.';
   } else if (p.salvo) {
     ajuda = `Salvo no prontuário${p.pacienteNome ? ` de ${p.pacienteNome}` : ''}.`;
+  } else if (p.atualizando) {
+    ajuda = 'Esta medida já está salva no prontuário. Atualizar muda esse mesmo exame, sem criar outro.';
   } else {
     ajuda = 'O exame guarda o resumo, o envelope do sinal e os parâmetros da análise. O sinal bruto não é salvo.';
   }
+  let rotuloDoBotao = 'Salvar no prontuário';
+  if (p.salvo) rotuloDoBotao = 'Salvo no prontuário';
+  else if (p.atualizando) rotuloDoBotao = 'Atualizar exame salvo';
   const bloqueado = semPaciente || !p.temResultado || demo || p.salvando || p.salvo;
 
   return (
@@ -80,7 +90,7 @@ export default function SalvarExame(p: Props) {
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button type="button" className="h-11 flex-1 gap-1.5" disabled={bloqueado} aria-describedby="emg-salvar-ajuda" onClick={p.onSalvar}>
             {p.salvando ? <Loader2 className="icon-sm animate-spin" /> : <Save className="icon-sm" />}
-            {p.salvo ? 'Salvo no prontuário' : 'Salvar no prontuário'}
+            {rotuloDoBotao}
           </Button>
           <Button type="button" variant="outline" className="h-11 flex-1 gap-1.5" disabled={!p.temResultado} onClick={p.onBaixarCsv}>
             <Download className="icon-sm" /> Baixar CSV do sinal

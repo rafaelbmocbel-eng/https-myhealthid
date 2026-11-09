@@ -30,6 +30,8 @@ interface PacienteSelectProps {
     placeholder?: string;
     disabled?: boolean;
     allowBlock?: boolean; // For Agenda "Bloqueio de horário"
+    /** id do rótulo visível do campo: dá nome ao combobox, que não herda o nome do conteúdo. */
+    ariaLabelledBy?: string;
 }
 
 export function PacienteSelect({
@@ -38,7 +40,8 @@ export function PacienteSelect({
     onValueChange,
     placeholder = "Selecionar paciente...",
     disabled = false,
-    allowBlock = false
+    allowBlock = false,
+    ariaLabelledBy
 }: PacienteSelectProps) {
     const [open, setOpen] = React.useState(false)
 
@@ -63,6 +66,7 @@ export function PacienteSelect({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
+                    aria-labelledby={ariaLabelledBy}
                     className="w-full justify-between font-normal h-10 border-muted-foreground/20 hover:border-primary/50 transition-colors"
                     disabled={disabled}
                 >

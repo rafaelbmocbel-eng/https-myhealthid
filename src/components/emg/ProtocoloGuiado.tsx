@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CheckCircle2, RotateCcw, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -96,6 +96,7 @@ interface Props {
 
 export default function ProtocoloGuiado({ controlador, etapas, pronto, aviso, onIniciar, onRefazer, onParar, onCancelar }: Props) {
   const [estado, setEstado] = useState<EstadoEtapa>(() => controlador.estado());
+  const botaoDaEtapaRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const ler = (): void => {
@@ -122,6 +123,14 @@ export default function ProtocoloGuiado({ controlador, etapas, pronto, aviso, on
   const proximo: TipoEtapa | null = !repousoFeito ? 'repouso' : !cvmFeita ? 'cvm' : !tarefaFeita ? 'tarefa' : null;
 
   const emAndamento = estado.fase !== 'parada';
+  const haPainelAtivo = emAndamento && estado.tipo !== null;
+
+  // O botão de "Iniciar" (ou "Refazer") que tinha o foco sai da tela quando o painel da etapa entra: leva o foco para o botão do painel
+  // ("Cancelar etapa" ou "Parar tarefa"), senão ele cairia no <body> e quem usa teclado teria de percorrer a página de novo.
+  useEffect(() => {
+    if (haPainelAtivo) botaoDaEtapaRef.current?.focus();
+  }, [haPainelAtivo]);
+
   const ativa = (tipo: TipoEtapa): boolean => emAndamento && estado.tipo === tipo;
   const variante = (tipo: TipoEtapa): 'default' | 'outline' => (proximo === tipo ? 'default' : 'outline');
   const podeIniciar = pronto && !emAndamento;
@@ -146,11 +155,11 @@ export default function ProtocoloGuiado({ controlador, etapas, pronto, aviso, on
         {!tarefaLivre && <Progress value={percentual(estado)} className="h-2" aria-label="Andamento da etapa" />}
         <div className="flex gap-2 pt-1">
           {tarefaLivre ? (
-            <Button type="button" className="h-11 flex-1 gap-1.5" onClick={onParar}>
+            <Button ref={botaoDaEtapaRef} type="button" className="h-11 flex-1 gap-1.5" onClick={onParar}>
               <Square className="icon-sm" /> Parar tarefa
             </Button>
           ) : (
-            <Button type="button" variant="outline" className="h-11 flex-1" onClick={onCancelar}>
+            <Button ref={botaoDaEtapaRef} type="button" variant="outline" className="h-11 flex-1" onClick={onCancelar}>
               Cancelar etapa
             </Button>
           )}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,9 +21,24 @@ interface NovaMedidaProps {
 // Componente à parte: ao sair da tela (quando o bloqueio acaba) o "tem certeza?" desmonta e volta ao início.
 function NovaMedida({ onConfirmar, desabilitado }: NovaMedidaProps) {
   const [confirmando, setConfirmando] = useState(false);
+  const abrirRef = useRef<HTMLButtonElement>(null);
+  const naoDescartarRef = useRef<HTMLButtonElement>(null);
+  const devolverFocoRef = useRef(false);
+
+  // O botão que recebeu o foco sai da tela quando o bloco troca: sem isto o foco cairia no <body> e o teclado recomeçaria do topo da página.
+  // Abre no "Não descartar": a ação destrutiva não pode ser acionada por um Enter ainda pressionado.
+  useEffect(() => {
+    if (confirmando) {
+      naoDescartarRef.current?.focus();
+    } else if (devolverFocoRef.current) {
+      devolverFocoRef.current = false;
+      abrirRef.current?.focus();
+    }
+  }, [confirmando]);
+
   if (!confirmando) {
     return (
-      <Button type="button" variant="outline" className="h-10 w-full sm:w-auto" disabled={desabilitado} onClick={() => setConfirmando(true)}>
+      <Button ref={abrirRef} type="button" variant="outline" className="h-10 w-full sm:w-auto" disabled={desabilitado} onClick={() => setConfirmando(true)}>
         Nova medida
       </Button>
     );
@@ -45,7 +60,16 @@ function NovaMedida({ onConfirmar, desabilitado }: NovaMedidaProps) {
         >
           Descartar e começar
         </Button>
-        <Button type="button" variant="outline" className="h-10" onClick={() => setConfirmando(false)}>
+        <Button
+          ref={naoDescartarRef}
+          type="button"
+          variant="outline"
+          className="h-10"
+          onClick={() => {
+            devolverFocoRef.current = true;
+            setConfirmando(false);
+          }}
+        >
           Não descartar
         </Button>
       </div>

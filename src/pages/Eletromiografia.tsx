@@ -42,6 +42,8 @@ const VERSAO_LAUDO = 1;
 
 const CANAL_BASE: CanalEmg = { id: '1', musculo: '', lado: '-' };
 const INTERVALO_LEITURA_MS = 500;
+/** Teto da consulta de pacientes: com a lista no teto, o paciente procurado pode estar fora dela. */
+const LIMITE_PACIENTES = 1000;
 
 const AVISO_CONEXAO_CAIU =
   'A conexão com o módulo caiu durante a etapa. A etapa foi descartada: refaça quando a conexão voltar.';
@@ -68,6 +70,7 @@ interface BancoDaTela {
   };
   from(tabela: 'exames_presenciais'): {
     insert(linha: Record<string, unknown>): { select(colunas: string): { single(): PromiseLike<RespostaBanco<{ id?: string }>> } };
+    update(campos: Record<string, unknown>): { eq(coluna: string, valor: unknown): { select(colunas: string): PromiseLike<RespostaBanco<Array<{ id?: string }>>> } };
   };
 }
 
@@ -106,18 +109,35 @@ interface InsumosDoExame {
 }
 
 // As etapas são comparadas por identidade: o controlador só troca os objetos quando o conteúdo muda.
-function mesmosInsumos(a: InsumosDoExame, b: InsumosDoExame): boolean {
+/** Mesmo paciente, mesmo músculo e lado, mesmo sinal: o que permite atualizar o exame já gravado em vez de criar outro. */
+function mesmoSinalDoExame(a: InsumosDoExame, b: InsumosDoExame): boolean {
   return (
     a.pacienteId === b.pacienteId &&
     a.resumo.canal.musculo === b.resumo.canal.musculo &&
     a.resumo.canal.lado === b.resumo.canal.lado &&
-    a.observacoes === b.observacoes &&
-    a.visivelAoCliente === b.visivelAoCliente &&
     a.fsHz === b.fsHz &&
     a.etapas.length === b.etapas.length &&
     a.etapas.every((e, i) => e === b.etapas[i])
   );
 }
+
+function mesmosInsumos(a: InsumosDoExame, b: InsumosDoExame): boolean {
+  return mesmoSinalDoExame(a, b) && a.observacoes === b.observacoes && a.visivelAoCliente === b.visivelAoCliente;
+}
+
+/** O último exame que o banco confirmou: o id (para atualizar) e exatamente o que foi enviado (para dizer "Salvo"). */
+interface ExameGravado {
+  id: string | null;
+  insumos: InsumosDoExame;
+}
+
+interface PedidoDeSalvar {
+  insumos: InsumosDoExame;
+  /** Id do exame a atualizar; null cria um exame novo. */
+  atualizarId: string | null;
+}
+
+class ExameSalvoNaoEncontrado extends Error {}
 
 function mensagemDe(erro: unknown): string {
   if (erro instanceof Error) return erro.message;
@@ -153,7 +173,7 @@ export default function Eletromiografia({ fabrica = fabricaPadrao }: Props) {
   const [lado, setLado] = useState<LadoCanal>('-');
   const [observacoes, setObservacoes] = useState('');
   const [visivelAoCliente, setVisivelAoCliente] = useState(false);
-  const [salvoCom, setSalvoCom] = useState<InsumosDoExame | null>(null);
+  const [gravado, setGravado] = useState<ExameGravado | null>(null);
   const [ajustes, setAjustes] = useState<AjustesDoModulo>(AJUSTES_PADRAO);
   const [ajustesEmUso, setAjustesEmUso] = useState<AjustesDoModulo | null>(null);
 
@@ -167,15 +187,31 @@ export default function Eletromiografia({ fabrica = fabricaPadrao }: Props) {
 
   // ── Pacientes ────────────────────────────────────────────────────────────
   const terapeutaId = user?.id;
-  const { data: pacientes = [], isLoading: carregandoPacientes } = useQuery({
+  const {
+    data: listaDePacientes,
+    isLoading: carregandoPacientes,
+    isError: erroAoCarregarPacientes,
+    refetch: recarregarPacientes,
+  } = useQuery({
     queryKey: ['emg-pacientes', terapeutaId],
     enabled: !!terapeutaId,
     queryFn: async () => {
       if (!terapeutaId) return [];
-      const { data } = await banco.from('pacientes').select('id, nome, sobrenome').eq('terapeuta_id', terapeutaId).eq('ativo', true).order('nome').limit(1000);
+      const { data, error } = await banco
+        .from('pacientes')
+        .select('id, nome, sobrenome')
+        .eq('terapeuta_id', terapeutaId)
+        .eq('ativo', true)
+        .order('nome')
+        .limit(LIMITE_PACIENTES);
+      if (error) throw new Error(error.message);
       return data ?? [];
     },
   });
+  const pacientes = listaDePacientes ?? [];
+  // Se uma releitura falha mas a lista anterior continua na tela, ela ainda vale: o aviso é só para quando não há lista nenhuma.
+  const falhouCarregarPacientes = erroAoCarregarPacientes && listaDePacientes === undefined;
+  const listaNoTeto = pacientes.length === LIMITE_PACIENTES;
   // Só vale paciente que está na lista do profissional: o id da URL sozinho não basta.
   const paciente = pacientes.find((p) => p.id === pacienteIdDaUrl) ?? null;
   const pacienteId = paciente ? paciente.id : '';
@@ -357,15 +393,36 @@ export default function Eletromiografia({ fabrica = fabricaPadrao }: Props) {
         : null,
     [resumo, fsDaSessao, pacienteId, observacoes, visivelAoCliente, etapas],
   );
-  const salvo = salvoCom !== null && insumos !== null && mesmosInsumos(salvoCom, insumos);
+  const salvo = gravado !== null && insumos !== null && mesmosInsumos(gravado.insumos, insumos);
+  // Só mudaram observações ou visibilidade do que já foi gravado: salvar de novo atualiza aquele exame em vez de criar um segundo.
+  const exameParaAtualizar = gravado !== null && gravado.id !== null && insumos !== null && mesmoSinalDoExame(gravado.insumos, insumos) ? gravado.id : null;
 
   const salvar = useMutation({
-    mutationFn: async (enviar: InsumosDoExame): Promise<string | undefined> => {
+    mutationFn: async ({ insumos: enviar, atualizarId }: PedidoDeSalvar): Promise<string | null> => {
       if (!user) throw new Error('Sem sessão. Entre de novo para salvar.');
       if (!pacientes.some((p) => p.id === enviar.pacienteId)) throw new Error('Escolha o paciente para salvar no prontuário.');
       if (sessaoDemo) throw new Error('Os dados da demonstração são simulados e não podem ser salvos no prontuário.');
       const { resumo: r, etapas: etapasEnviadas, fsHz, observacoes: texto } = enviar;
       const analise = paraGravar(r, etapasEnviadas, fsHz, r.canal, texto);
+      const campos = {
+        dados: {
+          resultado: laudoTexto(r, r.canal),
+          observacoes: texto || undefined,
+          analise,
+          versao_laudo: VERSAO_LAUDO,
+        },
+        resumo: resumoCurto(r, r.canal),
+        visivel_paciente: enviar.visivelAoCliente,
+      };
+      if (atualizarId) {
+        // Sem linha devolvida o banco não alterou nada (o exame foi excluído, por exemplo): não dá para dizer que atualizou.
+        const { data: atualizadas, error } = await banco.from('exames_presenciais').update(campos).eq('id', atualizarId).select('id');
+        if (error) throw new Error(error.message);
+        if (!atualizadas || atualizadas.length === 0) {
+          throw new ExameSalvoNaoEncontrado('Não encontrei o exame salvo antes (ele pode ter sido excluído do prontuário). Toque em Salvar para criar um novo.');
+        }
+        return atualizarId;
+      }
       const { data, error } = await banco
         .from('exames_presenciais')
         .insert({
@@ -373,26 +430,23 @@ export default function Eletromiografia({ fabrica = fabricaPadrao }: Props) {
           terapeuta_id: user.id,
           tipo: 'eletromiografia',
           data_exame: dataLocalISO(),
-          dados: {
-            resultado: laudoTexto(r, r.canal),
-            observacoes: texto || undefined,
-            analise,
-            versao_laudo: VERSAO_LAUDO,
-          },
-          resumo: resumoCurto(r, r.canal),
-          visivel_paciente: enviar.visivelAoCliente,
+          ...campos,
         })
         .select('id')
         .single();
       if (error) throw new Error(error.message);
-      return data?.id;
+      return data?.id ?? null;
     },
-    onSuccess: (_id, enviado) => {
-      toast.success('Eletromiografia salva nos exames presenciais do paciente');
-      setSalvoCom(enviado);
-      void qc.invalidateQueries({ queryKey: ['exames-presenciais', enviado.pacienteId] });
+    onSuccess: (id, pedido) => {
+      toast.success(pedido.atualizarId ? 'Eletromiografia atualizada nos exames presenciais do paciente' : 'Eletromiografia salva nos exames presenciais do paciente');
+      setGravado({ id, insumos: pedido.insumos });
+      void qc.invalidateQueries({ queryKey: ['exames-presenciais', pedido.insumos.pacienteId] });
     },
-    onError: (erro: unknown) => toast.error(mensagemDe(erro) || 'Não consegui salvar o exame.'),
+    onError: (erro: unknown) => {
+      // O exame que a tela achava ter salvo não existe mais: o próximo toque em Salvar cria um novo.
+      if (erro instanceof ExameSalvoNaoEncontrado) setGravado(null);
+      toast.error(mensagemDe(erro) || 'Não consegui salvar o exame.');
+    },
   });
 
   const aoSalvar = (): void => {
@@ -400,13 +454,13 @@ export default function Eletromiografia({ fabrica = fabricaPadrao }: Props) {
       toast.error('Grave pelo menos uma etapa antes de salvar.');
       return;
     }
-    salvar.mutate(insumos);
+    salvar.mutate({ insumos, atualizarId: exameParaAtualizar });
   };
 
   const novaMedida = (): void => {
     controlador.reiniciarSessao();
     setObservacoes('');
-    setSalvoCom(null);
+    setGravado(null);
     setAvisoEtapa(null);
   };
 
@@ -440,13 +494,32 @@ export default function Eletromiografia({ fabrica = fabricaPadrao }: Props) {
         />
 
         <Card className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
-          <p className="shrink-0 text-sm font-medium">
+          <p id="emg-paciente-rotulo" className="shrink-0 text-sm font-medium">
             Paciente <span className="text-xs font-normal text-muted-foreground">(para salvar no prontuário)</span>
           </p>
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <div className="min-w-0 flex-1">
-              <PacienteSelect pacientes={pacientes.map((p) => ({ ...p, sobrenome: p.sobrenome ?? undefined }))} value={pacienteId} onValueChange={escolherPaciente} placeholder="Escolher o paciente…" />
-              {pacienteIdDaUrl !== '' && !paciente && !carregandoPacientes && (
+              <PacienteSelect
+                pacientes={pacientes.map((p) => ({ ...p, sobrenome: p.sobrenome ?? undefined }))}
+                value={pacienteId}
+                onValueChange={escolherPaciente}
+                placeholder="Escolher o paciente…"
+                ariaLabelledBy="emg-paciente-rotulo"
+              />
+              {falhouCarregarPacientes && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-destructive" role="alert" data-testid="erro-pacientes">
+                  <span>Não consegui carregar seus pacientes.</span>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void recarregarPacientes()}>
+                    Tentar de novo
+                  </Button>
+                </div>
+              )}
+              {listaNoTeto && (
+                <p className="mt-1.5 text-xs text-muted-foreground" data-testid="aviso-limite-pacientes">
+                  Mostrando os primeiros {LIMITE_PACIENTES} pacientes.
+                </p>
+              )}
+              {pacienteIdDaUrl !== '' && !paciente && !carregandoPacientes && !falhouCarregarPacientes && (
                 <p className="mt-1.5 text-xs text-amber-800 dark:text-amber-300" data-testid="paciente-nao-encontrado">
                   O paciente do link não está na sua lista de pacientes ativos. Escolha o paciente acima.
                 </p>
@@ -518,6 +591,7 @@ export default function Eletromiografia({ fabrica = fabricaPadrao }: Props) {
           pacienteId={pacienteId}
           pacienteNome={nomeDoPaciente}
           carregandoPacientes={carregandoPacientes}
+          erroPacientes={falhouCarregarPacientes}
           temResultado={resumo !== null}
           demonstracao={sessaoDemo}
           observacoes={observacoes}
@@ -526,6 +600,7 @@ export default function Eletromiografia({ fabrica = fabricaPadrao }: Props) {
           onVisivelAoCliente={setVisivelAoCliente}
           salvando={salvar.isPending}
           salvo={salvo}
+          atualizando={exameParaAtualizar !== null && !salvo}
           onSalvar={aoSalvar}
           onBaixarCsv={baixarCsv}
         />

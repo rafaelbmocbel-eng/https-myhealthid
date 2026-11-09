@@ -13,6 +13,7 @@ import RmsAoVivo from '../components/emg/RmsAoVivo';
 import SalvarExame from '../components/emg/SalvarExame';
 import SeloQualidade from '../components/emg/SeloQualidade';
 import SinalAoVivo from '../components/emg/SinalAoVivo';
+import { PacienteSelect } from '../components/paciente/PacienteSelect';
 import { MUSCULOS_SUGERIDOS, ROTULO_ESTADO } from '../components/emg/constantes';
 import { ControladorEmg, MAX_TENTATIVAS_CVM } from '../components/emg/controlador';
 import { BufferCircular } from '../lib/emg/bufferCircular';
@@ -256,6 +257,35 @@ describe('SalvarExame', () => {
     expect(screen.getByTestId('ajuda-salvar').textContent).toMatch(/^Escolha um paciente no alto da página/);
   });
 
+  it('erro ao carregar os pacientes: diz que não carregou e manda tentar de novo (não pede para escolher quem não existe)', () => {
+    montar(props({ pacienteId: '', pacienteNome: null, erroPacientes: true }));
+    expect(screen.getByRole('button', { name: 'Salvar no prontuário' })).toBeDisabled();
+    const ajuda = screen.getByTestId('ajuda-salvar').textContent ?? '';
+    expect(ajuda).toMatch(/^Não consegui carregar seus pacientes\. Toque em "Tentar de novo" no alto da página/);
+    expect(ajuda).not.toMatch(/Escolha um paciente/);
+    expect(screen.getByRole('button', { name: 'Baixar CSV do sinal' })).toBeEnabled();
+  });
+
+  it('já salvo e com observação ou visibilidade mudadas: o botão vira "Atualizar exame salvo" e a ajuda diz que não cria outro', () => {
+    const p = props({ atualizando: true });
+    montar(p);
+    expect(screen.queryByRole('button', { name: 'Salvar no prontuário' })).not.toBeInTheDocument();
+    const atualizar = screen.getByRole('button', { name: 'Atualizar exame salvo' });
+    expect(atualizar).toBeEnabled();
+    expect(screen.getByTestId('ajuda-salvar').textContent).toBe('Esta medida já está salva no prontuário. Atualizar muda esse mesmo exame, sem criar outro.');
+    fireEvent.click(atualizar);
+    expect(p.onSalvar).toHaveBeenCalledTimes(1);
+  });
+
+  it('com "salvo" o rótulo "Salvo no prontuário" vale mais que "atualizando"; sem paciente, o bloqueio vale mais que os dois', () => {
+    const { unmount } = montar(props({ atualizando: true, salvo: true }));
+    expect(screen.getByRole('button', { name: 'Salvo no prontuário' })).toBeDisabled();
+    unmount();
+    montar(props({ atualizando: true, pacienteId: '', pacienteNome: null }));
+    expect(screen.getByRole('button', { name: 'Atualizar exame salvo' })).toBeDisabled();
+    expect(screen.getByTestId('ajuda-salvar').textContent).toMatch(/^Escolha um paciente/);
+  });
+
   it('salvo: confirma com o nome do paciente, oferece o prontuário e não deixa salvar de novo', () => {
     montar(props({ salvo: true }));
     expect(screen.getByRole('button', { name: 'Salvo no prontuário' })).toBeDisabled();
@@ -368,11 +398,52 @@ describe('IdentificacaoCanal', () => {
     expect(screen.getByRole('button', { name: 'Descartar e começar' })).toBeDisabled();
   });
 
+  it('foco: a confirmação recebe o foco ao abrir e "Nova medida" o recupera quando se desiste', () => {
+    render(<IdentificacaoCanal musculo="Reto femoral" lado="D" onMusculo={vi.fn()} onLado={vi.fn()} travado onNovaMedida={vi.fn()} />);
+    const abrir = screen.getByRole('button', { name: 'Nova medida' });
+    abrir.focus();
+    expect(abrir).toHaveFocus();
+
+    fireEvent.click(abrir);
+    // O foco abre na opção segura: um Enter ainda pressionado não pode descartar as etapas.
+    expect(screen.getByRole('button', { name: 'Não descartar' })).toHaveFocus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Não descartar' }));
+    expect(screen.getByRole('button', { name: 'Nova medida' })).toHaveFocus();
+  });
+
   it('o texto de posicionamento cita o SENIAM sem inventar medidas', () => {
     render(<IdentificacaoCanal musculo="" lado="-" onMusculo={vi.fn()} onLado={vi.fn()} />);
     const texto = screen.getByText(/SENIAM/).textContent ?? '';
     expect(texto).toBe('Pele limpa e seca; posicione os eletrodos conforme a recomendação SENIAM para o músculo.');
     expect(texto).not.toMatch(/\d/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Seletor de paciente: nome acessível opcional
+// ---------------------------------------------------------------------------
+
+describe('PacienteSelect', () => {
+  const pacientes = [{ id: 'p1', nome: 'Ana', sobrenome: 'Souza' }];
+
+  it('com ariaLabelledBy o combobox ganha o nome do rótulo e continua mostrando o paciente escolhido', () => {
+    render(
+      <>
+        <p id="rotulo-paciente">Paciente</p>
+        <PacienteSelect pacientes={pacientes} value="p1" onValueChange={vi.fn()} ariaLabelledBy="rotulo-paciente" />
+      </>,
+    );
+    const seletor = screen.getByRole('combobox', { name: 'Paciente' });
+    expect(seletor).toHaveTextContent('Ana Souza');
+    expect(seletor).toHaveAttribute('aria-labelledby', 'rotulo-paciente');
+  });
+
+  it('sem a prop nada muda para os outros usos: o botão não ganha aria-labelledby', () => {
+    render(<PacienteSelect pacientes={pacientes} value="" onValueChange={vi.fn()} placeholder="Escolher…" />);
+    const seletor = screen.getByRole('combobox');
+    expect(seletor).not.toHaveAttribute('aria-labelledby');
+    expect(seletor).toHaveTextContent('Escolher…');
   });
 });
 
@@ -763,6 +834,49 @@ describe('GraficoAoVivo', () => {
     expect(screen.getByTestId('aviso-sem-sinal').textContent).toBe('Religando o módulo…');
     expect(reg.traco).toHaveLength(0);
   });
+
+  it('SinalAoVivo congelado e desconectado (taxa zerada pela tela): o traço congelado continua, a legenda é verdadeira e descongelar mostra o aviso', async () => {
+    const buffer = bufferCom(new Float64Array(5000).fill(5));
+    const { rerender } = render(<SinalAoVivo buffer={buffer} fsHz={1000} ativo cvmUv={null} estado="adquirindo" />);
+    await passar(40);
+    fireEvent.click(screen.getByRole('button', { name: /Congelar/ }));
+    await passar(40);
+
+    // Desconectar: a tela zera a taxa (o módulo não existe mais) e o estado vira "desconectado".
+    rerender(<SinalAoVivo buffer={buffer} fsHz={null} ativo={false} cvmUv={null} estado="desconectado" />);
+    await passar(40);
+    expect(reg.traco).toHaveLength(200);
+    // 5 µV na escala de ±10 µV, altura de 100 px: y = 50 - 0,5 x 48 = 26, menos meio pixel de espessura.
+    expect(reg.traco[0].y).toBeCloseTo(25.5, 9);
+    expect(screen.queryByTestId('aviso-sem-sinal')).not.toBeInTheDocument();
+    expect(screen.getByTestId('grafico-legenda').textContent).toMatch(/gráfico congelado/);
+    expect(screen.getByRole('button', { name: /Descongelar/ })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Descongelar/ }));
+    await passar(40);
+    expect(screen.getByTestId('aviso-sem-sinal').textContent).toBe('Sem sinal. Conecte o módulo ou use o modo demonstração.');
+    expect(reg.traco).toHaveLength(0);
+    expect(screen.getByTestId('grafico-legenda').textContent).not.toMatch(/congelado/);
+  });
+
+  it('SinalAoVivo: o sinal voltando (conexão nova) desfaz o congelamento e o traço novo acompanha o buffer', async () => {
+    const buffer = bufferCom(new Float64Array(5000).fill(5));
+    const { rerender } = render(<SinalAoVivo buffer={buffer} fsHz={1000} ativo cvmUv={null} estado="adquirindo" />);
+    await passar(40);
+    fireEvent.click(screen.getByRole('button', { name: /Congelar/ }));
+    rerender(<SinalAoVivo buffer={buffer} fsHz={null} ativo={false} cvmUv={null} estado="desconectado" />);
+    await passar(40);
+    expect(screen.getByRole('button', { name: /Descongelar/ })).toHaveAttribute('aria-pressed', 'true');
+
+    buffer.empurrar(new Float64Array(5000).fill(8));
+    rerender(<SinalAoVivo buffer={buffer} fsHz={1000} ativo cvmUv={null} estado="adquirindo" />);
+    await passar(40);
+    expect(screen.getByRole('button', { name: /Congelar/ })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('grafico-legenda').textContent).not.toMatch(/congelado/);
+    // Ao vivo outra vez: 8 µV na escala de ±10 µV dá y = 50 - 0,8 x 48 = 11,6, menos meio pixel (não os 25,5 dos 5 µV congelados).
+    expect(reg.traco).toHaveLength(200);
+    expect(reg.traco[0].y).toBeCloseTo(11.1, 9);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1075,6 +1189,26 @@ describe('ProtocoloGuiado', () => {
     montar({ aviso: 'A conexão com o módulo caiu durante a etapa.' });
     expect(screen.getByTestId('aviso-etapa').textContent).toBe('A conexão com o módulo caiu durante a etapa.');
     expect(screen.getByTestId('aviso-etapa')).toHaveAttribute('role', 'alert');
+  });
+
+  it('foco: ao entrar o painel da etapa o foco vai para "Cancelar etapa" e, na tarefa em gravação, fica em "Parar tarefa"', async () => {
+    montar();
+    alimentar(10);
+    const iniciar = screen.getByRole('button', { name: 'Iniciar repouso' });
+    iniciar.focus();
+    expect(iniciar).toHaveFocus();
+    act(() => controlador.iniciarEtapa('repouso'));
+    expect(screen.queryByRole('button', { name: 'Iniciar repouso' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancelar etapa' })).toHaveFocus();
+    act(() => controlador.cancelarEtapa());
+    await passar(250);
+    expect(screen.queryByTestId('etapa-ativa')).not.toBeInTheDocument();
+
+    act(() => controlador.iniciarEtapa('tarefa'));
+    expect(screen.getByRole('button', { name: 'Cancelar etapa' })).toHaveFocus();
+    act(() => alimentar(1500 + 500)); // 3 s de preparo e 1 s de tarefa a 500 Hz
+    await passar(250);
+    expect(screen.getByRole('button', { name: 'Parar tarefa' })).toHaveFocus();
   });
 
   it('desmontar solta o relógio e o ouvinte do controlador', () => {

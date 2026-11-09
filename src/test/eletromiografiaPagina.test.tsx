@@ -199,20 +199,98 @@ function segurarEscrita(): { liberar: () => void } {
   return { liberar };
 }
 
-// O botão do seletor é um combobox sem nome acessível (combobox não pega o nome do conteúdo): acha-se pelo texto que ele mostra.
+// O seletor é um combobox: o nome vem do rótulo "Paciente" (aria-labelledby), e o texto que ele mostra é quem está escolhido agora.
 async function escolherPacienteNaLista(atual: RegExp, novo: RegExp): Promise<void> {
-  const seletor = screen.getByText(atual).closest('button');
-  expect(seletor).not.toBeNull();
-  fireEvent.click(seletor!);
+  const seletor = screen.getByRole('combobox', { name: /Paciente/ });
+  expect(seletor).toHaveTextContent(atual);
+  fireEvent.click(seletor);
   await passar(10);
   fireEvent.click(screen.getByRole('option', { name: novo }));
   await passar(10);
+}
+
+// O PostgREST devolve a linha criada em insert().select().single(); o banco falso devolve null. Aqui a linha nova volta com o id,
+// como no banco de verdade (a tela guarda esse id para atualizar o mesmo exame em vez de criar outro).
+function insertDevolveOId(banco: BancoFalso): void {
+  const deVerdade = banco.from;
+  banco.from = (tabela: string) => {
+    const consulta = deVerdade(tabela) as { then: (...args: unknown[]) => unknown };
+    if (tabela === 'exames_presenciais') {
+      const entao = consulta.then.bind(consulta);
+      consulta.then = (resolver: unknown, rejeitar: unknown) =>
+        entao((resposta: { data: unknown; error: unknown }) => {
+          const linhas = banco.tabelas.exames_presenciais;
+          const resultado = resposta.data === null && !resposta.error ? { ...resposta, data: { id: linhas[linhas.length - 1]?.id } } : resposta;
+          return (resolver as (v: unknown) => unknown)(resultado);
+        }, rejeitar);
+    }
+    return consulta;
+  };
+}
+
+// A leitura da lista de pacientes falha enquanto `estado.falhar` for verdadeiro (rede ou permissão): o banco falso só falha escritas.
+function pacientesComErroDeLeitura(estado: { falhar: boolean }): void {
+  const deVerdade = h.banco.from;
+  h.banco.from = (tabela: string) => {
+    const consulta = deVerdade(tabela) as { then: (...args: unknown[]) => unknown };
+    if (tabela === 'pacientes' && estado.falhar) {
+      consulta.then = (resolver: unknown, rejeitar: unknown) =>
+        Promise.resolve({ data: null, error: { message: 'sem rede de mentira' } }).then(
+          resolver as (v: unknown) => unknown,
+          rejeitar as (e: unknown) => unknown,
+        );
+    }
+    return consulta;
+  };
+}
+
+// O jsdom não desenha: o contexto de mentira guarda só os pontos do traço do sinal (cor do tema claro) e esquece tudo a cada clearRect.
+function simularCanvas(): { traco: () => Array<{ x: number; y: number }>; restaurar: () => void } {
+  let traco: Array<{ x: number; y: number }> = [];
+  let cor = '';
+  const ctx = {
+    get strokeStyle() {
+      return cor;
+    },
+    set strokeStyle(v: string) {
+      cor = v;
+    },
+    lineWidth: 1,
+    setTransform: () => undefined,
+    clearRect: () => {
+      traco = [];
+    },
+    beginPath: () => undefined,
+    moveTo: (x: number, y: number) => {
+      if (cor === '#1e3a5f') traco.push({ x, y });
+    },
+    lineTo: () => undefined,
+    stroke: () => undefined,
+  };
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation((() => ctx) as never);
+  const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+  const originais = {
+    clientWidth: Object.getOwnPropertyDescriptor(proto, 'clientWidth'),
+    clientHeight: Object.getOwnPropertyDescriptor(proto, 'clientHeight'),
+  };
+  Object.defineProperty(proto, 'clientWidth', { configurable: true, get: () => 200 });
+  Object.defineProperty(proto, 'clientHeight', { configurable: true, get: () => 100 });
+  return {
+    traco: () => traco.map((ponto) => ({ ...ponto })),
+    restaurar: () => {
+      for (const [nome, descritor] of Object.entries(originais)) {
+        if (descritor) Object.defineProperty(proto, nome, descritor);
+        else Reflect.deleteProperty(proto, nome);
+      }
+    },
+  };
 }
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(2026, 10, 8, 23, 30, 0));
   h.banco = criarBancoFalso({ pacientes: PACIENTES.map((p) => ({ ...p })), exames_presenciais: [] });
+  insertDevolveOId(h.banco);
   h.sucesso.mockClear();
   h.erro.mockClear();
   h.baixar.mockClear();
@@ -672,7 +750,7 @@ describe('Eletromiografia: salvar no prontuário', () => {
     expect(botao('Salvo no prontuário')).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'Corrigindo o posicionamento' } });
-    expect(botao('Salvar no prontuário')).toBeEnabled();
+    expect(botao('Atualizar exame salvo')).toBeEnabled();
   });
 
   it('erro do banco: avisa com a mensagem, não marca como salvo e deixa tentar de novo', async () => {
@@ -710,7 +788,7 @@ describe('Eletromiografia: salvar no prontuário', () => {
 
     // A tela passa a mostrar "desligado", mas o banco guarda "ligado": tem de dar para salvar de novo.
     fireEvent.click(screen.getByRole('switch', { name: 'Mostrar ao cliente' }));
-    expect(botao('Salvar no prontuário')).toBeEnabled();
+    expect(botao('Atualizar exame salvo')).toBeEnabled();
     expect(texto('ajuda-salvar')).not.toMatch(/^Salvo/);
 
     // Igual ao que foi gravado outra vez: está salvo.
@@ -718,10 +796,11 @@ describe('Eletromiografia: salvar no prontuário', () => {
     expect(botao('Salvo no prontuário')).toBeDisabled();
 
     fireEvent.click(screen.getByRole('switch', { name: 'Mostrar ao cliente' }));
-    fireEvent.click(botao('Salvar no prontuário'));
+    fireEvent.click(botao('Atualizar exame salvo'));
     await passar(200);
     const escritas = h.banco.escritas();
     expect(escritas).toHaveLength(2);
+    expect(escritas[1].tipo).toBe('update');
     expect((escritas[1].payload as Record<string, unknown>).visivel_paciente).toBe(false);
     expect(botao('Salvo no prontuário')).toBeDisabled();
   });
@@ -752,7 +831,7 @@ describe('Eletromiografia: salvar no prontuário', () => {
     expect(escritas).toHaveLength(1);
     const dados = (escritas[0].payload as Record<string, Record<string, unknown>>).dados;
     expect(dados.observacoes).toBe('Primeira frase');
-    expect(botao('Salvar no prontuário')).toBeEnabled();
+    expect(botao('Atualizar exame salvo')).toBeEnabled();
     expect(texto('ajuda-salvar')).not.toMatch(/Salvo no prontuário/);
     expect(screen.getByLabelText('Observações')).toBeEnabled();
   });
@@ -972,6 +1051,316 @@ describe('Eletromiografia: nova medida', () => {
     liberar();
     await passar(200);
     expect(botao('Descartar e começar')).toBeEnabled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lista de pacientes: erro de leitura, teto e nome acessível
+// ---------------------------------------------------------------------------
+
+describe('Eletromiografia: lista de pacientes', () => {
+  it('o seletor tem nome acessível: o rótulo "Paciente" dá nome ao combobox, que mostra quem está escolhido', async () => {
+    const mundo = criarMundo();
+    montar(mundo.fabrica);
+    await passar(100);
+    const seletor = screen.getByRole('combobox', { name: /^Paciente/ });
+    expect(seletor).toHaveTextContent('Ana Souza');
+    expect(seletor).toHaveAttribute('aria-labelledby', 'emg-paciente-rotulo');
+    expect(document.getElementById('emg-paciente-rotulo')?.textContent).toMatch(/^Paciente/);
+  });
+
+  it('falha ao ler os pacientes: diz que não carregou (e não culpa o link), bloqueia salvar com o motivo certo e "Tentar de novo" recarrega', async () => {
+    const estado = { falhar: true };
+    pacientesComErroDeLeitura(estado);
+    const mundo = criarMundo();
+    montar(mundo.fabrica, '/eletromiografia?paciente=p1');
+    await conectarReal();
+    await passar(100);
+    await gravarRepouso();
+
+    expect(screen.getByTestId('erro-pacientes').textContent).toMatch(/Não consegui carregar seus pacientes\./);
+    expect(screen.queryByTestId('paciente-nao-encontrado')).not.toBeInTheDocument();
+    expect(botao('Salvar no prontuário')).toBeDisabled();
+    expect(texto('ajuda-salvar')).toMatch(/Não consegui carregar seus pacientes/);
+    expect(texto('ajuda-salvar')).not.toMatch(/Escolha um paciente/);
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(100);
+    expect(h.banco.escritas()).toHaveLength(0);
+
+    estado.falhar = false;
+    fireEvent.click(botao('Tentar de novo'));
+    await passar(100);
+    expect(screen.queryByTestId('erro-pacientes')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /Paciente/ })).toHaveTextContent('Ana Souza');
+    expect(botao('Salvar no prontuário')).toBeEnabled();
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+    expect((h.banco.escritas()[0].payload as Record<string, unknown>).paciente_id).toBe('p1');
+  });
+
+  it('com a lista no teto de 1000 pacientes avisa que só os primeiros aparecem; com menos, não avisa', async () => {
+    for (let i = 0; i < 998; i++) {
+      h.banco.tabelas.pacientes.push({ id: `extra-${i}`, nome: `Extra ${i}`, sobrenome: 'Teste', terapeuta_id: 'prof-1', ativo: true });
+    }
+    expect(h.banco.tabelas.pacientes).toHaveLength(1000);
+    const mundo = criarMundo();
+    const primeira = montar(mundo.fabrica);
+    await passar(100);
+    expect(screen.getByTestId('aviso-limite-pacientes').textContent).toBe('Mostrando os primeiros 1000 pacientes.');
+    primeira.unmount();
+    cleanup();
+
+    h.banco.tabelas.pacientes.pop();
+    montar(mundo.fabrica);
+    await passar(100);
+    expect(screen.getByRole('combobox', { name: /Paciente/ })).toHaveTextContent('Ana Souza');
+    expect(screen.queryByTestId('aviso-limite-pacientes')).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Salvar de novo: atualiza o mesmo exame ou cria outro
+// ---------------------------------------------------------------------------
+
+describe('Eletromiografia: salvar de novo', () => {
+  type LinhaExame = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  it('só observações e visibilidade mudaram depois de salvar: "Atualizar exame salvo" muda a MESMA linha, sem criar outra', async () => {
+    const mundo = criarMundo();
+    montar(mundo.fabrica);
+    await conectarReal();
+    await gravarRepouso();
+    fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'Primeira versão' } });
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+    expect(h.banco.tabelas.exames_presenciais).toHaveLength(1);
+    const gravada = h.banco.tabelas.exames_presenciais[0] as LinhaExame;
+    const idOriginal = gravada.id;
+    expect(idOriginal).toBeTruthy();
+    const analiseOriginal = JSON.parse(JSON.stringify(gravada.dados.analise));
+
+    fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'Segunda versão, joelho a 90°' } });
+    fireEvent.click(screen.getByRole('switch', { name: 'Mostrar ao cliente' }));
+    expect(screen.queryByRole('button', { name: 'Salvar no prontuário' })).not.toBeInTheDocument();
+    expect(texto('ajuda-salvar')).toMatch(/Esta medida já está salva no prontuário\. Atualizar muda esse mesmo exame, sem criar outro\./);
+    fireEvent.click(botao('Atualizar exame salvo'));
+    await passar(200);
+
+    const linhas = h.banco.tabelas.exames_presenciais as LinhaExame[];
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0].id).toBe(idOriginal);
+    expect(linhas[0].dados.observacoes).toBe('Segunda versão, joelho a 90°');
+    expect(linhas[0].visivel_paciente).toBe(true);
+    expect(Object.keys(linhas[0].dados).sort()).toEqual(['analise', 'observacoes', 'resultado', 'versao_laudo']);
+    expect(linhas[0].dados.versao_laudo).toBe(1);
+    expect(linhas[0].dados.analise.observacoes).toBe('Segunda versão, joelho a 90°');
+    // O sinal é o mesmo: o resto da análise não muda.
+    expect({ ...linhas[0].dados.analise, observacoes: undefined }).toEqual({ ...analiseOriginal, observacoes: undefined });
+    expect(linhas[0].resumo).toMatch(/^EMG de superfície/);
+    expect(linhas[0].paciente_id).toBe('p1');
+    expect(linhas[0].data_exame).toBe('2026-11-08');
+
+    const escritas = h.banco.escritas();
+    expect(escritas.map((e) => e.tipo)).toEqual(['insert', 'update']);
+    expect(escritas[1].tabela).toBe('exames_presenciais');
+    expect(escritas[1].filtros).toContainEqual(['eq', 'id', idOriginal]);
+    // O update leva só os campos de dados, o resumo e a visibilidade: paciente, profissional, tipo e data ficam como estão.
+    expect(Object.keys(escritas[1].payload as object).sort()).toEqual(['dados', 'resumo', 'visivel_paciente']);
+    expect(h.sucesso).toHaveBeenLastCalledWith('Eletromiografia atualizada nos exames presenciais do paciente');
+    expect(botao('Salvo no prontuário')).toBeDisabled();
+    expect(texto('ajuda-salvar')).toMatch(/Salvo no prontuário de Ana Souza/);
+
+    // Tirar a observação também atualiza: o campo some do exame, não fica a frase antiga.
+    fireEvent.change(screen.getByLabelText('Observações'), { target: { value: '' } });
+    fireEvent.click(botao('Atualizar exame salvo'));
+    await passar(200);
+    expect(h.banco.tabelas.exames_presenciais).toHaveLength(1);
+    // No banco de verdade o JSON não leva campo indefinido: o que vale é a frase antiga não ter ficado.
+    expect((h.banco.tabelas.exames_presenciais[0] as LinhaExame).dados.observacoes).toBeUndefined();
+    expect((h.banco.tabelas.exames_presenciais[0] as LinhaExame).dados.analise.observacoes).toBeNull();
+  });
+
+  it('salvar, trocar de paciente e salvar: são dois exames (um por paciente), sem "Atualizar"', async () => {
+    const mundo = criarMundo();
+    montar(mundo.fabrica);
+    await conectarReal();
+    await passar(100);
+    await gravarRepouso();
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+
+    await escolherPacienteNaLista(/Ana Souza/, /Bruno Lima/);
+    expect(screen.queryByRole('button', { name: 'Atualizar exame salvo' })).not.toBeInTheDocument();
+    expect(botao('Salvar no prontuário')).toBeEnabled();
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+
+    expect(h.banco.escritas().map((e) => e.tipo)).toEqual(['insert', 'insert']);
+    expect((h.banco.tabelas.exames_presenciais as LinhaExame[]).map((l) => l.paciente_id)).toEqual(['p1', 'p2']);
+    expect(texto('ajuda-salvar')).toMatch(/Salvo no prontuário de Bruno Lima/);
+  });
+
+  it('salvar e depois gravar mais uma etapa: o sinal mudou, então é um exame novo (não sobrescreve o que foi salvo)', async () => {
+    const mundo = criarMundo();
+    montar(mundo.fabrica);
+    await conectarReal();
+    await gravarRepouso();
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+
+    await gravarCvm(mundo, 1, 150);
+    expect(screen.queryByRole('button', { name: 'Atualizar exame salvo' })).not.toBeInTheDocument();
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+
+    const linhas = h.banco.tabelas.exames_presenciais as LinhaExame[];
+    expect(h.banco.escritas().map((e) => e.tipo)).toEqual(['insert', 'insert']);
+    expect(linhas.map((l) => l.dados.analise.etapas.map((e: { tipo: string }) => e.tipo))).toEqual([['repouso'], ['repouso', 'cvm']]);
+  });
+
+  it('atualizar falha no banco: mostra o motivo, não marca "Salvo" e a linha segue como estava; tentar de novo funciona', async () => {
+    const mundo = criarMundo();
+    montar(mundo.fabrica);
+    await conectarReal();
+    await gravarRepouso();
+    fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'Antes' } });
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+
+    fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'Depois' } });
+    h.banco.falharEscritaQuando((op) => op.tipo === 'update', 'permissão negada de mentira');
+    h.sucesso.mockClear();
+    fireEvent.click(botao('Atualizar exame salvo'));
+    await passar(200);
+    expect(h.erro).toHaveBeenCalledWith('permissão negada de mentira');
+    expect(h.sucesso).not.toHaveBeenCalled();
+    expect((h.banco.tabelas.exames_presenciais[0] as LinhaExame).dados.observacoes).toBe('Antes');
+    expect(botao('Atualizar exame salvo')).toBeEnabled();
+    expect(texto('ajuda-salvar')).not.toMatch(/^Salvo no prontuário/);
+    expect(screen.queryByRole('button', { name: 'Salvo no prontuário' })).not.toBeInTheDocument();
+
+    h.banco.falharEscritaQuando(null);
+    fireEvent.click(botao('Atualizar exame salvo'));
+    await passar(200);
+    expect(h.banco.tabelas.exames_presenciais).toHaveLength(1);
+    expect((h.banco.tabelas.exames_presenciais[0] as LinhaExame).dados.observacoes).toBe('Depois');
+    expect(botao('Salvo no prontuário')).toBeDisabled();
+  });
+
+  it('o exame salvo foi excluído do prontuário: o banco não altera nada, a tela avisa em vez de dizer "Salvo" e o próximo toque cria um novo', async () => {
+    const mundo = criarMundo();
+    montar(mundo.fabrica);
+    await conectarReal();
+    await gravarRepouso();
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+    h.banco.tabelas.exames_presenciais.splice(0);
+
+    fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'Nova frase' } });
+    fireEvent.click(botao('Atualizar exame salvo'));
+    await passar(200);
+    expect(h.erro).toHaveBeenCalledWith(expect.stringMatching(/Não encontrei o exame salvo antes/));
+    expect(h.banco.tabelas.exames_presenciais).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: 'Salvo no prontuário' })).not.toBeInTheDocument();
+
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+    expect(h.banco.tabelas.exames_presenciais).toHaveLength(1);
+    expect((h.banco.tabelas.exames_presenciais[0] as LinhaExame).dados.observacoes).toBe('Nova frase');
+    expect(h.banco.escritas().map((e) => e.tipo)).toEqual(['insert', 'update', 'insert']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Foco e gráfico congelado
+// ---------------------------------------------------------------------------
+
+describe('Eletromiografia: foco e gráfico congelado', () => {
+  it('ao iniciar uma etapa o foco vai para "Cancelar etapa": o botão "Iniciar" que tinha o foco saiu da tela', async () => {
+    const mundo = criarMundo();
+    montar(mundo.fabrica);
+    await conectarReal();
+    const iniciar = botao('Iniciar repouso');
+    iniciar.focus();
+    expect(document.activeElement).toBe(iniciar);
+
+    fireEvent.click(iniciar);
+    await passar(300);
+    expect(screen.getByTestId('etapa-ativa')).toBeInTheDocument();
+    expect(document.activeElement).toBe(botao('Cancelar etapa'));
+  });
+
+  it('Nova medida: a confirmação recebe o foco e, ao desistir, o foco volta para "Nova medida"', async () => {
+    const mundo = criarMundo();
+    montar(mundo.fabrica);
+    await conectarReal();
+    await gravarRepouso();
+
+    const abrir = botao('Nova medida');
+    abrir.focus();
+    fireEvent.click(abrir);
+    expect(document.activeElement).toBe(botao('Não descartar'));
+    fireEvent.click(botao('Não descartar'));
+    expect(document.activeElement).toBe(botao('Nova medida'));
+  });
+
+  it('congelar e desconectar: o traço congelado continua na tela e a legenda é verdadeira; descongelar mostra "Sem sinal"', async () => {
+    const canvas = simularCanvas();
+    try {
+      const mundo = criarMundo({ fsHz: 500 });
+      montar(mundo.fabrica);
+      await conectarReal();
+      await passar(2000);
+      expect(canvas.traco().length).toBeGreaterThan(0);
+
+      fireEvent.click(screen.getByRole('button', { name: /Congelar/ }));
+      await passar(200);
+      const congelado = canvas.traco();
+      expect(congelado.length).toBeGreaterThan(0);
+
+      fireEvent.click(botao('Desconectar'));
+      await passar(500);
+      expect(texto('estado-modulo')).toContain('Desconectado');
+      expect(screen.getByRole('button', { name: /Descongelar/ })).toHaveAttribute('aria-pressed', 'true');
+      expect(texto('grafico-legenda')).toMatch(/gráfico congelado/);
+      expect(screen.queryByTestId('aviso-sem-sinal')).not.toBeInTheDocument();
+      // A mesma foto do sinal, nos mesmos pontos: o traço não sumiu com a taxa do módulo.
+      expect(canvas.traco()).toEqual(congelado);
+
+      fireEvent.click(screen.getByRole('button', { name: /Descongelar/ }));
+      await passar(200);
+      expect(texto('aviso-sem-sinal')).toBe('Sem sinal. Conecte o módulo ou use o modo demonstração.');
+      expect(canvas.traco()).toHaveLength(0);
+      expect(texto('grafico-legenda')).not.toMatch(/congelado/);
+    } finally {
+      canvas.restaurar();
+    }
+  });
+
+  it('reconectar com o gráfico congelado volta ao vivo: o traço novo não nasce parado', async () => {
+    const canvas = simularCanvas();
+    try {
+      const mundo = criarMundo({ fsHz: 500 });
+      montar(mundo.fabrica);
+      await conectarReal();
+      await passar(2000);
+      fireEvent.click(screen.getByRole('button', { name: /Congelar/ }));
+      fireEvent.click(botao('Desconectar'));
+      await passar(500);
+      expect(screen.getByRole('button', { name: /Descongelar/ })).toBeInTheDocument();
+
+      await conectarReal();
+      await passar(2000);
+      expect(screen.getByRole('button', { name: /Congelar/ })).toHaveAttribute('aria-pressed', 'false');
+      expect(texto('grafico-legenda')).not.toMatch(/congelado/);
+      const agora = canvas.traco();
+      expect(agora.length).toBeGreaterThan(0);
+      await passar(600);
+      expect(canvas.traco()).not.toEqual(agora);
+    } finally {
+      canvas.restaurar();
+    }
   });
 });
 
