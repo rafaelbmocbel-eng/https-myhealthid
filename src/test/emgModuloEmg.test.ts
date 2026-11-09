@@ -1372,6 +1372,52 @@ describe('ModuloEmg: queda de conexão', () => {
     expect(maxDiferenca(lotes[2].filtradas, fresco)).toBeLessThan(1e-9);
   });
 
+  it('parar() que falhou na escrita e depois a queda do link: a reconexão manda o parar que faltou', async () => {
+    const c = criarCenario();
+    await conectarEIniciar(c);
+    let falharParar = true;
+    c.espiao.aoEscrever = (b) => (falharParar && b[3] === 0x11 && b[4] === 0x00 ? 'falhar' : 'normal');
+    const r = c.modulo.parar().then(
+      () => new Error('não falhou'),
+      (e: unknown) => e as Error,
+    );
+    await passar(1000);
+    expect((await r).message).toMatch(/Não consegui mandar o módulo parar/);
+    expect(c.sim.adquirindo).toBe(true);
+
+    falharParar = false;
+    c.espiao.derrubar();
+    await passar(4000);
+    expect(c.modulo.status.estado).toBe('conectado');
+    expect(c.sim.adquirindo).toBe(false);
+    expect(comandosDoModulo(c).filter((h) => h === CMD_PARAR)).toHaveLength(1);
+    expect(comandosDoModulo(c).filter((h) => h === CMD_INICIAR)).toHaveLength(1);
+  });
+
+  it('desconectar() durante a escrita do iniciar: o módulo para e a conexão seguinte começa limpa, sem parar de graça', async () => {
+    const c = criarCenario();
+    c.espiao.duracaoEscritaMs = 40;
+    await conectarModulo(c);
+    await passar(3000);
+    const p = c.modulo.iniciar().then(
+      () => 'ok',
+      () => 'rejeitou',
+    );
+    await passar(5);
+    c.modulo.desconectar();
+    await passar(2000);
+    await p;
+    expect(c.sim.adquirindo).toBe(false);
+    expect(c.modulo.status.estado).toBe('desconectado');
+    // Nova conexão sem iniciar: desconectar() não manda parar (o campo não ficou ligado).
+    const antes = comandosDoModulo(c).filter((h) => h === CMD_PARAR).length;
+    await conectarModulo(c);
+    await passar(3000);
+    c.modulo.desconectar();
+    await passar(2000);
+    expect(comandosDoModulo(c).filter((h) => h === CMD_PARAR).length).toBe(antes);
+  });
+
   it('espera crescente de 0,5 s a 8 s e desiste depois de 12 tentativas, avisando no status', async () => {
     const c = criarCenario();
     await conectarEIniciar(c);
@@ -1445,6 +1491,80 @@ describe('ModuloEmg: queda de conexão', () => {
     expect(c.espiao.conexoes).toBe(3);
     expect(c.modulo.diagnostico.some((l) => l.includes('caiu de novo'))).toBe(true);
   });
+
+  /**
+   * Derruba a conexão uma vez e deixa a reconexão chegar ao comando 0x11 (aperto de mão: 0,5 s de espera
+   * + 2 s; a escrita sai por volta de 2,54 s), com as notificações bloqueadas para o ACK nunca chegar.
+   * Quem chama derruba de novo, dentro da janela de 1,5 s do ACK.
+   */
+  async function reconexaoComAckPendente(c: Cenario, aoEscreverComando: (b: Uint8Array) => boolean): Promise<void> {
+    c.espiao.filtroNotificacao = () => false;
+    c.espiao.derrubar();
+    await passar(500 + 2000 + 300);
+    expect(c.espiao.conexoes).toBe(2);
+    expect(c.modulo.status.estado).toBe('reconectando');
+    expect(c.sim.comandosRecebidos.slice(-1).every(aoEscreverComando)).toBe(true);
+  }
+
+  it('a conexão cai de novo com o ACK da reconexão pendente: não registra "reconectado" e tenta outra vez', async () => {
+    const c = criarCenario();
+    await conectarEIniciar(c);
+    await reconexaoComAckPendente(c, (b) => hex(b) === CMD_INICIAR);
+
+    c.espiao.derrubar();
+    c.espiao.filtroNotificacao = null;
+    await passar(60_000);
+
+    expect(c.espiao.conexoes).toBe(3);
+    expect(c.espiao.conectado).toBe(true);
+    expect(c.modulo.status.estado).toBe('adquirindo');
+    expect(c.modulo.diagnostico.some((l) => l.includes('reconectado na tentativa 1'))).toBe(false);
+    expect(c.modulo.diagnostico.some((l) => l.includes('reconectado na tentativa 2'))).toBe(true);
+    const lotes = coletarLotes(c);
+    await gerar(c, 100);
+    expect(lotes).toHaveLength(2);
+    expect(c.modulo.quadrosRecebidos).toBeGreaterThan(0);
+  });
+
+  it('a conexão cai com o ACK da reconexão pendente e não volta mais: desiste, sem ficar "adquirindo" com a sessão morta', async () => {
+    const c = criarCenario();
+    await conectarEIniciar(c);
+    await reconexaoComAckPendente(c, (b) => hex(b) === CMD_INICIAR);
+
+    c.espiao.falharProximasConexoes = 999;
+    c.espiao.derrubar();
+    await passar(300_000);
+
+    // A 1ª tentativa (a do ACK pendente) conta como perdida: 1 conexão original + 12 tentativas.
+    expect(c.espiao.conexoes).toBe(13);
+    expect(c.modulo.status.estado).toBe('desconectado');
+    expect(c.modulo.status.erro).toMatch(/12 tentativas/);
+    expect(c.espiao.conectado).toBe(false);
+    expect(c.espiao.ouvintesQueda.size).toBe(0);
+    expect(c.espiao.ouvintesNotificacao.size).toBe(0);
+  });
+
+  it('a conexão cai com o ACK do "parar" da reconexão pendente: a retomada manda "parar" de novo na próxima', async () => {
+    const c = criarCenario();
+    await conectarEIniciar(c);
+    c.espiao.filtroNotificacao = () => false;
+    c.espiao.derrubar();
+    await passar(100);
+    expect(c.modulo.status.estado).toBe('reconectando');
+    await c.modulo.parar();
+    c.espiao.filtroNotificacao = null;
+    await reconexaoComAckPendente(c, (b) => hex(b) === CMD_PARAR);
+
+    c.espiao.derrubar();
+    await passar(60_000);
+
+    // Sem a confirmação o parar não vale como entregue: a tentativa seguinte manda de novo.
+    expect(c.espiao.conexoes).toBe(3);
+    expect(c.espiao.conectado).toBe(true);
+    expect(c.modulo.status.estado).toBe('conectado');
+    expect(c.sim.comandosRecebidos.filter((b) => hex(b) === CMD_PARAR)).toHaveLength(2);
+    expect(c.sim.adquirindo).toBe(false);
+  });
 });
 
 describe('ModuloEmg: desconectar()', () => {
@@ -1471,6 +1591,67 @@ describe('ModuloEmg: desconectar()', () => {
     expect(comandosDoModulo(c)).toContain(CMD_PARAR);
     expect(c.sim.adquirindo).toBe(false);
     expect(c.espiao.conectado).toBe(false);
+  });
+
+  it('parar() e desconectar() em seguida (desmonte da tela): o "parar" sai mesmo assim e o módulo para', async () => {
+    const c = criarCenario();
+    await conectarEIniciar(c);
+    expect(c.sim.adquirindo).toBe(true);
+    const r = c.modulo.parar().then(
+      () => 'ok',
+      (e: unknown) => (e as Error).message,
+    );
+    c.modulo.desconectar();
+    await passar(3000);
+    expect(c.sim.adquirindo).toBe(false);
+    expect(comandosDoModulo(c).filter((h) => h === CMD_PARAR)).toHaveLength(1);
+    expect(c.espiao.conectado).toBe(false);
+    expect(c.modulo.status).toEqual({ estado: 'desconectado' });
+    expect(await r).toBe('ok');
+  });
+
+  it('parar() já em escrita quando o desconectar() chega: a escrita do desconectar() espera a vez (fila serial)', async () => {
+    const c = criarCenario();
+    await conectarEIniciar(c);
+    c.espiao.duracaoEscritaMs = 30;
+    const r = c.modulo.parar().then(
+      () => 'ok',
+      (e: unknown) => (e as Error).message,
+    );
+    await passar(10);
+    c.modulo.desconectar();
+    await passar(3000);
+    expect(c.sim.adquirindo).toBe(false);
+    expect(c.espiao.escritasSimultaneasMax).toBe(1);
+    expect(c.espiao.conectado).toBe(false);
+    expect(await r).toBe('ok');
+  });
+
+  it('parar() já confirmado e depois desconectar(): não manda um 2º "parar"', async () => {
+    const c = criarCenario();
+    await conectarEIniciar(c);
+    await pararModulo(c);
+    expect(comandosDoModulo(c).filter((h) => h === CMD_PARAR)).toHaveLength(1);
+    c.modulo.desconectar();
+    await passar(3000);
+    expect(comandosDoModulo(c).filter((h) => h === CMD_PARAR)).toHaveLength(1);
+    expect(c.espiao.conectado).toBe(false);
+  });
+
+  it('o "parar" do desmonte que nunca responde não segura o Bluetooth por mais de 1,5 s', async () => {
+    const c = criarCenario();
+    await conectarEIniciar(c);
+    c.espiao.aoEscrever = (b) => (hex(b) === CMD_PARAR ? 'travar' : 'normal');
+    const r = c.modulo.parar().then(
+      () => 'ok',
+      (e: unknown) => (e as Error).message,
+    );
+    c.modulo.desconectar();
+    await passar(1400);
+    expect(c.espiao.conectado).toBe(true);
+    await passar(200);
+    expect(c.espiao.conectado).toBe(false);
+    expect(await r).toBe('ok');
   });
 
   it('só conectado (sem aquisição): solta sem mandar nada', async () => {

@@ -163,8 +163,9 @@ export interface ResumoSessao {
   repousoRmsUv: number | null;
   qualidade: QualidadeSinal | null;
   linhaDeBase: LinhaDeBase | null;
-  /** Tentativas de CVM com alguma amostra. */
+  /** Tentativas de CVM com pelo menos uma janela de 1 s; as mais curtas são ignoradas (com aviso). */
   tentativasCvm: number;
+  /** Uma entrada por tentativa contada em `tentativasCvm`, na ordem gravada. */
   cvmPorTentativaUv: number[];
   /** Maior pico entre as tentativas; null sem CVM (ou com tentativas menores que 1 s). */
   cvmUv: number | null;
@@ -226,6 +227,14 @@ export class GravadorDeSessao {
     }
     this.atual = tipo;
     this.zerarBuffer();
+  }
+
+  /**
+   * Marca a etapa em andamento como cortada. Quem encerra a gravação no teto antes de entregar o que
+   * passaria dele (o controlador da tela) usa isto, porque aí `receber` nunca vê amostra além do limite.
+   */
+  marcarCortada(): void {
+    if (this.atual !== null) this.cortada = true;
   }
 
   /** Amostras recebidas fora de uma etapa são ignoradas. */
@@ -360,7 +369,9 @@ export function resumirSessao(
   const tarefas = etapas.filter((e) => e.tipo === 'tarefa' && e.amostras.length > 0);
   for (const e of etapas) {
     if (e.truncada) {
-      avisos.push(`A etapa "${e.tipo}" passou de ${DURACAO_MAX_ETAPA_S} s e foi cortada nesse limite.`);
+      avisos.push(
+        `A etapa "${e.tipo}" atingiu o limite de ${DURACAO_MAX_ETAPA_S} s e foi cortada: o que viesse depois não foi gravado.`,
+      );
     }
   }
 
@@ -406,16 +417,25 @@ export function resumirSessao(
     }
   }
 
-  const tentativas = cvms.map((e) => e.amostras);
+  // Mesma regra de picoEmJanela: tentativa menor que a janela não dá RMS de janela e valeria 0 µV na lista.
+  const amostrasDaJanelaCvm = Math.max(1, Math.round((fsHz * JANELA_CVM_MS) / 1000));
+  const cvmsValidas = cvms.filter((e) => e.amostras.length >= amostrasDaJanelaCvm);
+  const cvmsCurtas = cvms.length - cvmsValidas.length;
+  const tentativas = cvmsValidas.map((e) => e.amostras);
   const { cvm, porTentativa } = cvmDeTentativas(tentativas, fsHz, JANELA_CVM_MS);
   const cvmUv = cvm > 0 ? cvm : null;
-  if (tentativas.length === 0) {
+  if (cvms.length === 0) {
     avisos.push('Sem CVM gravada: os valores ficam em µV e não puderam ser normalizados em % da CVM.');
   } else if (cvmUv === null) {
     avisos.push(
       `As tentativas de CVM têm menos de ${JANELA_CVM_MS / 1000} s: não foi possível calcular a CVM. Grave de novo, mantendo a contração máxima por alguns segundos.`,
     );
   } else {
+    if (cvmsCurtas > 0) {
+      avisos.push(
+        `${cvmsCurtas} ${plural(cvmsCurtas, 'tentativa', 'tentativas')} de CVM com menos de ${JANELA_CVM_MS / 1000} s ${plural(cvmsCurtas, 'foi ignorada', 'foram ignoradas')}.`,
+      );
+    }
     if (tentativas.length < PROTOCOLO_SESSAO.cvmTentativas) {
       avisos.push(
         `Só ${tentativas.length} ${plural(tentativas.length, 'tentativa', 'tentativas')} de CVM (o protocolo prevê ${PROTOCOLO_SESSAO.cvmTentativas}).`,
@@ -461,6 +481,13 @@ export function resumirSessao(
     if (c.picoPctCvm !== null && (picoPctCvmMax === null || c.picoPctCvm > picoPctCvmMax)) {
       picoPctCvmMax = c.picoPctCvm;
     }
+  }
+
+  // A sessão só recebe o sinal já filtrado, e depois de um passa-alta o platô da saturação deixa de ser exato.
+  if (cvms.length > 0 || tarefas.length > 0) {
+    avisos.push(
+      'A qualidade do sinal vale só para o repouso e foi medida depois do filtro. A saturação do sensor não é verificada na CVM nem na tarefa: se ele saturar na contração máxima, a CVM fica subestimada e o % da CVM, inflado.',
+    );
   }
 
   return {
@@ -609,7 +636,7 @@ export function resumoCurto(resumo: ResumoSessao, canal: CanalEmg): string {
       texto += `, pico de ${pctTexto(resumo.picoPctCvmMax)} % da CVM`;
     } else {
       const maior = Math.max(...resumo.contracoes.map((c) => c.picoUv));
-      texto += `, pico de ${uvTexto(maior)} µV (sem CVM para normalizar)`;
+      texto += `, pico de ${uvTexto(maior)} µV absolutos (sem normalização pela CVM; não comparáveis entre pessoas ou sessões)`;
     }
     partes.push(texto);
   }
@@ -652,7 +679,9 @@ export function laudoTexto(resumo: ResumoSessao, canal: CanalEmg, observacoes?: 
   }
 
   if (resumo.cvmUv === null) {
-    linhas.push('CVM (contração voluntária máxima): não registrada; os valores ficam em µV, sem normalização.');
+    linhas.push(
+      'CVM (contração voluntária máxima): não registrada; os valores ficam em µV absolutos, sem normalização pela CVM, e não são comparáveis entre pessoas nem entre sessões.',
+    );
   } else {
     const porTentativa = resumo.cvmPorTentativaUv.map(uvTexto).join(' · ');
     linhas.push(
@@ -711,26 +740,30 @@ export function laudoTexto(resumo: ResumoSessao, canal: CanalEmg, observacoes?: 
   return linhas.join('\n');
 }
 
+// Sem o BOM o Excel abre o UTF-8 como ANSI.
+const BOM_UTF8 = String.fromCharCode(0xfeff);
+
 /**
- * CSV do sinal filtrado: etapa, tempo_s, uv. O tempo conta desde o começo de cada etapa; a etapa é
- * o tipo seguido da posição entre as do mesmo tipo (repouso_1, cvm_1, cvm_2, tarefa_1...).
- * Decimal em ponto, cabeçalho na primeira linha, amostra não finita vira célula vazia.
- * Vazio ("") se não há nenhuma amostra.
+ * CSV do sinal filtrado: etapa, tempo_s, sinal_uV. O tempo conta desde o começo de cada etapa; a etapa
+ * é o tipo seguido da posição entre as do mesmo tipo (repouso_1, cvm_1, cvm_2, tarefa_1...).
+ * Feito para abrir direto no Excel em português do Brasil: separador ";", vírgula decimal e BOM UTF-8
+ * no começo (sem ele o Excel lê os acentos errado). Cabeçalho na primeira linha, amostra não finita
+ * vira célula vazia. Vazio ("", sem BOM) se não há nenhuma amostra.
  */
 export function csvDoSinal(etapas: readonly EtapaDeSinal[], fsHz: number): string {
   validarFs(fsHz);
   if (etapas.every((e) => e.amostras.length === 0)) return '';
-  const linhas: string[] = ['etapa,tempo_s,uv'];
+  const linhas: string[] = ['etapa;tempo_s;sinal_uV'];
   const contagem: Record<string, number> = {};
   for (const e of etapas) {
     contagem[e.tipo] = (contagem[e.tipo] ?? 0) + 1;
     const nome = `${e.tipo}_${contagem[e.tipo]}`;
     for (let i = 0; i < e.amostras.length; i++) {
       const v = e.amostras[i];
-      const tempo = Math.round((i / fsHz) * 1e6) / 1e6;
-      const valor = Number.isFinite(v) ? String(Math.round(v * 1000) / 1000) : '';
-      linhas.push(`${nome},${tempo},${valor}`);
+      const tempo = String(Math.round((i / fsHz) * 1e6) / 1e6).replace('.', ',');
+      const valor = Number.isFinite(v) ? String(Math.round(v * 1000) / 1000).replace('.', ',') : '';
+      linhas.push(`${nome};${tempo};${valor}`);
     }
   }
-  return `${linhas.join('\n')}\n`;
+  return `${BOM_UTF8}${linhas.join('\n')}\n`;
 }

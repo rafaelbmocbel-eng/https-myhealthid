@@ -1069,6 +1069,34 @@ describe('ModuloSimulado: iniciar, parar e quadros brutos', () => {
     expect(rmsDe(trecho(x, 1000, 2.55, 4))).toBeLessThan(3);
   });
 
+  it('tempoS volta a 0 ao parar e vale 0 fora da aquisição: contrair(tempoS) antes de reiniciar cai no início', () => {
+    const modulo = new ModuloSimulado({ semente: 15 });
+    const p = ligar(modulo);
+    expect(modulo.tempoS).toBe(0);
+    modulo.receberComando(INICIAR_EMG);
+    modulo.avancar(1000);
+    modulo.avancar(1500);
+    expect(modulo.tempoS).toBe(2.5);
+
+    modulo.receberComando(PARAR);
+    expect(modulo.tempoS).toBe(0);
+    modulo.avancar(1000);
+    expect(modulo.tempoS).toBe(0);
+
+    // Parado, tempoS é o "agora" da próxima aquisição: a rajada começa no 1º ponto dela, não 2,5 s depois.
+    modulo.contrair(modulo.tempoS, 0.5, 200);
+    modulo.receberComando(INICIAR_EMG);
+    p.length = 0;
+    expect(modulo.tempoS).toBe(0);
+    modulo.avancar(250);
+    expect(modulo.tempoS).toBe(0.25);
+    modulo.avancar(1250);
+    expect(modulo.tempoS).toBe(1.5);
+    const x = emendar(brutos(decodificar(p).eventos));
+    expect(Math.abs(rmsDe(trecho(x, 1000, 0.05, 0.45)) / (200 / Math.SQRT2) - 1)).toBeLessThan(0.1);
+    expect(rmsDe(trecho(x, 1000, 0.55, 1.45))).toBeLessThan(3);
+  });
+
   it('rajadas agendadas valem em toda aquisição até limparContracoes()', () => {
     const modulo = new ModuloSimulado({ semente: 16 });
     const p = ligar(modulo);

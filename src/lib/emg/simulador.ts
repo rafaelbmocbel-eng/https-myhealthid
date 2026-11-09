@@ -558,7 +558,7 @@ export class ModuloSimulado {
     return this.emAquisicao;
   }
 
-  /** Segundos de sinal gerados desde o início da aquisição atual; é a base de tempo de contrair(). */
+  /** Segundos de sinal gerados desde o início da aquisição atual (0 fora dela); é a base de tempo de contrair(). */
   get tempoS(): number {
     return this.geradas / this.fsHz;
   }
@@ -720,6 +720,7 @@ export class ModuloSimulado {
     this.emAquisicao = false;
     this.gerador = null;
     this.noBuffer = 0;
+    this.geradas = 0;
   }
 
   private fecharQuadroBruto(indiceDaUltima: number): void {

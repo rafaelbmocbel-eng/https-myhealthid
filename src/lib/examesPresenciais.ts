@@ -23,7 +23,84 @@ export interface TipoExame {
   descricao: string;
   campos: CampoExame[];
   destaque?: string[];      // chaves mostradas no resumo curto da lista
+  // Linha curta montada de dados estruturados (ex.: a análise do EMG). Devolve
+  // null quando os dados faltam ou estão incompletos; aí vale o `destaque`.
+  resumoDeDados?: (dados: Record<string, unknown>) => string | null;
   nota?: string;            // aviso mostrado no card (ex.: pedir avaliação presencial)
+}
+
+function objeto(v: unknown): Record<string, unknown> | null {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
+function numeroFinito(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+function numeroOuNulo(v: unknown): v is number | null {
+  return v === null || numeroFinito(v);
+}
+
+function numeroPt(v: number, casas: number): string {
+  return v.toFixed(casas).replace('.', ',');
+}
+
+function uvTexto(v: number): string {
+  return numeroPt(v, v >= 100 ? 0 : 1);
+}
+
+const ROTULO_EMG_MAX = 60;
+
+// Mesma frase que o módulo de EMG grava em `resumo` (sessao.ts), lida de
+// dados.analise (DadosExameEmg v1). O texto do laudo em dados.resultado não tem
+// números e ocuparia a linha toda. Lê com cuidado: o JSON vem do banco e pode
+// ser de outra versão ou estar incompleto — nesse caso devolve null.
+function resumoCurtoEmg(dados: Record<string, unknown>): string | null {
+  const analise = objeto(dados.analise);
+  if (!analise || analise.versao !== 1) return null;
+  const r = objeto(analise.resumo);
+  const canal = r ? objeto(r.canal) : null;
+  if (!r || !canal) return null;
+
+  const { musculo, lado, id } = canal;
+  if (typeof musculo !== 'string') return null;
+  if (lado !== 'D' && lado !== 'E' && lado !== '-') return null;
+  if (musculo.trim() === '' && typeof id !== 'string') return null;
+
+  const { cvmUv, picoPctCvmMax, contracoes, duracaoTarefaS, linhaDeBase } = r;
+  if (!numeroOuNulo(cvmUv) || !numeroOuNulo(picoPctCvmMax) || !numeroFinito(duracaoTarefaS)) return null;
+  if (linhaDeBase !== null && !objeto(linhaDeBase)) return null;
+  if (!Array.isArray(contracoes)) return null;
+  const picos: number[] = [];
+  for (const c of contracoes) {
+    const pico = objeto(c)?.picoUv;
+    if (!numeroFinito(pico)) return null;
+    picos.push(pico);
+  }
+
+  const nome = musculo.trim() === '' ? `canal ${id}` : musculo.trim();
+  const base = nome.length > ROTULO_EMG_MAX ? `${nome.slice(0, ROTULO_EMG_MAX)}…` : nome;
+  const rotulo = lado === '-' ? base : `${base} ${lado}`;
+
+  const partes: string[] = [cvmUv === null ? 'sem CVM registrada' : `CVM de ${uvTexto(cvmUv)} µV`];
+  const n = picos.length;
+  if (duracaoTarefaS === 0) {
+    partes.push('tarefa não gravada');
+  } else if (linhaDeBase === null) {
+    partes.push('contrações não detectadas (sem repouso utilizável)');
+  } else if (n === 0) {
+    partes.push('nenhuma contração detectada na tarefa');
+  } else {
+    let texto = `${n} ${n === 1 ? 'contração' : 'contrações'}`;
+    if (picoPctCvmMax !== null) {
+      texto += `, pico de ${numeroPt(picoPctCvmMax, 0)} % da CVM`;
+    } else {
+      const maior = picos.reduce((a, b) => (b > a ? b : a), picos[0]);
+      texto += `, pico de ${uvTexto(maior)} µV absolutos (sem normalização pela CVM; não comparáveis entre pessoas ou sessões)`;
+    }
+    partes.push(texto);
+  }
+  return `EMG de superfície — ${rotulo}: ${partes.join('; ')}.`;
 }
 
 // Bioimpedância no formato dos aparelhos usados na clínica (composição global,
@@ -96,6 +173,18 @@ export const EXAMES_PRESENCIAIS: TipoExame[] = [
     nota: 'Pede avaliação presencial e interpretação por um profissional (ex.: fisioterapeuta).',
   },
   {
+    id: 'eletromiografia',
+    nome: 'Eletromiografia',
+    descricao: 'Atividade elétrica do músculo (EMG de superfície). Para medir com o módulo Bluetooth, use "Eletromiografia" em Aplicações; ou cole abaixo o texto do resultado.',
+    campos: [
+      { key: 'resultado', label: 'Resultado', tipo: 'textarea', placeholder: 'Cole aqui o texto do laudo da eletromiografia…' },
+      { key: 'observacoes', label: 'Observações', tipo: 'text', placeholder: 'Músculo, lado, posição, tipo de tarefa…' },
+    ],
+    destaque: ['resultado'],
+    resumoDeDados: resumoCurtoEmg,
+    nota: 'Pede interpretação por um profissional (ex.: fisioterapeuta).',
+  },
+  {
     id: 'baropodometria',
     nome: 'Baropodometria',
     descricao: 'Mapa de pressão plantar / distribuição de carga. Cole abaixo o texto do resultado.',
@@ -149,6 +238,8 @@ export function resumoExame(tipoId: string, dados: Record<string, unknown>): str
 export function resumoCurto(tipoId: string, dados: Record<string, unknown>): string {
   const t = tipoExame(tipoId);
   if (!t) return '';
+  const linha = t.resumoDeDados?.(dados);
+  if (linha) return linha;
   const chaves = t.destaque && t.destaque.length ? t.destaque : t.campos.slice(0, 3).map(c => c.key);
   const curto = (s: string) => (s.length > 90 ? `${s.slice(0, 90)}…` : s);
   const partes = chaves

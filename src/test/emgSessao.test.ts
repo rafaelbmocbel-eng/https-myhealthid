@@ -323,6 +323,22 @@ describe('GravadorDeSessao: gravação das etapas', () => {
     expect(g.finalizarEtapa().truncada).toBe(false);
   });
 
+  it('marcarCortada marca só a etapa em andamento: sem etapa não faz nada e a marca não passa para a próxima', () => {
+    const g = new GravadorDeSessao({ fsHz: FS, canal: CANAL });
+    g.marcarCortada();
+    g.iniciarEtapa('tarefa');
+    expect(g.finalizarEtapa().truncada).toBe(false);
+    g.iniciarEtapa('tarefa');
+    g.receber([1, 2, 3]);
+    g.marcarCortada();
+    const cortada = g.finalizarEtapa();
+    expect(cortada.truncada).toBe(true);
+    expect(cortada.amostras.length).toBe(3);
+    expect(g.resumo()?.avisos.join(' ')).toMatch(/atingiu o limite de 900 s e foi cortada/);
+    g.iniciarEtapa('tarefa');
+    expect(g.finalizarEtapa().truncada).toBe(false);
+  });
+
   it('resumo() usa só etapas finalizadas e bate com resumirSessao', () => {
     const g = new GravadorDeSessao({ fsHz: FS, canal: CANAL });
     const etapas = etapasPadrao();
@@ -407,8 +423,10 @@ describe('resumirSessao: sessão completa', () => {
     }
   });
 
-  it('sessão boa não traz avisos', () => {
-    expect(resumo.avisos).toEqual([]);
+  it('sessão boa só traz o aviso fixo de que a saturação não é verificada', () => {
+    expect(resumo.avisos).toEqual([
+      'A qualidade do sinal vale só para o repouso e foi medida depois do filtro. A saturação do sensor não é verificada na CVM nem na tarefa: se ele saturar na contração máxima, a CVM fica subestimada e o % da CVM, inflado.',
+    ]);
   });
 
   it('linha de base: limiar = média + k·desvio e piso = média + piso absoluto', () => {
@@ -496,8 +514,46 @@ describe('resumirSessao: CVM', () => {
     const curta = ruido(FS - 1, 80, 31);
     const r = resumirSessao([etapa('repouso', ruido(5 * FS, 2, 32)), etapa('cvm', curta)], FS, CANAL);
     expect(r.cvmUv).toBeNull();
-    expect(r.tentativasCvm).toBe(1);
+    expect(r.tentativasCvm).toBe(0);
+    expect(r.cvmPorTentativaUv).toEqual([]);
     expect(r.avisos.join(' ')).toMatch(/menos de 1 s: não foi possível calcular a CVM/);
+  });
+
+  it('tentativa de CVM com menos de 1 s é ignorada com aviso: sem 0 na lista, e o "Só N" conta as válidas', () => {
+    const e = etapasPadrao();
+    // Tentativas de 0,8 s, 5 s e 5 s: só as duas de 5 s valem.
+    const r = resumirSessao(
+      [
+        e[0],
+        etapa('cvm', comRajada(ruido(Math.round(0.8 * FS), 2, 33), 0, 0.8, 100)),
+        e[2],
+        e[3],
+      ],
+      FS,
+      CANAL,
+    );
+    expect(r.tentativasCvm).toBe(2);
+    expect(r.cvmPorTentativaUv.length).toBe(2);
+    expect(r.cvmPorTentativaUv.every((v) => v > 50)).toBe(true);
+    perto(r.cvmUv, 140 / RAIZ2, 0.02);
+    const avisos = r.avisos.join(' ');
+    expect(avisos).toContain('1 tentativa de CVM com menos de 1 s foi ignorada.');
+    expect(avisos).toContain(`Só 2 tentativas de CVM (o protocolo prevê ${PROTOCOLO_SESSAO.cvmTentativas})`);
+    const laudo = laudoTexto(r, CANAL);
+    expect(laudo).toMatch(/2 tentativas \([\d,]+ · [\d,]+ µV\)/);
+    expect(laudo).not.toMatch(/\b0,0 µV/);
+
+    // Com duas curtas o verbo vai para o plural; com 3 válidas mais uma curta não há "Só N".
+    const duasCurtas = resumirSessao(
+      [e[0], e[2], etapa('cvm', ruido(FS - 1, 2, 34)), etapa('cvm', ruido(10, 2, 35))],
+      FS,
+      CANAL,
+    ).avisos.join(' ');
+    expect(duasCurtas).toContain('2 tentativas de CVM com menos de 1 s foram ignoradas.');
+    const tresMaisUma = resumirSessao([e[0], e[1], e[2], e[3], etapa('cvm', ruido(FS - 1, 2, 36))], FS, CANAL);
+    expect(tresMaisUma.tentativasCvm).toBe(3);
+    expect(tresMaisUma.avisos.join(' ')).toContain('1 tentativa de CVM com menos de 1 s foi ignorada.');
+    expect(tresMaisUma.avisos.join(' ')).not.toMatch(/Só \d tentativas?/);
   });
 
   it('CVM colada no ruído de repouso avisa', () => {
@@ -522,6 +578,31 @@ describe('resumirSessao: CVM', () => {
     );
     expect(r.tentativasCvm).toBe(1);
     perto(r.cvmUv, 100 / RAIZ2, 0.03);
+  });
+});
+
+describe('resumirSessao: limites do que é verificado (saturação)', () => {
+  const AVISO_SATURACAO = /A qualidade do sinal vale só para o repouso e foi medida depois do filtro\. A saturação do sensor não é verificada na CVM nem na tarefa/;
+
+  it('com CVM ou tarefa gravada, o aviso diz que a qualidade é só do repouso filtrado e que a saturação não é verificada', () => {
+    const e = etapasPadrao();
+    expect(resumirSessao(e, FS, CANAL).avisos.join(' ')).toMatch(AVISO_SATURACAO);
+    expect(resumirSessao([e[0], e[1]], FS, CANAL).avisos.join(' ')).toMatch(AVISO_SATURACAO);
+    expect(resumirSessao([e[0], e[4]], FS, CANAL).avisos.join(' ')).toMatch(AVISO_SATURACAO);
+  });
+
+  it('sem CVM nem tarefa não há o que dizer: o aviso não aparece (só repouso, ou nada)', () => {
+    expect(resumirSessao([etapasPadrao()[0]], FS, CANAL).avisos.join(' ')).not.toMatch(/saturação/);
+    expect(resumirSessao([], FS, CANAL).avisos.join(' ')).not.toMatch(/saturação/);
+  });
+
+  it('o aviso chega ao laudo, mesmo com repouso "boa", e explica o efeito na CVM', () => {
+    const r = resumirSessao(etapasPadrao(), FS, CANAL);
+    expect(r.qualidade?.nivel).toBe('bom');
+    const t = laudoTexto(r, CANAL);
+    expect(t).toContain('qualidade do sinal: boa');
+    expect(t).toMatch(/Avisos do registro:\n- A qualidade do sinal vale só para o repouso/);
+    expect(t).toContain('a CVM fica subestimada e o % da CVM, inflado');
   });
 });
 
@@ -1047,8 +1128,12 @@ describe('resumoCurto', () => {
       contracoes: [contracao({ picoUv: 87.4, picoPctCvm: null }), contracao({ picoUv: 60, picoPctCvm: null })],
     });
     expect(resumoCurto(r, CANAL)).toBe(
-      'EMG de superfície — Quadríceps D: sem CVM registrada; 2 contrações, pico de 87,4 µV (sem CVM para normalizar).',
+      'EMG de superfície — Quadríceps D: sem CVM registrada; 2 contrações, pico de 87,4 µV absolutos (sem normalização pela CVM; não comparáveis entre pessoas ou sessões).',
     );
+  });
+
+  it('com CVM o resumo vem em % da CVM e não leva a ressalva de µV absolutos', () => {
+    expect(resumoCurto(resumoManual(), CANAL)).not.toMatch(/absolutos|comparáveis/);
   });
 
   it('descreve cada situação sem inventar contração', () => {
@@ -1123,7 +1208,9 @@ describe('laudoTexto', () => {
       contracoes: [contracao({ picoPctCvm: null, rmsMedioPctCvm: null })],
     });
     const t = laudoTexto(r, CANAL);
-    expect(t).toContain('CVM (contração voluntária máxima): não registrada; os valores ficam em µV, sem normalização.');
+    expect(t).toContain(
+      'CVM (contração voluntária máxima): não registrada; os valores ficam em µV absolutos, sem normalização pela CVM, e não são comparáveis entre pessoas nem entre sessões.',
+    );
     expect(t).toContain('1. início em 3,0 s, duração de 2,0 s, pico de 120 µV, RMS médio de 80,0 µV.');
     expect(t).not.toContain('Maior pico');
   });
@@ -1181,19 +1268,30 @@ describe('laudoTexto', () => {
 // ---------------------------------------------------------------------------
 
 describe('csvDoSinal', () => {
-  it('cabeçalho, nomes das etapas, tempo desde o início de cada etapa e decimal em ponto', () => {
+  // Excel em português do Brasil: separador ";", vírgula decimal e BOM UTF-8 no começo.
+  const BOM = String.fromCharCode(0xfeff);
+
+  it('cabeçalho, nomes das etapas, tempo desde o início de cada etapa, ";" entre colunas e vírgula decimal', () => {
     const csv = csvDoSinal([etapa('repouso', [1.5, -2.25]), etapa('tarefa', [3])], 500);
-    expect(csv).toBe('etapa,tempo_s,uv\nrepouso_1,0,1.5\nrepouso_1,0.002,-2.25\ntarefa_1,0,3\n');
+    expect(csv).toBe(`${BOM}etapa;tempo_s;sinal_uV\nrepouso_1;0;1,5\nrepouso_1;0,002;-2,25\ntarefa_1;0;3\n`);
+  });
+
+  it('começa com o BOM UTF-8 (EF BB BF) uma vez só, e o cabeçalho vem logo depois', () => {
+    const csv = csvDoSinal([etapa('tarefa', [1, 2])], 500);
+    expect(Array.from(new TextEncoder().encode(csv).slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+    expect(csv.indexOf(BOM)).toBe(0);
+    expect(csv.lastIndexOf(BOM)).toBe(0);
+    expect(csv.slice(1).split('\n')[0]).toBe('etapa;tempo_s;sinal_uV');
   });
 
   it('numera as etapas do mesmo tipo na ordem da lista', () => {
     const csv = csvDoSinal([etapa('cvm', [1]), etapa('cvm', [2]), etapa('tarefa', [3]), etapa('cvm', [4])], 1000);
     expect(csv.split('\n').filter(Boolean)).toEqual([
-      'etapa,tempo_s,uv',
-      'cvm_1,0,1',
-      'cvm_2,0,2',
-      'tarefa_1,0,3',
-      'cvm_3,0,4',
+      `${BOM}etapa;tempo_s;sinal_uV`,
+      'cvm_1;0;1',
+      'cvm_2;0;2',
+      'tarefa_1;0;3',
+      'cvm_3;0;4',
     ]);
   });
 
@@ -1204,34 +1302,35 @@ describe('csvDoSinal', () => {
 
   it('etapa vazia no meio não aparece, mas ocupa o número', () => {
     const csv = csvDoSinal([etapa('cvm', []), etapa('cvm', [7])], 500);
-    expect(csv).toBe('etapa,tempo_s,uv\ncvm_2,0,7\n');
+    expect(csv).toBe(`${BOM}etapa;tempo_s;sinal_uV\ncvm_2;0;7\n`);
   });
 
-  it('toda linha tem 3 campos (nunca vírgula decimal) e dá para ler de volta', () => {
+  it('toda linha tem 3 campos separados por ";" (nunca ponto decimal) e dá para ler de volta', () => {
     const x = ruido(1000, 12.3456, 9);
     const csv = csvDoSinal([etapa('tarefa', x)], 500);
     const linhas = csv.trimEnd().split('\n');
     expect(linhas.length).toBe(x.length + 1);
     for (let i = 1; i < linhas.length; i++) {
-      const campos = linhas[i].split(',');
+      expect(linhas[i]).not.toContain('.');
+      const campos = linhas[i].split(';');
       expect(campos.length).toBe(3);
       expect(campos[0]).toBe('tarefa_1');
-      expect(Number(campos[1])).toBeCloseTo((i - 1) / 500, 9);
-      expect(Math.abs(Number(campos[2]) - x[i - 1])).toBeLessThanOrEqual(0.0005 + 1e-9);
+      expect(Number(campos[1].replace(',', '.'))).toBeCloseTo((i - 1) / 500, 9);
+      expect(Math.abs(Number(campos[2].replace(',', '.')) - x[i - 1])).toBeLessThanOrEqual(0.0005 + 1e-9);
     }
   });
 
   it('arredonda µV a 3 casas e o tempo a 1 µs, sem notação científica', () => {
     const csv = csvDoSinal([etapa('tarefa', [1.23456, 0.0004, 123456.789123])], 333);
-    expect(csv.split('\n')[1]).toBe('tarefa_1,0,1.235');
-    expect(csv.split('\n')[2]).toBe('tarefa_1,0.003003,0');
-    expect(csv.split('\n')[3]).toBe('tarefa_1,0.006006,123456.789');
+    expect(csv.split('\n')[1]).toBe('tarefa_1;0;1,235');
+    expect(csv.split('\n')[2]).toBe('tarefa_1;0,003003;0');
+    expect(csv.split('\n')[3]).toBe('tarefa_1;0,006006;123456,789');
     expect(csv).not.toMatch(/e[+-]?\d/);
   });
 
   it('amostra não finita vira célula vazia', () => {
     const csv = csvDoSinal([etapa('tarefa', [NaN, Infinity, -Infinity, 2])], 500);
-    expect(csv.split('\n').slice(1, 5)).toEqual(['tarefa_1,0,', 'tarefa_1,0.002,', 'tarefa_1,0.004,', 'tarefa_1,0.006,2']);
+    expect(csv.split('\n').slice(1, 5)).toEqual(['tarefa_1;0;', 'tarefa_1;0,002;', 'tarefa_1;0,004;', 'tarefa_1;0,006;2']);
   });
 
   it('fsHz inválido lança RangeError', () => {
@@ -1247,7 +1346,7 @@ describe('csvDoSinal', () => {
     g.iniciarEtapa('tarefa');
     g.receber([3]);
     g.finalizarEtapa();
-    expect(csvDoSinal(g.etapas, FS)).toBe('etapa,tempo_s,uv\nrepouso_1,0,1\nrepouso_1,0.002,2\ntarefa_1,0,3\n');
+    expect(csvDoSinal(g.etapas, FS)).toBe(`${BOM}etapa;tempo_s;sinal_uV\nrepouso_1;0;1\nrepouso_1;0,002;2\ntarefa_1;0;3\n`);
   });
 });
 

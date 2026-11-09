@@ -22,9 +22,10 @@
 //   zera o filtro e retoma a aquisição se estava adquirindo (se o usuário pediu parar() durante a queda,
 //   manda parar ao voltar). Os quadros do intervalo se perdem: o salto do carimbo aparece em
 //   `lacunasSuspeitas`, e o sinal não é preenchido.
-// - desconectar() manda "parar" antes de soltar o Bluetooth quando estava adquirindo (melhor
-//   esforço, não bloqueia) e não deixa ouvinte nenhum para trás. Os ouvintes de quem usa o serviço
-//   (onAmostras etc.) ficam: quem se inscreveu é quem cancela.
+// - desconectar() manda "parar" antes de soltar o Bluetooth quando estava adquirindo ou quando um
+//   parar() ainda não saiu da fila (melhor esforço, não bloqueia, espera no máximo 1,5 s) e não deixa
+//   ouvinte nenhum para trás. Os ouvintes de quem usa o serviço (onAmostras etc.) ficam: quem se
+//   inscreveu é quem cancela.
 // - Contadores e diagnóstico valem desde o último conectar() e atravessam as reconexões.
 // - `brutas` e `filtradas` de onAmostras são entregues sem cópia a todos os inscritos: não alterar.
 //
@@ -302,6 +303,11 @@ export class ModuloEmg {
   /** Sobe a cada iniciar() e parar(): um iniciar() que perdeu a vez não manda nada. */
   private ordemAquisicao = 0;
   private aquisicaoPedida = false;
+  /**
+   * Um "iniciar" já foi gravado e nenhum "parar" depois. parar() zera aquisicaoPedida na hora, mas o
+   * comando só sai quando a fila chega nele: desconectar() olha este campo para não soltar o módulo adquirindo.
+   */
+  private moduloPodeEstarAdquirindo = false;
   /** parar() foi pedido sem conexão, durante uma reconexão: o módulo pode ter seguido adquirindo, então manda parar ao voltar. */
   private pararAoReconectar = false;
   private conectandoAgora: Promise<void> | null = null;
@@ -441,8 +447,9 @@ export class ModuloEmg {
   }
 
   /**
-   * Fecha a conexão a pedido do usuário: não reconecta. Se estava adquirindo, manda "parar" antes de
-   * soltar (sem esperar) e tira todos os ouvintes do Bluetooth e da tela.
+   * Fecha a conexão a pedido do usuário: não reconecta. Se estava adquirindo (ou um parar() ainda não
+   * saiu), manda "parar" antes de soltar, sem bloquear quem chamou e esperando no máximo 1,5 s, e tira
+   * todos os ouvintes do Bluetooth e da tela.
    */
   desconectar(): void {
     this.geracao++;
@@ -450,7 +457,7 @@ export class ModuloEmg {
     const sessao = this.sessao;
     const dispositivo = this.dispositivo;
     const escrita = sessao?.ativa ? sessao.escrita : null;
-    const pararAntes = this.aquisicaoPedida && escrita !== null;
+    const pararAntes = (this.aquisicaoPedida || this.moduloPodeEstarAdquirindo) && escrita !== null;
     this.liberar(undefined);
     if (!dispositivo) return;
     if (pararAntes && escrita) {
@@ -599,6 +606,7 @@ export class ModuloEmg {
   private liberar(erro: string | undefined): void {
     const dispositivo = this.dispositivo;
     this.aquisicaoPedida = false;
+    this.moduloPodeEstarAdquirindo = false;
     this.pararAoReconectar = false;
     this.encerrarSessao(this.sessao);
     try {
@@ -624,9 +632,10 @@ export class ModuloEmg {
   private async pararEDesligar(dispositivo: DispositivoBle, escrita: CaracteristicaBle): Promise<void> {
     try {
       const dados = cmd.parar(this.agora());
-      const operacao = escrita.properties.writeWithoutResponse
-        ? escrita.writeValueWithoutResponse(dados)
-        : escrita.writeValue(dados);
+      // Atrás da fila: o Chrome recusa duas escritas ao mesmo tempo, e o parar() que acabou de sair pode estar no meio da dele.
+      const operacao = this.fila.then(() =>
+        escrita.properties.writeWithoutResponse ? escrita.writeValueWithoutResponse(dados) : escrita.writeValue(dados),
+      );
       await Promise.race([operacao, this.esperar(LIMITE_ESCRITA_MS)]);
     } catch (erro) {
       this.registrar(`não consegui mandar parar ao desconectar: ${mensagemDe(erro)}`);
@@ -663,13 +672,18 @@ export class ModuloEmg {
         await this.rodarHandshake(sessao);
         if (this.geracao !== g) return;
         if (!sessao.ativa) throw new Error("a conexão caiu de novo durante a configuração");
+        // Um parar() que falhou na escrita deixa o módulo possivelmente adquirindo: a queda seguinte não pode esquecê-lo.
+        const eraParar = !this.aquisicaoPedida && (this.pararAoReconectar || this.moduloPodeEstarAdquirindo);
         if (this.aquisicaoPedida) {
           await this.enviarIniciar(sessao);
-        } else if (this.pararAoReconectar) {
+        } else if (eraParar) {
           await this.enviarParar(sessao);
-          this.pararAoReconectar = false;
         }
         if (this.geracao !== g) return;
+        // Se o link caiu enquanto esperava o ACK, o envio termina sem erro (aoCair() resolve o ACK com false),
+        // mas aoCair() não agenda nada no estado "reconectando": só este laço pode tentar de novo.
+        if (!sessao.ativa) throw new Error("a conexão caiu de novo antes da confirmação");
+        if (eraParar) this.pararAoReconectar = false;
         this.registrar(`reconectado na tentativa ${i + 1}`);
         this.definirEstado(this.aquisicaoPedida ? "adquirindo" : "conectado");
         void this.lerVersoes(sessao);
@@ -820,6 +834,7 @@ export class ModuloEmg {
   private async enviarIniciar(sessao: Sessao): Promise<void> {
     const envio = this.enviar(sessao, cmd.iniciar(MODO.EMG, this.agora()));
     await envio.gravado;
+    this.moduloPodeEstarAdquirindo = true;
     await envio.confirmado;
   }
 
@@ -836,9 +851,12 @@ export class ModuloEmg {
       if (this.estado === "reconectando") this.pararAoReconectar = true;
       return;
     }
+    const g = this.geracao;
     try {
       await this.enviarParar(sessao);
     } catch (erro) {
+      // desconectar() chegou antes de a escrita sair e manda o próprio "parar" (pararEDesligar): quem pediu não falhou.
+      if (this.geracao !== g) return;
       throw new Error(`Não consegui mandar o módulo parar: ${mensagemDe(erro)}`);
     }
   }
@@ -846,6 +864,7 @@ export class ModuloEmg {
   private async enviarParar(sessao: Sessao): Promise<void> {
     const envio = this.enviar(sessao, cmd.parar(this.agora()));
     await envio.gravado;
+    this.moduloPodeEstarAdquirindo = false;
     await envio.confirmado;
   }
 
@@ -1140,6 +1159,7 @@ export class ModuloEmg {
     this.erro = undefined;
     this.filtro = null;
     this.ultimoTsMs = null;
+    this.moduloPodeEstarAdquirindo = false;
     this.pararAoReconectar = false;
     this.acumulador.reset();
   }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutGrid, Dumbbell, Search, Loader2, ChevronRight, ArrowLeft, UserPlus, UserRound, Zap, Ruler } from 'lucide-react';
+import { LayoutGrid, Dumbbell, Search, Loader2, ChevronRight, ArrowLeft, UserPlus, UserRound, Zap, Ruler, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { PageHeader } from '@/components/ui/page-header';
@@ -62,6 +62,16 @@ const APLICACOES: Aplicacao[] = [
     cor: 'from-violet-500/20 to-violet-500/5 text-violet-700 ring-violet-500/25 dark:text-violet-300',
     rota: id => `/analise-angular?paciente=${id}`,
     rotaDireta: '/analise-angular',
+  },
+  {
+    id: 'eletromiografia',
+    nome: 'Eletromiografia',
+    curto: 'Eletromiografia',
+    descricao: 'Sensor Bluetooth de EMG: repouso, contração máxima e tarefa, com o sinal ao vivo e o resultado em % da contração máxima.',
+    icone: Activity,
+    cor: 'from-rose-500/20 to-rose-500/5 text-rose-700 ring-rose-500/25 dark:text-rose-300',
+    rota: id => `/eletromiografia?paciente=${id}`,
+    rotaDireta: '/eletromiografia',
   },
 ];
 
