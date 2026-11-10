@@ -140,3 +140,30 @@ Feita sem acesso ao aparelho e **sem os fontes `.dart`** (só o índice deles ch
 4. **Carimbo de tempo do quadro bruto:** descrito só para o RMS (instante do último ponto).
 5. **Tipo de hardware (`0x1D`)**: o app não pede; na dúvida enviar o modo `0x03` direto (item 5.2).
 6. **Rede elétrica:** o comb de 50 Hz do fabricante não serve no Brasil; usar notch em 60/120/180 Hz (nosso filtro é projetado por código).
+
+## 7. Conferência com uma gravação real (exportada do app do fabricante em 08/11/2026)
+
+O Rafael mandou uma exportação do app do fabricante: 190.200 amostras já decodificadas (índice, valor), modo
+"standard", sem filtro do app (há muita energia abaixo de 20 Hz). Não tem os bytes do quadro, só as amostras.
+Analisada por script, sem o aparelho. O que ela **confirma**:
+
+- **Taxa de 1000 Hz.** A rede elétrica aparece em **59,8 Hz** e o 2º harmônico em **119,7 Hz** (razão 2,00) quando se
+  lê a gravação a 1000 Hz. A 500 Hz seriam tons de 30 e 60 Hz, sem sentido. Duração: 190,2 s. A taxa real fica a
+  menos de 0,5 % de 1000 Hz (59,8 contra 60,00 Hz da rede: ou a rede, ou o relógio do módulo).
+- **Divisor 3,1457 certo.** 99,1 % das diferenças entre amostras vizinhas são múltiplos inteiros de 1/3,1457 µV
+  (tolerância de 0,02 µV pelo arredondamento do arquivo). É a marca de `delta int16 / 3,1457`.
+- **Quadros de 100 amostras (100 ms a 1 kHz).** Há um salto fora dessa grade exatamente a cada 100 amostras
+  (a base `float32` de cada quadro). Isso **não decide** a dúvida 2 (n ou n+1 amostras): 100 amostras por quadro
+  servem às duas leituras. Conferir com o aparelho: em "Ver dados recebidos", amostras ÷ lotes deve dar **100**.
+  Se der 101, desligar "Quadro bruto traz a amostra-base".
+- **Rede de 60 Hz é real e varia.** Num repouso limpo ela é 0,2 % da potência; em outros trechos chega a 20–38 µV
+  de amplitude. O notch de 60/120/180 Hz do app é necessário, e o comb de 50 Hz do fabricante não resolveria.
+
+O que ela **não resolve**: a **unidade**. O piso de ruído em repouso (3,9 µV RMS acima de 20 Hz em 5 s) é típico de
+µV, mas a gravação tem picos de ±46 a +70 mV em 26 s (> 10 mV), grandes demais para EMG de superfície comum:
+parecem artefato de movimento do cabo ou do eletrodo. Continua "µV provável"; comparar em % da CVM e olhar o sinal.
+
+Rodando o filtro e as métricas do app nessa gravação: o ganho do filtro em 60/120/180 Hz é de −269/−283/−285 dB,
+em 20 Hz é −3,0 dB (como projetado); o repouso mais limpo sai com qualidade "boa" (ruído basal 2,9 µV, rede 0,009 %);
+nenhuma das 38 janelas de 5 s foi marcada como saturada (o máximo e o mínimo aparecem uma vez só: não há platô).
+

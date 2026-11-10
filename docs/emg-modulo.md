@@ -82,13 +82,18 @@ Até alguém testar com o aparelho, esses pontos são **suposições** (tabela a
 vem do módulo; se ele não responder em 4 s, a tela **assume 500 Hz** e mostra o aviso **"Taxa assumida"**
 (uma resposta que chegue depois corrige).
 
+**Já confirmado por uma gravação real** (exportada do app do fabricante em 08/11/2026; detalhes na seção 7 de
+`docs/emg-protocolo-runew2.md`): taxa de **1000 Hz**; divisor **3,1457** certo; quadros de **100 amostras**
+(100 ms); rede de **60 Hz** presente, de 0,2 % a 38 µV conforme o trecho. Ficam sem confirmação a unidade e a
+dúvida n ou n+1 amostras por quadro: em "Ver dados recebidos", amostras ÷ lotes deve dar 100.
+
 ### O que a tela faz com cada dúvida (e como mudar sem publicar versão)
 
 | Dúvida | O que a tela supõe | Como conferir ou mudar |
 |---|---|---|
 | 1. Byte antes do `5A` | o decodificador aceita com ou sem o byte extra | contadores "Quadros inválidos" e "Bytes descartados" em "Ver dados recebidos" |
 | 2. 1ª amostra do quadro | emite a amostra-base (`n + 1` amostras) | **Ajustes para o teste › Quadro bruto traz a amostra-base** (desligue e conecte de novo) |
-| 3. Unidade | µV; o laudo diz que µV absoluto depende de eletrodo, pele e posição | comparar em **% da CVM** do próprio paciente |
+| 3. Unidade | µV; o laudo diz que µV absoluto depende de eletrodo, pele e posição. O piso de ruído da gravação real (3–5 µV) é típico de µV, mas ela tem picos de dezenas de mV (parecem artefato) | comparar em **% da CVM** do próprio paciente |
 | 4. Carimbo do quadro | só diagnóstico: conta "lacunas suspeitas", **nunca** altera o sinal | contador "Lacunas suspeitas" e as linhas do diagnóstico |
 | 5. Tipo `0x1D` | manda o modo `0x03` direto; se o módulo responder que é EEG, recusa | linha "Tipo do módulo (0x1D)" no diagnóstico |
 | 6. Rede elétrica | 60 Hz (Brasil) | **Ajustes para o teste › Rede elétrica** (50 Hz); vale na próxima conexão |
