@@ -1,4 +1,5 @@
 import { MEDIDAS, nomeDoResultado } from './medidas';
+import { ROTULO_VISTA_SESSAO, VISTAS_DA_SESSAO, type VistaSessao } from './tiposSessao';
 
 export type UnidadeMedida = 'cm' | '%';
 
@@ -175,3 +176,141 @@ export const medidasParaExportar = (linhas: LinhaPareada[]): MedidaExportada[] =
     const valor = valorParaExportar(l);
     return valor ? [{ nome: l.nome, valor }] : [];
   });
+
+// ---------------------------------------------------------------------------
+// Comparação de duas sessões (avaliações) posição por posição: frente, perfis e costas.
+// ---------------------------------------------------------------------------
+
+/** Posição de uma nota: as quatro da sessão mais o perfil de nota antiga, que nunca teve o lado gravado. */
+export type PosicaoDaNota = VistaSessao | 'perfil_sem_lado';
+
+/** Ordem de exibição: a ordem de fotografar e, por último, o perfil sem lado informado. */
+export const POSICOES_DA_NOTA: readonly PosicaoDaNota[] = [...VISTAS_DA_SESSAO, 'perfil_sem_lado'];
+
+export const ROTULO_POSICAO_DA_NOTA: Record<PosicaoDaNota, string> = {
+  ...ROTULO_VISTA_SESSAO,
+  perfil_sem_lado: 'Perfil (lado não informado)',
+};
+
+/** O que a comparação precisa de uma posição: as medidas e a correção de nível da foto. */
+export interface PosicaoParaComparar {
+  medidas: MedidaSalva[];
+  /** Correção de nível da foto, em graus. null, 0 ou ausente = sem correção registrada. */
+  nivelGraus?: number | null;
+}
+
+/** Uma avaliação para comparar: as posições feitas e o esquema (versão do formato) em que foram gravadas. */
+export interface SessaoParaComparar {
+  esquema?: number;
+  posicoes: Partial<Record<PosicaoDaNota, PosicaoParaComparar>>;
+}
+
+export interface LinhaSessao extends LinhaPareada {
+  /** Por que a linha não tem diferença numérica (ou que a medida é nova); null quando é só a subtração. */
+  explicacao: string | null;
+}
+
+export type SituacaoPosicao = 'ambas' | 'so_atual' | 'so_anterior';
+
+export type TipoAviso = 'nivel_diferente' | 'posicao_ausente' | 'esquemas_diferentes' | 'perfil_sem_lado';
+
+/** Aviso neutro: descreve uma diferença entre as avaliações sem julgá-la e sem exigir valor de referência. */
+export interface AvisoComparacao {
+  tipo: TipoAviso;
+  posicao?: PosicaoDaNota;
+  texto: string;
+}
+
+export interface ComparacaoPosicao {
+  posicao: PosicaoDaNota;
+  rotulo: string;
+  situacao: SituacaoPosicao;
+  /** Medidas pareadas (anterior → atual); vazio quando a posição só existe em uma das avaliações. */
+  linhas: LinhaSessao[];
+  avisos: AvisoComparacao[];
+}
+
+export interface ComparacaoSessoes {
+  /** Só as posições que existem em pelo menos uma das duas, na ordem de POSICOES_DA_NOTA. */
+  posicoes: ComparacaoPosicao[];
+  /** Avisos que valem para a comparação toda (formatos diferentes, perfil sem lado). */
+  avisos: AvisoComparacao[];
+  textoNaoClassifica: typeof TEXTO_NAO_CLASSIFICA;
+}
+
+/** Frase de uma linha da comparação entre sessões; null quando a linha é só a subtração. */
+export function explicacaoDaLinhaSessao(l: Pick<LinhaPareada, 'motivo' | 'sentidoAntes' | 'sentidoDepois'>): string | null {
+  switch (l.motivo) {
+    case 'falta-depois': return 'Estava marcada na avaliação anterior; falta marcar agora.';
+    case 'falta-antes': return 'Não estava marcada na avaliação anterior.';
+    case 'unidades-diferentes': return 'As duas avaliações têm unidades diferentes (° e cm): não dá para subtrair.';
+    case 'lado-trocado': return motivoTexto(l);
+    default: return null;
+  }
+}
+
+const nivelCorrigido = (n: number | null | undefined) => typeof n === 'number' && Number.isFinite(n) && n !== 0;
+const temMedidas = (p: PosicaoParaComparar | undefined): p is PosicaoParaComparar => !!p && p.medidas.length > 0;
+// Posição sem nenhuma medida não conta como feita.
+const feita = (s: SessaoParaComparar, posicao: PosicaoDaNota) => {
+  const p = s.posicoes[posicao];
+  return temMedidas(p) ? p : undefined;
+};
+
+function avisoDeNivel(posicao: PosicaoDaNota, atual: PosicaoParaComparar, anterior: PosicaoParaComparar): AvisoComparacao | null {
+  const a = nivelCorrigido(atual.nivelGraus), b = nivelCorrigido(anterior.nivelGraus);
+  if (a === b) return null;
+  const quem = a ? 'nesta avaliação' : 'na avaliação anterior';
+  const outra = a ? 'na anterior' : 'nesta';
+  const graus = Math.abs((a ? atual.nivelGraus : anterior.nivelGraus) as number);
+  return {
+    tipo: 'nivel_diferente', posicao,
+    texto: `${ROTULO_POSICAO_DA_NOTA[posicao]}: ${quem} a foto foi nivelada (correção de ${num(graus)}°); ${outra} não consta correção de nível. Os ângulos podem não ser comparáveis.`,
+  };
+}
+
+/**
+ * Compara duas avaliações posição por posição. Cada posição presente nas duas usa `parearMedidas`
+ * (a mesma regra do comparador de fotos: nunca mistura unidades nem lados opostos). Posição de uma
+ * só avaliação vira `so_atual` ou `so_anterior`; medida que só existia antes aparece como "falta marcar agora".
+ * O perfil de nota antiga (sem lado) só se compara com outro perfil sem lado, nunca com perfil direito ou esquerdo.
+ * Não classifica nada como melhora ou piora.
+ */
+export function compararSessoes(atual: SessaoParaComparar, anterior: SessaoParaComparar): ComparacaoSessoes {
+  const posicoes: ComparacaoPosicao[] = [];
+  for (const posicao of POSICOES_DA_NOTA) {
+    const a = feita(atual, posicao), b = feita(anterior, posicao);
+    if (!a && !b) continue;
+    const rotulo = ROTULO_POSICAO_DA_NOTA[posicao];
+    if (!b) {
+      posicoes.push({ posicao, rotulo, situacao: 'so_atual', linhas: [], avisos: [{ tipo: 'posicao_ausente', posicao, texto: `${rotulo}: só nesta avaliação; a anterior não tem essa posição.` }] });
+      continue;
+    }
+    if (!a) {
+      posicoes.push({ posicao, rotulo, situacao: 'so_anterior', linhas: [], avisos: [{ tipo: 'posicao_ausente', posicao, texto: `${rotulo}: estava na avaliação anterior e ainda não foi feita nesta.` }] });
+      continue;
+    }
+    const linhas = parearMedidas(b.medidas, a.medidas).map((l) => ({ ...l, explicacao: explicacaoDaLinhaSessao(l) }));
+    const avisos: AvisoComparacao[] = [];
+    if (posicao === 'perfil_sem_lado') {
+      avisos.push({ tipo: 'perfil_sem_lado', posicao, texto: 'Perfil sem lado informado nas duas avaliações: confirme que é o mesmo lado antes de comparar.' });
+    }
+    const nivel = avisoDeNivel(posicao, a, b);
+    if (nivel) avisos.push(nivel);
+    posicoes.push({ posicao, rotulo, situacao: 'ambas', linhas, avisos });
+  }
+
+  const avisos: AvisoComparacao[] = [];
+  if (typeof atual.esquema === 'number' && typeof anterior.esquema === 'number' && atual.esquema !== anterior.esquema) {
+    avisos.push({
+      tipo: 'esquemas_diferentes',
+      texto: `As avaliações foram salvas em versões diferentes do aplicativo (formato ${atual.esquema} e formato ${anterior.esquema}): algumas medidas podem existir só em uma delas.`,
+    });
+  }
+  const comLado = (s: SessaoParaComparar) => !!feita(s, 'perfil_d') || !!feita(s, 'perfil_e');
+  const semLado = (s: SessaoParaComparar) => !!feita(s, 'perfil_sem_lado');
+  if ((semLado(atual) && !semLado(anterior) && comLado(anterior)) || (semLado(anterior) && !semLado(atual) && comLado(atual))) {
+    avisos.push({ tipo: 'perfil_sem_lado', texto: 'Perfil sem lado informado (avaliação antiga) não é comparado com perfil direito ou esquerdo: não dá para saber de que lado foi a foto.' });
+  }
+  return { posicoes, avisos, textoNaoClassifica: TEXTO_NAO_CLASSIFICA };
+}

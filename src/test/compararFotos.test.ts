@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  compararMedidas, grau, medidasParaComparar, medidasParaExportar, motivoTexto, parearMedidas, sentidoDe,
+  compararMedidas, compararSessoes, grau, medidasParaComparar, medidasParaExportar, motivoTexto, parearMedidas, sentidoDe,
   sentidoDoTexto, valorParaExportar, variacaoTexto, type MedidaSalva,
 } from '@/lib/angular/comparar';
 import { ajustarNaCaixa, dataBR, fracaoDeRolagem, hojeISO, posicaoDeRolagem, razaoDaCaixa } from '@/lib/angular/compararLayout';
@@ -198,3 +198,37 @@ describe('layout das duas fotos', () => {
   });
 });
 
+describe('compararSessoes reaproveita a regra do comparador de fotos', () => {
+  const posicao = (antes: MedidaSalva[], depois: MedidaSalva[]) =>
+    compararSessoes({ posicoes: { frente: { medidas: depois } } }, { posicoes: { frente: { medidas: antes } } }).posicoes[0].linhas;
+
+  it('mesma ordem do catálogo e mesma diferença que parearMedidas (depois − antes)', () => {
+    const antes = [m('desconhecida', 1), m('joelho', 170.4), m('ombros', 3.1)];
+    const depois = [m('ombros', 1.2), m('joelho', 176.1)];
+    const linhas = posicao(antes, depois);
+    expect(linhas.map((l) => l.id)).toEqual(['ombros', 'joelho', 'desconhecida']);
+    expect(linhas.map((l) => l.diferenca)).toEqual([-1.9, 5.7, null]);
+    expect(linhas.map((l) => l.diferenca)).toEqual(parearMedidas(antes, depois).map((l) => l.diferenca));
+  });
+
+  it('não subtrai unidades diferentes nem desníveis de lados opostos', () => {
+    const [regua] = posicao([m('regua', 20, { unidade: 'cm' })], [m('regua', 12)]);
+    expect(regua.diferenca).toBeNull();
+    expect(regua.motivo).toBe('unidades-diferentes');
+    const [ombros] = posicao([m('ombros', 3, { texto: TEXTO_D })], [m('ombros', 2, { texto: TEXTO_E })]);
+    expect(ombros.diferenca).toBeNull();
+    expect(ombros.motivo).toBe('lado-trocado');
+  });
+
+  it('mesmo valor nas duas não vira -0', () => {
+    const [l] = posicao([m('joelho', 170)], [m('joelho', 170.04)]);
+    expect(Object.is(l.diferenca, 0)).toBe(true);
+  });
+
+  it('compararMedidas segue devolvendo a medida que só existia antes (quem esconde é a tela)', () => {
+    const linhas = compararMedidas([m('ombros', 1)], [m('ombros', 2), m('pelve', 3)]);
+    expect(linhas.map((l) => l.id)).toEqual(['ombros', 'pelve']);
+    expect(linhas[1].atual).toBeNull();
+    expect(linhas[1].variacao).toBeNull();
+  });
+});
