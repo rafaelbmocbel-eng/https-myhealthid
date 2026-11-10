@@ -52,7 +52,7 @@ export function papeisDaMedida(tipo?: TipoDesenho): PapelPonto[] {
   switch (tipo) {
     case 'angulo3': case 'angulo-q': return ['a', 'v', 'b'];
     case 'compasso': return ['v', 'a', 'b'];
-    case 'compasso-ref': return ['v', 'a'];
+    case 'compasso-ref': case 'segmento-vertical': return ['v', 'a'];
     case 'retas': return ['a', 'a', 'b', 'b'];
     case 'prumo': return ['v', 'a', 'a', 'a', 'a'];
     default: return ['a', 'b', 'b', 'b'];
@@ -320,6 +320,11 @@ export function itensDaMedida(m: Medida, p: Ponto[], rot: RotulosDaMedida, c: Co
       const ref = REFS_COMPASSO.find((r) => r.id === (o.refCompasso ?? 'baixo')) ?? REFS_COMPASSO[0];
       const fim = soma(p[0], mult(direcaoNaImagem(ref.vetor, c.giro), dist(p[0], p[1])));
       return [...blocoAngular(p[0], p[1], fim, c, { texto, grupo: g }), itemPonto(p[0], papeis[0], c, { grupo: g }), itemPonto(p[1], papeis[1], c, { grupo: g })];
+    }
+    case 'segmento-vertical': {
+      // O primeiro ponto é o vértice; a referência (vertical para baixo, acompanhando o nível) sai tracejada dele.
+      const fim = soma(p[0], mult(direcaoNaImagem({ x: 0, y: 1 }, c.giro), dist(p[0], p[1])));
+      return [...blocoAngular(p[0], p[1], fim, c, { texto, tracejadoB: true, grupo: g }), itemPonto(p[0], papeis[0], c, { grupo: g }), itemPonto(p[1], papeis[1], c, { grupo: g })];
     }
     case 'angulo-q': {
       const prolongado = soma(p[1], mult(unit(sub(p[1], p[0])), dist(p[1], p[2])));

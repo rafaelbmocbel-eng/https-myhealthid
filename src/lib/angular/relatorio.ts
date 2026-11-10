@@ -4,9 +4,37 @@ import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { nomeDocumento } from '@/lib/pdf/entrega';
 import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import { compararMedidas, grau, variacaoTexto, type MedidaSalva } from './comparar';
-import { nomeDoResultado, type Ponto } from './medidas';
+import { nomeDoResultado } from './medidas';
 
-const seguro = (s: string) => String(s).replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/−/g, '-').replace(/–/g, '-').replace(/—/g, '-').replace(/·/g, '-');
+export const AZUL: [number, number, number] = [30, 58, 95];
+export const CAB: [number, number, number] = [230, 237, 245];
+export const BORDA: [number, number, number] = [208, 214, 222];
+export const DOURADO: [number, number, number] = [234, 170, 20];
+
+/** Troca os caracteres que a Helvetica do PDF não desenha por equivalentes simples. */
+export const seguro = (s: string) => String(s).replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/−/g, '-').replace(/–/g, '-').replace(/—/g, '-').replace(/·/g, '-').replace(/→/g, '>').replace(/≈/g, '~').replace(/[‐‑]/g, '-').replace(/[“”″]/g, '"').replace(/[‘’′]/g, "'");
+
+/** Cabeçalho comum dos relatórios angulares: logo, título, paciente e filete dourado. Devolve o y onde o conteúdo começa. */
+export async function cabecalhoDoRelatorio(doc: jsPDF, o: { titulo: string; paciente: string; subtitulo: string; logoUrl?: string }): Promise<number> {
+  const W = 210, M = 14;
+  let y = 18;
+  try { await addLogoToDoc(doc, W - M - 16, 10, 16, o.logoUrl); } catch { /* logo é opcional */ }
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...AZUL); doc.text(seguro(o.titulo), M, y); y += 7;
+  doc.setFontSize(11.5); doc.setTextColor(20); doc.text(seguro(o.paciente), M, y); y += 5;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90);
+  doc.text(seguro(o.subtitulo), M, y); y += 4;
+  doc.setDrawColor(...DOURADO); doc.setLineWidth(0.5); doc.line(M, y, M + 28, y);
+  doc.setDrawColor(...BORDA); doc.setLineWidth(0.25); doc.line(M + 28, y, W - M, y); y += 7;
+  doc.setTextColor(20);
+  return y;
+}
+
+/** Título de seção: barrinha azul e texto em negrito na linha de base `y`. */
+export function tituloDeSecao(doc: jsPDF, txt: string, y: number) {
+  const M = 14;
+  doc.setFillColor(...AZUL); doc.roundedRect(M, y - 3.6, 1.4, 5, 0.7, 0.7, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...AZUL); doc.text(seguro(txt), M + 4, y); doc.setTextColor(20);
+}
 
 export interface DadosRelatorioAngular {
   paciente: string;
@@ -26,50 +54,6 @@ export interface DadosRelatorioAngular {
 
 const dataArquivo = (br: string) => br.split('/').reverse().join('-');
 
-export interface GrupoDesenho { pontos: Ponto[]; segmentos: [number, number][]; cor: string; rotulo?: string }
-
-/** Desenha a foto com as retas, os pontos e os valores marcados e devolve um JPEG reduzido (data URL). */
-export function fotoComMarcacoes(img: HTMLImageElement | HTMLVideoElement, grupos: GrupoDesenho[], larguraMax = 1100): { url: string; w: number; h: number } | null {
-  const largura = img instanceof HTMLVideoElement ? img.videoWidth : img.naturalWidth;
-  const altura = img instanceof HTMLVideoElement ? img.videoHeight : img.naturalHeight;
-  const esc = Math.min(1, larguraMax / largura);
-  const w = Math.round(largura * esc), h = Math.round(altura * esc);
-  const cv = document.createElement('canvas');
-  cv.width = w; cv.height = h;
-  const c = cv.getContext('2d');
-  if (!c) return null;
-  c.drawImage(img, 0, 0, w, h);
-  const raio = Math.max(w, h) / 110;
-  const cores = ['#ef4444', '#3b82f6', '#10b981', '#a855f7'];
-  c.lineJoin = 'round';
-  for (const g of grupos) {
-    c.strokeStyle = g.cor; c.lineWidth = raio / 4;
-    for (const [i, j] of g.segmentos) {
-      const A = g.pontos[i], B = g.pontos[j];
-      if (!A || !B) continue;
-      c.beginPath(); c.moveTo(A.x * esc, A.y * esc); c.lineTo(B.x * esc, B.y * esc); c.stroke();
-    }
-    g.pontos.forEach((p, i) => {
-      c.beginPath(); c.arc(p.x * esc, p.y * esc, raio, 0, Math.PI * 2);
-      c.fillStyle = cores[i % cores.length]; c.fill(); c.lineWidth = raio / 5; c.strokeStyle = '#fff'; c.stroke();
-    });
-    if (g.rotulo && g.pontos.length) {
-      const cx = (g.pontos.reduce((s, p) => s + p.x, 0) / g.pontos.length) * esc;
-      const cy = (g.pontos.reduce((s, p) => s + p.y, 0) / g.pontos.length) * esc - raio * 2;
-      c.font = `700 ${Math.round(raio * 1.7)}px Helvetica, Arial, sans-serif`;
-      c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.lineWidth = raio / 2.5; c.strokeStyle = '#000'; c.strokeText(g.rotulo, cx, cy);
-      c.fillStyle = '#fff'; c.fillText(g.rotulo, cx, cy);
-    }
-  }
-  return { url: cv.toDataURL('image/jpeg', 0.85), w, h };
-}
-
-const AZUL: [number, number, number] = [30, 58, 95];
-const CAB: [number, number, number] = [230, 237, 245];
-const BORDA: [number, number, number] = [208, 214, 222];
-const DOURADO: [number, number, number] = [234, 170, 20];
-
 export async function gerarRelatorioAngular(d: DadosRelatorioAngular): Promise<{ blob: Blob; nome: string }> {
   const paciente = nomeDocumento(d.paciente);
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -77,20 +61,11 @@ export async function gerarRelatorioAngular(d: DadosRelatorioAngular): Promise<{
   const t = (txt: string, x: number, y: number, op?: Parameters<jsPDF['text']>[3]) => doc.text(seguro(txt), x, y, op);
   const novaPagina = () => { doc.addPage(); return 18; };
 
-  // Cabeçalho
-  let y = 18;
-  try { await addLogoToDoc(doc, W - M - 16, 10, 16, d.logoUrl); } catch { /* logo é opcional */ }
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...AZUL); t('Análise angular', M, y); y += 7;
-  doc.setFontSize(11.5); doc.setTextColor(20); t(paciente, M, y); y += 5;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90);
-  t(`Vista ${d.vistaNome} · ${d.data}${d.profissional ? ` · ${d.profissional}` : ''}`, M, y); y += 4;
-  doc.setDrawColor(...DOURADO); doc.setLineWidth(0.5); doc.line(M, y, M + 28, y);
-  doc.setDrawColor(...BORDA); doc.setLineWidth(0.25); doc.line(M + 28, y, W - M, y); y += 7;
-  doc.setTextColor(20);
+  const subtitulo = `Vista ${d.vistaNome} · ${d.data}${d.profissional ? ` · ${d.profissional}` : ''}`;
+  let y = await cabecalhoDoRelatorio(doc, { titulo: 'Análise angular', paciente, subtitulo, logoUrl: d.logoUrl });
 
   const titulo = (txt: string) => {
-    doc.setFillColor(...AZUL); doc.roundedRect(M, y - 3.6, 1.4, 5, 0.7, 0.7, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...AZUL); t(txt, M + 4, y); doc.setTextColor(20);
+    tituloDeSecao(doc, txt, y);
     y += 5;
   };
 
@@ -153,7 +128,7 @@ export async function gerarRelatorioAngular(d: DadosRelatorioAngular): Promise<{
   }
 
   // Rodapé de método
-  const rodape = doc.splitTextToSize(seguro(`${d.metodo === 'automatica_conferida' ? 'Pontos sugeridos por detecção automática de pose e conferidos pelo profissional.' : 'Pontos marcados manualmente pelo profissional.'} ${d.notaExtra ?? 'Os ângulos usam a horizontal e a vertical da foto como referência e valem para acompanhar a evolução entre fotos feitas do mesmo jeito.'} Medida de acompanhamento, não é diagnóstico.`), LARG);
+  const rodape = doc.splitTextToSize(seguro(`${d.metodo === 'automatica_conferida' ? 'Pontos sugeridos por detecção automática de pose.' : 'Pontos marcados manualmente pelo profissional.'} ${d.notaExtra ?? 'Os ângulos usam a horizontal e a vertical da foto como referência e valem para acompanhar a evolução entre fotos feitas do mesmo jeito.'} Medida de acompanhamento, não é diagnóstico.`), LARG);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(110);
   doc.text(rodape, M, 287 - rodape.length * 3.3);
 

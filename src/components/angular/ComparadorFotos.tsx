@@ -13,11 +13,12 @@ import {
 } from '@/lib/angular/medidas';
 import { giroDaFoto } from '@/lib/angular/sensor';
 import { detectarPose } from '@/lib/angular/detector';
-import { pontosAutomaticos, pontosDoPrumo, type Landmark } from '@/lib/angular/pose';
+import { pontosDoPrumo, sugerirPontos, type Landmark } from '@/lib/angular/pose';
 import {
-  OPCOES_ANALISE_PADRAO, apoioPelaAlca, calcularResultados, faltaReferenciaDoPrumo, painelParaExportar,
+  OPCOES_ANALISE_PADRAO, apoioPelaAlca, calcularResultados, faltaReferenciaDoPrumo, opcoesPadraoDoLado, painelParaExportar,
   type AnaliseFoto, type AnaliseParaExportar, type OpcoesAnalise, type PainelParaExportar,
 } from '@/lib/angular/analise';
+import { ROTULO_VISTA_SESSAO, VISTAS_DA_SESSAO, vistaBaseDaSessao, vistaDaSessao, type LadoPerfil, type VistaSessao } from '@/lib/angular/tiposSessao';
 import {
   TEXTO_NAO_CLASSIFICA, grau, medidasParaComparar, medidasParaExportar, motivoTexto, parearMedidas, variacaoTexto, type LinhaPareada,
 } from '@/lib/angular/comparar';
@@ -59,6 +60,10 @@ export interface ExtrasDaArte {
  */
 export interface ComparadorFotosProps {
   vista: Vista;
+  /** Lado do paciente voltado para a câmera, só no perfil: vai para a sugestão automática, o fio de prumo e o "olha para". */
+  lado?: LadoPerfil;
+  /** Mostra as quatro posições da sessão para escolher qual é a das duas fotos (a posição inicial é a de `vista` e `lado`). */
+  seletorDePosicao?: boolean;
   atual?: FotoAnalisada | null;
   /** Outra foto já analisada, se o integrador tiver uma (vai para o painel que `atual` não ocupa). */
   outra?: FotoAnalisada | null;
@@ -103,22 +108,22 @@ const UNIDADES_PRUMO: { id: UnidadePrumo; nome: string }[] = [{ id: 'graus', nom
 const limitarZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, +z.toFixed(2)));
 const nf = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-const painelVazio = (rotulo: string): PainelEstado => ({
-  rotulo, data: '', foto: null, pontos: {}, giroBase: null, cmPorPxBase: null, nivelTipo: 'horizontal', escalaCm: '', landmarks: null, olhaPara: OPCOES_ANALISE_PADRAO.olhaPara,
+const painelVazio = (rotulo: string, olhaPara: OlharPara = OPCOES_ANALISE_PADRAO.olhaPara): PainelEstado => ({
+  rotulo, data: '', foto: null, pontos: {}, giroBase: null, cmPorPxBase: null, nivelTipo: 'horizontal', escalaCm: '', landmarks: null, olhaPara,
 });
 
 // A data só entra se o integrador a informou: a foto semente pode ser uma foto antiga da galeria, e uma data de hoje inventada iria impressa na arte.
 function painelDaSemente(s: FotoAnalisada, rotuloPadrao: string): PainelEstado {
   const a = s.analise;
   return {
-    ...painelVazio(s.rotulo || rotuloPadrao), data: s.data ?? '',
+    ...painelVazio(s.rotulo || rotuloPadrao, a.opcoes.olhaPara), data: s.data ?? '',
     foto: { url: s.url, w: a.largura, h: a.altura, img: a.imagem as HTMLImageElement, propria: false },
     pontos: pontosSemReferencias(a.pontos), giroBase: a.giro, cmPorPxBase: a.cmPorPx, landmarks: s.landmarks ?? null, olhaPara: a.opcoes.olhaPara,
   };
 }
 
-function iniciais(atual: FotoAnalisada | null, outra: FotoAnalisada | null, posicao: 'pre' | 'pos'): Dupla<PainelEstado> {
-  const base: Dupla<PainelEstado> = [painelVazio(ROTULOS_PADRAO[0]), painelVazio(ROTULOS_PADRAO[1])];
+function iniciais(atual: FotoAnalisada | null, outra: FotoAnalisada | null, posicao: 'pre' | 'pos', olhaPara: OlharPara = OPCOES_ANALISE_PADRAO.olhaPara): Dupla<PainelEstado> {
+  const base: Dupla<PainelEstado> = [painelVazio(ROTULOS_PADRAO[0], olhaPara), painelVazio(ROTULOS_PADRAO[1], olhaPara)];
   const i: Indice = posicao === 'pre' ? 0 : 1;
   const j: Indice = i === 0 ? 1 : 0;
   if (atual) base[i] = painelDaSemente(atual, ROTULOS_PADRAO[i]);
@@ -164,8 +169,12 @@ function LinhaDiferenca({ l, rotuloAntes, rotuloDepois }: { l: LinhaPareada; rot
   );
 }
 
-export default function ComparadorFotos({ vista, atual = null, outra = null, posicaoAtual = 'pos', estilo: estiloProp, onEstiloChange, onExportar, onFechar, titulo = 'Comparar fotos' }: ComparadorFotosProps) {
-  const [paineis, setPaineis] = useState<Dupla<PainelEstado>>(() => iniciais(atual, outra, posicaoAtual));
+export default function ComparadorFotos({ vista: vistaDaTela, lado: ladoDaTela, seletorDePosicao = false, atual = null, outra = null, posicaoAtual = 'pos', estilo: estiloProp, onEstiloChange, onExportar, onFechar, titulo = 'Comparar fotos' }: ComparadorFotosProps) {
+  // Com o seletor, a posição escolhida aqui manda; sem ele valem a vista e o lado da tela.
+  const [posicaoEscolhida, setPosicaoEscolhida] = useState<VistaSessao | null>(null);
+  const { vista, lado } = posicaoEscolhida ? vistaBaseDaSessao(posicaoEscolhida) : { vista: vistaDaTela, lado: vistaDaTela === 'perfil' ? ladoDaTela : undefined };
+  const posicaoDoSeletor: VistaSessao = posicaoEscolhida ?? vistaDaSessao(vistaDaTela, ladoDaTela) ?? (vistaDaTela === 'perfil' ? 'perfil_d' : vistaDaTela);
+  const [paineis, setPaineis] = useState<Dupla<PainelEstado>>(() => iniciais(atual, outra, posicaoAtual, opcoesPadraoDoLado(lado).olhaPara));
   const [opcoes, setOpcoes] = useState<OpcoesAnalise>(() => atual?.analise.opcoes ?? outra?.analise.opcoes ?? OPCOES_ANALISE_PADRAO);
   const [modo, setModo] = useState<'comparar' | 'marcar'>('comparar');
   const [disposicao, setDisposicao] = useState<'lado' | 'empilhada'>('lado');
@@ -199,9 +208,13 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
 
   // Uma análise por foto: a completa (edição) e a sem as medidas escondidas (comparação, tabela e arte).
   const analises = useMemo<Dupla<AnaliseFoto>>(() => {
-    const de = (p: PainelEstado) => analiseDoPainel({ vista, foto: p.foto, pontos: p.pontos, nivelTipo: p.nivelTipo, escalaCm: p.escalaCm, giroBase: p.giroBase, cmPorPxBase: p.cmPorPxBase, opcoes: { ...opcoes, olhaPara: p.olhaPara } });
+    // analiseDoPainel não leva o lado: ele precisa ir na análise para o sentido do joelho e do braço de perfil.
+    const de = (p: PainelEstado): AnaliseFoto => ({
+      ...analiseDoPainel({ vista, foto: p.foto, pontos: p.pontos, nivelTipo: p.nivelTipo, escalaCm: p.escalaCm, giroBase: p.giroBase, cmPorPxBase: p.cmPorPxBase, opcoes: { ...opcoes, olhaPara: p.olhaPara } }),
+      ...(vista === 'perfil' && lado ? { lado } : {}),
+    });
     return [de(paineis[0]), de(paineis[1])];
-  }, [paineis, vista, opcoes]);
+  }, [paineis, vista, lado, opcoes]);
   const visiveis = useMemo<Dupla<AnaliseFoto>>(
     () => [{ ...analises[0], pontos: pontosSemOcultas(analises[0].pontos, ocultas) }, { ...analises[1], pontos: pontosSemOcultas(analises[1].pontos, ocultas) }],
     [analises, ocultas],
@@ -256,7 +269,7 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
   const trocarFoto = (i: Indice, foto: FotoDoPainel, inclinacao: number | null) => {
     const antiga = paineisRef.current[i].foto;
     if (antiga?.propria) URL.revokeObjectURL(antiga.url);
-    atualizar(i, { foto, pontos: {}, giroBase: inclinacao !== null ? giroDaFoto(inclinacao) : null, cmPorPxBase: null, escalaCm: '', landmarks: null, olhaPara: OPCOES_ANALISE_PADRAO.olhaPara });
+    atualizar(i, { foto, pontos: {}, giroBase: inclinacao !== null ? giroDaFoto(inclinacao) : null, cmPorPxBase: null, escalaCm: '', landmarks: null, olhaPara: opcoesPadraoDoLado(lado).olhaPara });
     setZooms((s) => (sincronizar ? [1, 1] : (i === 0 ? [1, s[1]] : [s[0], 1])));
     setMover(false);
     setEditando(i);
@@ -277,7 +290,8 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
       const lm = await detectarPose(f.img);
       if (!lm) { if (!silencioso) toast.error('Não achei o corpo na foto. Marque os pontos à mão.'); return; }
       if (paineisRef.current[i].foto?.img === f.img) atualizar(i, { landmarks: lm });
-      const sugeridos = pontosAutomaticos(lm, vista, f.w, f.h);
+      const { sugeridos, avisos } = sugerirPontos(lm, vista, f.w, f.h, lado);
+      avisos.forEach((a) => toast.warning(a));
       const ids = Object.keys(sugeridos);
       if (!ids.length) { if (!silencioso) toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
       if (paineisRef.current[i].foto?.img !== f.img) return;
@@ -300,7 +314,8 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
       const lm = await detectarPose(f.img);
       if (!lm) { toast.error('Não achei o corpo na foto. Marque os pontos à mão.'); return; }
       if (paineisRef.current[i].foto?.img === f.img) atualizar(i, { landmarks: lm });
-      const s = pontosDoPrumo(lm, vista, f.w, f.h);
+      const s = pontosDoPrumo(lm, vista, f.w, f.h, lado);
+      s?.avisos.forEach((a) => toast.warning(a));
       if (!s) { toast.warning('O corpo apareceu cortado ou pouco nítido. Marque os pontos à mão.'); return; }
       atualizar(i, (p) => ({ pontos: { ...p.pontos, [s.medidaId]: s.pontos }, ...(s.olhaPara ? { olhaPara: s.olhaPara } : {}) }));
       setAtiva(s.medidaId);
@@ -325,6 +340,14 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
     };
     img.onerror = () => { URL.revokeObjectURL(url); toast.error('Não consegui abrir essa imagem.'); };
     img.src = url;
+  };
+
+  // Outra posição muda as medidas e o "para onde o paciente olha" de cada foto; os pontos já marcados de medidas que a nova posição não tem ficam guardados e escondidos.
+  const mudarPosicao = (p: VistaSessao) => {
+    setPosicaoEscolhida(p);
+    setAtiva('');
+    const olhaPara = opcoesPadraoDoLado(vistaBaseDaSessao(p).lado).olhaPara;
+    setPaineis((s) => [{ ...s[0], olhaPara }, { ...s[1], olhaPara }]);
   };
 
   // ---- estilo e exportação ----
@@ -634,11 +657,14 @@ export default function ComparadorFotos({ vista, atual = null, outra = null, pos
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-base font-semibold">{titulo}</h2>
-          <p className="text-xs text-muted-foreground">Vista {vista}. As mesmas medidas marcadas nas duas fotos; as fotos ficam só neste aparelho.</p>
+          <p className="text-xs text-muted-foreground">Vista {vista}{vista === 'perfil' && lado ? ` ${lado === 'D' ? 'direito' : 'esquerdo'}` : ''}. As mesmas medidas marcadas nas duas fotos; as fotos ficam só neste aparelho.</p>
         </div>
         {onFechar && <Button variant="ghost" size="icon" className="shrink-0" aria-label="Fechar a comparação" onClick={onFechar}><X className="h-4 w-4" /></Button>}
       </div>
 
+      {seletorDePosicao && (
+        <Segmentado<VistaSessao> valor={posicaoDoSeletor} onChange={mudarPosicao} rotulo="Posição das fotos" opcoes={VISTAS_DA_SESSAO.map((p) => ({ id: p, nome: ROTULO_VISTA_SESSAO[p] }))} />
+      )}
       <Segmentado<'comparar' | 'marcar'> valor={modo} onChange={setModo} rotulo="Modo" opcoes={[{ id: 'comparar', nome: 'Comparar' }, { id: 'marcar', nome: 'Marcar' }]} />
 
       {modo === 'comparar' ? comparar : marcar}

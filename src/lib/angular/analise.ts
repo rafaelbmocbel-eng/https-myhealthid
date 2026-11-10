@@ -1,5 +1,6 @@
-import { alturaEmPixels, girar, medidasDaVista, type ContextoMedida, type Medida, type OlharPara, type Ponto, type RefCompasso, type UnidadePrumo, type UnidadeResultado, type Vista } from './medidas';
+import { alturaEmPixels, girar, medidasDaVista, olhaParaDoLado, type ContextoMedida, type Medida, type OlharPara, type Ponto, type RefCompasso, type UnidadePrumo, type UnidadeResultado, type Vista } from './medidas';
 import type { MedidaSalva } from './comparar';
+import type { LadoPerfil } from './tiposSessao';
 import { contextoDesenho, itensDaMedida, ordenarCamadas, separarRotulos, type ItemDesenho } from './desenho';
 import { pintarItens } from './desenharCanvas';
 import { escalaDoEstiloNaArte, rotuloValor, type EstiloMarcacao } from './estilo';
@@ -21,8 +22,15 @@ export interface OpcoesAnalise {
 
 export const OPCOES_ANALISE_PADRAO: OpcoesAnalise = { compassoRef: 'baixo', unidadePrumo: 'graus', olhaPara: 'direita' };
 
+/** Opções iniciais de uma foto de perfil: "para onde o paciente olha" decorre do lado (o profissional pode corrigir). Sem lado, o padrão de sempre. */
+export function opcoesPadraoDoLado(lado?: LadoPerfil): OpcoesAnalise {
+  return { ...OPCOES_ANALISE_PADRAO, olhaPara: lado ? olhaParaDoLado(lado) : OPCOES_ANALISE_PADRAO.olhaPara };
+}
+
 export interface AnaliseFotoJson {
   vista: Vista;
+  /** Lado do paciente voltado para a câmera, só no perfil. Perfil sem lado é "lado não informado". */
+  lado?: LadoPerfil;
   /** Tamanho da foto original, em px. */
   largura: number;
   altura: number;
@@ -66,13 +74,14 @@ export function analiseDeJson(bruto: unknown): AnaliseFotoJson | null {
   const refs: RefCompasso[] = ['baixo', 'cima', 'esquerda', 'direita'];
   const unidades: UnidadePrumo[] = ['graus', 'cm', 'pct'];
   const numOuNulo = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const lado: LadoPerfil | undefined = o.vista === 'perfil' && (o.lado === 'D' || o.lado === 'E') ? o.lado : undefined;
   return {
-    vista: o.vista, largura, altura, pontos,
+    vista: o.vista, ...(lado ? { lado } : {}), largura, altura, pontos,
     giro: numOuNulo(o.giro), cmPorPx: numOuNulo(o.cmPorPx),
     opcoes: {
       compassoRef: refs.includes(op.compassoRef as RefCompasso) ? (op.compassoRef as RefCompasso) : OPCOES_ANALISE_PADRAO.compassoRef,
       unidadePrumo: unidades.includes(op.unidadePrumo as UnidadePrumo) ? (op.unidadePrumo as UnidadePrumo) : OPCOES_ANALISE_PADRAO.unidadePrumo,
-      olhaPara: op.olhaPara === 'esquerda' ? 'esquerda' : 'direita',
+      olhaPara: op.olhaPara === 'esquerda' || op.olhaPara === 'direita' ? op.olhaPara : opcoesPadraoDoLado(lado).olhaPara,
     },
   };
 }
@@ -87,7 +96,10 @@ export function alturaDaAnalise(a: AnaliseFotoJson): number | null {
 }
 
 export function contextoDaAnalise(a: AnaliseFotoJson): ContextoMedida {
-  return { cmPorPx: a.cmPorPx, vista: a.vista, refCompasso: a.opcoes.compassoRef, unidadePrumo: a.opcoes.unidadePrumo, olhaPara: a.opcoes.olhaPara, alturaPx: alturaDaAnalise(a) };
+  return {
+    cmPorPx: a.cmPorPx, vista: a.vista, refCompasso: a.opcoes.compassoRef, unidadePrumo: a.opcoes.unidadePrumo, olhaPara: a.opcoes.olhaPara, alturaPx: alturaDaAnalise(a),
+    ...(a.vista === 'perfil' && a.lado ? { lado: a.lado } : {}),
+  };
 }
 
 export interface ResultadoAnalise {
@@ -121,7 +133,14 @@ export function calcularResultados(a: AnaliseFotoJson): ResultadoAnalise[] {
       }));
     }
     const r = m.calcular(pts, ctx);
-    return r ? [{ id: m.id, medidaId: m.id, nome: m.nome, valor: r.valor, unidade: m.unidade === 'cm' ? 'cm' : 'graus', texto: r.texto, sentido: r.sentido }] : [];
+    if (!r) return [];
+    const principal: ResultadoAnalise = { id: m.id, medidaId: m.id, nome: m.nome, valor: r.valor, unidade: m.unidade === 'cm' ? 'cm' : 'graus', texto: r.texto, sentido: r.sentido };
+    // Os extras (ex.: desnível dos ombros em cm) vêm depois do principal: é o principal que o desenho rotula.
+    const extras = (m.extras ?? []).flatMap((e): ResultadoAnalise[] => {
+      const x = e.calcular(pts, ctx);
+      return x ? [{ id: `${m.id}-${e.id}`, medidaId: m.id, nome: e.nome, valor: x.valor, unidade: e.unidade, texto: x.texto, sentido: x.sentido }] : [];
+    });
+    return [principal, ...extras];
   });
 }
 
@@ -310,10 +329,11 @@ export function analiseDaFotoParaExportar(a: AnaliseFoto, estilo: EstiloMarcacao
   };
 }
 
-/** Nome do arquivo da imagem baixada: só a vista e a data, nunca dados do paciente. */
-export function nomeArquivoImagem(vista: Vista, data: Date = new Date(), extensao = 'png'): string {
+/** Nome do arquivo da imagem baixada: só a vista (com o lado, no perfil) e a data, nunca dados do paciente. */
+export function nomeArquivoImagem(vista: Vista, data: Date = new Date(), extensao = 'png', lado?: LadoPerfil): string {
   const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(data);
-  return `analise-angular-${vista}-${d}.${extensao}`;
+  const posicao = vista === 'perfil' && lado ? `perfil-${lado === 'D' ? 'direito' : 'esquerdo'}` : vista;
+  return `analise-angular-${posicao}-${d}.${extensao}`;
 }
 
 export function canvasParaBlob(cv: HTMLCanvasElement, tipo = 'image/png', qualidade?: number): Promise<Blob | null> {

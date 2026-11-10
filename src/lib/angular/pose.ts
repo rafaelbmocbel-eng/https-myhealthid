@@ -1,50 +1,149 @@
-import { pontoMedio, type OlharPara, type Ponto, type Vista } from './medidas';
+import {
+  INDICE_DA_PARTE, INDICE_DO_NARIZ, ladoMaisVisivel, medidasDaVista, olhaParaDoLado, pontoMedio, visibilidadeDoLado, VISIBILIDADE_MINIMA,
+  type ContextoSugestao, type OlharPara, type Ponto, type Vista,
+} from './medidas';
+import type { LadoPerfil } from './tiposSessao';
 
 /** Ponto normalizado (0–1) devolvido pelo detector de pose. */
 export interface Landmark { x: number; y: number; visibility?: number }
 
-// Índices do modelo de 33 pontos do MediaPipe. "Esquerdo" é o lado do paciente.
-const L = { orelhaE: 7, orelhaD: 8, ombroE: 11, ombroD: 12, quadrilE: 23, quadrilD: 24, joelhoE: 25, joelhoD: 26, tornozeloE: 27, tornozeloD: 28 } as const;
+/** Diferença de visibilidade (somada em ombro, quadril, joelho e tornozelo) a partir da qual o outro lado "claramente" aparece melhor. */
+const DIFERENCA_VISIBILIDADE_CLARA = 1;
 
-const VISIBILIDADE_MINIMA = 0.5;
+/** Distância horizontal mínima (fração da largura) entre dois pontos para a posição deles valer como indício. */
+const FOLGA_HORIZONTAL = 0.02;
+
+const nomeDoLado = (l: LadoPerfil) => (l === 'D' ? 'direito' : 'esquerdo');
+const outroLado = (l: LadoPerfil): LadoPerfil => (l === 'D' ? 'E' : 'D');
+
+const visivel = (lm: Landmark[], i: number): Landmark | null => {
+  const l = lm[i];
+  return l && (l.visibility ?? 1) >= VISIBILIDADE_MINIMA ? l : null;
+};
+
+// Pares do modelo que trocam de lado quando o profissional manda inverter direito e esquerdo.
+const PARES_DIREITA_ESQUERDA: [number, number][] = [[1, 4], [2, 5], [3, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18], [19, 20], [21, 22], [23, 24], [25, 26], [27, 28], [29, 30], [31, 32]];
+
+/** Cópia dos pontos com direito e esquerdo trocados: para quando o modelo rotulou os lados do paciente ao contrário. */
+export function trocarDireitaEsquerda(lm: Landmark[]): Landmark[] {
+  const saida = lm.slice();
+  for (const [a, b] of PARES_DIREITA_ESQUERDA) {
+    if (lm[a] === undefined && lm[b] === undefined) continue;
+    saida[a] = lm[b];
+    saida[b] = lm[a];
+  }
+  return saida;
+}
 
 /**
- * Converte os pontos do detector em marcações das medidas. O modelo marca centros
- * articulares, não os pontos ósseos usados na clínica (acrômio, crista ilíaca, C7,
- * trocânter): por isso o resultado é uma sugestão que o profissional confere e ajusta.
- * Medidas sem ponto confiável (ou que dependem de C7/tragus) ficam de fora.
+ * Teste de sanidade de direito e esquerdo: de frente o ombro (ou quadril) direito do paciente fica à ESQUERDA do esquerdo na imagem;
+ * de costas, o contrário. Se não bater, devolve o aviso; sem pontos suficientes (ou no perfil), não opina.
  */
-export function pontosAutomaticos(lm: Landmark[], vista: Vista, w: number, h: number): Record<string, Ponto[]> {
-  const pega = (i: number): Ponto | null => {
-    const l = lm[i];
-    if (!l || (l.visibility ?? 1) < VISIBILIDADE_MINIMA) return null;
-    return { x: l.x * w, y: l.y * h };
-  };
-  const vis = (i: number) => lm[i]?.visibility ?? 0;
-  const todos = (...pts: (Ponto | null)[]) => pts.every((p) => p !== null);
-  const saida: Record<string, Ponto[]> = {};
-
-  if (vista === 'frente' || vista === 'costas') {
-    const oD = pega(L.ombroD), oE = pega(L.ombroE), qD = pega(L.quadrilD), qE = pega(L.quadrilE), eD = pega(L.orelhaD), eE = pega(L.orelhaE);
-    if (todos(oD, oE)) saida.ombros = [oD!, oE!];
-    if (todos(qD, qE)) saida.pelve = [qD!, qE!];
-    if (todos(eD, eE)) saida.cabeca = [eD!, eE!];
-    if (todos(oD, oE, qD, qE)) saida.tronco = [pontoMedio(oD!, oE!), pontoMedio(qD!, qE!)];
-    const jD = pega(L.joelhoD), tD = pega(L.tornozeloD), jE = pega(L.joelhoE), tE = pega(L.tornozeloE);
-    if (todos(qD, jD, tD)) saida['joelho-d'] = [qD!, jD!, tD!];
-    if (todos(qE, jE, tE)) saida['joelho-e'] = [qE!, jE!, tE!];
-    return saida;
+export function conferirDireitaEsquerda(lm: Landmark[], vista: Vista): string | null {
+  if (vista === 'perfil') return null;
+  for (const parte of ['ombro', 'quadril'] as const) {
+    const d = visivel(lm, INDICE_DA_PARTE[parte].D), e = visivel(lm, INDICE_DA_PARTE[parte].E);
+    if (!d || !e || Math.abs(d.x - e.x) < FOLGA_HORIZONTAL) continue;
+    const direitoNaDireitaDaImagem = d.x > e.x;
+    if (direitoNaDireitaDaImagem !== (vista === 'costas')) {
+      return `O modelo pode ter trocado direito e esquerdo: nesta foto de ${vista} o ${parte} direito apareceu à ${direitoNaDireitaDaImagem ? 'direita' : 'esquerda'} do esquerdo na imagem, o contrário do esperado. Confira os lados antes de usar os resultados.`;
+    }
   }
+  return null;
+}
 
-  // Perfil: usa o lado do corpo mais visível para a câmera.
-  const somaE = vis(L.ombroE) + vis(L.quadrilE) + vis(L.joelhoE) + vis(L.tornozeloE);
-  const somaD = vis(L.ombroD) + vis(L.quadrilD) + vis(L.joelhoD) + vis(L.tornozeloD);
-  const e = somaE >= somaD;
-  const o = pega(e ? L.ombroE : L.ombroD), q = pega(e ? L.quadrilE : L.quadrilD);
-  const j = pega(e ? L.joelhoE : L.joelhoD), t = pega(e ? L.tornozeloE : L.tornozeloD);
-  if (todos(o, q)) saida['tronco-perfil'] = [o!, q!];
-  if (todos(q, j, t)) saida.joelho = [q!, j!, t!];
-  return saida;
+/** Para onde o nariz aponta em relação à orelha (do lado da foto, ou da outra se essa não aparecer); null sem indício claro. */
+function olhaParaPeloNariz(lm: Landmark[], lado: LadoPerfil): OlharPara | null {
+  const nariz = visivel(lm, INDICE_DO_NARIZ);
+  const orelha = visivel(lm, INDICE_DA_PARTE.orelha[lado]) ?? visivel(lm, INDICE_DA_PARTE.orelha[outroLado(lado)]);
+  if (!nariz || !orelha || Math.abs(nariz.x - orelha.x) < FOLGA_HORIZONTAL) return null;
+  return nariz.x > orelha.x ? 'direita' : 'esquerda';
+}
+
+/**
+ * Lado do corpo usado nas sugestões do perfil. O informado vale sempre; sem ele, o mais visível (com aviso).
+ * Com o lado informado, avisa "confira o lado" se o outro lado aparece claramente melhor ou se o nariz aponta
+ * para o lado contrário ao que esse perfil costuma mostrar.
+ */
+export function escolherLadoDoPerfil(lm: Landmark[], lado?: LadoPerfil): { lado: LadoPerfil; avisos: string[] } {
+  if (!lado) {
+    const escolhido = ladoMaisVisivel(lm);
+    return { lado: escolhido, avisos: [`Lado do perfil não informado: usei o lado ${nomeDoLado(escolhido)} do paciente, o mais visível para o modelo. Confira.`] };
+  }
+  const avisos: string[] = [];
+  const outro = outroLado(lado);
+  if (visibilidadeDoLado(lm, outro) - visibilidadeDoLado(lm, lado) >= DIFERENCA_VISIBILIDADE_CLARA) {
+    avisos.push(`Confira o lado: nesta foto de perfil ${nomeDoLado(lado)} o modelo enxergou melhor o lado ${nomeDoLado(outro)} do corpo.`);
+  }
+  const observado = olhaParaPeloNariz(lm, lado);
+  const esperado = olhaParaDoLado(lado);
+  if (observado && observado !== esperado) {
+    avisos.push(`Confira o lado: o nariz aponta para a ${observado} da imagem, mas no perfil ${nomeDoLado(lado)} o paciente costuma aparecer olhando para a ${esperado}. Se o lado estiver certo, corrija “para onde o paciente olha”.`);
+  }
+  return { lado, avisos };
+}
+
+export interface OpcoesSugestao {
+  /** Troca direito e esquerdo antes de sugerir (o modelo rotulou os lados do paciente ao contrário). */
+  inverterDE?: boolean;
+}
+
+export interface SugestaoDePontos {
+  /** Pontos sugeridos por id de medida, na ordem de marcação; podem ser só os primeiros pontos (o resto é à mão). */
+  sugeridos: Record<string, Ponto[]>;
+  /** Medidas com sugestão automática que ficaram sem ela, com o motivo ("não achei o cotovelo direito"). */
+  descartados: { medidaId: string; motivo: string }[];
+  /** Avisos para o profissional (lado do perfil, direito e esquerdo trocados). */
+  avisos: string[];
+  /** De onde veio cada sugestão ("centro do ombro (modelo)"), por id de medida. */
+  origens: Record<string, string>;
+  /** Lado do perfil usado (o informado ou, sem ele, o mais visível); só no perfil. */
+  ladoUsado?: LadoPerfil;
+}
+
+/**
+ * Converte os pontos do detector em marcações das medidas, percorrendo as medidas da vista que sabem se sugerir.
+ * O modelo marca centros articulares, não os pontos ósseos usados na clínica (acrômio, crista ilíaca, C7, trocânter):
+ * por isso é só um ponto de partida que o profissional confere e ajusta. Medidas sem ponto confiável vão para `descartados`
+ * com o motivo; medidas só à mão (`semAuto`) e o fio de prumo (`pontosDoPrumo`) ficam de fora.
+ */
+export function sugerirPontos(lm: Landmark[], vista: Vista, w: number, h: number, lado?: LadoPerfil, opcoes: OpcoesSugestao = {}): SugestaoDePontos {
+  const pontos = opcoes.inverterDE ? trocarDireitaEsquerda(lm) : lm;
+  const sugeridos: Record<string, Ponto[]> = {};
+  const descartados: SugestaoDePontos['descartados'] = [];
+  const origens: Record<string, string> = {};
+  const avisos: string[] = [];
+  let ladoUsado: LadoPerfil | undefined;
+  if (vista === 'perfil') {
+    const escolha = escolherLadoDoPerfil(pontos, lado);
+    ladoUsado = escolha.lado;
+    avisos.push(...escolha.avisos);
+  } else {
+    const troca = conferirDireitaEsquerda(pontos, vista);
+    if (troca) avisos.push(troca);
+  }
+  const contexto: ContextoSugestao = { w, h, vista, lado: ladoUsado };
+  for (const m of medidasDaVista(vista)) {
+    const r = m.sugerir?.(pontos, contexto);
+    if (!r) continue;
+    if ('motivo' in r) {
+      descartados.push({ medidaId: m.id, motivo: r.motivo });
+      continue;
+    }
+    if (!r.pontos.length) continue;
+    sugeridos[m.id] = r.pontos;
+    const origem = r.origem ?? m.origemSugestao;
+    if (origem) origens[m.id] = origem;
+  }
+  return { sugeridos, descartados, avisos, origens, ...(ladoUsado ? { ladoUsado } : {}) };
+}
+
+/**
+ * Pontos sugeridos por medida (só o dicionário de `sugerirPontos`). Sem o lado, o perfil usa o lado mais visível.
+ * A "pelve" (cristas ilíacas) não é sugerida: a sugestão com os quadris vem em "quadris".
+ */
+export function pontosAutomaticos(lm: Landmark[], vista: Vista, w: number, h: number, lado?: LadoPerfil): Record<string, Ponto[]> {
+  return sugerirPontos(lm, vista, w, h, lado).sugeridos;
 }
 
 export interface SugestaoPrumo {
@@ -53,35 +152,38 @@ export interface SugestaoPrumo {
   pontos: Ponto[];
   /** Lado da imagem para onde o paciente olha (só no perfil, se o nariz for visível). */
   olhaPara?: OlharPara;
+  /** Avisos para o profissional ("confira o lado", direito e esquerdo trocados); vazio se nada a avisar. */
+  avisos: string[];
 }
 
 /**
  * Pontos sugeridos para o fio de prumo a partir da pose. O apoio fica no tornozelo (de perfil) ou
- * entre os tornozelos; o profissional confere e arrasta o que estiver fora do lugar. De perfil usa o
- * lado do corpo mais visível. Devolve null se algum ponto não for confiável.
+ * entre os tornozelos; o profissional confere e arrasta o que estiver fora do lugar. De perfil usa o lado
+ * informado (sem ele, o mais visível, com aviso). Devolve null se algum ponto não for confiável.
  */
-export function pontosDoPrumo(lm: Landmark[], vista: Vista, w: number, h: number): SugestaoPrumo | null {
+export function pontosDoPrumo(lm: Landmark[], vista: Vista, w: number, h: number, lado?: LadoPerfil): SugestaoPrumo | null {
   const pega = (i: number): Ponto | null => {
-    const l = lm[i];
-    if (!l || (l.visibility ?? 1) < VISIBILIDADE_MINIMA) return null;
-    return { x: l.x * w, y: l.y * h };
+    const l = visivel(lm, i);
+    return l ? { x: l.x * w, y: l.y * h } : null;
   };
-  const vis = (i: number) => lm[i]?.visibility ?? 0;
   if (vista === 'perfil') {
-    const somaE = vis(L.ombroE) + vis(L.quadrilE) + vis(L.joelhoE) + vis(L.tornozeloE);
-    const somaD = vis(L.ombroD) + vis(L.quadrilD) + vis(L.joelhoD) + vis(L.tornozeloD);
-    const e = somaE >= somaD;
-    const apoio = pega(e ? L.tornozeloE : L.tornozeloD);
-    const orelha = pega(e ? L.orelhaE : L.orelhaD), ombro = pega(e ? L.ombroE : L.ombroD);
-    const quadril = pega(e ? L.quadrilE : L.quadrilD), joelho = pega(e ? L.joelhoE : L.joelhoD);
+    const escolha = escolherLadoDoPerfil(lm, lado);
+    const L = escolha.lado;
+    const apoio = pega(INDICE_DA_PARTE.tornozelo[L]);
+    const orelha = pega(INDICE_DA_PARTE.orelha[L]), ombro = pega(INDICE_DA_PARTE.ombro[L]);
+    const quadril = pega(INDICE_DA_PARTE.quadril[L]), joelho = pega(INDICE_DA_PARTE.joelho[L]);
     if (!apoio || !orelha || !ombro || !quadril || !joelho) return null;
-    const nariz = pega(0);
-    return { medidaId: 'prumo-perfil', pontos: [apoio, orelha, ombro, quadril, joelho], ...(nariz ? { olhaPara: nariz.x > orelha.x ? 'direita' as const : 'esquerda' as const } : {}) };
+    const nariz = pega(INDICE_DO_NARIZ);
+    return {
+      medidaId: 'prumo-perfil', pontos: [apoio, orelha, ombro, quadril, joelho], avisos: escolha.avisos,
+      ...(nariz ? { olhaPara: nariz.x > orelha.x ? 'direita' as const : 'esquerda' as const } : {}),
+    };
   }
-  const tD = pega(L.tornozeloD), tE = pega(L.tornozeloE), eD = pega(L.orelhaD), eE = pega(L.orelhaE);
-  const oD = pega(L.ombroD), oE = pega(L.ombroE), qD = pega(L.quadrilD), qE = pega(L.quadrilE);
+  const tD = pega(INDICE_DA_PARTE.tornozelo.D), tE = pega(INDICE_DA_PARTE.tornozelo.E), eD = pega(INDICE_DA_PARTE.orelha.D), eE = pega(INDICE_DA_PARTE.orelha.E);
+  const oD = pega(INDICE_DA_PARTE.ombro.D), oE = pega(INDICE_DA_PARTE.ombro.E), qD = pega(INDICE_DA_PARTE.quadril.D), qE = pega(INDICE_DA_PARTE.quadril.E);
   if (!tD || !tE || !eD || !eE || !oD || !oE || !qD || !qE) return null;
-  return { medidaId: 'prumo-frente', pontos: [pontoMedio(tD, tE), pontoMedio(eD, eE), pontoMedio(oD, oE), pontoMedio(qD, qE)] };
+  const troca = conferirDireitaEsquerda(lm, vista);
+  return { medidaId: 'prumo-frente', pontos: [pontoMedio(tD, tE), pontoMedio(eD, eE), pontoMedio(oD, oE), pontoMedio(qD, qE)], avisos: troca ? [troca] : [] };
 }
 
 export interface Enquadramento { ok: boolean; mensagem: string }

@@ -1,3 +1,6 @@
+import type { LadoPerfil } from './tiposSessao';
+import type { Landmark } from './pose';
+
 export interface Ponto { x: number; y: number }
 
 export type Vista = 'frente' | 'costas' | 'perfil';
@@ -88,6 +91,52 @@ export function anguloOrientado(u: Ponto, v: Ponto): number | null {
   return Math.atan2(u.x * v.y - u.y * v.x, u.x * v.x + u.y * v.y) * RAD;
 }
 
+/**
+ * Para onde o paciente olha na imagem em cada perfil. No perfil D a câmera fica do lado direito do paciente e olha para ele; para
+ * quem olha dali, a frente do paciente aparece à DIREITA da imagem. No perfil E, à ESQUERDA.
+ * É raciocínio geométrico (a validar com uma foto real de cada lado): o profissional pode corrigir em "para onde o paciente olha".
+ */
+export const olhaParaDoLado = (lado: LadoPerfil): OlharPara => (lado === 'D' ? 'direita' : 'esquerda');
+
+/** Lado da imagem para onde o paciente olha: o informado no contexto ou, sem ele, o que decorre do lado do perfil. */
+export const olhaParaDoContexto = (ctx?: ContextoMedida): OlharPara | undefined =>
+  ctx?.olhaPara ?? (ctx?.lado ? olhaParaDoLado(ctx.lado) : undefined);
+
+/**
+ * Lado da imagem onde fica o lado de FORA (lateral) do membro do lado indicado: de frente o lado direito do paciente
+ * aparece à esquerda da imagem; de costas, à direita.
+ */
+export function ladoLateralNaImagem(lado: LadoPerfil, vista: 'frente' | 'costas'): OlharPara {
+  return (lado === 'D') === (vista === 'frente') ? 'esquerda' : 'direita';
+}
+
+/**
+ * Para que lado da imagem o segmento de baixo `w` desvia do prolongamento do segmento de cima `u`.
+ * Vale também com `u` apontando para cima. Devolve null se não houver desvio ou se `u` estiver a 45° ou mais da vertical:
+ * com o segmento deitado, "esquerda" e "direita" da imagem deixam de querer dizer "para fora" e "para dentro" do corpo.
+ */
+export function ladoDoDesvio(u: Ponto, w: Ponto): OlharPara | null {
+  const cruz = u.x * w.y - u.y * w.x;
+  if (Math.abs(u.y) <= Math.abs(u.x) || Math.abs(cruz) < 1e-9) return null;
+  return (cruz > 0) === (u.y > 0) ? 'esquerda' : 'direita';
+}
+
+/**
+ * Palavras fixas do "sentido" das medidas. O comparador pareia as avaliações por elas (lado trocado = sem subtração),
+ * então nunca troque por sinônimos nem reescreva com outra grafia.
+ */
+export const SENTIDO = {
+  valgo: 'valgo', varo: 'varo',
+  flexao: 'flexão', hiperextensao: 'hiperextensão',
+  afastadoDoTronco: 'afastado do tronco', juntoDoTronco: 'junto do tronco',
+  cotoveloAFrente: 'cotovelo à frente', cotoveloAtras: 'cotovelo atrás',
+  joelhoAFrente: 'joelho à frente', joelhoAtras: 'joelho atrás',
+  maoParaFora: 'mão para fora', maoParaDentro: 'mão para dentro',
+} as const;
+
+/** Abaixo disto (graus) a medida é tratada como alinhada: não há lado a dizer. */
+const LIMITE_SENTIDO = 0.05;
+
 export type GrupoMedida = 'postura' | 'ferramenta' | 'referencia';
 
 /** Referência do compasso com referência: a direção fixa contra a qual o braço é medido (lados da imagem). */
@@ -113,13 +162,15 @@ export interface ContextoMedida {
   unidadePrumo?: UnidadePrumo;
   /** Para onde o paciente olha na foto de perfil (lado da imagem). */
   olhaPara?: OlharPara;
+  /** Lado do paciente voltado para a câmera no perfil (D ou E). Sem isso, o perfil é "lado não informado". */
+  lado?: LadoPerfil;
   /** Altura do paciente na foto, em pixels (referência para o desvio em % da altura). */
   alturaPx?: number | null;
 }
 
 /** Como a medida é desenhada com o estilo das linhas. */
 export type TipoDesenho =
-  | 'angulo3' | 'compasso' | 'compasso-ref' | 'horizontal' | 'vertical' | 'retas' | 'angulo-q' | 'regua' | 'prumo' | 'referencia';
+  | 'angulo3' | 'compasso' | 'compasso-ref' | 'horizontal' | 'vertical' | 'retas' | 'angulo-q' | 'regua' | 'prumo' | 'referencia' | 'segmento-vertical';
 
 /** Um dos resultados de uma medida que informa vários valores (fio de prumo: um desvio por ponto). */
 export interface ResultadoParcial {
@@ -162,7 +213,107 @@ export interface Medida {
   definicao?: string;
   /** Cor fixa das linhas de uma referência da foto (nível, escala, altura). */
   corReferencia?: string;
+  /**
+   * Marcação automática: de onde vêm os pontos, a partir dos 33 pontos do modelo. Devolve os primeiros pontos da medida
+   * (pode ser só parte deles; o resto é à mão), `{ motivo }` se faltou algum ponto confiável ou null se a medida não se aplica
+   * (ex.: o braço do lado de trás da câmera num perfil).
+   */
+  sugerir?: (lm: Landmark[], c: ContextoSugestao) => ResultadoSugestao;
+  /** Texto curto do que o modelo realmente marca, mostrado junto da sugestão (ex.: "centro do ombro (modelo)"). */
+  origemSugestao?: string;
+  /** A medida só se marca à mão, de propósito (sem sugestão automática). */
+  semAuto?: boolean;
+  /** Por que não há sugestão automática, em poucas palavras. */
+  motivoSemAuto?: string;
+  /** Resultados a mais, calculados dos mesmos pontos (ex.: o desnível dos ombros também em cm, quando há escala). */
+  extras?: ExtraDaMedida[];
 }
+
+/** Resultado a mais de uma medida; o id final é `${medida.id}-${id}` e a unidade já vai no sufixo (ex.: "ombros-cm"). */
+export interface ExtraDaMedida {
+  id: string;
+  nome: string;
+  unidade: UnidadeResultado;
+  calcular: (p: Ponto[], ctx?: ContextoMedida) => { valor: number; texto: string; sentido?: string } | null;
+}
+
+/** Contexto da sugestão automática de pontos. */
+export interface ContextoSugestao {
+  /** Tamanho da foto em px (os pontos do modelo vêm normalizados de 0 a 1). */
+  w: number;
+  h: number;
+  vista: Vista;
+  /** Lado do perfil informado pelo profissional; sem ele, as medidas de perfil usam o lado mais visível. */
+  lado?: LadoPerfil;
+}
+
+export type ResultadoSugestao = { pontos: Ponto[]; origem?: string } | { motivo: string } | null;
+
+// --- pontos do modelo de pose (33 pontos do MediaPipe; "esquerdo" e "direito" são os do paciente) ---------------------------
+
+export type ParteDoCorpo = 'olho' | 'orelha' | 'ombro' | 'cotovelo' | 'punho' | 'quadril' | 'joelho' | 'tornozelo';
+
+export const INDICE_DA_PARTE: Record<ParteDoCorpo, Record<LadoPerfil, number>> = {
+  olho: { D: 5, E: 2 }, orelha: { D: 8, E: 7 }, ombro: { D: 12, E: 11 }, cotovelo: { D: 14, E: 13 }, punho: { D: 16, E: 15 },
+  quadril: { D: 24, E: 23 }, joelho: { D: 26, E: 25 }, tornozelo: { D: 28, E: 27 },
+};
+
+export const INDICE_DO_NARIZ = 0;
+
+/** Abaixo desta visibilidade o ponto do modelo não é usado. */
+export const VISIBILIDADE_MINIMA = 0.5;
+
+const FRASE_DA_PARTE: Record<ParteDoCorpo, { artigo: 'o' | 'a'; nome: string }> = {
+  olho: { artigo: 'o', nome: 'olho' }, orelha: { artigo: 'a', nome: 'orelha' }, ombro: { artigo: 'o', nome: 'ombro' },
+  cotovelo: { artigo: 'o', nome: 'cotovelo' }, punho: { artigo: 'o', nome: 'punho' }, quadril: { artigo: 'o', nome: 'quadril' },
+  joelho: { artigo: 'o', nome: 'joelho' }, tornozelo: { artigo: 'o', nome: 'tornozelo' },
+};
+
+/** "o cotovelo direito", "a orelha esquerda". */
+export function fraseDaParte(parte: ParteDoCorpo, lado: LadoPerfil): string {
+  const { artigo, nome } = FRASE_DA_PARTE[parte];
+  const adjetivo = lado === 'D' ? 'direit' : 'esquerd';
+  return `${artigo} ${nome} ${adjetivo}${artigo === 'a' ? 'a' : 'o'}`;
+}
+
+const juntarComE = (itens: string[]) => (itens.length <= 1 ? itens.join('') : `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`);
+
+/** Soma da visibilidade de ombro, quadril, joelho e tornozelo de um lado: quanto mais alta, mais o modelo enxerga esse lado. */
+export function visibilidadeDoLado(lm: Landmark[], lado: LadoPerfil): number {
+  return (['ombro', 'quadril', 'joelho', 'tornozelo'] as const).reduce((soma, parte) => soma + (lm[INDICE_DA_PARTE[parte][lado]]?.visibility ?? 0), 0);
+}
+
+/** Lado do corpo mais visível para o modelo (empate: esquerdo). */
+export const ladoMaisVisivel = (lm: Landmark[]): LadoPerfil => (visibilidadeDoLado(lm, 'E') >= visibilidadeDoLado(lm, 'D') ? 'E' : 'D');
+
+/** Lado do perfil da sugestão: o informado ou, sem ele, o mais visível. */
+const ladoDaSugestao = (lm: Landmark[], c: ContextoSugestao): LadoPerfil => c.lado ?? ladoMaisVisivel(lm);
+
+/** Lê as partes pedidas (na ordem) em px da foto; se alguma faltar, diz quais ("não achei o cotovelo direito"). */
+function lerPontos(lm: Landmark[], c: ContextoSugestao, partes: [ParteDoCorpo, LadoPerfil][]): { pontos: Ponto[] } | { motivo: string } {
+  const pontos: Ponto[] = [];
+  const faltam: string[] = [];
+  for (const [parte, lado] of partes) {
+    const l = lm[INDICE_DA_PARTE[parte][lado]];
+    if (!l || (l.visibility ?? 1) < VISIBILIDADE_MINIMA) faltam.push(fraseDaParte(parte, lado));
+    else pontos.push({ x: l.x * c.w, y: l.y * c.h });
+  }
+  return faltam.length ? { motivo: `não achei ${juntarComE(faltam)}` } : { pontos };
+}
+
+const sugerirPar = (parte: ParteDoCorpo) => (lm: Landmark[], c: ContextoSugestao): ResultadoSugestao => lerPontos(lm, c, [[parte, 'D'], [parte, 'E']]);
+
+/** Partes de um lado só: no perfil, o lado da foto; de frente e de costas, o lado da própria medida. */
+const sugerirDoLado = (partes: ParteDoCorpo[], lado?: LadoPerfil) => (lm: Landmark[], c: ContextoSugestao): ResultadoSugestao => {
+  const L = lado ?? ladoDaSugestao(lm, c);
+  return lerPontos(lm, c, partes.map((p) => [p, L] as [ParteDoCorpo, LadoPerfil]));
+};
+
+/** Só o perfil do lado da própria medida tem esse membro à vista; o do outro lado fica atrás do corpo. */
+const sugerirDoLadoNoPerfil = (partes: ParteDoCorpo[], lado: LadoPerfil) => (lm: Landmark[], c: ContextoSugestao): ResultadoSugestao => {
+  if (c.vista === 'perfil' && ladoDaSugestao(lm, c) !== lado) return null;
+  return lerPontos(lm, c, partes.map((p) => [p, lado] as [ParteDoCorpo, LadoPerfil]));
+};
 
 const f1 = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -175,6 +326,16 @@ function desnivel(nomeLinha: string, direito: Ponto, esquerdo: Ponto) {
   if (Math.abs(dy) < 1e-9) return { valor: 0, texto: `${nomeLinha} nivelada (0,0°).` };
   const lado = dy < 0 ? 'direito' : 'esquerdo';
   return { valor: ang, texto: `${nomeLinha}: ${f1(ang)}° com a horizontal, lado ${lado} mais alto.` };
+}
+
+/** Diferença de altura entre os dois pontos em cm; o lado mais alto vem escrito no texto, como no desnível em graus. */
+function desnivelEmCm(nomeLinha: string, direito: Ponto, esquerdo: Ponto, cmPorPx?: number | null) {
+  if (!cmPorPx) return null;
+  const dy = direito.y - esquerdo.y;
+  if (Math.abs(dy) < 1e-9) return { valor: 0, texto: `${nomeLinha} nivelada (0,0 cm).` };
+  const cm = Math.abs(dy) * cmPorPx;
+  const lado = dy < 0 ? 'direito' : 'esquerdo';
+  return { valor: cm, texto: `${nomeLinha}: diferença de altura de ${f1(cm)} cm, lado ${lado} mais alto (estimativa pela escala marcada; vale para pontos à mesma distância da câmera).` };
 }
 
 type AlvoPrumo = { slug: string; nome: string };
@@ -194,7 +355,7 @@ function desviosDoPrumo(medida: 'prumo-perfil' | 'prumo-frente', p: Ponto[], ctx
   if (!apoio) return [];
   const unidade = ctx?.unidadePrumo ?? 'graus';
   const perfil = medida === 'prumo-perfil';
-  const olha = ctx?.olhaPara ?? 'direita';
+  const olha = olhaParaDoContexto(ctx) ?? 'direita';
   const sinal = perfil ? (olha === 'direita' ? 1 : -1) : ctx?.vista === 'frente' ? -1 : 1;
   const mais = perfil ? 'à frente do fio' : ctx?.vista ? 'para a direita do paciente' : 'para a direita da imagem';
   const menos = perfil ? 'atrás do fio' : ctx?.vista ? 'para a esquerda do paciente' : 'para a esquerda da imagem';
@@ -233,16 +394,29 @@ function desviosDoPrumo(medida: 'prumo-perfil' | 'prumo-frente', p: Ponto[], ctx
 export function nomeDoResultado(id: string): string | null {
   const m = MEDIDAS.find((x) => x.id === id);
   if (m) return m.nome;
+  const extra = extraDoResultado(id);
+  if (extra) return extra.nome;
   const r = /^(prumo-perfil|prumo-frente)-([a-z0-9]+)-(cm|pct|graus)$/.exec(id);
   if (!r) return null;
   const alvo = ALVOS_PRUMO[r[1] as 'prumo-perfil' | 'prumo-frente'].find((a) => a.slug === r[2]);
   return alvo ? `Fio de prumo: ${alvo.nome.toLowerCase()} (${NOME_UNIDADE_PRUMO[r[3] as UnidadePrumo]})` : null;
 }
 
+/** Resultado a mais de uma medida (ex.: "ombros-cm") pelo id final; null se o id não for de um extra. */
+function extraDoResultado(id: string): ExtraDaMedida | null {
+  for (const m of MEDIDAS) {
+    const extra = m.extras?.find((e) => `${m.id}-${e.id}` === id);
+    if (extra) return extra;
+  }
+  return null;
+}
+
 /** Unidade de um resultado pelo id (o fio de prumo leva a unidade no final do id). */
 export function unidadeDoResultadoId(id: string): UnidadeResultado {
   if (/-pct$/.test(id) && id.startsWith('prumo-')) return '%';
   if (/-cm$/.test(id) && id.startsWith('prumo-')) return 'cm';
+  const extra = extraDoResultado(id);
+  if (extra) return extra.unidade;
   return MEDIDAS.find((m) => m.id === id)?.unidade === 'cm' ? 'cm' : 'graus';
 }
 
@@ -253,27 +427,150 @@ export function alturaEmPixels(p: Ponto[] | undefined): number | null {
   return h > 0 ? h : null;
 }
 
-const LADOS = [{ s: 'd', nome: 'direito' }, { s: 'e', nome: 'esquerdo' }] as const;
+const LADOS = [{ s: 'd', nome: 'direito', fem: 'direita', lado: 'D' }, { s: 'e', nome: 'esquerdo', fem: 'esquerda', lado: 'E' }] as const;
 
 export const MEDIDAS: Medida[] = [
   {
     id: 'ombros', nome: 'Desnível dos ombros', vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'horizontal',
     pontos: ['Acrômio direito do paciente', 'Acrômio esquerdo do paciente'],
+    definicao: 'Reta entre os dois ombros, com o ângulo dela com a horizontal e o lado mais alto. Com a escala marcada, mostra também a diferença de altura em cm. O modelo marca o centro do ombro, não o acrômio: confira e ajuste os pontos. O app mostra só o valor medido, sem classificar.',
+    origemSugestao: 'centro do ombro (modelo)', sugerir: sugerirPar('ombro'),
     calcular: ([d, e]) => desnivel('Linha dos ombros', d, e),
+    extras: [{ id: 'cm', nome: 'Desnível dos ombros (cm)', unidade: 'cm', calcular: ([d, e], ctx) => desnivelEmCm('Linha dos ombros', d, e, ctx?.cmPorPx) }],
+  },
+  {
+    id: 'cotovelos', nome: 'Desnível dos cotovelos', vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'horizontal',
+    pontos: ['Cotovelo direito do paciente (epicôndilo lateral)', 'Cotovelo esquerdo do paciente (epicôndilo lateral)'],
+    definicao: 'Reta entre os dois cotovelos, com o ângulo dela com a horizontal e o lado mais alto. O modelo marca o centro da articulação, não o epicôndilo. O app mostra só o valor medido, sem classificar.',
+    origemSugestao: 'centro do cotovelo (modelo)', sugerir: sugerirPar('cotovelo'),
+    calcular: ([d, e]) => desnivel('Linha dos cotovelos', d, e),
+  },
+  ...LADOS.map(({ s, nome, lado }): Medida => ({
+    id: `braco-${s}`, nome: `Alinhamento do braço ${nome}`, vistas: ['frente', 'costas', 'perfil'], grupo: 'postura', desenho: 'segmento-vertical',
+    pontos: [`Ombro ${nome} (acrômio)`, `Cotovelo ${nome} (epicôndilo lateral)`],
+    definicao: 'Reta do ombro ao cotovelo contra a vertical: 0° é o braço na vertical, para baixo. De frente e de costas, o app diz se o cotovelo está afastado do tronco ou junto dele; de perfil, se está à frente ou atrás do ombro. Vale para a posição parada, com o braço relaxado. O modelo marca o centro da articulação, não o acrômio nem o epicôndilo. Sem classificação.',
+    origemSugestao: 'centro do ombro e do cotovelo (modelo)', sugerir: sugerirDoLadoNoPerfil(['ombro', 'cotovelo'], lado),
+    calcular: ([o, c], ctx) => {
+      const u = { x: c.x - o.x, y: c.y - o.y };
+      const ang = anguloEntreVetores(u, { x: 0, y: 1 });
+      if (ang === null) return null;
+      const base = `Braço ${nome}: ${f1(ang)}° com a vertical (reta ombro–cotovelo)`;
+      if (ang < LIMITE_SENTIDO || ang > 180 - LIMITE_SENTIDO) return { valor: ang, texto: `${base}.` };
+      if (ctx?.vista === 'frente' || ctx?.vista === 'costas') {
+        const afastado = ladoLateralNaImagem(lado, ctx.vista) === (u.x < 0 ? 'esquerda' : 'direita');
+        const frase = afastado ? SENTIDO.afastadoDoTronco : SENTIDO.juntoDoTronco;
+        return { valor: ang, sentido: frase, texto: `${base}, cotovelo ${frase}.` };
+      }
+      const olha = ctx?.vista === 'perfil' ? olhaParaDoContexto(ctx) : undefined;
+      if (!olha) return { valor: ang, texto: `${base}.` };
+      const aFrente = (u.x > 0) === (olha === 'direita');
+      return { valor: ang, sentido: aFrente ? SENTIDO.cotoveloAFrente : SENTIDO.cotoveloAtras, texto: `${base}, cotovelo ${aFrente ? 'à frente' : 'atrás'} do ombro.` };
+    },
+  })),
+  {
+    id: 'cotovelo-perfil', nome: 'Flexão/extensão do cotovelo', vistas: ['perfil'], grupo: 'postura', desenho: 'angulo-q',
+    pontos: ['Ombro (acrômio)', 'Cotovelo (epicôndilo lateral)', 'Punho (meio do punho)'],
+    segmentos: [[0, 1], [1, 2]],
+    definicao: 'Ângulo entre o prolongamento do braço (ombro–cotovelo) e o antebraço (cotovelo–punho), em foto de perfil: 0° é o braço estendido. O app diz se é flexão ou hiperextensão, a partir de para onde o paciente olha. É uma estimativa no plano da foto, sem classificação.',
+    origemSugestao: 'centro do ombro, do cotovelo e do punho (modelo)', sugerir: sugerirDoLado(['ombro', 'cotovelo', 'punho']),
+    calcular: ([o, c, p], ctx) => {
+      const desvio = anguloOrientado({ x: c.x - o.x, y: c.y - o.y }, { x: p.x - c.x, y: p.y - c.y });
+      if (desvio === null) return null;
+      const ang = Math.abs(desvio);
+      if (ang < LIMITE_SENTIDO) return { valor: 0, texto: 'Cotovelo estendido (0,0° de flexão).' };
+      const olha = olhaParaDoContexto(ctx);
+      if (!olha) return { valor: ang, texto: `Cotovelo: ${f1(ang)}° entre o prolongamento do braço e o antebraço (0° = braço estendido).` };
+      const flexao = olha === 'direita' ? desvio < 0 : desvio > 0;
+      return { valor: ang, sentido: flexao ? SENTIDO.flexao : SENTIDO.hiperextensao, texto: `Cotovelo: ${f1(ang)}° de ${flexao ? 'flexão' : 'hiperextensão'} (0° = braço estendido).` };
+    },
+  },
+  ...LADOS.map(({ s, nome, lado }): Medida => ({
+    id: `carregamento-${s}`, nome: `Ângulo de carregamento do cotovelo ${nome} (estimativa por foto)`, vistas: ['frente'], grupo: 'postura', desenho: 'angulo-q',
+    pontos: [`Ombro ${nome} (acrômio)`, `Cotovelo ${nome} (meio entre os epicôndilos)`, `Punho ${nome} (meio entre as estiloides)`],
+    segmentos: [[0, 1], [1, 2]],
+    semAuto: true, motivoSemAuto: 'só à mão: o desvio é pequeno e o erro do modelo nesse ponto não foi medido',
+    definicao: 'Estimativa por foto, com o cotovelo estendido e a palma para a frente: confirmar com goniômetro. Ângulo entre o prolongamento do braço (ombro–cotovelo) e o antebraço (cotovelo–punho): "valgo" quando o antebraço desvia para fora, "varo" quando desvia para dentro. O app mostra só o valor medido, sem valor de referência.',
+    calcular: ([o, c, p], ctx) => {
+      const u = { x: c.x - o.x, y: c.y - o.y }, w = { x: p.x - c.x, y: p.y - c.y };
+      const desvio = anguloOrientado(u, w);
+      if (desvio === null) return null;
+      const ang = Math.abs(desvio);
+      const base = `Ângulo de carregamento do cotovelo ${nome} (estimativa por foto)`;
+      const aviso = 'Confirmar com goniômetro.';
+      if (ang < LIMITE_SENTIDO) return { valor: ang, texto: `${base}: ${f1(ang)}° (antebraço alinhado com o braço). ${aviso}` };
+      const para = ladoDoDesvio(u, w);
+      if (!para) return { valor: ang, texto: `${base}: ${f1(ang)}° entre o prolongamento do braço e o antebraço (sem lado: o braço está deitado na foto). ${aviso}` };
+      const valgo = para === ladoLateralNaImagem(lado, ctx?.vista === 'costas' ? 'costas' : 'frente');
+      return {
+        valor: ang, sentido: valgo ? SENTIDO.valgo : SENTIDO.varo,
+        texto: `${base}: ${f1(ang)}° em ${valgo ? 'valgo (antebraço desviado para fora do prolongamento do braço)' : 'varo (antebraço desviado para dentro do prolongamento do braço)'}. ${aviso}`,
+      };
+    },
+  })),
+  ...LADOS.map(({ s, nome, fem, lado }): Medida => ({
+    id: `punho-${s}`, nome: `Alinhamento antebraço-mão ${nome}`, vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'angulo-q',
+    pontos: [`Cotovelo ${nome} (meio entre os epicôndilos)`, `Punho ${nome} (meio entre as estiloides)`, `Eixo da mão ${fem} (cabeça do 3º metacarpo)`],
+    segmentos: [[0, 1], [1, 2]],
+    semAuto: true, motivoSemAuto: 'só à mão: o modelo não marca o eixo da mão (só mínimo, indicador e polegar)',
+    definicao: 'Ângulo entre o prolongamento do antebraço (cotovelo–punho) e o eixo da mão (punho–cabeça do 3º metacarpo). Marque à mão, de preferência com adesivo na pele. O app diz só se a mão desvia para fora ou para dentro do prolongamento do antebraço. Com a palma para a frente isso é desvio radial (fora) ou ulnar (dentro); com a palma voltada para a coxa, a foto de frente mostra flexão ou extensão do punho, e o app não sabe a rotação do antebraço. Sem classificação.',
+    calcular: ([c, p, m], ctx) => {
+      const u = { x: p.x - c.x, y: p.y - c.y }, w = { x: m.x - p.x, y: m.y - p.y };
+      const desvio = anguloOrientado(u, w);
+      if (desvio === null) return null;
+      const ang = Math.abs(desvio);
+      const base = `Antebraço–mão ${nome}: ${f1(ang)}° entre o prolongamento do antebraço e o eixo da mão`;
+      const para = ladoDoDesvio(u, w);
+      if (ang < LIMITE_SENTIDO || !para || (ctx?.vista !== 'frente' && ctx?.vista !== 'costas')) return { valor: ang, texto: `${base}.` };
+      const fora = para === ladoLateralNaImagem(lado, ctx.vista);
+      return { valor: ang, sentido: fora ? SENTIDO.maoParaFora : SENTIDO.maoParaDentro, texto: `${base}, mão ${fora ? 'desviada para fora' : 'desviada para dentro'}.` };
+    },
+  })),
+  {
+    id: 'escapulas', nome: 'Desnível dos ângulos inferiores das escápulas', vistas: ['costas'], grupo: 'postura', desenho: 'horizontal',
+    pontos: ['Ângulo inferior da escápula direita (por palpação ou marcador na pele)', 'Ângulo inferior da escápula esquerda (por palpação ou marcador na pele)'],
+    semAuto: true, motivoSemAuto: 'só à mão: o modelo não marca a escápula',
+    definicao: 'Reta entre os ângulos inferiores das duas escápulas, em foto de costas. Marque por palpação, de preferência com marcador na pele. A posição parada não mostra como a escápula se comporta no movimento. O app mostra só o ângulo com a horizontal e o lado mais alto, sem classificar.',
+    calcular: ([d, e]) => desnivel('Linha dos ângulos inferiores das escápulas', d, e),
   },
   {
     id: 'pelve', nome: 'Desnível da pelve', vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'horizontal',
     pontos: ['Crista ilíaca (ou espinha ilíaca) direita', 'Crista ilíaca (ou espinha ilíaca) esquerda'],
+    semAuto: true, motivoSemAuto: 'só à mão: o modelo marca o centro do quadril, não a crista ilíaca (veja "Linha dos quadris")',
+    definicao: 'Reta entre as cristas ilíacas (ou as espinhas ilíacas), marcadas à mão. A sugestão do modelo fica em "Linha dos quadris", que é outra medida. O app mostra só o valor medido, sem classificar.',
     calcular: ([d, e]) => desnivel('Linha da pelve', d, e),
+  },
+  {
+    id: 'quadris', nome: 'Linha dos quadris (sugerida pelo modelo)', vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'horizontal',
+    pontos: ['Quadril direito do paciente (centro da articulação)', 'Quadril esquerdo do paciente (centro da articulação)'],
+    definicao: 'Reta entre os centros das articulações do quadril, como o modelo as marca: não é a crista ilíaca nem o trocânter. Para a pelve pelas cristas, use "Desnível da pelve". O app mostra só o valor medido, sem classificar.',
+    origemSugestao: 'centro do quadril (modelo)', sugerir: sugerirPar('quadril'),
+    calcular: ([d, e]) => desnivel('Linha dos quadris', d, e),
   },
   {
     id: 'cabeca', nome: 'Inclinação da cabeça', vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'horizontal',
     pontos: ['Orelha (ou olho) direita do paciente', 'Orelha (ou olho) esquerda do paciente'],
+    definicao: 'Reta entre as duas orelhas (ou os dois olhos, se a orelha não aparecer), com o ângulo dela com a horizontal e o lado mais alto. O modelo marca a orelha, não o tragus. O app mostra só o valor medido, sem classificar.',
+    origemSugestao: 'orelha (modelo); olho, se a orelha não aparecer',
+    sugerir: (lm, c) => {
+      const orelhas = lerPontos(lm, c, [['orelha', 'D'], ['orelha', 'E']]);
+      if ('pontos' in orelhas) return { pontos: orelhas.pontos, origem: 'orelha (modelo)' };
+      const olhos = lerPontos(lm, c, [['olho', 'D'], ['olho', 'E']]);
+      if ('pontos' in olhos) return { pontos: olhos.pontos, origem: 'olho (modelo), porque as orelhas não apareceram' };
+      return { motivo: 'não achei as orelhas nem os olhos' };
+    },
     calcular: ([d, e]) => desnivel('Linha da cabeça', d, e),
   },
   {
     id: 'tronco', nome: 'Alinhamento do tronco', vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'vertical',
     pontos: ['Base do pescoço (C7)', 'Ponto médio entre os pés ou da pelve'],
+    definicao: 'Reta da base do pescoço (C7) ao ponto médio entre os pés ou da pelve, com o desvio dela da vertical e o lado. O modelo não marca o C7: a sugestão usa o ponto médio dos ombros no lugar dele e o ponto médio dos quadris no lugar do ponto de baixo. O app mostra só o valor medido, sem classificar.',
+    origemSugestao: 'ponto médio dos ombros no lugar do C7, e ponto médio dos quadris (modelo)',
+    sugerir: (lm, c) => {
+      const r = lerPontos(lm, c, [['ombro', 'D'], ['ombro', 'E'], ['quadril', 'D'], ['quadril', 'E']]);
+      if ('motivo' in r) return r;
+      const [oD, oE, qD, qE] = r.pontos;
+      return { pontos: [pontoMedio(oD, oE), pontoMedio(qD, qE)] };
+    },
     calcular: ([a, b]) => {
       const dev = desvioDaVertical(a, b);
       if (dev === null) return null;
@@ -293,8 +590,14 @@ export const MEDIDAS: Medida[] = [
   },
   {
     id: 'cva', nome: 'Ângulo craniovertebral', vistas: ['perfil'], grupo: 'postura', desenho: 'horizontal',
-    pontos: ['C7 (vértebra proeminente)', 'Tragus (orelha)'],
-    calcular: ([c7, tragus]) => {
+    pontos: ['Tragus (orelha)', 'C7 (vértebra proeminente)'],
+    definicao: 'Ângulo da reta C7–tragus com a horizontal. O modelo sugere a orelha no lugar do tragus; o C7 é marcado à mão. O app mostra só o valor medido, sem classificar.',
+    origemSugestao: 'orelha (modelo), no lugar do tragus; o C7 é à mão',
+    sugerir: (lm, c) => {
+      const r = lerPontos(lm, c, [['orelha', ladoDaSugestao(lm, c)]]);
+      return 'motivo' in r ? r : { pontos: r.pontos };
+    },
+    calcular: ([tragus, c7]) => {
       const ang = anguloComHorizontal(c7, tragus);
       if (ang === null) return null;
       return { valor: ang, texto: `Ângulo craniovertebral: ${f1(ang)}° (reta C7–tragus com a horizontal). Quanto menor, mais a cabeça está à frente.` };
@@ -303,6 +606,7 @@ export const MEDIDAS: Medida[] = [
   {
     id: 'protracao-ombro', nome: 'Protração do ombro (C7–acrômio)', vistas: ['perfil'], grupo: 'postura', desenho: 'horizontal',
     pontos: ['C7 (vértebra proeminente)', 'Acrômio (ponto mais lateral do ombro)'],
+    semAuto: true, motivoSemAuto: 'só à mão: C7 e acrômio são pontos ósseos que o modelo não marca',
     definicao: 'Ângulo entre a reta C7–acrômio e a horizontal. O app mostra só o valor medido; serve para comparar fotos feitas do mesmo jeito.',
     calcular: ([c7, acromio]) => {
       const ang = anguloComHorizontal(c7, acromio);
@@ -313,6 +617,8 @@ export const MEDIDAS: Medida[] = [
   {
     id: 'tronco-perfil', nome: 'Inclinação do tronco', vistas: ['perfil'], grupo: 'postura', desenho: 'vertical',
     pontos: ['Ombro (acrômio)', 'Quadril (trocânter maior)'],
+    definicao: 'Reta do ombro ao quadril contra a vertical, em foto de perfil. O modelo marca o centro do ombro e do quadril, não o acrômio nem o trocânter. O app mostra só o valor medido, sem classificar.',
+    origemSugestao: 'centro do ombro e do quadril (modelo)', sugerir: sugerirDoLado(['ombro', 'quadril']),
     calcular: ([o, q]) => {
       const dev = desvioDaVertical(o, q);
       if (dev === null) return null;
@@ -320,8 +626,31 @@ export const MEDIDAS: Medida[] = [
     },
   },
   {
+    id: 'cifose', nome: 'Cifose torácica (estimativa de superfície, não é Cobb)', vistas: ['perfil'], grupo: 'postura', desenho: 'retas',
+    pontos: ['Reta de cima: 1º ponto (início da curva torácica)', 'Reta de cima: 2º ponto', 'Reta de baixo: 1º ponto', 'Reta de baixo: 2º ponto (fim da curva torácica)'],
+    segmentos: [[0, 1], [2, 3]],
+    semAuto: true, motivoSemAuto: 'só à mão: o modelo não marca a coluna',
+    definicao: 'Estimativa de superfície, não é Cobb: ângulo entre duas retas marcadas sobre a pele, uma em cada ponta da curva torácica (2 pontos para cada reta, de preferência com marcadores na pele). O Cobb de referência vem da radiografia. O app mostra só o valor medido, sem classificar.',
+    calcular: ([a, b, c, d]) => {
+      const ang = anguloEntreRetas(a, b, c, d);
+      return ang === null ? null : { valor: ang, texto: `Cifose torácica (estimativa de superfície): ${f1(ang)}° entre as duas retas marcadas sobre a pele. Não é o ângulo de Cobb da radiografia.` };
+    },
+  },
+  {
+    id: 'lordose', nome: 'Lordose lombar (estimativa de superfície, não é Cobb)', vistas: ['perfil'], grupo: 'postura', desenho: 'retas',
+    pontos: ['Reta de cima: 1º ponto (início da curva lombar)', 'Reta de cima: 2º ponto', 'Reta de baixo: 1º ponto', 'Reta de baixo: 2º ponto (fim da curva lombar)'],
+    segmentos: [[0, 1], [2, 3]],
+    semAuto: true, motivoSemAuto: 'só à mão: o modelo não marca a coluna',
+    definicao: 'Estimativa de superfície, não é Cobb: ângulo entre duas retas marcadas sobre a pele, uma em cada ponta da curva lombar (2 pontos para cada reta, de preferência com marcadores na pele). O Cobb de referência vem da radiografia. O app mostra só o valor medido, sem classificar.',
+    calcular: ([a, b, c, d]) => {
+      const ang = anguloEntreRetas(a, b, c, d);
+      return ang === null ? null : { valor: ang, texto: `Lordose lombar (estimativa de superfície): ${f1(ang)}° entre as duas retas marcadas sobre a pele. Não é o ângulo de Cobb da radiografia.` };
+    },
+  },
+  {
     id: 'pelve-perfil', nome: 'Inclinação pélvica (perfil)', vistas: ['perfil'], grupo: 'postura', desenho: 'horizontal', comSinal: true,
     pontos: ['EIPS (espinha ilíaca posterossuperior)', 'EIAS (espinha ilíaca anterossuperior)'],
+    semAuto: true, motivoSemAuto: 'só à mão: o modelo não marca a EIAS nem a EIPS',
     definicao: 'Ângulo da reta EIPS–EIAS com a horizontal. Positivo = inclinação anterior (EIAS mais baixa que a EIPS); negativo = posterior. O rótulo mostra o valor sem sinal e o texto do resultado diz o lado. Sem classificação.',
     calcular: ([eips, eias]) => {
       const ang = anguloComHorizontal(eips, eias);
@@ -342,19 +671,35 @@ export const MEDIDAS: Medida[] = [
     },
     calcularVarios: (p, ctx) => desviosDoPrumo('prumo-perfil', p, ctx),
   },
-  ...LADOS.map(({ s, nome }): Medida => ({
+  ...LADOS.map(({ s, nome, lado }): Medida => ({
     id: `joelho-${s}`, nome: `Joelho ${nome}`, vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'angulo3',
     pontos: [`Quadril ${nome} (trocânter maior)`, `Joelho ${nome} (interlinha articular)`, `Tornozelo ${nome} (maléolo lateral)`],
-    calcular: ([q, j, t]) => {
+    definicao: 'Ângulo quadril–joelho–tornozelo em foto de frente ou de costas (180° é a linha reta). O app diz se o joelho está para dentro da linha quadril–tornozelo (valgo) ou para fora (varo). O modelo marca centros articulares, não a interlinha nem o maléolo. Sem classificação.',
+    origemSugestao: 'centro do quadril, do joelho e do tornozelo (modelo)', sugerir: sugerirDoLado(['quadril', 'joelho', 'tornozelo'], lado),
+    calcular: ([q, j, t], ctx) => {
       const ang = anguloEm(q, j, t);
       if (ang === null) return null;
-      return { valor: ang, texto: `Joelho ${nome}, quadril–joelho–tornozelo: ${f1(ang)}° (${f1(Math.abs(180 - ang))}° de afastamento da linha reta).` };
+      const base = `Joelho ${nome}, quadril–joelho–tornozelo: ${f1(ang)}° (${f1(Math.abs(180 - ang))}° de afastamento da linha reta)`;
+      if (ctx?.vista !== 'frente' && ctx?.vista !== 'costas') return { valor: ang, texto: `${base}.` };
+      const u = { x: j.x - q.x, y: j.y - q.y };
+      const para = ladoDoDesvio(u, { x: t.x - j.x, y: t.y - j.y });
+      if (180 - ang < LIMITE_SENTIDO || !para) return { valor: ang, texto: `${base}.` };
+      const valgo = para === ladoLateralNaImagem(lado, ctx.vista);
+      return { valor: ang, sentido: valgo ? SENTIDO.valgo : SENTIDO.varo, texto: `${base}, em ${valgo ? 'valgo (joelho para dentro da linha quadril–tornozelo)' : 'varo (joelho para fora da linha quadril–tornozelo)'}.` };
     },
   })),
-  ...LADOS.map(({ s, nome }): Medida => ({
+  {
+    id: 'linha-joelhos', nome: 'Linha dos joelhos (desnível)', vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'horizontal',
+    pontos: ['Joelho direito do paciente (interlinha articular)', 'Joelho esquerdo do paciente (interlinha articular)'],
+    definicao: 'Reta entre os dois joelhos, com o ângulo dela com a horizontal e o lado mais alto. O modelo marca o centro da articulação, não a interlinha. O app mostra só o valor medido, sem classificar.',
+    origemSugestao: 'centro do joelho (modelo), não a interlinha', sugerir: sugerirPar('joelho'),
+    calcular: ([d, e]) => desnivel('Linha dos joelhos', d, e),
+  },
+  ...LADOS.map(({ s, nome, fem }): Medida => ({
     id: `angulo-q-${s}`, nome: `Ângulo Q ${nome}`, vistas: ['frente'], grupo: 'postura', desenho: 'angulo-q',
-    pontos: [`EIAS ${nome} (espinha ilíaca anterossuperior)`, `Centro da patela ${nome}`, `Tuberosidade da tíbia ${nome}`],
+    pontos: [`EIAS ${fem} (espinha ilíaca anterossuperior)`, `Centro da patela ${fem}`, `Tuberosidade da tíbia ${fem}`],
     segmentos: [[0, 1], [1, 2]],
+    semAuto: true, motivoSemAuto: 'só à mão: o modelo não marca a EIAS, a patela nem a tuberosidade da tíbia',
     definicao: 'Ângulo entre a reta EIAS–centro da patela, prolongada além da patela, e a reta centro da patela–tuberosidade da tíbia. O app mostra só o valor medido, sem classificar como normal ou alterado.',
     calcular: ([eias, patela, tuberosidade]) => {
       const interno = anguloEm(eias, patela, tuberosidade);
@@ -363,10 +708,18 @@ export const MEDIDAS: Medida[] = [
       return { valor: q, texto: `Ângulo Q ${nome}: ${f1(q)}° (reta EIAS–patela prolongada com a reta patela–tuberosidade da tíbia).` };
     },
   })),
-  ...LADOS.map(({ s, nome }): Medida => ({
+  {
+    id: 'linha-tornozelos', nome: 'Linha dos tornozelos (desnível)', vistas: ['frente', 'costas'], grupo: 'postura', desenho: 'horizontal',
+    pontos: ['Tornozelo direito do paciente (maléolo lateral)', 'Tornozelo esquerdo do paciente (maléolo lateral)'],
+    definicao: 'Reta entre os dois tornozelos, com o ângulo dela com a horizontal e o lado mais alto. O modelo marca o centro da articulação, não o maléolo. O app mostra só o valor medido, sem classificar.',
+    origemSugestao: 'centro do tornozelo (modelo), não o maléolo', sugerir: sugerirPar('tornozelo'),
+    calcular: ([d, e]) => desnivel('Linha dos tornozelos', d, e),
+  },
+  ...LADOS.map(({ s, nome, fem }): Medida => ({
     id: `retrope-${s}`, nome: `Retropé ${nome}`, vistas: ['costas'], grupo: 'postura', desenho: 'retas', comSinal: true,
-    pontos: [`Perna ${nome}: ponto de cima (meio da panturrilha)`, `Perna ${nome}: ponto de baixo (tendão do calcâneo, acima do calcanhar)`, `Calcâneo ${nome}: ponto de cima`, `Calcâneo ${nome}: ponto de baixo (base do calcanhar)`],
+    pontos: [`Perna ${fem}: ponto de cima (meio da panturrilha)`, `Perna ${fem}: ponto de baixo (tendão do calcâneo, acima do calcanhar)`, `Calcâneo ${nome}: ponto de cima`, `Calcâneo ${nome}: ponto de baixo (base do calcanhar)`],
     segmentos: [[0, 1], [2, 3]],
+    semAuto: true, motivoSemAuto: 'só à mão: o modelo não marca o meio da panturrilha nem o eixo do calcâneo',
     definicao: 'Ângulo entre a reta da perna (2 pontos no eixo da perna) e a reta do calcâneo (2 pontos), em foto de costas. Positivo = valgo (parte de baixo do calcanhar deslocada para fora em relação à perna); negativo = varo. O rótulo mostra o valor sem sinal. Sem classificação.',
     calcular: ([a, b, c, d]) => {
       const bruto = anguloOrientado({ x: b.x - a.x, y: b.y - a.y }, { x: d.x - c.x, y: d.y - c.y });
@@ -374,16 +727,39 @@ export const MEDIDAS: Medida[] = [
       const t = normalizar180(bruto);
       const valgo = s === 'd' ? -t : t;
       if (Math.abs(valgo) < 0.05) return { valor: 0, texto: `Retropé ${nome}: 0,0° (reta do calcâneo alinhada com a reta da perna).` };
-      return { valor: valgo, sentido: valgo > 0 ? 'valgo' : 'varo', texto: `Retropé ${nome}: ${f1(Math.abs(valgo))}° em ${valgo > 0 ? 'valgo (calcanhar desviado para fora da reta da perna)' : 'varo (calcanhar desviado para dentro da reta da perna)'}.` };
+      return { valor: valgo, sentido: valgo > 0 ? SENTIDO.valgo : SENTIDO.varo, texto: `Retropé ${nome}: ${f1(Math.abs(valgo))}° em ${valgo > 0 ? 'valgo (calcanhar desviado para fora da reta da perna)' : 'varo (calcanhar desviado para dentro da reta da perna)'}.` };
     },
   })),
   {
     id: 'joelho', nome: 'Ângulo do joelho', vistas: ['perfil'], grupo: 'postura', desenho: 'angulo3',
     pontos: ['Quadril (trocânter maior)', 'Joelho (interlinha articular)', 'Tornozelo (maléolo lateral)'],
-    calcular: ([q, j, t]) => {
+    definicao: 'Ângulo quadril–joelho–tornozelo em foto de perfil (180° é a linha reta). O app diz se o joelho está à frente (flexão) ou atrás (hiperextensão) da linha quadril–tornozelo, a partir de para onde o paciente olha. O modelo marca centros articulares, não a interlinha nem o maléolo. Sem classificação.',
+    origemSugestao: 'centro do quadril, do joelho e do tornozelo (modelo)', sugerir: sugerirDoLado(['quadril', 'joelho', 'tornozelo']),
+    calcular: ([q, j, t], ctx) => {
       const ang = anguloEm(q, j, t);
       if (ang === null) return null;
-      return { valor: ang, texto: `Ângulo quadril–joelho–tornozelo: ${f1(ang)}° (${f1(Math.abs(180 - ang))}° de afastamento da linha reta).` };
+      const base = `Ângulo quadril–joelho–tornozelo: ${f1(ang)}° (${f1(Math.abs(180 - ang))}° de afastamento da linha reta)`;
+      const olha = olhaParaDoContexto(ctx);
+      const desvio = anguloOrientado({ x: j.x - q.x, y: j.y - q.y }, { x: t.x - j.x, y: t.y - j.y });
+      if (!olha || desvio === null || 180 - ang < LIMITE_SENTIDO) return { valor: ang, texto: `${base}.` };
+      const flexao = olha === 'direita' ? desvio > 0 : desvio < 0;
+      return { valor: ang, sentido: flexao ? SENTIDO.flexao : SENTIDO.hiperextensao, texto: `${base}, em ${flexao ? 'flexão (joelho à frente da linha quadril–tornozelo)' : 'hiperextensão (joelho atrás da linha quadril–tornozelo)'}.` };
+    },
+  },
+  {
+    id: 'perna-vertical', nome: 'Perna contra a vertical (joelho–tornozelo)', vistas: ['perfil'], grupo: 'postura', desenho: 'segmento-vertical',
+    pontos: ['Joelho (interlinha articular)', 'Tornozelo (maléolo lateral)'],
+    definicao: 'Reta do joelho ao tornozelo contra a vertical, em foto de perfil: 0° é a perna na vertical. O app diz se o joelho está à frente ou atrás do tornozelo, a partir de para onde o paciente olha. O modelo marca centros articulares. Sem classificação.',
+    origemSugestao: 'centro do joelho e do tornozelo (modelo)', sugerir: sugerirDoLado(['joelho', 'tornozelo']),
+    calcular: ([j, t], ctx) => {
+      const u = { x: t.x - j.x, y: t.y - j.y };
+      const ang = anguloEntreVetores(u, { x: 0, y: 1 });
+      if (ang === null) return null;
+      const base = `Perna: ${f1(ang)}° com a vertical (reta joelho–tornozelo)`;
+      const olha = olhaParaDoContexto(ctx);
+      if (!olha || ang < LIMITE_SENTIDO || ang > 180 - LIMITE_SENTIDO) return { valor: ang, texto: `${base}.` };
+      const joelhoAFrente = (u.x > 0) === (olha === 'esquerda');
+      return { valor: ang, sentido: joelhoAFrente ? SENTIDO.joelhoAFrente : SENTIDO.joelhoAtras, texto: `${base}, joelho ${joelhoAFrente ? 'à frente' : 'atrás'} do tornozelo.` };
     },
   },
   {

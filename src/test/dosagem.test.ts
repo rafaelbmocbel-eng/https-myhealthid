@@ -458,7 +458,8 @@ describe('marcação automática', () => {
     const { pontosAutomaticos } = await import('../lib/angular/pose');
     const r = pontosAutomaticos(lm({ 12: [0.4, 0.3], 11: [0.6, 0.31], 24: [0.45, 0.6], 23: [0.55, 0.6], 8: [0.42, 0.1], 7: [0.58, 0.1], 26: [0.45, 0.75], 28: [0.45, 0.9] }), 'frente', 1000, 2000);
     expect(r.ombros).toEqual([{ x: 400, y: 600 }, { x: 600, y: 620 }]);
-    expect(r.pelve).toHaveLength(2);
+    expect(r.quadris).toHaveLength(2);
+    expect(r.pelve).toBeUndefined();
     expect(r.cabeca).toHaveLength(2);
     expect(r.tronco).toHaveLength(2);
     expect(r['joelho-d']).toHaveLength(3);
