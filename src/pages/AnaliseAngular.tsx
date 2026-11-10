@@ -15,7 +15,7 @@ import ComparadorFotos, { type ExtrasDaArte } from '@/components/angular/Compara
 import ExportarSocialDialog from '@/components/angular/ExportarSocialDialog';
 import PainelEstilo from '@/components/angular/PainelEstilo';
 import ResumoSessao, { SeletorDeAnterior, TabelaComparacao, TextoDaMedida } from '@/components/angular/ResumoSessao';
-import { AvisosDaMarcacao, SessaoVistas, type AbaDaSessao } from '@/components/angular/SessaoVistas';
+import { AvisosDaMarcacao, SentidoDoOlhar, SessaoVistas, type AbaDaSessao } from '@/components/angular/SessaoVistas';
 import { useConfirmacao } from '@/components/angular/ConfirmarAcao';
 import { DICA_COMPARAR, INSTRUCAO_DA_POSICAO } from '@/components/angular/textosSessao';
 import { ItensSvg } from '@/components/angular/MarcacaoSvg';
@@ -103,6 +103,11 @@ export default function AnaliseAngular() {
   const caixaRef = useRef<HTMLDivElement>(null);
   const rolagemRef = useRef<HTMLDivElement>(null);
   const comparadorRef = useRef<HTMLDivElement>(null);
+  const montada = useRef(true);
+  useEffect(() => {
+    montada.current = true;
+    return () => { montada.current = false; };
+  }, []);
 
   // Outra posição ou outra foto: o zoom volta ao normal.
   useEffect(() => { setZoom(1); setMover(false); }, [posicao, foto]);
@@ -172,11 +177,18 @@ export default function AnaliseAngular() {
 
   // ---- foto de cada posição ----
   const aplicarFoto = async (alvo: VistaSessao, arquivo: Blob, inclinacao: number | null) => {
+    // O preparo da foto demora: se a sessão recomeçou ou a página saiu nesse meio-tempo, a foto não vale mais.
+    const sessaoId = estadoRef.current.id;
+    const aindaVale = () => montada.current && estadoRef.current.id === sessaoId;
     let nova: FotoDaPosicao;
     try {
       nova = await prepararFoto(arquivo);
     } catch {
-      toast.error('Não consegui abrir essa imagem.');
+      if (aindaVale()) toast.error('Não consegui abrir essa imagem.');
+      return;
+    }
+    if (!aindaVale()) {
+      URL.revokeObjectURL(nova.url);
       return;
     }
     acoes.definirFoto(alvo, nova, inclinacao);
@@ -214,7 +226,12 @@ export default function AnaliseAngular() {
     else acoes.abrirResumo();
   };
   const salvarEIr = async () => {
-    if (await salvar(posicao)) irParaProxima(posicao);
+    const sessaoId = estadoRef.current.id;
+    const salvaEm = posicao;
+    if (!(await salvar(salvaEm))) return;
+    // A gravação demora: só segue se a pessoa ainda estiver olhando para a posição que acabou de salvar.
+    const agora = estadoRef.current;
+    if (agora.id === sessaoId && agora.atual === salvaEm && agora.visao === 'posicao') irParaProxima(salvaEm);
   };
 
   const doEvento = (e: { clientX: number; clientY: number }): Ponto | null => {
@@ -537,6 +554,8 @@ export default function AnaliseAngular() {
                       <AvisosDaMarcacao sugestao={item.sugestao} inverterDE={item.inverterDE} temPontosDoModelo={!!item.landmarks}
                         aoInverter={() => void marcacao.alternarDireitaEsquerda(posicao)} ocupado={marcacao.detectando !== null} />
 
+                      {vista === 'perfil' && <SentidoDoOlhar valor={item.olhaPara} aoMudar={(sentido) => acoes.editar(posicao, { olhaPara: sentido })} />}
+
                       <div className="grid grid-cols-2 gap-2">
                         <Button variant="outline" className="h-auto min-h-11 gap-1.5 whitespace-normal px-2 text-[13px] leading-tight" onClick={() => setComparando(true)} data-testid="abrir-comparador">
                           <Columns2 className="h-4 w-4 shrink-0" /> Comparar lado a lado
@@ -668,19 +687,6 @@ export default function AnaliseAngular() {
                               ))}
                             </div>
                           </div>
-                          {vista === 'perfil' && (
-                            <div className="space-y-1">
-                              <p className="font-medium">O paciente olha para a</p>
-                              <div className="grid grid-cols-2 gap-1.5">
-                                {([['esquerda', ArrowLeft], ['direita', ArrowRight]] as const).map(([sentido, Seta]) => (
-                                  <button key={sentido} type="button" aria-pressed={item.olhaPara === sentido} onClick={() => acoes.editar(posicao, { olhaPara: sentido })}
-                                    className={cn('flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 font-medium', item.olhaPara === sentido ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50')}>
-                                    <Seta className="h-4 w-4 shrink-0" aria-hidden /> {sentido === 'esquerda' ? 'Esquerda da imagem' : 'Direita da imagem'}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                           <Button size="sm" variant="outline" className="h-11 w-full gap-1.5" onClick={() => void marcacao.sugerirPrumo(posicao)} disabled={marcacao.detectando !== null}>
                             {marcacao.detectando === posicao ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Sugerir os pontos do fio
                           </Button>

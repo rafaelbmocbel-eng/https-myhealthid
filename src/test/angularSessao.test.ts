@@ -5,9 +5,10 @@ import {
 } from '@/lib/angular/comparar';
 import {
   agruparPorSessao, dataDaSessao, descricaoDaNota, escolherAnterior, lerDadosExtras, montarDadosExtras, novaSessaoId,
-  posicoesDaSessao, previstasPadrao, rotuloDaSessao, sessoesComPosicao, tituloDaNota, type NotaDeAnalise,
+  classificarPontos, posicoesDaSessao, previstasPadrao, rotuloDaSessao, sessoesComPosicao, tituloDaNota, type NotaDeAnalise,
 } from '@/lib/angular/sessao';
 import { VISTAS_DA_SESSAO, type SessaoGravada } from '@/lib/angular/tiposSessao';
+import { ehMedidaParaConfirmar } from '@/components/angular/textosSessao';
 
 const m = (id: string, graus: number, extra: Partial<MedidaSalva> = {}): MedidaSalva => ({ id, graus, ...extra });
 const OMBROS_D = (g: string) => `Linha dos ombros: ${g}° com a horizontal, lado direito mais alto.`;
@@ -335,24 +336,55 @@ describe('lerDadosExtras (tolerante)', () => {
 // ---------------------------------------------------------------------------
 
 describe('tituloDaNota', () => {
-  it('"Análise angular — vista <posição> (n de total)" para as quatro posições', () => {
-    expect(tituloDaNota('frente', 1, 4)).toBe('Análise angular — vista frente (1 de 4)');
-    expect(tituloDaNota('perfil_d', 2, 4)).toBe('Análise angular — vista perfil direito (2 de 4)');
-    expect(tituloDaNota('perfil_e', 3, 4)).toBe('Análise angular — vista perfil esquerdo (3 de 4)');
-    expect(tituloDaNota('costas', 4, 4)).toBe('Análise angular — vista costas (4 de 4)');
+  it('"Análise angular — vista <posição>" para as quatro posições, sem "(n de total)"', () => {
+    expect(tituloDaNota('frente')).toBe('Análise angular — vista frente');
+    expect(tituloDaNota('perfil_d')).toBe('Análise angular — vista perfil direito');
+    expect(tituloDaNota('perfil_e')).toBe('Análise angular — vista perfil esquerdo');
+    expect(tituloDaNota('costas')).toBe('Análise angular — vista costas');
   });
 
-  it('sessão de uma posição só não ganha "(1 de 1)"', () => {
-    expect(tituloDaNota('frente', 1, 1)).toBe('Análise angular — vista frente');
-    expect(tituloDaNota('costas', 1, 0)).toBe('Análise angular — vista costas');
+  it('só recebe a posição: a ordem e as previstas ficam em dados_extras.sessao, e o título nunca fica com um total que o tempo desatualiza', () => {
+    expect(tituloDaNota.length).toBe(1);
+    for (const p of previstasPadrao()) expect(tituloDaNota(p)).not.toMatch(/\(\d+ de \d+\)|\d/);
+  });
+});
+
+describe('ehMedidaParaConfirmar: quais medidas saem com "estimativa: confirme"', () => {
+  it('cotovelo, braço, carregamento, punho e escápula (como antes)', () => {
+    for (const id of ['cotovelos', 'cotovelo-perfil', 'cotovelo-perfil-d', 'braco-d', 'braco-e', 'carregamento-d', 'carregamento-e', 'punho-d', 'punho-e', 'escapulas']) {
+      expect(ehMedidaParaConfirmar(id), id).toBe(true);
+    }
   });
 
-  it('ordem fora do previsto não gera "5 de 4" nem texto estranho', () => {
-    expect(tituloDaNota('frente', 5, 4)).toBe('Análise angular — vista frente (5 de 5)');
-    expect(tituloDaNota('costas', 0, 4)).toBe('Análise angular — vista costas');
-    expect(tituloDaNota('costas', Number.NaN, 4)).toBe('Análise angular — vista costas');
-    expect(tituloDaNota('costas', 2, Infinity)).toBe('Análise angular — vista costas');
-    expect(tituloDaNota('perfil_d', 2.9, 4.7)).toBe('Análise angular — vista perfil direito (2 de 4)');
+  it('também quadris, pelve, linha dos joelhos e joelho de perfil (o que docs/analise-angular-medidas.md manda confirmar)', () => {
+    for (const id of ['quadris', 'pelve', 'linha-joelhos', 'joelho']) expect(ehMedidaParaConfirmar(id), id).toBe(true);
+  });
+
+  it('as demais não ganham a marca: o joelho de frente e de costas (valgo e varo), a pelve de perfil, ombros, cabeça, tronco, CVA e fio de prumo', () => {
+    for (const id of ['joelho-d', 'joelho-e', 'pelve-perfil', 'ombros', 'ombros-cm', 'cabeca', 'tronco', 'tronco-perfil', 'cva', 'linha-tornozelos', 'perna-vertical', 'prumo-perfil-quadril-cm', 'prumo-frente-ombro-graus', 'livre', 'regua', '']) {
+      expect(ehMedidaParaConfirmar(id), id).toBe(false);
+    }
+  });
+});
+
+describe('classificarPontos', () => {
+  it('separa as medidas da posição em sugeridas pelo modelo, ajustadas à mão e marcadas só à mão', () => {
+    expect(classificarPontos(['ombros', 'quadris', 'braco-d', 'carregamento-d', 'punho-d'], ['ombros', 'quadris', 'braco-d'], ['ombros']))
+      .toEqual({ sugeridas: ['ombros', 'quadris', 'braco-d'], ajustadas: ['ombros'], soMao: ['carregamento-d', 'punho-d'] });
+  });
+
+  it('só conta medidas que têm resultado na posição, sem repetir: sugerida que ficou incompleta e ajustada que sumiu não entram', () => {
+    // 'cotovelos' foi sugerida mas está incompleta (sem resultado); 'prumo-frente' dá vários resultados e conta uma vez.
+    expect(classificarPontos(['ombros', 'prumo-frente', 'prumo-frente', 'punho-d'], ['ombros', 'cotovelos', 'prumo-frente'], ['cotovelos', 'prumo-frente']))
+      .toEqual({ sugeridas: ['ombros', 'prumo-frente'], ajustadas: ['prumo-frente'], soMao: ['punho-d'] });
+  });
+
+  it('ajustada só vale se também foi sugerida: medida marcada à mão desde o início nunca vira "ajustada"', () => {
+    expect(classificarPontos(['punho-d'], [], ['punho-d'])).toEqual({ sugeridas: [], ajustadas: [], soMao: ['punho-d'] });
+  });
+
+  it('sem medidas, tudo vazio', () => {
+    expect(classificarPontos([], ['ombros'], ['ombros'])).toEqual({ sugeridas: [], ajustadas: [], soMao: [] });
   });
 });
 
@@ -365,27 +397,37 @@ describe('descricaoDaNota', () => {
       .toBe(`${medidasTexto}\nPontos marcados manualmente. ${REF} A foto não é armazenada.`);
   });
 
-  it('detecção automática com medidas ajustadas à mão: conta no singular e no plural', () => {
-    expect(descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontosAjustados: ['ombros'] }))
-      .toBe(`${medidasTexto}\nPontos sugeridos por detecção automática; 1 medida ajustada à mão. ${REF} A foto não é armazenada.`);
-    expect(descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontosAjustados: ['ombros', 'pelve', 'cva'] }))
-      .toBe(`${medidasTexto}\nPontos sugeridos por detecção automática; 3 medidas ajustadas à mão. ${REF} A foto não é armazenada.`);
+  const pontos = (sugeridas: string[], ajustadas: string[], soMao: string[]) => ({ sugeridas, ajustadas, soMao });
+  const PREFIXO = 'Pontos sugeridos por detecção automática (confirmar na foto)';
+
+  it('detecção automática: diz em quantas medidas, quantas foram ajustadas à mão e quantas foram marcadas só à mão (singular e plural)', () => {
+    const nota = (p: ReturnType<typeof pontos>) => descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontos: p });
+    expect(nota(pontos(['ombros', 'braco-d', 'quadris'], ['ombros'], ['carregamento-d', 'punho-d'])))
+      .toBe(`${medidasTexto}\n${PREFIXO} em 3 medidas, 1 ajustada à mão; 2 medidas marcadas só à mão. ${REF} A foto não é armazenada.`);
+    expect(nota(pontos(['ombros', 'quadris'], ['ombros', 'quadris'], ['punho-d'])))
+      .toContain(`${PREFIXO} em 2 medidas, 2 ajustadas à mão; 1 medida marcada só à mão. `);
+    expect(nota(pontos(['ombros'], [], [])))
+      .toContain(`${PREFIXO} em 1 medida, nenhuma ajustada à mão. `);
   });
 
-  it('lista vazia diz que nenhuma foi ajustada; sem a lista, não afirma nada sobre ajuste', () => {
-    expect(descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontosAjustados: [] }))
-      .toContain('Pontos sugeridos por detecção automática; nenhuma medida ajustada à mão. ');
+  it('sem medida marcada só à mão, a frase não fala em marcação à mão além dos ajustes (não afirma nada que não aconteceu)', () => {
+    const d = descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontos: pontos(['ombros', 'quadris'], [], []) });
+    expect(d).toContain(`${PREFIXO} em 2 medidas, nenhuma ajustada à mão. `);
+    expect(d).not.toContain('só à mão');
+  });
+
+  it('sem a contagem (a tela não sabe), não afirma nada sobre ajuste nem sobre marcação à mão', () => {
     const semLista = descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida' });
-    expect(semLista).toContain('Pontos sugeridos por detecção automática. ');
-    expect(semLista).not.toMatch(/ajustad/);
-    expect(descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontosAjustados: null })).toBe(semLista);
+    expect(semLista).toContain(`${PREFIXO}. `);
+    expect(semLista).not.toMatch(/ajustad|só à mão/);
+    expect(descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontos: null })).toBe(semLista);
   });
 
   it('nunca diz que o profissional conferiu os pontos (o app não verifica isso)', () => {
     const variantes = [
       descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida' }),
-      descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontosAjustados: [] }),
-      descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontosAjustados: ['a', 'b'] }),
+      descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontos: pontos(['a'], [], []) }),
+      descricaoDaNota({ medidasTexto, metodo: 'automatica_conferida', pontos: pontos(['a', 'b'], ['a'], ['c']) }),
       descricaoDaNota({ medidasTexto, metodo: 'marcacao_manual' }),
     ];
     for (const v of variantes) {

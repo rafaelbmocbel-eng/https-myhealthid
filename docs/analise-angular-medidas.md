@@ -15,6 +15,16 @@ devolve, a cautela de uso e o que a evidência sustenta. Código: `src/lib/angul
 - **Estimativa.** A pose por foto de celular erra alguns graus (RMSE de 4,95 a 7,81° no plano sagital da corrida
   com OpenPose, PMID 36680411; 15,49° no joelho parado com BlazePose Heavy, PMID 42976294). O texto de tela diz
   "estimativa" e "confirmar". Não prometer precisão clínica nem substituir goniômetro.
+- **Quais medidas levam "estimativa: confirme" (tela e PDF).** Cotovelo, braço, carregamento, punho e escápula (o erro do
+  modelo nesses pontos não foi medido); pelve e quadris de frente e de costas (PMID 33636458 e PMID 30005426); joelho de
+  perfil (PMID 42976294); e a linha dos joelhos, que usa os mesmos centros articulares do modelo, sem validação em foto.
+  O joelho de frente e de costas (`joelho-d`, `joelho-e`) e a pelve de perfil ficam sem a marca. A lista é
+  `ehMedidaParaConfirmar`, em `src/lib/angular/sessao.ts`.
+- **Como os pontos foram marcados (nota do prontuário e PDF).** O texto conta, por posição, em quantas medidas o modelo
+  sugeriu os pontos, quantas dessas o profissional ajustou à mão e quantas ele marcou só à mão desde o início ("Pontos
+  sugeridos por detecção automática (confirmar na foto) em 3 medidas, 1 ajustada à mão; 2 medidas marcadas só à mão.").
+  Conta medidas (o que se marca na foto), não números: o fio de prumo vale uma medida. Nunca diz que o profissional
+  conferiu os pontos, porque o aplicativo não verifica isso.
 - **O modelo marca centros articulares, não pontos ósseos.** Onde a clínica usa acrômio, epicôndilo, maléolo,
   trocânter, crista ilíaca, tragus, C7 ou escápula, o modelo dá o centro da articulação (ou a orelha). Por isso toda
   sugestão é só ponto de partida: o profissional confere e arrasta. (Premissa do repositório; o erro do modelo
@@ -257,6 +267,8 @@ nenhum estudo de ângulo de carregamento por foto de celular contra goniômetro;
 
 - Os ids anteriores continuam (`ombros`, `pelve`, `joelho-d`, `cva`...). Notas antigas de joelho de frente não têm
   `sentido`: o comparador só deixa de subtrair quando **os dois** têm sentido e ele mudou.
+- O título da nota é só "Análise angular — vista <posição>", sem "(n de total)": a ordem e as posições previstas ficam em
+  `dados_extras.sessao`. Notas gravadas antes com "(n de total)" continuam válidas; nada lê o título.
 - `pelve` deixou de receber sugestão do modelo; o resultado sugerido agora é `quadris`.
 - `cva`: os pontos trocaram de ordem (tragus, depois C7). O valor só usa o ângulo com a horizontal e os pontos não são
   gravados, então as notas antigas não mudam.

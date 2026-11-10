@@ -94,7 +94,9 @@ export type AcaoSessao =
     landmarks?: Landmark[] | null; sugestao?: SugestaoGuardada; inverterDE?: boolean; olhaPara?: OlharPara; ativar?: string;
   }
   | { tipo: 'editar'; posicao: VistaSessao; mudanca: Partial<Pick<ItemPosicao, 'nivelTipo' | 'escalaCm' | 'inclinacaoCaptura' | 'inverterSensor' | 'olhaPara'>> }
-  | { tipo: 'salva'; posicao: VistaSessao; notaId: string; pacienteId: string }
+  /** `sessaoId` e `item` são os da hora em que a nota foi montada: a gravação termina depois, e a tela pode ter mudado nesse meio-tempo. */
+  | { tipo: 'salva'; posicao: VistaSessao; notaId: string; pacienteId: string; sessaoId: string; item: ItemPosicao }
+  | { tipo: 'nao_salva'; posicao: VistaSessao; sessaoId: string }
   | { tipo: 'pular'; posicao: VistaSessao }
   | { tipo: 'opcoes'; compassoRef?: RefCompasso; unidadePrumo?: UnidadePrumo }
   | { tipo: 'reiniciar'; id: string; iniciadaEm: string };
@@ -267,8 +269,15 @@ export function reducerSessao(e: EstadoSessao, a: AcaoSessao): EstadoSessao {
       const item = e.itens[a.posicao];
       return mudar(e, a.posicao, { ...a.mudanca, ...(item.foto ? { salva: false } : {}) });
     }
-    case 'salva':
-      return mudar(e, a.posicao, { salva: true, notaId: a.notaId, notaPaciente: a.pacienteId });
+    case 'salva': {
+      // Gravação de outra sessão (a sessão recomeçou no meio): a nota não pertence a esta.
+      if (a.sessaoId !== e.id) return e;
+      // Se a posição mudou depois de a nota ser montada, a nota fica guardada (o próximo "Atualizar" não duplica), mas a posição continua não salva.
+      const igual = e.itens[a.posicao] === a.item;
+      return mudar(e, a.posicao, { notaId: a.notaId, notaPaciente: a.pacienteId, ...(igual ? { salva: true } : {}) });
+    }
+    case 'nao_salva':
+      return a.sessaoId !== e.id || !e.itens[a.posicao].salva ? e : mudar(e, a.posicao, { salva: false });
     case 'pular': {
       const item = e.itens[a.posicao];
       return item.foto || item.pulada ? e : mudar(e, a.posicao, { pulada: true });
@@ -323,7 +332,7 @@ export function resumoDoItem(item: ItemPosicao, posicao: VistaSessao, compassoRe
   const giroMarcado = nivel && nivel.length >= 2 ? rotacaoDoNivel(nivel[0], nivel[1], item.nivelTipo) : null;
   const giroSensor = item.inclinacaoCaptura !== null ? giroDaFoto(item.inclinacaoCaptura, item.inverterSensor) : null;
   const giro = giroMarcado ?? giroSensor;
-  const origemGiro = giroMarcado !== null ? 'uma referência marcada na foto' : 'o sensor do celular ao fotografar';
+  const origemGiro = giroMarcado !== null ? 'por uma referência marcada na foto' : 'pelo sensor do celular ao fotografar';
   const escala = item.pontos.escala, cm = parseNum(item.escalaCm);
   const cmPorPx = escala && escala.length >= 2 && cm ? cmPorPixel(escala[0], escala[1], cm) : null;
   const analise: AnaliseFoto = {
@@ -336,7 +345,7 @@ export function resumoDoItem(item: ItemPosicao, posicao: VistaSessao, compassoRe
   const resumo: ResumoDoItem = {
     analise, resultados, medidas, giro, giroMarcado, giroSensor, origemGiro, cmPorPx,
     ...(giro !== null && Math.abs(giro) >= 0.05
-      ? { notaNivel: `Foto nivelada por ${origemGiro} (correção de ${nf(Math.abs(giro))}°); os ângulos valem para acompanhar a evolução entre fotos feitas do mesmo jeito.` }
+      ? { notaNivel: `Foto nivelada ${origemGiro} (correção de ${nf(Math.abs(giro))}°); os ângulos valem para acompanhar a evolução entre fotos feitas do mesmo jeito.` }
       : {}),
     temResultado: medidas.length > 0, temMarcacao: temMarcacao(item), usouIA: usouSugestao(item), ajustadas: ajustadasDoItem(item),
   };
@@ -383,7 +392,8 @@ export function useSessaoPostural() {
     limpar: (posicao: VistaSessao, medida: string) => dispatch({ tipo: 'limpar', posicao, medida }),
     aplicarSugestao: (a: Omit<Extract<AcaoSessao, { tipo: 'sugestao' }>, 'tipo'>) => dispatch({ tipo: 'sugestao', ...a }),
     editar: (posicao: VistaSessao, mudanca: Extract<AcaoSessao, { tipo: 'editar' }>['mudanca']) => dispatch({ tipo: 'editar', posicao, mudanca }),
-    marcarSalva: (posicao: VistaSessao, notaId: string, pacienteId: string) => dispatch({ tipo: 'salva', posicao, notaId, pacienteId }),
+    marcarSalva: (a: Omit<Extract<AcaoSessao, { tipo: 'salva' }>, 'tipo'>) => dispatch({ tipo: 'salva', ...a }),
+    desmarcarSalva: (posicao: VistaSessao, sessaoId: string) => dispatch({ tipo: 'nao_salva', posicao, sessaoId }),
     pular: (posicao: VistaSessao) => dispatch({ tipo: 'pular', posicao }),
     definirOpcoes: (o: { compassoRef?: RefCompasso; unidadePrumo?: UnidadePrumo }) => dispatch({ tipo: 'opcoes', ...o }),
     reiniciar: () => dispatch({ tipo: 'reiniciar', id: novaSessaoId(), iniciadaEm: new Date().toISOString() }),

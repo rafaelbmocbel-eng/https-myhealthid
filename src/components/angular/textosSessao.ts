@@ -10,8 +10,4 @@ export const INSTRUCAO_DA_POSICAO: Record<VistaSessao, string> = {
 
 export const DICA_COMPARAR = 'Estimativa por foto: para comparar entre avaliações, repita na mesma distância, altura da câmera e roupa.';
 
-// Medidas que dependem do cotovelo, do punho ou da escápula: o modelo de pose erra mais nesses pontos, então o valor é estimativa a confirmar.
-const PARA_CONFIRMAR = /^(cotovelos?|braco|carregamento|punho|escapulas?)(-|$)/;
-
-/** A medida usa cotovelo, punho ou escápula: o texto da tela diz "estimativa: confirme". */
-export const ehMedidaParaConfirmar = (id: string) => PARA_CONFIRMAR.test(id);
+export { ehMedidaParaConfirmar, ROTULO_CONFIRMAR } from '@/lib/angular/sessao';

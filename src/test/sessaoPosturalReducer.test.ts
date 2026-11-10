@@ -5,12 +5,15 @@ import {
   resumoDoItem, temMarcacao, temNaoSalva, usouSugestao, useSessaoPostural,
   type AcaoSessao, type EstadoSessao, type FotoDaPosicao, type SugestaoGuardada,
 } from '@/hooks/useSessaoPostural';
+import type { VistaSessao } from '@/lib/angular/tiposSessao';
 
 // Fotos e pontos escritos à mão: a conferência é com a regra (geometria conhecida), não com a fórmula do código.
 const fotoFalsa = (url = 'blob:a', w = 1000, h = 1500): FotoDaPosicao => ({ url, w, h, img: document.createElement('img') });
 const novo = (): EstadoSessao => estadoInicial('sessao-1', '2026-03-12T13:00:00.000Z');
 const rodar = (e: EstadoSessao, ...acoes: AcaoSessao[]) => acoes.reduce(reducerSessao, e);
 const sugestao = (extra: Partial<SugestaoGuardada> = {}): SugestaoGuardada => ({ avisos: [], descartados: [], origens: {}, marcadas: 0, ...extra });
+// A gravação termina com o estado em que a nota foi montada: o item daquele momento e o id da sessão.
+const salva = (e: EstadoSessao, posicao: VistaSessao, notaId: string, pacienteId: string): AcaoSessao => ({ tipo: 'salva', posicao, notaId, pacienteId, sessaoId: e.id, item: e.itens[posicao] });
 
 // Ombros: o primeiro ponto é o direito do paciente; 30 px de queda em 200 px de largura = atan(0,15) = 8,53°.
 const OMBROS = [{ x: 100, y: 100 }, { x: 300, y: 130 }];
@@ -77,7 +80,8 @@ describe('uma posição não mexe nas outras', () => {
 
   it('trocar a foto apaga só os pontos da posição, mas guarda a nota já gravada para atualizá-la', () => {
     let e = rodar(novo(), { tipo: 'foto', posicao: 'frente', foto: fotoFalsa('blob:1'), inclinacao: null });
-    e = rodar(e, { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[0] }, { tipo: 'salva', posicao: 'frente', notaId: 'nota-1', pacienteId: 'p1' });
+    e = rodar(e, { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[0] });
+    e = rodar(e, salva(e, 'frente', 'nota-1', 'p1'));
     const outra = rodar(e, { tipo: 'foto', posicao: 'perfil_d', foto: fotoFalsa('blob:2'), inclinacao: null }, { tipo: 'marcar', posicao: 'perfil_d', medida: 'joelho', ponto: OMBROS[1] });
     const trocada = rodar(outra, { tipo: 'foto', posicao: 'frente', foto: fotoFalsa('blob:3'), inclinacao: 1.5 });
     expect(trocada.itens.frente.pontos).toEqual({});
@@ -153,7 +157,8 @@ describe('pontos e medidas ajustadas à mão', () => {
   });
 
   it('marcar e editar referências desmarcam "salva"', () => {
-    let e = rodar(comSugestao(), { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[0] }, { tipo: 'salva', posicao: 'frente', notaId: 'n', pacienteId: 'p' });
+    let e = rodar(comSugestao(), { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[0] });
+    e = rodar(e, salva(e, 'frente', 'n', 'p'));
     expect(e.itens.frente.salva).toBe(true);
     e = rodar(e, { tipo: 'editar', posicao: 'frente', mudanca: { escalaCm: '50' } });
     expect(e.itens.frente.salva).toBe(false);
@@ -161,7 +166,8 @@ describe('pontos e medidas ajustadas à mão', () => {
   });
 
   it('trocar a medida ativa não desmarca "salva"', () => {
-    let e = rodar(comSugestao(), { tipo: 'salva', posicao: 'frente', notaId: 'n', pacienteId: 'p' });
+    let e = comSugestao();
+    e = rodar(e, salva(e, 'frente', 'n', 'p'));
     e = rodar(e, { tipo: 'ativar', posicao: 'frente', medida: 'pelve' });
     expect(e.itens.frente.salva).toBe(true);
     expect(e.itens.frente.ativa).toBe('pelve');
@@ -227,7 +233,8 @@ describe('sugestão automática (aplicar com cuidado)', () => {
   });
 
   it('uma sugestão vazia (nada para aplicar) guarda o aviso mas não desmarca "salva" nem muda a medida ativa', () => {
-    let e = rodar(base(), { tipo: 'salva', posicao: 'perfil_d', notaId: 'n', pacienteId: 'p' }, { tipo: 'ativar', posicao: 'perfil_d', medida: 'livre' });
+    let e = base();
+    e = rodar(e, salva(e, 'perfil_d', 'n', 'p'), { tipo: 'ativar', posicao: 'perfil_d', medida: 'livre' });
     e = sug(e, {}, 'vazias');
     expect(e.itens.perfil_d.salva).toBe(true);
     expect(e.itens.perfil_d.ativa).toBe('livre');
@@ -248,12 +255,59 @@ describe('salvar, pular e andar pela sessão', () => {
   it('"salva" guarda a nota e o paciente; mexer depois desmarca "salva" mas mantém a nota', () => {
     let e = rodar(novo(), { tipo: 'foto', posicao: 'costas', foto: fotoFalsa(), inclinacao: null }, { tipo: 'marcar', posicao: 'costas', medida: 'ombros', ponto: OMBROS[0] });
     expect(estadoDaAba(e.itens.costas)).toBe('marcando');
-    e = rodar(e, { tipo: 'salva', posicao: 'costas', notaId: 'nota-9', pacienteId: 'paciente-3' });
+    e = rodar(e, salva(e, 'costas', 'nota-9', 'paciente-3'));
     expect(estadoDaAba(e.itens.costas)).toBe('salva');
     expect(pacienteDaSessao(e)).toBe('paciente-3');
     e = rodar(e, { tipo: 'marcar', posicao: 'costas', medida: 'ombros', ponto: OMBROS[1] });
     expect(estadoDaAba(e.itens.costas)).toBe('marcando');
     expect(e.itens.costas.notaId).toBe('nota-9');
+  });
+
+  it('"salva" de uma gravação que começou em outra sessão não vale: o estado fica como está, sem a nota na sessão nova', () => {
+    const antiga = rodar(novo(), { tipo: 'foto', posicao: 'frente', foto: fotoFalsa(), inclinacao: null }, { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[0] });
+    const gravacao = salva(antiga, 'frente', 'nota-antiga', 'p1');
+    const nova = rodar(antiga, { tipo: 'reiniciar', id: 'sessao-2', iniciadaEm: '2026-03-13T10:00:00.000Z' });
+    expect(rodar(nova, gravacao)).toBe(nova);
+    const comFoto = rodar(nova, { tipo: 'foto', posicao: 'frente', foto: fotoFalsa('blob:n'), inclinacao: null });
+    const depois = rodar(comFoto, gravacao);
+    expect(depois).toBe(comFoto);
+    expect(depois.itens.frente.notaId).toBeNull();
+    expect(pacienteDaSessao(depois)).toBeNull();
+  });
+
+  it('"salva" de uma gravação em que o item mudou no meio guarda a nota (para o próximo "Atualizar" não duplicar), mas a posição segue não salva', () => {
+    let e = rodar(novo(), { tipo: 'foto', posicao: 'frente', foto: fotoFalsa(), inclinacao: null }, { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[0] });
+    const gravacao = salva(e, 'frente', 'nota-1', 'p1');
+    e = rodar(e, { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[1] });
+    e = rodar(e, gravacao);
+    expect(e.itens.frente.salva).toBe(false);
+    expect(e.itens.frente.notaId).toBe('nota-1');
+    expect(e.itens.frente.notaPaciente).toBe('p1');
+    expect(estadoDaAba(e.itens.frente)).toBe('marcando');
+    expect(temNaoSalva(e)).toBe(true);
+    expect(pacienteDaSessao(e)).toBe('p1');
+    expect(e.itens.frente.pontos.ombros).toEqual(OMBROS);
+  });
+
+  it('"salva" com o item como foi gravado marca a posição como salva; a gravação de outra posição não interfere', () => {
+    let e = rodar(novo(), { tipo: 'foto', posicao: 'frente', foto: fotoFalsa(), inclinacao: null }, { tipo: 'foto', posicao: 'costas', foto: fotoFalsa('blob:c'), inclinacao: null });
+    e = rodar(e, { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[0] }, { tipo: 'marcar', posicao: 'costas', medida: 'ombros', ponto: OMBROS[1] });
+    const frente = salva(e, 'frente', 'nota-f', 'p1');
+    e = rodar(e, { tipo: 'marcar', posicao: 'costas', medida: 'ombros', ponto: OMBROS[0] }, frente);
+    expect(e.itens.frente.salva).toBe(true);
+    expect(e.itens.costas.salva).toBe(false);
+    expect(e.itens.costas.notaId).toBeNull();
+  });
+
+  it('"nao_salva" tira a marca de salva da posição (e só dela), mantendo a nota; de outra sessão é ignorada', () => {
+    let e = rodar(novo(), { tipo: 'foto', posicao: 'frente', foto: fotoFalsa(), inclinacao: null }, { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[0] });
+    e = rodar(e, salva(e, 'frente', 'n', 'p'));
+    expect(rodar(e, { tipo: 'nao_salva', posicao: 'frente', sessaoId: 'outra' })).toBe(e);
+    expect(rodar(e, { tipo: 'nao_salva', posicao: 'costas', sessaoId: e.id })).toBe(e);
+    const depois = rodar(e, { tipo: 'nao_salva', posicao: 'frente', sessaoId: e.id });
+    expect(depois.itens.frente.salva).toBe(false);
+    expect(depois.itens.frente.notaId).toBe('n');
+    expect(temNaoSalva(depois)).toBe(true);
   });
 
   it('estado das abas: sem foto, marcando, salva e pulada', () => {
@@ -304,12 +358,13 @@ describe('salvar, pular e andar pela sessão', () => {
     e = rodar(e, { tipo: 'marcar', posicao: 'frente', medida: 'ombros', ponto: OMBROS[0] });
     expect(temMarcacao(e.itens.frente)).toBe(true);
     expect(temNaoSalva(e)).toBe(true);
-    e = rodar(e, { tipo: 'salva', posicao: 'frente', notaId: 'n', pacienteId: 'p' });
+    e = rodar(e, salva(e, 'frente', 'n', 'p'));
     expect(temNaoSalva(e)).toBe(false);
   });
 
   it('reiniciar começa outra sessão: novo id e data, nada das fotos, e as opções de compasso e fio continuam', () => {
-    let e = rodar(novo(), { tipo: 'foto', posicao: 'frente', foto: fotoFalsa(), inclinacao: null }, { tipo: 'opcoes', compassoRef: 'cima', unidadePrumo: 'cm' }, { tipo: 'salva', posicao: 'frente', notaId: 'n', pacienteId: 'p' });
+    let e = rodar(novo(), { tipo: 'foto', posicao: 'frente', foto: fotoFalsa(), inclinacao: null }, { tipo: 'opcoes', compassoRef: 'cima', unidadePrumo: 'cm' });
+    e = rodar(e, salva(e, 'frente', 'n', 'p'));
     e = rodar(e, { tipo: 'reiniciar', id: 'sessao-2', iniciadaEm: '2026-03-13T10:00:00.000Z' });
     expect(e.id).toBe('sessao-2');
     expect(e.iniciadaEm).toBe('2026-03-13T10:00:00.000Z');
@@ -355,7 +410,8 @@ describe('o que se calcula de cada posição', () => {
     expect(a.giroSensor).toBe(-3);
     expect(a.giroMarcado).toBeNull();
     expect(a.notaNivel).toContain('correção de 3,0°');
-    expect(a.notaNivel).toContain('o sensor do celular ao fotografar');
+    expect(a.notaNivel).toContain('Foto nivelada pelo sensor do celular ao fotografar (correção de 3,0°)');
+    expect(a.notaNivel).not.toMatch(/\bpor o\b/);
     const b = comPontos('frente', { ombros: OMBROS }, { inclinacaoCaptura: 3, inverterSensor: true }).resumo;
     expect(b.giro).toBe(3);
   });
@@ -364,7 +420,7 @@ describe('o que se calcula de cada posição', () => {
     const r = comPontos('frente', { ombros: OMBROS, nivel: [{ x: 0, y: 0 }, { x: 100, y: 10 }] }, { inclinacaoCaptura: 3 }).resumo;
     expect(r.giroMarcado).toBeCloseTo(5.7106, 3);
     expect(r.giro).toBeCloseTo(5.7106, 3);
-    expect(r.notaNivel).toContain('uma referência marcada na foto');
+    expect(r.notaNivel).toContain('Foto nivelada por uma referência marcada na foto (correção de 5,7°)');
     expect(r.notaNivel).toContain('correção de 5,7°');
   });
 
@@ -433,7 +489,7 @@ describe('hook da sessão', () => {
     expect(fechar()).toBe(false);
     act(() => { result.current.acoes.marcar('frente', 'ombros', OMBROS[0]); });
     expect(fechar()).toBe(true);
-    act(() => { result.current.acoes.marcarSalva('frente', 'nota-1', 'p1'); });
+    act(() => { result.current.acoes.marcarSalva({ posicao: 'frente', notaId: 'nota-1', pacienteId: 'p1', sessaoId: result.current.estado.id, item: result.current.estado.itens.frente }); });
     expect(fechar()).toBe(false);
     act(() => { result.current.acoes.marcar('frente', 'ombros', OMBROS[1]); });
     expect(fechar()).toBe(true);

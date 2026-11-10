@@ -7,13 +7,13 @@ import { NOTA_MEMBROS_SUPERIORES, type GrupoMembroSuperior } from '@/lib/angular
 import { dataDaSessao, rotuloDaSessao, type SessaoAgrupada } from '@/lib/angular/sessao';
 import { ROTULO_VISTA_SESSAO, type VistaSessao } from '@/lib/angular/tiposSessao';
 import type { EstadoDaAba } from '@/hooks/useSessaoPostural';
-import { DICA_COMPARAR, ehMedidaParaConfirmar } from '@/components/angular/textosSessao';
+import { DICA_COMPARAR, ROTULO_CONFIRMAR, ehMedidaParaConfirmar } from '@/components/angular/textosSessao';
 
 export function TextoDaMedida({ m }: { m: Pick<MedidaSalva, 'id' | 'texto' | 'graus' | 'unidade'> }) {
   return (
     <>
       {m.texto ?? `${nomeDoResultado(m.id) ?? m.id}: ${grau(m.graus, m.unidade)}`}
-      {ehMedidaParaConfirmar(m.id) && <span className="text-muted-foreground"> (estimativa: confirme)</span>}
+      {ehMedidaParaConfirmar(m.id) && <span className="text-muted-foreground"> ({ROTULO_CONFIRMAR})</span>}
     </>
   );
 }
@@ -141,7 +141,7 @@ export default function ResumoSessao({
                   <tbody>
                     {g.linhas.map((l) => (
                       <tr key={l.nome} className="border-t border-border/50 align-top">
-                        <td className="py-1.5 pr-2">{l.nome}{ehMedidaParaConfirmar(l.direito?.id ?? l.esquerdo?.id ?? '') && <span className="block text-[10px] text-muted-foreground">estimativa: confirme</span>}</td>
+                        <td className="py-1.5 pr-2">{l.nome}{ehMedidaParaConfirmar(l.direito?.id ?? l.esquerdo?.id ?? '') && <span className="block text-[10px] text-muted-foreground">{ROTULO_CONFIRMAR}</span>}</td>
                         <td className="px-2">{grau(l.direito?.graus, l.direito?.unidade)}{l.direito?.sentido && <span className="block text-[10px] text-muted-foreground">{l.direito.sentido}</span>}</td>
                         <td className="px-2">{grau(l.esquerdo?.graus, l.esquerdo?.unidade)}{l.esquerdo?.sentido && <span className="block text-[10px] text-muted-foreground">{l.esquerdo.sentido}</span>}</td>
                         <td className="pl-2 font-medium">{variacaoTexto(l.diferenca, l.unidade)}{l.motivoSemDiferenca && <span className="block text-[10px] font-normal text-muted-foreground">{l.motivoSemDiferenca}</span>}</td>

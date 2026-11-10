@@ -48,6 +48,7 @@ vi.mock('jspdf', async (importarOriginal) => {
   return { ...original, default: Embrulhado };
 });
 
+import { addLogoToDoc } from '@/utils/pdfLogoHelper';
 import { seguro, gerarRelatorioAngular } from '../lib/angular/relatorio';
 import {
   FRASE_NIVEL_AUSENTE, LARGURA_MAX_FOTO_PDF, NOTA_MEMBROS_SUPERIORES,
@@ -74,6 +75,7 @@ const lerPdf = (blob: Blob) => new Promise<string>((ok) => {
 const paginasDoPdf = (bruto: string) => (bruto.match(/\/Type \/Page\b/g) ?? []).length;
 
 const m = (id: string, graus: number, extra: Partial<MedidaSalva> = {}): MedidaSalva => ({ id, graus, ...extra });
+const pontos = (sugeridas: string[], ajustadas: string[], soMao: string[]) => ({ sugeridas, ajustadas, soMao });
 const vista = (posicao: VistaDoRelatorioSessao['posicao'], vistaNome: string, medidas: MedidaSalva[], extra: Partial<VistaDoRelatorioSessao> = {}): VistaDoRelatorioSessao =>
   ({ posicao, vistaNome, medidas, metodo: 'marcacao_manual', ...extra });
 const base = { paciente: 'Maria da Conceição', profissional: 'Dr. Rafael', data: '05/10/2026' };
@@ -102,8 +104,8 @@ const PERFIL_E = [m('cva', 50.1), m('braco-e', 3.3, { sentido: 'cotovelo à fren
 const COSTAS = [m('ombros', 1, { texto: 'Linha dos ombros: 1,0° com a horizontal, lado esquerdo mais alto.' }), m('braco-d', 4.1, { sentido: 'cotovelo junto do tronco' }), m('braco-e', 4.9, { sentido: 'cotovelo junto do tronco' })];
 
 const quatroPosicoes = (largura = 600, altura = 800): VistaDoRelatorioSessao[] => [
-  vista('frente', 'Frente', FRENTE_COM_MEMBROS, { imagem: foto(largura, altura), metodo: 'automatica_conferida', pontosAjustados: 3, notaNivel: 'foto nivelada em 1,8° (correção aplicada).' }),
-  vista('perfil_d', 'Perfil direito', PERFIL_D, { imagem: foto(largura, altura), metodo: 'automatica_conferida', pontosAjustados: 0 }),
+  vista('frente', 'Frente', FRENTE_COM_MEMBROS, { imagem: foto(largura, altura), metodo: 'automatica_conferida', pontos: pontos(['ombros', 'braco-d', 'braco-e'], ['ombros', 'braco-d', 'braco-e'], ['carregamento-d', 'carregamento-e', 'punho-d', 'punho-e']), notaNivel: 'foto nivelada em 1,8° (correção aplicada).' }),
+  vista('perfil_d', 'Perfil direito', PERFIL_D, { imagem: foto(largura, altura), metodo: 'automatica_conferida', pontos: pontos(['braco-d', 'cotovelo-perfil'], [], ['cva']) }),
   vista('perfil_e', 'Perfil esquerdo', PERFIL_E, { imagem: foto(altura, largura), metodo: 'automatica_conferida' }),
   vista('costas', 'Costas', COSTAS, { imagem: foto(largura, altura) }),
 ];
@@ -118,23 +120,23 @@ describe('textos puros', () => {
     expect(seguro('Ângulo 12,5° à direita: ação')).toBe('Ângulo 12,5° à direita: ação');
   });
 
-  it('método automático nunca diz que o profissional conferiu os pontos e conta as medidas ajustadas', () => {
+  it('método automático nunca diz que o profissional conferiu os pontos e diz a verdade sobre quantas medidas vieram do modelo, quantas foram ajustadas e quantas foram marcadas à mão', () => {
     const sem = fraseDoMetodo('automatica_conferida');
-    expect(sem).toContain('sugeridos por detecção automática');
-    expect(sem).toContain('o modelo marca o centro da articulação, não o ponto ósseo');
-    expect(sem).toContain('Confirmar os pontos na foto');
-    expect(sem).not.toMatch(/conferid/i);
-    expect(sem).not.toContain('ajustada');
-    expect(fraseDoMetodo('automatica_conferida', 0)).toContain('nenhuma medida ajustada à mão');
-    expect(fraseDoMetodo('automatica_conferida', 1)).toContain('1 medida ajustada à mão');
-    expect(fraseDoMetodo('automatica_conferida', 3)).toContain('3 medidas ajustadas à mão');
-    expect(fraseDoMetodo('automatica_conferida', 2.6)).toContain('3 medidas ajustadas à mão');
-    expect(fraseDoMetodo('automatica_conferida', -4)).toContain('nenhuma medida ajustada à mão');
-    expect(fraseDoMetodo('automatica_conferida', Number.NaN)).toBe(sem);
+    expect(sem).toContain('Pontos sugeridos por detecção automática (confirmar na foto)');
+    expect(sem).toContain('O modelo marca o centro da articulação, não o ponto ósseo.');
+    expect(sem).not.toMatch(/conferid|ajustada|só à mão/i);
+    expect(fraseDoMetodo('automatica_conferida', pontos(['ombros', 'quadris', 'braco-d'], ['ombros'], ['punho-d', 'carregamento-d'])))
+      .toBe('Pontos sugeridos por detecção automática (confirmar na foto) em 3 medidas, 1 ajustada à mão; 2 medidas marcadas só à mão. O modelo marca o centro da articulação, não o ponto ósseo.');
+    expect(fraseDoMetodo('automatica_conferida', pontos(['ombros', 'quadris'], [], [])))
+      .toBe('Pontos sugeridos por detecção automática (confirmar na foto) em 2 medidas, nenhuma ajustada à mão. O modelo marca o centro da articulação, não o ponto ósseo.');
+    expect(fraseDoMetodo('automatica_conferida', pontos(['ombros'], ['ombros'], ['punho-d'])))
+      .toContain('em 1 medida, 1 ajustada à mão; 1 medida marcada só à mão.');
+    expect(fraseDoMetodo('automatica_conferida', pontos(['a', 'b', 'c'], ['a', 'b', 'c'], [])))
+      .toContain('em 3 medidas, 3 ajustadas à mão.');
   });
 
   it('método manual diz que foi marcado à mão e não fala em detecção', () => {
-    expect(fraseDoMetodo('marcacao_manual', 5)).toBe('Pontos marcados manualmente pelo profissional.');
+    expect(fraseDoMetodo('marcacao_manual', pontos(['ombros'], ['ombros'], []))).toBe('Pontos marcados manualmente pelo profissional.');
   });
 });
 
@@ -356,11 +358,10 @@ describe('PDF da sessão: quatro posições', () => {
     const indices = (nome: string) => r.escritas.findIndex((e) => e.tam === 10.5 && e.texto === nome);
     const bloco = (de: string, ate: string) => r.escritas.slice(indices(de), indices(ate)).map((e) => e.texto).join(' ');
     const frente = bloco('Frente', 'Perfil direito');
-    expect(frente).toContain('Método: Pontos sugeridos por detecção automática de pose');
-    expect(frente).toContain('3 medidas ajustadas à mão');
+    expect(frente).toContain('Método: Pontos sugeridos por detecção automática (confirmar na foto) em 3 medidas, 3 ajustadas à mão; 4 medidas marcadas só à mão.');
     expect(frente).toContain('Correção de nível: foto nivelada em 1,8° (correção aplicada).');
     const perfilD = bloco('Perfil direito', 'Perfil esquerdo');
-    expect(perfilD).toContain('nenhuma medida ajustada à mão');
+    expect(perfilD).toContain('em 2 medidas, nenhuma ajustada à mão; 1 medida marcada só à mão.');
     expect(perfilD).toContain(`Correção de nível: ${FRASE_NIVEL_AUSENTE}`);
     expect(perfilD).not.toContain('foto nivelada');
     const perfilE = bloco('Perfil esquerdo', 'Costas');
@@ -371,6 +372,38 @@ describe('PDF da sessão: quatro posições', () => {
     expect(costas).not.toContain('detecção automática');
   });
 
+  it('quem lê não entende que tudo veio do modelo: ombros e quadris sugeridos e aceitos, carregamento, punho e escápula só à mão', async () => {
+    const r = await gerar([vista('frente', 'Frente', FRENTE_COM_MEMBROS, {
+      metodo: 'automatica_conferida', pontos: pontos(['ombros', 'quadris'], [], ['carregamento-d', 'carregamento-e', 'punho-d', 'punho-e', 'escapulas']),
+    })]);
+    expect(r.texto).toContain('em 2 medidas, nenhuma ajustada à mão; 5 medidas marcadas só à mão.');
+    // "nenhuma medida ajustada" sozinho, sem dizer que há medidas só à mão, era o texto que enganava.
+    expect(r.texto).not.toContain('nenhuma medida ajustada à mão');
+    // O resumo da posição também não diz só "detecção automática".
+    expect(r.escritas.some((e) => e.tam === 8.5 && e.texto.startsWith('Feita -') && e.texto.includes('detecção automática e marcação manual'))).toBe(true);
+    // A nota da tabela direito x esquerdo não atribui ao modelo os pontos marcados à mão.
+    const nota = r.escritas.map((e) => e.texto).join(' ');
+    expect(nota).toContain('Pontos sugeridos pela detecção automática');
+    expect(nota).toContain('os demais foram marcados à mão');
+    expect(nota).not.toContain('e o modelo marca o centro da articulação');
+  });
+
+  it('resumo das posições: só detecção automática, só marcação manual ou as duas, conforme os pontos', async () => {
+    const r = await gerar([
+      vista('frente', 'Frente', [m('ombros', 2)], { metodo: 'automatica_conferida', pontos: pontos(['ombros'], [], []) }),
+      vista('perfil_d', 'Perfil direito', [m('cva', 48), m('braco-d', 5)], { metodo: 'automatica_conferida', pontos: pontos(['braco-d'], [], ['cva']) }),
+      vista('perfil_e', 'Perfil esquerdo', [m('cva', 50)], { metodo: 'automatica_conferida' }),
+      vista('costas', 'Costas', [m('ombros', 1)]),
+    ]);
+    const linhas = r.escritas.filter((e) => e.tam === 8.5 && e.texto.startsWith('Feita -')).map((e) => e.texto);
+    expect(linhas).toEqual([
+      'Feita - 1 medida - detecção automática - sem foto neste relatório',
+      'Feita - 2 medidas - detecção automática e marcação manual - sem foto neste relatório',
+      'Feita - 1 medida - detecção automática - sem foto neste relatório',
+      'Feita - 1 medida - marcação manual - sem foto neste relatório',
+    ]);
+  });
+
   it('membros superiores: Direito, Esquerdo e a diferença D - E de cada plano, com a ressalva de ângulo projetado', async () => {
     const r = await gerar(quatroPosicoes());
     const i = r.escritas.findIndex((e) => e.tam === 10.5 && e.texto === 'Membros superiores');
@@ -378,7 +411,8 @@ describe('PDF da sessão: quatro posições', () => {
     for (const esperado of ['Direito', 'Esquerdo', 'Diferença (D - E)', '+3,1°', '+2,2°', '-0,8°', '+1,7°', '+2,4°', 'sentidos diferentes', 'Frente', 'Costas']) expect(secao).toContain(esperado);
     // Valgo (11,5°) e varo (8,0°) são lados opostos: nada de 3,5.
     expect(secao).not.toMatch(/[+-]3,5/);
-    expect(secao).toContain('Ângulos projetados no plano da foto; estimativa a confirmar');
+    expect(secao).toContain('Ângulos projetados no plano da foto');
+    expect(secao).toContain('estimativa a confirmar');
     expect(NOTA_MEMBROS_SUPERIORES).toContain('estimativa a confirmar');
     // A tabela cabe numa página e fica inteira em uma só.
     expect(r.escritas.filter((e) => e.texto === 'Diferença (D - E)')).toHaveLength(1);
@@ -445,6 +479,106 @@ describe('PDF da sessão: comparação com a avaliação anterior', () => {
     expect(r.texto).not.toMatch(/[+-]0,6°/);
     expect(r.texto).not.toMatch(/[+-]3,4°/);
     expect(r.texto).toContain('não indica melhora nem piora');
+  });
+
+  const AVISO_NIVEL = 'Frente: na avaliação anterior a foto foi nivelada (correção de 1,8°); nesta não consta correção de nível. Os ângulos podem não ser comparáveis.';
+
+  it('os avisos de comparabilidade da posição saem sob a tabela dela, antes da leitura, no mesmo texto da tela', async () => {
+    const r = await gerar([vista('frente', 'Frente', agora, { anterior: { data: '01/09/2026', medidas: antes }, avisos: [AVISO_NIVEL, 'Frente: outro aviso de comparação.'] })]);
+    const i = (texto: string) => r.escritas.findIndex((e) => e.texto === texto || e.texto.startsWith(texto));
+    expect(r.texto).toContain(AVISO_NIVEL);
+    expect(r.texto).toContain('Frente: outro aviso de comparação.');
+    const iAviso = i('Frente: na avaliação anterior a foto foi nivelada');
+    expect(iAviso).toBeGreaterThan(i('Variação'));
+    expect(iAviso).toBeGreaterThan(i('A variação é só a diferença numérica'));
+    expect(iAviso).toBeLessThan(r.escritas.findIndex((e) => e.tam === 10.5 && e.texto === 'Leitura'));
+    expect(r.escritas.findIndex((e) => e.texto === 'Frente: outro aviso de comparação.')).toBeGreaterThan(iAviso);
+  });
+
+  it('sem aviso (posições comparáveis), nada além das notas de sempre: o PDF não inventa aviso', async () => {
+    const sem = await gerar([vista('frente', 'Frente', agora, { anterior: { data: '01/09/2026', medidas: antes } })]);
+    const vazio = await gerar([vista('frente', 'Frente', agora, { anterior: { data: '01/09/2026', medidas: antes }, avisos: [] })], { avisosGerais: [] });
+    expect(sem.texto).not.toMatch(/podem não ser comparáveis|só nesta avaliação|ainda não foi feita nesta|perfil sem lado/i);
+    expect(vazio.texto).toBe(sem.texto);
+  });
+
+  it('posição que só existe nesta avaliação também ganha o aviso sob a tabela, mesmo sem colunas Antes e Variação', async () => {
+    const r = await gerar([vista('frente', 'Frente', agora, { avisos: ['Frente: só nesta avaliação; a anterior não tem essa posição.'] })]);
+    expect(r.escritas.some((e) => e.texto === 'Variação')).toBe(false);
+    expect(r.texto).toContain('Frente: só nesta avaliação; a anterior não tem essa posição.');
+  });
+
+  it('avisos gerais (posição que estava na anterior e não foi feita agora, perfil antigo sem lado, formatos diferentes) saem logo abaixo do quadro das posições', async () => {
+    const gerais = ['Costas: estava na avaliação anterior e ainda não foi feita nesta.', 'Perfil sem lado informado (avaliação antiga) não é comparado com perfil direito ou esquerdo: não dá para saber de que lado foi a foto.'];
+    const r = await gerar([vista('frente', 'Frente', agora)], { avisosGerais: gerais });
+    for (const g of gerais) expect(r.texto).toContain(g.slice(0, 60));
+    const iResumo = r.escritas.findIndex((e) => e.tam === 10.5 && e.texto === 'Posições feitas e não feitas');
+    const iAviso = r.escritas.findIndex((e) => e.texto.startsWith('Costas: estava na avaliação anterior'));
+    const iFrente = r.escritas.findIndex((e) => e.tam === 10.5 && e.texto === 'Frente');
+    expect(iAviso).toBeGreaterThan(iResumo);
+    expect(iAviso).toBeLessThan(iFrente);
+  });
+
+  it('avaliação anterior sem data: o cabeçalho fica só "Antes" (não passa da coluna) e a falta da data vai numa nota abaixo da tabela', async () => {
+    const dados = (data: string) => [vista('frente', 'Frente', agora, { anterior: { data, medidas: antes } })];
+    const sem = await gerar(dados(''));
+    const cabecalho = sem.escritas.find((e) => e.tam === 8.5 && e.texto.startsWith('Antes'))!;
+    const variacao = sem.escritas.find((e) => e.tam === 8.5 && e.texto === 'Variação')!;
+    expect(cabecalho.texto).toBe('Antes');
+    expect(cabecalho.x + cabecalho.larg).toBeLessThan(variacao.x);
+    const aviso = sem.escritas.find((e) => e.texto === 'Data da avaliação anterior não informada.')!;
+    expect(aviso).toBeDefined();
+    expect(aviso.y).toBeGreaterThan(cabecalho.y);
+    expect(sem.texto).not.toContain('data não informada)');
+
+    const com = await gerar(dados('01/09/2026'));
+    expect(com.escritas.some((e) => e.texto === 'Antes (01/09/2026)')).toBe(true);
+    expect(com.texto).not.toContain('Data da avaliação anterior não informada');
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('PDF da sessão: marca "estimativa: confirme"', () => {
+  const MARCA = 'estimativa: confirme';
+  const frente = [
+    m('ombros', 2.1, { texto: 'Linha dos ombros: 2,1° com a horizontal, lado direito mais alto.' }),
+    m('quadris', 1.9, { texto: 'Linha dos quadris: 1,9° com a horizontal, lado direito mais alto.' }),
+    m('pelve', 1.2, { texto: 'Linha da pelve: 1,2° com a horizontal, lado esquerdo mais alto.' }),
+    m('linha-joelhos', 0.8, { texto: 'Linha dos joelhos: 0,8° com a horizontal, lado esquerdo mais alto.' }),
+    m('joelho-d', 6, { texto: 'Joelho direito: 174,0°, valgo.' }),
+    m('braco-d', 6.2, { texto: 'Braço direito: 6,2° com a vertical.' }),
+  ];
+  const perfil = [m('joelho', 4, { texto: 'Joelho: 176,0°, flexão.' }), m('cva', 48, { texto: 'Ângulo craniovertebral: 48,0°.' }), m('pelve-perfil', 8, { texto: 'Inclinação pélvica: 8,0°, anterior.' })];
+
+  it('na tabela da posição, só as medidas que pedem confirmação levam a marca sob o nome', async () => {
+    const r = await gerar([vista('frente', 'Frente', frente), vista('perfil_d', 'Perfil direito', perfil)]);
+    const iMembros = r.escritas.findIndex((e) => e.tam === 10.5 && e.texto === 'Membros superiores');
+    const marcas = r.escritas.slice(0, iMembros).filter((e) => e.texto === MARCA);
+    // quadris, pelve, linha dos joelhos e braço (frente) + joelho (perfil); ombros, joelho de frente, CVA e pelve de perfil ficam sem marca.
+    expect(marcas).toHaveLength(5);
+    const nomeDaMarca = (marca: Escrita) => r.escritas.filter((e) => e.pagina === marca.pagina && e.x === marca.x && e.y < marca.y && e.tam === 9).pop()?.texto;
+    expect(marcas.map(nomeDaMarca)).toEqual(['Alinhamento do braço direito', 'Desnível da pelve', 'Linha dos quadris (sugerida pelo modelo)', 'Linha dos joelhos (desnível)', 'Ângulo do joelho']);
+  });
+
+  it('na leitura, o texto das medidas que pedem confirmação termina com "(estimativa: confirme)"; as outras não', async () => {
+    const r = await gerar([vista('frente', 'Frente', frente), vista('perfil_d', 'Perfil direito', perfil)]);
+    expect(r.texto).toContain(`Linha dos quadris: 1,9° com a horizontal, lado direito mais alto. (${MARCA})`);
+    expect(r.texto).toContain(`Linha da pelve: 1,2° com a horizontal, lado esquerdo mais alto. (${MARCA})`);
+    expect(r.texto).toContain(`Linha dos joelhos: 0,8° com a horizontal, lado esquerdo mais alto. (${MARCA})`);
+    expect(r.texto).toContain(`Joelho: 176,0°, flexão. (${MARCA})`);
+    expect(r.texto).toContain('Linha dos ombros: 2,1° com a horizontal, lado direito mais alto.');
+    expect(r.texto).not.toContain(`lado direito mais alto. (${MARCA})\nLinha dos ombros`);
+    expect(r.texto).not.toContain(`Joelho direito: 174,0°, valgo. (${MARCA})`);
+    expect(r.texto).not.toContain(`Ângulo craniovertebral: 48,0°. (${MARCA})`);
+    expect(r.texto).not.toContain(`Linha dos ombros: 2,1° com a horizontal, lado direito mais alto. (${MARCA})`);
+  });
+
+  it('na tabela dos membros superiores, braço, punho e carregamento levam a marca, e cotovelo de perfil também', async () => {
+    const r = await gerar(quatroPosicoes());
+    const i = r.escritas.findIndex((e) => e.tam === 10.5 && e.texto === 'Membros superiores');
+    const marcas = r.escritas.slice(i).filter((e) => e.texto === MARCA);
+    // Frente: braço, carregamento, punho; costas: braço; perfil: braço e cotovelo de perfil.
+    expect(marcas).toHaveLength(6);
   });
 });
 
@@ -580,7 +714,7 @@ describe('PDF da sessão: página, margens e sobreposição', () => {
   const cheio = (): VistaDoRelatorioSessao[] => {
     const longa = Array.from({ length: 14 }, (_, i) => m(`livre-${i}`, 3 + i, { texto: `Ângulo livre número ${i}: ${3 + i},0° entre os três pontos marcados na foto, com o lado do desvio descrito por extenso.` }));
     return [
-      vista('frente', 'Frente', [...FRENTE_COM_MEMBROS, ...longa], { imagem: foto(600, 800), metodo: 'automatica_conferida', pontosAjustados: 4, notaNivel: 'foto nivelada em 2,3° (correção aplicada nos pontos e nas retas), conforme o sensor do celular na hora da captura.', anterior: { data: '01/09/2026', medidas: [m('ombros', 3.4, { texto: 'Linha dos ombros: 3,4°, lado esquerdo mais alto.' }), m('braco-d', 8, { sentido: 'cotovelo afastado do tronco' })] } }),
+      vista('frente', 'Frente', [...FRENTE_COM_MEMBROS, ...longa], { imagem: foto(600, 800), metodo: 'automatica_conferida', pontos: pontos(['ombros', 'braco-d'], ['ombros'], ['carregamento-d', 'carregamento-e', 'punho-d', 'punho-e']), notaNivel: 'foto nivelada em 2,3° (correção aplicada nos pontos e nas retas), conforme o sensor do celular na hora da captura.', anterior: { data: '01/09/2026', medidas: [m('ombros', 3.4, { texto: 'Linha dos ombros: 3,4°, lado esquerdo mais alto.' }), m('braco-d', 8, { sentido: 'cotovelo afastado do tronco' })] } }),
       vista('perfil_d', 'Perfil direito', [...PERFIL_D, ...longa.slice(0, 3)], { imagem: foto(600, 800), metodo: 'automatica_conferida' }),
       vista('perfil_e', 'Perfil esquerdo', PERFIL_E, { imagem: foto(800, 450) }),
       vista('costas', 'Costas', [...COSTAS, ...longa.slice(0, 8)], { imagem: foto(600, 800), anterior: { data: '01/09/2026', medidas: COSTAS } }),
@@ -592,6 +726,11 @@ describe('PDF da sessão: página, margens e sobreposição', () => {
     ['4 posições com muitas medidas, notas longas, retrato e paisagem', cheio],
     ['4 posições sem foto', () => quatroPosicoes().map((v) => ({ ...v, imagem: null }))],
     ['1 posição com foto', () => [quatroPosicoes()[0]]],
+    ['4 posições com avisos longos em cada uma', () => quatroPosicoes().map((v) => ({
+      ...v,
+      anterior: { data: '', medidas: v.medidas.map((x) => ({ ...x, graus: x.graus + 1 })) },
+      avisos: [`${v.vistaNome}: nesta avaliação a foto foi nivelada (correção de 1,8°); na anterior não consta correção de nível. Os ângulos podem não ser comparáveis.`, `${v.vistaNome}: segundo aviso de comparação, escrito para ocupar mais de uma linha da página e testar a quebra do texto corrido sob a tabela da posição.`],
+    }))],
   ];
 
   it.each(cenarios)('%s: o conteúdo termina antes do rodapé, nada se sobrepõe e as fotos ficam dentro da página', async (_nome, dados) => {
@@ -667,6 +806,107 @@ describe('PDF da sessão: página, margens e sobreposição', () => {
 });
 
 // ---------------------------------------------------------------------------
+describe('cabeçalho com nome comprido do paciente e do profissional', () => {
+  const NOME_82 = 'MARIA APARECIDA DOS SANTOS OLIVEIRA DE ALMEIDA PEREIRA LIMA ALBUQUERQUE CAVALCANTI';
+  const NOME_160 = `${NOME_82} ${NOME_82.replace('MARIA', 'ANA')}`;
+  const PROFISSIONAL_LONGO = 'Dr. Rafael Augusto Cavalcanti de Albuquerque Montenegro Pereira da Silva Santos Oliveira · CREFITO 123456-F';
+  const BORDA_DIREITA = 210 - 14;
+  const unica = [vista('frente', 'Frente', [m('ombros', 2)])];
+
+  interface Retangulo { x: number; y: number; w: number; h: number }
+  // Alinhado à direita (numeração das páginas) ou ao centro, o x da escrita não é a borda esquerda do texto.
+  const esquerdaDoTexto = (e: Escrita) => (e.alinhamento === 'right' ? e.x - e.larg : e.alinhamento === 'center' ? e.x - e.larg / 2 : e.x);
+  const direitaDoTexto = (e: Escrita) => esquerdaDoTexto(e) + e.larg;
+  const caixaDoTexto = (e: Escrita): Retangulo => ({ x: esquerdaDoTexto(e), y: e.y - e.tam * 0.3528 * 0.7, w: e.larg, h: e.tam * 0.3528 * 0.9 });
+  const tocam = (a: Retangulo, b: Retangulo) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const logo = (): Retangulo => {
+    const chamada = vi.mocked(addLogoToDoc).mock.calls.at(-1)!;
+    return { x: chamada[1], y: chamada[2], w: chamada[3], h: chamada[3] };
+  };
+
+  it('nome de 82 caracteres cabe: a fonte diminui, o texto fica inteiro, não passa da margem direita nem encosta na logo', async () => {
+    const r = await gerar(unica, { paciente: NOME_82 });
+    const nome = r.escritas.find((e) => e.texto === NOME_82)!;
+    expect(nome, 'o nome inteiro numa linha só').toBeDefined();
+    expect(nome.tam).toBeLessThan(11.5);
+    expect(nome.tam).toBeGreaterThanOrEqual(8.5);
+    expect(nome.x + nome.larg).toBeLessThanOrEqual(logo().x - 2);
+    for (const e of r.escritas.filter((x) => x.pagina === 1)) {
+      expect(direitaDoTexto(e), e.texto).toBeLessThanOrEqual(BORDA_DIREITA + 0.01);
+      expect(tocam(caixaDoTexto(e), logo()), `"${e.texto}" encosta na logo`).toBe(false);
+    }
+  });
+
+  it('nome mais comprido ainda: quebra em duas linhas, na fonte mínima, e o resto do cabeçalho desce sem se sobrepor', async () => {
+    const r = await gerar(unica, { paciente: NOME_160 });
+    const pedacos = r.escritas.filter((e) => e.pagina === 1 && NOME_160.includes(e.texto.replace(/\.\.\.$/, '')) && e.texto.length > 20);
+    expect(pedacos).toHaveLength(2);
+    expect(pedacos.map((e) => e.texto).join(' ')).toBe(NOME_160);
+    for (const p of pedacos) {
+      expect(p.tam).toBe(8.5);
+      expect(p.x + p.larg).toBeLessThanOrEqual(logo().x - 2);
+    }
+    const doPagina = r.escritas.filter((e) => e.pagina === 1 && e.y < 80).map((e) => ({ e, c: caixaDoTexto(e) }));
+    for (let i = 0; i < doPagina.length; i++) {
+      for (let j = i + 1; j < doPagina.length; j++) {
+        if (tocam(doPagina[i].c, doPagina[j].c)) throw new Error(`"${doPagina[i].e.texto}" encosta em "${doPagina[j].e.texto}"`);
+      }
+    }
+  });
+
+  it('nome absurdo (sem espaços e de 300 letras): nunca passa da margem, termina em reticências', async () => {
+    const r = await gerar(unica, { paciente: 'A'.repeat(300) });
+    for (const e of r.escritas.filter((x) => x.pagina === 1)) expect(direitaDoTexto(e), e.texto).toBeLessThanOrEqual(BORDA_DIREITA + 0.01);
+    const linhasDoNome = r.escritas.filter((e) => e.pagina === 1 && /^A+(\.\.\.)?$/.test(e.texto));
+    expect(linhasDoNome.length).toBeGreaterThanOrEqual(1);
+    expect(linhasDoNome[linhasDoNome.length - 1].texto).toMatch(/\.\.\.$/);
+    for (const e of linhasDoNome) expect(e.larg, 'cada linha do nome fica nos 160 mm antes da logo').toBeLessThanOrEqual(160.01);
+  });
+
+  it('profissional com nome e CREFITO compridos: a linha de baixo encolhe ou quebra, dentro da página e sem tocar na logo', async () => {
+    const r = await gerar(unica, { paciente: NOME_82, profissional: PROFISSIONAL_LONGO });
+    const subtitulo = r.escritas.filter((e) => e.pagina === 1 && e.tam <= 9 && e.y > 24 && e.y < 45 && /posição feita|Rafael|CREFITO|Santos/.test(e.texto));
+    expect(subtitulo.length).toBeGreaterThanOrEqual(1);
+    expect(subtitulo.map((e) => e.texto).join(' ')).toContain('CREFITO 123456-F');
+    expect(subtitulo.map((e) => e.texto).join(' ')).toContain('05/10/2026');
+    for (const e of subtitulo) expect(direitaDoTexto(e), e.texto).toBeLessThanOrEqual(BORDA_DIREITA + 0.01);
+    for (const e of r.escritas.filter((x) => x.pagina === 1)) expect(tocam(caixaDoTexto(e), logo()), `"${e.texto}" encosta na logo`).toBe(false);
+  });
+
+  it('cabeçalho de continuação (páginas seguintes) também cabe na página e continua numa linha só', async () => {
+    const muitas = Array.from({ length: 45 }, (_, i) => m(`livre-${i}`, 10 + i, { texto: `Ângulo livre ${i}: ${10 + i},0°.` }));
+    for (const paciente of [NOME_82, NOME_160, 'A'.repeat(300)]) {
+      const r = await gerar([vista('frente', 'Frente', muitas)], { paciente });
+      expect(r.paginas).toBeGreaterThanOrEqual(2);
+      const continuacao = r.escritas.filter((e) => e.pagina > 1 && e.texto.startsWith('Análise angular da sessão - '));
+      expect(continuacao).toHaveLength(r.paginas - 1);
+      for (const e of continuacao) expect(direitaDoTexto(e), e.texto.slice(0, 40)).toBeLessThanOrEqual(BORDA_DIREITA + 0.01);
+      expect(r.escritas.filter((e) => e.pagina > 1 && e.y < 16)).toHaveLength(r.paginas - 1);
+      expect(continuacao.every((e) => e.texto.endsWith(' - 05/10/2026'))).toBe(true);
+    }
+  });
+
+  it('o relatório de uma vista usa o mesmo cabeçalho: nome de 82 caracteres não passa da margem nem toca na logo', async () => {
+    escritas.length = 0;
+    await gerarRelatorioAngular({ paciente: NOME_82, profissional: PROFISSIONAL_LONGO, data: '05/10/2026', vistaNome: 'frente', metodo: 'marcacao_manual', medidas: [m('ombros', 2.1, { texto: 'Linha dos ombros: 2,1° com a horizontal, lado direito mais alto.' })] });
+    const cabecalho = escritas.filter((e) => e.y < 45);
+    expect(cabecalho.length).toBeGreaterThanOrEqual(3);
+    for (const e of cabecalho) {
+      expect(direitaDoTexto(e), e.texto).toBeLessThanOrEqual(BORDA_DIREITA + 0.01);
+      expect(tocam(caixaDoTexto(e), logo()), `"${e.texto}" encosta na logo`).toBe(false);
+    }
+    expect(escritas.find((e) => e.texto === NOME_82)?.tam).toBeLessThan(11.5);
+  });
+
+  it('nomes curtos continuam como eram: nome em 11,5 pt e a linha do profissional inteira numa linha', async () => {
+    const r = await gerar(unica);
+    const nome = r.escritas.find((e) => e.texto === 'MARIA DA CONCEICAO')!;
+    expect(nome.tam).toBe(11.5);
+    expect(r.escritas.some((e) => e.texto === '1 posição feita - 05/10/2026 - Dr. Rafael' && e.tam === 9)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe('relatório de uma vista (gerarRelatorioAngular) depois da refatoração', () => {
   const dados = { paciente: 'Maria da Conceição', data: '05/10/2026', vistaNome: 'frente', medidas: [m('ombros', 2.1, { texto: 'Linha dos ombros: 2,1° com a horizontal, lado direito mais alto.' })] };
 
@@ -674,9 +914,67 @@ describe('relatório de uma vista (gerarRelatorioAngular) depois da refatoraçã
     escritas.length = 0;
     const r = await gerarRelatorioAngular({ ...dados, metodo: 'automatica_conferida' });
     const texto = escritas.map((e) => e.texto).join(' ');
-    expect(texto).toContain('Pontos sugeridos por detecção automática de pose.');
+    expect(texto).toContain('Pontos sugeridos por detecção automática (confirmar na foto).');
     expect(texto).not.toMatch(/conferid/i);
     expect(await lerPdf(r.blob)).not.toMatch(/conferid/i);
+  });
+
+  it('a leitura marca com "(estimativa: confirme)" as medidas que pedem conferência, como o relatório da sessão', async () => {
+    escritas.length = 0;
+    await gerarRelatorioAngular({
+      ...dados, metodo: 'automatica_conferida',
+      medidas: [m('ombros', 2.1, { texto: 'Linha dos ombros: 2,1° com a horizontal, lado direito mais alto.' }), m('quadris', 1.9, { texto: 'Linha dos quadris: 1,9° com a horizontal, lado direito mais alto.' })],
+    });
+    const texto = escritas.map((e) => e.texto).join(' ');
+    expect(texto).toContain('Linha dos quadris: 1,9° com a horizontal, lado direito mais alto. (estimativa: confirme)');
+    expect(texto).toContain('Linha dos ombros: 2,1° com a horizontal, lado direito mais alto.');
+    expect(texto).not.toContain('lado direito mais alto. (estimativa: confirme) Linha dos ombros');
+    expect(texto.match(/\(estimativa: confirme\)/g)).toHaveLength(1);
+  });
+
+  it('os avisos de comparabilidade saem sob a tabela, antes da leitura, sem encostar em nada', async () => {
+    const AVISO = 'Frente: na avaliação anterior a foto foi nivelada (correção de 1,8°); nesta não consta correção de nível. Os ângulos podem não ser comparáveis.';
+    const dadosComAnterior = { ...dados, metodo: 'marcacao_manual' as const, anterior: { data: '', medidas: [m('ombros', 3.4, { texto: 'lado direito mais alto' })] } };
+    escritas.length = 0;
+    await gerarRelatorioAngular({ ...dadosComAnterior, avisos: [AVISO, 'Frente: segundo aviso curto.'] });
+    expect(escritas.map((e) => e.texto).join(' ')).toContain(AVISO);
+    const tabela = escritas.find((e) => e.tam === 8.5 && e.texto === 'Variação')!;
+    const primeira = escritas.find((e) => e.texto.startsWith('Data da avaliação anterior'))!;
+    const aviso = escritas.find((e) => e.texto.startsWith('Frente: na avaliação anterior'))!;
+    const segundo = escritas.find((e) => e.texto === 'Frente: segundo aviso curto.')!;
+    const leitura = escritas.find((e) => e.tam === 10.5 && e.texto === 'Leitura')!;
+    expect(aviso.y).toBeGreaterThan(primeira.y);
+    expect(segundo.y).toBeGreaterThan(aviso.y);
+    expect(aviso.y).toBeGreaterThan(tabela.y);
+    expect(segundo.y).toBeLessThan(leitura.y - 3.6);
+    for (const e of escritas.filter((x) => /^(Frente:|Data da avaliação)/.test(x.texto))) expect(e.x + e.larg, e.texto.slice(0, 30)).toBeLessThanOrEqual(196.01);
+
+    escritas.length = 0;
+    await gerarRelatorioAngular({ ...dadosComAnterior, anterior: { data: '01/09/2026', medidas: dadosComAnterior.anterior.medidas } });
+    expect(escritas.map((e) => e.texto).join(' ')).not.toContain('podem não ser comparáveis');
+  });
+
+  it('avaliação anterior sem data: o cabeçalho fica "Antes" e a nota abaixo da tabela diz que a data não foi informada', async () => {
+    escritas.length = 0;
+    await gerarRelatorioAngular({ ...dados, metodo: 'marcacao_manual', anterior: { data: '', medidas: [m('ombros', 3.4, { texto: 'lado direito mais alto' })] } });
+    const cabecalho = escritas.find((e) => e.tam === 8.5 && e.texto.startsWith('Antes'))!;
+    const variacao = escritas.find((e) => e.tam === 8.5 && e.texto === 'Variação')!;
+    expect(cabecalho.texto).toBe('Antes');
+    expect(cabecalho.x + cabecalho.larg).toBeLessThan(variacao.x);
+    const aviso = escritas.find((e) => e.texto === 'Data da avaliação anterior não informada.')!;
+    expect(aviso.y).toBeGreaterThan(cabecalho.y);
+    escritas.length = 0;
+    await gerarRelatorioAngular({ ...dados, metodo: 'marcacao_manual', anterior: { data: '01/09/2026', medidas: [m('ombros', 3.4, { texto: 'lado direito mais alto' })] } });
+    expect(escritas.some((e) => e.texto === 'Antes (01/09/2026)')).toBe(true);
+    expect(escritas.some((e) => e.texto.includes('Data da avaliação anterior'))).toBe(false);
+  });
+
+  it('o método diz quantas medidas vieram do modelo, quantas foram ajustadas e quantas foram marcadas só à mão', async () => {
+    escritas.length = 0;
+    await gerarRelatorioAngular({ ...dados, metodo: 'automatica_conferida', pontos: pontos(['ombros', 'quadris'], ['ombros'], ['punho-d']) });
+    const texto = escritas.map((e) => e.texto).join(' ');
+    expect(texto).toContain('Pontos sugeridos por detecção automática (confirmar na foto) em 2 medidas, 1 ajustada à mão; 1 medida marcada só à mão.');
+    expect(texto).not.toMatch(/conferid/i);
   });
 
   it('método manual segue dizendo que foi marcado à mão, e o nome e a página única não mudam', async () => {

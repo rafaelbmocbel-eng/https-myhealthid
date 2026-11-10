@@ -4,8 +4,9 @@ import { molduraEmTodasPaginas } from '@/lib/pdf/moldura';
 import { nomeDocumento } from '@/lib/pdf/entrega';
 import { POSICOES_DA_NOTA, ROTULO_POSICAO_DA_NOTA, grau, parearMedidas, sentidoDe, variacaoTexto, type LinhaPareada, type MedidaSalva, type PosicaoDaNota, type UnidadeMedida } from './comparar';
 import { nomeDoResultado } from './medidas';
+import { ROTULO_CONFIRMAR, ehMedidaParaConfirmar, fraseDosPontos, type PontosDaPosicao } from './sessao';
 import { paresDireitoEsquerdo, type ParDireitoEsquerdo } from './tiposSessao';
-import { AZUL, BORDA, CAB, cabecalhoDoRelatorio, seguro, tituloDeSecao } from './relatorio';
+import { AZUL, BORDA, CAB, ajustarLinha, cabecalhoDoRelatorio, seguro, tituloDeSecao } from './relatorio';
 
 /** As quatro posições da sessão mais o perfil de nota antiga, que nunca teve o lado gravado. */
 export type PosicaoDoRelatorio = PosicaoDaNota;
@@ -17,15 +18,17 @@ export interface VistaDoRelatorioSessao {
   /** Nome para mostrar, ex.: "Perfil direito". */
   vistaNome: string;
   medidas: MedidaSalva[];
-  /** A mesma posição na avaliação anterior; com ela o bloco ganha as colunas "Antes" e "Variação". */
+  /** A mesma posição na avaliação anterior; com ela o bloco ganha as colunas "Antes" e "Variação". `data` (dd/mm/aaaa) vem vazia quando a data dessa avaliação não é conhecida. */
   anterior?: { data: string; medidas: MedidaSalva[] } | null;
   /** Foto já com as marcações (data URL JPEG ou PNG). A foto não vai para o prontuário: só entra aqui se estiver na memória. */
   imagem?: string | null;
   metodo: MetodoDoRelatorio;
-  /** Quantas medidas o profissional ajustou à mão depois da detecção automática; omitir quando a tela não sabe. */
-  pontosAjustados?: number;
+  /** Como os pontos da posição foram marcados (sugeridos pelo modelo, ajustados à mão, só à mão); omitir quando a tela não sabe. */
+  pontos?: PontosDaPosicao;
   /** Frase sobre a correção de nível desta foto; sem ela o relatório diz que não houve correção. */
   notaNivel?: string;
+  /** Avisos de comparabilidade desta posição com a avaliação anterior (os que `compararSessoes` devolve e a tela mostra); omitir quando não há. */
+  avisos?: string[];
 }
 
 export interface DadosRelatorioSessao {
@@ -35,6 +38,8 @@ export interface DadosRelatorioSessao {
   /** dd/mm/aaaa */
   data: string;
   vistas: VistaDoRelatorioSessao[];
+  /** Avisos da comparação que não pertencem a nenhuma posição do relatório (posição só da avaliação anterior, formatos diferentes, perfil sem lado). */
+  avisosGerais?: string[];
 }
 
 /** Largura (px) a que as fotos devem chegar ao PDF: quatro fotos maiores deixam o arquivo pesado para mandar no WhatsApp. A tela deve montar a foto já nesta largura (`imagemParaPdf(analise, estilo, LARGURA_MAX_FOTO_PDF)`); aqui ela só é reduzida de novo se vier maior. */
@@ -42,7 +47,7 @@ export const LARGURA_MAX_FOTO_PDF = 800;
 
 export const FRASE_RODAPE_SESSAO = 'Estimativa por foto, não é diagnóstico nem substitui a avaliação do profissional. Para acompanhar a evolução, repita nas mesmas condições: mesma distância, altura da câmera e roupa. O relatório mostra só a medida, o lado e a variação numérica, sem valor de referência.';
 
-export const NOTA_MEMBROS_SUPERIORES = 'Ângulos projetados no plano da foto; estimativa a confirmar (a foto é em duas dimensões e o modelo marca o centro da articulação, não o ponto ósseo). A diferença é direito menos esquerdo, só aritmética: não classifica nenhum dos lados.';
+export const NOTA_MEMBROS_SUPERIORES = 'Ângulos projetados no plano da foto, que é em duas dimensões: estimativa a confirmar. Pontos sugeridos pela detecção automática são o centro da articulação que o modelo marca, não o ponto ósseo; os demais foram marcados à mão. A diferença é direito menos esquerdo, só aritmética: não classifica nenhum dos lados.';
 
 const ROTULO_POSICAO = ROTULO_POSICAO_DA_NOTA;
 const ORDEM_POSICOES = POSICOES_DA_NOTA;
@@ -52,14 +57,9 @@ const ORDEM_POSICOES = POSICOES_DA_NOTA;
 // ---------------------------------------------------------------------------
 
 /** Frase do método de uma posição. Não afirma que o profissional conferiu os pontos: o aplicativo não verifica isso. */
-export function fraseDoMetodo(metodo: MetodoDoRelatorio, pontosAjustados?: number): string {
+export function fraseDoMetodo(metodo: MetodoDoRelatorio, pontos?: PontosDaPosicao): string {
   if (metodo !== 'automatica_conferida') return 'Pontos marcados manualmente pelo profissional.';
-  const base = 'Pontos sugeridos por detecção automática de pose (o modelo marca o centro da articulação, não o ponto ósseo)';
-  const n = typeof pontosAjustados === 'number' && Number.isFinite(pontosAjustados) ? Math.max(0, Math.round(pontosAjustados)) : null;
-  let ajuste = '';
-  if (n === 0) ajuste = '; nenhuma medida ajustada à mão';
-  else if (n !== null) ajuste = `; ${n} ${n === 1 ? 'medida ajustada' : 'medidas ajustadas'} à mão`;
-  return `${base}${ajuste}. Confirmar os pontos na foto.`;
+  return `${fraseDosPontos(metodo, pontos)} O modelo marca o centro da articulação, não o ponto ósseo.`;
 }
 
 export const FRASE_NIVEL_AUSENTE = 'sem correção de nível aplicada; os ângulos usam a horizontal e a vertical da foto como referência.';
@@ -363,12 +363,14 @@ export async function gerarRelatorioSessao(d: DadosRelatorioSessao): Promise<{ b
       } else if (!feita) {
         t('Sem medidas registradas', M + 62, yy + 4);
       } else {
-        const metodo = v.metodo === 'automatica_conferida' ? 'detecção automática' : 'marcação manual';
+        let metodo = 'marcação manual';
+        if (v.metodo === 'automatica_conferida') metodo = v.pontos?.soMao.length ? 'detecção automática e marcação manual' : 'detecção automática';
         t(`Feita · ${plural(v.medidas.length, 'medida', 'medidas')} · ${metodo}${fotos[i] ? '' : ' · sem foto neste relatório'}`, M + 62, yy + 4);
       }
     });
     doc.setTextColor(20);
     y += altResumo + 3;
+    for (const aviso of d.avisosGerais ?? []) nota(aviso);
   }
 
   // --- Faixa de miniaturas -------------------------------------------------
@@ -412,6 +414,7 @@ export async function gerarRelatorioSessao(d: DadosRelatorioSessao): Promise<{ b
     const linhas = pares.filter((l) => l.depois);
     const soAntes = pares.filter((l) => !l.depois && l.antes);
     const comAntes = !!v.anterior;
+    const dataAnterior = v.anterior?.data?.trim() ?? '';
     const primeirasLinhas = linhas.length ? Math.min(linhas.length, 3) * ALT_MIN : 8;
 
     // Título, foto e as primeiras linhas da tabela ficam juntos. Se a foto inteira não cabe no que resta da página mas uma foto menor cabe, ela encolhe em vez de deixar a página vazia.
@@ -437,14 +440,15 @@ export async function gerarRelatorioSessao(d: DadosRelatorioSessao): Promise<{ b
       nota('Nenhuma medida registrada nesta posição.', 8.5);
     } else {
       const colunas: Coluna[] = comAntes
-        ? [{ titulo: 'Medida', x: M + 4, w: 80 }, { titulo: 'Agora', x: M + 88, w: 29 }, { titulo: `Antes (${v.anterior!.data})`, x: M + 120, w: 32 }, { titulo: 'Variação', x: M + 154, w: 26 }]
+        ? [{ titulo: 'Medida', x: M + 4, w: 80 }, { titulo: 'Agora', x: M + 88, w: 29 }, { titulo: dataAnterior ? `Antes (${dataAnterior})` : 'Antes', x: M + 120, w: 32 }, { titulo: 'Variação', x: M + 154, w: 26 }]
         : [{ titulo: 'Medida', x: M + 4, w: 108 }, { titulo: 'Agora', x: M + 116, w: 60 }];
       tabela(colunas, linhas.map((l) => {
         const agora = l.depois!;
-        const celulas = [celula(l.nome, colunas[0].w - 2), celula(grau(agora.graus, agora.unidade), colunas[1].w - 2, { sub: rotuloDoSentido(agora) })];
+        const celulas = [celula(l.nome, colunas[0].w - 2, { sub: ehMedidaParaConfirmar(l.id) ? ROTULO_CONFIRMAR : undefined }), celula(grau(agora.graus, agora.unidade), colunas[1].w - 2, { sub: rotuloDoSentido(agora) })];
         if (comAntes) celulas.push(celula(l.antes ? grau(l.antes.graus, l.antes.unidade) : '—', colunas[2].w - 2, { sub: rotuloDoSentido(l.antes) }), variacaoDaLinha(l, colunas[3].w - 2, celula));
         return { celulas };
       }));
+      if (comAntes && !dataAnterior) nota('Data da avaliação anterior não informada.');
       if (comAntes) {
         nota('A variação é só a diferença numérica entre as duas avaliações (agora menos antes): não indica melhora nem piora. Se o lado mudou ou as unidades são diferentes, ela não é calculada.');
       }
@@ -452,16 +456,17 @@ export async function gerarRelatorioSessao(d: DadosRelatorioSessao): Promise<{ b
         nota(`Marcadas só na avaliação anterior (não marcadas agora): ${soAntes.map((l) => l.nome).join('; ')}.`);
       }
     }
+    for (const aviso of v.avisos ?? []) nota(aviso);
 
     // Leitura: o texto de cada medida traz o lado, que o número sozinho não mostra.
-    const leitura = linhas.filter((l) => l.depois?.texto).map((l) => quebrar(l.depois!.texto!, LARG - 12, 8.6));
+    const leitura = linhas.filter((l) => l.depois?.texto).map((l) => quebrar(`${l.depois!.texto!}${ehMedidaParaConfirmar(l.id) ? ` (${ROTULO_CONFIRMAR})` : ''}`, LARG - 12, 8.6));
     if (leitura.length) {
       secao('Leitura', Math.min(alturaDaCaixa(leitura, 4), ALTURA_MAX_CAIXA));
       caixaDeTexto(leitura, 8.6, 4);
     }
 
     const comoFoiMedido = [
-      quebrar(`Método: ${fraseDoMetodo(v.metodo, v.pontosAjustados)}`, LARG - 12, 8.2),
+      quebrar(`Método: ${fraseDoMetodo(v.metodo, v.pontos)}`, LARG - 12, 8.2),
       quebrar(`Correção de nível: ${v.notaNivel?.trim() || FRASE_NIVEL_AUSENTE}`, LARG - 12, 8.2),
     ];
     secao('Como foi medido', alturaDaCaixa(comoFoiMedido, 3.7));
@@ -478,7 +483,7 @@ export async function gerarRelatorioSessao(d: DadosRelatorioSessao): Promise<{ b
       { faixa: g.titulo },
       ...g.linhas.map((l): LinhaTabela => ({
         celulas: [
-          celula(l.nome, colunas[0].w - 2),
+          celula(l.nome, colunas[0].w - 2, { sub: ehMedidaParaConfirmar(l.direito?.id ?? l.esquerdo?.id ?? '') ? ROTULO_CONFIRMAR : undefined }),
           celula(l.direito ? grau(l.direito.graus, l.direito.unidade) : '—', colunas[1].w - 2, { sub: rotuloDoSentido(l.direito) }),
           celula(l.esquerdo ? grau(l.esquerdo.graus, l.esquerdo.unidade) : '—', colunas[2].w - 2, { sub: rotuloDoSentido(l.esquerdo) }),
           celula(l.diferenca === null ? '—' : variacaoTexto(l.diferenca, l.unidade), colunas[3].w - 2, { negrito: l.diferenca !== null, sub: l.motivoSemDiferenca ?? undefined }),
@@ -500,7 +505,11 @@ export async function gerarRelatorioSessao(d: DadosRelatorioSessao): Promise<{ b
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(CINZA);
     rodape.forEach((ln, q) => doc.text(ln, M, 275.5 + q * 3.2));
     doc.text(`Página ${p} de ${total}`, W - M, 286, { align: 'right' });
-    if (p > 1) t(`Análise angular da sessão · ${paciente} · ${d.data}`, M, 12.5);
+    if (p > 1) {
+      const cont = ajustarLinha(doc, (nome) => `Análise angular da sessão · ${nome} · ${d.data}`, paciente, { largura: LARG, tamanho: 7.2, minimo: 6 });
+      doc.setFontSize(cont.tamanho);
+      doc.text(cont.texto, M, 12.5);
+    }
   }
   doc.setTextColor(20);
 

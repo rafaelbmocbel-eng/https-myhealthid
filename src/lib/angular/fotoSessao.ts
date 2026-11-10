@@ -80,7 +80,7 @@ const VISIBILIDADE_MINIMA = 0.5;
 /**
  * Pontos do modelo para o guia de enquadramento. O guia usa o nariz como topo da cabeça, mas de costas o nariz some:
  * sem nariz visível, a média das orelhas (ou, sem elas, dos olhos) ocupa o lugar dele, para o guia não pedir "afaste-se" sem motivo.
- * Com o nariz visível devolve os mesmos pontos.
+ * Com o nariz visível, ou sem nenhum ponto da cabeça visível (aí o guia estima o topo pelos ombros), devolve os mesmos pontos.
  */
 export function landmarksParaGuia(lm: Landmark[] | null): Landmark[] | null {
   if (!lm) return null;

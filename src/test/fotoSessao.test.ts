@@ -194,6 +194,53 @@ describe('guia de enquadramento nas costas', () => {
     expect(avaliarEnquadramento(landmarksParaGuia(costas()))).toEqual({ ok: true, mensagem: 'Enquadramento bom. Pode fotografar.' });
   });
 
+  // Cabelo cobrindo as orelhas e o modelo sem enxergar nariz, olhos nem orelhas: o corpo continua inteiro no quadro.
+  const costasSemCabeca = (): Landmark[] => {
+    const lm = costas();
+    for (const i of [0, 2, 5, 7, 8]) lm[i] = ponto(0.5, 0.1, 0.1);
+    return lm;
+  };
+
+  it('sem nariz, olhos nem orelhas visíveis, o guia usa os ombros como referência e não manda afastar com o corpo inteiro enquadrado', () => {
+    const g = avaliarEnquadramento(landmarksParaGuia(costasSemCabeca()));
+    expect(g.mensagem).not.toMatch(/Afaste-se/);
+    expect(g).toEqual({ ok: true, mensagem: 'Enquadramento bom. Pode fotografar.' });
+  });
+
+  it('sem cabeça visível, o guia ainda avisa de corpo pequeno, pés cortados, cabeça cortada e fora do centro', () => {
+    const pequeno = costasSemCabeca();
+    for (const i of [11, 12]) pequeno[i] = ponto(i === 11 ? 0.4 : 0.6, 0.5);
+    for (const i of [27, 28]) pequeno[i] = ponto(i === 27 ? 0.46 : 0.54, 0.7);
+    expect(avaliarEnquadramento(landmarksParaGuia(pequeno)).mensagem).toMatch(/Aproxime-se/);
+
+    const pesCortados = costasSemCabeca();
+    pesCortados[27] = ponto(0.46, 0.995); pesCortados[28] = ponto(0.54, 0.995);
+    expect(avaliarEnquadramento(landmarksParaGuia(pesCortados))).toMatchObject({ ok: false, mensagem: expect.stringMatching(/Afaste-se.*pés/) });
+
+    const cabecaCortada = costasSemCabeca();
+    for (const i of [11, 12]) cabecaCortada[i] = ponto(i === 11 ? 0.4 : 0.6, 0.08);
+    expect(avaliarEnquadramento(landmarksParaGuia(cabecaCortada))).toMatchObject({ ok: false, mensagem: expect.stringMatching(/Afaste-se.*cabeça/) });
+
+    const descentrado = costasSemCabeca();
+    for (const i of [11, 12, 23, 24]) descentrado[i] = ponto(0.8, descentrado[i].y);
+    expect(avaliarEnquadramento(landmarksParaGuia(descentrado)).mensagem).toMatch(/Centralize/);
+  });
+
+  it('sem cabeça e sem ombros visíveis o guia não opina "afaste-se": pede o corpo no centro do quadro', () => {
+    const lm = costasSemCabeca();
+    lm[11] = ponto(0.4, 0.25, 0.1); lm[12] = ponto(0.6, 0.25, 0.1);
+    const g = avaliarEnquadramento(landmarksParaGuia(lm));
+    expect(g.ok).toBe(false);
+    expect(g.mensagem).not.toMatch(/Afaste-se/);
+    expect(g.mensagem).toMatch(/cabeça nem os ombros/);
+  });
+
+  it('pés fora do quadro continuam pedindo para afastar mesmo sem cabeça', () => {
+    const lm = costasSemCabeca();
+    lm[27] = ponto(0.46, 0.92, 0.1); lm[28] = ponto(0.54, 0.92, 0.1);
+    expect(avaliarEnquadramento(landmarksParaGuia(lm)).mensagem).toMatch(/Afaste-se: o corpo precisa aparecer inteiro/);
+  });
+
   it('as outras mensagens do guia continuam: pés cortados e corpo pequeno', () => {
     const cortado = costas();
     cortado[27] = ponto(0.46, 0.995); cortado[28] = ponto(0.54, 0.995);

@@ -197,16 +197,43 @@ export function lerDadosExtras(bruto: unknown): DadosLidos {
 // Texto da nota
 // ---------------------------------------------------------------------------
 
-/** "Análise angular — vista perfil direito (2 de 4)". Sem o "(n de total)" quando a sessão tem uma posição só. */
-export function tituloDaNota(posicao: VistaSessao, ordem: number, total: number): string {
-  const base = `Análise angular — vista ${ROTULO_VISTA_SESSAO[posicao].toLowerCase()}`;
-  if (!Number.isFinite(ordem) || !Number.isFinite(total)) return base;
-  const o = Math.trunc(ordem);
-  const t = Math.max(Math.trunc(total), o);
-  return o >= 1 && t >= 2 ? `${base} (${o} de ${t})` : base;
+/** "Análise angular — vista perfil direito". A ordem e as posições previstas ficam em `dados_extras.sessao`: um total no título envelheceria quando a pessoa pulasse ou refizesse posições. */
+export function tituloDaNota(posicao: VistaSessao): string {
+  return `Análise angular — vista ${ROTULO_VISTA_SESSAO[posicao].toLowerCase()}`;
 }
 
+// Medidas que a tela e o PDF marcam com "estimativa: confirme". Cotovelo, braço, carregamento, punho e escápula: o erro do modelo de pose
+// nesses pontos não foi medido. Pelve e quadris (frente e costas) têm confiabilidade ruim ou heterogênea em pose e o joelho de perfil teve erro
+// grande em foto parada (docs/analise-angular-medidas.md); a linha dos joelhos usa os mesmos centros articulares do modelo, sem validação em foto.
+// O joelho de frente e de costas (`joelho-d`, `joelho-e`) e a pelve de perfil ficam de fora.
+const PARA_CONFIRMAR = /^((cotovelos?|braco|carregamento|punho|escapulas?)(-|$)|(quadris|pelve|linha-joelhos|joelho)$)/;
+
+export const ROTULO_CONFIRMAR = 'estimativa: confirme';
+
+/** A medida pede conferência: o texto da tela e do PDF diz "estimativa: confirme". */
+export const ehMedidaParaConfirmar = (id: string) => PARA_CONFIRMAR.test(id);
+
 export const FRASE_REFERENCIA_PADRAO = 'Os ângulos usam a horizontal e a vertical da imagem como referência.';
+
+/**
+ * Como os pontos de uma posição foram marcados, por medida (o que se marca na foto, mesmo que dê mais de um número, como o fio de prumo):
+ * sugeridas pelo modelo, dessas as que o profissional depois ajustou à mão, e as marcadas à mão desde o início.
+ */
+export interface PontosDaPosicao {
+  sugeridas: readonly string[];
+  ajustadas: readonly string[];
+  soMao: readonly string[];
+}
+
+/**
+ * Separa as medidas com resultado na posição. Só entram medidas que aparecem no resultado (uma sugestão deixada incompleta fica de fora),
+ * e "ajustada" só vale para medida que também foi sugerida.
+ */
+export function classificarPontos(medidas: readonly string[], sugeridas: readonly string[], ajustadas: readonly string[]): PontosDaPosicao {
+  const ids = [...new Set(medidas)];
+  const doModelo = ids.filter((id) => sugeridas.includes(id));
+  return { sugeridas: doModelo, ajustadas: doModelo.filter((id) => ajustadas.includes(id)), soMao: ids.filter((id) => !sugeridas.includes(id)) };
+}
 
 export interface EntradaDescricao {
   /** Uma linha por medida, como já aparece na tela. */
@@ -214,23 +241,28 @@ export interface EntradaDescricao {
   metodo: MetodoAnalise;
   /** Frase sobre a correção de nível; sem ela vale a frase padrão de referência da imagem. */
   nivelNota?: string | null;
-  /** Ids das medidas ajustadas à mão. Não informar quando a tela não sabe. */
-  pontosAjustados?: readonly string[] | null;
+  /** Como os pontos foram marcados. Não informar quando a tela não sabe. */
+  pontos?: PontosDaPosicao | null;
 }
 
-function fraseDosPontos(metodo: MetodoAnalise, ajustados?: readonly string[] | null): string {
+/**
+ * Frase do método de uma posição: diz em quantas medidas o modelo sugeriu os pontos, quantas dessas o profissional ajustou à mão e quantas
+ * ele marcou só à mão. Não afirma que alguém conferiu os pontos: isso o aplicativo não verifica.
+ */
+export function fraseDosPontos(metodo: MetodoAnalise, pontos?: PontosDaPosicao | null): string {
   if (metodo !== 'automatica_conferida') return 'Pontos marcados manualmente.';
-  const base = 'Pontos sugeridos por detecção automática';
-  if (!ajustados) return `${base}.`;
-  const n = ajustados.length;
-  if (n === 0) return `${base}; nenhuma medida ajustada à mão.`;
-  return `${base}; ${n} ${n === 1 ? 'medida ajustada' : 'medidas ajustadas'} à mão.`;
+  const base = 'Pontos sugeridos por detecção automática (confirmar na foto)';
+  if (!pontos) return `${base}.`;
+  const n = pontos.sugeridas.length, a = pontos.ajustadas.length, mao = pontos.soMao.length;
+  const ajuste = a === 0 ? 'nenhuma ajustada à mão' : `${a} ${a === 1 ? 'ajustada' : 'ajustadas'} à mão`;
+  const soMao = mao > 0 ? `; ${mao} ${mao === 1 ? 'medida marcada' : 'medidas marcadas'} só à mão` : '';
+  return `${base} em ${n} ${n === 1 ? 'medida' : 'medidas'}, ${ajuste}${soMao}.`;
 }
 
 /** Texto do prontuário. Não afirma que o profissional conferiu os pontos: isso o aplicativo não verifica. */
 export function descricaoDaNota(e: EntradaDescricao): string {
   const medidas = e.medidasTexto.trim();
-  const corpo = `${fraseDosPontos(e.metodo, e.pontosAjustados)} ${e.nivelNota?.trim() || FRASE_REFERENCIA_PADRAO} A foto não é armazenada.`;
+  const corpo = `${fraseDosPontos(e.metodo, e.pontos)} ${e.nivelNota?.trim() || FRASE_REFERENCIA_PADRAO} A foto não é armazenada.`;
   return medidas ? `${medidas}\n${corpo}` : corpo;
 }
 

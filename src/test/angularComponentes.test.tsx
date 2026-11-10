@@ -5,6 +5,7 @@ import { ItensSvg, MarcacaoAngulo, MarcacaoReta, Ponto, Rotulo } from '../compon
 import { ESTILO_INSTAGRAM, ESTILO_PADRAO, LIMITES_ESTILO } from '../lib/angular/estilo';
 import CameraNivel from '../components/angular/CameraNivel';
 import ComparadorFotos from '../components/angular/ComparadorFotos';
+import { SentidoDoOlhar } from '../components/angular/SessaoVistas';
 import type { Landmark } from '../lib/angular/pose';
 
 const camera = vi.hoisted(() => ({ lm: null as null | unknown[], graus: null as null | number }));
@@ -302,3 +303,17 @@ describe('comparador de fotos com o lado do perfil e o seletor de posição', ()
   });
 });
 
+
+describe('seletor do sentido do olhar no perfil', () => {
+  it('mostra os dois lados da imagem com o escolhido marcado e devolve o que a pessoa tocar', () => {
+    const aoMudar = vi.fn();
+    render(<SentidoDoOlhar valor="direita" aoMudar={aoMudar} />);
+    expect(screen.getByText('O paciente olha para a')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Direita da imagem/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /Esquerda da imagem/ })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: /Esquerda da imagem/ }));
+    expect(aoMudar).toHaveBeenCalledWith('esquerda');
+    fireEvent.click(screen.getByRole('button', { name: /Direita da imagem/ }));
+    expect(aoMudar).toHaveBeenLastCalledWith('direita');
+  });
+});

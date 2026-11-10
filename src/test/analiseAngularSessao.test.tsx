@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { criarBancoFalso, type BancoFalso } from './helpers/bancoFalso';
@@ -18,14 +18,48 @@ const h = vi.hoisted(() => ({
   entregar: vi.fn(),
   corpo: null as null | Landmark[],
   limites: [] as number[],
+  perderRespostaDoInsert: false,
+  rlsBloqueiaUpdate: false,
 }));
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: (t: string) => {
-      const q = h.banco.from(t) as { limit: (n: number) => unknown };
+      const q = h.banco.from(t) as { limit: (n: number) => unknown; insert: (p: unknown) => unknown; update: (p: unknown) => unknown; then: PromiseLike<unknown>['then'] };
       const original = q.limit.bind(q);
       q.limit = (n: number) => { h.limites.push(n); return original(n); };
+      // O banco falso não tem chave primária nem RLS: aqui o insert repetido dá 23505 e o insert pode gravar e perder a resposta.
+      const inserir = q.insert.bind(q);
+      q.insert = (p: unknown) => {
+        inserir(p);
+        const executar = q.then.bind(q);
+        q.then = ((ok: never, falha: never) => {
+          const linhas = (h.banco.tabelas[t] ?? []) as { id?: string }[];
+          const id = (p as { id?: string }).id;
+          if (id && linhas.some((l) => l.id === id)) {
+            h.banco.operacoes.push({ tabela: t, tipo: 'insert', payload: p, filtros: [] });
+            return Promise.resolve({ data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint "notas_prontuario_pkey"' } }).then(ok, falha);
+          }
+          const perderResposta = (r: unknown) => {
+            if (!h.perderRespostaDoInsert) return r;
+            h.perderRespostaDoInsert = false;
+            return { data: null, error: { message: 'Failed to fetch' } };
+          };
+          return executar(perderResposta as never).then(ok, falha);
+        }) as typeof q.then;
+        return q;
+      };
+      const atualizar = q.update.bind(q);
+      q.update = (p: unknown) => {
+        atualizar(p);
+        if (h.rlsBloqueiaUpdate) {
+          q.then = ((ok: never, falha: never) => {
+            h.banco.operacoes.push({ tabela: t, tipo: 'update', payload: p, filtros: [] });
+            return Promise.resolve({ data: [], error: null }).then(ok, falha);
+          }) as typeof q.then;
+        }
+        return q;
+      };
       return q;
     },
     rpc: (n: string, a?: Record<string, unknown>) => h.banco.rpc(n, a),
@@ -174,8 +208,44 @@ const tocar = (x: number, y: number) => {
   fireEvent.pointerUp(svgDaFoto(), { clientX: x, clientY: y, pointerId: 1 });
 };
 
+// Arrasta o primeiro ponto sugerido (como o dedo do profissional): a posição deixa de estar salva.
+function arrastarUmPonto() {
+  const ponto = svgDaFoto().querySelector('g[style*="cursor: move"]')!;
+  fireEvent.pointerDown(ponto, { clientX: 410, clientY: 460, pointerId: 1 });
+  fireEvent.pointerMove(svgDaFoto(), { clientX: 450, clientY: 470, pointerId: 1 });
+  fireEvent.pointerUp(svgDaFoto(), { clientX: 450, clientY: 470, pointerId: 1 });
+}
+
+// Segura toda escrita no banco até liberar() (rede lenta): dá tempo de mexer na tela com o salvamento em voo.
+function segurarEscrita() {
+  let liberar: () => void = () => {};
+  const portao = new Promise<void>((ok) => { liberar = ok; });
+  let preso = false;
+  h.banco.antesDeEscrever(async () => { preso = true; await portao; });
+  return { liberar: () => liberar(), estaPreso: () => preso };
+}
+
+const apagarNota = async (id: string) => {
+  await (h.banco.from('notas_prontuario') as unknown as { delete: () => { eq: (c: string, v: string) => PromiseLike<unknown> } }).delete().eq('id', id);
+};
+const idsDosInserts = () => operacoes('insert').map((o) => (o.payload as { id: string }).id);
+const fecharAPagina = () => { const ev = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(ev); return ev.defaultPrevented; };
+
+async function salvarUmaVez() {
+  fireEvent.click(screen.getByTestId('salvar-posicao'));
+  await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('salva'));
+  return notasGravadas()[0].id as string;
+}
+
+async function comecarNovaSessao() {
+  fireEvent.click(screen.getByRole('button', { name: /Resumo da sessão/ }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Começar uma nova sessão' }));
+  fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Começar nova sessão' }));
+  await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('sem_foto'));
+}
+
 beforeEach(() => {
-  h.sucesso.mockReset(); h.erro.mockReset(); h.aviso.mockReset(); h.info.mockReset(); h.entregar.mockReset(); h.limites = [];
+  h.sucesso.mockReset(); h.erro.mockReset(); h.aviso.mockReset(); h.info.mockReset(); h.entregar.mockReset(); h.limites = []; h.perderRespostaDoInsert = false; h.rlsBloqueiaUpdate = false;
   h.corpo = corpoFrente();
   let n = 0;
   h.preparar.mockReset().mockImplementation(async () => ({ url: `blob:foto-${++n}`, w: 1000, h: 1500, img: document.createElement('img') }));
@@ -407,13 +477,14 @@ describe('salvar no prontuário', () => {
     fireEvent.click(screen.getByTestId('salvar-posicao'));
     await waitFor(() => expect(notasGravadas()).toHaveLength(1));
     const nota = notasGravadas()[0];
-    expect(nota).toMatchObject({ paciente_id: 'p1', terapeuta_id: 'prof-1', tipo: 'analise_angular', titulo: 'Análise angular — vista frente (1 de 4)' });
+    expect(nota).toMatchObject({ paciente_id: 'p1', terapeuta_id: 'prof-1', tipo: 'analise_angular', titulo: 'Análise angular — vista frente' });
     expect(nota.dados_extras).toMatchObject({ vista: 'frente', esquema: 2, metodo: 'automatica_conferida', pontos_ajustados: [], nivel_graus: null });
     expect(nota.dados_extras.lado_perfil).toBeUndefined();
     expect(nota.dados_extras.sessao).toMatchObject({ ordem: 1, previstas: ['frente', 'perfil_d', 'perfil_e', 'costas'] });
     expect(nota.dados_extras.sessao.id).toBe(nota.referencia_id);
     expect(nota.dados_extras.medidas.find((m: { id: string }) => m.id === 'ombros')).toMatchObject({ graus: 8.5 });
-    expect(nota.descricao).toContain('Pontos sugeridos por detecção automática; nenhuma medida ajustada à mão.');
+    expect(nota.descricao).toContain('Pontos sugeridos por detecção automática (confirmar na foto) em 11 medidas, nenhuma ajustada à mão.');
+    expect(nota.descricao).not.toContain('só à mão');
     expect(nota.descricao).not.toMatch(/conferid/i);
     expect(JSON.stringify(nota)).not.toContain('blob:');
   });
@@ -435,8 +506,8 @@ describe('salvar no prontuário', () => {
     fireEvent.click(screen.getByTestId('salvar-e-proxima'));
     await screen.findByTestId('resumo-sessao');
     expect(notasGravadas()).toHaveLength(2);
-    expect(notasGravadas()[0].titulo).toBe('Análise angular — vista frente (1 de 4)');
-    expect(notasGravadas()[1].titulo).toBe('Análise angular — vista costas (2 de 2)');
+    expect(notasGravadas()[0].titulo).toBe('Análise angular — vista frente');
+    expect(notasGravadas()[1].titulo).toBe('Análise angular — vista costas');
   });
 
   it('perfil direito e perfil esquerdo gravam o lado do perfil, a mesma sessão e o "olha para" de cada lado', async () => {
@@ -454,15 +525,15 @@ describe('salvar no prontuário', () => {
     expect(e.dados_extras).toMatchObject({ vista: 'perfil', lado_perfil: 'E', esquema: 2 });
     expect(d.dados_extras.opcoes.olhaPara).toBe('direita');
     expect(e.dados_extras.opcoes.olhaPara).toBe('esquerda');
-    expect(d.titulo).toBe('Análise angular — vista perfil direito (2 de 4)');
-    expect(e.titulo).toBe('Análise angular — vista perfil esquerdo (3 de 4)');
+    expect(d.titulo).toBe('Análise angular — vista perfil direito');
+    expect(e.titulo).toBe('Análise angular — vista perfil esquerdo');
     expect(d.dados_extras.sessao.id).toBe(e.dados_extras.sessao.id);
     expect(d.referencia_id).toBe(e.referencia_id);
     expect([d.dados_extras.sessao.ordem, e.dados_extras.sessao.ordem]).toEqual([2, 3]);
     expect(d.id).not.toBe(e.id);
   });
 
-  it('com posições puladas, o título e as previstas contam só as que ficam na sessão', async () => {
+  it('com posições puladas, as previstas contam só as que ficam na sessão e o título não leva "(n de total)"', async () => {
     renderizar('p1');
     fireEvent.click(screen.getByTestId('pular-posicao'));
     fireEvent.click(screen.getByTestId('pular-posicao'));
@@ -472,7 +543,7 @@ describe('salvar no prontuário', () => {
     await carregarFoto();
     fireEvent.click(screen.getByTestId('salvar-posicao'));
     await waitFor(() => expect(notasGravadas()).toHaveLength(1));
-    expect(notasGravadas()[0].titulo).toBe('Análise angular — vista frente (1 de 2)');
+    expect(notasGravadas()[0].titulo).toBe('Análise angular — vista frente');
     expect(notasGravadas()[0].dados_extras.sessao.previstas).toEqual(['frente', 'costas']);
   });
 
@@ -502,7 +573,7 @@ describe('salvar no prontuário', () => {
     await waitFor(() => expect(notasGravadas()).toHaveLength(1));
     const nota = notasGravadas()[0];
     expect(nota.dados_extras.pontos_ajustados).toHaveLength(1);
-    expect(nota.descricao).toContain('Pontos sugeridos por detecção automática; 1 medida ajustada à mão.');
+    expect(nota.descricao).toContain('Pontos sugeridos por detecção automática (confirmar na foto) em 11 medidas, 1 ajustada à mão.');
   });
 
   it('um ponto marcado à mão (sem sugestão) grava "marcados manualmente" e nenhum ponto ajustado', async () => {
@@ -520,6 +591,35 @@ describe('salvar no prontuário', () => {
     expect(nota.dados_extras.medidas).toEqual([expect.objectContaining({ id: 'ombros', graus: 8.5 })]);
   });
 
+  it('posição com medida marcada à mão e o resto sugerido: a nota e os PDFs contam as duas coisas, sem atribuir tudo ao modelo', async () => {
+    prepararGestos();
+    renderizar('p1');
+    let liberar: (lm: Landmark[]) => void = () => {};
+    h.detectar.mockImplementation(() => new Promise<Landmark[]>((ok) => { liberar = ok; }));
+    fireEvent.change(screen.getByLabelText(/Escolher a foto:/), { target: { files: [arquivo()] } });
+    await waitFor(() => expect(h.detectar).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(svgDaFoto()).not.toBeNull());
+    tocar(100, 100);
+    tocar(300, 100);
+    liberar(corpoFrente());
+    await waitFor(() => expect(textoDaLista()).toContain('Linha dos quadris'));
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(notasGravadas()).toHaveLength(1));
+    const nota = notasGravadas()[0];
+    expect(nota.descricao).toContain('Pontos sugeridos por detecção automática (confirmar na foto) em 10 medidas, nenhuma ajustada à mão; 1 medida marcada só à mão.');
+    expect(nota.dados_extras.pontos_ajustados).toEqual([]);
+
+    fireEvent.click(screen.getByRole('button', { name: /PDF desta posição/ }));
+    await waitFor(() => expect(h.gerarPosicao).toHaveBeenCalledTimes(1));
+    expect(h.gerarPosicao.mock.calls[0][0].pontos).toMatchObject({ ajustadas: [], soMao: ['ombros'] });
+    expect(h.gerarPosicao.mock.calls[0][0].pontos.sugeridas).toHaveLength(10);
+
+    fireEvent.click(screen.getByRole('button', { name: /Resumo da sessão/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Gerar PDF da sessão/ }));
+    await waitFor(() => expect(h.gerarSessao).toHaveBeenCalledTimes(1));
+    expect(h.gerarSessao.mock.calls[0][0].vistas[0].pontos).toMatchObject({ ajustadas: [], soMao: ['ombros'] });
+  });
+
   it('uma falha ao gravar mostra o erro, não marca a posição como salva e deixa tentar de novo', async () => {
     renderizar('p1');
     await carregarFoto();
@@ -532,6 +632,288 @@ describe('salvar no prontuário', () => {
     fireEvent.click(screen.getByTestId('salvar-posicao'));
     await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('salva'));
     expect(notasGravadas()).toHaveLength(1);
+  });
+});
+
+describe('salvar sem enganar: nota sumida, resposta perdida e edição durante a gravação', () => {
+  const ATUALIZADA = 'Posição atualizada no prontuário de Mateus.';
+  const REGRAVADA = 'A nota anterior desta posição não foi encontrada no prontuário; gravei de novo.';
+
+  it('nota excluída no prontuário: "Atualizar" não diz que atualizou, grava a posição de novo com o mesmo id e avisa', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    const id = await salvarUmaVez();
+    await apagarNota(id);
+    expect(notasGravadas()).toHaveLength(0);
+
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(h.aviso).toHaveBeenCalledWith(REGRAVADA));
+    expect(notasGravadas()).toHaveLength(1);
+    expect(notasGravadas()[0].id).toBe(id);
+    expect(idsDosInserts()).toEqual([id, id]);
+    expect(h.sucesso).not.toHaveBeenCalledWith(ATUALIZADA);
+    expect(estadoDaAba(/Frente/)).toBe('salva');
+    expect(screen.getByTestId('salvar-posicao')).toHaveTextContent('Atualizar esta posição');
+  });
+
+  it('nota excluída e a regravação falha: mostra o erro e a posição deixa de constar como salva (a página volta a avisar)', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    const id = await salvarUmaVez();
+    await apagarNota(id);
+    h.banco.falharEscritaQuando((op) => op.tipo === 'insert', 'sem conexão');
+
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('sem conexão'));
+    expect(h.sucesso).not.toHaveBeenCalledWith(ATUALIZADA);
+    expect(h.aviso).not.toHaveBeenCalledWith(REGRAVADA);
+    expect(estadoDaAba(/Frente/)).toBe('marcando');
+    expect(fecharAPagina()).toBe(true);
+
+    h.banco.falharEscritaQuando(null);
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('salva'));
+    expect(notasGravadas()).toHaveLength(1);
+    expect(notasGravadas()[0].id).toBe(id);
+  });
+
+  it('o banco recusa o update de uma nota que existe (nota de outro profissional): não vira "atualizada" nem duplica a nota', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    await salvarUmaVez();
+    h.rlsBloqueiaUpdate = true;
+
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Não consegui atualizar esta posição: a nota anterior existe, mas você não pode alterá-la.'));
+    expect(h.sucesso).not.toHaveBeenCalledWith(ATUALIZADA);
+    expect(notasGravadas()).toHaveLength(1);
+    expect(estadoDaAba(/Frente/)).toBe('marcando');
+    expect(operacoes('insert')).toHaveLength(2);
+  });
+
+  it('resposta do insert perdida: o novo "Salvar" reaproveita o id da nota e não cria uma segunda nota igual', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    h.perderRespostaDoInsert = true;
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Failed to fetch'));
+    expect(notasGravadas()).toHaveLength(1);
+    expect(estadoDaAba(/Frente/)).toBe('marcando');
+    expect(screen.getByTestId('salvar-posicao')).toHaveTextContent('Salvar esta posição');
+
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('salva'));
+    expect(notasGravadas()).toHaveLength(1);
+    const ids = idsDosInserts();
+    expect(ids).toHaveLength(2);
+    expect(ids[1]).toBe(ids[0]);
+    expect(operacoes('update')).toHaveLength(1);
+    expect(h.sucesso).toHaveBeenCalledWith('Posição salva no prontuário de Mateus.');
+    expect(h.aviso).not.toHaveBeenCalled();
+  });
+
+  it('falha comum no insert: a nova tentativa usa o mesmo id da nota', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    h.banco.falharEscritaQuando(() => true, 'sem conexão');
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('sem conexão'));
+    h.banco.falharEscritaQuando(null);
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('salva'));
+    const ids = idsDosInserts();
+    expect(ids).toHaveLength(2);
+    expect(ids[1]).toBe(ids[0]);
+    expect(notasGravadas()).toHaveLength(1);
+  });
+
+  it('o id guardado de uma tentativa que falhou não passa para a sessão nova', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    h.perderRespostaDoInsert = true;
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(h.erro).toHaveBeenCalledWith('Failed to fetch'));
+    const idDaTentativa = notasGravadas()[0].id;
+
+    await comecarNovaSessao();
+    await carregarFoto();
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('salva'));
+    expect(notasGravadas()).toHaveLength(2);
+    expect(notasGravadas()[1].id).not.toBe(idDaTentativa);
+    expect(notasGravadas()[0].dados_extras.sessao.id).not.toBe(notasGravadas()[1].dados_extras.sessao.id);
+    expect(operacoes('update')).toHaveLength(0);
+  });
+
+  it('ponto arrastado enquanto a gravação está em voo: a nota fica guardada, mas a posição continua "marcando" e a página avisa', async () => {
+    prepararGestos();
+    renderizar('p1');
+    await carregarFoto();
+    const escrita = segurarEscrita();
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(escrita.estaPreso()).toBe(true));
+    arrastarUmPonto();
+    escrita.liberar();
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Posição salva no prontuário de Mateus.'));
+    expect(notasGravadas()).toHaveLength(1);
+    expect(estadoDaAba(/Frente/)).toBe('marcando');
+    expect(fecharAPagina()).toBe(true);
+    expect(screen.getByTestId('salvar-posicao')).toHaveTextContent('Atualizar esta posição');
+
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('salva'));
+    expect(operacoes('update')).toHaveLength(1);
+    expect(operacoes('insert')).toHaveLength(1);
+    expect(notasGravadas()[0].dados_extras.pontos_ajustados).toHaveLength(1);
+    expect(fecharAPagina()).toBe(false);
+  });
+
+  it('sessão recomeçada com a gravação em voo: a nota gravada não vai parar na sessão nova', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    const escrita = segurarEscrita();
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(escrita.estaPreso()).toBe(true));
+    await comecarNovaSessao();
+    escrita.liberar();
+    await waitFor(() => expect(notasGravadas()).toHaveLength(1));
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Posição salva no prontuário de Mateus.'));
+    expect(estadoDaAba(/Frente/)).toBe('sem_foto');
+
+    await carregarFoto();
+    expect(screen.getByTestId('salvar-posicao')).toHaveTextContent('Salvar esta posição');
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(notasGravadas()).toHaveLength(2));
+    expect(operacoes('update')).toHaveLength(0);
+    expect(notasGravadas()[0].dados_extras.sessao.id).not.toBe(notasGravadas()[1].dados_extras.sessao.id);
+  });
+
+  it('"Salvar e ir para a próxima": se a pessoa foi para outra aba enquanto gravava, a tela fica onde ela está', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    const escrita = segurarEscrita();
+    fireEvent.click(screen.getByTestId('salvar-e-proxima'));
+    await waitFor(() => expect(escrita.estaPreso()).toBe(true));
+    fireEvent.click(aba(/Costas/));
+    escrita.liberar();
+    await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('salva'));
+    expect(aba(/Costas/)).toHaveAttribute('aria-selected', 'true');
+    expect(aba(/Perfil direito/)).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('"Salvar e ir para a próxima": se a pessoa abriu o resumo enquanto gravava, o resumo continua aberto', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    const escrita = segurarEscrita();
+    fireEvent.click(screen.getByTestId('salvar-e-proxima'));
+    await waitFor(() => expect(escrita.estaPreso()).toBe(true));
+    fireEvent.click(screen.getByRole('button', { name: /Resumo da sessão/ }));
+    expect(await screen.findByTestId('resumo-sessao')).toBeInTheDocument();
+    escrita.liberar();
+    await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('salva'));
+    expect(screen.getByTestId('resumo-sessao')).toBeInTheDocument();
+    expect(aba(/Perfil direito/)).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('"Salvar e ir para a próxima": se a sessão recomeçou enquanto gravava, a sessão nova não é movida', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    const escrita = segurarEscrita();
+    fireEvent.click(screen.getByTestId('salvar-e-proxima'));
+    await waitFor(() => expect(escrita.estaPreso()).toBe(true));
+    await comecarNovaSessao();
+    escrita.liberar();
+    await waitFor(() => expect(notasGravadas()).toHaveLength(1));
+    await waitFor(() => expect(h.sucesso).toHaveBeenCalled());
+    expect(aba(/Frente/)).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
+describe('foto ainda em preparo', () => {
+  const fotoAntiga = () => ({ url: 'blob:antiga', w: 1000, h: 1500, img: document.createElement('img') });
+  function iniciarPreparoLento() {
+    let concluir: (f: ReturnType<typeof fotoAntiga>) => void = () => {};
+    h.preparar.mockImplementationOnce(() => new Promise((ok) => { concluir = ok; }));
+    fireEvent.change(screen.getByLabelText(/Escolher a foto:/), { target: { files: [arquivo()] } });
+    expect(h.preparar).toHaveBeenCalledTimes(1);
+    return () => act(async () => { concluir(fotoAntiga()); });
+  }
+
+  it('sessão recomeçada antes de a foto ficar pronta: a foto é descartada (não aparece na sessão nova) e a URL é revogada', async () => {
+    const revogar = vi.spyOn(URL, 'revokeObjectURL');
+    renderizar('p1');
+    const terminar = iniciarPreparoLento();
+    await comecarNovaSessao();
+    await terminar();
+    expect(estadoDaAba(/Frente/)).toBe('sem_foto');
+    expect(document.querySelector('svg[viewBox="0 0 1000 1500"]')).toBeNull();
+    expect(h.detectar).not.toHaveBeenCalled();
+    expect(revogar).toHaveBeenCalledWith('blob:antiga');
+  });
+
+  it('página fechada antes de a foto ficar pronta: a URL é revogada e o modelo não roda', async () => {
+    const revogar = vi.spyOn(URL, 'revokeObjectURL');
+    const { unmount } = renderizar('p1');
+    const terminar = iniciarPreparoLento();
+    unmount();
+    await terminar();
+    expect(revogar).toHaveBeenCalledWith('blob:antiga');
+    expect(h.detectar).not.toHaveBeenCalled();
+  });
+
+  it('com a sessão a mesma, a foto que ficou pronta entra na posição e a URL não é revogada', async () => {
+    const revogar = vi.spyOn(URL, 'revokeObjectURL');
+    renderizar('p1');
+    const terminar = iniciarPreparoLento();
+    await terminar();
+    await waitFor(() => expect(estadoDaAba(/Frente/)).toBe('marcando'));
+    expect(document.querySelector('image')?.getAttribute('href')).toBe('blob:antiga');
+    expect(revogar).not.toHaveBeenCalledWith('blob:antiga');
+  });
+});
+
+describe('sentido do olhar no perfil', () => {
+  it('em qualquer ferramenta do perfil o seletor "O paciente olha para a" está na tela, e vale para o que for salvo', async () => {
+    renderizar('p1');
+    fireEvent.click(aba(/Perfil direito/));
+    await carregarFoto(corpoPerfil('D'));
+    expect(screen.queryByTestId('cartao-prumo')).toBeNull();
+    expect(screen.getByText('O paciente olha para a')).toBeInTheDocument();
+    const esquerda = screen.getByRole('button', { name: /Esquerda da imagem/ });
+    const direita = screen.getByRole('button', { name: /Direita da imagem/ });
+    expect(direita).toHaveAttribute('aria-pressed', 'true');
+    expect(esquerda).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(esquerda);
+    expect(screen.getByRole('button', { name: /Esquerda da imagem/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(estadoDaAba(/Perfil direito/)).toBe('marcando');
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(notasGravadas()).toHaveLength(1));
+    expect(notasGravadas()[0].dados_extras.opcoes.olhaPara).toBe('esquerda');
+  });
+
+  it('aparece também no perfil esquerdo e não aparece na frente nem nas costas', async () => {
+    renderizar();
+    fireEvent.click(aba(/Perfil esquerdo/));
+    await carregarFoto(corpoPerfil('E'));
+    expect(screen.getByRole('button', { name: /Esquerda da imagem/ })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(aba(/Frente/));
+    await carregarFoto(corpoFrente());
+    expect(screen.queryByText('O paciente olha para a')).toBeNull();
+    fireEvent.click(aba(/Costas/));
+    await carregarFoto(corpoFrente());
+    expect(screen.queryByText('O paciente olha para a')).toBeNull();
+  });
+
+  it('com o fio de prumo ativo continua um só seletor, e ele manda no fio também', async () => {
+    renderizar();
+    fireEvent.click(aba(/Perfil direito/));
+    await carregarFoto(corpoPerfil('D'));
+    fireEvent.click(screen.getByRole('button', { name: 'Fio de prumo (perfil)' }));
+    expect(screen.getByTestId('cartao-prumo')).toBeInTheDocument();
+    expect(screen.getAllByText('O paciente olha para a')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /Esquerda da imagem/ }));
+    expect(screen.getByRole('button', { name: /Esquerda da imagem/ })).toHaveAttribute('aria-pressed', 'true');
   });
 });
 
@@ -646,6 +1028,50 @@ describe('câmera do app em sequência', () => {
     expect(aba(/Frente/)).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('pular a primeira posição na câmera: ao terminar, a tela abre na primeira posição fotografada, não na pulada', async () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: /Tirar a foto no app/ }));
+    await screen.findByTestId('camera-titulo');
+    fireEvent.click(screen.getByRole('button', { name: 'Pular na câmera' }));
+    await waitFor(() => expect(screen.getByTestId('camera-titulo')).toHaveTextContent('Perfil direito'));
+    fireEvent.click(screen.getByRole('button', { name: 'Capturar' }));
+    await waitFor(() => expect(screen.getByTestId('camera-titulo')).toHaveTextContent('Perfil esquerdo'));
+    fireEvent.click(screen.getByRole('button', { name: 'Capturar' }));
+    await waitFor(() => expect(screen.getByTestId('camera-titulo')).toHaveTextContent('Costas'));
+    fireEvent.click(screen.getByRole('button', { name: 'Capturar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Câmera falsa' })).toBeNull());
+    await waitFor(() => expect(h.preparar).toHaveBeenCalledTimes(3));
+    expect(estadoDaAba(/Frente/)).toBe('pulada');
+    expect(aba(/Perfil direito/)).toHaveAttribute('aria-selected', 'true');
+    expect(aba(/Frente/)).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('pular todas as posições na câmera: fecha e deixa a tela onde estava, sem voltar para a primeira da lista', async () => {
+    renderizar();
+    fireEvent.click(screen.getByRole('button', { name: /Tirar a foto no app/ }));
+    await screen.findByTestId('camera-titulo');
+    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByRole('button', { name: 'Pular na câmera' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Câmera falsa' })).toBeNull());
+    for (const nome of [/Frente/, /Perfil direito/, /Perfil esquerdo/, /Costas/]) expect(estadoDaAba(nome)).toBe('pulada');
+    expect(aba(/Costas/)).toHaveAttribute('aria-selected', 'true');
+    expect(h.preparar).not.toHaveBeenCalled();
+  });
+
+  it('a nota de uma foto da câmera do app diz "pelo sensor do celular", sem o "por o" que o cliente leria', async () => {
+    renderizar('p1');
+    fireEvent.click(screen.getByRole('button', { name: /Tirar a foto no app/ }));
+    await screen.findByTestId('camera-titulo');
+    fireEvent.click(screen.getByRole('button', { name: 'Capturar' }));
+    await waitFor(() => expect(screen.getByTestId('camera-titulo')).toHaveTextContent('Perfil direito'));
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar a câmera' }));
+    fireEvent.click(aba(/Frente/));
+    await waitFor(() => expect(screen.getByTestId('avisos-marcacao')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('salvar-posicao'));
+    await waitFor(() => expect(notasGravadas()).toHaveLength(1));
+    expect(notasGravadas()[0].descricao).toContain('Foto nivelada pelo sensor do celular ao fotografar (correção de 2,0°)');
+    expect(notasGravadas()[0].descricao).not.toMatch(/\bpor o\b/);
+  });
+
   it('para trocar a foto de uma posição, a câmera abre só para ela e fecha depois da foto', async () => {
     renderizar();
     await carregarFoto();
@@ -680,6 +1106,30 @@ describe('resumo da sessão', () => {
     expect(resumo.textContent).not.toMatch(/normal|alterad|melhor|pior/i);
   });
 
+  it('na tela e no resumo, quadris, linha dos joelhos e joelho de perfil saem com "estimativa: confirme", e ombros, tornozelos e perna não', async () => {
+    renderizar();
+    await carregarFoto(corpoFrente());
+    const linhaDaMedida = (raiz: HTMLElement, nome: string) => within(raiz).getByText((_, el) => el?.tagName === 'LI' && (el.textContent ?? '').startsWith(nome));
+    const naTela = screen.getByText('Resultado', { selector: 'p' }).closest('div') as HTMLElement;
+    expect(linhaDaMedida(naTela, 'Linha dos quadris')).toHaveTextContent('(estimativa: confirme)');
+    expect(linhaDaMedida(naTela, 'Linha dos joelhos')).toHaveTextContent('(estimativa: confirme)');
+    expect(linhaDaMedida(naTela, 'Linha dos ombros')).not.toHaveTextContent('estimativa: confirme');
+    expect(linhaDaMedida(naTela, 'Linha dos tornozelos')).not.toHaveTextContent('estimativa: confirme');
+
+    fireEvent.click(aba(/Perfil direito/));
+    await carregarFoto(corpoPerfil('D'));
+    fireEvent.click(screen.getByRole('button', { name: /Resumo da sessão/ }));
+    await screen.findByTestId('resumo-sessao');
+    const frente = screen.getByTestId('resumo-frente');
+    expect(linhaDaMedida(frente, 'Linha dos quadris')).toHaveTextContent('(estimativa: confirme)');
+    expect(linhaDaMedida(frente, 'Linha dos joelhos')).toHaveTextContent('(estimativa: confirme)');
+    expect(linhaDaMedida(frente, 'Linha dos ombros')).not.toHaveTextContent('estimativa: confirme');
+    const perfil = screen.getByTestId('resumo-perfil_d');
+    expect(linhaDaMedida(perfil, 'Ângulo quadril–joelho–tornozelo')).toHaveTextContent('(estimativa: confirme)');
+    expect(linhaDaMedida(perfil, 'Perna:')).not.toHaveTextContent('estimativa: confirme');
+    expect(linhaDaMedida(perfil, 'Tronco (ombro–quadril)')).not.toHaveTextContent('estimativa: confirme');
+  });
+
   it('"Gerar PDF da sessão" chama o gerador com as posições preenchidas e respeita o interruptor "Incluir as fotos"', async () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => ctxFalso() as unknown as CanvasRenderingContext2D);
     vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => 'data:image/jpeg;base64,AAAA');
@@ -701,10 +1151,14 @@ describe('resumo da sessão', () => {
     for (const v of dados.vistas) {
       expect(v.medidas.length).toBeGreaterThan(0);
       expect(v.metodo).toBe('automatica_conferida');
-      expect(v.pontosAjustados).toBe(0);
+      expect(v.pontos.sugeridas.length).toBeGreaterThan(0);
+      expect(v.pontos.ajustadas).toEqual([]);
+      expect(v.pontos.soMao).toEqual([]);
       expect(v.imagem).toBe('data:image/jpeg;base64,AAAA');
       expect(v.anterior).toBeNull();
+      expect(v.avisos).toBeUndefined();
     }
+    expect(dados.avisosGerais).toBeUndefined();
     await waitFor(() => expect(h.entregar).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Analise_angular_sessao_MATEUS.pdf', pacienteId: 'p1' })));
 
     fireEvent.click(screen.getByLabelText('Incluir as fotos'));
@@ -768,6 +1222,50 @@ describe('comparar com a avaliação anterior', () => {
     await waitFor(() => expect(cartao.getByText('Desnível dos ombros').closest('tr')).toHaveTextContent('+3,5°'));
     expect(cartao.getByText('Desnível dos ombros').closest('tr')).toHaveTextContent('5,0°');
     expect(screen.getByTestId('comparar-anterior').textContent).not.toMatch(/melhorou|piorou|normal|alterad/i);
+  });
+
+  it('o PDF da sessão leva os mesmos avisos de comparabilidade que a tela mostra: nível diferente na posição e posição que só estava na anterior', async () => {
+    const ANTERIOR = [
+      nota('a1', '2026-04-01T12:00:00Z', extras('frente', meds(6, 'Linha dos ombros: 6,0° com a horizontal, lado direito mais alto.'), { esquema: 2, nivel_graus: 1.8, sessao: sessao('s-9', '2026-04-01T12:00:00.000Z') })),
+      nota('a2', '2026-04-01T12:05:00Z', extras('perfil', meds(3, 'Inclinação do tronco: 3,0°.', 'tronco-perfil'), { esquema: 2, lado_perfil: 'D', sessao: sessao('s-9', '2026-04-01T12:00:00.000Z') })),
+    ];
+    renderizar('p1', ANTERIOR);
+    await carregarFoto(corpoFrente());
+    fireEvent.click(screen.getByRole('button', { name: /Resumo da sessão/ }));
+    const bloco = within(await screen.findByTestId('comparacao-sessao'));
+    await bloco.findByText(/Comparando com a avaliação de 01\/04\/2026/);
+    fireEvent.click(screen.getByRole('button', { name: /Gerar PDF da sessão/ }));
+    await waitFor(() => expect(h.gerarSessao).toHaveBeenCalledTimes(1));
+    const dados = h.gerarSessao.mock.calls[0][0];
+    const avisoDaPosicao = 'Frente: na avaliação anterior a foto foi nivelada (correção de 1,8°); nesta não consta correção de nível. Os ângulos podem não ser comparáveis.';
+    const avisoGeral = 'Perfil direito: estava na avaliação anterior e ainda não foi feita nesta.';
+    expect(dados.vistas[0].avisos).toEqual([avisoDaPosicao]);
+    expect(dados.avisosGerais).toEqual([avisoGeral]);
+    // São as frases que a tela mostra.
+    expect(within(screen.getByTestId('comparacao-frente')).getByText(avisoDaPosicao)).toBeInTheDocument();
+    expect(bloco.getByText(avisoGeral)).toBeInTheDocument();
+    expect(dados.vistas[0].anterior.data).toBe('01/04/2026');
+  });
+
+  it('o PDF desta posição leva os mesmos avisos que a tela mostra na comparação da posição, e nenhum quando é comparável', async () => {
+    const aviso = 'Frente: na avaliação anterior a foto foi nivelada (correção de 1,8°); nesta não consta correção de nível. Os ângulos podem não ser comparáveis.';
+    renderizar('p1', [nota('a1', '2026-04-01T12:00:00Z', extras('frente', meds(6, 'Linha dos ombros: 6,0° com a horizontal, lado direito mais alto.'), { esquema: 2, nivel_graus: 1.8, sessao: sessao('s-9', '2026-04-01T12:00:00.000Z') }))]);
+    await carregarFoto(corpoFrente());
+    const cartao = within(await screen.findByTestId('comparar-anterior'));
+    expect(await cartao.findByText(aviso)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /PDF desta posição/ }));
+    await waitFor(() => expect(h.gerarPosicao).toHaveBeenCalledTimes(1));
+    expect(h.gerarPosicao.mock.calls[0][0].avisos).toEqual([aviso]);
+    expect(h.gerarPosicao.mock.calls[0][0].anterior).toMatchObject({ data: '01/04/2026' });
+  });
+
+  it('o PDF desta posição, sem aviso a dar, não leva a lista de avisos', async () => {
+    renderizar('p1', [nota('a1', '2026-04-01T12:00:00Z', extras('frente', meds(6, 'Linha dos ombros: 6,0° com a horizontal, lado direito mais alto.'), { esquema: 2, sessao: sessao('s-9', '2026-04-01T12:00:00.000Z') }))]);
+    await carregarFoto(corpoFrente());
+    await within(await screen.findByTestId('comparar-anterior')).findByLabelText('Avaliação anterior');
+    fireEvent.click(screen.getByRole('button', { name: /PDF desta posição/ }));
+    await waitFor(() => expect(h.gerarPosicao).toHaveBeenCalledTimes(1));
+    expect(h.gerarPosicao.mock.calls[0][0].avisos).toBeUndefined();
   });
 
   it('o perfil de nota antiga (sem lado) nunca é oferecido para perfil direito ou esquerdo, e a tela explica', async () => {

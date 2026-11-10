@@ -1,7 +1,7 @@
-import { Camera, Check, ClipboardList, SkipForward, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, Check, ClipboardList, SkipForward, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { nomeDoResultado } from '@/lib/angular/medidas';
+import { nomeDoResultado, type OlharPara } from '@/lib/angular/medidas';
 import { ROTULO_VISTA_SESSAO, type VistaSessao } from '@/lib/angular/tiposSessao';
 import type { EstadoDaAba, SugestaoGuardada, VisaoDaSessao } from '@/hooks/useSessaoPostural';
 
@@ -100,6 +100,27 @@ export function AvisosDaMarcacao({ sugestao, inverterDE, temPontosDoModelo, aoIn
           {inverterDE ? 'Desfazer a inversão D/E' : 'Inverter D/E'}
         </Button>
       )}
+    </div>
+  );
+}
+
+/**
+ * Para que lado da imagem o paciente olha na foto de perfil. Vale para todas as medidas de perfil da posição (joelho, braço,
+ * cotovelo, fio de prumo): é ele que diz o que está "à frente" e o que está "atrás".
+ */
+export function SentidoDoOlhar({ valor, aoMudar }: { valor: OlharPara; aoMudar: (sentido: OlharPara) => void }) {
+  return (
+    <div className="space-y-1.5 rounded-xl border border-border/60 bg-card p-2.5 text-xs" data-testid="sentido-do-olhar">
+      <p className="font-medium">O paciente olha para a</p>
+      <div className="grid grid-cols-2 gap-1.5">
+        {([['esquerda', ArrowLeft], ['direita', ArrowRight]] as const).map(([sentido, Seta]) => (
+          <button key={sentido} type="button" aria-pressed={valor === sentido} onClick={() => aoMudar(sentido)}
+            className={cn('flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 font-medium', valor === sentido ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/50')}>
+            <Seta className="h-4 w-4 shrink-0" aria-hidden /> {sentido === 'esquerda' ? 'Esquerda da imagem' : 'Direita da imagem'}
+          </button>
+        ))}
+      </div>
+      <p className="text-muted-foreground">Vale para todas as medidas de perfil desta posição. Se estiver ao contrário, o que está à frente e o que está atrás saem trocados.</p>
     </div>
   );
 }
