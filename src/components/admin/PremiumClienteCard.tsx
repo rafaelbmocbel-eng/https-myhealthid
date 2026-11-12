@@ -11,8 +11,9 @@ const DIAS_MAXIMOS = 3650;
 function lerDias(texto: string): { ok: true; dias?: number } | { ok: false } {
   const t = texto.trim();
   if (!t) return { ok: true };
+  if (!/^\d+$/.test(t)) return { ok: false };
   const n = Number(t);
-  if (!Number.isInteger(n) || n < 1 || n > DIAS_MAXIMOS) return { ok: false };
+  if (n < 1 || n > DIAS_MAXIMOS) return { ok: false };
   return { ok: true, dias: n };
 }
 
@@ -35,9 +36,9 @@ export default function PremiumClienteCard() {
       if (r.ja_premium) {
         toast({ title: 'Essa conta já era Premium', description: 'Nada mudou.' });
       } else {
-        toast({ title: 'Premium liberado 🎁', description: prazo.dias ? `${emailLimpo} · por ${prazo.dias} dias` : `${emailLimpo} · sem prazo` });
+        toast({ title: 'Premium liberado 🎁', description: prazo.dias ? `${emailLimpo} · por ${prazo.dias} dias (a checagem de vencimento pode levar até 3 dias a mais)` : `${emailLimpo} · sem prazo` });
       }
-      setEmail(''); setDias('');
+      setEmail(''); setDias(''); setConfirmandoRetirada(false);
     } catch (e) {
       toast({ title: 'Não consegui liberar', description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
     } finally {
@@ -79,7 +80,7 @@ export default function PremiumClienteCard() {
           </div>
           <div>
             <label htmlFor="premium-cliente-dias" className="text-[10px] uppercase text-muted-foreground tracking-wide">Dias (opcional)</label>
-            <Input id="premium-cliente-dias" type="number" inputMode="numeric" value={dias}
+            <Input id="premium-cliente-dias" type="text" inputMode="numeric" autoComplete="off" value={dias}
               onChange={(e) => setDias(e.target.value)} placeholder="sem prazo" className="h-9 text-sm w-full sm:w-28" disabled={ocupado} />
           </div>
         </div>
@@ -93,7 +94,7 @@ export default function PremiumClienteCard() {
             </Button>
           ) : (
             <>
-              <Button size="sm" variant="destructive" className="h-9" onClick={tirar} disabled={ocupado}>Confirmar: tirar o Premium</Button>
+              <Button size="sm" variant="destructive" className="h-9" onClick={tirar} disabled={ocupado || !emailLimpo}>Confirmar: tirar o Premium</Button>
               <Button size="sm" variant="ghost" className="h-9" onClick={() => setConfirmandoRetirada(false)} disabled={ocupado}>Cancelar</Button>
             </>
           )}

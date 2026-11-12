@@ -52,7 +52,7 @@ describe('PremiumClienteCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Dar Premium/ }));
     expect(h.conceder).not.toHaveBeenCalled();
     expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'destructive' }));
-    for (const ruim of ['0', '1.5', '-3', '4000']) {
+    for (const ruim of ['0', '1.5', '-3', '4000', '1e3', '0x10', '1,5', '12abc', '٣٠']) {
       h.toast.mockReset();
       escrever(email(), 'cliente@exemplo.com');
       escrever(dias(), ruim);
@@ -107,6 +107,23 @@ describe('PremiumClienteCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Confirmar: tirar o Premium/ }));
     await waitFor(() => expect(h.revogar).toHaveBeenCalledWith({ email: 'outro@exemplo.com' }));
     await waitFor(() => expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Cortesia retirada' })));
+  });
+
+  it('dar Premium com a confirmação de retirada aberta fecha a confirmação (sem botão destrutivo solto)', async () => {
+    render(<PremiumClienteCard />);
+    escrever(email(), 'cliente@exemplo.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar a cortesia' }));
+    expect(screen.getByRole('button', { name: /Confirmar: tirar o Premium/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Dar Premium/ }));
+    await waitFor(() => expect(h.conceder).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Confirmar: tirar o Premium/ })).toBeNull());
+    expect(h.revogar).not.toHaveBeenCalled();
+  });
+
+  it('o campo de dias é de texto numérico (campo number engole texto inválido e viraria "sem prazo")', () => {
+    render(<PremiumClienteCard />);
+    expect(dias().type).toBe('text');
+    expect(dias().inputMode).toBe('numeric');
   });
 
   it('cancelar a retirada não chama o servidor', () => {

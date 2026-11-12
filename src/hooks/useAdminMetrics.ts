@@ -98,14 +98,17 @@ export async function concederPlano(patch: { email: string; plano_id: string; di
   return data;
 }
 
-type ErroDaFuncao = { context?: { json?: () => Promise<{ error?: string } | null> } };
+type ErroDaFuncao = { context?: { status?: number; json?: () => Promise<{ error?: string } | null> } };
+
+const MENSAGEM_ERRO_DO_SERVIDOR = 'Erro no servidor. Confira a conta do cliente e tente de novo; se continuar, avise o suporte.';
 
 async function chamarPremiumCliente<T>(corpo: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('admin-metrics', { body: corpo });
   if (error) {
+    const ctx = (error as unknown as ErroDaFuncao).context;
+    if (typeof ctx?.status === 'number' && ctx.status >= 500) throw new Error(MENSAGEM_ERRO_DO_SERVIDOR);
     let msg = error.message;
     try {
-      const ctx = (error as unknown as ErroDaFuncao).context;
       const b = ctx?.json ? await ctx.json() : null;
       if (b?.error) msg = b.error;
     } catch { /* sem corpo legível: fica a mensagem genérica */ }
