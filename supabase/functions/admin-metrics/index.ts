@@ -7,6 +7,7 @@
 // têm RLS por usuário; um painel global precisa ler todo mundo com segurança).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { FILTRO_SO_PROFISSIONAL } from "../_shared/origem-avaliacao.ts";
+import { executarPremiumCliente } from "../_shared/premium-cliente.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,6 +107,12 @@ Deno.serve(async (req) => {
       }, { onConflict: "user_id,plano_id" });
       if (error) throw error;
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Ação: PREMIUM de cortesia para CONTA DE CLIENTE (portal), por e-mail ──
+    if (action === "conceder_premium_cliente" || action === "revogar_premium_cliente") {
+      const r = await executarPremiumCliente(admin, action, body, new Date());
+      return new Response(JSON.stringify(r.payload), { status: r.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── Ação: GRANDFATHER em massa — dá um plano a todo profissional sem assinatura ──

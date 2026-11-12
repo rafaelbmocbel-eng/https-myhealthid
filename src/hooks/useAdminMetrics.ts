@@ -98,6 +98,34 @@ export async function concederPlano(patch: { email: string; plano_id: string; di
   return data;
 }
 
+type ErroDaFuncao = { context?: { json?: () => Promise<{ error?: string } | null> } };
+
+async function chamarPremiumCliente<T>(corpo: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('admin-metrics', { body: corpo });
+  if (error) {
+    let msg = error.message;
+    try {
+      const ctx = (error as unknown as ErroDaFuncao).context;
+      const b = ctx?.json ? await ctx.json() : null;
+      if (b?.error) msg = b.error;
+    } catch { /* sem corpo legível: fica a mensagem genérica */ }
+    throw new Error(msg);
+  }
+  const erroNoCorpo = (data as { error?: string } | null)?.error;
+  if (erroNoCorpo) throw new Error(erroNoCorpo);
+  return data as T;
+}
+
+/** Dá Premium de cortesia a uma conta de CLIENTE do portal (não a paciente de profissional). Sem `dias` = sem prazo. */
+export function concederPremiumCliente(patch: { email: string; dias?: number }) {
+  return chamarPremiumCliente<{ ok: boolean; ja_premium: boolean; ate?: string | null }>({ action: 'conceder_premium_cliente', ...patch });
+}
+
+/** Desfaz o Premium de CORTESIA de um cliente. Assinatura paga nunca é cancelada por aqui. */
+export function revogarPremiumCliente(patch: { email: string }) {
+  return chamarPremiumCliente<{ ok: boolean }>({ action: 'revogar_premium_cliente', ...patch });
+}
+
 /** Revoga uma cortesia. */
 export async function revogarCortesia(patch: { user_id: string; plano_id: string }) {
   const { data, error } = await supabase.functions.invoke('admin-metrics', {

@@ -14,6 +14,7 @@ import { useIsSuperAdmin } from '@/hooks/useIsSuperAdmin';
 import { useAdminMetrics, atualizarPlano, removerPlano, concederPlano, revogarCortesia, grandfatherTodos, criarLinkParceiro, revogarLinkParceiro, traduzirBibliotecaBatch, type PeriodoAdmin } from '@/hooks/useAdminMetrics';
 import { MODULOS_CATALOGO, MODULOS_KEYS } from '@/lib/modulosPlano';
 import { PageHeader } from '@/components/ui/page-header';
+import PremiumClienteCard from '@/components/admin/PremiumClienteCard';
 import {
   Loader2, RefreshCw, TrendingUp, Building2, Users, GraduationCap, AlertTriangle, CreditCard, DollarSign, Trash2, Layers, Check, Gift, X, Link2, Copy,
 } from 'lucide-react';
@@ -609,6 +610,8 @@ export default function Admin() {
           )}
         </CardContent>
       </Card>
+
+      <PremiumClienteCard />
 
       {/* Liberar plano por e-mail — cortesias / parceiros */}
       <Card>
