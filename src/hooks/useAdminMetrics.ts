@@ -116,6 +116,10 @@ async function chamarPremiumCliente<T>(corpo: Record<string, unknown>): Promise<
   }
   const erroNoCorpo = (data as { error?: string } | null)?.error;
   if (erroNoCorpo) throw new Error(erroNoCorpo);
+  // A função devolve as métricas do painel (sem "ok") para ações que ela não conhece, por exemplo antes de o deploy dela terminar.
+  if ((data as { ok?: boolean } | null)?.ok !== true) {
+    throw new Error('O servidor ainda não reconheceu essa ação (a atualização pode estar em andamento). Nada foi alterado: tente de novo em alguns minutos.');
+  }
   return data as T;
 }
 

@@ -25,6 +25,16 @@ describe('concederPremiumCliente / revogarPremiumCliente', () => {
     await expect(concederPremiumCliente({ email: 'a@b.com' })).rejects.toThrow('Nenhuma conta de cliente com esse e-mail.');
   });
 
+  it('resposta sem "ok" (função ainda sem a ação: devolve as métricas do painel) vira erro, nunca sucesso', async () => {
+    h.invoke.mockResolvedValue({ data: { planos: [], clinicas: [] }, error: null });
+    await expect(concederPremiumCliente({ email: 'a@b.com' })).rejects.toThrow(/ainda não reconheceu/);
+    await expect(revogarPremiumCliente({ email: 'a@b.com' })).rejects.toThrow(/ainda não reconheceu/);
+    h.invoke.mockResolvedValue({ data: null, error: null });
+    await expect(concederPremiumCliente({ email: 'a@b.com' })).rejects.toThrow(/ainda não reconheceu/);
+    h.invoke.mockResolvedValue({ data: { ok: false }, error: null });
+    await expect(concederPremiumCliente({ email: 'a@b.com' })).rejects.toThrow(/ainda não reconheceu/);
+  });
+
   it('erro 500 do servidor: mensagem simples, sem vazar o texto interno do banco', async () => {
     h.invoke.mockResolvedValue({
       data: null,
