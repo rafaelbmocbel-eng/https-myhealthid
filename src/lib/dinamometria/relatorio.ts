@@ -316,7 +316,7 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
       : razRef != null ? `${fmt(razRef * (1 - c.razaoTol / 100) * 100, 0)}% a ${fmt(razRef * (1 + c.razaoTol / 100) * 100, 0)}% (média ~${fmt(razRef * 100, 0)}%)` : 'depende de idade e sexo';
     const linhasRef: [string, string][] = [
       ['Simetria bilateral', `>= ${c.lsiAdequado}% (diferença até ${100 - c.lsiAdequado}%); atenção ${c.lsiImportante}-${c.lsiAdequado}%`],
-      ['Agonista x antagonista', `${R.razaoL.split(' (')[0]}: ${janelaRazao}`],
+      ['Antagonista/Agonista', `${R.razaoL.split(' (')[0]}: ${janelaRazao}`],
       ...gruposBarras(A, u).filter(g => g.ref != null && g.min != null).map(g => [
         `Força - ${g.nome}`, `${fmt(g.min, 1)} a ${fmt(2 * (g.ref as number) - (g.min as number), 1)} ${u} (média ${fmt(g.ref, 1)})`,
       ] as [string, string]),
@@ -491,7 +491,7 @@ export async function gerarRelatorioDinamometria(d: DadosRelatorio, apenasGerar 
       }
     }
 
-    // ── 3 e 4. Avatar inteiro + articulação em destaque | gráficos unilateral e agonista × antagonista.
+    // ── 3 e 4. Avatar inteiro + articulação em destaque | gráficos unilateral e antagonista/agonista.
     y = await blocoVisual(doc, av, A, c, M, y + 1, larg);
 
     const serie = (g: 'ag' | 'an'): Serie[] => (['D', 'E'] as Lado[]).flatMap(l => {
@@ -650,7 +650,7 @@ export async function gerarRelatorioCliente(d: DadosRelatorio, apenasGerar = fal
       t(R.razaoL.split(' (')[0], cx[0], y);
       (['D', 'E'] as const).forEach((l, k) => { const x = A.razoes[l]; if (x) celula(`${fmt(x.r * 100, 0)}%`, x.desvio == null ? null : stDesvio(x.desvio, c), cx[k + 1], y); else t('-', cx[k + 1], y); });
       t((A.razoes.D || A.razoes.E)?.refTxt || '-', cx[3], y);
-      doc.setFontSize(7.8); doc.setTextColor(100); t('agonista x antagonista', cx[4], y); doc.setTextColor(20); doc.setFontSize(9);
+      doc.setFontSize(7.8); doc.setTextColor(100); t('antagonista/agonista', cx[4], y); doc.setTextColor(20); doc.setFontSize(9);
       y += 5.2;
     }
     for (const g of ['ag', 'an'] as const) {

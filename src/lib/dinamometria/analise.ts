@@ -374,7 +374,7 @@ export type ValenciaId = 'simetria' | 'razao' | 'fadiga' | 'estabilidade';
 export interface Valencia { valor: number; texto: string; status: Status; onde: string }
 export const VALENCIAS: { id: ValenciaId; nome: string; explica: string }[] = [
   { id: 'simetria', nome: 'Simetria entre lados', explica: 'Força do lado mais fraco em % do mais forte (menor valor entre os grupos).' },
-  { id: 'razao', nome: 'Agonista × antagonista', explica: 'Relação entre os músculos opostos; mostra o lado mais distante da referência.' },
+  { id: 'razao', nome: 'Antagonista/Agonista', explica: 'Relação entre os músculos opostos; mostra o lado mais distante da referência.' },
   { id: 'fadiga', nome: 'Fadiga', explica: 'Perda de força na contração sustentada (maior valor entre os músculos).' },
   { id: 'estabilidade', nome: 'Estabilidade da curva', explica: 'Oscilação da força no platô (maior valor entre os músculos).' },
 ];

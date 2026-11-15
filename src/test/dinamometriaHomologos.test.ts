@@ -396,3 +396,23 @@ describe('dinamometria: PDF — cartões de simetria e equilíbrio', () => {
     expect(textos.some((t) => /^Simetria antagonista/.test(t))).toBe(false);
   });
 });
+
+describe('dinamometria: PDF — o nome da razão é "Antagonista/Agonista", nunca "Agonista x antagonista"', () => {
+  it('laudo técnico: a tabela de referências teóricas escreve Antagonista/Agonista', async () => {
+    textos.length = 0;
+    const av = comAcometido('E');
+    const A = analisar(av, CRITERIOS_PADRAO);
+    await gerarRelatorioDinamometria({ paciente: 'Teste', data: '2026-10-18', c: CRITERIOS_PADRAO, itens: [{ av, A, anterior: null, historico: [] }] }, true);
+    expect(textos).toContain('Antagonista/Agonista');
+    expect(textos.filter((t) => /agonista ?(x|×) ?antagonista/i.test(t))).toEqual([]);
+  });
+
+  it('laudo do cliente: a linha da razão na tabela de resultados escreve antagonista/agonista', async () => {
+    textos.length = 0;
+    const av = comAcometido('E');
+    const A = analisar(av, CRITERIOS_PADRAO);
+    await gerarRelatorioCliente({ paciente: 'Teste', data: '2026-10-18', c: CRITERIOS_PADRAO, itens: [{ av, A, anterior: null, historico: [] }] }, true);
+    expect(textos).toContain('antagonista/agonista');
+    expect(textos.filter((t) => /agonista ?(x|×) ?antagonista/i.test(t))).toEqual([]);
+  });
+});

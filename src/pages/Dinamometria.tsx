@@ -1026,7 +1026,7 @@ export default function Dinamometria() {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     {([['ok', 'Bom'], ['warn', 'Atenção'], ['bad', 'Ruim']] as [string, string][]).map(([k, l]) => <span key={k} className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full" style={{ background: COR_STATUS[k] }} />{l}</span>)}
                     <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full border-2 border-dashed border-muted-foreground" />Possível ponto de dor</span>
-                    <span>No avatar, a cor de cada lado junta a força para idade e sexo, a diferença entre os lados e o equilíbrio agonista × antagonista. Na vista de frente, o lado direito do paciente aparece à esquerda.</span>
+                    <span>No avatar, a cor de cada lado junta a força para idade e sexo, a diferença entre os lados e o equilíbrio antagonista/agonista. Na vista de frente, o lado direito do paciente aparece à esquerda.</span>
                   </div>
                 </Card>
 
@@ -1073,7 +1073,7 @@ export default function Dinamometria() {
                             })}
                             {(Ax.razoes.D || Ax.razoes.E) && (
                               <tr className="border-t border-border/40">
-                                <td className="px-3 py-2"><span className="font-medium">Agonista × antagonista</span><span className="block text-xs text-muted-foreground">{R.razaoL}</span></td>
+                                <td className="px-3 py-2"><span className="font-medium">Antagonista/Agonista</span><span className="block text-xs text-muted-foreground">{R.razaoL}</span></td>
                                 {(['D', 'E'] as Lado[]).map(l => { const x = Ax.razoes[l]; return <td key={l} className="px-3 py-2">{x ? <Sinal st={x.desvio == null ? ['info', 'Sem referência'] : stDesvio(x.desvio, crit)}>{fmt(x.r * 100, 0)}%</Sinal> : '—'}</td>; })}
                                 <td className="px-3 py-2 text-xs whitespace-nowrap">{ref || '—'}</td>
                                 <td className="px-3 py-2 text-xs text-muted-foreground">Desequilíbrio aqui pode gerar dor na própria articulação.</td>
@@ -1342,7 +1342,7 @@ export default function Dinamometria() {
           <TabsContent value="criterios" className="space-y-4 mt-4">
             <Card className="p-4 space-y-3">
               <p className="font-semibold">Critérios das valências</p>
-              <p className="text-sm text-muted-foreground max-w-3xl">Cada valência (simetria, agonista × antagonista, fadiga e estabilidade) é classificada separadamente, sem nota única: até o primeiro limite fica verde, entre os dois limites fica amarelo e além do segundo fica vermelho. A simetria ≥ 90% e as referências das razões vêm da literatura; as faixas de fadiga e oscilação são do serviço e podem ser ajustadas. Os critérios ficam salvos neste aparelho.</p>
+              <p className="text-sm text-muted-foreground max-w-3xl">Cada valência (simetria, antagonista/agonista, fadiga e estabilidade) é classificada separadamente, sem nota única: até o primeiro limite fica verde, entre os dois limites fica amarelo e além do segundo fica vermelho. A simetria ≥ 90% e as referências das razões vêm da literatura; as faixas de fadiga e oscilação são do serviço e podem ser ajustadas. Os critérios ficam salvos neste aparelho.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Unidade de exibição</Label>
@@ -1374,7 +1374,7 @@ export default function Dinamometria() {
                 <li><b className="text-foreground">Oscilação:</b> desvio dos valores em torno da reta de tendência do platô ÷ média × 100. Separa instabilidade da queda por fadiga.</li>
                 <li><b className="text-foreground">Força esperada:</b> média e desvio padrão de McKay et al. (2017) para idade e sexo; faixa normal = média ± 1 DP. Revisões mais recentes de valores com dinamômetro manual: Machado et al. (2025) e Benfica et al. (2018).</li>
                 <li><b className="text-foreground">Simetria:</b> lado mais fraco ÷ lado mais forte (a diferença entre os lados, nunca acima de 100%), seja ele o acometido ou o sadio; o lado acometido só desempata quando os dois são iguais. ≥ 90% (diferença até 10%) é o critério de retorno ao esporte (Grindem et al., 2016; Kyritsis et al., 2016, que dividem o acometido pelo sadio; aqui o sadio mais fraco também é sinalizado). Os cortes de 10–15% são os mais usados, mas com pouca evidência (Parkinson et al., 2021).</li>
-                <li><b className="text-foreground">Razão agonista × antagonista:</b> comparada à razão das médias de McKay et al. (2017) para idade e sexo. No joelho isso dá I/Q isométrica ≈ 0,5, em linha com Ishøi et al. (2021) e Taketomi et al. (2024); o "ideal de 60–70%" vem de teste isocinético e não se aplica ao isométrico. No quadril, adução/abdução ≥ 0,80 (Tyler et al., 2001).</li>
+                <li><b className="text-foreground">Razão antagonista/agonista:</b> comparada à razão das médias de McKay et al. (2017) para idade e sexo. No joelho isso dá I/Q isométrica ≈ 0,5, em linha com Ishøi et al. (2021) e Taketomi et al. (2024); o "ideal de 60–70%" vem de teste isocinético e não se aplica ao isométrico. No quadril, adução/abdução ≥ 0,80 (Tyler et al., 2001).</li>
                 <li><b className="text-foreground">Fadiga e oscilação:</b> não há valores normais publicados para esse teste; as faixas são do serviço e servem para comparar o paciente com ele mesmo.</li>
               </ul>
             </Card>
