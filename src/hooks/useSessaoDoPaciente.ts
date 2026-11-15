@@ -7,7 +7,7 @@ import { gerarRelatorioAngular } from '@/lib/angular/relatorio';
 import { LARGURA_MAX_FOTO_PDF, gerarRelatorioSessao, type VistaDoRelatorioSessao } from '@/lib/angular/relatorioSessao';
 import { entregarPdf } from '@/lib/pdf/entrega';
 import {
-  agruparPorSessao, classificarPontos, dataDaSessao, descricaoDaNota, montarDadosExtras, novaSessaoId, tituloDaNota,
+  agruparPorSessao, classificarPontos, dataDaSessao, descricaoDaNota, limparNomeLivre, montarDadosExtras, novaSessaoId, tituloDaAnaliseLivre, tituloDaNota,
   type DadosExtrasFoto, type MetodoAnalise, type NotaDeAnalise, type PontosDaPosicao, type SessaoAgrupada,
 } from '@/lib/angular/sessao';
 import { ESQUEMA_ANALISE_FOTO, ROTULO_VISTA_SESSAO, VISTAS_DA_SESSAO, vistaBaseDaSessao, type VistaSessao } from '@/lib/angular/tiposSessao';
@@ -60,6 +60,7 @@ function pontosDoItem(item: ItemPosicao, r: ResumoDoItem): { metodo: MetodoAnali
 
 /**
  * A nota do prontuário de uma posição: título com a posição, texto, `dados_extras` do esquema 2 e a sessão. Null sem nenhuma medida pronta.
+ * Na análise livre ('livre') o título leva o nome da análise e o `dados_extras` leva `vista: 'livre'` e `nome_livre`, numa sessão de uma posição só.
  * "Método automático" quer dizer que algum ponto veio da sugestão do modelo; a nota diz quantas medidas foram ajustadas à mão,
  * e não afirma que o profissional conferiu, porque o aplicativo não verifica isso.
  */
@@ -72,12 +73,13 @@ export function montarNotaDaPosicao(e: EstadoSessao, posicao: VistaSessao): Nota
   const { metodo, pontos } = pontosDoItem(item, r);
   const automatico = metodo === 'automatica_conferida';
   return {
-    titulo: tituloDaNota(posicao),
+    titulo: posicao === 'livre' ? tituloDaAnaliseLivre(e.nomeLivre) : tituloDaNota(posicao),
     descricao: descricaoDaNota({ medidasTexto: r.medidas.map((m) => `• ${m.texto}`).join('\n'), metodo, nivelNota: r.notaNivel, pontos: automatico ? pontos : null }),
     dados_extras: montarDadosExtras({
       vista, lado, medidas: r.medidas, metodo, nivelGraus: r.giro, escalaCmPorPx: r.cmPorPx, opcoes: r.analise.opcoes,
       sessao: { id: e.id, ordem, previstas: previstasEfetivas(e), iniciadaEm: e.iniciadaEm },
       pontosAjustados: automatico ? pontos.ajustadas : null,
+      nomeLivre: e.nomeLivre,
     }),
     referencia_id: e.id,
   };
@@ -86,8 +88,24 @@ export function montarNotaDaPosicao(e: EstadoSessao, posicao: VistaSessao): Nota
 interface Destino { id: string; nome: string }
 
 const CONFLITO_DE_CHAVE = '23505';
-const MSG_NOTA_REGRAVADA = 'A nota anterior desta posição não foi encontrada no prontuário; gravei de novo.';
-const MSG_NOTA_BLOQUEADA = 'Não consegui atualizar esta posição: a nota anterior existe, mas você não pode alterá-la.';
+
+/** O que a tela diz ao gravar: a posição da postura e a análise livre falam de coisas diferentes ("posição" e "análise"). */
+const TEXTOS_DA_GRAVACAO = {
+  posicao: {
+    regravada: 'A nota anterior desta posição não foi encontrada no prontuário; gravei de novo.',
+    bloqueada: 'Não consegui atualizar esta posição: a nota anterior existe, mas você não pode alterá-la.',
+    outroPaciente: 'Esta sessão já tem posições salvas de outro paciente. Reinicie a sessão para salvar neste paciente.',
+    salva: (nome: string) => `Posição salva no prontuário de ${nome}.`,
+    atualizada: (nome: string) => `Posição atualizada no prontuário de ${nome}.`,
+  },
+  livre: {
+    regravada: 'A nota anterior desta análise não foi encontrada no prontuário; gravei de novo.',
+    bloqueada: 'Não consegui atualizar esta análise: a nota anterior existe, mas você não pode alterá-la.',
+    outroPaciente: 'Esta análise já foi salva em outro paciente. Comece uma nova análise livre para salvar neste paciente.',
+    salva: (nome: string) => `Análise salva no prontuário de ${nome}.`,
+    atualizada: (nome: string) => `Análise atualizada no prontuário de ${nome}.`,
+  },
+};
 
 interface ErroDoBanco { message?: string; code?: string }
 
@@ -126,9 +144,10 @@ export function useGravarPosicao(o: { estadoRef: MutableRefObject<EstadoSessao>;
   const salvar = useCallback(async (posicao: VistaSessao): Promise<boolean> => {
     if (!paciente || !userId || emAndamento.current.has(posicao)) return false;
     const e = estadoRef.current;
+    const textos = posicao === 'livre' ? TEXTOS_DA_GRAVACAO.livre : TEXTOS_DA_GRAVACAO.posicao;
     const dono = pacienteDaSessao(e);
     if (dono && dono !== paciente.id) {
-      toast.error('Esta sessão já tem posições salvas de outro paciente. Reinicie a sessão para salvar neste paciente.');
+      toast.error(textos.outroPaciente);
       return false;
     }
     const nota = montarNotaDaPosicao(e, posicao);
@@ -149,7 +168,7 @@ export function useGravarPosicao(o: { estadoRef: MutableRefObject<EstadoSessao>;
           const erroAoRegravar = await inserirNota(existente, paciente.id, userId, nota);
           if (erroAoRegravar) {
             acoes.desmarcarSalva(posicao, e.id);
-            throw erroAoRegravar.code === CONFLITO_DE_CHAVE ? new Error(MSG_NOTA_BLOQUEADA) : erroAoRegravar;
+            throw erroAoRegravar.code === CONFLITO_DE_CHAVE ? new Error(textos.bloqueada) : erroAoRegravar;
           }
           desfecho = 'regravada';
         }
@@ -158,12 +177,12 @@ export function useGravarPosicao(o: { estadoRef: MutableRefObject<EstadoSessao>;
         idsTentados.current.set(chaveDoId, notaId);
         const erroAoInserir = await inserirNota(notaId, paciente.id, userId, nota);
         if (erroAoInserir && erroAoInserir.code !== CONFLITO_DE_CHAVE) throw erroAoInserir;
-        if (erroAoInserir && !(await atualizarNota(notaId, paciente.id, nota))) throw new Error(MSG_NOTA_BLOQUEADA);
+        if (erroAoInserir && !(await atualizarNota(notaId, paciente.id, nota))) throw new Error(textos.bloqueada);
         desfecho = 'salva';
       }
       acoes.marcarSalva({ posicao, notaId, pacienteId: paciente.id, sessaoId: e.id, item });
-      if (desfecho === 'regravada') toast.warning(MSG_NOTA_REGRAVADA);
-      else toast.success(desfecho === 'atualizada' ? `Posição atualizada no prontuário de ${paciente.nome}.` : `Posição salva no prontuário de ${paciente.nome}.`);
+      if (desfecho === 'regravada') toast.warning(textos.regravada);
+      else toast.success(desfecho === 'atualizada' ? textos.atualizada(paciente.nome) : textos.salva(paciente.nome));
       void qc.invalidateQueries({ queryKey: chaveDoHistorico(paciente.id) });
       return true;
     } catch (erro) {
@@ -249,6 +268,7 @@ const hojeBR = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America
 /**
  * PDF da posição que está na tela (o relatório de uma vista, como sempre) e PDF da sessão (todas as posições com medidas, com
  * a comparação com a avaliação anterior e, se pedido, as fotos). Sem paciente os dois funcionam, só que sem o vínculo com o cadastro.
+ * Na análise livre (`posicao: 'livre'`) o PDF da posição leva o nome da análise no lugar da vista e não traz comparação.
  */
 export function useRelatoriosDaSessao(o: {
   estadoRef: MutableRefObject<EstadoSessao>;
@@ -275,9 +295,13 @@ export function useRelatoriosDaSessao(o: {
       const antes = anteriorDaPosicao?.posicoes[posicao];
       const { metodo, pontos } = pontosDoItem(estadoRef.current.itens[posicao], resumo);
       const avisos = avisosDaPosicao(posicao, resumo, anteriorDaPosicao);
+      const livre = posicao === 'livre';
+      const nomeLivre = livre ? limparNomeLivre(estadoRef.current.nomeLivre) : '';
+      const tituloDaAnalise = `${ROTULO_VISTA_SESSAO.livre}${nomeLivre ? `: ${nomeLivre}` : ''}`;
       const { blob, nome } = await gerarRelatorioAngular({
         paciente: pacienteNome, profissional, data: hojeBR(),
-        vistaNome: ROTULO_VISTA_SESSAO[posicao].toLowerCase(),
+        vistaNome: livre ? (nomeLivre || ROTULO_VISTA_SESSAO.livre.toLowerCase()) : ROTULO_VISTA_SESSAO[posicao].toLowerCase(),
+        ...(livre ? { tituloDaAnalise } : {}),
         medidas: resumo.medidas,
         metodo, ...(metodo === 'automatica_conferida' ? { pontos } : {}),
         anterior: anteriorDaPosicao && antes?.medidas.length ? { data: dataDaSessao(anteriorDaPosicao.iniciadaEm), medidas: antes.medidas } : null,
@@ -285,7 +309,7 @@ export function useRelatoriosDaSessao(o: {
         notaExtra: resumo.notaNivel,
         ...(avisos.length ? { avisos } : {}),
       });
-      entregarPdf({ blob, nome, pacienteId: paciente?.id ?? null, titulo: 'Análise angular' });
+      entregarPdf({ blob, nome, pacienteId: paciente?.id ?? null, titulo: livre ? 'Análise angular livre' : 'Análise angular' });
     } catch {
       toast.error('Não consegui gerar o PDF.');
     } finally {

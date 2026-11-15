@@ -15,6 +15,9 @@ export const DOURADO: [number, number, number] = [234, 170, 20];
 /** Troca os caracteres que a Helvetica do PDF não desenha por equivalentes simples. */
 export const seguro = (s: string) => String(s).replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/−/g, '-').replace(/–/g, '-').replace(/—/g, '-').replace(/·/g, '-').replace(/→/g, '>').replace(/≈/g, '~').replace(/[‐‑]/g, '-').replace(/[“”″]/g, '"').replace(/[‘’′]/g, "'");
 
+/** A fonte padrão do PDF (Helvetica) só desenha Latin-1: texto digitado fora dela (emoji, ideogramas) sairia como lixo e é omitido aqui. */
+export const soLatin1 = (s: string) => seguro(s).replace(/[^\u0020-\u007e\u00a0-\u00ff]/g, '').replace(/\s+/g, ' ').trim().replace(/:$/, '').trim();
+
 const PASSO_DA_FONTE = 0.5;
 /** Largura do nome do paciente: termina antes da logo (que começa em x = 180 mm). */
 const LARGURA_ATE_A_LOGO = 160;
@@ -107,6 +110,8 @@ export interface DadosRelatorioAngular {
   /** dd/mm/aaaa */
   data: string;
   vistaNome: string;
+  /** Análise livre (sem vista): este texto ocupa o lugar de "Vista <vistaNome>" no subtítulo, por exemplo "Análise livre: elevação do braço direito". */
+  tituloDaAnalise?: string;
   medidas: MedidaSalva[];
   metodo: 'automatica_conferida' | 'marcacao_manual';
   /** Como os pontos foram marcados (sugeridos pelo modelo, ajustados à mão, só à mão); omitir quando não se sabe. */
@@ -130,7 +135,7 @@ export async function gerarRelatorioAngular(d: DadosRelatorioAngular): Promise<{
   const t = (txt: string, x: number, y: number, op?: Parameters<jsPDF['text']>[3]) => doc.text(seguro(txt), x, y, op);
   const novaPagina = () => { doc.addPage(); return 18; };
 
-  const subtitulo = `Vista ${d.vistaNome} · ${d.data}${d.profissional ? ` · ${d.profissional}` : ''}`;
+  const subtitulo = `${d.tituloDaAnalise ? soLatin1(d.tituloDaAnalise) : `Vista ${d.vistaNome}`} · ${d.data}${d.profissional ? ` · ${d.profissional}` : ''}`;
   let y = await cabecalhoDoRelatorio(doc, { titulo: 'Análise angular', paciente, subtitulo, logoUrl: d.logoUrl });
 
   const titulo = (txt: string) => {

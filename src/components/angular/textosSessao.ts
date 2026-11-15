@@ -6,6 +6,7 @@ export const INSTRUCAO_DA_POSICAO: Record<VistaSessao, string> = {
   perfil_d: 'Peça para ficar de perfil, com o lado direito voltado para a câmera.',
   perfil_e: 'Peça para ficar de perfil, com o lado esquerdo voltado para a câmera.',
   costas: 'Peça para ficar de costas para a câmera, com os braços soltos ao lado do corpo.',
+  livre: 'Escolha uma foto do movimento ou da postura que quer medir: de qualquer ângulo, do corpo todo ou só de uma parte.',
 };
 
 export const DICA_COMPARAR = 'Estimativa por foto: para comparar entre avaliações, repita na mesma distância, altura da câmera e roupa.';

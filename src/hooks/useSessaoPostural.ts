@@ -5,13 +5,16 @@ import type { MedidaSalva } from '@/lib/angular/comparar';
 import { cmPorPixel, rotacaoDoNivel, type OlharPara, type Ponto, type RefCompasso, type UnidadePrumo } from '@/lib/angular/medidas';
 import type { Landmark } from '@/lib/angular/pose';
 import { giroDaFoto } from '@/lib/angular/sensor';
-import { novaSessaoId, previstasPadrao } from '@/lib/angular/sessao';
+import { NOME_LIVRE_MAX, novaSessaoId, previstasPadrao } from '@/lib/angular/sessao';
 import { VISTAS_DA_SESSAO, vistaBaseDaSessao, type VistaSessao } from '@/lib/angular/tiposSessao';
 
 /*
  * Sessão de avaliação postural em foto: UM item por posição (frente, perfil direito, perfil esquerdo, costas), cada um com
  * a sua foto, pontos, referências (nível e escala), pontos do modelo e o id da nota já gravada. Trocar de aba nunca mexe nos outros.
  * O reducer é puro: as URLs das fotos são revogadas pelo hook, depois que a tela deixa de usá-las.
+ *
+ * A análise livre (uma foto avulsa, sem posição do corpo) usa o mesmo estado e o mesmo reducer, numa sessão de uma posição só
+ * ("livre"), com o seu próprio hook: `itens` e `previstas` dizem quais posições o estado tem, e toda consulta olha `previstas`.
  */
 
 export interface FotoDaPosicao {
@@ -76,6 +79,8 @@ export interface EstadoSessao {
   /** Valem para a sessão toda (as ferramentas de compasso e fio de prumo). */
   compassoRef: RefCompasso;
   unidadePrumo: UnidadePrumo;
+  /** Só na análise livre: o que o profissional está analisando, como foi digitado (a limpeza acontece ao montar a nota). */
+  nomeLivre?: string;
 }
 
 export type ModoDeAplicar = 'vazias' | 'todas' | 'substituiveis';
@@ -99,6 +104,7 @@ export type AcaoSessao =
   | { tipo: 'nao_salva'; posicao: VistaSessao; sessaoId: string }
   | { tipo: 'pular'; posicao: VistaSessao }
   | { tipo: 'opcoes'; compassoRef?: RefCompasso; unidadePrumo?: UnidadePrumo }
+  | { tipo: 'nome_livre'; nome: string }
   | { tipo: 'reiniciar'; id: string; iniciadaEm: string };
 
 // ---------------------------------------------------------------------------
@@ -121,6 +127,17 @@ export function estadoInicial(id: string, iniciadaEm: string, opcoes?: Pick<Esta
     compassoRef: opcoes?.compassoRef ?? 'baixo', unidadePrumo: opcoes?.unidadePrumo ?? 'graus',
   };
 }
+
+/** Estado da análise livre: uma foto avulsa, numa sessão de uma posição só. Sem posições da postura e sem pulo. */
+export function estadoInicialLivre(id: string, iniciadaEm: string, opcoes?: Pick<EstadoSessao, 'compassoRef' | 'unidadePrumo'>): EstadoSessao {
+  return {
+    id, iniciadaEm, previstas: ['livre'], atual: 'livre', visao: 'posicao',
+    itens: { livre: itemVazio('livre') } as Record<VistaSessao, ItemPosicao>,
+    compassoRef: opcoes?.compassoRef ?? 'baixo', unidadePrumo: opcoes?.unidadePrumo ?? 'graus', nomeLivre: '',
+  };
+}
+
+export const ehSessaoLivre = (e: EstadoSessao) => e.previstas.length === 1 && e.previstas[0] === 'livre';
 
 // ---------------------------------------------------------------------------
 // Consultas puras sobre o estado
@@ -154,7 +171,7 @@ export function ordemNaSessao(e: EstadoSessao, posicao: VistaSessao): { ordem: n
   const i = efetivas.indexOf(posicao);
   if (i >= 0) return { ordem: i + 1, total: efetivas.length };
   const j = e.previstas.indexOf(posicao);
-  return { ordem: (j >= 0 ? j : VISTAS_DA_SESSAO.indexOf(posicao)) + 1, total: Math.max(efetivas.length, 1) };
+  return { ordem: (j >= 0 ? j : (VISTAS_DA_SESSAO as readonly VistaSessao[]).indexOf(posicao)) + 1, total: Math.max(efetivas.length, 1) };
 }
 
 /**
@@ -175,16 +192,16 @@ export function proximaPosicao(e: EstadoSessao, depoisDe: VistaSessao = e.atual,
 }
 
 /** Alguma posição já tem foto: trocar o paciente ou reiniciar descartaria trabalho. */
-export const algoPreenchido = (e: EstadoSessao) => VISTAS_DA_SESSAO.some((p) => !!e.itens[p].foto);
+export const algoPreenchido = (e: EstadoSessao) => e.previstas.some((p) => !!e.itens[p].foto);
 
 /** Há posição com marcação ainda não gravada (para avisar antes de fechar a página). */
-export const temNaoSalva = (e: EstadoSessao) => VISTAS_DA_SESSAO.some((p) => {
+export const temNaoSalva = (e: EstadoSessao) => e.previstas.some((p) => {
   const item = e.itens[p];
   return !!item.foto && temMarcacao(item) && !item.salva;
 });
 
 /** Paciente a quem pertencem as notas já gravadas desta sessão; null se nada foi gravado. */
-export const pacienteDaSessao = (e: EstadoSessao): string | null => VISTAS_DA_SESSAO.map((p) => e.itens[p].notaPaciente).find((x): x is string => !!x) ?? null;
+export const pacienteDaSessao = (e: EstadoSessao): string | null => e.previstas.map((p) => e.itens[p].notaPaciente).find((x): x is string => !!x) ?? null;
 
 /**
  * Das medidas sugeridas, as que `modo` manda aplicar na posição: 'vazias' só as sem ponto nenhum; 'substituiveis' as vazias e as
@@ -287,8 +304,16 @@ export function reducerSessao(e: EstadoSessao, a: AcaoSessao): EstadoSessao {
       if (compassoRef === e.compassoRef && unidadePrumo === e.unidadePrumo) return e;
       return { ...e, compassoRef, unidadePrumo };
     }
+    case 'nome_livre': {
+      if (!ehSessaoLivre(e)) return e;
+      const nome = Array.from(a.nome).slice(0, NOME_LIVRE_MAX).join('');
+      if (nome === (e.nomeLivre ?? '')) return e;
+      const item = e.itens.livre;
+      // O nome vai no título da nota: com a foto, a nota gravada deixa de valer (e uma gravação em voo não marca a posição como salva).
+      return { ...e, nomeLivre: nome, ...(item.foto ? { itens: { ...e.itens, livre: { ...item, salva: false } } } : {}) };
+    }
     case 'reiniciar':
-      return estadoInicial(a.id, a.iniciadaEm, e);
+      return ehSessaoLivre(e) ? estadoInicialLivre(a.id, a.iniciadaEm, e) : estadoInicial(a.id, a.iniciadaEm, e);
     default:
       return e;
   }
@@ -357,10 +382,13 @@ export function resumoDoItem(item: ItemPosicao, posicao: VistaSessao, compassoRe
 // Hook
 // ---------------------------------------------------------------------------
 
-const urlsDoEstado = (e: EstadoSessao) => VISTAS_DA_SESSAO.flatMap((p) => e.itens[p].foto?.url ?? []);
+const urlsDoEstado = (e: EstadoSessao) => e.previstas.flatMap((p) => e.itens[p].foto?.url ?? []);
 
-export function useSessaoPostural() {
-  const [estado, dispatch] = useReducer(reducerSessao, undefined, () => estadoInicial(novaSessaoId(), new Date().toISOString()));
+/** `modo` 'livre' é a análise de uma foto avulsa (estado de uma posição só); sem argumento é a sessão postural de quatro posições. */
+export function useSessaoPostural(modo: 'postural' | 'livre' = 'postural') {
+  const [estado, dispatch] = useReducer(
+    reducerSessao, modo, (m) => (m === 'livre' ? estadoInicialLivre : estadoInicial)(novaSessaoId(), new Date().toISOString()),
+  );
   const estadoRef = useRef(estado);
   estadoRef.current = estado;
 
@@ -396,14 +424,15 @@ export function useSessaoPostural() {
     desmarcarSalva: (posicao: VistaSessao, sessaoId: string) => dispatch({ tipo: 'nao_salva', posicao, sessaoId }),
     pular: (posicao: VistaSessao) => dispatch({ tipo: 'pular', posicao }),
     definirOpcoes: (o: { compassoRef?: RefCompasso; unidadePrumo?: UnidadePrumo }) => dispatch({ tipo: 'opcoes', ...o }),
+    definirNomeLivre: (nome: string) => dispatch({ tipo: 'nome_livre', nome }),
     reiniciar: () => dispatch({ tipo: 'reiniciar', id: novaSessaoId(), iniciadaEm: new Date().toISOString() }),
   }), []);
 
   const atual = estado.itens[estado.atual];
   const resumo = resumoDoItem(atual, estado.atual, estado.compassoRef, estado.unidadePrumo);
   const resumos = useMemo(
-    () => Object.fromEntries(VISTAS_DA_SESSAO.map((p) => [p, resumoDoItem(estado.itens[p], p, estado.compassoRef, estado.unidadePrumo)])) as Record<VistaSessao, ResumoDoItem>,
-    [estado.itens, estado.compassoRef, estado.unidadePrumo],
+    () => Object.fromEntries(estado.previstas.map((p) => [p, resumoDoItem(estado.itens[p], p, estado.compassoRef, estado.unidadePrumo)])) as Record<VistaSessao, ResumoDoItem>,
+    [estado.itens, estado.previstas, estado.compassoRef, estado.unidadePrumo],
   );
 
   return { estado, estadoRef, acoes, atual, resumo, resumos };

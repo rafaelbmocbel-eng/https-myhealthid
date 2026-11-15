@@ -211,7 +211,7 @@ describe('toda medida', () => {
     expect(vistas('pelve-perfil')).toEqual(['perfil']);
     expect(vistas('protracao-ombro')).toEqual(['perfil']);
     expect(vistas('prumo-frente')).toEqual(['frente', 'costas']);
-    expect(vistas('compasso')).toEqual(['frente', 'costas', 'perfil']);
+    expect(vistas('compasso')).toEqual(['frente', 'costas', 'perfil', 'livre']);
   });
   it('as ferramentas de várias retas não ligam pontos em sequência por engano', () => {
     expect(med('prumo-perfil').segmentos).toEqual([]);

@@ -3,7 +3,8 @@ import type { Landmark } from './pose';
 
 export interface Ponto { x: number; y: number }
 
-export type Vista = 'frente' | 'costas' | 'perfil';
+/** "livre" é a análise avulsa: só as ferramentas livres e as referências da foto valem nela, nenhuma medida de postura. */
+export type Vista = 'frente' | 'costas' | 'perfil' | 'livre';
 
 const RAD = 180 / Math.PI;
 
@@ -763,7 +764,7 @@ export const MEDIDAS: Medida[] = [
     },
   },
   {
-    id: 'livre', nome: 'Ângulo livre (3 pontos)', vistas: ['frente', 'costas', 'perfil'], grupo: 'ferramenta', desenho: 'angulo3',
+    id: 'livre', nome: 'Ângulo livre (3 pontos)', vistas: ['frente', 'costas', 'perfil', 'livre'], grupo: 'ferramenta', desenho: 'angulo3',
     pontos: ['Primeiro ponto', 'Vértice (onde o ângulo é medido)', 'Terceiro ponto'],
     calcular: ([a, b, c]) => {
       const ang = anguloEm(a, b, c);
@@ -771,7 +772,7 @@ export const MEDIDAS: Medida[] = [
     },
   },
   {
-    id: 'compasso', nome: 'Compasso (vértice e dois braços)', vistas: ['frente', 'costas', 'perfil'], grupo: 'ferramenta', desenho: 'compasso',
+    id: 'compasso', nome: 'Compasso (vértice e dois braços)', vistas: ['frente', 'costas', 'perfil', 'livre'], grupo: 'ferramenta', desenho: 'compasso',
     pontos: ['Vértice (centro do ângulo)', 'Ponta do braço 1', 'Ponta do braço 2'],
     segmentos: [[0, 1], [0, 2]],
     definicao: 'Marque o vértice e a ponta de cada braço. O app mostra o ângulo entre os braços e a inclinação de cada braço em relação à vertical e à horizontal.',
@@ -783,7 +784,7 @@ export const MEDIDAS: Medida[] = [
     },
   },
   {
-    id: 'compasso-ref', nome: 'Compasso com referência', vistas: ['frente', 'costas', 'perfil'], grupo: 'ferramenta', desenho: 'compasso-ref',
+    id: 'compasso-ref', nome: 'Compasso com referência', vistas: ['frente', 'costas', 'perfil', 'livre'], grupo: 'ferramenta', desenho: 'compasso-ref',
     pontos: ['Vértice (centro do ângulo)', 'Ponta do braço medido'],
     segmentos: [[0, 1]],
     definicao: 'Marque o vértice e a ponta do braço. O ângulo é medido entre esse braço e uma direção fixa (vertical para baixo ou para cima, horizontal para a esquerda ou para a direita da imagem), que o app desenha a partir do vértice.',
@@ -794,7 +795,7 @@ export const MEDIDAS: Medida[] = [
     },
   },
   {
-    id: 'reta', nome: 'Ângulo de uma reta', vistas: ['frente', 'costas', 'perfil'], grupo: 'ferramenta', desenho: 'horizontal',
+    id: 'reta', nome: 'Ângulo de uma reta', vistas: ['frente', 'costas', 'perfil', 'livre'], grupo: 'ferramenta', desenho: 'horizontal',
     pontos: ['Início da reta', 'Fim da reta'],
     calcular: ([a, b]) => {
       const h = anguloComHorizontal(a, b), v = desvioDaVertical(a, b);
@@ -805,7 +806,7 @@ export const MEDIDAS: Medida[] = [
     },
   },
   {
-    id: 'cobb', nome: 'Ângulo entre retas (tipo Cobb)', vistas: ['frente', 'costas', 'perfil'], grupo: 'ferramenta', desenho: 'retas',
+    id: 'cobb', nome: 'Ângulo entre retas (tipo Cobb)', vistas: ['frente', 'costas', 'perfil', 'livre'], grupo: 'ferramenta', desenho: 'retas',
     pontos: ['Primeira reta: 1º ponto', 'Primeira reta: 2º ponto', 'Segunda reta: 1º ponto', 'Segunda reta: 2º ponto'],
     segmentos: [[0, 1], [2, 3]],
     calcular: ([a, b, c, d]) => {
@@ -814,7 +815,7 @@ export const MEDIDAS: Medida[] = [
     },
   },
   {
-    id: 'regua', nome: 'Régua (distância)', vistas: ['frente', 'costas', 'perfil'], grupo: 'ferramenta', unidade: 'cm', desenho: 'regua',
+    id: 'regua', nome: 'Régua (distância)', vistas: ['frente', 'costas', 'perfil', 'livre'], grupo: 'ferramenta', unidade: 'cm', desenho: 'regua',
     pontos: ['Primeiro ponto', 'Segundo ponto'],
     calcular: ([a, b], ctx) => {
       if (!ctx?.cmPorPx) return null;
@@ -823,12 +824,12 @@ export const MEDIDAS: Medida[] = [
     },
   },
   {
-    id: 'nivel', nome: 'Nível (corrigir foto torta)', vistas: ['frente', 'costas', 'perfil'], grupo: 'referencia', auxiliar: true, desenho: 'referencia', corReferencia: '#22d3ee',
+    id: 'nivel', nome: 'Nível (corrigir foto torta)', vistas: ['frente', 'costas', 'perfil', 'livre'], grupo: 'referencia', auxiliar: true, desenho: 'referencia', corReferencia: '#22d3ee',
     pontos: ['Início de uma linha horizontal ou vertical da vida real', 'Fim dessa linha'],
     calcular: () => null,
   },
   {
-    id: 'escala', nome: 'Escala (calibrar em cm)', vistas: ['frente', 'costas', 'perfil'], grupo: 'referencia', auxiliar: true, desenho: 'referencia', corReferencia: '#fb923c',
+    id: 'escala', nome: 'Escala (calibrar em cm)', vistas: ['frente', 'costas', 'perfil', 'livre'], grupo: 'referencia', auxiliar: true, desenho: 'referencia', corReferencia: '#fb923c',
     pontos: ['Início do objeto de tamanho conhecido', 'Fim do objeto'],
     calcular: () => null,
   },

@@ -1,6 +1,6 @@
 # Análise angular em foto: catálogo de medidas e marcação automática
 
-Aplicações › Análise angular, aba "Postura em foto". Este arquivo descreve **cada medida**: em que vistas existe,
+Aplicações › Análise angular, abas "Postura em foto" e "Análise livre". Este arquivo descreve **cada medida**: em que vistas existe,
 quais pontos pede, se o app sugere os pontos sozinho, o que o modelo de pose **realmente** marca, o que a medida
 devolve, a cautela de uso e o que a evidência sustenta. Código: `src/lib/angular/medidas.ts` (catálogo),
 `pose.ts` (marcação automática), `analise.ts` (resultados e arquivo), `desenho.ts` (como é desenhada),
@@ -232,7 +232,36 @@ sempre.
 
 Ângulo livre, compasso, compasso com referência, ângulo de uma reta, ângulo entre retas (tipo Cobb), régua; e as
 referências auxiliares nível, escala e altura. Não têm sugestão automática e não entram no resultado quando são
-auxiliares.
+auxiliares. As seis ferramentas, o nível e a escala valem nas três vistas da postura e na vista `livre`
+(`vistas: ['frente', 'costas', 'perfil', 'livre']`); a altura só vale nas três vistas da postura, porque só serve ao fio de
+prumo (% da altura), que a `livre` não tem. Nenhuma medida de postura vale na `livre`.
+
+### Análise livre (aba própria)
+
+Uma foto avulsa para medir qualquer coisa (um movimento, uma articulação, uma curva), sem as quatro posições da sessão.
+Mostra só as seis ferramentas livres e as duas referências da foto que servem a elas (nível e escala), com o mesmo editor da postura (`EditorDaFoto`: tocar para
+marcar, arrastar, desfazer, limpar, zoom, lupa, nível, escala em cm, grade, estilo, baixar imagem). Não tem abas de posição,
+"Pular posição", resumo da sessão, comparação com avaliação anterior nem o botão "Automático" (a marcação por pose é da postura:
+o modelo nem é carregado na livre). Código: `src/components/angular/AnaliseLivre.tsx` (tela) e `src/hooks/useAnaliseLivre.ts` (estado).
+
+- **Estado.** É o mesmo `EstadoSessao` e o mesmo reducer da sessão (`useSessaoPostural('livre')`), numa sessão de **uma** posição,
+  `previstas: ['livre']`, com `nomeLivre`. É independente do estado da postura e fica na página: trocar entre "Postura em foto",
+  "Análise livre" e "Análise em vídeo" não perde a foto nem os pontos de nenhum. Trocar o paciente reinicia os dois (com a pergunta de sempre).
+  Toda consulta sobre o estado olha `previstas` (e não `VISTAS_DA_SESSAO`), por isso a livre e a postura convivem.
+- **Uma análise = uma nota.** "Salvar análise" insere na primeira vez e depois ATUALIZA a mesma nota (confere a linha atingida; nota
+  excluída é regravada com aviso; banco que recusa o update vira erro, nunca "salva"). Mudar o nome ou um ponto depois de salvar
+  pede "Atualizar análise". "Nova análise livre" começa outra (pergunta antes se há marcação não salva). A foto nunca vai para o prontuário.
+- **Nota.** `titulo` "Análise angular — análise livre: <nome>" (sem nome, "Análise angular — análise livre"); `descricao` pela mesma
+  função da posição (pontos marcados manualmente); `dados_extras`: `vista: 'livre'`, `nome_livre` (texto limpo de até 80 caracteres,
+  só se preenchido), `esquema: 2`, `sessao: { id, ordem: 1, previstas: ['livre'], iniciadaEm }`, `medidas`, `metodo: 'marcacao_manual'`, `opcoes`. Sem
+  `lado_perfil` nem `pontos_ajustados`. O nome é limpo por `limparNomeLivre` (espaços repetidos e controles saem, corte em 80).
+- **Não é posição da postura.** `lerDadosExtras` devolve `vista: 'livre'`, `posicao: null` e `nomeLivre`; sem posição, `agruparPorSessao`
+  descarta a nota (como a de vídeo), então ela nunca é "avaliação anterior" de nenhuma posição, não entra em `sessoesComPosicao`,
+  `escolherAnterior` nem `compararSessoes` (que só percorre `POSICOES_DA_NOTA`), e não derruba a leitura do histórico.
+- **PDF.** "PDF desta análise" reaproveita `gerarRelatorioAngular` (`tituloDaAnalise: "Análise livre: <nome>"` no lugar de
+  "Vista <posição>" no subtítulo), sem comparação e com as mesmas ressalvas de rodapé.
+- **Outros leitores.** O portal do cliente e a linha do tempo do prontuário só mostram `titulo` e `descricao` da nota; nenhuma função
+  de `supabase/functions` lê `dados_extras` de notas `analise_angular`.
 
 ## 6. O que a evidência sustenta e o que não prometer
 
@@ -274,6 +303,8 @@ nenhum estudo de ângulo de carregamento por foto de celular contra goniômetro;
   gravados, então as notas antigas não mudam.
 - `ombros-cm` é um **resultado a mais** (`ResultadoAnalise.medidaId === 'ombros'`, `unidade: 'cm'`), depois do
   `ombros` em graus; o rótulo desenhado na foto continua sendo o dos graus.
+- A análise livre acrescenta só campos opcionais (`vista: 'livre'`, `nome_livre`, `sessao.previstas: ['livre']`): as notas sem eles, de
+  qualquer época, continuam lidas do mesmo jeito e `lerDadosExtras` só devolve `nomeLivre` quando a vista é `livre`.
 - Contrato aditivo: nenhuma nota antiga deixa de ser lida.
 
 ## 9. A validar com foto real

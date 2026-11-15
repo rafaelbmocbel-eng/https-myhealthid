@@ -61,7 +61,7 @@ const ehPonto = (p: unknown): p is Ponto => !!p && typeof p === 'object' && Numb
 export function analiseDeJson(bruto: unknown): AnaliseFotoJson | null {
   if (!bruto || typeof bruto !== 'object') return null;
   const o = bruto as Record<string, unknown>;
-  if (o.vista !== 'frente' && o.vista !== 'costas' && o.vista !== 'perfil') return null;
+  if (o.vista !== 'frente' && o.vista !== 'costas' && o.vista !== 'perfil' && o.vista !== 'livre') return null;
   const largura = Number(o.largura), altura = Number(o.altura);
   if (!(largura > 0) || !(altura > 0)) return null;
   const pontos: Record<string, Ponto[]> = {};

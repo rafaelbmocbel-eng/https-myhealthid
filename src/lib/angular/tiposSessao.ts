@@ -1,22 +1,29 @@
-// Contrato compartilhado da sessão de avaliação postural em foto: quatro posições.
+// Contrato compartilhado da sessão de avaliação postural em foto: quatro posições, e da análise livre (uma foto avulsa).
 // Só tipos, rótulos e conversões puras. A sessão (sessao.ts), as medidas (medidas.ts), a tela e o PDF
 // importam daqui, para ninguém depender do arquivo de outro.
 
 export type LadoPerfil = 'D' | 'E';
 
-/** Vista do banco e das medidas (já existente). O perfil só existe com lado na sessão nova. */
-export type VistaBase = 'frente' | 'perfil' | 'costas';
+/** Vista do banco e das medidas (já existente). O perfil só existe com lado na sessão nova; "livre" é a análise avulsa, sem posição do corpo. */
+export type VistaBase = 'frente' | 'perfil' | 'costas' | 'livre';
 
-/** As quatro posições de uma sessão. A ordem é a ordem sugerida de fotografar. */
-export type VistaSessao = 'frente' | 'perfil_d' | 'perfil_e' | 'costas';
+/** As quatro posições de uma sessão postural. A ordem é a ordem sugerida de fotografar. */
+export type PosicaoPostural = 'frente' | 'perfil_d' | 'perfil_e' | 'costas';
 
-export const VISTAS_DA_SESSAO: readonly VistaSessao[] = ['frente', 'perfil_d', 'perfil_e', 'costas'];
+/**
+ * Posição de uma foto: as quatro da sessão postural ou "livre", a análise avulsa de uma foto só. A livre NÃO é posição da postura:
+ * fica fora de VISTAS_DA_SESSAO, das previstas da sessão e de POSICOES_DA_NOTA, e nenhuma comparação a enxerga.
+ */
+export type VistaSessao = PosicaoPostural | 'livre';
+
+export const VISTAS_DA_SESSAO: readonly PosicaoPostural[] = ['frente', 'perfil_d', 'perfil_e', 'costas'];
 
 export const ROTULO_VISTA_SESSAO: Record<VistaSessao, string> = {
   frente: 'Frente',
   perfil_d: 'Perfil direito',
   perfil_e: 'Perfil esquerdo',
   costas: 'Costas',
+  livre: 'Análise livre',
 };
 
 /** Lado do paciente voltado para a câmera em cada perfil: no perfil direito vê-se o lado direito do paciente. */
@@ -26,15 +33,15 @@ export function vistaBaseDaSessao(v: VistaSessao): { vista: VistaBase; lado?: La
   return { vista: v };
 }
 
-/** Inverso de vistaBaseDaSessao. Perfil sem lado (nota antiga) não tem posição na sessão: devolve null. */
+/** Inverso de vistaBaseDaSessao. Perfil sem lado (nota antiga) não tem posição na sessão: devolve null. A livre não tem lado: um lado solto não a faz virar perfil. */
 export function vistaDaSessao(vista: VistaBase, lado?: LadoPerfil | null): VistaSessao | null {
-  if (vista === 'frente' || vista === 'costas') return vista;
+  if (vista === 'frente' || vista === 'costas' || vista === 'livre') return vista;
   if (lado === 'D') return 'perfil_d';
   if (lado === 'E') return 'perfil_e';
   return null;
 }
 
-/** Dados do bloco `dados_extras.sessao` gravado em cada nota da sessão (esquema 2, só campos novos). */
+/** Dados do bloco `dados_extras.sessao` gravado em cada nota da sessão (esquema 2, só campos novos). A análise livre grava `previstas: ['livre']`. */
 export interface SessaoGravada {
   /** uuid da sessão; também vai para `referencia_id` da nota. */
   id: string;

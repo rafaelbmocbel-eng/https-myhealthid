@@ -5,7 +5,7 @@ import {
 } from './comparar';
 import {
   ESQUEMA_ANALISE_FOTO, ROTULO_VISTA_SESSAO, VISTAS_DA_SESSAO, vistaDaSessao,
-  type LadoPerfil, type SessaoGravada, type VistaBase, type VistaSessao,
+  type LadoPerfil, type PosicaoPostural, type SessaoGravada, type VistaBase, type VistaSessao,
 } from './tiposSessao';
 
 /*
@@ -13,6 +13,7 @@ import {
  * `dados_extras.sessao.id`. Funções puras (sem React nem Supabase) para montar o `dados_extras`,
  * ler notas de qualquer época, agrupar por sessão e escolher a avaliação anterior.
  * Nota sem `sessao` (esquema 1) é uma sessão de uma posição; perfil sem lado nunca é D nem E.
+ * A análise livre (vista "livre") é uma nota avulsa: lida como qualquer nota, mas nunca é posição da postura e nunca entra nas sessões.
  */
 
 export type MetodoAnalise = 'automatica_conferida' | 'marcacao_manual';
@@ -31,6 +32,27 @@ export interface DadosExtrasFoto {
   sessao?: SessaoGravada;
   /** Ids das medidas cujos pontos o profissional moveu ou refez depois da sugestão automática. */
   pontos_ajustados?: string[];
+  /** Só na análise livre (`vista: 'livre'`): o que o profissional disse estar analisando, texto limpo de até NOME_LIVRE_MAX caracteres. */
+  nome_livre?: string;
+}
+
+/** Tamanho máximo do nome da análise livre. */
+export const NOME_LIVRE_MAX = 80;
+
+/**
+ * Nome da análise livre como vai para a nota: espaços repetidos e quebras viram um espaço, caracteres de controle e invisíveis
+ * (espaço de largura zero, marcas de direção do texto, hífen condicional) saem, as pontas são cortadas e o texto fica com no máximo
+ * NOME_LIVRE_MAX caracteres (contados por caractere, sem partir um emoji ao meio). Vazio quando não sobra nada visível.
+ */
+export function limparNomeLivre(nome: unknown): string {
+  if (typeof nome !== 'string') return '';
+  const limpo = nome
+    .replace(/\s+/g, ' ')
+    // eslint-disable-next-line no-control-regex -- tirar caracteres de controle é o objetivo
+    .replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return Array.from(limpo).slice(0, NOME_LIVRE_MAX).join('').trimEnd();
 }
 
 export interface EntradaDadosExtras {
@@ -43,6 +65,8 @@ export interface EntradaDadosExtras {
   opcoes: OpcoesAnalise;
   sessao?: SessaoGravada | null;
   pontosAjustados?: readonly string[] | null;
+  /** Nome da análise livre; só vai para a nota quando a vista é "livre" e sobra texto depois de limpo. */
+  nomeLivre?: string | null;
 }
 
 const hex2 = (n: number) => n.toString(16).padStart(2, '0');
@@ -82,10 +106,11 @@ export function previstasPadrao(): VistaSessao[] {
 }
 
 /**
- * Monta o `dados_extras` do esquema 2. `lado_perfil` só vai no perfil, `sessao` só quando há sessão e
- * `pontos_ajustados` só quando o chamador sabe quais foram (lista vazia = nenhum ajustado).
+ * Monta o `dados_extras` do esquema 2. `lado_perfil` só vai no perfil, `sessao` só quando há sessão,
+ * `pontos_ajustados` só quando o chamador sabe quais foram (lista vazia = nenhum ajustado) e `nome_livre` só na análise livre com nome.
  */
 export function montarDadosExtras(e: EntradaDadosExtras): DadosExtrasFoto {
+  const nomeLivre = e.vista === 'livre' ? limparNomeLivre(e.nomeLivre) : '';
   return {
     vista: e.vista,
     ...(e.vista === 'perfil' && (e.lado === 'D' || e.lado === 'E') ? { lado_perfil: e.lado } : {}),
@@ -97,6 +122,7 @@ export function montarDadosExtras(e: EntradaDadosExtras): DadosExtrasFoto {
     esquema: ESQUEMA_ANALISE_FOTO,
     ...(e.sessao ? { sessao: { id: e.sessao.id, ordem: e.sessao.ordem, previstas: [...e.sessao.previstas], iniciadaEm: e.sessao.iniciadaEm } } : {}),
     ...(e.pontosAjustados ? { pontos_ajustados: [...e.pontosAjustados] } : {}),
+    ...(nomeLivre ? { nome_livre: nomeLivre } : {}),
   };
 }
 
@@ -120,11 +146,13 @@ export interface DadosLidos {
   sessao: SessaoGravada | null;
   /** null = a nota não diz quais pontos foram ajustados; [] = nenhum. */
   pontosAjustados: string[] | null;
+  /** Nome da análise livre; só existe quando a vista é "livre" e a nota traz um nome. */
+  nomeLivre?: string;
 }
 
 const ehObjeto = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const numero = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-const ehVistaSessao = (v: unknown): v is VistaSessao => VISTAS_DA_SESSAO.includes(v as VistaSessao);
+const ehVistaSessao = (v: unknown): v is VistaSessao => v === 'livre' || VISTAS_DA_SESSAO.includes(v as PosicaoPostural);
 const instante = (iso: unknown): number | null => {
   if (typeof iso !== 'string') return null;
   const t = Date.parse(iso);
@@ -172,12 +200,14 @@ function lerSessao(v: unknown): SessaoGravada | null {
  */
 export function lerDadosExtras(bruto: unknown): DadosLidos {
   const o = ehObjeto(bruto) ? bruto : {};
-  const vista: VistaBase | null = o.vista === 'frente' || o.vista === 'perfil' || o.vista === 'costas' ? o.vista : null;
+  const vista: VistaBase | null = o.vista === 'frente' || o.vista === 'perfil' || o.vista === 'costas' || o.vista === 'livre' ? o.vista : null;
   const ladoPerfil: LadoPerfil | null = vista === 'perfil' && (o.lado_perfil === 'D' || o.lado_perfil === 'E') ? o.lado_perfil : null;
+  // A análise livre não é posição da postura: sem posição, as sessões e as comparações da postura não a enxergam (como a nota de vídeo).
   let posicao: PosicaoDaNota | null = null;
-  if (vista) posicao = vista === 'perfil' && !ladoPerfil ? 'perfil_sem_lado' : vistaDaSessao(vista, ladoPerfil);
+  if (vista && vista !== 'livre') posicao = vista === 'perfil' && !ladoPerfil ? 'perfil_sem_lado' : vistaDaSessao(vista, ladoPerfil);
   const esquema = numero(o.esquema);
   const escala = numero(o.escala_cm_por_px);
+  const nomeLivre = vista === 'livre' ? limparNomeLivre(o.nome_livre) : '';
   return {
     esquema: esquema !== null && esquema >= 1 ? Math.trunc(esquema) : 1,
     vista,
@@ -190,6 +220,7 @@ export function lerDadosExtras(bruto: unknown): DadosLidos {
     opcoes: lerOpcoes(o.opcoes),
     sessao: lerSessao(o.sessao),
     pontosAjustados: Array.isArray(o.pontos_ajustados) ? o.pontos_ajustados.filter((p): p is string => typeof p === 'string') : null,
+    ...(nomeLivre ? { nomeLivre } : {}),
   };
 }
 
@@ -199,7 +230,14 @@ export function lerDadosExtras(bruto: unknown): DadosLidos {
 
 /** "Análise angular — vista perfil direito". A ordem e as posições previstas ficam em `dados_extras.sessao`: um total no título envelheceria quando a pessoa pulasse ou refizesse posições. */
 export function tituloDaNota(posicao: VistaSessao): string {
+  if (posicao === 'livre') return tituloDaAnaliseLivre();
   return `Análise angular — vista ${ROTULO_VISTA_SESSAO[posicao].toLowerCase()}`;
+}
+
+/** A análise livre não tem vista: "Análise angular — análise livre: <nome>" e, sem nome (ou só espaços), "Análise angular — análise livre". */
+export function tituloDaAnaliseLivre(nomeLivre?: string | null): string {
+  const nome = limparNomeLivre(nomeLivre);
+  return `Análise angular — ${ROTULO_VISTA_SESSAO.livre.toLowerCase()}${nome ? `: ${nome}` : ''}`;
 }
 
 // Medidas que a tela e o PDF marcam com "estimativa: confirme". Cotovelo, braço, carregamento, punho e escápula: o erro do modelo de pose
