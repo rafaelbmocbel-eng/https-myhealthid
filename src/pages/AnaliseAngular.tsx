@@ -49,6 +49,10 @@ const GRUPOS: { id: GrupoMedida; titulo: string }[] = [
   { id: 'referencia', titulo: 'Referências da foto' },
 ];
 
+// Na coluna de ícones as ferramentas livres vêm primeiro: com mais de 30 medidas de postura elas ficavam
+// no fim de uma coluna que rola e ninguém as via.
+const GRUPOS_DA_COLUNA: { id: GrupoMedida; titulo: string }[] = [GRUPOS[1], GRUPOS[2], GRUPOS[0]];
+
 const CORES = ['#ef4444', '#3b82f6', '#10b981', '#a855f7'];
 const ZOOM_MAX = 5;
 const nf = (n: number, d = 1) => n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -497,11 +501,11 @@ export default function AnaliseAngular() {
                         </div>
 
                         <nav aria-label="Ferramentas de medida" className="flex w-14 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border/60 bg-card p-1" style={{ maxHeight: `${alturaMaxDvh}dvh` }}>
-                          {GRUPOS.map((g, gi) => {
+                          {GRUPOS_DA_COLUNA.map((g, gi) => {
                             const itens = disponiveis.filter((m) => m.grupo === g.id);
                             if (!itens.length) return null;
                             return (
-                              <div key={g.id} className="flex flex-col gap-1">
+                              <div key={g.id} className="flex flex-col gap-1" role="group" aria-label={g.titulo}>
                                 {gi > 0 && <span className="mx-1 h-px bg-border" aria-hidden />}
                                 {itens.map((m) => {
                                   const Icone = ICONE_MEDIDA[m.id] ?? Ruler;

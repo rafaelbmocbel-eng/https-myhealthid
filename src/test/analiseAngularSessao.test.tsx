@@ -353,6 +353,28 @@ describe('sessão com várias posições', () => {
   });
 });
 
+describe('ferramentas livres na coluna de ícones', () => {
+  it('ângulo livre, compasso, reta, Cobb e régua vêm primeiro (não ficam escondidos depois de dezenas de medidas de postura)', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    const coluna = within(screen.getByRole('navigation', { name: 'Ferramentas de medida' }));
+    const nomes = coluna.getAllByRole('button').map((b) => b.getAttribute('aria-label'));
+    expect(nomes.slice(0, 6)).toEqual([
+      'Ângulo livre (3 pontos)', 'Compasso (vértice e dois braços)', 'Compasso com referência', 'Ângulo de uma reta', 'Ângulo entre retas (tipo Cobb)', 'Régua (distância)',
+    ]);
+    expect(nomes.length).toBeGreaterThan(20);
+    expect(within(screen.getByRole('group', { name: 'Ferramentas' })).getAllByRole('button')).toHaveLength(6);
+  });
+
+  it('tocar em "Ângulo entre retas (tipo Cobb)" ativa a ferramenta e mostra a instrução dela', async () => {
+    renderizar('p1');
+    await carregarFoto();
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Ferramentas de medida' })).getByRole('button', { name: 'Ângulo entre retas (tipo Cobb)' }));
+    expect(screen.getByText(/Ferramenta ativa:/).closest('p')!.textContent).toContain('Ângulo entre retas (tipo Cobb)');
+    expect(screen.getByText(/Marque as duas retas/)).toBeInTheDocument();
+  });
+});
+
 describe('marcação automática', () => {
   it('mostra o que o modelo achou: quantas medidas marcou e as que não conseguiu, com o motivo', async () => {
     const corpo = corpoFrente();
