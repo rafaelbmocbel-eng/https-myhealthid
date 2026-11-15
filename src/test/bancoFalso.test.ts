@@ -47,6 +47,33 @@ describe('banco falso: jsonb e valores padrão', () => {
   });
 });
 
+describe('banco falso: select com caminho JSON e apelido (como o PostgREST)', () => {
+  const ler = async (colunas: string) => {
+    const banco = criarBancoFalso({ t: [
+      { id: 1, resultado: { _meta: { origem: 'portal_paciente_historia', n: 3 } } },
+      { id: 2, resultado: { _meta: {} } },
+      { id: 3, resultado: null },
+      { id: 4, resultado: { outro: 1 } },
+    ] });
+    return ((await (banco.from('t') as unknown as { select: (c: string) => PromiseLike<{ data: unknown }> }).select(colunas)).data) as Array<Record<string, unknown>>;
+  };
+
+  it('"->>" devolve texto; caminho que não existe, ou coluna nula, devolve null', async () => {
+    expect(await ler('id, origem:resultado->_meta->>origem')).toEqual([
+      { id: 1, origem: 'portal_paciente_historia' }, { id: 2, origem: null }, { id: 3, origem: null }, { id: 4, origem: null },
+    ]);
+  });
+
+  it('"->>" num número devolve o número como texto e "->" devolve o json', async () => {
+    expect((await ler('n:resultado->_meta->>n'))[0]).toEqual({ n: '3' });
+    expect((await ler('meta:resultado->_meta'))[0]).toEqual({ meta: { origem: 'portal_paciente_historia', n: 3 } });
+  });
+
+  it('coluna comum continua igual (sem apelido não se mexe)', async () => {
+    expect((await ler('id'))[1]).toEqual({ id: 2 });
+  });
+});
+
 describe('banco falso: rpc()', () => {
   it('registra a chamada como escrita, aceita falha simulada e recusa função que não existe', async () => {
     const banco = criarBancoFalso({ cassi_financeiro_clientes: [] });

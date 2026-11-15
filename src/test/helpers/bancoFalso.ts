@@ -36,6 +36,21 @@ const compararOrdem = (a: unknown, b: unknown, crescente: boolean) => {
   return crescente ? c : -c;
 };
 
+// Coluna pedida no select. Aceita jsonb com apelido, como o PostgREST ("origem:resultado->_meta->>origem"): "->>" devolve
+// texto, "->" devolve o json; caminho que não existe devolve null.
+function projetar(l: Linha, c: string): [string, unknown] {
+  const m = /^([A-Za-z_]\w*):([A-Za-z_]\w*)((?:->>?[A-Za-z_]\w*)+)$/.exec(c);
+  if (!m) return [c, l[c]];
+  const passos = [...m[3].matchAll(/->(>?)(\w+)/g)];
+  let valor: unknown = l[m[2]];
+  for (const passo of passos) {
+    valor = valor !== null && typeof valor === 'object' ? (valor as Record<string, unknown>)[passo[2]] : null;
+    if (valor === undefined) valor = null;
+  }
+  const comoTexto = passos[passos.length - 1][1] === '>';
+  return [m[1], comoTexto && valor !== null && typeof valor !== 'string' ? JSON.stringify(valor) : valor];
+}
+
 // Valores que o banco de verdade preenche sozinho (DEFAULT) quando a linha não os traz.
 const padroesDaTabela: Record<string, () => Linha> = { cassi_financeiro_clientes: () => ({ lancamentos: [] }) };
 
@@ -124,7 +139,7 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
             return 0;
           });
         }
-        const achadas = (faixa ? filtradas.slice(faixa[0], faixa[1] + 1) : filtradas).map((l) => (cols ? Object.fromEntries(cols.map((c) => [c, l[c]])) : { ...l }));
+        const achadas = (faixa ? filtradas.slice(faixa[0], faixa[1] + 1) : filtradas).map((l) => (cols ? Object.fromEntries(cols.map((c) => projetar(l, c))) : { ...l }));
         return { data: this.unico ? (achadas[0] ?? null) : achadas, error: null };
       }
       if (this.tipo === 'update') {

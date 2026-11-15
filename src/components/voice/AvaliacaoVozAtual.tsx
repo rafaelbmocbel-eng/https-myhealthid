@@ -16,6 +16,7 @@ import { reprocessarComplemento, invalidarCachesAvaliacaoVoz } from '@/utils/voi
 import { atualizarPlanoComEdicoes, condutasProfissional } from '@/utils/voiceAssessment/atualizarPlanoComEdicoes';
 import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 import AlertaRelatoDoPaciente from './AlertaRelatoDoPaciente';
+import LinhaDoTempoClinica from '@/components/resumoClinico/LinhaDoTempoClinica';
 
 interface Props {
   pacienteId: string;
@@ -137,7 +138,15 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     );
   }
 
-  if (!latest) return <AlertaRelatoDoPaciente pacienteId={pacienteId} />;
+  // Sem avaliação por voz o histórico do paciente continua à vista (MyID, histórico clínico, exames...).
+  if (!latest) {
+    return (
+      <div className="space-y-4">
+        <AlertaRelatoDoPaciente pacienteId={pacienteId} />
+        <LinhaDoTempoClinica pacienteId={pacienteId} />
+      </div>
+    );
+  }
 
   const mode = (latest as any).resultado?._meta?.mode === 'written' ? 'written' : 'voice';
   const hasResult = !!(latest as any).resultado;
@@ -209,6 +218,8 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
           initialRecord={{ id: latest.id, resultado: (latest as any).resultado, transcricao: latest.transcricao }}
         />
       )}
+
+      {!hasResult && <LinhaDoTempoClinica pacienteId={pacienteId} />}
 
       {/* Dialog: complementar avaliação existente com voz/áudio/texto */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>

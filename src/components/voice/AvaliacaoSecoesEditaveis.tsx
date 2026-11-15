@@ -20,6 +20,8 @@ import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 import AtualizarTratamentoBanner from '@/components/diretrizes/AtualizarTratamentoBanner';
 import PlanoDesatualizadoAviso from './PlanoDesatualizadoAviso';
 import CondutasProfissionalCard from './CondutasProfissionalCard';
+import ResumoClinicoVisoes from '@/components/resumoClinico/ResumoClinicoVisoes';
+import LinhaDoTempoClinica from '@/components/resumoClinico/LinhaDoTempoClinica';
 
 
 interface Props {
@@ -1557,6 +1559,17 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         </Button>
                       </div>
                     </div>
+                  ) : s.key === 'resumo_clinico' ? (
+                    <ResumoClinicoVisoes
+                      pacienteId={pacienteId}
+                      resultado={resultado}
+                      editadas={editadasAtuais}
+                      resumo={(
+                        <SectionCollapse>
+                          <ResumoSoapCard texto={textos[s.key]} severidade={resultado?.classificacao_severidade} />
+                        </SectionCollapse>
+                      )}
+                    />
                   ) : (
                     <SectionCollapse>
                       {s.key === 'diretriz' ? (
@@ -1571,8 +1584,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                             ? <DiretrizFases texto={textos[s.key]} />
                             : <DiretrizCompact diretriz={resultado?.diretriz_tratamento} />}
                         </div>
-                      ) : s.key === 'resumo_clinico' ? (
-                        <ResumoSoapCard texto={textos[s.key]} severidade={resultado?.classificacao_severidade} />
                       ) : (
                         <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
                           {s.key === 'dor' ? (
@@ -1651,6 +1662,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         {renderCards(secoesTab)}
                       </div>
                     )}
+                    {tab.id === 'clinico' && <LinhaDoTempoClinica pacienteId={pacienteId} />}
                   </TabsContent>
                 );
               })}
