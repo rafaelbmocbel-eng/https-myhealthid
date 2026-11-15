@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { startOfDay, endOfDay, format, isToday, isTomorrow } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
 import {
-  CalendarDays, MessageCircle, ArrowRight, Clock,
+  CalendarDays, MessageCircle, ArrowRight, Clock, type LucideIcon,
 } from 'lucide-react';
 import { useHomeAtalhos } from '@/hooks/useHomeAtalhos';
 import { useChancelaPendentes } from '@/hooks/useChancelaPendentes';
@@ -13,6 +13,7 @@ import AppLayout from '@/components/AppLayout';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { contarEventosDeHoje } from '@/lib/eventosHoje';
 import { cn } from '@/lib/utils';
 
 function pulseRing(level?: 'high' | 'low') {
@@ -88,23 +89,18 @@ export default function Hoje() {
   const { data: alerts } = useQuery({
     queryKey: ['hoje-alerts', user?.id],
     queryFn: async () => {
-      const [wa, evHoje] = await Promise.all([
+      const [wa, eventosHoje] = await Promise.all([
         supabase
           .from('whatsapp_conversas')
           .select('nao_lidas')
           .eq('terapeuta_id', user!.id)
           .gt('nao_lidas', 0),
-        supabase
-          .from('eventos')
-          .select('id', { count: 'exact', head: true })
-          .eq('terapeuta_id', user!.id)
-          .gte('data_inicio', startOfDay(today).toISOString())
-          .lte('data_inicio', endOfDay(today).toISOString()),
+        contarEventosDeHoje(supabase, user!.id),
       ]);
-      const whatsappUnread = (wa.data || []).reduce((s, r: any) => s + (r.nao_lidas || 0), 0);
+      const whatsappUnread = (wa.data || []).reduce((s, r) => s + (r.nao_lidas || 0), 0);
       return {
         whatsapp: whatsappUnread,
-        eventosHoje: evHoje.count || 0,
+        eventosHoje,
         agendaHoje: stats?.hoje ?? 0,
       };
     },
@@ -128,8 +124,8 @@ export default function Hoje() {
         ? `Amanhã · ${format(proximaDate, 'HH:mm')}`
         : format(proximaDate, "EEE d 'de' MMM · HH:mm", { locale: ptBR })
     : null;
-  const proximaPaciente = (proxima as any)?.pacientes
-    ? `${(proxima as any).pacientes.nome || ''} ${(proxima as any).pacientes.sobrenome || ''}`.trim()
+  const proximaPaciente = proxima?.pacientes
+    ? `${proxima.pacientes.nome || ''} ${proxima.pacientes.sobrenome || ''}`.trim()
     : proxima?.titulo || 'Sessão agendada';
 
   const nHoje = stats?.hoje ?? 0;
@@ -271,7 +267,7 @@ export default function Hoje() {
                   <div className="space-y-1">
                     {proximasList.slice(1, 4).map(s => {
                       const d = new Date(s.data_inicio);
-                      const pac = (s as any).pacientes;
+                      const pac = s.pacientes;
                       const nome = pac
                         ? `${pac.nome || ''} ${pac.sobrenome || ''}`.trim()
                         : (s.titulo || 'Sessão agendada');
@@ -335,7 +331,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function PillBtn({
   icon: Icon, label, onClick, badge, urgency,
 }: {
-  icon: any; label: string; onClick: () => void;
+  icon: LucideIcon; label: string; onClick: () => void;
   badge?: number; urgency?: 'high' | 'low';
 }) {
   return (

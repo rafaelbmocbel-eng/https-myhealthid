@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
   //    acima; este e2e valida a função inteira (fila de jobs, RAG, wiring).
   //    Tem componente e transição próprios ('voice-e2e') para não gerar um falso
   //    "normalizado" nos ticks em que não roda.
-  let body: any = {};
+  let body: { e2e?: unknown } | null = {};
   try { body = await req.clone().json(); } catch { /* sem corpo */ }
   const horaUtc = new Date().getUTCHours();
   const rodarE2e = CRON_SECRET && (body?.e2e === true || horaUtc === 6);
@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
   return new Response(JSON.stringify({
     ok: overallOk,
     checks: checks.map((c) => ({ nome: c.nome, ok: c.ok, ms: c.ms, critico: c.critico, erro: c.erro })),
-    estado_anterior: estadoAnterior,
+    estado_anterior: prev1,
     resumo: overallOk ? "Todas as dependências críticas OK." : `Falha em: ${falhas.map((c) => c.nome).join(", ")}.`,
   }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });

@@ -57,12 +57,19 @@ export async function montarContextoClinico(
       .eq("user_id", terapeuta_id).maybeSingle(),
   ]);
 
-  const tom_voz = (autoRes.data as any)?.tom_voz || "amigavel";
-  const prompt_extra = (autoRes.data as any)?.prompt_extra || null;
-  const profissional_nome = [(profRes.data as any)?.nome, (profRes.data as any)?.sobrenome]
-    .filter(Boolean).join(" ") || "seu profissional";
+  const automacao = autoRes.data as { tom_voz?: string | null; prompt_extra?: string | null } | null;
+  const prof = profRes.data as { nome?: string | null; sobrenome?: string | null } | null;
+  const tom_voz = automacao?.tom_voz || "amigavel";
+  const prompt_extra = automacao?.prompt_extra || null;
+  const profissional_nome = [prof?.nome, prof?.sobrenome].filter(Boolean).join(" ") || "seu profissional";
 
-  let pac: any = null;
+  let pac: {
+    id: string;
+    nome: string | null;
+    sobrenome: string | null;
+    telefone: string | null;
+    data_nascimento: string | null;
+  } | null = null;
   if (paciente_id) {
     const { data } = await admin.from("pacientes")
       .select("id, nome, sobrenome, telefone, data_nascimento")
@@ -103,9 +110,9 @@ export async function montarContextoClinico(
     .order("updated_at", { ascending: false })
     .limit(1).maybeSingle();
   if (myid) {
-    const dims = (myid.dimensoes_preenchidas as any) || {};
+    const dims = (myid.dimensoes_preenchidas as Record<string, { perda?: number; score?: number } | null> | null) || {};
     const criticas = Object.entries(dims)
-      .map(([k, v]: any) => ({ nome: k, perda: Number(v?.perda || v?.score || 0) }))
+      .map(([k, v]) => ({ nome: k, perda: Number(v?.perda || v?.score || 0) }))
       .filter(x => x.perda > 30)
       .sort((a, b) => b.perda - a.perda)
       .slice(0, 3);
@@ -150,21 +157,10 @@ export async function montarContextoClinico(
     };
   }
 
-  // Exercícios pendentes (paciente_missoes status pendente)
-  const { count } = await admin.from("paciente_missoes")
-    .select("id", { count: "exact", head: true })
-    .eq("paciente_id", paciente_id)
-    .eq("status", "pendente");
-  ctx.exercicios_pendentes = count || 0;
-
-  // Pagamento pendente
-  const { data: pag } = await admin.from("pagamentos_paciente")
-    .select("valor, vencimento")
-    .eq("paciente_id", paciente_id)
-    .eq("status", "pendente")
-    .order("vencimento", { ascending: true })
-    .limit(1).maybeSingle();
-  if (pag) ctx.pagamento_pendente = { valor: Number(pag.valor), vencimento: pag.vencimento };
+  // exercicios_pendentes (0) e pagamento_pendente (null) ficam como iniciados acima, de propósito: o banco não
+  // tem fonte de verdade para eles (paciente_missoes não tem status; pagamentos_paciente não tem vencimento).
+  // Ler dados reais aqui faria o agente-proativo mandar WhatsApp com números que ninguém validou; ligar isso
+  // é decisão de produto.
 
   // Pacote ativo
   const { data: pac2 } = await admin.from("pacotes_sessoes")
