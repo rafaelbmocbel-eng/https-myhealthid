@@ -13,7 +13,7 @@ export interface CodigoCassi {
 export const CODIGOS_CASSI: CodigoCassi[] = [
   { codigo: '144', descricao: 'Avaliação', apenasPrimeiroDia: true },
   { codigo: '012', descricao: 'Sessão de psicomotricidade' },
-  { codigo: '160', descricao: 'Sessão de psicomotricidade' },
+  { codigo: '160', descricao: 'Atendimento fisioterapêutico ambulatorial ao paciente com disfunção decorrente de alterações do sistema músculo-esquelético' },
   { codigo: '185', descricao: 'Estimulação elétrica transcutânea' },
 ];
 

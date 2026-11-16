@@ -5,6 +5,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { criarBancoFalso, type BancoFalso, type Linha } from './helpers/bancoFalso';
+import { escolhaDoModelo, modeloDaConfiguracao } from '@/lib/cassiModeloConfig';
+import type { CodigoFaturavel } from '@/lib/cassiFaturamento';
 
 const h = vi.hoisted(() => ({
   banco: null as unknown as BancoFalso,
@@ -111,8 +113,8 @@ async function lancar(nome: string, qtds: Record<string, number>, opcoes: { guia
   const { guia = 1, salvar = true } = opcoes;
   const grupo = await abrirLancamento(nome);
   const campo = (cod: string) => within(grupo).getByLabelText(`Quantidade do código ${cod} na guia ${guia}`) as HTMLInputElement;
-  // A guia abre com o modelo (144, 012 e 185 já marcados): aqui se parte de uma guia vazia e se lança só o que foi pedido.
-  for (const cod of ['144', '012', '185']) if (!(cod in qtds)) fireEvent.change(campo(cod), { target: { value: '0' } });
+  // A guia abre com o modelo (144, 012 e 160 já marcados): aqui se parte de uma guia vazia e se lança só o que foi pedido.
+  for (const cod of ['144', '012', '160']) if (!(cod in qtds)) fireEvent.change(campo(cod), { target: { value: '0' } });
   for (const [cod, q] of Object.entries(qtds)) {
     if (campo(cod).value !== String(q)) fireEvent.change(campo(cod), { target: { value: String(q) } }); // já marcada com esse número: nada a fazer
   }
@@ -781,9 +783,9 @@ describe('Faturamento com a lista de clientes do mês', () => {
     await adicionarAoMes('Bruno Lima', 'bruno');
     const grupo = await abrirLancamento('Bruno Lima');
     const zerarModelo = (guia: number) => {
-      for (const cod of ['144', '185']) fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia ${guia}`), { target: { value: '0' } });
+      for (const cod of ['144', '160']) fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia ${guia}`), { target: { value: '0' } });
     };
-    zerarModelo(1); // cada guia abre com o modelo (144, 012 e 185 marcados); este teste parte de guias só com 012 e 301
+    zerarModelo(1); // cada guia abre com o modelo (144, 012 e 160 marcados); este teste parte de guias só com 012 e 301
     fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '6' } });
     fireEvent.click(within(grupo).getByRole('button', { name: /Outra guia/ }));
     zerarModelo(2);
@@ -795,25 +797,26 @@ describe('Faturamento com a lista de clientes do mês', () => {
     expect(norm(screen.getByRole('list', { name: 'Clientes na lista do mês' }).textContent)).toContain('012 × 10 · 301 × 2 · 2 guias');
   });
 
-  it('cliente novo, sem passar pelo auxiliar: o modelo da guia vem marcado e salvar sem mexer grava 144 × 1, 012 × 10 e 185 × 10', async () => {
+  it('cliente novo, sem passar pelo auxiliar: o modelo da guia vem marcado e salvar sem mexer grava 144 × 1, 012 × 10 e 160 × 10', async () => {
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Bruno Lima', 'bruno');
     const grupo = await abrirLancamento('Bruno Lima');
-    expect(within(grupo).getByRole('note').textContent).toContain('144 × 1 · 012 × 10 · 185 × 10');
+    expect(within(grupo).getByRole('note').textContent).toContain('144 × 1 · 012 × 10 · 160 × 10');
     fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
-    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 1.727,02'));
-    expect(atualizacoesDoMes().at(-1)!.payload).toEqual({ lancamentos: [{ '144': 1, '012': 10, '185': 10 }] });
+    await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 1.242,62')); // 65,62 + 10 × 57,70 + 10 × 60,00 (o 160 do cenário tem o valor que ele configurou)
+    expect(atualizacoesDoMes().at(-1)!.payload).toEqual({ lancamentos: [{ '144': 1, '012': 10, '160': 10 }] });
     expect(valorDoCartao('Sessões')).toBe('20');
   });
 
-  it('cliente novo: marcar 301 e desmarcar 185 antes de salvar entrega 144, 012 e 301 (cada quantidade pronta vale só ao marcar)', async () => {
+  it('cliente novo: marcar 301 e desmarcar 160 antes de salvar entrega 144, 012 e 301 (cada quantidade pronta vale só ao marcar)', async () => {
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Bruno Lima', 'bruno');
     const grupo = await abrirLancamento('Bruno Lima');
+    fireEvent.click(within(grupo).getByRole('button', { name: /^Outros códigos/ })); // o 301 mora em "Outros códigos"
     fireEvent.click(within(grupo).getByRole('checkbox', { name: 'Marcar o código 301 na guia 1' }));
-    fireEvent.click(within(grupo).getByRole('checkbox', { name: 'Marcar o código 185 na guia 1' }));
+    fireEvent.click(within(grupo).getByRole('checkbox', { name: 'Marcar o código 160 na guia 1' }));
     fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
     await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 998,12')); // 65,62 + 10 × 57,70 + 10 × 35,55
     expect(atualizacoesDoMes().at(-1)!.payload).toEqual({ lancamentos: [{ '144': 1, '012': 10, '301': 10 }] });
@@ -828,7 +831,7 @@ describe('Faturamento com a lista de clientes do mês', () => {
     expect(within(grupo).queryByRole('note')).toBeNull();
     expect((within(grupo).getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('4');
     expect(within(grupo).getByRole('checkbox', { name: 'Marcar o código 144 na guia 1' }).getAttribute('data-state')).toBe('unchecked');
-    expect(within(grupo).getByRole('checkbox', { name: 'Marcar o código 185 na guia 1' }).getAttribute('data-state')).toBe('unchecked');
+    expect(within(grupo).getByRole('checkbox', { name: 'Marcar o código 160 na guia 1' }).getAttribute('data-state')).toBe('unchecked');
   });
 
   it('o limite da CASSI vale no campo e no que é salvo: 012 até 10, consulta só 1', async () => {
@@ -1812,7 +1815,7 @@ describe('Faturamento: configuração e relatório (revisão independente)', () 
     expect(screen.queryByText(/Você ainda não salvou suas configurações/)).toBeNull();
   });
 
-  it('sem configuração salva: avisa que vale a tabela da CASSI (sem imposto) e o editor mantém 160 e 185 além da tabela', async () => {
+  it('sem configuração salva: avisa que vale a tabela da CASSI (sem imposto) e o editor traz os sete códigos da tabela (160 = R$ 31,97)', async () => {
     h.banco.tabelas.cassi_config.length = 0;
     montar();
     await irParaFaturamento();
@@ -1820,7 +1823,9 @@ describe('Faturamento: configuração e relatório (revisão independente)', () 
     await adicionarAoMes('Ana Souza', 'ana');
     const grupo = await abrirLancamento('Ana Souza');
     const codigos = within(grupo).getAllByLabelText(/^Quantidade do código .* na guia 1$/).map((el) => el.getAttribute('aria-label')!.replace('Quantidade do código ', '').replace(' na guia 1', ''));
-    expect(codigos).toEqual(['144', '012', '185', '131', '301', '020', '160']); // a ordem do modelo, e o código do profissional por último
+    expect(codigos).toEqual(['144', '012', '160', '185', '131', '301', '020']); // a ordem do modelo (os do topo primeiro)
+    const linha160 = within(grupo).getByLabelText('Quantidade do código 160 na guia 1').closest('li') as HTMLElement;
+    expect(norm(linha160.textContent)).toContain('5.00.00.160 · R$ 31,97 · máx. 10 por guia');
   });
 
   it('com configuração salva não aparece o aviso de "ainda não salvou"', async () => {
@@ -2030,14 +2035,25 @@ describe('Faturamento: segunda rodada de revisão independente', () => {
     expect(valores[i].value).toBe('61,2');
   });
 
-  it('código lançado com valor R$ 0,00 avisa na própria linha do cliente, em vez de parecer um mês sem receita', async () => {
+  it('código (criado por ele) lançado com valor R$ 0,00 avisa na própria linha do cliente, em vez de parecer um mês sem receita', async () => {
+    h.banco.tabelas.cassi_config[0].codigos = [...h.banco.tabelas.cassi_config[0].codigos, { codigo: '777', descricao: 'Meu código', valor: 0 }];
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Ana Souza', 'ana');
+    await lancar('Ana Souza', { '777': 3 });
+    const linha = await screen.findByRole('button', { name: /Lançar códigos e sessões de Ana Souza/ });
+    await waitFor(() => expect(norm(linha.textContent)).toContain('código sem valor (defina em Configurações)'));
+  });
+
+  it('código DA TABELA salvo com valor 0 usa o valor da tabela (012 = R$ 57,70): vale na conta e não aparece "sem valor"', async () => {
     h.banco.tabelas.cassi_config[0].codigos = h.banco.tabelas.cassi_config[0].codigos.map((c: Linha) => (c.codigo === '012' ? { ...c, valor: 0 } : c));
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Ana Souza', 'ana');
     await lancar('Ana Souza', { '012': 3 });
     const linha = await screen.findByRole('button', { name: /Lançar códigos e sessões de Ana Souza/ });
-    await waitFor(() => expect(norm(linha.textContent)).toContain('código sem valor (defina em Configurações)'));
+    await waitFor(() => expect(norm(linha.textContent)).toContain('R$ 173,10'));
+    expect(norm(linha.textContent)).not.toContain('sem valor');
   });
 
   it('Preencher com a agenda só grava em quem continua sem lançamento: o que outro aparelho lançou nesse meio-tempo não é apagado', async () => {
@@ -2270,7 +2286,7 @@ describe('Faturamento: terceira rodada de revisão independente', () => {
   });
 
   it('a dica de valor aparece quando ALGUM código lançado está sem valor, e não aparece quando todos têm', async () => {
-    h.banco.tabelas.cassi_config[0].codigos = h.banco.tabelas.cassi_config[0].codigos.map((c: Linha) => (c.codigo === '160' ? { ...c, valor: 0 } : c));
+    h.banco.tabelas.cassi_config[0].codigos = [...h.banco.tabelas.cassi_config[0].codigos, { codigo: '777', descricao: 'Meu código', valor: 0 }];
     montar();
     await irParaFaturamento();
     await adicionarAoMes('Ana Souza', 'ana');
@@ -2279,9 +2295,9 @@ describe('Faturamento: terceira rodada de revisão independente', () => {
     await waitFor(() => expect(norm(linha().textContent)).toContain('173,10'));
     expect(norm(linha().textContent)).not.toContain('sem valor'); // só o 012, que tem valor
     await abrirLancamento('Ana Souza');
-    fireEvent.change(screen.getByLabelText('Quantidade do código 160 na guia 1'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Quantidade do código 777 na guia 1'), { target: { value: '2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
-    await waitFor(() => expect(norm(linha().textContent)).toContain('código sem valor (defina em Configurações)')); // 012 vale, 160 não: o valor do mês sairia menor sem aviso
+    await waitFor(() => expect(norm(linha().textContent)).toContain('código sem valor (defina em Configurações)')); // 012 vale, 777 não: o valor do mês sairia menor sem aviso
   });
 
   it('aviso de mais de 60 sessões não cita quem foi pulado por já ter lançamento, e o aviso dos pulados diz quem', async () => {
@@ -2321,10 +2337,10 @@ describe('Faturamento: terceira rodada de revisão independente', () => {
     await irParaFaturamento();
     await adicionarAoMes('Bruno Lima', 'bruno');
     const grupo = await abrirLancamento('Bruno Lima');
-    for (const cod of ['144', '185']) fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia 1`), { target: { value: '0' } });
+    for (const cod of ['144', '160']) fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia 1`), { target: { value: '0' } });
     fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '6' } });
     fireEvent.click(within(grupo).getByRole('button', { name: /Outra guia/ }));
-    for (const cod of ['144', '185']) fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia 2`), { target: { value: '0' } });
+    for (const cod of ['144', '160']) fireEvent.change(within(grupo).getByLabelText(`Quantidade do código ${cod} na guia 2`), { target: { value: '0' } });
     fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 2'), { target: { value: '4' } });
     fireEvent.change(within(grupo).getByLabelText('Quantidade do código 301 na guia 2'), { target: { value: '2' } });
     fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
@@ -2514,5 +2530,431 @@ describe('Relatório de produção: sai exatamente do que foi lançado no Fatura
     await irParaFaturamento();
     const dialogo = await abrirRelatorio();
     expect((within(dialogo).getByDisplayValue('2026-10') as HTMLInputElement).className).toContain('w-[12rem]');
+  });
+});
+
+// ── Código 160, códigos pré-preenchidos e o mesmo cliente com mais de uma guia (pedido do Rafael, 15/11/2026) ──────────────
+describe('Faturamento: código 160 e "Códigos pré-preenchidos"', () => {
+  const cfgDoBanco = () => h.banco.tabelas.cassi_config[0] as Linha;
+  const escritasDaConfig = () => escritasEm('cassi_config');
+  const faixa = () => norm(screen.getByRole('region', { name: 'Códigos pré-preenchidos' }).textContent);
+  async function abrirPrePreenchidos() {
+    await irParaFaturamento();
+    fireEvent.click(screen.getByRole('button', { name: 'Códigos pré-preenchidos' }));
+    return screen.findByRole('dialog', { name: 'Códigos pré-preenchidos' });
+  }
+  const caixa = (dialogo: HTMLElement, codigo: string) => within(dialogo).getByRole('checkbox', { name: `Já vem marcado: código ${codigo}` });
+  const salvarEscolha = (dialogo: HTMLElement) => within(dialogo).getByRole('button', { name: 'Salvar' });
+  const abrirConfiguracoes = async () => {
+    fireEvent.click(screen.getAllByRole('button', { name: 'Configurações CASSI' })[0]);
+    const dialogo = await screen.findByRole('dialog', { name: 'Configurações CASSI' });
+    await within(dialogo).findAllByPlaceholderText('000');
+    return dialogo;
+  };
+  const codigosDaConfiguracao = () => cfgDoBanco().codigos as Linha[];
+  const escolhaGravada = () => Object.fromEntries(codigosDaConfiguracao().map((c) => [c.codigo, c.pre_preenchido]));
+  // O banco falso não atualiza linha que já existe num upsert (ele só registra): o que o diálogo de Configurações gravou está no payload.
+  const gravadoPelasConfiguracoes = () => {
+    const op = escritasDaConfig().filter((o) => o.tipo === 'upsert').at(-1)!;
+    return op.payload as Linha & { codigos: Linha[] };
+  };
+
+  it('sem escolha gravada: a faixa mostra 144 × 1 · 012 × 10 · 160 × 10 e a guia nova traz esses três no topo, já marcados, e o resto em "Outros códigos"', async () => {
+    montar();
+    await irParaFaturamento();
+    expect(faixa()).toContain('Já vem marcado na guia nova');
+    expect(faixa()).toContain('144 × 1 · 012 × 10 · 160 × 10');
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    const grupo = await abrirLancamento('Bruno Lima');
+    const topo = within(within(grupo).getByRole('list', { name: 'Códigos do modelo da guia 1' })).getAllByRole('listitem');
+    expect(topo.map((li) => norm(li.textContent).split(' ')[0])).toEqual(['144', '012', '160']);
+    for (const c of ['144', '012', '160']) expect(within(grupo).getByRole('checkbox', { name: `Marcar o código ${c} na guia 1` }).getAttribute('data-state')).toBe('checked');
+    const outros = within(grupo).getByRole('button', { name: /^Outros códigos/ });
+    expect(outros.textContent).toContain('Outros códigos (4)');
+    expect(outros.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('escolher e salvar grava SÓ o campo codigos do próprio profissional, relê o banco antes (edição de outro aparelho fica) e a guia nova já usa a escolha', async () => {
+    montar();
+    const dialogo = await abrirPrePreenchidos();
+    // Enquanto o diálogo está aberto, em outro aparelho o valor do 012 mudou: salvar a escolha não pode desfazer isso.
+    cfgDoBanco().codigos = codigosDaConfiguracao().map((c) => (c.codigo === '012' ? { ...c, valor: 61.2 } : c));
+    const impostoAntes = cfgDoBanco().imposto_percentual;
+    fireEvent.click(caixa(dialogo, '301'));
+    fireEvent.click(caixa(dialogo, '160'));
+    fireEvent.change(within(dialogo).getByLabelText('Quantidade do código 012'), { target: { value: '4' } });
+    fireEvent.click(salvarEscolha(dialogo));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    expect(escritasDaConfig()).toHaveLength(1);
+    expect(escritasDaConfig()[0].tipo).toBe('update');
+    expect(Object.keys(escritasDaConfig()[0].payload as object).sort()).toEqual(['codigos', 'updated_at']);
+    expect(escritasDaConfig()[0].filtros).toEqual([['eq', 'terapeuta_id', 'prof-1']]);
+    expect(escolhaGravada()).toEqual({ '144': { quantidade: 1 }, '012': { quantidade: 4 }, '301': { quantidade: 10 }, '185': null, '160': null });
+    expect(codigosDaConfiguracao().map((c) => c.codigo)).toEqual(['144', '012', '301', '185', '160']); // marcados primeiro, na ordem; os demais na ordem de antes
+    expect(codigosDaConfiguracao().find((c) => c.codigo === '012')?.valor).toBe(61.2); // a edição do outro aparelho ficou
+    expect(codigosDaConfiguracao().find((c) => c.codigo === '160')).toMatchObject({ descricao: 'Sessão 160', valor: 60 }); // valor dele intacto
+    expect(codigosDaConfiguracao().find((c) => c.codigo === '301')).toMatchObject({ valor: 35.55, codigo_oficial: '20103301' }); // veio da tabela
+    expect(cfgDoBanco().imposto_percentual).toBe(impostoAntes);
+    expect(h.erro).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(faixa()).toContain('144 × 1 · 012 × 4 · 301 × 10'));
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    const grupo = await abrirLancamento('Bruno Lima');
+    const topo = within(within(grupo).getByRole('list', { name: 'Códigos do modelo da guia 1' })).getAllByRole('listitem');
+    expect(topo.map((li) => norm(li.textContent).split(' ')[0])).toEqual(['144', '012', '301']);
+    expect((within(grupo).getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('4');
+    expect(within(grupo).getByRole('button', { name: /^Outros códigos/ }).textContent).toContain('Outros códigos (4)'); // 160, 185, 131 e 020
+    fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(atualizacoesDoMes().at(-1)?.payload).toEqual({ lancamentos: [{ '144': 1, '012': 4, '301': 10 }] }));
+  });
+
+  it('com a escolha dele gravada, a guia nova usa a ordem dele: topo com 301 e 144 e "Outros códigos" na ordem da lista dele', async () => {
+    cfgDoBanco().codigos = [
+      { codigo: '301', descricao: 'Agulhamento', valor: 35.55, codigo_oficial: '20103301', pre_preenchido: { quantidade: 3 } },
+      { codigo: '144', descricao: 'Consulta', valor: 65.62, pre_preenchido: { quantidade: 1 } },
+      { codigo: '012', descricao: 'Sessão', valor: 57.7, pre_preenchido: null },
+      { codigo: '185', descricao: 'Eletro', valor: 108.44, pre_preenchido: null },
+      { codigo: '160', descricao: 'Sessão 160', valor: 60, pre_preenchido: null },
+    ];
+    montar();
+    await irParaFaturamento();
+    expect(faixa()).toContain('301 × 3 · 144 × 1');
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    const grupo = await abrirLancamento('Bruno Lima');
+    const nomes = (lista: HTMLElement) => within(lista).getAllByRole('listitem', { hidden: true }).map((li) => norm(li.textContent).split(' ')[0]);
+    expect(nomes(within(grupo).getByRole('list', { name: 'Códigos do modelo da guia 1' }))).toEqual(['301', '144']);
+    fireEvent.click(within(grupo).getByRole('button', { name: /^Outros códigos/ }));
+    expect(nomes(within(grupo).getByRole('list', { name: 'Outros códigos da guia 1' }))).toEqual(['012', '185', '160', '020', '131']); // a ordem da lista dele; o que faltava da tabela entra no fim
+    expect((within(grupo).getByLabelText('Quantidade do código 301 na guia 1') as HTMLInputElement).value).toBe('3');
+  });
+
+  it('"Voltar ao padrão" tira a escolha: o campo some de todos os códigos e a guia nova volta a 144, 012 e 160', async () => {
+    cfgDoBanco().codigos = [
+      { codigo: '301', descricao: 'Agulhamento', valor: 35.55, pre_preenchido: { quantidade: 3 } },
+      { codigo: '144', descricao: 'Consulta', valor: 65.62, pre_preenchido: null },
+      { codigo: '012', descricao: 'Sessão', valor: 57.7, pre_preenchido: null },
+    ];
+    montar();
+    const dialogo = await abrirPrePreenchidos();
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Voltar ao padrão (144, 012 e 160)' }));
+    fireEvent.click(salvarEscolha(dialogo));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(codigosDaConfiguracao().some((c) => 'pre_preenchido' in c)).toBe(false);
+    await waitFor(() => expect(faixa()).toContain('144 × 1 · 012 × 10 · 160 × 10'));
+  });
+
+  it('o banco não achou a configuração na hora de gravar (0 linhas): erro visível, diálogo aberto com a escolha, nada de "salvo" falso', async () => {
+    montar();
+    const dialogo = await abrirPrePreenchidos();
+    fireEvent.click(caixa(dialogo, '301'));
+    h.banco.antesDeEscrever(() => { h.banco.tabelas.cassi_config.length = 0; }); // outro aparelho apagou a configuração entre a leitura e a escrita
+    fireEvent.click(salvarEscolha(dialogo));
+    const alerta = await within(dialogo).findByRole('alert');
+    expect(norm(alerta.textContent)).toBe('Não consegui salvar: sua configuração não foi encontrada.');
+    expect(screen.getByRole('dialog', { name: 'Códigos pré-preenchidos' })).toBeTruthy();
+    expect(caixa(dialogo, '301').getAttribute('data-state')).toBe('checked');
+    expect((salvarEscolha(dialogo) as HTMLButtonElement).disabled).toBe(false);
+    expect(h.banco.tabelas.cassi_config).toHaveLength(0); // nada foi criado escondido
+  });
+
+  it('o banco recusando a gravação: mensagem simples, diálogo aberto e o que foi escolhido continua lá', async () => {
+    montar();
+    const dialogo = await abrirPrePreenchidos();
+    fireEvent.click(caixa(dialogo, '301'));
+    fireEvent.change(within(dialogo).getByLabelText('Quantidade do código 160'), { target: { value: '7' } });
+    h.banco.falharEscritaQuando((op) => op.tabela === 'cassi_config', 'sem permissão');
+    fireEvent.click(salvarEscolha(dialogo));
+    const alerta = await within(dialogo).findByRole('alert');
+    expect(norm(alerta.textContent)).toBe('Não consegui salvar: sem permissão');
+    expect((within(dialogo).getByLabelText('Quantidade do código 160') as HTMLSelectElement).value).toBe('7');
+    expect(caixa(dialogo, '301').getAttribute('data-state')).toBe('checked');
+    expect(codigosDaConfiguracao().some((c) => 'pre_preenchido' in c)).toBe(false);
+  });
+
+  it('durante a gravação os campos travam; ao terminar, a configuração é relida (a faixa já mostra a escolha)', async () => {
+    montar();
+    const dialogo = await abrirPrePreenchidos();
+    fireEvent.click(caixa(dialogo, '301'));
+    let soltar = () => {};
+    const retida = new Promise<void>((ok) => { soltar = ok; });
+    h.banco.antesDeEscrever(async () => { await retida; });
+    fireEvent.click(salvarEscolha(dialogo));
+    await waitFor(() => expect(within(dialogo).getByRole('button', { name: 'Salvando…' })).toBeTruthy());
+    expect((caixa(dialogo, '144') as HTMLButtonElement).disabled).toBe(true);
+    expect((within(dialogo).getByLabelText('Quantidade do código 012') as HTMLSelectElement).disabled).toBe(true);
+    soltar();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(faixa()).toContain('301 × 10'));
+  });
+
+  it('sem configuração salva: o diálogo avisa "Salve primeiro as Configurações CASSI", Salvar não grava e o atalho abre as Configurações', async () => {
+    h.banco.tabelas.cassi_config.length = 0;
+    montar();
+    const dialogo = await abrirPrePreenchidos();
+    expect(norm(within(dialogo).getByRole('alert').textContent)).toContain('Salve primeiro as Configurações CASSI');
+    fireEvent.click(caixa(dialogo, '301'));
+    expect((salvarEscolha(dialogo) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(salvarEscolha(dialogo));
+    expect(escritasDaConfig()).toHaveLength(0);
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Abrir Configurações CASSI' }));
+    expect(await screen.findByRole('dialog', { name: 'Configurações CASSI' })).toBeTruthy();
+    expect(screen.queryByRole('dialog', { name: 'Códigos pré-preenchidos' })).toBeNull();
+    expect(h.banco.tabelas.cassi_config).toHaveLength(0);
+    expect(h.banco.escritas()).toHaveLength(0);
+  });
+
+  it('leitura da configuração falhando (com a tela já aberta): o botão fica desligado e aparece o aviso; ao voltar a ler, liga', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0, gcTime: 5 * 60_000 }, mutations: { retry: false } } });
+    render(<QueryClientProvider client={qc}><MemoryRouter><ControleCassi /></MemoryRouter></QueryClientProvider>);
+    await screen.findByText('Ana Souza');
+    abrirAba(/^Faturamento/);
+    await screen.findByText(/Nenhum cliente na lista de outubro de 2026/);
+    expect((screen.getByRole('button', { name: 'Códigos pré-preenchidos' }) as HTMLButtonElement).disabled).toBe(false);
+    abrirAba(/^Clientes$/);
+    await screen.findByText('Ana Souza');
+    const original = h.banco.from;
+    let falhando = true;
+    h.banco.from = ((tabela: string) => {
+      if (tabela === 'cassi_config' && falhando) {
+        const q: Record<string, unknown> = {};
+        for (const m of ['select', 'eq', 'maybeSingle']) q[m] = () => q;
+        q.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: null, error: { message: 'sem rede' } }).then(res);
+        return q;
+      }
+      return original(tabela);
+    }) as typeof h.banco.from;
+    abrirAba(/^Faturamento/);
+    expect(await screen.findByText(/Não consegui carregar suas configurações\. Sem elas não dá para escolher os códigos\./)).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Códigos pré-preenchidos' }) as HTMLButtonElement).disabled).toBe(true);
+    falhando = false;
+    await qc.refetchQueries({ queryKey: ['cassi-config', 'prof-1'] });
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Códigos pré-preenchidos' }) as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.queryByText(/Sem elas não dá para escolher os códigos/)).toBeNull();
+  });
+
+  it('trocar de mês, ou ter um rascunho aberto, não interfere: salvar a escolha não mexe no que está digitado nem no mês', async () => {
+    montar();
+    await irParaFaturamento();
+    await adicionarAoMes('Bruno Lima', 'bruno');
+    const grupo = await abrirLancamento('Bruno Lima');
+    fireEvent.change(within(grupo).getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '4' } });
+    vi.mocked(window.confirm).mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Códigos pré-preenchidos' }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Códigos pré-preenchidos' });
+    fireEvent.click(caixa(dialogo, '301'));
+    fireEvent.click(salvarEscolha(dialogo));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(faixa()).toContain('301 × 10'));
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect((screen.getByLabelText('Quantidade do código 012 na guia 1') as HTMLInputElement).value).toBe('4'); // o rascunho continua
+    expect(screen.getByRole('heading', { name: 'Clientes de outubro de 2026' })).toBeTruthy();
+    expect(atualizacoesDoMes()).toHaveLength(0); // nada do rascunho foi gravado
+  });
+
+  describe('Configurações CASSI preserva a escolha de cada código', () => {
+    const comEscolha = () => [
+      { codigo: '301', descricao: 'Agulhamento seco', valor: 35.55, codigo_oficial: '20103301', pre_preenchido: { quantidade: 3 } },
+      { codigo: '144', descricao: 'Consulta', valor: 65.62, codigo_oficial: '50000144', pre_preenchido: { quantidade: 1 } },
+      { codigo: '012', descricao: 'Sessão', valor: 57.7, codigo_oficial: '50000012', pre_preenchido: null },
+      { codigo: '160', descricao: 'Sessão 160', valor: 60, pre_preenchido: null },
+    ];
+
+    it('salvar as Configurações (mudando o imposto) não apaga a escolha: marcados, quantidades, nulos e a ordem ficam', async () => {
+      cfgDoBanco().codigos = comEscolha();
+      montar();
+      await screen.findByText('Ana Souza');
+      const dialogo = await abrirConfiguracoes();
+      fireEvent.change(within(dialogo).getByPlaceholderText('ex: 14'), { target: { value: '12' } });
+      fireEvent.click(within(dialogo).getByRole('button', { name: 'Salvar' }));
+      await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Configuração salva'));
+      expect(gravadoPelasConfiguracoes().imposto_percentual).toBe(12);
+      const salvos = gravadoPelasConfiguracoes().codigos;
+      expect(salvos.map((c) => c.codigo)).toEqual(['301', '144', '012', '160', '020', '131', '185']); // os da tabela que faltavam entram no fim
+      expect(salvos.slice(0, 4).map((c) => [c.codigo, c.pre_preenchido])).toEqual([['301', { quantidade: 3 }], ['144', { quantidade: 1 }], ['012', null], ['160', null]]);
+      expect(salvos.slice(4).every((c) => !('pre_preenchido' in c))).toBe(true); // quem entrou agora não tem a chave (não vem marcado)
+      expect(salvos.find((c) => c.codigo === '301')).toMatchObject({ descricao: 'Agulhamento seco', valor: 35.55, codigo_oficial: '20103301' });
+    });
+
+    it('sem escolha gravada, salvar as Configurações não inventa o campo em nenhum código', async () => {
+      montar();
+      await screen.findByText('Ana Souza');
+      const dialogo = await abrirConfiguracoes();
+      fireEvent.click(within(dialogo).getByRole('button', { name: 'Salvar' }));
+      await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Configuração salva'));
+      expect(gravadoPelasConfiguracoes().codigos.some((c) => 'pre_preenchido' in c)).toBe(false);
+    });
+
+    it('apagar um código lá tira o código e a escolha dele, sem quebrar os outros; adicionar um código novo funciona (sem a chave)', async () => {
+      cfgDoBanco().codigos = comEscolha();
+      montar();
+      await screen.findByText('Ana Souza');
+      const dialogo = await abrirConfiguracoes();
+      const campos = within(dialogo).getAllByPlaceholderText('000') as HTMLInputElement[];
+      const linhaDoCodigo = (codigo: string) => campos.find((c) => c.value === codigo)!.closest('div.rounded-lg') as HTMLElement;
+      fireEvent.click(within(linhaDoCodigo('301')).getByTitle('Remover'));
+      fireEvent.click(within(dialogo).getByRole('button', { name: /Adicionar código/ }));
+      const vazios = (within(dialogo).getAllByPlaceholderText('000') as HTMLInputElement[]).filter((c) => c.value === '');
+      fireEvent.change(vazios[0], { target: { value: '777' } });
+      fireEvent.click(within(dialogo).getByRole('button', { name: 'Salvar' }));
+      await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Configuração salva'));
+      const salvos = gravadoPelasConfiguracoes().codigos;
+      expect(salvos.some((c) => c.codigo === '301')).toBe(false);
+      expect(salvos.find((c) => c.codigo === '144')?.pre_preenchido).toEqual({ quantidade: 1 });
+      expect(salvos.find((c) => c.codigo === '012')?.pre_preenchido).toBeNull();
+      expect(salvos.find((c) => c.codigo === '160')?.pre_preenchido).toBeNull();
+      expect(salvos.find((c) => c.codigo === '777')).toBeTruthy();
+      expect('pre_preenchido' in salvos.find((c) => c.codigo === '777')!).toBe(false);
+      // a guia nova que essa lista dá: só o 144 marcado (o 301 e a escolha dele saíram)
+      expect(escolhaDoModelo(modeloDaConfiguracao(salvos as unknown as CodigoFaturavel[]))).toEqual([{ codigo: '144', quantidade: 1 }]);
+    });
+
+    it('apagar o ÚNICO marcado: a escolha continua valendo (nenhum marcado) e não volta sozinha ao padrão', async () => {
+      cfgDoBanco().codigos = [{ codigo: '144', descricao: 'Consulta', valor: 65.62, pre_preenchido: { quantidade: 1 } }, { codigo: '012', descricao: 'Sessão', valor: 57.7, pre_preenchido: null }];
+      montar();
+      await screen.findByText('Ana Souza');
+      const dialogo = await abrirConfiguracoes();
+      const campos = within(dialogo).getAllByPlaceholderText('000') as HTMLInputElement[];
+      fireEvent.click(within(campos.find((c) => c.value === '144')!.closest('div.rounded-lg') as HTMLElement).getByTitle('Remover'));
+      fireEvent.click(within(dialogo).getByRole('button', { name: 'Salvar' }));
+      await waitFor(() => expect(h.sucesso).toHaveBeenCalledWith('Configuração salva'));
+      const salvos = gravadoPelasConfiguracoes().codigos;
+      expect(salvos.find((c) => c.codigo === '012')?.pre_preenchido).toBeNull(); // a escolha de quem ficou continua gravada
+      expect(escolhaDoModelo(modeloDaConfiguracao(salvos as unknown as CodigoFaturavel[]))).toEqual([]); // nenhum marcado: não volta ao padrão sozinho
+    });
+  });
+
+  describe('o 160 sem valor salvo usa o valor da tabela (R$ 31,97)', () => {
+    it('160 salvo com valor 0: vale R$ 31,97 na conta, no CSV e no relatório (com o código oficial 5.00.00.160); e o diálogo de Configurações já mostra 31,97', async () => {
+      cfgDoBanco().codigos = codigosDaConfiguracao().map((c) => (c.codigo === '160' ? { ...c, valor: 0 } : c));
+      let capturado: Blob | null = null;
+      (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = (b: Blob) => { capturado = b; return 'blob:x'; };
+      (URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = () => {};
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      montar();
+      await irParaFaturamento();
+      await adicionarAoMes('Ana Souza', 'ana');
+      await lancar('Ana Souza', { '160': 10 });
+      await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 319,70'));
+      expect(valorDoCartao('Sessões')).toBe('10');
+      const linha = screen.getByRole('button', { name: /Lançar códigos e sessões de Ana Souza/ });
+      expect(norm(linha.textContent)).toContain('160 × 10 · R$ 319,70');
+      expect(norm(linha.textContent)).not.toContain('sem valor');
+      fireEvent.click(screen.getByRole('button', { name: /CSV/ }));
+      const texto = await new Promise<string>((ok) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.readAsText(capturado as unknown as Blob); });
+      const linhas = texto.replace('﻿', '').split('\n');
+      expect(linhas[1]).toBe('"Ana Souza";"—";"160 × 10";"10";"319.70";"31.97";"287.73"');
+      const relatorio = await abrirRelatorio();
+      await waitFor(() => expect(linhasDoRelatorio(relatorio)).toHaveLength(1));
+      expect(cabecalhoDoRelatorio(relatorio)).toEqual(['Nome do Paciente', 'Código(50000160)', 'Soma']);
+      expect(linhasDoRelatorio(relatorio)).toEqual(['Ana Souza | 10 | R$ 319,70']);
+    });
+
+    it('160 salvo com valor positivo diferente (60) continua valendo o dele', async () => {
+      montar();
+      await irParaFaturamento();
+      await adicionarAoMes('Ana Souza', 'ana');
+      await lancar('Ana Souza', { '160': 10 });
+      await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 600,00'));
+    });
+
+    it('o diálogo de Configurações mostra o 160 com 31,97 quando estava sem valor', async () => {
+      cfgDoBanco().codigos = codigosDaConfiguracao().map((c) => (c.codigo === '160' ? { ...c, valor: 0 } : c));
+      montar();
+      await screen.findByText('Ana Souza');
+      const dialogo = await abrirConfiguracoes();
+      const campos = within(dialogo).getAllByPlaceholderText('000') as HTMLInputElement[];
+      const valores = within(dialogo).getAllByPlaceholderText('0,00') as HTMLInputElement[];
+      expect(valores[campos.findIndex((c) => c.value === '160')].value).toBe('31,97');
+    });
+  });
+
+  describe('o mesmo cliente de novo na fatura', () => {
+    async function anaComUmaGuia() {
+      montar();
+      await irParaFaturamento();
+      await adicionarAoMes('Ana Souza', 'ana');
+      await lancar('Ana Souza', { '012': 10 });
+      await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 577,00'));
+    }
+    const linhaDeAna = () => h.banco.tabelas.cassi_financeiro_clientes.filter((l) => l.paciente_id === 'p1' && l.mes === '2026-10');
+
+    it('"Outra guia" na linha abre o editor já com a guia nova (modelo); salvar grava UMA linha com as duas guias e o relatório mostra o cliente em 2 linhas', async () => {
+      await anaComUmaGuia();
+      fireEvent.click(screen.getByRole('button', { name: 'Outra guia para Ana Souza neste mês' }));
+      const grupo = await screen.findByRole('group', { name: 'Códigos e sessões de Ana Souza' });
+      expect(within(grupo).getAllByRole('region', { name: /^Guia \d de Ana Souza$/ })).toHaveLength(2);
+      fireEvent.click(within(grupo).getByRole('button', { name: 'Salvar' }));
+      await waitFor(() => expect(screen.queryByRole('group', { name: 'Códigos e sessões de Ana Souza' })).toBeNull());
+      expect(linhaDeAna()).toHaveLength(1); // nada novo no banco: continua uma linha por cliente e mês
+      expect(linhaDeAna()[0].lancamentos).toEqual([{ '012': 10 }, { '144': 1, '012': 10, '160': 10 }]);
+      await waitFor(() => expect(valorDoCartao('Bruto')).toBe('R$ 1.819,62')); // 577 + 65,62 + 577 + 600
+      expect(norm(screen.getByRole('list', { name: 'Clientes na lista do mês' }).textContent)).toContain('2 guias');
+      const relatorio = await abrirRelatorio();
+      await waitFor(() => expect(linhasDoRelatorio(relatorio)).toHaveLength(2));
+      expect(linhasDoRelatorio(relatorio)).toEqual(['Ana Souza | 0 | 10 | 0 | R$ 577,00', 'Ana Souza | 1 | 10 | 10 | R$ 1.242,62']);
+      expect(within(relatorio).getByText('1 cliente · 2 guias')).toBeTruthy();
+    });
+
+    it('pela busca: quem já está na lista aparece com "já na lista · adicionar outra guia" e a escolha faz o mesmo que o botão da linha', async () => {
+      await anaComUmaGuia();
+      fireEvent.change(screen.getByLabelText('Adicionar cliente à lista do mês'), { target: { value: 'ana' } });
+      const resultados = await screen.findByRole('list', { name: 'Resultados da busca' });
+      const opcao = within(resultados).getByRole('button', { name: /Ana Souza/ });
+      expect(norm(opcao.textContent)).toContain('já na lista · adicionar outra guia');
+      const escritasAntes = escritasEm('cassi_financeiro_clientes').length;
+      fireEvent.click(opcao);
+      const grupo = await screen.findByRole('group', { name: 'Códigos e sessões de Ana Souza' });
+      expect(within(grupo).getAllByRole('region', { name: /^Guia \d de Ana Souza$/ })).toHaveLength(2);
+      expect(escritasEm('cassi_financeiro_clientes').length).toBe(escritasAntes); // só abriu o editor: nada foi gravado nem adicionado de novo
+    });
+
+    it('quem já está na lista também é achado pela carteirinha na busca', async () => {
+      await anaComUmaGuia();
+      fireEvent.change(screen.getByLabelText('Adicionar cliente à lista do mês'), { target: { value: '111' } });
+      const resultados = await screen.findByRole('list', { name: 'Resultados da busca' });
+      expect(norm(within(resultados).getByRole('button', { name: /Ana Souza/ }).textContent)).toContain('já na lista · adicionar outra guia');
+    });
+
+    it('quem ainda não está na lista continua sendo adicionado pela busca, sem a marca', async () => {
+      montar();
+      await irParaFaturamento();
+      fireEvent.change(screen.getByLabelText('Adicionar cliente à lista do mês'), { target: { value: 'bruno' } });
+      const resultados = await screen.findByRole('list', { name: 'Resultados da busca' });
+      expect(norm(within(resultados).getByRole('button', { name: /Bruno Lima/ }).textContent)).not.toContain('já na lista');
+      fireEvent.click(within(resultados).getByRole('button', { name: /Bruno Lima/ }));
+      await screen.findByRole('button', { name: 'Lançar códigos e sessões de Bruno Lima' });
+      expect(h.banco.tabelas.cassi_financeiro_clientes.filter((l) => l.paciente_id === 'p2')).toHaveLength(1);
+    });
+
+    it('com 6 guias o cliente não ganha outra: o botão e a opção da busca ficam desligados e explicam', async () => {
+      h.banco.tabelas.cassi_financeiro_clientes.push({ id: 'seis', terapeuta_id: 'prof-1', mes: '2026-10', paciente_id: 'p1', lancamentos: Array.from({ length: 6 }, () => ({ '012': 1 })) });
+      montar();
+      await screen.findByText('Ana Souza');
+      abrirAba(/^Faturamento/);
+      const botao = await screen.findByRole('button', { name: 'Outra guia para Ana Souza neste mês' });
+      expect((botao as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getByText(/limite de 6 guias no mês/)).toBeTruthy();
+      fireEvent.change(screen.getByLabelText('Adicionar cliente à lista do mês'), { target: { value: 'ana' } });
+      const opcao = within(await screen.findByRole('list', { name: 'Resultados da busca' })).getByRole('button', { name: /Ana Souza/ }) as HTMLButtonElement;
+      expect(opcao.disabled).toBe(true);
+      expect(norm(opcao.textContent)).toContain('já tem 6 guias neste mês (o máximo)');
+    });
+
+    it('a tela explica que o mesmo cliente pode ter mais de uma guia e que cada guia vira uma linha no relatório', async () => {
+      montar();
+      await irParaFaturamento();
+      expect(norm(document.body.textContent)).toContain('O mesmo cliente pode ter mais de uma guia no mês: cada guia vira uma linha no relatório.');
+    });
+
+    it('a busca de PEDIR GUIAS não mudou: quem já está no pedido continua fora e não aparece a marca', async () => {
+      montar();
+      await irParaPedir();
+      await buscarEEscolher('Adicionar cliente ao pedido', 'carla', /Carla Dias/);
+      await waitFor(() => expect(noPedido('Carla Dias')).toBeTruthy());
+      fireEvent.change(screen.getByLabelText('Adicionar cliente ao pedido'), { target: { value: 'carla' } });
+      expect(await screen.findByText('Nenhum cliente encontrado. Quem já está na lista, ou já teve o pedido feito, não aparece aqui.')).toBeTruthy();
+      expect(screen.queryByText(/já na lista · adicionar outra guia/)).toBeNull();
+    });
   });
 });

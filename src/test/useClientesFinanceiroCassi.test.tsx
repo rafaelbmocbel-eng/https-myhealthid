@@ -215,3 +215,32 @@ describe('useClientesFinanceiroCassi: lançamentos', () => {
     expect(h.banco.escritas()).toHaveLength(0);
   });
 });
+
+describe('useClientesFinanceiroCassi: o mesmo cliente com mais de uma guia no mês', () => {
+  beforeEach(() => { h.banco = criarBancoFalso({ cassi_financeiro_clientes: [] }); });
+  const comLanc = (mes: string, paciente_id: string, lancamentos: unknown): Linha => ({ id: `${mes}-${paciente_id}`, terapeuta_id: 'prof-1', mes, paciente_id, lancamentos });
+
+  it('salvar 2 guias do mesmo cliente grava UMA linha (cliente/mês) com as duas em `lancamentos`; nada novo no banco', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(comLanc('2026-10', 'a', [{ '012': 10, '160': 10 }]));
+    const { result } = montar('2026-05', '2026-10');
+    await waitFor(() => expect(result.current.carregando).toBe(false));
+    await act(async () => {
+      await result.current.lancar.mutateAsync({ mes: '2026-10', itens: [{ id: 'a', guias: [{ '012': 10, '160': 10 }, { '144': 1, '012': 10, '160': 10 }] }] });
+    });
+    const linhasDoCliente = h.banco.tabelas.cassi_financeiro_clientes.filter((l) => l.paciente_id === 'a' && l.mes === '2026-10');
+    expect(linhasDoCliente).toHaveLength(1);
+    expect(linhasDoCliente[0].lancamentos).toEqual([{ '012': 10, '160': 10 }, { '144': 1, '012': 10, '160': 10 }]);
+    expect(h.banco.escritas().map((o) => o.tipo)).toEqual(['update']); // sem insert: a linha do cliente já existia
+    await waitFor(() => expect(result.current.lancamentosDoMes('2026-10').get('a')).toHaveLength(2));
+  });
+
+  it('as 6 guias que a tela aceita são gravadas; a sétima é cortada na normalização (o banco aceitaria 12)', async () => {
+    h.banco.tabelas.cassi_financeiro_clientes.push(comLanc('2026-10', 'a', []));
+    const { result } = montar('2026-05', '2026-10');
+    await waitFor(() => expect(result.current.carregando).toBe(false));
+    await act(async () => {
+      await result.current.lancar.mutateAsync({ mes: '2026-10', itens: [{ id: 'a', guias: Array.from({ length: 7 }, (_, i) => ({ '160': i + 1 })) }] });
+    });
+    expect(h.banco.tabelas.cassi_financeiro_clientes[0].lancamentos).toHaveLength(6);
+  });
+});

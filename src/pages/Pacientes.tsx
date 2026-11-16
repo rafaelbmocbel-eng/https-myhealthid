@@ -1594,7 +1594,7 @@ export default function Pacientes() {
                             return (
                               <button type="button" key={c.codigo}
                                 onClick={() => setForm(f => ({ ...f, codigos_cassi: on ? f.codigos_cassi.filter(x => x !== c.codigo) : [...f.codigos_cassi, c.codigo] }))}
-                                className={cn('text-[11px] px-2 py-1 rounded-full border', on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground')}>
+                                className={cn('max-w-full text-left text-[11px] px-2.5 py-1 rounded-2xl border', on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground')}>
                                 {c.codigo} · {c.descricao}
                               </button>
                             );

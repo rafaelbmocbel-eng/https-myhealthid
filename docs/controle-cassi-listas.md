@@ -55,9 +55,10 @@ em cada cliente: "agenda: 8 sessões").
   `20261025230000` (lançamentos e a função de juntar cadastros); `20261025233000` atualiza os códigos salvos (abaixo).
 - `lancamentos` é uma lista de **guias**; cada guia é `{ "código": quantidade }`. Ex.: `[{"012":10,"144":1},{"012":4,"301":2}]`. O banco
   recusa o que não for esse formato (até 12 guias; até 30 códigos por guia; código de 1 a 12 caracteres; quantidades inteiras de 0 a 999).
-  A tela lança no máximo 6 guias por cliente no mês.
+  A tela lança no máximo 6 guias por cliente no mês (`MAXIMO_GUIAS_NO_MES`).
 - Adiciona-se o cliente por busca ou com **Adicionar quem teve sessão no mês**; isso só põe o cliente na lista, **não lança nada**. Para
-  lançar, toque no cliente: cada código tem um campo de quantidade (− e +), e dá para abrir **Outra guia** (cliente com 2 guias no mês).
+  lançar, toque no cliente: os códigos que já vêm marcados ficam no topo (abaixo, "Modelo da guia") e cada código tem um campo de
+  quantidade (− e +). O mesmo cliente pode ter mais de uma guia no mês (abaixo, "O mesmo cliente de novo na fatura").
   **Preencher com a agenda** lança 012 × as sessões da agenda (de 10 em 10 por guia) em quem ainda não tem lançamento.
 
 ### Tabela de códigos
@@ -70,15 +71,83 @@ em cada cliente: "agenda: 8 sessões").
 | 301 | 2.01.03.301 | Infiltração de ponto gatilho (por músculo) ou agulhamento seco (por músculo) | R$ 35,55 | 10 por guia |
 | 131 | 2.01.03.131 | Biofeedback com EMG | R$ 67,79 | 10 **no mês** |
 | 185 | 3.16.02.185 | Estimulação elétrica transcutânea | R$ 108,44 | 10 por guia (limite não informado: vale o da guia) |
+| 160 | 5.00.00.160 | Atendimento fisioterapêutico ambulatorial ao paciente com disfunção decorrente de alterações do sistema músculo-esquelético | R$ 31,97 | 10 por guia (entrou em 15/11/2026, pedido do Rafael; conta como sessão) |
 
 Código que não está na tabela (criado em Configurações) segue a guia da CASSI: 10 por guia. Os limites valem no campo (não deixa passar),
 no que é salvo e na lista (cliente acima do limite aparece sinalizado). Os valores e descrições vêm de **Configurações**: quem já tinha o
-código lá mantém o valor que configurou; o que falta da tabela entra com os dados acima (código novo: 020, 301, 131, 185). Ver
-`src/lib/cassiFaturamento.ts`.
+código lá com **valor positivo** mantém o valor que configurou (nunca é trocado pelo da tabela); o que falta da tabela entra com os dados
+acima (código novo: 020, 301, 131, 185, 160). **Valor de reserva**: um código DA TABELA que esteja salvo sem valor positivo (vazio, 0,
+negativo ou inválido) passa a usar o valor da tabela ao ler a configuração (`mesclarCodigosComPadrao`), sem migração e sem gravar nada;
+código fora da tabela segue como está (com 0 continua avisando "sem valor (defina em Configurações)"). Ver `src/lib/cassiFaturamento.ts`.
+Valor escrito com vírgula decimal ("40,00", "1.234,50") vale como o número escrito, não é trocado pelo da tabela.
+**Conferir em Configurações:** quem já tinha o 160 salvo com **outro valor positivo** (por exemplo R$ 60,00) continua com esse valor, não
+com R$ 31,97; o Rafael deve abrir Configurações e ver se o 160 está com R$ 31,97 (se estava sem valor, já aparece 31,97 e salvar grava).
+
+### Modelo da guia e "Códigos pré-preenchidos"
+
+Cada guia nova já abre com um **modelo**: os códigos marcados (e a quantidade de cada um) ficam **no topo**, destacados e na ordem do
+modelo; os demais ficam sob **Outros códigos (N)**, recolhido (`aria-expanded`/`aria-controls`; o conteúdo está sempre na página, só
+escondido). "Outros códigos" **abre sozinho** quando algum código dele já está marcado em alguma guia (por exemplo um lançamento salvo com
+301), quando há código fora da lista (valor R$ 0,00, para dar para zerar) ou quando o modelo não tem nenhum código no topo; enquanto
+houver código marcado ali a lista não recolhe (nada que está valendo some). A quantidade proposta ao marcar vem do modelo; fora do modelo,
+é 10 ou o limite por guia do código (144: 1). A guia nova também **respeita o que ainda cabe no mês** nas guias que o cliente já tem
+(131: 10 no mês): com o 131 × 10 no modelo, a segunda guia nasce sem o 131 (ou só com o que sobrou), para já abrir dentro do limite e deixar
+salvar. Trocar o modelo com o editor aberto não conta como "algo digitado" (a referência é a guia de quando o editor abriu).
+
+- **Modelo padrão** (enquanto o profissional não escolher): **144 × 1, 012 × 10 e 160 × 10 marcados**, nessa ordem; depois, desmarcados,
+  185, 131, 301 e 020 (10 cada). Antes (03/11/2026) o **185 vinha marcado e o 160 não existia na tabela**: agora o **185 deixou de vir
+  marcado por padrão** (continua em Outros códigos, é só marcar). Quem quiser o 185 de volta: botão abaixo.
+- **Botão "Códigos pré-preenchidos"** (aba Faturamento, acima da lista de clientes, com a faixa "Já vem marcado na guia nova: 144 × 1 · 012 ×
+  10 · 160 × 10"): abre uma lista com **todos** os códigos (código, descrição, oficial, valor e limite) com a caixa "já vem marcado", a
+  quantidade (1 até o limite: 144 só 1; 131 até 10 no mês; os demais até 10), **subir/descer** a ordem entre os marcados e **Voltar ao
+  padrão (144, 012 e 160)**. Vale para guia **nova**; o que já foi lançado e salvo **não muda**. Salvar só liga quando algo mudou.
+- **Onde fica** (sem migração, nada em `supabase/`): dentro de `cassi_config.codigos`, em cada código, o campo opcional
+  `pre_preenchido`: `{ "quantidade": n }` = já vem marcado com n; `null` = escolheu que não vem marcado; **sem a chave em nenhum código**
+  = vale o modelo padrão. Com a chave em algum código vale a escolha: os marcados na ordem em que estão na lista, depois os demais. Código
+  novo criado depois, sem a chave, não vem marcado. Quantidade inválida vira a do padrão do código e acima do limite vira o limite.
+  "Voltar ao padrão" (ou uma escolha igual ao padrão) **tira a chave de todos**. Lógica pura em `src/lib/cassiModeloConfig.ts`
+  (`modeloDaConfiguracao`, `codigosParaSalvar`); gravação em `src/hooks/useModeloDaGuiaCassi.ts`.
+- **Como grava**: só a coluna `codigos` (e `updated_at`) da configuração do próprio profissional. Antes **relê** o `codigos` do banco (uma
+  edição feita em outro aparelho não é sobrescrita), junta a escolha (valor, descrição e código oficial não mudam) e faz o `update` pedindo a
+  linha de volta: se não atingiu **exatamente 1 linha** é erro visível, nunca "salvo" falso. Sem configuração salva o botão Salvar não grava
+  (nunca se cria a configuração escondido): o diálogo diz "Salve primeiro as Configurações CASSI" e tem um atalho que abre as
+  Configurações. Se a leitura da configuração falhou, o botão fica desligado com o aviso. Durante a gravação os campos travam; com erro o
+  diálogo continua aberto com o que foi escolhido; com sucesso a configuração é relida e o diálogo fecha.
+- **Configurações CASSI** continua salvando como antes e **preserva `pre_preenchido`** de cada código (o diálogo não mostra o campo, mas o
+  leva junto). Apagar um código lá tira o código e a escolha dele; um código novo lá não traz a chave.
+- **Ordem no resumo e no relatório**: a lista do mês ("012 × 10 · 301 × 2"), o CSV e as colunas do **Relatório de produção** seguem sempre a
+  ordem **padrão** (144, 012, 160, 185, 131, 301, 020), sem depender do que o profissional pré-preenche: o arquivo entregue à clínica não
+  muda de formato por preferência de tela. O modelo escolhido só mexe no editor de lançamento.
+
+### O mesmo cliente de novo na fatura (outra guia)
+
+O mesmo cliente pode ter mais de uma guia no mês: **cada guia vira uma linha no relatório**. Nada novo no banco: continua uma linha por
+cliente e mês em `cassi_financeiro_clientes`, com mais de uma guia em `lancamentos` (até 6 pela tela, 12 no banco).
+
+- Em cada cliente da lista do mês há o botão **Outra guia** (visível, alvo de 44 px): abre o lançamento desse cliente **já com uma guia nova a
+  mais** (com o modelo). Cliente sem nenhuma guia lançada: só abre o lançamento (a guia do modelo já é a primeira). Com o lançamento do
+  próprio cliente já aberto, o botão acrescenta uma guia ali mesmo, sem perder o digitado.
+- Na busca **Adicionar cliente**, quem **já está na lista** também aparece, com a marca "já na lista · adicionar outra guia", e escolher faz o
+  mesmo que o botão da linha (não adiciona de novo). (A busca de **Pedir guias** usa o mesmo componente e não mudou: lá quem já está no pedido
+  continua fora.)
+- No limite de 6 guias no mês o botão e a opção da busca ficam desligados, e a linha diz "limite de 6 guias no mês".
+- Mesmas travas de sempre: durante uma gravação nada abre; com algo digitado e não salvo em **outro** cliente, pergunta antes de descartar.
+
+**O que muda para quem já tem configuração salva**: nada é regravado. Se o `codigos` salvo não tem `pre_preenchido`, passa a valer o modelo
+padrão novo (144, 012 e 160; o 185 deixa de vir marcado). O 160 aparece sozinho na lista de códigos (valor da tabela, se o salvo estava sem
+valor). Dados já lançados e salvos não mudam.
+
+**Catálogo de "Pedir guias" (decidido em 15/11/2026)**: o catálogo de "Pedir guias" (`CODIGOS_CASSI` em `src/lib/cassiGuias.ts`) é separado do
+Faturamento. Ele tinha o 160 com a descrição "Sessão de psicomotricidade" (era o texto do 012, por engano); o Rafael confirmou que está errado
+e a descrição do 160 lá passou a ser a oficial, a mesma da tabela do Faturamento ("Atendimento fisioterapêutico ambulatorial ao paciente com
+disfunção decorrente de alterações do sistema músculo-esquelético"; teste `src/test/cassiCatalogoDescricao160.test.ts`). A mensagem do
+pedido à CASSI continua levando só os números dos códigos. Quem **salvou** o 160 nas Configurações com aquele texto errado ("Sessão de
+psicomotricidade", qualquer caixa, com ou sem acento) passa a ver a descrição oficial ao ler a configuração (só esse texto, só no 160; qualquer
+outra descrição que o profissional escreveu fica como está). Nada é regravado: a troca vale na leitura e é gravada se ele salvar as Configurações.
 
 Lista de códigos e valores de 25/10/2026 (012, 020, 301, 131 e 185): a migração `20261025233000_cassi_config_codigos_tabela_cassi.sql`
 atualiza os códigos **já salvos** na configuração do Rafael (valor, descrição e código oficial passam a ser os da lista; os que não
-existiam entram no fim; 144, 160 e os que ele criou ficam como estão). Antes, guarda a configuração original em
+existiam entram no fim; 144, 160 e os que ele criou ficam como estão; o 160 sem valor passa a usar o da tabela só na leitura, sem esta migração). Antes, guarda a configuração original em
 `bkp_cassi_config_codigos_20261025` (fechada para a API; pode ser apagada depois de conferida). Não cria configuração, não mexe em
 outro profissional e pode rodar de novo sem trocar o backup.
 
@@ -96,7 +165,7 @@ outro profissional e pode rodar de novo sem trocar o backup.
   **Tentar de novo**, em vez de calcular com valores inventados e imposto 0% (e CSV, Relatório e "Guias que fecham" ficam fora). O diálogo só
   monta o formulário com o que acabou de vir do banco: com releitura em andamento, pausada (sem rede) ou que falhou, o cache antigo não vira formulário
   (salvar a partir dele desfaria uma atualização). Quem nunca salvou Configurações vê o aviso de que valem os valores da tabela da CASSI (sem imposto, sua parte
-  em 0%) e continua com os códigos 160 e 185 do Pedir guias. Os códigos da tabela voltam à lista sempre que faltarem (não dá para escondê-los
+  em 0%) e continua com os códigos do Pedir guias (144, 012, 160 e 185; o 160 e o 185 já estão na tabela, com o valor dela). Os códigos da tabela voltam à lista sempre que faltarem (não dá para escondê-los
   em Configurações).
 - **Editor de lançamento**: o que foi digitado e não salvo pede confirmação antes de ser descartado (Cancelar, trocar de cliente, fechar,
   "Usar 012 × N da agenda", trocar de mês, tirar da lista o cliente aberto, limpar a lista); durante a gravação o botão mostra "Salvando…", os
@@ -109,7 +178,7 @@ outro profissional e pode rodar de novo sem trocar o backup.
   (decisão do Rafael, nov/2026; antes partia das guias cadastradas e pedia para marcá-las). Lógica em `src/lib/cassiRelatorio.ts`.
   - **Uma linha por guia lançada**, com a quantidade de cada código e a soma; os clientes em ordem alfabética, e cliente com 2 guias no
     mês ocupa 2 linhas. Só entram clientes que estão na lista do mês, continuam no controle CASSI e têm código lançado.
-  - **Colunas**: só os códigos lançados, na ordem do lançamento (144 "Avaliação" primeiro; 012, 185, 131, 301, 020...). Código da
+  - **Colunas**: só os códigos lançados, na ordem do lançamento (144 "Avaliação" primeiro; 012, 160, 185, 131, 301, 020...). Código da
     tabela que ninguém usou não vira coluna zerada; código lançado que saiu de Configurações entra no fim, com valor zero.
   - **Totais**: bruto, imposto e sua parte pela mesma conta do fechamento do mês (arredondados por cliente), então o PDF bate com os
     cartões da aba Faturamento.

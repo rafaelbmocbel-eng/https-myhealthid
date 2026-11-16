@@ -161,3 +161,39 @@ describe('meses', () => {
     expect(ultimosMeses('2026-10', 1)).toEqual(['2026-10']);
   });
 });
+
+describe('fechamento do mês com o código 160 (R$ 31,97 por sessão)', () => {
+  const comOs160: ConfigFinanceira = {
+    codigos: [{ codigo: '144', valor: 65.62 }, { codigo: '012', valor: 57.7 }, { codigo: '160', valor: 31.97 }],
+    responsaveis: [], imposto_por_guia: 0, imposto_percentual: 10, minha_parte_percentual: 50,
+  };
+
+  it('10 sessões de 160 valem R$ 319,70 (bruto, sem ruído), contam como 10 sessões e o resumo diz 160 × 10', () => {
+    const r = fecharMesPorLancamentos({ clientes: [{ id: 'a', nome: 'Ana Souza', responsavel: '', guias: [{ '160': 10 }] }], cfg: comOs160 });
+    const ana = r.linhas[0];
+    expect(ana.bruto).toBe(319.7);
+    expect([ana.imposto, ana.liquido]).toEqual([31.97, 287.73]);
+    expect(ana.sessoes).toBe(10);
+    expect(ana.resumo).toBe('160 × 10');
+  });
+
+  it('a guia do modelo novo (144 × 1, 012 × 10, 160 × 10) fecha em R$ 962,32 e 20 sessões', () => {
+    const r = fecharMesPorLancamentos({ clientes: [{ id: 'a', nome: 'Ana Souza', responsavel: '', guias: [{ '144': 1, '012': 10, '160': 10 }] }], cfg: comOs160 });
+    expect(r.linhas[0].bruto).toBe(962.32);
+    expect(r.linhas[0].sessoes).toBe(20);
+    expect(r.linhas[0].resumo).toBe('144 × 1 · 012 × 10 · 160 × 10');
+  });
+
+  it('o mesmo cliente em duas guias no mês soma as duas (uma linha na tela, duas no relatório)', () => {
+    const r = fecharMesPorLancamentos({ clientes: [{ id: 'a', nome: 'Ana Souza', responsavel: '', guias: [{ '160': 10 }, { '160': 4, '012': 6 }] }], cfg: comOs160 });
+    expect(r.linhas).toHaveLength(1);
+    expect(r.linhas[0].bruto).toBe(793.78); // 14 × 31,97 + 6 × 57,70
+    expect(r.linhas[0].sessoes).toBe(20);
+    expect(r.linhas[0].resumo).toBe('012 × 6 · 160 × 14 · 2 guias');
+  });
+
+  it('código 160 sem valor na configuração vale zero aqui (quem completa com o valor da tabela é a leitura da configuração)', () => {
+    const r = fecharMesPorLancamentos({ clientes: [{ id: 'a', nome: 'Ana Souza', responsavel: '', guias: [{ '160': 10 }] }], cfg: { ...comOs160, codigos: [{ codigo: '160', valor: 0 }] } });
+    expect(r.linhas[0].bruto).toBe(0);
+  });
+});

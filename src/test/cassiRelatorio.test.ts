@@ -10,6 +10,7 @@ const codigos = [
   { codigo: '301', descricao: 'Agulhamento seco', valor: 35.55, codigo_oficial: '20103301' },
   { codigo: '020', descricao: 'Sessão em grupo', valor: 57.7, codigo_oficial: '50000020' },
 ];
+const codigo160 = { codigo: '160', descricao: 'Atendimento fisioterapêutico ambulatorial', valor: 31.97, codigo_oficial: '50000160' };
 const cfg: ConfigDoRelatorio = { codigos, responsaveis: [], imposto_por_guia: 0, imposto_percentual: 14, minha_parte_percentual: 40 };
 
 const cliente = (id: string, nome: string, guias: Array<Record<string, number>>): ClienteParaFechar => ({ id, nome, responsavel: '', guias });
@@ -127,5 +128,47 @@ describe('relatorioDosLancamentos', () => {
     const clientes = [cliente('2', 'Bruno', [{ '012': 1 }]), cliente('1', 'Aida', [{ '012': 2 }])];
     relatorioDosLancamentos({ clientes, cfg });
     expect(clientes.map((c) => c.nome)).toEqual(['Bruno', 'Aida']);
+  });
+});
+
+describe('relatorioDosLancamentos com o código 160', () => {
+  const comOs160: ConfigDoRelatorio = { ...cfg, codigos: [...codigos, codigo160] };
+  const modeloNovo = { '144': 1, '012': 10, '160': 10 };
+
+  it('o 160 vira coluna com o código oficial 50000160, entre o 012 e o 185, e a soma da guia do modelo novo é R$ 962,32', () => {
+    const r = relatorioDosLancamentos({ clientes: [cliente('1', 'Aida', [{ ...modeloNovo, '185': 2 }])], cfg: comOs160 });
+    expect(r.colunas).toEqual([
+      { codigo: '144', oficial: '50000144', label: 'Avaliação' },
+      { codigo: '012', oficial: '50000012', label: 'Código' },
+      { codigo: '160', oficial: '50000160', label: 'Código' },
+      { codigo: '185', oficial: '31602185', label: 'Código' },
+    ]);
+    expect(r.linhas).toEqual([{ nome: 'Aida', q: [1, 10, 10, 2], soma: 1178.58 }]); // 65 + 577 + 319,70 + 216,88 (a consulta vale 65 neste cenário)
+  });
+
+  it('o mesmo cliente em duas guias com 160 ocupa duas linhas e conta como um cliente', () => {
+    const r = relatorioDosLancamentos({ clientes: [cliente('1', 'Aida', [{ '160': 10 }, { '160': 4, '012': 6 }])], cfg: comOs160 });
+    expect(r.colunas.map((c) => c.codigo)).toEqual(['012', '160']);
+    expect(r.linhas).toEqual([
+      { nome: 'Aida', q: [0, 10], soma: 319.7 },
+      { nome: 'Aida', q: [6, 4], soma: 474.08 }, // 346,20 + 127,88
+    ]);
+    expect([r.clientes, r.guias]).toEqual([1, 2]);
+  });
+
+  it('o total do relatório bate com o do fechamento com 160', () => {
+    const clientes = [cliente('1', 'Aida', [modeloNovo])];
+    const r = relatorioDosLancamentos({ clientes, cfg: comOs160 });
+    expect(r.totBruto).toBe(961.7); // 65,00 (a consulta vale 65 neste cenário) + 577,00 + 319,70
+    expect(r.totBruto).toBe(fecharMesPorLancamentos({ clientes, cfg: comOs160 }).totBruto);
+  });
+
+  it('a ordem das colunas é sempre a padrão (144, 012, 160, 185, 131, 301, 020): a escolha de "pré-preenchidos" não muda o arquivo da clínica', () => {
+    const escolhido: ConfigDoRelatorio = {
+      ...comOs160,
+      codigos: [...codigos, codigo160].map((c) => ({ ...c, pre_preenchido: c.codigo === '301' ? { quantidade: 3 } : c.codigo === '020' ? { quantidade: 10 } : null })),
+    };
+    const r = relatorioDosLancamentos({ clientes: [cliente('1', 'Aida', [{ '144': 1, '301': 3, '020': 10, '012': 10, '160': 10, '185': 10, '131': 10 }])], cfg: escolhido });
+    expect(r.colunas.map((c) => c.codigo)).toEqual(['144', '012', '160', '185', '131', '301', '020']);
   });
 });

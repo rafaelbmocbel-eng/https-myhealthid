@@ -127,43 +127,46 @@ describe('LancamentoDoCliente', () => {
   };
   const qtd = (codigo: string, guia = 1) => screen.getByLabelText(`Quantidade do código ${codigo} na guia ${guia}`) as HTMLInputElement;
   const digitar = (codigo: string, v: string, guia = 1) => fireEvent.change(qtd(codigo, guia), { target: { value: v } });
-  const caixa = (codigo: string, guia = 1) => screen.getByRole('checkbox', { name: `Marcar o código ${codigo} na guia ${guia}` });
+  // hidden: true porque os códigos fora do modelo ficam sob "Outros códigos" (recolhido); aqui se testa a conta, a visibilidade tem testes próprios.
+  const caixa = (codigo: string, guia = 1) => screen.getByRole('checkbox', { name: `Marcar o código ${codigo} na guia ${guia}`, hidden: true });
   const marcado = (codigo: string, guia = 1) => caixa(codigo, guia).getAttribute('data-state') === 'checked';
   const total = () => brlTxt(screen.getByText(/Total de Ana/).parentElement?.textContent);
-  // A guia nova abre com o modelo (144, 012 e 185 marcados). Os testes de limite e de digitação abaixo partem de uma guia vazia.
-  const limparModelo = (guia = 1) => { for (const c of ['144', '012', '185']) digitar(c, '0', guia); };
+  // A guia nova abre com o modelo (144, 012 e 160 marcados). Os testes de limite e de digitação abaixo partem de uma guia vazia.
+  const limparModelo = (guia = 1) => { for (const c of ['144', '012', '160']) digitar(c, '0', guia); };
 
-  it('mostra os seis códigos na ordem do modelo (144, 012, 185, 131, 301, 020) com código oficial, valor e limite', () => {
+  it('mostra os sete códigos na ordem do modelo (144, 012, 160, 185, 131, 301, 020) com código oficial, valor e limite', () => {
     montar();
+    fireEvent.click(screen.getByRole('button', { name: /^Outros códigos/ })); // os quatro de baixo ficam recolhidos
     const guia = within(screen.getByRole('region', { name: 'Guia 1 de Ana Souza' }));
     const linhas = guia.getAllByRole('listitem');
-    expect(linhas.map((l) => brlTxt(l.textContent).split(' ')[0])).toEqual(['144', '012', '185', '131', '301', '020']);
+    expect(linhas.map((l) => brlTxt(l.textContent).split(' ')[0])).toEqual(['144', '012', '160', '185', '131', '301', '020']);
     const txt = (i: number) => brlTxt(linhas[i].textContent);
     expect(txt(0)).toContain('5.00.00.144 · R$ 65,62 · máx. 1 por guia');
     expect(txt(1)).toContain('5.00.00.012 · R$ 57,70 · máx. 10 por guia');
-    expect(txt(2)).toContain('3.16.02.185 · R$ 108,44 · máx. 10 por guia');
-    expect(txt(3)).toContain('2.01.03.131 · R$ 67,79 · máx. 10 no mês');
-    expect(txt(4)).toContain('2.01.03.301 · R$ 35,55 · máx. 10 por guia');
-    expect(txt(5)).toContain('5.00.00.020 · R$ 57,70 · máx. 10 por guia');
+    expect(txt(2)).toContain('5.00.00.160 · R$ 31,97 · máx. 10 por guia');
+    expect(txt(3)).toContain('3.16.02.185 · R$ 108,44 · máx. 10 por guia');
+    expect(txt(4)).toContain('2.01.03.131 · R$ 67,79 · máx. 10 no mês');
+    expect(txt(5)).toContain('2.01.03.301 · R$ 35,55 · máx. 10 por guia');
+    expect(txt(6)).toContain('5.00.00.020 · R$ 57,70 · máx. 10 por guia');
   });
 
   describe('o modelo da guia', () => {
-    it('abre com 144 × 1, 012 × 10 e 185 × 10 já marcados; 131, 301 e 020 com 10 prontos, mas sem marcar', () => {
+    it('abre com 144 × 1, 012 × 10 e 160 × 10 já marcados; 185, 131, 301 e 020 com 10 prontos, mas sem marcar', () => {
       montar();
-      for (const [cod, q] of [['144', '1'], ['012', '10'], ['185', '10']]) {
+      for (const [cod, q] of [['144', '1'], ['012', '10'], ['160', '10']]) {
         expect(marcado(cod), `${cod} marcado`).toBe(true);
         expect(qtd(cod).value).toBe(q);
       }
-      for (const cod of ['131', '301', '020']) {
+      for (const cod of ['185', '131', '301', '020']) {
         expect(marcado(cod), `${cod} sem marcar`).toBe(false);
         expect(qtd(cod).value).toBe(''); // sem marcar não há valor digitado...
         expect(qtd(cod).placeholder).toBe('10'); // ...mas a quantidade já está pronta, à vista, em cinza
       }
     });
 
-    it('só o que está marcado entra no total: 65,62 + 10 × 57,70 + 10 × 108,44 = R$ 1.727,02 e 20 sessões (a consulta não é sessão)', () => {
+    it('só o que está marcado entra no total: 65,62 + 10 × 57,70 + 10 × 31,97 = R$ 962,32 e 20 sessões (a consulta não é sessão)', () => {
       montar();
-      expect(total()).toContain('R$ 1.727,02 · 20 sessões');
+      expect(total()).toContain('R$ 962,32 · 20 sessões');
     });
 
     it('marcar um código do modelo coloca a quantidade pronta e ele passa a valer (301 × 10 = R$ 355,50)', () => {
@@ -171,7 +174,7 @@ describe('LancamentoDoCliente', () => {
       fireEvent.click(caixa('301'));
       expect(marcado('301')).toBe(true);
       expect(qtd('301').value).toBe('10');
-      expect(total()).toContain('R$ 2.082,52 · 30 sessões');
+      expect(total()).toContain('R$ 1.317,82 · 30 sessões');
     });
 
     it('marcar 131 e 020 também usa os 10 prontos', () => {
@@ -180,18 +183,18 @@ describe('LancamentoDoCliente', () => {
       fireEvent.click(caixa('020'));
       expect(qtd('131').value).toBe('10');
       expect(qtd('020').value).toBe('10');
-      expect(total()).toContain('R$ 2.981,92 · 40 sessões'); // 1.727,02 + 10 × 67,79 + 10 × 57,70
+      expect(total()).toContain('R$ 2.217,22 · 40 sessões'); // 962,32 + 10 × 67,79 + 10 × 57,70
     });
 
     it('desmarcar tira do total, guarda a quantidade e ela volta ao marcar de novo', () => {
       montar();
       digitar('012', '8');
-      expect(total()).toContain('R$ 1.611,62 · 18 sessões'); // 65,62 + 8 × 57,70 + 10 × 108,44
+      expect(total()).toContain('R$ 846,92 · 18 sessões'); // 65,62 + 8 × 57,70 + 10 × 31,97
       fireEvent.click(caixa('012'));
       expect(marcado('012')).toBe(false);
       expect(qtd('012').value).toBe('');
       expect(qtd('012').placeholder).toBe('8'); // continua à vista, só não vale
-      expect(total()).toContain('R$ 1.150,02 · 10 sessões'); // 65,62 + 10 × 108,44
+      expect(total()).toContain('R$ 385,32 · 10 sessões'); // 65,62 + 10 × 31,97
       fireEvent.click(caixa('012'));
       expect(marcado('012')).toBe(true);
       expect(qtd('012').value).toBe('8');
@@ -206,6 +209,7 @@ describe('LancamentoDoCliente', () => {
 
     it('o + numa linha sem marcar marca com a quantidade pronta; o − até zero desmarca', () => {
       montar();
+      fireEvent.click(screen.getByRole('button', { name: /^Outros códigos/ })); // o 301 mora em "Outros códigos"
       fireEvent.click(screen.getByRole('button', { name: 'Aumentar o código 301 da guia 1' }));
       expect(marcado('301')).toBe(true);
       expect(qtd('301').value).toBe('10');
@@ -235,7 +239,7 @@ describe('LancamentoDoCliente', () => {
         digitar('012', '5');
         expect(marcado('012')).toBe(true);
         expect(qtd('012').value).toBe('5');
-        expect(total()).toContain('R$ 1.438,52 · 15 sessões'); // 65,62 + 5 × 57,70 + 10 × 108,44
+        expect(total()).toContain('R$ 673,82 · 15 sessões'); // 65,62 + 5 × 57,70 + 10 × 31,97
       });
 
       it('digitar um dígito numa linha sem marcar marca com esse dígito, não com a quantidade pronta', () => {
@@ -243,7 +247,7 @@ describe('LancamentoDoCliente', () => {
         digitar('131', '1');
         expect(marcado('131')).toBe(true);
         expect(qtd('131').value).toBe('1');
-        expect(total()).toContain('R$ 1.794,81'); // 1.727,02 + 1 × 67,79
+        expect(total()).toContain('R$ 1.030,11'); // 962,32 + 1 × 67,79
       });
 
       it('digitar 10 numa linha sem marcar marca com 10 (o campo vazio muda, então o evento dispara)', () => {
@@ -302,7 +306,7 @@ describe('LancamentoDoCliente', () => {
     describe('aviso do modelo', () => {
       it('enquanto só o modelo está marcado, avisa para conferir antes de salvar', () => {
         montar();
-        expect(screen.getByRole('note').textContent).toBe('Já vem marcado o modelo da guia (144 × 1 · 012 × 10 · 185 × 10). Confira e ajuste antes de salvar.');
+        expect(screen.getByRole('note').textContent).toBe('Já vem marcado o modelo da guia (144 × 1 · 012 × 10 · 160 × 10). Confira e ajuste antes de salvar.');
       });
 
       it('mexer no que quer que seja tira o aviso (já é decisão do profissional)', () => {
@@ -348,7 +352,8 @@ describe('LancamentoDoCliente', () => {
       fireEvent.click(screen.getByRole('button', { name: /Outra guia/ }));
       expect(marcado('144', 2)).toBe(true);
       expect(qtd('012', 2).value).toBe('10');
-      expect(marcado('185', 2)).toBe(true);
+      expect(marcado('160', 2)).toBe(true);
+      expect(marcado('185', 2)).toBe(false);
       expect(marcado('301', 2)).toBe(false);
     });
 
@@ -357,21 +362,21 @@ describe('LancamentoDoCliente', () => {
       expect(marcado('012')).toBe(true);
       expect(qtd('012').value).toBe('7');
       expect(marcado('144')).toBe(false);
-      expect(marcado('185')).toBe(false);
+      expect(marcado('160')).toBe(false);
       expect(total()).toContain('R$ 403,90 · 7 sessões');
     });
 
-    it('salvar sem mexer entrega o modelo: 144 × 1, 012 × 10 e 185 × 10', () => {
+    it('salvar sem mexer entrega o modelo: 144 × 1, 012 × 10 e 160 × 10', () => {
       const { onSalvar } = montar();
       fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
-      expect(onSalvar).toHaveBeenCalledWith([{ '144': 1, '012': 10, '185': 10 }]);
+      expect(onSalvar).toHaveBeenCalledWith([{ '144': 1, '012': 10, '160': 10 }]);
     });
 
-    it('marcar os três que vêm desmarcados e salvar entrega os seis', () => {
+    it('marcar os quatro que vêm desmarcados e salvar entrega os sete', () => {
       const { onSalvar } = montar();
-      for (const c of ['131', '301', '020']) fireEvent.click(caixa(c));
+      for (const c of ['185', '131', '301', '020']) fireEvent.click(caixa(c));
       fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
-      expect(onSalvar).toHaveBeenCalledWith([{ '144': 1, '012': 10, '185': 10, '131': 10, '301': 10, '020': 10 }]);
+      expect(onSalvar).toHaveBeenCalledWith([{ '144': 1, '012': 10, '160': 10, '185': 10, '131': 10, '301': 10, '020': 10 }]);
     });
 
     it('abrir e não mexer em nada não é "algo digitado": cancelar não pergunta', () => {
@@ -606,7 +611,7 @@ describe('ClientesDoMes', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lançar códigos e sessões de Bruno Lima' }));
     fireEvent.change(screen.getByLabelText('Quantidade do código 012 na guia 1'), { target: { value: '3' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
-    await waitFor(() => expect(props.onSalvarLancamento).toHaveBeenCalledWith('b', [{ '144': 1, '012': 3, '185': 10 }]));
+    await waitFor(() => expect(props.onSalvarLancamento).toHaveBeenCalledWith('b', [{ '144': 1, '012': 3, '160': 10 }]));
     await waitFor(() => expect(screen.queryByRole('group')).toBeNull());
   });
 

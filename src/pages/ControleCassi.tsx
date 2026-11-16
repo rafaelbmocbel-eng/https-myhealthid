@@ -20,14 +20,17 @@ import { toast } from 'sonner';
 import { CODIGOS_CASSI, statusPaciente, precisaNovaGuia, sessoesRestantes, venceuPrazoProximaGuia, dataProximoPedido, passoFisicoGuia, type GuiaCassi, type GuiaStatus, type AssinaturaGuia, type PassoFisico } from '@/lib/cassiGuias';
 import { contarSessoesDoMes, fecharMesPorLancamentos, ultimosMeses } from '@/lib/cassiFinanceiro';
 import { relatorioDosLancamentos } from '@/lib/cassiRelatorio';
-import { MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_GUIAS_NO_MES, guiasPelaAgenda, mesclarCodigosComPadrao, ordenarParaLancamento, type GuiaLancada } from '@/lib/cassiFaturamento';
+import { MAXIMO_CARACTERES_DO_CODIGO, MAXIMO_GUIAS_NO_MES, guiasPelaAgenda, mesclarCodigosComPadrao, ordenarParaLancamento, type GuiaLancada, type PrePreenchido } from '@/lib/cassiFaturamento';
+import { modeloDaConfiguracao } from '@/lib/cassiModeloConfig';
 import { justificativasParaMensagem } from '@/lib/cassiJustificativa';
 import { listaDoPedido, sugestoesDoPedido, candidatosDoPedido, pedidoEmAberto, itemDoPedido, montarTextoPedido, camposDaJustificativaParaGravar, linkWhatsApp, linkWhatsAppLongo, MAXIMO_CODIGOS_PEDIDO, type ItemPedido, type SugestaoPedido } from '@/lib/cassiPedidos';
 import { BuscaDeCliente } from '@/components/cassi/BuscaDeCliente';
 import { SugestoesDoPedido } from '@/components/cassi/SugestoesDoPedido';
 import { JustificativasCassi, type TextosGerados } from '@/components/cassi/JustificativasCassi';
 import { ClientesDoMes } from '@/components/cassi/ClientesDoMes';
+import { CodigosPrePreenchidos } from '@/components/cassi/CodigosPrePreenchidos';
 import { useClientesFinanceiroCassi } from '@/hooks/useClientesFinanceiroCassi';
+import { useGravarModeloDaGuia } from '@/hooks/useModeloDaGuiaCassi';
 
 // A aba "Este mês" está desligada por enquanto (pedido do Rafael). Mudar para true traz de volta a aba, o
 // botão "Colocar em Este mês" e os avisos que falam dela; o código da aba continua aqui.
@@ -62,7 +65,7 @@ const diaLocalKey = (iso: string) => {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 };
 
-interface CodigoCfg { codigo: string; descricao: string; valor: number; codigo_oficial?: string; }
+interface CodigoCfg { codigo: string; descricao: string; valor: number; codigo_oficial?: string; pre_preenchido?: PrePreenchido; }
 interface ResponsavelCfg { nome: string; percentual: number; }
 
 // Configuração CASSI do profissional (códigos com valor + imposto por guia +
@@ -572,7 +575,7 @@ export default function ControleCassi() {
         ) : view === 'planilha' ? (
           <PlanilhaGuias guias={guiasEff} onAbrir={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} />
         ) : view === 'faturamento' ? (
-          <FinanceiroCassi onAbrirGuia={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} />
+          <FinanceiroCassi onAbrirGuia={(g) => setEditando({ paciente: pacDaGuia(g), guia: g })} onAbrirConfig={() => setConfigOpen(true)} />
         ) : view === 'pedir' ? (
           <>
             <PedirGuiasPanel
@@ -2247,7 +2250,8 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
   const { data: cfg, isLoading, isFetching, fetchStatus, isError: erroCfg, refetch: recarregarCfg } = useCassiConfig();
   // Campos numéricos ficam como TEXTO enquanto edita (aceita vírgula e vazio);
   // só viram número ao salvar. Assim dá pra digitar "57,07" sem a fração sumir.
-  type CodigoEdit = { codigo: string; descricao: string; codigo_oficial?: string; valor: string };
+  // pre_preenchido é a escolha do botão "Códigos pré-preenchidos" (aba Faturamento): este diálogo não a mostra, mas a leva junto ao salvar.
+  type CodigoEdit = { codigo: string; descricao: string; codigo_oficial?: string; valor: string; pre_preenchido?: PrePreenchido };
   type RespEdit = { nome: string; percentual: string };
   const numStr = (n?: number | null) => (n ? String(n).replace('.', ',') : '');
   const selecionar = (e: FocusEvent<HTMLInputElement>) => e.currentTarget.select();
@@ -2264,7 +2268,7 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
     // Só preenche com o que acabou de chegar do banco: o cache pode ser de antes de uma atualização e salvar dele desfaria a mudança.
     // Releitura em andamento, pausada (sem rede) ou que falhou não conta: o cache velho não vira formulário.
     if (cfg && fetchStatus === 'idle' && !erroCfg && !pronto) {
-      setCodigos(cfg.codigos.map((c) => ({ codigo: c.codigo, descricao: c.descricao, codigo_oficial: c.codigo_oficial, valor: numStr(c.valor) })));
+      setCodigos(cfg.codigos.map((c) => ({ codigo: c.codigo, descricao: c.descricao, codigo_oficial: c.codigo_oficial, valor: numStr(c.valor), pre_preenchido: c.pre_preenchido })));
       setImpostoPct(numStr(cfg.imposto_percentual));
       setMinhaParte(numStr(cfg.minha_parte_percentual));
       setResponsaveis((cfg.responsaveis || []).map((r) => ({ nome: r.nome, percentual: numStr(r.percentual) })));
@@ -2290,7 +2294,10 @@ function ConfigCassiDialog({ onClose }: { onClose: () => void }) {
     mutationFn: async () => {
       if (!user) throw new Error('Sem sessão');
       const limpos = codigos.filter((c) => c.codigo.trim())
-        .map((c) => ({ codigo: c.codigo.trim(), descricao: c.descricao.trim(), valor: parseFloat(String(c.valor).replace(',', '.')) || 0, codigo_oficial: (c.codigo_oficial || '').trim() }));
+        .map((c) => ({
+          codigo: c.codigo.trim(), descricao: c.descricao.trim(), valor: parseFloat(String(c.valor).replace(',', '.')) || 0, codigo_oficial: (c.codigo_oficial || '').trim(),
+          ...(c.pre_preenchido !== undefined ? { pre_preenchido: c.pre_preenchido } : {}),
+        }));
       const respLimpos = responsaveis.filter((r) => r.nome.trim())
         .map((r) => ({ nome: r.nome.trim(), percentual: parseFloat(String(r.percentual).replace(',', '.')) || 0 }));
       const { error } = await (supabase as any).from('cassi_config').upsert({
@@ -2708,8 +2715,9 @@ function PedirGuiasPanel({ linhas, candidatos = [], sugestoes = [], onNovaGuia, 
 const MESES_PT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const mesAtualISO = () => hojeISO().slice(0, 7); // YYYY-MM no fuso de Brasília
 
-function FinanceiroCassi({ onAbrirGuia }: {
+function FinanceiroCassi({ onAbrirGuia, onAbrirConfig }: {
   onAbrirGuia: (g: GuiaCassi & { pacientes?: { nome: string; sobrenome: string | null } }) => void;
+  onAbrirConfig: () => void;
 }) {
   const { user } = useAuth();
   const { data: cfg, isError: erroCfg, refetch: recarregarCfg } = useCassiConfig();
@@ -2782,7 +2790,10 @@ function FinanceiroCassi({ onAbrirGuia }: {
   }, [mes, agendamentos, idsCassi]);
 
   // Códigos que dá para lançar: os de Configurações (com os padrões que faltam), com o 012 na frente.
-  const catalogo = useMemo(() => ordenarParaLancamento(cfg?.codigos ?? []), [cfg]);
+  // O que já vem marcado numa guia nova: o modelo padrão, ou o que o profissional escolheu em "Códigos pré-preenchidos".
+  const modelo = useMemo(() => modeloDaConfiguracao(cfg?.codigos), [cfg]);
+  const catalogo = useMemo(() => ordenarParaLancamento(cfg?.codigos ?? [], modelo), [cfg, modelo]);
+  const gravarModelo = useGravarModeloDaGuia();
   const lancamentosDoMes = lista.lancamentosDoMes(mes);
   // Responsável técnico do cliente = o da guia mais recente (é com ele que o repasse é calculado).
   const responsavelPorPaciente = useMemo(() => {
@@ -2806,7 +2817,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
   const clientesDaLista = useMemo(
     () => pacientes
       .filter((p) => idsDoMes.has(p.id))
-      .map((p) => ({ id: p.id, nome: nomeDe(p), sessoesAgenda: sessoesTodos.get(p.id) || 0, guias: lancamentosDoMes.get(p.id) || [], encerrado: !!p.cassi_encerrado_em }))
+      .map((p) => ({ id: p.id, nome: nomeDe(p), carteirinha: p.carteirinha, sessoesAgenda: sessoesTodos.get(p.id) || 0, guias: lancamentosDoMes.get(p.id) || [], encerrado: !!p.cassi_encerrado_em }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     [pacientes, idsDoMes, sessoesTodos, lancamentosDoMes],
   );
@@ -2938,6 +2949,16 @@ function FinanceiroCassi({ onAbrirGuia }: {
         </div>
       )}
 
+      {cfg && (
+        <CodigosPrePreenchidos
+          catalogo={cfg.codigos}
+          salva={cfg.salva}
+          indisponivel={erroCfg}
+          onSalvar={(escolha) => gravarModelo.mutateAsync({ escolha, catalogo: cfg.codigos })}
+          onAbrirConfiguracoes={onAbrirConfig}
+        />
+      )}
+
       {cfg && <ClientesDoMes
         key={mes}
         mesLabel={`${MESES_PT[m - 1]} de ${ano}`}
@@ -2949,6 +2970,7 @@ function FinanceiroCassi({ onAbrirGuia }: {
         erro={lista.erro}
         sessoesEstado={carregandoAgenda ? 'carregando' : erroAgenda ? 'erro' : 'ok'}
         catalogo={catalogo}
+        modelo={modelo}
         quantosPreencheriaComAgenda={semLancamentoComAgenda.length}
         salvandoId={salvandoId}
         rascunhoAlterado={rascunhoAlterado}

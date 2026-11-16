@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
-import { CalendarCheck, ChevronDown, X } from 'lucide-react';
+import { CalendarCheck, ChevronDown, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BuscaDeCliente, type CandidatoBusca } from '@/components/cassi/BuscaDeCliente';
 import { LancamentoDoCliente } from '@/components/cassi/LancamentoDoCliente';
 import {
-  brutoDosLancamentos, problemasDosLancamentos, resumoDosLancamentos, totalPorCodigo, type CodigoFaturavel, type GuiaLancada,
+  MAXIMO_GUIAS_NO_MES, MODELO_DA_GUIA, brutoDosLancamentos, problemasDosLancamentos, resumoDosLancamentos, totalPorCodigo,
+  type CodigoFaturavel, type GuiaLancada, type LinhaDoModelo,
 } from '@/lib/cassiFaturamento';
 
 const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -13,6 +14,7 @@ const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'cu
 export interface ClienteDoMes {
   id: string;
   nome: string;
+  carteirinha?: string | null; // para achar quem já está na lista também pela busca ("adicionar outra guia")
   // Sessões atendidas na agenda neste mês: só referência, não entram na conta.
   sessoesAgenda: number;
   // O que foi lançado para este cliente no mês (é daqui que sai o valor).
@@ -23,7 +25,7 @@ export interface ClienteDoMes {
 // Lista dos clientes do mês na aba Faturamento do Controle CASSI: o profissional adiciona o cliente e lança os códigos
 // usados e a quantidade de cada um; o valor do mês sai disso.
 export function ClientesDoMes({
-  mesLabel, clientes, candidatos, comSessaoFora, catalogo, quantosPreencheriaComAgenda, ocupado = false, carregando = false,
+  mesLabel, clientes, candidatos, comSessaoFora, catalogo, modelo = MODELO_DA_GUIA, quantosPreencheriaComAgenda, ocupado = false, carregando = false,
   erro = false, sessoesEstado = 'ok', salvandoId = null, rascunhoAlterado,
   onAdicionar, onAdicionarComSessao, onRemover, onLimpar, onSalvarLancamento, onPreencherComAgenda,
 }: {
@@ -32,6 +34,7 @@ export function ClientesDoMes({
   candidatos: CandidatoBusca[]; // quem ainda não está na lista
   comSessaoFora: number; // clientes com sessão atendida no mês que ainda não estão na lista
   catalogo: CodigoFaturavel[]; // códigos com valor, já na ordem de exibição
+  modelo?: readonly LinhaDoModelo[]; // o que já vem marcado numa guia nova (sem isto, o modelo padrão)
   quantosPreencheriaComAgenda: number; // clientes sem lançamento que têm sessão na agenda
   ocupado?: boolean;
   carregando?: boolean; // a lista do mês ainda está chegando: não dá para dizer que está vazia
@@ -47,6 +50,8 @@ export function ClientesDoMes({
   onPreencherComAgenda: () => void;
 }) {
   const [abertoPedido, setAbertoId] = useState<string | null>(null);
+  // "Outra guia" pedido na linha ou na busca: quantas vezes, para qual cliente (o editor deste cliente adiciona uma guia a cada pedido).
+  const [pedidoOutraGuia, setPedidoOutraGuia] = useState<{ id: string; vezes: number } | null>(null);
   const interno = useRef(false);
   const abertoAlterado = rascunhoAlterado ?? interno; // o lançamento aberto tem algo digitado que ainda não foi salvo
   const [soFaltam, setSoFaltam] = useState(false);
@@ -59,6 +64,25 @@ export function ClientesDoMes({
   const filtrando = soFaltam && faltam.length > 0;
   // O cliente com o lançamento aberto não some com o filtro: o que está digitado nele não se perde sem aviso.
   const visiveis = filtrando ? clientes.filter((c) => c.guias.length === 0 || c.id === abertoId) : clientes;
+
+  // Abre o lançamento do cliente com uma guia a mais. Mesmas travas de abrir um cliente: com algo digitado e não salvo em OUTRO
+  // cliente pergunta antes de descartar; e durante uma gravação não faz nada.
+  const pedirOutraGuia = (id: string) => {
+    if (salvandoId != null || ocupado) return;
+    if (!clientes.some((c) => c.id === id)) return;
+    if (abertoId !== null && abertoId !== id && abertoAlterado.current && !window.confirm('Descartar o que você digitou no lançamento aberto?')) return;
+    if (abertoId !== id) abertoAlterado.current = false;
+    setPedidoOutraGuia((atual) => ({ id, vezes: (atual?.id === id ? atual.vezes : 0) + 1 }));
+    setAbertoId(id);
+  };
+  // Quem já está na lista também aparece na busca, para pedir outra guia (o mesmo cliente pode ter mais de uma guia no mês).
+  const candidatosDaBusca = [
+    ...candidatos,
+    ...clientes.map((c) => ({
+      id: c.id, nome: c.nome, carteirinha: c.carteirinha, encerrado: c.encerrado, jaNaLista: true,
+      semOutraGuia: c.guias.length >= MAXIMO_GUIAS_NO_MES ? `já tem ${MAXIMO_GUIAS_NO_MES} guias neste mês (o máximo)` : undefined,
+    })),
+  ];
 
   const referenciaAgenda = (c: ClienteDoMes) => {
     if (sessoesEstado === 'carregando') return 'agenda: carregando…';
@@ -81,12 +105,18 @@ export function ClientesDoMes({
       </p>
 
       <BuscaDeCliente
-        candidatos={candidatos}
+        candidatos={candidatosDaBusca}
         placeholder="Adicionar cliente (nome ou carteirinha)"
         rotulo="Adicionar cliente à lista do mês"
+        semResultado="Confira o nome ou a carteirinha."
         onEscolher={onAdicionar}
+        aoEscolherJaNaLista={pedirOutraGuia}
         desabilitado={ocupado}
       />
+      <p className="text-[11px] text-muted-foreground">
+        O mesmo cliente pode ter mais de uma guia no mês: cada guia vira uma linha no relatório. Use <b>Outra guia</b> na linha do cliente
+        (ou procure o nome acima).
+      </p>
 
       <div className="flex items-center gap-2 flex-wrap">
         <Button size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" disabled={ocupado || comSessaoFora === 0} onClick={onAdicionarComSessao}>
@@ -145,6 +175,7 @@ export function ClientesDoMes({
                       // Enquanto grava (qualquer gravação da lista) não troca: se falhasse, o que foi digitado já teria ido embora.
                       if (abertoId !== null && abertoAlterado.current && !window.confirm('Descartar o que você digitou no lançamento aberto?')) return;
                       abertoAlterado.current = false;
+                      setPedidoOutraGuia(null);
                       setAbertoId(aberto ? null : c.id);
                     }}
                     aria-expanded={aberto}
@@ -160,6 +191,7 @@ export function ClientesDoMes({
                       {c.guias.length > 0 ? (
                         <span className="block text-[11px] tabular-nums text-muted-foreground">
                           {resumoDosLancamentos(c.guias)} · <b className="text-foreground">{brl(bruto)}</b>
+                          {c.guias.length >= MAXIMO_GUIAS_NO_MES && <span> · limite de {MAXIMO_GUIAS_NO_MES} guias no mês</span>}
                           {acimaDoLimite && <span className="text-rose-600 dark:text-rose-400"> · acima do limite da CASSI</span>}
                           {Object.keys(totalPorCodigo(c.guias)).some((cod) => valorDe(cod) === 0) && <span className="text-amber-700 dark:text-amber-400"> · código sem valor (defina em Configurações)</span>}
                         </span>
@@ -170,6 +202,17 @@ export function ClientesDoMes({
                     </span>
                     <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', aberto && 'rotate-180')} aria-hidden />
                   </button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 shrink-0 gap-1 px-2.5 text-[12px]"
+                    disabled={salvandoId != null || ocupado || c.guias.length >= MAXIMO_GUIAS_NO_MES}
+                    aria-label={`Outra guia para ${c.nome} neste mês`}
+                    title={c.guias.length >= MAXIMO_GUIAS_NO_MES ? `Já são ${MAXIMO_GUIAS_NO_MES} guias neste mês: é o máximo` : 'Lançar mais uma guia para o mesmo cliente neste mês'}
+                    onClick={() => pedirOutraGuia(c.id)}
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden /> Outra guia
+                  </Button>
                   <button type="button" disabled={ocupado} onClick={() => {
                     if (aberto && abertoAlterado.current && !window.confirm('Tirar da lista descarta o que você digitou neste lançamento. Continuar?')) return;
                     onRemover(c.id);
@@ -183,6 +226,8 @@ export function ClientesDoMes({
                     key={`${mesLabel}-${c.id}`}
                     nome={c.nome}
                     catalogo={catalogo}
+                    modelo={modelo}
+                    outraGuiaPedida={pedidoOutraGuia?.id === c.id ? pedidoOutraGuia.vezes : 0}
                     inicial={c.guias}
                     sessoesAgenda={sessoesEstado === 'ok' ? c.sessoesAgenda : 0}
                     salvando={salvandoId === c.id}
